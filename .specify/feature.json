@@ -1,0 +1,30 @@
+{
+  "feature_branch": "feat/etg-dynamic-filter-seo-bridge",
+  "feature_directory": "specs/001-etg-dynamic-filter-seo-operational",
+  "status": "inventory_completeness_operational_alpha",
+  "baseline_head": "e405568858f540119d33d9fa6d690918cb26b1e1",
+  "baseline_version": "0.1.0",
+  "previous_operational_head": "d033e60b82319c03358df2ec23f39b09f361d8fc",
+  "target_version": "0.4.0-alpha.4",
+  "merge_authorized": false,
+  "production_activation_authorized": false,
+  "required_gates": [
+    "clean_exact_head",
+    "php_7_4_and_current",
+    "vendor_capability_compatibility",
+    "surface_profile_integrity",
+    "query_builder_post_type_authority",
+    "taxonomy_field_map_and_gallery",
+    "hard_fail_closed",
+    "authoritative_result_count",
+    "exact_combination_approval",
+    "deduplicated_content_readiness",
+    "multilingual_archive_authority",
+    "realistic_scenario_simulation",
+    "inventory_reconciliation",
+    "controlled_growth",
+    "inventory_completeness_and_identity_collision",
+    "staging_acceptance",
+    "release_provenance"
+  ]
+}

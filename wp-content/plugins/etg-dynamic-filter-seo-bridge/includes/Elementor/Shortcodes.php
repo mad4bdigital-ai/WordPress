@@ -31,12 +31,16 @@ final class Shortcodes {
 	public function keyword(): string { $c = $this->context(); return $this->renderable( $c ) ? esc_html( $this->content->keyword( $c ) ) : ''; }
 	public function breadcrumb(): string {
 		$c = $this->context(); if ( ! $this->renderable( $c ) ) { return ''; }
-		$names = array(); $terms = (array) ( $c['terms'] ?? array() );
-		foreach ( array( 'location', 'tour_type', 'style' ) as $role ) { if ( ! empty( $terms[ $role ]['name'] ) ) { $names[] = esc_html( (string) $terms[ $role ]['name'] ); } }
+		$names=array();foreach($this->content->breadcrumbLabels($c) as $name){$names[]=esc_html((string)$name);}
 		return implode( ' &rsaquo; ', $names );
 	}
 	private function context(): array { $c = call_user_func( $this->contextProvider ); return is_array( $c ) ? $c : array(); }
 	private function renderable( array $c ): bool {
-		return ! empty( $c['active'] ) && ! empty( $c['filters'] ) && empty( $c['unknown_filters'] ) && empty( $c['malformed'] ) && empty( $c['missing_terms'] ) && ! empty( $c['terms'] );
+		if(empty($c['active'])||empty($c['in_scope'])||empty($c['runtime_ready'])||empty($c['filters'])){return false;}
+		if(isset($c['scope_valid'])&&empty($c['scope_valid'])){return false;}
+		if(isset($c['provider_observation_matches_url'])&&empty($c['provider_observation_matches_url'])){return false;}
+		$profile=(array)($c['profile']??array());$binding=(array)($c['post_type_binding']??array());
+		if(!empty($profile['require_post_type_binding'])&&(empty($binding['observed'])||empty($binding['matches_profile']))){return false;}
+		return empty($c['unknown_filters'])&&empty($c['malformed'])&&empty($c['missing_terms'])&&empty($c['translation_fallback'])&&!empty($c['terms']);
 	}
 }

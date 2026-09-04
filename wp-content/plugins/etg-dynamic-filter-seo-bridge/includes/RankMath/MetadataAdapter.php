@@ -3,12 +3,22 @@ namespace ETG\DynamicFilterSEOBridge\RankMath;
 
 use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
 use ETG\DynamicFilterSEOBridge\Content\GalleryComposer;
+use ETG\DynamicFilterSEOBridge\SEO\CanonicalBuilder;
 use ETG\DynamicFilterSEOBridge\SEO\IndexingPolicy;
 
 final class MetadataAdapter {
-	private $contextProvider; private $content; private $gallery; private $indexing;
-	public function __construct( callable $contextProvider, ContentComposer $content, GalleryComposer $gallery, IndexingPolicy $indexing ) {
-		$this->contextProvider = $contextProvider; $this->content = $content; $this->gallery = $gallery; $this->indexing = $indexing;
+	private $contextProvider;
+	private $content;
+	private $gallery;
+	private $indexing;
+	private $canonical;
+
+	public function __construct( callable $contextProvider, ContentComposer $content, GalleryComposer $gallery, IndexingPolicy $indexing, CanonicalBuilder $canonical ) {
+		$this->contextProvider = $contextProvider;
+		$this->content = $content;
+		$this->gallery = $gallery;
+		$this->indexing = $indexing;
+		$this->canonical = $canonical;
 	}
 
 	public function register(): void {
@@ -35,8 +45,8 @@ final class MetadataAdapter {
 
 	public function canonical( $original ) {
 		$context = $this->context();
-		if ( ! $this->hasResolvedContext( $context ) || empty( $context['request_path'] ) ) { return $original; }
-		return esc_url_raw( home_url( (string) $context['request_path'] ) );
+		if ( ! $this->hasResolvedContext( $context ) ) { return $original; }
+		return $this->canonical->build( $context, $original );
 	}
 
 	public function robots( $robots ) {
@@ -62,7 +72,11 @@ final class MetadataAdapter {
 	}
 
 	private function hasResolvedContext( array $context ): bool {
-		return ! empty( $context['active'] ) && ! empty( $context['filters'] ) && empty( $context['unknown_filters'] )
-			&& empty( $context['malformed'] ) && empty( $context['missing_terms'] ) && ! empty( $context['terms'] );
+		if(empty($context['active'])||empty($context['in_scope'])||empty($context['runtime_ready'])||empty($context['filters'])){return false;}
+		if(isset($context['scope_valid'])&&empty($context['scope_valid'])){return false;}
+		if(isset($context['provider_observation_matches_url'])&&empty($context['provider_observation_matches_url'])){return false;}
+		$profile=(array)($context['profile']??array());$binding=(array)($context['post_type_binding']??array());
+		if(!empty($profile['require_post_type_binding'])&&(empty($binding['observed'])||empty($binding['matches_profile']))){return false;}
+		return empty($context['unknown_filters'])&&empty($context['malformed'])&&empty($context['missing_terms'])&&empty($context['translation_fallback'])&&!empty($context['terms']);
 	}
 }

@@ -1,0 +1,251 @@
+name: ETG DFSB Operational CI
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'specs/001-etg-dynamic-filter-seo-operational/**'
+      - '.specify/**'
+      - '.github/workflows/etg-dfsb-ci.yml'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/seo-by-rank-math.zip'
+      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
+      - 'wp-content/plugins/sitepress-multilingual-cms.zip'
+      - 'wp-content/plugins/wpml-string-translation.zip'
+      - 'wp-content/plugins/wp-seo-multilingual.zip'
+  push:
+    branches:
+      - feat/etg-dynamic-filter-seo-bridge
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'specs/001-etg-dynamic-filter-seo-operational/**'
+      - '.specify/**'
+      - '.github/workflows/etg-dfsb-ci.yml'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/seo-by-rank-math.zip'
+      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
+      - 'wp-content/plugins/sitepress-multilingual-cms.zip'
+      - 'wp-content/plugins/wpml-string-translation.zip'
+      - 'wp-content/plugins/wp-seo-multilingual.zip'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  php-contract:
+    name: PHP ${{ matrix.php }} contract
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint and generic policy simulations
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          find "$PLUGIN" -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+          for test_file in \
+            parser-smoke.php \
+            operational-smoke.php \
+            result-count-adapter-smoke.php \
+            profile-runtime-smoke.php \
+            post-type-observer-smoke.php \
+            term-meta-profile-smoke.php \
+            profile-blueprint-smoke.php \
+            presentation-guard-smoke.php \
+            runtime-inventory-smoke.php \
+            inventory-reconciliation-smoke.php; do
+              php "$PLUGIN/tests/$test_file"
+          done
+
+  governance:
+    name: Vendor capability and governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify exact bundled compatibility surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/etg-vendor && mkdir -p /tmp/etg-vendor/{je,jsf,rm,wpml}
+          unzip -q wp-content/plugins/jet-engine.zip -d /tmp/etg-vendor/je
+          unzip -q wp-content/plugins/jet-smart-filters.zip -d /tmp/etg-vendor/jsf
+          unzip -q wp-content/plugins/seo-by-rank-math.zip -d /tmp/etg-vendor/rm
+          unzip -q wp-content/plugins/sitepress-multilingual-cms.zip -d /tmp/etg-vendor/wpml
+
+          grep -RFqs 'function get_query_by_id' /tmp/etg-vendor/je
+          grep -RFqs 'custom_query_ids_mapping' /tmp/etg-vendor/je
+          grep -RFqs 'function set_filtered_prop' /tmp/etg-vendor/je
+          grep -RFqs 'function get_items_total_count' /tmp/etg-vendor/je
+          grep -RFqs 'function get_query_type' /tmp/etg-vendor/je
+          grep -RFqs 'class Posts_Query extends Base_Query' /tmp/etg-vendor/je
+          grep -RFqs 'public function get_query_args()' /tmp/etg-vendor/je
+          grep -RFqs 'public function get_queries()' /tmp/etg-vendor/je
+          grep -RFqs "args['post_type'] = 'any'" /tmp/etg-vendor/je
+          grep -RFqs "get_query_from_request" /tmp/etg-vendor/je
+          grep -RFqs "get_current_provider( 'query_id' )" /tmp/etg-vendor/je
+
+          grep -RFqs 'function get_current_provider' /tmp/etg-vendor/jsf
+          grep -RFqs 'function get_query_from_request' /tmp/etg-vendor/jsf
+          grep -RFqs "return 'jet-engine'" /tmp/etg-vendor/jsf
+
+          grep -RFqs "rank_math/frontend/title" /tmp/etg-vendor/rm
+          grep -RFqs "rank_math/frontend/description" /tmp/etg-vendor/rm
+          grep -RFqs "rank_math/frontend/canonical" /tmp/etg-vendor/rm
+          grep -RFqs "rank_math/frontend/robots" /tmp/etg-vendor/rm
+          grep -RFqs 'opengraph/{$this->network}/image' /tmp/etg-vendor/rm
+
+          grep -RFqs 'wpml_current_language' /tmp/etg-vendor/wpml
+          grep -RFqs 'wpml_object_id' /tmp/etg-vendor/wpml
+
+      - name: Verify Spec Kit integrity, profile target and merge lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            '.specify/memory/constitution.md'
+            '.specify/feature.json'
+            'specs/001-etg-dynamic-filter-seo-operational/spec.md'
+            'specs/001-etg-dynamic-filter-seo-operational/plan.md'
+            'specs/001-etg-dynamic-filter-seo-operational/tasks.md'
+            'specs/001-etg-dynamic-filter-seo-operational/research.md'
+            'specs/001-etg-dynamic-filter-seo-operational/data-model.md'
+            'specs/001-etg-dynamic-filter-seo-operational/quickstart.md'
+            'specs/001-etg-dynamic-filter-seo-operational/runbook.md'
+            'specs/001-etg-dynamic-filter-seo-operational/acceptance-matrix.md'
+            'specs/001-etg-dynamic-filter-seo-operational/objection-scenario-matrix.md'
+            'specs/001-etg-dynamic-filter-seo-operational/checklists/requirements.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/configuration-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/runtime-context-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/indexing-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/result-count-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/diagnostics-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/url-state-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/provider-lifecycle-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/compatibility-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/combination-registry-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/content-readiness-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/multilingual-url-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/override-governance-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/release-provenance-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/cache-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/surface-profile-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/post-type-binding-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/taxonomy-policy-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/term-field-map-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/profile-blueprint-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/dynamic-growth-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/simulation-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/runtime-inventory-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/inventory-reconciliation-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/contracts/wp-cli-operational-contract.md'
+            'specs/001-etg-dynamic-filter-seo-operational/public-runtime-reconnaissance.md'
+          )
+          for file in "${required[@]}"; do test -s "$file" || { echo "Missing $file"; exit 1; }; done
+          python - <<'PY'
+          import json, re
+          d=json.load(open('.specify/feature.json'))
+          assert d['target_version'] == '0.4.0-alpha.4'
+          assert d['status'] == 'inventory_completeness_operational_alpha'
+          assert d['merge_authorized'] is False
+          assert d['production_activation_authorized'] is False
+          source=open('wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php').read()
+          assert re.search(r'Version:\s*0\.4\.0-alpha\.4', source)
+          assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.4' );" in source
+          reconciler=open('wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/InventoryReconciler.php').read()
+          runtime_inventory=open('wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/RuntimeInventory.php').read()
+          cli=open('wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/CLI/Commands.php').read()
+          assert 'etg.dfsb.inventory-reconciliation.v2' in reconciler
+          assert 'etg.dfsb.runtime-inventory.v2' in runtime_inventory
+          assert 'identity_conflict_count' in runtime_inventory and "'truncated'" in runtime_inventory
+          assert 'profile_query_identity_collision' in reconciler and 'inventorySafeForCandidates' in reconciler
+          assert "etg-dfsb inventory" in cli and "etg-dfsb reconcile" in cli
+          PY
+
+      - name: Enforce PR change boundary
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" | while IFS= read -r path; do
+            case "$path" in
+              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml) ;;
+              *) echo "Unexpected path in ETG PR: $path"; exit 1 ;;
+            esac
+          done
+
+      - name: Check whitespace and forbidden temporary transport files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check "$(git merge-base origin/master HEAD)"...HEAD
+          ! find .github -maxdepth 1 -type f \( -name 'etg-op-payload*' -o -name '*payload.part-*' -o -name '*materializer*' -o -name '*probe*' \) -print -quit | grep -q .
+
+      - name: Build deterministic installable package and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA=$(git rev-parse HEAD)
+          test "$ACTUAL_SHA" = "$SOURCE_SHA"
+          PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\\s*([^\\r\\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
+          test "$VERSION" = '0.4.0-alpha.4'
+          OUT="$RUNNER_TEMP/etg-package"
+          mkdir -p "$OUT/etg-dynamic-filter-seo-bridge"
+          rsync -a --exclude tests "$PLUGIN/" "$OUT/etg-dynamic-filter-seo-bridge/"
+          find "$OUT/etg-dynamic-filter-seo-bridge" -exec touch -t 198001010000 {} +
+          ZIP="$OUT/etg-dynamic-filter-seo-bridge-${VERSION}.zip"
+          (
+            cd "$OUT"
+            find etg-dynamic-filter-seo-bridge -type f -print | LC_ALL=C sort | zip -X -q "$ZIP" -@
+          )
+          unzip -t "$ZIP"
+          DIGEST=$(sha256sum "$ZIP" | awk '{print $1}')
+          {
+            echo "contract=etg.dfsb.release-provenance.v2"
+            echo "git_sha=$SOURCE_SHA"
+            echo "plugin_version=$VERSION"
+            echo "profile_engine=generic_surface_profile_v1"
+            echo "package_sha256=$DIGEST"
+            echo "jet_engine_blob=$(git rev-parse HEAD:wp-content/plugins/jet-engine.zip)"
+            echo "jet_smart_filters_blob=$(git rev-parse HEAD:wp-content/plugins/jet-smart-filters.zip)"
+            echo "rank_math_blob=$(git rev-parse HEAD:wp-content/plugins/seo-by-rank-math.zip)"
+            echo "rank_math_pro_blob=$(git rev-parse HEAD:wp-content/plugins/seo-by-rank-math-pro.zip)"
+            echo "wpml_cms_blob=$(git rev-parse HEAD:wp-content/plugins/sitepress-multilingual-cms.zip)"
+            echo "wpml_string_translation_blob=$(git rev-parse HEAD:wp-content/plugins/wpml-string-translation.zip)"
+            echo "wpml_seo_blob=$(git rev-parse HEAD:wp-content/plugins/wp-seo-multilingual.zip)"
+          } > "$OUT/etg-dfsb-provenance.txt"
+          cat "$OUT/etg-dfsb-provenance.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: etg-dfsb-operational-candidate-${{ env.SOURCE_SHA }}
+          path: |
+            ${{ runner.temp }}/etg-package/*.zip
+            ${{ runner.temp }}/etg-package/etg-dfsb-provenance.txt
+          if-no-files-found: error
