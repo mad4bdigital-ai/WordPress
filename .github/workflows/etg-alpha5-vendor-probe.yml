@@ -1,0 +1,31 @@
+name: ETG Alpha5 Vendor Probe
+
+on:
+  push:
+    branches:
+      - ops/etg-runtime-inventory-probe
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect bounded WPML term identity and JSF multi-value surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/etg-alpha5-vendor
+          mkdir -p /tmp/etg-alpha5-vendor/{jsf,wpml}
+          unzip -q wp-content/plugins/jet-smart-filters.zip -d /tmp/etg-alpha5-vendor/jsf
+          unzip -q wp-content/plugins/sitepress-multilingual-cms.zip -d /tmp/etg-alpha5-vendor/wpml
+
+          echo '=== WPML term/translation identity hooks ==='
+          grep -RniE "wpml_element_trid|element_trid|wpml_object_id|element_language_details|trid" /tmp/etg-alpha5-vendor/wpml > /tmp/wpml-hits.txt || true
+          sed -n '1,140p' /tmp/wpml-hits.txt
+
+          echo '=== JetSmartFilters multi-value / taxonomy parsing surfaces ==='
+          grep -RniE "multi.?value|explode\(.*[,|+]|tax_query|taxonomy|query_var|filter.*value|separator|delimiter" /tmp/etg-alpha5-vendor/jsf > /tmp/jsf-hits.txt || true
+          sed -n '1,220p' /tmp/jsf-hits.txt
