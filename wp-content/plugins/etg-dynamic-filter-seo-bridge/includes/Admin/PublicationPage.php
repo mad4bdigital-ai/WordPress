@@ -36,7 +36,7 @@ final class PublicationPage {
 		.etg-publication-admin .nav-tab-wrapper{margin-bottom:20px}.etg-pub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;max-width:1100px}.etg-pub-card{background:#fff;border:1px solid #dcdcde;border-radius:6px;padding:16px;margin:0 0 16px;max-width:1100px}.etg-pub-badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700}.etg-pub-safe{background:#d7f3df;color:#0b5d24}.etg-pub-danger{background:#fbeaea;color:#8a1515}.etg-pub-readonly{background:#e8f0fe;color:#174ea6}.etg-pub-tip{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;border-radius:50%;background:#2271b1;color:#fff;font-weight:700;font-size:12px;cursor:help;margin-left:5px}.etg-pub-table{border-collapse:collapse;width:100%;max-width:1400px;background:#fff}.etg-pub-table th,.etg-pub-table td{border:1px solid #dcdcde;padding:8px;vertical-align:top;text-align:left}.etg-pub-code{background:#f6f7f7;padding:12px;overflow:auto;max-width:1100px}.etg-pub-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 		</style>
 		<div class="etg-pub-grid">
-			<div class="etg-pub-card"><strong>Global bridge</strong><br/><span class="etg-pub-badge <?php echo $this->config->enabled()?'etg-pub-danger':'etg-pub-safe'; ?>"><?php echo $this->config->enabled()?'ON':'OFF'; ?></span><?php $this->tip('Sitemap publication is empty while Global bridge is OFF. Candidate preview remains read-only and non-authorizing.'); ?></div>
+			<div class="etg-pub-card"><strong>Global bridge</strong><br/><span class="etg-pub-badge <?php echo $this->config->enabled()?'etg-pub-danger':'etg-pub-safe'; ?>"><?php echo $this->config->enabled()?'ON':'OFF'; ?></span><?php $this->tip('Rank Math metadata, index authority and live sitemap publication remain disabled while Global bridge is OFF. Optional Elementor dark presentation is controlled separately per profile.'); ?></div>
 			<div class="etg-pub-card"><strong>Profiles</strong><br/><?php echo esc_html((string)count($this->profiles->all())); ?><?php $this->tip('Only enabled profiles with exact, profile-bound approved combinations can become publication candidates.'); ?></div>
 			<div class="etg-pub-card"><strong>Publication model</strong><br/><span class="etg-pub-badge etg-pub-readonly">READ-ONLY PREVIEW</span><?php $this->tip('Preview can resolve Terms, metadata, background result counts and exclusion reasons without opening the Global kill switch.'); ?></div>
 		</div>
@@ -51,7 +51,7 @@ final class PublicationPage {
 
 	private function renderOverview(): void {?>
 		<div class="etg-pub-card"><h2>Publication contract</h2><p>Dynamic filter URLs are publishable only after the exact profile, route, taxonomy shape, approved combination, translated Terms, authoritative result count, minimum-result threshold, content readiness and Elementor content verification all pass.</p><p>The same resolved Term context feeds the visible Elementor content, Rank Math title/description/canonical/robots, OpenGraph/Twitter metadata, CollectionPage Schema and hreflang URLs.</p></div>
-		<div class="etg-pub-card"><h2>Safe sequence</h2><ol><li>Add Term SEO/content fields.</li><li>Build the archive presentation in Elementor Theme Builder with ETG shortcodes.</li><li>Keep <code>elementor_content_verified=false</code> until the template is visibly complete.</li><li>Approve exact profile/language combinations.</li><li>Run Candidate Preview while Global bridge is OFF.</li><li>Resolve every exclusion.</li><li>Only after separate approval set <code>elementor_content_verified=true</code> and consider Global ON.</li></ol></div>
+		<div class="etg-pub-card"><h2>Safe sequence</h2><ol><li>Add or import Term SEO/content fields.</li><li>Set <code>elementor_render_when_global_off=true</code> only while you need safe visual dark validation.</li><li>Build the archive presentation in Elementor Theme Builder with ETG shortcodes.</li><li>Keep <code>elementor_content_verified=false</code> until representative real filtered URLs visibly contain the intended Term sections.</li><li>Approve exact profile/language combinations.</li><li>Run Candidate Preview while Global bridge is OFF.</li><li>Resolve every exclusion.</li><li>Set <code>elementor_content_verified=true</code> only after visual verification, then consider Global ON as a separate decision.</li></ol></div>
 	<?php }
 
 	private function renderCandidates( $summary ): void {?>
@@ -76,20 +76,22 @@ final class PublicationPage {
 
 [etg_filter_term_section role="location" field="description" heading="1" heading_level="2"]
 [etg_filter_term_section role="tour_type" field="description" heading="1" heading_level="2"]</pre></div>
-		<div class="etg-pub-card"><h2>Content-readiness alignment</h2><p>The SEO content gate reads the same Term <code>description</code> and <code>short_description</code> sources. If your Term content is stored in custom JetEngine/ACF keys, map those keys into each taxonomy rule's <code>field_map.short_description</code> or other supported SEO fields so the visible sections and metadata share one source of truth.</p><p>After you finish the Elementor archive sections and validate them on real filtered URLs, change the profile publication flag to:</p><pre class="etg-pub-code">"publication": {
+		<div class="etg-pub-card"><h2>Safe dark presentation</h2><p>To inspect these Elementor sections on real Production URLs without turning on Rank Math/indexing authority, explicitly set <code>elementor_render_when_global_off=true</code>. This permits only the ETG shortcode presentation to use the read-only evidence context when the request is stopped by the Global kill switch. It does not publish sitemap URLs or SEO metadata.</p></div>
+		<div class="etg-pub-card"><h2>Content-readiness alignment</h2><p>The SEO content gate reads the same Term <code>description</code> and <code>short_description</code> sources. If your Term content is stored in custom JetEngine/ACF keys, map those keys into each taxonomy rule's <code>field_map.short_description</code> or other supported SEO fields so the visible sections and metadata share one source of truth.</p><p>Use this publication block while building:</p><pre class="etg-pub-code">"publication": {
   "sitemap": true,
   "hreflang": true,
   "schema": true,
   "social": true,
   "include_images_in_sitemap": true,
   "require_elementor_content": true,
-  "elementor_content_verified": true,
+  "elementor_render_when_global_off": true,
+  "elementor_content_verified": false,
   "max_preview_urls": 100
-}</pre><p>Until that final flag is true, the indexing policy fails closed with <code>elementor_content_not_verified</code>.</p></div>
+}</pre><p>After the Theme Builder template is visibly correct on representative real filter URLs, set <code>elementor_content_verified=true</code>. Until then, the indexing policy fails closed with <code>elementor_content_not_verified</code>. You may turn dark rendering back off after verification; it is irrelevant once Global is ON because the normal live context takes precedence.</p></div>
 	<?php }
 
 	private function renderSitemap(): void {?>
-		<div class="etg-pub-card"><h2>Rank Math dynamic sitemap</h2><p>The plugin registers an <code>etg-filter-seo</code> sitemap provider with Rank Math. When Global bridge is ON, only candidates whose final indexing decision is <code>index=true</code> are returned. When Global bridge is OFF, the provider returns no URLs.</p><p><strong>Expected provider URL:</strong> <code><?php echo esc_html(home_url('/etg-filter-seo-sitemap.xml'));?></code></p><p>Term/post/profile changes invalidate the provider cache so removed or no-longer-eligible combinations disappear on refresh.</p></div>
+		<div class="etg-pub-card"><h2>Rank Math dynamic sitemap</h2><p>The plugin registers an <code>etg-filter-seo</code> sitemap provider with Rank Math. When Global bridge is ON, only candidates whose final indexing decision is <code>index=true</code> are returned. When Global bridge is OFF, the provider returns no URLs.</p><p><strong>Expected provider URL:</strong> <code><?php echo esc_html(home_url('/etg-filter-seo-sitemap.xml'));?></code></p><p>If the eligible set exceeds Rank Math's per-sitemap entry limit, the provider emits paginated sitemap files. Post, taxonomy-relation, Term, Term-meta and ETG profile changes invalidate the provider cache so removed or no-longer-eligible combinations disappear on refresh.</p></div>
 		<div class="etg-pub-card"><h2>Multilingual discovery</h2><p>WPML hreflang output is replaced only for valid ETG dynamic pages. Alternate URLs are emitted only when the translated Terms exist and the target language has its own exact approved profile-bound combination. <code>x-default</code> points to the approved default-language dynamic URL.</p></div>
 	<?php }
 
