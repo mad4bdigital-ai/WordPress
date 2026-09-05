@@ -23,6 +23,7 @@ $assert(false!==strpos($files['config'],"'elementor_render_when_global_off'"),'d
 $assert(false!==strpos($files['policy'],'elementor_content_not_verified'),'Elementor fail-closed gate missing');
 $assert(false!==strpos($files['scope'],'evaluateForEvidence'),'non-authorizing evidence scope missing');
 $assert(false!==strpos($files['builder'],'buildEvidence'),'evidence context builder missing');
+$assert(false!==strpos($files['builder'],'evidenceRuntimeReady'),'Global-OFF evidence readiness missing');
 $assert(false!==strpos($files['shortcodes'],'elementor_render_when_global_off'),'Elementor dark presentation fallback missing');
 $assert(false!==strpos($files['shortcodes'],"'disabled'!==(string)($c['scope']['reason']"),'dark presentation must be limited to Global-disabled requests');
 $assert(false!==strpos($files['registry'],'global_bridge_off'),'Global OFF sitemap exclusion missing');
@@ -52,4 +53,41 @@ foreach(array('rank_math_sitemap_provider_interface','rank_math_sitemap_router',
 $assert(false!==strpos($files['readiness'],'publication_requires_elementor_pro'),'Elementor Pro publication readiness signal missing');
 $assert(false!==strpos($files['builder'],'tour-styles_jet'),'Production taxonomy role alignment missing');
 $assert(false===strpos($files['builder'],"'tour-style_jet'=>'style'"),'stale singular style taxonomy remains');
+
+/* Behavioral proof: dark presentation can render Term content only when the
+ * normal request is stopped by Global OFF and the profile explicitly opts in. */
+if(!function_exists('sanitize_key')){function sanitize_key($v){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$v));}}
+if(!function_exists('esc_html')){function esc_html($v){return (string)$v;}}
+if(!function_exists('esc_attr')){function esc_attr($v){return (string)$v;}}
+if(!function_exists('esc_url')){function esc_url($v){return (string)$v;}}
+if(!function_exists('sanitize_html_class')){function sanitize_html_class($v){return preg_replace('/[^A-Za-z0-9_-]/','',(string)$v);}}
+if(!function_exists('wp_strip_all_tags')){function wp_strip_all_tags($v){return strip_tags((string)$v);}}
+if(!function_exists('wp_kses_post')){function wp_kses_post($v){return (string)$v;}}
+if(!function_exists('wpautop')){function wpautop($v){return (string)$v;}}
+if(!function_exists('shortcode_atts')){function shortcode_atts($pairs,$atts,$shortcode=''){return array_merge($pairs,(array)$atts);}}
+if(!function_exists('apply_filters')){function apply_filters($hook,$value){return $value;}}
+if(!function_exists('wp_get_attachment_image_url')){function wp_get_attachment_image_url($id,$size){return 'https://example.test/image-'.$id.'.jpg';}}
+require_once $root.'/includes/Content/GalleryComposer.php';
+require_once $root.'/includes/Content/ContentComposer.php';
+require_once $root.'/includes/Elementor/Shortcodes.php';
+$gallery=new \ETG\DynamicFilterSEOBridge\Content\GalleryComposer();
+$content=new \ETG\DynamicFilterSEOBridge\Content\ContentComposer($gallery);
+$normal=array('active'=>true,'in_scope'=>false,'scope_valid'=>false,'runtime_ready'=>false,'filters'=>array('location_jet'=>'cairo'),'scope'=>array('reason'=>'disabled'));
+$evidence=array(
+    'active'=>true,'in_scope'=>true,'scope_valid'=>true,'runtime_ready'=>true,'evidence_only'=>true,
+    'filters'=>array('location_jet'=>'cairo'),'unknown_filters'=>array(),'malformed'=>array(),'missing_terms'=>array(),'translation_fallback'=>false,
+    'provider_observation_matches_url'=>true,'profile'=>array('publication'=>array('elementor_render_when_global_off'=>true),'taxonomy_rules'=>array('location_jet'=>array('role'=>'location','priority'=>10))),
+    'post_type_binding'=>array('observed'=>false,'matches_profile'=>true),'terms'=>array('location'=>array('name'=>'Cairo','description'=>'Visible Cairo Term content','short_description'=>'Visible Cairo Term content')),'taxonomy_roles'=>array('location_jet'=>'location'),'language'=>'en'
+);
+$normalProvider=function()use(&$normal){return $normal;};
+$evidenceProvider=function()use(&$evidence){return $evidence;};
+$shortcodes=new \ETG\DynamicFilterSEOBridge\Elementor\Shortcodes($normalProvider,$content,$gallery,$evidenceProvider);
+$assert('Cairo'===$shortcodes->h1(),'dark presentation must render resolved H1 with Global OFF');
+$assert(false!==strpos($shortcodes->term(array('role'=>'location','field'=>'description')),'Visible Cairo Term content'),'dark presentation must render resolved Term content');
+$evidence['profile']['publication']['elementor_render_when_global_off']=false;
+$assert(''===$shortcodes->h1(),'dark presentation must remain opt-in');
+$evidence['profile']['publication']['elementor_render_when_global_off']=true;
+$normal['scope']['reason']='provider_not_profiled';
+$assert(''===$shortcodes->h1(),'dark presentation cannot bypass a live scope failure');
+
 echo "publication-layer-smoke:ok\n";
