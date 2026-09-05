@@ -20,13 +20,28 @@ final class FilterContextBuilder {
 	}
 
 	public function build( ?string $uri = null ): array {
+		return $this->buildInternal( $uri, false, null );
+	}
+
+	/**
+	 * Build the same real term/runtime context while bypassing only the Global kill
+	 * switch. The result is explicitly non-authorizing and is used by the
+	 * Publication planner before Production activation.
+	 */
+	public function buildEvidence( ?string $uri = null, ?string $language = null ): array {
+		return $this->buildInternal( $uri, true, $language );
+	}
+
+	private function buildInternal( ?string $uri, bool $evidenceOnly, ?string $languageOverride ): array {
 		$parsed = $this->parser->parse( $uri );
-		$language = $this->languages->languageForUri( $uri );
-		$scope = $this->scope->evaluate( $parsed );
+		$language = $languageOverride ? sanitize_key( $languageOverride ) : $this->languages->languageForUri( $uri );
+		$scope = $evidenceOnly ? $this->scope->evaluateForEvidence( $parsed ) : $this->scope->evaluate( $parsed );
 		$profile = (array) ( $scope['profile'] ?? array() );
 		$readiness = $this->readiness->report();
 		$runtime = $this->currentProvider();
-		$providerMatch = ! $runtime['observed'] || ( $runtime['provider'] === (string) ( $parsed['provider'] ?? '' ) && $runtime['query_id'] === (string) ( $parsed['query_id'] ?? '' ) );
+		$providerMatch = $evidenceOnly
+			? true
+			: ( ! $runtime['observed'] || ( $runtime['provider'] === (string) ( $parsed['provider'] ?? '' ) && $runtime['query_id'] === (string) ( $parsed['query_id'] ?? '' ) ) );
 		$postTypeBinding = $this->postTypes->observe( $parsed, $profile );
 		$context = array_merge( $parsed, array(
 			'language'=>$language,
@@ -53,6 +68,9 @@ final class FilterContextBuilder {
 			'result_count_detail'=>'',
 			'combination_authority'=>array(),
 			'content_readiness'=>array(),
+			'evidence_only'=>$evidenceOnly,
+			'authorizing'=>!$evidenceOnly && !empty($scope['authorizing']),
+			'global_enabled'=>!empty($scope['global_enabled']),
 		) );
 		if ( empty( $parsed['active'] ) || empty( $context['in_scope'] ) ) { return $context; }
 		if ( empty( $context['scope_valid'] ) ) { return $context; }
@@ -84,7 +102,7 @@ final class FilterContextBuilder {
 	private function roleForTaxonomy( string $taxonomy, array $profile ): string {
 		$rules=(array)($profile['taxonomy_rules']??array());
 		if(isset($rules[$taxonomy]['role'])){return sanitize_key((string)$rules[$taxonomy]['role']);}
-		$map=function_exists('apply_filters')?apply_filters('etg_filter_seo_taxonomy_role_map',array('location_jet'=>'location','tour-types_jet'=>'tour_type','tour-style_jet'=>'style'),$profile):array();
+		$map=function_exists('apply_filters')?apply_filters('etg_filter_seo_taxonomy_role_map',array('location_jet'=>'location','tour-types_jet'=>'tour_type','tour-styles_jet'=>'style'),$profile):array();
 		return isset($map[$taxonomy])?sanitize_key((string)$map[$taxonomy]):sanitize_key($taxonomy);
 	}
 
