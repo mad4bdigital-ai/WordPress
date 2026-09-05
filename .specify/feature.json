@@ -1,11 +1,11 @@
 {
   "feature_branch": "feat/etg-dynamic-filter-seo-bridge",
   "feature_directory": "specs/001-etg-dynamic-filter-seo-operational",
-  "status": "runtime_inventory_availability_hardening_alpha",
+  "status": "production_dark_validation_ui_hardening_alpha",
   "baseline_head": "e405568858f540119d33d9fa6d690918cb26b1e1",
   "baseline_version": "0.1.0",
-  "previous_operational_head": "a2474fa5548e54a1200d089f6692c2eb55a166f2",
-  "target_version": "0.4.0-alpha.6",
+  "previous_operational_head": "b8feb6f6c92327213320a0b4a9ef3440f6b8e318",
+  "target_version": "0.4.0-alpha.7",
   "merge_authorized": false,
   "production_activation_authorized": false,
   "required_gates": [
@@ -28,6 +28,7 @@
     "extension_bounds_fail_closed",
     "deterministic_query_structural_order",
     "runtime_inventory_source_availability",
+    "admin_tabbed_explainability",
     "staging_acceptance",
     "release_provenance"
   ]
