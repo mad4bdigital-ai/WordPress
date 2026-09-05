@@ -38,6 +38,7 @@ final class FilterContextBuilder {
 		$scope = $evidenceOnly ? $this->scope->evaluateForEvidence( $parsed ) : $this->scope->evaluate( $parsed );
 		$profile = (array) ( $scope['profile'] ?? array() );
 		$readiness = $this->readiness->report();
+		$runtimeReady = $evidenceOnly ? $this->evidenceRuntimeReady( $readiness ) : ( 'ready' === (string) ( $readiness['status'] ?? '' ) );
 		$runtime = $this->currentProvider();
 		$providerMatch = $evidenceOnly
 			? true
@@ -61,7 +62,8 @@ final class FilterContextBuilder {
 			'in_scope'=>(bool)($scope['in_scope']??false),
 			'scope_valid'=>(bool)($scope['scope_valid']??false),
 			'readiness'=>$readiness,
-			'runtime_ready'=>'ready'===$readiness['status'],
+			'runtime_ready'=>$runtimeReady,
+			'evidence_runtime_ready'=>$evidenceOnly ? $runtimeReady : null,
 			'result_count'=>null,
 			'result_count_source'=>'unavailable',
 			'result_count_authoritative'=>false,
@@ -97,6 +99,18 @@ final class FilterContextBuilder {
 		$context['result_count_authoritative']=$result['authoritative'];
 		$context['result_count_detail']=(string)($result['detail']??'');
 		return $context;
+	}
+
+	private function evidenceRuntimeReady( array $readiness ): bool {
+		/* `inactive` is expected while Global is OFF. For read-only evidence we
+		 * evaluate the prerequisites directly, but we never convert that state into
+		 * authorizing readiness. */
+		if(!empty($readiness['missing_dependencies'])){return false;}
+		if(!empty($readiness['missing_capabilities'])){return false;}
+		if(!empty($readiness['configuration_errors'])){return false;}
+		if(!empty($readiness['runtime_checks_pending'])){return false;}
+		if(!empty($readiness['failed_runtime_checks'])){return false;}
+		return true;
 	}
 
 	private function roleForTaxonomy( string $taxonomy, array $profile ): string {
