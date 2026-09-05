@@ -1,13 +1,28 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge;
 
+use ETG\DynamicFilterSEOBridge\Admin\OperationalPage;
+use ETG\DynamicFilterSEOBridge\Config\Configuration;
+use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
 use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
 use ETG\DynamicFilterSEOBridge\Content\GalleryComposer;
 use ETG\DynamicFilterSEOBridge\Context\FilterContextBuilder;
+use ETG\DynamicFilterSEOBridge\Diagnostics\DecisionLogger;
+use ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory;
+use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryReconciler;
 use ETG\DynamicFilterSEOBridge\Elementor\Shortcodes;
 use ETG\DynamicFilterSEOBridge\JetSmartFilters\FilterUrlParser;
 use ETG\DynamicFilterSEOBridge\RankMath\MetadataAdapter;
+use ETG\DynamicFilterSEOBridge\Runtime\Readiness;
+use ETG\DynamicFilterSEOBridge\Runtime\RequestScope;
+use ETG\DynamicFilterSEOBridge\Runtime\PostTypeObserver;
+use ETG\DynamicFilterSEOBridge\SEO\CanonicalBuilder;
+use ETG\DynamicFilterSEOBridge\SEO\CombinationRegistry;
+use ETG\DynamicFilterSEOBridge\SEO\ContentReadiness;
 use ETG\DynamicFilterSEOBridge\SEO\IndexingPolicy;
+use ETG\DynamicFilterSEOBridge\SEO\JetEngineResultCountAdapter;
+use ETG\DynamicFilterSEOBridge\SEO\ResultCountResolver;
+use ETG\DynamicFilterSEOBridge\Simulation\ScenarioSimulator;
 use ETG\DynamicFilterSEOBridge\Terms\TermMetaReader;
 use ETG\DynamicFilterSEOBridge\WPML\LanguageResolver;
 
@@ -15,35 +30,52 @@ final class Bootstrap {
 	private static $instance;
 	private $builder;
 	private $context;
-	private $booted = false;
+	private $booted=false;
+	private $readiness;
+	private $policy;
+	private $config;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) { self::$instance = new self(); }
-		return self::$instance;
+	public static function instance():self{if(null===self::$instance){self::$instance=new self();}return self::$instance;}
+
+	public function boot():void{
+		if($this->booted){return;}
+		$this->booted=true;
+		$this->config=new Configuration();
+		$profiles=new ProfileRegistry($this->config);
+		$compatibility=new Compatibility();
+		$this->readiness=new Readiness($compatibility,$this->config,$profiles);
+		$gallery=new GalleryComposer();
+		$content=new ContentComposer($gallery);
+		$scope=new RequestScope($this->config,$profiles);
+		$adapter=new JetEngineResultCountAdapter();
+		$resultCounts=new ResultCountResolver($this->config,$adapter);
+		$parserTaxonomies=array_values(array_unique(array_merge($profiles->allowedTaxonomies(),(array)$this->config->get('allowed_taxonomies',array()))));
+		$parser=new FilterUrlParser($parserTaxonomies,(array)$this->config->get('allowed_query_params',array()),(array)$this->config->get('tracking_query_params',array()));
+		$combinations=new CombinationRegistry($this->config);
+		$this->builder=new FilterContextBuilder($parser,new LanguageResolver(),new TermMetaReader(),$content,$scope,$resultCounts,$this->readiness,$combinations,new ContentReadiness($this->config),new PostTypeObserver());
+		$this->policy=new IndexingPolicy($this->config);
+		$provider=array($this,'context');
+		$shortcodes=new Shortcodes($provider,$content,$gallery);
+		add_action('init',array($shortcodes,'register'),20);
+		if($compatibility->rankMath()){(new MetadataAdapter($provider,$content,$gallery,$this->policy,new CanonicalBuilder($this->config)))->register();}
+		(new DecisionLogger($provider,$this->policy,$this->config))->register();
+		$simulator=new ScenarioSimulator($this->config,$profiles,$combinations,$this->policy);
+		$runtimeInventory=new RuntimeInventory();
+		$reconciler=new InventoryReconciler();
+		(new OperationalPage($this->config,$profiles,$this->readiness,$this->builder,$this->policy,$simulator,$runtimeInventory,$reconciler))->register();
+		if(defined('WP_CLI')&&WP_CLI&&class_exists('\\WP_CLI')){(new \ETG\DynamicFilterSEOBridge\CLI\Commands($runtimeInventory,$reconciler,$profiles))->register();}
+		do_action('etg_filter_seo_bridge_booted',$this->readiness->report());
 	}
 
-	public function boot(): void {
-		if ( $this->booted ) { return; }
-		$this->booted = true;
-		$compatibility = new Compatibility();
-		$gallery = new GalleryComposer();
-		$content = new ContentComposer( $gallery );
-		$this->builder = new FilterContextBuilder( new FilterUrlParser(), new LanguageResolver(), new TermMetaReader(), $content );
-		$provider = array( $this, 'context' );
-		$shortcodes = new Shortcodes( $provider, $content, $gallery );
-		add_action( 'init', array( $shortcodes, 'register' ), 20 );
-		if ( $compatibility->rankMath() ) {
-			( new MetadataAdapter( $provider, $content, $gallery, new IndexingPolicy() ) )->register();
-		}
-		do_action( 'etg_filter_seo_bridge_booted', $compatibility->report() );
+	public function context():array{
+		if(null!==$this->context){return $this->context;}
+		if(!$this->builder){return array();}
+		$context=$this->builder->build();
+		$stable=empty($context['active'])||empty($context['in_scope'])||!empty($context['result_count_authoritative'])||!$this->config||!$this->config->get('require_result_count_for_index',true);
+		if($stable){$this->context=$context;}
+		return $context;
 	}
-
-	public function context(): array {
-		if ( null !== $this->context ) { return $this->context; }
-		if ( ! $this->builder ) { return array(); }
-		$this->context = $this->builder->build();
-		return $this->context;
-	}
-
-	private function __construct() {}
+	public function readiness():array{return $this->readiness?$this->readiness->report():array();}
+	public function indexingDecision():array{return $this->policy?$this->policy->decide($this->context()):array();}
+	private function __construct(){}
 }
