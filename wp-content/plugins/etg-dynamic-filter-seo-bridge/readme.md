@@ -1,177 +1,103 @@
 # ETG Dynamic Filter SEO Bridge
 
-Operational Alpha `0.4.0-alpha.7` is a governed Surface Profile Engine for JetSmartFilters + JetEngine filtered archives with WPML, Elementor and Rank Math. The default ETG Tours profile is preserved, but the runtime can now govern additional WordPress Post Types and taxonomies through configuration rather than PHP changes. Vendor source is never edited.
+Operational Alpha `0.4.0-alpha.8` is a governed Surface Profile Engine and SEO publication layer for JetSmartFilters + JetEngine filtered archives with WPML, Elementor Theme Builder and Rank Math.
+
+It does not create fake WordPress Pages for filter combinations. It resolves exact filtered URL state at runtime, composes visible Term-driven archive content, applies guarded Rank Math metadata, and can publish only explicitly approved/indexable dynamic URLs through a Rank Math sitemap provider.
+
+Vendor source is never edited.
 
 ## Safety model
-The global bridge defaults **OFF**. New profiles also default **disabled**. Discovery and generated blueprints are non-authorizing. A profile becomes operational only after explicit archive, route, taxonomy-shape, combination/content/result authorities are configured and the global/profile switches are enabled.
 
-Controlled growth is:
+The Global bridge defaults **OFF**.
 
 ```text
-discover → build disabled blueprint → configure exact authorities → simulate → readiness → runtime evidence → explicit enable
+discover
+→ inspect runtime inventory
+→ configure exact profile authority
+→ add/import Term content
+→ build Elementor archive presentation
+→ dark-render presentation if needed
+→ verify presentation
+→ approve exact language-bound combinations
+→ preview SEO publication
+→ explicit Global enable decision
 ```
 
 It is never:
 
 ```text
-discover → auto-enable → auto-index
+discover → Cartesian-generate every taxonomy combination → auto-index
 ```
 
-## Admin operations UI (`0.4.0-alpha.7`)
+Global OFF means Rank Math metadata mutation, robots index authority and live ETG sitemap publication remain off. Read-only diagnostics and publication preview remain available.
 
-The WordPress admin surface is split into focused tabs instead of one long page:
+### Elementor dark presentation
 
-- Overview
-- Configuration
-- Discovery
-- Runtime Inventory
-- Reconciliation
-- URL Inspector
-- Scenario Lab
+A profile may explicitly allow ETG shortcodes to render the resolved Term content while Global remains OFF:
 
-The Global bridge state, readiness, configuration revision and profile count remain visible across tabs. Every configuration selector and operational action button has an inline `?` explainer describing its role, authority boundary and possible Production effect. Discovery, Runtime Inventory, Reconciliation and URL inspection are visibly marked read-only; Scenario Lab is visibly marked synthetic.
+```json
+"elementor_render_when_global_off": true
+```
 
-Alpha7 also aligns the migrated Tours default taxonomy slug with the Production-observed `tour-styles_jet`. It does not auto-add any other discovered Production taxonomy and does not infer Query Builder/Post Type authority from discovery alone.
+This is a presentation-only dark-validation mode. It does not authorize Rank Math metadata, `index`, or sitemap publication. It is used so a Theme Builder archive can be inspected on real filtered URLs before SEO activation.
 
 ## Surface Profiles
-`profiles_json` is the authoritative bounded registry. A profile may define:
+
+`profiles_json` is the bounded source of structural authority. A profile may define:
 
 - `post_types[]`
 - `require_post_type_binding`
 - `post_type_authority`: `query_builder|main_query|either|both`
 - exact `archive_paths[]`
 - exact `routes[]` of `{provider, query_id}`
-- `taxonomy_rules{}` with roles, priorities, thresholds, field maps and optional term-meta constraints
+- `taxonomy_rules{}`
 - `allowed_taxonomy_sets[]`
-- exact language/profile-aware `indexable_combinations[]`
-- per-depth minimum result thresholds
-- profile-specific content readiness and canonical mode
+- exact `indexable_combinations[]`
+- per-depth result thresholds
+- content-readiness policy
+- canonical mode
 - `travel|generic` composition mode
+- publication policy
 
-New non-legacy profiles require exact archive paths and exact route pairs. Independent provider/query arrays are retained only as legacy configuration input and do not synthesize route, taxonomy-set or exact-combination authority. Structural authority must be explicit in the matched profile.
-
-## Pre-Staging exact authority hardening (`0.4.0-alpha.5`)
-
-Alpha5 closes the remaining repository-level authority ambiguities found after Runtime Inventory v2:
-
-- global/default inheritance cannot generate Cartesian `provider × query_id` route authority;
-- profile output from extension filters is bounded fail-visibly, and an overflowed registry cannot authorize a route;
-- registry validation is order-independent, so normalization failures are visible on the first readiness/resolution path;
-- Query Builder inventory ordering uses structural identity as the final deterministic tie-breaker;
-- the legacy `index_single_tour_type` flag may migrate the taxonomy rule policy only; it cannot create an `allowed_taxonomy_sets` grant;
-- exact taxonomy-set authority remains explicit profile configuration;
-- Runtime Inventory and reconciliation remain read-only and non-authorizing.
-
-These rules are repository/CI hardening only. They do not count as runtime acceptance evidence.
-
-## Runtime evidence availability hardening (`0.4.0-alpha.6`)
-
-Alpha6 prevents an unavailable evidence source from being mistaken for a trustworthy empty runtime:
-
-- normal eligible evidence remains `etg.dfsb.runtime-inventory.v2` and must declare `evidence_complete=true`;
-- Post Type, taxonomy, WPML language, Query Builder and translated-archive sources expose `available/source` evidence;
-- any mandatory unavailable/invalid source produces `etg.dfsb.runtime-inventory-unavailable.v1`, `evidence_complete=false`, and explicit `availability_errors`;
-- a valid empty Query Builder array remains distinguishable from an unavailable Query Builder source;
-- an unavailable/empty WPML active-language source is blocking;
-- language-specific archive paths are emitted only from a valid `wpml_permalink` authority; the current/native path is never duplicated as fake translated evidence;
-- reconciliation rejects unavailable snapshots as `invalid_inventory`, with no disabled candidates or drift/removal conclusions from that partial evidence.
-
-An unavailable snapshot is useful diagnostic evidence, but it never grants authority.
-
-## Post Type authority
-For a profile with `require_post_type_binding=true`, the safe default is `post_type_authority=query_builder`.
-
-The bridge resolves the exact JetEngine Query Builder object selected by the configured custom query ID, verifies it is a `posts` query, calls its public `get_query_args()`, and reads the final `post_type` authority. The following fail closed:
-
-- query missing or not a Posts Query;
-- `post_type=any` / unbounded post type;
-- no observable Post Type;
-- any observed Post Type outside the profile allowlist;
-- authority disagreement when `both` is explicitly selected.
-
-This avoids using the main Elementor page query (`page`) as if it were the Listing Post Type (`property`, `product`, etc.).
-
-## Taxonomy policy for any configured taxonomy
-A taxonomy is only parser knowledge until it belongs to the matched profile. Each taxonomy rule can set:
+Example publication block:
 
 ```json
 {
-  "role": "city",
-  "priority": 10,
-  "gallery_priority": 20,
-  "index_single": true,
-  "min_results": 5,
-  "required_meta_key": "market_status",
-  "required_meta_values": ["active"],
-  "meta_constraint_scope": "always",
-  "field_map": {
-    "seo_title": ["property_seo_title"],
-    "meta_description": ["property_meta_description"],
-    "short_description": ["listing_intro"],
-    "image": ["hero_image"],
-    "gallery": ["gallery_primary", "gallery_secondary"]
+  "publication": {
+    "sitemap": true,
+    "hreflang": true,
+    "schema": true,
+    "social": true,
+    "include_images_in_sitemap": true,
+    "require_elementor_content": true,
+    "elementor_render_when_global_off": false,
+    "elementor_content_verified": false,
+    "max_preview_urls": 100
   }
 }
 ```
 
-Configured gallery fields are aggregated, normalized to attachment IDs and deduplicated. A profile-specific field map is prepended to the safe built-in fallback field map, so a new taxonomy can use its own existing meta/ACF keys without a PHP patch.
+`elementor_content_verified=false` is a hard indexing deny when `require_elementor_content=true`. The plugin never auto-verifies a visual Elementor template.
 
-## Structural and exact combination authority
-Knowing every taxonomy is still not enough. The normalized taxonomy set must be explicitly allowed, for example:
+## Exact combination authority
 
-```text
-property_city
-property_city+property_type
-property_city+property_type+property_feature
-```
-
-Where exact combination approval is required, signatures are profile- and language-bound:
+A publishable dynamic page must come from an exact profile- and language-bound signature:
 
 ```text
-properties|en|property_city=cairo|property_type=apartment
-catalog|en|brand=sony|product_cat=cameras
+tours|en|location_jet=cairo|tour-types_jet=day-tours
+properties|it|property_city=roma|property_type=hotel
 ```
 
-No wildcard auto-approval exists in this Alpha.
+No wildcard or traffic-derived approval is used.
 
-## Result-count authority
-Indexing still requires an authoritative filtered result count by default. The built-in adapter mirrors the verified JetEngine Query Builder + JetSmartFilters lifecycle: custom query ID resolution, current filtered request props applied to a cloned query, then `get_items_total_count()`.
+Legacy language-only signatures may remain accepted by older request-time compatibility logic where configured, but the publication layer requires the profile ID in the signature before generating sitemap URLs.
 
-If filtered request state is unavailable, the bridge returns unavailable rather than substituting an unfiltered count. Legacy numeric `etg_filter_seo_result_count` remains non-authoritative unless explicitly trusted.
+## Elementor Theme Builder content
 
-## Content readiness
-Content readiness uses a deduplicated corpus of term descriptions/short descriptions, so the same text is not counted twice through both generated intro and term data. The content-readiness hook may veto an otherwise-ready result, but cannot promote a base content failure into ready.
+The same resolved translated Term context used for SEO metadata can be rendered as server-side HTML in Elementor.
 
-## Multilingual archive authority
-Archive path normalization is Unicode-safe. Exact profile paths may be explicitly translated, for example `/ar/كتب/`, and base paths may be wrapped by a known active WPML language prefix without allowing arbitrary suffix collisions. `/foo/properties/` does not impersonate `/properties/`.
+### Combined presentation shortcodes
 
-## Discovery and disabled blueprints
-Settings → ETG Filter SEO → Discovery exposes read-only public Post Type/taxonomy discovery. It can build a **disabled, non-authorizing Profile Blueprint** for a discovered Post Type and attached taxonomies. The blueprint intentionally leaves archive paths, routes, taxonomy sets and exact combinations empty so it cannot become indexable by generation alone.
-
-## Synthetic Scenario Lab
-The Scenario Lab exercises the real IndexingPolicy with bounded synthetic inputs for objections such as:
-
-- wrong query from another profile;
-- foreign taxonomy bleed;
-- Post Type mismatch/unobserved state;
-- taxonomy-meta state changes;
-- zero results;
-- translation fallback;
-- unknown functional query state;
-- profile disable/kill-switch behavior.
-
-Every output is marked `synthetic=true`. Simulation is never runtime acceptance evidence.
-
-## Presentation identity guard
-Rank Math metadata and Elementor-facing shortcodes only mutate/render after structural identity is valid: scope/profile, provider/query observation, required Post Type binding, term resolution and WPML translation identity. A wrong Listing identity therefore cannot receive metadata from another profile even though robots would have failed closed.
-
-## Generic presentation
-`generic` composition orders arbitrary roles by configured taxonomy priority. Gallery priority is independently configurable. Breadcrumb output uses the same profile order; it no longer assumes `location/tour_type/style`. `travel` mode preserves current ETG composition behavior.
-
-## Operational bounds
-Alpha bounds are deliberate and fail visibly rather than silently expanding authority: up to 50 profiles, 20 exact routes per profile, 50 taxonomy rules per profile and 5,000 exact combinations per profile. Invalid profile JSON preserves the previous valid authority snapshot. Post-filter profile overflow is also blocking and cannot be used for route resolution.
-
-## Shortcodes
 ```text
 [etg_filter_h1]
 [etg_filter_intro]
@@ -182,7 +108,231 @@ Alpha bounds are deliberate and fail visibly rather than silently expanding auth
 [etg_filter_breadcrumb_context]
 ```
 
-## Verified repository bundle
+### Individual Term fields
+
+```text
+[etg_filter_term role="location" field="name"]
+[etg_filter_term role="location" field="description" autop="1"]
+[etg_filter_term role="tour_type" field="short_description" autop="1"]
+[etg_filter_term role="style" field="description" autop="1"]
+```
+
+A Term can also be addressed by taxonomy when required:
+
+```text
+[etg_filter_term taxonomy="location_jet" field="description" autop="1"]
+```
+
+Supported scalar fields include:
+
+- `name`
+- `slug`
+- `description`
+- `short_description`
+- `seo_title`
+- `meta_description`
+- `focus_keyword`
+- `image_url`
+- `image_id`
+- `count`
+- `location_level`
+
+### Semantic Term sections
+
+```text
+[etg_filter_term_section role="location" field="description" heading="1" heading_level="2"]
+[etg_filter_term_section role="tour_type" field="description" heading="1" heading_level="2"]
+```
+
+These render crawlable server-side `<section>` HTML. Elementor controls layout and placement; ETG controls identity and content resolution.
+
+## Term content source of truth
+
+Standard taxonomy `description` is read from the translated `WP_Term`.
+
+Term SEO/content/image fields can also be mapped through each taxonomy rule's `field_map`. Safe built-in fallbacks include Rank Math/SEO-style Term meta keys, short-description fields, image fields and gallery fields.
+
+If existing Term content lives in JetEngine or ACF Term meta, map the existing keys rather than creating duplicate SEO-only copy. Content readiness, visible Elementor sections and metadata then share the same source.
+
+## Content readiness
+
+Indexing may require:
+
+- a generated title
+- a usable meta description
+- a minimum deduplicated content corpus
+- profile-specific thresholds
+- explicit Elementor presentation verification
+
+Repeated Term copy is deduplicated before character-count readiness. A filter can veto a ready result but cannot promote a failed base result into ready.
+
+## Rank Math metadata publication
+
+For a structurally resolved dynamic URL, ETG integrates with Rank Math for:
+
+- frontend title
+- meta description
+- canonical
+- robots `index|noindex` + `follow`
+- OpenGraph type
+- OpenGraph URL
+- Facebook title
+- Facebook description
+- Facebook image
+- Twitter title
+- Twitter description
+- Twitter image
+- Twitter card type
+- JSON-LD `CollectionPage`
+
+Metadata mutation remains behind the structural identity guard. Wrong route, wrong Post Type, unknown filter, malformed state, missing Term or translation fallback cannot receive ETG SEO metadata.
+
+## Dynamic Rank Math sitemap
+
+Alpha8 registers an `etg-filter-seo` sitemap provider with Rank Math.
+
+Expected first sitemap URL:
+
+```text
+/etg-filter-seo-sitemap.xml
+```
+
+When the eligible URL count exceeds Rank Math's configured per-sitemap maximum, the provider emits paginated files such as:
+
+```text
+/etg-filter-seo-sitemap1.xml
+/etg-filter-seo-sitemap2.xml
+```
+
+The live provider returns no ETG URLs while Global is OFF.
+
+A URL enters the live sitemap only when its final indexing decision is `index=true`. The candidate must therefore pass profile, route, taxonomy-set, exact combination, Term, translation, content, Elementor verification, authoritative result-count and minimum-result gates.
+
+Up to five priority gallery images may accompany a sitemap URL when enabled.
+
+## Sitemap freshness
+
+Rank Math sitemap storage is invalidated on relevant changes including:
+
+- post save/delete
+- object/Term relation changes
+- Term create/edit/delete
+- Term meta add/update/delete
+- ETG configuration changes
+
+Eligibility is recomputed after invalidation. A URL that becomes empty, thin, unapproved or otherwise non-indexable must disappear from the refreshed sitemap.
+
+## Background result-count authority
+
+The normal request-time count adapter mirrors JetSmartFilters filtered request state.
+
+Sitemap generation has no live JetSmartFilters request, so Alpha8 adds a separate publication count probe. It:
+
+1. resolves the exact configured JetEngine Query Builder query;
+2. requires a `posts` query and bounded `post_type`;
+3. preserves the Query Builder base arguments;
+4. applies the exact approved taxonomy filters;
+5. runs a bounded `WP_Query` count;
+6. fails closed when any identity or Term is unavailable.
+
+It never substitutes an unfiltered archive count.
+
+## WPML hreflang
+
+On valid dynamic pages, ETG can replace WPML hreflang targets with dynamic filter URLs.
+
+A target language is emitted only when:
+
+- every selected Term resolves to a real translation without fallback;
+- the translated Term slugs form their own exact profile-bound approved combination;
+- the target dynamic URL independently passes publication/index policy.
+
+Missing language authority is omitted rather than fabricated. `x-default` may point to the approved default-language dynamic URL.
+
+## Schema
+
+Eligible pages may receive a Rank Math JSON-LD `CollectionPage` node containing:
+
+- canonical `@id`
+- canonical URL
+- composed name
+- composed description
+- language
+- `about` entities derived from resolved Terms
+
+The Schema node is not added when the final indexing decision is not `index=true`.
+
+## Admin operations
+
+### Settings → ETG Filter SEO
+
+Tabs:
+
+- Overview
+- Configuration
+- Discovery
+- Runtime Inventory
+- Reconciliation
+- URL Inspector
+- Scenario Lab
+
+The Global state, readiness, configuration revision and profile count remain visible. Every configuration control/action includes an inline explanation.
+
+### Settings → ETG SEO Publication
+
+Tabs:
+
+- Overview
+- Candidates
+- Elementor Content
+- Sitemap & Discovery
+
+Candidate Preview is read-only. It can evaluate real Terms, metadata, background counts, content readiness and exclusion reasons with Global OFF. It never writes profile authority or live sitemap entries.
+
+## Runtime inventory and reconciliation
+
+Runtime Inventory v2 remains read-only and inventories:
+
+- public Post Types
+- taxonomy relations
+- WPML language evidence
+- translated archive paths
+- JetEngine Query Builder structural identities
+- query identity collisions
+- completeness/truncation evidence
+
+Eligible inventory must declare:
+
+```text
+contract=etg.dfsb.runtime-inventory.v2
+evidence_complete=true
+availability_errors=[]
+```
+
+Unavailable sources return `etg.dfsb.runtime-inventory-unavailable.v1` and cannot grant authority.
+
+Reconciliation remains non-mutating and cannot auto-enable profiles or copy discovered routes into authority.
+
+## Post Type authority
+
+For `require_post_type_binding=true`, the safe default is Query Builder authority. The exact JetEngine query must be a Posts query with bounded Post Types. `post_type=any`, missing queries, non-post queries and Post Types outside the profile fail closed.
+
+## Operational bounds
+
+Current bounds remain deliberate:
+
+- up to 50 profiles
+- up to 20 exact routes per profile
+- up to 50 taxonomy rules per profile
+- up to 5,000 exact combinations per profile
+- up to 5,000 evaluated live publication URLs per request
+
+Invalid/overflowed authority fails visibly rather than silently expanding scope.
+
+## Verified bundled compatibility surfaces
+
+The CI verifies the repository-bundled versions/capabilities for:
+
 - JetSmartFilters 3.8.3.1
 - JetEngine 3.8.11.2
 - Rank Math SEO 1.0.275
@@ -191,30 +341,25 @@ Alpha bounds are deliberate and fail visibly rather than silently expanding auth
 - WPML SEO 2.2.5
 - WPML String Translation 3.5.3
 
-The dedicated CI re-checks exact vendor capability surfaces, including Query Builder custom-ID mapping, filtered count APIs and Posts Query `get_query_type()/get_query_args()` surfaces.
+Alpha8 additionally verifies Rank Math sitemap Provider/Router/Cache capability surfaces and WPML language/permalink publication sources.
 
-## Operational boundary
-Persistent cross-request cache, automatic profile generation, traffic-driven combination approval, sitemap generation, clean URL migration and Production activation remain outside this Alpha. See `specs/001-etg-dynamic-filter-seo-operational/` for the contracts, objection matrix and acceptance gates.
-
-## Runtime Inventory Export (`0.4.0-alpha.6`)
-
-Settings → ETG Filter SEO → Runtime Inventory can generate or download a bounded runtime inventory JSON snapshot. A valid snapshot uses `etg.dfsb.runtime-inventory.v2`, is read-only and explicitly `authorizing=false`, and inventories public Post Types, taxonomy attachment relations, WPML active-language paths, and structural JetEngine Query Builder identities without exporting raw query arguments or enabling profiles.
-
-An eligible snapshot must also have `evidence_complete=true`, `availability_errors=[]`, and every `inventory.availability.*.available=true`. If any mandatory source is unavailable, the exporter returns `etg.dfsb.runtime-inventory-unavailable.v1`; that partial snapshot must be investigated and recaptured rather than interpreted as zero runtime objects.
-
-### Inventory completeness and identity safety
-
-Runtime Inventory v2 declares whether each bounded section is complete. A section with `truncated=true` is blocking reconciliation evidence and cannot be used to assert that a configured Post Type, taxonomy, language or Query Builder route is missing. Duplicate effective Query Builder identities are reported as collisions and are excluded from exact route resolution. Disabled candidate generation is suppressed whenever inventory is truncated, Query Builder inventory is unavailable, identity collisions exist, or the exporter cannot establish complete mandatory source availability.
-
-## Inventory Reconciliation & Controlled Growth (`0.4.0-alpha.6`)
-
-Settings → ETG Filter SEO → Reconciliation can compare the current bounded runtime inventory against configured Profiles and download `etg.dfsb.inventory-reconciliation.v2` JSON. Reconciliation is read-only and never enables or rewrites Profiles. Newly discovered Post Types can appear as disabled candidates only from a valid complete runtime contract; exact archive paths, routes, allowed taxonomy sets and combinations remain empty until an operator explicitly configures them.
-
-WP-CLI equivalents:
+## WP-CLI diagnostics
 
 ```bash
 wp etg-dfsb inventory > runtime-inventory.json
 wp etg-dfsb reconcile --previous=runtime-inventory.previous.json > reconciliation.json
 ```
 
-A `blocked_drift` or `invalid_inventory` result is evidence requiring review; it does not perform automatic rollback or mutation.
+## Operational boundary
+
+Alpha8 does **not** authorize Production activation by release alone.
+
+It also does not:
+
+- infer the correct Production Query Builder route when runtime evidence does not prove it;
+- auto-approve every possible taxonomy permutation;
+- create synthetic WordPress Pages for filter URLs;
+- treat sitemap discovery as indexing authority;
+- treat Elementor template existence as automatic content verification.
+
+Exact runtime route evidence, approved combinations, visible Elementor content and explicit activation remain operator-controlled.
