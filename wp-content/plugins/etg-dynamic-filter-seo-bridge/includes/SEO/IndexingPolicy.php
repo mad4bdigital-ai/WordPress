@@ -15,6 +15,8 @@ final class IndexingPolicy {
 		if(empty($context['runtime_ready'])){return $this->hardDeny('runtime_not_ready',$context);}
 		if(empty($context['provider_observation_matches_url'])){return $this->hardDeny('provider_query_mismatch',$context);}
 		$profile=(array)($context['profile']??array());
+		$publication=(array)($profile['publication']??array());
+		if(!empty($publication['require_elementor_content'])&&empty($publication['elementor_content_verified'])){return $this->hardDeny('elementor_content_not_verified',$context);}
 		if(!empty($profile['require_post_type_binding'])){
 			$binding=(array)($context['post_type_binding']??array());
 			if(empty($binding['observed'])){return $this->hardDeny('post_type_unobserved',$context);}
@@ -97,6 +99,7 @@ final class IndexingPolicy {
 		'post_type_authority'=>(string)($context['post_type_binding']['authority']??''),'post_type_source'=>(string)($context['post_type_binding']['source']??''),'post_type_binding_reason'=>(string)($context['post_type_binding']['reason']??''),'post_types'=>(array)($context['post_type_binding']['post_types']??array()),
 		'result_count'=>$context['result_count']??null,'result_count_source'=>(string)($context['result_count_source']??''),'result_count_authoritative'=>!empty($context['result_count_authoritative']),
 		'combination_signature'=>(string)($context['combination_authority']['signature']??''),'content_ready'=>(bool)($context['content_readiness']['ready']??false),
+		'elementor_content_verified'=>(bool)($profile['publication']['elementor_content_verified']??false),
 		'configuration_revision'=>(string)($context['scope']['configuration_revision']??$this->config->revision()),
 	);}
 }
