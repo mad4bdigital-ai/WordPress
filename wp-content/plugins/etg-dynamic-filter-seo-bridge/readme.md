@@ -1,6 +1,6 @@
 # ETG Dynamic Filter SEO Bridge
 
-Operational Alpha `0.4.0-alpha.5` is a governed Surface Profile Engine for JetSmartFilters + JetEngine filtered archives with WPML, Elementor and Rank Math. The default ETG Tours profile is preserved, but the runtime can now govern additional WordPress Post Types and taxonomies through configuration rather than PHP changes. Vendor source is never edited.
+Operational Alpha `0.4.0-alpha.6` is a governed Surface Profile Engine for JetSmartFilters + JetEngine filtered archives with WPML, Elementor and Rank Math. The default ETG Tours profile is preserved, but the runtime can now govern additional WordPress Post Types and taxonomies through configuration rather than PHP changes. Vendor source is never edited.
 
 ## Safety model
 The global bridge defaults **OFF**. New profiles also default **disabled**. Discovery and generated blueprints are non-authorizing. A profile becomes operational only after explicit archive, route, taxonomy-shape, combination/content/result authorities are configured and the global/profile switches are enabled.
@@ -47,6 +47,20 @@ Alpha5 closes the remaining repository-level authority ambiguities found after R
 - Runtime Inventory and reconciliation remain read-only and non-authorizing.
 
 These rules are repository/CI hardening only. They do not count as T120 Staging evidence.
+
+## Runtime evidence availability hardening (`0.4.0-alpha.6`)
+
+Alpha6 prevents an unavailable evidence source from being mistaken for a trustworthy empty runtime:
+
+- normal T120 evidence remains `etg.dfsb.runtime-inventory.v2` and must declare `evidence_complete=true`;
+- Post Type, taxonomy, WPML language, Query Builder and translated-archive sources expose `available/source` evidence;
+- any mandatory unavailable/invalid source produces `etg.dfsb.runtime-inventory-unavailable.v1`, `evidence_complete=false`, and explicit `availability_errors`;
+- a valid empty Query Builder array remains distinguishable from an unavailable Query Builder source;
+- an unavailable/empty WPML active-language source is blocking for T120;
+- language-specific archive paths are emitted only from a valid `wpml_permalink` authority; the current/native path is never duplicated as fake translated evidence;
+- reconciliation rejects unavailable snapshots as `invalid_inventory`, with no disabled candidates or drift/removal conclusions from that partial evidence.
+
+An unavailable snapshot is useful diagnostic evidence, but it cannot close T120/T121 and never grants authority.
 
 ## Post Type authority
 For a profile with `require_post_type_binding=true`, the safe default is `post_type_authority=query_builder`.
@@ -166,17 +180,19 @@ The dedicated CI re-checks exact vendor capability surfaces, including Query Bui
 ## Operational boundary
 Persistent cross-request cache, automatic profile generation, traffic-driven combination approval, sitemap generation, clean URL migration and Production activation remain outside this Alpha. See `specs/001-etg-dynamic-filter-seo-operational/` for the contracts, objection matrix and staging gates.
 
-## Runtime Inventory Export (`0.4.0-alpha.5`)
+## Runtime Inventory Export (`0.4.0-alpha.6`)
 
-Settings → ETG Filter SEO can generate or download a bounded `etg.dfsb.runtime-inventory.v2` JSON snapshot. The snapshot is read-only and explicitly `authorizing=false`; it inventories public Post Types, taxonomy attachment relations, WPML active-language paths, and structural JetEngine Query Builder identities without exporting raw query arguments or enabling profiles.
+Settings → ETG Filter SEO can generate or download a bounded runtime inventory JSON snapshot. A valid snapshot uses `etg.dfsb.runtime-inventory.v2`, is read-only and explicitly `authorizing=false`, and inventories public Post Types, taxonomy attachment relations, WPML active-language paths, and structural JetEngine Query Builder identities without exporting raw query arguments or enabling profiles.
+
+A T120-eligible snapshot must also have `evidence_complete=true`, `availability_errors=[]`, and every `inventory.availability.*.available=true`. If any mandatory source is unavailable, the exporter returns `etg.dfsb.runtime-inventory-unavailable.v1`; that partial snapshot must be investigated and recaptured rather than interpreted as zero runtime objects.
 
 ### Inventory completeness and identity safety
 
-Runtime Inventory v2 declares whether each bounded section is complete. A section with `truncated=true` is blocking reconciliation evidence and cannot be used to assert that a configured Post Type, taxonomy, language or Query Builder route is missing. Duplicate effective Query Builder identities are reported as collisions and are excluded from exact route resolution. Disabled candidate generation is suppressed whenever inventory is truncated, Query Builder inventory is unavailable, or identity collisions exist.
+Runtime Inventory v2 declares whether each bounded section is complete. A section with `truncated=true` is blocking reconciliation evidence and cannot be used to assert that a configured Post Type, taxonomy, language or Query Builder route is missing. Duplicate effective Query Builder identities are reported as collisions and are excluded from exact route resolution. Disabled candidate generation is suppressed whenever inventory is truncated, Query Builder inventory is unavailable, identity collisions exist, or the exporter cannot establish complete mandatory source availability.
 
-## Inventory Reconciliation & Controlled Growth (`0.4.0-alpha.5`)
+## Inventory Reconciliation & Controlled Growth (`0.4.0-alpha.6`)
 
-The operational page can reconcile the current bounded runtime inventory against configured Profiles and download `etg.dfsb.inventory-reconciliation.v2` JSON. Reconciliation is read-only and never enables or rewrites Profiles. Newly discovered Post Types can appear as disabled candidates, but exact archive paths, routes, allowed taxonomy sets and combinations remain empty until an operator explicitly configures them.
+The operational page can reconcile the current bounded runtime inventory against configured Profiles and download `etg.dfsb.inventory-reconciliation.v2` JSON. Reconciliation is read-only and never enables or rewrites Profiles. Newly discovered Post Types can appear as disabled candidates only from a valid complete runtime contract; exact archive paths, routes, allowed taxonomy sets and combinations remain empty until an operator explicitly configures them.
 
 WP-CLI equivalents:
 
@@ -185,4 +201,4 @@ wp etg-dfsb inventory > runtime-inventory.json
 wp etg-dfsb reconcile --previous=runtime-inventory.previous.json > reconciliation.json
 ```
 
-A `blocked_drift` result is evidence requiring review; it does not perform automatic rollback or mutation.
+A `blocked_drift` or `invalid_inventory` result is evidence requiring review; it does not perform automatic rollback or mutation.
