@@ -9,7 +9,10 @@ final class PublicationSitemapRegistrar {
 
 	public function register(): void {
 		add_filter('rank_math/sitemap/providers',array($this,'providers'));
-		foreach(array('save_post','deleted_post','set_object_terms','edited_term','created_term','delete_term') as $hook){
+		foreach(array(
+			'save_post','deleted_post','set_object_terms','edited_term','created_term','delete_term',
+			'added_term_meta','updated_term_meta','deleted_term_meta'
+		) as $hook){
 			add_action($hook,array($this,'invalidate'),20,10);
 		}
 		add_action('updated_option_etg_dfsb_settings',array($this,'invalidate'),20,3);
