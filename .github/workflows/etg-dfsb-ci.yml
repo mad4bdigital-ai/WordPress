@@ -55,7 +55,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
-      - name: Lint and generic policy simulations
+      - name: Lint and governed policy simulations
         shell: bash
         run: |
           set -euo pipefail
@@ -73,7 +73,8 @@ jobs:
             runtime-inventory-smoke.php \
             runtime-inventory-availability-smoke.php \
             inventory-reconciliation-smoke.php \
-            pre-staging-authority-hardening-smoke.php; do
+            pre-staging-authority-hardening-smoke.php \
+            publication-layer-smoke.php; do
               php "$PLUGIN/tests/$test_file"
           done
 
@@ -120,11 +121,15 @@ jobs:
           grep -RFqs "rank_math/frontend/canonical" /tmp/etg-vendor/rm
           grep -RFqs "rank_math/frontend/robots" /tmp/etg-vendor/rm
           grep -RFqs 'opengraph/{$this->network}/image' /tmp/etg-vendor/rm
+          grep -RFqs 'namespace RankMath\\Sitemap\\Providers' /tmp/etg-vendor/rm
+          grep -RFqs 'interface Provider' /tmp/etg-vendor/rm
+          grep -RFqs 'rank_math/json_ld' /tmp/etg-vendor/rm
 
           grep -RFqs 'wpml_current_language' /tmp/etg-vendor/wpml
           grep -RFqs 'wpml_object_id' /tmp/etg-vendor/wpml
+          grep -RFqs 'wpml_active_languages' /tmp/etg-vendor/wpml
 
-      - name: Verify Spec Kit integrity, UI explainability and merge lock
+      - name: Verify Spec Kit, publication contract and merge lock
         shell: bash
         run: |
           set -euo pipefail
@@ -171,48 +176,51 @@ jobs:
           python - <<'PY'
           import json, re
           d=json.load(open('.specify/feature.json'))
-          assert d['target_version'] == '0.4.0-alpha.7'
-          assert d['status'] == 'production_dark_validation_ui_hardening_alpha'
+          assert d['target_version'] == '0.4.0-alpha.8'
+          assert d['status'] == 'seo_publication_and_elementor_content_alpha'
           assert d['merge_authorized'] is False
           assert d['production_activation_authorized'] is False
-          assert 'pre_staging_exact_authority_hardening' in d['required_gates']
-          assert 'runtime_inventory_source_availability' in d['required_gates']
-          assert 'admin_tabbed_explainability' in d['required_gates']
-          source=open('wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php').read()
-          assert re.search(r'Version:\s*0\.4\.0-alpha\.7', source)
-          assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.7' );" in source
-          plugin='wp-content/plugins/etg-dynamic-filter-seo-bridge'
-          registry=''.join(open(f'{plugin}/includes/Config/{name}').read() for name in ['ProfileRegistry.php','ProfileRegistryCoreTrait.php','ProfileRegistryNormalizationTrait.php','ProfileRegistryHelperTrait.php'])
-          config=open(f'{plugin}/includes/Config/Configuration.php').read()
-          admin=open(f'{plugin}/includes/Admin/OperationalPage.php').read()
-          reconciler=open(f'{plugin}/includes/Diagnostics/InventoryReconciler.php').read()
-          runtime_inventory=''.join(open(f'{plugin}/includes/Diagnostics/{name}').read() for name in ['RuntimeInventory.php','RuntimeInventoryQueryTrait.php','RuntimeInventoryStructureTrait.php'])
-          cli=open(f'{plugin}/includes/CLI/Commands.php').read()
-          assert 'filtered_profile_count_limit_exceeded' in registry and 'profile_registry_invalid' in registry
-          assert 'structural_key' in runtime_inventory
-          assert 'etg.dfsb.inventory-reconciliation.v2' in reconciler
-          assert 'etg.dfsb.runtime-inventory.v2' in runtime_inventory
-          assert 'etg.dfsb.runtime-inventory-unavailable.v1' in runtime_inventory
-          assert 'evidence_complete' in runtime_inventory and 'availability_errors' in runtime_inventory
-          assert 'wpml_permalink_unavailable' in runtime_inventory
-          assert 'identity_conflict_count' in runtime_inventory and "'truncated'" in runtime_inventory
-          assert 'profile_query_identity_collision' in reconciler and 'inventorySafeForCandidates' in reconciler
-          assert "etg-dfsb inventory" in cli and "etg-dfsb reconcile" in cli
-          assert 'tour-styles_jet' in config and 'tour-style_jet' not in config
-          for token in [
-              "'overview' => 'Overview'",
-              "'settings' => 'Configuration'",
-              "'discovery' => 'Discovery'",
-              "'inventory' => 'Runtime Inventory'",
-              "'reconciliation' => 'Reconciliation'",
-              "'inspector' => 'URL Inspector'",
-              "'simulation' => 'Scenario Lab'",
-              'private function helpTip',
-              'Global bridge is OFF',
-              'READ-ONLY',
-              'Save Configuration'
+          for gate in [
+              'admin_tabbed_explainability',
+              'elementor_term_content_contract',
+              'elementor_publication_verification_gate',
+              'rank_math_dynamic_sitemap_provider',
+              'publication_background_result_count',
+              'rank_math_social_metadata',
+              'rank_math_collection_schema',
+              'wpml_dynamic_hreflang',
+              'publication_cache_freshness'
           ]:
-              assert token in admin, token
+              assert gate in d['required_gates'], gate
+          source=open('wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php').read()
+          assert re.search(r'Version:\s*0\.4\.0-alpha\.8', source)
+          assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.8' );" in source
+          plugin='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          config=open(f'{plugin}/includes/Config/Configuration.php').read()
+          normalized=open(f'{plugin}/includes/Config/ProfileRegistryNormalizationTrait.php').read()
+          policy=open(f'{plugin}/includes/SEO/IndexingPolicy.php').read()
+          publication=open(f'{plugin}/includes/SEO/PublicationRegistry.php').read()
+          count_probe=open(f'{plugin}/includes/SEO/PublicationResultCountProbe.php').read()
+          metadata=open(f'{plugin}/includes/RankMath/MetadataAdapter.php').read()
+          sitemap=open(f'{plugin}/includes/RankMath/PublicationSitemapProvider.php').read()
+          registrar=open(f'{plugin}/includes/RankMath/PublicationSitemapRegistrar.php').read()
+          shortcodes=open(f'{plugin}/includes/Elementor/Shortcodes.php').read()
+          pub_admin=open(f'{plugin}/includes/Admin/PublicationPage.php').read()
+          builder=open(f'{plugin}/includes/Context/FilterContextBuilder.php').read()
+          assert 'tour-styles_jet' in config and 'tour-style_jet' not in config
+          assert "'elementor_content_verified'" in normalized
+          assert 'elementor_content_not_verified' in policy
+          assert 'profile_bound_publication_signature_required' in publication
+          assert 'global_bridge_off' in publication
+          assert 'jet_engine_query_builder_background_tax_query' in count_probe
+          assert 'RankMath\\Sitemap\\Providers\\Provider' in sitemap
+          assert 'invalidate_storage' in registrar
+          assert 'rank_math/json_ld' in metadata and 'wpml_hreflangs' in metadata
+          assert 'rank_math/opengraph/twitter/twitter_description' in metadata
+          assert 'etg_filter_term_section' in shortcodes and 'etg_filter_term' in shortcodes
+          assert 'Elementor Theme Builder support' in pub_admin
+          assert 'Rank Math dynamic sitemap' in pub_admin
+          assert 'buildEvidence' in builder and "'tour-styles_jet'=>'style'" in builder
           PY
 
       - name: Enforce PR change boundary
@@ -243,7 +251,7 @@ jobs:
           test "$ACTUAL_SHA" = "$SOURCE_SHA"
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\\s*([^\\r\\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
-          test "$VERSION" = '0.4.0-alpha.7'
+          test "$VERSION" = '0.4.0-alpha.8'
           OUT="$RUNNER_TEMP/etg-package"
           mkdir -p "$OUT/etg-dynamic-filter-seo-bridge"
           rsync -a --exclude tests "$PLUGIN/" "$OUT/etg-dynamic-filter-seo-bridge/"
@@ -260,6 +268,7 @@ jobs:
             echo "git_sha=$SOURCE_SHA"
             echo "plugin_version=$VERSION"
             echo "profile_engine=generic_surface_profile_v1"
+            echo "publication_engine=rank_math_dynamic_publication_v1"
             echo "package_sha256=$DIGEST"
             echo "jet_engine_blob=$(git rev-parse HEAD:wp-content/plugins/jet-engine.zip)"
             echo "jet_smart_filters_blob=$(git rev-parse HEAD:wp-content/plugins/jet-smart-filters.zip)"
