@@ -1,6 +1,6 @@
 # ETG Dynamic Filter SEO Bridge
 
-Operational Alpha `0.4.0-alpha.6` is a governed Surface Profile Engine for JetSmartFilters + JetEngine filtered archives with WPML, Elementor and Rank Math. The default ETG Tours profile is preserved, but the runtime can now govern additional WordPress Post Types and taxonomies through configuration rather than PHP changes. Vendor source is never edited.
+Operational Alpha `0.4.0-alpha.7` is a governed Surface Profile Engine for JetSmartFilters + JetEngine filtered archives with WPML, Elementor and Rank Math. The default ETG Tours profile is preserved, but the runtime can now govern additional WordPress Post Types and taxonomies through configuration rather than PHP changes. Vendor source is never edited.
 
 ## Safety model
 The global bridge defaults **OFF**. New profiles also default **disabled**. Discovery and generated blueprints are non-authorizing. A profile becomes operational only after explicit archive, route, taxonomy-shape, combination/content/result authorities are configured and the global/profile switches are enabled.
@@ -8,7 +8,7 @@ The global bridge defaults **OFF**. New profiles also default **disabled**. Disc
 Controlled growth is:
 
 ```text
-discover → build disabled blueprint → configure exact authorities → simulate → readiness → staging evidence → explicit enable
+discover → build disabled blueprint → configure exact authorities → simulate → readiness → runtime evidence → explicit enable
 ```
 
 It is never:
@@ -16,6 +16,22 @@ It is never:
 ```text
 discover → auto-enable → auto-index
 ```
+
+## Admin operations UI (`0.4.0-alpha.7`)
+
+The WordPress admin surface is split into focused tabs instead of one long page:
+
+- Overview
+- Configuration
+- Discovery
+- Runtime Inventory
+- Reconciliation
+- URL Inspector
+- Scenario Lab
+
+The Global bridge state, readiness, configuration revision and profile count remain visible across tabs. Every configuration selector and operational action button has an inline `?` explainer describing its role, authority boundary and possible Production effect. Discovery, Runtime Inventory, Reconciliation and URL inspection are visibly marked read-only; Scenario Lab is visibly marked synthetic.
+
+Alpha7 also aligns the migrated Tours default taxonomy slug with the Production-observed `tour-styles_jet`. It does not auto-add any other discovered Production taxonomy and does not infer Query Builder/Post Type authority from discovery alone.
 
 ## Surface Profiles
 `profiles_json` is the authoritative bounded registry. A profile may define:
@@ -46,21 +62,21 @@ Alpha5 closes the remaining repository-level authority ambiguities found after R
 - exact taxonomy-set authority remains explicit profile configuration;
 - Runtime Inventory and reconciliation remain read-only and non-authorizing.
 
-These rules are repository/CI hardening only. They do not count as T120 Staging evidence.
+These rules are repository/CI hardening only. They do not count as runtime acceptance evidence.
 
 ## Runtime evidence availability hardening (`0.4.0-alpha.6`)
 
 Alpha6 prevents an unavailable evidence source from being mistaken for a trustworthy empty runtime:
 
-- normal T120 evidence remains `etg.dfsb.runtime-inventory.v2` and must declare `evidence_complete=true`;
+- normal eligible evidence remains `etg.dfsb.runtime-inventory.v2` and must declare `evidence_complete=true`;
 - Post Type, taxonomy, WPML language, Query Builder and translated-archive sources expose `available/source` evidence;
 - any mandatory unavailable/invalid source produces `etg.dfsb.runtime-inventory-unavailable.v1`, `evidence_complete=false`, and explicit `availability_errors`;
 - a valid empty Query Builder array remains distinguishable from an unavailable Query Builder source;
-- an unavailable/empty WPML active-language source is blocking for T120;
+- an unavailable/empty WPML active-language source is blocking;
 - language-specific archive paths are emitted only from a valid `wpml_permalink` authority; the current/native path is never duplicated as fake translated evidence;
 - reconciliation rejects unavailable snapshots as `invalid_inventory`, with no disabled candidates or drift/removal conclusions from that partial evidence.
 
-An unavailable snapshot is useful diagnostic evidence, but it cannot close T120/T121 and never grants authority.
+An unavailable snapshot is useful diagnostic evidence, but it never grants authority.
 
 ## Post Type authority
 For a profile with `require_post_type_binding=true`, the safe default is `post_type_authority=query_builder`.
@@ -130,7 +146,7 @@ Content readiness uses a deduplicated corpus of term descriptions/short descript
 Archive path normalization is Unicode-safe. Exact profile paths may be explicitly translated, for example `/ar/كتب/`, and base paths may be wrapped by a known active WPML language prefix without allowing arbitrary suffix collisions. `/foo/properties/` does not impersonate `/properties/`.
 
 ## Discovery and disabled blueprints
-Settings → ETG Filter SEO exposes read-only public Post Type/taxonomy discovery. It can build a **disabled, non-authorizing Profile Blueprint** for a discovered Post Type and attached taxonomies. The blueprint intentionally leaves archive paths, routes, taxonomy sets and exact combinations empty so it cannot become indexable by generation alone.
+Settings → ETG Filter SEO → Discovery exposes read-only public Post Type/taxonomy discovery. It can build a **disabled, non-authorizing Profile Blueprint** for a discovered Post Type and attached taxonomies. The blueprint intentionally leaves archive paths, routes, taxonomy sets and exact combinations empty so it cannot become indexable by generation alone.
 
 ## Synthetic Scenario Lab
 The Scenario Lab exercises the real IndexingPolicy with bounded synthetic inputs for objections such as:
@@ -144,7 +160,7 @@ The Scenario Lab exercises the real IndexingPolicy with bounded synthetic inputs
 - unknown functional query state;
 - profile disable/kill-switch behavior.
 
-Every output is marked `synthetic=true`. Simulation is never staging acceptance evidence.
+Every output is marked `synthetic=true`. Simulation is never runtime acceptance evidence.
 
 ## Presentation identity guard
 Rank Math metadata and Elementor-facing shortcodes only mutate/render after structural identity is valid: scope/profile, provider/query observation, required Post Type binding, term resolution and WPML translation identity. A wrong Listing identity therefore cannot receive metadata from another profile even though robots would have failed closed.
@@ -178,13 +194,13 @@ Alpha bounds are deliberate and fail visibly rather than silently expanding auth
 The dedicated CI re-checks exact vendor capability surfaces, including Query Builder custom-ID mapping, filtered count APIs and Posts Query `get_query_type()/get_query_args()` surfaces.
 
 ## Operational boundary
-Persistent cross-request cache, automatic profile generation, traffic-driven combination approval, sitemap generation, clean URL migration and Production activation remain outside this Alpha. See `specs/001-etg-dynamic-filter-seo-operational/` for the contracts, objection matrix and staging gates.
+Persistent cross-request cache, automatic profile generation, traffic-driven combination approval, sitemap generation, clean URL migration and Production activation remain outside this Alpha. See `specs/001-etg-dynamic-filter-seo-operational/` for the contracts, objection matrix and acceptance gates.
 
 ## Runtime Inventory Export (`0.4.0-alpha.6`)
 
-Settings → ETG Filter SEO can generate or download a bounded runtime inventory JSON snapshot. A valid snapshot uses `etg.dfsb.runtime-inventory.v2`, is read-only and explicitly `authorizing=false`, and inventories public Post Types, taxonomy attachment relations, WPML active-language paths, and structural JetEngine Query Builder identities without exporting raw query arguments or enabling profiles.
+Settings → ETG Filter SEO → Runtime Inventory can generate or download a bounded runtime inventory JSON snapshot. A valid snapshot uses `etg.dfsb.runtime-inventory.v2`, is read-only and explicitly `authorizing=false`, and inventories public Post Types, taxonomy attachment relations, WPML active-language paths, and structural JetEngine Query Builder identities without exporting raw query arguments or enabling profiles.
 
-A T120-eligible snapshot must also have `evidence_complete=true`, `availability_errors=[]`, and every `inventory.availability.*.available=true`. If any mandatory source is unavailable, the exporter returns `etg.dfsb.runtime-inventory-unavailable.v1`; that partial snapshot must be investigated and recaptured rather than interpreted as zero runtime objects.
+An eligible snapshot must also have `evidence_complete=true`, `availability_errors=[]`, and every `inventory.availability.*.available=true`. If any mandatory source is unavailable, the exporter returns `etg.dfsb.runtime-inventory-unavailable.v1`; that partial snapshot must be investigated and recaptured rather than interpreted as zero runtime objects.
 
 ### Inventory completeness and identity safety
 
@@ -192,7 +208,7 @@ Runtime Inventory v2 declares whether each bounded section is complete. A sectio
 
 ## Inventory Reconciliation & Controlled Growth (`0.4.0-alpha.6`)
 
-The operational page can reconcile the current bounded runtime inventory against configured Profiles and download `etg.dfsb.inventory-reconciliation.v2` JSON. Reconciliation is read-only and never enables or rewrites Profiles. Newly discovered Post Types can appear as disabled candidates only from a valid complete runtime contract; exact archive paths, routes, allowed taxonomy sets and combinations remain empty until an operator explicitly configures them.
+Settings → ETG Filter SEO → Reconciliation can compare the current bounded runtime inventory against configured Profiles and download `etg.dfsb.inventory-reconciliation.v2` JSON. Reconciliation is read-only and never enables or rewrites Profiles. Newly discovered Post Types can appear as disabled candidates only from a valid complete runtime contract; exact archive paths, routes, allowed taxonomy sets and combinations remain empty until an operator explicitly configures them.
 
 WP-CLI equivalents:
 
