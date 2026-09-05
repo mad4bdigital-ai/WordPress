@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0-alpha.6
+
+- Added explicit runtime source availability evidence for Post Types, taxonomies, WPML languages, Query Builder and translated archive paths.
+- Added fail-closed `etg.dfsb.runtime-inventory-unavailable.v1` for partial snapshots when any mandatory evidence source is unavailable, invalid, or exception-producing.
+- Kept valid Staging evidence on `etg.dfsb.runtime-inventory.v2`; normal snapshots now declare `evidence_complete=true` and an empty `availability_errors` list.
+- Prevented unavailable Query Builder sources from being misrepresented as an observed empty query inventory while preserving valid empty arrays as available evidence.
+- Prevented unavailable/invalid WPML active-language evidence from being interpreted as a complete zero-language runtime.
+- Prevented the native/current archive URL from being duplicated under language keys when `wpml_permalink` authority is unavailable or invalid.
+- Unavailable snapshots are rejected by reconciliation as `invalid_inventory`, cannot generate disabled candidates, and cannot close T120/T121.
+- Added source-availability and reconciliation rejection regression coverage across PHP 7.4 and current PHP.
+- No profile is auto-enabled, no Staging evidence is inferred, and Production activation remains unauthorized.
+
 ## 0.4.0-alpha.5
 
 - Removed legacy Cartesian authority synthesis from global inheritance: inherited provider/query arrays, taxonomy sets and exact combinations no longer create route or structural authority implicitly.
