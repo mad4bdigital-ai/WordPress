@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0-alpha.7
+
+- Reworked the WordPress admin surface into task-focused tabs: Overview, Configuration, Discovery, Runtime Inventory, Reconciliation, URL Inspector and Scenario Lab.
+- Added persistent Global bridge/readiness/config-revision/profile-count status cards so the master safety state remains visible on every tab.
+- Added visible `?` explainers to every configuration selector and operational action button, including the impact of Production-affecting settings and the read-only/non-authorizing boundary of evidence tools.
+- Added explicit READ-ONLY and SYNTHETIC badges to evidence and simulation surfaces.
+- Lazy-loads discovery, runtime inventory, reconciliation, URL inspection and simulation only on their relevant tabs instead of performing all page work on every admin request.
+- Added a compact Runtime Inventory evidence summary for contract, completeness and availability errors before the full JSON payload.
+- Corrected the migrated Tours default taxonomy from `tour-style_jet` to the Production-observed `tour-styles_jet` in parser compatibility, structural taxonomy sets and the style taxonomy rule.
+- Did not widen authority to other discovered Production taxonomies and did not infer Query Builder/Post Type authority from discovery alone.
+- Global bridge remains default OFF; merge and Production activation remain unauthorized.
+
 ## 0.4.0-alpha.6
 
 - Added explicit runtime source availability evidence for Post Types, taxonomies, WPML languages, Query Builder and translated archive paths.
