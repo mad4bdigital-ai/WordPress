@@ -5,9 +5,9 @@ use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
 use ETG\DynamicFilterSEOBridge\Content\GalleryComposer;
 
 final class Shortcodes {
-	private $contextProvider; private $content; private $gallery;
-	public function __construct( callable $contextProvider, ContentComposer $content, GalleryComposer $gallery ) {
-		$this->contextProvider = $contextProvider; $this->content = $content; $this->gallery = $gallery;
+	private $contextProvider; private $evidenceContextProvider; private $content; private $gallery;
+	public function __construct( callable $contextProvider, ContentComposer $content, GalleryComposer $gallery, callable $evidenceContextProvider = null ) {
+		$this->contextProvider = $contextProvider; $this->content = $content; $this->gallery = $gallery; $this->evidenceContextProvider=$evidenceContextProvider;
 	}
 	public function register(): void {
 		add_shortcode( 'etg_filter_h1', array( $this, 'h1' ) );
@@ -90,7 +90,18 @@ final class Shortcodes {
 		return $term;
 	}
 	private function truthy( $value ): bool {return in_array(strtolower(trim((string)$value)),array('1','true','yes','on'),true);}
-	private function context(): array { $c = call_user_func( $this->contextProvider ); return is_array( $c ) ? $c : array(); }
+	private function context(): array {
+		$c=call_user_func($this->contextProvider);$c=is_array($c)?$c:array();
+		if($this->renderable($c)){return $c;}
+		/* Dark presentation is allowed only when the normal request was stopped by
+		 * the Global kill switch. It cannot bypass a live scope/provider/Post Type
+		 * failure once the bridge is enabled. */
+		if('disabled'!==(string)($c['scope']['reason']??'')||!$this->evidenceContextProvider){return $c;}
+		$e=call_user_func($this->evidenceContextProvider);$e=is_array($e)?$e:array();
+		$profile=(array)($e['profile']??array());
+		if(empty($e['evidence_only'])||empty($profile['publication']['elementor_render_when_global_off'])){return $c;}
+		return $this->renderable($e)?$e:$c;
+	}
 	private function renderable( array $c ): bool {
 		if(empty($c['active'])||empty($c['in_scope'])||empty($c['runtime_ready'])||empty($c['filters'])){return false;}
 		if(isset($c['scope_valid'])&&empty($c['scope_valid'])){return false;}
