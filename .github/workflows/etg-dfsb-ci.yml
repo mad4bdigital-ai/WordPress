@@ -1,0 +1,221 @@
+name: ETG DFSB Operational CI
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'specs/001-etg-dynamic-filter-seo-operational/**'
+      - '.specify/**'
+      - '.github/workflows/etg-dfsb-ci.yml'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/seo-by-rank-math.zip'
+      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
+      - 'wp-content/plugins/sitepress-multilingual-cms.zip'
+      - 'wp-content/plugins/wpml-string-translation.zip'
+      - 'wp-content/plugins/wp-seo-multilingual.zip'
+  push:
+    branches:
+      - feat/etg-dynamic-filter-seo-bridge
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'specs/001-etg-dynamic-filter-seo-operational/**'
+      - '.specify/**'
+      - '.github/workflows/etg-dfsb-ci.yml'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/seo-by-rank-math.zip'
+      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
+      - 'wp-content/plugins/sitepress-multilingual-cms.zip'
+      - 'wp-content/plugins/wpml-string-translation.zip'
+      - 'wp-content/plugins/wp-seo-multilingual.zip'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  php-contract:
+    name: PHP ${{ matrix.php }} contract
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint and governed policy simulations
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          find "$PLUGIN" -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+          for test_file in \
+            parser-smoke.php \
+            operational-smoke.php \
+            result-count-adapter-smoke.php \
+            profile-runtime-smoke.php \
+            post-type-observer-smoke.php \
+            term-meta-profile-smoke.php \
+            profile-blueprint-smoke.php \
+            presentation-guard-smoke.php \
+            runtime-inventory-smoke.php \
+            runtime-inventory-availability-smoke.php \
+            inventory-reconciliation-smoke.php \
+            pre-staging-authority-hardening-smoke.php \
+            publication-layer-smoke.php \
+            alpha9-governance-smoke.php; do
+              php "$PLUGIN/tests/$test_file"
+          done
+
+  governance:
+    name: Vendor capability and governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify exact bundled compatibility surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/etg-vendor && mkdir -p /tmp/etg-vendor/{je,jsf,rm,wpml}
+          unzip -q wp-content/plugins/jet-engine.zip -d /tmp/etg-vendor/je
+          unzip -q wp-content/plugins/jet-smart-filters.zip -d /tmp/etg-vendor/jsf
+          unzip -q wp-content/plugins/seo-by-rank-math.zip -d /tmp/etg-vendor/rm
+          unzip -q wp-content/plugins/sitepress-multilingual-cms.zip -d /tmp/etg-vendor/wpml
+          require_token(){ local label="$1" token="$2" root="$3"; if ! grep -RFqs -- "$token" "$root"; then echo "::error::Missing bundled vendor capability: $label"; exit 1; fi; echo "verified: $label"; }
+          require_token 'JetEngine get_query_by_id' 'function get_query_by_id' /tmp/etg-vendor/je
+          require_token 'JetEngine custom query identity mapping' 'custom_query_ids_mapping' /tmp/etg-vendor/je
+          require_token 'JetEngine filtered property setter' 'function set_filtered_prop' /tmp/etg-vendor/je
+          require_token 'JetEngine total count' 'function get_items_total_count' /tmp/etg-vendor/je
+          require_token 'JetEngine query type' 'function get_query_type' /tmp/etg-vendor/je
+          require_token 'JetEngine Posts Query' 'class Posts_Query extends Base_Query' /tmp/etg-vendor/je
+          require_token 'JetEngine public query args' 'public function get_query_args()' /tmp/etg-vendor/je
+          require_token 'JetEngine query inventory' 'public function get_queries()' /tmp/etg-vendor/je
+          require_token 'JetEngine unbounded post type behavior' "args['post_type'] = 'any'" /tmp/etg-vendor/je
+          require_token 'JetEngine filtered request lifecycle' 'get_query_from_request' /tmp/etg-vendor/je
+          require_token 'JetEngine current provider query identity' "get_current_provider( 'query_id' )" /tmp/etg-vendor/je
+          require_token 'JetSmartFilters current provider' 'function get_current_provider' /tmp/etg-vendor/jsf
+          require_token 'JetSmartFilters request query' 'function get_query_from_request' /tmp/etg-vendor/jsf
+          require_token 'JetSmartFilters JetEngine provider identity' "return 'jet-engine'" /tmp/etg-vendor/jsf
+          require_token 'Rank Math title filter' 'rank_math/frontend/title' /tmp/etg-vendor/rm
+          require_token 'Rank Math description filter' 'rank_math/frontend/description' /tmp/etg-vendor/rm
+          require_token 'Rank Math canonical filter' 'rank_math/frontend/canonical' /tmp/etg-vendor/rm
+          require_token 'Rank Math robots filter' 'rank_math/frontend/robots' /tmp/etg-vendor/rm
+          require_token 'Rank Math OpenGraph image surface' 'opengraph/{$this->network}/image' /tmp/etg-vendor/rm
+          require_token 'Rank Math Sitemap Provider interface' 'interface Provider' /tmp/etg-vendor/rm
+          require_token 'Rank Math Sitemap Router get_base_url' 'function get_base_url' /tmp/etg-vendor/rm
+          require_token 'Rank Math Sitemap cache invalidation' 'function invalidate_storage' /tmp/etg-vendor/rm
+          require_token 'Rank Math JSON-LD filter' 'rank_math/json_ld' /tmp/etg-vendor/rm
+          require_token 'WPML current language' 'wpml_current_language' /tmp/etg-vendor/wpml
+          require_token 'WPML translated object identity' 'wpml_object_id' /tmp/etg-vendor/wpml
+          require_token 'WPML active languages' 'wpml_active_languages' /tmp/etg-vendor/wpml
+          require_token 'WPML translated permalink' 'wpml_permalink' /tmp/etg-vendor/wpml
+          require_token 'WPML runtime language switch' 'switch_lang' /tmp/etg-vendor/wpml
+
+      - name: Verify Spec Kit, Alpha9 governance and merge lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s .specify/memory/constitution.md
+          test -s .specify/feature.json
+          test -s specs/001-etg-dynamic-filter-seo-operational/contracts/alpha9-governance-hardening-contract.md
+          test -s specs/001-etg-dynamic-filter-seo-operational/contracts/seo-publication-contract.md
+          test -s specs/001-etg-dynamic-filter-seo-operational/contracts/elementor-content-publication-contract.md
+          python - <<'PY'
+          import json,re
+          d=json.load(open('.specify/feature.json'))
+          assert d['target_version']=='0.4.0-alpha.9'
+          assert d['status']=='publication_governance_hardening_alpha'
+          assert d['merge_authorized'] is False and d['production_activation_authorized'] is False
+          for gate in ['provider_observation_hardening','result_count_parity_evidence_gate','publication_candidate_cache','bounded_publication_rollout','wpml_background_count_language_context','depth_aware_content_readiness','structured_profile_ui','publication_evidence_bundle','preview_vs_emitted_separation','disabled_profile_dark_evidence_resolution','clean_canonical_deferred_until_runtime_evidence']:
+              assert gate in d['required_gates'],gate
+          p='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          source=open(f'{p}/etg-dynamic-filter-seo-bridge.php').read(); assert re.search(r'Version:\s*0\.4\.0-alpha\.9',source); assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.9' );" in source
+          config=open(f'{p}/includes/Config/Configuration.php').read(); registry=open(f'{p}/includes/Config/ProfileRegistry.php').read(); core=open(f'{p}/includes/Config/ProfileRegistryCoreTrait.php').read(); normalized=open(f'{p}/includes/Config/ProfileRegistryNormalizationTrait.php').read(); builder=open(f'{p}/includes/Context/FilterContextBuilder.php').read(); policy=open(f'{p}/includes/SEO/IndexingPolicy.php').read(); publication=open(f'{p}/includes/SEO/PublicationRegistry.php').read(); cache=open(f'{p}/includes/SEO/PublicationCache.php').read(); probe=open(f'{p}/includes/SEO/PublicationResultCountProbe.php').read(); content=open(f'{p}/includes/SEO/ContentReadiness.php').read(); admin=open(f'{p}/includes/Admin/PublicationPage.php').read(); evidence=open(f'{p}/includes/Diagnostics/PublicationEvidenceBundle.php').read(); canonical=open(f'{p}/includes/SEO/CanonicalBuilder.php').read()
+          assert "'enabled' => false" in config and 'tour-style_jet' not in config
+          assert 'private const MAX_COMBINATIONS = 500' in registry
+          assert 'resolveForEvidence' in core and 'profile_matched_for_evidence' in core
+          assert 'require_provider_observation_for_index' in normalized and 'result_count_parity_evidence_id' in normalized
+          assert 'provider_observed' in builder
+          assert 'provider_query_unobserved' in policy and 'provider_observation_not_verified' in policy and 'result_count_parity_not_verified' in policy
+          assert 'MAX_PUBLICATION_URLS = 500' in publication and 'metadata_candidate' in publication and 'metadata_emitted_if_global_on' in publication and 'schema_candidate' in publication and 'schema_emitted' in publication
+          assert 'PublicationCache' in cache and 'get_transient' in cache and 'set_transient' in cache
+          assert 'switch_lang' in probe and "'suppress_filters'] = false" in probe and 'wpml_language_context_unavailable' in probe
+          assert 'min_chars_by_depth' in content and 'insufficient_unique_sections' in content
+          assert 'Structured Profile Manager' in admin and 'WRITE LOCKED' in admin
+          assert 'publication-evidence-bundle.v1' in evidence
+          assert 'clean_filtered' not in canonical
+          PY
+
+      - name: Enforce PR change boundary
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" | while IFS= read -r path; do case "$path" in wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml) ;; *) echo "Unexpected path in ETG PR: $path"; exit 1 ;; esac; done
+
+      - name: Check whitespace and forbidden temporary transport files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check "$(git merge-base origin/master HEAD)"...HEAD
+          ! find .github -maxdepth 1 -type f \( -name 'etg-op-payload*' -o -name '*payload.part-*' -o -name '*materializer*' -o -name '*probe*' \) -print -quit | grep -q .
+
+      - name: Build deterministic installable package and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA=$(git rev-parse HEAD); test "$ACTUAL_SHA" = "$SOURCE_SHA"
+          PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\\s*([^\\r\\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
+          test "$VERSION" = '0.4.0-alpha.9'
+          OUT="$RUNNER_TEMP/etg-package"; mkdir -p "$OUT/etg-dynamic-filter-seo-bridge"
+          rsync -a --exclude tests "$PLUGIN/" "$OUT/etg-dynamic-filter-seo-bridge/"
+          find "$OUT/etg-dynamic-filter-seo-bridge" -exec touch -t 198001010000 {} +
+          ZIP="$OUT/etg-dynamic-filter-seo-bridge-${VERSION}.zip"
+          (cd "$OUT"; find etg-dynamic-filter-seo-bridge -type f -print | LC_ALL=C sort | zip -X -q "$ZIP" -@)
+          unzip -t "$ZIP"; DIGEST=$(sha256sum "$ZIP" | awk '{print $1}')
+          {
+            echo "contract=etg.dfsb.release-provenance.v2"
+            echo "git_sha=$SOURCE_SHA"
+            echo "plugin_version=$VERSION"
+            echo "profile_engine=generic_surface_profile_v1"
+            echo "publication_engine=rank_math_dynamic_publication_v1"
+            echo "publication_hardening=provider_observation_cache_evidence_v1"
+            echo "package_sha256=$DIGEST"
+            echo "jet_engine_blob=$(git rev-parse HEAD:wp-content/plugins/jet-engine.zip)"
+            echo "jet_smart_filters_blob=$(git rev-parse HEAD:wp-content/plugins/jet-smart-filters.zip)"
+            echo "rank_math_blob=$(git rev-parse HEAD:wp-content/plugins/seo-by-rank-math.zip)"
+            echo "rank_math_pro_blob=$(git rev-parse HEAD:wp-content/plugins/seo-by-rank-math-pro.zip)"
+            echo "wpml_cms_blob=$(git rev-parse HEAD:wp-content/plugins/sitepress-multilingual-cms.zip)"
+            echo "wpml_string_translation_blob=$(git rev-parse HEAD:wp-content/plugins/wpml-string-translation.zip)"
+            echo "wpml_seo_blob=$(git rev-parse HEAD:wp-content/plugins/wp-seo-multilingual.zip)"
+          } > "$OUT/etg-dfsb-provenance.txt"
+          cat "$OUT/etg-dfsb-provenance.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: etg-dfsb-operational-candidate-${{ env.SOURCE_SHA }}
+          path: |
+            ${{ runner.temp }}/etg-package/*.zip
+            ${{ runner.temp }}/etg-package/etg-dfsb-provenance.txt
+          if-no-files-found: error
