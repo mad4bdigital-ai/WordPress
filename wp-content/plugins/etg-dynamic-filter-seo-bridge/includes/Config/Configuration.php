@@ -130,6 +130,16 @@ final class Configuration {
 				),
 				'indexable_combinations' => array(),
 				'content' => array( 'required'=>true,'require_meta_description'=>true,'min_chars'=>80 ),
+				'publication' => array(
+					'sitemap'=>true,
+					'hreflang'=>true,
+					'schema'=>true,
+					'social'=>true,
+					'include_images_in_sitemap'=>true,
+					'require_elementor_content'=>true,
+					'elementor_content_verified'=>false,
+					'max_preview_urls'=>100,
+				),
 			),
 		);
 		return (string) json_encode( $profiles, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
