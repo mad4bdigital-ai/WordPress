@@ -71,6 +71,7 @@ jobs:
             profile-blueprint-smoke.php \
             presentation-guard-smoke.php \
             runtime-inventory-smoke.php \
+            runtime-inventory-availability-smoke.php \
             inventory-reconciliation-smoke.php \
             pre-staging-authority-hardening-smoke.php; do
               php "$PLUGIN/tests/$test_file"
@@ -170,14 +171,15 @@ jobs:
           python - <<'PY'
           import json, re
           d=json.load(open('.specify/feature.json'))
-          assert d['target_version'] == '0.4.0-alpha.5'
-          assert d['status'] == 'pre_staging_authority_hardening_alpha'
+          assert d['target_version'] == '0.4.0-alpha.6'
+          assert d['status'] == 'runtime_inventory_availability_hardening_alpha'
           assert d['merge_authorized'] is False
           assert d['production_activation_authorized'] is False
           assert 'pre_staging_exact_authority_hardening' in d['required_gates']
+          assert 'runtime_inventory_source_availability' in d['required_gates']
           source=open('wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php').read()
-          assert re.search(r'Version:\s*0\.4\.0-alpha\.5', source)
-          assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.5' );" in source
+          assert re.search(r'Version:\s*0\.4\.0-alpha\.6', source)
+          assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.6' );" in source
           plugin='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           registry=''.join(open(f'{plugin}/includes/Config/{name}').read() for name in ['ProfileRegistry.php','ProfileRegistryCoreTrait.php','ProfileRegistryNormalizationTrait.php','ProfileRegistryHelperTrait.php'])
           reconciler=open(f'{plugin}/includes/Diagnostics/InventoryReconciler.php').read()
@@ -187,6 +189,9 @@ jobs:
           assert 'structural_key' in runtime_inventory
           assert 'etg.dfsb.inventory-reconciliation.v2' in reconciler
           assert 'etg.dfsb.runtime-inventory.v2' in runtime_inventory
+          assert 'etg.dfsb.runtime-inventory-unavailable.v1' in runtime_inventory
+          assert 'evidence_complete' in runtime_inventory and 'availability_errors' in runtime_inventory
+          assert 'wpml_permalink_unavailable' in runtime_inventory
           assert 'identity_conflict_count' in runtime_inventory and "'truncated'" in runtime_inventory
           assert 'profile_query_identity_collision' in reconciler and 'inventorySafeForCandidates' in reconciler
           assert "etg-dfsb inventory" in cli and "etg-dfsb reconcile" in cli
@@ -220,7 +225,7 @@ jobs:
           test "$ACTUAL_SHA" = "$SOURCE_SHA"
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\\s*([^\\r\\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
-          test "$VERSION" = '0.4.0-alpha.5'
+          test "$VERSION" = '0.4.0-alpha.6'
           OUT="$RUNNER_TEMP/etg-package"
           mkdir -p "$OUT/etg-dynamic-filter-seo-bridge"
           rsync -a --exclude tests "$PLUGIN/" "$OUT/etg-dynamic-filter-seo-bridge/"
