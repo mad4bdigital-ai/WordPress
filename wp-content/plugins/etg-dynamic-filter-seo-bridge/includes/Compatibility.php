@@ -17,12 +17,20 @@ final class Compatibility {
 			$jsfQuery = is_object( $jsf ) && isset( $jsf->query ) && is_object( $jsf->query ) ? $jsf->query : null;
 		}
 		$managerClass = '\\Jet_Engine\\Query_Builder\\Manager';
+		$sitemapProvider='\\RankMath\\Sitemap\\Providers\\Provider';
+		$sitemapRouter='\\RankMath\\Sitemap\\Router';
+		$sitemapCache='\\RankMath\\Sitemap\\Cache';
 		$capabilities = array(
 			'jsf_get_current_provider' => is_object( $jsfQuery ) && method_exists( $jsfQuery, 'get_current_provider' ),
 			'jsf_get_query_from_request' => is_object( $jsfQuery ) && method_exists( $jsfQuery, 'get_query_from_request' ),
 			'jet_engine_query_manager' => class_exists( $managerClass ) && method_exists( $managerClass, 'instance' ) && method_exists( $managerClass, 'get_query_by_id' ),
 			'wpml_current_language_filter' => has_filter( 'wpml_current_language' ) !== false,
 			'wpml_object_id_filter' => has_filter( 'wpml_object_id' ) !== false,
+			'wpml_active_languages_filter' => has_filter( 'wpml_active_languages' ) !== false,
+			'wpml_permalink_filter' => has_filter( 'wpml_permalink' ) !== false,
+			'rank_math_sitemap_provider_interface' => interface_exists( $sitemapProvider ),
+			'rank_math_sitemap_router' => class_exists( $sitemapRouter ) && method_exists( $sitemapRouter, 'get_base_url' ),
+			'rank_math_sitemap_cache' => class_exists( $sitemapCache ) && method_exists( $sitemapCache, 'invalidate_storage' ),
 		);
 		return array(
 			'jet_smart_filters' => $this->jetSmartFilters(),
