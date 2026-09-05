@@ -12,11 +12,20 @@ final class PublicationSitemapProvider implements \RankMath\Sitemap\Providers\Pr
 	}
 
 	public function get_index_links( $max_entries ) {
-		if(!$this->publication->published(1)){return array();}
-		$loc=class_exists('\\RankMath\\Sitemap\\Router')&&method_exists('\\RankMath\\Sitemap\\Router','get_base_url')
-			? \RankMath\Sitemap\Router::get_base_url('etg-filter-seo-sitemap.xml')
-			: home_url('/etg-filter-seo-sitemap.xml');
-		return array(array('loc'=>$loc,'lastmod'=>''));
+		$max=max(1,min(1000,(int)$max_entries));
+		$published=$this->publication->published();
+		if(!$published){return array();}
+		$pageCount=(int)ceil(count($published)/$max);
+		$links=array();
+		for($page=1;$page<=$pageCount;$page++){
+			$suffix=$pageCount>1?(string)$page:'';
+			$file='etg-filter-seo-sitemap'.$suffix.'.xml';
+			$loc=class_exists('\\RankMath\\Sitemap\\Router')&&method_exists('\\RankMath\\Sitemap\\Router','get_base_url')
+				? \RankMath\Sitemap\Router::get_base_url($file)
+				: home_url('/'.$file);
+			$links[]=array('loc'=>$loc,'lastmod'=>'');
+		}
+		return $links;
 	}
 
 	public function get_sitemap_links( $type, $max_entries, $current_page ) {
