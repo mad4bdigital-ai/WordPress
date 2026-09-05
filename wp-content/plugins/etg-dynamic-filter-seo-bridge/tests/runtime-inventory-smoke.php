@@ -3,6 +3,8 @@ function sanitize_key($v){return preg_replace('/[^a-z0-9_\-]/','',strtolower((st
 function sanitize_title($v){return trim(preg_replace('/[^a-z0-9\-_]+/','-',strtolower((string)$v)),'-');}
 function sanitize_text_field($v){return trim(strip_tags((string)$v));}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
+$GLOBALS['etg_runtime_filter_availability']=array('wpml_permalink'=>true,'wpml_active_languages'=>true);
+function has_filter($tag){return !empty($GLOBALS['etg_runtime_filter_availability'][$tag])?10:false;}
 function get_post_types($args=array(),$output='names'){
 	$t=(object)array('label'=>'Tours','publicly_queryable'=>true,'has_archive'=>true,'rewrite'=>array('slug'=>'tours-and-activities'));
 	$p=(object)array('label'=>'Properties','publicly_queryable'=>true,'has_archive'=>true,'rewrite'=>array('slug'=>'properties'));
@@ -43,9 +45,16 @@ $languages=function(){return array(
 $inventory=new RuntimeInventory($queries,$languages);
 $one=$inventory->collect();$two=$inventory->collect();
 expect_same('etg.dfsb.runtime-inventory.v2',$one['contract'],'contract');
+expect_same(true,$one['evidence_complete'],'normal inventory evidence complete');
+expect_same(array(),$one['availability_errors'],'normal inventory has no source availability errors');
 expect_same(false,$one['authorizing'],'inventory cannot authorize');
 expect_same(true,$one['read_only'],'inventory is read-only');
 expect_same(false,$one['profile_mutation'],'inventory cannot mutate profiles');
+expect_same(true,$one['inventory']['availability']['post_types']['available'],'post type source available');
+expect_same(true,$one['inventory']['availability']['taxonomies']['available'],'taxonomy source available');
+expect_same(true,$one['inventory']['availability']['languages']['available'],'language source available');
+expect_same(true,$one['inventory']['availability']['query_builder']['available'],'query source available');
+expect_same(true,$one['inventory']['availability']['archive_path_translations']['available'],'translated archive source available');
 
 expect_same(false,$one['inventory']['completeness']['post_types']['truncated'],'small post type inventory complete');
 expect_same(false,$one['inventory']['completeness']['taxonomies']['truncated'],'small taxonomy inventory complete');
@@ -66,7 +75,6 @@ expect_same(true,$q['tours_query_archive']['post_type_bounded'],'bounded posts q
 expect_same(false,$q['unbounded_archive']['post_type_bounded'],'post_type any is unbounded');
 expect_true(!isset($q['tours_query_archive']['query_args']),'raw query args never exported');
 expect_true(!isset($one['inventory']['post_types']['tour']['enabled']),'discovery has no profile enable authority');
-
 
 $duplicateQueries=function(){return array(
     new InventoryQueryMock(12,'shared_archive','posts',array('post_type'=>'tour')),
@@ -92,5 +100,28 @@ expect_same(true,$truncated['inventory']['completeness']['query_builder']['trunc
 expect_same(105,$truncated['inventory']['completeness']['query_builder']['observed_count'],'query overflow observed count');
 expect_same(RuntimeInventory::MAX_QUERIES,$truncated['inventory']['completeness']['query_builder']['included_count'],'query overflow included count bounded');
 expect_same('q000',$truncated['inventory']['query_builder']['queries'][0]['identity_key'],'sorting occurs before query slicing');
+
+$invalidQuery=(new RuntimeInventory(function(){return false;},$languages))->collect();
+expect_same(RuntimeInventory::UNAVAILABLE_CONTRACT,$invalidQuery['contract'],'invalid query provider produces unavailable contract');
+expect_same(false,$invalidQuery['evidence_complete'],'invalid query provider cannot be complete evidence');
+expect_true(in_array('query_builder_unavailable',$invalidQuery['availability_errors'],true),'invalid query provider is explicit availability blocker');
+expect_same(false,$invalidQuery['inventory']['query_builder']['available'],'invalid query result is not treated as empty available inventory');
+
+$invalidLanguages=(new RuntimeInventory($queries,function(){return null;}))->collect();
+expect_same(RuntimeInventory::UNAVAILABLE_CONTRACT,$invalidLanguages['contract'],'invalid language provider produces unavailable contract');
+expect_true(in_array('languages_unavailable',$invalidLanguages['availability_errors'],true),'language source unavailable is explicit');
+expect_true(in_array('archive_path_translations_unavailable',$invalidLanguages['availability_errors'],true),'language outage also blocks translated archive evidence');
+
+$GLOBALS['etg_runtime_filter_availability']['wpml_permalink']=false;
+$missingPermalink=(new RuntimeInventory($queries,$languages))->collect();
+expect_same(RuntimeInventory::UNAVAILABLE_CONTRACT,$missingPermalink['contract'],'missing WPML permalink authority produces unavailable contract');
+expect_true(in_array('archive_path_translations_unavailable',$missingPermalink['availability_errors'],true),'translated permalink outage is explicit');
+expect_true(!isset($missingPermalink['inventory']['post_types']['tour']['archive_paths']['fr']),'original archive path is never fabricated as translated evidence');
+expect_same('/tours-and-activities/',$missingPermalink['inventory']['post_types']['tour']['archive_paths']['current'],'native current archive evidence remains visible');
+$GLOBALS['etg_runtime_filter_availability']['wpml_permalink']=true;
+
+$emptyQueries=(new RuntimeInventory(function(){return array();},$languages))->collect();
+expect_same(RuntimeInventory::CONTRACT,$emptyQueries['contract'],'empty but valid Query Builder inventory remains available evidence');
+expect_same(true,$emptyQueries['inventory']['query_builder']['available'],'empty query array is distinguishable from unavailable source');
 
 fwrite(STDOUT,"Runtime inventory smoke tests passed.\n");
