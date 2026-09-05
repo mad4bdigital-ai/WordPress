@@ -85,23 +85,24 @@ Update exact Profile archive authority and re-run ambiguity/readiness checks. Un
 
 No successful runbook step implies merge authorization.
 
-
 ## Staging inventory first-pass
 1. Keep Global enabled OFF.
 2. Open Settings → ETG Filter SEO as an administrator.
 3. Generate Runtime Inventory and download the JSON snapshot.
-4. Verify `contract=etg.dfsb.runtime-inventory.v2`, `authorizing=false`, and `profile_mutation=false`.
-5. Review Post Type/taxonomy relations, active WPML languages/archive paths, and Query Builder structural IDs/Post Types.
-6. Treat `post_type_bounded=false`, missing custom query IDs, slug drift, or mixed Post Types as blockers.
-7. Build disabled blueprints only after reviewing the inventory; do not enable a profile during T120/T121.
-
+4. Require `contract=etg.dfsb.runtime-inventory.v2`, `expected_contract=etg.dfsb.runtime-inventory.v2`, `authorizing=false`, `read_only=true`, `profile_mutation=false`, `evidence_complete=true`, and `availability_errors=[]`.
+5. Require `inventory.availability.post_types.available=true`, `taxonomies.available=true`, `languages.available=true`, `query_builder.available=true`, and `archive_path_translations.available=true` before treating the snapshot as T120 evidence.
+6. If the exporter returns `etg.dfsb.runtime-inventory-unavailable.v1`, preserve it as diagnostic evidence only, investigate the named `availability_errors`, and recapture. Do not reconcile it, infer zero objects/languages/queries, generate candidates, or close T120/T121.
+7. Review Post Type/taxonomy relations, active WPML languages/archive paths, and Query Builder structural IDs/Post Types.
+8. Treat any `truncated=true`, `post_type_bounded=false`, missing custom query IDs, query identity collision, slug drift, or mixed Post Types as blockers/review evidence according to the runtime contract.
+9. Build disabled blueprints only after reviewing a valid complete inventory; do not enable a profile during T120/T121.
 
 ## Inventory reconciliation / controlled growth
 1. Keep Global enabled OFF for new/unaccepted surfaces.
 2. Capture `wp etg-dfsb inventory > inventory.current.json` or download the admin Runtime Inventory JSON.
-3. If a prior snapshot exists, run `wp etg-dfsb reconcile --previous=inventory.previous.json > reconciliation.json`; otherwise use the admin Current Inventory Reconciliation.
-4. Reject `invalid_inventory` and investigate `blocked_drift` before editing any Profile.
-5. Treat native CPT archive-path mismatch as warning evidence only when the real governed surface is an Elementor/JetEngine Page. Prove the actual archive Page separately in T122.
-6. Review disabled candidates. Do not copy suggested routes/archive paths mechanically. Exact authority fields must be filled deliberately.
-7. Re-run Synthetic Scenario Lab after every candidate Profile edit while it remains disabled.
-8. Archive the inventory fingerprint + reconciliation JSON as evidence; neither artifact authorizes activation.
+3. Before reconciliation, require the normal v2 contract and complete mandatory source availability. An unavailable-source contract is not a valid reconciliation input.
+4. If a prior valid snapshot exists, run `wp etg-dfsb reconcile --previous=inventory.previous.json > reconciliation.json`; otherwise use the admin Current Inventory Reconciliation.
+5. Reject `invalid_inventory` and investigate `blocked_drift` before editing any Profile.
+6. Treat native CPT archive-path mismatch as warning evidence only when the real governed surface is an Elementor/JetEngine Page. Prove the actual archive Page separately in T122.
+7. Review disabled candidates. Do not copy suggested routes/archive paths mechanically. Exact authority fields must be filled deliberately.
+8. Re-run Synthetic Scenario Lab after every candidate Profile edit while it remains disabled.
+9. Archive the inventory fingerprint + availability map + reconciliation JSON as evidence; neither artifact authorizes activation.
