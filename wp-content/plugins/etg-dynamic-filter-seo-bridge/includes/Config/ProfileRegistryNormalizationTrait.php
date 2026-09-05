@@ -30,6 +30,7 @@ trait ProfileRegistryNormalizationTrait {
 			'min_results_by_depth' => array(),
 			'taxonomy_rules' => array(),
 			'content' => array(),
+			'publication' => array(),
 		);
 
 		foreach ( array_slice( (array) ( $profile['taxonomy_rules'] ?? array() ), 0, self::MAX_TAXONOMY_RULES, true ) as $taxonomy => $rule ) {
@@ -67,6 +68,18 @@ trait ProfileRegistryNormalizationTrait {
 			'required' => $this->boolValue( $content['required'] ?? true ),
 			'require_meta_description' => $this->boolValue( $content['require_meta_description'] ?? true ),
 			'min_chars' => $this->boundedInt( $content['min_chars'] ?? 80, 0, 10000 ),
+		);
+
+		$publication = is_array( $profile['publication'] ?? null ) ? $profile['publication'] : array();
+		$out['publication'] = array(
+			'sitemap' => $this->boolValue( $publication['sitemap'] ?? true ),
+			'hreflang' => $this->boolValue( $publication['hreflang'] ?? true ),
+			'schema' => $this->boolValue( $publication['schema'] ?? true ),
+			'social' => $this->boolValue( $publication['social'] ?? true ),
+			'include_images_in_sitemap' => $this->boolValue( $publication['include_images_in_sitemap'] ?? true ),
+			'require_elementor_content' => $this->boolValue( $publication['require_elementor_content'] ?? true ),
+			'elementor_content_verified' => $this->boolValue( $publication['elementor_content_verified'] ?? false ),
+			'max_preview_urls' => $this->boundedInt( $publication['max_preview_urls'] ?? 100, 1, 500 ),
 		);
 
 		if ( ! empty( $out['inherit_global_defaults'] ) ) { $out = $this->applyGlobalDefaults( $out ); }
