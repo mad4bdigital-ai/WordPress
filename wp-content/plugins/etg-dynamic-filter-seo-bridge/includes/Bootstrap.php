@@ -2,6 +2,7 @@
 namespace ETG\DynamicFilterSEOBridge;
 
 use ETG\DynamicFilterSEOBridge\Admin\OperationalPage;
+use ETG\DynamicFilterSEOBridge\Admin\PublicationPage;
 use ETG\DynamicFilterSEOBridge\Config\Configuration;
 use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
 use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
@@ -13,6 +14,7 @@ use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryReconciler;
 use ETG\DynamicFilterSEOBridge\Elementor\Shortcodes;
 use ETG\DynamicFilterSEOBridge\JetSmartFilters\FilterUrlParser;
 use ETG\DynamicFilterSEOBridge\RankMath\MetadataAdapter;
+use ETG\DynamicFilterSEOBridge\RankMath\PublicationSitemapRegistrar;
 use ETG\DynamicFilterSEOBridge\Runtime\Readiness;
 use ETG\DynamicFilterSEOBridge\Runtime\RequestScope;
 use ETG\DynamicFilterSEOBridge\Runtime\PostTypeObserver;
@@ -21,6 +23,8 @@ use ETG\DynamicFilterSEOBridge\SEO\CombinationRegistry;
 use ETG\DynamicFilterSEOBridge\SEO\ContentReadiness;
 use ETG\DynamicFilterSEOBridge\SEO\IndexingPolicy;
 use ETG\DynamicFilterSEOBridge\SEO\JetEngineResultCountAdapter;
+use ETG\DynamicFilterSEOBridge\SEO\PublicationRegistry;
+use ETG\DynamicFilterSEOBridge\SEO\PublicationResultCountProbe;
 use ETG\DynamicFilterSEOBridge\SEO\ResultCountResolver;
 use ETG\DynamicFilterSEOBridge\Simulation\ScenarioSimulator;
 use ETG\DynamicFilterSEOBridge\Terms\TermMetaReader;
@@ -49,20 +53,27 @@ final class Bootstrap {
 		$scope=new RequestScope($this->config,$profiles);
 		$adapter=new JetEngineResultCountAdapter();
 		$resultCounts=new ResultCountResolver($this->config,$adapter);
+		$languages=new LanguageResolver();
 		$parserTaxonomies=array_values(array_unique(array_merge($profiles->allowedTaxonomies(),(array)$this->config->get('allowed_taxonomies',array()))));
 		$parser=new FilterUrlParser($parserTaxonomies,(array)$this->config->get('allowed_query_params',array()),(array)$this->config->get('tracking_query_params',array()));
 		$combinations=new CombinationRegistry($this->config);
-		$this->builder=new FilterContextBuilder($parser,new LanguageResolver(),new TermMetaReader(),$content,$scope,$resultCounts,$this->readiness,$combinations,new ContentReadiness($this->config),new PostTypeObserver());
+		$this->builder=new FilterContextBuilder($parser,$languages,new TermMetaReader(),$content,$scope,$resultCounts,$this->readiness,$combinations,new ContentReadiness($this->config),new PostTypeObserver());
 		$this->policy=new IndexingPolicy($this->config);
+		$canonical=new CanonicalBuilder($this->config);
+		$publication=new PublicationRegistry($this->config,$profiles,$this->builder,$this->policy,$content,$gallery,$languages,new PublicationResultCountProbe(),$canonical);
 		$provider=array($this,'context');
 		$shortcodes=new Shortcodes($provider,$content,$gallery);
 		add_action('init',array($shortcodes,'register'),20);
-		if($compatibility->rankMath()){(new MetadataAdapter($provider,$content,$gallery,$this->policy,new CanonicalBuilder($this->config)))->register();}
+		if($compatibility->rankMath()){
+			(new MetadataAdapter($provider,$content,$gallery,$this->policy,$canonical,$publication))->register();
+			(new PublicationSitemapRegistrar($publication))->register();
+		}
 		(new DecisionLogger($provider,$this->policy,$this->config))->register();
 		$simulator=new ScenarioSimulator($this->config,$profiles,$combinations,$this->policy);
 		$runtimeInventory=new RuntimeInventory();
 		$reconciler=new InventoryReconciler();
 		(new OperationalPage($this->config,$profiles,$this->readiness,$this->builder,$this->policy,$simulator,$runtimeInventory,$reconciler))->register();
+		(new PublicationPage($this->config,$profiles,$publication))->register();
 		if(defined('WP_CLI')&&WP_CLI&&class_exists('\\WP_CLI')){(new \ETG\DynamicFilterSEOBridge\CLI\Commands($runtimeInventory,$reconciler,$profiles))->register();}
 		do_action('etg_filter_seo_bridge_booted',$this->readiness->report());
 	}
