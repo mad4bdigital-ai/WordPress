@@ -78,6 +78,7 @@ trait ProfileRegistryNormalizationTrait {
 			'social' => $this->boolValue( $publication['social'] ?? true ),
 			'include_images_in_sitemap' => $this->boolValue( $publication['include_images_in_sitemap'] ?? true ),
 			'require_elementor_content' => $this->boolValue( $publication['require_elementor_content'] ?? true ),
+			'elementor_render_when_global_off' => $this->boolValue( $publication['elementor_render_when_global_off'] ?? false ),
 			'elementor_content_verified' => $this->boolValue( $publication['elementor_content_verified'] ?? false ),
 			'max_preview_urls' => $this->boundedInt( $publication['max_preview_urls'] ?? 100, 1, 500 ),
 		);
