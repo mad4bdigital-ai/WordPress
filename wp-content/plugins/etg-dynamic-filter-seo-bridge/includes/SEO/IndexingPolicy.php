@@ -1,52 +1,102 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge\SEO;
 
+use ETG\DynamicFilterSEOBridge\Config\Configuration;
+use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
+
 final class IndexingPolicy {
+	private $config;
+	public function __construct( Configuration $config ) { $this->config=$config; }
+
 	public function decide( array $context ): array {
-		if ( empty( $context['active'] ) ) { return $this->decision( null, 'inactive' ); }
-		if ( ! empty( $context['unknown_filters'] ) ) { return $this->filtered( false, 'unknown_filter', $context ); }
-		if ( ! empty( $context['malformed'] ) ) { return $this->filtered( false, 'malformed_filter', $context ); }
-		if ( ! empty( $context['missing_terms'] ) ) { return $this->filtered( false, 'missing_term', $context ); }
-		if ( ! empty( $context['translation_fallback'] ) ) { return $this->filtered( false, 'translation_fallback', $context ); }
-
-		$filters = isset( $context['filters'] ) ? (array) $context['filters'] : array();
-		$count = count( $filters );
-		if ( 0 === $count ) { return $this->decision( null, 'no_filters' ); }
-		if ( $count > 3 ) { return $this->filtered( false, 'too_many_filters', $context ); }
-
-		$terms = isset( $context['terms'] ) ? (array) $context['terms'] : array();
-		if ( 1 === $count && isset( $terms['location'] ) ) {
-			$level = sanitize_key( (string) ( $terms['location']['location_level'] ?? '' ) );
-			$hasResults = ! empty( $terms['location']['count'] );
-			if ( $hasResults && in_array( $level, array( 'city', 'landmark' ), true ) ) {
-				return $this->filtered( true, 'indexable_location', $context );
-			}
-			return $this->filtered( false, 'location_not_explicitly_indexable', $context );
+		if(empty($context['active'])){return $this->neutral('inactive',$context);}
+		if(empty($context['in_scope'])){return $this->neutral('out_of_scope:'.(string)($context['scope']['reason']??'unknown'),$context);}
+		if(isset($context['scope_valid'])&&empty($context['scope_valid'])){return $this->hardDeny('scope_violation:'.(string)($context['scope']['reason']??'unknown'),$context);}
+		if(empty($context['runtime_ready'])){return $this->hardDeny('runtime_not_ready',$context);}
+		if(empty($context['provider_observation_matches_url'])){return $this->hardDeny('provider_query_mismatch',$context);}
+		$profile=(array)($context['profile']??array());
+		if(!empty($profile['require_post_type_binding'])){
+			$binding=(array)($context['post_type_binding']??array());
+			if(empty($binding['observed'])){return $this->hardDeny('post_type_unobserved',$context);}
+			if(empty($binding['matches_profile'])){return $this->hardDeny('post_type_mismatch',$context);}
 		}
-		if ( 1 === $count && isset( $terms['tour_type'] ) ) {
-			return $this->filtered( false, 'tour_type_requires_opt_in', $context );
+		if(!empty($context['unsupported_query_params'])){return $this->hardDeny('unsupported_query_state',$context);}
+		if(!empty($context['unknown_filters'])){return $this->hardDeny('unknown_filter',$context);}
+		if(!empty($context['malformed'])){return $this->hardDeny('malformed_filter',$context);}
+		if(!empty($context['missing_terms'])){return $this->hardDeny('missing_term',$context);}
+		if(!empty($context['translation_fallback'])){return $this->hardDeny('translation_fallback',$context);}
+		$filters=(array)($context['filters']??array());
+		$count=count($filters);
+		if(0===$count){return $this->neutral('no_filters',$context);}
+		$max=(int)($profile['max_filters']??$this->config->get('max_filters',3));
+		if($count>$max){return $this->hardDeny('too_many_filters',$context);}
+		$setSignature=ProfileRegistry::taxonomySetSignature($filters);
+		$allowedSets=(array)($profile['allowed_taxonomy_sets']??array());
+		if($allowedSets&&!in_array($setSignature,$allowedSets,true)){return $this->hardDeny('taxonomy_set_not_allowlisted',$context);}
+		if(!$allowedSets&&$profile){return $this->hardDeny('taxonomy_set_authority_empty',$context);}
+		$metaFailure=$this->metaConstraintFailure($context,$filters,$profile);
+		if(''!==$metaFailure){return $this->hardDeny($metaFailure,$context);}
+		if(1===$count){
+			$taxonomy=(string)array_key_first($filters);
+			$rule=(array)($profile['taxonomy_rules'][$taxonomy]??array());
+			if($profile&&empty($rule['index_single'])){return $this->hardDeny('single_taxonomy_not_authorized',$context);}
 		}
-
-		$resultCount = apply_filters( 'etg_filter_seo_result_count', null, $context );
-		if ( is_numeric( $resultCount ) && (int) $resultCount < 1 ) { return $this->filtered( false, 'zero_results', $context ); }
-		$hasLocation = isset( $terms['location'] );
-		$hasType = isset( $terms['tour_type'] );
-		$hasStyle = isset( $terms['style'] );
-		if ( $hasLocation && $hasType && 2 === $count ) {
-			return $this->filtered( is_numeric( $resultCount ) && (int) $resultCount >= 3, 'location_type_min_results', $context );
-		}
-		if ( $hasLocation && $hasType && $hasStyle && 3 === $count ) {
-			return $this->filtered( is_numeric( $resultCount ) && (int) $resultCount >= 3, 'triple_min_results', $context );
-		}
-		return $this->filtered( false, 'combination_not_allowlisted', $context );
+		$comb=(array)($context['combination_authority']??array());
+		if(!empty($comb['required'])&&empty($comb['approved'])){return $this->hardDeny('combination_not_approved',$context);}
+		$content=(array)($context['content_readiness']??array());
+		if(!empty($content['required'])&&empty($content['ready'])){return $this->hardDeny('content_not_ready',$context);}
+		$result=$context['result_count']??null;
+		$authoritative=!empty($context['result_count_authoritative']);
+		if(is_numeric($result)&&(int)$result<1){return $this->hardDeny('zero_results',$context);}
+		if($this->config->get('require_result_count_for_index',true)&&(!is_numeric($result)||!$authoritative)){return $this->hardDeny('result_count_unavailable',$context);}
+		$threshold=$this->threshold($filters,$profile);
+		$enough=is_numeric($result)&&(int)$result>=$threshold;
+		return $this->softDecision($enough,'profile_threshold_policy',$context,$threshold,$setSignature);
 	}
 
-	private function filtered( bool $index, string $reason, array $context ): array {
-		$index = (bool) apply_filters( 'etg_filter_seo_should_index', $index, $reason, $context );
-		return $this->decision( $index, $reason );
+	private function threshold( array $filters, array $profile ): int {
+		$count=count($filters);
+		if(1===$count){
+			$taxonomy=(string)array_key_first($filters);
+			$rule=(array)($profile['taxonomy_rules'][$taxonomy]??array());
+			if(isset($rule['min_results'])){return max(1,(int)$rule['min_results']);}
+		}
+		$byDepth=(array)($profile['min_results_by_depth']??array());
+		if(isset($byDepth[(string)$count])){return max(1,(int)$byDepth[(string)$count]);}
+		if(1===$count){return (int)$this->config->get('min_results_location',1);}
+		if(2===$count){return (int)$this->config->get('min_results_pair',3);}
+		return (int)$this->config->get('min_results_triple',3);
 	}
 
-	private function decision( $index, string $reason ): array {
-		return array( 'index' => $index, 'follow' => true, 'reason' => $reason );
+	private function metaConstraintFailure( array $context, array $filters, array $profile ): string {
+		$terms=(array)($context['terms']??array());
+		foreach(array_keys($filters) as $taxonomy){
+			$rule=(array)($profile['taxonomy_rules'][$taxonomy]??array());
+			$key=sanitize_key((string)($rule['required_meta_key']??''));
+			if(''===$key){continue;}
+			$scope=(string)($rule['meta_constraint_scope']??'single');
+			if('single'===$scope&&1!==count($filters)){continue;}
+			$role=sanitize_key((string)($rule['role']??$taxonomy));
+			$term=(array)($terms[$role]??array());
+			$value=$term['profile_meta'][$key]??($term[$key]??'');
+			if(is_array($value)||is_object($value)){return 'taxonomy_meta_constraint_unreadable';}
+			$value=sanitize_title((string)$value);
+			if(''===$value){return 'taxonomy_meta_constraint_missing';}
+			$allowed=(array)($rule['required_meta_values']??array());
+			if($allowed&&!in_array($value,array_map('sanitize_title',$allowed),true)){return 'taxonomy_meta_constraint_failed';}
+		}
+		return '';
 	}
+
+	private function hardDeny(string $reason,array $context):array{return $this->decision(false,false,false,'hard',$reason,$context,null,ProfileRegistry::taxonomySetSignature((array)($context['filters']??array())));}
+	private function neutral(string $reason,array $context):array{return $this->decision(null,null,false,'neutral',$reason,$context,null,ProfileRegistry::taxonomySetSignature((array)($context['filters']??array())));}
+	private function softDecision(bool $base,string $reason,array $context,int $threshold,string $setSignature):array{$final=function_exists('apply_filters')?(bool)apply_filters('etg_filter_seo_should_index',$base,$reason,$context):$base;return $this->decision($final,$base,$final!==$base,'soft',$reason,$context,$threshold,$setSignature);}
+	private function decision($index,$base,bool $override,string $class,string $reason,array $context,$threshold,string $setSignature):array{return array(
+		'contract'=>'etg.dfsb.index-decision.v3','index'=>$index,'base_index'=>$base,'follow'=>true,'policy_class'=>$class,'override_applied'=>$override,'reason'=>$reason,
+		'profile_id'=>(string)($context['profile_id']??($context['profile']['id']??'')),'taxonomy_set'=>$setSignature,'minimum_results'=>$threshold,
+		'post_type_authority'=>(string)($context['post_type_binding']['authority']??''),'post_type_source'=>(string)($context['post_type_binding']['source']??''),'post_type_binding_reason'=>(string)($context['post_type_binding']['reason']??''),'post_types'=>(array)($context['post_type_binding']['post_types']??array()),
+		'result_count'=>$context['result_count']??null,'result_count_source'=>(string)($context['result_count_source']??''),'result_count_authoritative'=>!empty($context['result_count_authoritative']),
+		'combination_signature'=>(string)($context['combination_authority']['signature']??''),'content_ready'=>(bool)($context['content_readiness']['ready']??false),
+		'configuration_revision'=>(string)($context['scope']['configuration_revision']??$this->config->revision()),
+	);}
 }
