@@ -15,8 +15,13 @@ final class Readiness {
 	public function report(): array {
 		$compat = $this->compatibility->report();
 		$required = array( 'jet_smart_filters', 'jet_engine', 'rank_math', 'wpml', 'elementor' );
+		$publicationRequiresThemeBuilder=false;
+		foreach($this->profiles->all() as $profile){
+			if(!empty($profile['enabled'])&&!empty($profile['publication']['require_elementor_content'])){$publicationRequiresThemeBuilder=true;break;}
+		}
+		if($publicationRequiresThemeBuilder){$required[]='elementor_pro';}
 		$missing = array();
-		foreach ( $required as $dependency ) { if ( empty( $compat[ $dependency ] ) ) { $missing[] = $dependency; } }
+		foreach ( array_values(array_unique($required)) as $dependency ) { if ( empty( $compat[ $dependency ] ) ) { $missing[] = $dependency; } }
 		$missingCapabilities = array();
 		foreach ( (array) ( $compat['capabilities'] ?? array() ) as $name => $ok ) { if ( ! $ok ) { $missingCapabilities[] = $name; } }
 		$configErrors = array_merge( $this->config->validationErrors(), $this->profiles->validationErrors() );
@@ -50,6 +55,7 @@ final class Readiness {
 			'configuration_revision' => $this->config->revision(),
 			'profile_count' => count( $this->profiles->all() ),
 			'enabled_profiles' => array_values( array_keys( array_filter( $this->profiles->all(), static function ( $profile ) { return ! empty( $profile['enabled'] ); } ) ) ),
+			'publication_requires_elementor_pro' => $publicationRequiresThemeBuilder,
 			'missing_dependencies' => $missing,
 			'missing_capabilities' => $missingCapabilities,
 			'configuration_errors' => array_values( array_unique( $configErrors ) ),
