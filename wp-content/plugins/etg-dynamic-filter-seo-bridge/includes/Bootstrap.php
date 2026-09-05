@@ -62,7 +62,8 @@ final class Bootstrap {
 		$canonical=new CanonicalBuilder($this->config);
 		$publication=new PublicationRegistry($this->config,$profiles,$this->builder,$this->policy,$content,$gallery,$languages,new PublicationResultCountProbe(),$canonical);
 		$provider=array($this,'context');
-		$shortcodes=new Shortcodes($provider,$content,$gallery);
+		$evidenceProvider=function():array{return $this->builder?$this->builder->buildEvidence():array();};
+		$shortcodes=new Shortcodes($provider,$content,$gallery,$evidenceProvider);
 		add_action('init',array($shortcodes,'register'),20);
 		if($compatibility->rankMath()){
 			(new MetadataAdapter($provider,$content,$gallery,$this->policy,$canonical,$publication))->register();
