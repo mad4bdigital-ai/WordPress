@@ -18,11 +18,18 @@ trait RuntimeInventoryStructureTrait {
 				'archive_translation_completeness' => $this->completeness( 0, 0, self::MAX_ARCHIVE_PATH_TRANSLATIONS ),
 			);
 		}
-		$objects = $this->iterableArray( get_post_types( array( 'public' => true ), 'objects' ) );
+		$postTypeSource = 'wordpress_get_post_types';
+		try {
+			$objects = $this->iterableArray( get_post_types( array( 'public' => true ), 'objects' ) );
+		} catch ( \Throwable $error ) {
+			$objects = null;
+			$postTypeSource = 'wordpress_get_post_types_exception';
+		}
 		if ( null === $objects ) {
+			if ( 'wordpress_get_post_types' === $postTypeSource ) { $postTypeSource = 'wordpress_get_post_types_invalid'; }
 			return array(
 				'items' => $out,
-				'availability' => array( 'available' => false, 'source' => 'wordpress_get_post_types_invalid' ),
+				'availability' => array( 'available' => false, 'source' => $postTypeSource ),
 				'completeness' => $this->completeness( 0, 0, self::MAX_POST_TYPES ),
 				'archive_translation_availability' => array( 'available' => false, 'source' => $archiveTranslationSource ),
 				'archive_translation_completeness' => $this->completeness( 0, 0, self::MAX_ARCHIVE_PATH_TRANSLATIONS ),
@@ -47,7 +54,13 @@ trait RuntimeInventoryStructureTrait {
 					if ( '' === $code ) { continue; }
 					$translationRequested++;
 					if ( $translationBudget <= 0 || ! $archiveTranslationAvailable ) { continue; }
-					$candidate = apply_filters( 'wpml_permalink', $archiveUrl, $code, true );
+					try {
+						$candidate = apply_filters( 'wpml_permalink', $archiveUrl, $code, true );
+					} catch ( \Throwable $error ) {
+						$archiveTranslationAvailable = false;
+						$archiveTranslationSource = 'wpml_permalink_exception';
+						continue;
+					}
 					if ( ! is_string( $candidate ) || '' === $candidate ) {
 						$archiveTranslationAvailable = false;
 						$archiveTranslationSource = 'wpml_permalink_invalid_result';
@@ -72,7 +85,7 @@ trait RuntimeInventoryStructureTrait {
 		}
 		return array(
 			'items' => $out,
-			'availability' => array( 'available' => true, 'source' => 'wordpress_get_post_types' ),
+			'availability' => array( 'available' => true, 'source' => $postTypeSource ),
 			'completeness' => $this->completeness( $observedCount, count( $out ), self::MAX_POST_TYPES ),
 			'archive_translation_availability' => array( 'available' => $archiveTranslationAvailable, 'source' => $archiveTranslationSource ),
 			'archive_translation_completeness' => $this->completeness( $translationRequested, $translationIncluded, self::MAX_ARCHIVE_PATH_TRANSLATIONS ),
@@ -88,11 +101,18 @@ trait RuntimeInventoryStructureTrait {
 				'completeness' => $this->completeness( 0, 0, self::MAX_TAXONOMIES ),
 			);
 		}
-		$objects = $this->iterableArray( get_taxonomies( array( 'public' => true ), 'objects' ) );
+		$taxonomySource = 'wordpress_get_taxonomies';
+		try {
+			$objects = $this->iterableArray( get_taxonomies( array( 'public' => true ), 'objects' ) );
+		} catch ( \Throwable $error ) {
+			$objects = null;
+			$taxonomySource = 'wordpress_get_taxonomies_exception';
+		}
 		if ( null === $objects ) {
+			if ( 'wordpress_get_taxonomies' === $taxonomySource ) { $taxonomySource = 'wordpress_get_taxonomies_invalid'; }
 			return array(
 				'items' => $out,
-				'availability' => array( 'available' => false, 'source' => 'wordpress_get_taxonomies_invalid' ),
+				'availability' => array( 'available' => false, 'source' => $taxonomySource ),
 				'completeness' => $this->completeness( 0, 0, self::MAX_TAXONOMIES ),
 			);
 		}
@@ -118,7 +138,7 @@ trait RuntimeInventoryStructureTrait {
 		}
 		return array(
 			'items' => $out,
-			'availability' => array( 'available' => true, 'source' => 'wordpress_get_taxonomies' ),
+			'availability' => array( 'available' => true, 'source' => $taxonomySource ),
 			'completeness' => $this->completeness( $observedCount, count( $out ), self::MAX_TAXONOMIES ),
 		);
 	}
@@ -128,13 +148,23 @@ trait RuntimeInventoryStructureTrait {
 		$available = false;
 		$source = 'wpml_active_languages_unavailable';
 		if ( $this->languageProvider ) {
-			$raw = $this->iterableArray( call_user_func( $this->languageProvider ) );
-			$available = is_array( $raw ) && ! empty( $raw );
-			$source = $available ? 'injected_test_provider' : 'injected_test_provider_invalid_or_empty';
+			try {
+				$raw = $this->iterableArray( call_user_func( $this->languageProvider ) );
+				$available = is_array( $raw ) && ! empty( $raw );
+				$source = $available ? 'injected_test_provider' : 'injected_test_provider_invalid_or_empty';
+			} catch ( \Throwable $error ) {
+				$raw = null;
+				$source = 'injected_test_provider_exception';
+			}
 		} elseif ( function_exists( 'apply_filters' ) && $this->filterAvailable( 'wpml_active_languages' ) ) {
-			$raw = $this->iterableArray( apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0, 'orderby' => 'code' ) ) );
-			$available = is_array( $raw ) && ! empty( $raw );
-			$source = $available ? 'wpml_active_languages' : 'wpml_active_languages_invalid_or_empty';
+			try {
+				$raw = $this->iterableArray( apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0, 'orderby' => 'code' ) ) );
+				$available = is_array( $raw ) && ! empty( $raw );
+				$source = $available ? 'wpml_active_languages' : 'wpml_active_languages_invalid_or_empty';
+			} catch ( \Throwable $error ) {
+				$raw = null;
+				$source = 'wpml_active_languages_exception';
+			}
 		}
 		$normalized = array();
 		foreach ( $available ? $raw : array() as $key => $language ) {
