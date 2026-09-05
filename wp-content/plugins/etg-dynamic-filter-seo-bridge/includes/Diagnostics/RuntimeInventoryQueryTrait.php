@@ -7,20 +7,38 @@ trait RuntimeInventoryQueryTrait {
 		$available = false;
 		$source = 'unavailable';
 		if ( $this->queryProvider ) {
-			$raw = call_user_func( $this->queryProvider );
-			$available = true;
-			$source = 'injected_test_provider';
-		} elseif ( class_exists( '\\Jet_Engine\\Query_Builder\\Manager' ) ) {
-			$manager = \Jet_Engine\Query_Builder\Manager::instance();
-			if ( is_object( $manager ) && method_exists( $manager, 'get_queries' ) ) {
-				$raw = $manager->get_queries();
-				$available = true;
-				$source = 'jet_engine_query_builder_manager_get_queries';
+			try {
+				$candidate = $this->iterableArray( call_user_func( $this->queryProvider ) );
+				if ( is_array( $candidate ) ) {
+					$raw = $candidate;
+					$available = true;
+					$source = 'injected_test_provider';
+				} else {
+					$source = 'injected_test_provider_invalid';
+				}
+			} catch ( \Throwable $error ) {
+				$source = 'injected_test_provider_exception';
+			}
+		} elseif ( class_exists( '\\Jet_Engine\\Query_Builder\\Manager' ) && method_exists( '\\Jet_Engine\\Query_Builder\\Manager', 'instance' ) ) {
+			try {
+				$manager = \Jet_Engine\Query_Builder\Manager::instance();
+				if ( is_object( $manager ) && method_exists( $manager, 'get_queries' ) ) {
+					$candidate = $this->iterableArray( $manager->get_queries() );
+					if ( is_array( $candidate ) ) {
+						$raw = $candidate;
+						$available = true;
+						$source = 'jet_engine_query_builder_manager_get_queries';
+					} else {
+						$source = 'jet_engine_query_builder_manager_invalid_result';
+					}
+				}
+			} catch ( \Throwable $error ) {
+				$source = 'jet_engine_query_builder_manager_exception';
 			}
 		}
 
 		$records = array();
-		foreach ( is_array( $raw ) ? $raw : array() as $query ) {
+		foreach ( $raw as $query ) {
 			if ( ! is_object( $query ) ) { continue; }
 			$id = isset( $query->id ) && is_scalar( $query->id ) ? sanitize_text_field( (string) $query->id ) : '';
 			$customId = isset( $query->query_id ) && is_scalar( $query->query_id ) ? sanitize_key( (string) $query->query_id ) : '';
@@ -109,6 +127,7 @@ trait RuntimeInventoryQueryTrait {
 				'identity_conflicts' => $conflicts,
 				'queries' => $items,
 			),
+			'availability' => array( 'available' => $available, 'source' => $source ),
 			'completeness' => $this->completeness( count( $records ), count( $items ), self::MAX_QUERIES ),
 		);
 	}
