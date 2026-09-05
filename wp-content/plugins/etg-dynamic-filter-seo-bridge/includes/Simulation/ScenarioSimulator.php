@@ -17,6 +17,11 @@ final class ScenarioSimulator {
 		$profileId=sanitize_key((string)($scenario['profile_id']??''));
 		$profile=$this->profiles->get($profileId);
 		if(!$profile){return array('contract'=>'etg.dfsb.simulation.v1','synthetic'=>true,'error'=>'profile_not_found','profile_id'=>$profileId);}
+		/* Synthetic scenarios default this presentation prerequisite to verified so
+		 * existing policy objections can exercise deeper gates. Set it false
+		 * explicitly to challenge the Elementor publication gate itself. */
+		if(!isset($profile['publication'])||!is_array($profile['publication'])){$profile['publication']=array();}
+		$profile['publication']['elementor_content_verified']=array_key_exists('elementor_content_verified',$scenario)?(bool)$scenario['elementor_content_verified']:true;
 		$filters=array();
 		foreach((array)($scenario['filters']??array()) as $taxonomy=>$slug){$taxonomy=sanitize_key((string)$taxonomy);$slug=sanitize_title((string)$slug);if(''!==$taxonomy&&''!==$slug){$filters[$taxonomy]=$slug;}}
 		$terms=array();
@@ -64,7 +69,7 @@ final class ScenarioSimulator {
 	}
 
 	private function safeScenario( array $scenario ): array {
-		$allowed=array('profile_id','post_type','language','filters','term_meta','result_count','result_count_authoritative','runtime_ready','provider_match','content_ready','translation_fallback','unsupported_query_params','unknown_filters','malformed','missing_terms');
+		$allowed=array('profile_id','post_type','language','filters','term_meta','result_count','result_count_authoritative','runtime_ready','provider_match','content_ready','elementor_content_verified','translation_fallback','unsupported_query_params','unknown_filters','malformed','missing_terms');
 		return array_intersect_key($scenario,array_flip($allowed));
 	}
 }
