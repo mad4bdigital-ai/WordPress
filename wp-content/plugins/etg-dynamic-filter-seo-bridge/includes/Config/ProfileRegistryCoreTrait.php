@@ -18,21 +18,7 @@ trait ProfileRegistryCoreTrait {
 			if ( isset( $out[ $profile['id'] ] ) ) { $this->normalizationErrors[] = 'duplicate_profile_id:' . $profile['id']; continue; }
 			$out[ $profile['id'] ] = $profile;
 		}
-		if ( function_exists( 'apply_filters' ) ) {
-			$filtered = (array) apply_filters( 'etg_filter_seo_surface_profiles', $out, $this->config );
-			if ( count( $filtered ) > self::MAX_PROFILES ) { $this->normalizationErrors[] = 'filtered_profile_count_limit_exceeded'; }
-			$normalized = array();
-			foreach ( array_slice( $filtered, 0, self::MAX_PROFILES, true ) as $key => $candidate ) {
-				if ( ! is_array( $candidate ) ) { continue; }
-				if ( empty( $candidate['id'] ) && is_string( $key ) ) { $candidate['id'] = $key; }
-				$candidate = $this->normalizeProfile( $candidate );
-				$id = (string) $candidate['id'];
-				if ( '' === $id ) { $this->normalizationErrors[] = 'filtered_profile_id_empty'; continue; }
-				if ( isset( $normalized[ $id ] ) ) { $this->normalizationErrors[] = 'duplicate_filtered_profile_id:' . $id; continue; }
-				$normalized[ $id ] = $candidate;
-			}
-			$out = $normalized;
-		}
+		if(function_exists('apply_filters')){$proposal=apply_filters('etg_filter_seo_surface_profiles',$out,$this->config);if(is_array($proposal)){$out=$this->narrowFilteredProfiles($out,$proposal);}}
 		$this->profiles = $out;
 		return $out;
 	}
@@ -91,8 +77,11 @@ trait ProfileRegistryCoreTrait {
 		foreach ( $profiles as $id => $profile ) {
 			$publication = (array) ( $profile['publication'] ?? array() );
 			if ( ! empty( $publication['elementor_content_verified'] ) && empty( $publication['elementor_verification_evidence_id'] ) ) { $errors[] = 'profile:' . $id . ':elementor_verification_evidence_required'; }
+			if ( ! empty( $publication['elementor_content_verified'] ) && empty( $publication['elementor_evidence_current'] ) ) { $errors[] = 'profile:' . $id . ':elementor_verification_evidence_stale'; }
 			if ( ! empty( $publication['provider_observation_verified'] ) && empty( $publication['provider_observation_evidence_id'] ) ) { $errors[] = 'profile:' . $id . ':provider_observation_evidence_required'; }
+			if ( ! empty( $publication['provider_observation_verified'] ) && empty( $publication['provider_observation_evidence_current'] ) ) { $errors[] = 'profile:' . $id . ':provider_observation_evidence_stale'; }
 			if ( ! empty( $publication['result_count_parity_verified'] ) && empty( $publication['result_count_parity_evidence_id'] ) ) { $errors[] = 'profile:' . $id . ':result_count_parity_evidence_required'; }
+			if ( ! empty( $publication['result_count_parity_verified'] ) && empty( $publication['result_count_parity_evidence_current'] ) ) { $errors[] = 'profile:' . $id . ':result_count_parity_evidence_stale'; }
 			if ( empty( $profile['enabled'] ) ) { continue; }
 			$enabledCount++;
 			if ( empty( $profile['archive_paths'] ) ) { $errors[] = 'profile:' . $id . ':exact_archive_paths_required'; }
@@ -102,9 +91,9 @@ trait ProfileRegistryCoreTrait {
 			if ( ! empty( $profile['require_post_type_binding'] ) && empty( $profile['post_types'] ) ) { $errors[] = 'profile:' . $id . ':post_type_binding_without_post_types'; }
 			if ( ! empty( $profile['require_post_type_binding'] ) && ! in_array( (string) ( $profile['post_type_authority'] ?? '' ), array( 'query_builder', 'main_query', 'either', 'both' ), true ) ) { $errors[] = 'profile:' . $id . ':invalid_post_type_authority'; }
 			if ( $globalEnabled ) {
-				if ( ! empty( $publication['require_elementor_content'] ) && empty( $publication['elementor_content_verified'] ) ) { $errors[] = 'profile:' . $id . ':elementor_content_unverified'; }
-				if ( ! empty( $publication['sitemap'] ) && ! empty( $profile['require_provider_observation_for_index'] ) && empty( $publication['provider_observation_verified'] ) ) { $errors[] = 'profile:' . $id . ':publication_provider_observation_unverified'; }
-				if ( ! empty( $publication['sitemap'] ) && ! empty( $publication['require_result_count_parity_for_publication'] ) && empty( $publication['result_count_parity_verified'] ) ) { $errors[] = 'profile:' . $id . ':publication_result_count_parity_unverified'; }
+				if ( ! empty( $publication['require_elementor_content'] ) && empty( $publication['elementor_evidence_current'] ) ) { $errors[] = 'profile:' . $id . ':elementor_content_unverified'; }
+				if ( ! empty( $publication['sitemap'] ) && ! empty( $profile['require_provider_observation_for_index'] ) && empty( $publication['provider_observation_evidence_current'] ) ) { $errors[] = 'profile:' . $id . ':publication_provider_observation_unverified'; }
+				if ( ! empty( $publication['sitemap'] ) && ! empty( $publication['require_result_count_parity_for_publication'] ) && empty( $publication['result_count_parity_evidence_current'] ) ) { $errors[] = 'profile:' . $id . ':publication_result_count_parity_unverified'; }
 			}
 			$roles = array();
 			foreach ( (array) $profile['taxonomy_rules'] as $taxonomy => $rule ) {
@@ -163,7 +152,7 @@ trait ProfileRegistryCoreTrait {
 			'archive_slugs'=>array(),'archive_paths'=>array(),'providers'=>array(),'query_ids'=>array(),'routes'=>array(),'max_filters'=>min(10,max(1,count($accepted))),'composition_mode'=>'generic','canonical_mode'=>'filtered','require_exact_combination_approval'=>true,'require_exact_for_single'=>false,
 			'allowed_taxonomy_sets'=>array(),'min_results_by_depth'=>array('1'=>3,'2'=>3,'3'=>3),'taxonomy_rules'=>$rules,'indexable_combinations'=>array(),
 			'content'=>array('required'=>true,'require_meta_description'=>true,'min_chars'=>250,'min_chars_by_depth'=>array('1'=>250,'2'=>400,'3'=>500),'min_unique_segments_by_depth'=>array('1'=>1,'2'=>2,'3'=>2)),
-			'publication'=>array('sitemap'=>false,'hreflang'=>true,'schema'=>true,'social'=>true,'include_images_in_sitemap'=>true,'require_elementor_content'=>true,'elementor_render_when_global_off'=>false,'elementor_content_verified'=>false,'elementor_verification_evidence_id'=>'','provider_observation_verified'=>false,'provider_observation_evidence_id'=>'','require_result_count_parity_for_publication'=>true,'result_count_parity_verified'=>false,'result_count_parity_evidence_id'=>'','max_preview_urls'=>50,'max_publication_urls'=>100),
+			'publication'=>array('sitemap'=>false,'hreflang'=>true,'schema'=>true,'social'=>true,'include_images_in_sitemap'=>true,'require_elementor_content'=>true,'elementor_render_when_global_off'=>false,'elementor_content_verified'=>false,'elementor_verification_evidence_id'=>'','provider_observation_verified'=>false,'provider_observation_evidence_id'=>'','require_result_count_parity_for_publication'=>true,'result_count_parity_verified'=>false,'result_count_parity_evidence_id'=>'','max_preview_urls'=>25,'max_publication_urls'=>10),
 		);
 		return array( 'contract'=>'etg.dfsb.profile-blueprint.v2','synthetic'=>true,'authorizing'=>false,'warnings'=>array_values(array_unique($warnings)),'profile'=>$profile );
 	}

@@ -63,13 +63,7 @@ final class PublicationResultCountProbe {
 			if ( ! $taxClauses ) { return $this->unavailable( 'tax_query_empty', $language ); }
 
 			$existing = isset( $args['tax_query'] ) && is_array( $args['tax_query'] ) ? $args['tax_query'] : array();
-			if ( $existing ) {
-				$merged = array( 'relation'=>'AND', $existing );
-				foreach ( $taxClauses as $clause ) { $merged[] = $clause; }
-				$args['tax_query'] = $merged;
-			} else {
-				$args['tax_query'] = count( $taxClauses ) > 1 ? array_merge( array( 'relation'=>'AND' ), $taxClauses ) : $taxClauses;
-			}
+			$args['tax_query']=$this->mergeTaxQuery($existing,$taxClauses);
 
 			$args['posts_per_page'] = 1;
 			$args['paged'] = 1;
@@ -79,7 +73,7 @@ final class PublicationResultCountProbe {
 			$args['suppress_filters'] = false;
 			unset( $args['offset'] );
 
-			$wpQuery = new \WP_Query( $args );
+			$wpQuery = new \\WP_Query( $args );
 			$count = isset( $wpQuery->found_posts ) ? $wpQuery->found_posts : null;
 			if ( ! is_numeric( $count ) ) { return $this->unavailable( 'non_numeric_count', $language ); }
 
@@ -92,15 +86,17 @@ final class PublicationResultCountProbe {
 				'language'=>$language,
 				'wpml_language_context'=>$switched ? 'switched' : 'already_current',
 			);
-			return function_exists('apply_filters') ? (array) apply_filters('etg_filter_seo_publication_result_count',$result,$context,$args) : $result;
-		} catch ( \Throwable $error ) {
+			if(function_exists('apply_filters')){$proposal=apply_filters('etg_filter_seo_publication_result_count',$result,$context,$args);if(false===$proposal||(is_array($proposal)&&array_key_exists('authoritative',$proposal)&&empty($proposal['authoritative']))){return $this->unavailable('publication_count_vetoed',$language);}}return $result;
+		} catch ( \\Throwable $error ) {
 			return $this->unavailable( 'publication_count_exception', $language );
 		} finally {
 			if ( $switched && is_object( $sitepressObject ) && method_exists( $sitepressObject, 'switch_lang' ) && $previousLanguage ) {
-				try { $sitepressObject->switch_lang( $previousLanguage, true ); } catch ( \Throwable $ignored ) {}
+				try { $sitepressObject->switch_lang( $previousLanguage, true ); } catch ( \\Throwable $ignored ) {}
 			}
 		}
 	}
+
+	private function mergeTaxQuery(array $existing,array $clauses):array{$merged=array('relation'=>'AND');if($existing){if(isset($existing['taxonomy'])||isset($existing['relation'])){$merged[]=$existing;}else{foreach($existing as $key=>$child){if('relation'===$key){continue;}if(is_array($child)){$merged[]=$child;}}}}foreach($clauses as $clause){$merged[]=$clause;}return count($merged)>2?$merged:(isset($merged[1])?array($merged[1]):array());}
 
 	private function postTypes( $value ): array {
 		$items = is_array( $value ) ? $value : ( is_scalar( $value ) ? array( $value ) : array() );

@@ -2,7 +2,8 @@
 /**
  * Plugin Name: ETG Dynamic Filter SEO Bridge
  * Description: Governed profile-driven bridge between JetSmartFilters filter URLs, WordPress taxonomies, WPML terms, Elementor rendering, and Rank Math metadata.
- * Version: 0.4.0-alpha.9
+ * Version: 0.4.0-alpha.10
+ * Update URI: https://github.com/mad4bdigital-ai/WordPress
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -11,8 +12,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'ETG_DFSB_VERSION', '0.4.0-alpha.9' );
+define( 'ETG_DFSB_VERSION', '0.4.0-alpha.10' );
 define( 'ETG_DFSB_DIR', plugin_dir_path( __FILE__ ) );
+define( 'ETG_DFSB_PLUGIN_FILE', __FILE__ );
+define( 'ETG_DFSB_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
 spl_autoload_register(static function ( $class ) {
 	$prefix = 'ETG\\DynamicFilterSEOBridge\\';

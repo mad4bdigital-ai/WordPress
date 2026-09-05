@@ -11,7 +11,7 @@ final class RequestScope {
 	public function evaluate( array $parsed ): array {
 		if ( empty( $parsed['active'] ) ) { return $this->decision( false, false, 'inactive' ); }
 		if ( ! $this->config->enabled() ) { return $this->decision( false, false, 'disabled' ); }
-		$scope=$this->profiles->resolve( $parsed );$scope['authorizing']=true;$scope['evidence_only']=false;$scope['global_enabled']=true;return $scope;
+		$scope=$this->profiles->resolve( $parsed );$scope['authorizing']=!empty($scope['in_scope'])&&!empty($scope['scope_valid']);$scope['evidence_only']=false;$scope['global_enabled']=true;return $scope;
 	}
 	public function evaluateForEvidence( array $parsed ): array {
 		if ( empty( $parsed['active'] ) ) { $scope=$this->decision( false, false, 'inactive' ); }

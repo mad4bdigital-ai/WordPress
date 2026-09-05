@@ -22,7 +22,7 @@ final class CombinationRegistry {
 			return array( 'contract'=>'etg.dfsb.combination-authority.v2','required'=>false,'approved'=>true,'signature'=>$signature,'legacy_signature'=>$legacySignature,'taxonomy_set'=>$shape,'source'=>'not_required' );
 		}
 		$registry = isset( $profile['indexable_combinations'] ) ? (array) $profile['indexable_combinations'] : (array) $this->config->get( 'indexable_combinations', array() );
-		if ( function_exists( 'apply_filters' ) ) { $registry = (array) apply_filters( 'etg_filter_seo_indexable_combination_registry', $registry, $context ); }
+		if ( function_exists( 'apply_filters' ) ) { $proposal=(array)apply_filters('etg_filter_seo_indexable_combination_registry',$registry,$context);$proposal=array_map(static function($v){return strtolower(trim((string)$v));},$proposal);$registry=array_values(array_filter($registry,static function($v)use($proposal){return in_array(strtolower(trim((string)$v)),$proposal,true);})); }
 		$normalized = array();
 		foreach ( $registry as $entry ) { $entry = strtolower( trim( (string) $entry ) ); if ( '' !== $entry ) { $normalized[] = $entry; } }
 		$normalized = array_unique( $normalized );

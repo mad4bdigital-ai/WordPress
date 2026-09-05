@@ -24,7 +24,7 @@ final class FilterUrlParser {
 		$queryState = $this->classifyQueryParams( $query );
 		$empty = array_merge( array(
 			'active' => false, 'request_path' => $path, 'archive_path' => '', 'archive' => '', 'provider' => '', 'query_id' => '',
-			'filters' => array(), 'unknown_filters' => array(), 'malformed' => array(), 'duplicates' => array(),
+			'filters' => array(), 'unknown_filters' => array(), 'malformed' => array(), 'duplicates' => array(), 'unicode_filters' => array(),
 		), $queryState );
 
 		$jsfPos = strpos( $path, '/jsf/' );
@@ -46,7 +46,7 @@ final class FilterUrlParser {
 
 		$taxString = trim( substr( $path, $taxPos + strlen( '/tax/' ) ), '/' );
 		$pairs = '' !== $taxString ? explode( ';', $taxString ) : array();
-		$filters = array(); $unknown = array(); $malformed = array(); $duplicates = array();
+		$filters = array(); $unknown = array(); $malformed = array(); $duplicates = array(); $unicodeFilters = array();
 		$allowed = $this->allowedTaxonomies();
 		foreach ( $pairs as $pair ) {
 			$pair = trim( $pair );
@@ -58,7 +58,7 @@ final class FilterUrlParser {
 				$malformed[] = 'multi_value:' . $taxonomy;
 				continue;
 			}
-			$slug = sanitize_title( $slugRaw );
+			$hasUnicode=(bool)preg_match('/[^\x00-\x7F]/u',(string)$slugRaw);$slug = sanitize_title( $slugRaw );if($hasUnicode){$unicodeFilters[$taxonomy]=array('observed'=>true,'normalized_slug'=>$slug);}
 			if ( '' === $taxonomy || '' === $slug ) { $malformed[] = sanitize_text_field( $pair ); continue; }
 			if ( isset( $filters[ $taxonomy ] ) || isset( $unknown[ $taxonomy ] ) ) {
 				$duplicates[ $taxonomy ] = $slug; $malformed[] = 'duplicate:' . $taxonomy; continue;
@@ -78,6 +78,7 @@ final class FilterUrlParser {
 			'unknown_filters' => $unknown,
 			'malformed' => $malformed,
 			'duplicates' => $duplicates,
+			'unicode_filters' => $unicodeFilters,
 		), $queryState );
 	}
 
@@ -107,7 +108,9 @@ final class FilterUrlParser {
 	}
 
 	private function allowedTaxonomies(): array {
-		$allowed = function_exists( 'apply_filters' ) ? apply_filters( 'etg_filter_seo_allowed_taxonomies', $this->allowedTaxonomies ) : $this->allowedTaxonomies;
-		return array_values( array_filter( array_map( 'sanitize_key', (array) $allowed ) ) );
+		$base=array_values(array_unique(array_filter(array_map('sanitize_key',(array)$this->allowedTaxonomies))));
+		if(!function_exists('apply_filters')){return $base;}
+		$proposal=array_values(array_unique(array_filter(array_map('sanitize_key',(array)apply_filters('etg_filter_seo_allowed_taxonomies',$base)))));
+		return array_values(array_intersect($base,$proposal));
 	}
 }
