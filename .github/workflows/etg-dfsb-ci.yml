@@ -75,7 +75,8 @@ jobs:
             inventory-reconciliation-smoke.php \
             pre-staging-authority-hardening-smoke.php \
             publication-layer-smoke.php \
-            alpha9-governance-smoke.php; do
+            alpha9-governance-smoke.php \
+            alpha10-hardening-smoke.php; do
               php "$PLUGIN/tests/$test_file"
           done
 
@@ -130,39 +131,47 @@ jobs:
           require_token 'WPML translated permalink' 'wpml_permalink' /tmp/etg-vendor/wpml
           require_token 'WPML runtime language switch' 'switch_lang' /tmp/etg-vendor/wpml
 
-      - name: Verify Spec Kit, Alpha9 governance and merge lock
+      - name: Verify Spec Kit, Alpha10 governance and merge lock
         shell: bash
         run: |
           set -euo pipefail
           test -s .specify/memory/constitution.md
           test -s .specify/feature.json
-          test -s specs/001-etg-dynamic-filter-seo-operational/contracts/alpha9-governance-hardening-contract.md
+          test -s specs/001-etg-dynamic-filter-seo-operational/contracts/alpha10-comprehensive-hardening-contract.md
           test -s specs/001-etg-dynamic-filter-seo-operational/contracts/seo-publication-contract.md
           test -s specs/001-etg-dynamic-filter-seo-operational/contracts/elementor-content-publication-contract.md
           python - <<'PY'
           import json,re
           d=json.load(open('.specify/feature.json'))
-          assert d['target_version']=='0.4.0-alpha.9'
-          assert d['status']=='publication_governance_hardening_alpha'
+          assert d['target_version']=='0.4.0-alpha.10'
+          assert d['status']=='comprehensive_publication_hardening_alpha'
           assert d['merge_authorized'] is False and d['production_activation_authorized'] is False
-          for gate in ['provider_observation_hardening','result_count_parity_evidence_gate','publication_candidate_cache','bounded_publication_rollout','wpml_background_count_language_context','depth_aware_content_readiness','structured_profile_ui','publication_evidence_bundle','preview_vs_emitted_separation','disabled_profile_dark_evidence_resolution','clean_canonical_deferred_until_runtime_evidence']:
-              assert gate in d['required_gates'],gate
+          required=['provider_observation_hardening','result_count_parity_evidence_gate','publication_candidate_cache','bounded_publication_rollout','wpml_background_count_language_context','depth_aware_content_readiness','structured_profile_ui','publication_evidence_bundle','preview_vs_emitted_separation','disabled_profile_dark_evidence_resolution','clean_canonical_deferred_until_runtime_evidence','host_safe_package_upgrade','standard_wordpress_replace_identity','runtime_release_identity','metadata_final_decision_binding','evidence_authority_fingerprint','sha256_only_evidence','veto_only_index_override','configuration_filters_veto_only','profile_filters_veto_only','combination_filter_veto_only','trusted_external_result_count_authority','runtime_inventory_completeness_fail_closed','query_identity_collision_fail_closed','live_runtime_stage_probe','server_html_sha256_evidence','unicode_wpml_runtime_observation','nested_tax_query_preservation','publication_url_collision_guard','candidate_evaluation_budget','version_bound_cache','settings_cache_invalidation']
+          for gate in required: assert gate in d['required_gates'],gate
           p='wp-content/plugins/etg-dynamic-filter-seo-bridge'
-          source=open(f'{p}/etg-dynamic-filter-seo-bridge.php').read(); assert re.search(r'Version:\s*0\.4\.0-alpha\.9',source); assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.9' );" in source
-          config=open(f'{p}/includes/Config/Configuration.php').read(); registry=open(f'{p}/includes/Config/ProfileRegistry.php').read(); core=open(f'{p}/includes/Config/ProfileRegistryCoreTrait.php').read(); normalized=open(f'{p}/includes/Config/ProfileRegistryNormalizationTrait.php').read(); builder=open(f'{p}/includes/Context/FilterContextBuilder.php').read(); policy=open(f'{p}/includes/SEO/IndexingPolicy.php').read(); publication=open(f'{p}/includes/SEO/PublicationRegistry.php').read(); cache=open(f'{p}/includes/SEO/PublicationCache.php').read(); probe=open(f'{p}/includes/SEO/PublicationResultCountProbe.php').read(); content=open(f'{p}/includes/SEO/ContentReadiness.php').read(); admin=open(f'{p}/includes/Admin/PublicationPage.php').read(); evidence=open(f'{p}/includes/Diagnostics/PublicationEvidenceBundle.php').read(); canonical=open(f'{p}/includes/SEO/CanonicalBuilder.php').read()
-          assert "'enabled' => false" in config and 'tour-style_jet' not in config
-          assert 'private const MAX_COMBINATIONS = 500' in registry
-          assert 'resolveForEvidence' in core and 'profile_matched_for_evidence' in core
-          assert 'require_provider_observation_for_index' in normalized and 'result_count_parity_evidence_id' in normalized
-          assert 'provider_observed' in builder
-          assert 'provider_query_unobserved' in policy and 'provider_observation_not_verified' in policy and 'result_count_parity_not_verified' in policy
-          assert 'MAX_PUBLICATION_URLS = 500' in publication and 'metadata_candidate' in publication and 'metadata_emitted_if_global_on' in publication and 'schema_candidate' in publication and 'schema_emitted' in publication
-          assert 'PublicationCache' in cache and 'get_transient' in cache and 'set_transient' in cache
-          assert 'switch_lang' in probe and "'suppress_filters'] = false" in probe and 'wpml_language_context_unavailable' in probe
-          assert 'min_chars_by_depth' in content and 'insufficient_unique_sections' in content
-          assert 'Structured Profile Manager' in admin and 'WRITE LOCKED' in admin
-          assert 'publication-evidence-bundle.v1' in evidence
-          assert 'clean_filtered' not in canonical
+          source=open(f'{p}/etg-dynamic-filter-seo-bridge.php').read()
+          assert re.search(r'Version:\s*0\.4\.0-alpha\.10',source)
+          assert "define( 'ETG_DFSB_VERSION', '0.4.0-alpha.10' );" in source
+          assert 'Update URI: https://github.com/mad4bdigital-ai/WordPress' in source
+          registry=open(f'{p}/includes/Config/ProfileRegistry.php').read(); core=open(f'{p}/includes/Config/ProfileRegistryCoreTrait.php').read(); normalized=open(f'{p}/includes/Config/ProfileRegistryNormalizationTrait.php').read(); config=open(f'{p}/includes/Config/Configuration.php').read(); policy=open(f'{p}/includes/SEO/IndexingPolicy.php').read(); metadata=open(f'{p}/includes/RankMath/MetadataAdapter.php').read(); registrar=open(f'{p}/includes/RankMath/PublicationSitemapRegistrar.php').read(); maintenance=open(f'{p}/includes/Admin/MaintenancePage.php').read(); identity=open(f'{p}/includes/Runtime/ReleaseIdentity.php').read(); canonical=open(f'{p}/includes/SEO/CanonicalBuilder.php').read(); parser=open(f'{p}/includes/JetSmartFilters/FilterUrlParser.php').read(); combo=open(f'{p}/includes/SEO/CombinationRegistry.php').read(); resolver=open(f'{p}/includes/SEO/ResultCountResolver.php').read(); bg=open(f'{p}/includes/SEO/PublicationResultCountProbe.php').read(); inventory=open(f'{p}/includes/Diagnostics/RuntimeInventory.php').read(); probe=open(f'{p}/includes/Diagnostics/LiveRuntimeProbe.php').read(); publication=open(f'{p}/includes/SEO/PublicationRegistry.php').read(); cache=open(f'{p}/includes/SEO/PublicationCache.php').read()
+          assert 'authorityFingerprint' in registry and 'fingerprintForRawProfile' in registry
+          assert 'provider_observation_authority_fingerprint' in normalized and 'elementor_verification_authority_fingerprint' in normalized and 'result_count_parity_authority_fingerprint' in normalized
+          assert '$final=$base&&$filtered' in policy
+          assert 'seoMutationAllowed' in metadata and "true===($decision['index']??null)" in metadata
+          assert 'update_option_etg_dfsb_settings' in registrar and 'updated_option_etg_dfsb_settings' not in registrar
+          assert 'Replace current with uploaded' in maintenance and 'Preferred path' in maintenance and "overwrite_package'=>'update-plugin'" in maintenance
+          assert 'release-identity.json' in identity
+          assert 'clean_filtered' not in canonical and 'filtered_url_canonicalized_to_archive' in policy
+          assert 'narrowConfiguration' in config and "'publication_max_urls'=>10" in config
+          assert 'narrowFilteredProfiles' in core and 'array_intersect($base,$proposal)' in parser
+          assert 'unicode_filters' in parser and 'array_filter($registry' in combo
+          assert 'etg.dfsb.result-count-authority.v1' in resolver and 'trusted_result_count_authority_sources' in resolver
+          assert 'mergeTaxQuery' in bg and 'publication_count_vetoed' in bg
+          assert 'completeness_errors' in inventory and 'identity_errors' in inventory
+          assert 'wp_head:1' in probe and 'wp_head:999' in probe and 'server-html-evidence.v1' in probe
+          assert "preg_match('/^sha256:[a-fA-F0-9]{64}$/',$id)" in normalized
+          assert 'publication_url_collision' in publication and 'publication_candidate_evaluation_budget' in publication
+          assert 'ETG_DFSB_VERSION' in cache
           PY
 
       - name: Enforce PR change boundary
@@ -185,22 +194,36 @@ jobs:
         run: |
           set -euo pipefail
           ACTUAL_SHA=$(git rev-parse HEAD); test "$ACTUAL_SHA" = "$SOURCE_SHA"
+          TREE_SHA=$(git rev-parse HEAD^{tree})
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\\s*([^\\r\\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
-          test "$VERSION" = '0.4.0-alpha.9'
+          test "$VERSION" = '0.4.0-alpha.10'
           OUT="$RUNNER_TEMP/etg-package"; mkdir -p "$OUT/etg-dynamic-filter-seo-bridge"
           rsync -a --exclude tests "$PLUGIN/" "$OUT/etg-dynamic-filter-seo-bridge/"
+          MANIFEST=$(cd "$OUT"; find etg-dynamic-filter-seo-bridge -type f ! -name release-identity.json -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+          python - "$OUT/etg-dynamic-filter-seo-bridge/release-identity.json" "$SOURCE_SHA" "$TREE_SHA" "$VERSION" "$MANIFEST" <<'PY'
+          import json,sys
+          path,sha,tree,version,manifest=sys.argv[1:]
+          with open(path,'w',encoding='utf-8',newline='\n') as f:
+              json.dump({'contract':'etg.dfsb.release-identity.v1','git_sha':sha,'tree_sha':tree,'plugin_version':version,'source_manifest_sha256':manifest},f,sort_keys=True,separators=(',',':'))
+              f.write('\n')
+          PY
           find "$OUT/etg-dynamic-filter-seo-bridge" -exec touch -t 198001010000 {} +
           ZIP="$OUT/etg-dynamic-filter-seo-bridge-${VERSION}.zip"
           (cd "$OUT"; find etg-dynamic-filter-seo-bridge -type f -print | LC_ALL=C sort | zip -X -q "$ZIP" -@)
-          unzip -t "$ZIP"; DIGEST=$(sha256sum "$ZIP" | awk '{print $1}')
+          unzip -t "$ZIP"
+          DIGEST=$(sha256sum "$ZIP" | awk '{print $1}')
+          unzip -p "$ZIP" etg-dynamic-filter-seo-bridge/release-identity.json | python -c "import json,sys; d=json.load(sys.stdin); assert d['git_sha']=='$SOURCE_SHA'; assert d['tree_sha']=='$TREE_SHA'; assert d['plugin_version']=='$VERSION'; assert d['source_manifest_sha256']=='$MANIFEST'"
           {
-            echo "contract=etg.dfsb.release-provenance.v2"
+            echo "contract=etg.dfsb.release-provenance.v3"
             echo "git_sha=$SOURCE_SHA"
+            echo "tree_sha=$TREE_SHA"
             echo "plugin_version=$VERSION"
+            echo "source_manifest_sha256=$MANIFEST"
+            echo "runtime_identity_contract=etg.dfsb.release-identity.v1"
             echo "profile_engine=generic_surface_profile_v1"
             echo "publication_engine=rank_math_dynamic_publication_v1"
-            echo "publication_hardening=provider_observation_cache_evidence_v1"
+            echo "publication_hardening=authority_fingerprint_update_identity_v2"
             echo "package_sha256=$DIGEST"
             echo "jet_engine_blob=$(git rev-parse HEAD:wp-content/plugins/jet-engine.zip)"
             echo "jet_smart_filters_blob=$(git rev-parse HEAD:wp-content/plugins/jet-smart-filters.zip)"
