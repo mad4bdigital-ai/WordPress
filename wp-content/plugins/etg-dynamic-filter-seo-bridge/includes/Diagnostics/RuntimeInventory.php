@@ -6,6 +6,7 @@ require_once __DIR__ . '/RuntimeInventoryStructureTrait.php';
 
 final class RuntimeInventory {
 	const CONTRACT = 'etg.dfsb.runtime-inventory.v2';
+	const UNAVAILABLE_CONTRACT = 'etg.dfsb.runtime-inventory-unavailable.v1';
 	const MAX_POST_TYPES = 100;
 	const MAX_TAXONOMIES = 150;
 	const MAX_QUERIES = 100;
@@ -27,14 +28,26 @@ final class RuntimeInventory {
 
 	public function collect(): array {
 		$languagesResult = $this->languages();
-		$postTypesResult = $this->postTypes( $languagesResult['items'] );
+		$postTypesResult = $this->postTypes( $languagesResult['items'], ! empty( $languagesResult['availability']['available'] ) );
 		$taxonomiesResult = $this->taxonomies();
 		$queriesResult = $this->queries();
+		$availability = array(
+			'post_types' => $postTypesResult['availability'],
+			'taxonomies' => $taxonomiesResult['availability'],
+			'languages' => $languagesResult['availability'],
+			'query_builder' => $queriesResult['availability'],
+			'archive_path_translations' => $postTypesResult['archive_translation_availability'],
+		);
+		$availabilityErrors = array();
+		foreach ( $availability as $section => $record ) {
+			if ( empty( $record['available'] ) ) { $availabilityErrors[] = sanitize_key( (string) $section ) . '_unavailable'; }
+		}
 		$core = array(
 			'post_types' => $postTypesResult['items'],
 			'taxonomies' => $taxonomiesResult['items'],
 			'languages' => $languagesResult['items'],
 			'query_builder' => $queriesResult['data'],
+			'availability' => $availability,
 			'completeness' => array(
 				'post_types' => $postTypesResult['completeness'],
 				'taxonomies' => $taxonomiesResult['completeness'],
@@ -43,11 +56,16 @@ final class RuntimeInventory {
 				'archive_path_translations' => $postTypesResult['archive_translation_completeness'],
 			),
 		);
+		$complete = empty( $availabilityErrors );
+		$fingerprint = hash( 'sha256', $this->encode( $core ) );
 		return array(
-			'contract' => self::CONTRACT,
+			'contract' => $complete ? self::CONTRACT : self::UNAVAILABLE_CONTRACT,
+			'expected_contract' => self::CONTRACT,
 			'authorizing' => false,
 			'read_only' => true,
 			'profile_mutation' => false,
+			'evidence_complete' => $complete,
+			'availability_errors' => $availabilityErrors,
 			'limits' => array(
 				'post_types' => self::MAX_POST_TYPES,
 				'taxonomies' => self::MAX_TAXONOMIES,
@@ -56,7 +74,7 @@ final class RuntimeInventory {
 				'archive_path_translations' => self::MAX_ARCHIVE_PATH_TRANSLATIONS,
 				'query_identity_conflicts' => self::MAX_QUERY_IDENTITY_CONFLICTS,
 			),
-			'snapshot_fingerprint' => hash( 'sha256', $this->encode( $core ) ),
+			'snapshot_fingerprint' => $fingerprint,
 			'collected_at_gmt' => gmdate( 'c' ),
 			'inventory' => $core,
 		);
