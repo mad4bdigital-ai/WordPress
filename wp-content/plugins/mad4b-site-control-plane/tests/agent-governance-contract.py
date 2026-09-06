@@ -22,8 +22,10 @@ impact = read('includes/class-mad4b-scp-impact-policy.php')
 approvals = read('includes/class-mad4b-scp-approval-tickets.php')
 mutation = read('includes/class-mad4b-scp-mutation-manager.php')
 overrides = read('includes/class-mad4b-scp-governed-ability-overrides.php')
+governance = read('includes/class-mad4b-scp-governance-abilities.php')
 policy = read('includes/class-mad4b-scp-policy.php')
 adapter = read('includes/adapters/class-mad4b-scp-adapter-base.php')
+adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
 abilities = read('includes/class-mad4b-scp-abilities.php')
 servers = read('includes/class-mad4b-scp-servers.php')
 bootstrap = read('mad4b-site-control-plane.php')
@@ -46,12 +48,23 @@ require(identity, "'approval_ticket_id'", 'approval-context-id')
 for forbidden_url_pattern in ('/mcp/{token}', '/mcp/{api_key}', 'HTTP_AUTHORIZATION] ='):
     forbid(bootstrap + identity + authz, forbidden_url_pattern, 'no-token-url')
 
-# Agent registry uses exact grants and deny precedence.
+# Agent registry uses exact grants, mounted-server/provider binding and deny precedence.
 require(registry, 'mad4b_wildcard_grant_denied', 'wildcard-grant-denial')
 require(registry, 'mad4b_nhi_subject_unbound', 'unbound-subject-denial')
 require(registry, 'mad4b_nhi_agent_disabled', 'disabled-agent-denial')
 require(registry, "if ( 'deny' === $row['effect'] )", 'deny-precedence')
 require(registry, "if ( 'allow' === $row['effect'] )", 'exact-allow')
+require(registry, 'MAD4B_SCP_Servers::provider_for_ability', 'grant-server-provider-binding')
+require(registry, 'mad4b_grant_server_ability_mismatch', 'grant-server-ability-denial')
+require(registry, 'mad4b_grant_provider_mismatch', 'grant-provider-denial')
+require(registry, 'mad4b_scp_allow_breakglass_grant_creation', 'breakglass-exception-hook')
+require(registry, 'mad4b_breakglass_grant_creation_denied', 'breakglass-default-denial')
+
+# Server membership has a single provider-aware source of truth.
+require(servers, 'public static function provider_for_ability', 'server-provider-resolver')
+require(servers, "return 'core';", 'core-provider-binding')
+require(servers, '$adapter->provider_key()', 'adapter-provider-binding-from-server')
+require(adapter, 'public function provider_key()', 'adapter-public-provider-key')
 
 # Global mutation requires schema + authenticated bound NHI in addition to the constant.
 require(policy, "defined( 'MAD4B_MCP_MUTATION_ENABLED' )", 'global-mutation-gate')
@@ -75,6 +88,8 @@ require(authz, 'mad4b_nhi_resource_constraints_unresolved', 'constraint-fail-clo
 require(authz, 'MAD4B_SCP_Impact_Policy::requires_approval', 'impact-approval-gate')
 require(authz, 'MAD4B_SCP_Approval_Tickets::consume_exact', 'approval-consume-gate')
 require(authz, 'mad4b_approval_required', 'missing-approval-denial')
+require(authz, 'public static function target_fingerprint', 'target-fingerprint-single-source')
+require(authz, 'self::target_fingerprint', 'authorization-target-resolver-use')
 require(authz, 'mutation_global_enabled', 'configured-mutation-status')
 require(authz, 'mutation_effective_for_request', 'effective-mutation-status')
 require(authz, 'mad4b/authorization:', 'authorization-audit')
@@ -102,6 +117,24 @@ require(approvals, 'mad4b_approval_payload_mismatch', 'approval-payload-denial')
 require(approvals, "array( 'mutation', 'breakglass', 'recovery' )", 'approval-class-separation')
 for forbidden in ('serialize(', 'unserialize('):
     forbid(approvals, forbidden, 'approval-no-php-serialization')
+
+# Governance visibility is admin-only, non-secret, deny-aware and never auto-approves.
+for ability_name in ("'mad4b/agent-list'", "'mad4b/agent-effective-access'", "'mad4b/approval-plan'"):
+    require(governance, ability_name, 'governance-ability-registration')
+    require(servers, ability_name, 'governance-admin-server-mount')
+    require(adapter_registry, ability_name, 'governance-runtime-self-test-inventory')
+require(governance, "current_user_can( 'manage_options' )", 'governance-admin-capability')
+require(governance, "if ( 'deny' === $row['effect'] )", 'effective-access-deny-precedence')
+require(governance, "'conditional'", 'effective-access-conditional-constraints')
+require(governance, 'MAD4B_SCP_Servers::provider_for_ability', 'approval-mounted-provider-resolver')
+require(governance, 'mad4b_approval_provider_mismatch', 'approval-provider-mismatch-denial')
+require(governance, 'mad4b_approval_annotation_missing', 'approval-mutation-annotation-fail-closed')
+require(governance, 'mad4b_approval_not_required', 'approval-only-when-policy-requires')
+require(governance, 'MAD4B_SCP_Authorization::target_fingerprint', 'approval-central-target-resolver')
+require(governance, 'mad4b_approval_target_mismatch', 'approval-target-assertion-denial')
+require(governance, "'auto_approved' => false", 'approval-never-auto-approved')
+require(plugin, 'MAD4B_SCP_Governance_Abilities::boot()', 'governance-boot')
+require(bootstrap, 'class-mad4b-scp-governance-abilities.php', 'governance-bootstrap-load')
 
 # Reversible mutation pilot uses the supported WordPress ability-registration filter rather than duplicate registration/forking.
 require(overrides, 'wp_register_ability_args', 'supported-ability-override-hook')
@@ -134,7 +167,7 @@ require(mutation, "'verification_code' => 'restore_readback_match'", 'undo-readb
 for forbidden in ('unserialize(', 'eval(', 'shell_exec('):
     forbid(mutation, forbidden, 'mutation-dangerous-primitive')
 
-# Bootstrap order makes governance/mutation services available before abilities/adapters.
+# Bootstrap order makes governance/mutation services available before plugin boot.
 order = [
     'class-mad4b-scp-schema.php',
     'class-mad4b-scp-identity-context.php',
@@ -148,9 +181,12 @@ order = [
     'class-mad4b-scp-mutation-manager.php',
     'class-mad4b-scp-governed-ability-overrides.php',
     'class-mad4b-scp-abilities.php',
+    'class-mad4b-scp-servers.php',
+    'class-mad4b-scp-governance-abilities.php',
+    'class-mad4b-scp-plugin.php',
 ]
 pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v3: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v4: PASS')
