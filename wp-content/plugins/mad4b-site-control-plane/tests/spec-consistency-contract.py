@@ -65,7 +65,7 @@ for marker in (
 for marker in (
     'mad4b.connection-readiness.v2', 'Local transport ready', 'Remote endpoint preflight ready',
     'Connection certified', 'mad4b/connection-status', 'mad4b-write',
-    'MAD4B_SCP_Transport_Context', 'server/ability/provider',
+    'MAD4B_SCP_Transport_Context', 'different authority coordinates',
     'No self-probe / SSRF boundary', 'Foreign MCP transport governance',
     'mcp_foreign_transport_unreviewed', 'mcp_write_side_channel_detected',
     'Production write remains NO-GO',
