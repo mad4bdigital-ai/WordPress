@@ -43,54 +43,88 @@ final class MAD4B_SCP_Adapter_Registry {
 		) );
 	}
 	public function inventory() { $items = array(); foreach ( $this->adapters as $adapter ) $items[] = $adapter->status(); return array( 'adapters' => $items, 'count' => count( $items ) ); }
+
+	private function core_ability_names() {
+		return array(
+			'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
+			'mad4b/filesystem-list', 'mad4b/filesystem-read', 'mad4b/database-list-tables', 'mad4b/database-describe-table',
+			'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/content-get-post', 'mad4b/content-update-post',
+			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch',
+			'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/runtime-self-test',
+		);
+	}
+
 	public function runtime_self_test() {
 		$missing = array();
 		$public_leaks = array();
-		$provider_version_drift = array();
-		$surfaces = array( 'read', 'content', 'admin' );
-		foreach ( $surfaces as $surface ) {
-			foreach ( $this->ability_names( $surface ) as $name ) {
-				if ( ! wp_has_ability( $name ) ) {
-					$missing[] = $name;
-					continue;
-				}
-				$ability = wp_get_ability( $name );
-				if ( $ability && method_exists( $ability, 'get_meta' ) ) {
-					$meta = $ability->get_meta();
-					if ( ! empty( $meta['public'] ) || ! empty( $meta['mcp']['public'] ) ) $public_leaks[] = $name;
-				}
+		$provider_contract_blockers = array();
+		$required_provider_missing = array();
+		$mutation_blocked_adapters = array();
+		$ability_names = $this->core_ability_names();
+		foreach ( array( 'read', 'content', 'admin' ) as $surface ) $ability_names = array_merge( $ability_names, $this->ability_names( $surface ) );
+		$ability_names = array_values( array_unique( $ability_names ) );
+
+		foreach ( $ability_names as $name ) {
+			if ( ! wp_has_ability( $name ) ) {
+				$missing[] = $name;
+				continue;
+			}
+			$ability = wp_get_ability( $name );
+			if ( $ability && method_exists( $ability, 'get_meta' ) ) {
+				$meta = $ability->get_meta();
+				if ( ! empty( $meta['public'] ) || ! empty( $meta['mcp']['public'] ) ) $public_leaks[] = $name;
 			}
 		}
 
 		$inventory = $this->inventory();
 		$available = 0;
+		$provider_runtime = array();
 		foreach ( $inventory['adapters'] as $adapter ) {
-			if ( empty( $adapter['available'] ) ) {
-				continue;
+			if ( ! empty( $adapter['available'] ) ) ++$available;
+			if ( isset( $adapter['provider_certification']['provider'] ) ) {
+				$key = (string) $adapter['provider_certification']['provider'];
+				$provider_runtime[ $key ] = $adapter['provider_certification'];
 			}
-			++$available;
-			if ( isset( $adapter['provider_certification']['status'] ) && 'version_drift' === $adapter['provider_certification']['status'] ) {
-				$provider_version_drift[] = isset( $adapter['id'] ) ? $adapter['id'] : 'unknown';
+			if ( ! empty( $adapter['mutation_requires_certification'] ) ) {
+				$cert = isset( $adapter['provider_certification'] ) && is_array( $adapter['provider_certification'] ) ? $adapter['provider_certification'] : array();
+				if ( empty( $cert['runtime_contract_ok'] ) ) $mutation_blocked_adapters[] = isset( $adapter['id'] ) ? $adapter['id'] : 'unknown';
 			}
 		}
 
 		$mcp_adapter = class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		$mcp_certification = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $mcp_adapter ) : array();
-		if ( isset( $mcp_certification['status'] ) && 'version_drift' === $mcp_certification['status'] ) {
-			$provider_version_drift[] = 'mcp_adapter';
+		$provider_runtime['mcp_adapter'] = $mcp_certification;
+
+		$required_providers = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::required_providers() : array( 'mcp_adapter' );
+		foreach ( $required_providers as $provider ) {
+			$status = isset( $provider_runtime[ $provider ] ) ? $provider_runtime[ $provider ] : MAD4B_SCP_Provider_Contracts::runtime_status( $provider, false );
+			if ( empty( $status['runtime_contract_ok'] ) ) {
+				$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_violations( $provider, false === strpos( implode( ',', array_keys( $provider_runtime ) ), $provider ) ? false : null ) : array( 'certification_authority_unavailable' );
+				$provider_contract_blockers[ $provider ] = $violations;
+				if ( isset( $status['status'] ) && 'unavailable' === $status['status'] ) $required_provider_missing[] = $provider;
+			}
 		}
-		$provider_version_drift = array_values( array_unique( $provider_version_drift ) );
-		$provider_certification_ok = empty( $provider_version_drift ) && $mcp_adapter && ( empty( $mcp_certification['status'] ) || 'certified' === $mcp_certification['status'] );
-		$passed = empty( $missing ) && empty( $public_leaks ) && $mcp_adapter && $provider_certification_ok;
+
+		$server_status = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
+		$server_registration_ok = true;
+		foreach ( $server_status as $server ) if ( empty( $server['registered'] ) ) $server_registration_ok = false;
+
+		$provider_contract_ok = empty( $provider_contract_blockers );
+		$passed = empty( $missing ) && empty( $public_leaks ) && $mcp_adapter && $provider_contract_ok && $server_registration_ok;
 
 		return array(
 			'status' => $passed ? 'passed' : 'degraded',
 			'wordpress_abilities' => function_exists( 'wp_register_ability' ),
 			'mcp_adapter' => $mcp_adapter,
 			'mcp_adapter_certification' => $mcp_certification,
-			'provider_certification_ok' => $provider_certification_ok,
-			'provider_version_drift' => $provider_version_drift,
+			'provider_certification_ok' => $provider_contract_ok,
+			'provider_contract_blockers' => $provider_contract_blockers,
+			'required_providers' => $required_providers,
+			'required_provider_missing' => array_values( array_unique( $required_provider_missing ) ),
+			'mutation_blocked_adapters' => array_values( array_unique( $mutation_blocked_adapters ) ),
 			'custom_server_isolation' => empty( $public_leaks ),
+			'custom_server_registration_ok' => $server_registration_ok,
+			'custom_servers' => $server_status,
 			'registered_adapter_count' => count( $inventory['adapters'] ),
 			'available_adapter_count' => $available,
 			'missing_abilities' => array_values( array_unique( $missing ) ),
