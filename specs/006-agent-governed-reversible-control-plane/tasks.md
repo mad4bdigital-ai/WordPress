@@ -51,6 +51,20 @@ All **nine** repository workflows were `SUCCESS` on that SHA. `MAD4B Connection 
 
 The concurrency key for Connection Governance is also bound to the exact head SHA so a stale runner from an older PR head cannot hold newer exact-head certification behind the same PR-wide group.
 
+### Adapter discovery + reversible-provider expansion
+
+A dedicated `MAD4B Adapter Coverage` workflow now separates repository package coverage from runtime installed-plugin coverage. The framework:
+
+- classifies every repository `wp-content/plugins/*.zip`, with unknown packages failing closed to `adapter_required`;
+- discovers installed/active plugins at runtime and creates deterministic read-only adapter support requests;
+- treats WooCommerce and Polylang as first-class external providers even when their ZIPs are absent from this repository;
+- never auto-installs plugins, generates executable adapters, creates authority, or enables mutation;
+- provides a generic durable `mad4b.rollback.adapter.v1` envelope with provider readback, drift-safe undo and provider re-certification at restore time;
+- runtime-proves the generic Media reversible path on WordPress 6.9/latest;
+- runtime-proves that exact packaged JetEngine 3.8.11.2 is **not** claimed writable while its provider-native `jet-engine/v1` MCP plane remains a parallel mutation authority: coverage reports `adapter_present_side_channel_blocked`, central authorization returns `mcp_write_side_channel_detected`, and approval/provider state remain untouched.
+
+Normative details are in `contracts/adapter-coverage.md`.
+
 ## Phase 0 — Specification and guardrails
 
 - [x] T000 Constitution: trust, least privilege, provider certification, reversible mutation and side-channel rules.
@@ -167,7 +181,7 @@ The concurrency key for Connection Governance is also bound to the exact head SH
 - [x] Exact enabled NHI/grant/server/provider/target validation.
 - [x] Pending ticket only; never auto-approves.
 
-## Phase 5 — Mutation envelope and undo
+## Phase 5 — Mutation envelope, adapter discovery and undo
 
 ### T050 — `MAD4B_SCP_Mutation_Manager`
 
@@ -198,17 +212,31 @@ The concurrency key for Connection Governance is also bound to the exact head SH
 - [x] Restore original state + readback verify.
 - [x] Child recovery record.
 - [x] Deliberate newer human edit produces `mad4b_undo_state_drift` without overwrite.
+- [x] Generic adapter rollback dispatch uses exact named restore contracts and persists no executable callback/class authority.
+- [x] External provider certification is re-checked before adapter restore; runtime drift fails closed.
 
 ### T054 — Extend reversible adapters deliberately
 
-- [ ] Selected Media metadata.
-- [ ] Rank Math allowlisted fields.
-- [ ] Polylang language assignment.
-- [ ] WooCommerce bounded product fields.
-- [ ] JetEngine certified fields.
-- [ ] Elementor only where provider/native restore is certified.
+- [x] Selected Media metadata + featured-image contracts implemented; generic adapter mutation/undo/drift runtime proof on WordPress 6.9/latest.
+- [~] Rank Math allowlisted fields: reversible implementation exists and preserves meta existence vs empty value; exact provider runtime certification remains required before writer/undo can be claimed ready.
+- [~] Polylang language assignment: reversible implementation exists; first-class external provider runtime certification remains pending, and previously unassigned posts fail closed until provider-safe unassignment restore is certified.
+- [~] WooCommerce bounded product fields: reversible implementation exists, products only; orders/payments/refunds remain excluded and exact external provider runtime certification is still required.
+- [~] JetEngine explicitly allowlisted post-meta fields: reversible implementation and exact packaged provider certification exist, but normal writer remains intentionally blocked while the provider-native `jet-engine/v1` MCP plane is detected as a parallel mutation authority. Runtime CI proves denial before approval consumption/provider side effect.
+- [ ] Elementor reversible mutation only where provider/native restore is separately certified.
 
 Plugin lifecycle, structured DB mutation and Flow execution remain high-impact/non-reversible unless an explicit provider-safe restore contract exists.
+
+### T055 — Automatic plugin adapter discovery and support requests
+
+- [x] Repository CI inventories every `wp-content/plugins/*.zip`; unknown packages default to `adapter_required` rather than disappearing from coverage.
+- [x] Runtime discovery inventories installed and active/network-active plugins through WordPress plugin APIs.
+- [x] `mad4b/plugin-adapter-coverage` and `mad4b/adapter-support-requests` are non-public read-only abilities.
+- [x] Deterministic support requests can require an adapter, reversible certification, provider certification, or native MCP isolation without sending a network request.
+- [x] Discovery never installs/enables plugins, generates executable adapter code, creates NHI/grant/approval authority, or auto-enables mutation.
+- [x] WooCommerce and Polylang remain first-class external targets even when absent from repository ZIP inventory.
+- [x] High-risk code/file/role/database-rewrite families remain `excluded_high_risk` from normal writer generation.
+- [x] Read-only `Adapter Coverage` Admin submenu surfaces coverage/provider-certification/runtime-blocker evidence.
+- [x] JetEngine native MCP conflict is surfaced as `adapter_present_side_channel_blocked` + `parallel_mcp_write_plane_requires_isolation`, not mislabeled reversible-ready.
 
 ## Phase 6 — Blast-radius controls
 
@@ -256,6 +284,7 @@ Plugin lifecycle, structured DB mutation and Flow execution remain high-impact/n
 - [x] Unreviewed independent MCP transport fails governed mutation closed with `mcp_foreign_transport_unreviewed` + `mcp_write_side_channel_detected`.
 - [x] No runtime bypass filter can silently suppress the foreign-transport verdict.
 - [x] Disposable `/mosmcp/v1/mcp`-shaped independent REST transport blocker runtime-certified on WordPress 6.9/latest at `33b20ab…`.
+- [x] Exact packaged JetEngine native MCP is now a real-provider side-channel proof: its `jet-engine/v1` MCP route is attributed, normal MAD4B JetEngine mutation is denied, approval remains unused, and provider state remains unchanged.
 
 ## Phase 8 — Audit storage hardening
 
@@ -307,6 +336,7 @@ The certified first slice is intentionally read-only; it does not create a paral
 
 ### T096 — Provider/runtime certification
 - [x] Runtime self-test + MCP peer status surfaced.
+- [x] Adapter Coverage adds provider-certification and side-channel-blocker visibility without mutation actions.
 - [ ] Expanded provider-by-provider visual table optional future UX.
 
 ### T097 — Diagnostics/side-channel blockers
@@ -341,7 +371,7 @@ The certified first slice is intentionally read-only; it does not create a paral
 - [x] Exact `mad4b-write + mad4b/content-update-post + core` grant remains a distinct authority record.
 - [x] Connection Console exposes write readiness/count/gates read-only with no enable/grant/mutation action.
 - [x] Runtime proof PASS on WordPress 6.9/latest at `33b20ab…`.
-- [x] Connection Governance concurrency is exact-head keyed so a stale older runner cannot hold newer-head certification in the same PR-wide group.
+- [x] Connection Governance concurrency is exact-head keyed so a stale runner from an older head cannot hold newer-head certification in the same PR-wide group.
 
 Any future Admin write action must use reviewed capability + WordPress nonce + service-level validation and must not create an alternative authority path.
 
@@ -357,6 +387,8 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [x] `connection-readiness-contract.py` covers five-endpoint truth, transport context, `mad4b-write` projection/isolation, no-secret/no-self-probe rules and foreign MCP fail-closed semantics.
 - [x] Dedicated `MAD4B Connection Governance` workflow covers static and WordPress 6.9/latest runtime evidence.
 - [x] Main `MAD4B Site Control Plane` workflow requires the fifth governed surface and transport-binding contracts.
+- [x] `adapter-discovery-reversibility-contract.py` covers repository ZIP classification, WooCommerce/Polylang first-class external coverage, deterministic fail-closed support requests, generic rollback contracts, provider re-certification, high-risk exclusions and JetEngine native-MCP isolation requirements.
+- [x] Dedicated `MAD4B Adapter Coverage` workflow separates repository inventory, core adapter runtime and exact packaged JetEngine side-channel boundary evidence.
 
 ### T101 — Runtime integration
 
@@ -373,6 +405,9 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [x] `mad4b-write` exact transport route and specialist-grant isolation runtime proof on WordPress 6.9/latest.
 - [x] Namespace-index anti-hijack runtime proof on WordPress 6.9/latest.
 - [x] Dedicated approval-ticket expiry runtime proof: expired pending tickets cannot be approved; approved-then-expired tickets cannot be consumed or marked used; PASS on WordPress 6.9/latest at `eddfdad7…`.
+- [x] Automatic installed-plugin adapter discovery + deterministic support-request runtime proof on WordPress 6.9/latest.
+- [x] Generic reversible Media adapter envelope + approved undo + deliberate drift denial runtime proof on WordPress 6.9/latest.
+- [x] Exact packaged JetEngine provider/native-MCP boundary runtime proof on WordPress 6.9/latest: side-channel is detected and governed writer fails closed before approval/provider side effects.
 
 ### T102 — Packaging
 
@@ -407,14 +442,15 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 Before Production write:
 
 - [x] T006 dedicated spec-consistency gate implemented.
-- [ ] Required reversible adapter scope for intended Production operations resolved; T054 remains open beyond post-update pilot.
+- [~] T054/T055 repository implementation is materially expanded: Media is runtime-certified and automatic plugin discovery is complete; Rank Math/WooCommerce/Polylang still require exact target/provider runtime certification, JetEngine requires certified native-MCP isolation, and Elementor reversible scope remains pending.
 - [x] NHI/exact grants/approval/budget/side-channel core contracts repository-certified.
 - [x] `mad4b-write` transport/grant isolation and Connection/foreign-MCP expansion repository runtime-certified at the `33b20ab…` implementation checkpoint.
 - [x] Append-only audit repository durability/integrity certified.
 - [x] Read-only Admin Governance + Connection Consoles repository-certified.
+- [x] Read-only Adapter Coverage discovery/support-request surface implemented with fail-closed runtime blocker visibility.
 - [ ] Target staging T103 PASS.
-- [ ] Exact deployed provider/runtime certification PASS.
-- [ ] No target-site MCP write-side-channel blocker.
+- [ ] Exact deployed provider/runtime certification PASS for every intended mutation provider.
+- [ ] No target-site MCP write-side-channel blocker, including provider-native parallel MCP planes.
 - [ ] Dedicated Production NHI with exact minimal non-wildcard grants, including exact `mad4b-write` server coordinates where used.
 - [ ] Production approval/recovery policy validated at target boundary.
 - [ ] Explicit operator authorization to enable mutation in Production.
@@ -424,7 +460,7 @@ Before Production write:
 - [ ] D001 Yoast governed writer.
 - [ ] D002 SEOPress governed writer.
 - [ ] D003 deep JetSmartFilters mutation APIs.
-- [ ] D004 exhaustive commercial JetEngine field schemas.
+- [ ] D004 exhaustive commercial JetEngine field schemas plus provider-native MCP isolation certification before normal writer enablement.
 - [ ] D005 advanced Elementor visual CRUD beyond certified native contracts.
 - [ ] D006 advanced WooCommerce order/refund/payment mutations.
 - [ ] D007 user password/session/role actions — exceptional/high-risk only.
