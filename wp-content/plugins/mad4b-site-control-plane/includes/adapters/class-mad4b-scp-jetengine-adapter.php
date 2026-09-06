@@ -26,6 +26,7 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		$status['write_mode'] = 'explicit_field_policy_plus_sha_lock_plus_reversible_envelope';
 		$status['unknown_field_write_default'] = 'deny';
 		$status['sensitive_meta_default'] = 'deny_read_write';
+		$status['protected_meta_reversible_default'] = 'deny';
 		$status['meta_create_mode'] = 'admin_plus_explicit_create_policy_plus_field_policy';
 		return $status;
 	}
@@ -84,6 +85,7 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
 		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; $field = $this->validate_write_target( $id, $input );
 		if ( is_wp_error( $field ) ) return $field;
+		if ( 0 === strpos( $field, '_' ) ) return new WP_Error( 'mad4b_jetengine_protected_meta_not_reversible', 'Protected meta is excluded from the normal reversible JetEngine writer even when a read/write override exists.' );
 		$exists = metadata_exists( 'post', $id, $field ); $current = get_post_meta( $id, $field, true );
 		return array( 'target_type' => 'jetengine-post-meta', 'target_id' => $id . ':' . $field, 'target' => array( 'post_id' => $id, 'field' => $field ), 'state' => array( 'exists' => $exists, 'value' => $current ) );
 	}
@@ -92,7 +94,7 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		$id = isset( $target['post_id'] ) ? absint( $target['post_id'] ) : 0; $field = isset( $target['field'] ) ? $this->exact_field_name( $target['field'] ) : new WP_Error( 'mad4b_jetengine_invalid_field', 'Missing field.' );
 		if ( is_wp_error( $field ) ) return $field;
 		if ( ! $id || ! get_post( $id ) ) return new WP_Error( 'mad4b_post_missing', 'Post not found for JetEngine readback.' );
-		if ( $this->is_sensitive_meta_key( $field ) ) return new WP_Error( 'mad4b_jetengine_sensitive_meta_read', 'Sensitive meta cannot participate in normal reversible readback.' );
+		if ( $this->is_sensitive_meta_key( $field ) || 0 === strpos( $field, '_' ) ) return new WP_Error( 'mad4b_jetengine_reversible_meta_read_denied', 'Sensitive/protected meta cannot participate in normal reversible JetEngine readback.' );
 		return array( 'exists' => metadata_exists( 'post', $id, $field ), 'value' => get_post_meta( $id, $field, true ) );
 	}
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) {
