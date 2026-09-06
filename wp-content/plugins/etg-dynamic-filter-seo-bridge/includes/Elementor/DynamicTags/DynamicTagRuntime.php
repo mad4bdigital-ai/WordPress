@@ -89,6 +89,30 @@ final class DynamicTagRuntime {
         return $options;
     }
 
+    public static function groupOptions(): array {
+        $options = array();
+        foreach ((array) (self::catalog()['groups'] ?? array()) as $key => $meta) {
+            $key = self::normalizeGroup((string) $key);
+            if ('' === $key) { continue; }
+            $profiles = array_values(array_filter(array_map('sanitize_key', (array) ($meta['profile_ids'] ?? array()))));
+            $label = $key;
+            if ($profiles) { $label .= ' · ' . implode(', ', $profiles); }
+            $options[$key] = $label;
+        }
+        ksort($options, SORT_STRING);
+        return $options;
+    }
+
+    public static function normalizeGroup(string $group): string {
+        $group = trim($group);
+        if ('' === $group || 'auto' === strtolower($group)) { return ''; }
+        $parts = explode('/', $group, 2);
+        if (2 !== count($parts)) { return ''; }
+        $provider = sanitize_key((string) $parts[0]);
+        $queryId = sanitize_key((string) $parts[1]);
+        return '' !== $provider && '' !== $queryId ? $provider . '/' . $queryId : '';
+    }
+
     public static function roleOptions(): array {
         $roles = array();
         foreach (array_keys((array) (self::catalog()['tokens'] ?? array())) as $token) {
