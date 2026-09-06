@@ -1,0 +1,39 @@
+name: MAD4B Spec Consistency
+
+on:
+  pull_request:
+    paths:
+      - '.specify/memory/constitution.md'
+      - 'specs/006-agent-governed-reversible-control-plane/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-spec-consistency.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - '.specify/memory/constitution.md'
+      - 'specs/006-agent-governed-reversible-control-plane/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-spec-consistency.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-spec-consistency-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Spec Kit consistency contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify normative docs match security implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py
