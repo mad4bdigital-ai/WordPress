@@ -14,6 +14,35 @@
         return String(provider || '') + '/' + String(queryId || '');
     }
 
+    function groupKeys() {
+        var jsf = window.JetSmartFilters;
+        return jsf && jsf.filterGroups ? Object.keys(jsf.filterGroups) : [];
+    }
+
+    function activeGroupKeys() {
+        var jsf = window.JetSmartFilters;
+        if (!jsf || !jsf.filterGroups) { return []; }
+        return groupKeys().filter(function (key) {
+            var group = jsf.filterGroups[key];
+            return !!(group && group.currentQuery && Object.keys(group.currentQuery).length);
+        });
+    }
+
+    function autoGroupKey() {
+        var keys = groupKeys();
+        if (keys.length === 1) { return keys[0]; }
+        var active = activeGroupKeys();
+        return active.length === 1 ? active[0] : '';
+    }
+
+    function baseArchivePath(path) {
+        path = String(path || '/').split('?')[0].split('#')[0] || '/';
+        var marker = path.indexOf('/jsf/');
+        if (marker !== -1) { path = path.slice(0, marker); }
+        path = '/' + path.replace(/^\/+|\/+$/g, '');
+        return path === '/' ? '/' : path + '/';
+    }
+
     function remember(el) {
         if (!initialValues || initialValues.has(el)) { return; }
         initialValues.set(el, { html: el.innerHTML, text: el.textContent });
@@ -26,20 +55,24 @@
             var parent = el.closest('[data-etg-dfsb-group]');
             if (parent) { return (parent.getAttribute('data-etg-dfsb-group') || '').trim(); }
         }
-        return '';
-    }
-
-    function multiProviderPage() {
-        var jsf = window.JetSmartFilters;
-        return !!(jsf && jsf.filterGroups && Object.keys(jsf.filterGroups).length > 1);
+        return 'auto';
     }
 
     function elementsFor(selector, key) {
+        var auto = autoGroupKey();
         return Array.prototype.filter.call(document.querySelectorAll(selector), function (el) {
             var group = elementGroup(el);
-            if (group) { return group === key; }
-            return !multiProviderPage();
+            if (!group || group === 'auto') { return !!auto && auto === key; }
+            return group === key;
         });
+    }
+
+    function emitAutoGroupStatus() {
+        var autoNodes = document.querySelectorAll('[data-etg-dfsb-group="auto"],[data-etg-dfsb-token]:not([data-etg-dfsb-group]),[data-etg-dfsb-slot]:not([data-etg-dfsb-group])');
+        if (!autoNodes.length || autoGroupKey()) { return; }
+        document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', {
+            detail: { reason: 'ambiguous_auto_group', groups: groupKeys() }
+        }));
     }
 
     function bindings(key) {
@@ -75,8 +108,12 @@
         var type = item.type || 'text', value = item.value == null ? '' : String(item.value);
         var target = (el.getAttribute('data-etg-dfsb-target') || '').trim().toLowerCase();
         if (target === 'href' || target === 'src') {
-            if (type === 'url') { el.setAttribute(target, value); }
+            if (type === 'url' && value) { el.setAttribute(target, value); }
             return;
+        }
+        if (!value) {
+            var fallback = (el.getAttribute('data-etg-dfsb-fallback') || '').trim();
+            if (fallback) { value = fallback; type = 'text'; }
         }
         if (type === 'html') { el.innerHTML = value; }
         else { el.textContent = value; }
@@ -115,15 +152,17 @@
         if (!currentQuery || !Object.keys(currentQuery).length) {
             if (activeKeys[key]) { restoreInitial('filters_cleared', key); }
             if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
+            emitAutoGroupStatus();
             return;
         }
         var b = bindings(key);
-        if (!b.tokens.length && !b.slots.length) { return; }
+        if (!b.tokens.length && !b.slots.length) { emitAutoGroupStatus(); return; }
         sequences[key] = (sequences[key] || 0) + 1;
         var requestId = sequences[key];
         if (controllers[key]) { controllers[key].abort(); }
         controllers[key] = typeof AbortController !== 'undefined' ? new AbortController() : null;
 
+        var requestPath = window.location.pathname || '/';
         var options = {
             method: 'POST',
             credentials: 'same-origin',
@@ -131,7 +170,8 @@
             body: JSON.stringify({
                 provider: String(provider || ''),
                 query_id: String(queryId || ''),
-                archive_path: window.location.pathname || '/',
+                request_path: requestPath,
+                archive_path: baseArchivePath(requestPath),
                 current_query: currentQuery,
                 tokens: b.tokens,
                 slots: b.slots
@@ -168,13 +208,14 @@
         jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
             schedule(provider, queryId);
         });
-        Object.keys(jsf.filterGroups || {}).forEach(function (key) {
+        groupKeys().forEach(function (key) {
             var parts = key.split('/');
             var group = jsf.filterGroups[key];
             if (parts.length >= 2 && group && group.currentQuery && Object.keys(group.currentQuery).length) {
                 schedule(parts[0], parts.slice(1).join('/'));
             }
         });
+        emitAutoGroupStatus();
     }
 
     document.addEventListener('jet-smart-filters/inited', init, { once: true });
