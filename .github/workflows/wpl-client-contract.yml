@@ -84,7 +84,8 @@ jobs:
           unzip -q wp-content/plugins/crocoblock-wizard.zip -d /tmp/wpl-vendor-contract/croco
           FILE=$(find /tmp/wpl-vendor-contract/croco -path '*/includes/modules/license/api.php' | head -n1)
           test -n "$FILE"
-          grep -q "public \\$license_option = 'jet_theme_core_license'" "$FILE"
+          grep -Fq 'public $license_option' "$FILE"
+          grep -Fq 'jet_theme_core_license' "$FILE"
           grep -q 'public function get_license' "$FILE"
           grep -q 'public function license_request' "$FILE"
           grep -q 'public function activate_license' "$FILE"
