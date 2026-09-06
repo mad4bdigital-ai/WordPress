@@ -3,18 +3,19 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 2;
+	const VERSION = 3;
 	const OPTION  = 'mad4b_scp_schema_version';
 
 	public static function tables() {
 		global $wpdb;
 		return array(
-			'agents'    => $wpdb->prefix . 'mad4b_scp_agents',
-			'subjects'  => $wpdb->prefix . 'mad4b_scp_agent_subjects',
-			'grants'    => $wpdb->prefix . 'mad4b_scp_agent_grants',
-			'approvals' => $wpdb->prefix . 'mad4b_scp_approval_tickets',
-			'mutations' => $wpdb->prefix . 'mad4b_scp_mutations',
-			'budgets'   => $wpdb->prefix . 'mad4b_scp_agent_budgets',
+			'agents'         => $wpdb->prefix . 'mad4b_scp_agents',
+			'subjects'       => $wpdb->prefix . 'mad4b_scp_agent_subjects',
+			'grants'         => $wpdb->prefix . 'mad4b_scp_agent_grants',
+			'approvals'      => $wpdb->prefix . 'mad4b_scp_approval_tickets',
+			'mutations'      => $wpdb->prefix . 'mad4b_scp_mutations',
+			'budgets'        => $wpdb->prefix . 'mad4b_scp_agent_budgets',
+			'budget_windows' => $wpdb->prefix . 'mad4b_scp_agent_budget_windows',
 		);
 	}
 
@@ -148,6 +149,21 @@ final class MAD4B_SCP_Schema {
 			updated_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY agent_budget (agent_id,budget_type)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['budget_windows']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			agent_id bigint(20) unsigned NOT NULL,
+			budget_type varchar(32) NOT NULL,
+			window_start bigint(20) unsigned NOT NULL,
+			window_seconds int(10) unsigned NOT NULL,
+			used_count bigint(20) unsigned NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY agent_budget_window (agent_id,budget_type,window_start),
+			KEY window_cleanup (window_start),
+			KEY agent_window (agent_id,window_start)
 		) $charset;";
 
 		foreach ( $sql as $statement ) dbDelta( $statement );
