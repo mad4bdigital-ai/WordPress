@@ -1,0 +1,48 @@
+{
+  "contract": "mad4b.adapter-support-catalog.v1",
+  "default": {
+    "strategy": "adapter_required",
+    "risk": "unknown",
+    "requested_contracts": ["read", "bounded_write", "reversible_restore"]
+  },
+  "priority_external": [
+    {
+      "id": "woocommerce",
+      "label": "WooCommerce",
+      "adapter_id": "woocommerce",
+      "plugin_files": ["woocommerce/woocommerce.php"],
+      "strategy": "first_class_external",
+      "risk": "high",
+      "requested_contracts": ["product_read", "bounded_product_write", "reversible_product_restore"],
+      "mutation_scope": "products_only_no_orders_payments_refunds"
+    },
+    {
+      "id": "polylang",
+      "label": "Polylang",
+      "adapter_id": "polylang",
+      "plugin_files": ["polylang/polylang.php", "polylang-pro/polylang.php"],
+      "strategy": "first_class_external",
+      "risk": "medium",
+      "requested_contracts": ["language_read", "bounded_language_assignment", "reversible_language_restore"]
+    }
+  ],
+  "families": [
+    {"id":"mad4b-platform","match":["mad4b-site-control-plane/","mcp-adapter/"],"adapter_id":"","strategy":"platform","risk":"high","requested_contracts":[]},
+    {"id":"elementor","match":["elementor/","elementor-pro/","ultimate-elementor/","header-footer-elementor/"],"adapter_id":"elementor","strategy":"registered_adapter","risk":"high","requested_contracts":["read","provider_native_write","reversible_restore_where_certified"]},
+    {"id":"jetengine","match":["jet-engine/","jet-engine-"],"adapter_id":"jetengine","strategy":"registered_adapter","risk":"high","requested_contracts":["read","exact_field_write","reversible_meta_restore"]},
+    {"id":"jetsmartfilters","match":["jet-smart-filters/","jet-smart-filters-"],"adapter_id":"jetsmartfilters","strategy":"registered_adapter","risk":"medium","requested_contracts":["read","bounded_filter_write","reversible_restore_where_provider_safe"]},
+    {"id":"jetformbuilder","match":["jetformbuilder/","jet-form-builder/"],"adapter_id":"","strategy":"adapter_required","risk":"high","requested_contracts":["form_read","bounded_form_write","reversible_restore"]},
+    {"id":"jet-ecosystem","match":["jet-search/","jet-tabs/","jet-blocks/","jet-blog/","jet-elements/","jet-woo-product-gallery/"],"adapter_id":"","strategy":"adapter_required","risk":"medium","requested_contracts":["read","bounded_write","reversible_restore"]},
+    {"id":"rank-math","match":["seo-by-rank-math/","seo-by-rank-math-pro/"],"adapter_id":"seo","strategy":"registered_adapter","risk":"medium","requested_contracts":["seo_read","allowlisted_meta_write","reversible_meta_restore"]},
+    {"id":"wpml","match":["sitepress-multilingual-cms/","wpml-string-translation/","wpml-cms-nav/","wpml-import/","wp-seo-multilingual/"],"adapter_id":"","strategy":"adapter_required","risk":"medium","requested_contracts":["language_read","translation_relationship_read","bounded_language_write","reversible_restore"]},
+    {"id":"fluentforms","match":["fluentform/","fluentformpro/","fluentform-","fluent-forms-"],"adapter_id":"","strategy":"adapter_required","risk":"high","requested_contracts":["form_read","bounded_form_write","reversible_restore"]},
+    {"id":"bitflows","match":["bit-pi/","bit-flows/","bitflows/"],"adapter_id":"bitflows","strategy":"registered_adapter","risk":"high","requested_contracts":["flow_read","governed_execution"]},
+    {"id":"litespeed","match":["litespeed-cache/"],"adapter_id":"litespeed","strategy":"registered_adapter","risk":"medium","requested_contracts":["status","bounded_cache_actions"]},
+    {"id":"media-optimization","match":["imagify/","shortpixel-image-optimiser/","webp-converter-for-media/","smart-media-converter/"],"adapter_id":"media","strategy":"adjacent_media_adapter","risk":"medium","requested_contracts":["media_read","metadata_write","reversible_metadata_restore"]},
+    {"id":"wp-all-import-export","match":["wp-all-import-pro/","wp-all-export-pro/","wpai-woocommerce-add-on/"],"adapter_id":"","strategy":"adapter_required","risk":"high","requested_contracts":["job_read","plan_only","bounded_execution_with_approval"]},
+    {"id":"hostinger","match":["hostinger/"],"adapter_id":"","strategy":"adapter_required","risk":"high","requested_contracts":["read_only_inventory","host_connector_separation"]},
+    {"id":"woocommerce","match":["woocommerce/"],"adapter_id":"woocommerce","strategy":"first_class_external","risk":"high","requested_contracts":["product_read","bounded_product_write","reversible_product_restore"]},
+    {"id":"polylang","match":["polylang/","polylang-pro/"],"adapter_id":"polylang","strategy":"first_class_external","risk":"medium","requested_contracts":["language_read","bounded_language_assignment","reversible_language_restore"]},
+    {"id":"dangerous-code-execution","match":["code-snippets/","wp-file-manager/","file-manager-advanced/","user-role-editor/","better-search-replace/"],"adapter_id":"","strategy":"excluded_high_risk","risk":"exceptional","requested_contracts":["read_only_inventory_or_breakglass_review"]}
+  ]
+}
