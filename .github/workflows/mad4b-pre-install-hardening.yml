@@ -1,0 +1,80 @@
+name: MAD4B Pre-Install Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-pre-install-hardening.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-pre-install-hardening.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  adversarial-contract:
+    name: Adversarial pre-install contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run fail-closed hardening contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/pre-install-hardening-contract.py
+
+      - name: Verify mutation surface cannot regress to source execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          policy="$root/includes/class-mad4b-scp-policy.php"
+          abilities="$root/includes/class-mad4b-scp-abilities.php"
+          grep -Fq "mad4b_executable_file_mutation_denied" "$policy"
+          grep -Fq "mad4b_filesystem_mutation_root_denied" "$policy"
+          grep -Fq "MAD4B_SCP_Policy::can_mutate_file" "$abilities"
+          grep -Fq "Source-code changes must use the governed repository/deployment path" "$policy"
+
+      - name: Verify provider mutation circuit breaker
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          provider="$root/includes/class-mad4b-scp-provider-contracts.php"
+          base="$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          registry="$root/includes/class-mad4b-scp-adapter-registry.php"
+          grep -Fq "mutation_guard" "$provider"
+          grep -Fq "mad4b_provider_mutation_not_certified" "$provider"
+          grep -Fq "mutation_permission_callback" "$base"
+          grep -Fq "required_provider_missing" "$registry"
+          grep -Fq "provider_contract_blockers" "$registry"
+
+      - name: Verify exceptional paths default deny
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          grep -Fq "mad4b_mcp_breakglass_permission', false" "$root/includes/class-mad4b-scp-policy.php"
+          grep -Fq "mad4b_scp_plugin_lifecycle_allowlist', array()" "$root/includes/class-mad4b-scp-policy.php"
+          grep -Fq "mad4b_scp_bitflows_flow_allowed', false" "$root/includes/adapters/class-mad4b-scp-bitflows-adapter.php"
+          grep -Fq "MAD4B_MCP_ELEMENTOR_LEGACY_WRITE_ENABLED" "$root/includes/adapters/class-mad4b-scp-elementor-adapter.php"
+          grep -Fq "mad4b_scp_jetengine_field_write_allowed', false" "$root/includes/adapters/class-mad4b-scp-jetengine-adapter.php"
+
+      - name: Verify bounded database mutation and raw reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          abilities='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+          grep -Fq "SHOW TABLE STATUS LIKE" "$abilities"
+          grep -Fq "mad4b_non_transactional_table_denied" "$abilities"
+          grep -Fq "mad4b_transaction_required" "$abilities"
+          grep -Fq "FOR UPDATE" "$abilities"
+          grep -Fq "mad4b_select_limit_required" "$abilities"
+          grep -Fq "mad4b_select_limit_too_large" "$abilities"
