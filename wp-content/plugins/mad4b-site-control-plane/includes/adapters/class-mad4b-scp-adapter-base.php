@@ -20,7 +20,14 @@ abstract class MAD4B_SCP_Adapter_Base {
 			'execute_callback' => array( $this, $method ),
 			'permission_callback' => $permission,
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'meta' => array( 'public' => false, 'show_in_rest' => false, 'mcp' => array( 'public' => true, 'type' => 'tool' ), 'annotations' => array( 'readonly' => (bool) $readonly, 'destructive' => (bool) $destructive, 'idempotent' => (bool) $idempotent ) ),
+			'meta' => array(
+				'public' => false,
+				'show_in_rest' => false,
+				// MAD4B abilities are exposed only by the explicitly configured custom servers.
+				// Keeping this false prevents the official default server from discovering or executing them.
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $surface ),
+				'annotations' => array( 'readonly' => (bool) $readonly, 'destructive' => (bool) $destructive, 'idempotent' => (bool) $idempotent ),
+			),
 		);
 		if ( is_array( $input_schema ) ) $args['input_schema'] = $input_schema;
 		wp_register_ability( $name, $args );
