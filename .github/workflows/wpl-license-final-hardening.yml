@@ -18,63 +18,72 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Persist Crocoblock activation response completely
+      - name: Make license-health execution lock atomic
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php')
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, got {count}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          monitor = 'wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php'
+          replace_once(
+              monitor,
+              "    const RETRY_OPTION       = 'wpl_license_health_retry_state';\n    const LOCK_TRANSIENT     = 'wpl_license_health_lock';\n    const FAILURE_RETRY_SECS = DAY_IN_SECONDS;",
+              "    const RETRY_OPTION       = 'wpl_license_health_retry_state';\n    const LOCK_OPTION        = 'wpl_license_health_lock_state';\n    const LOCK_TTL           = 10 * MINUTE_IN_SECONDS;\n    const FAILURE_RETRY_SECS = DAY_IN_SECONDS;",
+              'lock constants',
+          )
+          replace_once(
+              monitor,
+              "        wp_clear_scheduled_hook( self::CRON_HOOK );\n        wp_clear_scheduled_hook( self::SOON_HOOK );\n        delete_transient( self::LOCK_TRANSIENT );",
+              "        wp_clear_scheduled_hook( self::CRON_HOOK );\n        wp_clear_scheduled_hook( self::SOON_HOOK );\n        delete_option( self::LOCK_OPTION );\n        delete_transient( 'wpl_license_health_lock' );",
+              'lock deactivation cleanup',
+          )
+          replace_once(
+              monitor,
+              "        if ( get_transient( self::LOCK_TRANSIENT ) ) {\n            return self::get_report();\n        }\n        set_transient( self::LOCK_TRANSIENT, 1, 10 * MINUTE_IN_SECONDS );",
+              "        if ( ! self::acquire_lock() ) {\n            return self::get_report();\n        }",
+              'atomic lock acquisition',
+          )
+          replace_once(
+              monitor,
+              "        } finally {\n            delete_transient( self::LOCK_TRANSIENT );\n        }",
+              "        } finally {\n            self::release_lock();\n        }",
+              'atomic lock release',
+          )
+          anchor = "    private static function retry_allowed( $id ) {\n"
+          insert = "    private static function acquire_lock() {\n        $now  = time();\n        $held = (int) get_option( self::LOCK_OPTION, 0 );\n\n        if ( $held && ( $now - $held ) < self::LOCK_TTL ) {\n            return false;\n        }\n        if ( $held ) {\n            delete_option( self::LOCK_OPTION );\n        }\n\n        return add_option( self::LOCK_OPTION, $now, '', 'no' );\n    }\n\n    private static function release_lock() {\n        delete_option( self::LOCK_OPTION );\n    }\n\n"
+          p = Path(monitor)
           text = p.read_text(encoding='utf-8')
-          old_call = "self::save_crocoblock_key( $api, $key );"
-          if text.count(old_call) != 2:
-              raise SystemExit(f'expected 2 Crocoblock persistence calls, got {text.count(old_call)}')
-          text = text.replace(old_call, "self::persist_crocoblock_activation( $api, $key, $activate );")
-          old_fn = "    private static function save_crocoblock_key( $api, $key ) {\n        $option = isset( $api->license_option ) && is_string( $api->license_option )\n            ? $api->license_option\n            : 'jet_theme_core_license';\n        update_option( $option, $key, false );\n    }\n"
-          new_lines = [
-              "    /**",
-              "     * Mirror the state Crocoblock's own activate_license() persists. The cron",
-              "     * adapter uses the vendor's lower-level request because activate_license()",
-              "     * requires an interactive manage_options user, which WP-Cron does not have.",
-              "     */",
-              "    private static function persist_crocoblock_activation( $api, $key, $response ) {",
-              "        if ( ! self::crocoblock_response_is_valid( $response ) ) return;",
-              "",
-              "        $license_option = isset( $api->license_option ) && is_string( $api->license_option )",
-              "            ? $api->license_option",
-              "            : 'jet_theme_core_license';",
-              "        update_option( $license_option, $key, false );",
-              "",
-              "        if ( array_key_exists( 'has_templates_access', $response ) ) {",
-              "            update_option( 'has_template_access', $response['has_templates_access'] === true ? 1 : -1, false );",
-              "        }",
-              "        if ( array_key_exists( 'has_design_templates_access', $response ) ) {",
-              "            update_option( 'has_design_templates_access', $response['has_design_templates_access'] === true ? 1 : -1, false );",
-              "        }",
-              "        if ( isset( $response['excluded_plugins'] ) && is_array( $response['excluded_plugins'] ) ) {",
-              "            $plugins_option = isset( $api->plugins_option ) && is_string( $api->plugins_option )",
-              "                ? $api->plugins_option",
-              "                : 'jet_excluded_plugins';",
-              "            update_option( $plugins_option, $response['excluded_plugins'], false );",
-              "        }",
-              "    }",
-              "",
-          ]
-          new_fn = "\n".join(new_lines)
-          if text.count(old_fn) != 1:
-              raise SystemExit('Crocoblock persistence function anchor mismatch')
-          p.write_text(text.replace(old_fn, new_fn, 1), encoding='utf-8')
+          if text.count(anchor) != 1:
+              raise SystemExit('retry anchor mismatch')
+          p.write_text(text.replace(anchor, insert + anchor, 1), encoding='utf-8')
+
+          maintenance = 'wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php'
+          replace_once(
+              maintenance,
+              "        'wpl_bg_install_worker_lock',\n        // A pending activation request is business state, not disposable runtime state.",
+              "        'wpl_bg_install_worker_lock',\n        'wpl_license_health_lock_state',\n        // A pending activation request is business state, not disposable runtime state.",
+              'activation lock cleanup',
+          )
           PY
 
-      - name: PHP lint and vendor-state assertions
+      - name: PHP lint and concurrency assertions
         shell: bash
         run: |
           set -euo pipefail
           find wp-content/plugins/wpl-client -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          test "$(grep -c 'persist_crocoblock_activation' wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php)" -eq 3
-          grep -q "has_templates_access" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "has_design_templates_access" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "excluded_plugins" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "LOCK_OPTION" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "add_option( self::LOCK_OPTION" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "wpl_license_health_lock_state" wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php
+          ! grep -q "get_transient( self::LOCK_TRANSIENT" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
 
       - name: Rebuild and verify distributable ZIP
         shell: bash
@@ -89,12 +98,12 @@ jobs:
           diff -qr wpl-client /tmp/wpl-client-package-check/wpl-client
           cd ../..
 
-      - name: Commit Crocoblock persistence hardening
+      - name: Commit concurrency hardening
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
-          git commit -m "fix(wpl-client): persist Crocoblock activation capabilities"
+          git commit -m "fix(wpl-client): serialize license-health repair runs"
           git push
