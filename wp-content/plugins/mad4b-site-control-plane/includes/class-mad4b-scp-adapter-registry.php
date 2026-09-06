@@ -23,7 +23,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	}
 	public function register_abilities() {
 		$this->register_registry_ability( 'mad4b/adapters-inventory', 'Adapters Inventory', 'inventory', 'List supported MAD4B adapters and their runtime availability.' );
-		$this->register_registry_ability( 'mad4b/runtime-self-test', 'Runtime Self Test', 'runtime_self_test', 'Verify registered abilities, MCP dependency, custom-server isolation and adapter runtime contracts.' );
+		$this->register_registry_ability( 'mad4b/runtime-self-test', 'Runtime Self Test', 'runtime_self_test', 'Verify registered abilities, MCP dependency, custom-server isolation and certified provider runtime contracts.' );
 		foreach ( $this->adapters as $adapter ) $adapter->register_abilities();
 	}
 	private function register_registry_ability( $name, $label, $method, $description ) {
@@ -46,6 +46,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	public function runtime_self_test() {
 		$missing = array();
 		$public_leaks = array();
+		$provider_version_drift = array();
 		$surfaces = array( 'read', 'content', 'admin' );
 		foreach ( $surfaces as $surface ) {
 			foreach ( $this->ability_names( $surface ) as $name ) {
@@ -60,14 +61,35 @@ final class MAD4B_SCP_Adapter_Registry {
 				}
 			}
 		}
+
 		$inventory = $this->inventory();
 		$available = 0;
-		foreach ( $inventory['adapters'] as $adapter ) if ( ! empty( $adapter['available'] ) ) ++$available;
+		foreach ( $inventory['adapters'] as $adapter ) {
+			if ( empty( $adapter['available'] ) ) {
+				continue;
+			}
+			++$available;
+			if ( isset( $adapter['provider_certification']['status'] ) && 'version_drift' === $adapter['provider_certification']['status'] ) {
+				$provider_version_drift[] = isset( $adapter['id'] ) ? $adapter['id'] : 'unknown';
+			}
+		}
+
 		$mcp_adapter = class_exists( 'WP\\MCP\\Core\\McpAdapter' );
+		$mcp_certification = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $mcp_adapter ) : array();
+		if ( isset( $mcp_certification['status'] ) && 'version_drift' === $mcp_certification['status'] ) {
+			$provider_version_drift[] = 'mcp_adapter';
+		}
+		$provider_version_drift = array_values( array_unique( $provider_version_drift ) );
+		$provider_certification_ok = empty( $provider_version_drift ) && $mcp_adapter && ( empty( $mcp_certification['status'] ) || 'certified' === $mcp_certification['status'] );
+		$passed = empty( $missing ) && empty( $public_leaks ) && $mcp_adapter && $provider_certification_ok;
+
 		return array(
-			'status' => empty( $missing ) && empty( $public_leaks ) && $mcp_adapter ? 'passed' : 'degraded',
+			'status' => $passed ? 'passed' : 'degraded',
 			'wordpress_abilities' => function_exists( 'wp_register_ability' ),
 			'mcp_adapter' => $mcp_adapter,
+			'mcp_adapter_certification' => $mcp_certification,
+			'provider_certification_ok' => $provider_certification_ok,
+			'provider_version_drift' => $provider_version_drift,
 			'custom_server_isolation' => empty( $public_leaks ),
 			'registered_adapter_count' => count( $inventory['adapters'] ),
 			'available_adapter_count' => $available,
