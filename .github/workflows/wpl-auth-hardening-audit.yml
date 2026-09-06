@@ -1,0 +1,29 @@
+name: WPL Auth Hardening Audit
+
+on:
+  push:
+    branches:
+      - fix/wpl-client-db-lifecycle-cleanup-20260906
+    paths:
+      - '.github/workflows/wpl-auth-hardening-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inventory WPL auth and TLS callsites
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== WPL_SERVER_API_KEY callsites ==='
+          grep -R -n --include='*.php' 'WPL_SERVER_API_KEY' wp-content/plugins/wpl-client || true
+          echo '=== sslverify false ==='
+          grep -R -n --include='*.php' -E "sslverify[^\n]*false" wp-content/plugins/wpl-client || true
+          echo '=== curl TLS weakening ==='
+          grep -R -n --include='*.php' -E 'SSL_VERIFYPEER|SSL_VERIFYHOST|SECLEVEL|CURL_SSLVERSION_TLSv1|CURL_HTTP_VERSION_1_0' wp-content/plugins/wpl-client || true
+          echo '=== WPL endpoint direct HTTP ==='
+          grep -R -n --include='*.php' -E "wp_remote_(get|post|request).*WPL_SERVER_API_URL|WPL_SERVER_API_URL.*(/verify|/products|/register|/deactivate)" wp-content/plugins/wpl-client || true
