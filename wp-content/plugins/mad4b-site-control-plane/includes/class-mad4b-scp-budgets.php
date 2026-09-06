@@ -15,6 +15,10 @@ final class MAD4B_SCP_Budgets {
 		return array( 'requests', 'mutations', 'affected_objects', 'external_actions' );
 	}
 
+	public static function transaction_is_open() {
+		return (bool) self::$transaction_open;
+	}
+
 	public static function set_budget( $agent_public_id, $budget_type, $window_seconds, $max_count, $enabled = true ) {
 		global $wpdb;
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_budget_admin_required', 'Administrator capability is required to configure NHI budgets.' );
@@ -106,7 +110,11 @@ final class MAD4B_SCP_Budgets {
 		if ( empty( $configs ) ) {
 			$committed = $wpdb->query( 'COMMIT' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			self::$transaction_open = false;
-			if ( false === $committed ) return new WP_Error( 'mad4b_budget_transaction_commit_failed', 'Unable to close empty NHI budget transaction.', array( 'db_error' => $wpdb->last_error ) );
+			if ( false === $committed ) {
+				self::audit_transaction_rolled_back();
+				return new WP_Error( 'mad4b_budget_transaction_commit_failed', 'Unable to close empty NHI budget transaction.', array( 'db_error' => $wpdb->last_error ) );
+			}
+			self::audit_transaction_committed();
 			return array( 'active' => false, 'agent_id' => $agent_id, 'costs' => $costs, 'reservations' => array() );
 		}
 
@@ -138,6 +146,7 @@ final class MAD4B_SCP_Budgets {
 			if ( $cost > $max_count || $used > $max_count - $cost ) {
 				$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 				self::$transaction_open = false;
+				self::audit_transaction_rolled_back();
 				return new WP_Error( 'mad4b_budget_exhausted', 'NHI budget would be exceeded by this operation.', array(
 					'budget_type' => $type,
 					'window_start' => $window_start,
@@ -174,9 +183,11 @@ final class MAD4B_SCP_Budgets {
 		if ( false === $committed ) {
 			$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			self::$transaction_open = false;
+			self::audit_transaction_rolled_back();
 			return new WP_Error( 'mad4b_budget_transaction_commit_failed', 'Unable to commit NHI budget reservation.', array( 'db_error' => $wpdb->last_error ) );
 		}
 		self::$transaction_open = false;
+		self::audit_transaction_committed();
 		self::cleanup_agent( isset( $reservation['agent_id'] ) ? (int) $reservation['agent_id'] : 0 );
 		return true;
 	}
@@ -186,6 +197,7 @@ final class MAD4B_SCP_Budgets {
 		if ( empty( $reservation['active'] ) ) return true;
 		if ( self::$transaction_open ) $wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		self::$transaction_open = false;
+		self::audit_transaction_rolled_back();
 		return true;
 	}
 
@@ -200,8 +212,21 @@ final class MAD4B_SCP_Budgets {
 		global $wpdb;
 		if ( self::$transaction_open ) $wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		self::$transaction_open = false;
+		self::audit_transaction_rolled_back();
 		$data = '' !== (string) $db_error ? array( 'db_error' => (string) $db_error ) : array();
 		return new WP_Error( $code, $message, $data );
+	}
+
+	private static function audit_transaction_committed() {
+		if ( class_exists( 'MAD4B_SCP_Audit' ) && method_exists( 'MAD4B_SCP_Audit', 'transaction_committed' ) ) {
+			MAD4B_SCP_Audit::transaction_committed();
+		}
+	}
+
+	private static function audit_transaction_rolled_back() {
+		if ( class_exists( 'MAD4B_SCP_Audit' ) && method_exists( 'MAD4B_SCP_Audit', 'transaction_rolled_back' ) ) {
+			MAD4B_SCP_Audit::transaction_rolled_back();
+		}
 	}
 
 	private static function cleanup_agent( $agent_id ) {
