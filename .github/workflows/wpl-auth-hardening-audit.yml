@@ -15,15 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inventory WPL auth and TLS callsites
+      - name: Inventory remaining WPL transport debt
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== WPL_SERVER_API_KEY callsites ==='
+          echo '=== branch ==='
+          git rev-parse HEAD
+          echo '=== WPL_SERVER_API_KEY references ==='
           grep -R -n --include='*.php' 'WPL_SERVER_API_KEY' wp-content/plugins/wpl-client || true
-          echo '=== sslverify false ==='
-          grep -R -n --include='*.php' -E "sslverify[^\n]*false" wp-content/plugins/wpl-client || true
-          echo '=== curl TLS weakening ==='
-          grep -R -n --include='*.php' -E 'SSL_VERIFYPEER|SSL_VERIFYHOST|SECLEVEL|CURL_SSLVERSION_TLSv1|CURL_HTTP_VERSION_1_0' wp-content/plugins/wpl-client || true
-          echo '=== WPL endpoint direct HTTP ==='
-          grep -R -n --include='*.php' -E "wp_remote_(get|post|request).*WPL_SERVER_API_URL|WPL_SERVER_API_URL.*(/verify|/products|/register|/deactivate)" wp-content/plugins/wpl-client || true
+          echo '=== direct WPL URL references ==='
+          grep -R -n --include='*.php' 'WPL_SERVER_API_URL' wp-content/plugins/wpl-client || true
+          echo '=== direct HTTP functions in installer/admin ==='
+          grep -n -E 'wp_remote_(get|post|request)|download_url' wp-content/plugins/wpl-client/includes/class-wpl-installer.php wp-content/plugins/wpl-client/includes/class-wpl-client-admin.php || true
+          echo '=== TLS weakening ==='
+          grep -R -n --include='*.php' -E 'sslverify.*false|SSL_VERIFYPEER.*false|SSL_VERIFYHOST.*false|DEFAULT@SECLEVEL=1|CURL_SSLVERSION_TLSv1' wp-content/plugins/wpl-client || true
