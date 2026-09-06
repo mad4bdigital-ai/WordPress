@@ -47,6 +47,7 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-litespeed-adapte
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
