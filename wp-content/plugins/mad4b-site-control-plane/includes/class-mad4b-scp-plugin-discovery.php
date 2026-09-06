@@ -44,6 +44,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'read_only_supported' => 0,
 			'adapter_registered_inactive' => 0,
 			'adapter_present_certification_required' => 0,
+			'adapter_present_side_channel_blocked' => 0,
 			'adapter_required' => 0,
 			'excluded_high_risk' => 0,
 			'priority_external_missing' => 0,
@@ -102,7 +103,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$strategy = isset( $descriptor['strategy'] ) ? sanitize_key( (string) $descriptor['strategy'] ) : 'adapter_required';
 		$risk = isset( $descriptor['risk'] ) ? sanitize_key( (string) $descriptor['risk'] ) : 'unknown';
 		$status = is_object( $adapter ) && method_exists( $adapter, 'status' ) ? $adapter->status() : array();
-		$state = self::coverage_state( $strategy, $adapter, $active, $status );
+		$side_channel_blocker = self::parallel_mcp_blocker( $descriptor, $active );
+		$state = self::coverage_state( $strategy, $adapter, $active, $status, $side_channel_blocker );
 		$reversible = self::adapter_reversible_contracts( $adapter );
 		$request = self::support_request_for(
 			$plugin_file,
@@ -131,6 +133,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'provider_certification_required' => ! empty( $status['mutation_requires_certification'] ),
 			'provider_certification_ok' => ! empty( $certification['runtime_contract_ok'] ),
 			'provider_status' => isset( $certification['status'] ) ? sanitize_key( (string) $certification['status'] ) : '',
+			'side_channel_blocker' => $side_channel_blocker,
 			'mutation_auto_enabled' => false,
 			'support_request' => $request,
 		);
@@ -185,11 +188,12 @@ final class MAD4B_SCP_Plugin_Discovery {
 		return $default;
 	}
 
-	private static function coverage_state( $strategy, $adapter, $active, array $status ) {
+	private static function coverage_state( $strategy, $adapter, $active, array $status, $side_channel_blocker = '' ) {
 		if ( 'platform' === $strategy ) return 'supported_governed';
 		if ( 'excluded_high_risk' === $strategy ) return 'excluded_high_risk';
 		if ( ! is_object( $adapter ) ) return 'adapter_required';
 		if ( ! $active || ! $adapter->is_available() ) return 'adapter_registered_inactive';
+		if ( '' !== $side_channel_blocker ) return 'adapter_present_side_channel_blocked';
 		$contracts = self::adapter_reversible_contracts( $adapter );
 		if ( ! empty( $contracts ) ) {
 			if ( ! empty( $status['mutation_requires_certification'] ) ) {
@@ -201,6 +205,21 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$map = method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$writes = array_merge( isset( $map['content'] ) && is_array( $map['content'] ) ? $map['content'] : array(), isset( $map['admin'] ) && is_array( $map['admin'] ) ? $map['admin'] : array() );
 		return ! empty( $writes ) ? 'supported_governed' : 'read_only_supported';
+	}
+
+	private static function parallel_mcp_blocker( array $descriptor, $active ) {
+		if ( ! $active || empty( $descriptor['known_parallel_mcp_namespace'] ) || ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ) return '';
+		$namespace = trim( strtolower( (string) $descriptor['known_parallel_mcp_namespace'] ), '/' );
+		if ( '' === $namespace ) return '';
+		$status = MAD4B_SCP_MCP_Peer_Governance::status();
+		$foreign = isset( $status['foreign_transport_inventory'] ) && is_array( $status['foreign_transport_inventory'] ) ? $status['foreign_transport_inventory'] : array();
+		$routes = isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? $foreign['foreign_routes'] : array();
+		$prefix = '/' . $namespace . '/';
+		foreach ( $routes as $route ) {
+			$route = strtolower( (string) $route );
+			if ( 0 === strpos( $route, $prefix ) && false !== strpos( $route, 'mcp' ) ) return 'mcp_foreign_transport_unreviewed';
+		}
+		return '';
 	}
 
 	private static function adapter_reversible_contracts( $adapter ) {
@@ -217,10 +236,11 @@ final class MAD4B_SCP_Plugin_Discovery {
 	}
 
 	private static function support_request_for( $plugin_file, $name, $version, array $descriptor, $state, $active ) {
-		if ( ! in_array( $state, array( 'adapter_required', 'supported_governed', 'adapter_present_certification_required', 'excluded_high_risk', 'priority_external_missing' ), true ) ) return null;
+		if ( ! in_array( $state, array( 'adapter_required', 'supported_governed', 'adapter_present_certification_required', 'adapter_present_side_channel_blocked', 'excluded_high_risk', 'priority_external_missing' ), true ) ) return null;
 		if ( 'adapter_required' === $state ) $reason = 'no_registered_adapter';
 		elseif ( 'supported_governed' === $state ) $reason = 'reversible_certification_incomplete';
 		elseif ( 'adapter_present_certification_required' === $state ) $reason = 'provider_certification_required';
+		elseif ( 'adapter_present_side_channel_blocked' === $state ) $reason = 'parallel_mcp_write_plane_requires_isolation';
 		elseif ( 'excluded_high_risk' === $state ) $reason = 'normal_writer_excluded_by_risk';
 		else $reason = 'priority_external_not_installed';
 		$requested = isset( $descriptor['requested_contracts'] ) && is_array( $descriptor['requested_contracts'] ) ? array_values( array_map( 'sanitize_key', $descriptor['requested_contracts'] ) ) : array( 'read', 'bounded_write', 'reversible_restore' );
