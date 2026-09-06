@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Inspect native MCP implementations in certified provider ZIPs for auth evidence.
+"""Inspect and enforce native MCP security invariants in certified provider ZIPs.
 
 The script never executes provider PHP. It extracts only the packaged archives
-into a temporary directory and reports REST route declarations, permission
-callbacks and the bodies of security-relevant PHP methods from MCP paths. This
-is static evidence collection, not a complete PHP semantic analyzer.
+into a temporary directory, records REST route declarations and security-
+relevant method bodies, and fails when the certified native-MCP permission
+chain drifts from the reviewed baseline.
 """
 
 from __future__ import annotations
@@ -59,6 +59,12 @@ MAX_HITS = 40
 MAX_FUNCTIONS = 100
 MAX_FUNCTION_LINES = 120
 ROUTE_CONTEXT_LINES = 16
+
+JETENGINE_EXPECTED_ROUTE_FILES = {
+    "jet-engine/includes/core/mcp-tools/rest-api/get-controller.php",
+    "jet-engine/includes/core/mcp-tools/rest-api/mcp-controller.php",
+    "jet-engine/includes/core/mcp-tools/rest-api/run-controller.php",
+}
 
 
 def safe_extract(archive: Path, destination: Path) -> None:
@@ -234,12 +240,138 @@ def scan_archive(provider: str, archive: Path, temp_root: Path) -> dict:
         "archive": archive.name,
         "present": True,
         "mcp_php_files": [path.relative_to(root).as_posix() for path in files],
-        "route_files": route_files,
+        "route_files": sorted(set(route_files)),
         "route_declarations": route_declarations,
         "security_functions": relevant_functions,
         "marker_counts": summary,
         "markers": markers,
     }
+
+
+def function_text(provider: dict, file_suffix: str, function_name: str) -> str:
+    for item in provider.get("security_functions") or []:
+        if item.get("function") != function_name:
+            continue
+        if not str(item.get("file") or "").endswith(file_suffix):
+            continue
+        return "\n".join(str(line.get("text") or "") for line in (item.get("body") or []))
+    return ""
+
+
+def require_contains(issues: list[dict], provider: str, contract: str, text: str, needles: list[str]) -> None:
+    missing = [needle for needle in needles if needle.lower() not in text.lower()]
+    if missing:
+        issues.append(
+            {
+                "provider": provider,
+                "contract": contract,
+                "reason": "missing_security_evidence",
+                "missing": missing,
+            }
+        )
+
+
+def enforce_security(report: dict) -> list[dict]:
+    issues = []
+    providers = report.get("providers") or {}
+
+    jetengine = providers.get("jetengine") or {}
+    if not jetengine.get("present"):
+        issues.append({"provider": "jetengine", "contract": "package", "reason": "missing"})
+    else:
+        actual_routes = set(jetengine.get("route_files") or [])
+        if actual_routes != JETENGINE_EXPECTED_ROUTE_FILES:
+            issues.append(
+                {
+                    "provider": "jetengine",
+                    "contract": "native_rest_routes",
+                    "reason": "route_set_drift",
+                    "expected": sorted(JETENGINE_EXPECTED_ROUTE_FILES),
+                    "actual": sorted(actual_routes),
+                }
+            )
+
+        require_contains(
+            issues,
+            "jetengine",
+            "mcp_tools_list_admin_gate",
+            function_text(jetengine, "mcp-tools/rest-api/get-controller.php", "get_items_permissions_check"),
+            ["current_user_can", "manage_options"],
+        )
+        require_contains(
+            issues,
+            "jetengine",
+            "mcp_json_rpc_admin_gate",
+            function_text(jetengine, "mcp-tools/rest-api/mcp-controller.php", "permissions_check"),
+            ["current_user_can", "manage_options"],
+        )
+        require_contains(
+            issues,
+            "jetengine",
+            "feature_run_route_gate",
+            function_text(jetengine, "mcp-tools/rest-api/run-controller.php", "run_item_permissions_check"),
+            ["wp_verify_nonce", "wp_rest", "check_permissions"],
+        )
+        require_contains(
+            issues,
+            "jetengine",
+            "feature_default_admin_permission",
+            function_text(jetengine, "mcp-tools/feature.php", "check_permissions"),
+            ["current_user_can", "manage_options"],
+        )
+        require_contains(
+            issues,
+            "jetengine",
+            "feature_execution_chain",
+            function_text(jetengine, "mcp-tools/rest-api/run-controller.php", "run_item"),
+            ["Registry", "get_feature", "->run"],
+        )
+
+    elementor = providers.get("elementor") or {}
+    if not elementor.get("present"):
+        issues.append({"provider": "elementor", "contract": "package", "reason": "missing"})
+    else:
+        if elementor.get("route_files"):
+            issues.append(
+                {
+                    "provider": "elementor",
+                    "contract": "abilities_only_transport",
+                    "reason": "unexpected_native_rest_route",
+                    "actual": elementor.get("route_files"),
+                }
+            )
+        counts = elementor.get("marker_counts") or {}
+        if int(counts.get("current_user_can") or 0) < 1 or int(counts.get("edit_posts") or 0) < 1:
+            issues.append(
+                {
+                    "provider": "elementor",
+                    "contract": "ability_baseline_permission",
+                    "reason": "missing_edit_posts_gate",
+                }
+            )
+        if int(counts.get("edit_post") or 0) < 1:
+            issues.append(
+                {
+                    "provider": "elementor",
+                    "contract": "post_specific_permission",
+                    "reason": "missing_edit_post_gate",
+                }
+            )
+
+    bit_pi = providers.get("bit_pi") or {}
+    if not bit_pi.get("present"):
+        issues.append({"provider": "bit_pi", "contract": "package", "reason": "missing"})
+    elif bit_pi.get("route_files") or int((bit_pi.get("marker_counts") or {}).get("register_rest_route") or 0) != 0:
+        issues.append(
+            {
+                "provider": "bit_pi",
+                "contract": "mcp_client_only",
+                "reason": "unexpected_native_mcp_server_route",
+                "actual": bit_pi.get("route_files") or [],
+            }
+        )
+
+    return issues
 
 
 def main() -> int:
@@ -250,8 +382,8 @@ def main() -> int:
 
     plugins_dir = Path(args.plugins_dir).resolve()
     report = {
-        "contract": "mad4b.site-control-plane.packaged-mcp-security-evidence.v3",
-        "mode": "static_evidence_only",
+        "contract": "mad4b.site-control-plane.packaged-mcp-security.v4",
+        "mode": "static_enforced_evidence",
         "providers": {},
     }
 
@@ -260,11 +392,15 @@ def main() -> int:
         for provider, archive_name in TARGETS.items():
             report["providers"][provider] = scan_archive(provider, plugins_dir / archive_name, temp_root)
 
+    issues = enforce_security(report)
+    report["security_status"] = "passed" if not issues else "failed"
+    report["security_issues"] = issues
+
     output = Path(args.output).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0
+    return 0 if not issues else 1
 
 
 if __name__ == "__main__":
