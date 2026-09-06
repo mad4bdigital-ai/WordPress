@@ -233,7 +233,7 @@ require(read(adapter_static), 'mad4b.site-control-plane.adapter-discovery-revers
 require(read(adapter_runtime), 'mad4b.site-control-plane.runtime-plugin-adapter-discovery.v1', 'adapter-discovery-runtime')
 require(read(adapter_reversible_runtime), 'mad4b.site-control-plane.runtime-reversible-adapter.v1', 'adapter-reversible-runtime')
 require(read(jetengine_runtime), 'mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1', 'jetengine-side-channel-runtime')
-for marker in ('Repository plugin adapter coverage contract', 'Core adapter runtime', 'JetEngine reversible runtime'):
+for marker in ('Repository plugin adapter coverage contract', 'Core adapter runtime', 'JetEngine adapter boundary'):
     require(read(adapter_workflow), marker, 'adapter-coverage-workflow')
 
 require(tasks, '- [x] T006 Dedicated `MAD4B Spec Consistency` CI', 'tasks-spec-gate-complete')
