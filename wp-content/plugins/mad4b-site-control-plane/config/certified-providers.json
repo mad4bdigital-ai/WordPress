@@ -41,6 +41,7 @@
         "includes/Core/McpComponentRegistry.php": "9d078fd4008a047389b3fa55b80687c3970e406ba88d7027f9f25e50700bee6a",
         "includes/Core/McpServer.php": "5ecab0dc1f3e65c6b14cba9f13d60df401975b110521995997e6365d77b5cb3a",
         "includes/Core/McpTransportFactory.php": "b9579036f6b8b39342cb3cbbe18d66c96a18d3483b4e3af1ef90baf2a41896f8",
+        "includes/Domain/Utils/AbilityArgumentNormalizer.php": "ae8c9fcdec9eee095a433700106080a5653d6fedab61a8e99d8cd94e36410328",
         "includes/Servers/DefaultServerFactory.php": "3b562a64af3019180d36c5f2ab2d6afb85332fd122204861524f50388d7c7553",
         "mcp-adapter.php": "1252c764e058f1d651d08c732118584dc180dd075f2af1f9666b2e6af0cd3ba7",
         "vendor/composer/autoload_classmap.php": "800cc0ac4be053e49637ba3bbea5fe1ad36ad0f4b2010e40c5461ddf4f1cf5ce",
