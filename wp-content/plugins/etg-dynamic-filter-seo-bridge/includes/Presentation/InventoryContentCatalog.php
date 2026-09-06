@@ -17,6 +17,7 @@ final class InventoryContentCatalog {
         $this->token($tokens,'breadcrumb','Breadcrumb','text','composed');
         $this->token($tokens,'gallery_ids','Gallery IDs','text','media');
         $this->token($tokens,'image_id','Primary Image ID','image','media');
+        $this->token($tokens,'image_url','Primary Image URL','url','media');
         foreach(array('language','profile_id','provider','query_id','query_builder_query_id','state_transport','ajax_only') as $key){$this->token($tokens,'context:'.$key,ucwords(str_replace('_',' ',$key)),'text','context');}
         foreach(array('current','archive') as $key){$this->token($tokens,'url:'.$key,ucfirst($key).' URL','url','url');}
 
@@ -31,7 +32,7 @@ final class InventoryContentCatalog {
         }
         $topology=(array)($inventory['elementor_topology']??array());foreach(array_slice((array)($topology['bindings']??array()),0,100) as $binding){if(!is_array($binding)||'verified'!==(string)($binding['status']??'')){continue;}$providerId=sanitize_key((string)($binding['provider_query_id']??''));$qb=sanitize_key((string)($binding['query_builder_custom_query_id']??''));if($providerId){$this->token($tokens,'topology:'.$providerId.':query_builder_query_id','Topology '.$providerId.' Query Builder ID','text','topology',array('query_builder_query_id'=>$qb,'internal_id'=>(string)($binding['query_builder_internal_id']??''),'post_types'=>(array)($binding['post_types']??array())));}}
         ksort($tokens,SORT_STRING);$tokens=array_slice($tokens,0,self::MAX_TOKENS,true);
-        return array('contract'=>self::CONTRACT,'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'supports_ajax_runtime_state'=>true,'snapshot_fingerprint'=>(string)($snapshot['snapshot_fingerprint']??''),'token_count'=>count($tokens),'tokens'=>$tokens);
+        return array('contract'=>self::CONTRACT,'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'supports_ajax_runtime_state'=>true,'supports_elementor_media_tags'=>true,'snapshot_fingerprint'=>(string)($snapshot['snapshot_fingerprint']??''),'token_count'=>count($tokens),'tokens'=>$tokens);
     }
 
     private function token(array &$tokens,string $token,string $label,string $type,string $source,array $evidence=array()):void{if(count($tokens)>=self::MAX_TOKENS){return;}$token=strtolower(trim($token));if(''===$token||isset($tokens[$token])){return;}$tokens[$token]=array('token'=>$token,'placeholder'=>'{{'.$token.'}}','label'=>$label,'type'=>$type,'source'=>$source,'evidence'=>$evidence,'authorizing'=>false);}
