@@ -1,0 +1,38 @@
+name: Discover vendor license APIs
+
+on:
+  push:
+    branches:
+      - fix/wpl-client-db-lifecycle-cleanup-20260906
+    paths:
+      - .github/workflows/wpl-license-adapter-discovery.yml
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Crocoblock and WPML license integrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/wpl-license-discovery
+          mkdir -p /tmp/wpl-license-discovery/{otgs,wpml,crocoblock}
+          unzip -q wp-content/plugins/otgs-installer-plugin.zip -d /tmp/wpl-license-discovery/otgs || true
+          unzip -q wp-content/plugins/sitepress-multilingual-cms.zip -d /tmp/wpl-license-discovery/wpml || true
+          unzip -q wp-content/plugins/crocoblock-wizard.zip -d /tmp/wpl-license-discovery/crocoblock || true
+
+          echo '=== OTGS/WPML registration candidates ==='
+          grep -RniE "site.?key|register(ed|ing)?|repository.*wpml|subscription|license|licen[sc]e|api.?key" /tmp/wpl-license-discovery/otgs /tmp/wpl-license-discovery/wpml \
+            --include='*.php' | head -n 500 || true
+
+          echo '=== Crocoblock registration candidates ==='
+          grep -RniE "license|licen[sc]e|activate|activation|account|token|api.?key|register(ed|ing)?" /tmp/wpl-license-discovery/crocoblock \
+            --include='*.php' | head -n 500 || true
+
+          echo '=== Candidate class/function definitions ==='
+          grep -RniE "(class|function)[[:space:]].*(license|licen[sc]e|register|subscription|site.?key|activate)" /tmp/wpl-license-discovery \
+            --include='*.php' | head -n 500 || true
