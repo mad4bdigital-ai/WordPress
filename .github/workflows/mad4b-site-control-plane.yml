@@ -102,12 +102,17 @@ jobs:
           provider_contracts="$root/includes/class-mad4b-scp-provider-contracts.php"
           provider_baseline="$root/config/certified-providers.json"
           scanner="$root/tests/scan-packaged-providers.py"
+          servers="$root/includes/class-mad4b-scp-servers.php"
+          transport_context="$root/includes/class-mad4b-scp-transport-context.php"
+          authorization="$root/includes/class-mad4b-scp-authorization.php"
           for file in \
             mad4b-site-control-plane.php \
             config/certified-providers.json \
             includes/class-mad4b-scp-abilities.php \
             includes/class-mad4b-scp-policy.php \
             includes/class-mad4b-scp-servers.php \
+            includes/class-mad4b-scp-transport-context.php \
+            includes/class-mad4b-scp-authorization.php \
             includes/class-mad4b-scp-audit.php \
             includes/class-mad4b-scp-provider-contracts.php \
             includes/class-mad4b-scp-adapter-registry.php \
@@ -176,6 +181,15 @@ jobs:
           grep -Fq "previous_hash" "$audit"
           grep -Fq "entry_hash" "$audit"
           grep -Fq "verify_chain" "$audit"
+
+          grep -Fq "mad4b.mcp-transport-context.v1" "$transport_context"
+          grep -Fq "resolve_server_for_ability" "$transport_context"
+          grep -Fq "mad4b_transport_route_mismatch" "$transport_context"
+          grep -Fq "MAD4B_SCP_Transport_Context::resolve_server_for_ability" "$authorization"
+          grep -Fq "'transport_bound'" "$authorization"
+          grep -Fq "'mad4b-write'" "$servers"
+          grep -Fq "public static function write_tools" "$servers"
+          grep -Fq "'MAD4B Write MCP'" "$servers"
 
       - name: Verify default-server isolation
         shell: bash
@@ -262,9 +276,11 @@ jobs:
         run: |
           set -euo pipefail
           servers='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
-          for surface in mad4b-read mad4b-content mad4b-admin mad4b-breakglass; do
+          for surface in mad4b-read mad4b-content mad4b-write mad4b-admin mad4b-breakglass; do
             grep -Fq "'$surface'" "$servers"
           done
           grep -Fq "ability_names( 'read' )" "$servers"
           grep -Fq "ability_names( 'content' )" "$servers"
           grep -Fq "ability_names( 'admin' )" "$servers"
+          grep -Fq "array_key_exists( 'readonly', \$annotations )" "$servers"
+          grep -Fq "false !== \$annotations['readonly']" "$servers"
