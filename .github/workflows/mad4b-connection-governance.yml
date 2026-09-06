@@ -29,16 +29,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify connection and MCP peer contracts
+      - name: Verify connection, write-ingress and MCP peer contracts
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-transport-context.php"
+          php -l "$root/includes/class-mad4b-scp-authorization.php"
+          php -l "$root/includes/class-mad4b-scp-servers.php"
           php -l "$root/includes/class-mad4b-scp-connection-status.php"
           php -l "$root/includes/class-mad4b-scp-connection-ability.php"
           php -l "$root/includes/class-mad4b-scp-connection-admin-ui.php"
           php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
           php -l "$root/tests/runtime-connection-readiness-smoke.php"
+          php -l "$root/tests/runtime-write-surface-smoke.php"
           php -l "$root/tests/runtime-foreign-mcp-transport-blocker.php"
           php -l "$root/tests/runtime-mcp-namespace-index-hijack-blocker.php"
           python3 "$root/tests/connection-readiness-contract.py"
@@ -112,6 +116,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-connection-readiness-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove mad4b-write exact transport grant isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-surface-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove independent MCP REST transport fails closed
         shell: bash
