@@ -39,6 +39,7 @@ require_once $base.'/includes/Presentation/ContentSlotRegistry.php';
 require_once $base.'/includes/Presentation/PresentationResolver.php';
 require_once $base.'/includes/Elementor/DynamicTags/DynamicTagRuntime.php';
 require_once $base.'/includes/Elementor/DynamicTags/PreviewContextTrait.php';
+require_once $base.'/includes/Elementor/DynamicTags/LiveBindingTrait.php';
 require_once $base.'/includes/Elementor/DynamicTags/FilterValueTag.php';
 foreach(array('FilterTitleTag','FilterIntroTag','FilterResultSummaryTag','FilterKeywordTag','FilterArchiveUrlTag','FilterCurrentUrlTag','InventoryValueTag','ContentSlotTag','TermFieldTag','TermSectionTag','FilterImageTag','FilterImageUrlTag','FilterGalleryTag') as $class){require_once $base.'/includes/Elementor/DynamicTags/'.$class.'.php';}
 require_once $base.'/includes/Elementor/DynamicTagRegistrar.php';
@@ -58,6 +59,13 @@ expect_same(false,$state['authorizing'],'ajax state remains non-authorizing');
 expect_same(array('cairo','giza'),$state['filter_values']['location_jet'],'term IDs normalize to slugs');
 expect_true(isset($state['unknown_filters']['tour-styles_jet']),'unprofiled taxonomy remains visible');
 expect_same(false,$state['filtered_query_complete'],'unknown taxonomy makes filtered query incomplete');
+
+$prettyPath='/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:cairo/';
+$pretty=$parser->parse(array('provider'=>'jet-engine','query_id'=>'tours_query_archive','request_path'=>$prettyPath,'archive_path'=>$prettyPath,'current_query'=>array('tax_query'=>array(array('taxonomy'=>'location_jet','field'=>'term_id','terms'=>array(11))))));
+expect_same($prettyPath,$pretty['request_path'],'pretty JSF request path remains evidence');
+expect_same('/tours-and-activities/',$pretty['archive_path'],'pretty JSF path is reduced to base archive scope');
+expect_same('tours-and-activities',$pretty['archive'],'archive identity derives from base archive, not JSF filter path');
+expect_same(true,$pretty['filtered_query_complete'],'supported pretty JSF taxonomy remains complete');
 
 $notIn=$parser->parse(array('provider'=>'jet-engine','query_id'=>'tours_query_archive','archive_path'=>'/tours-and-activities/','current_query'=>array('tax_query'=>array(array('taxonomy'=>'location_jet','field'=>'term_id','terms'=>array(11),'operator'=>'NOT IN')))));
 expect_same(false,$notIn['filtered_query_complete'],'NOT IN fails closed');
@@ -84,7 +92,7 @@ expect_same(2,count($resolver->gallery('combined',$context,9)),'gallery resolves
 $bad=$context;$bad['provider_observation_matches_state']=false;expect_same('',$resolver->value('terms:location:names',$bad),'AJAX presentation fails closed on provider mismatch');
 
 class FakeElementorManager {public $tags=array();public function register_group($n,array $s){}public function register($tag){$this->tags[$tag->get_name()]=array('class'=>get_class($tag),'instance'=>$tag);}public function create_tag($name,array $settings=array()){if(!isset($this->tags[$name])){return null;}$class=$this->tags[$name]['class'];return new $class(array('settings'=>$settings,'id'=>'probe'));}}
-$catalogProvider=function(){return array('tokens'=>array('title'=>array('label'=>'Filter Title','type'=>'text'),'term:location:name'=>array('label'=>'Location Name','type'=>'text'),'term:location:description'=>array('label'=>'Location Description','type'=>'html'),'image_id'=>array('label'=>'Primary Image ID','type'=>'image'),'image_url'=>array('label'=>'Primary Image URL','type'=>'url')));};
+$catalogProvider=function(){return array('tokens'=>array('title'=>array('label'=>'Filter Title','type'=>'text'),'term:location:name'=>array('label'=>'Location Name','type'=>'text'),'term:location:description'=>array('label'=>'Location Description','type'=>'html'),'image_id'=>array('label'=>'Primary Image ID','type'=>'image'),'image_url'=>array('label'=>'Primary Image URL','type'=>'url')),'groups'=>array('jet-engine/tours_query_archive'=>array('profile_ids'=>array('tours'))));};
 $manager=new FakeElementorManager();(new DynamicTagRegistrar($resolver,$slots,$catalogProvider,function($url)use($context){return$context;}))->register($manager);
 $tagNames=array('etg-filter-title','etg-filter-intro','etg-filter-result-summary','etg-filter-keyword','etg-filter-archive-url','etg-filter-current-url','etg-inventory-value','etg-dynamic-content-slot','etg-filter-term-field','etg-filter-term-section','etg-filter-image','etg-filter-image-url','etg-filter-gallery');
 foreach($tagNames as $name){expect_true(isset($manager->tags[$name]),'tag registered: '.$name);$tag=$manager->create_tag($name,array());expect_true(is_object($tag),'Elementor one-argument recreation succeeds: '.$name);}
@@ -95,6 +103,7 @@ $js=file_get_contents($base.'/assets/js/ajax-filter-state.js');$endpoint=file_ge
 expect_true(false!==strpos($js,'ajaxFilters/updated')&&false!==strpos($js,'group.currentQuery'),'browser consumes JetSmartFilters runtime state');
 expect_true(false===strpos($js,'history.pushState')&&false===strpos($js,'history.replaceState'),'AJAX bridge never mutates browser history');
 expect_true(false!==strpos($js,'AbortController')&&false!==strpos($js,'data-etg-dfsb-group'),'AJAX concurrency and multi-provider scoping retained');
+expect_true(false!==strpos($js,'autoGroupKey')&&false!==strpos($js,'baseArchivePath')&&false!==strpos($js,'request_path'),'front-end runtime hardening present');
 expect_true(false!==strpos($endpoint,"'url_authority' => false")&&false!==strpos($endpoint,"'seo_mutation' => false"),'REST response preserves non-SEO boundary');
 expect_true(false!==strpos($endpoint,'token_not_allowlisted')&&false!==strpos($endpoint,'slot_not_allowlisted'),'REST requests remain allowlisted');
 expect_true(false!==strpos($builder,'blocked_incomplete_ajax_query'),'result count blocks incomplete AJAX query');
