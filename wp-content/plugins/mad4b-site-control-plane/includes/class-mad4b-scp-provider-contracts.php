@@ -41,7 +41,9 @@ final class MAD4B_SCP_Provider_Contracts {
 
 	private static function integrity_status( array $contract ) {
 		$result = array(
-			'required' => ! empty( $contract['require_runtime_integrity'] ),
+			// Runtime integrity is a mandatory part of every certified provider contract.
+			// There is no version-only mutation mode: a missing manifest must fail closed.
+			'required' => true,
 			'manifest_present' => ! empty( $contract['critical_files'] ) && is_array( $contract['critical_files'] ),
 			'verified' => array(),
 			'missing' => array(),
