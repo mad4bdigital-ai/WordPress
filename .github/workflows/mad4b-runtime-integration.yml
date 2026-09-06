@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-runtime-integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   wordpress-runtime-smoke:
     name: WordPress runtime smoke (${{ matrix.wordpress }})
