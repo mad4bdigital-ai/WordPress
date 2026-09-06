@@ -41,11 +41,12 @@ expect_same(false,$p['taxonomy_candidates']['durations_jet']['indexing_set_added
 expect_true(!in_array('locations_exept_current',$p['blocking_reasons'],true),'unrelated identity collision does not poison Tours proposal');
 
 $page=file_get_contents(dirname(__DIR__).'/includes/Admin/InventoryControlPage.php');
+$compact=preg_replace('/\s+/','',$page);
 expect_true(false!==strpos($page,'Global bridge must be OFF'),'apply locked when Global is on');
-expect_true(false!==strpos($page,'hash_equals( $expectedFingerprint, $actualFingerprint )'),'inventory fingerprint concurrency guard');
-expect_true(false!==strpos($page,'hash_equals( $expectedRevision, $this->config->revision() )'),'configuration revision concurrency guard');
-expect_true(false!==strpos($page,"\$raw['enabled'] = false"),'apply forces profile disabled');
-expect_true(false!==strpos($page,"\$config['enabled'] = false"),'apply keeps Global off');
+expect_true(false!==strpos($compact,'hash_equals($expectedFingerprint,$actualFingerprint)'),'inventory fingerprint concurrency guard');
+expect_true(false!==strpos($compact,'hash_equals($expectedRevision,$this->config->revision())'),'configuration revision concurrency guard');
+expect_true(false!==strpos($compact,"\$raw['enabled']=false"),'apply forces profile disabled');
+expect_true(false!==strpos($compact,"\$config['enabled']=false"),'apply keeps Global off');
 expect_true(false!==strpos($page,'allowed_taxonomy_sets'),'UI declares indexing sets are not granted');
 expect_true(false!==strpos($page,'provider_observation_verified'),'authority change invalidates publication evidence');
 expect_true(false!==strpos($page,'result_count_parity_verified'),'result-count evidence invalidated');
