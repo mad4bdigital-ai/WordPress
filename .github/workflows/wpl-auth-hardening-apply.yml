@@ -18,17 +18,39 @@ jobs:
         with:
           fetch-depth: 0
       - name: Finalize WPL transport centralization
-        run: python3 .github/scripts/wpl-transport-finalize.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/wpl-transport-finalize.py
+          python3 .github/scripts/wpl-final-cleanup.py
+          # The finalizer also prepares permanent CI edits. Keep this bot commit
+          # source-only; workflow files are updated separately through the GitHub API.
+          git checkout -- .github/workflows/wpl-client-contract.yml
       - name: PHP lint and transport security assertions
         shell: bash
         run: |
           set -euo pipefail
           find wp-content/plugins/wpl-client -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          ! grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' wp-content/plugins/wpl-client
-          ! grep -R -n --include='*.php' 'sslverify' wp-content/plugins/wpl-client | grep -q 'false'
-          ! grep -R -n --include='*.php' -E 'SSL_VERIFYPEER.*false|SSL_VERIFYHOST.*false|DEFAULT@SECLEVEL=1|CURL_SSLVERSION_TLSv1' wp-content/plugins/wpl-client
-          ! grep -R -n --include='*.php' 'WPL_SERVER_API_KEY' wp-content/plugins/wpl-client | grep -v 'class-wpl-server-client.php'
-          ! grep -R -n --include='*.php' 'WPL_SERVER_API_URL' wp-content/plugins/wpl-client | grep -Ev 'class-wpl-server-client.php|wpl-client.php'
+          if grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' wp-content/plugins/wpl-client; then
+            echo 'Public source embeds a WPL credential' >&2
+            exit 1
+          fi
+          if grep -R -n --include='*.php' 'sslverify' wp-content/plugins/wpl-client | grep -q 'false'; then
+            echo 'TLS verification disabled' >&2
+            exit 1
+          fi
+          if grep -R -n --include='*.php' -E 'SSL_VERIFYPEER.*false|SSL_VERIFYHOST.*false|DEFAULT@SECLEVEL=1|CURL_SSLVERSION_TLSv1' wp-content/plugins/wpl-client; then
+            echo 'Weak TLS fallback detected' >&2
+            exit 1
+          fi
+          if grep -R -n --include='*.php' 'WPL_SERVER_API_KEY' wp-content/plugins/wpl-client | grep -v 'class-wpl-server-client.php'; then
+            echo 'Legacy credential callsite detected' >&2
+            exit 1
+          fi
+          if grep -R -n --include='*.php' 'WPL_SERVER_API_URL' wp-content/plugins/wpl-client | grep -Ev 'class-wpl-server-client.php|wpl-client.php'; then
+            echo 'Direct WPL endpoint callsite detected' >&2
+            exit 1
+          fi
           grep -q 'Version:     2.8.0' wp-content/plugins/wpl-client/wpl-client.php
           grep -q "WPL_CLIENT_VERSION', '2.8.0'" wp-content/plugins/wpl-client/wpl-client.php
           grep -q 'WPL_Server_Client::request' wp-content/plugins/wpl-client/includes/class-wpl-installer.php
@@ -44,7 +66,10 @@ jobs:
           unzip -q wpl-client.zip -d /tmp/wpl-client-package-check
           diff -qr wpl-client /tmp/wpl-client-package-check/wpl-client
           test ! -e /tmp/wpl-client-package-check/wpl-client/includes/wpl-package-credential.php
-          ! grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' /tmp/wpl-client-package-check/wpl-client
+          if grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' /tmp/wpl-client-package-check/wpl-client; then
+            echo 'Public ZIP embeds a WPL credential' >&2
+            exit 1
+          fi
           cd ../..
       - name: Commit transport finalization
         shell: bash
@@ -52,7 +77,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip .github/workflows/wpl-client-contract.yml
+          git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'refactor(wpl-client): centralize authenticated server transport'
           git pull --rebase origin fix/wpl-client-db-lifecycle-cleanup-20260906
