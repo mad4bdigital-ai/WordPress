@@ -33,11 +33,11 @@ final class MAD4B_SCP_Servers {
 		), $registry->ability_names( 'read' ) );
 
 		$content_tools = array_merge( array( 'mad4b/content-get-post', 'mad4b/content-update-post' ), $registry->ability_names( 'content' ) );
-		$admin_tools = array_merge( array( 'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail' ), $registry->ability_names( 'admin' ) );
+		$admin_tools = array_merge( array( 'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/mutation-get', 'mad4b/mutation-undo' ), $registry->ability_names( 'admin' ) );
 
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( 'MAD4B_SCP_Policy', 'can_read' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( 'MAD4B_SCP_Policy', 'can_content' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative plugin, workflow, cache, filesystem and structured database repair abilities.', array_values( array_unique( $admin_tools ) ), array( 'MAD4B_SCP_Policy', 'can_admin' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( 'MAD4B_SCP_Policy', 'can_admin' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', array( 'mad4b/database-raw-query' ), array( 'MAD4B_SCP_Policy', 'can_breakglass' ), $transport, $error_handler, $observability );
 	}
 
