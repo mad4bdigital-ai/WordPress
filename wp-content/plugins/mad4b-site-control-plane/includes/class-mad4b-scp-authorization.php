@@ -67,15 +67,17 @@ final class MAD4B_SCP_Authorization {
 	public static function authority_status() {
 		$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status() : array( 'ready' => false );
 		$counts = ! empty( $schema['ready'] ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array( 'enabled_agents' => 0, 'enabled_subjects' => 0, 'grants' => 0, 'wildcard_grants' => 0 );
-		$mutation_enabled = MAD4B_SCP_Policy::can_mutate();
+		$mutation_configured = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED;
+		$mutation_effective = $mutation_configured ? MAD4B_SCP_Policy::can_mutate() : false;
 		$blockers = array();
 		if ( empty( $schema['ready'] ) ) $blockers[] = 'governance_schema_unavailable';
 		if ( ! empty( $counts['wildcard_grants'] ) ) $blockers[] = 'wildcard_grants_detected';
-		if ( $mutation_enabled && empty( $counts['enabled_agents'] ) ) $blockers[] = 'mutation_enabled_without_nhi';
+		if ( $mutation_configured && empty( $counts['enabled_agents'] ) ) $blockers[] = 'mutation_enabled_without_nhi';
 		return array(
 			'schema_ready' => ! empty( $schema['ready'] ),
 			'schema_version' => isset( $schema['installed_version'] ) ? (int) $schema['installed_version'] : 0,
-			'mutation_global_enabled' => $mutation_enabled,
+			'mutation_global_enabled' => $mutation_configured,
+			'mutation_effective_for_request' => $mutation_effective,
 			'nhi_mutation_required' => true,
 			'enabled_agents' => (int) $counts['enabled_agents'],
 			'enabled_subject_bindings' => (int) $counts['enabled_subjects'],
@@ -83,7 +85,7 @@ final class MAD4B_SCP_Authorization {
 			'wildcard_grants' => (int) $counts['wildcard_grants'],
 			'approval_service_ready' => class_exists( 'MAD4B_SCP_Approval_Tickets' ) && ! empty( $schema['ready'] ),
 			'blockers' => $blockers,
-			'status' => $blockers ? 'blocked' : ( $mutation_enabled ? 'ready_for_governed_mutation' : 'ready_read_only' ),
+			'status' => $blockers ? 'blocked' : ( $mutation_configured ? ( $mutation_effective ? 'ready_for_governed_mutation' : 'mutation_configured_identity_required' ) : 'ready_read_only' ),
 		);
 	}
 
