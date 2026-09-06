@@ -15,20 +15,26 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->add_ability( 'jetengine/get-cpt-definition', 'Get JetEngine CPT Definition', 'get_cpt_definition', array( 'MAD4B_SCP_Policy', 'can_read' ), $this->schema( array( 'post_type' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 20 ) ), array( 'post_type' ) ) );
 		$this->add_ability( 'jetengine/update-post-meta', 'Update JetEngine Post Meta', 'update_post_meta_value', array( $this, 'can_edit_post' ), $this->schema( array(
 			'post_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'field' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ), 'value' => $this->json_value_schema(), 'expected_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ), 'allow_create' => array( 'type' => 'boolean', 'default' => false )
-		), array( 'post_id', 'field', 'value' ) ), 'content', false, false, true );
+		), array( 'post_id', 'field', 'value' ) ), 'content', false, true, true );
 	}
 	public function can_read_post( $input ) { $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; return $id > 0 && current_user_can( 'read_post', $id ); }
 	public function can_edit_post( $input ) { $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; return $id > 0 && current_user_can( 'edit_post', $id ); }
 	public function status() {
 		$status = parent::status();
 		$status['contracts'] = array( 'jet_engine_function' => function_exists( 'jet_engine' ), 'jet_engine_class' => class_exists( 'Jet_Engine' ) );
-		$status['write_mode'] = 'existing_unprotected_meta_sha_locked';
-		$status['meta_create_mode'] = 'admin_plus_explicit_filter';
+		$status['write_mode'] = 'explicit_field_policy_plus_sha_lock';
+		$status['unknown_field_write_default'] = 'deny';
+		$status['meta_create_mode'] = 'admin_plus_explicit_create_policy_plus_field_policy';
 		return $status;
+	}
+	private function exact_field_name( $value ) {
+		$field = (string) $value;
+		if ( '' === $field || strlen( $field ) > 191 || $field !== sanitize_key( $field ) ) return new WP_Error( 'mad4b_jetengine_invalid_field', 'Meta field must already be a canonical WordPress meta key; silent key canonicalization is not allowed.' );
+		return $field;
 	}
 	public function get_post_meta_value( $input ) {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
-		$field = sanitize_key( $input['field'] ); if ( '' === $field ) return new WP_Error( 'mad4b_jetengine_invalid_field', 'Invalid meta field.' );
+		$field = $this->exact_field_name( $input['field'] ); if ( is_wp_error( $field ) ) return $field;
 		$id = absint( $input['post_id'] );
 		if ( 0 === strpos( $field, '_' ) && ! current_user_can( 'manage_options' ) && ! apply_filters( 'mad4b_scp_allow_protected_meta_read', false, 'jetengine', $field, $id ) ) return new WP_Error( 'mad4b_jetengine_protected_meta_read', 'Protected meta reads require administrator permission by default.' );
 		$value = get_post_meta( $id, $field, true );
@@ -54,8 +60,8 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 	public function update_post_meta_value( $input ) {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
-		$id = absint( $input['post_id'] ); $field = sanitize_key( $input['field'] );
-		if ( '' === $field ) return new WP_Error( 'mad4b_jetengine_invalid_field', 'Invalid meta field.' );
+		$id = absint( $input['post_id'] ); $field = $this->exact_field_name( $input['field'] );
+		if ( is_wp_error( $field ) ) return $field;
 		if ( 0 === strpos( $field, '_' ) && ! apply_filters( 'mad4b_scp_allow_protected_meta_write', false, 'jetengine', $field, $id ) ) return new WP_Error( 'mad4b_jetengine_protected_meta', 'Protected meta writes are denied by default.' );
 		$exists = metadata_exists( 'post', $id, $field );
 		$current = get_post_meta( $id, $field, true );
@@ -67,7 +73,7 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( empty( $input['allow_create'] ) ) return new WP_Error( 'mad4b_jetengine_create_denied', 'This ability does not create undeclared meta unless explicitly requested.' );
 			if ( ! current_user_can( 'manage_options' ) || ! apply_filters( 'mad4b_scp_allow_jetengine_meta_create', false, $field, $id, $input['value'], get_current_user_id() ) ) return new WP_Error( 'mad4b_jetengine_create_policy_denied', 'Creating a new JetEngine/meta field requires administrator permission and an explicit site policy filter.' );
 		}
-		if ( ! (bool) apply_filters( 'mad4b_scp_jetengine_field_write_allowed', true, $field, $id, $exists, $input['value'], get_current_user_id() ) ) return new WP_Error( 'mad4b_jetengine_field_policy_denied', 'JetEngine field write policy denied this field.' );
+		if ( ! (bool) apply_filters( 'mad4b_scp_jetengine_field_write_allowed', false, $field, $id, $exists, $input['value'], get_current_user_id() ) ) return new WP_Error( 'mad4b_jetengine_field_policy_denied', 'JetEngine field mutation is denied unless the exact field is explicitly allowlisted by site policy.' );
 		$result = update_post_meta( $id, $field, $input['value'] );
 		if ( false === $result && $current !== $input['value'] ) return new WP_Error( 'mad4b_jetengine_update_failed', 'Unable to update meta.' );
 		$new = get_post_meta( $id, $field, true );
