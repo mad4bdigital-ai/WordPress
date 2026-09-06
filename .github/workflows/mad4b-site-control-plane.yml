@@ -65,12 +65,13 @@ jobs:
             unzip -tqq "$plugins/$archive"
           done
 
-      - name: Inspect exact packaged provider contracts
+      - name: Inspect and certify exact packaged provider contracts
         shell: bash
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/scan-packaged-providers.py \
             --plugins-dir wp-content/plugins \
+            --baseline wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json \
             --output /tmp/mad4b-provider-contracts.json
 
       - name: Upload provider contract evidence
@@ -97,13 +98,18 @@ jobs:
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
           audit="$root/includes/class-mad4b-scp-audit.php"
+          registry="$root/includes/class-mad4b-scp-adapter-registry.php"
+          provider_contracts="$root/includes/class-mad4b-scp-provider-contracts.php"
+          provider_baseline="$root/config/certified-providers.json"
           scanner="$root/tests/scan-packaged-providers.py"
           for file in \
             mad4b-site-control-plane.php \
+            config/certified-providers.json \
             includes/class-mad4b-scp-abilities.php \
             includes/class-mad4b-scp-policy.php \
             includes/class-mad4b-scp-servers.php \
             includes/class-mad4b-scp-audit.php \
+            includes/class-mad4b-scp-provider-contracts.php \
             includes/class-mad4b-scp-adapter-registry.php \
             includes/adapters/class-mad4b-scp-adapter-base.php \
             includes/adapters/class-mad4b-scp-elementor-adapter.php \
@@ -123,6 +129,16 @@ jobs:
           grep -Fq "mad4b.site-control-plane.packaged-provider-contracts.v1" "$scanner"
           grep -Fq "static_zip_inspection_only" "$scanner"
           grep -Fq "Unsafe ZIP entry" "$scanner"
+          grep -Fq "--baseline" "$scanner"
+          grep -Fq "baseline_status" "$scanner"
+          grep -Fq "archive_sha256" "$scanner"
+          grep -Fq "mad4b.site-control-plane.certified-providers.v1" "$provider_baseline"
+          grep -Fq '"certification_mode": "exact_packaged_version"' "$provider_baseline"
+          grep -Fq "version_drift" "$provider_contracts"
+          grep -Fq "provider_version_drift" "$registry"
+          grep -Fq "mcp_adapter_certification" "$registry"
+          grep -Fq "provider_certification_ok" "$registry"
+
           grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$policy"
           grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
           grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
@@ -193,6 +209,7 @@ jobs:
           polylang="$root/includes/adapters/class-mad4b-scp-polylang-adapter.php"
 
           grep -Fq "anyOf" "$base"
+          grep -Fq "provider_certification" "$base"
 
           grep -Fq "elementor/manage-elements" "$elementor"
           grep -Fq "expected_sha256" "$elementor"
@@ -207,6 +224,8 @@ jobs:
           grep -Fq "current_user_can( 'manage_options' )" "$jetsmart"
           grep -Fq "does not create arbitrary filter internals" "$jetsmart"
 
+          grep -Fq "certified_provider_key" "$bitflows"
+          grep -Fq "return 'bit_pi'" "$bitflows"
           grep -Fq "FlowExecutor" "$bitflows"
           grep -Fq "FlowNode" "$bitflows"
           grep -Fq "MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED" "$bitflows"
