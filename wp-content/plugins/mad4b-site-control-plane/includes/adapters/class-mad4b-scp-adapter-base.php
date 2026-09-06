@@ -28,7 +28,7 @@ abstract class MAD4B_SCP_Adapter_Base {
 
 	protected function schema( array $properties, array $required = array() ) { $schema = array( 'type' => 'object', 'properties' => $properties, 'additionalProperties' => false ); if ( $required ) $schema['required'] = $required; return $schema; }
 	protected function json_value_schema() {
-		return array( 'oneOf' => array(
+		return array( 'anyOf' => array(
 			array( 'type' => 'string' ), array( 'type' => 'number' ), array( 'type' => 'integer' ), array( 'type' => 'boolean' ), array( 'type' => 'array' ), array( 'type' => 'object' ), array( 'type' => 'null' ),
 		) );
 	}
