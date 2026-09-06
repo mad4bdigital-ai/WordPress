@@ -26,6 +26,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-impact-policy.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
