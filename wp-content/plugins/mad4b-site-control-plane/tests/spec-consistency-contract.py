@@ -140,9 +140,11 @@ require(impl['admin'], "'manage_options'", 'implementation-admin-capability')
 for forbidden in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete('):
     forbid(impl['admin'], forbidden, 'admin-ui-read-only')
 
-# Task truth must acknowledge this gate and must never claim Production GO before target staging.
-require(tasks, 'T006', 'tasks-spec-gate')
+# Task truth must acknowledge the certified repository controls without opening Production.
+require(tasks, '- [x] T006 Dedicated `MAD4B Spec Consistency` CI', 'tasks-spec-gate-complete')
+require(tasks, 'c2d7ba3d900097be35b6d2311f603a0c77f2d338', 'tasks-admin-runtime-checkpoint')
+require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-runtime-proof')
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v1: PASS')
+print('mad4b.site-control-plane.spec-consistency.v2: PASS')
