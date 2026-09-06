@@ -1,6 +1,7 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge;
 
+use ETG\DynamicFilterSEOBridge\Admin\AdminAssets;
 use ETG\DynamicFilterSEOBridge\Admin\OperationalPage;
 use ETG\DynamicFilterSEOBridge\Admin\PublicationPage;
 use ETG\DynamicFilterSEOBridge\Admin\DynamicContentPage;
@@ -94,7 +95,9 @@ final class Bootstrap {
         $shortcodes=new Shortcodes($provider,$content,$gallery,$evidenceProvider,$this->presentation);
         add_action('init',array($shortcodes,'register'),20);
         $catalogProvider=function()use($catalog,$runtimeInventory,$profiles):array{return $catalog->build($runtimeInventory->collect(),$profiles->all());};
-        (new DynamicTagRegistrar($this->presentation,$slots,$catalogProvider))->registerHooks();
+        $previewContextProvider=function(string $previewUrl):array{return $this->previewEvidenceContext($previewUrl);};
+        (new DynamicTagRegistrar($this->presentation,$slots,$catalogProvider,$previewContextProvider))->registerHooks();
+        (new AdminAssets())->register();
         (new DynamicContentPage($runtimeInventory,$catalog,$slots,$profiles))->register();
         (new AjaxPresentationEndpoint($this->builder,$this->presentation,$slots,$catalogProvider))->register();
         (new InventoryControlPage($this->config,$profiles,$runtimeInventory,$profilePlanner))->register();
@@ -118,5 +121,27 @@ final class Bootstrap {
     public function presentationValue(string $token,array $context=null){return$this->presentation?$this->presentation->value($token,$context):'';}
     public function presentationSlot(string $slotId,array $context=null):string{return$this->presentation?$this->presentation->slot($slotId,$context):'';}
     public function presentationResolver(){return$this->presentation;}
+
+    private function previewEvidenceContext(string $previewUrl):array{
+        if(!$this->builder){return array();}
+        $previewUrl=trim($previewUrl);
+        if(''===$previewUrl){return array();}
+        $parts=function_exists('wp_parse_url')?wp_parse_url($previewUrl):parse_url($previewUrl);
+        if(false===$parts||!is_array($parts)){return array();}
+        if(isset($parts['user'])||isset($parts['pass'])){return array();}
+        if(!empty($parts['scheme'])&&!in_array(strtolower((string)$parts['scheme']),array('http','https'),true)){return array();}
+        if(!empty($parts['host'])){
+            $homeParts=function_exists('wp_parse_url')?wp_parse_url(home_url('/')):parse_url(home_url('/'));
+            $homeHost=is_array($homeParts)?strtolower((string)($homeParts['host']??'')):'';
+            if(''===$homeHost||strtolower((string)$parts['host'])!==$homeHost){return array();}
+        }
+        $path=(string)($parts['path']??'/');
+        if(''===$path){$path='/';}
+        if('/'!==substr($path,0,1)){$path='/'.$path;}
+        $query=isset($parts['query'])?trim((string)$parts['query']):'';
+        $uri=$path.(''!==$query?'?'.$query:'');
+        return$this->builder->buildEvidence($uri);
+    }
+
     private function __construct(){}
 }
