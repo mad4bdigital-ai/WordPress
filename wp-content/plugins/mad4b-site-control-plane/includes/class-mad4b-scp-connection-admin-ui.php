@@ -64,6 +64,22 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		}
 		echo '</tbody></table>';
 
+		$write = isset( $status['write_surface'] ) && is_array( $status['write_surface'] ) ? $status['write_surface'] : array();
+		echo '<h2>' . esc_html__( 'Governed write ingress', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'mad4b-write is a write-only projection of explicitly non-readonly governed Abilities. It is not a generic dispatcher and it requires grants bound to the actual write transport server.', 'mad4b-site-control-plane' ) . '</p>';
+		self::kv( array(
+			'Server' => isset( $write['server_id'] ) ? $write['server_id'] : 'mad4b-write',
+			'Endpoint' => isset( $write['endpoint'] ) ? $write['endpoint'] : '',
+			'Registered' => ! empty( $write['registered'] ),
+			'REST route registered' => ! empty( $write['route_registered'] ),
+			'Permission binding exact' => ! empty( $write['permission_callback_match'] ),
+			'Mounted write tools' => isset( $write['mounted_write_tool_count'] ) ? (int) $write['mounted_write_tool_count'] : 0,
+			'Global mutation configured' => ! empty( $write['mutation_global_enabled'] ),
+			'Mutation effective for current request' => ! empty( $write['mutation_effective_for_current_request'] ),
+			'Exact transport grant required' => ! empty( $write['exact_transport_grant_required'] ),
+			'Generic dispatcher exposed' => ! empty( $write['generic_dispatcher_exposed'] ),
+		) );
+
 		$auth = $status['authentication'];
 		echo '<h2>' . esc_html__( 'Authentication / subject bridge', 'mad4b-site-control-plane' ) . '</h2>';
 		self::kv( array(
