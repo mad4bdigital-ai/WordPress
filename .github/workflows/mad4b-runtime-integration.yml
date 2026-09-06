@@ -108,11 +108,20 @@ jobs:
           php /tmp/wp-cli.phar plugin status mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin status mad4b-site-control-plane --path="$WP_PATH"
 
-      - name: Execute runtime acceptance smoke
+      - name: Execute baseline runtime acceptance smoke
         shell: bash
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute reversible mutation and drift-safe undo smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-reversible-mutation-smoke.php" \
             --path=/tmp/mad4b-wordpress \
             --user=mad4b-ci-admin
