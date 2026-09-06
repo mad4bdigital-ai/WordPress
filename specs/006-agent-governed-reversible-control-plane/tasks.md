@@ -27,6 +27,10 @@ All seven repository workflows were `SUCCESS` on that SHA. Runtime Integration p
 
 `MAD4B Spec Consistency` was added after the checkpoint above and passed against the reconciled Schema v4 normative docs. A final exact-head cycle is required whenever this ledger/contract changes.
 
+### Connection-governance expansion
+
+The connection-readiness work expands the earlier Adapter-registry-only peer proof. Repository certification must now also prove independent MCP-looking REST transports fail governed mutation closed, while the read-only Connection surface distinguishes local readiness, remote endpoint preflight and a real externally verified handshake. A final exact-head cycle is required after this expansion.
+
 ## Phase 0 — Specification and guardrails
 
 - [x] T000 Constitution: trust, least privilege, provider certification, reversible mutation and side-channel rules.
@@ -210,19 +214,28 @@ Plugin lifecycle, structured DB mutation and Flow execution remain high-impact/n
 
 ## Phase 7 — MCP peer side-channel governance
 
-### T070 — Peer inventory
+### T070 — Official Adapter peer inventory
 
-- [x] Runtime inventory of actual registered MCP servers/tools.
+- [x] Runtime inventory of actual registered MCP Adapter servers/tools.
 - [x] Runtime semantics classification.
 - [x] No auto-disable.
 - [x] Default Adapter execute-ability path evaluated against reachable public writes.
 
-### T071 — Self-test blocker
+### T071 — Central side-channel blocker
 
-- [x] Unknown privileged write path → `mcp_write_side_channel_detected`.
-- [x] Explicit read-only peer remains non-blocking.
+- [x] Unknown privileged Adapter write path → `mcp_write_side_channel_detected`.
+- [x] Explicit Adapter read-only peer remains non-blocking.
 - [x] Central blocker occurs before budget/approval consumption.
-- [x] Adversarial rogue writer proven on WordPress 6.9/latest.
+- [x] Adversarial rogue Adapter writer proven on WordPress 6.9/latest.
+
+### T072 — Independent/foreign MCP transport inventory
+
+- [x] Official Adapter server routes are derived from runtime server objects.
+- [x] MCP-looking REST routes outside the Adapter registry are inventoried separately.
+- [x] Active MCP/model-context plugin basenames outside the certified Adapter/Control Plane pair are surfaced as foreign evidence.
+- [x] Unreviewed independent MCP transport fails governed mutation closed with `mcp_foreign_transport_unreviewed` + `mcp_write_side_channel_detected`.
+- [x] No runtime bypass filter can silently suppress the foreign-transport verdict.
+- [~] Disposable runtime proof for a `/mosmcp/v1/mcp`-shaped independent REST transport implemented; final exact-head CI certification pending.
 
 ## Phase 8 — Audit storage hardening
 
@@ -281,6 +294,18 @@ The certified first slice is intentionally read-only; it does not create a paral
 - [x] Static contract proves no POST/write primitive.
 - [x] Runtime render proves no governance-state mutation and no sensitive audit marker leakage.
 
+### T098 — Connection / transport console
+- [x] Dedicated `manage_options` read-only Connection submenu implemented.
+- [x] Four endpoints derived from actual MCP Adapter server route metadata rather than hardcoded URL assumptions.
+- [x] REST route registration and exact transport permission callback binding displayed.
+- [x] Local transport readiness separated from HTTPS remote endpoint preflight.
+- [x] Real external handshake is explicitly unverified locally; no self-certification.
+- [x] `mad4b/connection-status` mounted read-only on `mad4b-read`.
+- [x] Credential material/creation excluded; only bounded non-sensitive subject facts are displayed.
+- [x] No outbound self-probe/SSRF path.
+- [x] Foreign MCP route/plugin evidence surfaced.
+- [~] Runtime UI/transport proof implemented for WordPress 6.9/latest; final exact-head Connection Governance CI pending.
+
 Any future Admin write action must use reviewed capability + WordPress nonce + service-level validation and must not create an alternative authority path.
 
 ## Phase 10 — CI and staging certification
@@ -292,6 +317,8 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [x] Audit persistence contract.
 - [x] Read-only Admin Governance UI contract.
 - [x] Spec Kit consistency contract + dedicated workflow.
+- [x] `connection-readiness-contract.py` covers endpoint truth, no-secret/no-self-probe rules and foreign MCP fail-closed semantics.
+- [x] Dedicated `MAD4B Connection Governance` workflow added.
 
 ### T101 — Runtime integration
 
@@ -301,9 +328,10 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [x] Reversible post update + undo + deliberate drift denial.
 - [x] Governance visibility/approval planning.
 - [x] Budget rollback/exhaustion/rollover/concurrency.
-- [x] MCP peer clean inventory + rogue write blocker.
+- [x] MCP peer clean inventory + rogue Adapter write blocker.
 - [x] Append-only audit concurrency + tamper detection.
 - [x] Admin Governance Console read-only/runtime/no-leak smoke.
+- [~] Connection readiness + independent foreign MCP REST blocker runtime tests implemented; final exact-head CI pending.
 - [ ] Add a dedicated runtime ticket-expiry scenario if expiry is not already exercised independently from static/unit coverage.
 
 ### T102 — Packaging
@@ -313,15 +341,19 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 
 ### T103 — Real target staging
 
+- [ ] Separate WordPress Staging target exists and reports environment `staging`.
+- [ ] Exact final package deployed on Staging.
+- [ ] Remote HTTPS endpoint preflight has no blocker.
+- [ ] Real MCP initialize/tool discovery succeeds on the intended MAD4B server.
 - [ ] Exact MCP transport subject bridge evidence.
 - [ ] Dedicated staging NHI with minimum exact grants.
 - [ ] Runtime authority/self-test PASS on deployed target.
+- [ ] No unreviewed independent MCP transport/foreign MCP write-side-channel blocker.
 - [ ] Benign approved reversible content mutation + readback PASS.
 - [ ] Exact approved undo PASS.
 - [ ] Stale mutation rejection.
 - [ ] Deliberate after-state human drift → undo DENY without overwrite.
 - [ ] Budget exhaustion → DENY before ticket consume.
-- [ ] Peer inventory has no write-side-channel blocker.
 - [ ] Append-only audit valid for success/rejection paths.
 - [ ] Mutation gates returned OFF after certification unless controlled staging deliberately continues.
 
@@ -333,9 +365,10 @@ Before Production write:
 
 - [x] T006 dedicated spec-consistency gate implemented.
 - [ ] Required reversible adapter scope for intended Production operations resolved; T054 remains open beyond post-update pilot.
-- [x] NHI/exact grants/approval/budget/side-channel core contracts repository-certified.
+- [x] NHI/exact grants/approval/budget/side-channel core contracts repository-certified at the previous checkpoint; current connection-governance expansion requires a fresh exact-head cycle.
 - [x] Append-only audit repository durability/integrity certified.
 - [x] Read-only Admin Governance Console repository-certified.
+- [ ] Connection/foreign-MCP expansion final exact-head repository CI PASS.
 - [ ] Target staging T103 PASS.
 - [ ] Exact deployed provider/runtime certification PASS.
 - [ ] No target-site MCP write-side-channel blocker.
