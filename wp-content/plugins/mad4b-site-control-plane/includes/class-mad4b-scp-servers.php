@@ -3,8 +3,25 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Servers {
+	private static $registrations = array();
+
+	public static function expected_server_ids() {
+		return array( 'mad4b-read', 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' );
+	}
+
+	public static function registration_status() {
+		$status = array();
+		foreach ( self::expected_server_ids() as $id ) {
+			$status[ $id ] = isset( self::$registrations[ $id ] ) ? self::$registrations[ $id ] : array( 'registered' => false, 'error' => 'not_registered' );
+		}
+		return $status;
+	}
+
 	public function register_servers( $adapter ) {
-		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'create_server' ) ) return;
+		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'create_server' ) ) {
+			foreach ( self::expected_server_ids() as $id ) self::$registrations[ $id ] = array( 'registered' => false, 'error' => 'adapter_contract_unavailable' );
+			return;
+		}
 
 		$transport = '\\WP\\MCP\\Transport\\HttpTransport';
 		$error_handler = '\\WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler';
@@ -26,6 +43,11 @@ final class MAD4B_SCP_Servers {
 
 	private function create( $adapter, $id, $name, $description, array $tools, $permission, $transport, $error_handler, $observability ) {
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
-		if ( is_wp_error( $result ) ) error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		if ( is_wp_error( $result ) ) {
+			self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code() );
+			error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			return;
+		}
+		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '' );
 	}
 }
