@@ -13,7 +13,7 @@ Current plugin version: **0.3.0**.
 - `/wp-json/mcp/mad4b-admin` — governed administrative repair operations.
 - `/wp-json/mcp/mad4b-breakglass` — exceptional raw SQL recovery; disabled by default.
 
-All MAD4B abilities set `meta.public=false`, `meta.show_in_rest=false`, and `meta.mcp.public=false`. They are explicitly mounted into MAD4B custom servers and are not intended for the official default MCP server. `mad4b/runtime-self-test` treats exposure leaks, missing abilities, custom-server registration failure, and required-provider certification failures as degraded runtime state.
+All MAD4B abilities set `meta.public=false`, `meta.show_in_rest=false`, and `meta.mcp.public=false`. They are explicitly mounted into MAD4B custom servers and are not intended for the official default MCP server. `mad4b/runtime-self-test` treats exposure leaks, missing abilities, custom-server registration failure, required-provider certification failures, and detected MCP write side-channels as degraded runtime state.
 
 ## Mutation master switch
 
@@ -23,7 +23,49 @@ Every MAD4B mutation surface is fail-closed unless the site deliberately enables
 define( 'MAD4B_MCP_MUTATION_ENABLED', true );
 ```
 
-Read-only discovery remains available according to its capability policy. Enabling the master switch does **not** bypass provider certification, optimistic state guards, plugin lifecycle policy, Breakglass gates, per-Flow policy, filesystem scope, or adapter-specific safety checks.
+Read-only discovery remains available according to its capability policy. Enabling the master switch does **not** bypass provider certification, NHI identity/grants, token scopes, resource constraints, budgets, exact approval tickets, optimistic state guards, plugin lifecycle policy, Breakglass gates, per-Flow policy, filesystem scope, or adapter-specific safety checks.
+
+## Agent / NHI governance
+
+Mutation authorization is centrally intersected rather than inferred from possession of an MCP endpoint:
+
+```text
+WordPress capability
+→ global mutation gate
+→ authenticated subject binding
+→ enabled NHI
+→ exact server + ability + provider grant
+→ exact token scope when required
+→ resource constraints
+→ MCP peer write-side-channel guard
+→ transactional blast-radius budget
+→ exact short-lived approval when impact requires it
+→ provider execution
+```
+
+Wildcard grants/scopes are rejected. Grant creation validates that the ability is actually mounted on the requested MAD4B server and that the provider matches the server membership model.
+
+Administrative governance abilities include:
+
+- `mad4b/agent-list` — bounded non-secret NHI summaries;
+- `mad4b/agent-effective-access` — read-only effective-access simulation without consuming budget or approval;
+- `mad4b/approval-plan` — creates a pending exact-operation ticket only; it never auto-approves or executes.
+
+High-impact operations consume exact, short-lived, single-use approval tickets bound to NHI, server, ability, provider, target, ticket class, and canonical payload hash. Replay, expiry, class mismatch, NHI mismatch, and payload mismatch fail closed.
+
+## Blast-radius budgets
+
+NHI budgets are stored in transactional database tables rather than WordPress options/cache. Supported dimensions are `requests`, `mutations`, `affected_objects`, and `external_actions`.
+
+Budget reservation uses row locking and happens before approval consumption. If approval is missing or rejected, the reservation rolls back. If the budget is exhausted, approval remains unused. CI proves the ordering, rollover, exhaustion, and real two-process contention behavior.
+
+## MCP peer side-channel governance
+
+Before central mutation authorization reserves budget or consumes approval, MAD4B inventories registered MCP servers and their actual tool metadata through the MCP Adapter runtime registry.
+
+MAD4B-owned servers are governed directly. External/peer tools are classified from runtime semantics. Explicit read-only tools are non-blocking; unknown or reachable write paths fail closed. The default MCP Adapter `execute-ability` path is evaluated against the set of actually reachable public write abilities, so a valid MAD4B grant cannot bypass governance through another MCP server.
+
+A detected peer write path produces `mcp_write_side_channel_detected` and appears in runtime authority/self-test evidence.
 
 ## Certified packaged-provider baseline
 
@@ -58,19 +100,11 @@ Mutation is denied when the provider is unavailable, version-drifted, missing ex
 
 Providers without a certified mutation baseline remain read/status only by default. WordPress Media is the intentional core exception because it does not depend on a third-party package contract.
 
-## Core mutation lifecycle
+## Reversible mutation and undo
 
-The normal mutation pattern is:
+`mad4b/content-update-post` is the first runtime-certified reversible mutation path. It records a durable mutation envelope **before** `wp_update_post()`, captures bounded rollback state and before-state SHA-256, performs read-after-write verification, and records the verified after-state SHA-256.
 
-1. discover current state;
-2. obtain `modified_gmt`, SHA-256, expected language/thumbnail/state, or Flow fingerprint;
-3. submit the expected state together with the requested mutation;
-4. reject stale state;
-5. pass global mutation and provider/policy gates;
-6. use provider public/native APIs where a certified contract exists;
-7. produce correlated audit evidence.
-
-Blind writes are intentionally avoided.
+`mad4b/mutation-get` exposes bounded mutation metadata but not rollback payloads. `mad4b/mutation-undo` is high-impact: it reruns current authorization and requires an exact approval ticket. Undo refuses to overwrite newer work when the current state no longer matches the recorded after-state. Successful restore is readback-verified and creates a child recovery mutation record linked to the original mutation.
 
 ## Filesystem policy
 
@@ -170,11 +204,29 @@ Execution uses Bit Pi's reviewed `BitApps\Pi\src\Flow\FlowExecutor::execute()` c
 - LiteSpeed purge remains same-site only; external purge targets are rejected.
 - Yoast and SEOPress are detected/readable where supported but governed writes remain an explicit gap.
 
-## Audit
+## Append-only audit
 
-Audit evidence includes request correlation, structured bounded summaries, sensitive-key redaction, and `previous_hash` / `entry_hash` linkage with chain verification.
+Schema v4 stores audit evidence in transactional `mad4b_scp_audit_events` and `mad4b_scp_audit_heads` tables. Events are append-only, sequence-numbered, request-correlated, bounded/redacted, and chained by `previous_hash` / `entry_hash`.
 
-The current store is still a bounded WordPress option. It is suitable for MVP operational evidence but is not claimed to be append-only/high-concurrency durable; a dedicated append-only table remains future hardening.
+The singleton chain head is initialized before operational transactions and serialized with `SELECT ... FOR UPDATE`. Audit events can join the Budget-owned transaction; post-commit hooks are dispatched only after an explicit commit, while rollback discards pending sink dispatch. This keeps approval/budget/audit evidence atomic in the governed authorization path.
+
+The prior bounded WordPress option is retained read-only and cryptographically anchored during migration. Later drift of that legacy history fails integrity checks. Runtime CI proves concurrent two-process append without lost updates and proves that out-of-band event tampering makes `verify_chain()` fail.
+
+`mad4b_scp_audit_committed` is the external sink integration point. A separate SIEM/WORM implementation is still optional/deferred; the local append-only database chain is the current durable source of truth.
+
+## Read-only Admin Governance Console
+
+Administrators receive a `MAD4B Control Plane` screen backed by the same governance/runtime services. The first UX slice is deliberately **visibility only** and exposes no POST handler or grant/approve/revoke/undo action.
+
+Tabs cover:
+
+- runtime authority, blockers and MCP peer governance;
+- Agents/NHI and effective-access preview;
+- approval-ticket evidence;
+- mutation/undo evidence without rollback payloads;
+- append-only audit integrity and bounded event tail.
+
+The screen requires `manage_options`, uses bounded queries, and does not render structured audit summaries that may contain identity/context evidence. Mutation controls will be added only as separate nonce-protected, explicitly reviewed actions.
 
 ## CI certification
 
@@ -186,6 +238,10 @@ Repository CI currently covers:
 - runtime critical-file integrity manifests;
 - native MCP security invariants for JetEngine, Elementor and Bit Pi;
 - default-server isolation and four MAD4B custom servers;
+- exact NHI grants, governance visibility and approval planning;
+- transactional NHI budget ordering, exhaustion, rollover and real concurrent contention;
+- MCP peer write-side-channel detection before budget/approval consumption;
+- reversible post mutation, readback verification, exact approved undo, and drift-safe undo denial;
 - global mutation master-switch enforcement;
 - filesystem source-execution denial;
 - plugin lifecycle default-deny/multisite capability contracts;
@@ -194,10 +250,11 @@ Repository CI currently covers:
 - Bit Flows per-Flow default deny;
 - Elementor legacy-write explicit opt-in;
 - JetEngine exact-field and sensitive-meta policy;
-- audit structured evidence/redaction/hash-chain behavior;
+- append-only audit migration, structured redaction, concurrent append and tamper detection;
+- read-only Admin Governance Console contract/runtime behavior;
 - disposable WordPress/MySQL runtime activation and smoke testing on WordPress 6.9 and the current `latest` release.
 
-The isolated runtime CI has successfully activated MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.3.0 and passed the runtime smoke on WordPress 6.9 and the current latest release used by CI. This does **not** replace target-site certification.
+The isolated runtime CI has successfully activated MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.3.0 and certified the core governance/audit runtime on WordPress 6.9 and the current latest release used by CI. This does **not** replace target-site certification.
 
 The core mutation-gate workflow is read-only. The MCP Adapter refresh workflow is manual-only (`workflow_dispatch`) and may write certification evidence only when an operator explicitly runs it on a selected branch.
 
@@ -208,26 +265,31 @@ Keep the PR Draft until the exact target site proves at least:
 1. the deployed provider versions and critical files match the certified baseline;
 2. MCP Adapter and the control plane activate without fatal/runtime warnings;
 3. the dedicated control identity authenticates correctly through real MCP transport/session handling;
-4. `mad4b/runtime-self-test` returns `passed`, with custom-server isolation and no required-provider blockers;
+4. `mad4b/runtime-self-test` returns `passed`, with custom-server isolation and no required-provider/peer blockers;
 5. the official default MCP server cannot discover MAD4B abilities;
 6. the resolved backup root is outside WordPress/web roots;
-7. stale content/provider mutation is rejected;
-8. filesystem code/server-config mutation is rejected;
-9. plugin lifecycle remains unavailable unless explicitly enabled and allowlisted;
-10. one approved non-sensitive structured DB repair succeeds while sensitive tables remain denied;
-11. Breakglass is inaccessible under default production configuration;
-12. any intentionally approved Elementor legacy mutation or Bit Flow execution satisfies its additional gates and produces audit evidence;
-13. success and rejection paths both leave valid audit-chain evidence.
+7. the staging NHI uses exact minimal non-wildcard grants;
+8. approved reversible content mutation succeeds with readback verification and undo succeeds;
+9. deliberate post-mutation human drift makes undo fail closed without overwriting newer work;
+10. budget exhaustion denies before approval consumption;
+11. filesystem code/server-config mutation is rejected;
+12. plugin lifecycle remains unavailable unless explicitly enabled and allowlisted;
+13. one approved non-sensitive structured DB repair succeeds while sensitive tables remain denied;
+14. Breakglass is inaccessible under default configuration;
+15. peer MCP inventory has no write-side-channel blocker;
+16. success and rejection paths both leave a valid append-only audit chain;
+17. all mutation gates are returned to OFF after certification unless controlled staging is intentionally continuing.
 
 ## Remaining genuine gaps
 
 - exact live MCP authentication/session behavior on the target site;
-- target provider versions/files and provider side effects until live certification;
+- target provider versions/files and real provider side effects until staging certification;
+- reversible mutation contracts beyond the certified post-update pilot where provider-safe restore is required;
 - exhaustive commercial JetEngine field schema/type governance for fields that require it;
 - deeper JetSmartFilters mutation contracts;
 - governed Yoast/SEOPress writes;
-- append-only/high-concurrency audit durability;
-- a stronger per-operation short-lived approval-ticket protocol for high-impact mutations beyond the current global/adapter/state/policy gates.
+- nonce-protected Admin mutation controls for grants/approval actions/undo; the current console is intentionally read-only;
+- optional external SIEM/WORM audit sink implementation.
 
 ## Host boundary
 
