@@ -58,6 +58,14 @@ def main() -> int:
             for rel in ((result.get("native_mcp") or {}).get("files") or []):
                 candidates.add(str(rel))
 
+            # MCP 0.6.1 normalizes an MCP client's empty {} to null for abilities
+            # without input schemas. Runtime acceptance depends on this exact file,
+            # so its deployed bytes are part of the fail-closed transport contract.
+            if provider == "mcp_adapter":
+                candidates.add(
+                    (package_root / "includes/Domain/Utils/AbilityArgumentNormalizer.php").as_posix()
+                )
+
             manifest = {}
             prefix = package_root.as_posix().rstrip("/")
             for candidate in sorted(candidates):
