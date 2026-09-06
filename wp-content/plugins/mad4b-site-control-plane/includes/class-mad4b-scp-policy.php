@@ -21,7 +21,13 @@ final class MAD4B_SCP_Policy {
 
 	public static function can_mutate() {
 		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== MAD4B_MCP_MUTATION_ENABLED ) return false;
-		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id() );
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
+		$identity = MAD4B_SCP_Identity_Context::current();
+		if ( is_wp_error( $identity ) ) return false;
+		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $agent ) ) return false;
+		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id(), $agent, $identity );
 	}
 
 	public static function can_breakglass() {
