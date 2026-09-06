@@ -1,0 +1,93 @@
+{
+  "contract": "mad4b.site-control-plane.certified-providers.v1",
+  "certification_mode": "exact_packaged_version",
+  "providers": {
+    "mcp_adapter": {
+      "label": "MCP Adapter",
+      "plugin_file": "mcp-adapter/mcp-adapter.php",
+      "archive": "mcp-adapter.zip",
+      "version": "0.5.0",
+      "archive_sha256": "b881d2ab2600ed7f36bca568138e313aa3b67d0ced90289312daa8de1350f4d6",
+      "contract_mode": "official_wordpress_mcp_adapter",
+      "verified_contracts": [
+        "create_server",
+        "mcp_adapter_default_server_config",
+        "default_server_public_exposure_filtering"
+      ]
+    },
+    "elementor": {
+      "label": "Elementor",
+      "plugin_file": "elementor/elementor.php",
+      "archive": "elementor.zip",
+      "version": "4.1.4",
+      "archive_sha256": "0de809b0e2d82244576993869b84c7653abbdd20ad19f18254de3429fe0ddc60",
+      "contract_mode": "wordpress_abilities_plus_guarded_fallback",
+      "native_abilities": [
+        "elementor/list-pages",
+        "elementor/get-page-structure",
+        "elementor/update-page-settings",
+        "elementor/get-globals",
+        "elementor/create-page"
+      ],
+      "verified_absent_abilities": [
+        "elementor/manage-elements"
+      ]
+    },
+    "jetengine": {
+      "label": "JetEngine",
+      "plugin_file": "jet-engine/jet-engine.php",
+      "archive": "jet-engine.zip",
+      "version": "3.8.11.2",
+      "archive_sha256": "ecfa59150f328841f756826215902da2a68f4397c170d56b6ae2d24991263904",
+      "contract_mode": "native_jetengine_mcp_plus_guarded_adapter",
+      "native_mcp": {
+        "rest_namespace": "jet-engine/v1",
+        "protocol_methods": [
+          "tools/list",
+          "tools/call"
+        ],
+        "feature_families": [
+          "post-types",
+          "taxonomies",
+          "meta-boxes",
+          "query-builder",
+          "listings",
+          "custom-content-types",
+          "glossaries",
+          "configuration",
+          "macros",
+          "modules"
+        ]
+      }
+    },
+    "jetsmartfilters": {
+      "label": "JetSmartFilters",
+      "plugin_file": "jet-smart-filters/jet-smart-filters.php",
+      "archive": "jet-smart-filters.zip",
+      "version": "3.8.3.1",
+      "archive_sha256": "edcf551c3bf6265968b41e5ab72be7c65dac59c34352b07226044c8b68bda212",
+      "contract_mode": "governed_adapter_no_native_mcp_detected",
+      "verified_contracts": [
+        "jet_smart_filters_accessor",
+        "providers",
+        "query_var",
+        "indexer"
+      ]
+    },
+    "bit_pi": {
+      "label": "Bit Flows",
+      "plugin_file": "bit-pi/bit-pi.php",
+      "archive": "bit-pi.zip",
+      "version": "1.24.0",
+      "archive_sha256": "0399f7404e0251e3f5660c39bc96f77f7c8cac72644b9c5abf0f9fa12d64deec",
+      "contract_mode": "flow_executor_plus_external_mcp_client",
+      "verified_contracts": [
+        "BitApps\\Pi\\Model\\Flow",
+        "BitApps\\Pi\\Model\\FlowNode",
+        "BitApps\\Pi\\Model\\FlowHistory",
+        "BitApps\\Pi\\src\\Flow\\FlowExecutor"
+      ],
+      "native_mcp_role": "client"
+    }
+  }
+}
