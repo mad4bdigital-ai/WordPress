@@ -1,27 +1,25 @@
 name: MAD4B Refresh MCP Adapter 0.6.1
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/mad4b-refresh-mcp-adapter-061.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: mad4b-refresh-mcp-adapter-061-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: mad4b-refresh-mcp-adapter-061-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   refresh:
     name: Replace and certify official MCP Adapter 0.6.1
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout feature branch
+      - name: Checkout selected branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - name: Download exact official release asset
@@ -98,7 +96,7 @@ jobs:
       - name: Commit exact release archive and certification evidence
         shell: bash
         env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -111,8 +109,8 @@ jobs:
           fi
           git commit -m 'chore(mcp): certify official MCP Adapter 0.6.1 runtime'
 
-          # The feature branch may move while certification is running. Never force-push:
-          # rebase the generated certification commit onto the latest remote head and retry.
+          # Maintenance runs may overlap with operator changes. Never force-push:
+          # rebase generated evidence onto the latest remote head and retry safely.
           for attempt in 1 2 3; do
             echo "Push attempt ${attempt}/3"
             git fetch origin "$BRANCH"
