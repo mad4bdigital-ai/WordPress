@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Static fail-closed contract checks for MAD4B Site Control Plane pre-install hardening."""
 from pathlib import Path
-import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,6 +37,14 @@ def main():
     for token in (".htaccess", ".user.ini", "php.ini", "web.config", "phtml", "phar", "svg"):
         require(policy, token, f"filesystem deny token {token}")
     require(abilities, "MAD4B_SCP_Policy::can_mutate_file", "filesystem mutation policy invocation")
+
+    # Every mutation surface has an explicit master switch before provider/action-specific policy.
+    require(policy, "MAD4B_MCP_MUTATION_ENABLED", "global mutation master opt-in")
+    require(policy, "mad4b_scp_mutation_permission", "global mutation policy hook")
+    require(abilities, "mutation_permission_callback", "core mutation permission wrapper")
+    require(abilities, "mad4b_mutation_disabled", "core mutation master-switch rejection")
+    require(base, "MAD4B_SCP_Policy::can_mutate()", "adapter mutation master switch")
+    require(base, "mad4b_mutation_disabled", "adapter mutation master-switch rejection")
 
     # Provider mutation circuit breaker and authoritative runtime self-test.
     require(provider, "mutation_guard", "provider mutation guard")
@@ -82,6 +89,11 @@ def main():
     require(elementor, "mad4b_scp_allow_elementor_legacy_write', false", "Elementor legacy site-policy deny")
     require(jetengine, "mad4b_scp_jetengine_field_write_allowed', false", "JetEngine unknown-field default deny")
     require(jetengine, "$field !== sanitize_key( $field )", "JetEngine exact-key rejection")
+    require(jetengine, "is_sensitive_meta_key", "JetEngine secret-like meta classifier")
+    require(jetengine, "mad4b_scp_allow_sensitive_meta_read', false", "JetEngine sensitive-meta read default deny")
+    require(jetengine, "mad4b_scp_allow_sensitive_meta_write', false", "JetEngine sensitive-meta write default deny")
+    require(jetengine, "mad4b_jetengine_sensitive_meta_read", "JetEngine sensitive-meta read rejection")
+    require(jetengine, "mad4b_jetengine_sensitive_meta_write", "JetEngine sensitive-meta write rejection")
 
     # MCP annotations must not advertise mutating tools as safe/read-only.
     require(base, "$effective_destructive = $readonly ? (bool) $destructive : true", "adapter destructive annotation enforcement")
