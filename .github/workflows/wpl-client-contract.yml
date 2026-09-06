@@ -1,0 +1,89 @@
+name: WPL Client Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/wpl-client/**'
+      - 'wp-content/plugins/wpl-client.zip'
+      - 'wp-content/plugins/otgs-installer-plugin.zip'
+      - 'wp-content/plugins/crocoblock-wizard.zip'
+      - '.github/workflows/wpl-client-contract.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/wpl-client/**'
+      - 'wp-content/plugins/wpl-client.zip'
+      - 'wp-content/plugins/otgs-installer-plugin.zip'
+      - 'wp-content/plugins/crocoblock-wizard.zip'
+      - '.github/workflows/wpl-client-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax and lifecycle invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/wpl-client -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          test "$(grep -c 'new WPL_Installer()' wp-content/plugins/wpl-client/wpl-client.php)" -eq 1
+          grep -q "WPL_Database_Maintenance::activate" wp-content/plugins/wpl-client/wpl-client.php
+          grep -q "WPL_License_Health_Monitor::activate" wp-content/plugins/wpl-client/wpl-client.php
+          grep -q "wpl_license_health_lock_state" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "run_event_driven" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "persist_crocoblock_activation" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          ! grep -q "'wpl_has_pending_request'," wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php
+
+      - name: Source and distributable ZIP must match
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/wpl-client-package-check
+          mkdir -p /tmp/wpl-client-package-check
+          unzip -q wp-content/plugins/wpl-client.zip -d /tmp/wpl-client-package-check
+          diff -qr wp-content/plugins/wpl-client /tmp/wpl-client-package-check/wpl-client
+
+      - name: Header and runtime versions must match
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEADER=$(sed -nE 's/^[[:space:]]*\*[[:space:]]*Version:[[:space:]]*([^[:space:]]+).*/\1/p' wp-content/plugins/wpl-client/wpl-client.php | head -n1)
+          RUNTIME=$(sed -nE "s/.*WPL_CLIENT_VERSION', '([^']+)'.*/\1/p" wp-content/plugins/wpl-client/wpl-client.php | head -n1)
+          test -n "$HEADER"
+          test "$HEADER" = "$RUNTIME"
+
+  vendor-license-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify WPML OTGS registration API used by adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/wpl-vendor-contract
+          mkdir -p /tmp/wpl-vendor-contract/otgs
+          unzip -q wp-content/plugins/otgs-installer-plugin.zip -d /tmp/wpl-vendor-contract/otgs
+          FILE=$(find /tmp/wpl-vendor-contract/otgs -path '*/vendor/otgs/installer/includes/class-wp-installer.php' | head -n1)
+          test -n "$FILE"
+          grep -q 'public function save_site_key' "$FILE"
+          grep -q 'public function get_site_key' "$FILE"
+          grep -q 'public function refresh_subscriptions_data' "$FILE"
+          grep -q 'public function repository_has_valid_subscription' "$FILE"
+
+      - name: Verify Crocoblock license API used by adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/wpl-vendor-contract/croco
+          unzip -q wp-content/plugins/crocoblock-wizard.zip -d /tmp/wpl-vendor-contract/croco
+          FILE=$(find /tmp/wpl-vendor-contract/croco -path '*/includes/modules/license/api.php' | head -n1)
+          test -n "$FILE"
+          grep -q "public \\$license_option = 'jet_theme_core_license'" "$FILE"
+          grep -q 'public function get_license' "$FILE"
+          grep -q 'public function license_request' "$FILE"
+          grep -q 'public function activate_license' "$FILE"
