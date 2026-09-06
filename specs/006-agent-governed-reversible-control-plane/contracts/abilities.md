@@ -24,13 +24,13 @@ Output:
 {
   "schema_ready": true,
   "mutation_global_enabled": false,
+  "mutation_effective_for_request": false,
   "nhi_mutation_required": true,
   "enabled_agents": 0,
   "enabled_subject_bindings": 0,
   "exact_grants": 0,
   "wildcard_grants": 0,
-  "approval_storage_ready": true,
-  "mutation_storage_ready": true,
+  "approval_service_ready": true,
   "side_channel_blockers": [],
   "status": "ready_read_only"
 }
@@ -39,7 +39,9 @@ Output:
 Rules:
 - never reports secret identifiers;
 - subject fingerprints may be truncated in normal output;
-- if mutation global enabled but no valid enabled mutation NHI/grant exists, status is blocked.
+- `mutation_global_enabled` means the global configuration switch is enabled, not that this request has authority;
+- `mutation_effective_for_request` requires a valid bound enabled NHI for the current request;
+- if global mutation is enabled but effective request authority is absent, status is blocked/read-only rather than falsely ready.
 
 ## `mad4b/agent-list`
 
@@ -168,8 +170,9 @@ Revoke requirements: same admin/nonce, no use after revoked.
 
 ## Mutation authorization input contract
 
-Every core/adapter writer passes a structured context to `MAD4B_SCP_Authorization`:
+Every core/adapter writer passes the exact ability input plus normalized governance context to `MAD4B_SCP_Authorization`.
 
+Authority dimensions:
 ```json
 {
   "ability": "...",
@@ -183,10 +186,11 @@ Every core/adapter writer passes a structured context to `MAD4B_SCP_Authorizatio
     "type": "post|file|table|plugin|flow|product|...",
     "id": "...",
     "fingerprint": "..."
-  },
-  "approval_ticket_id": "optional"
+  }
 }
 ```
+
+The opaque `approval_ticket_id` is **not part of the mutation payload being approved**. It is supplied through validated authenticated subject/governance context. This avoids circular payload hashing and prevents a caller from changing an approval reference without changing the authenticated context.
 
 Adapters MUST NOT decide NHI grants themselves.
 
@@ -207,31 +211,39 @@ Output:
 - verification code;
 - approval ticket reference;
 - error code;
-- no rollback payload by default.
+- **no rollback payload or rollback-payload integrity value** through the normal inspection surface.
 
 ## `mad4b/mutation-undo`
 
 Surface: `mad4b-admin`.
 Readonly: false.
 Destructive: true.
-Impact: high by default.
+Impact: **high hard minimum**.
 Permission sequence:
 1. WordPress admin/recovery capability;
 2. global mutation enabled;
-3. NHI/exact grant if MCP-originated;
-4. approval if policy requires;
-5. original mutation reversible/verified/unexpired;
-6. current-state drift check;
-7. provider restore contract certified.
+3. authenticated subject resolves to enabled NHI;
+4. exact `mad4b-admin / mad4b/mutation-undo / core` NHI grant;
+5. exact token scope when token scopes are present/required;
+6. one approved, unexpired, single-use ticket for the exact undo payload;
+7. original mutation reversible/verified/unexpired;
+8. current-state drift check;
+9. provider restore contract certified;
+10. restore read-after-write verification.
 
 Input:
 ```json
 {
   "mutation_id": "...",
-  "approval_ticket_id": "...",
   "reason": "..."
 }
 ```
+
+Approval transport:
+- `approval_ticket_id` is supplied only through normalized authenticated governance context;
+- the approval hash is calculated over the exact `mutation_id + reason` input and authority envelope;
+- permission authorization consumes the single-use approval before provider restore begins;
+- if later drift/provider validation rejects execution, the approval remains consumed and cannot be replayed.
 
 Errors:
 - `mad4b_mutation_missing`
@@ -239,6 +251,7 @@ Errors:
 - `mad4b_undo_expired`
 - `mad4b_undo_state_drift`
 - `mad4b_undo_provider_unavailable`
+- `mad4b_undo_payload_integrity_failed`
 - `mad4b_undo_verification_failed`
 
 Output:
@@ -252,11 +265,14 @@ Output:
 }
 ```
 
+The recovery is a child mutation record; the original history is not overwritten or erased.
+
 ## Impact hard minimums
 
 The central policy MUST classify at least these as `high` or stronger regardless of adapter suggestion:
 - plugin activate/deactivate;
 - structured DB update;
+- `mad4b/mutation-undo`;
 - Elementor legacy direct document mutation;
 - Bit Flow execution;
 - bulk content mutation above one configured object;
@@ -289,6 +305,7 @@ Expected returned array may contain:
 - subject_type;
 - subject_identifier OR subject_fingerprint;
 - token_scopes array;
+- approval_ticket_id (opaque UUID only);
 - auth_method;
 - wp_user_id;
 - request_id;
@@ -296,7 +313,9 @@ Expected returned array may contain:
 
 Security rules:
 - arrays containing keys matching authorization/token/secret/password patterns are rejected or redacted;
-- if both identifier and fingerprint supplied, implementation verifies consistency when possible;
+- raw bearer/access/refresh tokens are forbidden;
+- wildcard token scopes are forbidden;
+- if both identifier and fingerprint are supplied, implementation verifies consistency when possible;
 - filter output is untrusted until validated;
 - multiple filters may not create multiple identities: final normalized context is one subject or failure.
 
@@ -316,3 +335,11 @@ Adapters may expose methods through a central registry/manager. Snapshot structu
 ```
 
 Restore MUST use provider-aware APIs and revalidate authorization. Generic raw `update_option`, `update_post_meta` or SQL cannot be used as an automatic universal rollback mechanism unless that exact provider/resource contract is explicitly certified.
+
+The first implemented reversible contract is intentionally narrow:
+- `mad4b/content-update-post`
+- provider `core`
+- contract `mad4b.rollback.post.v1`
+- bounded JSON before-state;
+- `wp_update_post()` for mutation and restore;
+- after-state drift denial before undo.
