@@ -14,6 +14,7 @@ final class AjaxPresentationEndpoint {
     private $slots;
     private $catalogProvider;
     private $catalogTokens = null;
+    private $catalogTokenMeta = null;
 
     public function __construct( FilterContextBuilder $builder, PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider = null ) {
         $this->builder = $builder;
@@ -173,8 +174,32 @@ final class AjaxPresentationEndpoint {
     }
 
     private function catalogContains( string $token ): bool {
-        if(null===$this->catalogTokens){$this->catalogTokens=array();if($this->catalogProvider){try{$catalog=call_user_func($this->catalogProvider);foreach(array_keys((array)($catalog['tokens']??array())) as $candidate){$candidate=strtolower(trim((string)$candidate));if(''!==$candidate){$this->catalogTokens[$candidate]=true;}}}catch(\Throwable $error){$this->catalogTokens=array();}}}
+        $this->loadCatalogTokenMeta();
         return isset($this->catalogTokens[$token]);
+    }
+
+    private function catalogTokenMeta( string $token ): array {
+        $this->loadCatalogTokenMeta();
+        return isset($this->catalogTokenMeta[$token]) ? (array) $this->catalogTokenMeta[$token] : array();
+    }
+
+    private function loadCatalogTokenMeta(): void {
+        if ( null !== $this->catalogTokens && null !== $this->catalogTokenMeta ) { return; }
+        $this->catalogTokens = array();
+        $this->catalogTokenMeta = array();
+        if ( ! $this->catalogProvider ) { return; }
+        try {
+            $catalog = call_user_func( $this->catalogProvider );
+            foreach ( (array) ( $catalog['tokens'] ?? array() ) as $candidate => $meta ) {
+                $candidate = strtolower( trim( (string) $candidate ) );
+                if ( '' === $candidate ) { continue; }
+                $this->catalogTokens[ $candidate ] = true;
+                $this->catalogTokenMeta[ $candidate ] = is_array( $meta ) ? $meta : array();
+            }
+        } catch ( \Throwable $error ) {
+            $this->catalogTokens = array();
+            $this->catalogTokenMeta = array();
+        }
     }
 
     private function slotList( $value ): array {
@@ -184,9 +209,12 @@ final class AjaxPresentationEndpoint {
     }
 
     private function tokenType( string $token ): string {
-        if('intro'===$token||false!==strpos($token,':description')){return'html';}
-        if('image_url'===$token||0===strpos($token,'url:')||false!==strpos($token,':image_url')){return'url';}
-        if('image_id'===$token||false!==strpos($token,':image_id')){return'image';}
-        return'text';
+        $meta = $this->catalogTokenMeta( $token );
+        $catalogType = sanitize_key( (string) ( $meta['type'] ?? '' ) );
+        if ( in_array( $catalogType, array( 'text','html','url','image' ), true ) ) { return $catalogType; }
+        if ( 'intro' === $token || preg_match( '/:(?:description|short_description|descriptions|short_descriptions)$/', $token ) ) { return 'html'; }
+        if ( 'image_url' === $token || 0 === strpos( $token, 'url:' ) || false !== strpos( $token, ':image_url' ) ) { return 'url'; }
+        if ( 'image_id' === $token || false !== strpos( $token, ':image_id' ) ) { return 'image'; }
+        return 'text';
     }
 }
