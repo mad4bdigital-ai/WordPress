@@ -24,53 +24,46 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-
           p = Path('wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php')
           text = p.read_text(encoding='utf-8')
-
           old_call = "self::save_crocoblock_key( $api, $key );"
           if text.count(old_call) != 2:
               raise SystemExit(f'expected 2 Crocoblock persistence calls, got {text.count(old_call)}')
           text = text.replace(old_call, "self::persist_crocoblock_activation( $api, $key, $activate );")
-
-          old_fn = """    private static function save_crocoblock_key( $api, $key ) {
-        $option = isset( $api->license_option ) && is_string( $api->license_option )
-            ? $api->license_option
-            : 'jet_theme_core_license';
-        update_option( $option, $key, false );
-    }
-"""
-          new_fn = """    /**
-     * Mirror the state Crocoblock's own activate_license() persists. The cron
-     * adapter uses the vendor's lower-level request because activate_license()
-     * requires an interactive manage_options user, which WP-Cron does not have.
-     */
-    private static function persist_crocoblock_activation( $api, $key, $response ) {
-        if ( ! self::crocoblock_response_is_valid( $response ) ) return;
-
-        $license_option = isset( $api->license_option ) && is_string( $api->license_option )
-            ? $api->license_option
-            : 'jet_theme_core_license';
-        update_option( $license_option, $key, false );
-
-        if ( array_key_exists( 'has_templates_access', $response ) ) {
-            update_option( 'has_template_access', $response['has_templates_access'] === true ? 1 : -1, false );
-        }
-        if ( array_key_exists( 'has_design_templates_access', $response ) ) {
-            update_option( 'has_design_templates_access', $response['has_design_templates_access'] === true ? 1 : -1, false );
-        }
-        if ( isset( $response['excluded_plugins'] ) && is_array( $response['excluded_plugins'] ) ) {
-            $plugins_option = isset( $api->plugins_option ) && is_string( $api->plugins_option )
-                ? $api->plugins_option
-                : 'jet_excluded_plugins';
-            update_option( $plugins_option, $response['excluded_plugins'], false );
-        }
-    }
-"""
+          old_fn = "    private static function save_crocoblock_key( $api, $key ) {\n        $option = isset( $api->license_option ) && is_string( $api->license_option )\n            ? $api->license_option\n            : 'jet_theme_core_license';\n        update_option( $option, $key, false );\n    }\n"
+          new_lines = [
+              "    /**",
+              "     * Mirror the state Crocoblock's own activate_license() persists. The cron",
+              "     * adapter uses the vendor's lower-level request because activate_license()",
+              "     * requires an interactive manage_options user, which WP-Cron does not have.",
+              "     */",
+              "    private static function persist_crocoblock_activation( $api, $key, $response ) {",
+              "        if ( ! self::crocoblock_response_is_valid( $response ) ) return;",
+              "",
+              "        $license_option = isset( $api->license_option ) && is_string( $api->license_option )",
+              "            ? $api->license_option",
+              "            : 'jet_theme_core_license';",
+              "        update_option( $license_option, $key, false );",
+              "",
+              "        if ( array_key_exists( 'has_templates_access', $response ) ) {",
+              "            update_option( 'has_template_access', $response['has_templates_access'] === true ? 1 : -1, false );",
+              "        }",
+              "        if ( array_key_exists( 'has_design_templates_access', $response ) ) {",
+              "            update_option( 'has_design_templates_access', $response['has_design_templates_access'] === true ? 1 : -1, false );",
+              "        }",
+              "        if ( isset( $response['excluded_plugins'] ) && is_array( $response['excluded_plugins'] ) ) {",
+              "            $plugins_option = isset( $api->plugins_option ) && is_string( $api->plugins_option )",
+              "                ? $api->plugins_option",
+              "                : 'jet_excluded_plugins';",
+              "            update_option( $plugins_option, $response['excluded_plugins'], false );",
+              "        }",
+              "    }",
+              "",
+          ]
+          new_fn = "\n".join(new_lines)
           if text.count(old_fn) != 1:
               raise SystemExit('Crocoblock persistence function anchor mismatch')
-          text = text.replace(old_fn, new_fn, 1)
-          p.write_text(text, encoding='utf-8')
+          p.write_text(text.replace(old_fn, new_fn, 1), encoding='utf-8')
           PY
 
       - name: PHP lint and vendor-state assertions
