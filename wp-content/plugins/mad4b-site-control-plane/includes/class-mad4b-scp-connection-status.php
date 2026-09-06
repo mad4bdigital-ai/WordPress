@@ -2,13 +2,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-/**
- * Read-only local truth for MAD4B MCP connection readiness.
- *
- * This service performs no outbound HTTP request, creates no credential, stores
- * no handshake result and changes no authority. A real external MCP handshake
- * remains a separate Staging certification boundary.
- */
+/** Read-only local truth for MAD4B MCP connection readiness. */
 final class MAD4B_SCP_Connection_Status {
 	const CONTRACT = 'mad4b.connection-readiness.v1';
 
@@ -20,29 +14,18 @@ final class MAD4B_SCP_Connection_Status {
 		if ( defined( 'WP_MCP_VERSION' ) ) {
 			$adapter_version = (string) WP_MCP_VERSION;
 		} elseif ( $adapter_available && defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) {
-			$adapter_version = (string) \\WP\\MCP\\Core\\McpAdapter::VERSION;
+			$adapter_version = (string) \WP\MCP\Core\McpAdapter::VERSION;
 		}
-
-		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )
-			? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available )
-			: array( 'status' => 'unavailable', 'runtime_contract_ok' => false );
+		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available ) : array( 'status' => 'unavailable', 'runtime_contract_ok' => false );
 		$provider_ok = ! empty( $provider['runtime_contract_ok'] );
 
 		$servers = self::server_status();
 		$server_ok = count( $servers ) === 4;
 		foreach ( $servers as $server ) {
-			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) {
-				$server_ok = false;
-				break;
-			}
+			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) { $server_ok = false; break; }
 		}
-
-		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' )
-			? MAD4B_SCP_MCP_Peer_Governance::status()
-			: array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
-
+		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
-		$identity_status = self::identity_status( $identity );
 
 		$local_blockers = array();
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
@@ -56,10 +39,7 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = $local_blockers;
 		if ( ! $https ) $remote_preflight_blockers[] = 'https_required_for_remote_mcp';
 		$remote_preflight_blockers = array_values( array_unique( $remote_preflight_blockers ) );
-
-		$certification_blockers = $remote_preflight_blockers;
-		$certification_blockers[] = 'external_handshake_unverified';
-		$certification_blockers = array_values( array_unique( $certification_blockers ) );
+		$certification_blockers = array_values( array_unique( array_merge( $remote_preflight_blockers, array( 'external_handshake_unverified' ) ) ) );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -85,7 +65,7 @@ final class MAD4B_SCP_Connection_Status {
 				'transport_model' => 'wordpress-authenticated-request-plus-mad4b-server-permission',
 				'credential_material_exposed' => false,
 				'credential_creation_supported_here' => false,
-				'current_request_subject' => $identity_status,
+				'current_request_subject' => self::identity_status( $identity ),
 				'remote_subject_bridge_required' => true,
 			),
 			'external_handshake' => array(
@@ -113,45 +93,31 @@ final class MAD4B_SCP_Connection_Status {
 		$adapter_servers = array();
 		if ( class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) {
 			try {
-				$adapter = \\WP\\MCP\\Core\\McpAdapter::instance();
+				$adapter = \WP\MCP\Core\McpAdapter::instance();
 				if ( is_object( $adapter ) && method_exists( $adapter, 'get_servers' ) ) {
 					$found = $adapter->get_servers();
-					if ( is_array( $found ) ) {
-						foreach ( $found as $server ) {
-							if ( is_object( $server ) && method_exists( $server, 'get_server_id' ) ) $adapter_servers[ (string) $server->get_server_id() ] = $server;
-						}
-					}
+					if ( is_array( $found ) ) foreach ( $found as $server ) if ( is_object( $server ) && method_exists( $server, 'get_server_id' ) ) $adapter_servers[ (string) $server->get_server_id() ] = $server;
 				}
-			} catch ( Throwable $e ) {
-				$adapter_servers = array();
-			}
+			} catch ( Throwable $e ) { $adapter_servers = array(); }
 		}
 
-		$routes = array();
 		try {
 			$rest = function_exists( 'rest_get_server' ) ? rest_get_server() : null;
 			$routes = is_object( $rest ) && method_exists( $rest, 'get_routes' ) ? $rest->get_routes() : array();
-		} catch ( Throwable $e ) {
-			$routes = array();
-		}
+		} catch ( Throwable $e ) { $routes = array(); }
 		if ( ! is_array( $routes ) ) $routes = array();
 
 		$out = array();
 		foreach ( $ids as $id ) {
 			$server = isset( $adapter_servers[ $id ] ) ? $adapter_servers[ $id ] : null;
-			$namespace = 'mcp';
-			$route = '/' . $id;
-			$permission = null;
-			$server_version = '';
+			$namespace = 'mcp'; $route = '/' . $id; $permission = null; $server_version = '';
 			if ( is_object( $server ) ) {
 				try {
 					if ( method_exists( $server, 'get_server_route_namespace' ) ) $namespace = trim( (string) $server->get_server_route_namespace(), '/' );
 					if ( method_exists( $server, 'get_server_route' ) ) $route = '/' . ltrim( (string) $server->get_server_route(), '/' );
 					if ( method_exists( $server, 'get_transport_permission_callback' ) ) $permission = $server->get_transport_permission_callback();
 					if ( method_exists( $server, 'get_server_version' ) ) $server_version = (string) $server->get_server_version();
-				} catch ( Throwable $e ) {
-					$permission = null;
-				}
+				} catch ( Throwable $e ) { $permission = null; }
 			}
 			$full_route = '/' . trim( $namespace, '/' ) . $route;
 			$expected_permission = isset( $expected_permissions[ $id ] ) ? $expected_permissions[ $id ] : array();
@@ -173,9 +139,7 @@ final class MAD4B_SCP_Connection_Status {
 	}
 
 	private static function identity_status( $identity ) {
-		if ( is_wp_error( $identity ) ) {
-			return array( 'valid' => false, 'authenticated' => false, 'subject_type' => '', 'auth_method' => '', 'wp_user_id' => get_current_user_id(), 'error' => sanitize_key( $identity->get_error_code() ) );
-		}
+		if ( is_wp_error( $identity ) ) return array( 'valid' => false, 'authenticated' => false, 'subject_type' => '', 'auth_method' => '', 'wp_user_id' => get_current_user_id(), 'error' => sanitize_key( $identity->get_error_code() ) );
 		return array(
 			'valid' => is_array( $identity ),
 			'authenticated' => ! empty( $identity['authenticated'] ),
@@ -195,13 +159,7 @@ final class MAD4B_SCP_Connection_Status {
 		foreach ( isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? array_slice( $peer['peers'], 0, 100 ) : array() as $item ) {
 			$reasons = array();
 			foreach ( isset( $item['risks'] ) && is_array( $item['risks'] ) ? array_slice( $item['risks'], 0, 20 ) : array() as $risk ) if ( is_array( $risk ) && isset( $risk['reason'] ) ) $reasons[] = sanitize_key( (string) $risk['reason'] );
-			$peers[] = array(
-				'server_id' => isset( $item['server_id'] ) ? sanitize_text_field( (string) $item['server_id'] ) : '',
-				'governed' => ! empty( $item['governed'] ),
-				'tool_count' => isset( $item['tool_count'] ) ? (int) $item['tool_count'] : 0,
-				'risk_count' => isset( $item['risk_count'] ) ? (int) $item['risk_count'] : 0,
-				'risk_reasons' => array_values( array_unique( $reasons ) ),
-			);
+			$peers[] = array( 'server_id' => isset( $item['server_id'] ) ? sanitize_text_field( (string) $item['server_id'] ) : '', 'governed' => ! empty( $item['governed'] ), 'tool_count' => isset( $item['tool_count'] ) ? (int) $item['tool_count'] : 0, 'risk_count' => isset( $item['risk_count'] ) ? (int) $item['risk_count'] : 0, 'risk_reasons' => array_values( array_unique( $reasons ) ) );
 		}
 		return array(
 			'inventory_ready' => ! empty( $peer['inventory_ready'] ),
@@ -223,10 +181,7 @@ final class MAD4B_SCP_Connection_Status {
 	}
 
 	private static function callback_label( $callback ) {
-		if ( is_array( $callback ) && 2 === count( $callback ) ) {
-			$left = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0];
-			return sanitize_text_field( $left . '::' . (string) $callback[1] );
-		}
+		if ( is_array( $callback ) && 2 === count( $callback ) ) { $left = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0]; return sanitize_text_field( $left . '::' . (string) $callback[1] ); }
 		if ( is_string( $callback ) ) return sanitize_text_field( $callback );
 		if ( null === $callback ) return '';
 		return 'callable';
