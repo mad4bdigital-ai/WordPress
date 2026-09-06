@@ -23,27 +23,56 @@ final class MAD4B_SCP_Adapter_Registry {
 	}
 	public function register_abilities() {
 		$this->register_registry_ability( 'mad4b/adapters-inventory', 'Adapters Inventory', 'inventory', 'List supported MAD4B adapters and their runtime availability.' );
-		$this->register_registry_ability( 'mad4b/runtime-self-test', 'Runtime Self Test', 'runtime_self_test', 'Verify registered abilities, MCP dependency and adapter runtime contracts.' );
+		$this->register_registry_ability( 'mad4b/runtime-self-test', 'Runtime Self Test', 'runtime_self_test', 'Verify registered abilities, MCP dependency, custom-server isolation and adapter runtime contracts.' );
 		foreach ( $this->adapters as $adapter ) $adapter->register_abilities();
 	}
 	private function register_registry_ability( $name, $label, $method, $description ) {
 		wp_register_ability( $name, array(
-			'label' => $label, 'description' => $description, 'category' => 'mad4b-adapters', 'execute_callback' => array( $this, $method ), 'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ), 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'meta' => array( 'public' => false, 'show_in_rest' => false, 'mcp' => array( 'public' => true, 'type' => 'tool' ), 'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) )
+			'label' => $label,
+			'description' => $description,
+			'category' => 'mad4b-adapters',
+			'execute_callback' => array( $this, $method ),
+			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false,
+				'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
 		) );
 	}
 	public function inventory() { $items = array(); foreach ( $this->adapters as $adapter ) $items[] = $adapter->status(); return array( 'adapters' => $items, 'count' => count( $items ) ); }
 	public function runtime_self_test() {
-		$missing = array(); $surfaces = array( 'read', 'content', 'admin' );
-		foreach ( $surfaces as $surface ) foreach ( $this->ability_names( $surface ) as $name ) if ( ! wp_has_ability( $name ) ) $missing[] = $name;
-		$inventory = $this->inventory(); $available = 0; foreach ( $inventory['adapters'] as $adapter ) if ( ! empty( $adapter['available'] ) ) ++$available;
+		$missing = array();
+		$public_leaks = array();
+		$surfaces = array( 'read', 'content', 'admin' );
+		foreach ( $surfaces as $surface ) {
+			foreach ( $this->ability_names( $surface ) as $name ) {
+				if ( ! wp_has_ability( $name ) ) {
+					$missing[] = $name;
+					continue;
+				}
+				$ability = wp_get_ability( $name );
+				if ( $ability && method_exists( $ability, 'get_meta' ) ) {
+					$meta = $ability->get_meta();
+					if ( ! empty( $meta['public'] ) || ! empty( $meta['mcp']['public'] ) ) $public_leaks[] = $name;
+				}
+			}
+		}
+		$inventory = $this->inventory();
+		$available = 0;
+		foreach ( $inventory['adapters'] as $adapter ) if ( ! empty( $adapter['available'] ) ) ++$available;
+		$mcp_adapter = class_exists( 'WP\\MCP\\Core\\McpAdapter' );
 		return array(
-			'status' => empty( $missing ) && class_exists( 'WP\\MCP\\Core\\McpAdapter' ) ? 'passed' : 'degraded',
+			'status' => empty( $missing ) && empty( $public_leaks ) && $mcp_adapter ? 'passed' : 'degraded',
 			'wordpress_abilities' => function_exists( 'wp_register_ability' ),
-			'mcp_adapter' => class_exists( 'WP\\MCP\\Core\\McpAdapter' ),
+			'mcp_adapter' => $mcp_adapter,
+			'custom_server_isolation' => empty( $public_leaks ),
 			'registered_adapter_count' => count( $inventory['adapters'] ),
 			'available_adapter_count' => $available,
 			'missing_abilities' => array_values( array_unique( $missing ) ),
+			'default_server_exposure_leaks' => array_values( array_unique( $public_leaks ) ),
 			'adapters' => $inventory['adapters'],
 		);
 	}
