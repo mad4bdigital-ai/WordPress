@@ -24,6 +24,7 @@ def main():
     base = text("includes/adapters/class-mad4b-scp-adapter-base.php")
     registry = text("includes/class-mad4b-scp-adapter-registry.php")
     servers = text("includes/class-mad4b-scp-servers.php")
+    audit = text("includes/class-mad4b-scp-audit.php")
     elementor = text("includes/adapters/class-mad4b-scp-elementor-adapter.php")
     jetengine = text("includes/adapters/class-mad4b-scp-jetengine-adapter.php")
     bitflows = text("includes/adapters/class-mad4b-scp-bitflows-adapter.php")
@@ -80,6 +81,13 @@ def main():
     # MCP annotations must not advertise mutating tools as safe/read-only.
     require(base, "$effective_destructive = $readonly ? (bool) $destructive : true", "adapter destructive annotation enforcement")
     require(abilities, "'destructive' => $readonly ? (bool) $destructive : true", "core destructive annotation enforcement")
+
+    # Audit summaries must preserve bounded structured evidence without leaking obvious credentials.
+    require(audit, "SUMMARY_MAX_DEPTH", "bounded audit summary depth")
+    require(audit, "SUMMARY_MAX_ITEMS", "bounded audit summary item count")
+    require(audit, "sanitize_summary_array", "structured audit summary preservation")
+    require(audit, "is_sensitive_summary_key", "audit credential-key redaction")
+    require(audit, "[REDACTED]", "audit redaction marker")
 
     # Arabic/multibyte SEO diagnostics are character-aware when mbstring exists.
     require(seo, "mb_strlen", "Unicode-aware SEO length")
