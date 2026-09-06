@@ -42,14 +42,22 @@ SECURITY_BODY_MARKERS = re.compile(
     r"wp_verify_nonce|check_ajax_referer|rest_cookie_check_errors|__return_true",
     re.I,
 )
+JETENGINE_TRACE_FUNCTIONS = {
+    "get_items_permissions_check",
+    "permissions_check",
+    "run_item_permissions_check",
+    "run_item",
+    "handle_request",
+    "check_permissions",
+}
 FUNCTION_START = re.compile(
     r"(?P<visibility>public|protected|private)?\s*(?:static\s+)?function\s+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*(?::\s*[^\{]+)?\{",
     re.I | re.S,
 )
 MAX_HITS = 40
-MAX_FUNCTIONS = 80
-MAX_FUNCTION_LINES = 90
+MAX_FUNCTIONS = 100
+MAX_FUNCTION_LINES = 120
 ROUTE_CONTEXT_LINES = 16
 
 
@@ -133,7 +141,7 @@ def function_body_end(text: str, opening_brace: int) -> int | None:
     return None
 
 
-def security_functions(text: str, relative_file: str) -> list[dict]:
+def security_functions(provider: str, text: str, relative_file: str) -> list[dict]:
     results = []
     for match in FUNCTION_START.finditer(text):
         opening_brace = text.find("{", match.start(), match.end())
@@ -143,17 +151,21 @@ def security_functions(text: str, relative_file: str) -> list[dict]:
         if end is None:
             continue
         body = text[match.start():end]
-        if not SECURITY_BODY_MARKERS.search(body):
+        function_name = match.group("name")
+        explicitly_traced = provider == "jetengine" and function_name in JETENGINE_TRACE_FUNCTIONS
+        if not explicitly_traced and not SECURITY_BODY_MARKERS.search(body):
             continue
         start_line = line_number(text, match.start())
-        body_lines = body.splitlines()[:MAX_FUNCTION_LINES]
+        all_body_lines = body.splitlines()
+        body_lines = all_body_lines[:MAX_FUNCTION_LINES]
         results.append(
             {
                 "file": relative_file,
-                "function": match.group("name"),
+                "function": function_name,
                 "visibility": (match.group("visibility") or "").lower(),
                 "start_line": start_line,
-                "truncated": len(body.splitlines()) > MAX_FUNCTION_LINES,
+                "explicit_execution_trace": explicitly_traced,
+                "truncated": len(all_body_lines) > MAX_FUNCTION_LINES,
                 "body": [
                     {"line": start_line + offset, "text": clean_line(value)}
                     for offset, value in enumerate(body_lines)
@@ -212,7 +224,7 @@ def scan_archive(provider: str, archive: Path, temp_root: Path) -> dict:
                     break
         if has_route:
             route_files.append(relative_file)
-        relevant_functions.extend(security_functions(text, relative_file))
+        relevant_functions.extend(security_functions(provider, text, relative_file))
         if len(relevant_functions) >= MAX_FUNCTIONS:
             relevant_functions = relevant_functions[:MAX_FUNCTIONS]
 
@@ -238,7 +250,7 @@ def main() -> int:
 
     plugins_dir = Path(args.plugins_dir).resolve()
     report = {
-        "contract": "mad4b.site-control-plane.packaged-mcp-security-evidence.v2",
+        "contract": "mad4b.site-control-plane.packaged-mcp-security-evidence.v3",
         "mode": "static_evidence_only",
         "providers": {},
     }
