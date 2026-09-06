@@ -11,118 +11,48 @@ permissions:
   contents: write
 
 jobs:
-  apply-test-package:
+  patch-test-package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Integrate lifecycle cleanup and license health monitor
+      - name: Harden Crocoblock state classification
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          p = Path('wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php')
+          text = p.read_text(encoding='utf-8')
 
-          def replace_once(path, old, new, label):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected exactly one match, got {count}')
-              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          old = "$error_code = sanitize_key( (string) ( $activate['error'] ?? $check['error'] ?? '' ) );"
+          new = "$error_code = self::crocoblock_status_code( $activate );\n        if ( $error_code === '' ) $error_code = self::crocoblock_status_code( $check );"
+          if text.count(old) != 1:
+              raise SystemExit('initial Crocoblock status expression not found exactly once')
+          text = text.replace(old, new, 1)
 
-          main = 'wp-content/plugins/wpl-client/wpl-client.php'
-          replace_once(main, ' * Version:     2.6.9', ' * Version:     2.7.5', 'header version')
-          replace_once(main, "define( 'WPL_CLIENT_VERSION', '2.7.4' );", "define( 'WPL_CLIENT_VERSION', '2.7.5' );", 'runtime version')
-          replace_once(
-              main,
-              "require_once WPL_CLIENT_DIR . 'includes/class-wpl-token.php';\nrequire_once WPL_CLIENT_DIR . 'includes/class-wpl-installer.php';",
-              "require_once WPL_CLIENT_DIR . 'includes/class-wpl-token.php';\nrequire_once WPL_CLIENT_DIR . 'includes/class-wpl-database-maintenance.php';\nrequire_once WPL_CLIENT_DIR . 'includes/class-wpl-license-health-monitor.php';\nrequire_once WPL_CLIENT_DIR . 'includes/class-wpl-installer.php';",
-              'maintenance includes',
-          )
-          replace_once(
-              main,
-              "function wpl_client_on_activate() {\n    WPL_Token::generate();\n    add_option( 'wpl_client_do_redirect',    true );\n    add_option( 'wpl_client_do_register',    true );\n    add_option( 'wpl_client_do_create_user', true );",
-              "function wpl_client_on_activate( $network_wide = false ) {\n    WPL_Database_Maintenance::activate( $network_wide );\n    WPL_License_Health_Monitor::activate( $network_wide );\n    WPL_Token::generate();\n    update_option( 'wpl_client_do_redirect',    true, false );\n    update_option( 'wpl_client_do_register',    true, false );\n    update_option( 'wpl_client_do_create_user', true, false );",
-              'activation repair',
-          )
-          replace_once(
-              main,
-              "new WPL_Client_Admin();\nnew WPL_Installer();\n\n// Background install process — يشتغل حتى بدون login\nadd_action( 'admin_post_wpl_bg_install_process',        [ new WPL_Installer(), 'handle_bg_install_process' ] );\nadd_action( 'admin_post_nopriv_wpl_bg_install_process', [ new WPL_Installer(), 'handle_bg_install_process' ] );\n\n// ✅ v3.3.4: WP Cron كـ backup لو shutdown function و non-blocking POST فشلوا\nadd_action( 'wpl_bg_install_cron', [ new WPL_Installer(), 'cron_bg_install' ] );",
-              "new WPL_Client_Admin();\n$wpl_installer = new WPL_Installer();\nnew WPL_License_Health_Monitor();\n\n// WPL_Installer::__construct() already owns both admin-post handlers.\n// Reusing one instance prevents duplicate callbacks and overlapping jobs.\nadd_action( 'wpl_bg_install_cron', [ $wpl_installer, 'cron_bg_install' ] );",
-              'single installer instance',
-          )
-          replace_once(
-              main,
-              "        // امسح الـ transient cache دايماً\n        global $wpdb;\n        $wpdb->query( \"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wpl_serial_ok_%' OR option_name LIKE '_transient_timeout_wpl_serial_ok_%'\" );",
-              "        // امسح كل transient تابع للإضافة من namespace واحد.\n        WPL_Database_Maintenance::clear_transients();",
-              'file-change cleanup',
-          )
-          replace_once(
-              main,
-              "register_deactivation_hook( __FILE__, function() {\n    wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );",
-              "register_deactivation_hook( __FILE__, function( $network_wide = false ) {\n    WPL_Database_Maintenance::deactivate( $network_wide );\n    WPL_License_Health_Monitor::deactivate( $network_wide );\n    wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );",
-              'deactivation cleanup',
-          )
+          old = "$error_code = sanitize_key( (string) ( $activate['error'] ?? $error_code ) );"
+          new = "$reactivate_code = self::crocoblock_status_code( $activate );\n            if ( $reactivate_code !== '' ) $error_code = $reactivate_code;"
+          if text.count(old) != 1:
+              raise SystemExit('reactivation status expression not found exactly once')
+          text = text.replace(old, new, 1)
 
-          admin = 'wp-content/plugins/wpl-client/includes/class-wpl-client-admin.php'
-          replace_once(
-              admin,
-              "            $user_id = get_current_user_id();\n            // امسح transient السيريال\n            global $wpdb;\n            $wpdb->query( \"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wpl_serial_ok_%' OR option_name LIKE '_transient_timeout_wpl_serial_ok_%'\" );\n            wp_send_json_success( 'تم مسح الكاش.' );",
-              "            // نظّف runtime DB state والـ transients العالقة بدون مسح مفاتيح الترخيص.\n            WPL_Database_Maintenance::clear_runtime_state();\n            wp_send_json_success( 'تم تنظيف حالة الإضافة والكاش.' );",
-              'admin repair action',
-          )
-
-          installer = 'wp-content/plugins/wpl-client/includes/class-wpl-installer.php'
-          replace_once(
-              installer,
-              "    public function run_bg_install() {\n        @set_time_limit(300);\n        @ini_set('max_execution_time', 300);\n\n        $job = get_option('wpl_bg_install_job', []);",
-              "    public function run_bg_install() {\n        @set_time_limit(300);\n        @ini_set('max_execution_time', 300);\n\n        // Atomic DB lock: shutdown, loopback and cron may arrive together.\n        $lock_name = 'wpl_bg_install_worker_lock';\n        $lock_time = (int) get_option( $lock_name, 0 );\n        if ( $lock_time && ( time() - $lock_time ) < 10 * MINUTE_IN_SECONDS ) return;\n        if ( $lock_time ) delete_option( $lock_name );\n        if ( ! add_option( $lock_name, time(), '', 'no' ) ) return;\n        register_shutdown_function( function() use ( $lock_name ) {\n            delete_option( $lock_name );\n        } );\n\n        $job = get_option('wpl_bg_install_job', []);",
-              'background worker lock',
-          )
-
-          maintenance = 'wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php'
-          replace_once(
-              maintenance,
-              "        'wpl_bg_install_job',\n        'wpl_has_pending_request',",
-              "        'wpl_bg_install_job',\n        'wpl_bg_install_worker_lock',\n        'wpl_has_pending_request',",
-              'worker lock cleanup',
-          )
-          replace_once(
-              maintenance,
-              "        self::clear_runtime_state();\n        wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );",
-              "        self::clear_runtime_state();\n        wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );\n        wp_clear_scheduled_hook( 'wpl_license_health_check' );",
-              'deactivation cron cleanup',
-          )
-          replace_once(
-              maintenance,
-              "        wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );\n        wp_clear_scheduled_hook( 'wpl_bg_install_cron' );",
-              "        wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );\n        wp_clear_scheduled_hook( 'wpl_bg_install_cron' );\n        wp_clear_scheduled_hook( 'wpl_license_health_check' );",
-              'uninstall cron cleanup',
-          )
+          needle = "    private static function crocoblock_response_is_valid( $response ) {\n"
+          helper = "    private static function crocoblock_status_code( $response ) {\n        if ( ! is_array( $response ) ) return '';\n        if ( ! empty( $response['error'] ) ) return sanitize_key( (string) $response['error'] );\n        $license = sanitize_key( (string) ( $response['license'] ?? '' ) );\n        return ( $license && $license !== 'valid' ) ? $license : '';\n    }\n\n"
+          if text.count(needle) != 1:
+              raise SystemExit('Crocoblock helper insertion point not found exactly once')
+          text = text.replace(needle, helper + needle, 1)
+          p.write_text(text, encoding='utf-8')
           PY
 
-      - name: PHP lint and contract checks
+      - name: PHP lint and package consistency
         shell: bash
         run: |
           set -euo pipefail
           find wp-content/plugins/wpl-client -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-
-          test "$(grep -c 'new WPL_Installer()' wp-content/plugins/wpl-client/wpl-client.php)" -eq 1
-          grep -q "class-wpl-database-maintenance.php" wp-content/plugins/wpl-client/wpl-client.php
-          grep -q "class-wpl-license-health-monitor.php" wp-content/plugins/wpl-client/wpl-client.php
-          grep -q "WPL_Database_Maintenance::activate" wp-content/plugins/wpl-client/wpl-client.php
-          grep -q "WPL_License_Health_Monitor::activate" wp-content/plugins/wpl-client/wpl-client.php
-          grep -q "wpl_bg_install_worker_lock" wp-content/plugins/wpl-client/includes/class-wpl-installer.php
-          grep -q "wpl_license_health_check" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "WPL_Database_Maintenance::uninstall" wp-content/plugins/wpl-client/uninstall.php
-
-      - name: Rebuild distributable ZIP and verify it
-        shell: bash
-        run: |
-          set -euo pipefail
+          grep -q "crocoblock_status_code" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
           cd wp-content/plugins
           rm -f wpl-client.zip
           zip -qr wpl-client.zip wpl-client -x '*/.DS_Store'
@@ -132,16 +62,15 @@ jobs:
           diff -qr wpl-client /tmp/wpl-client-package-check/wpl-client
           cd ../..
 
-      - name: Commit integrated plugin and package
+      - name: Commit patch
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
+          git add wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php wp-content/plugins/wpl-client.zip
           if git diff --cached --quiet; then
-            echo 'No plugin changes to commit.'
             exit 0
           fi
-          git commit -m "feat(wpl-client): self-heal persisted state and vendor licenses"
+          git commit -m "fix(wpl-client): repair Crocoblock inactive registration states"
           git push
