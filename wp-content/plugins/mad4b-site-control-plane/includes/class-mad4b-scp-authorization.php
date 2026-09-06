@@ -29,6 +29,18 @@ final class MAD4B_SCP_Authorization {
 			return self::deny( 'mad4b_nhi_resource_constraints_unresolved', 'Resource constraints are present but no certified evaluator authorized this target.', $ability_name, $identity, $agent );
 		}
 
+		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $input ) : 'high';
+		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $input ) : true;
+		$approval_ticket_id = isset( $identity['approval_ticket_id'] ) ? (string) $identity['approval_ticket_id'] : '';
+		$target_fingerprint = (string) apply_filters( 'mad4b_scp_authorization_target_fingerprint', '', $ability_name, $provider, $input, $agent, $identity );
+		if ( $approval_required ) {
+			if ( '' === $approval_ticket_id ) return self::deny( 'mad4b_approval_required', 'This high-impact mutation requires an exact short-lived approval ticket.', $ability_name, $identity, $agent );
+			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return self::deny( 'mad4b_approval_service_unavailable', 'Approval service is unavailable.', $ability_name, $identity, $agent );
+			$ticket_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $input );
+			$approval = MAD4B_SCP_Approval_Tickets::consume_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+			if ( is_wp_error( $approval ) ) return self::deny( $approval->get_error_code(), $approval->get_error_message(), $ability_name, $identity, $agent );
+		}
+
 		$decision = array(
 			'allowed' => true,
 			'reason_code' => 'allowed',
@@ -43,6 +55,10 @@ final class MAD4B_SCP_Authorization {
 			'grant_id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
 			'scopes_present' => ! empty( $scopes ),
 			'constraints' => $constraints,
+			'impact' => $impact,
+			'approval_required' => $approval_required,
+			'approval_ticket_id' => $approval_required ? $approval_ticket_id : '',
+			'target_fingerprint' => $target_fingerprint,
 		);
 		self::audit( $ability_name, $decision, 'allowed' );
 		return $decision;
@@ -65,6 +81,7 @@ final class MAD4B_SCP_Authorization {
 			'enabled_subject_bindings' => (int) $counts['enabled_subjects'],
 			'exact_grants' => (int) $counts['grants'],
 			'wildcard_grants' => (int) $counts['wildcard_grants'],
+			'approval_service_ready' => class_exists( 'MAD4B_SCP_Approval_Tickets' ) && ! empty( $schema['ready'] ),
 			'blockers' => $blockers,
 			'status' => $blockers ? 'blocked' : ( $mutation_enabled ? 'ready_for_governed_mutation' : 'ready_read_only' ),
 		);
