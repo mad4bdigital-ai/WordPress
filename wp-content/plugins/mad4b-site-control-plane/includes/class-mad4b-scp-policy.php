@@ -22,7 +22,8 @@ final class MAD4B_SCP_Policy {
 	public static function can_breakglass() {
 		if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_ENABLED ) return false;
 		if ( ! current_user_can( 'manage_options' ) ) return false;
-		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', true, get_current_user_id() );
+		// This is an independent approval gate. Enabling the constant alone is intentionally insufficient.
+		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', false, get_current_user_id() );
 	}
 
 	public static function roots() {
@@ -85,6 +86,48 @@ final class MAD4B_SCP_Policy {
 		return (bool) apply_filters( 'mad4b_scp_sensitive_path', $sensitive, $normalized );
 	}
 
+	public static function is_code_or_server_config_path( $path ) {
+		$normalized = strtolower( str_replace( '\\', '/', (string) $path ) );
+		$basename = strtolower( basename( $normalized ) );
+		if ( in_array( $basename, array( '.htaccess', '.user.ini', 'php.ini', 'web.config' ), true ) ) return true;
+		return 1 === preg_match( '/\.(?:php\d*|phtml|phar|inc|cgi|pl|py|sh|bash|zsh|fish|js|mjs|cjs|html?|xhtml|shtml|svg)$/i', $basename );
+	}
+
+	public static function can_mutate_file( $root_key, $resolved_path ) {
+		$normalized = str_replace( '\\', '/', (string) $resolved_path );
+		if ( self::is_code_or_server_config_path( $normalized ) ) {
+			return new WP_Error( 'mad4b_executable_file_mutation_denied', 'Executable code, browser-executable content, and server configuration cannot be mutated through the WordPress MCP control plane.' );
+		}
+		if ( self::is_sensitive_path( $normalized ) ) {
+			return new WP_Error( 'mad4b_sensitive_file_mutation_denied', 'Sensitive credential/configuration files cannot be mutated through the normal WordPress MCP control plane.' );
+		}
+
+		$allowed_roots = apply_filters( 'mad4b_scp_mutable_data_roots', array( 'uploads' ) );
+		if ( ! is_array( $allowed_roots ) || ! in_array( $root_key, $allowed_roots, true ) ) {
+			return new WP_Error( 'mad4b_filesystem_mutation_root_denied', 'Filesystem mutation is limited to explicitly allowlisted non-code data roots. Source-code changes must use the governed repository/deployment path.' );
+		}
+
+		$extension = strtolower( pathinfo( $normalized, PATHINFO_EXTENSION ) );
+		$allowed_extensions = apply_filters( 'mad4b_scp_mutable_data_extensions', array( 'txt', 'csv', 'json', 'xml', 'md', 'markdown', 'yaml', 'yml', 'po', 'pot' ) );
+		if ( '' === $extension || ! is_array( $allowed_extensions ) || ! in_array( $extension, $allowed_extensions, true ) ) {
+			return new WP_Error( 'mad4b_filesystem_mutation_type_denied', 'Filesystem mutation is limited to explicitly allowlisted non-executable data file types.' );
+		}
+
+		return true;
+	}
+
+	public static function plugin_lifecycle_allowed( $plugin, $operation ) {
+		if ( ! defined( 'MAD4B_MCP_PLUGIN_LIFECYCLE_ENABLED' ) || true !== MAD4B_MCP_PLUGIN_LIFECYCLE_ENABLED ) return false;
+		$allowed = apply_filters( 'mad4b_scp_plugin_lifecycle_allowlist', array(), $operation, get_current_user_id() );
+		return is_array( $allowed ) && in_array( $plugin, $allowed, true );
+	}
+
+	public static function plugin_lifecycle_protected( $plugin ) {
+		$protected = array( plugin_basename( MAD4B_SCP_FILE ), 'mcp-adapter/mcp-adapter.php' );
+		$protected = apply_filters( 'mad4b_scp_plugin_lifecycle_protected_plugins', $protected, get_current_user_id() );
+		return is_array( $protected ) && in_array( $plugin, $protected, true );
+	}
+
 	public static function backup_root() {
 		$path = trailingslashit( get_temp_dir() ) . 'mad4b-scp-backups';
 		return (string) apply_filters( 'mad4b_scp_backup_root', $path );
@@ -135,7 +178,7 @@ final class MAD4B_SCP_Policy {
 
 	public static function is_sensitive_database_column( $column ) {
 		$column = strtolower( (string) $column );
-		$sensitive = (bool) preg_match( '/(?:pass(?:word)?|secret|token|api[_-]?key|auth|credential|private[_-]?key|activation[_-]?key|session)/i', $column );
+		$sensitive = (bool) preg_match( '/(?:pass(?:word)?|secret|token|api[_-]?key|consumer[_-]?key|access[_-]?key|client[_-]?key|license[_-]?key|auth|credential|private[_-]?key|activation[_-]?key|session|oauth|refresh[_-]?token|jwt|cookie|salt|nonce|verification[_-]?code)/i', $column );
 		return (bool) apply_filters( 'mad4b_scp_sensitive_database_column', $sensitive, $column );
 	}
 
