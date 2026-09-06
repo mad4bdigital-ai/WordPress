@@ -4,11 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Installs governance-preserving ability overrides without forking WordPress Abilities.
- *
- * The core MAD4B ability registry remains the source of schemas/permissions for existing
- * abilities. This class uses WordPress' supported wp_register_ability_args filter to replace
- * only the execute callback for the post-update pilot, then registers governance-specific
- * inspection/undo abilities after the core registry has finished.
  */
 final class MAD4B_SCP_Governed_Ability_Overrides {
 	private static $booted = false;
@@ -47,10 +42,7 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 					'category' => 'mad4b-admin',
 					'execute_callback' => array( __CLASS__, 'mutation_get' ),
 					'permission_callback' => array( __CLASS__, 'can_inspect_mutation' ),
-					'input_schema' => self::schema(
-						array( 'mutation_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 64 ) ),
-						array( 'mutation_id' )
-					),
+					'input_schema' => self::schema( array( 'mutation_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 64 ) ), array( 'mutation_id' ) ),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 					'meta' => self::meta( true, false, true ),
 				)
@@ -62,7 +54,7 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 				'mad4b/mutation-undo',
 				array(
 					'label' => 'Undo Verified Mutation',
-					'description' => 'Restore a certified reversible mutation only when the current target still matches the recorded after-state.',
+					'description' => 'Restore a certified core or adapter reversible mutation only when the current target still matches the recorded after-state.',
 					'category' => 'mad4b-admin',
 					'execute_callback' => array( __CLASS__, 'mutation_undo' ),
 					'permission_callback' => array( __CLASS__, 'can_undo_mutation' ),
@@ -80,9 +72,7 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 		}
 	}
 
-	public static function can_inspect_mutation( $input = null ) {
-		return current_user_can( 'manage_options' );
-	}
+	public static function can_inspect_mutation( $input = null ) { return current_user_can( 'manage_options' ); }
 
 	public static function can_undo_mutation( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return false;
@@ -106,7 +96,15 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 		$mutation_id = isset( $input['mutation_id'] ) ? (string) $input['mutation_id'] : '';
 		$reason = isset( $input['reason'] ) ? sanitize_text_field( (string) $input['reason'] ) : '';
 		MAD4B_SCP_Audit::record( 'mad4b/mutation-undo-intent', array( 'mutation_id' => $mutation_id, 'reason' => $reason ) );
-		$result = MAD4B_SCP_Mutation_Manager::undo_post_mutation( $mutation_id );
+		$record = MAD4B_SCP_Mutation_Manager::get( $mutation_id );
+		if ( ! $record ) return new WP_Error( 'mad4b_mutation_missing', 'Mutation record was not found.' );
+		if ( 'mad4b/content-update-post' === $record['ability_name'] && 'post' === $record['target_type'] ) {
+			$result = MAD4B_SCP_Mutation_Manager::undo_post_mutation( $mutation_id );
+		} elseif ( class_exists( 'MAD4B_SCP_Reversible_Adapter_Mutations' ) && MAD4B_SCP_Reversible_Adapter_Mutations::can_undo_record( $record ) ) {
+			$result = MAD4B_SCP_Reversible_Adapter_Mutations::undo( $mutation_id );
+		} else {
+			$result = new WP_Error( 'mad4b_undo_not_supported', 'This mutation does not use a currently registered certified rollback contract.' );
+		}
 		if ( ! is_wp_error( $result ) && is_array( $result ) ) $result['reason'] = $reason;
 		return $result;
 	}
@@ -122,11 +120,7 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 			'public' => false,
 			'show_in_rest' => false,
 			'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'admin' ),
-			'annotations' => array(
-				'readonly' => (bool) $readonly,
-				'destructive' => $readonly ? (bool) $destructive : true,
-				'idempotent' => (bool) $idempotent,
-			),
+			'annotations' => array( 'readonly' => (bool) $readonly, 'destructive' => $readonly ? (bool) $destructive : true, 'idempotent' => (bool) $idempotent ),
 		);
 	}
 }
