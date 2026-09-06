@@ -18,52 +18,70 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Close scheduler lifecycle gaps
+      - name: Persist Crocoblock activation response completely
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
-          def replace_once(path, old, new, label):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected exactly one match, got {count}')
-              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          p = Path('wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php')
+          text = p.read_text(encoding='utf-8')
 
-          monitor = 'wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php'
-          replace_once(
-              monitor,
-              "        add_action( self::SOON_HOOK, [ __CLASS__, 'run' ] );",
-              "        add_action( self::SOON_HOOK, [ __CLASS__, 'run_event_driven' ] );",
-              'event hook force refresh',
-          )
-          replace_once(
-              monitor,
-              "    public static function schedule_soon() {\n        if ( ! wp_next_scheduled( self::SOON_HOOK ) ) {\n            wp_schedule_single_event( time() + 30, self::SOON_HOOK );\n        }\n    }",
-              "    public static function schedule_soon() {\n        if ( ! wp_next_scheduled( self::SOON_HOOK ) ) {\n            wp_schedule_single_event( time() + 30, self::SOON_HOOK );\n        }\n    }\n\n    /**\n     * Plugin activation/update is a strong signal that registration state may have\n     * changed. Bypass stale backoff once for this event-driven verification.\n     */\n    public static function run_event_driven() {\n        return self::run( true );\n    }",
-              'event force handler',
-          )
+          old_call = "self::save_crocoblock_key( $api, $key );"
+          if text.count(old_call) != 2:
+              raise SystemExit(f'expected 2 Crocoblock persistence calls, got {text.count(old_call)}')
+          text = text.replace(old_call, "self::persist_crocoblock_activation( $api, $key, $activate );")
 
-          maintenance = 'wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php'
-          replace_once(
-              maintenance,
-              "        wp_clear_scheduled_hook( 'wpl_license_health_check' );\n\n        self::clear_transients();",
-              "        wp_clear_scheduled_hook( 'wpl_license_health_check' );\n        wp_clear_scheduled_hook( 'wpl_license_health_check_soon' );\n\n        self::clear_transients();",
-              'uninstall event hook cleanup',
-          )
+          old_fn = """    private static function save_crocoblock_key( $api, $key ) {
+        $option = isset( $api->license_option ) && is_string( $api->license_option )
+            ? $api->license_option
+            : 'jet_theme_core_license';
+        update_option( $option, $key, false );
+    }
+"""
+          new_fn = """    /**
+     * Mirror the state Crocoblock's own activate_license() persists. The cron
+     * adapter uses the vendor's lower-level request because activate_license()
+     * requires an interactive manage_options user, which WP-Cron does not have.
+     */
+    private static function persist_crocoblock_activation( $api, $key, $response ) {
+        if ( ! self::crocoblock_response_is_valid( $response ) ) return;
+
+        $license_option = isset( $api->license_option ) && is_string( $api->license_option )
+            ? $api->license_option
+            : 'jet_theme_core_license';
+        update_option( $license_option, $key, false );
+
+        if ( array_key_exists( 'has_templates_access', $response ) ) {
+            update_option( 'has_template_access', $response['has_templates_access'] === true ? 1 : -1, false );
+        }
+        if ( array_key_exists( 'has_design_templates_access', $response ) ) {
+            update_option( 'has_design_templates_access', $response['has_design_templates_access'] === true ? 1 : -1, false );
+        }
+        if ( isset( $response['excluded_plugins'] ) && is_array( $response['excluded_plugins'] ) ) {
+            $plugins_option = isset( $api->plugins_option ) && is_string( $api->plugins_option )
+                ? $api->plugins_option
+                : 'jet_excluded_plugins';
+            update_option( $plugins_option, $response['excluded_plugins'], false );
+        }
+    }
+"""
+          if text.count(old_fn) != 1:
+              raise SystemExit('Crocoblock persistence function anchor mismatch')
+          text = text.replace(old_fn, new_fn, 1)
+          p.write_text(text, encoding='utf-8')
           PY
 
-      - name: PHP lint and final assertions
+      - name: PHP lint and vendor-state assertions
         shell: bash
         run: |
           set -euo pipefail
           find wp-content/plugins/wpl-client -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          grep -q "SOON_HOOK, \[ __CLASS__, 'run_event_driven' \]" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "return self::run( true )" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          test "$(grep -c "wp_clear_scheduled_hook( 'wpl_license_health_check_soon' )" wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php)" -eq 1
+          test "$(grep -c 'persist_crocoblock_activation' wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php)" -eq 3
+          grep -q "has_templates_access" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "has_design_templates_access" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "excluded_plugins" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
 
       - name: Rebuild and verify distributable ZIP
         shell: bash
@@ -78,12 +96,12 @@ jobs:
           diff -qr wpl-client /tmp/wpl-client-package-check/wpl-client
           cd ../..
 
-      - name: Commit final patch
+      - name: Commit Crocoblock persistence hardening
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
-          git commit -m "fix(wpl-client): force event-driven license verification"
+          git commit -m "fix(wpl-client): persist Crocoblock activation capabilities"
           git push
