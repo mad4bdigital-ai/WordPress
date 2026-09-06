@@ -1,0 +1,140 @@
+name: MAD4B Control Plane Package
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Build staging installation kit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify certified MCP Adapter asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+          echo "$expected  wp-content/plugins/mcp-adapter.zip" | sha256sum --check --strict
+          test "$(stat -c '%s' wp-content/plugins/mcp-adapter.zip)" = '455463'
+          unzip -tqq wp-content/plugins/mcp-adapter.zip
+
+      - name: Build exact control-plane ZIP and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          main="$plugin/mad4b-site-control-plane.php"
+          version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          test -n "$version"
+
+          stage="/tmp/mad4b-install-kit"
+          rm -rf "$stage"
+          mkdir -p "$stage/package/mad4b-site-control-plane"
+          cp -a "$plugin"/. "$stage/package/mad4b-site-control-plane/"
+          rm -rf "$stage/package/mad4b-site-control-plane/tests"
+
+          (
+            cd "$stage/package"
+            zip -qr "$stage/mad4b-site-control-plane-${version}.zip" mad4b-site-control-plane
+          )
+          cp wp-content/plugins/mcp-adapter.zip "$stage/mcp-adapter-0.6.1.zip"
+
+          control_sha="$(sha256sum "$stage/mad4b-site-control-plane-${version}.zip" | awk '{print $1}')"
+          adapter_sha="$(sha256sum "$stage/mcp-adapter-0.6.1.zip" | awk '{print $1}')"
+
+          printf '%s  %s\n' "$control_sha" "mad4b-site-control-plane-${version}.zip" > "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$adapter_sha" 'mcp-adapter-0.6.1.zip' >> "$stage/SHA256SUMS"
+
+          python3 - "$stage" "$version" "$control_sha" "$adapter_sha" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          stage = Path(sys.argv[1])
+          version, control_sha, adapter_sha = sys.argv[2:]
+          data = {
+              'contract': 'mad4b.site-control-plane.staging-install-kit.v1',
+              'repository': os.environ.get('GITHUB_REPOSITORY'),
+              'commit': os.environ.get('GITHUB_SHA'),
+              'control_plane': {
+                  'version': version,
+                  'archive': f'mad4b-site-control-plane-{version}.zip',
+                  'sha256': control_sha,
+              },
+              'mcp_adapter': {
+                  'version': '0.6.1',
+                  'archive': 'mcp-adapter-0.6.1.zip',
+                  'sha256': adapter_sha,
+                  'official_release_sha256': '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676',
+              },
+              'install_order': ['mcp-adapter-0.6.1.zip', f'mad4b-site-control-plane-{version}.zip'],
+              'default_safety': {
+                  'mutation_enabled': False,
+                  'plugin_lifecycle_enabled': False,
+                  'breakglass_enabled': False,
+                  'bitflows_execution_enabled': False,
+                  'elementor_legacy_write_enabled': False,
+              },
+              'required_post_install_check': 'mad4b/runtime-self-test',
+          }
+          (stage / 'install-manifest.json').write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
+          PY
+
+          cat > "$stage/INSTALL-STAGING.md" <<'EOF'
+          # MAD4B staging installation kit
+
+          1. Install and activate the exact `mcp-adapter-0.6.1.zip` first.
+          2. Install and activate the MAD4B Site Control Plane ZIP.
+          3. Do not define any MAD4B mutation/Breakglass/lifecycle/Flow/Elementor legacy-write enable constants during discovery certification.
+          4. Authenticate a dedicated control identity and execute `mad4b/runtime-self-test`.
+          5. Verify provider versions/runtime critical-file hashes, custom-server isolation, and backup-root placement before any mutation gate is enabled.
+
+          This package is suitable for controlled staging/read-only discovery. It does not authorize production mutation.
+          EOF
+
+      - name: Verify package excludes development tests and preserves runtime baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-install-kit'
+          control_zip="$(find "$stage" -maxdepth 1 -name 'mad4b-site-control-plane-*.zip' -print -quit)"
+          test -n "$control_zip"
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
+          if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
+            echo 'Development tests must not ship in the staging plugin ZIP.' >&2
+            exit 1
+          fi
+          ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
+
+      - name: Upload staging installation kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-site-control-plane-staging-kit-${{ github.sha }}
+          path: |
+            /tmp/mad4b-install-kit/mad4b-site-control-plane-*.zip
+            /tmp/mad4b-install-kit/mcp-adapter-0.6.1.zip
+            /tmp/mad4b-install-kit/SHA256SUMS
+            /tmp/mad4b-install-kit/install-manifest.json
+            /tmp/mad4b-install-kit/INSTALL-STAGING.md
+          if-no-files-found: error
+          retention-days: 30
