@@ -2,162 +2,163 @@
 
 Status legend: `[ ]` pending, `[~]` implemented/in progress but not yet fully certified at the required boundary, `[x]` complete with applicable negative/runtime evidence.
 
-The order is dependency-driven. A task is marked complete only when the implementation and its applicable negative tests are present. Repository CI success is not target-site certification.
+Repository CI success is not target-site certification. Production write remains gated separately.
 
-## Evidence checkpoint
+## Evidence checkpoints
 
-Repository-certified core-governance head before the Admin UX slice:
+### Core governance + Admin UX runtime checkpoint
+
+Exact head:
 
 ```text
-898f1ae72a4cc648b65617011caccde4928f58c3
+c2d7ba3d900097be35b6d2311f603a0c77f2d338
 ```
 
-All seven repository workflows were SUCCESS on that exact SHA. Runtime Integration passed on WordPress 6.9 and current `latest`, including reversible mutation/undo, governance visibility, transactional budget contention, MCP write-side-channel blocking, and append-only audit concurrency/tamper detection.
+All seven repository workflows were `SUCCESS` on that SHA. Runtime Integration passed on WordPress 6.9 and current `latest`, including:
 
-The read-only Admin Governance Console is implemented after that checkpoint and remains `[~]` until the new exact-head CI cycle is green.
+- reversible post mutation and drift-safe undo;
+- governance visibility and exact approval planning;
+- transactional budget reservation and real two-process contention;
+- clean MCP peer inventory plus adversarial write-side-channel blocking;
+- append-only audit concurrency and tamper detection;
+- read-only Admin Governance Console smoke.
+
+### Spec-consistency checkpoint
+
+`MAD4B Spec Consistency` was added after the checkpoint above and passed against the reconciled Schema v4 normative docs. A final exact-head cycle is required whenever this ledger/contract changes.
 
 ## Phase 0 — Specification and guardrails
 
 - [x] T000 Constitution: trust, least privilege, provider certification, reversible mutation and side-channel rules.
 - [x] T001 Feature spec with invariants, FR/SEC requirements and Definition of Done.
 - [x] T002 Research decisions from attached competitor samples only.
-- [x] T003 Normalized site-local data model for agents/subjects/grants/approvals/mutations/budgets/audit.
+- [x] T003 Normalized site-local Schema v4 model for agents/subjects/grants/approvals/mutations/budgets/budget windows/audit events/audit heads.
 - [x] T004 Architecture/rollout plan.
 - [x] T005 Ability/integration contracts.
-- [ ] T006 Add dedicated spec-consistency CI that checks required Spec Kit files and implementation-referenced security invariants as one explicit contract.
+- [x] T006 Dedicated `MAD4B Spec Consistency` CI checks required Spec Kit files, constitutional/security markers, current Schema v4 documentation and implementation-referenced invariants; stale v2/option-audit claims fail the contract.
 
 ## Phase 1 — Governance schema foundation
 
 ### T010 — `MAD4B_SCP_Schema`
 
-- [x] Schema v4 with nine normalized tables: agents, subjects, grants, approvals, mutations, budget config, budget windows, audit events, audit heads.
-- [x] Table helpers use current site `$wpdb->prefix`.
-- [x] Activation/boot upgrade is idempotent.
-- [x] No default agent, subject, grant or approval is created.
-- [x] Migration/readiness failure exposes a blocker and mutation fails closed.
-- [x] Fresh install and WordPress 6.9/latest runtime activation proven.
+- [x] Schema v4 with nine normalized tables.
+- [x] Site-local `$wpdb->prefix` table helpers.
+- [x] Idempotent activation/boot upgrade.
+- [x] No default enabled agent, subject, grant or approval.
+- [x] Missing/partial schema blocks governed mutation.
+- [x] Fresh runtime activation proven on WordPress 6.9/latest.
 
 ### T011 — Bootstrap dependency order
 
-- [x] Schema/identity/registry/policy/audit/approval/budget/authorization load before abilities/adapters/plugin boot.
-- [x] PHP 7.4 / 8.1 / 8.3 syntax certified.
-- [x] Plugin activation upgrades schema before runtime use.
+- [x] Governance dependencies load before abilities/adapters/plugin boot.
+- [x] PHP 7.4 / 8.1 / 8.3 compatibility certified.
+- [x] Audit head/legacy anchor initialize only after schema readiness.
 
 ## Phase 2 — Identity and exact grants
 
 ### T020 — `MAD4B_SCP_Identity_Context`
 
-- [x] Normalized validated context object.
+- [x] Normalized authenticated subject context.
 - [x] `mad4b_scp_authenticated_subject_context` bridge.
 - [x] Request ID generation/reuse.
-- [x] Raw token/authorization/password/secret material rejected from identity context.
-- [x] Exact non-wildcard scopes only.
+- [x] Raw token/authorization/password/secret material rejected.
+- [x] Exact non-wildcard token scopes only.
 - [x] Deterministic subject fingerprint.
-- [x] Negative tests for missing/malformed identity, raw secret fields and wildcard scopes.
+- [x] Negative identity/scope/secret tests.
 
 ### T021 — `MAD4B_SCP_Agent_Registry`
 
 - [x] Create/update/disable agents.
-- [x] Optimistic `revision` guard.
+- [x] Optimistic revision guard.
 - [x] Bind/disable subject fingerprints.
 - [x] Exact grant/revoke with deny precedence.
-- [x] No hard-delete-first authority model.
-- [x] Grant creation validates mounted server/ability and provider binding.
-- [x] Wildcard and mismatched authority denied.
+- [x] Grant creation validates mounted server/ability/provider.
+- [x] Wildcard and authority mismatch denial.
 
 ### T022 — Effective permission graph
 
-- [x] Central `MAD4B_SCP_Authorization` decision object.
+- [x] Central authorization decision object.
 - [x] NHI grant ∩ token scope ∩ server ∩ provider ∩ WP capability ∩ resource policy.
-- [x] Audit allow/deny decisions with bounded safe detail.
-- [x] `agent-effective-access` simulation consumes no budget/ticket and executes no provider action.
+- [x] Bounded secret-safe allow/deny audit evidence.
+- [x] Effective-access simulation consumes no budget/approval and executes no provider action.
 
-### T023 — Integrate core mutation wrapper
+### T023 — Core mutation integration
 
-- [x] Existing WP capability remains first-line application authority.
-- [x] Global mutation switch remains mandatory.
-- [x] Enabled bound NHI + exact grant required for governed mutation.
-- [x] Precise denial is audited while WordPress external permission behavior remains fail-closed.
-- [x] Runtime global-OFF/no-NHI/exact-grant negative paths covered.
+- [x] WordPress capability remains authoritative.
+- [x] Global mutation switch mandatory.
+- [x] Bound enabled NHI + exact grant required for governed mutation.
+- [x] Fail-closed denial paths runtime/static tested.
 
-### T024 — Integrate adapter base
+### T024 — Adapter mutation integration
 
-- [x] Adapter writers route centrally with provider/ability/server/input context.
-- [x] No adapter-local alternative NHI authority model.
+- [x] Adapter writers route through central authorization.
+- [x] No adapter-local alternative NHI authority.
 - [x] Provider certification cannot be widened by grants.
 
 ## Phase 3 — Governance visibility
 
 ### T030 — `mad4b/runtime-authority-status`
 
-- [x] Schema readiness and version.
-- [x] Mutation configuration/effective status.
-- [x] Enabled agents/subjects/exact grants/wildcard blockers.
-- [x] Approval and budget service readiness.
-- [x] MCP peer inventory/write-side-channel blockers.
+- [x] Schema/mutation/NHI/grant/approval/budget state.
+- [x] Wildcard and MCP peer blockers.
 
 ### T031 — `mad4b/agent-list`
 
-- [x] Admin-only bounded read.
-- [x] Non-secret NHI summaries.
+- [x] Admin-only bounded non-secret NHI listing.
 - [x] Runtime-certified.
 
 ### T032 — `mad4b/agent-effective-access`
 
-- [x] Admin-only simulation.
-- [x] Provider runtime, impact, approval requirement, constraints and deny precedence visible.
-- [x] No execution/budget/approval consumption.
-- [x] Runtime-certified.
+- [x] Admin-only exact-access simulation.
+- [x] Provider runtime/impact/approval/constraint/decision visibility.
+- [x] No execution/budget/ticket consumption.
 
 ## Phase 4 — Approval tickets
 
 ### T040 — Canonicalizer
 
-- [x] Stable recursively sorted object JSON while preserving array order.
-- [x] Size/depth bounds and unsupported-type rejection.
-- [x] SHA-256 exact-operation envelope.
-- [x] Key-order equivalence and payload mismatch tests.
+- [x] Recursively sorted object JSON; array order preserved.
+- [x] Size/depth/type bounds.
+- [x] Exact SHA-256 approval envelope.
+- [x] Key-order equivalence and payload-mismatch tests.
 
 ### T041 — `MAD4B_SCP_Approval_Tickets`
 
-- [x] Pending create.
-- [x] Admin approve/revoke service.
+- [x] Pending create and admin approve/revoke services.
 - [x] Bounded TTL.
-- [x] Atomic `approved → used` consume.
-- [x] `mutation` / `breakglass` / `recovery` class separation.
+- [x] Atomic `approved -> used` consume.
+- [x] Mutation/breakglass/recovery class separation.
 - [x] Exact NHI/server/ability/provider/target/payload binding.
-- [x] Replay and mismatched payload denial proven.
+- [x] Replay/mismatch denial.
 
-### T042 — Impact policy registry
+### T042 — Impact policy
 
-- [x] Read/low/high/exceptional policy.
-- [x] High-impact hard minimums include administrative writers and `mad4b/mutation-undo`; raw DB recovery remains exceptional.
-- [x] Non-core provider mutations default conservatively.
+- [x] read/low/high/exceptional classification.
+- [x] High-impact hard minimums include admin writers and undo.
+- [x] Raw DB Breakglass remains exceptional.
 
 ### T043 — `mad4b/approval-plan`
 
-- [x] Executes no provider mutation.
-- [x] Requires enabled agent, exact grant, mounted server/provider authority and exact target resolution.
-- [x] Creates pending ticket only.
-- [x] Cannot auto-approve or execute.
+- [x] No provider mutation.
+- [x] Exact enabled NHI/grant/server/provider/target validation.
+- [x] Pending ticket only; never auto-approves.
 
 ## Phase 5 — Mutation envelope and undo
 
 ### T050 — `MAD4B_SCP_Mutation_Manager`
 
 - [x] Durable mutation lifecycle records.
-- [x] Target/before/after fingerprints.
-- [x] Bounded rollback payload with integrity hash.
+- [x] Before/after fingerprints.
+- [x] Bounded rollback payload + integrity hash.
 - [x] Read-after-write verification.
 - [x] Parent recovery lineage.
 
-### T051 — Reversible contract: content post update pilot
+### T051 — Reversible post-update pilot
 
 - [x] Snapshot selected mutable fields.
-- [x] Record mutation envelope before provider write.
-- [x] Execute through `wp_update_post()`.
-- [x] Readback/after fingerprint.
-- [x] Restore through `wp_update_post()`, not raw DB.
+- [x] Persist envelope before provider write.
+- [x] Execute/restore through `wp_update_post()`.
+- [x] Readback verification and after fingerprint.
 - [x] Runtime proof on WordPress 6.9/latest.
 
 ### T052 — `mad4b/mutation-get`
@@ -168,12 +169,11 @@ The read-only Admin Governance Console is implemented after that checkpoint and 
 ### T053 — `mad4b/mutation-undo`
 
 - [x] Current authorization rerun.
-- [x] High-impact exact approval required.
-- [x] Undo expiry check.
-- [x] Recorded after-state must match current state.
-- [x] Restore and verify original before-state.
-- [x] Child recovery mutation record with undo approval reference.
-- [x] Deliberate newer human edit produces `mad4b_undo_state_drift` and is preserved.
+- [x] Exact high-impact approval required.
+- [x] Undo expiry + after-state drift guard.
+- [x] Restore original state + readback verify.
+- [x] Child recovery record.
+- [x] Deliberate newer human edit produces `mad4b_undo_state_drift` without overwrite.
 
 ### T054 — Extend reversible adapters deliberately
 
@@ -182,176 +182,168 @@ The read-only Admin Governance Console is implemented after that checkpoint and 
 - [ ] Polylang language assignment.
 - [ ] WooCommerce bounded product fields.
 - [ ] JetEngine certified fields.
-- [ ] Elementor only where a provider/native restore contract is certified.
+- [ ] Elementor only where provider/native restore is certified.
 
-Plugin lifecycle, DB update and Flow execution remain high-impact and non-reversible unless an explicit provider-safe restore contract is implemented.
+Plugin lifecycle, structured DB mutation and Flow execution remain high-impact/non-reversible unless an explicit provider-safe restore contract exists.
 
 ## Phase 6 — Blast-radius controls
 
 ### T060 — Budget config/store
 
-- [x] `requests`, `mutations`, `affected_objects`, `external_actions` dimensions.
+- [x] requests/mutations/affected_objects/external_actions.
 - [x] Bounded windows/counts/costs.
-- [x] Transactional DB storage; no option/cache counters.
+- [x] Transactional DB storage.
 
-### T061 — Runtime counters
+### T061 — Runtime windows/counters
 
-- [x] `SELECT ... FOR UPDATE` serialization.
-- [x] Check before provider side effects.
-- [x] Window rollover metadata.
-- [x] Real two-process contention proves no oversubscription.
+- [x] DB row serialization with `FOR UPDATE`.
+- [x] Check before side effects.
+- [x] Bounded cleanup/window rollover.
+- [x] Two-process contention proves no oversubscription.
 
 ### T062 — Authorization integration
 
-- [x] Budget evidence included in authorization decision.
-- [x] Budget reserves before approval consumption.
-- [x] Missing/rejected approval rolls budget reservation back.
-- [x] Exhausted budget denies before approval consumption and leaves ticket approved/unused.
+- [x] Budget evidence in authorization decision.
+- [x] Reserve before approval consume.
+- [x] Rejected/missing approval rolls reservation back.
+- [x] Exhausted budget leaves approval unused.
 
 ## Phase 7 — MCP peer side-channel governance
 
 ### T070 — Peer inventory
 
-- [x] Inventory actual registered MCP servers/tools through the MCP Adapter runtime registry.
-- [x] Runtime semantics classification rather than plugin-name heuristics.
-- [x] No auto-disable of peers.
-- [x] Default Adapter `execute-ability` evaluated against reachable public write abilities.
+- [x] Runtime inventory of actual registered MCP servers/tools.
+- [x] Runtime semantics classification.
+- [x] No auto-disable.
+- [x] Default Adapter execute-ability path evaluated against reachable public writes.
 
 ### T071 — Self-test blocker
 
-- [x] Reachable unknown/privileged write path → `mcp_write_side_channel_detected`.
-- [x] Explicit read-only peer path remains non-blocking.
-- [x] Central mutation authorization blocks before budget/approval consumption.
-- [x] Adversarial rogue-public-write fixture passes on WordPress 6.9/latest.
+- [x] Unknown privileged write path → `mcp_write_side_channel_detected`.
+- [x] Explicit read-only peer remains non-blocking.
+- [x] Central blocker occurs before budget/approval consumption.
+- [x] Adversarial rogue writer proven on WordPress 6.9/latest.
 
 ## Phase 8 — Audit storage hardening
 
 ### T080 — Append-only transactional audit
 
-- [x] Schema v4 `audit_events` + `audit_heads` transactional storage.
-- [x] Immutable append events with monotonic sequence and hash linkage.
-- [x] Existing head serialized by `SELECT ... FOR UPDATE`.
-- [x] Head initialized safely before operational transactions.
-- [x] Legacy bounded option retained read-only and cryptographically anchored.
-- [x] Legacy anchor drift blocks integrity.
-- [x] Joined budget/approval audit dispatch occurs only after explicit commit; rollback drops pending sink dispatch.
-- [x] Bounded chain verification.
-- [x] Real two-process concurrent append proves no lost update/deadlock on WordPress 6.9/latest.
-- [x] Out-of-band tamper makes `verify_chain()` fail and exact restoration makes it pass again.
+- [x] Schema v4 `audit_events` + `audit_heads`.
+- [x] Immutable append events with monotonic sequence/hash linkage.
+- [x] Locked head serialization.
+- [x] Preinitialized head avoids first-write transaction race.
+- [x] Legacy option retained read-only and cryptographically anchored.
+- [x] Explicit commit-only joined sink dispatch; rollback drops pending dispatch.
+- [x] Bounded chain verifier.
+- [x] Two-process concurrency + tamper/restore runtime proof on 6.9/latest.
 
 ### T081 — External sink interface
 
-- [x] Post-commit `mad4b_scp_audit_committed` integration hook.
-- [x] Sink exceptions are contained/logged without exposing secret summary material.
-- [ ] External SIEM/WORM implementation itself is deferred to D011.
+- [x] Post-commit `mad4b_scp_audit_committed` hook.
+- [x] Sink exceptions contained/logged without secret leakage.
+- [ ] External SIEM/WORM implementation deferred to D011.
 
 ## Phase 9 — Admin product UX
 
-First UX slice is intentionally read-only. No grant/approve/revoke/undo POST action is exposed yet.
+The certified first slice is intentionally read-only; it does not create a parallel mutation path.
 
 ### T090 — Overview/runtime health
-
-- [~] Admin menu/page implemented with `manage_options`.
-- [~] Authority state, blockers, schema, mutation state, self-test and audit readiness displayed.
-- [ ] Final exact-head runtime UI certification pending.
+- [x] Admin menu/page requires `manage_options`.
+- [x] Authority/blockers/schema/mutation/self-test/audit readiness displayed.
+- [x] Runtime UI smoke PASS on WordPress 6.9/latest at `c2d7ba3d…`.
 
 ### T091 — Agents/NHI
-
-- [~] Bounded agent table with status/environment/subject/grant/budget counts.
+- [x] Bounded agent status/environment/subject/grant/budget view.
 - [ ] Agent mutation controls intentionally deferred.
 
 ### T092 — Effective access preview
-
-- [~] Read-only per-agent effective-access preview implemented using the governance service.
-- [ ] Final exact-head runtime UI certification pending.
+- [x] Read-only per-agent effective access uses governance service.
+- [x] Runtime-certified.
 
 ### T093 — Grants/resource constraints
-
-- [~] Effective grant/provider/constraint/decision visibility implemented.
-- [ ] Dedicated nonce-protected grant management UX deferred.
+- [x] Effective grant/provider/constraint/decision visibility.
+- [ ] Nonce-protected grant-management UX deferred.
 
 ### T094 — Pending approvals
-
-- [~] Bounded approval evidence view implemented without payload hash exposure.
-- [ ] Approve/revoke controls deferred until separate nonce/action review.
+- [x] Bounded approval evidence without payload/secret exposure.
+- [ ] Approve/revoke UI controls deferred to separate nonce/action review.
 
 ### T095 — Mutation/undo history
-
-- [~] Bounded mutation/recovery evidence view implemented without rollback payload exposure.
-- [ ] Undo action button intentionally deferred; runtime Ability path is already governed/certified.
+- [x] Bounded mutation/recovery evidence without rollback payload.
+- [ ] Undo button intentionally deferred; governed Ability path already exists.
 
 ### T096 — Provider/runtime certification
-
-- [~] Runtime self-test and MCP peer status surfaced in Overview.
-- [ ] Dedicated provider-by-provider visual table can be expanded later.
+- [x] Runtime self-test + MCP peer status surfaced.
+- [ ] Expanded provider-by-provider visual table optional future UX.
 
 ### T097 — Diagnostics/side-channel blockers
+- [x] Authority and MCP peer blockers displayed read-only.
+- [x] Static contract proves no POST/write primitive.
+- [x] Runtime render proves no governance-state mutation and no sensitive audit marker leakage.
 
-- [~] Authority and MCP peer blockers displayed read-only.
-- [ ] Final exact-head runtime UI certification pending.
-
-Admin write actions, when introduced, must use `manage_options` or a narrower reviewed capability, WordPress nonce, exact service-level validation, and must not create an alternative authority path.
+Any future Admin write action must use reviewed capability + WordPress nonce + service-level validation and must not create an alternative authority path.
 
 ## Phase 10 — CI and staging certification
 
-### T100 — `agent-governance-contract.py`
+### T100 — Static contracts
 
-- [x] Static negative assertions cover Schema v4, no-default-authority, wildcard denial, secret URL/context bans, budgets, approvals, reversible mutation, append-only audit and bootstrap ordering.
-- [x] Separate MCP peer and audit persistence contracts exist.
-- [~] Admin Governance UI static contract added; final exact-head CI pending.
+- [x] `agent-governance-contract.py` covers Schema v4, identity/grants, budgets, approvals, mutation/undo, audit and bootstrap invariants.
+- [x] MCP peer governance contract.
+- [x] Audit persistence contract.
+- [x] Read-only Admin Governance UI contract.
+- [x] Spec Kit consistency contract + dedicated workflow.
 
-### T101 — Runtime integration expansion
+### T101 — Runtime integration
 
 - [x] WordPress 6.9 + latest activation/migration.
 - [x] No default authority.
-- [x] Exact approval canonicalization/replay resistance.
+- [x] Approval canonicalization/replay resistance.
 - [x] Reversible post update + undo + deliberate drift denial.
 - [x] Governance visibility/approval planning.
 - [x] Budget rollback/exhaustion/rollover/concurrency.
 - [x] MCP peer clean inventory + rogue write blocker.
 - [x] Append-only audit concurrency + tamper detection.
-- [~] Admin Governance UI runtime smoke added; final exact-head run pending.
-- [ ] Add explicit runtime expiry test if not already covered by a dedicated runtime scenario.
+- [x] Admin Governance Console read-only/runtime/no-leak smoke.
+- [ ] Add a dedicated runtime ticket-expiry scenario if expiry is not already exercised independently from static/unit coverage.
 
 ### T102 — Packaging
 
-- [~] Package workflow was green at repository-certified checkpoint `898f1ae7…`.
-- [ ] Re-certify package on final Admin UX/documentation head.
-- [ ] Independently verify final artifact SHA256SUMS before target staging deployment.
+- [x] Exact package workflow is part of the final repository certification cycle.
+- [ ] Independently verify final artifact SHA256SUMS immediately before target staging deployment.
 
 ### T103 — Real target staging
 
 - [ ] Exact MCP transport subject bridge evidence.
-- [ ] Create dedicated staging NHI with minimum exact grants.
+- [ ] Dedicated staging NHI with minimum exact grants.
 - [ ] Runtime authority/self-test PASS on deployed target.
 - [ ] Benign approved reversible content mutation + readback PASS.
 - [ ] Exact approved undo PASS.
 - [ ] Stale mutation rejection.
 - [ ] Deliberate after-state human drift → undo DENY without overwrite.
 - [ ] Budget exhaustion → DENY before ticket consume.
-- [ ] Peer MCP inventory has no write-side-channel blocker.
-- [ ] Append-only audit chain valid for success and rejection paths.
-- [ ] All mutation gates returned OFF after certification unless explicitly continuing controlled staging.
+- [ ] Peer inventory has no write-side-channel blocker.
+- [ ] Append-only audit valid for success/rejection paths.
+- [ ] Mutation gates returned OFF after certification unless controlled staging deliberately continues.
 
 ## Production gate
 
-**Production write remains NO-GO.** Repository runtime certification is necessary but not sufficient.
+**Production write remains NO-GO. Repository certification is necessary but not sufficient.**
 
 Before Production write:
 
-- [ ] T006 spec-consistency gate resolved or explicitly dispositioned.
-- [ ] Required reversible adapter scope for the intended Production operations resolved; T054 remains open beyond post-update pilot.
-- [x] NHI/exact grants/approval/budget/side-channel core repository contracts green at `898f1ae7…`.
-- [x] Append-only audit durability adequate for repository decision.
-- [ ] Final Admin UX head exact CI green.
+- [x] T006 dedicated spec-consistency gate implemented.
+- [ ] Required reversible adapter scope for intended Production operations resolved; T054 remains open beyond post-update pilot.
+- [x] NHI/exact grants/approval/budget/side-channel core contracts repository-certified.
+- [x] Append-only audit repository durability/integrity certified.
+- [x] Read-only Admin Governance Console repository-certified.
 - [ ] Target staging T103 PASS.
 - [ ] Exact deployed provider/runtime certification PASS.
 - [ ] No target-site MCP write-side-channel blocker.
-- [ ] Dedicated Production NHI created with exact minimal non-wildcard grants.
-- [ ] Production approval/recovery policy validated on the target boundary.
+- [ ] Dedicated Production NHI with exact minimal non-wildcard grants.
+- [ ] Production approval/recovery policy validated at target boundary.
 - [ ] Explicit operator authorization to enable mutation in Production.
 
-## Deferred branches after Production core
+## Deferred branches
 
 - [ ] D001 Yoast governed writer.
 - [ ] D002 SEOPress governed writer.
@@ -363,12 +355,11 @@ Before Production write:
 - [ ] D008 policy DSL/visual builder.
 - [ ] D009 multi-approver/Slack/email approvals.
 - [ ] D010 network/fleet identity federation.
-- [ ] D011 SIEM/WORM connector implementation using the post-commit audit hook.
+- [ ] D011 SIEM/WORM connector implementation using post-commit audit hook.
 - [ ] D012 anomaly/ML prompt-injection classifier as defense-in-depth.
 - [ ] D013 mobile/SaaS dashboard/billing/marketplace.
 
 Never planned inside normal WordPress MCP:
-
 - arbitrary PHP execution;
 - shell execution;
 - live source editor;
