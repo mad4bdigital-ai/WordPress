@@ -17,7 +17,6 @@ final class MAD4B_SCP_Audit {
 
 	private static $request_id = '';
 	private static $pending_dispatch = array();
-	private static $shutdown_registered = false;
 
 	public static function record( $ability, array $summary, $status = 'ok', $join_transaction = false ) {
 		global $wpdb;
@@ -67,7 +66,6 @@ final class MAD4B_SCP_Audit {
 			self::dispatch_committed( $entry );
 		} else {
 			self::$pending_dispatch[] = $entry;
-			self::register_shutdown_dispatch();
 		}
 
 		return $entry;
@@ -145,26 +143,6 @@ final class MAD4B_SCP_Audit {
 
 	public static function transaction_rolled_back() {
 		self::$pending_dispatch = array();
-	}
-
-	public static function dispatch_pending_after_transaction() {
-		global $wpdb;
-		$entries = self::$pending_dispatch;
-		self::$pending_dispatch = array();
-		if ( ! $entries || ! class_exists( 'MAD4B_SCP_Schema' ) ) return;
-		$t = MAD4B_SCP_Schema::tables();
-		foreach ( $entries as $entry ) {
-			$event_id = isset( $entry['event_id'] ) ? (string) $entry['event_id'] : '';
-			if ( '' === $event_id ) continue;
-			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT event_id FROM {$t['audit_events']} WHERE event_id = %s LIMIT 1", $event_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			if ( $exists === $event_id ) self::dispatch_committed( $entry );
-		}
-	}
-
-	private static function register_shutdown_dispatch() {
-		if ( self::$shutdown_registered ) return;
-		self::$shutdown_registered = true;
-		register_shutdown_function( array( __CLASS__, 'dispatch_pending_after_transaction' ) );
 	}
 
 	private static function database_transaction_open() {
