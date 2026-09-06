@@ -6,6 +6,7 @@ on:
       - '.github/workflows/mad4b-core-mutation-gate.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
   push:
     branches:
       - master
@@ -13,6 +14,7 @@ on:
       - '.github/workflows/mad4b-core-mutation-gate.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
   workflow_dispatch:
 
 permissions:
@@ -34,22 +36,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          policy='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
-          abilities='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+          root='wp-content/plugins/mad4b-site-control-plane/includes'
+          policy="$root/class-mad4b-scp-policy.php"
+          abilities="$root/class-mad4b-scp-abilities.php"
+          authz="$root/class-mad4b-scp-authorization.php"
 
           php -l "$policy"
           php -l "$abilities"
+          php -l "$authz"
 
           grep -Fq "MAD4B_MCP_MUTATION_ENABLED" "$policy"
           grep -Fq "true !== MAD4B_MCP_MUTATION_ENABLED" "$policy"
-          grep -Fq "'permission_callback' => \$this->mutation_permission_callback( \$permission, (bool) \$readonly )" "$abilities"
+          grep -Fq "MAD4B_SCP_Identity_Context::current()" "$policy"
+          grep -Fq "MAD4B_SCP_Agent_Registry::resolve_agent" "$policy"
+          grep -Fq "'permission_callback' => \$this->mutation_permission_callback( \$permission, (bool) \$readonly, \$name, \$category )" "$abilities"
           grep -Fq "private function mutation_permission_callback" "$abilities"
           grep -Fq "MAD4B_SCP_Policy::can_mutate()" "$abilities"
+          grep -Fq "MAD4B_SCP_Authorization::authorize_mutation( \$ability_name, \$server_id, 'core', \$input )" "$abilities"
           grep -Fq "mad4b_mutation_disabled" "$abilities"
+          grep -Fq "MAD4B_SCP_Agent_Registry::exact_grant" "$authz"
 
           if grep -Fq "'permission_callback' => \$this->permission_callback( \$permission )" "$abilities"; then
             echo 'Core abilities regressed to an unwrapped permission callback.' >&2
             exit 1
           fi
 
-          echo 'mad4b.site-control-plane.core-mutation-gate.v1: PASS'
+          echo 'mad4b.site-control-plane.core-mutation-gate.v2: PASS'
