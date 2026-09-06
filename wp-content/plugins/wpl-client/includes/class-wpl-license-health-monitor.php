@@ -242,7 +242,8 @@ class WPL_License_Health_Monitor {
             return self::result( 'repaired', 'Crocoblock license was reactivated.' );
         }
 
-        $error_code = sanitize_key( (string) ( $activate['error'] ?? $check['error'] ?? '' ) );
+        $error_code = self::crocoblock_status_code( $activate );
+        if ( $error_code === '' ) $error_code = self::crocoblock_status_code( $check );
         $domain_binding_errors = [ 'invalid', 'site_inactive', 'inactive' ];
 
         // Crocoblock/EDD can retain the same key against an old URL after domain,
@@ -255,7 +256,8 @@ class WPL_License_Health_Monitor {
                 self::save_crocoblock_key( $api, $key );
                 return self::result( 'repaired', 'Crocoblock license was rebound to the current site URL.' );
             }
-            $error_code = sanitize_key( (string) ( $activate['error'] ?? $error_code ) );
+            $reactivate_code = self::crocoblock_status_code( $activate );
+            if ( $reactivate_code !== '' ) $error_code = $reactivate_code;
         }
 
         return self::result(
@@ -273,6 +275,13 @@ class WPL_License_Health_Monitor {
         }
         $body = json_decode( wp_remote_retrieve_body( $response ), true );
         return is_array( $body ) ? $body : [ 'success' => false, 'error' => 'invalid_response' ];
+    }
+
+    private static function crocoblock_status_code( $response ) {
+        if ( ! is_array( $response ) ) return '';
+        if ( ! empty( $response['error'] ) ) return sanitize_key( (string) $response['error'] );
+        $license = sanitize_key( (string) ( $response['license'] ?? '' ) );
+        return ( $license && $license !== 'valid' ) ? $license : '';
     }
 
     private static function crocoblock_response_is_valid( $response ) {
