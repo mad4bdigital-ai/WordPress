@@ -74,6 +74,7 @@ $check( false === MAD4B_SCP_Policy::can_breakglass(), 'Breakglass must remain in
 $check( false === MAD4B_SCP_Policy::can_mutate(), 'Global mutation must remain inaccessible while MAD4B_MCP_MUTATION_ENABLED is absent.' );
 
 // Prove the Ability execution path itself rejects a valid mutation request before side effects.
+// WordPress intentionally masks permission_callback WP_Error details as ability_invalid_permissions.
 $uploads = wp_upload_dir( null, false );
 $blocked_relative = 'mad4b-runtime-smoke/mutation-must-not-run.txt';
 $blocked_path = trailingslashit( $uploads['basedir'] ) . $blocked_relative;
@@ -91,7 +92,7 @@ $blocked_write = $write_ability->execute(
 		'create_backup' => false,
 	)
 );
-$check( is_wp_error( $blocked_write ) && 'mad4b_mutation_disabled' === $blocked_write->get_error_code(), 'Core mutation master switch did not fail closed.' );
+$check( is_wp_error( $blocked_write ) && 'ability_invalid_permissions' === $blocked_write->get_error_code(), 'Core mutation master switch did not fail closed through the WordPress Abilities permission contract.' );
 $check( ! file_exists( $blocked_path ), 'A blocked mutation produced a filesystem side effect.' );
 
 // Prove nested audit evidence is preserved, bounded, redacted, and chain-verifiable.
