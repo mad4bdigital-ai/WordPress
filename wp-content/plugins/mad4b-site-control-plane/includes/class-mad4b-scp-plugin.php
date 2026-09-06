@@ -13,8 +13,12 @@ final class MAD4B_SCP_Plugin {
 		$schema = MAD4B_SCP_Schema::install_or_upgrade();
 		if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		update_option( 'mad4b_scp_version', MAD4B_SCP_VERSION, false );
-		if ( false === get_option( 'mad4b_scp_audit_log', false ) ) {
-			add_option( 'mad4b_scp_audit_log', array(), '', false );
+		if ( false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) {
+			add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
+		}
+		if ( ! is_wp_error( self::$schema_error ) ) {
+			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
+			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
 	}
 
@@ -27,6 +31,13 @@ final class MAD4B_SCP_Plugin {
 		if ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
+		}
+		if ( false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) {
+			add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
+		}
+		if ( ! is_wp_error( self::$schema_error ) ) {
+			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
+			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
 		if ( is_wp_error( self::$schema_error ) ) add_action( 'admin_notices', array( __CLASS__, 'schema_notice' ) );
 
