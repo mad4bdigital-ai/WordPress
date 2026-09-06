@@ -2,9 +2,9 @@
 """Inspect the exact plugin ZIPs committed to this repository.
 
 This scanner is intentionally read-only. It extracts packaged providers into a
-temporary directory, derives their plugin header/version, and records only
-contract/symbol evidence needed by the MAD4B Site Control Plane. It does not
-execute provider PHP.
+temporary directory, derives their plugin header/version, inventories native
+MCP/Abilities implementation evidence, and records only contract/symbol data
+needed by the MAD4B Site Control Plane. It never executes provider PHP.
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ import argparse
 import hashlib
 import json
 import re
-import shutil
 import sys
 import tempfile
 import zipfile
@@ -29,6 +28,7 @@ PROVIDERS = {
             "mcp_public_exposure": r"mcp.*public|public.*mcp",
         },
         "required": ["create_server", "default_server_config_filter"],
+        "require_plugin_version": True,
     },
     "elementor": {
         "archive": "elementor.zip",
@@ -38,13 +38,15 @@ PROVIDERS = {
             "mcp_module": r"Modules\\Mcp|modules/mcp",
             "elementor_version_constant": r"ELEMENTOR_VERSION",
         },
-        "required": ["elementor_version_constant"],
+        "required": ["elementor_version_constant", "mcp_module"],
+        "require_plugin_version": True,
     },
     "jetengine": {
         "archive": "jet-engine.zip",
         "patterns": {
             "jet_engine_function": r"function\s+jet_engine\s*\(",
-            "version_constant": r"JET_ENGINE_VERSION",
+            "legacy_version_constant": r"JET_ENGINE_VERSION",
+            "mcp_tools": r"mcp[-_ ]?tools|MCP_Tools|mcp tools",
             "meta_boxes": r"meta[-_ ]?boxes|meta_boxes",
             "custom_post_types": r"custom[-_ ]?post[-_ ]?types|post-types",
             "custom_content_types": r"custom[-_ ]?content[-_ ]?types|custom-content-types|cct",
@@ -52,7 +54,8 @@ PROVIDERS = {
             "query_builder": r"query[-_ ]?builder|query_builder",
             "meta_fields_api": r"get_meta_fields|meta_fields",
         },
-        "required": ["version_constant"],
+        "required": ["jet_engine_function", "mcp_tools"],
+        "require_plugin_version": True,
     },
     "jetsmartfilters": {
         "archive": "jet-smart-filters.zip",
@@ -64,7 +67,8 @@ PROVIDERS = {
             "providers": r"providers?",
             "indexer": r"indexer",
         },
-        "required": [],
+        "required": ["version_constant", "plugin_accessor", "providers", "query_var"],
+        "require_plugin_version": True,
     },
     "bit_pi": {
         "archive": "bit-pi.zip",
@@ -77,6 +81,7 @@ PROVIDERS = {
             "bitpi_version_constant": r"BITPI_VERSION|BIT_PI_VERSION",
         },
         "required": ["flow_model", "flow_node_model", "flow_executor"],
+        "require_plugin_version": True,
     },
 }
 
@@ -85,6 +90,8 @@ TEXT_SUFFIXES = {
 }
 MAX_FILE_BYTES = 2 * 1024 * 1024
 MAX_HITS_PER_PATTERN = 12
+MAX_MCP_FILES = 120
+MAX_CAPABILITY_IDS = 120
 
 
 def sha256(path: Path) -> str:
@@ -99,7 +106,8 @@ def safe_extract(archive: Path, dest: Path) -> None:
     with zipfile.ZipFile(archive) as zf:
         for member in zf.infolist():
             name = member.filename.replace("\\", "/")
-            if name.startswith("/") or ".." in Path(name).parts:
+            parts = Path(name).parts
+            if name.startswith("/") or ".." in parts:
                 raise RuntimeError(f"Unsafe ZIP entry in {archive.name}: {member.filename}")
         zf.extractall(dest)
 
@@ -123,6 +131,10 @@ def read_text(path: Path) -> str:
         return ""
 
 
+def line_number(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
+
+
 def plugin_headers(files: list[Path], root: Path) -> list[dict]:
     headers = []
     for path in files:
@@ -144,6 +156,77 @@ def plugin_headers(files: list[Path], root: Path) -> list[dict]:
     return headers[:20]
 
 
+def is_mcp_path(relative_path: str) -> bool:
+    value = "/" + relative_path.lower().replace("\\", "/")
+    return (
+        "/mcp/" in value
+        or "/mcp-tools/" in value
+        or "/mcp_tools/" in value
+        or value.endswith("/mcp.php")
+        or "/modules/mcp" in value
+    )
+
+
+def native_mcp_inventory(files: list[Path], root: Path) -> dict:
+    mcp_files = []
+    candidates: dict[str, list[dict]] = {}
+    registrations = {
+        "wp_register_ability": [],
+        "ability_id_method": [],
+        "register_tool": [],
+    }
+
+    slash_id = re.compile(r"['\"]([a-z][a-z0-9_.-]{1,50}/[a-z0-9][a-z0-9_.-]{1,80})['\"]", re.I)
+    ability_method = re.compile(
+        r"(?:get_ability_id|get_ability_name)\s*\([^)]*\)\s*(?::[^\{]+)?\{.{0,800}?return\s+['\"]([^'\"]+)['\"]",
+        re.I | re.S,
+    )
+    wp_register = re.compile(r"wp_register_ability\s*\(\s*['\"]([^'\"]+)['\"]", re.I)
+    register_tool = re.compile(r"(?:register_tool|add_tool|register_feature)\s*\(\s*['\"]([^'\"]+)['\"]", re.I)
+
+    for path in files:
+        rel = path.relative_to(root).as_posix()
+        if not is_mcp_path(rel):
+            continue
+        if len(mcp_files) < MAX_MCP_FILES:
+            mcp_files.append(rel)
+        text = read_text(path)
+
+        for match in slash_id.finditer(text):
+            value = match.group(1)
+            candidates.setdefault(value, []).append({"file": rel, "line": line_number(text, match.start())})
+        for key, regex in (
+            ("wp_register_ability", wp_register),
+            ("ability_id_method", ability_method),
+            ("register_tool", register_tool),
+        ):
+            for match in regex.finditer(text):
+                item = {"id": match.group(1), "file": rel, "line": line_number(text, match.start())}
+                registrations[key].append(item)
+
+    unique_candidates = []
+    for ability_id in sorted(candidates)[:MAX_CAPABILITY_IDS]:
+        unique_candidates.append({"id": ability_id, "hits": candidates[ability_id][:5]})
+
+    for key in registrations:
+        seen = set()
+        deduped = []
+        for item in registrations[key]:
+            identity = (item["id"], item["file"])
+            if identity in seen:
+                continue
+            seen.add(identity)
+            deduped.append(item)
+        registrations[key] = deduped[:MAX_CAPABILITY_IDS]
+
+    return {
+        "present": bool(mcp_files),
+        "files": sorted(mcp_files),
+        "slash_id_candidates": unique_candidates,
+        "registrations": registrations,
+    }
+
+
 def scan_provider(provider: str, cfg: dict, plugins_dir: Path, temp_root: Path) -> dict:
     archive = plugins_dir / cfg["archive"]
     if not archive.is_file():
@@ -152,7 +235,7 @@ def scan_provider(provider: str, cfg: dict, plugins_dir: Path, temp_root: Path) 
             "archive": cfg["archive"],
             "present": False,
             "required_contracts_pass": False,
-            "missing_required": list(cfg.get("required", [])),
+            "missing_required": list(cfg.get("required", [])) + ["plugin_archive"],
         }
 
     extract_dir = temp_root / provider
@@ -170,13 +253,22 @@ def scan_provider(provider: str, cfg: dict, plugins_dir: Path, temp_root: Path) 
             match = regex.search(text)
             if not match:
                 continue
-            line = text.count("\n", 0, match.start()) + 1
-            hits.append({"file": path.relative_to(extract_dir).as_posix(), "line": line})
+            hits.append(
+                {
+                    "file": path.relative_to(extract_dir).as_posix(),
+                    "line": line_number(text, match.start()),
+                }
+            )
             if len(hits) >= MAX_HITS_PER_PATTERN:
                 break
         evidence[key] = {"present": bool(hits), "hits": hits}
 
     missing = [key for key in cfg.get("required", []) if not evidence.get(key, {}).get("present")]
+    if cfg.get("require_plugin_version"):
+        primary_version = headers[0].get("version", "") if headers else ""
+        if not primary_version:
+            missing.append("plugin_header_version")
+
     return {
         "provider": provider,
         "archive": cfg["archive"],
@@ -186,6 +278,7 @@ def scan_provider(provider: str, cfg: dict, plugins_dir: Path, temp_root: Path) 
         "plugin_headers": headers,
         "text_file_count": len(files),
         "contracts": evidence,
+        "native_mcp": native_mcp_inventory(files, extract_dir),
         "required_contracts_pass": not missing,
         "missing_required": missing,
     }
