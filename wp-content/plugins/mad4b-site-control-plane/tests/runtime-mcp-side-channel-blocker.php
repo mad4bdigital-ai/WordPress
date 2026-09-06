@@ -29,7 +29,7 @@ $check( $found, 'Detector did not bind the default generic execute path to the e
 $tables = MAD4B_SCP_Schema::tables();
 global $wpdb;
 $budget_before = (int) $wpdb->get_var( "SELECT COALESCE(SUM(used_count),0) FROM {$tables['budget_windows']}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
-$used_tickets_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['approval_tickets']} WHERE status = 'used'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
+$used_tickets_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['approvals']} WHERE status = 'used'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
 
 $denied = MAD4B_SCP_Authorization::authorize_mutation(
 	'mad4b/content-update-post',
@@ -40,7 +40,7 @@ $denied = MAD4B_SCP_Authorization::authorize_mutation(
 $check( is_wp_error( $denied ) && 'mcp_write_side_channel_detected' === $denied->get_error_code(), 'Central authorization did not fail closed on the MCP write side-channel.' );
 
 $budget_after = (int) $wpdb->get_var( "SELECT COALESCE(SUM(used_count),0) FROM {$tables['budget_windows']}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
-$used_tickets_after = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['approval_tickets']} WHERE status = 'used'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
+$used_tickets_after = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['approvals']} WHERE status = 'used'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
 $check( $budget_before === $budget_after, 'Side-channel blocker was evaluated after budget consumption.' );
 $check( $used_tickets_before === $used_tickets_after, 'Side-channel blocker was evaluated after approval consumption.' );
 
