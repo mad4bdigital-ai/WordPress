@@ -45,6 +45,7 @@ final class DynamicTagRegistrar {
         if (!class_exists('\\Elementor\\Core\\DynamicTags\\Tag')) { return; }
 
         DynamicTagRuntime::configure($this->resolver, $this->slots, $this->catalogProvider, $this->previewContextProvider);
+        // Alpha13 live binding contract remains emitted by named tag classes: data-etg-dfsb-token / data-etg-dfsb-slot.
 
         if (method_exists($manager, 'register_group')) {
             $manager->register_group('etg-dfsb', array('title'=>'ETG Filter SEO'));
