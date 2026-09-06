@@ -74,6 +74,7 @@ final class MAD4B_SCP_Provider_Contracts {
 			return array(
 				'provider' => $provider,
 				'status'   => 'uncertified_provider',
+				'runtime_contract_ok' => false,
 			);
 		}
 
@@ -120,11 +121,11 @@ final class MAD4B_SCP_Provider_Contracts {
 			$result['newly_present_abilities'] = $unexpected;
 		}
 
-		$result['runtime_contract_ok'] = empty( self::runtime_violations_from_status( $result ) );
+		$result['runtime_contract_ok'] = empty( self::violations_for_status( $result ) );
 		return $result;
 	}
 
-	private static function runtime_violations_from_status( array $status ) {
+	public static function violations_for_status( array $status ) {
 		$violations = array();
 		if ( empty( $status['status'] ) || 'certified' !== $status['status'] ) {
 			$violations[] = empty( $status['status'] ) ? 'unknown_status' : (string) $status['status'];
@@ -139,7 +140,7 @@ final class MAD4B_SCP_Provider_Contracts {
 	}
 
 	public static function runtime_violations( $provider, $available = null ) {
-		return self::runtime_violations_from_status( self::runtime_status( $provider, $available ) );
+		return self::violations_for_status( self::runtime_status( $provider, $available ) );
 	}
 
 	public static function mutation_allowed( $provider, $available = null ) {
@@ -151,7 +152,7 @@ final class MAD4B_SCP_Provider_Contracts {
 
 	public static function mutation_guard( $provider, $available = null ) {
 		$status = self::runtime_status( $provider, $available );
-		$violations = self::runtime_violations_from_status( $status );
+		$violations = self::violations_for_status( $status );
 		if ( empty( $violations ) ) {
 			return true;
 		}
