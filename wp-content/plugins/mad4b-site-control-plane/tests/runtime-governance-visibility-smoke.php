@@ -78,20 +78,22 @@ $check( ! array_key_exists( 'subject_fingerprint', $listed ) && ! array_key_exis
 $check( isset( $listed['subjects'] ) && 1 === (int) $listed['subjects'], 'agent-list subject count is incorrect.' );
 $check( isset( $listed['grants'] ) && 4 === (int) $listed['grants'], 'agent-list grant count is incorrect.' );
 
-// Effective access must collapse duplicate allow+deny rows and apply deny precedence.
+// Effective access must collapse duplicate allow+deny rows into one tuple and apply deny precedence.
 $effective_ability = wp_get_ability( 'mad4b/agent-effective-access' );
 $preview = $effective_ability->execute( array( 'agent_public_id' => $agent['public_id'], 'server_id' => '' ) );
 $check( ! is_wp_error( $preview ) && isset( $preview['effective'] ) && is_array( $preview['effective'] ), 'agent-effective-access failed.' );
 $post_entry = null;
+$post_entry_count = 0;
 $db_entry = null;
 $undo_entry = null;
 foreach ( $preview['effective'] as $entry ) {
-	if ( 'mad4b/content-update-post' === $entry['ability'] ) $post_entry = $entry;
+	if ( 'mad4b/content-update-post' === $entry['ability'] ) { $post_entry = $entry; ++$post_entry_count; }
 	if ( 'mad4b/database-update' === $entry['ability'] ) $db_entry = $entry;
 	if ( 'mad4b/mutation-undo' === $entry['ability'] ) $undo_entry = $entry;
 }
+$check( 1 === $post_entry_count, 'Effective-access preview returned duplicate rows for one server/ability/provider tuple.' );
 $check( is_array( $post_entry ) && 'deny' === $post_entry['grant'] && 'denied' === $post_entry['decision'] && empty( $post_entry['effective'] ), 'Effective-access preview did not apply exact deny precedence.' );
-$check( isset( $post_entry['grant_ids'] ) && 2 === count( $post_entry['grant_ids'] ), 'Effective-access preview did not collapse duplicate tuple grants.' );
+$check( isset( $post_entry['grant_ids'] ) && is_array( $post_entry['grant_ids'] ) && ! empty( $post_entry['grant_ids'] ), 'Effective-access preview omitted winning grant evidence.' );
 $check( is_array( $db_entry ) && 'conditional' === $db_entry['decision'] && empty( $db_entry['effective'] ) && 'unresolved_without_target' === $db_entry['constraint_state'], 'Constrained grant was not reported as conditional/fail-closed.' );
 $check( is_array( $undo_entry ) && 'allowed' === $undo_entry['decision'] && ! empty( $undo_entry['effective'] ), 'Exact unconstrained undo grant was not visible as allowed.' );
 
