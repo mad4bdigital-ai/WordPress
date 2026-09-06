@@ -4,10 +4,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /**
  * Scheduled health checks for third-party commercial plugin registrations.
  *
- * The monitor never invents, replaces, or bypasses a vendor key. It only uses a
- * key already stored by the vendor plugin itself and calls that vendor's own
- * registration/revalidation API. Unsupported, expired, revoked or missing keys
- * are reported for manual action.
+ * This component never invents, replaces, or bypasses a vendor key. It only
+ * reuses a key already stored by the vendor plugin and calls that vendor's own
+ * validation/registration endpoint. Missing, expired, revoked, disabled or
+ * otherwise unusable keys are surfaced for manual action.
  */
 class WPL_License_Health_Monitor {
 
@@ -83,8 +83,7 @@ class WPL_License_Health_Monitor {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( [ 'message' => 'Unauthorized' ], 403 );
         }
-        $report = self::run( true );
-        wp_send_json_success( $report );
+        wp_send_json_success( self::run( true ) );
     }
 
     /**
@@ -97,7 +96,7 @@ class WPL_License_Health_Monitor {
         }
         set_transient( self::LOCK_TRANSIENT, 1, 10 * MINUTE_IN_SECONDS );
 
-        $started = time();
+        $started = microtime( true );
         $results = [];
 
         try {
@@ -107,7 +106,7 @@ class WPL_License_Health_Monitor {
             ];
 
             /**
-             * Add vendor-specific health adapters without modifying this class.
+             * Register additional vendor-specific adapters.
              * Callback signature: function(bool $force): array
              */
             $adapters = apply_filters( 'wpl_client_license_health_adapters', $adapters );
@@ -117,8 +116,8 @@ class WPL_License_Health_Monitor {
                 if ( ! is_callable( $callback ) ) continue;
 
                 if ( ! $force && ! self::retry_allowed( $id ) ) {
-                    $previous      = self::get_previous_adapter_result( $id );
-                    $results[$id]  = $previous ?: self::result( 'deferred', 'Retry backoff is active.' );
+                    $previous = self::get_previous_adapter_result( $id );
+                    $results[$id] = $previous ?: self::result( 'deferred', 'Retry backoff is active.' );
                     continue;
                 }
 
@@ -140,15 +139,11 @@ class WPL_License_Health_Monitor {
         }
 
         $report = [
-            'version'      => 1,
-            'checked_at'   => time(),
-            'duration_ms'  => max( 0, (int) round( ( microtime( true ) - (float) $started ) * 1000 ) ),
-            'results'      => $results,
+            'version'     => 1,
+            'checked_at'  => time(),
+            'duration_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),
+            'results'     => $results,
         ];
-
-        // duration_ms above uses integer seconds for $started on purpose only as a
-        // coarse fallback; replace with safe elapsed measurement below.
-        $report['duration_ms'] = 0;
 
         update_option( self::REPORT_OPTION, $report, false );
         do_action( 'wpl_client_license_health_checked', $report );
@@ -167,45 +162,40 @@ class WPL_License_Health_Monitor {
             return self::result( 'unavailable', 'WPML Installer API is unavailable.' );
         }
 
-        $repo = 'wpml';
-        $key  = (string) $installer->get_site_key( $repo );
+        $repository_id = 'wpml';
+        $key = (string) $installer->get_site_key( $repository_id );
         if ( $key === '' ) {
             return self::result( 'needs_manual_action', 'WPML has no stored site key.' );
         }
 
-        if ( method_exists( $installer, 'repository_has_valid_subscription' )
-            && $installer->repository_has_valid_subscription( $repo ) ) {
+        if ( self::wpml_is_valid( $installer, $repository_id ) ) {
             return self::result( 'healthy', 'WPML registration is valid.' );
         }
 
-        // OTGS exposes this as its normal daily revalidation path. It uses the
-        // existing site key and refreshes the subscription for the current URL.
+        // OTGS uses this method for its own periodic site-key revalidation.
         if ( method_exists( $installer, 'refresh_subscriptions_data' ) ) {
             $installer->refresh_subscriptions_data();
         }
-
-        if ( method_exists( $installer, 'repository_has_valid_subscription' )
-            && $installer->repository_has_valid_subscription( $repo ) ) {
+        if ( self::wpml_is_valid( $installer, $repository_id ) ) {
             return self::result( 'repaired', 'WPML registration was revalidated.' );
         }
 
-        // Some OTGS versions can register the same already-stored key again.
-        // Keep this guarded by capability discovery and never use a different key.
+        // Re-register exactly the same stored key against the current site URL.
+        // `return => true` is essential: without it OTGS echoes JSON and exits.
         if ( method_exists( $installer, 'save_site_key' ) ) {
-            $args = [
-                'repository_id' => $repo,
+            $response = $installer->save_site_key( [
+                'repository_id' => $repository_id,
                 'site_key'      => $key,
-                'nonce'         => wp_create_nonce( 'save_site_key_' . $repo ),
-            ];
-            $response = $installer->save_site_key( $args );
+                'nonce'         => wp_create_nonce( 'save_site_key_' . $repository_id ),
+                'return'        => true,
+            ] );
 
-            if ( method_exists( $installer, 'repository_has_valid_subscription' )
-                && $installer->repository_has_valid_subscription( $repo ) ) {
+            if ( self::wpml_is_valid( $installer, $repository_id ) ) {
                 return self::result( 'repaired', 'WPML site key was re-registered for this site.' );
             }
 
-            if ( is_wp_error( $response ) ) {
-                return self::result( 'needs_manual_action', $response->get_error_message() );
+            if ( is_array( $response ) && ! empty( $response['error'] ) ) {
+                return self::result( 'needs_manual_action', wp_strip_all_tags( $response['error'] ) );
             }
         }
 
@@ -213,6 +203,11 @@ class WPL_License_Health_Monitor {
             'needs_manual_action',
             'WPML kept the existing key but could not validate it for the current site.'
         );
+    }
+
+    private static function wpml_is_valid( $installer, $repository_id ) {
+        return method_exists( $installer, 'repository_has_valid_subscription' )
+            && (bool) $installer->repository_has_valid_subscription( $repository_id );
     }
 
     private static function check_crocoblock( $force = false ) {
@@ -224,7 +219,7 @@ class WPL_License_Health_Monitor {
         }
 
         $api = new $class();
-        if ( ! method_exists( $api, 'get_license' ) || ! method_exists( $api, 'is_active' ) ) {
+        if ( ! method_exists( $api, 'get_license' ) || ! method_exists( $api, 'license_request' ) ) {
             return self::result( 'unavailable', 'Crocoblock license API is incomplete.' );
         }
 
@@ -233,41 +228,62 @@ class WPL_License_Health_Monitor {
             return self::result( 'needs_manual_action', 'Crocoblock has no stored license key.' );
         }
 
-        if ( $api->is_active() ) {
+        $check = self::crocoblock_request( $api, 'check_license', $key );
+        if ( self::crocoblock_response_is_valid( $check ) ) {
             return self::result( 'healthy', 'Crocoblock registration is valid.' );
         }
 
-        // First retry the official activation endpoint using the existing key.
-        if ( method_exists( $api, 'activate_license' ) ) {
-            $activated = $api->activate_license( $key );
-            if ( $activated && $api->is_active() ) {
-                return self::result( 'repaired', 'Crocoblock license was reactivated.' );
-            }
+        // Do not call Crocoblock::activate_license() from WP-Cron: that method
+        // intentionally requires a logged-in manage_options user. The lower-level
+        // vendor API is public and is what activate_license() calls internally.
+        $activate = self::crocoblock_request( $api, 'activate_license', $key );
+        if ( self::crocoblock_response_is_valid( $activate ) ) {
+            self::save_crocoblock_key( $api, $key );
+            return self::result( 'repaired', 'Crocoblock license was reactivated.' );
         }
 
-        // Domain/SSL migrations often leave an EDD-style activation bound to the
-        // old URL. Crocoblock itself recommends deactivate + reactivate. Use the
-        // vendor endpoint directly while preserving the existing local key.
-        if ( method_exists( $api, 'license_request' ) && method_exists( $api, 'activate_license' ) ) {
-            $api->license_request( 'deactivate_license', $key );
-            $activated = $api->activate_license( $key );
+        $error_code = sanitize_key( (string) ( $activate['error'] ?? $check['error'] ?? '' ) );
+        $domain_binding_errors = [ 'invalid', 'site_inactive', 'inactive' ];
 
-            // Never destroy the legitimate key merely because a repair failed.
-            if ( method_exists( $api, 'get_license' ) && (string) $api->get_license() === '' ) {
-                update_option( 'jet_theme_core_license', $key, false );
+        // Crocoblock/EDD can retain the same key against an old URL after domain,
+        // SSL or canonical-URL changes. Only those binding states get a controlled
+        // deactivate + reactivate cycle. Expired/revoked/no-slot states are not touched.
+        if ( in_array( $error_code, $domain_binding_errors, true ) ) {
+            self::crocoblock_request( $api, 'deactivate_license', $key );
+            $activate = self::crocoblock_request( $api, 'activate_license', $key );
+            if ( self::crocoblock_response_is_valid( $activate ) ) {
+                self::save_crocoblock_key( $api, $key );
+                return self::result( 'repaired', 'Crocoblock license was rebound to the current site URL.' );
             }
-
-            if ( $activated && $api->is_active() ) {
-                return self::result( 'repaired', 'Crocoblock license was rebound to the current domain.' );
-            }
+            $error_code = sanitize_key( (string) ( $activate['error'] ?? $error_code ) );
         }
 
-        $message = 'Crocoblock kept the existing key but could not reactivate it.';
-        if ( method_exists( $api, 'get_error' ) ) {
-            $error = wp_strip_all_tags( (string) $api->get_error() );
-            if ( $error !== '' ) $message = $error;
+        return self::result(
+            'needs_manual_action',
+            $error_code !== ''
+                ? 'Crocoblock license needs manual action: ' . $error_code
+                : 'Crocoblock kept the existing key but could not reactivate it.'
+        );
+    }
+
+    private static function crocoblock_request( $api, $action, $key ) {
+        $response = $api->license_request( $action, $key );
+        if ( is_wp_error( $response ) ) {
+            return [ 'success' => false, 'error' => 'connection_error' ];
         }
-        return self::result( 'needs_manual_action', $message );
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        return is_array( $body ) ? $body : [ 'success' => false, 'error' => 'invalid_response' ];
+    }
+
+    private static function crocoblock_response_is_valid( $response ) {
+        return ! empty( $response['success'] ) && ( $response['license'] ?? '' ) === 'valid';
+    }
+
+    private static function save_crocoblock_key( $api, $key ) {
+        $option = isset( $api->license_option ) && is_string( $api->license_option )
+            ? $api->license_option
+            : 'jet_theme_core_license';
+        update_option( $option, $key, false );
     }
 
     private static function retry_allowed( $id ) {
