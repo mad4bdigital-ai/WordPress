@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply final lifecycle and autonomous license hardening
+      - name: Close scheduler lifecycle gaps
         shell: bash
         run: |
           set -euo pipefail
@@ -33,111 +33,37 @@ jobs:
                   raise SystemExit(f'{label}: expected exactly one match, got {count}')
               p.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          main = 'wp-content/plugins/wpl-client/wpl-client.php'
-          replace_once(main, ' * Version:     2.7.5', ' * Version:     2.7.6', 'header version')
-          replace_once(main, "define( 'WPL_CLIENT_VERSION', '2.7.5' );", "define( 'WPL_CLIENT_VERSION', '2.7.6' );", 'runtime version')
+          monitor = 'wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php'
+          replace_once(
+              monitor,
+              "        add_action( self::SOON_HOOK, [ __CLASS__, 'run' ] );",
+              "        add_action( self::SOON_HOOK, [ __CLASS__, 'run_event_driven' ] );",
+              'event hook force refresh',
+          )
+          replace_once(
+              monitor,
+              "    public static function schedule_soon() {\n        if ( ! wp_next_scheduled( self::SOON_HOOK ) ) {\n            wp_schedule_single_event( time() + 30, self::SOON_HOOK );\n        }\n    }",
+              "    public static function schedule_soon() {\n        if ( ! wp_next_scheduled( self::SOON_HOOK ) ) {\n            wp_schedule_single_event( time() + 30, self::SOON_HOOK );\n        }\n    }\n\n    /**\n     * Plugin activation/update is a strong signal that registration state may have\n     * changed. Bypass stale backoff once for this event-driven verification.\n     */\n    public static function run_event_driven() {\n        return self::run( true );\n    }",
+              'event force handler',
+          )
 
           maintenance = 'wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php'
           replace_once(
               maintenance,
-              "        'wpl_bg_install_worker_lock',\n        'wpl_has_pending_request',\n        'wpl_products_signature',",
-              "        'wpl_bg_install_worker_lock',\n        // A pending activation request is business state, not disposable runtime state.\n        // Preserve it across plugin reactivation; the installer/server reconciliation owns clearing it.\n        'wpl_products_signature',",
-              'preserve pending activation request',
-          )
-
-          installer = 'wp-content/plugins/wpl-client/includes/class-wpl-installer.php'
-          replace_once(
-              installer,
-              "        // Disable SSL verify for all requests\n        add_filter('http_request_args', function($args) { $args['sslverify'] = false; return $args; });\n\n",
-              "        // Never disable TLS verification globally. Individual legacy WPL requests\n        // remain explicitly scoped; unrelated WordPress/vendor HTTP traffic keeps core defaults.\n\n",
-              'remove global TLS disable',
-          )
-
-          monitor = 'wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php'
-          replace_once(
-              monitor,
-              "    const CRON_HOOK          = 'wpl_license_health_check';\n    const CRON_SCHEDULE      = 'wpl_every_six_hours';\n    const REPORT_OPTION      = 'wpl_license_health_report';\n    const RETRY_OPTION       = 'wpl_license_health_retry_state';\n    const LOCK_TRANSIENT     = 'wpl_license_health_lock';\n    const FAILURE_RETRY_SECS = DAY_IN_SECONDS;",
-              "    const CRON_HOOK          = 'wpl_license_health_check';\n    const SOON_HOOK          = 'wpl_license_health_check_soon';\n    const CRON_SCHEDULE      = 'wpl_every_six_hours';\n    const REPORT_OPTION      = 'wpl_license_health_report';\n    const RETRY_OPTION       = 'wpl_license_health_retry_state';\n    const LOCK_TRANSIENT     = 'wpl_license_health_lock';\n    const FAILURE_RETRY_SECS = DAY_IN_SECONDS;\n    const NETWORK_RETRY_SECS = 30 * MINUTE_IN_SECONDS;",
-              'monitor constants',
-          )
-
-          replace_once(
-              monitor,
-              "        add_action( self::CRON_HOOK, [ __CLASS__, 'run' ] );\n        add_action( 'init', [ __CLASS__, 'ensure_scheduled' ] );\n        add_action( 'admin_notices', [ $this, 'render_admin_notice' ] );",
-              "        add_action( self::CRON_HOOK, [ __CLASS__, 'run' ] );\n        add_action( self::SOON_HOOK, [ __CLASS__, 'run' ] );\n        add_action( 'init', [ __CLASS__, 'ensure_scheduled' ] );\n        add_action( 'activated_plugin', [ __CLASS__, 'on_plugin_changed' ], 20, 2 );\n        add_action( 'upgrader_process_complete', [ __CLASS__, 'on_upgrader_complete' ], 20, 2 );\n        add_action( 'admin_notices', [ $this, 'render_admin_notice' ] );",
-              'event-driven triggers',
-          )
-
-          replace_once(
-              monitor,
-              "                self::schedule_current_site();\n                restore_current_blog();\n            }\n            return;\n        }\n        self::schedule_current_site();\n    }",
-              "                self::schedule_current_site();\n                self::schedule_soon();\n                restore_current_blog();\n            }\n            return;\n        }\n        self::schedule_current_site();\n        self::schedule_soon();\n    }",
-              'activation immediate schedule',
-          )
-
-          replace_once(
-              monitor,
-              "    private static function unschedule_current_site() {\n        wp_clear_scheduled_hook( self::CRON_HOOK );\n        delete_transient( self::LOCK_TRANSIENT );\n    }",
-              "    public static function schedule_soon() {\n        if ( ! wp_next_scheduled( self::SOON_HOOK ) ) {\n            wp_schedule_single_event( time() + 30, self::SOON_HOOK );\n        }\n    }\n\n    public static function on_plugin_changed( $plugin = '', $network_wide = false ) {\n        unset( $plugin, $network_wide );\n        self::schedule_soon();\n    }\n\n    public static function on_upgrader_complete( $upgrader, $hook_extra ) {\n        unset( $upgrader );\n        if ( ! is_array( $hook_extra ) ) return;\n        $type   = $hook_extra['type'] ?? '';\n        $action = $hook_extra['action'] ?? '';\n        if ( $type === 'plugin' && in_array( $action, [ 'install', 'update' ], true ) ) {\n            self::schedule_soon();\n        }\n    }\n\n    private static function unschedule_current_site() {\n        wp_clear_scheduled_hook( self::CRON_HOOK );\n        wp_clear_scheduled_hook( self::SOON_HOOK );\n        delete_transient( self::LOCK_TRANSIENT );\n    }",
-              'soon scheduling lifecycle',
-          )
-
-          replace_once(
-              monitor,
-              "        $report = [\n            'version'     => 1,\n            'checked_at'  => time(),\n            'duration_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),\n            'results'     => $results,\n        ];",
-              "        $report = [\n            'version'     => 2,\n            'checked_at'  => time(),\n            'duration_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),\n            'scheduler'   => [\n                'next_recurring_at'      => (int) ( wp_next_scheduled( self::CRON_HOOK ) ?: 0 ),\n                'next_event_driven_at'   => (int) ( wp_next_scheduled( self::SOON_HOOK ) ?: 0 ),\n                'wp_cron_spawn_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,\n            ],\n            'results'     => $results,\n        ];",
-              'scheduler diagnostics',
-          )
-
-          replace_once(
-              monitor,
-              "        if ( ! function_exists( 'WP_Installer' ) ) {\n            return self::result( 'unavailable', 'WPML/OTGS Installer is not loaded.' );\n        }",
-              "        if ( ! function_exists( 'WP_Installer' ) ) {\n            $installed = is_dir( WP_PLUGIN_DIR . '/sitepress-multilingual-cms' )\n                || is_dir( WP_PLUGIN_DIR . '/otgs-installer-plugin' );\n            return $installed\n                ? self::result( 'error', 'WPML/OTGS is installed but its Installer API is not loaded in this execution context.', self::NETWORK_RETRY_SECS )\n                : self::result( 'not_installed', 'WPML/OTGS is not installed.' );\n        }",
-              'wpml loaded-state discovery',
-          )
-
-          replace_once(
-              monitor,
-              "        if ( ! class_exists( $class ) ) {\n            return self::result( 'unavailable', 'Crocoblock Wizard license API is not loaded.' );\n        }",
-              "        if ( ! class_exists( $class ) ) {\n            $installed = is_dir( WP_PLUGIN_DIR . '/crocoblock-wizard' );\n            return $installed\n                ? self::result( 'error', 'Crocoblock Wizard is installed but its license API is not loaded in this execution context.', self::NETWORK_RETRY_SECS )\n                : self::result( 'not_installed', 'Crocoblock Wizard is not installed.' );\n        }",
-              'crocoblock loaded-state discovery',
-          )
-
-          replace_once(
-              monitor,
-              "        $error_code = self::crocoblock_status_code( $activate );\n        if ( $error_code === '' ) $error_code = self::crocoblock_status_code( $check );\n        $domain_binding_errors = [ 'invalid', 'site_inactive', 'inactive' ];",
-              "        $error_code = self::crocoblock_status_code( $activate );\n        if ( $error_code === '' ) $error_code = self::crocoblock_status_code( $check );\n\n        if ( in_array( $error_code, [ 'connection_error', 'invalid_response' ], true ) ) {\n            return self::result(\n                'error',\n                'Crocoblock license service is temporarily unreachable: ' . $error_code,\n                self::NETWORK_RETRY_SECS\n            );\n        }\n\n        // `invalid` is intentionally not treated as a domain-binding state: it can\n        // also mean a wrong/revoked key. Automatic mutation stays fail-closed.\n        $domain_binding_errors = [ 'site_inactive', 'inactive' ];",
-              'crocoblock fail-closed classification',
-          )
-
-          replace_once(
-              monitor,
-              "    private static function update_retry_state( $id, $result ) {\n        $state = get_option( self::RETRY_OPTION, [] );\n        if ( ! is_array( $state ) ) $state = [];\n\n        $failure = in_array( $result['status'], [ 'error', 'needs_manual_action' ], true );\n        $state[$id] = [\n            'last_status'   => $result['status'],\n            'last_attempt'  => time(),\n            'next_retry_at' => $failure ? time() + self::FAILURE_RETRY_SECS : 0,\n        ];\n        update_option( self::RETRY_OPTION, $state, false );\n    }",
-              "    private static function update_retry_state( $id, $result ) {\n        $state = get_option( self::RETRY_OPTION, [] );\n        if ( ! is_array( $state ) ) $state = [];\n\n        $status = $result['status'] ?? 'error';\n        $delay  = 0;\n        if ( $status === 'error' ) {\n            $delay = ! empty( $result['retry_after'] )\n                ? max( 5 * MINUTE_IN_SECONDS, (int) $result['retry_after'] )\n                : self::NETWORK_RETRY_SECS;\n        } elseif ( $status === 'needs_manual_action' ) {\n            $delay = ! empty( $result['retry_after'] )\n                ? max( 5 * MINUTE_IN_SECONDS, (int) $result['retry_after'] )\n                : self::FAILURE_RETRY_SECS;\n        }\n\n        $state[$id] = [\n            'last_status'   => $status,\n            'last_attempt'  => time(),\n            'next_retry_at' => $delay ? time() + $delay : 0,\n        ];\n        update_option( self::RETRY_OPTION, $state, false );\n    }",
-              'status-aware retry backoff',
-          )
-
-          replace_once(
-              monitor,
-              "    private static function result( $status, $message ) {\n        return [\n            'status'  => sanitize_key( $status ),\n            'message' => wp_strip_all_tags( (string) $message ),\n        ];\n    }\n\n    private static function sanitize_result( $result ) {\n        return [\n            'status'     => sanitize_key( (string) ( $result['status'] ?? 'error' ) ),\n            'message'    => wp_strip_all_tags( (string) ( $result['message'] ?? '' ) ),\n            'checked_at' => (int) ( $result['checked_at'] ?? time() ),\n        ];\n    }",
-              "    private static function result( $status, $message, $retry_after = 0 ) {\n        $result = [\n            'status'  => sanitize_key( $status ),\n            'message' => wp_strip_all_tags( (string) $message ),\n        ];\n        if ( $retry_after ) $result['retry_after'] = max( 0, (int) $retry_after );\n        return $result;\n    }\n\n    private static function sanitize_result( $result ) {\n        $clean = [\n            'status'     => sanitize_key( (string) ( $result['status'] ?? 'error' ) ),\n            'message'    => wp_strip_all_tags( (string) ( $result['message'] ?? '' ) ),\n            'checked_at' => (int) ( $result['checked_at'] ?? time() ),\n        ];\n        if ( ! empty( $result['retry_after'] ) ) {\n            $clean['retry_after'] = max( 0, (int) $result['retry_after'] );\n        }\n        return $clean;\n    }",
-              'retry metadata preservation',
+              "        wp_clear_scheduled_hook( 'wpl_license_health_check' );\n\n        self::clear_transients();",
+              "        wp_clear_scheduled_hook( 'wpl_license_health_check' );\n        wp_clear_scheduled_hook( 'wpl_license_health_check_soon' );\n\n        self::clear_transients();",
+              'uninstall event hook cleanup',
           )
           PY
 
-      - name: PHP lint and contract assertions
+      - name: PHP lint and final assertions
         shell: bash
         run: |
           set -euo pipefail
           find wp-content/plugins/wpl-client -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          grep -q "Version:     2.7.6" wp-content/plugins/wpl-client/wpl-client.php
-          grep -q "wpl_license_health_check_soon" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "activated_plugin" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "upgrader_process_complete" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "wp_cron_spawn_disabled" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          grep -q "site_inactive', 'inactive" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
-          ! grep -q "'wpl_has_pending_request'," wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php
-          ! grep -q "Disable SSL verify for all requests" wp-content/plugins/wpl-client/includes/class-wpl-installer.php
+          grep -q "SOON_HOOK, \[ __CLASS__, 'run_event_driven' \]" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          grep -q "return self::run( true )" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
+          test "$(grep -c "wp_clear_scheduled_hook( 'wpl_license_health_check_soon' )" wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php)" -eq 1
 
       - name: Rebuild and verify distributable ZIP
         shell: bash
@@ -152,12 +78,12 @@ jobs:
           diff -qr wpl-client /tmp/wpl-client-package-check/wpl-client
           cd ../..
 
-      - name: Commit final hardening
+      - name: Commit final patch
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
-          git commit -m "fix(wpl-client): harden autonomous license repair lifecycle"
+          git commit -m "fix(wpl-client): force event-driven license verification"
           git push
