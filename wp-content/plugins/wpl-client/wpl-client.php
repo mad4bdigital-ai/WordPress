@@ -21,12 +21,6 @@ require_once WPL_CLIENT_DIR . 'includes/class-wpl-server-client.php';
 // state. Public source/distributable ZIPs never embed account credentials.
 WPL_Server_Client::bootstrap_package_credential();
 
-// Compatibility for older internal classes that still read this constant.
-// wp-config.php may define it first; otherwise the runtime resolver supplies it.
-if ( ! defined( 'WPL_SERVER_API_KEY' ) ) {
-    define( 'WPL_SERVER_API_KEY', WPL_Server_Client::credential() );
-}
-
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-token.php';
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-database-maintenance.php';
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-license-health-monitor.php';

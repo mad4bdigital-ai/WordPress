@@ -167,7 +167,6 @@ class WPL_Client_Admin {
         wp_localize_script( 'wpl-client-js', 'WPL', [
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( 'wpl_client_nonce' ),
-            'api_base' => rtrim( str_replace( '/wpl/v1', '', WPL_SERVER_API_URL ), '/' ),
             'wpl_ids'  => implode( ',', array_filter(
                 json_decode( get_option('wpl_verified_wpl_ids', '[]'), true ) ?: []
             )),

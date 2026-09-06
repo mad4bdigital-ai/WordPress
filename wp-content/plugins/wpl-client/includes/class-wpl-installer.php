@@ -207,31 +207,35 @@ class WPL_Installer {
             }
 
             // تحقق من حالة الأوردر — لو ملغي امنع التثبيت وامسح البيانات المحلية
-            $order_number = get_option('wpl_verified_order_number');
+            $order_number = get_option( 'wpl_verified_order_number' );
             if ( $order_number ) {
-                $domain   = parse_url( home_url(), PHP_URL_HOST );
-                $response_check = wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/verify-serial', [
-                    'headers'     => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-                    'body'        => wp_json_encode([
+                $check = WPL_Server_Client::request( 'POST', '/verify-serial', [
+                    'body' => [
                         'serial'       => get_user_meta( get_current_user_id(), '_wpl_serial_used', true ) ?: '',
                         'order_number' => $order_number,
-                        'domain'       => $domain,
+                        'domain'       => parse_url( home_url(), PHP_URL_HOST ),
                         'register'     => false,
-                    ]),
-                    'timeout'     => 10,
-                    'sslverify'   => true,
-                    'httpversion' => '1.1',
-                ]);
-                if ( ! is_wp_error( $response_check ) ) {
-                    $check_body = json_decode( wp_remote_retrieve_body( $response_check ), true );
-                    if ( isset( $check_body['success'] ) && ! $check_body['success'] ) {
-                        // السيريال ملغي أو غير صالح — امسح البيانات المحلية
-                        delete_option('wpl_serial_verified');
-                        delete_option('wpl_verified_order_number');
-                        delete_option('wpl_has_pending_request');
-                        $msg = $check_body['message'] ?? 'عذراً، هذا السيريال لطلب ملغي — يرجى التواصل مع الدعم.';
-                        wp_send_json_error( ['message' => $msg, 'cancelled' => true] );
-                    }
+                    ],
+                    'timeout' => 10,
+                ] );
+
+                if ( in_array( $check['auth_status'], [ 'missing', 'rejected' ], true ) ) {
+                    wp_send_json_error( [
+                        'message' => 'تعذر توثيق اتصال WPL. حدّث بيانات الاتصال أولاً.',
+                        'credential_rejected' => true,
+                    ], 401 );
+                }
+                if ( in_array( $check['auth_status'], [ 'network_error', 'server_error' ], true ) ) {
+                    wp_send_json_error( [ 'message' => 'تعذّر التحقق من حالة الطلب حالياً؛ لم يتم بدء التثبيت.' ], 503 );
+                }
+
+                $check_body = is_array( $check['body'] ) ? $check['body'] : [];
+                if ( isset( $check_body['success'] ) && ! $check_body['success'] ) {
+                    delete_option( 'wpl_serial_verified' );
+                    delete_option( 'wpl_verified_order_number' );
+                    delete_option( 'wpl_has_pending_request' );
+                    $msg = $check_body['message'] ?? 'عذراً، هذا السيريال أو الطلب لم يعد صالحاً — يرجى التواصل مع الدعم.';
+                    wp_send_json_error( [ 'message' => $msg, 'cancelled' => true ] );
                 }
             }
         }
@@ -244,19 +248,20 @@ class WPL_Installer {
         if ( $is_theme && ! current_user_can( 'install_themes' ) )
             wp_send_json_error( 'غير مصرح بتثبيت القوالب.', 403 );
 
-        // جيب signed URL
-        $response = wp_remote_get( rtrim( WPL_SERVER_API_URL, '/' ) . '/download?file=' . urlencode( $filename ), [
-            'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY ],
-            'timeout'   => 15,
-            'sslverify'   => true,
-            'httpversion' => '1.1',
-        ]);
-
-        if ( is_wp_error( $response ) ) wp_send_json_error( 'تعذّر الاتصال: ' . $response->get_error_message() );
-
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( empty( $body['success'] ) || empty( $body['download_url'] ) )
-            wp_send_json_error( 'لم يتم الحصول على رابط التحميل.' );
+        // جيب signed URL عبر طبقة النقل الموحدة.
+        $download = WPL_Server_Client::request( 'GET', '/download?file=' . rawurlencode( $filename ), [
+            'timeout' => 15,
+        ] );
+        if ( in_array( $download['auth_status'], [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( [ 'message' => 'تعذر توثيق اتصال WPL.', 'credential_rejected' => true ], 401 );
+        }
+        if ( in_array( $download['auth_status'], [ 'network_error', 'server_error' ], true ) ) {
+            wp_send_json_error( 'تعذّر الاتصال بخادم WPL عبر اتصال TLS موثوق.' );
+        }
+        $body = is_array( $download['body'] ) ? $download['body'] : [];
+        if ( empty( $body['success'] ) || empty( $body['download_url'] ) ) {
+            wp_send_json_error( $body['message'] ?? 'لم يتم الحصول على رابط التحميل.' );
+        }
 
         // Upgrader downloads keep WordPress core TLS verification enabled.
 
@@ -403,18 +408,14 @@ class WPL_Installer {
         $product_name = str_replace( ['-','_'], ' ', $product_name );
         $product_name = ucwords( $product_name );
 
-        wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/installed', [
-            'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-            'body'      => wp_json_encode([
+        WPL_Server_Client::request( 'POST', '/installed', [
+            'body' => [
                 'domain'       => $domain,
                 'filename'     => $filename,
                 'product_name' => $product_name,
-            ]),
-            'timeout'   => 8,
-            'sslverify'   => true,
-            'httpversion' => '1.1',
-            'blocking'  => true,
-        ]);
+            ],
+            'timeout' => 8,
+        ] );
 
         wp_send_json_success([
             'message'     => 'تم التثبيت ✅',
@@ -512,18 +513,19 @@ class WPL_Installer {
         $filename = sanitize_file_name( $_POST['filename'] ?? '' );
         if ( empty( $filename ) ) wp_send_json_error( 'اسم الملف مطلوب.' );
 
-        $response = wp_remote_get( rtrim( WPL_SERVER_API_URL, '/' ) . '/download?file=' . urlencode( $filename ), [
-            'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY ],
-            'timeout'   => 15,
-            'sslverify'   => true,
-            'httpversion' => '1.1',
-        ]);
-
-        if ( is_wp_error( $response ) ) wp_send_json_error( 'تعذّر الاتصال.' );
-
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( empty( $body['success'] ) || empty( $body['download_url'] ) )
-            wp_send_json_error( 'لم يتم الحصول على الرابط.' );
+        $download = WPL_Server_Client::request( 'GET', '/download?file=' . rawurlencode( $filename ), [
+            'timeout' => 15,
+        ] );
+        if ( in_array( $download['auth_status'], [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( [ 'message' => 'تعذر توثيق اتصال WPL.', 'credential_rejected' => true ], 401 );
+        }
+        if ( in_array( $download['auth_status'], [ 'network_error', 'server_error' ], true ) ) {
+            wp_send_json_error( 'تعذّر الاتصال بخادم WPL عبر اتصال TLS موثوق.' );
+        }
+        $body = is_array( $download['body'] ) ? $download['body'] : [];
+        if ( empty( $body['success'] ) || empty( $body['download_url'] ) ) {
+            wp_send_json_error( $body['message'] ?? 'لم يتم الحصول على الرابط.' );
+        }
 
         wp_send_json_success([ 'download_url' => $body['download_url'] ]);
     }
@@ -819,24 +821,20 @@ class WPL_Installer {
             return;
         }
 
-        // جيب ملفات المنتجات من السيرفر
-        $wpl_ids  = implode(',', array_filter( array_map(fn($m) => $m['wpl_id'] ?? '', $matched_products) ));
-        $url      = rtrim(WPL_SERVER_API_URL, '/') . '/products?wpl_ids=' . urlencode($wpl_ids);
-        $response = wp_remote_get($url, [
-            'headers'     => ['X-WPL-Key' => WPL_SERVER_API_KEY],
-            'timeout'     => 30,
-            'sslverify'   => true,
-            'httpversion' => '1.1',
-        ]);
-
-        if ( is_wp_error($response) ) {
+        // جيب ملفات المنتجات من السيرفر عبر طبقة النقل الموحدة.
+        $wpl_ids = implode( ',', array_filter( array_map( fn( $m ) => $m['wpl_id'] ?? '', $matched_products ) ) );
+        $server  = WPL_Server_Client::request( 'GET', '/products?wpl_ids=' . rawurlencode( $wpl_ids ), [
+            'timeout' => 30,
+        ] );
+        if ( empty( $server['ok'] ) ) {
             $job['status'] = 'error';
-            $job['error']  = 'تعذّر الاتصال: ' . $response->get_error_message();
-            update_option('wpl_bg_install_job', $job, false);
+            $job['error']  = in_array( $server['auth_status'], [ 'missing', 'rejected' ], true )
+                ? 'تعذر توثيق اتصال WPL.'
+                : 'تعذّر جلب بيانات المنتجات من خادم WPL.';
+            update_option( 'wpl_bg_install_job', $job, false );
             return;
         }
-
-        $body     = json_decode(wp_remote_retrieve_body($response), true);
+        $body     = is_array( $server['body'] ) ? $server['body'] : [];
         $products = $body['products'] ?? [];
 
         // ابنِ قائمة الملفات + حدّد المنتجات اللي مفيهاش ملفات
@@ -910,29 +908,25 @@ class WPL_Installer {
             update_option('wpl_bg_install_job', $job, false);
 
             // ── 1. بدء تحميل الملف ────────────────────────────
-            $dl_endpoint = rtrim(WPL_SERVER_API_URL, '/') . '/download?file=' . urlencode($filename);
-            error_log( $log_file . ' | [1] DOWNLOAD_START — fetching signed URL from: ' . $dl_endpoint );
+            $dl_path = '/download?file=' . rawurlencode( $filename );
+            error_log( $log_file . ' | [1] DOWNLOAD_START — requesting signed URL from WPL' );
 
-            $dl = wp_remote_get( $dl_endpoint, [
-                'headers'     => ['X-WPL-Key' => WPL_SERVER_API_KEY],
-                'timeout'     => 15,
-                'sslverify'   => true,
-                'httpversion' => '1.1',
-            ]);
-
-            if ( is_wp_error($dl) ) {
-                $err = $dl->get_error_message();
-                error_log( $log_file . ' | [2] DOWNLOAD_FAIL — could not fetch signed URL: ' . $err );
-                $fi['status'] = 'error'; $fi['error'] = 'تعذّر جلب الرابط: ' . $err;
-                $job['files'][$idx] = $fi; update_option('wpl_bg_install_job', $job, false); continue;
+            $dl = WPL_Server_Client::request( 'GET', $dl_path, [ 'timeout' => 15 ] );
+            if ( empty( $dl['ok'] ) ) {
+                $err = in_array( $dl['auth_status'], [ 'missing', 'rejected' ], true )
+                    ? 'تعذر توثيق اتصال WPL.'
+                    : 'تعذّر جلب رابط التحميل.';
+                error_log( $log_file . ' | [2] DOWNLOAD_FAIL — ' . $err );
+                $fi['status'] = 'error'; $fi['error'] = $err;
+                $job['files'][$idx] = $fi; update_option( 'wpl_bg_install_job', $job, false ); continue;
             }
 
-            $dl_body = json_decode(wp_remote_retrieve_body($dl), true);
-            if ( empty($dl_body['success']) || empty($dl_body['download_url']) ) {
-                $api_msg = $dl_body['message'] ?? wp_remote_retrieve_body($dl);
+            $dl_body = is_array( $dl['body'] ) ? $dl['body'] : [];
+            if ( empty( $dl_body['success'] ) || empty( $dl_body['download_url'] ) ) {
+                $api_msg = $dl_body['message'] ?? 'لم يُرجع الخادم رابط تحميل.';
                 error_log( $log_file . ' | [2] DOWNLOAD_FAIL — server returned no download_url. Response: ' . $api_msg );
                 $fi['status'] = 'error'; $fi['error'] = 'الملف غير موجود على السيرفر: ' . $api_msg;
-                $job['files'][$idx] = $fi; update_option('wpl_bg_install_job', $job, false); continue;
+                $job['files'][$idx] = $fi; update_option( 'wpl_bg_install_job', $job, false ); continue;
             }
 
             $signed_url = $dl_body['download_url'];
@@ -1077,19 +1071,20 @@ class WPL_Installer {
             $main_error_count = count( $failed_main );
             $main_done_count  = $done_count - count( $failed_companion );
 
-            wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/mark-installed', [
-                'headers'     => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-                'body'        => wp_json_encode([
+            $mark = WPL_Server_Client::request( 'POST', '/mark-installed', [
+                'body' => [
                     'order_number'           => $order_number,
                     'domain'                 => $domain,
                     'done_count'             => $main_done_count,
                     'error_count'            => $main_error_count,
                     'failed_files'           => $failed_files,
                     'failed_companion_files' => $failed_companion_files,
-                ]),
-                'timeout'     => 10, 'sslverify' => true, 'httpversion' => '1.1', 'blocking' => true,
-            ]);
-            delete_option( 'wpl_has_pending_request' );
+                ],
+                'timeout' => 10,
+            ] );
+            if ( ! empty( $mark['ok'] ) ) {
+                delete_option( 'wpl_has_pending_request' );
+            }
         }
         return;
     }
@@ -1100,18 +1095,15 @@ class WPL_Installer {
         if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error( 'غير مصرح', 403 );
 
         $domain = parse_url( home_url(), PHP_URL_HOST );
-        $url    = rtrim( WPL_SERVER_API_URL, '/' ) . '/my-requests?domain=' . urlencode( $domain );
+        $server = WPL_Server_Client::request( 'GET', '/my-requests?domain=' . rawurlencode( $domain ), [
+            'timeout' => 15,
+        ] );
+        if ( in_array( $server['auth_status'], [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( [ 'message' => 'تعذر توثيق اتصال WPL.', 'credential_rejected' => true ], 401 );
+        }
+        if ( empty( $server['ok'] ) ) wp_send_json_error( 'تعذّر الاتصال بخادم WPL.' );
 
-        $response = wp_remote_get( $url, [
-            'headers'     => [ 'X-WPL-Key' => WPL_SERVER_API_KEY ],
-            'timeout'     => 15,
-            'sslverify'   => true,
-            'httpversion' => '1.1',
-        ]);
-
-        if ( is_wp_error( $response ) ) wp_send_json_error( 'تعذّر الاتصال.' );
-
-        $body     = json_decode( wp_remote_retrieve_body( $response ), true );
+        $body     = is_array( $server['body'] ) ? $server['body'] : [];
         $requests = $body['requests'] ?? [];
 
         // لو مفيش pending — امسح الـ flag المحلي
@@ -1132,11 +1124,14 @@ class WPL_Installer {
         $order_number = sanitize_text_field( $_POST['order_number'] ?? '' );
         $domain       = parse_url( home_url(), PHP_URL_HOST );
 
-        $response = wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/mark-installed', [
-            'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-            'body'      => wp_json_encode([ 'order_number' => $order_number, 'domain' => $domain ]),
-            'timeout'   => 10, 'sslverify' => true, 'httpversion' => '1.1', 'blocking' => true,
-        ]);
+        $server = WPL_Server_Client::request( 'POST', '/mark-installed', [
+            'body'    => [ 'order_number' => $order_number, 'domain' => $domain ],
+            'timeout' => 10,
+        ] );
+        if ( in_array( $server['auth_status'], [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( [ 'message' => 'تعذر توثيق اتصال WPL.', 'credential_rejected' => true ], 401 );
+        }
+        if ( empty( $server['ok'] ) ) wp_send_json_error( 'تعذّر تحديث حالة الطلب على خادم WPL.' );
 
         delete_option( 'wpl_has_pending_request' );
         wp_send_json_success();

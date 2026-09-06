@@ -34,30 +34,27 @@ class WPL_Server_Client {
     public static function credential() {
         $credential = '';
 
-        // wp-config.php / bootstrap constant has highest precedence.
-        if ( defined( 'WPL_SERVER_API_KEY' ) && is_string( WPL_SERVER_API_KEY ) ) {
-            $credential = trim( WPL_SERVER_API_KEY );
-        }
+        // Resolve the first *valid* configured source. A malformed higher-priority
+        // source must never shadow a valid fallback stored for this site.
+        $constant = defined( 'WPL_SERVER_API_KEY' ) && is_string( WPL_SERVER_API_KEY )
+            ? trim( WPL_SERVER_API_KEY )
+            : '';
+        if ( self::valid_format( $constant ) ) $credential = $constant;
 
         if ( $credential === '' ) {
             $env = getenv( 'WPL_SERVER_API_KEY' );
-            if ( is_string( $env ) ) $credential = trim( $env );
+            if ( is_string( $env ) && self::valid_format( $env ) ) $credential = trim( $env );
         }
 
-        if ( $credential === '' ) {
-            $credential = self::option_credential();
-        }
-
-        if ( $credential === '' ) {
-            $credential = self::package_credential();
-        }
+        if ( $credential === '' ) $credential = self::option_credential();
+        if ( $credential === '' ) $credential = self::package_credential();
 
         /**
          * Allows a host/MU-plugin/secret manager to provide a site credential.
          * Do not log the value returned by this filter.
          */
-        $credential = (string) apply_filters( 'wpl_client_server_credential', $credential );
-        return self::valid_format( $credential ) ? trim( $credential ) : '';
+        $filtered = (string) apply_filters( 'wpl_client_server_credential', $credential );
+        return self::valid_format( $filtered ) ? trim( $filtered ) : '';
     }
 
     public static function credential_source() {
@@ -121,10 +118,23 @@ class WPL_Server_Client {
     }
 
     public static function save_credential( $credential ) {
+        $credential = trim( (string) $credential );
         $probe = self::probe_credential( $credential );
         if ( empty( $probe['ok'] ) ) return $probe;
 
-        update_option( self::CREDENTIAL_OPTION, trim( (string) $credential ), false );
+        // A valid wp-config constant is an explicit operator override. Do not
+        // pretend a DB save can supersede it in the same or later requests.
+        if ( defined( 'WPL_SERVER_API_KEY' ) && self::valid_format( (string) WPL_SERVER_API_KEY )
+            && ! hash_equals( trim( (string) WPL_SERVER_API_KEY ), $credential ) ) {
+            return [
+                'ok'          => false,
+                'auth_status' => 'config_override',
+                'http_code'   => 409,
+                'message'     => 'يوجد WPL_SERVER_API_KEY صالح ومختلف في wp-config.php؛ حدّثه أو أزله قبل حفظ بيانات مختلفة من لوحة التحكم.',
+            ];
+        }
+
+        update_option( self::CREDENTIAL_OPTION, $credential, false );
         self::record_state( 'accepted', 200, 'site_option' );
         $probe['source'] = 'site_option';
         return $probe;
