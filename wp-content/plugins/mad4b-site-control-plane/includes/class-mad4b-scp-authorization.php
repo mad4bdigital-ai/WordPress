@@ -13,6 +13,13 @@ final class MAD4B_SCP_Authorization {
 		$peer_guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
 		if ( is_wp_error( $peer_guard ) ) return self::deny( $peer_guard->get_error_code(), $peer_guard->get_error_message(), $ability_name, array() );
 
+		$declared_server_id = sanitize_key( (string) $server_id );
+		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return self::deny( 'mad4b_transport_context_unavailable', 'MCP transport context is unavailable; governed mutation fails closed.', $ability_name, array() );
+		$resolved_server_id = MAD4B_SCP_Transport_Context::resolve_server_for_ability( $declared_server_id, $ability_name );
+		if ( is_wp_error( $resolved_server_id ) ) return self::deny( $resolved_server_id->get_error_code(), $resolved_server_id->get_error_message(), $ability_name, array() );
+		$server_id = sanitize_key( (string) $resolved_server_id );
+		if ( '' === $server_id ) return self::deny( 'mad4b_transport_server_unresolved', 'The effective MCP mutation server could not be resolved.', $ability_name, array() );
+
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return self::deny( $identity->get_error_code(), $identity->get_error_message(), $ability_name, array() );
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
@@ -74,7 +81,9 @@ final class MAD4B_SCP_Authorization {
 			'subject_type' => (string) $identity['subject_type'],
 			'subject_fingerprint' => (string) $identity['subject_fingerprint'],
 			'request_id' => (string) $identity['request_id'],
-			'server_id' => sanitize_key( (string) $server_id ),
+			'server_id' => $server_id,
+			'declared_server_id' => $declared_server_id,
+			'transport_bound' => $server_id !== $declared_server_id,
 			'ability' => (string) $ability_name,
 			'provider' => $provider,
 			'grant_id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
@@ -119,6 +128,7 @@ final class MAD4B_SCP_Authorization {
 			'wildcard_grants' => (int) $counts['wildcard_grants'],
 			'approval_service_ready' => class_exists( 'MAD4B_SCP_Approval_Tickets' ) && ! empty( $schema['ready'] ),
 			'budget_service_ready' => class_exists( 'MAD4B_SCP_Budgets' ) && ! empty( $schema['ready'] ),
+			'transport_context' => class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::status() : array( 'bound' => false, 'server_id' => '', 'credential_material_stored' => false ),
 			'mcp_peer_governance' => $peer_governance,
 			'blockers' => $blockers,
 			'status' => $blockers ? 'blocked' : ( $mutation_configured ? ( $mutation_effective ? 'ready_for_governed_mutation' : 'mutation_configured_identity_required' ) : 'ready_read_only' ),
