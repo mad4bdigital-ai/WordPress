@@ -1,0 +1,76 @@
+name: MAD4B Core Mutation Gate Refresh
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-core-mutation-gate.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    name: Enforce mutation master switch on core abilities
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Patch core ability permission wrapper deterministically
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php')
+          s = p.read_text('utf-8')
+          old_call = "'permission_callback' => $this->permission_callback( $permission ),"
+          new_call = "'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly ),"
+
+          if new_call not in s:
+              if s.count(old_call) != 1:
+                  raise SystemExit('Unexpected permission callback registration shape; refusing to patch.')
+              s = s.replace(old_call, new_call, 1)
+
+          marker = "\tprivate function permission_callback( $permission ) {\n"
+          wrapper = """\tprivate function mutation_permission_callback( $permission, $readonly ) {\n\t\t$callback = $this->permission_callback( $permission );\n\t\tif ( $readonly ) return $callback;\n\n\t\treturn function ( $input = null ) use ( $callback ) {\n\t\t\t$granted = call_user_func( $callback, $input );\n\t\t\tif ( is_wp_error( $granted ) || ! $granted ) return $granted;\n\t\t\tif ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until MAD4B_MCP_MUTATION_ENABLED is explicitly enabled.' );\n\t\t\treturn true;\n\t\t};\n\t}\n\n"""
+          if 'private function mutation_permission_callback' not in s:
+              if s.count(marker) != 1:
+                  raise SystemExit('Unexpected permission callback method shape; refusing to patch.')
+              s = s.replace(marker, wrapper + marker, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Verify syntax and contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php
+          grep -Fq "MAD4B_MCP_MUTATION_ENABLED" wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php
+          grep -Fq "mutation_permission_callback" wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php
+          grep -Fq "mad4b_mutation_disabled" wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php
+
+      - name: Commit core gate if needed
+        shell: bash
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'Core mutation master gate is already synchronized.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php
+          git commit -m 'fix(mcp): require mutation master switch for core abilities'
+          git fetch origin "$BRANCH"
+          git rebase "origin/$BRANCH"
+          git push origin "HEAD:$BRANCH"
