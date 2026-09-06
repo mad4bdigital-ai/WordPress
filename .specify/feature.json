@@ -65,6 +65,10 @@
     "ajax_multivalue_taxonomy_presentation",
     "ajax_filtered_result_count",
     "ajax_rest_non_authorizing",
+    "elementor_manager_reinstantiation_compatibility",
+    "elementor_media_dynamic_tags",
+    "dynamic_content_default_slots",
+    "admin_alpha13_ux",
     "clean_canonical_deferred_until_runtime_evidence",
     "runtime_acceptance",
     "release_provenance"
