@@ -49,8 +49,12 @@ for marker in (
     'C16 — Documentation cannot outrun implementation',
 ): require(constitution, marker, 'constitution-invariant')
 
-for marker in ('INV-001:', 'INV-007:', 'INV-009:', 'INV-013:', 'INV-016:', 'INV-018:', 'SEC-001', 'SEC-002', 'SEC-008', 'Definition of done'):
-    require(spec, marker, 'feature-spec-invariant')
+for marker in (
+    'INV-001:', 'INV-007:', 'INV-009:', 'INV-013:', 'INV-016:', 'INV-018:',
+    'INV-021:', 'INV-022:', 'INV-023:', 'INV-024:', 'US10 — `mad4b-write` exact transport isolation',
+    'FR-024', 'FR-025', 'FR-026', 'FR-063', 'FR-064', 'FR-065',
+    'SEC-001', 'SEC-002', 'SEC-008', 'SEC-013', 'SEC-014', 'Definition of done',
+): require(spec, marker, 'feature-spec-invariant')
 
 for marker in (
     'mad4b/runtime-authority-status', 'mad4b/agent-list', 'mad4b/agent-effective-access',
@@ -59,11 +63,19 @@ for marker in (
 ): require(abilities_contract, marker, 'ability-contract-invariant')
 
 for marker in (
-    'mad4b.connection-readiness.v1', 'Local transport ready', 'Remote endpoint preflight ready',
-    'Connection certified', 'mad4b/connection-status', 'No self-probe / SSRF boundary',
-    'Foreign MCP transport governance', 'mcp_foreign_transport_unreviewed',
-    'mcp_write_side_channel_detected', 'Production write remains NO-GO',
+    'mad4b.connection-readiness.v2', 'Local transport ready', 'Remote endpoint preflight ready',
+    'Connection certified', 'mad4b/connection-status', 'mad4b-write',
+    'MAD4B_SCP_Transport_Context', 'server/ability/provider',
+    'No self-probe / SSRF boundary', 'Foreign MCP transport governance',
+    'mcp_foreign_transport_unreviewed', 'mcp_write_side_channel_detected',
+    'Production write remains NO-GO',
 ): require(connection_contract, marker, 'connection-contract-invariant')
+for stale in (
+    'Contract: `mad4b.connection-readiness.v1`',
+    'all four MAD4B custom servers',
+    'The control plane owns four isolated MCP server IDs',
+    'all four runtime-derived MAD4B endpoints',
+): forbid(connection_contract, stale, 'connection-documentation-drift')
 
 require(data_model, 'Schema version: `4`', 'data-model-schema-v4')
 for table in (
@@ -87,6 +99,7 @@ implementation_files = {
     'approval': PLUGIN / 'includes/class-mad4b-scp-approval-tickets.php',
     'budgets': PLUGIN / 'includes/class-mad4b-scp-budgets.php',
     'peer': PLUGIN / 'includes/class-mad4b-scp-mcp-peer-governance.php',
+    'transport': PLUGIN / 'includes/class-mad4b-scp-transport-context.php',
     'connection': PLUGIN / 'includes/class-mad4b-scp-connection-status.php',
     'connection_ability': PLUGIN / 'includes/class-mad4b-scp-connection-ability.php',
     'connection_admin': PLUGIN / 'includes/class-mad4b-scp-connection-admin-ui.php',
@@ -109,16 +122,33 @@ require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
 require(impl['identity'], 'mad4b_scp_authenticated_subject_context', 'implementation-subject-bridge')
 require(impl['registry'], 'mad4b_wildcard_grant_denied', 'implementation-wildcard-denial')
 require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
+require(impl['authz'], 'MAD4B_SCP_Transport_Context::resolve_server_for_ability', 'implementation-effective-transport-binding')
 require(impl['authz'], 'MAD4B_SCP_Budgets::reserve', 'implementation-budget-before-effect')
 require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::consume_exact', 'implementation-exact-approval')
+if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Agent_Registry::exact_grant'):
+    raise SystemExit('FAIL implementation-transport-before-grant')
+if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::consume_exact'):
+    raise SystemExit('FAIL implementation-transport-before-approval')
 require(impl['peer'], 'mcp_write_side_channel_detected', 'implementation-side-channel-blocker')
 require(impl['peer'], 'foreign_transport_inventory', 'implementation-foreign-mcp-inventory')
 require(impl['peer'], 'mcp_foreign_transport_unreviewed', 'implementation-foreign-mcp-blocker')
-require(impl['connection'], 'mad4b.connection-readiness.v1', 'implementation-connection-readiness')
+require(impl['transport'], 'mad4b.mcp-transport-context.v1', 'implementation-transport-context')
+require(impl['transport'], "'/mcp/' . $server_id", 'implementation-transport-exact-route')
+require(impl['transport'], 'mad4b_transport_route_mismatch', 'implementation-transport-route-mismatch')
+require(impl['transport'], 'MAD4B_SCP_Servers::ability_is_mounted', 'implementation-transport-mount-check')
+require(impl['connection'], 'mad4b.connection-readiness.v2', 'implementation-connection-readiness')
 require(impl['connection'], "'connection_certified' => false", 'implementation-no-self-certification')
+require(impl['connection'], "'write_surface'", 'implementation-write-readiness')
 require(impl['connection_ability'], "const ABILITY = 'mad4b/connection-status'", 'implementation-connection-ability')
 require(impl['servers'], "'mad4b/runtime-authority-status', 'mad4b/connection-status'", 'implementation-connection-read-server')
+require(impl['servers'], "'mad4b-write'", 'implementation-write-server')
+require(impl['servers'], 'public static function write_tools()', 'implementation-write-projection')
+require(impl['servers'], "array_key_exists( 'readonly', $annotations )", 'implementation-explicit-write-annotation')
+require(impl['servers'], "false !== $annotations['readonly']", 'implementation-readonly-exclusion')
+require(impl['servers'], "array( __CLASS__, 'can_write_transport' )", 'implementation-write-transport-permission')
 require(impl['connection_admin'], "'manage_options'", 'implementation-connection-admin-capability')
+require(impl['connection_admin'], 'Governed write ingress', 'implementation-write-readiness-ui')
+require(impl['connection_admin'], 'Exact transport grant required', 'implementation-write-grant-ui')
 for forbidden in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'wp_remote_get(', 'wp_remote_post(', 'wp_remote_request('):
     forbid(impl['connection_admin'] + '\n' + impl['connection'], forbidden, 'connection-surface-read-only')
 require(impl['mutation'], 'mad4b_undo_state_drift', 'implementation-drift-safe-undo')
@@ -137,4 +167,4 @@ require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-run
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v3: PASS')
+print('mad4b.site-control-plane.spec-consistency.v4: PASS')
