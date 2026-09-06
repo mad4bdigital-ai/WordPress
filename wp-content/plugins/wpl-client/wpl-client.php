@@ -2,7 +2,7 @@
 /**
  * Plugin Name: تراخيص ووردبريس
  * Description: إدارة الإضافات والقوالب المرخصة من WordPress Licenses
- * Version:     2.7.5
+ * Version:     2.7.6
  * Author:      WordPress Licenses
  * Text Domain: wpl-client
  */
@@ -10,7 +10,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'WPL_SERVER_API_URL', 'https://wordpresslicenses.com/wp-json/wpl/v1' );
-define( 'WPL_CLIENT_VERSION', '2.7.5' );
+define( 'WPL_CLIENT_VERSION', '2.7.6' );
 
 if ( ! function_exists( 'wpl_resolve_credential' ) ) {
     function wpl_resolve_credential() {

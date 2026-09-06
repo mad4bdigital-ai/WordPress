@@ -12,16 +12,21 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class WPL_License_Health_Monitor {
 
     const CRON_HOOK          = 'wpl_license_health_check';
+    const SOON_HOOK          = 'wpl_license_health_check_soon';
     const CRON_SCHEDULE      = 'wpl_every_six_hours';
     const REPORT_OPTION      = 'wpl_license_health_report';
     const RETRY_OPTION       = 'wpl_license_health_retry_state';
     const LOCK_TRANSIENT     = 'wpl_license_health_lock';
     const FAILURE_RETRY_SECS = DAY_IN_SECONDS;
+    const NETWORK_RETRY_SECS = 30 * MINUTE_IN_SECONDS;
 
     public function __construct() {
         add_filter( 'cron_schedules', [ $this, 'add_cron_schedule' ] );
         add_action( self::CRON_HOOK, [ __CLASS__, 'run' ] );
+        add_action( self::SOON_HOOK, [ __CLASS__, 'run' ] );
         add_action( 'init', [ __CLASS__, 'ensure_scheduled' ] );
+        add_action( 'activated_plugin', [ __CLASS__, 'on_plugin_changed' ], 20, 2 );
+        add_action( 'upgrader_process_complete', [ __CLASS__, 'on_upgrader_complete' ], 20, 2 );
         add_action( 'admin_notices', [ $this, 'render_admin_notice' ] );
         add_action( 'wp_ajax_wpl_run_license_health_check', [ $this, 'ajax_run_now' ] );
     }
@@ -41,11 +46,13 @@ class WPL_License_Health_Monitor {
             foreach ( get_sites( [ 'fields' => 'ids', 'number' => 0 ] ) as $site_id ) {
                 switch_to_blog( (int) $site_id );
                 self::schedule_current_site();
+                self::schedule_soon();
                 restore_current_blog();
             }
             return;
         }
         self::schedule_current_site();
+        self::schedule_soon();
     }
 
     public static function deactivate( $network_wide = false ) {
@@ -73,8 +80,30 @@ class WPL_License_Health_Monitor {
         }
     }
 
+    public static function schedule_soon() {
+        if ( ! wp_next_scheduled( self::SOON_HOOK ) ) {
+            wp_schedule_single_event( time() + 30, self::SOON_HOOK );
+        }
+    }
+
+    public static function on_plugin_changed( $plugin = '', $network_wide = false ) {
+        unset( $plugin, $network_wide );
+        self::schedule_soon();
+    }
+
+    public static function on_upgrader_complete( $upgrader, $hook_extra ) {
+        unset( $upgrader );
+        if ( ! is_array( $hook_extra ) ) return;
+        $type   = $hook_extra['type'] ?? '';
+        $action = $hook_extra['action'] ?? '';
+        if ( $type === 'plugin' && in_array( $action, [ 'install', 'update' ], true ) ) {
+            self::schedule_soon();
+        }
+    }
+
     private static function unschedule_current_site() {
         wp_clear_scheduled_hook( self::CRON_HOOK );
+        wp_clear_scheduled_hook( self::SOON_HOOK );
         delete_transient( self::LOCK_TRANSIENT );
     }
 
@@ -139,9 +168,14 @@ class WPL_License_Health_Monitor {
         }
 
         $report = [
-            'version'     => 1,
+            'version'     => 2,
             'checked_at'  => time(),
             'duration_ms' => max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) ),
+            'scheduler'   => [
+                'next_recurring_at'      => (int) ( wp_next_scheduled( self::CRON_HOOK ) ?: 0 ),
+                'next_event_driven_at'   => (int) ( wp_next_scheduled( self::SOON_HOOK ) ?: 0 ),
+                'wp_cron_spawn_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
+            ],
             'results'     => $results,
         ];
 
@@ -154,7 +188,11 @@ class WPL_License_Health_Monitor {
         unset( $force );
 
         if ( ! function_exists( 'WP_Installer' ) ) {
-            return self::result( 'unavailable', 'WPML/OTGS Installer is not loaded.' );
+            $installed = is_dir( WP_PLUGIN_DIR . '/sitepress-multilingual-cms' )
+                || is_dir( WP_PLUGIN_DIR . '/otgs-installer-plugin' );
+            return $installed
+                ? self::result( 'error', 'WPML/OTGS is installed but its Installer API is not loaded in this execution context.', self::NETWORK_RETRY_SECS )
+                : self::result( 'not_installed', 'WPML/OTGS is not installed.' );
         }
 
         $installer = WP_Installer();
@@ -215,7 +253,10 @@ class WPL_License_Health_Monitor {
 
         $class = '\\Crocoblock_Wizard\\Modules\\License\\API';
         if ( ! class_exists( $class ) ) {
-            return self::result( 'unavailable', 'Crocoblock Wizard license API is not loaded.' );
+            $installed = is_dir( WP_PLUGIN_DIR . '/crocoblock-wizard' );
+            return $installed
+                ? self::result( 'error', 'Crocoblock Wizard is installed but its license API is not loaded in this execution context.', self::NETWORK_RETRY_SECS )
+                : self::result( 'not_installed', 'Crocoblock Wizard is not installed.' );
         }
 
         $api = new $class();
@@ -244,7 +285,18 @@ class WPL_License_Health_Monitor {
 
         $error_code = self::crocoblock_status_code( $activate );
         if ( $error_code === '' ) $error_code = self::crocoblock_status_code( $check );
-        $domain_binding_errors = [ 'invalid', 'site_inactive', 'inactive' ];
+
+        if ( in_array( $error_code, [ 'connection_error', 'invalid_response' ], true ) ) {
+            return self::result(
+                'error',
+                'Crocoblock license service is temporarily unreachable: ' . $error_code,
+                self::NETWORK_RETRY_SECS
+            );
+        }
+
+        // `invalid` is intentionally not treated as a domain-binding state: it can
+        // also mean a wrong/revoked key. Automatic mutation stays fail-closed.
+        $domain_binding_errors = [ 'site_inactive', 'inactive' ];
 
         // Crocoblock/EDD can retain the same key against an old URL after domain,
         // SSL or canonical-URL changes. Only those binding states get a controlled
@@ -305,11 +357,22 @@ class WPL_License_Health_Monitor {
         $state = get_option( self::RETRY_OPTION, [] );
         if ( ! is_array( $state ) ) $state = [];
 
-        $failure = in_array( $result['status'], [ 'error', 'needs_manual_action' ], true );
+        $status = $result['status'] ?? 'error';
+        $delay  = 0;
+        if ( $status === 'error' ) {
+            $delay = ! empty( $result['retry_after'] )
+                ? max( 5 * MINUTE_IN_SECONDS, (int) $result['retry_after'] )
+                : self::NETWORK_RETRY_SECS;
+        } elseif ( $status === 'needs_manual_action' ) {
+            $delay = ! empty( $result['retry_after'] )
+                ? max( 5 * MINUTE_IN_SECONDS, (int) $result['retry_after'] )
+                : self::FAILURE_RETRY_SECS;
+        }
+
         $state[$id] = [
-            'last_status'   => $result['status'],
+            'last_status'   => $status,
             'last_attempt'  => time(),
-            'next_retry_at' => $failure ? time() + self::FAILURE_RETRY_SECS : 0,
+            'next_retry_at' => $delay ? time() + $delay : 0,
         ];
         update_option( self::RETRY_OPTION, $state, false );
     }
@@ -326,19 +389,25 @@ class WPL_License_Health_Monitor {
         return is_array( $report ) ? $report : [];
     }
 
-    private static function result( $status, $message ) {
-        return [
+    private static function result( $status, $message, $retry_after = 0 ) {
+        $result = [
             'status'  => sanitize_key( $status ),
             'message' => wp_strip_all_tags( (string) $message ),
         ];
+        if ( $retry_after ) $result['retry_after'] = max( 0, (int) $retry_after );
+        return $result;
     }
 
     private static function sanitize_result( $result ) {
-        return [
+        $clean = [
             'status'     => sanitize_key( (string) ( $result['status'] ?? 'error' ) ),
             'message'    => wp_strip_all_tags( (string) ( $result['message'] ?? '' ) ),
             'checked_at' => (int) ( $result['checked_at'] ?? time() ),
         ];
+        if ( ! empty( $result['retry_after'] ) ) {
+            $clean['retry_after'] = max( 0, (int) $result['retry_after'] );
+        }
+        return $clean;
     }
 
     public function render_admin_notice() {

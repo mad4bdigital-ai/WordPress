@@ -952,8 +952,8 @@ class WPL_Installer {
             return;
         }
 
-        // Disable SSL verify for all requests
-        add_filter('http_request_args', function($args) { $args['sslverify'] = false; return $args; });
+        // Never disable TLS verification globally. Individual legacy WPL requests
+        // remain explicitly scoped; unrelated WordPress/vendor HTTP traffic keeps core defaults.
 
         $skin    = new WP_Ajax_Upgrader_Skin();
         $log_pfx = '[WPL-Install] order=' . $order_number . ' domain=' . parse_url( home_url(), PHP_URL_HOST );
