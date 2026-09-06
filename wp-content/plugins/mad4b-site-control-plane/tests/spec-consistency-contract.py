@@ -5,6 +5,7 @@ REPO = Path(__file__).resolve().parents[4]
 PLUGIN = REPO / 'wp-content/plugins/mad4b-site-control-plane'
 SPEC = REPO / 'specs/006-agent-governed-reversible-control-plane'
 CONSTITUTION = REPO / '.specify/memory/constitution.md'
+CONNECTION = SPEC / 'contracts/connection-readiness.md'
 
 required_files = [
     CONSTITUTION,
@@ -15,34 +16,26 @@ required_files = [
     SPEC / 'quickstart.md',
     SPEC / 'tasks.md',
     SPEC / 'contracts/abilities.md',
+    CONNECTION,
     SPEC / 'references/competitive-deep-research-attachments-only.md',
 ]
-
 for path in required_files:
     if not path.is_file() or not path.read_text('utf-8').strip():
         raise SystemExit(f'FAIL required-spec-file: {path.relative_to(REPO)}')
 
-
-def read(path):
-    return path.read_text('utf-8')
-
-
+def read(path): return path.read_text('utf-8')
 def require(text, needle, label):
-    if needle not in text:
-        raise SystemExit(f'FAIL {label}: missing {needle!r}')
-
-
+    if needle not in text: raise SystemExit(f'FAIL {label}: missing {needle!r}')
 def forbid(text, needle, label):
-    if needle in text:
-        raise SystemExit(f'FAIL {label}: forbidden stale/unsafe text {needle!r}')
+    if needle in text: raise SystemExit(f'FAIL {label}: forbidden stale/unsafe text {needle!r}')
 
 constitution = read(CONSTITUTION)
 spec = read(SPEC / 'spec.md')
 data_model = read(SPEC / 'data-model.md')
 abilities_contract = read(SPEC / 'contracts/abilities.md')
+connection_contract = read(CONNECTION)
 tasks = read(SPEC / 'tasks.md')
 
-# Normative security principles must remain explicit.
 for marker in (
     'C1 — One privileged mutation authority',
     'C3 — Fail closed by default',
@@ -54,52 +47,38 @@ for marker in (
     'C13 — Rate limits and mutation budgets limit blast radius',
     'C15 — CI proves denials, not only success',
     'C16 — Documentation cannot outrun implementation',
-):
-    require(constitution, marker, 'constitution-invariant')
+): require(constitution, marker, 'constitution-invariant')
 
-for marker in (
-    'INV-001:', 'INV-007:', 'INV-009:', 'INV-013:', 'INV-016:', 'INV-018:',
-    'SEC-001', 'SEC-002', 'SEC-008', 'Definition of done',
-):
+for marker in ('INV-001:', 'INV-007:', 'INV-009:', 'INV-013:', 'INV-016:', 'INV-018:', 'SEC-001', 'SEC-002', 'SEC-008', 'Definition of done'):
     require(spec, marker, 'feature-spec-invariant')
 
 for marker in (
-    'mad4b/runtime-authority-status',
-    'mad4b/agent-list',
-    'mad4b/agent-effective-access',
-    'mad4b/approval-plan',
-    'mad4b/mutation-get',
-    'mad4b/mutation-undo',
-    'No `*`, regex, glob or prefix scopes',
-    "current_user_can('manage_options')",
-    'nonce',
-):
-    require(abilities_contract, marker, 'ability-contract-invariant')
+    'mad4b/runtime-authority-status', 'mad4b/agent-list', 'mad4b/agent-effective-access',
+    'mad4b/approval-plan', 'mad4b/mutation-get', 'mad4b/mutation-undo',
+    'No `*`, regex, glob or prefix scopes', "current_user_can('manage_options')", 'nonce',
+): require(abilities_contract, marker, 'ability-contract-invariant')
 
-# The schema design must describe what the implementation actually persists now.
+for marker in (
+    'mad4b.connection-readiness.v1', 'Local transport ready', 'Remote endpoint preflight ready',
+    'Connection certified', 'mad4b/connection-status', 'No self-probe / SSRF boundary',
+    'Foreign MCP transport governance', 'mcp_foreign_transport_unreviewed',
+    'mcp_write_side_channel_detected', 'Production write remains NO-GO',
+): require(connection_contract, marker, 'connection-contract-invariant')
+
 require(data_model, 'Schema version: `4`', 'data-model-schema-v4')
 for table in (
-    'mad4b_scp_agents',
-    'mad4b_scp_agent_subjects',
-    'mad4b_scp_agent_grants',
-    'mad4b_scp_approval_tickets',
-    'mad4b_scp_mutations',
-    'mad4b_scp_agent_budgets',
-    'mad4b_scp_agent_budget_windows',
-    'mad4b_scp_audit_events',
-    'mad4b_scp_audit_heads',
-):
-    require(data_model, table, 'data-model-table')
+    'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
+    'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
+    'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
+): require(data_model, table, 'data-model-table')
 for stale in (
     'Initial migration target: `2`',
     'Initial implementation may use atomic transients/options for counters',
     'audit chain: current option model retained in first implementation',
     'future append-only table',
     'schema is prepared for transactional append-only table migration',
-):
-    forbid(data_model + '\n' + spec, stale, 'documentation-drift')
+): forbid(data_model + '\n' + spec, stale, 'documentation-drift')
 
-# Implementation must continue to satisfy the same normative controls.
 implementation_files = {
     'schema': PLUGIN / 'includes/class-mad4b-scp-schema.php',
     'identity': PLUGIN / 'includes/class-mad4b-scp-identity-context.php',
@@ -108,6 +87,10 @@ implementation_files = {
     'approval': PLUGIN / 'includes/class-mad4b-scp-approval-tickets.php',
     'budgets': PLUGIN / 'includes/class-mad4b-scp-budgets.php',
     'peer': PLUGIN / 'includes/class-mad4b-scp-mcp-peer-governance.php',
+    'connection': PLUGIN / 'includes/class-mad4b-scp-connection-status.php',
+    'connection_ability': PLUGIN / 'includes/class-mad4b-scp-connection-ability.php',
+    'connection_admin': PLUGIN / 'includes/class-mad4b-scp-connection-admin-ui.php',
+    'servers': PLUGIN / 'includes/class-mad4b-scp-servers.php',
     'mutation': PLUGIN / 'includes/class-mad4b-scp-mutation-manager.php',
     'audit': PLUGIN / 'includes/class-mad4b-scp-audit.php',
     'audit_integrity': PLUGIN / 'includes/class-mad4b-scp-audit-integrity.php',
@@ -116,10 +99,9 @@ implementation_files = {
     'admin': PLUGIN / 'includes/class-mad4b-scp-admin-ui.php',
 }
 for label, path in implementation_files.items():
-    if not path.is_file():
-        raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
-
+    if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
+
 require(impl['schema'], 'const VERSION = 4;', 'implementation-schema-v4')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
@@ -130,6 +112,15 @@ require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
 require(impl['authz'], 'MAD4B_SCP_Budgets::reserve', 'implementation-budget-before-effect')
 require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::consume_exact', 'implementation-exact-approval')
 require(impl['peer'], 'mcp_write_side_channel_detected', 'implementation-side-channel-blocker')
+require(impl['peer'], 'foreign_transport_inventory', 'implementation-foreign-mcp-inventory')
+require(impl['peer'], 'mcp_foreign_transport_unreviewed', 'implementation-foreign-mcp-blocker')
+require(impl['connection'], 'mad4b.connection-readiness.v1', 'implementation-connection-readiness')
+require(impl['connection'], "'connection_certified' => false", 'implementation-no-self-certification')
+require(impl['connection_ability'], "const ABILITY = 'mad4b/connection-status'", 'implementation-connection-ability')
+require(impl['servers'], "'mad4b/runtime-authority-status', 'mad4b/connection-status'", 'implementation-connection-read-server')
+require(impl['connection_admin'], "'manage_options'", 'implementation-connection-admin-capability')
+for forbidden in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'wp_remote_get(', 'wp_remote_post(', 'wp_remote_request('):
+    forbid(impl['connection_admin'] + '\n' + impl['connection'], forbidden, 'connection-surface-read-only')
 require(impl['mutation'], 'mad4b_undo_state_drift', 'implementation-drift-safe-undo')
 require(impl['mutation'], 'read-after-write', 'implementation-readback')
 require(impl['audit'], 'mad4b_scp_audit_committed', 'implementation-post-commit-audit-hook')
@@ -140,11 +131,10 @@ require(impl['admin'], "'manage_options'", 'implementation-admin-capability')
 for forbidden in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete('):
     forbid(impl['admin'], forbidden, 'admin-ui-read-only')
 
-# Task truth must acknowledge the certified repository controls without opening Production.
 require(tasks, '- [x] T006 Dedicated `MAD4B Spec Consistency` CI', 'tasks-spec-gate-complete')
 require(tasks, 'c2d7ba3d900097be35b6d2311f603a0c77f2d338', 'tasks-admin-runtime-checkpoint')
 require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-runtime-proof')
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v2: PASS')
+print('mad4b.site-control-plane.spec-consistency.v3: PASS')
