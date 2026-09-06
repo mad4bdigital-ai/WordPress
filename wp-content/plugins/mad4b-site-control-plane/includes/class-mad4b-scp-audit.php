@@ -8,6 +8,8 @@ final class MAD4B_SCP_Audit {
 
 	const OPTION = 'mad4b_scp_audit_log';
 	const LIMIT  = 200;
+	const SUMMARY_MAX_DEPTH = 3;
+	const SUMMARY_MAX_ITEMS = 50;
 	private static $request_id = '';
 
 	public static function record( $ability, array $summary, $status = 'ok' ) {
@@ -80,14 +82,40 @@ final class MAD4B_SCP_Audit {
 	}
 
 	private static function sanitize_summary( array $summary ) {
+		return self::sanitize_summary_array( $summary, 0 );
+	}
+
+	private static function sanitize_summary_array( array $summary, $depth ) {
+		if ( $depth > self::SUMMARY_MAX_DEPTH ) return array( '_truncated' => true );
 		$clean = array();
+		$count = 0;
 		foreach ( $summary as $key => $value ) {
+			if ( $count >= self::SUMMARY_MAX_ITEMS ) {
+				$clean['_truncated'] = true;
+				break;
+			}
 			$key = sanitize_key( (string) $key );
+			if ( '' === $key ) continue;
+			if ( self::is_sensitive_summary_key( $key ) ) {
+				$clean[ $key ] = '[REDACTED]';
+				++$count;
+				continue;
+			}
+			if ( is_array( $value ) ) {
+				$clean[ $key ] = self::sanitize_summary_array( $value, $depth + 1 );
+				++$count;
+				continue;
+			}
 			if ( is_scalar( $value ) || null === $value ) {
 				$string = is_bool( $value ) ? ( $value ? 'true' : 'false' ) : (string) $value;
 				$clean[ $key ] = substr( sanitize_text_field( $string ), 0, 500 );
+				++$count;
 			}
 		}
 		return $clean;
+	}
+
+	private static function is_sensitive_summary_key( $key ) {
+		return 1 === preg_match( '/(?:pass(?:word)?|secret|token|api[_-]?key|consumer[_-]?key|access[_-]?key|client[_-]?key|auth|credential|private[_-]?key|cookie|refresh[_-]?token|jwt|authorization)/i', (string) $key );
 	}
 }
