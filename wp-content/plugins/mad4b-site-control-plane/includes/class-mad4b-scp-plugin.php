@@ -7,8 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class MAD4B_SCP_Plugin {
 
 	private static $booted = false;
+	private static $schema_error = null;
 
 	public static function activate() {
+		$schema = MAD4B_SCP_Schema::install_or_upgrade();
+		if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		update_option( 'mad4b_scp_version', MAD4B_SCP_VERSION, false );
 		if ( false === get_option( 'mad4b_scp_audit_log', false ) ) {
 			add_option( 'mad4b_scp_audit_log', array(), '', false );
@@ -20,6 +23,12 @@ final class MAD4B_SCP_Plugin {
 			return;
 		}
 		self::$booted = true;
+
+		if ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) {
+			$schema = MAD4B_SCP_Schema::install_or_upgrade();
+			if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
+		}
+		if ( is_wp_error( self::$schema_error ) ) add_action( 'admin_notices', array( __CLASS__, 'schema_notice' ) );
 
 		if ( ! function_exists( 'wp_register_ability' ) ) {
 			add_action( 'admin_notices', array( __CLASS__, 'abilities_notice' ) );
@@ -40,6 +49,12 @@ final class MAD4B_SCP_Plugin {
 			add_action( 'mcp_adapter_init', array( $servers, 'register_servers' ) );
 		} else {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
+		}
+	}
+
+	public static function schema_notice() {
+		if ( current_user_can( 'manage_options' ) && is_wp_error( self::$schema_error ) ) {
+			echo '<div class="notice notice-error"><p>' . esc_html__( 'MAD4B Site Control Plane governance schema is unavailable. Mutation remains fail-closed until the schema is repaired.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 	}
 
