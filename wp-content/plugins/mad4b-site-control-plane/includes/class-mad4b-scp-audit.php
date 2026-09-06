@@ -31,12 +31,15 @@ final class MAD4B_SCP_Audit {
 			);
 		}
 
+		$initialized = self::ensure_head_initialized();
+		if ( is_wp_error( $initialized ) ) return $initialized;
+
 		$summary_payload = self::summary_payload( $summary );
 		if ( is_wp_error( $summary_payload ) ) return $summary_payload;
 
 		$join_transaction = (bool) $join_transaction || self::database_transaction_open();
-
 		$owns_transaction = ! $join_transaction;
+
 		if ( $owns_transaction ) {
 			$started = $wpdb->query( 'START TRANSACTION' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			if ( false === $started ) {
@@ -70,6 +73,70 @@ final class MAD4B_SCP_Audit {
 		return $entry;
 	}
 
+	/**
+	 * Initializes the singleton chain head outside an operational transaction.
+	 * INSERT IGNORE is intentionally autocommit-safe so concurrent first requests
+	 * converge on one row before any SELECT ... FOR UPDATE serialization begins.
+	 */
+	public static function ensure_head_initialized() {
+		global $wpdb;
+
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) ) {
+			return new WP_Error( 'mad4b_audit_schema_unavailable', 'Audit schema is unavailable.' );
+		}
+		$t = MAD4B_SCP_Schema::tables();
+		if ( empty( $t['audit_events'] ) || empty( $t['audit_heads'] ) ) {
+			return new WP_Error( 'mad4b_audit_schema_unavailable', 'Audit tables are unavailable.' );
+		}
+		if ( ! MAD4B_SCP_Audit_Integrity::table_exists( $t['audit_events'] ) || ! MAD4B_SCP_Audit_Integrity::table_exists( $t['audit_heads'] ) ) {
+			return new WP_Error( 'mad4b_audit_storage_unavailable', 'Append-only audit tables are missing.' );
+		}
+		if ( ! MAD4B_SCP_Audit_Integrity::transactional_table( $t['audit_events'] ) || ! MAD4B_SCP_Audit_Integrity::transactional_table( $t['audit_heads'] ) ) {
+			return new WP_Error( 'mad4b_audit_transaction_required', 'Append-only audit storage requires transactional tables.' );
+		}
+
+		$legacy = MAD4B_SCP_Audit_Integrity::legacy_snapshot();
+		if ( empty( $legacy['chain_valid'] ) ) {
+			return new WP_Error( 'mad4b_audit_legacy_chain_invalid', 'Legacy audit history failed integrity verification.' );
+		}
+
+		$head = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$t['audit_heads']} WHERE chain_name = %s LIMIT 1", self::CHAIN ),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+
+		if ( ! $head ) {
+			if ( self::database_transaction_open() ) {
+				return new WP_Error( 'mad4b_audit_head_initialization_transaction_denied', 'Audit chain head must be initialized before joining an operational transaction.' );
+			}
+			$now = gmdate( 'Y-m-d H:i:s' );
+			$inserted = $wpdb->query(
+				$wpdb->prepare(
+					"INSERT IGNORE INTO {$t['audit_heads']} (chain_name,sequence,entry_hash,legacy_anchor_sha256,legacy_chain_valid,legacy_entry_count,created_at,updated_at) VALUES (%s,0,%s,%s,%d,%d,%s,%s)",
+					self::CHAIN,
+					$legacy['anchor_sha256'],
+					$legacy['anchor_sha256'],
+					1,
+					(int) $legacy['entry_count'],
+					$now,
+					$now
+				)
+			); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			if ( false === $inserted ) {
+				return new WP_Error( 'mad4b_audit_head_create_failed', 'Unable to initialize audit chain head.', array( 'db_error' => $wpdb->last_error ) );
+			}
+			$head = $wpdb->get_row(
+				$wpdb->prepare( "SELECT * FROM {$t['audit_heads']} WHERE chain_name = %s LIMIT 1", self::CHAIN ),
+				ARRAY_A
+			); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		}
+
+		if ( ! $head ) {
+			return new WP_Error( 'mad4b_audit_head_missing', 'Audit chain head could not be initialized.', array( 'db_error' => $wpdb->last_error ) );
+		}
+		return self::validate_head_legacy_anchor( $head, $legacy );
+	}
+
 	public static function transaction_committed() {
 		$entries = self::$pending_dispatch;
 		self::$pending_dispatch = array();
@@ -82,7 +149,6 @@ final class MAD4B_SCP_Audit {
 
 	public static function dispatch_pending_after_transaction() {
 		global $wpdb;
-		if ( self::database_transaction_open() ) return;
 		$entries = self::$pending_dispatch;
 		self::$pending_dispatch = array();
 		if ( ! $entries || ! class_exists( 'MAD4B_SCP_Schema' ) ) return;
@@ -102,13 +168,10 @@ final class MAD4B_SCP_Audit {
 	}
 
 	private static function database_transaction_open() {
-		global $wpdb;
-		$state = $wpdb->get_var( 'SELECT @@session.in_transaction' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( null === $state && $wpdb->last_error ) {
-			$wpdb->last_error = '';
-			$state = $wpdb->get_var( 'SELECT @@in_transaction' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		}
-		return 1 === (int) $state;
+		$known_open = class_exists( 'MAD4B_SCP_Budgets' )
+			&& method_exists( 'MAD4B_SCP_Budgets', 'transaction_is_open' )
+			&& MAD4B_SCP_Budgets::transaction_is_open();
+		return (bool) apply_filters( 'mad4b_scp_database_transaction_open', $known_open );
 	}
 
 	public static function storage_status() {
@@ -146,7 +209,7 @@ final class MAD4B_SCP_Audit {
 	private static function append_locked( $ability, array $summary, $summary_json, $status ) {
 		global $wpdb;
 		$t = MAD4B_SCP_Schema::tables();
-		$head = self::lock_or_create_head();
+		$head = self::lock_head();
 		if ( is_wp_error( $head ) ) return $head;
 
 		$sequence = (int) $head['sequence'] + 1;
@@ -209,29 +272,12 @@ final class MAD4B_SCP_Audit {
 		return $entry;
 	}
 
-	private static function lock_or_create_head() {
+	private static function lock_head() {
 		global $wpdb;
 		$t = MAD4B_SCP_Schema::tables();
 		$legacy = MAD4B_SCP_Audit_Integrity::legacy_snapshot();
 		if ( empty( $legacy['chain_valid'] ) ) {
 			return new WP_Error( 'mad4b_audit_legacy_chain_invalid', 'Legacy audit history failed integrity verification.' );
-		}
-		$now = gmdate( 'Y-m-d H:i:s' );
-
-		$inserted = $wpdb->query(
-			$wpdb->prepare(
-				"INSERT IGNORE INTO {$t['audit_heads']} (chain_name,sequence,entry_hash,legacy_anchor_sha256,legacy_chain_valid,legacy_entry_count,created_at,updated_at) VALUES (%s,0,%s,%s,%d,%d,%s,%s)",
-				self::CHAIN,
-				$legacy['anchor_sha256'],
-				$legacy['anchor_sha256'],
-				$legacy['chain_valid'] ? 1 : 0,
-				(int) $legacy['entry_count'],
-				$now,
-				$now
-			)
-		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( false === $inserted ) {
-			return new WP_Error( 'mad4b_audit_head_create_failed', 'Unable to initialize audit chain head.', array( 'db_error' => $wpdb->last_error ) );
 		}
 
 		$head = $wpdb->get_row(
@@ -244,6 +290,10 @@ final class MAD4B_SCP_Audit {
 		if ( ! $head ) {
 			return new WP_Error( 'mad4b_audit_head_lock_failed', 'Unable to lock audit chain head.', array( 'db_error' => $wpdb->last_error ) );
 		}
+		return self::validate_head_legacy_anchor( $head, $legacy );
+	}
+
+	private static function validate_head_legacy_anchor( array $head, array $legacy ) {
 		if ( empty( $head['legacy_chain_valid'] ) ) {
 			return new WP_Error( 'mad4b_audit_legacy_chain_invalid', 'Stored legacy audit anchor is marked invalid.' );
 		}
