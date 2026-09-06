@@ -155,83 +155,38 @@ final class AjaxPresentationEndpoint {
             }
             $allowed[] = $token;
         }
-        return array(
-            'allowed' => array_values( array_unique( $allowed ) ),
-            'rejected' => array_values( array_unique( $rejected ) ),
-        );
+        return array('allowed'=>array_values(array_unique($allowed)),'rejected'=>array_values(array_unique($rejected)));
     }
 
     private function tokenAllowed( string $token, array $context ): bool {
-        if ( in_array( $token, array( 'title','intro','keyword','result_count','result_summary','breadcrumb','gallery_ids','image_id' ), true ) ) { return true; }
-        if ( 0 === strpos( $token, 'context:' ) ) {
-            return in_array( substr( $token, 8 ), array( 'language','profile_id','provider','query_id','query_builder_query_id','state_transport','ajax_only' ), true );
-        }
+        if ( in_array( $token, array( 'title','intro','keyword','result_count','result_summary','breadcrumb','gallery_ids','image_id','image_url' ), true ) ) { return true; }
+        if ( 0 === strpos( $token, 'context:' ) ) { return in_array( substr( $token, 8 ), array( 'language','profile_id','provider','query_id','query_builder_query_id','state_transport','ajax_only' ), true ); }
         if ( 0 === strpos( $token, 'url:' ) ) { return in_array( substr( $token, 4 ), array( 'current','archive' ), true ); }
 
-        $profile = (array) ( $context['profile'] ?? array() );
-        $roles = array();
-        foreach ( (array) ( $profile['taxonomy_rules'] ?? array() ) as $taxonomy => $rule ) {
-            $role = sanitize_key( (string) ( is_array( $rule ) ? ( $rule['role'] ?? $taxonomy ) : $taxonomy ) );
-            if ( '' !== $role ) { $roles[ $role ] = true; }
-        }
-
-        if ( 0 === strpos( $token, 'term:' ) ) {
-            $parts = explode( ':', $token, 3 );
-            return 3 === count( $parts ) && isset( $roles[ sanitize_key( $parts[1] ) ] ) && in_array( sanitize_key( $parts[2] ), array( 'name','slug','description','short_description','seo_title','meta_description','focus_keyword','image_id','image_url','count','location_level' ), true );
-        }
-        if ( 0 === strpos( $token, 'terms:' ) ) {
-            $parts = explode( ':', $token, 3 );
-            return 3 === count( $parts ) && isset( $roles[ sanitize_key( $parts[1] ) ] ) && in_array( sanitize_key( $parts[2] ), array( 'names','slugs','count','descriptions','short_descriptions','seo_titles','meta_descriptions','focus_keywords' ), true );
-        }
-        if ( 0 === strpos( $token, 'termmeta:' ) ) {
-            $parts = explode( ':', $token, 3 );
-            return 3 === count( $parts ) && isset( $roles[ sanitize_key( $parts[1] ) ] ) && $this->catalogContains( $token );
-        }
-        if ( 0 === strpos( $token, 'topology:' ) ) {
-            $parts = explode( ':', $token, 3 );
-            return 3 === count( $parts ) && sanitize_key( $parts[1] ) === sanitize_key( (string) ( $context['query_id'] ?? '' ) ) && 'query_builder_query_id' === sanitize_key( $parts[2] ) && $this->catalogContains( $token );
-        }
+        $profile=(array)($context['profile']??array());$roles=array();
+        foreach((array)($profile['taxonomy_rules']??array()) as $taxonomy=>$rule){$role=sanitize_key((string)(is_array($rule)?($rule['role']??$taxonomy):$taxonomy));if(''!==$role){$roles[$role]=true;}}
+        if(0===strpos($token,'term:')){$parts=explode(':',$token,3);return 3===count($parts)&&isset($roles[sanitize_key($parts[1])])&&in_array(sanitize_key($parts[2]),array('name','slug','description','short_description','seo_title','meta_description','focus_keyword','image_id','image_url','count','location_level'),true);}
+        if(0===strpos($token,'terms:')){$parts=explode(':',$token,3);return 3===count($parts)&&isset($roles[sanitize_key($parts[1])])&&in_array(sanitize_key($parts[2]),array('names','slugs','count','descriptions','short_descriptions','seo_titles','meta_descriptions','focus_keywords'),true);}
+        if(0===strpos($token,'termmeta:')){$parts=explode(':',$token,3);return 3===count($parts)&&isset($roles[sanitize_key($parts[1])])&&$this->catalogContains($token);}
+        if(0===strpos($token,'topology:')){$parts=explode(':',$token,3);return 3===count($parts)&&sanitize_key($parts[1])===sanitize_key((string)($context['query_id']??''))&&'query_builder_query_id'===sanitize_key($parts[2])&&$this->catalogContains($token);}
         return false;
     }
 
     private function catalogContains( string $token ): bool {
-        if ( null === $this->catalogTokens ) {
-            $this->catalogTokens = array();
-            if ( $this->catalogProvider ) {
-                try {
-                    $catalog = call_user_func( $this->catalogProvider );
-                    foreach ( array_keys( (array) ( $catalog['tokens'] ?? array() ) ) as $candidate ) {
-                        $candidate = strtolower( trim( (string) $candidate ) );
-                        if ( '' !== $candidate ) { $this->catalogTokens[ $candidate ] = true; }
-                    }
-                } catch ( \Throwable $error ) {
-                    $this->catalogTokens = array();
-                }
-            }
-        }
-        return isset( $this->catalogTokens[ $token ] );
+        if(null===$this->catalogTokens){$this->catalogTokens=array();if($this->catalogProvider){try{$catalog=call_user_func($this->catalogProvider);foreach(array_keys((array)($catalog['tokens']??array())) as $candidate){$candidate=strtolower(trim((string)$candidate));if(''!==$candidate){$this->catalogTokens[$candidate]=true;}}}catch(\Throwable $error){$this->catalogTokens=array();}}}
+        return isset($this->catalogTokens[$token]);
     }
 
     private function slotList( $value ): array {
-        $allowed = array();
-        $rejected = array();
-        foreach ( array_slice( is_array( $value ) ? $value : array(), 0, self::MAX_SLOTS ) as $id ) {
-            $id = sanitize_key( (string) $id );
-            if ( '' === $id ) { continue; }
-            $slot = $this->slots->get( $id );
-            if ( ! $slot || empty( $slot['enabled'] ) ) { $rejected[] = $id; continue; }
-            $allowed[] = $id;
-        }
-        return array(
-            'allowed' => array_values( array_unique( $allowed ) ),
-            'rejected' => array_values( array_unique( $rejected ) ),
-        );
+        $allowed=array();$rejected=array();
+        foreach(array_slice(is_array($value)?$value:array(),0,self::MAX_SLOTS) as $id){$id=sanitize_key((string)$id);if(''===$id){continue;}$slot=$this->slots->get($id);if(!$slot||empty($slot['enabled'])){$rejected[]=$id;continue;}$allowed[]=$id;}
+        return array('allowed'=>array_values(array_unique($allowed)),'rejected'=>array_values(array_unique($rejected)));
     }
 
     private function tokenType( string $token ): string {
-        if ( 'intro' === $token || false !== strpos( $token, ':description' ) ) { return 'html'; }
-        if ( 0 === strpos( $token, 'url:' ) || false !== strpos( $token, ':image_url' ) ) { return 'url'; }
-        if ( 'image_id' === $token || false !== strpos( $token, ':image_id' ) ) { return 'image'; }
-        return 'text';
+        if('intro'===$token||false!==strpos($token,':description')){return'html';}
+        if('image_url'===$token||0===strpos($token,'url:')||false!==strpos($token,':image_url')){return'url';}
+        if('image_id'===$token||false!==strpos($token,':image_id')){return'image';}
+        return'text';
     }
 }
