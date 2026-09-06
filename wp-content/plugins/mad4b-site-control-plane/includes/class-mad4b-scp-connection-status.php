@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Read-only local truth for MAD4B MCP connection readiness. */
 final class MAD4B_SCP_Connection_Status {
-	const CONTRACT = 'mad4b.connection-readiness.v1';
+	const CONTRACT = 'mad4b.connection-readiness.v2';
 
 	public static function status() {
 		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
@@ -20,7 +20,8 @@ final class MAD4B_SCP_Connection_Status {
 		$provider_ok = ! empty( $provider['runtime_contract_ok'] );
 
 		$servers = self::server_status();
-		$server_ok = count( $servers ) === 4;
+		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 5;
+		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
 			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) { $server_ok = false; break; }
 		}
@@ -61,8 +62,9 @@ final class MAD4B_SCP_Connection_Status {
 			'connection_certified' => false,
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
+			'write_surface' => self::write_surface_summary( $servers ),
 			'authentication' => array(
-				'transport_model' => 'wordpress-authenticated-request-plus-mad4b-server-permission',
+				'transport_model' => 'wordpress-authenticated-request-plus-server-bound-mad4b-transport-context',
 				'credential_material_exposed' => false,
 				'credential_creation_supported_here' => false,
 				'current_request_subject' => self::identity_status( $identity ),
@@ -82,12 +84,13 @@ final class MAD4B_SCP_Connection_Status {
 	}
 
 	private static function server_status() {
-		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' );
+		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
 		$expected_permissions = array(
-			'mad4b-read' => array( 'MAD4B_SCP_Policy', 'can_read' ),
-			'mad4b-content' => array( 'MAD4B_SCP_Policy', 'can_content' ),
-			'mad4b-admin' => array( 'MAD4B_SCP_Policy', 'can_admin' ),
-			'mad4b-breakglass' => array( 'MAD4B_SCP_Policy', 'can_breakglass' ),
+			'mad4b-read' => array( 'MAD4B_SCP_Servers', 'can_read_transport' ),
+			'mad4b-content' => array( 'MAD4B_SCP_Servers', 'can_content_transport' ),
+			'mad4b-write' => array( 'MAD4B_SCP_Servers', 'can_write_transport' ),
+			'mad4b-admin' => array( 'MAD4B_SCP_Servers', 'can_admin_transport' ),
+			'mad4b-breakglass' => array( 'MAD4B_SCP_Servers', 'can_breakglass_transport' ),
 		);
 		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$adapter_servers = array();
@@ -136,6 +139,26 @@ final class MAD4B_SCP_Connection_Status {
 			);
 		}
 		return $out;
+	}
+
+	private static function write_surface_summary( array $servers ) {
+		$server = array();
+		foreach ( $servers as $candidate ) {
+			if ( isset( $candidate['server_id'] ) && 'mad4b-write' === $candidate['server_id'] ) { $server = $candidate; break; }
+		}
+		$tools = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
+		return array(
+			'server_id' => 'mad4b-write',
+			'registered' => ! empty( $server['registered'] ),
+			'route_registered' => ! empty( $server['route_registered'] ),
+			'permission_callback_match' => ! empty( $server['permission_callback_match'] ),
+			'endpoint' => isset( $server['endpoint'] ) ? esc_url_raw( $server['endpoint'] ) : esc_url_raw( rest_url( 'mcp/mad4b-write' ) ),
+			'mounted_write_tool_count' => is_array( $tools ) ? count( $tools ) : 0,
+			'mutation_global_enabled' => defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED,
+			'mutation_effective_for_current_request' => class_exists( 'MAD4B_SCP_Policy' ) ? (bool) MAD4B_SCP_Policy::can_mutate() : false,
+			'exact_transport_grant_required' => true,
+			'generic_dispatcher_exposed' => false,
+		);
 	}
 
 	private static function identity_status( $identity ) {
@@ -196,6 +219,7 @@ final class MAD4B_SCP_Connection_Status {
 	private static function surface_label( $id ) {
 		if ( 'mad4b-read' === $id ) return 'read';
 		if ( 'mad4b-content' === $id ) return 'content';
+		if ( 'mad4b-write' === $id ) return 'write';
 		if ( 'mad4b-admin' === $id ) return 'admin';
 		if ( 'mad4b-breakglass' === $id ) return 'breakglass';
 		return 'unknown';
