@@ -18,19 +18,22 @@ Repository certification does not authorize Production. Target-site staging rema
 3. Make effective authority an intersection, never a union.
 4. Forbid wildcard Production grants and wildcard token scopes.
 5. Require exact server/ability/provider grants for governed mutation while preserving WordPress capability and provider checks.
-6. Require short-lived, single-use approval tickets for high/exceptional impact operations.
-7. Limit blast radius with transactional NHI budgets.
-8. Persist mutation records with before/after fingerprints and read-after-write verification.
-9. Make undo refuse when the post-mutation state has drifted.
-10. Detect independent MCP write side-channels before budget reservation or approval consumption.
-11. Persist security evidence in append-only transactional hash-linked audit storage.
-12. Preserve all existing fail-closed/provider-integrity behavior.
+6. Bind an MCP mutation to the **actual governed transport server** before exact-grant and approval evaluation, so the same Ability mounted on two servers represents two different authority coordinates.
+7. Provide `mad4b-write` as a unified write-only ingress without introducing a generic execute-any primitive.
+8. Require short-lived, single-use approval tickets for high/exceptional impact operations.
+9. Limit blast radius with transactional NHI budgets.
+10. Persist mutation records with before/after fingerprints and read-after-write verification.
+11. Make undo refuse when the post-mutation state has drifted.
+12. Detect independent MCP write side-channels before budget reservation or approval consumption.
+13. Persist security evidence in append-only transactional hash-linked audit storage.
+14. Preserve all existing fail-closed/provider-integrity behavior.
 
 ## Non-goals
 
 - Reimplement OAuth or MCP transport.
 - Store raw bearer/OAuth secrets.
 - Generic arbitrary PHP, shell or source-file editing.
+- Generic execute-any / ability-name dispatcher through `mad4b-write`.
 - Generic Production wildcard grants.
 - Autonomous password reset, user-role mutation or payment/refund automation.
 - Deep mutation integrations for every provider before an exact restore contract exists.
@@ -50,6 +53,10 @@ A non-human identity representing one autonomous client/agent. It has status, tr
 ### Authenticated transport subject
 
 Identity evidence supplied after upstream authentication, normalized through `mad4b_scp_authenticated_subject_context`. MAD4B validates this evidence but does not replace upstream authentication.
+
+### Governed MCP transport server
+
+The exact MAD4B MCP server endpoint that accepted the request. Request-local transport identity is non-secret routing evidence and is distinct from user/NHI identity. Once bound, it is authoritative for exact server/ability/provider grant and approval coordinates.
 
 ### Provider
 
@@ -77,6 +84,10 @@ A certified WordPress/core or plugin runtime such as Elementor, JetEngine, WooCo
 - INV-018: Independent reachable MCP write authority is a runtime blocker unless explicitly classified as safe/read-only/federated.
 - INV-019: Audit events are append-only, hash-linked and transactionally serialized; external sink dispatch occurs only after explicit commit.
 - INV-020: Admin inspection UX must not create a parallel mutation path.
+- INV-021: When an MCP transport is bound, central authorization MUST use that actual server ID before exact-grant lookup and exact approval-ticket consumption; an Ability's registration category/declaration cannot override the active transport.
+- INV-022: A route/server mismatch MUST fail closed and MUST clear or leave no stale transport authority.
+- INV-023: `mad4b-write` mounts only already-registered Abilities with explicit runtime `annotations.readonly === false`; missing/unknown annotation is not writable.
+- INV-024: `mad4b-write` exposes no Breakglass raw SQL and no generic dispatcher. A specialist-server grant does not authorize the same Ability through `mad4b-write`.
 
 ## Acceptance scenarios
 
@@ -150,6 +161,17 @@ A certified WordPress/core or plugin runtime such as Elementor, JetEngine, WooCo
 - opening/rendering the page does not alter governance state;
 - no grant/approve/revoke/undo POST action exists in the first slice.
 
+### US10 — `mad4b-write` exact transport isolation
+
+- five governed MAD4B servers register, including `/mcp/mad4b-write`;
+- `mad4b-write` discovers only Abilities explicitly annotated `readonly=false`;
+- representative read-only Abilities do not appear there;
+- `/mcp/mad4b-write` binds request-local transport ID `mad4b-write`;
+- passing a `/mcp/mad4b-content` request to the write transport permission callback is denied as route mismatch;
+- a grant for `mad4b-content + mad4b/content-update-post + core` cannot authorize that Ability through `mad4b-write`;
+- a separate exact `mad4b-write + mad4b/content-update-post + core` grant is a distinct authority record;
+- foreign-MCP and namespace-index-hijack detection remains effective after the fifth server is added.
+
 ## Functional requirements
 
 ### Identity and grants
@@ -168,9 +190,12 @@ A certified WordPress/core or plugin runtime such as Elementor, JetEngine, WooCo
 ### Authorization
 
 - FR-020 Core and adapter writers call central `MAD4B_SCP_Authorization` before provider side effects.
-- FR-021 Authorization includes ability, server, provider, identity, exact grant, scope, constraints, impact, budget and approval state.
+- FR-021 Authorization includes ability, effective server, provider, identity, exact grant, scope, constraints, impact, budget and approval state.
 - FR-022 Denials use safe external errors while detailed secret-safe reason codes remain in audit evidence.
 - FR-023 MCP peer write-side-channel guard runs before budget reservation.
+- FR-024 Central authorization resolves the effective server through `MAD4B_SCP_Transport_Context` before exact-grant lookup. If no MCP transport is bound, an explicitly declared internal server remains the compatibility fallback.
+- FR-025 Once an MCP transport is bound, the Ability MUST be mounted on that server or authorization fails closed.
+- FR-026 Exact approval-ticket consumption binds to the effective transport server, not merely to the Ability's original registration surface.
 
 ### Approval
 
@@ -200,11 +225,14 @@ A certified WordPress/core or plugin runtime such as Elementor, JetEngine, WooCo
 - FR-052 Reservation occurs before approval consumption; denied approval rolls reservation back.
 - FR-053 Counter updates serialize with DB transactions/row locks and are bounded/cleaned.
 
-### Side-channel governance
+### Side-channel and transport governance
 
 - FR-060 Runtime inventory classifies actual registered MCP servers/tools using adapter runtime evidence.
 - FR-061 Unknown reachable write path is a blocker.
 - FR-062 Read-only peer evidence may remain non-blocking.
+- FR-063 `mad4b-write` is constructed from the union of existing content/admin candidates filtered by actual Ability metadata `readonly === false`; no request-selected generic dispatch is permitted.
+- FR-064 Transport permission wrappers bind exact `/mcp/<server-id>` route to the governed server before evaluating the existing WordPress policy.
+- FR-065 Request-local transport context stores no credential/session material.
 
 ### Audit
 
@@ -219,6 +247,7 @@ A certified WordPress/core or plugin runtime such as Elementor, JetEngine, WooCo
 - FR-080 Read-only governance console requires `manage_options`.
 - FR-081 Read-only navigation may use GET; state-changing admin controls require WordPress nonce and reviewed capability.
 - FR-082 First slice exposes no alternative grant/approve/revoke/undo execution path.
+- FR-083 Connection console reports all governed server endpoints and a separate non-mutating `mad4b-write` readiness summary; it MUST NOT contain an enable/write/grant action.
 
 ## Security requirements
 
@@ -234,6 +263,8 @@ A certified WordPress/core or plugin runtime such as Elementor, JetEngine, WooCo
 - SEC-010 Migration never creates enabled authority or widens legacy privilege.
 - SEC-011 Normal WordPress MCP does not expose arbitrary PHP/shell/source-code mutation.
 - SEC-012 Provider package/version/runtime-integrity drift disables package-backed mutation.
+- SEC-013 A specialist-server exact grant or approval MUST NOT be treated as equivalent to the same Ability/provider on `mad4b-write`.
+- SEC-014 `mad4b-write` MUST NOT include `mad4b/database-raw-query` or another Breakglass primitive.
 
 ## Observability requirements
 
@@ -242,6 +273,8 @@ Runtime authority/self-test reports at least:
 - mutation global/effective status;
 - enabled agents/subjects/exact grants/wildcard blockers;
 - approval and budget service readiness;
+- request-local transport context without credential material;
+- `mad4b-write` registration/tool-count/exact-transport-grant readiness;
 - MCP peer inventory/write-side-channel blockers;
 - append-only audit storage/integrity state;
 - provider certification/runtime blockers.
@@ -259,6 +292,8 @@ Repository scope is complete only when, on the same exact PR head:
 - adversarial/static governance contracts pass;
 - Spec Kit consistency contract passes;
 - packaged-provider/security and package provenance checks pass;
-- disposable WordPress 6.9 + current latest runtime passes identity/grants, approval, budgets/concurrency, reversible mutation/undo/drift denial, MCP side-channel blocking, append-only audit concurrency/tamper and read-only Admin Governance Console smoke.
+- all five governed MAD4B MCP servers, including `mad4b-write`, register with exact route/permission evidence;
+- disposable WordPress 6.9 + current latest runtime proves `mad4b-write` write-only projection and specialist-grant/actual-transport isolation;
+- disposable WordPress 6.9 + current latest runtime passes identity/grants, approval, budgets/concurrency, reversible mutation/undo/drift denial, MCP side-channel blocking, append-only audit concurrency/tamper and read-only Admin Governance/Connection Console smoke.
 
-Production remains separate: the PR stays Draft and Production mutation stays NO-GO until real target staging proves transport subject resolution, exact deployed provider/runtime state, minimal NHI grants, governed mutation/readback/undo, blocker-free MCP peer state, valid audit evidence and post-certification mutation gates returned OFF unless deliberately continuing controlled staging.
+Production remains separate: the PR stays Draft and Production mutation stays NO-GO until real target staging proves transport subject resolution, exact deployed provider/runtime state, minimal NHI grants including exact `mad4b-write` coordinates when that ingress is used, governed mutation/readback/undo, blocker-free MCP peer state, valid audit evidence and post-certification mutation gates returned OFF unless deliberately continuing controlled staging.
