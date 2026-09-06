@@ -60,9 +60,9 @@ final class MAD4B_SCP_Abilities {
 				'post_excerpt' => array( 'type' => 'string' ),
 				'post_status' => array( 'type' => 'string', 'enum' => array( 'draft', 'pending', 'private', 'publish' ) ),
 			), array( 'post_id', 'expected_modified_gmt' )
-		), false, false, false, true );
+		), false, false, true, true );
 
-		$this->add( 'mad4b/plugin-activate', 'Activate Plugin', 'mad4b-admin', 'plugin_activate', 'admin', $this->plugin_schema(), false, false, false, true );
+		$this->add( 'mad4b/plugin-activate', 'Activate Plugin', 'mad4b-admin', 'plugin_activate', 'admin', $this->plugin_schema(), false, false, true, true );
 		$this->add( 'mad4b/plugin-deactivate', 'Deactivate Plugin', 'mad4b-admin', 'plugin_deactivate', 'admin', $this->plugin_schema(), false, false, true, true );
 		$this->add( 'mad4b/filesystem-write', 'Write Text File', 'mad4b-admin', 'filesystem_write', 'admin', $this->schema(
 			array(
@@ -119,11 +119,10 @@ final class MAD4B_SCP_Abilities {
 			'meta' => array(
 				'public' => false,
 				'show_in_rest' => false,
-				// All MAD4B abilities are routed only through the explicit custom MCP servers.
 				'mcp' => array( 'public' => false, 'type' => 'tool' ),
 				'annotations' => array(
 					'readonly' => (bool) $readonly,
-					'destructive' => (bool) $destructive,
+					'destructive' => $readonly ? (bool) $destructive : true,
 					'idempotent' => (bool) $idempotent,
 				),
 			),
@@ -149,7 +148,16 @@ final class MAD4B_SCP_Abilities {
 
 	private function roots() { return array( 'wordpress', 'content', 'plugins', 'themes', 'uploads' ); }
 	private function post_schema() { return $this->schema( array( 'post_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'post_id' ) ); }
-	private function plugin_schema() { return $this->schema( array( 'plugin' => array( 'type' => 'string', 'minLength' => 1 ) ), array( 'plugin' ) ); }
+	private function plugin_schema() {
+		return $this->schema(
+			array(
+				'plugin' => array( 'type' => 'string', 'minLength' => 1 ),
+				'expected_active' => array( 'type' => 'boolean' ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			array( 'plugin', 'expected_active', 'reason' )
+		);
+	}
 
 	public function site_info() {
 		global $wpdb, $wp_version;
@@ -208,6 +216,7 @@ final class MAD4B_SCP_Abilities {
 		foreach ( $entries as $entry ) {
 			if ( '.' === $entry || '..' === $entry ) continue;
 			$full = $path . DIRECTORY_SEPARATOR . $entry;
+			if ( MAD4B_SCP_Policy::is_sensitive_path( $full ) ) continue;
 			$items[] = array( 'name' => $entry, 'type' => is_dir( $full ) ? 'directory' : ( is_link( $full ) ? 'symlink' : 'file' ), 'size' => is_file( $full ) ? filesize( $full ) : null, 'modified' => file_exists( $full ) ? gmdate( 'c', filemtime( $full ) ) : null );
 			if ( count( $items ) >= 500 ) break;
 		}
@@ -257,7 +266,10 @@ final class MAD4B_SCP_Abilities {
 			$list[] = '`' . $column . '`';
 		}
 		if ( empty( $list ) ) return new WP_Error( 'mad4b_no_safe_columns', 'No non-sensitive columns are available for structured reading.' );
-		foreach ( array_keys( isset( $input['where'] ) && is_array( $input['where'] ) ? $input['where'] : array() ) as $column ) if ( MAD4B_SCP_Policy::is_sensitive_database_column( $column ) ) return new WP_Error( 'mad4b_sensitive_where_denied', 'Sensitive columns cannot be used in structured WHERE clauses.' );
+		foreach ( array_keys( isset( $input['where'] ) && is_array( $input['where'] ) ? $input['where'] : array() ) as $column ) {
+			if ( ! in_array( $column, $available, true ) ) return new WP_Error( 'mad4b_invalid_column', 'Unknown WHERE column.' );
+			if ( MAD4B_SCP_Policy::is_sensitive_database_column( $column ) ) return new WP_Error( 'mad4b_sensitive_where_denied', 'Sensitive columns cannot be used in structured WHERE clauses.' );
+		}
 
 		$where = $this->where_sql( isset( $input['where'] ) && is_array( $input['where'] ) ? $input['where'] : array() );
 		if ( is_wp_error( $where ) ) return $where;
@@ -329,26 +341,43 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function plugin_activate( $input ) {
-		require_once ABSPATH . 'wp-admin/includes/plugin.php'; $plugin = sanitize_text_field( $input['plugin'] ); $plugins = get_plugins();
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$plugin = sanitize_text_field( $input['plugin'] ); $plugins = get_plugins();
 		if ( ! isset( $plugins[ $plugin ] ) ) return new WP_Error( 'mad4b_plugin_missing', 'Plugin is not installed.' );
+		if ( ! current_user_can( 'activate_plugins' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_capability_denied', 'Current user cannot activate plugins.' );
+		$current = is_plugin_active( $plugin );
+		if ( $current !== (bool) $input['expected_active'] ) return new WP_Error( 'mad4b_stale_plugin_state', 'Plugin active state changed since it was reviewed.', array( 'current_active' => $current ) );
+		if ( $current ) return new WP_Error( 'mad4b_plugin_already_active', 'Plugin is already active.' );
+		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'activate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
 		$result = activate_plugin( $plugin ); if ( is_wp_error( $result ) ) return $result;
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin ) ); return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ) );
+		MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'reason' => sanitize_text_field( $input['reason'] ) ) );
+		return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ) );
 	}
 
 	public function plugin_deactivate( $input ) {
-		require_once ABSPATH . 'wp-admin/includes/plugin.php'; $plugin = sanitize_text_field( $input['plugin'] ); $plugins = get_plugins();
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$plugin = sanitize_text_field( $input['plugin'] ); $plugins = get_plugins();
 		if ( ! isset( $plugins[ $plugin ] ) ) return new WP_Error( 'mad4b_plugin_missing', 'Plugin is not installed.' );
+		if ( ! current_user_can( 'activate_plugins' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_capability_denied', 'Current user cannot deactivate plugins.' );
+		$current = is_plugin_active( $plugin );
+		if ( $current !== (bool) $input['expected_active'] ) return new WP_Error( 'mad4b_stale_plugin_state', 'Plugin active state changed since it was reviewed.', array( 'current_active' => $current ) );
+		if ( ! $current ) return new WP_Error( 'mad4b_plugin_already_inactive', 'Plugin is already inactive.' );
 		$self = plugin_basename( MAD4B_SCP_FILE );
 		$name = isset( $plugins[ $plugin ]['Name'] ) ? strtolower( $plugins[ $plugin ]['Name'] ) : '';
 		$text_domain = isset( $plugins[ $plugin ]['TextDomain'] ) ? strtolower( $plugins[ $plugin ]['TextDomain'] ) : '';
 		$is_mcp_adapter = 0 === strpos( strtolower( $plugin ), 'mcp-adapter/' ) || 'mcp-adapter' === $text_domain || false !== strpos( $name, 'mcp adapter' );
-		if ( $plugin === $self || $is_mcp_adapter ) return new WP_Error( 'mad4b_control_plane_dependency_protected', 'The control plane and its MCP Adapter dependency cannot be deactivated through the normal admin surface.' );
-		$network = is_multisite() && is_plugin_active_for_network( $plugin ); deactivate_plugins( $plugin, false, $network );
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin ) ); return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ) );
+		if ( $plugin === $self || $is_mcp_adapter || MAD4B_SCP_Policy::plugin_lifecycle_protected( $plugin ) ) return new WP_Error( 'mad4b_control_plane_dependency_protected', 'The control plane, its MCP Adapter dependency, and protected plugins cannot be deactivated through the normal admin surface.' );
+		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'deactivate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
+		$network = is_multisite() && is_plugin_active_for_network( $plugin );
+		if ( $network && ! current_user_can( 'manage_network_plugins' ) ) return new WP_Error( 'mad4b_network_plugin_capability_denied', 'Network-wide plugin deactivation requires manage_network_plugins.' );
+		deactivate_plugins( $plugin, false, $network );
+		MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'reason' => sanitize_text_field( $input['reason'] ) ) );
+		return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ), 'network_active' => is_multisite() ? is_plugin_active_for_network( $plugin ) : false );
 	}
 
 	public function filesystem_write( $input ) {
 		$path = MAD4B_SCP_Policy::resolve_path( $input['root'], $input['path'], false ); if ( is_wp_error( $path ) ) return $path;
+		$mutation_allowed = MAD4B_SCP_Policy::can_mutate_file( $input['root'], $path ); if ( is_wp_error( $mutation_allowed ) ) return $mutation_allowed;
 		$content = (string) $input['content']; if ( false !== strpos( $content, "\0" ) ) return new WP_Error( 'mad4b_binary_write_denied', 'NUL bytes are not allowed.' );
 		$exists = file_exists( $path ); $expected = isset( $input['expected_sha256'] ) ? strtolower( trim( $input['expected_sha256'] ) ) : '';
 		if ( $exists ) { if ( ! is_file( $path ) ) return new WP_Error( 'mad4b_not_file', 'Target is not a regular file.' ); $current = hash_file( 'sha256', $path ); if ( ! $expected || ! hash_equals( $current, $expected ) ) return new WP_Error( 'mad4b_stale_file', 'Current SHA-256 is required.', array( 'current_sha256' => $current ) ); }
@@ -359,6 +388,7 @@ final class MAD4B_SCP_Abilities {
 
 	public function filesystem_patch( $input ) {
 		$path = MAD4B_SCP_Policy::resolve_path( $input['root'], $input['path'], true ); if ( is_wp_error( $path ) ) return $path;
+		$mutation_allowed = MAD4B_SCP_Policy::can_mutate_file( $input['root'], $path ); if ( is_wp_error( $mutation_allowed ) ) return $mutation_allowed;
 		$content = is_file( $path ) ? file_get_contents( $path ) : false; if ( false === $content ) return new WP_Error( 'mad4b_read_failed', 'Unable to read target.' );
 		$current = hash( 'sha256', $content ); if ( ! hash_equals( $current, strtolower( trim( $input['expected_sha256'] ) ) ) ) return new WP_Error( 'mad4b_stale_file', 'Target SHA-256 no longer matches.', array( 'current_sha256' => $current ) );
 		$count = substr_count( $content, (string) $input['search'] ); $max = isset( $input['max_replacements'] ) ? max( 1, min( 100, absint( $input['max_replacements'] ) ) ) : 1;
@@ -397,24 +427,37 @@ final class MAD4B_SCP_Abilities {
 		if ( ! MAD4B_SCP_Policy::can_structured_database_write( $table ) ) return new WP_Error( 'mad4b_sensitive_table_write_denied', 'Structured writes are denied for this sensitive database table. Use explicitly enabled Breakglass when genuinely required.' );
 		if ( empty( $input['data'] ) || ! is_array( $input['data'] ) ) return new WP_Error( 'mad4b_empty_data', 'data must be non-empty.' );
 		if ( empty( $input['where'] ) || ! is_array( $input['where'] ) ) return new WP_Error( 'mad4b_where_required', 'A non-empty where object is required.' );
+
+		$available = array();
+		foreach ( $wpdb->get_results( 'DESCRIBE `' . $table . '`', ARRAY_A ) as $definition ) if ( isset( $definition['Field'] ) ) $available[] = $definition['Field'];
+		if ( empty( $available ) ) return new WP_Error( 'mad4b_table_definition_unavailable', 'Unable to read the target table definition.' );
 		foreach ( array_keys( $input['data'] ) as $column ) {
-			if ( ! MAD4B_SCP_Policy::validate_identifier( $column ) ) return new WP_Error( 'mad4b_invalid_column', 'Invalid data column.' );
+			if ( ! MAD4B_SCP_Policy::validate_identifier( $column ) || ! in_array( $column, $available, true ) ) return new WP_Error( 'mad4b_invalid_column', 'Invalid or unknown data column.' );
 			if ( MAD4B_SCP_Policy::is_sensitive_database_column( $column ) ) return new WP_Error( 'mad4b_sensitive_column_write_denied', 'Structured writes to secret/authentication columns are denied.' );
 		}
-		foreach ( array_keys( $input['where'] ) as $column ) if ( MAD4B_SCP_Policy::is_sensitive_database_column( $column ) ) return new WP_Error( 'mad4b_sensitive_where_denied', 'Sensitive columns cannot be used in structured WHERE clauses.' );
+		foreach ( array_keys( $input['where'] ) as $column ) {
+			if ( ! MAD4B_SCP_Policy::validate_identifier( $column ) || ! in_array( $column, $available, true ) ) return new WP_Error( 'mad4b_invalid_column', 'Invalid or unknown WHERE column.' );
+			if ( MAD4B_SCP_Policy::is_sensitive_database_column( $column ) ) return new WP_Error( 'mad4b_sensitive_where_denied', 'Sensitive columns cannot be used in structured WHERE clauses.' );
+		}
+
+		$table_status = $wpdb->get_row( $wpdb->prepare( 'SHOW TABLE STATUS LIKE %s', $table ), ARRAY_A );
+		$engine = is_array( $table_status ) && isset( $table_status['Engine'] ) ? strtolower( (string) $table_status['Engine'] ) : '';
+		$transactional_engines = apply_filters( 'mad4b_scp_transactional_database_engines', array( 'innodb', 'xtradb' ), $table );
+		$transactional_engines = is_array( $transactional_engines ) ? array_map( 'strtolower', $transactional_engines ) : array();
+		if ( '' === $engine || ! in_array( $engine, $transactional_engines, true ) ) return new WP_Error( 'mad4b_non_transactional_table_denied', 'Structured mutation requires a certified transactional table engine.', array( 'engine' => $engine ) );
 
 		$where = $this->where_sql( $input['where'] ); if ( is_wp_error( $where ) ) return $where;
 		$max = isset( $input['max_affected'] ) ? max( 1, min( 100, absint( $input['max_affected'] ) ) ) : 1;
-		$transaction = false !== $wpdb->query( 'START TRANSACTION' );
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) return new WP_Error( 'mad4b_transaction_required', 'Unable to start the required database transaction.' );
 		$matches = $wpdb->get_col( 'SELECT 1 FROM `' . $table . '`' . $where . ' LIMIT ' . ( $max + 1 ) . ' FOR UPDATE' );
-		if ( null === $matches && $wpdb->last_error ) { if ( $transaction ) $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'mad4b_update_preflight_failed', $wpdb->last_error ); }
+		if ( null === $matches && $wpdb->last_error ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'mad4b_update_preflight_failed', $wpdb->last_error ); }
 		$count = count( (array) $matches );
-		if ( $count > $max ) { if ( $transaction ) $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'mad4b_update_too_broad', 'Locked preflight exceeds max_affected.', array( 'matched_rows' => $count ) ); }
+		if ( $count > $max ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'mad4b_update_too_broad', 'Locked preflight exceeds max_affected.', array( 'matched_rows' => $count ) ); }
 		$result = $wpdb->update( $table, $input['data'], $input['where'] );
-		if ( false === $result ) { if ( $transaction ) $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'mad4b_update_failed', $wpdb->last_error ? $wpdb->last_error : 'Database update failed.' ); }
-		if ( $transaction ) $wpdb->query( 'COMMIT' );
-		MAD4B_SCP_Audit::record( 'mad4b/database-update', array( 'table' => $table, 'affected' => $result, 'matched' => $count, 'locked_preflight' => $transaction ) );
-		return array( 'table' => $table, 'matched_rows' => $count, 'affected_rows' => (int) $result, 'locked_preflight' => $transaction );
+		if ( false === $result ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'mad4b_update_failed', $wpdb->last_error ? $wpdb->last_error : 'Database update failed.' ); }
+		if ( false === $wpdb->query( 'COMMIT' ) ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'mad4b_commit_failed', 'Database commit failed; mutation cannot be certified.' ); }
+		MAD4B_SCP_Audit::record( 'mad4b/database-update', array( 'table' => $table, 'engine' => $engine, 'affected' => $result, 'matched' => $count, 'locked_preflight' => true ) );
+		return array( 'table' => $table, 'engine' => $engine, 'matched_rows' => $count, 'affected_rows' => (int) $result, 'locked_preflight' => true );
 	}
 
 	public function audit_tail( $input ) { $items = MAD4B_SCP_Audit::tail( isset( $input['limit'] ) ? absint( $input['limit'] ) : 50 ); return array( 'entries' => $items, 'count' => count( $items ) ); }
@@ -438,12 +481,18 @@ final class MAD4B_SCP_Abilities {
 		if ( in_array( $verb, $ddl, true ) && ( ! defined( 'MAD4B_MCP_BREAKGLASS_DDL_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_DDL_ENABLED ) ) return new WP_Error( 'mad4b_sql_ddl_disabled', 'DDL is disabled.' );
 		if ( ! in_array( $verb, array_merge( $read, $write, $ddl ), true ) ) return new WP_Error( 'mad4b_sql_verb_denied', 'SQL verb is not allowed.' );
 
+		$max = isset( $input['max_rows'] ) ? max( 1, min( 500, absint( $input['max_rows'] ) ) ) : 100;
+		if ( 'SELECT' === $verb ) {
+			if ( ! preg_match( '/\bLIMIT\s+(?:(\d+)\s*,\s*)?(\d+)\s*$/i', $normalized, $limit_match ) ) return new WP_Error( 'mad4b_select_limit_required', 'Breakglass SELECT must include an explicit trailing numeric LIMIT no greater than max_rows.' );
+			$requested_limit = (int) $limit_match[2];
+			if ( $requested_limit < 1 || $requested_limit > $max ) return new WP_Error( 'mad4b_select_limit_too_large', 'Breakglass SELECT LIMIT exceeds max_rows.', array( 'max_rows' => $max, 'requested_limit' => $requested_limit ) );
+		}
+
 		$hash = hash( 'sha256', $normalized );
 		MAD4B_SCP_Audit::record( 'mad4b/database-raw-query', array( 'verb' => $verb, 'query_hash' => $hash, 'reason' => $reason ), 'attempt' );
 		if ( in_array( $verb, $read, true ) ) {
 			$rows = $wpdb->get_results( $normalized, ARRAY_A );
 			if ( null === $rows && $wpdb->last_error ) { MAD4B_SCP_Audit::record( 'mad4b/database-raw-query', array( 'verb' => $verb, 'query_hash' => $hash ), 'failure' ); return new WP_Error( 'mad4b_raw_query_failed', $wpdb->last_error ); }
-			$max = isset( $input['max_rows'] ) ? max( 1, min( 500, absint( $input['max_rows'] ) ) ) : 100;
 			$rows = array_slice( (array) $rows, 0, $max );
 			MAD4B_SCP_Audit::record( 'mad4b/database-raw-query', array( 'verb' => $verb, 'query_hash' => $hash, 'rows' => count( $rows ) ) );
 			return array( 'verb' => $verb, 'query_hash' => $hash, 'rows' => $rows, 'count' => count( $rows ) );
