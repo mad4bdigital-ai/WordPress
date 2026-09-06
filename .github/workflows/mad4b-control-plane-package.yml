@@ -26,9 +26,20 @@ jobs:
   package:
     name: Build staging installation kit
     runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
-      - name: Checkout
+      - name: Checkout exact source commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          echo "Packaging exact source: $SOURCE_SHA"
 
       - name: Verify certified MCP Adapter asset
         shell: bash
@@ -74,7 +85,7 @@ jobs:
           data = {
               'contract': 'mad4b.site-control-plane.staging-install-kit.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
-              'commit': os.environ.get('GITHUB_SHA'),
+              'commit': os.environ.get('SOURCE_SHA'),
               'control_plane': {
                   'version': version,
                   'archive': f'mad4b-site-control-plane-{version}.zip',
@@ -124,12 +135,13 @@ jobs:
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
             exit 1
           fi
+          grep -Fq "\"commit\": \"$SOURCE_SHA\"" "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
       - name: Upload staging installation kit
         uses: actions/upload-artifact@v4
         with:
-          name: mad4b-site-control-plane-staging-kit-${{ github.sha }}
+          name: mad4b-site-control-plane-staging-kit-${{ env.SOURCE_SHA }}
           path: |
             /tmp/mad4b-install-kit/mad4b-site-control-plane-*.zip
             /tmp/mad4b-install-kit/mcp-adapter-0.6.1.zip
