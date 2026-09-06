@@ -16,7 +16,8 @@ class WPL_License_Health_Monitor {
     const CRON_SCHEDULE      = 'wpl_every_six_hours';
     const REPORT_OPTION      = 'wpl_license_health_report';
     const RETRY_OPTION       = 'wpl_license_health_retry_state';
-    const LOCK_TRANSIENT     = 'wpl_license_health_lock';
+    const LOCK_OPTION        = 'wpl_license_health_lock_state';
+    const LOCK_TTL           = 10 * MINUTE_IN_SECONDS;
     const FAILURE_RETRY_SECS = DAY_IN_SECONDS;
     const NETWORK_RETRY_SECS = 30 * MINUTE_IN_SECONDS;
 
@@ -112,7 +113,8 @@ class WPL_License_Health_Monitor {
     private static function unschedule_current_site() {
         wp_clear_scheduled_hook( self::CRON_HOOK );
         wp_clear_scheduled_hook( self::SOON_HOOK );
-        delete_transient( self::LOCK_TRANSIENT );
+        delete_option( self::LOCK_OPTION );
+        delete_transient( 'wpl_license_health_lock' );
     }
 
     public function ajax_run_now() {
@@ -128,10 +130,9 @@ class WPL_License_Health_Monitor {
      * @return array
      */
     public static function run( $force = false ) {
-        if ( get_transient( self::LOCK_TRANSIENT ) ) {
+        if ( ! self::acquire_lock() ) {
             return self::get_report();
         }
-        set_transient( self::LOCK_TRANSIENT, 1, 10 * MINUTE_IN_SECONDS );
 
         $started = microtime( true );
         $results = [];
@@ -172,7 +173,7 @@ class WPL_License_Health_Monitor {
                 self::update_retry_state( $id, $results[$id] );
             }
         } finally {
-            delete_transient( self::LOCK_TRANSIENT );
+            self::release_lock();
         }
 
         $report = [
@@ -373,6 +374,24 @@ class WPL_License_Health_Monitor {
                 : 'jet_excluded_plugins';
             update_option( $plugins_option, $response['excluded_plugins'], false );
         }
+    }
+
+    private static function acquire_lock() {
+        $now  = time();
+        $held = (int) get_option( self::LOCK_OPTION, 0 );
+
+        if ( $held && ( $now - $held ) < self::LOCK_TTL ) {
+            return false;
+        }
+        if ( $held ) {
+            delete_option( self::LOCK_OPTION );
+        }
+
+        return add_option( self::LOCK_OPTION, $now, '', 'no' );
+    }
+
+    private static function release_lock() {
+        delete_option( self::LOCK_OPTION );
     }
 
     private static function retry_allowed( $id ) {
