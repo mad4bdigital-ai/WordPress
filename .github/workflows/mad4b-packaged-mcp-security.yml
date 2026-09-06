@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/inspect-packaged-mcp-security.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/elementor.zip'
       - 'wp-content/plugins/bit-pi.zip'
@@ -13,6 +14,7 @@ on:
       - master
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/inspect-packaged-mcp-security.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/elementor.zip'
       - 'wp-content/plugins/bit-pi.zip'
@@ -24,7 +26,7 @@ permissions:
 
 jobs:
   packaged-mcp-security:
-    name: Native MCP security evidence
+    name: Native MCP security enforcement
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,7 +41,7 @@ jobs:
             unzip -tqq "wp-content/plugins/$archive"
           done
 
-      - name: Inspect native MCP security markers
+      - name: Enforce native MCP security invariants
         shell: bash
         run: |
           set -euo pipefail
