@@ -34,6 +34,12 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/pre-install-hardening-contract.py
 
+      - name: Run agent-governance adversarial contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py
+
       - name: Verify mutation surface cannot regress to source execution
         shell: bash
         run: |
