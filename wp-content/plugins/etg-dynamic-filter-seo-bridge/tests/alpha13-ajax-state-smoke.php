@@ -68,7 +68,7 @@ $crossOr=$parser->parse(array('provider'=>'jet-engine','query_id'=>'tours_query_
 expect_same(false,$crossOr['filtered_query_complete'],'cross-taxonomy OR fails closed');
 expect_true(in_array('cross_taxonomy_or_unsupported',$crossOr['malformed'],true),'cross-taxonomy OR reason explicit');
 
-$nonTax=$parser->parse(array('provider'=>'jet-engine','query_id'=>'tours_query_archive','archive_path'=>'/tours-and-activities/','current_query'=>array('tax_query'=>array(array('taxonomy'=>'location_jet','field'=>'term_id','terms'=>array(11))),'meta_query'=>array(array('key'=>'price','value'=>'100','compare'=>'>=')),'date_query'=>array(array('after'=>'2026-01-01')),'s'=>'cairo'));
+$nonTax=$parser->parse(array('provider'=>'jet-engine','query_id'=>'tours_query_archive','archive_path'=>'/tours-and-activities/','current_query'=>array('tax_query'=>array(array('taxonomy'=>'location_jet','field'=>'term_id','terms'=>array(11))),'meta_query'=>array(array('key'=>'price','value'=>'100','compare'=>'>=')),'date_query'=>array(array('after'=>'2026-01-01')),'s'=>'cairo')));
 expect_same(array('date_query','meta_query','s'),$nonTax['unsupported_filter_props'],'unsupported meta/date/search surfaced');
 expect_same(false,$nonTax['filtered_query_complete'],'unsupported non-tax state blocks complete query');
 
