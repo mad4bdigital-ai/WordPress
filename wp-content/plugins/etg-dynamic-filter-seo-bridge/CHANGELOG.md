@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0-alpha.13 — Deep runtime audit hardening
+
+- Added native JetSmartFilters browser `currentQuery` parsing for keys such as `_tax_query_<taxonomy>`, closing a live-runtime gap where real active taxonomy filters could previously be reported as inactive even though synthetic WordPress-style `tax_query` tests passed.
+- Native taxonomy values now normalize Term IDs/slugs into governed slug clauses; only `IN` and `AND` operators are accepted. Native meta/date/search/alphabet states remain unsupported presentation states and fail closed.
+- Query depth, node, string and term-count limits no longer silently truncate state while reporting `filtered_query_complete=true`; each overflow now produces an explicit malformed reason and blocks presentation/count authority.
+- Unknown future JetSmartFilters query properties fail closed instead of being silently ignored. Sort/pagination/hierarchy transport controls remain non-semantic for presentation-group selection.
+- AJAX response value types are now driven by the Runtime Inventory token catalog, fixing `short_description` / `short_descriptions` HTML values being returned as plain text.
+- Browser live bindings now remember their previous provider/query group, restore stale Auto-group content when group ownership changes, and restore/remove original `href`/`src` attributes on reset or empty URL values.
+- Auto-group activity now depends on semantic filter state rather than any non-empty query object, preventing sorting/pagination-only state from incorrectly claiming an Auto binding.
+- Empty live Term Sections preserve Elementor fallback, start hidden when they have no content, and become visible only when resolved content arrives.
+- Dynamic Tag catalog discovery is memoized per request and presentation catalog topology uses the existing topology cache instead of forcing a full Elementor template rescan for every catalog access. Operator Runtime Inventory remains independently refreshable.
+- Added `alpha13-deep-audit-smoke.php` and exact-head CI guards for native JetSmartFilters transport, fail-closed limits, stale binding resets, catalog-driven types and cached topology discovery.
+- AJAX remains presentation-only: `authorizing=false`, `url_authority=false`, `seo_mutation=false`. Global stays OFF by default, Tours stays disabled, and this release does not authorize merge or Production activation.
+
 ## 0.4.0-alpha.10
 
 - Unified JetEngine Query Builder identity resolution around JetSmartFilters **custom Query ID** (`query_id`) rather than passing that route identity to JetEngine's internal-ID lookup API.
