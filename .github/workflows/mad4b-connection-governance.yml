@@ -40,6 +40,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
           php -l "$root/tests/runtime-connection-readiness-smoke.php"
           php -l "$root/tests/runtime-foreign-mcp-transport-blocker.php"
+          php -l "$root/tests/runtime-mcp-namespace-index-hijack-blocker.php"
           python3 "$root/tests/connection-readiness-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
 
@@ -117,3 +118,9 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-foreign-mcp-transport-blocker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove namespace index cannot hide foreign callback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-namespace-index-hijack-blocker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
