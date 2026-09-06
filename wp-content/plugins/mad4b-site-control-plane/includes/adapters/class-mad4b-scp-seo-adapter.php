@@ -16,7 +16,7 @@ final class MAD4B_SCP_SEO_Adapter extends MAD4B_SCP_Adapter_Base {
 			'post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
 			'fields' => array( 'type' => 'object' ),
 			'expected_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
-		), array( 'post_id', 'fields', 'expected_sha256' ) ), 'content', false, false, true );
+		), array( 'post_id', 'fields', 'expected_sha256' ) ), 'content', false, true, true );
 	}
 	public function status() { $status = parent::status(); $status['provider'] = $this->provider(); $status['write_provider'] = 'rank-math' === $this->provider() ? 'rank-math' : ''; return $status; }
 	public function can_read_post( $input ) { $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; return $id > 0 && current_user_can( 'read_post', $id ); }
@@ -60,8 +60,11 @@ final class MAD4B_SCP_SEO_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 	public function validate_meta( $input ) {
 		$data = $this->get_meta( $input ); if ( is_wp_error( $data ) ) return $data;
-		$title = (string) $data['fields']['title']; $description = (string) $data['fields']['description']; $robots = $data['fields']['robots'];
-		return array( 'post_id' => absint( $input['post_id'] ), 'provider' => 'rank-math', 'checks' => array( 'title_length' => strlen( wp_strip_all_tags( $title ) ), 'description_length' => strlen( wp_strip_all_tags( $description ) ), 'has_focus_keyword' => '' !== trim( (string) $data['fields']['focus_keyword'] ), 'has_canonical' => '' !== trim( (string) $data['fields']['canonical_url'] ), 'noindex' => is_array( $robots ) && in_array( 'noindex', $robots, true ) ) );
+		$title = wp_strip_all_tags( (string) $data['fields']['title'] );
+		$description = wp_strip_all_tags( (string) $data['fields']['description'] );
+		$robots = $data['fields']['robots'];
+		return array( 'post_id' => absint( $input['post_id'] ), 'provider' => 'rank-math', 'checks' => array( 'title_length' => $this->text_length( $title ), 'description_length' => $this->text_length( $description ), 'has_focus_keyword' => '' !== trim( (string) $data['fields']['focus_keyword'] ), 'has_canonical' => '' !== trim( (string) $data['fields']['canonical_url'] ), 'noindex' => is_array( $robots ) && in_array( 'noindex', $robots, true ) ) );
 	}
+	private function text_length( $value ) { return function_exists( 'mb_strlen' ) ? mb_strlen( (string) $value, 'UTF-8' ) : strlen( (string) $value ); }
 	private function provider() { if ( defined( 'RANK_MATH_VERSION' ) || class_exists( 'RankMath' ) ) return 'rank-math'; if ( defined( 'WPSEO_VERSION' ) ) return 'yoast'; if ( defined( 'SEOPRESS_VERSION' ) ) return 'seopress'; return ''; }
 }
