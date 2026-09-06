@@ -149,6 +149,8 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return new WP_Error( 'mad4b_undo_adapter_missing', 'The adapter required to restore this mutation is not registered.' );
 		$expected_contract = $adapter->reversible_contract_for( $record['ability_name'] );
 		if ( '' === $expected_contract || ! hash_equals( (string) $payload['restore_contract'], $expected_contract ) ) return new WP_Error( 'mad4b_undo_contract_drift', 'The registered adapter restore contract no longer matches the recorded mutation.' );
+		$provider_guard = self::provider_restore_guard( $adapter, $record );
+		if ( is_wp_error( $provider_guard ) ) return $provider_guard;
 
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Mutation/NHI authority is required for undo.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
@@ -205,6 +207,17 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		self::update_record( $mutation_id, array( 'status' => 'undone' ) );
 		MAD4B_SCP_Audit::record( 'mad4b/mutation-undo', array( 'mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'provider' => $record['provider'], 'target_type' => $record['target_type'], 'target_id' => $record['target_id'], 'restored_sha256' => $restored_hash, 'approval_ticket_id' => $undo_approval_ticket_id ) );
 		return array( 'status' => 'undone', 'original_mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'restored_sha256' => $restored_hash, 'verified' => true, 'restore_contract' => $payload['restore_contract'] );
+	}
+
+	private static function provider_restore_guard( $adapter, array $record ) {
+		$status = $adapter->status();
+		if ( empty( $status['mutation_requires_certification'] ) ) return true;
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_provider_contracts_unavailable', 'Adapter undo is denied because the provider certification authority is unavailable.' );
+		$provider = $adapter->provider_key();
+		if ( '' === $provider || ! hash_equals( (string) $record['provider'], $provider ) ) return new WP_Error( 'mad4b_undo_provider_mismatch', 'Recorded provider no longer matches the registered adapter provider contract.' );
+		$guard = MAD4B_SCP_Provider_Contracts::mutation_guard( $provider, (bool) $adapter->is_available() );
+		if ( is_wp_error( $guard ) || true !== $guard ) return is_wp_error( $guard ) ? $guard : new WP_Error( 'mad4b_provider_mutation_not_certified', 'Adapter undo is denied until the exact provider runtime contract is certified.' );
+		return true;
 	}
 
 	private static function validate_snapshot( $snapshot ) {
