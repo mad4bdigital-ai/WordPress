@@ -182,3 +182,27 @@ jobs:
             "$TEST_ROOT/runtime-budget-concurrency-verify.php" \
             --path=/tmp/mad4b-wordpress \
             --user=mad4b-ci-admin
+
+      - name: Execute clean MCP peer inventory smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-side-channel-baseline.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute MCP write side-channel blocker smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          TEST_ROOT="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$TEST_ROOT/fixtures/mad4b-ci-rogue-public-write.php" \
+             "$WP_PATH/wp-content/mu-plugins/mad4b-ci-rogue-public-write.php"
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-mcp-side-channel-blocker.php" \
+            --path="$WP_PATH" \
+            --user=mad4b-ci-admin
+          rm -f "$WP_PATH/wp-content/mu-plugins/mad4b-ci-rogue-public-write.php"

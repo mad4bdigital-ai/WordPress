@@ -113,8 +113,10 @@ final class MAD4B_SCP_Adapter_Registry {
 		$server_registration_ok = ! empty( $server_status );
 		foreach ( $server_status as $server ) if ( empty( $server['registered'] ) ) $server_registration_ok = false;
 
+		$mcp_peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
+		$mcp_peer_governance_ok = ! empty( $mcp_peer_governance['inventory_ready'] ) && empty( $mcp_peer_governance['write_side_channel_detected'] );
 		$provider_contract_ok = empty( $provider_contract_blockers );
-		$passed = empty( $missing ) && empty( $public_leaks ) && $mcp_adapter && $provider_contract_ok && $server_registration_ok;
+		$passed = empty( $missing ) && empty( $public_leaks ) && $mcp_adapter && $provider_contract_ok && $server_registration_ok && $mcp_peer_governance_ok;
 
 		return array(
 			'status' => $passed ? 'passed' : 'degraded',
@@ -130,6 +132,8 @@ final class MAD4B_SCP_Adapter_Registry {
 			'custom_server_isolation' => empty( $public_leaks ),
 			'custom_server_registration_ok' => $server_registration_ok,
 			'custom_servers' => $server_status,
+			'mcp_peer_governance_ok' => $mcp_peer_governance_ok,
+			'mcp_peer_governance' => $mcp_peer_governance,
 			'registered_adapter_count' => count( $inventory['adapters'] ),
 			'available_adapter_count' => $available,
 			'missing_abilities' => array_values( array_unique( $missing ) ),
