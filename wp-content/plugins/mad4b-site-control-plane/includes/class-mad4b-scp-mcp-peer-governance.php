@@ -3,10 +3,12 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_MCP_Peer_Governance {
-	const CONTRACT = 'mad4b.mcp-peer-governance.v1';
+	const CONTRACT = 'mad4b.mcp-peer-governance.v2';
 	const MAX_SERVERS = 100;
 	const MAX_TOOLS_PER_SERVER = 500;
 	const MAX_RISK_DETAILS = 100;
+	const MAX_FOREIGN_ROUTES = 100;
+	const MAX_FOREIGN_PLUGINS = 100;
 	const GENERIC_EXECUTE_ABILITY = 'mcp-adapter/execute-ability';
 
 	public static function mutation_guard() {
@@ -17,10 +19,11 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		if ( ! empty( $status['write_side_channel_detected'] ) ) {
 			return new WP_Error(
 				'mcp_write_side_channel_detected',
-				'An MCP write-capable peer exists outside the MAD4B governed servers.',
+				'An MCP write-capable or unreviewed MCP peer exists outside the MAD4B governed servers.',
 				array(
 					'external_peer_count' => isset( $status['external_peer_count'] ) ? (int) $status['external_peer_count'] : 0,
 					'risk_count' => isset( $status['risk_count'] ) ? (int) $status['risk_count'] : 0,
+					'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( $status['blockers'] ) : array(),
 				)
 			);
 		}
@@ -28,14 +31,14 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 	}
 
 	public static function status() {
-		if ( ! class_exists( '\WP\MCP\Core\McpAdapter' ) ) {
+		if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) {
 			return self::unavailable( 'mcp_adapter_unavailable' );
 		}
-		if ( ! class_exists( '\WP\MCP\Abilities\McpAbilityExposure' ) ) {
+		if ( ! class_exists( '\\WP\\MCP\\Abilities\\McpAbilityExposure' ) ) {
 			return self::unavailable( 'mcp_exposure_resolver_unavailable' );
 		}
 		try {
-			$adapter = \WP\MCP\Core\McpAdapter::instance();
+			$adapter = \\WP\\MCP\\Core\\McpAdapter::instance();
 			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'get_servers' ) ) {
 				return self::unavailable( 'mcp_server_registry_unavailable' );
 			}
@@ -46,7 +49,29 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		if ( ! is_array( $servers ) ) {
 			return self::unavailable( 'mcp_server_registry_invalid' );
 		}
-		return self::analyze_servers( $servers );
+
+		$status = self::analyze_servers( $servers );
+		$foreign = self::foreign_transport_inventory( $servers );
+		$status['foreign_transport_inventory'] = $foreign;
+		$status['foreign_transport_inventory_ready'] = ! empty( $foreign['inventory_ready'] );
+		$status['foreign_mcp_detected'] = ! empty( $foreign['foreign_mcp_detected'] );
+		$status['foreign_route_count'] = isset( $foreign['foreign_route_count'] ) ? (int) $foreign['foreign_route_count'] : 0;
+		$status['foreign_plugin_count'] = isset( $foreign['foreign_plugin_count'] ) ? (int) $foreign['foreign_plugin_count'] : 0;
+
+		if ( empty( $foreign['inventory_ready'] ) ) {
+			$status['inventory_ready'] = false;
+			$status['blockers'][] = 'mcp_foreign_transport_inventory_unavailable';
+		}
+		if ( ! empty( $foreign['foreign_mcp_detected'] ) ) {
+			$status['write_side_channel_detected'] = true;
+			$status['risk_count'] += isset( $foreign['risk_count'] ) ? (int) $foreign['risk_count'] : 1;
+			$status['blockers'][] = 'mcp_foreign_transport_unreviewed';
+		}
+		if ( ! empty( $status['write_side_channel_detected'] ) ) {
+			$status['blockers'][] = 'mcp_write_side_channel_detected';
+		}
+		$status['blockers'] = array_values( array_unique( $status['blockers'] ) );
+		return $status;
 	}
 
 	public static function analyze_servers( array $servers ) {
@@ -74,7 +99,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		return array(
 			'contract' => self::CONTRACT,
 			'inventory_ready' => true,
-			'adapter_version' => defined( 'WP_MCP_VERSION' ) ? (string) WP_MCP_VERSION : (string) \WP\MCP\Core\McpAdapter::VERSION,
+			'adapter_version' => defined( 'WP_MCP_VERSION' ) ? (string) WP_MCP_VERSION : (string) \\WP\\MCP\\Core\\McpAdapter::VERSION,
 			'server_count' => count( $peers ),
 			'external_peer_count' => $external_peer_count,
 			'public_write_ability_count' => count( $public_write_abilities ),
@@ -83,6 +108,100 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			'blockers' => $detected ? array( 'mcp_write_side_channel_detected' ) : array(),
 			'peers' => $peers,
 		);
+	}
+
+	/**
+	 * Inspect MCP-looking REST endpoints and active plugin basenames that exist
+	 * outside the official Adapter server registry. Unknown independent MCP
+	 * transports are not auto-disabled; they fail closed for governed mutation
+	 * because their tool semantics and authorization path cannot be proven here.
+	 */
+	public static function foreign_transport_inventory( array $adapter_servers = array() ) {
+		$known_routes = array();
+		foreach ( $adapter_servers as $server ) {
+			if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_route_namespace' ) || ! method_exists( $server, 'get_server_route' ) ) continue;
+			try {
+				$namespace = trim( (string) $server->get_server_route_namespace(), '/' );
+				$route = '/' . ltrim( (string) $server->get_server_route(), '/' );
+				if ( '' !== $namespace ) $known_routes[] = '/' . $namespace . $route;
+			} catch ( Throwable $e ) {
+				return self::foreign_unavailable( 'mcp_registered_route_inventory_exception' );
+			}
+		}
+		$known_routes = array_values( array_unique( $known_routes ) );
+
+		$foreign_routes = array();
+		try {
+			if ( ! function_exists( 'rest_get_server' ) ) return self::foreign_unavailable( 'rest_server_unavailable' );
+			$rest_server = rest_get_server();
+			if ( ! is_object( $rest_server ) || ! method_exists( $rest_server, 'get_routes' ) ) return self::foreign_unavailable( 'rest_route_inventory_unavailable' );
+			$routes = $rest_server->get_routes();
+		} catch ( Throwable $e ) {
+			return self::foreign_unavailable( 'rest_route_inventory_exception' );
+		}
+		if ( ! is_array( $routes ) ) return self::foreign_unavailable( 'rest_route_inventory_invalid' );
+
+		foreach ( array_keys( $routes ) as $route ) {
+			$route = (string) $route;
+			if ( in_array( $route, $known_routes, true ) ) continue;
+			if ( ! self::looks_like_mcp_route( $route ) ) continue;
+			$foreign_routes[] = substr( $route, 0, 255 );
+			if ( count( $foreign_routes ) >= self::MAX_FOREIGN_ROUTES ) break;
+		}
+
+		$foreign_plugins = self::foreign_mcp_plugins();
+		if ( is_wp_error( $foreign_plugins ) ) return self::foreign_unavailable( $foreign_plugins->get_error_code() );
+
+		$foreign_routes = array_values( array_unique( $foreign_routes ) );
+		$foreign_plugins = array_values( array_unique( $foreign_plugins ) );
+		$risk_count = count( $foreign_routes ) + count( $foreign_plugins );
+		return array(
+			'contract' => 'mad4b.foreign-mcp-transport-inventory.v1',
+			'inventory_ready' => true,
+			'foreign_mcp_detected' => $risk_count > 0,
+			'risk_count' => $risk_count,
+			'known_adapter_routes' => $known_routes,
+			'foreign_route_count' => count( $foreign_routes ),
+			'foreign_routes' => $foreign_routes,
+			'foreign_plugin_count' => count( $foreign_plugins ),
+			'foreign_plugins' => $foreign_plugins,
+		);
+	}
+
+	private static function looks_like_mcp_route( $route ) {
+		$route = strtolower( trim( (string) $route ) );
+		if ( '' === $route ) return false;
+		$segments = array_values( array_filter( explode( '/', trim( $route, '/' ) ), 'strlen' ) );
+		foreach ( $segments as $segment ) {
+			if ( 'mcp' === $segment ) return true;
+			if ( 0 === strpos( $segment, 'mcp-' ) || 0 === strpos( $segment, 'mcp_' ) ) return true;
+			if ( strlen( $segment ) <= 64 && preg_match( '/(?:^|[-_])mcp(?:$|[-_])/', $segment ) ) return true;
+			if ( strlen( $segment ) <= 64 && preg_match( '/^[a-z0-9_-]*mcp[a-z0-9_-]*$/', $segment ) && false !== strpos( $segment, 'mcp' ) ) return true;
+		}
+		return false;
+	}
+
+	private static function foreign_mcp_plugins() {
+		$active = get_option( 'active_plugins', array() );
+		if ( ! is_array( $active ) ) return new WP_Error( 'mcp_active_plugin_inventory_invalid', 'Active plugin inventory is invalid.' );
+		if ( is_multisite() ) {
+			$network = get_site_option( 'active_sitewide_plugins', array() );
+			if ( ! is_array( $network ) ) return new WP_Error( 'mcp_network_plugin_inventory_invalid', 'Network plugin inventory is invalid.' );
+			$active = array_merge( $active, array_keys( $network ) );
+		}
+		$allowed = array(
+			'mcp-adapter/mcp-adapter.php',
+			'mad4b-site-control-plane/mad4b-site-control-plane.php',
+		);
+		$foreign = array();
+		foreach ( array_values( array_unique( $active ) ) as $basename ) {
+			$basename = strtolower( (string) $basename );
+			if ( in_array( $basename, $allowed, true ) ) continue;
+			if ( false === strpos( $basename, 'mcp' ) && false === strpos( $basename, 'model-context' ) ) continue;
+			$foreign[] = substr( sanitize_text_field( $basename ), 0, 255 );
+			if ( count( $foreign ) >= self::MAX_FOREIGN_PLUGINS ) break;
+		}
+		return $foreign;
 	}
 
 	private static function inspect_server( $server, array $expected, array $public_write_abilities ) {
@@ -190,7 +309,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 	}
 
 	private static function public_write_abilities() {
-		if ( ! function_exists( 'wp_get_abilities' ) || ! class_exists( '\WP\MCP\Abilities\McpAbilityExposure' ) ) {
+		if ( ! function_exists( 'wp_get_abilities' ) || ! class_exists( '\\WP\\MCP\\Abilities\\McpAbilityExposure' ) ) {
 			return new WP_Error( 'mcp_public_ability_inventory_unavailable', 'Public MCP ability inventory is unavailable.' );
 		}
 		$write = array();
@@ -198,7 +317,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_name' ) || ! method_exists( $ability, 'get_meta' ) ) continue;
 			$name = (string) $ability->get_name();
 			if ( self::GENERIC_EXECUTE_ABILITY === $name ) continue;
-			if ( ! \WP\MCP\Abilities\McpAbilityExposure::is_public( $ability ) ) continue;
+			if ( ! \\WP\\MCP\\Abilities\\McpAbilityExposure::is_public( $ability ) ) continue;
 			$meta = $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 			if ( isset( $annotations['readonly'] ) && true === $annotations['readonly'] ) continue;
@@ -206,6 +325,20 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			if ( count( $write ) >= self::MAX_RISK_DETAILS ) break;
 		}
 		return array_values( array_unique( $write ) );
+	}
+
+	private static function foreign_unavailable( $reason ) {
+		return array(
+			'contract' => 'mad4b.foreign-mcp-transport-inventory.v1',
+			'inventory_ready' => false,
+			'foreign_mcp_detected' => false,
+			'risk_count' => 0,
+			'foreign_route_count' => 0,
+			'foreign_routes' => array(),
+			'foreign_plugin_count' => 0,
+			'foreign_plugins' => array(),
+			'reason' => sanitize_key( (string) $reason ),
+		);
 	}
 
 	private static function unavailable( $reason ) {
@@ -221,6 +354,11 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			'blockers' => array( 'mcp_peer_inventory_unavailable' ),
 			'reason' => sanitize_key( (string) $reason ),
 			'peers' => array(),
+			'foreign_transport_inventory_ready' => false,
+			'foreign_mcp_detected' => false,
+			'foreign_route_count' => 0,
+			'foreign_plugin_count' => 0,
+			'foreign_transport_inventory' => self::foreign_unavailable( $reason ),
 		);
 	}
 }
