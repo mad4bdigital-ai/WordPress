@@ -2,6 +2,14 @@
 
 Source policy: competitor conclusions in this document are derived from the four ZIP attachments reviewed for this work only: Easy MCP AI 1.7.17, AI Engine 3.7.6, Royal MCP 1.5.0 and miniOrange Secure MCP Server 1.4.10. This file records architectural decisions, not vendor claims as facts beyond reviewed code.
 
+## Normative evidence reference
+
+The full attachments-only competitive review is preserved at:
+
+`references/competitive-deep-research-attachments-only.md`
+
+That reference is the evidence source for competitor-derived decisions in this feature. If this summary and the full reference ever diverge, implementation/security decisions must be reconciled against the full reference and the exact reviewed sample identities recorded there. No external vendor/web/CVE claims are implicitly imported into this feature by the reference.
+
 ## Decision R1 — Adopt NHI as a first-class authorization primitive
 
 Evidence pattern: miniOrange contains a concrete NHI/ability gating model and normalized grants. Easy demonstrates practical per-token tool restriction. The current MAD4B model is stronger on provider trust but needs comparable per-agent least privilege.
@@ -84,6 +92,18 @@ Decision: new authorization and mutation records are normalized tables now. Exis
 PHP serialization can introduce unsafe object handling and unbounded state.
 
 Decision: rollback payloads are bounded JSON/plain scalar structures generated only by certified provider snapshot contracts. No unserialize-based restore.
+
+## Decision R13 — One privileged mutation authority per site unless federation is explicit
+
+Evidence pattern: the competitive review found that installing a second MCP product with independent write capabilities can bypass a MAD4B policy denial while still mutating the same WordPress objects legitimately through another server.
+
+Decision: target-site self-test must eventually treat unknown independent MCP write planes as governance blockers. Coexistence is read-only by default or must be explicitly federated through the same policy authority.
+
+## Decision R14 — Product breadth is deferred behind governance closure
+
+Evidence pattern: competitors already expose hundreds of tools. Their advantage in breadth does not answer provider identity, actor identity, exact approval or reversible recovery simultaneously.
+
+Decision: finish NHI, approvals, reversible mutation, budget/rate policy, side-channel detection and target certification before expanding adapter breadth merely to match tool counts.
 
 ## Open research items for target-site staging
 
