@@ -24,6 +24,7 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		$status['contracts'] = array( 'jet_engine_function' => function_exists( 'jet_engine' ), 'jet_engine_class' => class_exists( 'Jet_Engine' ) );
 		$status['write_mode'] = 'explicit_field_policy_plus_sha_lock';
 		$status['unknown_field_write_default'] = 'deny';
+		$status['sensitive_meta_default'] = 'deny_read_write';
 		$status['meta_create_mode'] = 'admin_plus_explicit_create_policy_plus_field_policy';
 		return $status;
 	}
@@ -32,25 +33,37 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( '' === $field || strlen( $field ) > 191 || $field !== sanitize_key( $field ) ) return new WP_Error( 'mad4b_jetengine_invalid_field', 'Meta field must already be a canonical WordPress meta key; silent key canonicalization is not allowed.' );
 		return $field;
 	}
+	private function is_sensitive_meta_key( $field ) {
+		$sensitive = MAD4B_SCP_Policy::is_sensitive_database_column( (string) $field );
+		return (bool) apply_filters( 'mad4b_scp_sensitive_meta_key', $sensitive, 'jetengine', (string) $field );
+	}
+	private function can_read_sensitive_meta( $field, $post_id ) {
+		return (bool) apply_filters( 'mad4b_scp_allow_sensitive_meta_read', false, 'jetengine', (string) $field, absint( $post_id ), get_current_user_id() );
+	}
+	private function can_write_sensitive_meta( $field, $post_id, $value ) {
+		return (bool) apply_filters( 'mad4b_scp_allow_sensitive_meta_write', false, 'jetengine', (string) $field, absint( $post_id ), $value, get_current_user_id() );
+	}
 	public function get_post_meta_value( $input ) {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
 		$field = $this->exact_field_name( $input['field'] ); if ( is_wp_error( $field ) ) return $field;
 		$id = absint( $input['post_id'] );
+		if ( $this->is_sensitive_meta_key( $field ) && ! $this->can_read_sensitive_meta( $field, $id ) ) return new WP_Error( 'mad4b_jetengine_sensitive_meta_read', 'Secret/authentication-like meta is denied by default and requires an explicit site policy override.' );
 		if ( 0 === strpos( $field, '_' ) && ! current_user_can( 'manage_options' ) && ! apply_filters( 'mad4b_scp_allow_protected_meta_read', false, 'jetengine', $field, $id ) ) return new WP_Error( 'mad4b_jetengine_protected_meta_read', 'Protected meta reads require administrator permission by default.' );
 		$value = get_post_meta( $id, $field, true );
 		return array( 'post_id' => $id, 'field' => $field, 'value' => $value, 'sha256' => $this->hash_value( $value ), 'exists' => metadata_exists( 'post', $id, $field ) );
 	}
 	public function list_post_meta( $input ) {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
-		$id = absint( $input['post_id'] ); $all = get_post_meta( $id ); $prefix = isset( $input['prefix'] ) ? (string) $input['prefix'] : ''; $items = array();
+		$id = absint( $input['post_id'] ); $all = get_post_meta( $id ); $prefix = isset( $input['prefix'] ) ? (string) $input['prefix'] : ''; $items = array(); $omitted_sensitive = 0;
 		foreach ( $all as $key => $values ) {
 			if ( 0 === strpos( $key, '_' ) ) continue;
 			if ( '' !== $prefix && 0 !== strpos( $key, $prefix ) ) continue;
+			if ( $this->is_sensitive_meta_key( $key ) && ! $this->can_read_sensitive_meta( $key, $id ) ) { ++$omitted_sensitive; continue; }
 			$value = count( $values ) === 1 ? maybe_unserialize( $values[0] ) : array_map( 'maybe_unserialize', $values );
 			$items[] = array( 'field' => $key, 'value' => $value, 'sha256' => $this->hash_value( $value ) );
 			if ( count( $items ) >= 300 ) break;
 		}
-		return array( 'post_id' => $id, 'meta' => $items, 'count' => count( $items ) );
+		return array( 'post_id' => $id, 'meta' => $items, 'count' => count( $items ), 'omitted_sensitive' => $omitted_sensitive );
 	}
 	public function get_cpt_definition( $input ) {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
@@ -62,6 +75,7 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
 		$id = absint( $input['post_id'] ); $field = $this->exact_field_name( $input['field'] );
 		if ( is_wp_error( $field ) ) return $field;
+		if ( $this->is_sensitive_meta_key( $field ) && ! $this->can_write_sensitive_meta( $field, $id, $input['value'] ) ) return new WP_Error( 'mad4b_jetengine_sensitive_meta_write', 'Secret/authentication-like meta mutation is denied by default and requires an explicit site policy override.' );
 		if ( 0 === strpos( $field, '_' ) && ! apply_filters( 'mad4b_scp_allow_protected_meta_write', false, 'jetengine', $field, $id ) ) return new WP_Error( 'mad4b_jetengine_protected_meta', 'Protected meta writes are denied by default.' );
 		$exists = metadata_exists( 'post', $id, $field );
 		$current = get_post_meta( $id, $field, true );
