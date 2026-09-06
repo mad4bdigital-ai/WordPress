@@ -31,7 +31,13 @@
       ],
       "verified_absent_abilities": [
         "elementor/manage-elements"
-      ]
+      ],
+      "native_mcp_security": {
+        "transport_model": "wordpress_abilities_api",
+        "custom_mcp_rest_routes_detected": false,
+        "ability_baseline_capability": "edit_posts",
+        "post_specific_capability": "edit_post"
+      }
     },
     "jetengine": {
       "label": "JetEngine",
@@ -57,7 +63,15 @@
           "configuration",
           "macros",
           "modules"
-        ]
+        ],
+        "security_model": {
+          "mcp_tools_list": "manage_options",
+          "mcp_json_rpc": "manage_options",
+          "feature_run_route": "wp_rest_nonce_plus_feature_permission",
+          "feature_default_permission": "manage_options",
+          "feature_execution": "Registry_get_feature_then_Feature_run",
+          "debug_runner": "manage_options"
+        }
       }
     },
     "jetsmartfilters": {
@@ -87,7 +101,11 @@
         "BitApps\\Pi\\Model\\FlowHistory",
         "BitApps\\Pi\\src\\Flow\\FlowExecutor"
       ],
-      "native_mcp_role": "client"
+      "native_mcp_role": "client",
+      "native_mcp_security": {
+        "server_rest_routes_detected": false,
+        "execution_contract": "FlowExecutor_with_MAD4B_explicit_opt_in_and_flow_fingerprint"
+      }
     }
   }
 }
