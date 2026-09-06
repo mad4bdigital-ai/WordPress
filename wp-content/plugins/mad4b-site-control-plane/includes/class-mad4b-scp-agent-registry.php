@@ -90,7 +90,13 @@ final class MAD4B_SCP_Agent_Registry {
 		if ( ! in_array( $effect, array( 'allow', 'deny' ), true ) ) return new WP_Error( 'mad4b_grant_effect_invalid', 'Grant effect must be allow or deny.' );
 		if ( ! in_array( $environment, array( 'all', 'production', 'staging', 'development', 'local', 'unknown' ), true ) ) return new WP_Error( 'mad4b_grant_environment_invalid', 'Unknown grant environment.' );
 		if ( function_exists( 'wp_has_ability' ) && ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_grant_ability_unknown', 'Cannot grant an unknown WordPress Ability.' );
-		if ( class_exists( 'MAD4B_SCP_Servers' ) && ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_grant_server_unknown', 'Cannot grant an unknown MAD4B MCP server.' );
+		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
+			if ( ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_grant_server_unknown', 'Cannot grant an unknown MAD4B MCP server.' );
+			if ( ! MAD4B_SCP_Servers::ability_is_mounted( $server_id, $ability_name ) ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a MAD4B MCP server that does not mount it.' );
+		}
+		if ( 'mad4b-breakglass' === $server_id && ! apply_filters( 'mad4b_scp_allow_breakglass_grant_creation', false, $agent, $ability_name, $provider, $environment ) ) {
+			return new WP_Error( 'mad4b_breakglass_grant_creation_denied', 'Breakglass grants require an explicit exceptional administration path.' );
+		}
 		$encoded = wp_json_encode( $constraints );
 		if ( false === $encoded || strlen( $encoded ) > 16384 ) return new WP_Error( 'mad4b_grant_constraints_invalid', 'Resource constraints are invalid or too large.' );
 		$now = self::now();
