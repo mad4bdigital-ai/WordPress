@@ -30,6 +30,16 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 	public function can_read_post( $input ) { $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; return $id > 0 && current_user_can( 'read_post', $id ); }
 	public function can_edit_post( $input ) { $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; return $id > 0 && current_user_can( 'edit_post', $id ); }
+	public function status() {
+		$status = parent::status();
+		$status['native_abilities'] = array(
+			'manage_elements' => function_exists( 'wp_has_ability' ) && wp_has_ability( 'elementor/manage-elements' ),
+			'get_page_structure' => function_exists( 'wp_has_ability' ) && wp_has_ability( 'elementor/get-page-structure' ),
+			'list_widget_schemas' => function_exists( 'wp_has_ability' ) && wp_has_ability( 'elementor/list-widget-schemas' ),
+		);
+		$status['mutation_mode'] = ! empty( $status['native_abilities']['manage_elements'] ) ? 'elementor_native_ability' : 'legacy_admin_fallback';
+		return $status;
+	}
 	public function get_document( $input ) {
 		$document = $this->load_document( absint( $input['post_id'] ) ); if ( is_wp_error( $document ) ) return $document;
 		return array( 'post_id' => absint( $input['post_id'] ), 'edit_mode' => get_post_meta( absint( $input['post_id'] ), '_elementor_edit_mode', true ), 'template_type' => get_post_meta( absint( $input['post_id'] ), '_elementor_template_type', true ), 'version' => get_post_meta( absint( $input['post_id'] ), '_elementor_version', true ), 'page_settings' => get_post_meta( absint( $input['post_id'] ), '_elementor_page_settings', true ), 'sha256' => $document['sha256'], 'elements' => $document['elements'] );
@@ -46,13 +56,34 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 	public function validate_document( $input ) { $document = $this->load_document( absint( $input['post_id'] ) ); if ( is_wp_error( $document ) ) return $document; $ids = array(); $errors = array(); $this->validate_elements( $document['elements'], $ids, $errors, 0 ); return array( 'post_id' => absint( $input['post_id'] ), 'valid' => empty( $errors ), 'sha256' => $document['sha256'], 'element_count' => count( $ids ), 'errors' => array_slice( $errors, 0, 100 ) ); }
 	public function update_widget_settings( $input ) {
-		$id = absint( $input['post_id'] ); $document = $this->load_document( $id ); if ( is_wp_error( $document ) ) return $document;
+		$id = absint( $input['post_id'] );
+		$document = $this->load_document( $id ); if ( is_wp_error( $document ) ) return $document;
 		if ( ! hash_equals( $document['sha256'], strtolower( trim( $input['expected_sha256'] ) ) ) ) return new WP_Error( 'mad4b_elementor_stale_document', 'Elementor document SHA-256 no longer matches.', array( 'current_sha256' => $document['sha256'] ) );
-		$elements = $document['elements']; if ( ! $this->merge_widget_settings( $elements, (string) $input['widget_id'], $input['settings'] ) ) return new WP_Error( 'mad4b_elementor_widget_missing', 'Widget ID was not found.' );
+
+		$native = function_exists( 'wp_has_ability' ) && wp_has_ability( 'elementor/manage-elements' ) ? wp_get_ability( 'elementor/manage-elements' ) : null;
+		if ( $native && method_exists( $native, 'execute' ) ) {
+			$result = $native->execute( array(
+				'post_id' => $id,
+				'operations' => array( array( 'action' => 'update', 'element_id' => (string) $input['widget_id'], 'settings' => $input['settings'] ) ),
+			) );
+			if ( is_wp_error( $result ) ) return $result;
+			$new_raw = get_post_meta( $id, '_elementor_data', true );
+			$new_hash = hash( 'sha256', (string) $new_raw );
+			MAD4B_SCP_Audit::record( 'elementor/update-widget-settings', array( 'post_id' => $id, 'widget_id' => (string) $input['widget_id'], 'sha256' => $new_hash, 'settings' => array_keys( $input['settings'] ), 'mode' => 'native' ) );
+			return array( 'post_id' => $id, 'widget_id' => (string) $input['widget_id'], 'updated' => true, 'sha256' => $new_hash, 'mode' => 'elementor_native_ability', 'native_result' => $result );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) && ! apply_filters( 'mad4b_scp_allow_elementor_legacy_write', false, $id, $input, get_current_user_id() ) ) {
+			return new WP_Error( 'mad4b_elementor_legacy_write_denied', 'This Elementor version has no native manage-elements Ability. Legacy direct document mutation is administrator-only by default.' );
+		}
+		$elements = $document['elements'];
+		if ( ! $this->merge_widget_settings( $elements, (string) $input['widget_id'], $input['settings'] ) ) return new WP_Error( 'mad4b_elementor_widget_missing', 'Widget ID was not found.' );
 		$encoded = wp_json_encode( $elements ); if ( false === $encoded ) return new WP_Error( 'mad4b_elementor_encode_failed', 'Unable to encode Elementor document.' );
 		$result = update_post_meta( $id, '_elementor_data', wp_slash( $encoded ) ); if ( false === $result && (string) get_post_meta( $id, '_elementor_data', true ) !== $encoded ) return new WP_Error( 'mad4b_elementor_update_failed', 'Unable to update Elementor document.' );
 		if ( class_exists( '\\Elementor\\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) && method_exists( \Elementor\Plugin::$instance->files_manager, 'clear_cache' ) ) \Elementor\Plugin::$instance->files_manager->clear_cache();
-		$new_raw = get_post_meta( $id, '_elementor_data', true ); $new_hash = hash( 'sha256', (string) $new_raw ); MAD4B_SCP_Audit::record( 'elementor/update-widget-settings', array( 'post_id' => $id, 'widget_id' => (string) $input['widget_id'], 'sha256' => $new_hash, 'settings' => array_keys( $input['settings'] ) ) ); return array( 'post_id' => $id, 'widget_id' => (string) $input['widget_id'], 'updated' => true, 'sha256' => $new_hash );
+		$new_raw = get_post_meta( $id, '_elementor_data', true ); $new_hash = hash( 'sha256', (string) $new_raw );
+		MAD4B_SCP_Audit::record( 'elementor/update-widget-settings', array( 'post_id' => $id, 'widget_id' => (string) $input['widget_id'], 'sha256' => $new_hash, 'settings' => array_keys( $input['settings'] ), 'mode' => 'legacy_admin_fallback' ) );
+		return array( 'post_id' => $id, 'widget_id' => (string) $input['widget_id'], 'updated' => true, 'sha256' => $new_hash, 'mode' => 'legacy_admin_fallback' );
 	}
 	private function load_document( $post_id ) {
 		if ( ! $this->is_available() ) return $this->unavailable_error(); if ( ! get_post( $post_id ) ) return new WP_Error( 'mad4b_elementor_post_missing', 'Post not found.' );
