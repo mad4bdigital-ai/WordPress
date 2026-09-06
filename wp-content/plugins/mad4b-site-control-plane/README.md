@@ -11,20 +11,71 @@ Current version: **0.3.0**.
 - `/wp-json/mcp/mad4b-admin` — administrative workflows, cache, plugins, filesystem and structured DB repair.
 - `/wp-json/mcp/mad4b-breakglass` — disabled by default; exceptional raw SQL recovery.
 
-MAD4B abilities set `meta.mcp.public=false`; they are therefore not exported through the official default MCP server. They are registered explicitly into the intended MAD4B server. `mad4b/runtime-self-test` reports any adapter Ability that leaks into default-server exposure.
+MAD4B abilities set `meta.mcp.public=false`; they are not exported through the official default MCP server. They are registered explicitly into the intended MAD4B server. `mad4b/runtime-self-test` reports any adapter Ability that leaks into default-server exposure.
 
 ## v0.3 execution model
 
 The preferred mutation lifecycle is:
 
 1. discover/read current state;
-2. obtain `modified_gmt`, SHA-256, current language/thumbnail, or flow fingerprint;
+2. obtain `modified_gmt`, SHA-256, current language/thumbnail, or Flow fingerprint;
 3. submit the expected state with the mutation;
 4. reject stale writes;
 5. execute through the provider's public/native API when available;
 6. record correlated audit evidence.
 
 Blind mutations are intentionally avoided.
+
+## Certified provider baseline
+
+The repository's packaged provider ZIPs are treated as a certification input, not merely as install media. `config/certified-providers.json` pins the exact reviewed version and archive SHA-256. CI extracts the ZIPs into a temporary directory without executing provider PHP, verifies required contracts, inventories native MCP/Abilities surfaces, and fails if version or archive bytes drift.
+
+Current certified packages:
+
+| Provider | Version | Control mode |
+| --- | --- | --- |
+| WordPress MCP Adapter | `0.5.0` | Official protocol/transport layer |
+| Elementor | `4.1.4` | WordPress Abilities + governed MAD4B fallback |
+| JetEngine | `3.8.11.2` | Native JetEngine MCP + governed MAD4B adapter |
+| JetSmartFilters | `3.8.3.1` | Governed MAD4B adapter; no native MCP layer detected in this package |
+| Bit Pi / Bit Flows | `1.24.0` | FlowExecutor contract; packaged MCP role is client, not server |
+
+`MAD4B_SCP_Provider_Contracts` compares the deployed plugin version with this baseline. A package-backed provider reports `certified`, `version_drift`, or `unavailable`; `mad4b/runtime-self-test` becomes `degraded` when a certified active provider or the MCP Adapter drifts.
+
+## Native MCP security certification
+
+Native provider MCP surfaces are inspected separately from MAD4B's four custom servers so a provider-owned endpoint cannot silently become a side channel.
+
+### JetEngine 3.8.11.2
+
+The certified package exposes three MCP REST controller paths under `jet-engine/v1`. CI enforces the reviewed permission chain:
+
+- MCP tools listing: `manage_options`.
+- MCP JSON-RPC route: `manage_options`.
+- Direct feature run route: valid `wp_rest` nonce **plus** `Feature::check_permissions()`.
+- Default `Feature::check_permissions()` behavior: fail closed to `current_user_can( 'manage_options' )` when no feature-specific permission callback exists.
+- Feature execution: resolve through the Registry, then execute the resolved Feature.
+- Debug runner: administrator-gated.
+
+The security workflow fails if the JetEngine native route set changes, any of these gates disappears, or the execution chain no longer passes through the Feature permission contract.
+
+### Elementor 4.1.4
+
+The certified package exposes MCP behavior through the WordPress Abilities API rather than a separate custom REST MCP server. CI requires the packaged MCP module to retain capability checks based on `edit_posts` and post-specific `edit_post` checks, and fails if a new custom MCP REST route appears without re-certification.
+
+The packaged native abilities include:
+
+- `elementor/list-pages`
+- `elementor/get-page-structure`
+- `elementor/update-page-settings`
+- `elementor/get-globals`
+- `elementor/create-page`
+
+`elementor/manage-elements` is **not** present in the certified 4.1.4 package. MAD4B therefore cannot assume that newer upstream mutation contract exists on this baseline.
+
+### Bit Pi 1.24.0
+
+The packaged MCP implementation is a client (`McpClient`), not a WordPress MCP server. CI fails if server-side `register_rest_route()` surfaces appear in its MCP package paths without explicit re-certification. MAD4B Flow execution remains separately disabled by default and uses the reviewed `Flow` / `FlowNode` / `FlowHistory` / `FlowExecutor` contracts.
 
 ## Adapter Registry
 
@@ -42,13 +93,13 @@ Supported adapters:
 - Polylang
 - LiteSpeed Cache
 
-Use `mad4b/adapters-inventory` for runtime discovery and `mad4b/runtime-self-test` for registration/isolation checks.
+Use `mad4b/adapters-inventory` for runtime discovery and `mad4b/runtime-self-test` for registration, isolation and provider-version certification checks.
 
 ## Elementor
 
 Abilities include `elementor/get-document`, `elementor/list-widgets`, `elementor/get-dynamic-tags`, `elementor/validate-document`, and `elementor/update-widget-settings`.
 
-Updates require the observed Elementor document SHA-256. When Elementor registers its native `elementor/manage-elements` Ability, MAD4B delegates mutation to that Ability so Elementor owns validation and document-save lifecycle. Direct `_elementor_data` mutation exists only as an administrator-only legacy fallback and can be further controlled with `mad4b_scp_allow_elementor_legacy_write`.
+Updates require the observed Elementor document SHA-256. If a future certified Elementor version registers `elementor/manage-elements`, MAD4B can delegate mutation to that native Ability so Elementor owns validation and document-save lifecycle. On the current certified Elementor 4.1.4 package that Ability is absent, so direct `_elementor_data` mutation remains an administrator-only legacy fallback and can be further controlled with `mad4b_scp_allow_elementor_legacy_write`.
 
 ## JetEngine
 
@@ -56,11 +107,15 @@ Abilities include meta discovery/read, WordPress CPT definition discovery, and S
 
 Protected `_...` keys are denied by default. Exact protected reads require administrator permission unless explicitly enabled. Creating a new meta key is fail-closed: `allow_create=true` is not sufficient; the caller must be an administrator and the site must explicitly allow it through `mad4b_scp_allow_jetengine_meta_create`.
 
-The commercial JetEngine runtime schema is not assumed. Provider-specific field-type validation should be added only after runtime/source inspection proves the exact installed contract.
+The certified JetEngine 3.8.11.2 package also contains its own MCP feature registry for post types, taxonomies, meta boxes, Query Builder, listings, Custom Content Types, glossaries, configuration, macros, and modules. These native capabilities are treated as provider-owned surfaces and are security-certified separately rather than blindly reimplemented inside MAD4B.
+
+Exact field-type/schema semantics for every commercial JetEngine field remain a runtime/provider-contract item; MAD4B does not invent private schema calls that the certified package has not proven safe for the requested mutation.
 
 ## JetSmartFilters
 
-Detailed filter configuration reads and mutations remain administrator-only. Existing filter-meta mutation requires SHA-256 and cannot create arbitrary internal keys. Query-binding discovery is currently conservative/heuristic until the exact installed commercial runtime contract is inspected.
+The exact packaged 3.8.3.1 build has been statically inspected. It exposes the JetSmartFilters accessor, providers, query variables and indexer contracts but no native MCP layer was detected.
+
+Detailed filter configuration reads and mutations remain administrator-only. Existing filter-meta mutation requires SHA-256 and cannot create arbitrary internal keys. Query-binding discovery remains conservative until a stable provider-owned mutation API is proven for the exact operation.
 
 ## Bit Flows
 
@@ -80,7 +135,7 @@ Execution uses Bit Pi's own `BitApps\Pi\src\Flow\FlowExecutor::execute()`; no ar
 
 Media metadata updates require SHA-256. Featured-image changes require the expected current thumbnail ID.
 
-Rank Math SEO writes use an explicit field allowlist and require SHA-256. Canonical URLs are restricted to valid HTTP(S) URLs and robots directives are allowlisted. Yoast and SEOPress are detected but remain read/write-provider gaps until explicit adapters are implemented.
+Rank Math SEO writes use an explicit field allowlist and require SHA-256. Canonical URLs are restricted to valid HTTP(S) URLs and robots directives are allowlisted. Yoast and SEOPress are detected but remain explicit provider gaps until governed adapters are implemented.
 
 WooCommerce product updates use public `WC_Product` setters, require SHA-256, validate publish capability, constrain status/stock values, and use `wc_format_decimal()` for prices.
 
@@ -122,17 +177,29 @@ The normal admin surface cannot deactivate MAD4B Site Control Plane itself or it
 
 Audit entries include a request correlation ID plus `previous_hash`/`entry_hash` linkage. The current storage remains a bounded WordPress option and is suitable for MVP operational evidence, but a dedicated append-only table is still the preferred future hardening for high-concurrency/tamper-resistant environments.
 
-## Known runtime-evidence gaps
+## Live acceptance still required before merge
 
-The following are intentionally not claimed as complete until tested against the exact deployed plugins:
+Repository and packaged-provider certification cannot prove deployment behavior. The PR should remain Draft until the exact target site proves:
 
-- JetEngine field schema/type validation;
-- JetSmartFilters provider/query internal API mapping;
+1. installed provider versions match the certified baseline;
+2. `mad4b/runtime-self-test` returns `passed`, `custom_server_isolation=true`, no missing Abilities and no provider version drift;
+3. the official default MCP server does not discover MAD4B Abilities;
+4. real MCP authentication/session behavior is correct for the dedicated control identity;
+5. Hostinger's resolved backup root is outside WordPress/web roots;
+6. one intentional stale-write test rejects an outdated content mutation;
+7. the actual Elementor mutation path behaves correctly for the deployed 4.1.4 baseline or any deliberately re-certified replacement;
+8. one approved benign Bit Flow runs only after explicit enablement and exact Flow fingerprint confirmation;
+9. one non-sensitive structured DB repair succeeds while sensitive tables remain denied;
+10. Breakglass remains inaccessible while its enable constant is absent;
+11. audit evidence is produced for success and rejection paths.
+
+## Remaining implementation gaps
+
+- exhaustive JetEngine commercial field schema/type governance for mutations that need it;
+- deeper JetSmartFilters provider/query mutation APIs where stable contracts can be proven;
 - Yoast/SEOPress governed writes;
-- end-to-end MCP authentication/session behavior on the target site;
-- provider-side behavior after real Elementor/Bit Flows/LiteSpeed mutations.
-
-`mad4b/runtime-self-test` is the first live acceptance step after deployment.
+- append-only/high-concurrency audit storage;
+- live MCP/auth/provider side-effect certification on the deployed site.
 
 ## Host boundary
 
@@ -144,4 +211,15 @@ The WordPress plugin never attempts privilege escalation. SSH, Hostinger APIs, s
 - PHP 7.4+
 - official `WordPress/mcp-adapter`
 
-CI lints on PHP 7.4, 8.1 and 8.3 and enforces default-server isolation, sensitive filesystem/database boundaries, mutation fingerprints, Bit Flows opt-in, Breakglass hard-denies, adapter contracts, four custom MCP surfaces, and the ban on arbitrary PHP/shell execution primitives.
+CI now enforces:
+
+- PHP 7.4 / 8.1 / 8.3 syntax;
+- exact packaged provider version and archive SHA-256 certification;
+- native provider MCP security invariants for JetEngine, Elementor and Bit Pi;
+- default-server isolation;
+- sensitive filesystem/database boundaries;
+- mutation fingerprints and stale-write guards;
+- Bit Flows explicit execution opt-in;
+- Breakglass hard-denies;
+- four custom MCP surfaces;
+- the ban on arbitrary PHP/shell execution primitives.
