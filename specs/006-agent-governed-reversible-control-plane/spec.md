@@ -7,34 +7,35 @@ Parent PR: #6
 
 ## Problem statement
 
-The current control plane is strong at exact provider certification, runtime integrity, source-code mutation denial, global mutation kill-switches, optimistic state guards and isolated MCP servers. The remaining strategic gap is authority and recovery: an authenticated administrator context can still be too broad for autonomous agents, and a valid-but-wrong mutation needs a standard recovery envelope rather than only stale-state prevention.
+MAD4B Site Control Plane already has exact provider certification, runtime integrity, source-code mutation denial, global mutation kill-switches, optimistic state guards and isolated MCP servers. Feature 006 adds the authority, blast-radius, evidence and recovery layer required for governed autonomous operation: explicit NHI identities, exact grants, authenticated transport-subject binding, exact short-lived approvals, transactional budgets, mutation envelopes, drift-safe undo, MCP write-side-channel blocking and append-only transactional audit evidence.
 
-The product therefore needs a first-class NHI/Agent layer, exact grants, transport-subject binding, approval tickets for high-impact actions, mutation records with read-after-write verification, drift-safe undo, rate/budget controls, and side-channel detection.
+Repository certification does not authorize Production. Target-site staging remains a separate admission boundary.
 
 ## Goals
 
 1. Distinguish autonomous agents from human WordPress principals.
 2. Bind authenticated MCP subjects to explicit enabled NHI records without storing plaintext credentials.
 3. Make effective authority an intersection, never a union.
-4. Forbid wildcard Production grants.
-5. Require exact grants for mutation while preserving existing WordPress capability and provider checks.
-6. Introduce short-lived approval tickets bound to exact canonical payload hashes.
-7. Introduce a provider-neutral mutation envelope with before/after hashes and bounded rollback payloads.
-8. Make undo refuse when the post-mutation state has drifted.
-9. Record decision evidence rich enough to reconstruct authorization and mutation history.
-10. Add NHI-scoped rate limits and mutation budgets.
-11. Detect independent MCP write side-channels as a runtime blocker.
-12. Preserve all current v0.3 fail-closed/provider-integrity behavior.
+4. Forbid wildcard Production grants and wildcard token scopes.
+5. Require exact server/ability/provider grants for governed mutation while preserving WordPress capability and provider checks.
+6. Require short-lived, single-use approval tickets for high/exceptional impact operations.
+7. Limit blast radius with transactional NHI budgets.
+8. Persist mutation records with before/after fingerprints and read-after-write verification.
+9. Make undo refuse when the post-mutation state has drifted.
+10. Detect independent MCP write side-channels before budget reservation or approval consumption.
+11. Persist security evidence in append-only transactional hash-linked audit storage.
+12. Preserve all existing fail-closed/provider-integrity behavior.
 
-## Non-goals for this feature
+## Non-goals
 
-- Reimplementing OAuth or MCP transport.
-- Storing raw bearer/OAuth secrets.
+- Reimplement OAuth or MCP transport.
+- Store raw bearer/OAuth secrets.
 - Generic arbitrary PHP, shell or source-file editing.
 - Generic Production wildcard grants.
 - Autonomous password reset, user-role mutation or payment/refund automation.
-- Deep integrations for every provider before governance is complete.
-- External SIEM/WORM backend implementation in the first code slice; the internal contract must make it possible later.
+- Deep mutation integrations for every provider before an exact restore contract exists.
+- Host SSH/system service control from the WordPress plugin.
+- External SIEM/WORM backend implementation in the core slice; only the post-commit integration hook is required here.
 
 ## Actors
 
@@ -44,211 +45,220 @@ A WordPress user who configures agents, grants, approvals and policies. Human ca
 
 ### NHI / Agent
 
-A non-human identity representing one autonomous client/agent. It has status, transport subject bindings, exact server/ability grants, optional resource constraints, rate limits and mutation budgets.
+A non-human identity representing one autonomous client/agent. It has status, transport-subject bindings, exact grants, optional resource constraints and transactional budgets.
 
 ### Authenticated transport subject
 
-An identity assertion supplied after upstream authentication. Examples may include OAuth client/subject IDs or a fingerprint of a static credential. MAD4B treats this as input evidence, not as authentication it performs itself.
+Identity evidence supplied after upstream authentication, normalized through `mad4b_scp_authenticated_subject_context`. MAD4B validates this evidence but does not replace upstream authentication.
 
 ### Provider
 
-A certified WordPress plugin/runtime such as Elementor, JetEngine, WooCommerce, Rank Math, Polylang, LiteSpeed or Bit Flows.
+A certified WordPress/core or plugin runtime such as Elementor, JetEngine, WooCommerce, Rank Math, Polylang, LiteSpeed or Bit Flows.
 
 ## Core invariants
 
 - INV-001: No privileged mutation executes without `MAD4B_MCP_MUTATION_ENABLED === true`.
-- INV-002: Once mutation is globally enabled, MCP-originated mutation requires a resolved enabled NHI unless an explicitly local non-MCP internal execution path is proven and separately authorized.
+- INV-002: Once mutation is globally enabled, governed MCP/external mutation requires a resolved enabled NHI.
 - INV-003: NHI resolution never uses a plaintext secret stored by MAD4B.
-- INV-004: A transport subject may bind to at most one active NHI for the same subject type/site scope.
+- INV-004: A transport subject binds to at most one active NHI for the same subject type/site scope.
 - INV-005: A disabled NHI grants nothing.
 - INV-006: A grant cannot widen WordPress capability, provider certification, server membership or resource policy.
-- INV-007: Production wildcard grants are rejected; first implementation uses exact ability names only.
-- INV-008: Every mutation decision records the NHI, subject type/fingerprint, ability, server and allow/deny reason.
-- INV-009: High-impact operations require an unexpired, unused approval ticket bound to exact `ability + canonical_input + target + NHI` hash material.
+- INV-007: Production wildcard grants/scopes are rejected; v1 uses exact ability names.
+- INV-008: Mutation decisions record request/NHI/subject/server/ability/provider and allow/deny reason with secret-safe summaries.
+- INV-009: High/exceptional operations require an unexpired unused approval ticket bound to exact NHI + server + ability + provider + target + canonical input.
 - INV-010: Approval tickets are single-use and replay-resistant.
-- INV-011: Provider mutation still fails closed on certification/runtime-integrity drift.
-- INV-012: Mutation verification uses read-after-write state, not only callback success.
-- INV-013: Undo is permitted only if current state matches the recorded post-mutation state/fingerprint.
-- INV-014: Rollback payloads are bounded and secret-redacted; operations that cannot be safely reversed are marked `non_reversible` before execution.
-- INV-015: A mutation that fails verification is marked failed and provider-specific safe rollback is attempted only when its rollback contract is certified.
-- INV-016: Rate/budget exhaustion denies before side effects.
-- INV-017: Network-scoped mutations require explicit network grants plus WordPress network capability.
-- INV-018: Other independent write-capable MCP planes are a runtime blocker unless explicitly federated/read-only.
+- INV-011: Provider mutation fails closed on provider certification/runtime-integrity drift.
+- INV-012: Mutation verification uses read-after-write state, not callback success alone.
+- INV-013: Undo is permitted only when current state matches the recorded post-mutation state/fingerprint.
+- INV-014: Rollback payloads are bounded and integrity-protected; unsafe restore contracts are not treated as reversible.
+- INV-015: Verification failure is recorded as failure; no success is reported from callback success alone.
+- INV-016: Budget exhaustion denies before provider side effects and before approval consumption.
+- INV-017: Network-scoped mutations require explicit network authority plus WordPress network capability.
+- INV-018: Independent reachable MCP write authority is a runtime blocker unless explicitly classified as safe/read-only/federated.
+- INV-019: Audit events are append-only, hash-linked and transactionally serialized; external sink dispatch occurs only after explicit commit.
+- INV-020: Admin inspection UX must not create a parallel mutation path.
 
-## User stories and acceptance scenarios
+## Acceptance scenarios
 
-### US1 — Provision a least-privilege agent
+### US1 — Least-privilege NHI
 
-As an administrator, I can create an agent, bind an authenticated subject fingerprint, and grant exactly selected abilities so that an SEO agent cannot inherit database/plugin/filesystem powers.
-
-Acceptance:
 - create disabled agent → no authority;
 - enable without grants → no mutation authority;
-- exact grant `seo/update-meta` → that ability may proceed to remaining gates;
-- unrelated `mad4b/database-update` → denied;
-- `*` grant → rejected in Production policy;
+- exact grant permits only that mounted ability/provider path;
+- unrelated ability denied;
+- wildcard grant rejected;
 - disabling agent immediately denies subsequent calls.
 
-### US2 — Intersect token scopes with NHI grants
+### US2 — Token scope intersection
 
-As the control plane, I evaluate transport/token scopes as a subset of NHI authority.
-
-Acceptance:
 - NHI grants A+B, token scope A → only A effective;
-- token scope C not granted to NHI → C denied;
-- absent scope context on a transport configured to require scopes → fail closed;
-- a read-only scope cannot be widened by admin server membership.
+- token scope C without grant → denied;
+- required scope context absent → denied;
+- scope cannot widen server/provider/resource policy.
 
-### US3 — Approve a high-impact mutation
+### US3 — Exact approval
 
-As an administrator, I can inspect a plan and issue a short-lived approval for one exact operation.
+- ticket includes NHI/server/ability/provider/target/class/payload hash/expiry/approver;
+- one payload field change invalidates ticket;
+- different NHI invalidates ticket;
+- expired/revoked/used ticket is denied;
+- approval never bypasses stale-state/provider/capability/budget checks.
 
-Acceptance:
-- ticket includes NHI, ability, canonical payload hash, target fingerprint, expiry and approver;
-- payload changes by one field → ticket invalid;
-- different NHI → invalid;
-- expired → invalid;
-- used ticket → replay denied;
-- approval does not bypass stale-state/provider/capability checks.
+### US4 — Execute and verify mutation
 
-### US4 — Execute and verify a mutation
+- persist mutation envelope before provider write;
+- record before fingerprint where reversible;
+- execute through certified/public provider contract;
+- read after write;
+- mismatched readback is not verified;
+- verified result records after fingerprint and mutation ID.
 
-As an agent, a mutation executes only after all gates pass, captures before-state where supported, and verifies the resulting state.
+### US5 — Drift-safe undo
 
-Acceptance:
-- decision graph is recorded before execution;
-- before-state hash/fingerprint is recorded;
-- callback success followed by mismatched readback → mutation not `verified`;
-- successful readback → after hash recorded;
-- result returns mutation ID and undo metadata if reversible.
+- current==recorded after-state → restore through certified restore contract;
+- current!=after-state → `mad4b_undo_state_drift`;
+- expired or unauthorized undo → denied;
+- successful undo creates child recovery evidence; original history remains immutable.
 
-### US5 — Undo without overwriting newer work
+### US6 — Blast-radius budgets
 
-As an administrator/authorized recovery agent, I can undo a reversible mutation only while the current state still equals the recorded after-state.
+- budgets cover requests, mutations, affected objects and external actions;
+- two concurrent workers cannot oversubscribe a configured bucket;
+- exhausted budget denies before ticket use/provider side effect;
+- rejected approval rolls the reservation back.
 
-Acceptance:
-- current==after → restore before-state through certified provider contract;
-- current!=after → automatic undo denied with `mad4b_undo_state_drift`;
-- expired undo → denied;
-- unauthorized NHI/user → denied;
-- successful undo itself is audited as a new mutation/recovery event.
+### US7 — MCP peer governance
 
-### US6 — Limit blast radius
+- known read-only peer → non-blocking evidence;
+- reachable unknown privileged writer → `mcp_write_side_channel_detected`;
+- blocker is evaluated before budget/approval consumption;
+- no automatic uninstall/disable of peer plugins.
 
-As an administrator, I can bound each agent by requests and mutations per window and affected-object budgets.
+### US8 — Append-only audit
 
-Acceptance:
-- budget decrement is atomic enough to avoid obvious concurrent overrun;
-- exhausted budget denies before provider callback;
-- read and mutation limits are independently expressible;
-- Breakglass does not silently reuse normal agent budget; it has stricter separate policy.
+- events append with monotonic sequence and previous/entry hash;
+- concurrent append does not lose updates or deadlock;
+- tamper makes chain verification fail;
+- legacy bounded option history is read-only and anchored;
+- post-commit sink hook never publishes rolled-back joined events.
 
-### US7 — Detect competing write planes
+### US9 — Read-only Admin Governance Console
 
-As an operator, runtime self-test identifies installed/active MCP systems that expose independent privileged mutation authority.
-
-Acceptance:
-- known/declared read-only peer → informational;
-- unknown write-capable peer → blocker `mcp_write_side_channel_detected`;
-- explicit federation policy may downgrade only with auditable configuration;
-- no automatic disabling/uninstalling of other plugins.
+- requires `manage_options`;
+- displays bounded authority/NHI/access/approval/mutation/audit/provider/peer evidence;
+- does not expose rollback payloads or raw subject secrets;
+- opening/rendering the page does not alter governance state;
+- no grant/approve/revoke/undo POST action exists in the first slice.
 
 ## Functional requirements
 
-### Identity and subject binding
+### Identity and grants
 
-- FR-001 Create/read/update/disable NHI records via admin-only internal services and later admin UI/abilities.
-- FR-002 NHI has immutable public ID, unique slug, label, status, optional WordPress principal association, timestamps and revision.
-- FR-003 Subject bindings store subject type plus SHA-256 fingerprint/identifier, not a bearer secret.
-- FR-004 Subject resolution is pluggable through `mad4b_scp_authenticated_subject_context` and may be supplied by MCP adapter integration or another certified authenticator.
-- FR-005 Missing/ambiguous subject resolution fails mutation closed.
+- FR-001 Admin-only services create/update/disable NHI records.
+- FR-002 NHI has immutable public ID, unique slug, status, environment and optimistic revision.
+- FR-003 Subject bindings persist only normalized fingerprint/non-secret identity evidence.
+- FR-004 Subject resolution is pluggable through `mad4b_scp_authenticated_subject_context`.
+- FR-005 Missing/malformed/ambiguous subject resolution fails mutation closed.
+- FR-010 Exact server/ability/provider grants are normalized.
+- FR-011 Deny precedence is supported.
+- FR-012 Wildcard ability grants are rejected.
+- FR-013 Resource constraints are bounded versioned JSON and deny when unresolved.
+- FR-014 Effective access can be simulated without provider execution or budget/ticket consumption.
 
-### Grants
+### Authorization
 
-- FR-010 Exact server/ability grants are stored normalized.
-- FR-011 Grant evaluation supports deny precedence.
-- FR-012 First implementation does not support wildcard ability grants.
-- FR-013 Optional resource constraints use a versioned JSON schema and are deny-by-default when a writer declares that resource constraints are required.
-- FR-014 Effective permission can be inspected without executing the ability.
-
-### Authorization engine
-
-- FR-020 Core and adapter mutation permission wrappers call one central authorization engine after WordPress capability and global mutation checks, before provider side effects.
-- FR-021 Authorization input includes ability name, server ID/surface, readonly/destructive flags, provider, target/resource context and request identity context.
-- FR-022 Authorization output is structured: `allowed`, `reason_code`, `agent_public_id`, `subject_fingerprint`, `matched_grant`, `scope_result`, `budget_result`, `approval_required`.
-- FR-023 Denials are converted to safe WordPress permission failures while detailed reason is retained in audit without leaking secrets to unauthorized clients.
+- FR-020 Core and adapter writers call central `MAD4B_SCP_Authorization` before provider side effects.
+- FR-021 Authorization includes ability, server, provider, identity, exact grant, scope, constraints, impact, budget and approval state.
+- FR-022 Denials use safe external errors while detailed secret-safe reason codes remain in audit evidence.
+- FR-023 MCP peer write-side-channel guard runs before budget reservation.
 
 ### Approval
 
-- FR-030 Ability metadata/policy classifies impact: read, low, high, exceptional.
-- FR-031 High and exceptional mutations require approval by default.
-- FR-032 Approval uses canonical JSON serialization with sorted object keys and normalized scalar representation.
-- FR-033 Approval hash covers contract version, site identity, NHI, ability, server, provider, target and canonical input.
-- FR-034 Tickets have TTL, single-use state, approver ID and reason.
-- FR-035 Breakglass uses a distinct approval class and cannot consume a normal mutation ticket.
+- FR-030 Impact classes are read/low/high/exceptional.
+- FR-031 High and exceptional operations require approval by default.
+- FR-032 Canonical approval JSON recursively sorts object keys while preserving array order.
+- FR-033 Approval hash covers contract/site/NHI/server/ability/provider/target/canonical input.
+- FR-034 Ticket TTL and canonical input size/depth are bounded.
+- FR-035 Ticket use is atomic `approved -> used`; replay is denied.
+- FR-036 Breakglass/recovery/mutation classes are separate.
 
-### Mutation envelope and undo
+### Mutation and undo
 
-- FR-040 Mutation orchestration supports plan, execute, verify and undo phases.
-- FR-041 Provider adapters may implement snapshot/readback/restore interfaces without exposing generic arbitrary restore.
-- FR-042 Before/after state persisted for rollback is bounded; oversized payloads mark operation non-reversible or use a future external snapshot reference.
-- FR-043 Mutation records store hashes even when full state is not retained.
-- FR-044 Undo TTL is policy-controlled and never implies unlimited rollback.
-- FR-045 Undo re-runs current authorization and capability checks.
-- FR-046 Undo requires current state to match recorded after hash/fingerprint.
+- FR-040 Mutation lifecycle supports planned/executing/verified/failed/undone evidence.
+- FR-041 Reversible paths use provider-specific snapshot/readback/restore contracts rather than generic restore.
+- FR-042 Rollback payload is bounded and integrity-hashed.
+- FR-043 Before/after hashes remain available even when full state is not exposed.
+- FR-044 Undo TTL is bounded and policy-controlled.
+- FR-045 Undo reruns current authorization/capability checks.
+- FR-046 Undo requires current state to equal recorded after fingerprint.
+- FR-047 `mad4b/mutation-get` never returns rollback payload through normal inspection.
 
-### Rate/budget
+### Rate and budgets
 
-- FR-050 Per-agent request rate limits and mutation budgets are separate.
-- FR-051 Limits are configurable per time window and have safe defaults for Production profiles.
-- FR-052 Budget checks happen before approval consumption and side effects when possible.
+- FR-050 Budget dimensions: `requests`, `mutations`, `affected_objects`, `external_actions`.
+- FR-051 Budget config and runtime windows are persisted in transactional tables.
+- FR-052 Reservation occurs before approval consumption; denied approval rolls reservation back.
+- FR-053 Counter updates serialize with DB transactions/row locks and are bounded/cleaned.
 
-### Side-channel detection
+### Side-channel governance
 
-- FR-060 Runtime inventory classifies MCP servers/Ability exporters known to the site.
-- FR-061 MAD4B maintains policy classifications `self`, `certified_federated`, `read_only_peer`, `unknown`.
-- FR-062 Unknown write-capable peer is a self-test blocker.
+- FR-060 Runtime inventory classifies actual registered MCP servers/tools using adapter runtime evidence.
+- FR-061 Unknown reachable write path is a blocker.
+- FR-062 Read-only peer evidence may remain non-blocking.
 
 ### Audit
 
-- FR-070 Every authorization decision has correlation/request ID.
-- FR-071 Mutation records reference authorization decision and approval ticket.
-- FR-072 Sensitive values are redacted before persistence.
-- FR-073 Existing hash-chain semantics remain; schema is prepared for transactional append-only table migration.
+- FR-070 Every important authorization/mutation event carries correlation/request ID.
+- FR-071 Mutation records reference approval and recovery lineage as applicable.
+- FR-072 Sensitive values are redacted before persistence/rendering.
+- FR-073 Audit evidence is persisted in Schema v4 append-only transactional `mad4b_scp_audit_events` plus locked `mad4b_scp_audit_heads`, with bounded chain verification and anchored legacy option history.
+- FR-074 `mad4b_scp_audit_committed` is the post-commit external sink integration point; sink failure must not leak secrets.
+
+### Admin UX
+
+- FR-080 Read-only governance console requires `manage_options`.
+- FR-081 Read-only navigation may use GET; state-changing admin controls require WordPress nonce and reviewed capability.
+- FR-082 First slice exposes no alternative grant/approve/revoke/undo execution path.
 
 ## Security requirements
 
-- SEC-001 No token in URL support.
+- SEC-001 No token-in-URL support.
 - SEC-002 No plaintext token persistence.
-- SEC-003 Constant-time comparison where fixed secret-derived fingerprints are compared and timing could matter.
-- SEC-004 SQL uses `$wpdb->prepare()` and normalized tables use keys/indexes for subject/grant lookup.
-- SEC-005 JSON constraints must be size bounded.
-- SEC-006 Approval and mutation payloads reject excessive size/depth before canonicalization.
+- SEC-003 Constant-time comparison for fixed secret-derived/hash material where applicable.
+- SEC-004 SQL uses prepared/bounded queries and normalized indexed tables.
+- SEC-005 Resource constraint JSON is size/depth bounded.
+- SEC-006 Approval/rollback payloads reject excessive size/depth or unsupported values.
 - SEC-007 Serialized PHP objects are not accepted as policy/rollback payloads.
-- SEC-008 Admin UI/actions require WordPress capability and CSRF nonce.
-- SEC-009 Multisite tables/policies clearly choose site-local versus network scope; first implementation is site-local unless network support is explicitly implemented.
-- SEC-010 No automatic privilege migration that widens legacy users/agents.
+- SEC-008 Admin state-changing UI/actions require reviewed WordPress capability and CSRF nonce; the certified first UI slice is read-only.
+- SEC-009 Site-local vs network authority is explicit; first implementation remains site-local unless network support is separately certified.
+- SEC-010 Migration never creates enabled authority or widens legacy privilege.
+- SEC-011 Normal WordPress MCP does not expose arbitrary PHP/shell/source-code mutation.
+- SEC-012 Provider package/version/runtime-integrity drift disables package-backed mutation.
 
 ## Observability requirements
 
-Runtime self-test adds:
-- NHI storage ready;
-- enabled mutation NHI exists when mutation globally enabled;
-- no duplicate subject bindings;
-- no wildcard Production grants;
-- approval storage ready;
-- mutation storage ready;
-- side-channel blockers;
-- audit-chain state;
-- provider certification blockers.
+Runtime authority/self-test reports at least:
+- schema readiness/version;
+- mutation global/effective status;
+- enabled agents/subjects/exact grants/wildcard blockers;
+- approval and budget service readiness;
+- MCP peer inventory/write-side-channel blockers;
+- append-only audit storage/integrity state;
+- provider certification/runtime blockers.
 
 ## Compatibility
 
-- WordPress 6.9+
-- PHP 7.4+
-- official MCP Adapter exact certified baseline remains 0.6.1 until re-certified.
-- No PHP enums/readonly properties/union types that break PHP 7.4.
+- WordPress 6.9+.
+- PHP 7.4+; no enums/readonly properties/union types that break PHP 7.4.
+- Official MCP Adapter exact certified baseline remains 0.6.1 until re-certified.
 
 ## Definition of done
 
-This feature is complete only when static contract tests, PHP 7.4/8.1/8.3 lint, disposable WP 6.9/latest runtime tests and new negative authorization/approval/undo tests all pass on the same exact PR head; package provenance is exact-head; PR remains Draft until target-site staging certification proves subject resolution and policy behavior in the real MCP transport.
+Repository scope is complete only when, on the same exact PR head:
+- PHP 7.4/8.1/8.3 lint passes;
+- adversarial/static governance contracts pass;
+- Spec Kit consistency contract passes;
+- packaged-provider/security and package provenance checks pass;
+- disposable WordPress 6.9 + current latest runtime passes identity/grants, approval, budgets/concurrency, reversible mutation/undo/drift denial, MCP side-channel blocking, append-only audit concurrency/tamper and read-only Admin Governance Console smoke.
+
+Production remains separate: the PR stays Draft and Production mutation stays NO-GO until real target staging proves transport subject resolution, exact deployed provider/runtime state, minimal NHI grants, governed mutation/readback/undo, blocker-free MCP peer state, valid audit evidence and post-certification mutation gates returned OFF unless deliberately continuing controlled staging.
