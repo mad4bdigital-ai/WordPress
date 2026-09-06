@@ -85,6 +85,7 @@ final class Bootstrap {
         $publicationCache=new PublicationCache($this->config);
         $publication=new PublicationRegistry($this->config,$profiles,$this->builder,$this->policy,$content,$gallery,$languages,new PublicationResultCountProbe($queryBindingResolver),$canonical,$publicationCache);
         $runtimeInventory=new RuntimeInventory(null,null,function()use($topology){return $topology->discover(true);});
+        $catalogInventory=new RuntimeInventory(null,null,function()use($topology){return $topology->discover(false);});
         $reconciler=new InventoryReconciler();
         $profilePlanner=new InventoryProfilePlanner();
 
@@ -95,7 +96,7 @@ final class Bootstrap {
         $this->presentation=new PresentationResolver($provider,$content,$gallery,$slots,$evidenceProvider);
         $shortcodes=new Shortcodes($provider,$content,$gallery,$evidenceProvider,$this->presentation);
         add_action('init',array($shortcodes,'register'),20);
-        $catalogProvider=function()use($catalog,$runtimeInventory,$profiles):array{return $catalog->build($runtimeInventory->collect(),$profiles->all());};
+        $catalogProvider=function()use($catalog,$catalogInventory,$profiles):array{static $cached=null;if(null!==$cached){return$cached;}$cached=$catalog->build($catalogInventory->collect(),$profiles->all());return$cached;};
         $previewContextProvider=function(string $previewUrl):array{return $this->previewEvidenceContext($previewUrl);};
         (new DynamicTagRegistrar($this->presentation,$slots,$catalogProvider,$previewContextProvider))->registerHooks();
         (new AdminAssets())->register();
