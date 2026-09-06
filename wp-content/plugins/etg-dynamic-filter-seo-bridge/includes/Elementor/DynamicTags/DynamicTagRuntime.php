@@ -16,12 +16,14 @@ final class DynamicTagRuntime {
     private static $slots;
     private static $catalogProvider;
     private static $previewContextProvider;
+    private static $catalogCache = null;
 
     public static function configure(PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider, callable $previewContextProvider = null): void {
         self::$resolver = $resolver;
         self::$slots = $slots;
         self::$catalogProvider = $catalogProvider;
         self::$previewContextProvider = $previewContextProvider;
+        self::$catalogCache = null;
     }
 
     public static function resolver(): ?PresentationResolver {
@@ -33,13 +35,15 @@ final class DynamicTagRuntime {
     }
 
     public static function catalog(): array {
-        if (!is_callable(self::$catalogProvider)) { return array(); }
+        if ( null !== self::$catalogCache ) { return self::$catalogCache; }
+        if (!is_callable(self::$catalogProvider)) { self::$catalogCache = array(); return self::$catalogCache; }
         try {
             $catalog = call_user_func(self::$catalogProvider);
-            return is_array($catalog) ? $catalog : array();
+            self::$catalogCache = is_array($catalog) ? $catalog : array();
         } catch (\Throwable $error) {
-            return array();
+            self::$catalogCache = array();
         }
+        return self::$catalogCache;
     }
 
     public static function previewContext(string $previewUrl): ?array {
