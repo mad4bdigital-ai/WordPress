@@ -34,11 +34,11 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to inspect adapter coverage.', 'mad4b-site-control-plane' ) );
 		$snapshot = self::snapshot();
 		echo '<div class="wrap"><h1>' . esc_html__( 'MAD4B Adapter Coverage', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Read-only discovery. Unknown plugins request an adapter contract but are never auto-installed, auto-enabled, or granted write authority.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'Read-only discovery. Unknown plugins request an adapter contract but are never auto-installed, auto-enabled, auto-generated, or granted write authority.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( is_wp_error( $snapshot ) ) { echo '<div class="notice notice-error"><p>' . esc_html( $snapshot->get_error_message() ) . '</p></div></div>'; return; }
 		$counts = isset( $snapshot['counts'] ) && is_array( $snapshot['counts'] ) ? $snapshot['counts'] : array();
 		echo '<table class="widefat striped" style="max-width:1000px"><tbody>';
-		foreach ( array( 'installed', 'active', 'supported_reversible', 'supported_governed', 'adapter_required', 'excluded_high_risk', 'priority_external_missing' ) as $key ) {
+		foreach ( array( 'installed', 'active', 'supported_reversible', 'supported_governed', 'read_only_supported', 'adapter_registered_inactive', 'adapter_present_certification_required', 'adapter_required', 'excluded_high_risk', 'priority_external_missing' ) as $key ) {
 			echo '<tr><th>' . esc_html( str_replace( '_', ' ', $key ) ) . '</th><td>' . esc_html( isset( $counts[ $key ] ) ? (string) $counts[ $key ] : '0' ) . '</td></tr>';
 		}
 		echo '</tbody></table>';
@@ -56,11 +56,12 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 
 	private static function render_plugins( array $items ) {
 		if ( ! $items ) { echo '<p>' . esc_html__( 'No plugins discovered.', 'mad4b-site-control-plane' ) . '</p>'; return; }
-		echo '<table class="widefat striped"><thead><tr><th>Plugin</th><th>Version</th><th>Active</th><th>Family</th><th>Adapter</th><th>Coverage</th><th>Risk</th><th>Support request</th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Plugin</th><th>Version</th><th>Active</th><th>Family</th><th>Adapter</th><th>Coverage</th><th>Provider cert</th><th>Risk</th><th>Support request</th></tr></thead><tbody>';
 		foreach ( $items as $item ) {
 			$request = isset( $item['support_request']['support_request_id'] ) ? (string) $item['support_request']['support_request_id'] : '';
+			$provider_cert = empty( $item['provider_certification_required'] ) ? 'not-required' : ( ! empty( $item['provider_certification_ok'] ) ? 'certified' : 'required' );
 			echo '<tr><td><strong>' . esc_html( isset( $item['name'] ) ? $item['name'] : '' ) . '</strong><br><code>' . esc_html( isset( $item['plugin_file'] ) ? $item['plugin_file'] : '' ) . '</code></td>';
-			echo '<td>' . esc_html( isset( $item['version'] ) ? $item['version'] : '' ) . '</td><td>' . esc_html( ! empty( $item['active'] ) ? 'yes' : 'no' ) . '</td><td>' . esc_html( isset( $item['family'] ) ? $item['family'] : '' ) . '</td><td><code>' . esc_html( isset( $item['adapter_id'] ) ? $item['adapter_id'] : '' ) . '</code></td><td><strong>' . esc_html( isset( $item['coverage_state'] ) ? $item['coverage_state'] : '' ) . '</strong></td><td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( $request ) . '</code></td></tr>';
+			echo '<td>' . esc_html( isset( $item['version'] ) ? $item['version'] : '' ) . '</td><td>' . esc_html( ! empty( $item['active'] ) ? 'yes' : 'no' ) . '</td><td>' . esc_html( isset( $item['family'] ) ? $item['family'] : '' ) . '</td><td><code>' . esc_html( isset( $item['adapter_id'] ) ? $item['adapter_id'] : '' ) . '</code></td><td><strong>' . esc_html( isset( $item['coverage_state'] ) ? $item['coverage_state'] : '' ) . '</strong></td><td>' . esc_html( $provider_cert ) . '</td><td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( $request ) . '</code></td></tr>';
 		}
 		echo '</tbody></table>';
 	}
