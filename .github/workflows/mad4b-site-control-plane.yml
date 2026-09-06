@@ -1,0 +1,89 @@
+name: MAD4B Site Control Plane
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-site-control-plane.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-site-control-plane.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php-lint:
+    name: PHP lint (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.3']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint plugin PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \
+            | xargs -0 -n1 php -l
+
+  contract-guard:
+    name: Control-plane contract guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required modules and safety gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+
+          test -f "$root/mad4b-site-control-plane.php"
+          test -f "$root/includes/class-mad4b-scp-abilities.php"
+          test -f "$root/includes/class-mad4b-scp-policy.php"
+          test -f "$root/includes/class-mad4b-scp-servers.php"
+          test -f "$root/includes/class-mad4b-scp-audit.php"
+
+          grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$root/includes/class-mad4b-scp-policy.php"
+          grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$root/includes/class-mad4b-scp-abilities.php"
+          grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$root/includes/class-mad4b-scp-abilities.php"
+          grep -Fq "expected_sha256" "$root/includes/class-mad4b-scp-abilities.php"
+          grep -Fq "max_affected" "$root/includes/class-mad4b-scp-abilities.php"
+          grep -Fq "realpath" "$root/includes/class-mad4b-scp-policy.php"
+
+      - name: Deny arbitrary command and PHP execution primitives
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          if grep -RInE --include='*.php' \
+            '\b(eval|assert|exec|shell_exec|system|passthru|popen|proc_open)\s*\(' \
+            "$root"; then
+            echo 'Forbidden arbitrary execution primitive detected.' >&2
+            exit 1
+          fi
+
+      - name: Verify isolated MCP surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          servers='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+          for surface in mad4b-read mad4b-content mad4b-admin mad4b-breakglass; do
+            grep -Fq "'$surface'" "$servers"
+          done
