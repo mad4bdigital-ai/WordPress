@@ -5,6 +5,7 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function label() { return 'Bit Flows'; }
 	public function is_available() { return class_exists( 'BitApps\\Pi\\Model\\Flow' ); }
 	public function ability_names() { return array( 'read' => array( 'bitflows/status', 'bitflows/list-flows', 'bitflows/get-flow', 'bitflows/get-executions' ), 'content' => array(), 'admin' => array( 'bitflows/run-flow' ) ); }
+	protected function certified_provider_key() { return 'bit_pi'; }
 	protected function detect_plugin_version() { if ( defined( 'BITPI_VERSION' ) ) return BITPI_VERSION; if ( defined( 'BIT_PI_VERSION' ) ) return BIT_PI_VERSION; return ''; }
 	public function register_abilities() {
 		$this->add_ability( 'bitflows/status', 'Get Bit Flows Status', 'status', array( 'MAD4B_SCP_Policy', 'can_read' ) );
@@ -28,6 +29,7 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 			'flow_history' => class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ),
 		);
 		$status['execution_enabled'] = defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) && true === MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED;
+		$status['native_mcp_role'] = 'client';
 		return $status;
 	}
 	public function can_run_flow( $input = null ) {
