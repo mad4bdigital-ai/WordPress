@@ -49,6 +49,7 @@ final class MAD4B_SCP_Abilities {
 			), array( 'table' )
 		), false, true, false, true );
 		$this->add( 'mad4b/diagnostics-health', 'Diagnostics Health', 'mad4b-read', 'diagnostics_health', 'read', null, false, true, false, true );
+		$this->add( 'mad4b/runtime-authority-status', 'Runtime Authority Status', 'mad4b-read', 'runtime_authority_status', 'read', null, false, true, false, true );
 
 		$this->add( 'mad4b/content-get-post', 'Get Post', 'mad4b-content', 'content_get_post', 'read_post', $this->post_schema(), false, true, false, true );
 		$this->add( 'mad4b/content-update-post', 'Update Post', 'mad4b-content', 'content_update_post', 'edit_post', $this->schema(
@@ -114,7 +115,7 @@ final class MAD4B_SCP_Abilities {
 			'description' => $label . ' through the governed MAD4B Site Control Plane.',
 			'category' => $category,
 			'execute_callback' => array( $this, $method ),
-			'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly ),
+			'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly, $name, $category ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
 				'public' => false,
@@ -131,14 +132,17 @@ final class MAD4B_SCP_Abilities {
 		wp_register_ability( $name, $args );
 	}
 
-	private function mutation_permission_callback( $permission, $readonly ) {
+	private function mutation_permission_callback( $permission, $readonly, $ability_name, $server_id ) {
 		$callback = $this->permission_callback( $permission );
 		if ( $readonly ) return $callback;
 
-		return function ( $input = null ) use ( $callback ) {
+		return function ( $input = null ) use ( $callback, $ability_name, $server_id ) {
 			$granted = call_user_func( $callback, $input );
 			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
-			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until MAD4B_MCP_MUTATION_ENABLED is explicitly enabled.' );
+			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and a bound enabled NHI are both present.' );
+			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
+			$authorization = MAD4B_SCP_Authorization::authorize_mutation( $ability_name, $server_id, 'core', $input );
+			if ( is_wp_error( $authorization ) ) return $authorization;
 			return true;
 		};
 	}
@@ -308,6 +312,8 @@ final class MAD4B_SCP_Abilities {
 		}
 		return ' WHERE ' . implode( ' AND ', $parts );
 	}
+
+	public function runtime_authority_status() { return MAD4B_SCP_Authorization::authority_status(); }
 
 	public function diagnostics_health() {
 		global $wpdb; $uploads = wp_upload_dir( null, false );

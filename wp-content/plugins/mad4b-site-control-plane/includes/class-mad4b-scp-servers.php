@@ -29,7 +29,7 @@ final class MAD4B_SCP_Servers {
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
 
 		$read_tools = array_merge( array(
-			'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read', 'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health',
+			'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read', 'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status',
 		), $registry->ability_names( 'read' ) );
 
 		$content_tools = array_merge( array( 'mad4b/content-get-post', 'mad4b/content-update-post' ), $registry->ability_names( 'content' ) );
