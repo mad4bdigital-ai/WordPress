@@ -92,17 +92,22 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 
 	public static function foreign_transport_inventory( array $adapter_servers = array() ) {
 		$known_routes = array();
+		$known_namespaces = array();
 		foreach ( $adapter_servers as $server ) {
 			if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_route_namespace' ) || ! method_exists( $server, 'get_server_route' ) ) continue;
 			try {
 				$namespace = trim( (string) $server->get_server_route_namespace(), '/' );
 				$route = '/' . ltrim( (string) $server->get_server_route(), '/' );
-				if ( '' !== $namespace ) $known_routes[] = '/' . $namespace . $route;
+				if ( '' !== $namespace ) {
+					$known_namespaces[] = $namespace;
+					$known_routes[] = '/' . $namespace . $route;
+				}
 			} catch ( Throwable $e ) {
 				return self::foreign_unavailable( 'mcp_registered_route_inventory_exception' );
 			}
 		}
 		$known_routes = array_values( array_unique( $known_routes ) );
+		$known_namespaces = array_values( array_unique( $known_namespaces ) );
 
 		try {
 			if ( ! function_exists( 'rest_get_server' ) ) return self::foreign_unavailable( 'rest_server_unavailable' );
@@ -115,9 +120,11 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		if ( ! is_array( $routes ) ) return self::foreign_unavailable( 'rest_route_inventory_invalid' );
 
 		$foreign_routes = array();
-		foreach ( array_keys( $routes ) as $route ) {
+		foreach ( $routes as $route => $route_definition ) {
 			$route = (string) $route;
-			if ( in_array( $route, $known_routes, true ) || ! self::looks_like_mcp_route( $route ) ) continue;
+			if ( in_array( $route, $known_routes, true ) ) continue;
+			if ( self::is_known_namespace_index( $route, $route_definition, $known_namespaces, $rest_server ) ) continue;
+			if ( ! self::looks_like_mcp_route( $route ) ) continue;
 			$foreign_routes[] = substr( $route, 0, 255 );
 			if ( count( $foreign_routes ) >= self::MAX_FOREIGN_ROUTES ) break;
 		}
@@ -131,12 +138,39 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			'inventory_ready' => true,
 			'foreign_mcp_detected' => $risk_count > 0,
 			'risk_count' => $risk_count,
+			'known_adapter_namespaces' => $known_namespaces,
 			'known_adapter_routes' => $known_routes,
 			'foreign_route_count' => count( $foreign_routes ),
 			'foreign_routes' => $foreign_routes,
 			'foreign_plugin_count' => count( $foreign_plugins ),
 			'foreign_plugins' => $foreign_plugins,
 		);
+	}
+
+	/**
+	 * WordPress automatically creates a read-only namespace index when the first
+	 * route is registered in a namespace. It is infrastructure, not another MCP
+	 * endpoint. Ignore it only when both conditions are proven: the namespace is
+	 * used by a registered Adapter server and every executable callback on the
+	 * route is the current WP_REST_Server::get_namespace_index callback.
+	 *
+	 * This deliberately does not allow-list a path such as /mcp by name alone.
+	 */
+	private static function is_known_namespace_index( $route, $route_definition, array $known_namespaces, $rest_server ) {
+		$namespace = ltrim( (string) $route, '/' );
+		if ( '' === $namespace || ! in_array( $namespace, $known_namespaces, true ) ) return false;
+		if ( ! is_array( $route_definition ) || ! is_object( $rest_server ) ) return false;
+
+		$found = false;
+		foreach ( $route_definition as $key => $endpoint ) {
+			if ( ! is_int( $key ) ) continue;
+			if ( ! is_array( $endpoint ) || ! isset( $endpoint['callback'] ) ) return false;
+			$callback = $endpoint['callback'];
+			if ( ! is_array( $callback ) || 2 !== count( $callback ) ) return false;
+			if ( ! is_object( $callback[0] ) || $callback[0] !== $rest_server || 'get_namespace_index' !== (string) $callback[1] ) return false;
+			$found = true;
+		}
+		return $found;
 	}
 
 	private static function looks_like_mcp_route( $route ) {
