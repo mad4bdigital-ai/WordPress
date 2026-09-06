@@ -188,8 +188,8 @@ jobs:
           grep -Fq "'mcp' => array( 'public' => false" "$registry"
           grep -Fq "default_server_exposure_leaks" "$registry"
           grep -Fq "custom_server_isolation" "$registry"
-          if grep -RInF --include='*.php' "'mcp' => array( 'public' => true" "$root"; then
-            echo 'MAD4B abilities must be custom-server-only; default MCP exposure detected.' >&2
+          if grep -RInF --include='*.php' "'mcp' => array( 'public' => true" "$root/includes" "$root/mad4b-site-control-plane.php"; then
+            echo 'MAD4B production abilities must be custom-server-only; default MCP exposure detected.' >&2
             exit 1
           fi
 
