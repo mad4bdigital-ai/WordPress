@@ -48,9 +48,11 @@ final class MAD4B_SCP_Adapter_Registry {
 		return array(
 			'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
 			'mad4b/filesystem-list', 'mad4b/filesystem-read', 'mad4b/database-list-tables', 'mad4b/database-describe-table',
-			'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/content-get-post', 'mad4b/content-update-post',
+			'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/content-get-post', 'mad4b/content-update-post',
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch',
-			'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/runtime-self-test',
+			'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/mutation-get', 'mad4b/mutation-undo',
+			'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
+			'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/runtime-self-test',
 		);
 	}
 
