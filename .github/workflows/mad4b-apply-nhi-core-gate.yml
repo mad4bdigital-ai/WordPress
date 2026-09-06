@@ -1,4 +1,4 @@
-name: MAD4B Apply Core NHI Gate
+name: MAD4B Core NHI Gate
 
 on:
   pull_request:
@@ -6,120 +6,48 @@ on:
       - '.github/workflows/mad4b-apply-nhi-core-gate.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: mad4b-apply-nhi-core-${{ github.event.pull_request.number || github.ref }}
+  group: mad4b-core-nhi-gate-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  patch:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
 
-      - name: Patch core permission wrapper and authority status deterministically
+      - name: Verify core and adapter mutation authorization contract
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          abilities = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php')
-          s = abilities.read_text('utf-8')
-
-          old_cb = "'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly ),"
-          new_cb = "'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly, $name, $category ),"
-          if new_cb not in s:
-              if s.count(old_cb) != 1:
-                  raise SystemExit('Unexpected core permission callback registration shape.')
-              s = s.replace(old_cb, new_cb, 1)
-
-          old_sig = "private function mutation_permission_callback( $permission, $readonly ) {"
-          new_sig = "private function mutation_permission_callback( $permission, $readonly, $ability_name, $server_id ) {"
-          if new_sig not in s:
-              if s.count(old_sig) != 1:
-                  raise SystemExit('Unexpected core mutation wrapper signature.')
-              s = s.replace(old_sig, new_sig, 1)
-
-          old_use = "return function ( $input = null ) use ( $callback ) {"
-          new_use = "return function ( $input = null ) use ( $callback, $ability_name, $server_id ) {"
-          if new_use not in s:
-              if s.count(old_use) != 1:
-                  raise SystemExit('Unexpected core mutation wrapper closure shape.')
-              s = s.replace(old_use, new_use, 1)
-
-          old_tail = "\t\t\tif ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until MAD4B_MCP_MUTATION_ENABLED is explicitly enabled.' );\n\t\t\treturn true;"
-          new_tail = "\t\t\tif ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and a bound enabled NHI are both present.' );\n\t\t\tif ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );\n\t\t\t$authorization = MAD4B_SCP_Authorization::authorize_mutation( $ability_name, $server_id, 'core', $input );\n\t\t\tif ( is_wp_error( $authorization ) ) return $authorization;\n\t\t\treturn true;"
-          if "MAD4B_SCP_Authorization::authorize_mutation( $ability_name, $server_id, 'core', $input )" not in s:
-              if s.count(old_tail) != 1:
-                  raise SystemExit('Unexpected core mutation wrapper tail.')
-              s = s.replace(old_tail, new_tail, 1)
-
-          diagnostic = "\t\t$this->add( 'mad4b/diagnostics-health', 'Diagnostics Health', 'mad4b-read', 'diagnostics_health', 'read', null, false, true, false, true );"
-          authority = "\t\t$this->add( 'mad4b/runtime-authority-status', 'Runtime Authority Status', 'mad4b-read', 'runtime_authority_status', 'read', null, false, true, false, true );"
-          if authority not in s:
-              if s.count(diagnostic) != 1:
-                  raise SystemExit('Diagnostics registration marker not found exactly once.')
-              s = s.replace(diagnostic, diagnostic + "\n" + authority, 1)
-
-          method_marker = "\tpublic function diagnostics_health() {"
-          authority_method = "\tpublic function runtime_authority_status() { return MAD4B_SCP_Authorization::authority_status(); }\n\n"
-          if authority_method.strip() not in s:
-              if s.count(method_marker) != 1:
-                  raise SystemExit('Diagnostics method marker not found exactly once.')
-              s = s.replace(method_marker, authority_method + method_marker, 1)
-
-          abilities.write_text(s, encoding='utf-8')
-
-          servers = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php')
-          q = servers.read_text('utf-8')
-          old_tool = "'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health',"
-          new_tool = "'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status',"
-          if new_tool not in q:
-              if q.count(old_tool) != 1:
-                  raise SystemExit('Unexpected read server core tool list shape.')
-              q = q.replace(old_tool, new_tool, 1)
-          servers.write_text(q, encoding='utf-8')
-          PY
-
-      - name: Verify syntax and exact NHI contract
-        run: |
-          set -euo pipefail
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
-          grep -Fq "authorize_mutation( \$ability_name, \$server_id, 'core', \$input )" wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php
-          grep -Fq "mad4b/runtime-authority-status" wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
-
-      - name: Publish patch without force push
-        env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo 'Core NHI gate already synchronized.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php \
-                  wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
-          git commit -m 'feat(mcp): enforce exact NHI grants on core mutations'
-          for attempt in 1 2 3; do
-            git fetch origin "$BRANCH"
-            if ! git rebase "origin/$BRANCH"; then
-              git rebase --abort || true
-              echo 'Core NHI patch conflicts with newer branch changes; refusing overwrite.' >&2
-              exit 1
-            fi
-            if git push origin "HEAD:${BRANCH}"; then exit 0; fi
-            sleep $((attempt * 2))
-          done
-          echo 'Unable to publish core NHI gate after three non-force retries.' >&2
-          exit 1
+          root='wp-content/plugins/mad4b-site-control-plane'
+          abilities="$root/includes/class-mad4b-scp-abilities.php"
+          servers="$root/includes/class-mad4b-scp-servers.php"
+          adapter="$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          authz="$root/includes/class-mad4b-scp-authorization.php"
+          registry="$root/includes/class-mad4b-scp-agent-registry.php"
+          php -l "$abilities"
+          php -l "$servers"
+          php -l "$adapter"
+          php -l "$authz"
+          php -l "$registry"
+          grep -Fq "authorize_mutation( \$ability_name, \$server_id, 'core', \$input )" "$abilities"
+          grep -Fq "authorize_mutation( \$ability_name, 'mad4b-' . sanitize_key( \$surface )" "$adapter"
+          grep -Fq "mad4b/runtime-authority-status" "$abilities"
+          grep -Fq "mad4b/runtime-authority-status" "$servers"
+          grep -Fq "exact_grant" "$authz"
+          grep -Fq "mad4b_wildcard_grant_denied" "$registry"
