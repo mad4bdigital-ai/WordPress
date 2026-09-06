@@ -20,6 +20,41 @@ $check( class_exists( 'WP\\MCP\\Core\\McpAdapter' ), 'Official MCP Adapter is no
 $check( class_exists( 'WP\\MCP\\Domain\\Utils\\AbilityArgumentNormalizer' ), 'MCP zero-argument normalizer is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Provider_Contracts' ), 'Provider certification authority is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Servers' ), 'MAD4B MCP server registry is unavailable.' );
+$check( class_exists( 'MAD4B_SCP_Schema' ) && MAD4B_SCP_Schema::is_ready(), 'MAD4B governance schema is unavailable.' );
+$check( MAD4B_SCP_Schema::VERSION === (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ), 'MAD4B governance schema version was not persisted.' );
+
+// Fresh activation must create storage but no authority.
+$initial_counts = MAD4B_SCP_Agent_Registry::counts();
+$check( 0 === (int) $initial_counts['enabled_agents'], 'Fresh activation unexpectedly created an enabled NHI.' );
+$check( 0 === (int) $initial_counts['enabled_subjects'], 'Fresh activation unexpectedly created a subject binding.' );
+$check( 0 === (int) $initial_counts['grants'], 'Fresh activation unexpectedly created an ability grant.' );
+$check( 0 === (int) $initial_counts['wildcard_grants'], 'Fresh activation contains wildcard grants.' );
+
+$authority = MAD4B_SCP_Authorization::authority_status();
+$check( ! empty( $authority['schema_ready'] ), 'Authority status did not report schema readiness.' );
+$check( empty( $authority['mutation_global_enabled'] ), 'Mutation must not be configured on fresh activation.' );
+$check( empty( $authority['mutation_effective_for_request'] ), 'Mutation must not be effective on fresh activation.' );
+$check( 'ready_read_only' === $authority['status'], 'Fresh activation must report ready_read_only authority state: ' . wp_json_encode( $authority ) );
+
+// Identity normalization rejects raw credential material and wildcard scopes.
+$secret_context = MAD4B_SCP_Identity_Context::normalize(
+	array(
+		'authenticated' => true,
+		'subject_type' => 'ci',
+		'subject_identifier' => 'ci-subject',
+		'access_token' => 'must-never-be-accepted',
+	)
+);
+$check( is_wp_error( $secret_context ) && 'mad4b_identity_secret_field_denied' === $secret_context->get_error_code(), 'Raw credential material was accepted into identity context.' );
+$wildcard_scope = MAD4B_SCP_Identity_Context::normalize(
+	array(
+		'authenticated' => true,
+		'subject_type' => 'ci',
+		'subject_identifier' => 'ci-subject',
+		'token_scopes' => array( 'ability:*' ),
+	)
+);
+$check( is_wp_error( $wildcard_scope ) && 'mad4b_identity_wildcard_scope_denied' === $wildcard_scope->get_error_code(), 'Wildcard token scope was accepted.' );
 
 // This isolated smoke intentionally certifies only the transport dependency.
 // Commercial providers are exercised by packaged static certification and later target-site runtime acceptance.
@@ -37,6 +72,7 @@ $core_abilities = array(
 	'mad4b/filesystem-write',
 	'mad4b/database-update',
 	'mad4b/runtime-self-test',
+	'mad4b/runtime-authority-status',
 );
 foreach ( $core_abilities as $ability_name ) {
 	$check( wp_has_ability( $ability_name ), 'Required ability is missing at runtime: ' . $ability_name );
@@ -95,6 +131,33 @@ $blocked_write = $write_ability->execute(
 $check( is_wp_error( $blocked_write ) && 'ability_invalid_permissions' === $blocked_write->get_error_code(), 'Core mutation master switch did not fail closed through the WordPress Abilities permission contract.' );
 $check( ! file_exists( $blocked_path ), 'A blocked mutation produced a filesystem side effect.' );
 
+// Prove approval canonicalization, exact payload binding, single use, and replay resistance in the disposable DB.
+$agent = MAD4B_SCP_Agent_Registry::create_agent(
+	array(
+		'slug' => 'ci-approval-agent',
+		'label' => 'CI Approval Agent',
+		'status' => 'enabled',
+		'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production',
+	)
+);
+$check( is_array( $agent ) && ! empty( $agent['public_id'] ), 'Unable to create disposable CI NHI.' );
+$input_a = array( 'zeta' => 2, 'alpha' => array( 'b' => true, 'a' => 'x' ) );
+$input_b = array( 'alpha' => array( 'a' => 'x', 'b' => true ), 'zeta' => 2 );
+$hash_a = MAD4B_SCP_Approval_Tickets::canonical_payload_hash( $agent['public_id'], 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_a, 'mutation' );
+$hash_b = MAD4B_SCP_Approval_Tickets::canonical_payload_hash( $agent['public_id'], 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_b, 'mutation' );
+$check( is_string( $hash_a ) && hash_equals( $hash_a, $hash_b ), 'Canonical approval hash changed with object key order.' );
+
+$ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_a, 'mutation', 'CI exact approval test', 600 );
+$check( is_array( $ticket ) && 'pending' === $ticket['status'], 'Pending approval ticket was not created.' );
+$approved = MAD4B_SCP_Approval_Tickets::approve( $ticket['ticket_id'] );
+$check( is_array( $approved ) && 'approved' === $approved['status'], 'Approval ticket was not approved.' );
+$wrong = MAD4B_SCP_Approval_Tickets::consume_exact( $ticket['ticket_id'], $agent, 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', array( 'zeta' => 3, 'alpha' => array( 'a' => 'x', 'b' => true ) ), 'mutation' );
+$check( is_wp_error( $wrong ) && 'mad4b_approval_payload_mismatch' === $wrong->get_error_code(), 'Wrong approval payload was not rejected.' );
+$consumed = MAD4B_SCP_Approval_Tickets::consume_exact( $ticket['ticket_id'], $agent, 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_b, 'mutation' );
+$check( is_array( $consumed ), 'Exact approved payload could not consume its ticket.' );
+$replay = MAD4B_SCP_Approval_Tickets::consume_exact( $ticket['ticket_id'], $agent, 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_b, 'mutation' );
+$check( is_wp_error( $replay ) && 'mad4b_approval_not_approved' === $replay->get_error_code(), 'Approval replay was not rejected.' );
+
 // Prove nested audit evidence is preserved, bounded, redacted, and chain-verifiable.
 MAD4B_SCP_Audit::record(
 	'mad4b/ci-runtime-smoke',
@@ -110,4 +173,4 @@ $check( isset( $summary['keys'] ) && is_array( $summary['keys'] ) && 2 === count
 $check( isset( $summary['api_token'] ) && '[REDACTED]' === $summary['api_token'], 'Sensitive audit metadata was not redacted.' );
 $check( MAD4B_SCP_Audit::verify_chain(), 'Audit hash chain verification failed.' );
 
-echo "mad4b.site-control-plane.runtime-smoke.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-smoke.v2: PASS\n";
