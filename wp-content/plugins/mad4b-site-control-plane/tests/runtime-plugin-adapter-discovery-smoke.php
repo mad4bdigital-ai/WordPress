@@ -14,7 +14,9 @@ foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-request
 }
 
 $coverage_ability = wp_get_ability( 'mad4b/plugin-adapter-coverage' );
-$initial = $coverage_ability->execute( array() );
+// These abilities intentionally define no input schema. WordPress Abilities API requires
+// null/no argument for no-input abilities; passing an empty object is invalid on WP 7.1+.
+$initial = $coverage_ability->execute();
 $check( ! is_wp_error( $initial ) && 'mad4b.plugin-adapter-discovery.v1' === $initial['contract'], 'Initial plugin discovery contract failed.' );
 $check( ! empty( $initial['discovery_only'] ) && empty( $initial['auto_install'] ) && empty( $initial['auto_generate_adapter'] ) && empty( $initial['auto_create_authority'] ), 'Discovery can create authority/code/install plugins.' );
 $check( 'deny' === $initial['unknown_plugin_write_default'], 'Unknown plugin write default is not deny.' );
@@ -44,7 +46,7 @@ update_option( 'active_plugins', array_values( array_unique( array_merge( (array
 if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true );
 
 try {
-	$discovered = $coverage_ability->execute( array() );
+	$discovered = $coverage_ability->execute();
 	$check( ! is_wp_error( $discovered ), 'Plugin discovery failed with CI fixtures.' );
 	$unknown = null; $risky = null;
 	foreach ( $discovered['plugins'] as $item ) {
@@ -59,8 +61,8 @@ try {
 	$check( 'normal_writer_excluded_by_risk' === $risky['support_request']['reason_code'], 'High-risk support request reason is incorrect.' );
 
 	$requests_ability = wp_get_ability( 'mad4b/adapter-support-requests' );
-	$requests_one = $requests_ability->execute( array() );
-	$requests_two = $requests_ability->execute( array() );
+	$requests_one = $requests_ability->execute();
+	$requests_two = $requests_ability->execute();
 	$check( ! is_wp_error( $requests_one ) && ! is_wp_error( $requests_two ), 'Adapter support request ability failed.' );
 	$ids_one = wp_list_pluck( $requests_one['requests'], 'support_request_id' );
 	$ids_two = wp_list_pluck( $requests_two['requests'], 'support_request_id' );
