@@ -84,6 +84,7 @@ final class MAD4B_SCP_Agent_Registry {
 		$server_id = sanitize_key( $server_id );
 		$ability_name = trim( (string) $ability_name );
 		$provider = sanitize_key( $provider );
+		if ( '' === $provider ) $provider = 'core';
 		$environment = sanitize_key( $environment );
 		if ( '' === $server_id || '' === $ability_name || strlen( $ability_name ) > 191 ) return new WP_Error( 'mad4b_grant_invalid', 'Exact server and ability are required.' );
 		if ( preg_match( '/[*?\[\]]/', $ability_name ) ) return new WP_Error( 'mad4b_wildcard_grant_denied', 'Wildcard ability grants are forbidden.' );
@@ -92,7 +93,9 @@ final class MAD4B_SCP_Agent_Registry {
 		if ( function_exists( 'wp_has_ability' ) && ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_grant_ability_unknown', 'Cannot grant an unknown WordPress Ability.' );
 		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
 			if ( ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_grant_server_unknown', 'Cannot grant an unknown MAD4B MCP server.' );
-			if ( ! MAD4B_SCP_Servers::ability_is_mounted( $server_id, $ability_name ) ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a MAD4B MCP server that does not mount it.' );
+			$expected_provider = MAD4B_SCP_Servers::provider_for_ability( $server_id, $ability_name );
+			if ( null === $expected_provider ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a MAD4B MCP server that does not mount it.' );
+			if ( $provider !== $expected_provider ) return new WP_Error( 'mad4b_grant_provider_mismatch', 'Grant provider does not match the certified provider bound to this mounted ability.', array( 'expected_provider' => $expected_provider ) );
 		}
 		if ( 'mad4b-breakglass' === $server_id && ! apply_filters( 'mad4b_scp_allow_breakglass_grant_creation', false, $agent, $ability_name, $provider, $environment ) ) {
 			return new WP_Error( 'mad4b_breakglass_grant_creation_denied', 'Breakglass grants require an explicit exceptional administration path.' );
@@ -102,7 +105,7 @@ final class MAD4B_SCP_Agent_Registry {
 		$now = self::now();
 		$ok = $wpdb->insert( $t['grants'], array(
 			'agent_id' => (int) $agent['id'], 'effect' => $effect, 'server_id' => $server_id, 'ability_name' => $ability_name,
-			'provider' => $provider ?: 'core', 'resource_schema_version' => 'v1', 'resource_constraints' => $encoded,
+			'provider' => $provider, 'resource_schema_version' => 'v1', 'resource_constraints' => $encoded,
 			'environment' => $environment, 'created_by' => get_current_user_id(), 'created_at' => $now, 'updated_at' => $now,
 		), array( '%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $ok ) return new WP_Error( 'mad4b_grant_create_failed', 'Exact grant could not be created.', array( 'db_error' => $wpdb->last_error ) );
