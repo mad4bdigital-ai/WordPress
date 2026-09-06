@@ -125,8 +125,8 @@ jobs:
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-reversible-adapter-smoke.php" \
             --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
-  jetengine-reversible-runtime:
-    name: JetEngine reversible runtime (${{ matrix.wordpress }})
+  jetengine-adapter-boundary:
+    name: JetEngine adapter boundary (${{ matrix.wordpress }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -191,7 +191,7 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin status jet-engine --path="$WP_PATH"
 
-      - name: Prove packaged JetEngine exact-field reversible contract
+      - name: Prove packaged JetEngine native MCP fail-closed boundary
         shell: bash
         run: |
           set -euo pipefail
