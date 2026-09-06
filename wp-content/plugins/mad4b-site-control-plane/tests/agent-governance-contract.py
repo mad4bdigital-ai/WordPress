@@ -20,6 +20,7 @@ registry = read('includes/class-mad4b-scp-agent-registry.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
 impact = read('includes/class-mad4b-scp-impact-policy.php')
 approvals = read('includes/class-mad4b-scp-approval-tickets.php')
+budgets = read('includes/class-mad4b-scp-budgets.php')
 mutation = read('includes/class-mad4b-scp-mutation-manager.php')
 overrides = read('includes/class-mad4b-scp-governed-ability-overrides.php')
 governance = read('includes/class-mad4b-scp-governance-abilities.php')
@@ -32,8 +33,12 @@ bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 2;', 'schema-version')
-for table in ('mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants', 'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets'):
+require(schema, 'const VERSION = 3;', 'schema-version')
+for table in (
+    'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
+    'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
+    'mad4b_scp_agent_budget_windows',
+):
     require(schema, table, 'schema-table')
 for dangerous_seed in ("INSERT INTO", "status = 'enabled'", 'grant_ability('):
     forbid(schema, dangerous_seed, 'no-default-authority-seed')
@@ -80,19 +85,47 @@ require(abilities, "MAD4B_SCP_Authorization::authorize_mutation( $ability_name, 
 require(abilities, 'mad4b/runtime-authority-status', 'authority-status-ability')
 require(servers, 'mad4b/runtime-authority-status', 'authority-status-server-mount')
 
-# Central authorization intersects exact grant/token scopes/resource constraints and high-impact approval.
+# Central authorization intersects exact grant/token scopes/resource constraints, budget and approval.
 require(authz, 'MAD4B_SCP_Agent_Registry::exact_grant', 'exact-grant-intersection')
 require(authz, "'ability:' . $ability_name", 'exact-scope-intersection')
 require(authz, 'mad4b_scp_require_token_scopes', 'scope-policy')
 require(authz, 'mad4b_nhi_resource_constraints_unresolved', 'constraint-fail-closed')
 require(authz, 'MAD4B_SCP_Impact_Policy::requires_approval', 'impact-approval-gate')
+require(authz, 'MAD4B_SCP_Budgets::reserve', 'budget-reservation-before-approval')
+require(authz, 'MAD4B_SCP_Budgets::rollback', 'budget-rollback-on-approval-denial')
+require(authz, 'MAD4B_SCP_Budgets::commit', 'budget-commit-after-approval')
 require(authz, 'MAD4B_SCP_Approval_Tickets::consume_exact', 'approval-consume-gate')
+if authz.index('MAD4B_SCP_Budgets::reserve') > authz.index('MAD4B_SCP_Approval_Tickets::consume_exact'):
+    raise SystemExit('FAIL budget-before-approval: budget reservation must occur before approval consumption')
 require(authz, 'mad4b_approval_required', 'missing-approval-denial')
 require(authz, 'public static function target_fingerprint', 'target-fingerprint-single-source')
 require(authz, 'self::target_fingerprint', 'authorization-target-resolver-use')
+require(authz, "'budget' => array(", 'budget-decision-evidence')
+require(authz, 'budget_service_ready', 'budget-authority-status')
 require(authz, 'mutation_global_enabled', 'configured-mutation-status')
 require(authz, 'mutation_effective_for_request', 'effective-mutation-status')
 require(authz, 'mad4b/authorization:', 'authorization-audit')
+
+# Transactional budgets use bounded types/windows/costs and no option-based counters.
+for budget_type in ("'requests'", "'mutations'", "'affected_objects'", "'external_actions'"):
+    require(budgets, budget_type, 'budget-type')
+require(budgets, 'MIN_WINDOW_SECONDS = 60', 'budget-min-window')
+require(budgets, 'MAX_WINDOW_SECONDS = 604800', 'budget-max-window')
+require(budgets, 'MAX_COUNT = 1000000', 'budget-max-count')
+require(budgets, 'MAX_COST = 100000', 'budget-max-cost')
+require(budgets, "START TRANSACTION", 'budget-transaction-start')
+require(budgets, 'FOR UPDATE', 'budget-row-lock')
+require(budgets, 'INSERT IGNORE', 'budget-window-race-safe-create')
+require(budgets, 'mad4b_budget_exhausted', 'budget-exhaustion-denial')
+require(budgets, 'mad4b_budget_concurrency_conflict', 'budget-concurrency-denial')
+require(budgets, "array( 'innodb', 'xtradb' )", 'budget-transactional-engine')
+require(budgets, "DELETE FROM {$t['budget_windows']}", 'budget-bounded-cleanup')
+require(budgets, 'CLEANUP_LIMIT = 200', 'budget-cleanup-bound')
+require(budgets, 'mad4b_scp_budget_costs', 'budget-cost-policy-hook')
+require(budgets, 'public static function set_budget', 'budget-config-service')
+for forbidden_counter in ('update_option(', 'add_option(', 'set_transient(', 'wp_cache_incr('):
+    forbid(budgets, forbidden_counter, 'budget-no-option-cache-counter')
+require(bootstrap, 'class-mad4b-scp-budgets.php', 'budget-bootstrap-load')
 
 # Impact policy is conservative: admin writers and undo high, raw DB exceptional, non-core adapters high.
 require(impact, "'mad4b/database-raw-query'", 'breakglass-exceptional')
@@ -167,7 +200,7 @@ require(mutation, "'verification_code' => 'restore_readback_match'", 'undo-readb
 for forbidden in ('unserialize(', 'eval(', 'shell_exec('):
     forbid(mutation, forbidden, 'mutation-dangerous-primitive')
 
-# Bootstrap order makes governance/mutation services available before plugin boot.
+# Bootstrap order makes governance/mutation/budget services available before plugin boot.
 order = [
     'class-mad4b-scp-schema.php',
     'class-mad4b-scp-identity-context.php',
@@ -177,6 +210,7 @@ order = [
     'class-mad4b-scp-provider-contracts.php',
     'class-mad4b-scp-impact-policy.php',
     'class-mad4b-scp-approval-tickets.php',
+    'class-mad4b-scp-budgets.php',
     'class-mad4b-scp-authorization.php',
     'class-mad4b-scp-mutation-manager.php',
     'class-mad4b-scp-governed-ability-overrides.php',
@@ -189,4 +223,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v4: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v5: PASS')
