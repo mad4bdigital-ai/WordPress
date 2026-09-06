@@ -58,6 +58,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		$missing = array();
 		$public_leaks = array();
 		$provider_contract_blockers = array();
+		$provider_version_drift = array();
 		$required_provider_missing = array();
 		$mutation_blocked_adapters = array();
 		$ability_names = $this->core_ability_names();
@@ -101,6 +102,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::violations_for_status( $status ) : array( 'certification_authority_unavailable' );
 			if ( ! empty( $violations ) ) {
 				$provider_contract_blockers[ $provider ] = $violations;
+				if ( in_array( 'version_drift', $violations, true ) ) $provider_version_drift[] = $provider;
 				if ( isset( $status['status'] ) && 'unavailable' === $status['status'] ) $required_provider_missing[] = $provider;
 			}
 		}
@@ -119,6 +121,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			'mcp_adapter_certification' => $mcp_certification,
 			'provider_certification_ok' => $provider_contract_ok,
 			'provider_contract_blockers' => $provider_contract_blockers,
+			'provider_version_drift' => array_values( array_unique( $provider_version_drift ) ),
 			'required_providers' => $required_providers,
 			'required_provider_missing' => array_values( array_unique( $required_provider_missing ) ),
 			'mutation_blocked_adapters' => array_values( array_unique( $mutation_blocked_adapters ) ),
