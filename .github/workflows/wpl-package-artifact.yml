@@ -1,0 +1,25 @@
+name: WPL Package Artifact
+
+on:
+  push:
+    branches:
+      - fix/wpl-client-db-lifecycle-cleanup-20260906
+    paths:
+      - '.github/workflows/wpl-package-artifact.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify package exists
+        run: test -f wp-content/plugins/wpl-client.zip
+      - name: Upload public package
+        uses: actions/upload-artifact@v4
+        with:
+          name: wpl-client-public-package
+          path: wp-content/plugins/wpl-client.zip
+          if-no-files-found: error
