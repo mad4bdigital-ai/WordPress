@@ -9,6 +9,7 @@
     var activeKeys = {};
     var initialized = false;
     var initialValues = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+    var boundGroups = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 
     function groupKey(provider, queryId) {
         return String(provider || '') + '/' + String(queryId || '');
@@ -19,12 +20,22 @@
         return jsf && jsf.filterGroups ? Object.keys(jsf.filterGroups) : [];
     }
 
+    function queryHasSemanticFilters(query) {
+        if (!query || typeof query !== 'object') { return false; }
+        return Object.keys(query).some(function (key) {
+            return key === 'tax_query' || key === 'meta_query' || key === 'date_query' || key === 's' ||
+                key.indexOf('_tax_query_') === 0 || key.indexOf('_meta_query_') === 0 ||
+                key.indexOf('_date_query_') === 0 || key.indexOf('__s_query') === 0 ||
+                key.indexOf('_alphabet_') === 0;
+        });
+    }
+
     function activeGroupKeys() {
         var jsf = window.JetSmartFilters;
         if (!jsf || !jsf.filterGroups) { return []; }
         return groupKeys().filter(function (key) {
             var group = jsf.filterGroups[key];
-            return !!(group && group.currentQuery && Object.keys(group.currentQuery).length);
+            return !!(group && queryHasSemanticFilters(group.currentQuery));
         });
     }
 
@@ -45,7 +56,41 @@
 
     function remember(el) {
         if (!initialValues || initialValues.has(el)) { return; }
-        initialValues.set(el, { html: el.innerHTML, text: el.textContent });
+        initialValues.set(el, {
+            html: el.innerHTML,
+            text: el.textContent,
+            href: el.hasAttribute('href') ? el.getAttribute('href') : null,
+            src: el.hasAttribute('src') ? el.getAttribute('src') : null
+        });
+    }
+
+    function restoreAttribute(el, name) {
+        if (!initialValues) { return; }
+        var original = initialValues.get(el);
+        if (!original) { return; }
+        var value = original[name];
+        if (value === null || typeof value === 'undefined') { el.removeAttribute(name); }
+        else { el.setAttribute(name, value); }
+    }
+
+    function syncSectionVisibility(el) {
+        if (!el || typeof el.closest !== 'function') { return; }
+        var section = el.closest('[data-etg-dfsb-live-section]');
+        if (!section) { return; }
+        var text = (section.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text) { section.removeAttribute('hidden'); }
+        else { section.setAttribute('hidden', 'hidden'); }
+    }
+
+    function restoreElement(el) {
+        if (!initialValues) { return; }
+        var original = initialValues.get(el);
+        if (!original) { return; }
+        el.innerHTML = original.html;
+        restoreAttribute(el, 'href');
+        restoreAttribute(el, 'src');
+        if (boundGroups) { boundGroups.delete(el); }
+        syncSectionVisibility(el);
     }
 
     function elementGroup(el) {
@@ -92,15 +137,29 @@
 
     function restoreInitial(reason, key) {
         if (!initialValues) { return; }
-        elementsFor('[data-etg-dfsb-token],[data-etg-dfsb-slot]', key).forEach(function (el) {
-            var original = initialValues.get(el);
-            if (!original) { return; }
-            el.innerHTML = original.html;
+        Array.prototype.forEach.call(document.querySelectorAll('[data-etg-dfsb-token],[data-etg-dfsb-slot]'), function (el) {
+            var bound = boundGroups ? boundGroups.get(el) : '';
+            if (bound === key || (!bound && elementsFor('[data-etg-dfsb-token],[data-etg-dfsb-slot]', key).indexOf(el) !== -1)) {
+                restoreElement(el);
+            }
         });
         delete activeKeys[key];
         document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-reset', {
             detail: { reason: reason || 'reset', group: key || '' }
         }));
+    }
+
+    function syncAutoBindings() {
+        var resolved = autoGroupKey();
+        Array.prototype.forEach.call(document.querySelectorAll('[data-etg-dfsb-token],[data-etg-dfsb-slot]'), function (el) {
+            var declared = elementGroup(el);
+            if (declared !== 'auto') { return; }
+            remember(el);
+            var previous = boundGroups ? boundGroups.get(el) : '';
+            if (previous && previous !== resolved) { restoreElement(el); }
+        });
+        emitAutoGroupStatus();
+        return resolved;
     }
 
     function applyValue(el, item) {
@@ -109,6 +168,7 @@
         var target = (el.getAttribute('data-etg-dfsb-target') || '').trim().toLowerCase();
         if (target === 'href' || target === 'src') {
             if (type === 'url' && value) { el.setAttribute(target, value); }
+            else { restoreAttribute(el, target); }
             return;
         }
         if (!value) {
@@ -117,6 +177,7 @@
         }
         if (type === 'html') { el.innerHTML = value; }
         else { el.textContent = value; }
+        syncSectionVisibility(el);
     }
 
     function applyResponse(data, key) {
@@ -132,12 +193,12 @@
         elementsFor('[data-etg-dfsb-token]', key).forEach(function (el) {
             remember(el);
             var token = (el.getAttribute('data-etg-dfsb-token') || '').trim().toLowerCase();
-            if (Object.prototype.hasOwnProperty.call(tokenValues, token)) { applyValue(el, tokenValues[token]); }
+            if (Object.prototype.hasOwnProperty.call(tokenValues, token)) { applyValue(el, tokenValues[token]); if (boundGroups) { boundGroups.set(el, key); } }
         });
         elementsFor('[data-etg-dfsb-slot]', key).forEach(function (el) {
             remember(el);
             var slot = (el.getAttribute('data-etg-dfsb-slot') || '').trim().toLowerCase();
-            if (Object.prototype.hasOwnProperty.call(slotValues, slot)) { applyValue(el, slotValues[slot]); }
+            if (Object.prototype.hasOwnProperty.call(slotValues, slot)) { applyValue(el, slotValues[slot]); if (boundGroups) { boundGroups.set(el, key); } }
         });
         document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-updated', { detail: data }));
     }
@@ -149,10 +210,11 @@
         var group = jsf.filterGroups[key];
         if (!group) { return; }
         var currentQuery = group.currentQuery || {};
-        if (!currentQuery || !Object.keys(currentQuery).length) {
+        if (!queryHasSemanticFilters(currentQuery)) {
             if (activeKeys[key]) { restoreInitial('filters_cleared', key); }
             if (controllers[key]) { controllers[key].abort(); delete controllers[key]; }
-            emitAutoGroupStatus();
+            var resolvedAfterClear = syncAutoBindings();
+            if (resolvedAfterClear && resolvedAfterClear !== key) { scheduleKey(resolvedAfterClear); }
             return;
         }
         var b = bindings(key);
@@ -200,13 +262,22 @@
         }, 25);
     }
 
+    function scheduleKey(key) {
+        var parts = String(key || '').split('/');
+        if (parts.length < 2) { return; }
+        schedule(parts[0], parts.slice(1).join('/'));
+    }
+
     function init() {
         if (initialized) { return; }
         var jsf = window.JetSmartFilters;
         if (!jsf || !jsf.events || typeof jsf.events.subscribe !== 'function') { return; }
         initialized = true;
         jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
+            var key = groupKey(provider, queryId);
+            var resolved = syncAutoBindings();
             schedule(provider, queryId);
+            if (resolved && resolved !== key) { scheduleKey(resolved); }
         });
         groupKeys().forEach(function (key) {
             var parts = key.split('/');
@@ -215,7 +286,7 @@
                 schedule(parts[0], parts.slice(1).join('/'));
             }
         });
-        emitAutoGroupStatus();
+        syncAutoBindings();
     }
 
     document.addEventListener('jet-smart-filters/inited', init, { once: true });
