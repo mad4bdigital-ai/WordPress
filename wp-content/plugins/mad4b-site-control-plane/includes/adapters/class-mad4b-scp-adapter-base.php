@@ -36,15 +36,21 @@ abstract class MAD4B_SCP_Adapter_Base {
 		return (bool) apply_filters( 'mad4b_scp_adapter_mutation_requires_certification', $required, $this->id(), $this );
 	}
 
-	private function mutation_permission_callback( $permission, $readonly ) {
+	private function mutation_permission_callback( $permission, $readonly, $ability_name, $surface ) {
 		if ( $readonly ) return $permission;
-		return function ( $input = null ) use ( $permission ) {
+		return function ( $input = null ) use ( $permission, $ability_name, $surface ) {
 			$granted = call_user_func( $permission, $input );
 			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
-			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until MAD4B_MCP_MUTATION_ENABLED is explicitly enabled.' );
-			if ( ! $this->mutation_requires_certification() ) return true;
-			if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_provider_contracts_unavailable', 'Provider mutation is denied because the certification authority is unavailable.' );
-			return MAD4B_SCP_Provider_Contracts::mutation_guard( $this->certified_provider_key(), (bool) $this->is_available() );
+			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and a bound enabled NHI are both present.' );
+			if ( $this->mutation_requires_certification() ) {
+				if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_provider_contracts_unavailable', 'Provider mutation is denied because the certification authority is unavailable.' );
+				$provider_guard = MAD4B_SCP_Provider_Contracts::mutation_guard( $this->certified_provider_key(), (bool) $this->is_available() );
+				if ( is_wp_error( $provider_guard ) || true !== $provider_guard ) return $provider_guard;
+			}
+			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
+			$authorization = MAD4B_SCP_Authorization::authorize_mutation( $ability_name, 'mad4b-' . sanitize_key( $surface ), $this->certified_provider_key(), $input );
+			if ( is_wp_error( $authorization ) ) return $authorization;
+			return true;
 		};
 	}
 
@@ -55,7 +61,7 @@ abstract class MAD4B_SCP_Adapter_Base {
 			'description' => $label . ' through the governed MAD4B ' . $this->label() . ' adapter.',
 			'category' => 'mad4b-' . $this->id(),
 			'execute_callback' => array( $this, $method ),
-			'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly ),
+			'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly, $name, $surface ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
 				'public' => false,
