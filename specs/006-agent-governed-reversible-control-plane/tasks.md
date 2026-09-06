@@ -29,7 +29,27 @@ All seven repository workflows were `SUCCESS` on that SHA. Runtime Integration p
 
 ### Connection-governance expansion
 
-The connection-readiness work expands the earlier Adapter-registry-only peer proof. Repository certification must now also prove independent MCP-looking REST transports fail governed mutation closed, while the read-only Connection surface distinguishes local readiness, remote endpoint preflight and a real externally verified handshake. A final exact-head cycle is required after this expansion.
+The connection-readiness work expands the earlier Adapter-registry-only peer proof. Repository certification must now also prove independent MCP-looking REST transports fail governed mutation closed, while the read-only Connection surface distinguishes local readiness, remote endpoint preflight and a real externally verified handshake.
+
+### `mad4b-write` governed-ingress checkpoint
+
+Exact implementation head:
+
+```text
+33b20ab0f5c4dbf93769b95830320ea4280b60be
+```
+
+All **nine** repository workflows were `SUCCESS` on that SHA. `MAD4B Connection Governance` passed on both WordPress 6.9 and current `latest`, including:
+
+- all five governed MAD4B server routes/permission callbacks;
+- `mad4b-write` projection from explicit runtime `annotations.readonly === false` only;
+- exact route/server transport binding;
+- specialist-server grant cannot authorize the same Ability through `mad4b-write`;
+- exact `mad4b-write` grant remains an independent authority record;
+- independent `/mosmcp/v1/mcp`-shaped transport remains fail-closed;
+- WordPress REST namespace-index callback cannot hide a foreign MCP callback.
+
+The concurrency key for Connection Governance is also bound to the exact head SHA so a stale runner from an older PR head cannot hold newer exact-head certification behind the same PR-wide group.
 
 ## Phase 0 — Specification and guardrails
 
@@ -235,7 +255,7 @@ Plugin lifecycle, structured DB mutation and Flow execution remain high-impact/n
 - [x] Active MCP/model-context plugin basenames outside the certified Adapter/Control Plane pair are surfaced as foreign evidence.
 - [x] Unreviewed independent MCP transport fails governed mutation closed with `mcp_foreign_transport_unreviewed` + `mcp_write_side_channel_detected`.
 - [x] No runtime bypass filter can silently suppress the foreign-transport verdict.
-- [~] Disposable runtime proof for a `/mosmcp/v1/mcp`-shaped independent REST transport implemented; final exact-head CI certification pending.
+- [x] Disposable `/mosmcp/v1/mcp`-shaped independent REST transport blocker runtime-certified on WordPress 6.9/latest at `33b20ab…`.
 
 ## Phase 8 — Audit storage hardening
 
@@ -296,7 +316,8 @@ The certified first slice is intentionally read-only; it does not create a paral
 
 ### T098 — Connection / transport console
 - [x] Dedicated `manage_options` read-only Connection submenu implemented.
-- [x] Four endpoints derived from actual MCP Adapter server route metadata rather than hardcoded URL assumptions.
+- [x] Five endpoints derived from actual MCP Adapter server route metadata rather than hardcoded URL assumptions.
+- [x] Both WordPress REST URL forms are handled without confusing rewrite form with route identity.
 - [x] REST route registration and exact transport permission callback binding displayed.
 - [x] Local transport readiness separated from HTTPS remote endpoint preflight.
 - [x] Real external handshake is explicitly unverified locally; no self-certification.
@@ -304,7 +325,23 @@ The certified first slice is intentionally read-only; it does not create a paral
 - [x] Credential material/creation excluded; only bounded non-sensitive subject facts are displayed.
 - [x] No outbound self-probe/SSRF path.
 - [x] Foreign MCP route/plugin evidence surfaced.
-- [~] Runtime UI/transport proof implemented for WordPress 6.9/latest; final exact-head Connection Governance CI pending.
+- [x] Runtime UI/transport proof PASS on WordPress 6.9/latest at `33b20ab…`.
+
+### T099 — `mad4b-write` governed ingress
+
+- [x] Fifth custom MCP server `mad4b-write` registered independently from content/admin/breakglass.
+- [x] Tool membership is projected only from already registered content/admin candidates whose runtime Ability metadata has explicit `annotations.readonly === false`.
+- [x] Missing/unknown readonly annotation fails closed; representative read-only abilities are absent.
+- [x] No generic execute-any dispatcher is introduced.
+- [x] Breakglass raw SQL is not projected onto `mad4b-write`.
+- [x] Request-local `MAD4B_SCP_Transport_Context` binds exact `/mcp/<server-id>` route and stores no credential/session material.
+- [x] Route/server mismatch fails closed and leaves no stale transport authority.
+- [x] Central authorization resolves actual MCP transport before exact-grant lookup and exact approval consumption.
+- [x] Specialist grant for `mad4b-content + mad4b/content-update-post + core` cannot authorize the same Ability through `mad4b-write`.
+- [x] Exact `mad4b-write + mad4b/content-update-post + core` grant remains a distinct authority record.
+- [x] Connection Console exposes write readiness/count/gates read-only with no enable/grant/mutation action.
+- [x] Runtime proof PASS on WordPress 6.9/latest at `33b20ab…`.
+- [x] Connection Governance concurrency is exact-head keyed so a stale older runner cannot hold newer-head certification in the same PR-wide group.
 
 Any future Admin write action must use reviewed capability + WordPress nonce + service-level validation and must not create an alternative authority path.
 
@@ -317,8 +354,9 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [x] Audit persistence contract.
 - [x] Read-only Admin Governance UI contract.
 - [x] Spec Kit consistency contract + dedicated workflow.
-- [x] `connection-readiness-contract.py` covers endpoint truth, no-secret/no-self-probe rules and foreign MCP fail-closed semantics.
-- [x] Dedicated `MAD4B Connection Governance` workflow added.
+- [x] `connection-readiness-contract.py` covers five-endpoint truth, transport context, `mad4b-write` projection/isolation, no-secret/no-self-probe rules and foreign MCP fail-closed semantics.
+- [x] Dedicated `MAD4B Connection Governance` workflow covers static and WordPress 6.9/latest runtime evidence.
+- [x] Main `MAD4B Site Control Plane` workflow requires the fifth governed surface and transport-binding contracts.
 
 ### T101 — Runtime integration
 
@@ -331,7 +369,9 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [x] MCP peer clean inventory + rogue Adapter write blocker.
 - [x] Append-only audit concurrency + tamper detection.
 - [x] Admin Governance Console read-only/runtime/no-leak smoke.
-- [~] Connection readiness + independent foreign MCP REST blocker runtime tests implemented; final exact-head CI pending.
+- [x] Connection readiness + independent foreign MCP REST blocker runtime proof on WordPress 6.9/latest.
+- [x] `mad4b-write` exact transport route and specialist-grant isolation runtime proof on WordPress 6.9/latest.
+- [x] Namespace-index anti-hijack runtime proof on WordPress 6.9/latest.
 - [ ] Add a dedicated runtime ticket-expiry scenario if expiry is not already exercised independently from static/unit coverage.
 
 ### T102 — Packaging
@@ -345,8 +385,11 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [ ] Exact final package deployed on Staging.
 - [ ] Remote HTTPS endpoint preflight has no blocker.
 - [ ] Real MCP initialize/tool discovery succeeds on the intended MAD4B server.
+- [ ] When `mad4b-write` is used, remote tool discovery exposes only the certified write projection.
 - [ ] Exact MCP transport subject bridge evidence.
 - [ ] Dedicated staging NHI with minimum exact grants.
+- [ ] Exact `mad4b-write` grants used for write-ingress calls; specialist-server grants are not treated as aliases.
+- [ ] Cross-server negative proof: specialist grant cannot authorize the same Ability through `mad4b-write` on the real Staging transport.
 - [ ] Runtime authority/self-test PASS on deployed target.
 - [ ] No unreviewed independent MCP transport/foreign MCP write-side-channel blocker.
 - [ ] Benign approved reversible content mutation + readback PASS.
@@ -365,14 +408,14 @@ Before Production write:
 
 - [x] T006 dedicated spec-consistency gate implemented.
 - [ ] Required reversible adapter scope for intended Production operations resolved; T054 remains open beyond post-update pilot.
-- [x] NHI/exact grants/approval/budget/side-channel core contracts repository-certified at the previous checkpoint; current connection-governance expansion requires a fresh exact-head cycle.
+- [x] NHI/exact grants/approval/budget/side-channel core contracts repository-certified.
+- [x] `mad4b-write` transport/grant isolation and Connection/foreign-MCP expansion repository runtime-certified at the `33b20ab…` implementation checkpoint.
 - [x] Append-only audit repository durability/integrity certified.
-- [x] Read-only Admin Governance Console repository-certified.
-- [ ] Connection/foreign-MCP expansion final exact-head repository CI PASS.
+- [x] Read-only Admin Governance + Connection Consoles repository-certified.
 - [ ] Target staging T103 PASS.
 - [ ] Exact deployed provider/runtime certification PASS.
 - [ ] No target-site MCP write-side-channel blocker.
-- [ ] Dedicated Production NHI with exact minimal non-wildcard grants.
+- [ ] Dedicated Production NHI with exact minimal non-wildcard grants, including exact `mad4b-write` server coordinates where used.
 - [ ] Production approval/recovery policy validated at target boundary.
 - [ ] Explicit operator authorization to enable mutation in Production.
 
