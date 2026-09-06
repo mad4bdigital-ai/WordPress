@@ -8,15 +8,57 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function register_abilities() {
 		$this->add_ability( 'media/search', 'Search Media Library', 'search', array( 'MAD4B_SCP_Policy', 'can_read' ), $this->schema( array( 'search' => array( 'type' => 'string', 'default' => '' ), 'mime_type' => array( 'type' => 'string', 'default' => '' ), 'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 20 ) ) ) );
 		$this->add_ability( 'media/get', 'Get Media Item', 'get_media', array( $this, 'can_read_attachment' ), $this->schema( array( 'attachment_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'attachment_id' ) ) );
-		$this->add_ability( 'media/update-metadata', 'Update Media Metadata', 'update_metadata', array( $this, 'can_edit_attachment' ), $this->schema( array( 'attachment_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'title' => array( 'type' => 'string' ), 'caption' => array( 'type' => 'string' ), 'description' => array( 'type' => 'string' ), 'alt' => array( 'type' => 'string' ) ), array( 'attachment_id' ) ), 'content', false, false, true );
-		$this->add_ability( 'media/set-featured', 'Set Featured Image', 'set_featured', array( $this, 'can_set_featured' ), $this->schema( array( 'post_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'attachment_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'post_id', 'attachment_id' ) ), 'content', false, false, true );
+		$this->add_ability( 'media/update-metadata', 'Update Media Metadata', 'update_metadata', array( $this, 'can_edit_attachment' ), $this->schema( array(
+			'attachment_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'expected_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ), 'title' => array( 'type' => 'string' ), 'caption' => array( 'type' => 'string' ), 'description' => array( 'type' => 'string' ), 'alt' => array( 'type' => 'string' )
+		), array( 'attachment_id', 'expected_sha256' ) ), 'content', false, false, true );
+		$this->add_ability( 'media/set-featured', 'Set Featured Image', 'set_featured', array( $this, 'can_set_featured' ), $this->schema( array(
+			'post_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'attachment_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'expected_thumbnail_id' => array( 'type' => 'integer', 'minimum' => 0 )
+		), array( 'post_id', 'attachment_id', 'expected_thumbnail_id' ) ), 'content', false, false, true );
 	}
 	public function can_read_attachment( $input ) { $id = isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0; return $id > 0 && current_user_can( 'read_post', $id ); }
 	public function can_edit_attachment( $input ) { $id = isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0; return $id > 0 && current_user_can( 'edit_post', $id ); }
 	public function can_set_featured( $input ) { $post = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; $att = isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0; return $post > 0 && $att > 0 && current_user_can( 'edit_post', $post ) && current_user_can( 'read_post', $att ); }
-	public function search( $input ) { $limit = isset( $input['limit'] ) ? max( 1, min( 50, absint( $input['limit'] ) ) ) : 20; $args = array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'posts_per_page' => $limit, 'orderby' => 'date', 'order' => 'DESC' ); if ( ! empty( $input['search'] ) ) $args['s'] = sanitize_text_field( $input['search'] ); if ( ! empty( $input['mime_type'] ) ) $args['post_mime_type'] = sanitize_text_field( $input['mime_type'] ); $posts = get_posts( $args ); $items = array(); foreach ( $posts as $post ) $items[] = $this->media_payload( $post ); return array( 'items' => $items, 'count' => count( $items ) ); }
-	public function get_media( $input ) { $post = get_post( absint( $input['attachment_id'] ) ); if ( ! $post || 'attachment' !== $post->post_type ) return new WP_Error( 'mad4b_media_missing', 'Attachment not found.' ); return array( 'media' => $this->media_payload( $post ) ); }
-	public function update_metadata( $input ) { $id = absint( $input['attachment_id'] ); $post = get_post( $id ); if ( ! $post || 'attachment' !== $post->post_type ) return new WP_Error( 'mad4b_media_missing', 'Attachment not found.' ); $update = array( 'ID' => $id ); if ( array_key_exists( 'title', $input ) ) $update['post_title'] = sanitize_text_field( $input['title'] ); if ( array_key_exists( 'caption', $input ) ) $update['post_excerpt'] = sanitize_textarea_field( $input['caption'] ); if ( array_key_exists( 'description', $input ) ) $update['post_content'] = wp_kses_post( $input['description'] ); if ( count( $update ) > 1 ) { $result = wp_update_post( wp_slash( $update ), true ); if ( is_wp_error( $result ) ) return $result; } if ( array_key_exists( 'alt', $input ) ) update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $input['alt'] ) ); MAD4B_SCP_Audit::record( 'media/update-metadata', array( 'attachment_id' => $id, 'fields' => array_keys( $input ) ) ); return $this->get_media( array( 'attachment_id' => $id ) ); }
-	public function set_featured( $input ) { $post_id = absint( $input['post_id'] ); $attachment_id = absint( $input['attachment_id'] ); if ( ! wp_attachment_is_image( $attachment_id ) ) return new WP_Error( 'mad4b_media_not_image', 'Attachment is not an image.' ); $result = set_post_thumbnail( $post_id, $attachment_id ); if ( false === $result ) return new WP_Error( 'mad4b_media_featured_failed', 'Unable to set featured image.' ); MAD4B_SCP_Audit::record( 'media/set-featured', array( 'post_id' => $post_id, 'attachment_id' => $attachment_id ) ); return array( 'post_id' => $post_id, 'attachment_id' => $attachment_id, 'updated' => true ); }
-	private function media_payload( $post ) { $file = get_attached_file( $post->ID, true ); return array( 'id' => $post->ID, 'title' => $post->post_title, 'caption' => $post->post_excerpt, 'description' => $post->post_content, 'alt' => get_post_meta( $post->ID, '_wp_attachment_image_alt', true ), 'mime_type' => $post->post_mime_type, 'url' => wp_get_attachment_url( $post->ID ), 'file' => $file ? basename( $file ) : '', 'metadata' => wp_get_attachment_metadata( $post->ID ) ); }
+	public function search( $input ) {
+		$limit = isset( $input['limit'] ) ? max( 1, min( 50, absint( $input['limit'] ) ) ) : 20;
+		$args = array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'posts_per_page' => $limit, 'orderby' => 'date', 'order' => 'DESC' );
+		if ( ! empty( $input['search'] ) ) $args['s'] = sanitize_text_field( $input['search'] );
+		if ( ! empty( $input['mime_type'] ) ) $args['post_mime_type'] = sanitize_text_field( $input['mime_type'] );
+		$posts = get_posts( $args ); $items = array();
+		foreach ( $posts as $post ) { $payload = $this->media_payload( $post ); $items[] = array( 'media' => $payload, 'sha256' => $this->hash_value( $this->mutable_payload( $payload ) ) ); }
+		return array( 'items' => $items, 'count' => count( $items ) );
+	}
+	public function get_media( $input ) {
+		$post = get_post( absint( $input['attachment_id'] ) ); if ( ! $post || 'attachment' !== $post->post_type ) return new WP_Error( 'mad4b_media_missing', 'Attachment not found.' );
+		$payload = $this->media_payload( $post );
+		return array( 'media' => $payload, 'sha256' => $this->hash_value( $this->mutable_payload( $payload ) ) );
+	}
+	public function update_metadata( $input ) {
+		$id = absint( $input['attachment_id'] ); $post = get_post( $id ); if ( ! $post || 'attachment' !== $post->post_type ) return new WP_Error( 'mad4b_media_missing', 'Attachment not found.' );
+		$current = $this->get_media( array( 'attachment_id' => $id ) );
+		if ( is_wp_error( $current ) ) return $current;
+		if ( ! hash_equals( $current['sha256'], strtolower( trim( $input['expected_sha256'] ) ) ) ) return new WP_Error( 'mad4b_media_stale', 'Media metadata changed since it was read.', array( 'current_sha256' => $current['sha256'] ) );
+		$update = array( 'ID' => $id );
+		if ( array_key_exists( 'title', $input ) ) $update['post_title'] = sanitize_text_field( $input['title'] );
+		if ( array_key_exists( 'caption', $input ) ) $update['post_excerpt'] = sanitize_textarea_field( $input['caption'] );
+		if ( array_key_exists( 'description', $input ) ) $update['post_content'] = wp_kses_post( $input['description'] );
+		if ( count( $update ) > 1 ) { $result = wp_update_post( wp_slash( $update ), true ); if ( is_wp_error( $result ) ) return $result; }
+		if ( array_key_exists( 'alt', $input ) ) update_post_meta( $id, '_wp_attachment_image_alt', sanitize_text_field( $input['alt'] ) );
+		$after = $this->get_media( array( 'attachment_id' => $id ) );
+		MAD4B_SCP_Audit::record( 'media/update-metadata', array( 'attachment_id' => $id, 'fields' => implode( ',', array_keys( array_diff_key( $input, array( 'attachment_id' => true, 'expected_sha256' => true ) ) ) ), 'before_sha256' => $current['sha256'], 'after_sha256' => is_wp_error( $after ) ? '' : $after['sha256'] ) );
+		return $after;
+	}
+	public function set_featured( $input ) {
+		$post_id = absint( $input['post_id'] ); $attachment_id = absint( $input['attachment_id'] );
+		$current = (int) get_post_thumbnail_id( $post_id );
+		if ( $current !== (int) $input['expected_thumbnail_id'] ) return new WP_Error( 'mad4b_media_stale_thumbnail', 'Featured image changed since it was read.', array( 'current_thumbnail_id' => $current ) );
+		if ( ! wp_attachment_is_image( $attachment_id ) ) return new WP_Error( 'mad4b_media_not_image', 'Attachment is not an image.' );
+		$result = set_post_thumbnail( $post_id, $attachment_id ); if ( false === $result ) return new WP_Error( 'mad4b_media_featured_failed', 'Unable to set featured image.' );
+		MAD4B_SCP_Audit::record( 'media/set-featured', array( 'post_id' => $post_id, 'before_thumbnail_id' => $current, 'attachment_id' => $attachment_id ) );
+		return array( 'post_id' => $post_id, 'attachment_id' => $attachment_id, 'updated' => true );
+	}
+	private function media_payload( $post ) {
+		$file = get_attached_file( $post->ID, true );
+		return array( 'id' => $post->ID, 'title' => $post->post_title, 'caption' => $post->post_excerpt, 'description' => $post->post_content, 'alt' => get_post_meta( $post->ID, '_wp_attachment_image_alt', true ), 'mime_type' => $post->post_mime_type, 'modified_gmt' => $post->post_modified_gmt, 'url' => wp_get_attachment_url( $post->ID ), 'file' => $file ? basename( $file ) : '', 'metadata' => wp_get_attachment_metadata( $post->ID ) );
+	}
+	private function mutable_payload( array $payload ) { return array_intersect_key( $payload, array( 'id' => true, 'title' => true, 'caption' => true, 'description' => true, 'alt' => true, 'modified_gmt' => true ) ); }
 }
