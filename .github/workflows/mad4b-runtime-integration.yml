@@ -143,3 +143,42 @@ jobs:
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-budget-smoke.php" \
             --path=/tmp/mad4b-wordpress \
             --user=mad4b-ci-admin
+
+      - name: Execute concurrent NHI budget contention smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST_ROOT="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-budget-concurrency-setup.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+          BARRIER="$(php -r 'printf("%.6f", microtime(true) + 3.0);')"
+          MAD4B_CI_BUDGET_WORKER=one MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
+              --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-one.log 2>&1 &
+          PID_ONE=$!
+          MAD4B_CI_BUDGET_WORKER=two MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
+              --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-two.log 2>&1 &
+          PID_TWO=$!
+
+          RC_ONE=0
+          RC_TWO=0
+          wait "$PID_ONE" || RC_ONE=$?
+          wait "$PID_TWO" || RC_TWO=$?
+          cat /tmp/mad4b-budget-worker-one.log
+          cat /tmp/mad4b-budget-worker-two.log
+          test "$RC_ONE" -eq 0
+          test "$RC_TWO" -eq 0
+
+          ALLOWED="$(grep -h 'MAD4B_BUDGET_WORKER_RESULT=' /tmp/mad4b-budget-worker-*.log | grep -c '"status":"allowed"' || true)"
+          EXHAUSTED="$(grep -h 'MAD4B_BUDGET_WORKER_RESULT=' /tmp/mad4b-budget-worker-*.log | grep -c '"reason_code":"mad4b_budget_exhausted"' || true)"
+          test "$ALLOWED" -eq 1
+          test "$EXHAUSTED" -eq 1
+
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-budget-concurrency-verify.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
