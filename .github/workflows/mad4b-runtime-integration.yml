@@ -134,3 +134,12 @@ jobs:
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-governance-visibility-smoke.php" \
             --path=/tmp/mad4b-wordpress \
             --user=mad4b-ci-admin
+
+      - name: Execute transactional NHI budget smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-budget-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
