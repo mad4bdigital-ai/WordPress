@@ -287,7 +287,7 @@ class WPL_License_Health_Monitor {
         // vendor API is public and is what activate_license() calls internally.
         $activate = self::crocoblock_request( $api, 'activate_license', $key );
         if ( self::crocoblock_response_is_valid( $activate ) ) {
-            self::save_crocoblock_key( $api, $key );
+            self::persist_crocoblock_activation( $api, $key, $activate );
             return self::result( 'repaired', 'Crocoblock license was reactivated.' );
         }
 
@@ -313,7 +313,7 @@ class WPL_License_Health_Monitor {
             self::crocoblock_request( $api, 'deactivate_license', $key );
             $activate = self::crocoblock_request( $api, 'activate_license', $key );
             if ( self::crocoblock_response_is_valid( $activate ) ) {
-                self::save_crocoblock_key( $api, $key );
+                self::persist_crocoblock_activation( $api, $key, $activate );
                 return self::result( 'repaired', 'Crocoblock license was rebound to the current site URL.' );
             }
             $reactivate_code = self::crocoblock_status_code( $activate );
@@ -348,11 +348,31 @@ class WPL_License_Health_Monitor {
         return ! empty( $response['success'] ) && ( $response['license'] ?? '' ) === 'valid';
     }
 
-    private static function save_crocoblock_key( $api, $key ) {
-        $option = isset( $api->license_option ) && is_string( $api->license_option )
+    /**
+     * Mirror the state Crocoblock's own activate_license() persists. The cron
+     * adapter uses the vendor's lower-level request because activate_license()
+     * requires an interactive manage_options user, which WP-Cron does not have.
+     */
+    private static function persist_crocoblock_activation( $api, $key, $response ) {
+        if ( ! self::crocoblock_response_is_valid( $response ) ) return;
+
+        $license_option = isset( $api->license_option ) && is_string( $api->license_option )
             ? $api->license_option
             : 'jet_theme_core_license';
-        update_option( $option, $key, false );
+        update_option( $license_option, $key, false );
+
+        if ( array_key_exists( 'has_templates_access', $response ) ) {
+            update_option( 'has_template_access', $response['has_templates_access'] === true ? 1 : -1, false );
+        }
+        if ( array_key_exists( 'has_design_templates_access', $response ) ) {
+            update_option( 'has_design_templates_access', $response['has_design_templates_access'] === true ? 1 : -1, false );
+        }
+        if ( isset( $response['excluded_plugins'] ) && is_array( $response['excluded_plugins'] ) ) {
+            $plugins_option = isset( $api->plugins_option ) && is_string( $api->plugins_option )
+                ? $api->plugins_option
+                : 'jet_excluded_plugins';
+            update_option( $plugins_option, $response['excluded_plugins'], false );
+        }
     }
 
     private static function retry_allowed( $id ) {
