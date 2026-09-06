@@ -20,9 +20,13 @@ define( 'MAD4B_SCP_VERSION', '0.3.0' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-schema.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-identity-context.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-agent-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-elementor-adapter.php';
