@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: PHP syntax and lifecycle invariants
+      - name: PHP syntax, lifecycle and credential security invariants
         shell: bash
         run: |
           set -euo pipefail
@@ -38,8 +38,25 @@ jobs:
           grep -q "run_event_driven" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
           grep -q "persist_crocoblock_activation" wp-content/plugins/wpl-client/includes/class-wpl-license-health-monitor.php
           ! grep -q "'wpl_has_pending_request'," wp-content/plugins/wpl-client/includes/class-wpl-database-maintenance.php
+          test -f wp-content/plugins/wpl-client/includes/class-wpl-server-client.php
+          grep -q "class-wpl-server-client.php" wp-content/plugins/wpl-client/wpl-client.php
+          grep -q "WPL_Server_Client::probe_credential" wp-content/plugins/wpl-client/includes/class-wpl-client-admin.php
+          grep -q "WPL_Server_Client::request" wp-content/plugins/wpl-client/includes/class-wpl-installer.php
+          test ! -e wp-content/plugins/wpl-client/includes/wpl-package-credential.php
+          if grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' wp-content/plugins/wpl-client; then
+            echo 'Public source embeds a WPL credential' >&2
+            exit 1
+          fi
+          if grep -R -n --include='*.php' 'sslverify' wp-content/plugins/wpl-client | grep -q 'false'; then
+            echo 'TLS verification disabled in WPL source' >&2
+            exit 1
+          fi
+          if grep -R -n --include='*.php' -E 'SSL_VERIFYPEER.*false|SSL_VERIFYHOST.*false|DEFAULT@SECLEVEL=1|CURL_SSLVERSION_TLSv1' wp-content/plugins/wpl-client; then
+            echo 'Weak TLS fallback detected' >&2
+            exit 1
+          fi
 
-      - name: Source and distributable ZIP must match
+      - name: Source and public distributable ZIP must match
         shell: bash
         run: |
           set -euo pipefail
@@ -47,6 +64,11 @@ jobs:
           mkdir -p /tmp/wpl-client-package-check
           unzip -q wp-content/plugins/wpl-client.zip -d /tmp/wpl-client-package-check
           diff -qr wp-content/plugins/wpl-client /tmp/wpl-client-package-check/wpl-client
+          test ! -e /tmp/wpl-client-package-check/wpl-client/includes/wpl-package-credential.php
+          if grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' /tmp/wpl-client-package-check/wpl-client; then
+            echo 'Public ZIP embeds a WPL credential' >&2
+            exit 1
+          fi
 
       - name: Header and runtime versions must match
         shell: bash
