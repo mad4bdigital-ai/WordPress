@@ -80,7 +80,8 @@ jobs:
             alpha12-inventory-control-smoke.php \
             alpha13-ajax-state-smoke.php \
             alpha13-usage-guide-smoke.php \
-            alpha13-frontend-runtime-smoke.php; do
+            alpha13-frontend-runtime-smoke.php \
+            alpha13-deep-audit-smoke.php; do
               php "$PLUGIN/tests/$test_file"
           done
 
@@ -163,24 +164,28 @@ jobs:
           resolver=open(f'{p}/includes/SEO/ResultCountResolver.php').read()
           tags=open(f'{p}/includes/Elementor/DynamicTagRegistrar.php').read()
           live=open(f'{p}/includes/Elementor/DynamicTags/LiveBindingTrait.php').read()
+          runtime=open(f'{p}/includes/Elementor/DynamicTags/DynamicTagRuntime.php').read()
           catalog=open(f'{p}/includes/Presentation/InventoryContentCatalog.php').read()
           bootstrap=open(f'{p}/includes/Bootstrap.php').read()
           assert 'etg.dfsb.ajax-filter-state.v1' in parser and "'url_authority' => false" in parser and "'authorizing' => false" in parser
           assert 'MAX_QUERY_NODES = 500' in parser and 'MAX_TERMS_PER_TAXONOMY = 20' in parser
           assert 'baseArchivePath' in parser and "'request_path' => $requestPath" in parser and "'archive_path' => $archivePath" in parser
+          assert 'extractNativeJetSmartFiltersTaxQuery' in parser and 'query_depth_limit_exceeded' in parser and 'terms_limit_exceeded:' in parser
           assert "'/ajax-presentation'" in endpoint and "'seo_mutation' => false" in endpoint and "'url_authority' => false" in endpoint
-          assert 'MAX_PAYLOAD_BYTES = 65536' in endpoint and 'elementor_render_when_global_off' in endpoint
+          assert 'MAX_PAYLOAD_BYTES = 65536' in endpoint and 'elementor_render_when_global_off' in endpoint and 'catalogTokenMeta' in endpoint
           assert 'ajaxFilters/updated' in bridge and 'group.currentQuery' in bridge and 'history.pushState' not in bridge and 'history.replaceState' not in bridge
           assert 'filters_cleared' in bridge and 'restoreInitial' in bridge and 'sequences[key]' in bridge and 'timers[key]' in bridge
           assert 'autoGroupKey' in bridge and 'baseArchivePath' in bridge and 'ambiguous_auto_group' in bridge and 'data-etg-dfsb-fallback' in bridge
+          assert 'boundGroups' in bridge and 'restoreAttribute' in bridge and 'syncAutoBindings' in bridge and 'queryHasSemanticFilters' in bridge
           assert 'etg-dfsb/ajax-presentation-updated' in bridge and 'etg-dfsb/ajax-presentation-reset' in bridge
           assert 'AJAX Live Update' in live and 'AJAX Group' in live and 'data-etg-dfsb-group' in live
+          assert 'catalogCache' in runtime
           assert 'buildAjaxEvidence' in builder and 'provider_observation_matches_state' in builder and "'url_authority'=>$ajax?false:true" in builder.replace(' ','')
           assert 'terms:' in presentation and 'termSetValue' in presentation and 'provider_observation_matches_state' in presentation
           assert 'resolveFilteredQuery' in adapter and 'provider_observation_matches_state' in adapter and 'resolveFilteredQuery' in resolver
           assert 'data-etg-dfsb-token' in tags and 'data-etg-dfsb-slot' in tags
           assert 'supports_ajax_runtime_state' in catalog and "'terms:'" in catalog and "'groups'=>$groups" in catalog
-          assert 'new AjaxFilterStateParser' in bootstrap and 'new AjaxPresentationEndpoint' in bootstrap
+          assert 'new AjaxFilterStateParser' in bootstrap and 'new AjaxPresentationEndpoint' in bootstrap and '$topology->discover(false)' in bootstrap
           PY
 
       - name: Enforce PR change boundary
@@ -230,7 +235,7 @@ jobs:
             echo "inventory_control=profile_plan_fail_closed_v1"
             echo "ajax_state=jetsmartfilters_current_query_v1"
             echo "ajax_presentation=rest_non_authorizing_live_bindings_v1"
-            echo "frontend_runtime=elementor_fallback_group_pretty_jsf_v1"
+            echo "frontend_runtime=elementor_fallback_group_native_jsf_failclosed_v2"
             echo "package_sha256=$DIGEST"
             echo "jet_engine_blob=$(git rev-parse HEAD:wp-content/plugins/jet-engine.zip)"
             echo "jet_smart_filters_blob=$(git rev-parse HEAD:wp-content/plugins/jet-smart-filters.zip)"
