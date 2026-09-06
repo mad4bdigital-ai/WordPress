@@ -11,6 +11,7 @@ final class MAD4B_SCP_Identity_Context {
 			'subject_type' => '',
 			'subject_fingerprint' => '',
 			'token_scopes' => array(),
+			'approval_ticket_id' => '',
 			'auth_method' => '',
 			'wp_user_id' => get_current_user_id(),
 			'request_id' => self::request_id(),
@@ -46,12 +47,15 @@ final class MAD4B_SCP_Identity_Context {
 			if ( false !== strpos( $scope, '*' ) ) return new WP_Error( 'mad4b_identity_wildcard_scope_denied', 'Wildcard token scopes are not accepted by the MAD4B Production authorization contract.' );
 			$scopes[] = $scope;
 		}
+		$approval_ticket_id = isset( $context['approval_ticket_id'] ) ? trim( (string) $context['approval_ticket_id'] ) : '';
+		if ( '' !== $approval_ticket_id && ! preg_match( '/^[a-f0-9-]{36}$/i', $approval_ticket_id ) ) return new WP_Error( 'mad4b_identity_approval_invalid', 'Approval ticket identifier is malformed.' );
 
 		return array(
 			'authenticated' => $authenticated,
 			'subject_type' => $type,
 			'subject_fingerprint' => $fingerprint,
 			'token_scopes' => array_values( array_unique( $scopes ) ),
+			'approval_ticket_id' => strtolower( $approval_ticket_id ),
 			'auth_method' => isset( $context['auth_method'] ) ? sanitize_key( (string) $context['auth_method'] ) : '',
 			'wp_user_id' => isset( $context['wp_user_id'] ) ? absint( $context['wp_user_id'] ) : get_current_user_id(),
 			'request_id' => isset( $context['request_id'] ) && is_string( $context['request_id'] ) && '' !== trim( $context['request_id'] ) ? substr( sanitize_text_field( $context['request_id'] ), 0, 64 ) : self::request_id(),
