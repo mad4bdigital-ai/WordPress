@@ -3,16 +3,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
 def read(rel):
     return (ROOT / rel).read_text('utf-8')
+
 
 def require(text, needle, label):
     if needle not in text:
         raise SystemExit(f'FAIL {label}: missing {needle!r}')
 
+
 def forbid(text, needle, label):
     if needle in text:
         raise SystemExit(f'FAIL {label}: forbidden {needle!r}')
+
 
 schema = read('includes/class-mad4b-scp-schema.php')
 identity = read('includes/class-mad4b-scp-identity-context.php')
@@ -21,6 +25,8 @@ authz = read('includes/class-mad4b-scp-authorization.php')
 impact = read('includes/class-mad4b-scp-impact-policy.php')
 approvals = read('includes/class-mad4b-scp-approval-tickets.php')
 budgets = read('includes/class-mad4b-scp-budgets.php')
+audit = read('includes/class-mad4b-scp-audit.php')
+audit_verify = read('includes/class-mad4b-scp-audit-verifier.php')
 mutation = read('includes/class-mad4b-scp-mutation-manager.php')
 overrides = read('includes/class-mad4b-scp-governed-ability-overrides.php')
 governance = read('includes/class-mad4b-scp-governance-abilities.php')
@@ -33,14 +39,14 @@ bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 3;', 'schema-version')
+require(schema, 'const VERSION = 4;', 'schema-version')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
-    'mad4b_scp_agent_budget_windows',
+    'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
 ):
     require(schema, table, 'schema-table')
-for dangerous_seed in ("INSERT INTO", "status = 'enabled'", 'grant_ability('):
+for dangerous_seed in ("status = 'enabled'", 'grant_ability('):
     forbid(schema, dangerous_seed, 'no-default-authority-seed')
 require(plugin, 'MAD4B_SCP_Schema::install_or_upgrade()', 'schema-migration')
 
@@ -127,6 +133,23 @@ for forbidden_counter in ('update_option(', 'add_option(', 'set_transient(', 'wp
     forbid(budgets, forbidden_counter, 'budget-no-option-cache-counter')
 require(bootstrap, 'class-mad4b-scp-budgets.php', 'budget-bootstrap-load')
 
+# Append-only audit storage is durable, concurrent-safe and tamper evident.
+require(audit, 'mad4b_scp_audit_events', 'audit-events-table-use')
+require(audit, 'mad4b_scp_audit_heads', 'audit-heads-table-use')
+require(audit, 'FOR UPDATE', 'audit-head-lock')
+require(audit, 'previous_hash', 'audit-previous-hash')
+require(audit, 'entry_hash', 'audit-entry-hash')
+require(audit, 'legacy', 'audit-legacy-anchor')
+require(audit, 'mad4b_scp_audit_committed', 'audit-post-commit-hook')
+require(audit, 'SUMMARY_MAX_DEPTH', 'audit-summary-depth-bound')
+require(audit, 'SUMMARY_MAX_ITEMS', 'audit-summary-item-bound')
+require(audit_verify, 'verify_chain', 'audit-chain-verifier')
+require(audit_verify, 'legacy', 'audit-legacy-verification')
+for forbidden_event_mutation in ("UPDATE {$t['audit_events']}", "DELETE FROM {$t['audit_events']}"):
+    forbid(audit + audit_verify, forbidden_event_mutation, 'audit-events-immutable')
+for forbidden_option_write in ('update_option( self::OPTION', 'add_option( self::OPTION'):
+    forbid(audit, forbidden_option_write, 'audit-no-option-event-write')
+
 # Impact policy is conservative: admin writers and undo high, raw DB exceptional, non-core adapters high.
 require(impact, "'mad4b/database-raw-query'", 'breakglass-exceptional')
 require(impact, "'mad4b/plugin-activate'", 'plugin-high-impact')
@@ -200,13 +223,14 @@ require(mutation, "'verification_code' => 'restore_readback_match'", 'undo-readb
 for forbidden in ('unserialize(', 'eval(', 'shell_exec('):
     forbid(mutation, forbidden, 'mutation-dangerous-primitive')
 
-# Bootstrap order makes governance/mutation/budget services available before plugin boot.
+# Bootstrap order makes governance/mutation/budget/audit services available before plugin boot.
 order = [
     'class-mad4b-scp-schema.php',
     'class-mad4b-scp-identity-context.php',
     'class-mad4b-scp-agent-registry.php',
     'class-mad4b-scp-policy.php',
     'class-mad4b-scp-audit.php',
+    'class-mad4b-scp-audit-verifier.php',
     'class-mad4b-scp-provider-contracts.php',
     'class-mad4b-scp-impact-policy.php',
     'class-mad4b-scp-approval-tickets.php',
@@ -223,4 +247,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v5: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v6: PASS')
