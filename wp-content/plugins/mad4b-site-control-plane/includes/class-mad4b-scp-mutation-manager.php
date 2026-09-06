@@ -71,7 +71,7 @@ final class MAD4B_SCP_Mutation_Manager {
 			'error_code' => '',
 			'created_at' => $now,
 			'updated_at' => $now,
-		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $inserted ) return new WP_Error( 'mad4b_mutation_record_failed', 'Unable to persist the mutation envelope before execution.', array( 'db_error' => $wpdb->last_error ) );
 		self::update_record( $mutation_id, array( 'status' => 'executing' ) );
 
@@ -149,16 +149,17 @@ final class MAD4B_SCP_Mutation_Manager {
 		$recovery_id = wp_generate_uuid4();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$t = MAD4B_SCP_Schema::tables();
+		$undo_approval_ticket_id = isset( $identity['approval_ticket_id'] ) && '' !== $identity['approval_ticket_id'] ? $identity['approval_ticket_id'] : null;
 		$inserted = $wpdb->insert( $t['mutations'], array(
 			'mutation_id' => $recovery_id, 'request_id' => isset( $identity['request_id'] ) ? $identity['request_id'] : MAD4B_SCP_Identity_Context::request_id(), 'parent_mutation_id' => $mutation_id,
 			'agent_id' => (int) $agent['id'], 'subject_type' => (string) $identity['subject_type'], 'subject_fingerprint' => (string) $identity['subject_fingerprint'], 'wp_user_id' => get_current_user_id(),
 			'server_id' => 'mad4b-admin', 'ability_name' => 'mad4b/mutation-undo', 'provider' => 'core', 'provider_version' => MAD4B_SCP_VERSION, 'target_type' => 'post', 'target_id' => (string) $id,
-			'approval_ticket_id' => null, 'impact' => 'high', 'status' => 'undone', 'reversible' => 0, 'before_sha256' => $current_hash, 'after_sha256' => $restored_hash,
+			'approval_ticket_id' => $undo_approval_ticket_id, 'impact' => 'high', 'status' => 'undone', 'reversible' => 0, 'before_sha256' => $current_hash, 'after_sha256' => $restored_hash,
 			'rollback_payload' => null, 'rollback_payload_sha256' => '', 'undo_expires_at' => null, 'verification_code' => 'restore_readback_match', 'error_code' => '', 'created_at' => $now, 'updated_at' => $now,
-		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $inserted ) return new WP_Error( 'mad4b_undo_record_failed', 'Post was restored but recovery evidence could not be persisted.', array( 'db_error' => $wpdb->last_error ) );
 		self::update_record( $mutation_id, array( 'status' => 'undone' ) );
-		MAD4B_SCP_Audit::record( 'mad4b/mutation-undo', array( 'mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'post_id' => $id, 'restored_sha256' => $restored_hash ) );
+		MAD4B_SCP_Audit::record( 'mad4b/mutation-undo', array( 'mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'post_id' => $id, 'restored_sha256' => $restored_hash, 'approval_ticket_id' => $undo_approval_ticket_id ) );
 		return array( 'status' => 'undone', 'original_mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'restored_sha256' => $restored_hash, 'verified' => true );
 	}
 
