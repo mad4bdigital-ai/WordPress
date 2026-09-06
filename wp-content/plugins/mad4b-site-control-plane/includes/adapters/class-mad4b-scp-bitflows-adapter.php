@@ -18,7 +18,7 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 			'expected_flow_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 			'trigger_data' => array( 'type' => 'object', 'default' => array() ),
 			'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
-		), array( 'flow_id', 'expected_flow_sha256', 'reason' ) ), 'admin', false, false, false );
+		), array( 'flow_id', 'expected_flow_sha256', 'reason' ) ), 'admin', false, true, false );
 	}
 	public function status() {
 		$status = parent::status();
@@ -29,6 +29,7 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 			'flow_history' => class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ),
 		);
 		$status['execution_enabled'] = defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) && true === MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED;
+		$status['flow_policy_default'] = 'deny';
 		$status['native_mcp_role'] = 'client';
 		return $status;
 	}
@@ -81,7 +82,7 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 			$fingerprint = $this->flow_fingerprint( $id, $flow );
 			if ( is_wp_error( $fingerprint ) ) return $fingerprint;
 			if ( ! hash_equals( $fingerprint, strtolower( trim( $input['expected_flow_sha256'] ) ) ) ) return new WP_Error( 'mad4b_bitflows_stale_flow', 'Flow definition changed since it was reviewed.', array( 'current_flow_sha256' => $fingerprint ) );
-			if ( ! (bool) apply_filters( 'mad4b_scp_bitflows_flow_allowed', true, $id, $fingerprint, $flow, get_current_user_id() ) ) return new WP_Error( 'mad4b_bitflows_flow_policy_denied', 'Flow execution policy denied this flow.' );
+			if ( ! (bool) apply_filters( 'mad4b_scp_bitflows_flow_allowed', false, $id, $fingerprint, $flow, get_current_user_id() ) ) return new WP_Error( 'mad4b_bitflows_flow_policy_denied', 'Flow execution requires an explicit per-flow allowlist policy.' );
 
 			$trigger_data = isset( $input['trigger_data'] ) && is_array( $input['trigger_data'] ) ? $input['trigger_data'] : array();
 			$reason = sanitize_text_field( $input['reason'] );
@@ -119,9 +120,12 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! is_array( $value ) ) return $value;
 		$result = array();
 		foreach ( $value as $key => $item ) {
-			$key_string = strtolower( (string) $key );
-			if ( preg_match( '/(?:pass(?:word)?|secret|token|api[_-]?key|auth|credential|private[_-]?key)/i', $key_string ) ) $result[ $key ] = '[redacted]';
-			else $result[ $key ] = is_array( $item ) ? $this->redact( $item ) : $item;
+			$name = strtolower( (string) $key );
+			if ( preg_match( '/(?:pass(?:word)?|secret|token|api[_-]?key|auth|credential|private[_-]?key|access[_-]?key|refresh[_-]?token|cookie|authorization)/i', $name ) ) {
+				$result[ $key ] = '[REDACTED]';
+			} else {
+				$result[ $key ] = is_array( $item ) ? $this->redact( $item ) : $item;
+			}
 		}
 		return $result;
 	}
