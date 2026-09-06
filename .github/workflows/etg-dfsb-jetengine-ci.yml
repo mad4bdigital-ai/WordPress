@@ -1,0 +1,234 @@
+name: ETG DFSB JetEngine Advanced CI
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - '.github/workflows/etg-dfsb-jetengine-ci.yml'
+  push:
+    branches: [feat/etg-dynamic-filter-seo-bridge]
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - '.github/workflows/etg-dfsb-jetengine-ci.yml'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  deep-php:
+    name: JetEngine deep PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: JetEngine deep runtime contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          P='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          for f in \
+            "$P/includes/Identifiers/FieldKey.php" \
+            "$P/includes/Identifiers/PresentationToken.php" \
+            "$P/includes/JetEngine/ValueNormalizer.php" \
+            "$P/includes/JetEngine/ListingContextResolver.php" \
+            "$P/includes/JetEngine/QueryRunner.php" \
+            "$P/includes/JetEngine/RelationResolver.php" \
+            "$P/includes/JetEngine/FieldDiscovery.php" \
+            "$P/includes/JetEngine/ListingIntegration.php" \
+            "$P/includes/Presentation/ContentSourceResolver.php" \
+            "$P/includes/Presentation/PresentationResolver.php" \
+            "$P/includes/Presentation/AjaxPresentationEndpoint.php" \
+            "$P/includes/Elementor/Shortcodes.php" \
+            "$P/includes/Admin/JetEngineInspectorPage.php" \
+            "$P/includes/Admin/UsageGuidePage.php" \
+            "$P/includes/Bootstrap.php"; do
+              php -l "$f"
+          done
+          php "$P/tests/alpha13-jetengine-content-sources-smoke.php"
+          php "$P/tests/alpha13-jetengine-deep-source-smoke.php"
+          php "$P/tests/alpha13-presentation-token-case-smoke.php"
+          php "$P/tests/alpha13-usage-guide-smoke.php"
+          php "$P/tests/alpha13-preview-origin-smoke.php"
+
+  browser-media:
+    name: JetEngine live media browser contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Case-sensitive token and explicit media bindings
+        shell: bash
+        run: node wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-browser-media-smoke.js
+
+  vendor-contract:
+    name: Bundled JetEngine capability contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Pin bundled vendor binary identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          JE='wp-content/plugins/jet-engine.zip'
+          JSF='wp-content/plugins/jet-smart-filters.zip'
+          test "$(git rev-parse HEAD:$JE)" = '2fc974c7fb02b549404122839cec988beb22a8f2'
+          test "$(stat -c%s "$JE")" = '6200994'
+          test "$(git rev-parse HEAD:$JSF)" = '5a56be5851e8efe09ee32bfce67c0f4ddf5bbc9a'
+          test "$(stat -c%s "$JSF")" = '1942255'
+          echo 'JetEngine blob: 2fc974c7fb02b549404122839cec988beb22a8f2 / 6200994 bytes'
+          echo 'JetSmartFilters blob: 5a56be5851e8efe09ee32bfce67c0f4ddf5bbc9a / 1942255 bytes'
+      - name: Verify bundled JetEngine APIs used by ETG
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=/tmp/etg-je
+          rm -rf "$ROOT" && mkdir -p "$ROOT"
+          unzip -q wp-content/plugins/jet-engine.zip -d "$ROOT"
+          require_token(){
+            local label="$1" token="$2"
+            if ! grep -RFqs -- "$token" "$ROOT"; then
+              echo "::error::Missing bundled JetEngine capability: $label ($token)"
+              exit 1
+            fi
+            echo "verified: $label"
+          }
+          require_token 'Query Builder options' 'get_queries_for_options'
+          require_token 'Query Builder query lookup' 'get_query_by_id'
+          require_token 'Query Builder item execution' 'get_items'
+          require_token 'JetEngine macro registration' 'jet-engine/register-macros'
+          require_token 'Dynamic Repeater source filter' 'jet-engine/listings/dynamic-repeater/pre-get-saved'
+          require_token 'Listing allowed contexts' 'jet-engine/listings/allowed-context-list'
+          require_token 'Listing object-by-context' 'jet-engine/listings/data/object-by-context/'
+          require_token 'Current listing object' 'get_current_object'
+          require_token 'Listing property getter' 'get_prop'
+          require_token 'Listing meta getter' 'get_meta'
+          require_token 'Meta Box field discovery' 'get_fields_for_select'
+          require_token 'Relations registry' 'get_active_relations'
+          require_token 'Relation parents' 'get_parents'
+          require_token 'Relation children' 'get_children'
+          require_token 'Relation edge meta' 'get_meta'
+          require_token 'CCT registry' 'get_content_types'
+          require_token 'CCT field list' 'get_fields_list'
+
+  governance:
+    name: JetEngine presentation governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Verify non-authorizing advanced contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('wp-content/plugins/etg-dynamic-filter-seo-bridge')
+          read=lambda rel:(p/rel).read_text()
+          source=read('includes/Presentation/ContentSourceResolver.php')
+          slots=read('includes/Presentation/ContentSlotRegistry.php')
+          presentation=read('includes/Presentation/PresentationResolver.php')
+          listing=read('includes/JetEngine/ListingIntegration.php')
+          query=read('includes/JetEngine/QueryRunner.php')
+          relation=read('includes/JetEngine/RelationResolver.php')
+          fields=read('includes/JetEngine/FieldDiscovery.php')
+          field_key=read('includes/Identifiers/FieldKey.php')
+          token=read('includes/Identifiers/PresentationToken.php')
+          endpoint=read('includes/Presentation/AjaxPresentationEndpoint.php')
+          live=read('includes/Elementor/DynamicTags/LiveBindingTrait.php')
+          registrar=read('includes/Elementor/DynamicTagRegistrar.php')
+          image_tag=read('includes/Elementor/DynamicTags/ContentSlotImageTag.php')
+          gallery_tag=read('includes/Elementor/DynamicTags/ContentSlotGalleryTag.php')
+          browser=read('assets/js/ajax-filter-state.js')
+          inspector=read('includes/Admin/JetEngineInspectorPage.php')
+          guide=read('includes/Admin/UsageGuidePage.php')
+          shortcodes=read('includes/Elementor/Shortcodes.php')
+          bootstrap=read('includes/Bootstrap.php')
+
+          assert 'etg.dfsb.jetengine-content-sources.v3' in source
+          for kind in ["'listing_field'","'listing_meta'","'repeater'","'query'","'relation'","'relation_meta'"]:
+              assert kind in source, kind
+          assert 'MAX_SOURCES=24' in source and 'MAX_ITEMS=100' in source
+          assert 'etg.dfsb.jetengine-source-diagnostic.v1' in source and 'diagnose' in source
+          assert 'FieldKey::normalize' in source
+          assert 'etg.dfsb.dynamic-content-slots.v2' in slots
+          assert "'image','gallery','json'" in slots.replace(' ', '')
+          assert 'fallback_chain' in slots
+          assert 'activeSlots' in presentation
+          assert 'PresentationToken::normalize' in presentation
+          assert "'ids'=>'term_id'" in presentation
+          assert 'slotImage' in endpoint and 'slotGallery' in endpoint
+          assert 'PresentationToken::normalize' in endpoint
+          assert 'data-etg-dfsb-token' in live and 'data-etg-dfsb-slot' in live
+          assert 'ContentSlotImageTag' in registrar and 'ContentSlotGalleryTag' in registrar
+          assert 'IMAGE_CATEGORY' in image_tag and 'GALLERY_CATEGORY' in gallery_tag
+          assert 'data-etg-dfsb-media-slot' in browser
+          assert 'data-etg-dfsb-media-target' in browser
+          assert 'etg-dfsb/media-updated' in browser
+          assert '.trim().toLowerCase()' not in browser.split("data-etg-dfsb-token",1)[1].split("data-etg-dfsb-slot",1)[0]
+
+          for macro in ['etg_content_slot','etg_slot_rows','etg_filter_value','etg_filter_term_id','etg_filter_term_ids','etg_filter_term_slug','etg_filter_term_slugs','etg_filter_term_meta','etg_filter_term_meta_values']:
+              assert macro in listing, macro
+          assert 'etg-filter-context' in listing
+          assert 'jet-engine/listings/dynamic-repeater/pre-get-saved' in listing
+          assert '$this->active[$queryId]' in query
+          assert 'metaValues' in relation and "'cct::'" in relation and "'mix::users'" in relation
+          assert 'get_fields_for_select' in fields and 'get_content_types' in fields and 'get_fields_list' in fields
+          assert 'MAX_LENGTH = 120' in field_key
+          assert 'termmeta:' in token and 'FieldKey::normalize' in token
+          assert 'Source Diagnostic Lab' in inspector
+          assert 'Relation Meta' in inspector and 'Field Discovery' in inspector
+          assert 'JetEngineInspectorPage' in bootstrap
+          assert 'previewOriginAllowed' in bootstrap and 'effectivePort' in bootstrap
+          assert '$scheme!==$homeScheme||$host!==$homeHost' in bootstrap.replace(' ','')
+          for helper in ['etg_dynamic_image','etg_dynamic_background','etg_dynamic_gallery']:
+              assert helper in shortcodes and helper in guide, helper
+          assert 'PresentationToken::normalize' in shortcodes
+          assert 'JetEngine Inspector' in guide and 'Query Builder Slider' in guide and 'CCT Cards / Slider' in guide
+
+          runtime_files=[source,presentation,listing,query,relation,fields,endpoint,field_key,token,browser,shortcodes,bootstrap]
+          forbidden=['update_option(', 'delete_option(', 'wp_insert_post(', 'wp_update_post(', '$wpdb->query(', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'history.pushState', 'history.replaceState']
+          for content in runtime_files:
+              for needle in forbidden:
+                  assert needle not in content, needle
+          for content in [source,relation,fields,query]:
+              assert 'authorizing' in content
+          assert "'authorizing'=>false" in source.replace(' ', '')
+          assert "'authorizing'=>false" in endpoint.replace(' ', '')
+          assert "'url_authority'=>false" in endpoint.replace(' ', '')
+          assert "'seo_mutation'=>false" in endpoint.replace(' ', '')
+          PY
