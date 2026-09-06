@@ -114,7 +114,7 @@ final class MAD4B_SCP_Abilities {
 			'description' => $label . ' through the governed MAD4B Site Control Plane.',
 			'category' => $category,
 			'execute_callback' => array( $this, $method ),
-			'permission_callback' => $this->permission_callback( $permission ),
+			'permission_callback' => $this->mutation_permission_callback( $permission, (bool) $readonly ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
 				'public' => false,
@@ -129,6 +129,18 @@ final class MAD4B_SCP_Abilities {
 		);
 		if ( is_array( $input ) ) $args['input_schema'] = $input;
 		wp_register_ability( $name, $args );
+	}
+
+	private function mutation_permission_callback( $permission, $readonly ) {
+		$callback = $this->permission_callback( $permission );
+		if ( $readonly ) return $callback;
+
+		return function ( $input = null ) use ( $callback ) {
+			$granted = call_user_func( $callback, $input );
+			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
+			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until MAD4B_MCP_MUTATION_ENABLED is explicitly enabled.' );
+			return true;
+		};
 	}
 
 	private function permission_callback( $permission ) {
