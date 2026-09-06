@@ -51,11 +51,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify append-only audit persistence contract
+      - name: Verify append-only audit and admin governance contracts
         shell: bash
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/audit-persistence-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-governance-ui-contract.py
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -249,3 +250,12 @@ jobs:
           php /tmp/wp-cli.phar eval-file \
             "$TEST_ROOT/runtime-audit-tamper.php" \
             --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Execute read-only admin governance console smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-admin-governance-ui-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
