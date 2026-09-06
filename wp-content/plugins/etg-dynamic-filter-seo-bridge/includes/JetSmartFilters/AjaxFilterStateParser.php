@@ -18,8 +18,9 @@ final class AjaxFilterStateParser {
         $this->nodeCount = 0;
         $provider = sanitize_key( (string) ( $payload['provider'] ?? '' ) );
         $queryId = sanitize_key( (string) ( $payload['query_id'] ?? '' ) );
-        $path = $this->normalizePath( (string) ( $payload['archive_path'] ?? $payload['request_path'] ?? '/' ) );
-        $bits = array_values( array_filter( explode( '/', trim( $path, '/' ) ), 'strlen' ) );
+        $requestPath = $this->normalizePath( (string) ( $payload['request_path'] ?? $payload['archive_path'] ?? '/' ) );
+        $archivePath = $this->baseArchivePath( $this->normalizePath( (string) ( $payload['archive_path'] ?? $requestPath ) ) );
+        $bits = array_values( array_filter( explode( '/', trim( $archivePath, '/' ) ), 'strlen' ) );
         $archive = $bits ? sanitize_title( (string) end( $bits ) ) : '';
         $rawQuery = is_array( $payload['current_query'] ?? null ) ? (array) $payload['current_query'] : array();
         $query = $this->sanitizeTree( $rawQuery, 0 );
@@ -67,8 +68,8 @@ final class AjaxFilterStateParser {
             'state_transport' => 'ajax',
             'url_authority' => false,
             'authorizing' => false,
-            'request_path' => $path,
-            'archive_path' => $path,
+            'request_path' => $requestPath,
+            'archive_path' => $archivePath,
             'archive' => $archive,
             'provider' => $provider,
             'query_id' => $queryId,
@@ -204,5 +205,12 @@ final class AjaxFilterStateParser {
         $pathOnly = is_string( $pathOnly ) ? rawurldecode( $pathOnly ) : '/';
         $pathOnly = '/' . trim( preg_replace( '#/+#', '/', $pathOnly ), '/' ) . '/';
         return '//' === $pathOnly ? '/' : $pathOnly;
+    }
+
+    private function baseArchivePath( string $path ): string {
+        $marker = strpos( $path, '/jsf/' );
+        if ( false !== $marker ) { $path = substr( $path, 0, $marker ); }
+        $path = '/' . trim( preg_replace( '#/+#', '/', $path ), '/' );
+        return '/' === $path ? '/' : $path . '/';
     }
 }
