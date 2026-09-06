@@ -8,6 +8,7 @@ final class MAD4B_SCP_SEO_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function ability_names() { return array( 'read' => array( 'seo/status', 'seo/get-meta', 'seo/validate' ), 'content' => array( 'seo/update-meta' ), 'admin' => array() ); }
 	public function reversible_contracts() { return 'rank-math' === $this->provider() ? array( 'seo/update-meta' => 'mad4b.rollback.rank-math-meta.v1' ) : array(); }
 	protected function detect_plugin_version() { if ( defined( 'RANK_MATH_VERSION' ) ) return RANK_MATH_VERSION; if ( defined( 'WPSEO_VERSION' ) ) return WPSEO_VERSION; if ( defined( 'SEOPRESS_VERSION' ) ) return SEOPRESS_VERSION; return ''; }
+	protected function certified_provider_key() { return 'rank-math' === $this->provider() ? 'rank_math' : $this->id(); }
 	public function register_abilities() {
 		$this->add_ability( 'seo/status', 'Get SEO Provider Status', 'status', array( 'MAD4B_SCP_Policy', 'can_read' ) );
 		$post_schema = $this->schema( array( 'post_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'post_id' ) );
@@ -19,7 +20,7 @@ final class MAD4B_SCP_SEO_Adapter extends MAD4B_SCP_Adapter_Base {
 			'expected_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 		), array( 'post_id', 'fields', 'expected_sha256' ) ), 'content', false, true, true );
 	}
-	public function status() { $status = parent::status(); $status['provider'] = $this->provider(); $status['write_provider'] = 'rank-math' === $this->provider() ? 'rank-math' : ''; $status['write_scope'] = 'allowlisted_rank_math_post_meta_only'; return $status; }
+	public function status() { $status = parent::status(); $status['provider'] = $this->provider(); $status['write_provider'] = 'rank-math' === $this->provider() ? 'rank_math' : ''; $status['write_scope'] = 'allowlisted_rank_math_post_meta_only'; return $status; }
 	public function can_read_post( $input ) { $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; return $id > 0 && current_user_can( 'read_post', $id ); }
 	public function can_edit_post( $input ) { $id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; return $id > 0 && current_user_can( 'edit_post', $id ); }
 	public function get_meta( $input ) {
