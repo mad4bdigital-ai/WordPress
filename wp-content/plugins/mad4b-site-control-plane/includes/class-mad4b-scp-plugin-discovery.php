@@ -41,6 +41,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'active' => 0,
 			'supported_reversible' => 0,
 			'supported_governed' => 0,
+			'read_only_supported' => 0,
+			'adapter_registered_inactive' => 0,
+			'adapter_present_certification_required' => 0,
 			'adapter_required' => 0,
 			'excluded_high_risk' => 0,
 			'priority_external_missing' => 0,
@@ -67,6 +70,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'discovery_only' => true,
 			'auto_install' => false,
 			'auto_generate_adapter' => false,
+			'auto_create_authority' => false,
 			'unknown_plugin_write_default' => 'deny',
 			'plugins' => $items,
 			'priority_external' => $priority,
@@ -97,7 +101,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$network_active = self::is_network_active( $plugin_file );
 		$strategy = isset( $descriptor['strategy'] ) ? sanitize_key( (string) $descriptor['strategy'] ) : 'adapter_required';
 		$risk = isset( $descriptor['risk'] ) ? sanitize_key( (string) $descriptor['risk'] ) : 'unknown';
-		$state = self::coverage_state( $strategy, $adapter, $active );
+		$status = is_object( $adapter ) && method_exists( $adapter, 'status' ) ? $adapter->status() : array();
+		$state = self::coverage_state( $strategy, $adapter, $active, $status );
 		$reversible = self::adapter_reversible_contracts( $adapter );
 		$request = self::support_request_for(
 			$plugin_file,
@@ -108,6 +113,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$active
 		);
 
+		$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
 		return array(
 			'plugin_file' => $plugin_file,
 			'slug' => self::plugin_slug( $plugin_file ),
@@ -122,6 +128,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'coverage_state' => $state,
 			'risk' => $risk,
 			'reversible_contracts' => $reversible,
+			'provider_certification_required' => ! empty( $status['mutation_requires_certification'] ),
+			'provider_certification_ok' => ! empty( $certification['runtime_contract_ok'] ),
+			'provider_status' => isset( $certification['status'] ) ? sanitize_key( (string) $certification['status'] ) : '',
 			'mutation_auto_enabled' => false,
 			'support_request' => $request,
 		);
@@ -176,12 +185,19 @@ final class MAD4B_SCP_Plugin_Discovery {
 		return $default;
 	}
 
-	private static function coverage_state( $strategy, $adapter, $active ) {
+	private static function coverage_state( $strategy, $adapter, $active, array $status ) {
 		if ( 'platform' === $strategy ) return 'supported_governed';
 		if ( 'excluded_high_risk' === $strategy ) return 'excluded_high_risk';
 		if ( ! is_object( $adapter ) ) return 'adapter_required';
+		if ( ! $active || ! $adapter->is_available() ) return 'adapter_registered_inactive';
 		$contracts = self::adapter_reversible_contracts( $adapter );
-		if ( ! empty( $contracts ) ) return $active && $adapter->is_available() ? 'supported_reversible' : 'supported_governed';
+		if ( ! empty( $contracts ) ) {
+			if ( ! empty( $status['mutation_requires_certification'] ) ) {
+				$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
+				if ( empty( $certification['runtime_contract_ok'] ) ) return 'adapter_present_certification_required';
+			}
+			return 'supported_reversible';
+		}
 		$map = method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$writes = array_merge( isset( $map['content'] ) && is_array( $map['content'] ) ? $map['content'] : array(), isset( $map['admin'] ) && is_array( $map['admin'] ) ? $map['admin'] : array() );
 		return ! empty( $writes ) ? 'supported_governed' : 'read_only_supported';
@@ -194,15 +210,19 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$out = array();
 		foreach ( $contracts as $ability => $contract ) {
 			$ability = (string) $ability;
-			$contract = sanitize_key( str_replace( '.', '-', (string) $contract ) );
-			if ( '' !== $ability && '' !== $contract ) $out[ $ability ] = $contract;
+			$contract = (string) $contract;
+			if ( '' !== $ability && preg_match( '/^mad4b\.rollback\.[a-z0-9._-]+\.v[0-9]+$/', $contract ) ) $out[ $ability ] = $contract;
 		}
 		return $out;
 	}
 
 	private static function support_request_for( $plugin_file, $name, $version, array $descriptor, $state, $active ) {
-		if ( ! in_array( $state, array( 'adapter_required', 'supported_governed', 'excluded_high_risk', 'priority_external_missing' ), true ) ) return null;
-		$reason = 'adapter_required' === $state ? 'no_registered_adapter' : ( 'supported_governed' === $state ? 'reversible_certification_incomplete' : ( 'excluded_high_risk' === $state ? 'normal_writer_excluded_by_risk' : 'priority_external_not_installed' ) );
+		if ( ! in_array( $state, array( 'adapter_required', 'supported_governed', 'adapter_present_certification_required', 'excluded_high_risk', 'priority_external_missing' ), true ) ) return null;
+		if ( 'adapter_required' === $state ) $reason = 'no_registered_adapter';
+		elseif ( 'supported_governed' === $state ) $reason = 'reversible_certification_incomplete';
+		elseif ( 'adapter_present_certification_required' === $state ) $reason = 'provider_certification_required';
+		elseif ( 'excluded_high_risk' === $state ) $reason = 'normal_writer_excluded_by_risk';
+		else $reason = 'priority_external_not_installed';
 		$requested = isset( $descriptor['requested_contracts'] ) && is_array( $descriptor['requested_contracts'] ) ? array_values( array_map( 'sanitize_key', $descriptor['requested_contracts'] ) ) : array( 'read', 'bounded_write', 'reversible_restore' );
 		$seed = array( 'plugin_file' => $plugin_file, 'version' => (string) $version, 'reason' => $reason, 'contracts' => $requested );
 		return array(
