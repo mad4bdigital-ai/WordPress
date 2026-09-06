@@ -35,6 +35,8 @@ final class MAD4B_SCP_Plugin {
 			return;
 		}
 
+		MAD4B_SCP_Governed_Ability_Overrides::boot();
+
 		$abilities = new MAD4B_SCP_Abilities();
 		$registry  = MAD4B_SCP_Adapter_Registry::instance();
 		$registry->register_defaults();
