@@ -3,12 +3,11 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Read-only transport/connection truth for the MAD4B MCP surfaces.
+ * Read-only local truth for MAD4B MCP connection readiness.
  *
- * This class intentionally never creates credentials, performs remote HTTP
- * callbacks, persists handshake state, or mutates MCP configuration. It reports
- * local transport facts that can be compared with a real external handshake in
- * Staging without creating a second authority plane.
+ * This service performs no outbound HTTP request, creates no credential, stores
+ * no handshake result and changes no authority. A real external MCP handshake
+ * remains a separate Staging certification boundary.
  */
 final class MAD4B_SCP_Connection_Status {
 	const CONTRACT = 'mad4b.connection-readiness.v1';
@@ -17,14 +16,20 @@ final class MAD4B_SCP_Connection_Status {
 		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
 		$https = function_exists( 'wp_is_using_https' ) ? wp_is_using_https() : ( 'https' === wp_parse_url( home_url(), PHP_URL_SCHEME ) );
 		$adapter_available = class_exists( '\\WP\\MCP\\Core\\McpAdapter' );
-		$adapter_version = defined( 'WP_MCP_VERSION' ) ? (string) WP_MCP_VERSION : ( $adapter_available && defined( '\\WP\\MCP\\Core\\McpAdapter::VERSION' ) ? (string) \\WP\\MCP\\Core\\McpAdapter::VERSION : '' );
+		$adapter_version = '';
+		if ( defined( 'WP_MCP_VERSION' ) ) {
+			$adapter_version = (string) WP_MCP_VERSION;
+		} elseif ( $adapter_available && defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) ) {
+			$adapter_version = (string) \\WP\\MCP\\Core\\McpAdapter::VERSION;
+		}
+
 		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' )
 			? MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available )
 			: array( 'status' => 'unavailable', 'runtime_contract_ok' => false );
 		$provider_ok = ! empty( $provider['runtime_contract_ok'] );
 
 		$servers = self::server_status();
-		$server_ok = true;
+		$server_ok = count( $servers ) === 4;
 		foreach ( $servers as $server ) {
 			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) {
 				$server_ok = false;
@@ -35,26 +40,31 @@ final class MAD4B_SCP_Connection_Status {
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' )
 			? MAD4B_SCP_MCP_Peer_Governance::status()
 			: array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
-		$peer_ok = ! empty( $peer['inventory_ready'] ) && empty( $peer['write_side_channel_detected'] );
 
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
 		$identity_status = self::identity_status( $identity );
 
-		$blockers = array();
-		if ( ! $https ) $blockers[] = 'https_required_for_remote_mcp';
-		if ( ! $adapter_available ) $blockers[] = 'mcp_adapter_unavailable';
-		if ( $adapter_available && ! $provider_ok ) $blockers[] = 'mcp_adapter_not_certified';
-		if ( ! $server_ok ) $blockers[] = 'mad4b_transport_registration_incomplete';
-		if ( empty( $peer['inventory_ready'] ) ) $blockers[] = 'mcp_peer_inventory_unavailable';
-		if ( ! empty( $peer['write_side_channel_detected'] ) ) $blockers[] = 'mcp_write_side_channel_detected';
-		if ( ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $blockers = array_merge( $blockers, $peer['blockers'] );
-		$blockers = array_values( array_unique( $blockers ) );
+		$local_blockers = array();
+		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
+		if ( $adapter_available && ! $provider_ok ) $local_blockers[] = 'mcp_adapter_not_certified';
+		if ( ! $server_ok ) $local_blockers[] = 'mad4b_transport_registration_incomplete';
+		if ( empty( $peer['inventory_ready'] ) ) $local_blockers[] = 'mcp_peer_inventory_unavailable';
+		if ( ! empty( $peer['write_side_channel_detected'] ) ) $local_blockers[] = 'mcp_write_side_channel_detected';
+		if ( ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $local_blockers = array_merge( $local_blockers, $peer['blockers'] );
+		$local_blockers = array_values( array_unique( array_map( 'sanitize_key', $local_blockers ) ) );
 
-		$local_ready = empty( $blockers );
+		$remote_preflight_blockers = $local_blockers;
+		if ( ! $https ) $remote_preflight_blockers[] = 'https_required_for_remote_mcp';
+		$remote_preflight_blockers = array_values( array_unique( $remote_preflight_blockers ) );
+
+		$certification_blockers = $remote_preflight_blockers;
+		$certification_blockers[] = 'external_handshake_unverified';
+		$certification_blockers = array_values( array_unique( $certification_blockers ) );
 
 		return array(
 			'contract' => self::CONTRACT,
 			'environment' => sanitize_key( (string) $environment ),
+			'environment_is_staging' => 'staging' === sanitize_key( (string) $environment ),
 			'site_url' => esc_url_raw( site_url() ),
 			'home_url' => esc_url_raw( home_url() ),
 			'rest_url' => esc_url_raw( rest_url() ),
@@ -64,8 +74,12 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_adapter_version' => $adapter_version,
 			'mcp_adapter_certification' => $provider,
 			'mcp_adapter_certified' => (bool) $provider_ok,
-			'local_transport_ready' => (bool) $local_ready,
-			'blockers' => $blockers,
+			'local_transport_ready' => empty( $local_blockers ),
+			'local_blockers' => $local_blockers,
+			'remote_endpoint_preflight_ready' => empty( $remote_preflight_blockers ),
+			'remote_preflight_blockers' => $remote_preflight_blockers,
+			'connection_certified' => false,
+			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
 			'authentication' => array(
 				'transport_model' => 'wordpress-authenticated-request-plus-mad4b-server-permission',
@@ -77,7 +91,7 @@ final class MAD4B_SCP_Connection_Status {
 			'external_handshake' => array(
 				'verified' => false,
 				'status' => 'requires_real_remote_mcp_session',
-				'note' => 'Local readiness cannot certify cloud reachability, OAuth/Application Password behavior, MCP session establishment, or the remote subject bridge.',
+				'note' => 'Local readiness never certifies Internet reachability, OAuth/Application Password behavior, MCP session establishment, or the remote subject bridge.',
 			),
 			'mcp_peer_governance' => self::bounded_peer_summary( $peer ),
 			'breakglass' => array(
@@ -160,14 +174,7 @@ final class MAD4B_SCP_Connection_Status {
 
 	private static function identity_status( $identity ) {
 		if ( is_wp_error( $identity ) ) {
-			return array(
-				'valid' => false,
-				'authenticated' => false,
-				'subject_type' => '',
-				'auth_method' => '',
-				'wp_user_id' => get_current_user_id(),
-				'error' => sanitize_key( $identity->get_error_code() ),
-			);
+			return array( 'valid' => false, 'authenticated' => false, 'subject_type' => '', 'auth_method' => '', 'wp_user_id' => get_current_user_id(), 'error' => sanitize_key( $identity->get_error_code() ) );
 		}
 		return array(
 			'valid' => is_array( $identity ),
@@ -187,9 +194,7 @@ final class MAD4B_SCP_Connection_Status {
 		$peers = array();
 		foreach ( isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? array_slice( $peer['peers'], 0, 100 ) : array() as $item ) {
 			$reasons = array();
-			foreach ( isset( $item['risks'] ) && is_array( $item['risks'] ) ? array_slice( $item['risks'], 0, 20 ) : array() as $risk ) {
-				if ( is_array( $risk ) && isset( $risk['reason'] ) ) $reasons[] = sanitize_key( (string) $risk['reason'] );
-			}
+			foreach ( isset( $item['risks'] ) && is_array( $item['risks'] ) ? array_slice( $item['risks'], 0, 20 ) : array() as $risk ) if ( is_array( $risk ) && isset( $risk['reason'] ) ) $reasons[] = sanitize_key( (string) $risk['reason'] );
 			$peers[] = array(
 				'server_id' => isset( $item['server_id'] ) ? sanitize_text_field( (string) $item['server_id'] ) : '',
 				'governed' => ! empty( $item['governed'] ),

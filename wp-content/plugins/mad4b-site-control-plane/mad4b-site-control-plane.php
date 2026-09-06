@@ -12,9 +12,7 @@
  * Text Domain: mad4b-site-control-plane
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 define( 'MAD4B_SCP_VERSION', '0.3.0' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
@@ -48,7 +46,9 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-litespeed-adapte
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );

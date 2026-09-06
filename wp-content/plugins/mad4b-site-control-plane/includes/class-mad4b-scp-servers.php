@@ -5,15 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Servers {
 	private static $registrations = array();
 
-	public static function expected_server_ids() {
-		return array( 'mad4b-read', 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' );
-	}
+	public static function expected_server_ids() { return array( 'mad4b-read', 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' ); }
 
 	public static function core_tools( $server_id ) {
 		$map = array(
 			'mad4b-read' => array(
 				'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
-				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status',
+				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 			),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
@@ -32,9 +30,7 @@ final class MAD4B_SCP_Servers {
 		return '';
 	}
 
-	public static function ability_is_mounted( $server_id, $ability_name ) {
-		return null !== self::provider_for_ability( $server_id, $ability_name );
-	}
+	public static function ability_is_mounted( $server_id, $ability_name ) { return null !== self::provider_for_ability( $server_id, $ability_name ); }
 
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
@@ -47,18 +43,14 @@ final class MAD4B_SCP_Servers {
 		$registry->register_defaults();
 		foreach ( $registry->all() as $adapter ) {
 			$map = $adapter->ability_names();
-			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
-				return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
-			}
+			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
 		}
 		return null;
 	}
 
 	public static function registration_status() {
 		$status = array();
-		foreach ( self::expected_server_ids() as $id ) {
-			$status[ $id ] = isset( self::$registrations[ $id ] ) ? self::$registrations[ $id ] : array( 'registered' => false, 'error' => 'not_registered' );
-		}
+		foreach ( self::expected_server_ids() as $id ) $status[ $id ] = isset( self::$registrations[ $id ] ) ? self::$registrations[ $id ] : array( 'registered' => false, 'error' => 'not_registered' );
 		return $status;
 	}
 
