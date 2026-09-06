@@ -6,6 +6,7 @@ use ETG\DynamicFilterSEOBridge\Admin\OperationalPage;
 use ETG\DynamicFilterSEOBridge\Admin\PublicationPage;
 use ETG\DynamicFilterSEOBridge\Admin\DynamicContentPage;
 use ETG\DynamicFilterSEOBridge\Admin\InventoryControlPage;
+use ETG\DynamicFilterSEOBridge\Admin\UsageGuidePage;
 use ETG\DynamicFilterSEOBridge\Config\Configuration;
 use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
 use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
@@ -99,6 +100,7 @@ final class Bootstrap {
         (new DynamicTagRegistrar($this->presentation,$slots,$catalogProvider,$previewContextProvider))->registerHooks();
         (new AdminAssets())->register();
         (new DynamicContentPage($runtimeInventory,$catalog,$slots,$profiles))->register();
+        (new UsageGuidePage($runtimeInventory,$catalog,$slots,$profiles))->register();
         (new AjaxPresentationEndpoint($this->builder,$this->presentation,$slots,$catalogProvider))->register();
         (new InventoryControlPage($this->config,$profiles,$runtimeInventory,$profilePlanner))->register();
 
