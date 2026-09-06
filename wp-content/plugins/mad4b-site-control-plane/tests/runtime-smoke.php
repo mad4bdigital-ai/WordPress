@@ -68,6 +68,28 @@ $source_write = MAD4B_SCP_Policy::can_mutate_file( 'plugins', WP_PLUGIN_DIR . '/
 $assert( is_wp_error( $source_write ) && 'mad4b_executable_file_mutation_denied' === $source_write->get_error_code(), 'PHP source mutation was not denied.' );
 $assert( false === MAD4B_SCP_Policy::plugin_lifecycle_allowed( 'hello-dolly/hello.php', 'activate' ), 'Plugin lifecycle must remain disabled without explicit opt-in.' );
 $assert( false === MAD4B_SCP_Policy::can_breakglass(), 'Breakglass must remain inaccessible by default.' );
+$assert( false === MAD4B_SCP_Policy::can_mutate(), 'Global mutation must remain inaccessible while MAD4B_MCP_MUTATION_ENABLED is absent.' );
+
+// Prove the Ability execution path itself rejects a valid mutation request before side effects.
+$uploads = wp_upload_dir( null, false );
+$blocked_relative = 'mad4b-runtime-smoke/mutation-must-not-run.txt';
+$blocked_path = trailingslashit( $uploads['basedir'] ) . $blocked_relative;
+if ( file_exists( $blocked_path ) ) {
+	unlink( $blocked_path );
+}
+$write_ability = wp_get_ability( 'mad4b/filesystem-write' );
+$assert( is_object( $write_ability ) && method_exists( $write_ability, 'execute' ), 'Filesystem write ability is not executable for gate testing.' );
+$blocked_write = $write_ability->execute(
+	array(
+		'root' => 'uploads',
+		'path' => $blocked_relative,
+		'content' => 'must-not-write',
+		'allow_create' => true,
+		'create_backup' => false,
+	)
+);
+$assert( is_wp_error( $blocked_write ) && 'mad4b_mutation_disabled' === $blocked_write->get_error_code(), 'Core mutation master switch did not fail closed.' );
+$assert( ! file_exists( $blocked_path ), 'A blocked mutation produced a filesystem side effect.' );
 
 // Prove nested audit evidence is preserved, bounded, redacted, and chain-verifiable.
 MAD4B_SCP_Audit::record(
