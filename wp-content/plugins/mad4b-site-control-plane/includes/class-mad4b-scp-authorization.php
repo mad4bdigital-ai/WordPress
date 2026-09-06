@@ -3,6 +3,10 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Authorization {
+	public static function target_fingerprint( $ability_name, $provider, $input, array $agent = array(), array $identity = array() ) {
+		return (string) apply_filters( 'mad4b_scp_authorization_target_fingerprint', '', (string) $ability_name, sanitize_key( (string) $provider ), $input, $agent, $identity );
+	}
+
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return self::deny( 'mad4b_governance_schema_unavailable', 'Governance schema is unavailable.', $ability_name, array() );
 		$identity = MAD4B_SCP_Identity_Context::current();
@@ -32,7 +36,7 @@ final class MAD4B_SCP_Authorization {
 		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $input ) : 'high';
 		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $input ) : true;
 		$approval_ticket_id = isset( $identity['approval_ticket_id'] ) ? (string) $identity['approval_ticket_id'] : '';
-		$target_fingerprint = (string) apply_filters( 'mad4b_scp_authorization_target_fingerprint', '', $ability_name, $provider, $input, $agent, $identity );
+		$target_fingerprint = self::target_fingerprint( $ability_name, $provider, $input, $agent, $identity );
 		if ( $approval_required ) {
 			if ( '' === $approval_ticket_id ) return self::deny( 'mad4b_approval_required', 'This high-impact mutation requires an exact short-lived approval ticket.', $ability_name, $identity, $agent );
 			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return self::deny( 'mad4b_approval_service_unavailable', 'Approval service is unavailable.', $ability_name, $identity, $agent );
