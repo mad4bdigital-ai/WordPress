@@ -12,12 +12,115 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 		$flow_schema = $this->schema( array( 'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'flow_id' ) );
 		$this->add_ability( 'bitflows/get-flow', 'Get Bit Flow', 'get_flow', array( 'MAD4B_SCP_Policy', 'can_read' ), $flow_schema );
 		$this->add_ability( 'bitflows/get-executions', 'Get Bit Flow Executions', 'get_executions', array( 'MAD4B_SCP_Policy', 'can_read' ), $this->schema( array( 'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ) ), array( 'flow_id' ) ) );
-		$this->add_ability( 'bitflows/run-flow', 'Run Bit Flow', 'run_flow', array( $this, 'can_run_flow' ), $this->schema( array( 'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'trigger_data' => array( 'type' => 'object', 'default' => array() ), 'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ) ), array( 'flow_id', 'reason' ) ), 'admin', false, false, false );
+		$this->add_ability( 'bitflows/run-flow', 'Run Bit Flow', 'run_flow', array( $this, 'can_run_flow' ), $this->schema( array(
+			'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+			'expected_flow_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+			'trigger_data' => array( 'type' => 'object', 'default' => array() ),
+			'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+		), array( 'flow_id', 'expected_flow_sha256', 'reason' ) ), 'admin', false, false, false );
 	}
-	public function status() { $status = parent::status(); $status['contracts'] = array( 'flow_model' => class_exists( 'BitApps\\Pi\\Model\\Flow' ), 'flow_executor' => class_exists( 'BitApps\\Pi\\src\\Flow\\FlowExecutor' ), 'flow_history' => class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ) ); return $status; }
-	public function can_run_flow( $input = null ) { return current_user_can( 'manage_options' ) && (bool) apply_filters( 'mad4b_scp_bitflows_run_permission', true, $input, get_current_user_id() ); }
-	public function list_flows( $input ) { if ( ! $this->is_available() ) return $this->unavailable_error(); $limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50; $class = 'BitApps\\Pi\\Model\\Flow'; try { $flows = $class::select( array( 'id', 'title', 'run_count', 'is_active', 'trigger_type', 'listener_type' ) )->desc()->take( $limit )->get(); return array( 'flows' => $this->normalize( $flows ), 'count' => is_countable( $flows ) ? count( $flows ) : 0 ); } catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_list_failed', $e->getMessage() ); } }
-	public function get_flow( $input ) { if ( ! $this->is_available() ) return $this->unavailable_error(); $class = 'BitApps\\Pi\\Model\\Flow'; try { $flow = $class::select( array( 'id', 'title', 'run_count', 'is_active', 'trigger_type', 'listener_type', 'is_hook_capture', 'settings', 'map' ) )->findOne( array( 'id' => absint( $input['flow_id'] ) ) ); if ( ! $flow ) return new WP_Error( 'mad4b_bitflows_flow_missing', 'Flow not found.' ); return array( 'flow' => $this->normalize( $flow ) ); } catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_get_failed', $e->getMessage() ); } }
-	public function get_executions( $input ) { if ( ! class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ) ) return new WP_Error( 'mad4b_bitflows_history_unavailable', 'Bit Flows history contract is unavailable.' ); $class = 'BitApps\\Pi\\Model\\FlowHistory'; $limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 20; try { $items = $class::where( 'flow_id', absint( $input['flow_id'] ) )->desc()->take( $limit )->select( array( 'id', 'flow_id', 'parent_history_id', 'status', 'created_at', 'updated_at' ) )->get(); return array( 'flow_id' => absint( $input['flow_id'] ), 'executions' => $this->normalize( $items ), 'count' => is_countable( $items ) ? count( $items ) : 0 ); } catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_history_failed', $e->getMessage() ); } }
-	public function run_flow( $input ) { if ( ! $this->is_available() || ! class_exists( 'BitApps\\Pi\\src\\Flow\\FlowExecutor' ) ) return $this->unavailable_error(); $flow_class = 'BitApps\\Pi\\Model\\Flow'; $executor = 'BitApps\\Pi\\src\\Flow\\FlowExecutor'; $id = absint( $input['flow_id'] ); try { $flow = $flow_class::select( array( 'id', 'title', 'map', 'settings', 'listener_type', 'is_hook_capture', 'is_active' ) )->findOne( array( 'id' => $id ) ); if ( ! $flow ) return new WP_Error( 'mad4b_bitflows_flow_missing', 'Flow not found.' ); if ( 1 !== (int) $flow->is_active ) return new WP_Error( 'mad4b_bitflows_flow_inactive', 'Inactive flows cannot be run through the control plane.' ); $trigger_data = isset( $input['trigger_data'] ) && is_array( $input['trigger_data'] ) ? $input['trigger_data'] : array(); MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'reason' => sanitize_text_field( $input['reason'] ), 'trigger_keys' => array_keys( $trigger_data ) ), 'attempt' ); $result = $executor::execute( $flow, $trigger_data ); if ( false === $result ) return new WP_Error( 'mad4b_bitflows_execution_rejected', 'Bit Flows executor rejected the run.' ); MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'queued' => true ) ); return array( 'flow_id' => $id, 'queued' => true, 'executor_result' => (bool) $result ); } catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_execution_failed', $e->getMessage() ); } }
+	public function status() {
+		$status = parent::status();
+		$status['contracts'] = array(
+			'flow_model' => class_exists( 'BitApps\\Pi\\Model\\Flow' ),
+			'flow_node' => class_exists( 'BitApps\\Pi\\Model\\FlowNode' ),
+			'flow_executor' => class_exists( 'BitApps\\Pi\\src\\Flow\\FlowExecutor' ),
+			'flow_history' => class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ),
+		);
+		$status['execution_enabled'] = defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) && true === MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED;
+		return $status;
+	}
+	public function can_run_flow( $input = null ) {
+		if ( ! current_user_can( 'manage_options' ) ) return false;
+		if ( ! defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) || true !== MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED ) return false;
+		return (bool) apply_filters( 'mad4b_scp_bitflows_run_permission', true, $input, get_current_user_id() );
+	}
+	public function list_flows( $input ) {
+		if ( ! $this->is_available() ) return $this->unavailable_error();
+		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
+		$class = 'BitApps\\Pi\\Model\\Flow';
+		try {
+			$flows = $class::select( array( 'id', 'title', 'run_count', 'is_active', 'trigger_type', 'listener_type' ) )->desc()->take( $limit )->get();
+			return array( 'flows' => $this->normalize( $flows ), 'count' => is_countable( $flows ) ? count( $flows ) : 0, 'execution_enabled' => $this->can_run_flow() );
+		} catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_list_failed', $e->getMessage() ); }
+	}
+	public function get_flow( $input ) {
+		if ( ! $this->is_available() ) return $this->unavailable_error();
+		$class = 'BitApps\\Pi\\Model\\Flow';
+		$id = absint( $input['flow_id'] );
+		try {
+			$flow = $class::select( array( 'id', 'title', 'run_count', 'is_active', 'trigger_type', 'listener_type', 'is_hook_capture', 'settings', 'map' ) )->findOne( array( 'id' => $id ) );
+			if ( ! $flow ) return new WP_Error( 'mad4b_bitflows_flow_missing', 'Flow not found.' );
+			$fingerprint = $this->flow_fingerprint( $id, $flow );
+			if ( is_wp_error( $fingerprint ) ) return $fingerprint;
+			return array( 'flow' => $this->redact( $this->normalize( $flow ) ), 'flow_sha256' => $fingerprint );
+		} catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_get_failed', $e->getMessage() ); }
+	}
+	public function get_executions( $input ) {
+		if ( ! class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ) ) return new WP_Error( 'mad4b_bitflows_history_unavailable', 'Bit Flows history contract is unavailable.' );
+		$class = 'BitApps\\Pi\\Model\\FlowHistory';
+		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 20;
+		try {
+			$items = $class::where( 'flow_id', absint( $input['flow_id'] ) )->desc()->take( $limit )->select( array( 'id', 'flow_id', 'parent_history_id', 'status', 'created_at', 'updated_at' ) )->get();
+			return array( 'flow_id' => absint( $input['flow_id'] ), 'executions' => $this->normalize( $items ), 'count' => is_countable( $items ) ? count( $items ) : 0 );
+		} catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_history_failed', $e->getMessage() ); }
+	}
+	public function run_flow( $input ) {
+		if ( ! $this->is_available() || ! class_exists( 'BitApps\\Pi\\src\\Flow\\FlowExecutor' ) ) return $this->unavailable_error();
+		if ( ! defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) || true !== MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED ) return new WP_Error( 'mad4b_bitflows_execution_disabled', 'Bit Flows execution is disabled until MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED is explicitly enabled.' );
+		$flow_class = 'BitApps\\Pi\\Model\\Flow';
+		$executor = 'BitApps\\Pi\\src\\Flow\\FlowExecutor';
+		$id = absint( $input['flow_id'] );
+		try {
+			$flow = $flow_class::select( array( 'id', 'title', 'map', 'settings', 'listener_type', 'is_hook_capture', 'is_active', 'trigger_type' ) )->findOne( array( 'id' => $id ) );
+			if ( ! $flow ) return new WP_Error( 'mad4b_bitflows_flow_missing', 'Flow not found.' );
+			if ( 1 !== (int) $flow->is_active ) return new WP_Error( 'mad4b_bitflows_flow_inactive', 'Inactive flows cannot be run through the control plane.' );
+
+			$fingerprint = $this->flow_fingerprint( $id, $flow );
+			if ( is_wp_error( $fingerprint ) ) return $fingerprint;
+			if ( ! hash_equals( $fingerprint, strtolower( trim( $input['expected_flow_sha256'] ) ) ) ) return new WP_Error( 'mad4b_bitflows_stale_flow', 'Flow definition changed since it was reviewed.', array( 'current_flow_sha256' => $fingerprint ) );
+			if ( ! (bool) apply_filters( 'mad4b_scp_bitflows_flow_allowed', true, $id, $fingerprint, $flow, get_current_user_id() ) ) return new WP_Error( 'mad4b_bitflows_flow_policy_denied', 'Flow execution policy denied this flow.' );
+
+			$trigger_data = isset( $input['trigger_data'] ) && is_array( $input['trigger_data'] ) ? $input['trigger_data'] : array();
+			$reason = sanitize_text_field( $input['reason'] );
+			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'reason' => $reason, 'trigger_keys' => array_keys( $trigger_data ) ), 'attempt' );
+			$result = $executor::execute( $flow, $trigger_data );
+			if ( false === $result ) {
+				MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint ), 'failure' );
+				return new WP_Error( 'mad4b_bitflows_execution_rejected', 'Bit Flows executor rejected the run.' );
+			}
+			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'queued' => true ) );
+			return array( 'flow_id' => $id, 'flow_sha256' => $fingerprint, 'queued' => true, 'executor_result' => (bool) $result );
+		} catch ( Throwable $e ) {
+			MAD4B_SCP_Audit::record( 'bitflows/run-flow', array( 'flow_id' => $id, 'error_type' => get_class( $e ) ), 'failure' );
+			return new WP_Error( 'mad4b_bitflows_execution_failed', $e->getMessage() );
+		}
+	}
+	private function flow_fingerprint( $flow_id, $flow = null ) {
+		$flow_class = 'BitApps\\Pi\\Model\\Flow';
+		try {
+			if ( ! $flow ) $flow = $flow_class::select( array( 'id', 'title', 'map', 'settings', 'listener_type', 'is_hook_capture', 'is_active', 'trigger_type' ) )->findOne( array( 'id' => absint( $flow_id ) ) );
+			if ( ! $flow ) return new WP_Error( 'mad4b_bitflows_flow_missing', 'Flow not found.' );
+			$payload = array( 'flow' => $this->normalize( $flow ), 'nodes' => array() );
+			if ( class_exists( 'BitApps\\Pi\\Model\\FlowNode' ) ) {
+				$node_class = 'BitApps\\Pi\\Model\\FlowNode';
+				$nodes = $node_class::where( 'flow_id', absint( $flow_id ) )->select( array( 'id', 'node_id', 'flow_id', 'app_slug', 'machine_slug', 'field_mapping', 'data', 'variables' ) )->get();
+				$payload['nodes'] = $this->normalize( $nodes );
+				if ( is_array( $payload['nodes'] ) ) usort( $payload['nodes'], function ( $a, $b ) { return (int) ( isset( $a['id'] ) ? $a['id'] : 0 ) <=> (int) ( isset( $b['id'] ) ? $b['id'] : 0 ); } );
+			}
+			$encoded = wp_json_encode( $payload );
+			if ( false === $encoded ) return new WP_Error( 'mad4b_bitflows_fingerprint_failed', 'Unable to fingerprint Flow definition.' );
+			return hash( 'sha256', $encoded );
+		} catch ( Throwable $e ) { return new WP_Error( 'mad4b_bitflows_fingerprint_failed', $e->getMessage() ); }
+	}
+	private function redact( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$result = array();
+		foreach ( $value as $key => $item ) {
+			$key_string = strtolower( (string) $key );
+			if ( preg_match( '/(?:pass(?:word)?|secret|token|api[_-]?key|auth|credential|private[_-]?key)/i', $key_string ) ) $result[ $key ] = '[redacted]';
+			else $result[ $key ] = is_array( $item ) ? $this->redact( $item ) : $item;
+		}
+		return $result;
+	}
 }
