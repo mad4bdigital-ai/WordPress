@@ -22,6 +22,7 @@ define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-audit.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-contracts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-elementor-adapter.php';
