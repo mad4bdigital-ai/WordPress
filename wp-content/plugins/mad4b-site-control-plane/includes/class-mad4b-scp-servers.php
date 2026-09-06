@@ -25,16 +25,33 @@ final class MAD4B_SCP_Servers {
 		return isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
 	}
 
+	private static function surface_for_server( $server_id ) {
+		if ( 'mad4b-read' === $server_id ) return 'read';
+		if ( 'mad4b-content' === $server_id ) return 'content';
+		if ( 'mad4b-admin' === $server_id ) return 'admin';
+		return '';
+	}
+
 	public static function ability_is_mounted( $server_id, $ability_name ) {
+		return null !== self::provider_for_ability( $server_id, $ability_name );
+	}
+
+	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
-		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return false;
-		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return true;
-		if ( 'mad4b-breakglass' === $server_id || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return false;
-		$surface = 'mad4b-read' === $server_id ? 'read' : ( 'mad4b-content' === $server_id ? 'content' : 'admin' );
+		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return null;
+		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return 'core';
+		$surface = self::surface_for_server( $server_id );
+		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
 		$registry->register_defaults();
-		return in_array( $ability_name, $registry->ability_names( $surface ), true );
+		foreach ( $registry->all() as $adapter ) {
+			$map = $adapter->ability_names();
+			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
+				return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
+			}
+		}
+		return null;
 	}
 
 	public static function registration_status() {
