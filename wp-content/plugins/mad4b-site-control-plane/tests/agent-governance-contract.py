@@ -26,7 +26,7 @@ impact = read('includes/class-mad4b-scp-impact-policy.php')
 approvals = read('includes/class-mad4b-scp-approval-tickets.php')
 budgets = read('includes/class-mad4b-scp-budgets.php')
 audit = read('includes/class-mad4b-scp-audit.php')
-audit_verify = read('includes/class-mad4b-scp-audit-verifier.php')
+audit_integrity = read('includes/class-mad4b-scp-audit-integrity.php')
 mutation = read('includes/class-mad4b-scp-mutation-manager.php')
 overrides = read('includes/class-mad4b-scp-governed-ability-overrides.php')
 governance = read('includes/class-mad4b-scp-governance-abilities.php')
@@ -134,6 +134,7 @@ for forbidden_counter in ('update_option(', 'add_option(', 'set_transient(', 'wp
 require(bootstrap, 'class-mad4b-scp-budgets.php', 'budget-bootstrap-load')
 
 # Append-only audit storage is durable, concurrent-safe and tamper evident.
+require(audit, 'class-mad4b-scp-audit-integrity.php', 'audit-integrity-load')
 require(audit, 'mad4b_scp_audit_events', 'audit-events-table-use')
 require(audit, 'mad4b_scp_audit_heads', 'audit-heads-table-use')
 require(audit, 'FOR UPDATE', 'audit-head-lock')
@@ -143,10 +144,10 @@ require(audit, 'legacy', 'audit-legacy-anchor')
 require(audit, 'mad4b_scp_audit_committed', 'audit-post-commit-hook')
 require(audit, 'SUMMARY_MAX_DEPTH', 'audit-summary-depth-bound')
 require(audit, 'SUMMARY_MAX_ITEMS', 'audit-summary-item-bound')
-require(audit_verify, 'verify_chain', 'audit-chain-verifier')
-require(audit_verify, 'legacy', 'audit-legacy-verification')
+require(audit_integrity, 'verify_chain', 'audit-chain-verifier')
+require(audit_integrity, 'legacy_snapshot', 'audit-legacy-verification')
 for forbidden_event_mutation in ("UPDATE {$t['audit_events']}", "DELETE FROM {$t['audit_events']}"):
-    forbid(audit + audit_verify, forbidden_event_mutation, 'audit-events-immutable')
+    forbid(audit + audit_integrity, forbidden_event_mutation, 'audit-events-immutable')
 for forbidden_option_write in ('update_option( self::OPTION', 'add_option( self::OPTION'):
     forbid(audit, forbidden_option_write, 'audit-no-option-event-write')
 
@@ -223,14 +224,13 @@ require(mutation, "'verification_code' => 'restore_readback_match'", 'undo-readb
 for forbidden in ('unserialize(', 'eval(', 'shell_exec('):
     forbid(mutation, forbidden, 'mutation-dangerous-primitive')
 
-# Bootstrap order makes governance/mutation/budget/audit services available before plugin boot.
+# Bootstrap order makes governance/mutation/budget services available before plugin boot.
 order = [
     'class-mad4b-scp-schema.php',
     'class-mad4b-scp-identity-context.php',
     'class-mad4b-scp-agent-registry.php',
     'class-mad4b-scp-policy.php',
     'class-mad4b-scp-audit.php',
-    'class-mad4b-scp-audit-verifier.php',
     'class-mad4b-scp-provider-contracts.php',
     'class-mad4b-scp-impact-policy.php',
     'class-mad4b-scp-approval-tickets.php',
