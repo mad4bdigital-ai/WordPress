@@ -17,9 +17,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply auth hardening patch
-        run: python3 .github/scripts/wpl-auth-hardening.py
-      - name: PHP lint and security assertions
+      - name: Finalize WPL transport centralization
+        run: python3 .github/scripts/wpl-transport-finalize.py
+      - name: PHP lint and transport security assertions
         shell: bash
         run: |
           set -euo pipefail
@@ -27,9 +27,10 @@ jobs:
           ! grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' wp-content/plugins/wpl-client
           ! grep -R -n --include='*.php' 'sslverify' wp-content/plugins/wpl-client | grep -q 'false'
           ! grep -R -n --include='*.php' -E 'SSL_VERIFYPEER.*false|SSL_VERIFYHOST.*false|DEFAULT@SECLEVEL=1|CURL_SSLVERSION_TLSv1' wp-content/plugins/wpl-client
+          ! grep -R -n --include='*.php' 'WPL_SERVER_API_KEY' wp-content/plugins/wpl-client | grep -v 'class-wpl-server-client.php'
+          ! grep -R -n --include='*.php' 'WPL_SERVER_API_URL' wp-content/plugins/wpl-client | grep -Ev 'class-wpl-server-client.php|wpl-client.php'
           grep -q 'Version:     2.8.0' wp-content/plugins/wpl-client/wpl-client.php
           grep -q "WPL_CLIENT_VERSION', '2.8.0'" wp-content/plugins/wpl-client/wpl-client.php
-          grep -q 'wpl_save_server_credential' wp-content/plugins/wpl-client/includes/class-wpl-client-admin.php
           grep -q 'WPL_Server_Client::request' wp-content/plugins/wpl-client/includes/class-wpl-installer.php
       - name: Rebuild and verify public distributable ZIP
         shell: bash
@@ -45,14 +46,14 @@ jobs:
           test ! -e /tmp/wpl-client-package-check/wpl-client/includes/wpl-package-credential.php
           ! grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' /tmp/wpl-client-package-check/wpl-client
           cd ../..
-      - name: Commit auth hardening
+      - name: Commit transport finalization
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
+          git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip .github/workflows/wpl-client-contract.yml
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'feat(wpl-client): recover account credentials without embedded secrets'
+          git commit -m 'refactor(wpl-client): centralize authenticated server transport'
           git pull --rebase origin fix/wpl-client-db-lifecycle-cleanup-20260906
           git push origin HEAD:fix/wpl-client-db-lifecycle-cleanup-20260906
