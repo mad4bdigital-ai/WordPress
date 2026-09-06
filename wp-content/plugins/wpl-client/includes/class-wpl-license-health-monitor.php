@@ -23,7 +23,7 @@ class WPL_License_Health_Monitor {
     public function __construct() {
         add_filter( 'cron_schedules', [ $this, 'add_cron_schedule' ] );
         add_action( self::CRON_HOOK, [ __CLASS__, 'run' ] );
-        add_action( self::SOON_HOOK, [ __CLASS__, 'run' ] );
+        add_action( self::SOON_HOOK, [ __CLASS__, 'run_event_driven' ] );
         add_action( 'init', [ __CLASS__, 'ensure_scheduled' ] );
         add_action( 'activated_plugin', [ __CLASS__, 'on_plugin_changed' ], 20, 2 );
         add_action( 'upgrader_process_complete', [ __CLASS__, 'on_upgrader_complete' ], 20, 2 );
@@ -84,6 +84,14 @@ class WPL_License_Health_Monitor {
         if ( ! wp_next_scheduled( self::SOON_HOOK ) ) {
             wp_schedule_single_event( time() + 30, self::SOON_HOOK );
         }
+    }
+
+    /**
+     * Plugin activation/update is a strong signal that registration state may have
+     * changed. Bypass stale backoff once for this event-driven verification.
+     */
+    public static function run_event_driven() {
+        return self::run( true );
     }
 
     public static function on_plugin_changed( $plugin = '', $network_wide = false ) {

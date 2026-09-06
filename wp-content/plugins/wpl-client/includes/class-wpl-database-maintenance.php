@@ -123,6 +123,7 @@ class WPL_Database_Maintenance {
         wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );
         wp_clear_scheduled_hook( 'wpl_bg_install_cron' );
         wp_clear_scheduled_hook( 'wpl_license_health_check' );
+        wp_clear_scheduled_hook( 'wpl_license_health_check_soon' );
 
         self::clear_transients();
 
