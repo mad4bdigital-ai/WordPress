@@ -129,7 +129,7 @@ jobs:
           grep -Fq "mad4b.site-control-plane.packaged-provider-contracts.v1" "$scanner"
           grep -Fq "static_zip_inspection_only" "$scanner"
           grep -Fq "Unsafe ZIP entry" "$scanner"
-          grep -Fq "--baseline" "$scanner"
+          grep -Fq -- "--baseline" "$scanner"
           grep -Fq "baseline_status" "$scanner"
           grep -Fq "archive_sha256" "$scanner"
           grep -Fq "mad4b.site-control-plane.certified-providers.v1" "$provider_baseline"
