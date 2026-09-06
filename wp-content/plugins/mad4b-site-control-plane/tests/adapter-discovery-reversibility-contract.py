@@ -54,6 +54,10 @@ def main():
     require("polylang" in priority and priority["polylang"].get("adapter_id") == "polylang", "Polylang must remain first-class external coverage")
     require("products_only_no_orders_payments_refunds" == priority["woocommerce"].get("mutation_scope"), "WooCommerce scope must remain products-only")
 
+    families = {item.get("id"): item for item in catalog.get("families", []) if isinstance(item, dict)}
+    require(families.get("jetengine", {}).get("known_parallel_mcp_namespace") == "jet-engine/v1", "JetEngine native MCP namespace must remain an explicit isolation requirement")
+    require("native_mcp_isolation" in families.get("jetengine", {}).get("requested_contracts", []), "JetEngine support contract must require native MCP isolation")
+
     discovery = text(ROOT / "includes" / "class-mad4b-scp-plugin-discovery.php")
     registry = text(ROOT / "includes" / "class-mad4b-scp-adapter-registry.php")
     base = text(ROOT / "includes" / "adapters" / "class-mad4b-scp-adapter-base.php")
@@ -71,6 +75,10 @@ def main():
         "'auto_create_authority' => false",
         "adapter_present_certification_required",
         "provider_certification_required",
+        "adapter_present_side_channel_blocked",
+        "parallel_mcp_write_plane_requires_isolation",
+        "known_parallel_mcp_namespace",
+        "mcp_foreign_transport_unreviewed",
         "excluded_high_risk",
     ]:
         require(marker in discovery, f"plugin discovery safety marker missing: {marker}")
@@ -137,6 +145,7 @@ def main():
     for forbidden in ["$_POST", "admin_post_", "$wpdb->insert", "$wpdb->update", "$wpdb->delete"]:
         require(forbidden not in admin_ui, f"Adapter Coverage console must remain read-only: {forbidden}")
     require("manage_options" in admin_ui and "Adapter Coverage" in admin_ui, "Adapter Coverage console capability/UI contract missing")
+    require("adapter_present_side_channel_blocked" in admin_ui and "Runtime blocker" in admin_ui, "Adapter Coverage console must surface side-channel blockers")
 
     archives = sorted(path.name for path in PLUGINS.glob("*.zip"))
     require(archives, "repository plugin archive inventory is empty")
@@ -179,7 +188,7 @@ def main():
     }
     if args.output:
         Path(args.output).write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"mad4b.site-control-plane.adapter-discovery-reversibility.v1: PASS archives={len(archive_coverage)} adapter_required={counts.get('adapter_required', 0)}")
+    print(f"mad4b.site-control-plane.adapter-discovery-reversibility.v2: PASS archives={len(archive_coverage)} adapter_required={counts.get('adapter_required', 0)}")
 
 
 if __name__ == "__main__":
