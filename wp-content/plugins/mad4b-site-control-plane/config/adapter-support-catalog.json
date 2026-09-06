@@ -29,7 +29,7 @@
   "families": [
     {"id":"mad4b-platform","match":["mad4b-site-control-plane/","mcp-adapter/"],"adapter_id":"","strategy":"platform","risk":"high","requested_contracts":[]},
     {"id":"elementor","match":["elementor/","elementor-pro/","ultimate-elementor/","header-footer-elementor/"],"adapter_id":"elementor","strategy":"registered_adapter","risk":"high","requested_contracts":["read","provider_native_write","reversible_restore_where_certified"]},
-    {"id":"jetengine","match":["jet-engine/","jet-engine-"],"adapter_id":"jetengine","strategy":"registered_adapter","risk":"high","requested_contracts":["read","exact_field_write","reversible_meta_restore"]},
+    {"id":"jetengine","match":["jet-engine/","jet-engine-"],"adapter_id":"jetengine","strategy":"registered_adapter","risk":"high","known_parallel_mcp_namespace":"jet-engine/v1","requested_contracts":["read","exact_field_write","reversible_meta_restore","native_mcp_isolation"]},
     {"id":"jetsmartfilters","match":["jet-smart-filters/","jet-smart-filters-"],"adapter_id":"jetsmartfilters","strategy":"registered_adapter","risk":"medium","requested_contracts":["read","bounded_filter_write","reversible_restore_where_provider_safe"]},
     {"id":"jetformbuilder","match":["jetformbuilder/","jet-form-builder/"],"adapter_id":"","strategy":"adapter_required","risk":"high","requested_contracts":["form_read","bounded_form_write","reversible_restore"]},
     {"id":"jet-ecosystem","match":["jet-search/","jet-tabs/","jet-blocks/","jet-blog/","jet-elements/","jet-woo-product-gallery/"],"adapter_id":"","strategy":"adapter_required","risk":"medium","requested_contracts":["read","bounded_write","reversible_restore"]},
