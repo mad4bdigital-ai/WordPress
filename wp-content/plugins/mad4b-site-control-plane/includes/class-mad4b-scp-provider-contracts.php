@@ -39,6 +39,16 @@ final class MAD4B_SCP_Provider_Contracts {
 		return isset( $contracts[ $provider ] ) && is_array( $contracts[ $provider ] ) ? $contracts[ $provider ] : array();
 	}
 
+	public static function required_providers() {
+		$required = array_keys( self::all() );
+		$required = apply_filters( 'mad4b_scp_required_providers', $required );
+		if ( ! is_array( $required ) ) {
+			return array();
+		}
+		$required = array_filter( array_map( 'sanitize_key', $required ) );
+		return array_values( array_unique( $required ) );
+	}
+
 	public static function installed_version( $provider ) {
 		$contract = self::get( $provider );
 		if ( empty( $contract['plugin_file'] ) ) {
@@ -110,7 +120,50 @@ final class MAD4B_SCP_Provider_Contracts {
 			$result['newly_present_abilities'] = $unexpected;
 		}
 
+		$result['runtime_contract_ok'] = empty( self::runtime_violations_from_status( $result ) );
 		return $result;
+	}
+
+	private static function runtime_violations_from_status( array $status ) {
+		$violations = array();
+		if ( empty( $status['status'] ) || 'certified' !== $status['status'] ) {
+			$violations[] = empty( $status['status'] ) ? 'unknown_status' : (string) $status['status'];
+		}
+		if ( ! empty( $status['native_abilities_missing'] ) ) {
+			$violations[] = 'native_abilities_missing';
+		}
+		if ( ! empty( $status['newly_present_abilities'] ) ) {
+			$violations[] = 'verified_absent_ability_present';
+		}
+		return array_values( array_unique( $violations ) );
+	}
+
+	public static function runtime_violations( $provider, $available = null ) {
+		return self::runtime_violations_from_status( self::runtime_status( $provider, $available ) );
+	}
+
+	public static function mutation_allowed( $provider, $available = null ) {
+		if ( ! self::get( $provider ) ) {
+			return false;
+		}
+		return empty( self::runtime_violations( $provider, $available ) );
+	}
+
+	public static function mutation_guard( $provider, $available = null ) {
+		$status = self::runtime_status( $provider, $available );
+		$violations = self::runtime_violations_from_status( $status );
+		if ( empty( $violations ) ) {
+			return true;
+		}
+		return new WP_Error(
+			'mad4b_provider_mutation_not_certified',
+			'Provider mutation is denied until the exact runtime contract is certified.',
+			array(
+				'provider' => $provider,
+				'violations' => $violations,
+				'runtime_status' => $status,
+			)
+		);
 	}
 
 	public static function runtime_inventory() {
