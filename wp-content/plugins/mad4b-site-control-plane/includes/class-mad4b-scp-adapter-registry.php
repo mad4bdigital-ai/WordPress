@@ -24,7 +24,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	public function register_abilities() {
 		$this->register_registry_ability( 'mad4b/adapters-inventory', 'Adapters Inventory', 'inventory', 'List registered MAD4B adapters and their runtime availability/reversible contracts.' );
 		$this->register_registry_ability( 'mad4b/plugin-adapter-coverage', 'Plugin Adapter Coverage', 'plugin_coverage', 'Discover installed plugins and classify their governed adapter coverage without installing, enabling or generating code.' );
-		$this->register_registry_ability( 'mad4b/adapter-support-requests', 'Adapter Support Requests', 'adapter_support_requests', 'Return deterministic read-only support requirements for plugins that need an adapter or reversible certification.' );
+		$this->register_registry_ability( 'mad4b/adapter-support-requests', 'Adapter Support Requests', 'adapter_support_requests', 'Return deterministic read-only support requirements for plugins that need an adapter, provider certification, reversible certification, or side-channel isolation.' );
 		$this->register_registry_ability( 'mad4b/runtime-self-test', 'Runtime Self Test', 'runtime_self_test', 'Verify registered abilities, MCP dependency, custom-server isolation, provider contracts and adapter coverage evidence.' );
 		foreach ( $this->adapters as $adapter ) $adapter->register_abilities();
 	}
@@ -132,7 +132,12 @@ final class MAD4B_SCP_Adapter_Registry {
 		$plugin_coverage = $this->plugin_coverage();
 		$support_requests = isset( $plugin_coverage['support_requests'] ) && is_array( $plugin_coverage['support_requests'] ) ? $plugin_coverage['support_requests'] : array();
 		$active_adapter_gaps = array();
-		foreach ( $support_requests as $request ) if ( ! empty( $request['active'] ) && isset( $request['reason_code'] ) && in_array( $request['reason_code'], array( 'no_registered_adapter', 'reversible_certification_incomplete' ), true ) ) $active_adapter_gaps[] = $request['support_request_id'];
+		$active_gap_reasons = array( 'no_registered_adapter', 'reversible_certification_incomplete', 'provider_certification_required', 'parallel_mcp_write_plane_requires_isolation' );
+		foreach ( $support_requests as $request ) {
+			if ( ! empty( $request['active'] ) && isset( $request['reason_code'] ) && in_array( $request['reason_code'], $active_gap_reasons, true ) ) {
+				$active_adapter_gaps[] = $request['support_request_id'];
+			}
+		}
 		$provider_contract_ok = empty( $provider_contract_blockers );
 		$passed = empty( $missing ) && empty( $public_leaks ) && $mcp_adapter && $provider_contract_ok && $server_registration_ok && $mcp_peer_governance_ok;
 
@@ -152,6 +157,7 @@ final class MAD4B_SCP_Adapter_Registry {
 				'counts' => isset( $plugin_coverage['counts'] ) ? $plugin_coverage['counts'] : array(),
 				'support_request_count' => count( $support_requests ),
 				'active_adapter_gap_request_ids' => array_values( array_unique( $active_adapter_gaps ) ),
+				'active_adapter_gap_reason_codes' => $active_gap_reasons,
 				'unknown_plugin_write_default' => 'deny',
 			),
 			'custom_server_isolation' => empty( $public_leaks ),
