@@ -180,46 +180,75 @@
 
     var allProducts = []; // cache المنتجات بعد التحميل
 
-    /* ====== رسالة API Key قديم ====== */
-window.wplShowApiKeyError = function() {
-        // ✅ v2.7.4: نحوّل العميل لصفحة طلباته على السيرفر — من هناك بينزّل البلجن الجديد
-        var downloadUrl = 'https://wordpresslicenses.com/profile/orders';
+    /* ====== WPL server credential recovery ====== */
+    window.wplShowApiKeyError = function() {
+        var ordersUrl = (window.WPL && WPL.orders_url) ? WPL.orders_url : 'https://wordpresslicenses.com/profile/orders';
+        var auth = (window.WPL && WPL.auth) ? WPL.auth : {};
+        var stateLabel = auth.state === 'missing' ? 'لا توجد بيانات اتصال محفوظة' : 'الخادم رفض بيانات الاتصال الحالية';
 
         var finalHtml =
             '<div id="wpl-api-key-msg" style="padding:20px 28px 24px;direction:rtl">' +
                 '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">' +
-                    '<span style="font-size:30px;line-height:1">⚠️</span>' +
-                    '<div>' +
-                        '<div style="font-size:15px;font-weight:800;color:#fca5a5;margin-bottom:3px">تحديث مطلوب</div>' +
-                        '<div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6">الإضافة الحالية غير مربوطة بحسابك — قم بتحميل نسخة جديدة من حسابك</div>' +
-                    '</div>' +
+                    '<span style="font-size:30px;line-height:1">🔐</span>' +
+                    '<div><div style="font-size:15px;font-weight:800;color:#fca5a5;margin-bottom:3px">تعذر توثيق اتصال WPL</div>' +
+                    '<div style="font-size:12px;color:rgba(255,255,255,.62);line-height:1.7">' + stateLabel + '. هذا لا يعني أن إصدار الإضافة قديم.</div></div>' +
                 '</div>' +
-                '<a href="' + downloadUrl + '"' +
-                   ' style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;' +
-                   'background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;text-decoration:none;' +
-                   'border-radius:12px;padding:13px;font-size:14px;font-weight:700;margin-bottom:14px">' +
-                    '⬇️ تحميل آخر إصدار' +
-                '</a>' +
-                '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px">' +
-                    '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:1px;margin-bottom:10px">📋 خطوات التحديث</div>' +
-                    '<div style="display:flex;flex-direction:column;gap:7px">' +
-                        '<div style="display:flex;align-items:flex-start;gap:9px;font-size:12px;color:rgba(255,255,255,.7)">' +
-                            '<span style="background:#3b82f6;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">1</span>' +
-                            '<span>اضغط الزرار أعلاه وحمّل ملف الإضافة</span>' +
-                        '</div>' +
-                        '<div style="display:flex;align-items:flex-start;gap:9px;font-size:12px;color:rgba(255,255,255,.7)">' +
-                            '<span style="background:#3b82f6;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">2</span>' +
-                            '<span>احذف الإضافة الحالية من <strong style="color:#fff">الإضافات</strong></span>' +
-                        '</div>' +
-                        '<div style="display:flex;align-items:flex-start;gap:9px;font-size:12px;color:rgba(255,255,255,.7)">' +
-                            '<span style="background:#3b82f6;color:#fff;border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px">3</span>' +
-                            '<span>ارفع الملف الجديد من <strong style="color:#fff">الإضافات ← رفع إضافة</strong></span>' +
-                        '</div>' +
-                    '</div>' +
+                '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;margin-bottom:12px">' +
+                    '<label for="wpl-server-credential-input" style="display:block;font-size:11px;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:7px">بيانات اتصال WPL الخاصة بحسابك</label>' +
+                    '<input type="password" id="wpl-server-credential-input" autocomplete="off" placeholder="ألصق بيانات الاتصال من نسخة حسابك" style="width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.18);background:rgba(15,23,42,.72);color:#fff;border-radius:9px;padding:11px 12px;direction:ltr;text-align:left;outline:none">' +
+                    '<button type="button" id="wpl-server-credential-save" style="width:100%;margin-top:9px;border:0;border-radius:9px;padding:11px 12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:800;cursor:pointer">اختبار وحفظ بيانات الاتصال</button>' +
+                    '<div id="wpl-server-credential-status" style="display:none;margin-top:9px;font-size:12px;line-height:1.6"></div>' +
                 '</div>' +
+                '<a href="' + ordersUrl + '" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff;text-decoration:none;border-radius:10px;padding:11px;font-size:12px;font-weight:700">فتح صفحة طلباتي للحصول على نسخة الحساب</a>' +
+                '<div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.7;margin-top:11px">لن يتم عرض قيمة بيانات الاتصال بعد حفظها، ولن تُرسل إلا إلى خادم WordPress Licenses عبر HTTPS.</div>' +
             '</div>';
 
-        function _injectInHeroCard(heroCard) {
+        function bindCredentialSave() {
+            var btn = document.getElementById('wpl-server-credential-save');
+            var inp = document.getElementById('wpl-server-credential-input');
+            var out = document.getElementById('wpl-server-credential-status');
+            if (!btn || !inp || !out || btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', function() {
+                var credential = inp.value.trim();
+                out.style.display = 'block';
+                if (!credential) {
+                    out.style.color = '#fca5a5';
+                    out.textContent = 'أدخل بيانات الاتصال أولاً.';
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = '⏳ جاري الاختبار...';
+                out.style.color = '#bae6fd';
+                out.textContent = 'يتم التحقق من البيانات مع خادم WPL دون عرضها أو تسجيلها.';
+                jQuery.post(WPL.ajax_url, {
+                    action: 'wpl_save_server_credential',
+                    nonce: WPL.nonce,
+                    credential: credential
+                }, function(res) {
+                    if (res && res.success) {
+                        inp.value = '';
+                        out.style.color = '#86efac';
+                        out.textContent = '✅ تم التحقق والحفظ — جاري إعادة الاتصال...';
+                        btn.textContent = '✅ تم';
+                        setTimeout(function(){ window.location.reload(); }, 800);
+                        return;
+                    }
+                    var message = res && res.data && res.data.message ? res.data.message : 'تعذر التحقق من بيانات الاتصال.';
+                    out.style.color = '#fca5a5';
+                    out.textContent = message;
+                    btn.disabled = false;
+                    btn.textContent = 'اختبار وحفظ بيانات الاتصال';
+                }).fail(function() {
+                    out.style.color = '#fca5a5';
+                    out.textContent = 'تعذر الوصول إلى WordPress أثناء عملية الحفظ. حاول مرة أخرى.';
+                    btn.disabled = false;
+                    btn.textContent = 'اختبار وحفظ بيانات الاتصال';
+                });
+            });
+        }
+
+        function injectInHeroCard(heroCard) {
             ['wpl-robot-fields','wpl-robot-prog','wpl-session-btn-area'].forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) el.style.display = 'none';
@@ -229,29 +258,30 @@ window.wplShowApiKeyError = function() {
             var div = document.createElement('div');
             div.innerHTML = finalHtml;
             heroCard.appendChild(div.firstChild);
-            var msg = document.getElementById('wpl-api-key-msg');
-            if (msg) { msg.style.opacity='0'; msg.style.transition='opacity .35s'; setTimeout(function(){ msg.style.opacity='1'; },30); }
             var bBig = document.getElementById('wpl-b-big') || document.getElementById('wpl-b-big-s');
             var bSub = document.getElementById('wpl-b-sub') || document.getElementById('wpl-b-sub-s');
-            if (bBig) bBig.textContent = '⚠️ يلزم تحديث الإضافة';
-            if (bSub) bSub.textContent = 'النسخة الحالية غير متوافقة مع السيرفر';
+            if (bBig) bBig.textContent = '⚠️ تعذر توثيق اتصال WPL';
+            if (bSub) bSub.textContent = 'أدخل بيانات الاتصال الصحيحة أو استخدم نسخة الحساب الخاصة بك';
+            bindCredentialSave();
             heroCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // ① hero card (العميل العادي أو الـ session)
         var heroCard = document.getElementById('wpl-hero-card') || document.getElementById('wpl-hero-card-session');
-        if (heroCard) { _injectInHeroCard(heroCard); return; }
+        if (heroCard) { injectInHeroCard(heroCard); return; }
 
-        // ② fallback — products-container (مانيوال tab)
         var prodContainer = document.getElementById('wpl-products-container');
         if (prodContainer) {
-            prodContainer.innerHTML =
-                '<div style="direction:rtl;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);' +
-                'border-radius:14px;padding:4px 0;max-width:480px;margin:0 auto">' +
-                finalHtml.replace('id="wpl-api-key-msg"','id="wpl-api-key-msg-2"') + '</div>';
+            prodContainer.innerHTML = '<div style="direction:rtl;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:4px 0;max-width:520px;margin:0 auto">' + finalHtml + '</div>';
+            bindCredentialSave();
             prodContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    };;
+    };
+
+    if (window.WPL && WPL.auth && (WPL.auth.state === 'missing' || WPL.auth.state === 'rejected')) {
+        setTimeout(function(){
+            if (typeof window.wplShowApiKeyError === 'function') window.wplShowApiKeyError();
+        }, 50);
+    }
 
     $(document).ready(function () {
         // شغّل بس لو السيريال متحقق (gate wrapper مش موجود أو مخفي من PHP)

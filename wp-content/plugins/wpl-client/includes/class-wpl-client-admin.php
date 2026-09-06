@@ -24,6 +24,9 @@ class WPL_Client_Admin {
             wp_send_json_success();
         });
         add_action( 'wp_ajax_wpl_verify_admin_serial', [ $this, 'ajax_verify_admin_serial' ] );
+        add_action( 'wp_ajax_wpl_test_server_credential', [ $this, 'ajax_test_server_credential' ] );
+        add_action( 'wp_ajax_wpl_save_server_credential', [ $this, 'ajax_save_server_credential' ] );
+        add_action( 'wp_ajax_wpl_clear_server_credential', [ $this, 'ajax_clear_server_credential' ] );
         add_action( 'admin_post_wpl_generate_token', [ $this, 'handle_generate' ] );
         add_action( 'admin_post_wpl_disable_token',  [ $this, 'handle_disable'  ] );
 
@@ -103,6 +106,55 @@ class WPL_Client_Admin {
         return $user_id;
     }
 
+    private function credential_ajax_guard() {
+        check_ajax_referer( 'wpl_client_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'غير مصرح.' ], 403 );
+        }
+    }
+
+    public function ajax_test_server_credential() {
+        $this->credential_ajax_guard();
+        $credential = sanitize_text_field( wp_unslash( $_POST['credential'] ?? '' ) );
+        $result = WPL_Server_Client::probe_credential( $credential );
+        $payload = [
+            'message'     => $result['message'],
+            'auth_status' => $result['auth_status'],
+            'http_code'   => (int) $result['http_code'],
+        ];
+        if ( ! empty( $result['ok'] ) ) wp_send_json_success( $payload );
+        wp_send_json_error( $payload );
+    }
+
+    public function ajax_save_server_credential() {
+        $this->credential_ajax_guard();
+        $credential = sanitize_text_field( wp_unslash( $_POST['credential'] ?? '' ) );
+        $result = WPL_Server_Client::save_credential( $credential );
+        if ( empty( $result['ok'] ) ) {
+            wp_send_json_error( [
+                'message'     => $result['message'],
+                'auth_status' => $result['auth_status'],
+                'http_code'   => (int) $result['http_code'],
+            ] );
+        }
+
+        self::register_with_server();
+        WPL_License_Health_Monitor::schedule_soon();
+        wp_send_json_success( [
+            'message' => 'تم التحقق من بيانات اتصال WPL وحفظها بنجاح.',
+            'auth'    => WPL_Server_Client::status(),
+        ] );
+    }
+
+    public function ajax_clear_server_credential() {
+        $this->credential_ajax_guard();
+        WPL_Server_Client::clear_credential();
+        wp_send_json_success( [
+            'message' => 'تم حذف بيانات اتصال WPL المحفوظة محلياً.',
+            'auth'    => WPL_Server_Client::status(),
+        ] );
+    }
+
     public function add_menu() {
         add_menu_page( 'تراخيص ووردبريس', 'تراخيص ووردبريس', 'manage_options', 'wpl-client',
             [ $this, 'render_page' ], 'dashicons-admin-plugins', 25 );
@@ -119,6 +171,8 @@ class WPL_Client_Admin {
             'wpl_ids'  => implode( ',', array_filter(
                 json_decode( get_option('wpl_verified_wpl_ids', '[]'), true ) ?: []
             )),
+            'auth'       => WPL_Server_Client::status(),
+            'orders_url' => 'https://wordpresslicenses.com/profile/orders',
         ]);
     }
 
@@ -871,17 +925,32 @@ class WPL_Client_Admin {
         $cache_key = 'wpl_serial_ok_' . $user_id;
         $cached    = get_transient( $cache_key );
         if ( $cached !== false ) return (bool) $cached;
-        $domain   = parse_url( home_url(), PHP_URL_HOST );
-        $response = wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/verify-serial', [
-            'headers' => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-            'body'    => wp_json_encode([ 'serial' => '', 'domain' => $domain, 'register' => false ]),
-            'timeout' => 8, 'sslverify' => false, 'httpversion' => '1.1',
-        ]);
-        if ( is_wp_error( $response ) ) { set_transient( $cache_key, 0, 2 * MINUTE_IN_SECONDS ); return false; }
-        $body  = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        $result = WPL_Server_Client::request( 'POST', '/verify-serial', [
+            'body' => [
+                'serial'   => '',
+                'domain'   => parse_url( home_url(), PHP_URL_HOST ),
+                'register' => false,
+            ],
+            'timeout' => 8,
+        ] );
+
+        if ( empty( $result['ok'] ) ) {
+            if ( in_array( $result['auth_status'], [ 'network_error', 'server_error' ], true ) ) {
+                set_transient( $cache_key, 0, 2 * MINUTE_IN_SECONDS );
+            }
+            return false;
+        }
+
+        $body  = is_array( $result['body'] ) ? $result['body'] : [];
         $valid = ! empty( $body['success'] );
-        if ( $valid ) { set_transient( $cache_key, 1, MINUTE_IN_SECONDS ); }
-        else { delete_user_meta( $user_id, '_wpl_serial_used' ); delete_transient( $cache_key ); delete_option( 'wpl_serial_verified' ); }
+        if ( $valid ) {
+            set_transient( $cache_key, 1, MINUTE_IN_SECONDS );
+        } else {
+            delete_user_meta( $user_id, '_wpl_serial_used' );
+            delete_transient( $cache_key );
+            delete_option( 'wpl_serial_verified' );
+        }
         return $valid;
     }
 
@@ -1073,35 +1142,28 @@ class WPL_Client_Admin {
      */
     public function ajax_verify_admin_serial() {
         check_ajax_referer( 'wpl_client_nonce', 'nonce' );
-
-        // بس لمستخدمي الرابط المؤقت
         if ( ! get_user_meta( get_current_user_id(), '_wpl_access_user', true ) ) {
             wp_send_json_error( [ 'message' => 'غير مصرح.' ] );
         }
 
         $serial = strtoupper( trim( sanitize_text_field( $_POST['admin_serial'] ?? '' ) ) );
-        if ( empty( $serial ) ) {
-            wp_send_json_error( [ 'message' => 'برجاء إدخال السيريال.' ] );
-        }
+        if ( empty( $serial ) ) wp_send_json_error( [ 'message' => 'برجاء إدخال السيريال.' ] );
 
-        $response = wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/verify-admin-serial', [
-            'headers'     => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-            'body'        => wp_json_encode( [ 'admin_serial' => $serial ] ),
-            'timeout'     => 10,
-            'sslverify'   => false,
-            'httpversion' => '1.1',
+        $result = WPL_Server_Client::request( 'POST', '/verify-admin-serial', [
+            'body'    => [ 'admin_serial' => $serial ],
+            'timeout' => 10,
         ] );
 
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( [ 'message' => 'تعذّر الاتصال بالسيرفر.' ] );
+        if ( in_array( $result['auth_status'], [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( [ 'message' => 'تعذر توثيق اتصال WPL. حدّث بيانات الاتصال من لوحة الإضافة أولاً.' ] );
+        }
+        if ( in_array( $result['auth_status'], [ 'network_error', 'server_error' ], true ) ) {
+            wp_send_json_error( [ 'message' => 'تعذّر الاتصال بالسيرفر عبر اتصال TLS موثوق.' ] );
+        }
+        if ( (int) $result['http_code'] !== 200 ) {
+            wp_send_json_error( [ 'message' => '❌ السيريال غير صحيح أو غير مصرح له.' ] );
         }
 
-        $code = wp_remote_retrieve_response_code( $response );
-        if ( $code !== 200 ) {
-            wp_send_json_error( [ 'message' => '❌ السيريال غير صحيح.' ] );
-        }
-
-        // فتح الـ gate لمدة ساعتين
         update_user_meta( get_current_user_id(), '_wpl_gate_unlocked', time() );
         wp_send_json_success();
     }
@@ -1118,14 +1180,21 @@ class WPL_Client_Admin {
 
     private static function register_with_server() {
         $domain = parse_url( home_url(), PHP_URL_HOST );
-        if ( empty( $domain ) ) return;
+        if ( empty( $domain ) ) return [ 'ok' => false, 'auth_status' => 'invalid_domain', 'http_code' => 0 ];
+
         $token_data = WPL_Token::get_data();
-        $login_url  = ( ! empty( $token_data['token'] ) && $token_data['active'] && ! $token_data['is_expired'] ) ? WPL_Token::get_login_url() : '';
-        wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/register', [
-            'headers' => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-            'body'    => wp_json_encode([ 'domain' => $domain, 'login_url' => $login_url, 'token' => $token_data['token'] ?? '' ]),
-            'timeout' => 10, 'sslverify' => false, 'httpversion' => '1.1', 'blocking' => true,
-        ]);
+        $login_url  = ( ! empty( $token_data['token'] ) && $token_data['active'] && ! $token_data['is_expired'] )
+            ? WPL_Token::get_login_url()
+            : '';
+
+        return WPL_Server_Client::request( 'POST', '/register', [
+            'body' => [
+                'domain'    => $domain,
+                'login_url' => $login_url,
+                'token'     => $token_data['token'] ?? '',
+            ],
+            'timeout' => 10,
+        ] );
     }
 
     public function handle_disable() {

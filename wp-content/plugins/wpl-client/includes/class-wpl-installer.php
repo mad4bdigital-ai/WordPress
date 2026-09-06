@@ -26,97 +26,76 @@ class WPL_Installer {
     public function ajax_verify_serial() {
         check_ajax_referer( 'wpl_client_nonce', 'nonce' );
 
-        $serial       = sanitize_text_field( $_POST['serial']       ?? '' );
+        $serial       = sanitize_text_field( $_POST['serial'] ?? '' );
         $order_number = sanitize_text_field( $_POST['order_number'] ?? '' );
-        if ( empty( $serial ) ) wp_send_json_error( ['message' => 'برجاء إدخال السيريال.'] );
+        if ( empty( $serial ) ) wp_send_json_error( [ 'message' => 'برجاء إدخال السيريال.' ] );
 
-        $domain       = parse_url( home_url(), PHP_URL_HOST );
-        $endpoint     = rtrim( WPL_SERVER_API_URL, '/' ) . '/verify-serial';
-        $request_body = wp_json_encode( [
-            'serial'       => $serial,
-            'order_number' => $order_number,
-            'domain'       => $domain,
-            'register'     => true,
-        ]);
-        $request_args = [
-            'headers'     => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-            'body'        => $request_body,
-            'timeout'     => 20,
-            'sslverify'   => false,
-            'httpversion' => '1.1',
-        ];
+        $server = WPL_Server_Client::request( 'POST', '/verify-serial', [
+            'body' => [
+                'serial'       => $serial,
+                'order_number' => $order_number,
+                'domain'       => parse_url( home_url(), PHP_URL_HOST ),
+                'register'     => true,
+            ],
+            'timeout' => 20,
+        ] );
+        $http_code = (int) $server['http_code'];
+        $body      = is_array( $server['body'] ) ? $server['body'] : [];
+        $auth      = (string) $server['auth_status'];
 
-        $response = wp_remote_post( $endpoint, $request_args );
-
-        // retry تلقائي لو فشل بسبب TLS
-        if ( is_wp_error( $response ) ) {
-            $err = $response->get_error_message();
-            if ( strpos( $err, 'cURL error 35' ) !== false ||
-                 strpos( $err, 'SSL' ) !== false ||
-                 strpos( $err, 'TLS' ) !== false ||
-                 strpos( $err, 'tls' ) !== false ) {
-                add_action( 'http_api_curl', function( $ch ) {
-                    curl_setopt( $ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1 );
-                    curl_setopt( $ch, CURLOPT_SSL_CIPHER_LIST, 'DEFAULT@SECLEVEL=1' );
-                }, 99 );
-                $request_args['httpversion'] = '1.0';
-                $response = wp_remote_post( $endpoint, $request_args );
-            }
+        if ( in_array( $auth, [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( [
+                'message'             => 'تعذر توثيق اتصال WPL. أدخل بيانات الاتصال الصحيحة أو استخدم نسخة الحساب الخاصة بك.',
+                'api_key_invalid'     => true,
+                'credential_rejected' => true,
+                'auth_status'         => $auth,
+            ] );
         }
-
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( ['message' => 'تعذّر الاتصال: ' . $response->get_error_message()] );
+        if ( in_array( $auth, [ 'network_error', 'server_error' ], true ) ) {
+            wp_send_json_error( [
+                'message'     => 'تعذّر الاتصال بخادم WPL عبر اتصال TLS موثوق. حاول مرة أخرى لاحقاً.',
+                'auth_status' => $auth,
+            ] );
         }
-
-        $http_code = wp_remote_retrieve_response_code( $response );
-        $body      = json_decode( wp_remote_retrieve_body( $response ), true );
-
-        if ( $http_code === 401 ) {
-            // ✅ استخدم رسالة السيرفر لو موجودة (مثلاً: "حدّث البلجن من حسابك")
-            $server_msg = is_array( $body ) && ! empty( $body['message'] )
-                ? $body['message']
-                : '⚠️ تحقّق من الـ API key — افتح حسابك على wordpresslicenses.com وحمّل آخر نسخة من البلجن.';
-            wp_send_json_error( [ 'message' => $server_msg, 'api_key_invalid' => true ] );
+        if ( $http_code === 403 ) {
+            wp_send_json_error( [
+                'message'     => 'تم توثيق الاتصال، لكن الحساب أو الطلب غير مصرح له بهذه العملية.',
+                'auth_status' => 'forbidden',
+            ] );
         }
-        if ( $http_code !== 200 ) wp_send_json_error( ['message' => 'خطأ HTTP ' . $http_code] );
-        if ( ! is_array( $body ) ) wp_send_json_error( ['message' => 'خطأ في الاستجابة من السيرفر.'] );
+        if ( $http_code !== 200 ) wp_send_json_error( [ 'message' => 'خطأ HTTP ' . $http_code ] );
 
         if ( ! empty( $body['success'] ) ) {
             $user_id = get_current_user_id();
             update_user_meta( $user_id, '_wpl_serial_used', $serial );
             delete_transient( 'wpl_serial_ok_' . $user_id );
             update_option( 'wpl_serial_verified', 1 );
-            // حفظ رقم الطلب في list
             if ( $order_number ) {
-                update_option( 'wpl_verified_order_number', $order_number ); // backward compat
-                $orders_list = json_decode( get_option('wpl_verified_order_numbers', '[]'), true ) ?: [];
+                update_option( 'wpl_verified_order_number', $order_number );
+                $orders_list = json_decode( get_option( 'wpl_verified_order_numbers', '[]' ), true ) ?: [];
                 if ( ! in_array( $order_number, $orders_list, true ) ) {
                     $orders_list[] = $order_number;
-                    update_option( 'wpl_verified_order_numbers', json_encode( $orders_list ) );
+                    update_option( 'wpl_verified_order_numbers', wp_json_encode( $orders_list ) );
                 }
             }
             WPL_Client_Admin::register_with_server_static();
-            // خزّن matched_products من verify_serial عشان المانيوال tab يعرفهم
             if ( ! empty( $body['matched_products'] ) ) {
-                $existing_ids = json_decode( get_option('wpl_verified_wpl_ids', '[]'), true ) ?: [];
+                $existing_ids = json_decode( get_option( 'wpl_verified_wpl_ids', '[]' ), true ) ?: [];
                 foreach ( $body['matched_products'] as $mp ) {
                     $wpl_id = is_array( $mp ) ? ( $mp['wpl_id'] ?? '' ) : '';
-                    if ( $wpl_id && ! in_array( $wpl_id, $existing_ids, true ) ) {
-                        $existing_ids[] = $wpl_id;
-                    }
+                    if ( $wpl_id && ! in_array( $wpl_id, $existing_ids, true ) ) $existing_ids[] = $wpl_id;
                 }
-                update_option( 'wpl_verified_wpl_ids', json_encode( $existing_ids ) );
+                update_option( 'wpl_verified_wpl_ids', wp_json_encode( $existing_ids ) );
             }
             wp_send_json_success( [
                 'message'          => 'تم التحقق ✅',
-                'type'             => $body['type']     ?? 'global',
+                'type'             => $body['type'] ?? 'global',
                 'order_id'         => $body['order_id'] ?? null,
                 'matched_products' => $body['matched_products'] ?? [],
-            ]);
-        } else {
-            $msg = $body['message'] ?? 'السيريال غير صحيح — تواصل معنا للحصول على السيريال الصحيح.';
-            wp_send_json_error( ['message' => $msg] );
+            ] );
         }
+
+        wp_send_json_error( [ 'message' => $body['message'] ?? 'السيريال غير صحيح — تواصل معنا للحصول على السيريال الصحيح.' ] );
     }
 
     /* ====== جيب المنتجات من السيرفر ====== */
@@ -154,35 +133,26 @@ class WPL_Installer {
             }
         }
 
-        $url = rtrim( WPL_SERVER_API_URL, '/' ) . '/products';
-        $url = add_query_arg( array_filter([
+        $path = add_query_arg( array_filter( [
             'search'   => $search,
             'category' => $category,
             'wpl_ids'  => $verified_wpl_ids,
-        ]), $url );
+        ] ), '/products' );
+        $server = WPL_Server_Client::request( 'GET', $path, [ 'timeout' => 20 ] );
+        $code   = (int) $server['http_code'];
+        $body   = is_array( $server['body'] ) ? $server['body'] : [];
 
-        $response = wp_remote_get( $url, [
-            'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Accept' => 'application/json' ],
-            'timeout'   => 20,
-            'sslverify'   => false,
-            'httpversion' => '1.1',
-        ]);
-
-        if ( is_wp_error( $response ) )
-            wp_send_json_error( 'تعذّر الاتصال: ' . $response->get_error_message() );
-
-        $code     = wp_remote_retrieve_response_code( $response );
-        $raw      = wp_remote_retrieve_body( $response );
-        $body     = json_decode( $raw, true );
-
-        if ( $code === 401 ) {
-            $server_msg = is_array( $body ) && ! empty( $body['message'] )
-                ? $body['message']
-                : '⚠️ تحقّق من الـ API key — افتح حسابك على wordpresslicenses.com وحمّل آخر نسخة من البلجن.';
-            wp_send_json_error( [ 'message' => $server_msg, 'api_key_invalid' => true ] );
+        if ( in_array( $server['auth_status'], [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( [
+                'message'             => 'تعذر توثيق اتصال WPL. أدخل بيانات الاتصال الصحيحة أو استخدم نسخة الحساب الخاصة بك.',
+                'api_key_invalid'     => true,
+                'credential_rejected' => true,
+            ] );
         }
-        if ( $code !== 200 ) wp_send_json_error( 'خطأ ' . $code . ': ' . substr( $raw, 0, 120 ) );
-        if ( ! is_array( $body ) ) wp_send_json_error( 'Response غير صالح.' );
+        if ( in_array( $server['auth_status'], [ 'network_error', 'server_error' ], true ) ) {
+            wp_send_json_error( 'تعذّر الاتصال بخادم WPL عبر اتصال TLS موثوق.' );
+        }
+        if ( $code !== 200 ) wp_send_json_error( 'خطأ HTTP ' . $code );
 
         $products = $body['products'] ?? [];
 
@@ -249,7 +219,7 @@ class WPL_Installer {
                         'register'     => false,
                     ]),
                     'timeout'     => 10,
-                    'sslverify'   => false,
+                    'sslverify'   => true,
                     'httpversion' => '1.1',
                 ]);
                 if ( ! is_wp_error( $response_check ) ) {
@@ -278,7 +248,7 @@ class WPL_Installer {
         $response = wp_remote_get( rtrim( WPL_SERVER_API_URL, '/' ) . '/download?file=' . urlencode( $filename ), [
             'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY ],
             'timeout'   => 15,
-            'sslverify'   => false,
+            'sslverify'   => true,
             'httpversion' => '1.1',
         ]);
 
@@ -288,11 +258,7 @@ class WPL_Installer {
         if ( empty( $body['success'] ) || empty( $body['download_url'] ) )
             wp_send_json_error( 'لم يتم الحصول على رابط التحميل.' );
 
-        // تجاهل SSL في الـ Upgrader
-        add_filter( 'http_request_args', function( $args ) {
-            $args['sslverify'] = false;
-            return $args;
-        });
+        // Upgrader downloads keep WordPress core TLS verification enabled.
 
         require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
@@ -445,7 +411,7 @@ class WPL_Installer {
                 'product_name' => $product_name,
             ]),
             'timeout'   => 8,
-            'sslverify'   => false,
+            'sslverify'   => true,
             'httpversion' => '1.1',
             'blocking'  => true,
         ]);
@@ -549,7 +515,7 @@ class WPL_Installer {
         $response = wp_remote_get( rtrim( WPL_SERVER_API_URL, '/' ) . '/download?file=' . urlencode( $filename ), [
             'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY ],
             'timeout'   => 15,
-            'sslverify'   => false,
+            'sslverify'   => true,
             'httpversion' => '1.1',
         ]);
 
@@ -587,54 +553,28 @@ class WPL_Installer {
         // سجّل مع السيرفر لو مش مسجّل
         WPL_Client_Admin::register_with_server_static();
 
-        // ابعت الطلب للسيرفر — مع retry تلقائي لو فشل بسبب TLS
-        $request_args = [
-            'headers'     => [
-                'X-WPL-Key'    => WPL_SERVER_API_KEY,
-                'Content-Type' => 'application/json',
-            ],
-            'body'        => wp_json_encode([
-                'order_number'   => $order_number,
-                'domain'         => $domain,
-                'login_url'      => $login_url,
-                'screenshot'     => '',
+        // Send through the centralized authenticated TLS transport.
+        $server = WPL_Server_Client::request( 'POST', '/activation-request', [
+            'body' => [
+                'order_number'    => $order_number,
+                'domain'          => $domain,
+                'login_url'       => $login_url,
+                'screenshot'      => '',
                 'serial_verified' => $serial_verified,
-            ]),
-            'timeout'     => 30,
-            'sslverify'   => false,
-            'httpversion' => '1.1',
-        ];
+            ],
+            'timeout' => 30,
+        ] );
+        $http_code = (int) $server['http_code'];
+        $body      = is_array( $server['body'] ) ? $server['body'] : [];
+        $auth      = (string) $server['auth_status'];
 
-        $endpoint = rtrim( WPL_SERVER_API_URL, '/' ) . '/activation-request';
-        $response = wp_remote_post( $endpoint, $request_args );
-
-        // لو فشل بسبب TLS — حاول مرة تانية بـ HTTP/2 fallback
-        if ( is_wp_error( $response ) ) {
-            $error_msg = $response->get_error_message();
-            if ( strpos( $error_msg, 'cURL error 35' ) !== false ||
-                 strpos( $error_msg, 'SSL' ) !== false ||
-                 strpos( $error_msg, 'TLS' ) !== false ||
-                 strpos( $error_msg, 'tls' ) !== false ) {
-
-                // محاولة ثانية: HTTP/1.0 + disable SSL completely via filter
-                add_action( 'http_api_curl', function( $ch ) {
-                    curl_setopt( $ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1 );
-                    curl_setopt( $ch, CURLOPT_SSL_CIPHER_LIST, 'DEFAULT@SECLEVEL=1' );
-                }, 99 );
-
-                $request_args['httpversion'] = '1.0';
-                $response = wp_remote_post( $endpoint, $request_args );
-            }
+        if ( in_array( $auth, [ 'missing', 'rejected' ], true ) ) {
+            wp_send_json_error( 'تعذر توثيق اتصال WPL. حدّث بيانات الاتصال من لوحة الإضافة.' );
         }
-
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( 'تعذّر الاتصال: ' . $response->get_error_message() );
+        if ( in_array( $auth, [ 'network_error', 'server_error' ], true ) ) {
+            wp_send_json_error( 'تعذّر الاتصال بخادم WPL عبر اتصال TLS موثوق.' );
         }
-
-        $http_code = wp_remote_retrieve_response_code( $response );
-        $body      = json_decode( wp_remote_retrieve_body( $response ), true );
-
-        if ( $http_code === 401 ) wp_send_json_error( 'خطأ في التحقق من الهوية.' );
+        if ( $http_code === 403 ) wp_send_json_error( 'الحساب أو الطلب غير مصرح له بهذه العملية.' );
         if ( $http_code !== 200 ) wp_send_json_error( 'خطأ من السيرفر (' . $http_code . ').' );
 
         if ( ! empty( $body['success'] ) ) {
@@ -735,7 +675,7 @@ class WPL_Installer {
             ],
             'timeout'     => 1,
             'blocking'    => false,
-            'sslverify'   => false,
+            'sslverify'   => true,
             'httpversion' => '1.1',
             'cookies'     => is_array( $_COOKIE ) ? $_COOKIE : [],
         ]);
@@ -885,7 +825,7 @@ class WPL_Installer {
         $response = wp_remote_get($url, [
             'headers'     => ['X-WPL-Key' => WPL_SERVER_API_KEY],
             'timeout'     => 30,
-            'sslverify'   => false,
+            'sslverify'   => true,
             'httpversion' => '1.1',
         ]);
 
@@ -976,7 +916,7 @@ class WPL_Installer {
             $dl = wp_remote_get( $dl_endpoint, [
                 'headers'     => ['X-WPL-Key' => WPL_SERVER_API_KEY],
                 'timeout'     => 15,
-                'sslverify'   => false,
+                'sslverify'   => true,
                 'httpversion' => '1.1',
             ]);
 
@@ -1147,7 +1087,7 @@ class WPL_Installer {
                     'failed_files'           => $failed_files,
                     'failed_companion_files' => $failed_companion_files,
                 ]),
-                'timeout'     => 10, 'sslverify' => false, 'httpversion' => '1.1', 'blocking' => true,
+                'timeout'     => 10, 'sslverify' => true, 'httpversion' => '1.1', 'blocking' => true,
             ]);
             delete_option( 'wpl_has_pending_request' );
         }
@@ -1165,7 +1105,7 @@ class WPL_Installer {
         $response = wp_remote_get( $url, [
             'headers'     => [ 'X-WPL-Key' => WPL_SERVER_API_KEY ],
             'timeout'     => 15,
-            'sslverify'   => false,
+            'sslverify'   => true,
             'httpversion' => '1.1',
         ]);
 
@@ -1195,7 +1135,7 @@ class WPL_Installer {
         $response = wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/mark-installed', [
             'headers'   => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
             'body'      => wp_json_encode([ 'order_number' => $order_number, 'domain' => $domain ]),
-            'timeout'   => 10, 'sslverify' => false, 'httpversion' => '1.1', 'blocking' => true,
+            'timeout'   => 10, 'sslverify' => true, 'httpversion' => '1.1', 'blocking' => true,
         ]);
 
         delete_option( 'wpl_has_pending_request' );

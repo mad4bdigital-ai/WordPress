@@ -19,6 +19,7 @@ class WPL_Database_Maintenance {
         'wpl_bg_install_job',
         'wpl_bg_install_worker_lock',
         'wpl_license_health_lock_state',
+        'wpl_server_auth_state',
         // A pending activation request is business state, not disposable runtime state.
         // Preserve it across plugin reactivation; the installer/server reconciliation owns clearing it.
         'wpl_products_signature',
