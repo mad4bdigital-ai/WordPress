@@ -10,7 +10,40 @@ abstract class MAD4B_SCP_Adapter_Base {
 	abstract public function register_abilities();
 
 	public function register_category() { wp_register_ability_category( 'mad4b-' . $this->id(), array( 'label' => 'MAD4B ' . $this->label(), 'description' => 'Governed ' . $this->label() . ' integration abilities.' ) ); }
-	public function status() { return array( 'id' => $this->id(), 'label' => $this->label(), 'available' => (bool) $this->is_available(), 'abilities' => $this->ability_names(), 'version' => $this->detect_plugin_version() ); }
+
+	public function status() {
+		$available = (bool) $this->is_available();
+		$version = $this->detect_plugin_version();
+		$certification = $this->provider_certification( $available );
+		if ( '' === $version && is_array( $certification ) && ! empty( $certification['installed_version'] ) ) {
+			$version = (string) $certification['installed_version'];
+		}
+
+		$status = array(
+			'id'        => $this->id(),
+			'label'     => $this->label(),
+			'available' => $available,
+			'abilities' => $this->ability_names(),
+			'version'   => $version,
+		);
+		if ( is_array( $certification ) ) {
+			$status['provider_certification'] = $certification;
+		}
+		return $status;
+	}
+
+	protected function certified_provider_key() { return $this->id(); }
+
+	protected function provider_certification( $available ) {
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+			return null;
+		}
+		$key = $this->certified_provider_key();
+		if ( ! MAD4B_SCP_Provider_Contracts::get( $key ) ) {
+			return null;
+		}
+		return MAD4B_SCP_Provider_Contracts::runtime_status( $key, (bool) $available );
+	}
 
 	protected function add_ability( $name, $label, $method, $permission, $input_schema = null, $surface = 'read', $readonly = true, $destructive = false, $idempotent = true ) {
 		$args = array(
