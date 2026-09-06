@@ -1,0 +1,139 @@
+name: MAD4B Connection Governance
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-connection-governance.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'specs/006-agent-governed-reversible-control-plane/contracts/connection-readiness.md'
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/mad4b-connection-governance.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'specs/006-agent-governed-reversible-control-plane/contracts/connection-readiness.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Exact-head certification must not be held behind a stale runner from an older
+# PR head. Runs for the same head still coalesce, but different heads have
+# independent concurrency keys and therefore independent certification evidence.
+concurrency:
+  group: mad4b-connection-governance-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    name: Connection security contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify connection, write-ingress and MCP peer contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-transport-context.php"
+          php -l "$root/includes/class-mad4b-scp-authorization.php"
+          php -l "$root/includes/class-mad4b-scp-servers.php"
+          php -l "$root/includes/class-mad4b-scp-connection-status.php"
+          php -l "$root/includes/class-mad4b-scp-connection-ability.php"
+          php -l "$root/includes/class-mad4b-scp-connection-admin-ui.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-peer-governance.php"
+          php -l "$root/tests/runtime-connection-readiness-smoke.php"
+          php -l "$root/tests/runtime-write-surface-smoke.php"
+          php -l "$root/tests/runtime-foreign-mcp-transport-blocker.php"
+          php -l "$root/tests/runtime-mcp-namespace-index-hijack-blocker.php"
+          python3 "$root/tests/connection-readiness-contract.py"
+          python3 "$root/tests/mcp-side-channel-governance-contract.py"
+
+  runtime:
+    name: Connection runtime (${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.9', 'latest']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable WordPress
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-connection.test' --title='MAD4B Connection Governance' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+
+      - name: Install exact MCP Adapter and control plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove clean read-only connection readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-connection-readiness-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove mad4b-write exact transport grant isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-surface-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove independent MCP REST transport fails closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-foreign-mcp-transport-blocker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove namespace index cannot hide foreign callback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-namespace-index-hijack-blocker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin

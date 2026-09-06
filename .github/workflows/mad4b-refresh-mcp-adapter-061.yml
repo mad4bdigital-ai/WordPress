@@ -1,0 +1,129 @@
+name: MAD4B Refresh MCP Adapter 0.6.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mad4b-refresh-mcp-adapter-061-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Replace and certify official MCP Adapter 0.6.1
+    if: startsWith(github.ref, 'refs/heads/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Download exact official release asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/WordPress/mcp-adapter/releases/download/v0.6.1/mcp-adapter.zip'
+          expected='1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+          curl --fail --location --retry 3 --retry-all-errors "$url" -o /tmp/mcp-adapter.zip
+          echo "$expected  /tmp/mcp-adapter.zip" | sha256sum --check --strict
+          test "$(stat -c '%s' /tmp/mcp-adapter.zip)" = '455463'
+          unzip -tqq /tmp/mcp-adapter.zip
+          cp /tmp/mcp-adapter.zip wp-content/plugins/mcp-adapter.zip
+
+      - name: Pin 0.6.1 release contract before static certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json')
+          data = json.loads(p.read_text('utf-8'))
+          mcp = data['providers']['mcp_adapter']
+          mcp['version'] = '0.6.1'
+          mcp['archive_sha256'] = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+          mcp['release_asset_bytes'] = 455463
+          mcp['known_upstream_constraints'] = [
+              {
+                  'issue': 'WordPress/mcp-adapter#305',
+                  'constraint': 'mcp_adapter_validation_enabled filter call arity is inconsistent in v0.6.1',
+                  'mad4b_policy': 'Do not register a callback for mcp_adapter_validation_enabled until upstream resolves or the exact behavior is re-certified.'
+              },
+              {
+                  'issue': 'WordPress/mcp-adapter#297',
+                  'constraint': 'Unknown meta.mcp.type values are coerced to tool in v0.6.1',
+                  'mad4b_policy': 'MAD4B abilities set meta.mcp.type=tool explicitly and never depend on unknown-type fallback.'
+              }
+          ]
+          p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+          PY
+
+      - name: Re-certify packaged provider contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/scan-packaged-providers.py \
+            --plugins-dir wp-content/plugins \
+            --baseline wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json \
+            --output /tmp/mad4b-provider-contracts-061.json
+
+      - name: Refresh runtime critical-file manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/refresh-runtime-integrity-baseline.py \
+            --plugins-dir wp-content/plugins \
+            --baseline wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json
+
+      - name: Assert MAD4B does not consume known unsafe upstream fallback contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          if grep -RIn --include='*.php' "add_filter( *['\"]mcp_adapter_validation_enabled" "$root"; then
+            echo 'MAD4B must not register mcp_adapter_validation_enabled while v0.6.1 issue #305 remains open.' >&2
+            exit 1
+          fi
+          if grep -RIn --include='*.php' "'mcp' => array( *'type' =>" "$root" | grep -v "'type' => 'tool'"; then
+            echo 'MAD4B MCP types must be explicit known values under the v0.6.1 contract.' >&2
+            exit 1
+          fi
+
+      - name: Commit exact release archive and certification evidence
+        shell: bash
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add wp-content/plugins/mcp-adapter.zip \
+                  wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json
+          if git diff --cached --quiet; then
+            echo 'Exact 0.6.1 archive and runtime integrity baseline are already synchronized.'
+            exit 0
+          fi
+          git commit -m 'chore(mcp): certify official MCP Adapter 0.6.1 runtime'
+
+          # Maintenance runs may overlap with operator changes. Never force-push:
+          # rebase generated evidence onto the latest remote head and retry safely.
+          for attempt in 1 2 3; do
+            echo "Push attempt ${attempt}/3"
+            git fetch origin "$BRANCH"
+            if ! git rebase "origin/$BRANCH"; then
+              git rebase --abort || true
+              echo 'Certification evidence conflicts with newer branch changes; refusing to overwrite.' >&2
+              exit 1
+            fi
+            if git push origin "HEAD:${BRANCH}"; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+
+          echo 'Unable to publish certification evidence after three non-force retries.' >&2
+          exit 1

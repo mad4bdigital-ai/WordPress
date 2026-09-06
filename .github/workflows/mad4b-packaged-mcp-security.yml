@@ -1,0 +1,59 @@
+name: MAD4B Packaged MCP Security
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/inspect-packaged-mcp-security.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/bit-pi.zip'
+      - '.github/workflows/mad4b-packaged-mcp-security.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/inspect-packaged-mcp-security.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/bit-pi.zip'
+      - '.github/workflows/mad4b-packaged-mcp-security.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-mcp-security:
+    name: Native MCP security enforcement
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify inspected archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          for archive in jet-engine.zip elementor.zip bit-pi.zip; do
+            test -s "wp-content/plugins/$archive"
+            unzip -tqq "wp-content/plugins/$archive"
+          done
+
+      - name: Enforce native MCP security invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/inspect-packaged-mcp-security.py \
+            --plugins-dir wp-content/plugins \
+            --output /tmp/mad4b-packaged-mcp-security.json
+
+      - name: Upload native MCP security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-packaged-mcp-security-${{ github.sha }}
+          path: /tmp/mad4b-packaged-mcp-security.json
+          if-no-files-found: error
+          retention-days: 30
