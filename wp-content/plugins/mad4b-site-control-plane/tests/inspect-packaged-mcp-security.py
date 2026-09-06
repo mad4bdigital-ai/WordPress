@@ -45,6 +45,7 @@ SECURITY_BODY_MARKERS = re.compile(
 JETENGINE_TRACE_FUNCTIONS = {
     "get_items_permissions_check",
     "permissions_check",
+    "verify_nonce",
     "run_item_permissions_check",
     "run_item",
     "handle_request",
@@ -308,9 +309,16 @@ def enforce_security(report: dict) -> list[dict]:
         require_contains(
             issues,
             "jetengine",
+            "feature_run_nonce_helper",
+            function_text(jetengine, "mcp-tools/rest-api/run-controller.php", "verify_nonce"),
+            ["wp_verify_nonce", "wp_rest"],
+        )
+        require_contains(
+            issues,
+            "jetengine",
             "feature_run_route_gate",
             function_text(jetengine, "mcp-tools/rest-api/run-controller.php", "run_item_permissions_check"),
-            ["wp_verify_nonce", "wp_rest", "check_permissions"],
+            ["verify_nonce", "Registry", "get_feature", "check_permissions"],
         )
         require_contains(
             issues,
