@@ -98,15 +98,15 @@ final class MAD4B_SCP_Adapter_Registry {
 		$required_providers = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::required_providers() : array( 'mcp_adapter' );
 		foreach ( $required_providers as $provider ) {
 			$status = isset( $provider_runtime[ $provider ] ) ? $provider_runtime[ $provider ] : MAD4B_SCP_Provider_Contracts::runtime_status( $provider, false );
-			if ( empty( $status['runtime_contract_ok'] ) ) {
-				$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_violations( $provider, false === strpos( implode( ',', array_keys( $provider_runtime ) ), $provider ) ? false : null ) : array( 'certification_authority_unavailable' );
+			$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::violations_for_status( $status ) : array( 'certification_authority_unavailable' );
+			if ( ! empty( $violations ) ) {
 				$provider_contract_blockers[ $provider ] = $violations;
 				if ( isset( $status['status'] ) && 'unavailable' === $status['status'] ) $required_provider_missing[] = $provider;
 			}
 		}
 
 		$server_status = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
-		$server_registration_ok = true;
+		$server_registration_ok = ! empty( $server_status );
 		foreach ( $server_status as $server ) if ( empty( $server['registered'] ) ) $server_registration_ok = false;
 
 		$provider_contract_ok = empty( $provider_contract_blockers );
