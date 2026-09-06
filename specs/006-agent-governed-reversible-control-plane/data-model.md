@@ -1,206 +1,220 @@
 # Data Model — Agent-Governed Reversible Control Plane
 
-Status: Normative schema design for implementation
+Status: Normative schema contract aligned with current implementation
 Storage scope: site-local WordPress database tables
+Schema version: `4`
 Encoding: UTF-8 / JSON text only where structured extension fields are required
 Secret policy: no plaintext bearer/OAuth credential persistence
+
+Schema v4 contains nine normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically.
 
 ## Table 1 — `{prefix}mad4b_scp_agents`
 
 Purpose: stable NHI identity records.
 
-Columns:
-
+Key columns:
 - `id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY`
-- `public_id CHAR(36) NOT NULL UNIQUE` — opaque UUID-like external identifier; immutable.
-- `slug VARCHAR(191) NOT NULL UNIQUE` — operator-facing stable slug.
+- `public_id CHAR(36) NOT NULL UNIQUE`
+- `slug VARCHAR(191) NOT NULL UNIQUE`
 - `label VARCHAR(191) NOT NULL`
-- `status VARCHAR(20) NOT NULL` — `disabled|enabled` initially.
-- `wp_user_id BIGINT UNSIGNED NULL` — optional human/service principal association; does not replace NHI grants.
-- `environment VARCHAR(32) NOT NULL DEFAULT 'unknown'` — policy hint; expected `production|staging|development|local|unknown`.
-- `revision BIGINT UNSIGNED NOT NULL DEFAULT 1` — optimistic admin-update guard.
-- `created_by BIGINT UNSIGNED NOT NULL DEFAULT 0`
-- `created_at DATETIME NOT NULL`
-- `updated_at DATETIME NOT NULL`
-
-Indexes:
-- unique `public_id`
-- unique `slug`
-- index `(status)`
-- index `(wp_user_id)`
+- `status VARCHAR(20) NOT NULL DEFAULT 'disabled'`
+- `wp_user_id BIGINT UNSIGNED NULL`
+- `environment VARCHAR(32) NOT NULL DEFAULT 'unknown'`
+- `revision BIGINT UNSIGNED NOT NULL DEFAULT 1`
+- `created_by`, `created_at`, `updated_at`
 
 Invariants:
-- status values are validated in PHP rather than trusting DB enum semantics;
-- disabling an agent does not delete history/grants;
-- `public_id` never changes;
-- delete is not part of initial product contract; use disable for forensic continuity.
+- disable preserves history;
+- `public_id` is immutable;
+- no hard-delete-first authority model;
+- environment and revision are validated by service logic.
 
 ## Table 2 — `{prefix}mad4b_scp_agent_subjects`
 
-Purpose: bind authenticated upstream transport subjects to one NHI without storing secrets.
+Purpose: bind upstream authenticated transport subjects to one NHI without storing credentials.
 
-Columns:
-- `id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY`
-- `agent_id BIGINT UNSIGNED NOT NULL`
-- `subject_type VARCHAR(64) NOT NULL` — e.g. `oauth_client`, `oauth_subject`, `credential_fingerprint`, `certified_bridge`.
-- `subject_fingerprint CHAR(64) NOT NULL` — lowercase SHA-256 hex of canonical non-secret identifier/evidence.
-- `label VARCHAR(191) NOT NULL DEFAULT ''`
-- `status VARCHAR(20) NOT NULL DEFAULT 'enabled'`
-- `created_at DATETIME NOT NULL`
-- `updated_at DATETIME NOT NULL`
+Key columns:
+- `agent_id`
+- `subject_type VARCHAR(64)`
+- `subject_fingerprint CHAR(64)`
+- `label`
+- `status`
+- timestamps
 
-Indexes:
-- unique `(subject_type, subject_fingerprint)` to prevent ambiguous active bindings;
-- index `(agent_id, status)`.
+Indexes include unique `(subject_type, subject_fingerprint)` and `(agent_id, status)`.
 
 Invariants:
-- no raw token/secret accepted by persistence API;
-- fingerprints are normalized 64-char lowercase hex;
-- resolving more than one record is treated as corruption/blocker even if DB uniqueness should prevent it;
-- deleting a subject binding requires admin capability and audit; implementation may initially support disable-only.
+- only normalized fingerprint/non-secret evidence persists;
+- raw bearer/access/refresh secrets are rejected;
+- ambiguous subject resolution is a blocker even if DB uniqueness should prevent it.
 
 ## Table 3 — `{prefix}mad4b_scp_agent_grants`
 
-Purpose: normalized exact ability/server grants.
+Purpose: exact server/ability/provider authority.
 
-Columns:
-- `id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY`
-- `agent_id BIGINT UNSIGNED NOT NULL`
-- `effect VARCHAR(10) NOT NULL DEFAULT 'allow'` — `allow|deny`; deny precedence.
-- `server_id VARCHAR(64) NOT NULL`
-- `ability_name VARCHAR(191) NOT NULL`
-- `provider VARCHAR(64) NOT NULL DEFAULT 'core'`
-- `resource_schema_version VARCHAR(32) NOT NULL DEFAULT 'v1'`
-- `resource_constraints LONGTEXT NULL` — bounded canonical JSON object; empty means no additional narrowing.
-- `environment VARCHAR(32) NOT NULL DEFAULT 'all'`
-- `created_by BIGINT UNSIGNED NOT NULL DEFAULT 0`
-- `created_at DATETIME NOT NULL`
-- `updated_at DATETIME NOT NULL`
+Key columns:
+- `agent_id`
+- `effect allow|deny`
+- `server_id`
+- `ability_name`
+- `provider`
+- `resource_schema_version`
+- bounded `resource_constraints` JSON
+- `environment`
+- creator/timestamps
 
-Indexes:
-- unique `(agent_id, effect, server_id, ability_name, provider, environment)`
-- index `(agent_id, ability_name)`
-- index `(server_id, ability_name)`.
+Unique authority key: `(agent_id, effect, server_id, ability_name, provider, environment)`.
 
 Invariants:
-- first implementation rejects ability names containing wildcard metacharacters;
-- `*` and prefix wildcards are never stored as Production grants;
-- `deny` overrides `allow`;
-- server must match the server in which the ability is actually mounted;
-- constraints JSON size is bounded (initial target <= 16 KiB) and maximum depth bounded;
-- unknown constraints schema or unknown constraint key for a writer that requires constraints => deny.
+- wildcard ability names are rejected;
+- deny wins over allow;
+- server/ability/provider must match actual mounted runtime authority;
+- unknown or unresolved resource constraints deny.
 
 ## Table 4 — `{prefix}mad4b_scp_approval_tickets`
 
-Purpose: single-use short-lived authorization artifact for one high-impact operation.
+Purpose: one exact, short-lived, single-use approval for high/exceptional impact.
 
-Columns:
-- `id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY`
-- `ticket_id CHAR(36) NOT NULL UNIQUE`
-- `ticket_class VARCHAR(32) NOT NULL` — `mutation|breakglass|recovery`.
-- `agent_id BIGINT UNSIGNED NOT NULL`
-- `server_id VARCHAR(64) NOT NULL`
-- `ability_name VARCHAR(191) NOT NULL`
-- `provider VARCHAR(64) NOT NULL DEFAULT 'core'`
-- `target_fingerprint VARCHAR(191) NOT NULL DEFAULT ''`
-- `payload_sha256 CHAR(64) NOT NULL`
-- `status VARCHAR(20) NOT NULL DEFAULT 'pending'` — `pending|approved|used|expired|revoked`.
-- `reason TEXT NOT NULL`
-- `approved_by BIGINT UNSIGNED NOT NULL DEFAULT 0`
-- `approved_at DATETIME NULL`
-- `expires_at DATETIME NOT NULL`
-- `used_at DATETIME NULL`
-- `created_at DATETIME NOT NULL`
-
-Indexes:
-- unique `ticket_id`
-- index `(agent_id, status, expires_at)`
-- index `(payload_sha256, status)`.
+Key columns:
+- `ticket_id CHAR(36) UNIQUE`
+- `ticket_class mutation|breakglass|recovery`
+- `agent_id`
+- `server_id`
+- `ability_name`
+- `provider`
+- `target_fingerprint`
+- `payload_sha256`
+- `status pending|approved|used|expired|revoked`
+- `reason`
+- `approved_by`, `approved_at`, `expires_at`, `used_at`, `created_at`
 
 Invariants:
-- `payload_sha256` is hash of canonical approval envelope, not raw request text;
-- consuming a ticket requires atomic state transition `approved -> used` and matching unexpired hash/agent/ability/class;
-- normal mutation ticket cannot authorize Breakglass;
-- ticket use cannot bypass provider drift, WordPress capability, stale-state or budget checks;
-- approval TTL is bounded by policy; initial default target 10 minutes, max target 60 minutes unless explicitly changed by filter with audit.
+- hash covers the canonical approval envelope, not raw request text;
+- consumption is atomic `approved -> used` with exact NHI/server/ability/provider/target/payload/class match;
+- replay, expiry and class mismatch fail closed;
+- approval never bypasses provider, capability, stale-state, peer or budget gates.
 
 ## Table 5 — `{prefix}mad4b_scp_mutations`
 
 Purpose: durable mutation/verification/undo envelope.
 
-Columns:
-- `id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY`
-- `mutation_id CHAR(36) NOT NULL UNIQUE`
-- `request_id VARCHAR(64) NOT NULL`
-- `parent_mutation_id CHAR(36) NULL` — used for undo/recovery lineage.
-- `agent_id BIGINT UNSIGNED NOT NULL`
-- `subject_type VARCHAR(64) NOT NULL DEFAULT ''`
-- `subject_fingerprint CHAR(64) NOT NULL DEFAULT ''`
-- `wp_user_id BIGINT UNSIGNED NOT NULL DEFAULT 0`
-- `server_id VARCHAR(64) NOT NULL`
-- `ability_name VARCHAR(191) NOT NULL`
-- `provider VARCHAR(64) NOT NULL DEFAULT 'core'`
-- `provider_version VARCHAR(64) NOT NULL DEFAULT ''`
-- `target_type VARCHAR(64) NOT NULL DEFAULT ''`
-- `target_id VARCHAR(191) NOT NULL DEFAULT ''`
-- `approval_ticket_id CHAR(36) NULL`
-- `impact VARCHAR(20) NOT NULL` — `low|high|exceptional`.
-- `status VARCHAR(32) NOT NULL` — `planned|executing|verification_failed|verified|rollback_failed|undone|failed|non_reversible`.
-- `reversible TINYINT(1) NOT NULL DEFAULT 0`
-- `before_sha256 CHAR(64) NOT NULL DEFAULT ''`
-- `after_sha256 CHAR(64) NOT NULL DEFAULT ''`
-- `rollback_payload LONGTEXT NULL` — bounded JSON from certified snapshot contract.
-- `rollback_payload_sha256 CHAR(64) NOT NULL DEFAULT ''`
-- `undo_expires_at DATETIME NULL`
-- `verification_code VARCHAR(64) NOT NULL DEFAULT ''`
-- `error_code VARCHAR(64) NOT NULL DEFAULT ''`
-- `created_at DATETIME NOT NULL`
-- `updated_at DATETIME NOT NULL`
-
-Indexes:
-- unique `mutation_id`
-- index `(agent_id, created_at)`
-- index `(ability_name, created_at)`
-- index `(status, created_at)`
-- index `(parent_mutation_id)`
-- index `(request_id)`.
+Key columns:
+- `mutation_id CHAR(36) UNIQUE`
+- `request_id`
+- `parent_mutation_id`
+- `agent_id`
+- `subject_type`, `subject_fingerprint`, `wp_user_id`
+- `server_id`, `ability_name`, `provider`, `provider_version`
+- `target_type`, `target_id`
+- `approval_ticket_id`
+- `impact`
+- lifecycle `status`
+- `reversible`
+- `before_sha256`, `after_sha256`
+- bounded `rollback_payload` and `rollback_payload_sha256`
+- `undo_expires_at`
+- `verification_code`, `error_code`
+- timestamps
 
 Invariants:
-- raw secrets are not stored in rollback payload;
-- rollback payload max initial target 256 KiB and bounded depth; larger resources are non-reversible until external snapshot contract exists;
-- `verified` requires read-after-write verification;
-- undo requires `reversible=1`, unexpired undo and current state hash == recorded `after_sha256` or certified equivalent fingerprint;
-- undo creates a new record linked with `parent_mutation_id`; original history is never rewritten.
+- mutation envelope persists before the provider write on certified reversible paths;
+- `verified` requires read-after-write validation;
+- rollback payload is bounded and integrity protected;
+- normal inspection does not expose rollback payload;
+- undo requires current state == recorded after-state and creates a child recovery record.
 
 ## Table 6 — `{prefix}mad4b_scp_agent_budgets`
 
-Purpose: policy configuration for blast-radius controls.
+Purpose: per-agent blast-radius configuration.
 
-Columns:
-- `id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY`
-- `agent_id BIGINT UNSIGNED NOT NULL`
-- `budget_type VARCHAR(32) NOT NULL` — `requests|mutations|affected_objects|external_actions`.
-- `window_seconds INT UNSIGNED NOT NULL`
-- `max_count INT UNSIGNED NOT NULL`
-- `enabled TINYINT(1) NOT NULL DEFAULT 1`
-- `updated_by BIGINT UNSIGNED NOT NULL DEFAULT 0`
-- `updated_at DATETIME NOT NULL`
+Key columns:
+- `agent_id`
+- `budget_type requests|mutations|affected_objects|external_actions`
+- `window_seconds`
+- `max_count`
+- `enabled`
+- `updated_by`, `updated_at`
 
 Unique `(agent_id, budget_type)`.
 
-Runtime counters are not stored by endlessly appending rows to this table. Initial implementation may use atomic transients/options for counters while preserving config here; production-grade high-concurrency counters may move to a dedicated bucket table.
+## Table 7 — `{prefix}mad4b_scp_agent_budget_windows`
 
-## Transport subject context object
+Purpose: transactional runtime budget counters.
 
-Not persisted as a secret. Normalized runtime structure:
+Key columns:
+- `agent_id`
+- `budget_type`
+- `window_start`
+- `window_seconds`
+- `used_count`
+- timestamps
+
+Unique `(agent_id, budget_type, window_start)` with cleanup and agent-window indexes.
+
+Runtime invariants:
+- counters live in DB rows, not unbounded options/cache counters;
+- reservation uses transactions and row locking;
+- two-process contention cannot oversubscribe a configured budget;
+- exhausted budget denies before approval consumption/provider side effect;
+- rejected approval rolls the active reservation back;
+- cleanup is bounded.
+
+## Table 8 — `{prefix}mad4b_scp_audit_events`
+
+Purpose: immutable append-only security evidence.
+
+Key columns:
+- `chain_name`
+- monotonic `sequence`
+- `event_id CHAR(36) UNIQUE`
+- `occurred_at`
+- `request_id`
+- `user_id`
+- `ability`
+- `status`
+- bounded/redacted `summary_json`
+- `previous_hash`
+- `entry_hash`
+- `created_at`
+
+Unique `(chain_name, sequence)` plus event/request/ability/hash indexes.
+
+Invariants:
+- normal runtime only appends events; no update/delete event path;
+- entry hash links canonical event material to prior hash;
+- concurrent writers serialize through the locked head;
+- tamper is detectable by chain verification.
+
+## Table 9 — `{prefix}mad4b_scp_audit_heads`
+
+Purpose: singleton chain head plus legacy-history anchor.
+
+Key columns:
+- `chain_name PRIMARY KEY`
+- current `sequence`
+- current `entry_hash`
+- `legacy_anchor_sha256`
+- `legacy_chain_valid`
+- `legacy_entry_count`
+- timestamps
+
+Invariants:
+- head is initialized safely before operational transactions;
+- append uses `SELECT ... FOR UPDATE` against the existing head;
+- legacy option evidence is retained read-only and cryptographically anchored;
+- legacy drift makes integrity verification fail.
+
+## Transport subject context
+
+Runtime normalized structure may contain:
 
 ```json
 {
   "authenticated": true,
   "subject_type": "oauth_client",
-  "subject_identifier": "non-secret canonical identifier if safe",
   "subject_fingerprint": "64hex",
   "token_scopes": ["ability:mad4b/content-update-post"],
+  "approval_ticket_id": "opaque-uuid-if-present",
   "auth_method": "mcp-adapter",
   "wp_user_id": 123,
   "request_id": "..."
@@ -208,10 +222,10 @@ Not persisted as a secret. Normalized runtime structure:
 ```
 
 Rules:
-- adapter bridge may omit `subject_identifier` and supply only fingerprint;
-- scopes are normalized strings, exact-match first implementation;
-- `authenticated=false` cannot resolve an NHI for mutation;
-- context must not contain Authorization header/token.
+- supplied through `mad4b_scp_authenticated_subject_context` after upstream authentication;
+- raw authorization/token/password/secret material is forbidden;
+- wildcard token scopes are rejected;
+- final normalized context represents one authenticated subject or failure.
 
 ## Canonical approval envelope
 
@@ -228,32 +242,37 @@ Rules:
 }
 ```
 
-Canonicalization requirements:
-- recursive lexicographic object key sort;
+Canonicalization:
+- recursively sort object keys;
 - preserve array order;
-- normalize booleans/null/numbers/UTF-8 strings;
-- reject resources/objects/non-finite numbers;
-- reject depth > configured bound;
-- reject canonical JSON > configured bytes;
-- hash SHA-256 of canonical UTF-8 JSON bytes.
+- normalize supported scalar values;
+- reject resources/objects/non-finite values;
+- bound depth and canonical byte size;
+- hash canonical UTF-8 JSON with SHA-256.
+
+## Transaction ownership and audit dispatch
+
+Budget enforcement owns the operational transaction when active. Audit can join that transaction using explicit service-owned transaction state; it does not probe database-specific session variables.
+
+Joined audit sink dispatch occurs only after explicit transaction commit. Explicit rollback drops pending dispatch. External listeners consume `mad4b_scp_audit_committed`; an external SIEM/WORM backend remains a separate implementation.
 
 ## Migration strategy
 
-Schema version stored as `mad4b_scp_schema_version` option.
+Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `4`.
 
-Initial migration target: `2` for NHI/approval/mutation foundation.
-
-Activation/boot migration rules:
+Activation/boot rules:
 1. `dbDelta()` creates/updates only MAD4B-prefixed tables.
-2. Migration never auto-creates enabled agents or grants.
-3. Existing v0.3 sites remain read-capable.
-4. Existing global mutation enablement does not imply NHI authority; mutation becomes NHI-gated once feature code lands.
-5. Migration failure sets runtime blocker `governance_schema_unavailable` and mutation fails closed.
-6. No legacy capability is widened during migration.
+2. Migration is idempotent.
+3. Migration never auto-creates enabled NHI authority.
+4. Existing global mutation enablement never implies NHI authority.
+5. Missing/partial schema produces `governance_schema_unavailable` and governed mutation fails closed.
+6. Audit head/legacy anchor is initialized only after schema readiness.
+7. No legacy capability is widened during migration.
 
-## Retention
+## Retention and evidence
 
-- agents/grants/subjects: retain unless explicitly administratively removed/disabled according to future policy;
-- approval tickets: retain minimum operational window for audit, then may redact detail while preserving hashes/status;
-- mutation records: longer retention than approvals; exact policy configurable later;
-- audit chain: current option model retained in first implementation, future append-only table must reference mutation IDs.
+- agent/subject/grant history is retained through disable/revoke-oriented lifecycle rather than destructive defaults;
+- approval and mutation records retain operational evidence according to future retention policy while hashes/status remain authoritative;
+- append-only audit is the primary local security evidence chain;
+- retention must not silently destroy the sole evidence required for authorization/mutation reconstruction;
+- external WORM/SIEM export may be added through the post-commit hook without changing local authority semantics.
