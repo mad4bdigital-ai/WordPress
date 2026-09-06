@@ -19,9 +19,15 @@ final class MAD4B_SCP_Policy {
 		return current_user_can( 'manage_options' );
 	}
 
+	public static function can_mutate() {
+		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== MAD4B_MCP_MUTATION_ENABLED ) return false;
+		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id() );
+	}
+
 	public static function can_breakglass() {
 		if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_ENABLED ) return false;
 		if ( ! current_user_can( 'manage_options' ) ) return false;
+		if ( ! self::can_mutate() ) return false;
 		// This is an independent approval gate. Enabling the constant alone is intentionally insufficient.
 		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', false, get_current_user_id() );
 	}
@@ -95,24 +101,15 @@ final class MAD4B_SCP_Policy {
 
 	public static function can_mutate_file( $root_key, $resolved_path ) {
 		$normalized = str_replace( '\\', '/', (string) $resolved_path );
-		if ( self::is_code_or_server_config_path( $normalized ) ) {
-			return new WP_Error( 'mad4b_executable_file_mutation_denied', 'Executable code, browser-executable content, and server configuration cannot be mutated through the WordPress MCP control plane.' );
-		}
-		if ( self::is_sensitive_path( $normalized ) ) {
-			return new WP_Error( 'mad4b_sensitive_file_mutation_denied', 'Sensitive credential/configuration files cannot be mutated through the normal WordPress MCP control plane.' );
-		}
+		if ( self::is_code_or_server_config_path( $normalized ) ) return new WP_Error( 'mad4b_executable_file_mutation_denied', 'Executable code, browser-executable content, and server configuration cannot be mutated through the WordPress MCP control plane.' );
+		if ( self::is_sensitive_path( $normalized ) ) return new WP_Error( 'mad4b_sensitive_file_mutation_denied', 'Sensitive credential/configuration files cannot be mutated through the normal WordPress MCP control plane.' );
 
 		$allowed_roots = apply_filters( 'mad4b_scp_mutable_data_roots', array( 'uploads' ) );
-		if ( ! is_array( $allowed_roots ) || ! in_array( $root_key, $allowed_roots, true ) ) {
-			return new WP_Error( 'mad4b_filesystem_mutation_root_denied', 'Filesystem mutation is limited to explicitly allowlisted non-code data roots. Source-code changes must use the governed repository/deployment path.' );
-		}
+		if ( ! is_array( $allowed_roots ) || ! in_array( $root_key, $allowed_roots, true ) ) return new WP_Error( 'mad4b_filesystem_mutation_root_denied', 'Filesystem mutation is limited to explicitly allowlisted non-code data roots. Source-code changes must use the governed repository/deployment path.' );
 
 		$extension = strtolower( pathinfo( $normalized, PATHINFO_EXTENSION ) );
 		$allowed_extensions = apply_filters( 'mad4b_scp_mutable_data_extensions', array( 'txt', 'csv', 'json', 'xml', 'md', 'markdown', 'yaml', 'yml', 'po', 'pot' ) );
-		if ( '' === $extension || ! is_array( $allowed_extensions ) || ! in_array( $extension, $allowed_extensions, true ) ) {
-			return new WP_Error( 'mad4b_filesystem_mutation_type_denied', 'Filesystem mutation is limited to explicitly allowlisted non-executable data file types.' );
-		}
-
+		if ( '' === $extension || ! is_array( $allowed_extensions ) || ! in_array( $extension, $allowed_extensions, true ) ) return new WP_Error( 'mad4b_filesystem_mutation_type_denied', 'Filesystem mutation is limited to explicitly allowlisted non-executable data file types.' );
 		return true;
 	}
 
@@ -152,9 +149,7 @@ final class MAD4B_SCP_Policy {
 		return $resolved;
 	}
 
-	public static function validate_identifier( $identifier ) {
-		return is_string( $identifier ) && 1 === preg_match( '/^[A-Za-z0-9_$]+$/', $identifier );
-	}
+	public static function validate_identifier( $identifier ) { return is_string( $identifier ) && 1 === preg_match( '/^[A-Za-z0-9_$]+$/', $identifier ); }
 
 	public static function table_exists( $table ) {
 		global $wpdb;
@@ -165,12 +160,7 @@ final class MAD4B_SCP_Policy {
 
 	public static function is_sensitive_database_table( $table ) {
 		global $wpdb;
-		$sensitive = array_filter( array(
-			isset( $wpdb->users ) ? $wpdb->users : null,
-			isset( $wpdb->usermeta ) ? $wpdb->usermeta : null,
-			isset( $wpdb->options ) ? $wpdb->options : null,
-			isset( $wpdb->sitemeta ) ? $wpdb->sitemeta : null,
-		) );
+		$sensitive = array_filter( array( isset( $wpdb->users ) ? $wpdb->users : null, isset( $wpdb->usermeta ) ? $wpdb->usermeta : null, isset( $wpdb->options ) ? $wpdb->options : null, isset( $wpdb->sitemeta ) ? $wpdb->sitemeta : null ) );
 		$is_sensitive = in_array( (string) $table, $sensitive, true );
 		if ( defined( 'MAD4B_SCP_Audit::OPTION' ) && isset( $wpdb->options ) && $table === $wpdb->options ) $is_sensitive = true;
 		return (bool) apply_filters( 'mad4b_scp_sensitive_database_table', $is_sensitive, $table );
