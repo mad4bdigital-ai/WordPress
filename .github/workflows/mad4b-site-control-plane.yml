@@ -4,12 +4,22 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/bit-pi.zip'
       - '.github/workflows/mad4b-site-control-plane.yml'
   push:
     branches:
       - master
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/bit-pi.zip'
       - '.github/workflows/mad4b-site-control-plane.yml'
   workflow_dispatch:
 
@@ -38,6 +48,40 @@ jobs:
           set -euo pipefail
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
+  packaged-provider-contracts:
+    name: Packaged provider contract scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify provider archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugins='wp-content/plugins'
+          for archive in mcp-adapter.zip elementor.zip jet-engine.zip jet-smart-filters.zip bit-pi.zip; do
+            test -s "$plugins/$archive"
+            unzip -tqq "$plugins/$archive"
+          done
+
+      - name: Inspect exact packaged provider contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/scan-packaged-providers.py \
+            --plugins-dir wp-content/plugins \
+            --output /tmp/mad4b-provider-contracts.json
+
+      - name: Upload provider contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-provider-contracts-${{ github.sha }}
+          path: /tmp/mad4b-provider-contracts.json
+          if-no-files-found: error
+          retention-days: 30
+
   contract-guard:
     name: Control-plane contract guard
     runs-on: ubuntu-latest
@@ -53,6 +97,7 @@ jobs:
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
           audit="$root/includes/class-mad4b-scp-audit.php"
+          scanner="$root/tests/scan-packaged-providers.py"
           for file in \
             mad4b-site-control-plane.php \
             includes/class-mad4b-scp-abilities.php \
@@ -69,11 +114,15 @@ jobs:
             includes/adapters/class-mad4b-scp-seo-adapter.php \
             includes/adapters/class-mad4b-scp-woocommerce-adapter.php \
             includes/adapters/class-mad4b-scp-polylang-adapter.php \
-            includes/adapters/class-mad4b-scp-litespeed-adapter.php; do
+            includes/adapters/class-mad4b-scp-litespeed-adapter.php \
+            tests/scan-packaged-providers.py; do
             test -f "$root/$file"
           done
 
           grep -Fq "Version: 0.3.0" "$root/mad4b-site-control-plane.php"
+          grep -Fq "mad4b.site-control-plane.packaged-provider-contracts.v1" "$scanner"
+          grep -Fq "static_zip_inspection_only" "$scanner"
+          grep -Fq "Unsafe ZIP entry" "$scanner"
           grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$policy"
           grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
           grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
