@@ -6,35 +6,52 @@ on:
       - fix/wpl-client-db-lifecycle-cleanup-20260906
     paths:
       - .github/workflows/wpl-client-maintenance.yml
-      - wp-content/plugins/wpl-client.zip
 
 permissions:
   contents: write
 
 jobs:
-  unpack:
+  inspect-vendor-licenses:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Unpack plugin source
+
+      - name: Inspect WPML/OTGS and Crocoblock registration APIs
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf wp-content/plugins/wpl-client
-          unzip -q wp-content/plugins/wpl-client.zip -d wp-content/plugins/
-          test -f wp-content/plugins/wpl-client/wpl-client.php
-      - name: Commit unpacked source
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add wp-content/plugins/wpl-client
-          if git diff --cached --quiet; then
-            echo "No unpacked source changes to commit."
-            exit 0
-          fi
-          git commit -m "chore(wpl-client): unpack plugin source for maintenance"
-          git push
+          ROOT=/tmp/wpl-license-discovery
+          rm -rf "$ROOT"
+          mkdir -p "$ROOT/otgs" "$ROOT/wpml" "$ROOT/crocoblock"
+
+          unzip -q wp-content/plugins/otgs-installer-plugin.zip -d "$ROOT/otgs" || true
+          unzip -q wp-content/plugins/sitepress-multilingual-cms.zip -d "$ROOT/wpml" || true
+          unzip -q wp-content/plugins/crocoblock-wizard.zip -d "$ROOT/crocoblock" || true
+
+          echo '=== OTGS/WPML likely registration files ==='
+          find "$ROOT/otgs" "$ROOT/wpml" -type f -name '*.php' -print0 \
+            | xargs -0 grep -liE 'site.?key|registration|register.*site|repository.*subscription|subscription.*repository|installer.*settings' \
+            | head -n 120 || true
+
+          echo '=== OTGS/WPML candidate symbols ==='
+          grep -RniE '(class|function|public function|static function).*(site.?key|register|registration|subscription|repository)' "$ROOT/otgs" "$ROOT/wpml" \
+            --include='*.php' | head -n 400 || true
+
+          echo '=== OTGS/WPML calls/options around site keys ==='
+          grep -RniE 'site.?key|repository.*subscription|subscription.*repository|registered|registration' "$ROOT/otgs" "$ROOT/wpml" \
+            --include='*.php' | head -n 700 || true
+
+          echo '=== Crocoblock likely registration files ==='
+          find "$ROOT/crocoblock" -type f -name '*.php' -print0 \
+            | xargs -0 grep -liE 'license|licen[sc]e|activation|activate.*license|account|token|api.?key|register' \
+            | head -n 120 || true
+
+          echo '=== Crocoblock candidate symbols ==='
+          grep -RniE '(class|function|public function|static function).*(license|licen[sc]e|activat|register|account|token)' "$ROOT/crocoblock" \
+            --include='*.php' | head -n 400 || true
+
+          echo '=== Crocoblock calls/options around licensing ==='
+          grep -RniE 'license|licen[sc]e|activation|activate|account|token|api.?key|registered|registration' "$ROOT/crocoblock" \
+            --include='*.php' | head -n 700 || true
