@@ -2,7 +2,7 @@
 /**
  * Plugin Name: تراخيص ووردبريس
  * Description: إدارة الإضافات والقوالب المرخصة من WordPress Licenses
- * Version:     2.7.6
+ * Version:     2.8.0
  * Author:      WordPress Licenses
  * Text Domain: wpl-client
  */
@@ -10,16 +10,22 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'WPL_SERVER_API_URL', 'https://wordpresslicenses.com/wp-json/wpl/v1' );
-define( 'WPL_CLIENT_VERSION', '2.7.6' );
-
-if ( ! function_exists( 'wpl_resolve_credential' ) ) {
-    function wpl_resolve_credential() {
-        return 'wpl_live_d1fd3bc2b7930203be9226e0f3bcab2370b3cd61';
-    }
-}
-define( 'WPL_SERVER_API_KEY', wpl_resolve_credential() );
+define( 'WPL_CLIENT_VERSION', '2.8.0' );
 define( 'WPL_CLIENT_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'WPL_CLIENT_URL',     plugin_dir_url( __FILE__ ) );
+
+require_once WPL_CLIENT_DIR . 'includes/class-wpl-server-client.php';
+
+// A private/account package may carry its credential in an untracked bootstrap
+// file. Import it once into a non-autoloaded option, then operate from runtime
+// state. Public source/distributable ZIPs never embed account credentials.
+WPL_Server_Client::bootstrap_package_credential();
+
+// Compatibility for older internal classes that still read this constant.
+// wp-config.php may define it first; otherwise the runtime resolver supplies it.
+if ( ! defined( 'WPL_SERVER_API_KEY' ) ) {
+    define( 'WPL_SERVER_API_KEY', WPL_Server_Client::credential() );
+}
 
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-token.php';
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-database-maintenance.php';
@@ -31,6 +37,7 @@ register_activation_hook( __FILE__, 'wpl_client_on_activate' );
 
 if ( ! function_exists( 'wpl_client_on_activate' ) ) {
 function wpl_client_on_activate( $network_wide = false ) {
+    WPL_Server_Client::bootstrap_package_credential();
     WPL_Database_Maintenance::activate( $network_wide );
     WPL_License_Health_Monitor::activate( $network_wide );
     WPL_Token::generate();
@@ -104,35 +111,15 @@ register_deactivation_hook( __FILE__, function( $network_wide = false ) {
     wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );
     WPL_Token::disable();
     WPL_Client_Admin::delete_wpl_user();
+
     $domain = parse_url( home_url(), PHP_URL_HOST );
-    wp_remote_post( rtrim( WPL_SERVER_API_URL, '/' ) . '/deactivate', [
-        'headers'     => [ 'X-WPL-Key' => WPL_SERVER_API_KEY, 'Content-Type' => 'application/json' ],
-        'body'        => wp_json_encode( [ 'domain' => $domain ] ),
-        'timeout'     => 10, 'sslverify' => false, 'httpversion' => '1.1', 'blocking' => true,
-    ] );
+    if ( ! empty( $domain ) ) {
+        WPL_Server_Client::request( 'POST', '/deactivate', [
+            'body'    => [ 'domain' => $domain ],
+            'timeout' => 10,
+        ] );
+    }
 } );
-
-add_filter( 'http_request_args', function( $args, $url ) {
-    if ( strpos( $url, parse_url( WPL_SERVER_API_URL, PHP_URL_HOST ) ) !== false ) {
-        $args['sslverify']   = false;
-        $args['httpversion'] = '1.1';
-        $args['timeout']     = 30;
-    }
-    return $args;
-}, 10, 2 );
-
-add_action( 'http_api_curl', function( $handle, $r, $url ) {
-    if ( strpos( $url, parse_url( WPL_SERVER_API_URL, PHP_URL_HOST ) ) !== false ) {
-        curl_setopt( $handle, CURLOPT_SSL_VERIFYPEER, false );
-        curl_setopt( $handle, CURLOPT_SSL_VERIFYHOST, false );
-        // اتركه يتفاوض تلقائياً (TLS 1.2 أو 1.3) بدل إجباره على 1.2
-        curl_setopt( $handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_DEFAULT );
-        // cipher list واسع يشمل TLS 1.2 و 1.3
-        if ( defined('CURL_HTTP_VERSION_1_1') ) {
-            curl_setopt( $handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1 );
-        }
-    }
-}, 10, 3 );
 
 /**
  * حماية البلجن من التعطيل أو الحذف عند الدخول عبر الرابط المؤقت
@@ -144,7 +131,7 @@ add_action( 'admin_init', function() {
     // شغّال بس على مستخدمي الرابط المؤقت
     if ( ! get_user_meta( get_current_user_id(), '_wpl_access_user', true ) ) return;
 
-    $plugin_file = plugin_basename( __FILE__ ); // wpl-client-v3/wpl-client.php
+    $plugin_file = plugin_basename( __FILE__ );
 
     // 1) إخفاء روابط التعطيل والحذف بصرياً
     add_filter( 'plugin_action_links_' . $plugin_file, function( $actions ) {
@@ -184,7 +171,7 @@ add_action( 'admin_init', function() {
  * السيرفر بيسأل البلجن للتأكد إن الدومين فعلاً مسجّل بلجن تراخيص ووردبريس.
  * الطريقة:
  *   - السيرفر بيبعت POST مع challenge code و X-WPL-Key
- *   - الكلاينت بيتحقّق من الـ API key (نفس مفتاح التفعيل)
+ *   - الكلاينت بيتحقّق من بيانات اتصال WPL الحالية
  *   - لو صح، بيرد بنفس الـ challenge + domain + timestamp
  *   - لو غلط، بيرفض 401
  */
@@ -204,9 +191,10 @@ add_action( 'rest_api_init', function() {
 
 if ( ! function_exists( 'wpl_handle_ownership_verification' ) ) {
 function wpl_handle_ownership_verification( $request ) {
-    // 1. تحقّق من الـ API key
-    $provided_key = $request->get_header( 'X-WPL-Key' );
-    if ( empty( $provided_key ) || ! hash_equals( WPL_SERVER_API_KEY, $provided_key ) ) {
+    // 1. تحقّق من بيانات اتصال WPL الحالية. إذا لم تكن مهيأة نفشل مغلقاً.
+    $expected_key = WPL_Server_Client::credential();
+    $provided_key = (string) $request->get_header( 'X-WPL-Key' );
+    if ( $expected_key === '' || $provided_key === '' || ! hash_equals( $expected_key, $provided_key ) ) {
         return new WP_Error( 'wpl_unauthorized', 'Unauthorized', [ 'status' => 401 ] );
     }
 
