@@ -31,6 +31,17 @@ It MUST NOT create or update canonical URLs, robots directives, Rank Math metada
 - The browser MUST ignore responses that do not declare the expected contract and non-authorizing/url-non-authority state.
 - A public `etg-dfsb/ajax-presentation-updated` DOM event MAY expose the sanitized presentation response to third-party widgets.
 
+## Elementor/editor UX hardening
+
+- The ETG Dynamic Content Slot selector MUST remain usable on a fresh install without mutating WordPress options. A bounded built-in slot catalog MAY be merged virtually with operator-saved overrides/custom slots.
+- Built-in slots MUST remain presentation-only, use no language-specific authority, and MUST NOT enable a profile, Global, indexing, combinations or publication evidence.
+- Elementor MUST expose dedicated presentation tags for term fields/sections and native Image/Gallery controls when the corresponding Elementor Dynamic Tag categories are available.
+- Registered ETG Dynamic Tag classes MUST remain compatible with Elementor `Manager::create_tag()` recreation: the tag class must accept Elementor's single data-array constructor argument and MUST NOT require ETG service injection in its constructor. ETG resolver/catalog/slot dependencies are request-scoped internally.
+- Primary media presentation MAY expose `image_id` and `image_url`; media continues to come only from governed term/profile context.
+- An Elementor `Preview URL` control MAY resolve a same-site URL through `buildEvidence()` for editor/preview rendering only. The setting MUST be ignored during normal live front-end rendering and MUST never grant URL/indexing authority.
+- Admin Inventory Control and Dynamic Content screens MAY improve layout, explainability and navigation, but MUST preserve existing fail-closed confirmation, Global-OFF, inventory-fingerprint and configuration-revision guards.
+- Native Elementor image/gallery/CSS attributes are server/editor-rendered surfaces. Alpha13 does not claim automatic mutation of those native attributes after transient AJAX filtering; custom live URL/image targets remain governed by the explicit browser binding contract.
+
 ## Result count
 
 - The Query Builder result-count adapter MAY consume the sanitized AJAX filtered query instead of relying on the current HTTP JetSmartFilters request.
