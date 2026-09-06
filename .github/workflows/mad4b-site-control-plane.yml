@@ -45,12 +45,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify required modules and safety gates
+      - name: Verify required modules and core safety gates
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           policy="$root/includes/class-mad4b-scp-policy.php"
+          abilities="$root/includes/class-mad4b-scp-abilities.php"
+          audit="$root/includes/class-mad4b-scp-audit.php"
           for file in \
             mad4b-site-control-plane.php \
             includes/class-mad4b-scp-abilities.php \
@@ -71,43 +73,110 @@ jobs:
             test -f "$root/$file"
           done
 
+          grep -Fq "Version: 0.3.0" "$root/mad4b-site-control-plane.php"
           grep -Fq "MAD4B_MCP_BREAKGLASS_ENABLED" "$policy"
-          grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$root/includes/class-mad4b-scp-abilities.php"
-          grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$root/includes/class-mad4b-scp-abilities.php"
-          grep -Fq "expected_sha256" "$root/includes/class-mad4b-scp-abilities.php"
-          grep -Fq "max_affected" "$root/includes/class-mad4b-scp-abilities.php"
+          grep -Fq "MAD4B_MCP_BREAKGLASS_WRITE_SQL_ENABLED" "$abilities"
+          grep -Fq "MAD4B_MCP_BREAKGLASS_DDL_ENABLED" "$abilities"
+          grep -Fq "LOAD_FILE" "$abilities"
+          grep -Fq "CREATE\\s+(?:USER|ROLE)" "$abilities"
+          grep -Fq "expected_modified_gmt" "$abilities"
+          grep -Fq "max_affected" "$abilities"
+          grep -Fq "can_structured_database_read" "$abilities"
+          grep -Fq "can_structured_database_write" "$abilities"
+          grep -Fq "is_sensitive_database_column" "$abilities"
+          grep -Fq "START TRANSACTION" "$abilities"
+          grep -Fq "FOR UPDATE" "$abilities"
+          grep -Fq "mad4b_control_plane_dependency_protected" "$abilities"
+
           grep -Fq "realpath" "$policy"
           grep -Fq "mad4b_scp_read_capability" "$policy"
           grep -Fq "'manage_options'" "$policy"
           grep -Fq "mad4b_sensitive_path_denied" "$policy"
-          grep -Fq "wp-config.php" "$policy"
+          grep -Fq "wp-config" "$policy"
           grep -Fq "mad4b_scp_allow_sensitive_file_access" "$policy"
+          grep -Fq "prepare_backup_root" "$policy"
+          grep -Fq "mad4b_backup_root_web_exposed" "$policy"
+          grep -Fq "mad4b_scp_allow_sensitive_database_read" "$policy"
+          grep -Fq "mad4b_scp_allow_sensitive_database_write" "$policy"
 
-      - name: Verify adapter contracts
+          grep -Fq "prepare_backup_root" "$abilities"
+          grep -Fq "chmod( \$backup_path, 0600" "$abilities"
+          grep -Fq "fileperms( \$path ) & 0777" "$abilities"
+          if grep -Fq ".mad4b-backup-" "$abilities"; then
+            echo 'Adjacent webroot backup naming must not return.' >&2
+            exit 1
+          fi
+
+          grep -Fq "request_id" "$audit"
+          grep -Fq "previous_hash" "$audit"
+          grep -Fq "entry_hash" "$audit"
+          grep -Fq "verify_chain" "$audit"
+
+      - name: Verify default-server isolation
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           registry="$root/includes/class-mad4b-scp-adapter-registry.php"
           base="$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          grep -Fq "'mcp' => array( 'public' => false" "$base"
+          grep -Fq "'mcp' => array( 'public' => false" "$registry"
+          grep -Fq "default_server_exposure_leaks" "$registry"
+          grep -Fq "custom_server_isolation" "$registry"
+          if grep -RInF --include='*.php' "'mcp' => array( 'public' => true" "$root"; then
+            echo 'MAD4B abilities must be custom-server-only; default MCP exposure detected.' >&2
+            exit 1
+          fi
+
+      - name: Verify adapter mutation contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          base="$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          elementor="$root/includes/adapters/class-mad4b-scp-elementor-adapter.php"
           jetengine="$root/includes/adapters/class-mad4b-scp-jetengine-adapter.php"
           jetsmart="$root/includes/adapters/class-mad4b-scp-jetsmartfilters-adapter.php"
           bitflows="$root/includes/adapters/class-mad4b-scp-bitflows-adapter.php"
-          grep -Fq "mad4b/runtime-self-test" "$registry"
+          media="$root/includes/adapters/class-mad4b-scp-media-adapter.php"
+          seo="$root/includes/adapters/class-mad4b-scp-seo-adapter.php"
+          woo="$root/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+          polylang="$root/includes/adapters/class-mad4b-scp-polylang-adapter.php"
+
           grep -Fq "anyOf" "$base"
-          grep -Fq "elementor/update-widget-settings" "$root/includes/adapters/class-mad4b-scp-elementor-adapter.php"
-          grep -Fq "expected_sha256" "$root/includes/adapters/class-mad4b-scp-elementor-adapter.php"
+
+          grep -Fq "elementor/manage-elements" "$elementor"
+          grep -Fq "expected_sha256" "$elementor"
+          grep -Fq "mad4b_elementor_legacy_write_denied" "$elementor"
+          grep -Fq "elementor_native_ability" "$elementor"
+
           grep -Fq "mad4b_scp_allow_protected_meta_write" "$jetengine"
           grep -Fq "mad4b_scp_allow_protected_meta_read" "$jetengine"
-          grep -Fq "mad4b_jetengine_protected_meta_read" "$jetengine"
+          grep -Fq "mad4b_scp_allow_jetengine_meta_create" "$jetengine"
+          grep -Fq "mad4b_jetengine_create_policy_denied" "$jetengine"
+
           grep -Fq "current_user_can( 'manage_options' )" "$jetsmart"
           grep -Fq "does not create arbitrary filter internals" "$jetsmart"
+
           grep -Fq "FlowExecutor" "$bitflows"
-          grep -Fq "BitApps" "$bitflows"
+          grep -Fq "FlowNode" "$bitflows"
+          grep -Fq "MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED" "$bitflows"
+          grep -Fq "expected_flow_sha256" "$bitflows"
+          grep -Fq "mad4b_bitflows_stale_flow" "$bitflows"
           grep -Fq "Inactive flows cannot be run" "$bitflows"
-          grep -Fq "rank_math_title" "$root/includes/adapters/class-mad4b-scp-seo-adapter.php"
-          grep -Fq "wc_get_product" "$root/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
-          grep -Fq "pll_set_post_language" "$root/includes/adapters/class-mad4b-scp-polylang-adapter.php"
+
+          grep -Fq "expected_sha256" "$media"
+          grep -Fq "expected_thumbnail_id" "$media"
+          grep -Fq "expected_sha256" "$seo"
+          grep -Fq "mad4b_seo_stale_meta" "$seo"
+          grep -Fq "wc_format_decimal" "$woo"
+          grep -Fq "expected_sha256" "$woo"
+          grep -Fq "mad4b_wc_stale_product" "$woo"
+          grep -Fq "expected_language" "$polylang"
+
+          grep -Fq "rank_math_title" "$seo"
+          grep -Fq "wc_get_product" "$woo"
+          grep -Fq "pll_set_post_language" "$polylang"
           grep -Fq "Only this WordPress site can be purged" "$root/includes/adapters/class-mad4b-scp-litespeed-adapter.php"
 
       - name: Deny arbitrary command and PHP execution primitives
