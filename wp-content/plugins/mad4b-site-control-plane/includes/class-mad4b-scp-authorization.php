@@ -37,13 +37,30 @@ final class MAD4B_SCP_Authorization {
 		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $input ) : true;
 		$approval_ticket_id = isset( $identity['approval_ticket_id'] ) ? (string) $identity['approval_ticket_id'] : '';
 		$target_fingerprint = self::target_fingerprint( $ability_name, $provider, $input, $agent, $identity );
+
+		if ( ! class_exists( 'MAD4B_SCP_Budgets' ) ) return self::deny( 'mad4b_budget_service_unavailable', 'NHI budget service is unavailable.', $ability_name, $identity, $agent );
+		$budget_reservation = MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $provider, $input, $approval_required );
+		if ( is_wp_error( $budget_reservation ) ) return self::deny( $budget_reservation->get_error_code(), $budget_reservation->get_error_message(), $ability_name, $identity, $agent );
+
 		if ( $approval_required ) {
-			if ( '' === $approval_ticket_id ) return self::deny( 'mad4b_approval_required', 'This high-impact mutation requires an exact short-lived approval ticket.', $ability_name, $identity, $agent );
-			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return self::deny( 'mad4b_approval_service_unavailable', 'Approval service is unavailable.', $ability_name, $identity, $agent );
+			if ( '' === $approval_ticket_id ) {
+				MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				return self::deny( 'mad4b_approval_required', 'This high-impact mutation requires an exact short-lived approval ticket.', $ability_name, $identity, $agent );
+			}
+			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) {
+				MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				return self::deny( 'mad4b_approval_service_unavailable', 'Approval service is unavailable.', $ability_name, $identity, $agent );
+			}
 			$ticket_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $input );
 			$approval = MAD4B_SCP_Approval_Tickets::consume_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
-			if ( is_wp_error( $approval ) ) return self::deny( $approval->get_error_code(), $approval->get_error_message(), $ability_name, $identity, $agent );
+			if ( is_wp_error( $approval ) ) {
+				MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				return self::deny( $approval->get_error_code(), $approval->get_error_message(), $ability_name, $identity, $agent );
+			}
 		}
+
+		$budget_commit = MAD4B_SCP_Budgets::commit( $budget_reservation );
+		if ( is_wp_error( $budget_commit ) ) return self::deny( $budget_commit->get_error_code(), $budget_commit->get_error_message(), $ability_name, $identity, $agent );
 
 		$decision = array(
 			'allowed' => true,
@@ -63,6 +80,11 @@ final class MAD4B_SCP_Authorization {
 			'approval_required' => $approval_required,
 			'approval_ticket_id' => $approval_required ? $approval_ticket_id : '',
 			'target_fingerprint' => $target_fingerprint,
+			'budget' => array(
+				'configured' => ! empty( $budget_reservation['active'] ),
+				'costs' => isset( $budget_reservation['costs'] ) ? $budget_reservation['costs'] : array(),
+				'reservations' => isset( $budget_reservation['reservations'] ) ? $budget_reservation['reservations'] : array(),
+			),
 		);
 		self::audit( $ability_name, $decision, 'allowed' );
 		return $decision;
@@ -88,6 +110,7 @@ final class MAD4B_SCP_Authorization {
 			'exact_grants' => (int) $counts['grants'],
 			'wildcard_grants' => (int) $counts['wildcard_grants'],
 			'approval_service_ready' => class_exists( 'MAD4B_SCP_Approval_Tickets' ) && ! empty( $schema['ready'] ),
+			'budget_service_ready' => class_exists( 'MAD4B_SCP_Budgets' ) && ! empty( $schema['ready'] ),
 			'blockers' => $blockers,
 			'status' => $blockers ? 'blocked' : ( $mutation_configured ? ( $mutation_effective ? 'ready_for_governed_mutation' : 'mutation_configured_identity_required' ) : 'ready_read_only' ),
 		);
