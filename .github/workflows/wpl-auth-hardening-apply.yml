@@ -54,4 +54,5 @@ jobs:
           git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'feat(wpl-client): recover account credentials without embedded secrets'
+          git pull --rebase origin fix/wpl-client-db-lifecycle-cleanup-20260906
           git push origin HEAD:fix/wpl-client-db-lifecycle-cleanup-20260906
