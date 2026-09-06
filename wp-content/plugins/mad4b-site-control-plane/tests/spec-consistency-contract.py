@@ -6,6 +6,7 @@ PLUGIN = REPO / 'wp-content/plugins/mad4b-site-control-plane'
 SPEC = REPO / 'specs/006-agent-governed-reversible-control-plane'
 CONSTITUTION = REPO / '.specify/memory/constitution.md'
 CONNECTION = SPEC / 'contracts/connection-readiness.md'
+ADAPTER_COVERAGE = SPEC / 'contracts/adapter-coverage.md'
 
 required_files = [
     CONSTITUTION,
@@ -17,6 +18,7 @@ required_files = [
     SPEC / 'tasks.md',
     SPEC / 'contracts/abilities.md',
     CONNECTION,
+    ADAPTER_COVERAGE,
     SPEC / 'references/competitive-deep-research-attachments-only.md',
 ]
 for path in required_files:
@@ -34,6 +36,7 @@ spec = read(SPEC / 'spec.md')
 data_model = read(SPEC / 'data-model.md')
 abilities_contract = read(SPEC / 'contracts/abilities.md')
 connection_contract = read(CONNECTION)
+adapter_contract = read(ADAPTER_COVERAGE)
 tasks = read(SPEC / 'tasks.md')
 
 for marker in (
@@ -77,6 +80,27 @@ for stale in (
     'all four runtime-derived MAD4B endpoints',
 ): forbid(connection_contract, stale, 'connection-documentation-drift')
 
+for marker in (
+    'mad4b.adapter-coverage.v1',
+    'Repository package inventory',
+    'Runtime installed-plugin inventory',
+    'mad4b/plugin-adapter-coverage',
+    'mad4b/adapter-support-requests',
+    'WooCommerce', 'Polylang',
+    'mad4b.rollback.adapter.v1',
+    'mad4b.rollback.media-metadata.v1',
+    'mad4b.rollback.rank-math-meta.v1',
+    'mad4b.rollback.woocommerce-product.v1',
+    'mad4b.rollback.polylang-post-language.v1',
+    'mad4b.rollback.jetengine-post-meta.v1',
+    'adapter_present_side_channel_blocked',
+    'parallel_mcp_write_plane_requires_isolation',
+    'native_mcp_isolation',
+    'jet-engine/v1',
+    'Unknown plugin write default is always **DENY**',
+    'T103 real Staging remains a separate mandatory boundary',
+): require(adapter_contract, marker, 'adapter-coverage-contract-invariant')
+
 require(data_model, 'Schema version: `4`', 'data-model-schema-v4')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
@@ -95,6 +119,10 @@ implementation_files = {
     'schema': PLUGIN / 'includes/class-mad4b-scp-schema.php',
     'identity': PLUGIN / 'includes/class-mad4b-scp-identity-context.php',
     'registry': PLUGIN / 'includes/class-mad4b-scp-agent-registry.php',
+    'adapter_registry': PLUGIN / 'includes/class-mad4b-scp-adapter-registry.php',
+    'plugin_discovery': PLUGIN / 'includes/class-mad4b-scp-plugin-discovery.php',
+    'reversible_adapter': PLUGIN / 'includes/class-mad4b-scp-reversible-adapter-mutations.php',
+    'adapter_admin': PLUGIN / 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php',
     'authz': PLUGIN / 'includes/class-mad4b-scp-authorization.php',
     'approval': PLUGIN / 'includes/class-mad4b-scp-approval-tickets.php',
     'budgets': PLUGIN / 'includes/class-mad4b-scp-budgets.php',
@@ -110,6 +138,11 @@ implementation_files = {
     'policy': PLUGIN / 'includes/class-mad4b-scp-policy.php',
     'provider': PLUGIN / 'includes/class-mad4b-scp-provider-contracts.php',
     'admin': PLUGIN / 'includes/class-mad4b-scp-admin-ui.php',
+    'media': PLUGIN / 'includes/adapters/class-mad4b-scp-media-adapter.php',
+    'seo': PLUGIN / 'includes/adapters/class-mad4b-scp-seo-adapter.php',
+    'woocommerce': PLUGIN / 'includes/adapters/class-mad4b-scp-woocommerce-adapter.php',
+    'polylang': PLUGIN / 'includes/adapters/class-mad4b-scp-polylang-adapter.php',
+    'jetengine': PLUGIN / 'includes/adapters/class-mad4b-scp-jetengine-adapter.php',
 }
 for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
@@ -161,10 +194,52 @@ require(impl['admin'], "'manage_options'", 'implementation-admin-capability')
 for forbidden in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete('):
     forbid(impl['admin'], forbidden, 'admin-ui-read-only')
 
+for marker in (
+    'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'reversible_adapter_count',
+): require(impl['adapter_registry'], marker, 'implementation-adapter-registry')
+for marker in (
+    'mad4b.plugin-adapter-discovery.v1', 'get_plugins()', "'auto_install' => false", "'auto_generate_adapter' => false",
+    'adapter_present_certification_required', 'adapter_present_side_channel_blocked',
+    'parallel_mcp_write_plane_requires_isolation', 'mcp_foreign_transport_unreviewed',
+): require(impl['plugin_discovery'], marker, 'implementation-plugin-discovery')
+for marker in (
+    'mad4b.rollback.adapter.v1', 'rollback_payload_sha256', 'mad4b_undo_state_drift',
+    'provider_restore_guard', 'MAD4B_SCP_Provider_Contracts::mutation_guard', 'provider_readback_recorded',
+): require(impl['reversible_adapter'], marker, 'implementation-reversible-adapter')
+for marker in ('manage_options', 'Adapter Coverage', 'adapter_present_side_channel_blocked', 'Runtime blocker'):
+    require(impl['adapter_admin'], marker, 'implementation-adapter-admin')
+for forbidden in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete('):
+    forbid(impl['adapter_admin'], forbidden, 'adapter-admin-read-only')
+
+for label, marker in (
+    ('media', 'mad4b.rollback.media-metadata.v1'),
+    ('seo', 'mad4b.rollback.rank-math-meta.v1'),
+    ('woocommerce', 'mad4b.rollback.woocommerce-product.v1'),
+    ('polylang', 'mad4b.rollback.polylang-post-language.v1'),
+    ('jetengine', 'mad4b.rollback.jetengine-post-meta.v1'),
+): require(impl[label], marker, f'implementation-{label}-rollback-contract')
+require(impl['woocommerce'], 'products_only_no_orders_payments_refunds', 'implementation-woocommerce-products-only')
+require(impl['polylang'], 'mad4b_polylang_unassigned_not_reversible', 'implementation-polylang-unassigned-denial')
+require(impl['jetengine'], 'mad4b_scp_jetengine_field_write_allowed', 'implementation-jetengine-exact-field-policy')
+
+adapter_static = PLUGIN / 'tests/adapter-discovery-reversibility-contract.py'
+adapter_runtime = PLUGIN / 'tests/runtime-plugin-adapter-discovery-smoke.php'
+adapter_reversible_runtime = PLUGIN / 'tests/runtime-reversible-adapter-smoke.php'
+jetengine_runtime = PLUGIN / 'tests/runtime-jetengine-reversible-adapter-smoke.php'
+adapter_workflow = REPO / '.github/workflows/mad4b-adapter-coverage.yml'
+for path in (adapter_static, adapter_runtime, adapter_reversible_runtime, jetengine_runtime, adapter_workflow):
+    if not path.is_file(): raise SystemExit(f'FAIL adapter-evidence-file: missing {path.relative_to(REPO)}')
+require(read(adapter_static), 'mad4b.site-control-plane.adapter-discovery-reversibility.v2', 'adapter-static-v2')
+require(read(adapter_runtime), 'mad4b.site-control-plane.runtime-plugin-adapter-discovery.v1', 'adapter-discovery-runtime')
+require(read(adapter_reversible_runtime), 'mad4b.site-control-plane.runtime-reversible-adapter.v1', 'adapter-reversible-runtime')
+require(read(jetengine_runtime), 'mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1', 'jetengine-side-channel-runtime')
+for marker in ('Repository plugin adapter coverage contract', 'Core adapter runtime', 'JetEngine reversible runtime'):
+    require(read(adapter_workflow), marker, 'adapter-coverage-workflow')
+
 require(tasks, '- [x] T006 Dedicated `MAD4B Spec Consistency` CI', 'tasks-spec-gate-complete')
 require(tasks, 'c2d7ba3d900097be35b6d2311f603a0c77f2d338', 'tasks-admin-runtime-checkpoint')
 require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-runtime-proof')
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v4: PASS')
+print('mad4b.site-control-plane.spec-consistency.v5: PASS')
