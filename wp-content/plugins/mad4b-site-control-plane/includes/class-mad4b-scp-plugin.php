@@ -34,6 +34,7 @@ final class MAD4B_SCP_Plugin {
 
 		MAD4B_SCP_Admin_UI::boot();
 		MAD4B_SCP_Connection_Admin_UI::boot();
+		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();
 
 		if ( ! function_exists( 'wp_register_ability' ) ) {
 			add_action( 'admin_notices', array( __CLASS__, 'abilities_notice' ) );
@@ -64,11 +65,9 @@ final class MAD4B_SCP_Plugin {
 	public static function schema_notice() {
 		if ( current_user_can( 'manage_options' ) && is_wp_error( self::$schema_error ) ) echo '<div class="notice notice-error"><p>' . esc_html__( 'MAD4B Site Control Plane governance schema is unavailable. Mutation remains fail-closed until the schema is repaired.', 'mad4b-site-control-plane' ) . '</p></div>';
 	}
-
 	public static function abilities_notice() {
 		if ( current_user_can( 'activate_plugins' ) ) echo '<div class="notice notice-error"><p>' . esc_html__( 'MAD4B Site Control Plane requires the WordPress Abilities API (WordPress 6.9+).', 'mad4b-site-control-plane' ) . '</p></div>';
 	}
-
 	public static function mcp_notice() {
 		if ( current_user_can( 'activate_plugins' ) ) echo '<div class="notice notice-warning"><p>' . esc_html__( 'MAD4B Site Control Plane abilities are registered, but the official WordPress MCP Adapter is not active. Install and activate mcp-adapter to expose MCP servers.', 'mad4b-site-control-plane' ) . '</p></div>';
 	}
