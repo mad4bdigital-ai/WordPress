@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 3;
+	const VERSION = 4;
 	const OPTION  = 'mad4b_scp_schema_version';
 
 	public static function tables() {
@@ -16,6 +16,8 @@ final class MAD4B_SCP_Schema {
 			'mutations'      => $wpdb->prefix . 'mad4b_scp_mutations',
 			'budgets'        => $wpdb->prefix . 'mad4b_scp_agent_budgets',
 			'budget_windows' => $wpdb->prefix . 'mad4b_scp_agent_budget_windows',
+			'audit_events'   => $wpdb->prefix . 'mad4b_scp_audit_events',
+			'audit_heads'    => $wpdb->prefix . 'mad4b_scp_audit_heads',
 		);
 	}
 
@@ -164,6 +166,40 @@ final class MAD4B_SCP_Schema {
 			UNIQUE KEY agent_budget_window (agent_id,budget_type,window_start),
 			KEY window_cleanup (window_start),
 			KEY agent_window (agent_id,window_start)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['audit_events']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			chain_name varchar(64) NOT NULL,
+			sequence bigint(20) unsigned NOT NULL,
+			event_id char(36) NOT NULL,
+			occurred_at varchar(32) NOT NULL,
+			request_id varchar(100) NOT NULL,
+			user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			ability varchar(191) NOT NULL,
+			status varchar(32) NOT NULL,
+			summary_json longtext NOT NULL,
+			previous_hash char(64) NOT NULL,
+			entry_hash char(64) NOT NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY chain_sequence (chain_name,sequence),
+			UNIQUE KEY event_id (event_id),
+			KEY request_id (request_id),
+			KEY ability_sequence (ability,sequence),
+			KEY entry_hash (entry_hash)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['audit_heads']} (
+			chain_name varchar(64) NOT NULL,
+			sequence bigint(20) unsigned NOT NULL DEFAULT 0,
+			entry_hash char(64) NOT NULL,
+			legacy_anchor_sha256 char(64) NOT NULL,
+			legacy_chain_valid tinyint(1) NOT NULL DEFAULT 1,
+			legacy_entry_count bigint(20) unsigned NOT NULL DEFAULT 0,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (chain_name)
 		) $charset;";
 
 		foreach ( $sql as $statement ) dbDelta( $statement );

@@ -51,6 +51,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify append-only audit persistence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/audit-persistence-contract.py
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -206,3 +212,40 @@ jobs:
             --path="$WP_PATH" \
             --user=mad4b-ci-admin
           rm -f "$WP_PATH/wp-content/mu-plugins/mad4b-ci-rogue-public-write.php"
+
+      - name: Execute append-only audit concurrency and tamper smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST_ROOT="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-audit-concurrency-setup.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
+
+          BARRIER="$(php -r 'printf("%.6f", microtime(true) + 3.0);')"
+          MAD4B_CI_AUDIT_WORKER=one MAD4B_CI_AUDIT_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-audit-concurrency-worker.php" \
+              --path="$WP_PATH" --user=mad4b-ci-admin > /tmp/mad4b-audit-worker-one.log 2>&1 &
+          PID_ONE=$!
+          MAD4B_CI_AUDIT_WORKER=two MAD4B_CI_AUDIT_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-audit-concurrency-worker.php" \
+              --path="$WP_PATH" --user=mad4b-ci-admin > /tmp/mad4b-audit-worker-two.log 2>&1 &
+          PID_TWO=$!
+
+          RC_ONE=0
+          RC_TWO=0
+          wait "$PID_ONE" || RC_ONE=$?
+          wait "$PID_TWO" || RC_TWO=$?
+          cat /tmp/mad4b-audit-worker-one.log
+          cat /tmp/mad4b-audit-worker-two.log
+          test "$RC_ONE" -eq 0
+          test "$RC_TWO" -eq 0
+          test "$(grep -h 'MAD4B_AUDIT_WORKER_RESULT=' /tmp/mad4b-audit-worker-*.log | grep -c . || true)" -eq 2
+
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-audit-concurrency-verify.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-audit-tamper.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
