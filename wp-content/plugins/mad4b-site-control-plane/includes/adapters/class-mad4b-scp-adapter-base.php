@@ -26,6 +26,7 @@ abstract class MAD4B_SCP_Adapter_Base {
 		return $status;
 	}
 
+	public function provider_key() { return sanitize_key( (string) $this->certified_provider_key() ); }
 	protected function certified_provider_key() { return $this->id(); }
 	protected function provider_certification( $available ) {
 		if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return null;
