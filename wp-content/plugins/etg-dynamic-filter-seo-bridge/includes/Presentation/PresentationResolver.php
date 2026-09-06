@@ -1,0 +1,40 @@
+<?php
+namespace ETG\DynamicFilterSEOBridge\Presentation;
+
+use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
+use ETG\DynamicFilterSEOBridge\Content\GalleryComposer;
+
+final class PresentationResolver {
+    private $contextProvider;
+    private $evidenceProvider;
+    private $content;
+    private $gallery;
+    private $slots;
+
+    // Slot templates use {{token}} placeholders, including termmeta:role:key and terms:role:names inventory tokens.
+    public function __construct(callable $contextProvider,ContentComposer $content,GalleryComposer $gallery,ContentSlotRegistry $slots,callable $evidenceProvider=null){$this->contextProvider=$contextProvider;$this->content=$content;$this->gallery=$gallery;$this->slots=$slots;$this->evidenceProvider=$evidenceProvider;}
+
+    public function context():array{$c=call_user_func($this->contextProvider);$c=is_array($c)?$c:array();if($this->renderable($c)){return$c;}if('disabled'!==(string)($c['scope']['reason']??'')||!$this->evidenceProvider){return$c;}$e=call_user_func($this->evidenceProvider);$e=is_array($e)?$e:array();$profile=(array)($e['profile']??array());if(empty($e['evidence_only'])||empty($profile['publication']['elementor_render_when_global_off'])){return$c;}return$this->renderable($e)?$e:$c;}
+
+    public function value(string $token,array $context=null){$token=strtolower(trim($token));$c=null===$context?$this->context():$context;if(''===$token||!$this->renderable($c)){return'';}
+        if('title'===$token){return$this->content->title($c);}if('intro'===$token){return$this->content->intro($c);}if('keyword'===$token){return$this->content->keyword($c);}if('result_count'===$token){return is_numeric($c['result_count']??null)?(string)(int)$c['result_count']:'';}if('result_summary'===$token){$count=$c['result_count']??null;return is_numeric($count)?sprintf(_n('%d result','%d results',(int)$count,'etg-dynamic-filter-seo-bridge'),(int)$count):'';}if('breadcrumb'===$token){return implode(' › ',$this->content->breadcrumbLabels($c));}if('gallery_ids'===$token){return implode(',',array_map('absint',$this->gallery->ids($c,'combined')));}if('image_id'===$token){$ids=$this->gallery->ids($c,'priority');return$ids?(int)reset($ids):0;}
+        if(0===strpos($token,'context:')){$key=sanitize_key(substr($token,8));if('query_builder_query_id'===$key){return(string)($c['post_type_binding']['sources']['query_builder']['query_builder_query_id']??'');}return is_scalar($c[$key]??null)?(string)$c[$key]:'';}
+        if(0===strpos($token,'url:')){$which=sanitize_key(substr($token,4));return$this->url($c,$which);}
+        if(0===strpos($token,'term:')){$parts=explode(':',$token,3);if(3!==count($parts)){return'';}return$this->termValue($c,sanitize_key($parts[1]),sanitize_key($parts[2]));}
+        if(0===strpos($token,'terms:')){$parts=explode(':',$token,3);if(3!==count($parts)){return'';}return$this->termSetValue($c,sanitize_key($parts[1]),sanitize_key($parts[2]));}
+        if(0===strpos($token,'termmeta:')){$parts=explode(':',$token,3);if(3!==count($parts)){return'';}return$this->termMeta($c,sanitize_key($parts[1]),sanitize_key($parts[2]));}
+        if(0===strpos($token,'topology:')){$parts=explode(':',$token,3);if(3!==count($parts)||'query_builder_query_id'!==$parts[2]){return'';}$providerId=sanitize_key($parts[1]);$observed=(string)($c['query_id']??'');if($providerId!==$observed){return'';}return(string)($c['post_type_binding']['sources']['query_builder']['query_builder_query_id']??'');}
+        return function_exists('apply_filters')?apply_filters('etg_dfsb_presentation_value','',$token,$c):'';
+    }
+
+    public function slot(string $id,array $context=null):string{$slot=$this->slots->get($id);if(!$slot||empty($slot['enabled'])){return'';}$c=null===$context?$this->context():$context;if(!$this->renderable($c)){return'';}$template=(string)($slot['template']??'');$rendered=preg_replace_callback('/\{\{\s*([A-Za-z0-9_:\-]+)\s*\}\}/',function($m)use($c){$v=$this->value((string)$m[1],$c);if(is_array($v)){return implode(',',array_map('strval',$v));}return is_scalar($v)?(string)$v:'';},$template);$rendered=is_string($rendered)?$rendered:'';if(''===trim(wp_strip_all_tags($rendered))){$rendered=(string)($slot['fallback']??'');}$rendered=(string)($slot['prefix']??'').$rendered.(string)($slot['suffix']??'');$max=(int)($slot['max_length']??0);if($max>0&&function_exists('mb_substr')){$rendered=mb_substr($rendered,0,$max);}elseif($max>0){$rendered=substr($rendered,0,$max);}return$this->sanitizeByType($rendered,(string)($slot['type']??'text'));}
+
+    public function slotType(string $id):string{$slot=$this->slots->get($id);return(string)($slot['type']??'text');}
+
+    private function termValue(array $c,string $role,string $field){$term=(array)($c['terms'][$role]??array());if(!$term){return'';}if('image_url'===$field){$id=(int)($term['image_id']??0);return$id&&function_exists('wp_get_attachment_image_url')?(string)(wp_get_attachment_image_url($id,'full')?:''):'';}if(!array_key_exists($field,$term)){return'';}$v=$term[$field];return is_scalar($v)?$v:'';}
+    private function termSetValue(array $c,string $role,string $field){$set=(array)($c['term_sets'][$role]??array());if(!$set&&isset($c['terms'][$role])){$set=array((array)$c['terms'][$role]);}if(!$set){return'';}if('count'===$field){return(string)count($set);}$map=array('names'=>'name','slugs'=>'slug','descriptions'=>'description','short_descriptions'=>'short_description','seo_titles'=>'seo_title','meta_descriptions'=>'meta_description','focus_keywords'=>'focus_keyword');if(!isset($map[$field])){return'';}$key=$map[$field];$values=array();foreach($set as $term){$term=(array)$term;$v=$term[$key]??'';if(is_scalar($v)&&''!==trim((string)$v)){$values[]=trim((string)$v);}}$values=array_values(array_unique($values));$separator=in_array($field,array('descriptions','short_descriptions'),true)?"\n\n":', ';return implode($separator,$values);}
+    private function termMeta(array $c,string $role,string $key){$term=(array)($c['terms'][$role]??array());$id=(int)($term['term_id']??0);if(!$id||''===$key||!function_exists('get_term_meta')){return'';}$v=get_term_meta($id,$key,true);return is_scalar($v)?(string)$v:'';}
+    private function url(array $c,string $which):string{$path='';if('current'===$which){$path=(string)($c['request_path']??($c['archive_path']??''));}elseif('archive'===$which){$path=(string)($c['archive_path']??'');}if(''===$path){return'';}if(filter_var($path,FILTER_VALIDATE_URL)){return$path;}return function_exists('home_url')?(string)home_url('/'.ltrim($path,'/')):$path;}
+    private function sanitizeByType(string $value,string $type):string{if('html'===$type){return function_exists('wp_kses_post')?wp_kses_post($value):strip_tags($value);}if('url'===$type){return function_exists('esc_url_raw')?esc_url_raw($value):filter_var($value,FILTER_SANITIZE_URL);}if('image'===$type){$id=absint($value);if($id){return(string)$id;}return function_exists('esc_url_raw')?esc_url_raw($value):$value;}return function_exists('sanitize_text_field')?sanitize_text_field(wp_strip_all_tags($value)):trim(strip_tags($value));}
+    private function renderable(array $c):bool{if(empty($c['active'])||empty($c['in_scope'])||empty($c['runtime_ready'])||empty($c['filters'])){return false;}if(isset($c['scope_valid'])&&empty($c['scope_valid'])){return false;}$ajax='ajax'===(string)($c['state_transport']??'');if($ajax){if(empty($c['provider_observation_matches_state'])||(array_key_exists('filtered_query_complete',$c)&&empty($c['filtered_query_complete']))||!empty($c['unsupported_filter_props'])){return false;}}elseif(isset($c['provider_observation_matches_url'])&&empty($c['provider_observation_matches_url'])){return false;}$profile=(array)($c['profile']??array());$binding=(array)($c['post_type_binding']??array());if(!empty($profile['require_post_type_binding'])&&(empty($binding['observed'])||empty($binding['matches_profile']))){return false;}return empty($c['unknown_filters'])&&empty($c['malformed'])&&empty($c['missing_terms'])&&empty($c['translation_fallback'])&&!empty($c['terms']);}
+}
