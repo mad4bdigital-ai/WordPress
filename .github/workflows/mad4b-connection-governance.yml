@@ -19,8 +19,11 @@ on:
 permissions:
   contents: read
 
+# Exact-head certification must not be held behind a stale runner from an older
+# PR head. Runs for the same head still coalesce, but different heads have
+# independent concurrency keys and therefore independent certification evidence.
 concurrency:
-  group: mad4b-connection-governance-${{ github.event.pull_request.number || github.ref }}
+  group: mad4b-connection-governance-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
