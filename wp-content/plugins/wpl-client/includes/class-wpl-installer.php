@@ -841,6 +841,16 @@ class WPL_Installer {
         @set_time_limit(300);
         @ini_set('max_execution_time', 300);
 
+        // Atomic DB lock: shutdown, loopback and cron may arrive together.
+        $lock_name = 'wpl_bg_install_worker_lock';
+        $lock_time = (int) get_option( $lock_name, 0 );
+        if ( $lock_time && ( time() - $lock_time ) < 10 * MINUTE_IN_SECONDS ) return;
+        if ( $lock_time ) delete_option( $lock_name );
+        if ( ! add_option( $lock_name, time(), '', 'no' ) ) return;
+        register_shutdown_function( function() use ( $lock_name ) {
+            delete_option( $lock_name );
+        } );
+
         $job = get_option('wpl_bg_install_job', []);
         if ( empty($job) || ! in_array($job['status'], ['queued', 'running'], true) ) return;
 

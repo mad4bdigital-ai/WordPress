@@ -30,11 +30,9 @@ class WPL_Client_Admin {
         // مسح الكاش
         add_action( 'wp_ajax_wpl_clear_cache', function() {
             check_ajax_referer( 'wpl_client_nonce', 'nonce' );
-            $user_id = get_current_user_id();
-            // امسح transient السيريال
-            global $wpdb;
-            $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wpl_serial_ok_%' OR option_name LIKE '_transient_timeout_wpl_serial_ok_%'" );
-            wp_send_json_success( 'تم مسح الكاش.' );
+            // نظّف runtime DB state والـ transients العالقة بدون مسح مفاتيح الترخيص.
+            WPL_Database_Maintenance::clear_runtime_state();
+            wp_send_json_success( 'تم تنظيف حالة الإضافة والكاش.' );
         } );
     }
 

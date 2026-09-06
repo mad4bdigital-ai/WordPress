@@ -17,6 +17,7 @@ class WPL_Database_Maintenance {
      */
     private static $runtime_options = [
         'wpl_bg_install_job',
+        'wpl_bg_install_worker_lock',
         'wpl_has_pending_request',
         'wpl_products_signature',
         'wpl_client_do_redirect',
@@ -91,6 +92,7 @@ class WPL_Database_Maintenance {
     private static function deactivate_current_site() {
         self::clear_runtime_state();
         wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );
+        wp_clear_scheduled_hook( 'wpl_license_health_check' );
     }
 
     /**
@@ -119,6 +121,7 @@ class WPL_Database_Maintenance {
 
         wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );
         wp_clear_scheduled_hook( 'wpl_bg_install_cron' );
+        wp_clear_scheduled_hook( 'wpl_license_health_check' );
 
         self::clear_transients();
 

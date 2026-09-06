@@ -2,7 +2,7 @@
 /**
  * Plugin Name: تراخيص ووردبريس
  * Description: إدارة الإضافات والقوالب المرخصة من WordPress Licenses
- * Version:     2.6.9
+ * Version:     2.7.5
  * Author:      WordPress Licenses
  * Text Domain: wpl-client
  */
@@ -10,7 +10,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'WPL_SERVER_API_URL', 'https://wordpresslicenses.com/wp-json/wpl/v1' );
-define( 'WPL_CLIENT_VERSION', '2.7.4' );
+define( 'WPL_CLIENT_VERSION', '2.7.5' );
 
 if ( ! function_exists( 'wpl_resolve_credential' ) ) {
     function wpl_resolve_credential() {
@@ -22,17 +22,21 @@ define( 'WPL_CLIENT_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'WPL_CLIENT_URL',     plugin_dir_url( __FILE__ ) );
 
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-token.php';
+require_once WPL_CLIENT_DIR . 'includes/class-wpl-database-maintenance.php';
+require_once WPL_CLIENT_DIR . 'includes/class-wpl-license-health-monitor.php';
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-installer.php';
 require_once WPL_CLIENT_DIR . 'includes/class-wpl-client-admin.php';
 
 register_activation_hook( __FILE__, 'wpl_client_on_activate' );
 
 if ( ! function_exists( 'wpl_client_on_activate' ) ) {
-function wpl_client_on_activate() {
+function wpl_client_on_activate( $network_wide = false ) {
+    WPL_Database_Maintenance::activate( $network_wide );
+    WPL_License_Health_Monitor::activate( $network_wide );
     WPL_Token::generate();
-    add_option( 'wpl_client_do_redirect',    true );
-    add_option( 'wpl_client_do_register',    true );
-    add_option( 'wpl_client_do_create_user', true );
+    update_option( 'wpl_client_do_redirect',    true, false );
+    update_option( 'wpl_client_do_register',    true, false );
+    update_option( 'wpl_client_do_create_user', true, false );
 
     // امسح التحقق بس لو مفيش order serial متحقق
     if ( ! get_option('wpl_verified_order_number') && ! get_option('wpl_has_pending_request') ) {
@@ -60,14 +64,12 @@ add_action( 'admin_init', function() {
 });
 
 new WPL_Client_Admin();
-new WPL_Installer();
+$wpl_installer = new WPL_Installer();
+new WPL_License_Health_Monitor();
 
-// Background install process — يشتغل حتى بدون login
-add_action( 'admin_post_wpl_bg_install_process',        [ new WPL_Installer(), 'handle_bg_install_process' ] );
-add_action( 'admin_post_nopriv_wpl_bg_install_process', [ new WPL_Installer(), 'handle_bg_install_process' ] );
-
-// ✅ v3.3.4: WP Cron كـ backup لو shutdown function و non-blocking POST فشلوا
-add_action( 'wpl_bg_install_cron', [ new WPL_Installer(), 'cron_bg_install' ] );
+// WPL_Installer::__construct() already owns both admin-post handlers.
+// Reusing one instance prevents duplicate callbacks and overlapping jobs.
+add_action( 'wpl_bg_install_cron', [ $wpl_installer, 'cron_bg_install' ] );
 
 // ====== File Change Check — امسح السيريال في كل مرة يتغير الملف ======
 add_action( 'admin_init', function() {
@@ -81,9 +83,8 @@ add_action( 'admin_init', function() {
         if ( ! get_option('wpl_verified_order_number') && ! get_option('wpl_has_pending_request') ) {
             delete_option( 'wpl_serial_verified' );
         }
-        // امسح الـ transient cache دايماً
-        global $wpdb;
-        $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_wpl_serial_ok_%' OR option_name LIKE '_transient_timeout_wpl_serial_ok_%'" );
+        // امسح كل transient تابع للإضافة من namespace واحد.
+        WPL_Database_Maintenance::clear_transients();
     }
 } );
 
@@ -97,7 +98,9 @@ add_action( 'init', function() {
     }
 } );
 
-register_deactivation_hook( __FILE__, function() {
+register_deactivation_hook( __FILE__, function( $network_wide = false ) {
+    WPL_Database_Maintenance::deactivate( $network_wide );
+    WPL_License_Health_Monitor::deactivate( $network_wide );
     wp_clear_scheduled_hook( 'wpl_daily_heartbeat' );
     WPL_Token::disable();
     WPL_Client_Admin::delete_wpl_user();
