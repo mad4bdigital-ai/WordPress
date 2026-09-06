@@ -372,7 +372,7 @@ Any future Admin write action must use reviewed capability + WordPress nonce + s
 - [x] Connection readiness + independent foreign MCP REST blocker runtime proof on WordPress 6.9/latest.
 - [x] `mad4b-write` exact transport route and specialist-grant isolation runtime proof on WordPress 6.9/latest.
 - [x] Namespace-index anti-hijack runtime proof on WordPress 6.9/latest.
-- [ ] Add a dedicated runtime ticket-expiry scenario if expiry is not already exercised independently from static/unit coverage.
+- [x] Dedicated approval-ticket expiry runtime proof: expired pending tickets cannot be approved; approved-then-expired tickets cannot be consumed or marked used; PASS on WordPress 6.9/latest at `eddfdad7…`.
 
 ### T102 — Packaging
 
