@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Inspect the exact plugin ZIPs committed to this repository.
+"""Inspect and certify the exact provider ZIPs committed to this repository.
 
 This scanner is intentionally read-only. It extracts packaged providers into a
-temporary directory, derives their plugin header/version, inventories native
-MCP/Abilities implementation evidence, and records only contract/symbol data
-needed by the MAD4B Site Control Plane. It never executes provider PHP.
+temporary directory, derives plugin header/version, inventories native MCP /
+Abilities implementation evidence, and optionally compares the exact package
+version and SHA-256 with the certified provider baseline. It never executes
+provider PHP.
 """
 
 from __future__ import annotations
@@ -284,10 +285,77 @@ def scan_provider(provider: str, cfg: dict, plugins_dir: Path, temp_root: Path) 
     }
 
 
+def primary_version(result: dict) -> str:
+    headers = result.get("plugin_headers") or []
+    if not headers or not isinstance(headers[0], dict):
+        return ""
+    return str(headers[0].get("version") or "")
+
+
+def compare_baseline(report: dict, baseline_path: Path) -> list[dict]:
+    if not baseline_path.is_file():
+        return [{"field": "baseline", "reason": "missing", "expected": str(baseline_path)}]
+    try:
+        baseline = json.loads(baseline_path.read_text("utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [{"field": "baseline", "reason": "invalid", "detail": str(exc)}]
+
+    if baseline.get("contract") != "mad4b.site-control-plane.certified-providers.v1":
+        return [{"field": "baseline.contract", "reason": "unsupported", "actual": baseline.get("contract")}]
+
+    issues = []
+    expected_providers = baseline.get("providers") or {}
+    actual_providers = report.get("providers") or {}
+    for provider, expected in expected_providers.items():
+        actual = actual_providers.get(provider)
+        if not isinstance(actual, dict) or not actual.get("present"):
+            issues.append({"provider": provider, "field": "package", "reason": "missing"})
+            continue
+
+        expected_archive = str(expected.get("archive") or "")
+        actual_archive = str(actual.get("archive") or "")
+        if expected_archive and expected_archive != actual_archive:
+            issues.append({
+                "provider": provider,
+                "field": "archive",
+                "reason": "drift",
+                "expected": expected_archive,
+                "actual": actual_archive,
+            })
+
+        expected_version = str(expected.get("version") or "")
+        actual_version = primary_version(actual)
+        if expected_version and expected_version != actual_version:
+            issues.append({
+                "provider": provider,
+                "field": "version",
+                "reason": "drift",
+                "expected": expected_version,
+                "actual": actual_version,
+            })
+
+        expected_sha = str(expected.get("archive_sha256") or "").lower()
+        actual_sha = str(actual.get("archive_sha256") or "").lower()
+        if expected_sha and expected_sha != actual_sha:
+            issues.append({
+                "provider": provider,
+                "field": "archive_sha256",
+                "reason": "drift",
+                "expected": expected_sha,
+                "actual": actual_sha,
+            })
+
+    for provider in sorted(set(actual_providers) - set(expected_providers)):
+        issues.append({"provider": provider, "field": "baseline", "reason": "uncertified_provider"})
+
+    return issues
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plugins-dir", default="wp-content/plugins")
     parser.add_argument("--output", default="/tmp/mad4b-provider-contracts.json")
+    parser.add_argument("--baseline", default="")
     args = parser.parse_args()
 
     plugins_dir = Path(args.plugins_dir).resolve()
@@ -307,12 +375,23 @@ def main() -> int:
             if not result.get("present") or not result.get("required_contracts_pass"):
                 failures.append(provider)
 
-    report["status"] = "passed" if not failures else "failed"
+    baseline_issues = []
+    if args.baseline:
+        baseline_path = Path(args.baseline).resolve()
+        baseline_issues = compare_baseline(report, baseline_path)
+        report["certified_baseline"] = str(baseline_path)
+        report["baseline_status"] = "passed" if not baseline_issues else "failed"
+        report["baseline_issues"] = baseline_issues
+    else:
+        report["baseline_status"] = "not_checked"
+        report["baseline_issues"] = []
+
+    report["status"] = "passed" if not failures and not baseline_issues else "failed"
     report["failed_providers"] = failures
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0 if not failures else 1
+    return 0 if report["status"] == "passed" else 1
 
 
 if __name__ == "__main__":
