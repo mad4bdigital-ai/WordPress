@@ -2,7 +2,7 @@
 namespace ETG\DynamicFilterSEOBridge\Admin;
 
 final class AdminAssets {
-    private $pages = array('etg-dfsb-inventory-control','etg-dfsb-dynamic-content');
+    private $pages = array('etg-dfsb-inventory-control','etg-dfsb-dynamic-content','etg-dfsb-usage-guide');
 
     public function register(): void {
         add_action('admin_enqueue_scripts', array($this, 'enqueue'));
@@ -17,5 +17,14 @@ final class AdminAssets {
             array(),
             ETG_DFSB_VERSION
         );
+        if ('etg-dfsb-usage-guide' === $page) {
+            wp_enqueue_script(
+                'etg-dfsb-usage-guide',
+                plugins_url('assets/js/usage-guide.js', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
+                array(),
+                ETG_DFSB_VERSION,
+                true
+            );
+        }
     }
 }
