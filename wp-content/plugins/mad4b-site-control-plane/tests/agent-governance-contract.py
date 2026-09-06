@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,12 +18,16 @@ schema = read('includes/class-mad4b-scp-schema.php')
 identity = read('includes/class-mad4b-scp-identity-context.php')
 registry = read('includes/class-mad4b-scp-agent-registry.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
+impact = read('includes/class-mad4b-scp-impact-policy.php')
+approvals = read('includes/class-mad4b-scp-approval-tickets.php')
 policy = read('includes/class-mad4b-scp-policy.php')
 adapter = read('includes/adapters/class-mad4b-scp-adapter-base.php')
+abilities = read('includes/class-mad4b-scp-abilities.php')
+servers = read('includes/class-mad4b-scp-servers.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
-# Schema authority must be normalized and migration must not seed grants/agents.
+# Schema authority must be normalized and migration must not seed authority.
 require(schema, 'const VERSION = 2;', 'schema-version')
 for table in ('mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants', 'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets'):
     require(schema, table, 'schema-table')
@@ -32,41 +35,72 @@ for dangerous_seed in ("INSERT INTO", "status = 'enabled'", 'grant_ability('):
     forbid(schema, dangerous_seed, 'no-default-authority-seed')
 require(plugin, 'MAD4B_SCP_Schema::install_or_upgrade()', 'schema-migration')
 
-# Identity context must reject secret material and wildcard scopes.
+# Identity context must reject secret material and wildcard scopes and may carry only an opaque approval ID.
 require(identity, 'mad4b_scp_authenticated_subject_context', 'subject-context-hook')
 require(identity, 'mad4b_identity_secret_field_denied', 'raw-secret-denial')
 require(identity, 'mad4b_identity_wildcard_scope_denied', 'wildcard-scope-denial')
 require(identity, "hash( 'sha256', $type . \"\\0\" . $identifier )", 'subject-fingerprint')
+require(identity, "'approval_ticket_id'", 'approval-context-id')
 for forbidden_url_pattern in ('/mcp/{token}', '/mcp/{api_key}', 'HTTP_AUTHORIZATION] ='):
     forbid(bootstrap + identity + authz, forbidden_url_pattern, 'no-token-url')
 
-# Agent registry uses exact grants, deny precedence and unique subject binding.
-require(registry, 'UNIQUE', 'placeholder') if False else None
+# Agent registry uses exact grants and deny precedence.
 require(registry, 'mad4b_wildcard_grant_denied', 'wildcard-grant-denial')
 require(registry, 'mad4b_nhi_subject_unbound', 'unbound-subject-denial')
 require(registry, 'mad4b_nhi_agent_disabled', 'disabled-agent-denial')
 require(registry, "if ( 'deny' === $row['effect'] )", 'deny-precedence')
 require(registry, "if ( 'allow' === $row['effect'] )", 'exact-allow')
 
-# Global mutation now requires schema + authenticated bound NHI in addition to the constant.
+# Global mutation requires schema + authenticated bound NHI in addition to the constant.
 require(policy, "defined( 'MAD4B_MCP_MUTATION_ENABLED' )", 'global-mutation-gate')
 require(policy, 'MAD4B_SCP_Schema::is_ready()', 'schema-required-for-mutation')
 require(policy, 'MAD4B_SCP_Identity_Context::current()', 'identity-required-for-mutation')
 require(policy, 'MAD4B_SCP_Agent_Registry::resolve_agent', 'bound-agent-required-for-mutation')
 
-# Adapter writers must call the central exact authorization engine.
+# All core and adapter writers must call the central exact authorization engine.
 require(adapter, 'MAD4B_SCP_Authorization::authorize_mutation', 'adapter-central-authorization')
 require(adapter, "'mad4b-' . sanitize_key( $surface )", 'adapter-server-binding')
 require(adapter, '$this->certified_provider_key()', 'adapter-provider-binding')
+require(abilities, "MAD4B_SCP_Authorization::authorize_mutation( $ability_name, $server_id, 'core', $input )", 'core-central-authorization')
+require(abilities, 'mad4b/runtime-authority-status', 'authority-status-ability')
+require(servers, 'mad4b/runtime-authority-status', 'authority-status-server-mount')
 
-# Central authorization intersects exact grant and token scopes; constraints fail closed without evaluator.
+# Central authorization intersects exact grant/token scopes/resource constraints and high-impact approval.
 require(authz, 'MAD4B_SCP_Agent_Registry::exact_grant', 'exact-grant-intersection')
 require(authz, "'ability:' . $ability_name", 'exact-scope-intersection')
 require(authz, 'mad4b_scp_require_token_scopes', 'scope-policy')
 require(authz, 'mad4b_nhi_resource_constraints_unresolved', 'constraint-fail-closed')
+require(authz, 'MAD4B_SCP_Impact_Policy::requires_approval', 'impact-approval-gate')
+require(authz, 'MAD4B_SCP_Approval_Tickets::consume_exact', 'approval-consume-gate')
+require(authz, 'mad4b_approval_required', 'missing-approval-denial')
+require(authz, 'mutation_global_enabled', 'configured-mutation-status')
+require(authz, 'mutation_effective_for_request', 'effective-mutation-status')
 require(authz, 'mad4b/authorization:', 'authorization-audit')
 
-# Bootstrap order must make governance services available before abilities/adapters.
+# Impact policy is conservative: core admin writes high, raw DB exceptional, non-core adapters high.
+require(impact, "'mad4b/database-raw-query'", 'breakglass-exceptional')
+require(impact, "'mad4b/plugin-activate'", 'plugin-high-impact')
+require(impact, "'mad4b/database-update'", 'db-high-impact')
+require(impact, "'core' !== $provider && 'media' !== $provider", 'adapter-high-default')
+require(impact, "array( 'high', 'exceptional' )", 'approval-required-high')
+
+# Approval tickets bind one exact canonical operation, expire, and are single-use/replay resistant.
+require(approvals, "'contract' => 'mad4b.approval.v1'", 'approval-contract-version')
+for field in ("'site'", "'agent_public_id'", "'server_id'", "'ability'", "'provider'", "'target'", "'ticket_class'", "'input'"):
+    require(approvals, field, 'approval-envelope-field')
+require(approvals, 'MAX_CANONICAL_BYTES = 65536', 'approval-size-bound')
+require(approvals, 'MAX_DEPTH = 8', 'approval-depth-bound')
+require(approvals, 'MAX_TTL = 3600', 'approval-ttl-bound')
+require(approvals, "status = 'approved'", 'approval-atomic-use-precondition')
+require(approvals, "SET status = 'used'", 'approval-single-use-transition')
+require(approvals, 'hash_equals', 'approval-hash-compare')
+require(approvals, 'mad4b_approval_replay_denied', 'approval-replay-denial')
+require(approvals, 'mad4b_approval_payload_mismatch', 'approval-payload-denial')
+require(approvals, "array( 'mutation', 'breakglass', 'recovery' )", 'approval-class-separation')
+for forbidden in ('serialize(', 'unserialize('):
+    forbid(approvals, forbidden, 'approval-no-php-serialization')
+
+# Bootstrap order makes governance services available before authorization/abilities/adapters.
 order = [
     'class-mad4b-scp-schema.php',
     'class-mad4b-scp-identity-context.php',
@@ -74,6 +108,8 @@ order = [
     'class-mad4b-scp-policy.php',
     'class-mad4b-scp-audit.php',
     'class-mad4b-scp-provider-contracts.php',
+    'class-mad4b-scp-impact-policy.php',
+    'class-mad4b-scp-approval-tickets.php',
     'class-mad4b-scp-authorization.php',
     'class-mad4b-scp-abilities.php',
 ]
@@ -81,4 +117,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v1: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v2: PASS')
