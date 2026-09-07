@@ -1,6 +1,6 @@
 # MAD4B Connection Readiness Contract
 
-Contract: `mad4b.connection-readiness.v2`
+Contract: `mad4b.connection-readiness.v3`
 
 This contract defines what MAD4B may truthfully claim before a real external MCP client is connected. It is a read-only evidence surface and must not become a second mutation or credential authority.
 
@@ -105,7 +105,7 @@ MAD4B therefore MUST inspect both:
 1. the official MCP Adapter server/tool registry; and
 2. MCP-looking REST routes plus active MCP/model-context plugin basenames outside the known MAD4B/official Adapter pair.
 
-A foreign independent MCP transport whose semantics and authority cannot be proven under MAD4B MUST be treated as **unreviewed privileged side-channel risk**. It MUST NOT be auto-disabled, but governed mutation MUST fail closed with:
+A foreign independent MCP transport whose semantics and authority cannot be proven under MAD4B MUST be treated as **unreviewed privileged side-channel risk**. Governed mutation MUST fail closed with:
 
 - `mcp_foreign_transport_unreviewed`; and
 - `mcp_write_side_channel_detected`.
@@ -116,7 +116,37 @@ A WordPress REST namespace index such as `/mcp` MUST NOT be allowlisted by strin
 
 An independent product such as miniOrange Secure MCP Server may be useful for other workflows, but an active independent write-capable MCP plane is not accepted as the T103 MAD4B transport. On a certification Staging target it must either be disabled or be covered by a separately reviewed authority/federation design; merely having a working MCP URL is not sufficient.
 
-## 7. Admin UX
+## 7. Explicit provider MCP isolation
+
+Provider-native MCP/AI surfaces can coexist with otherwise required WordPress plugins. MAD4B therefore supports a bounded **deny-only provider isolation mode** rather than requiring the whole provider plugin to be disabled.
+
+The isolation layer is subject to all of the following requirements:
+
+- it is **OFF by default**;
+- it becomes configured only when `MAD4B_MCP_PROVIDER_ISOLATION_ENABLED === true`;
+- Production remains ineffective unless the separate `MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED === true` gate is also present;
+- it suppresses the generic official MCP Adapter default server while effective, leaving the five explicit MAD4B servers as the intended Adapter surfaces;
+- it removes only exact, bounded provider MCP/control routes encoded in the certified descriptor set;
+- it does not modify provider options/settings, credentials, NHI records, grants, approvals or mutation switches;
+- it performs no outbound request;
+- it is a deny/isolation list, never an allowlist for provider authority;
+- unknown or future MCP-looking routes are deliberately untouched and therefore remain visible to foreign-transport inventory and continue to fail governed mutation closed.
+
+The initial certified descriptor families cover exact MCP/control surfaces for Fluent Forms, JetEngine, UAE/HFE and ElementsKit. A descriptor match only authorizes **removal of that route from the REST endpoint table**; it does not certify the provider itself as writable through MAD4B.
+
+`MAD4B_SCP_MCP_Provider_Isolation::status()` MUST expose bounded non-secret evidence including:
+
+- configured/effective state;
+- environment and separate Production approval state;
+- whether the default Adapter server is suppressed;
+- bounded removed-route count/list;
+- `unknown_routes_fail_closed=true`;
+- `changes_provider_settings=false`;
+- `creates_authority=false`.
+
+A provider route not covered by the exact descriptor set remains a blocker. In particular, independent third-party MCP servers are not silently absorbed into this mechanism merely because they contain `mcp` in the path.
+
+## 8. Admin UX
 
 `MAD4B Control Plane → Connection` is read-only and requires `manage_options`.
 
@@ -130,13 +160,14 @@ It displays:
 - a dedicated `mad4b-write` summary including mounted-write count and exact-transport-grant requirement;
 - non-sensitive current request subject facts;
 - explicit external-handshake-unverified state;
+- provider MCP isolation configured/effective/default-server/removed-route evidence;
 - official Adapter peer status;
 - foreign MCP route/plugin evidence;
 - Breakglass configured/effective status.
 
 It contains no POST handler, nonce mutation path, remote probe, configuration writer or credential material.
 
-## 8. Repository certification for `mad4b-write`
+## 9. Repository certification
 
 Repository CI MUST prove on WordPress 6.9 and current latest at minimum:
 
@@ -149,11 +180,15 @@ Repository CI MUST prove on WordPress 6.9 and current latest at minimum:
 - transport mismatch leaves no stale request-local server binding;
 - an exact grant for a specialist server cannot authorize the same Ability through `mad4b-write`;
 - an independent exact grant for `mad4b-write` can be stored only when the Ability is genuinely mounted there;
-- the foreign-MCP and namespace-index-hijack blockers continue to pass after adding the fifth governed server.
+- the foreign-MCP and namespace-index-hijack blockers continue to pass;
+- provider isolation is ineffective by default;
+- explicit Staging isolation suppresses only the certified provider routes and default Adapter server;
+- an unknown MCP-looking route remains visible and keeps mutation fail-closed even when isolation is enabled;
+- Production isolation remains ineffective without its second explicit approval gate.
 
 Repository success certifies the implementation contract only. It does not prove a remote write connection on the target site.
 
-## 9. T103 target evidence
+## 10. T103 target evidence
 
 Repository CI can prove the implementation contract and disposable WordPress runtime behavior, but it cannot certify a real remote site.
 
@@ -166,7 +201,9 @@ T103 remains incomplete until a separate WordPress Staging target proves at mini
 - `mad4b-write` tool discovery exposes only the certified write projection;
 - authenticated transport subject resolves through the MAD4B subject bridge;
 - a write request proves the effective exact grant is bound to `mad4b-write`, not to an alternate specialist server;
-- no unreviewed foreign MCP write transport blocks authority;
+- provider isolation evidence is effective where intentionally configured and the removed routes match the target's known provider MCP surfaces;
+- no unreviewed foreign MCP write transport remains after isolation;
+- a deliberately unknown MCP route still produces the fail-closed blocker during negative certification;
 - the existing T103 governed mutation/undo/drift/budget/audit scenarios pass.
 
 Production write remains NO-GO until T103 and all other Production gates pass.
