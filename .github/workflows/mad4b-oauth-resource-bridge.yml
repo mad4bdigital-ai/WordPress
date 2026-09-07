@@ -29,9 +29,11 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-oauth-resource-bridge.php"
+          php -l "$root/includes/class-mad4b-scp-oauth-subject-gate.php"
           php -l "$root/includes/class-mad4b-scp-oauth-challenge-alignment.php"
           php -l "$root/tests/runtime-oauth-resource-bridge-smoke.php"
           python3 "$root/tests/oauth-resource-bridge-contract.py"
+          python3 "$root/tests/oauth-subject-gate-contract.py"
           python3 "$root/tests/chatgpt-plugin-package-contract.py"
           python3 -m json.tool plugins/mad4b-staging-control-plane/.codex-plugin/plugin.json >/dev/null
           python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
@@ -93,6 +95,7 @@ jobs:
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ISSUER 'https://auth.mad4b.test/auth/mcp' --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_WP_USER_ID 1 --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS 'user:user-1' --type=constant --path="$WP_PATH"
 
       - name: Install exact MCP Adapter and control plane
         shell: bash
