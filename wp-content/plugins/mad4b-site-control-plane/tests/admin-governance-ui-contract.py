@@ -31,8 +31,11 @@ require(admin, "$t['approvals']", 'approval-evidence')
 require(admin, "$t['mutations']", 'mutation-evidence')
 require(admin, 'MAD4B_SCP_Audit::storage_status()', 'audit-status')
 require(admin, 'MAD4B_SCP_Audit::tail(', 'audit-tail')
+require(admin, "'Legacy anchor matches' => ! empty( $audit['legacy_anchor_match'] )", 'audit-anchor-truth')
+forbid(admin, "$audit['legacy_anchor_matches']", 'audit-anchor-typo')
 require(admin, 'MAD4B_SCP_Adapter_Registry::instance()->runtime_self_test()', 'runtime-self-test')
 require(admin, 'MAD4B_SCP_MCP_Peer_Governance::status()', 'peer-governance')
+require(admin, "'Inventory reason' => isset( $peer['reason'] ) ? $peer['reason'] : ''", 'peer-inventory-reason')
 require(admin, 'Read-only governance and runtime evidence.', 'read-only-disclosure')
 require(bootstrap, "class-mad4b-scp-admin-ui.php", 'bootstrap-load')
 require(plugin, 'MAD4B_SCP_Admin_UI::boot()', 'plugin-boot')
@@ -53,4 +56,4 @@ for forbidden_sensitive in (
 ):
     forbid(admin, forbidden_sensitive, 'admin-ui-no-sensitive-fields')
 
-print('mad4b.site-control-plane.admin-governance-ui-contract.v1: PASS')
+print('mad4b.site-control-plane.admin-governance-ui-contract.v2: PASS')
