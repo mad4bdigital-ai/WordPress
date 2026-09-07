@@ -25,7 +25,7 @@ servers = read('includes/class-mad4b-scp-servers.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
-require(status, "mad4b.connection-readiness.v3", 'connection-contract')
+require(status, "mad4b.connection-readiness.v4", 'connection-contract')
 for marker in (
     'get_server_route_namespace', 'get_server_route', 'get_transport_permission_callback',
     'rest_get_server()', 'route_registered', 'permission_callback_match',
@@ -34,16 +34,23 @@ for marker in (
     "'credential_material_exposed' => false", "'credential_creation_supported_here' => false",
     "'remote_subject_bridge_required' => true", "'write_surface'",
     "'exact_transport_grant_required' => true", "'generic_dispatcher_exposed' => false",
-    "'provider_mcp_isolation'",
+    "'provider_mcp_isolation'", "'oauth_resource_server'",
+    'MAD4B_SCP_OAuth_Resource_Bridge::status()', 'oauth_preflight_blockers',
+    'oauth_resource_bridge_not_configured', 'oauth_issuer_unconfigured',
+    'oauth_wp_subject_unconfigured', 'oauth_wp_subject_invalid',
+    "'preflight_ready' => empty( $blockers )",
 ):
     require(status, marker, 'connection-status-truth')
+
+if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
+    raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')
 
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_remote_request(', 'curl_exec(', 'fsockopen('):
     forbid(status + '\n' + ui, outbound, 'no-self-probe-ssrf')
 for write in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'update_option(', 'add_option(', 'delete_option('):
     forbid(ui, write, 'connection-ui-read-only')
-for secret in ('client_secret', 'access_token', 'refresh_token', 'authorization_header', 'raw_token', 'password_hash'):
-    forbid(ui + '\n' + status, secret, 'connection-no-secret-material')
+for secret_key in ("'client_secret'", "'access_token'", "'refresh_token'", "'authorization_header'", "'raw_token'", "'password_hash'"):
+    forbid(ui + '\n' + status, secret_key, 'connection-no-secret-material')
 
 require(ability, "const ABILITY = 'mad4b/connection-status'", 'connection-ability')
 require(ability, "'readonly' => true", 'connection-ability-readonly')
@@ -81,11 +88,14 @@ require(ui, 'add_submenu_page(', 'connection-admin-submenu')
 require(ui, "'manage_options'", 'connection-admin-capability')
 require(ui, 'Read-only transport evidence.', 'connection-admin-disclosure')
 for marker in (
+    'OAuth resource server', 'Bridge configured', 'Bridge effective', 'Issuer configured',
+    'RFC 9728 metadata', 'Authorization-server metadata candidates', 'OAuth blockers',
+    'Outbound discovery on this screen',
     'Provider MCP isolation', 'Production separately approved',
     'Default MCP server suppressed', 'Unknown routes fail closed',
     'Changes provider settings', 'Creates authority', 'Provider MCP routes removed',
 ):
-    require(ui, marker, 'connection-isolation-evidence')
+    require(ui, marker, 'connection-ui-evidence')
 require(bootstrap, 'class-mad4b-scp-transport-context.php', 'transport-context-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-status.php', 'connection-status-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-ability.php', 'connection-ability-bootstrap')
@@ -143,4 +153,4 @@ for bypass in (
 ):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v5: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v6: PASS')
