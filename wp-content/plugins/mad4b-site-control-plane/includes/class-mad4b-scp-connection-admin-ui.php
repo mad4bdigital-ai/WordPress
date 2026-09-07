@@ -57,6 +57,31 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		self::blockers( 'Remote preflight blockers', $status['remote_preflight_blockers'] );
 		self::blockers( 'Certification blockers', $status['certification_blockers'] );
 
+		$oauth = isset( $status['oauth_resource_server'] ) && is_array( $status['oauth_resource_server'] ) ? $status['oauth_resource_server'] : array();
+		echo '<h2>' . esc_html__( 'OAuth resource server', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Local OAuth configuration truth only. No authorization-server discovery request is made by this admin screen.', 'mad4b-site-control-plane' ) . '</p>';
+		self::kv( array(
+			'Bridge available' => ! empty( $oauth['available'] ),
+			'Bridge configured' => ! empty( $oauth['configured'] ),
+			'Bridge effective' => ! empty( $oauth['effective'] ),
+			'Environment' => isset( $oauth['environment'] ) ? $oauth['environment'] : '',
+			'Production separately approved' => ! empty( $oauth['production_approved'] ),
+			'Issuer configured' => ! empty( $oauth['issuer_configured'] ),
+			'Issuer' => isset( $oauth['issuer'] ) ? $oauth['issuer'] : '',
+			'Resource' => isset( $oauth['resource'] ) ? $oauth['resource'] : '',
+			'RFC 9728 metadata' => isset( $oauth['authoritative_metadata_url'] ) ? $oauth['authoritative_metadata_url'] : '',
+			'Scopes' => isset( $oauth['scopes_supported'] ) && is_array( $oauth['scopes_supported'] ) ? implode( ' ', $oauth['scopes_supported'] ) : '',
+			'WordPress subject ID' => isset( $oauth['wp_user_id'] ) ? (int) $oauth['wp_user_id'] : 0,
+			'WordPress subject capable' => ! empty( $oauth['wp_user_capable'] ),
+			'HTTPS binding' => ! empty( $oauth['https'] ),
+			'Bearer algorithms accepted' => isset( $oauth['accepted_bearer_algorithms'] ) && is_array( $oauth['accepted_bearer_algorithms'] ) ? implode( ' ', $oauth['accepted_bearer_algorithms'] ) : '',
+			'JWKS x5c required' => ! empty( $oauth['jwks_x5c_required'] ),
+			'Outbound discovery on this screen' => ! empty( $oauth['outbound_discovery_on_admin'] ),
+			'OAuth local preflight ready' => ! empty( $oauth['preflight_ready'] ),
+		) );
+		self::code_list( 'Authorization-server metadata candidates', isset( $oauth['authorization_server_metadata_urls'] ) ? $oauth['authorization_server_metadata_urls'] : array() );
+		self::blockers( 'OAuth blockers', isset( $oauth['blockers'] ) ? $oauth['blockers'] : array() );
+
 		echo '<h2>' . esc_html__( 'MAD4B MCP endpoints', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<table class="widefat striped"><thead><tr><th>Surface</th><th>Server</th><th>Endpoint</th><th>Registered</th><th>REST route</th><th>Permission binding</th></tr></thead><tbody>';
 		foreach ( $status['servers'] as $server ) {
