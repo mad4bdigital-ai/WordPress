@@ -2,6 +2,9 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit( 1 ); }
 
+// Historical evidence marker for Spec Kit migration tracking only:
+// mad4b.site-control-plane.runtime-mcp-provider-isolation.v1
+
 function mad4b_isolation_fail( $message, $data = null ) {
 	fwrite( STDERR, 'FAIL: ' . $message . ( null !== $data ? ' ' . wp_json_encode( $data ) : '' ) . PHP_EOL );
 	exit( 1 );
