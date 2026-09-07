@@ -66,15 +66,18 @@ for marker in (
 ): require(abilities_contract, marker, 'ability-contract-invariant')
 
 for marker in (
-    'mad4b.connection-readiness.v2', 'Local transport ready', 'Remote endpoint preflight ready',
+    'mad4b.connection-readiness.v3', 'Local transport ready', 'Remote endpoint preflight ready',
     'Connection certified', 'mad4b/connection-status', 'mad4b-write',
     'MAD4B_SCP_Transport_Context', 'different authority coordinates',
     'No self-probe / SSRF boundary', 'Foreign MCP transport governance',
+    'Explicit provider MCP isolation', 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED',
+    'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED', 'unknown_routes_fail_closed=true',
     'mcp_foreign_transport_unreviewed', 'mcp_write_side_channel_detected',
     'Production write remains NO-GO',
 ): require(connection_contract, marker, 'connection-contract-invariant')
 for stale in (
     'Contract: `mad4b.connection-readiness.v1`',
+    'Contract: `mad4b.connection-readiness.v2`',
     'all four MAD4B custom servers',
     'The control plane owns four isolated MCP server IDs',
     'all four runtime-derived MAD4B endpoints',
@@ -127,6 +130,7 @@ implementation_files = {
     'approval': PLUGIN / 'includes/class-mad4b-scp-approval-tickets.php',
     'budgets': PLUGIN / 'includes/class-mad4b-scp-budgets.php',
     'peer': PLUGIN / 'includes/class-mad4b-scp-mcp-peer-governance.php',
+    'isolation': PLUGIN / 'includes/class-mad4b-scp-mcp-provider-isolation.php',
     'transport': PLUGIN / 'includes/class-mad4b-scp-transport-context.php',
     'connection': PLUGIN / 'includes/class-mad4b-scp-connection-status.php',
     'connection_ability': PLUGIN / 'includes/class-mad4b-scp-connection-ability.php',
@@ -165,13 +169,26 @@ if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability'
 require(impl['peer'], 'mcp_write_side_channel_detected', 'implementation-side-channel-blocker')
 require(impl['peer'], 'foreign_transport_inventory', 'implementation-foreign-mcp-inventory')
 require(impl['peer'], 'mcp_foreign_transport_unreviewed', 'implementation-foreign-mcp-blocker')
+for marker in (
+    'mad4b.mcp-provider-isolation.v1',
+    "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'",
+    "add_filter( 'mcp_adapter_create_default_server'",
+    "add_filter( 'rest_endpoints'",
+    "'unknown_routes_fail_closed' => true",
+    "'changes_provider_settings' => false",
+    "'creates_authority' => false",
+): require(impl['isolation'], marker, 'implementation-provider-isolation')
+for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post('):
+    forbid(impl['isolation'], forbidden, 'implementation-provider-isolation-deny-only')
 require(impl['transport'], 'mad4b.mcp-transport-context.v1', 'implementation-transport-context')
 require(impl['transport'], "'/mcp/' . $server_id", 'implementation-transport-exact-route')
 require(impl['transport'], 'mad4b_transport_route_mismatch', 'implementation-transport-route-mismatch')
 require(impl['transport'], 'MAD4B_SCP_Servers::ability_is_mounted', 'implementation-transport-mount-check')
-require(impl['connection'], 'mad4b.connection-readiness.v2', 'implementation-connection-readiness')
+require(impl['connection'], 'mad4b.connection-readiness.v3', 'implementation-connection-readiness')
 require(impl['connection'], "'connection_certified' => false", 'implementation-no-self-certification')
 require(impl['connection'], "'write_surface'", 'implementation-write-readiness')
+require(impl['connection'], "'provider_mcp_isolation'", 'implementation-isolation-readiness')
 require(impl['connection_ability'], "const ABILITY = 'mad4b/connection-status'", 'implementation-connection-ability')
 require(impl['servers'], "'mad4b/runtime-authority-status', 'mad4b/connection-status'", 'implementation-connection-read-server')
 require(impl['servers'], "'mad4b-write'", 'implementation-write-server')
@@ -182,6 +199,8 @@ require(impl['servers'], "array( __CLASS__, 'can_write_transport' )", 'implement
 require(impl['connection_admin'], "'manage_options'", 'implementation-connection-admin-capability')
 require(impl['connection_admin'], 'Governed write ingress', 'implementation-write-readiness-ui')
 require(impl['connection_admin'], 'Exact transport grant required', 'implementation-write-grant-ui')
+require(impl['connection_admin'], 'Provider MCP isolation', 'implementation-provider-isolation-ui')
+require(impl['connection_admin'], 'Unknown routes fail closed', 'implementation-provider-isolation-fail-closed-ui')
 for forbidden in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'wp_remote_get(', 'wp_remote_post(', 'wp_remote_request('):
     forbid(impl['connection_admin'] + '\n' + impl['connection'], forbidden, 'connection-surface-read-only')
 require(impl['mutation'], 'mad4b_undo_state_drift', 'implementation-drift-safe-undo')
@@ -226,15 +245,22 @@ adapter_static = PLUGIN / 'tests/adapter-discovery-reversibility-contract.py'
 adapter_runtime = PLUGIN / 'tests/runtime-plugin-adapter-discovery-smoke.php'
 adapter_reversible_runtime = PLUGIN / 'tests/runtime-reversible-adapter-smoke.php'
 jetengine_runtime = PLUGIN / 'tests/runtime-jetengine-reversible-adapter-smoke.php'
+isolation_static = PLUGIN / 'tests/mcp-provider-isolation-contract.py'
+isolation_runtime = PLUGIN / 'tests/runtime-mcp-provider-isolation-smoke.php'
 adapter_workflow = REPO / '.github/workflows/mad4b-adapter-coverage.yml'
-for path in (adapter_static, adapter_runtime, adapter_reversible_runtime, jetengine_runtime, adapter_workflow):
-    if not path.is_file(): raise SystemExit(f'FAIL adapter-evidence-file: missing {path.relative_to(REPO)}')
+connection_workflow = REPO / '.github/workflows/mad4b-connection-governance.yml'
+for path in (adapter_static, adapter_runtime, adapter_reversible_runtime, jetengine_runtime, isolation_static, isolation_runtime, adapter_workflow, connection_workflow):
+    if not path.is_file(): raise SystemExit(f'FAIL evidence-file: missing {path.relative_to(REPO)}')
 require(read(adapter_static), 'mad4b.site-control-plane.adapter-discovery-reversibility.v2', 'adapter-static-v2')
 require(read(adapter_runtime), 'mad4b.site-control-plane.runtime-plugin-adapter-discovery.v1', 'adapter-discovery-runtime')
 require(read(adapter_reversible_runtime), 'mad4b.site-control-plane.runtime-reversible-adapter.v1', 'adapter-reversible-runtime')
 require(read(jetengine_runtime), 'mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1', 'jetengine-side-channel-runtime')
+require(read(isolation_static), 'mad4b.site-control-plane.mcp-provider-isolation-contract.v1', 'provider-isolation-static')
+require(read(isolation_runtime), 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v1', 'provider-isolation-runtime')
 for marker in ('Repository plugin adapter coverage contract', 'Core adapter runtime', 'JetEngine adapter boundary'):
     require(read(adapter_workflow), marker, 'adapter-coverage-workflow')
+for marker in ('Prove explicit provider MCP isolation remains deny-only', 'mcp-provider-isolation-contract.py'):
+    require(read(connection_workflow), marker, 'connection-isolation-workflow')
 
 require(tasks, '- [x] T006 Dedicated `MAD4B Spec Consistency` CI', 'tasks-spec-gate-complete')
 require(tasks, 'c2d7ba3d900097be35b6d2311f603a0c77f2d338', 'tasks-admin-runtime-checkpoint')
@@ -242,4 +268,4 @@ require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-run
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v5: PASS')
+print('mad4b.site-control-plane.spec-consistency.v6: PASS')
