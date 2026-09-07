@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Read-only local truth for MAD4B MCP connection readiness. */
 final class MAD4B_SCP_Connection_Status {
-	const CONTRACT = 'mad4b.connection-readiness.v2';
+	const CONTRACT = 'mad4b.connection-readiness.v3';
 
 	public static function status() {
 		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
@@ -27,6 +27,7 @@ final class MAD4B_SCP_Connection_Status {
 		}
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
+		$isolation = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) ? MAD4B_SCP_MCP_Provider_Isolation::status() : array( 'configured' => false, 'effective' => false );
 
 		$local_blockers = array();
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
@@ -63,6 +64,7 @@ final class MAD4B_SCP_Connection_Status {
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
 			'write_surface' => self::write_surface_summary( $servers ),
+			'provider_mcp_isolation' => self::bounded_isolation_status( $isolation ),
 			'authentication' => array(
 				'transport_model' => 'wordpress-authenticated-request-plus-server-bound-mad4b-transport-context',
 				'credential_material_exposed' => false,
@@ -172,6 +174,24 @@ final class MAD4B_SCP_Connection_Status {
 			'subject_fingerprint_present' => ! empty( $identity['subject_fingerprint'] ),
 			'token_scope_count' => isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? count( $identity['token_scopes'] ) : 0,
 			'error' => '',
+		);
+	}
+
+	private static function bounded_isolation_status( $status ) {
+		if ( ! is_array( $status ) ) $status = array();
+		$routes = isset( $status['removed_routes'] ) && is_array( $status['removed_routes'] ) ? $status['removed_routes'] : array();
+		return array(
+			'contract' => isset( $status['contract'] ) ? sanitize_text_field( (string) $status['contract'] ) : '',
+			'configured' => ! empty( $status['configured'] ),
+			'effective' => ! empty( $status['effective'] ),
+			'environment' => isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : '',
+			'production_approved' => ! empty( $status['production_approved'] ),
+			'default_server_suppressed' => ! empty( $status['default_server_suppressed'] ),
+			'removed_route_count' => isset( $status['removed_route_count'] ) ? (int) $status['removed_route_count'] : 0,
+			'removed_routes' => array_slice( array_map( 'sanitize_text_field', $routes ), 0, 100 ),
+			'unknown_routes_fail_closed' => ! empty( $status['unknown_routes_fail_closed'] ),
+			'changes_provider_settings' => ! empty( $status['changes_provider_settings'] ),
+			'creates_authority' => ! empty( $status['creates_authority'] ),
 		);
 	}
 
