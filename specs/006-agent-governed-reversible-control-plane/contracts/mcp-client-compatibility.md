@@ -75,7 +75,7 @@ Registry bounds:
 
 Read-only endpoint:
 
-`/wp-json/mad4b/v1/mcp-client-compatibility`
+`/wp-json/mad4b/v1/client-compatibility`
 
 It exposes protocol/auth/discovery/profile hints only. It creates no credential, session, NHI, grant, approval, mutation, or Breakglass authority.
 
