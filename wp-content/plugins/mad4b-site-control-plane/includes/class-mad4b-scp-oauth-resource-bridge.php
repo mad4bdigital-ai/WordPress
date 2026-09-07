@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * context. Raw bearer tokens are never persisted or logged.
  */
 final class MAD4B_SCP_OAuth_Resource_Bridge {
-	const CONTRACT = 'mad4b.oauth-resource-bridge.v1';
+	const CONTRACT = 'mad4b.oauth-resource-bridge.v2';
 	const READ_SCOPE = 'mad4b:read';
 	const METADATA_NAMESPACE = 'mad4b/v1';
 	const METADATA_ROUTE = '/oauth-protected-resource';
@@ -78,10 +78,14 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'issuer_configured' => '' !== $issuer,
 			'resource' => self::resource_identifier(),
 			'metadata_url' => self::metadata_url(),
+			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
 			'scopes_supported' => array( self::READ_SCOPE ),
 			'wp_user_id' => $user_id,
 			'wp_user_capable' => (bool) $user_capable,
 			'https' => $https,
+			'accepted_bearer_algorithms' => array( 'RS256' ),
+			'jwks_x5c_required' => false,
+			'jwks_rsa_ne_supported' => true,
 			'stores_bearer_tokens' => false,
 			'creates_credentials' => false,
 			'outbound_discovery_on_admin' => false,
@@ -106,6 +110,31 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return untrailingslashit( rest_url( self::METADATA_NAMESPACE . self::METADATA_ROUTE ) );
 	}
 
+	/**
+	 * Return standards-first authorization-server discovery candidates.
+	 *
+	 * RFC 8414 path-scoped issuers place the well-known component immediately
+	 * after the origin and append the issuer path. OIDC discovery keeps the
+	 * well-known component after the issuer path. A bounded legacy RFC 8414
+	 * candidate is retained last for pre-existing deployments only.
+	 */
+	public static function authorization_server_metadata_urls() {
+		$issuer = self::configured_issuer();
+		if ( '' === $issuer ) return array();
+		$parts = wp_parse_url( $issuer );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return array();
+		$origin = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );
+		if ( isset( $parts['port'] ) ) $origin .= ':' . (int) $parts['port'];
+		$issuer_path = isset( $parts['path'] ) ? '/' . ltrim( rtrim( (string) $parts['path'], '/' ), '/' ) : '';
+		if ( '/' === $issuer_path ) $issuer_path = '';
+		$documents = array(
+			$issuer . '/.well-known/openid-configuration',
+			$origin . '/.well-known/oauth-authorization-server' . $issuer_path,
+			$issuer . '/.well-known/oauth-authorization-server',
+		);
+		return array_values( array_unique( array_map( 'esc_url_raw', $documents ) ) );
+	}
+
 	public static function authenticate_rest_request( $result, $server, $request ) {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
@@ -121,8 +150,6 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) {
-			// Preserve ordinary authenticated WordPress administrator access for local
-			// diagnostics while requiring OAuth for anonymous remote MCP requests.
 			if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) return $result;
 			return self::unauthorized_response( 'mad4b_oauth_bearer_required', 'OAuth bearer token is required for remote MAD4B read transport.' );
 		}
@@ -159,7 +186,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	public static function challenge_header() {
-		return 'Bearer resource_metadata="' . esc_url_raw( self::metadata_url() ) . '", scope="' . self::READ_SCOPE . '"';
+		$metadata = class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url() : self::metadata_url();
+		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . self::READ_SCOPE . '"';
 	}
 
 	private static function unauthorized_response( $code, $message, $status = 401 ) {
@@ -203,9 +231,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( is_wp_error( $jwks ) ) return $jwks;
 		$key = self::matching_jwk( $jwks, $kid );
 		if ( is_wp_error( $key ) ) return $key;
-		if ( empty( $key['x5c'][0] ) || ! is_string( $key['x5c'][0] ) ) return new WP_Error( 'mad4b_oauth_jwk_x5c_required', 'JWKS signing key must provide an x5c certificate chain.' );
-		$certificate = "-----BEGIN CERTIFICATE-----\n" . chunk_split( preg_replace( '/\s+/', '', $key['x5c'][0] ), 64, "\n" ) . "-----END CERTIFICATE-----\n";
-		$verified = openssl_verify( $parts[0] . '.' . $parts[1], $signature, $certificate, OPENSSL_ALGO_SHA256 );
+		$public_key = self::public_key_from_jwk( $key );
+		if ( is_wp_error( $public_key ) ) return $public_key;
+		$verified = openssl_verify( $parts[0] . '.' . $parts[1], $signature, $public_key, OPENSSL_ALGO_SHA256 );
 		if ( 1 !== $verified ) return new WP_Error( 'mad4b_oauth_jwt_signature_invalid', 'JWT signature verification failed.' );
 
 		return self::validate_claims( $claims );
@@ -260,8 +288,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) return $cached;
 
-		$documents = array( $issuer . '/.well-known/openid-configuration', $issuer . '/.well-known/oauth-authorization-server' );
-		foreach ( $documents as $url ) {
+		foreach ( self::authorization_server_metadata_urls() as $url ) {
 			$response = wp_safe_remote_get( $url, array( 'timeout' => 5, 'redirection' => 2, 'headers' => array( 'Accept' => 'application/json' ) ) );
 			if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) continue;
 			$metadata = json_decode( (string) wp_remote_retrieve_body( $response ), true );
@@ -304,6 +331,42 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			return $key;
 		}
 		return new WP_Error( 'mad4b_oauth_jwk_not_found', 'JWT signing key was not found for kid.' );
+	}
+
+	private static function public_key_from_jwk( array $key ) {
+		if ( ! empty( $key['x5c'][0] ) && is_string( $key['x5c'][0] ) ) {
+			return "-----BEGIN CERTIFICATE-----\n" . chunk_split( preg_replace( '/\s+/', '', $key['x5c'][0] ), 64, "\n" ) . "-----END CERTIFICATE-----\n";
+		}
+		if ( empty( $key['n'] ) || empty( $key['e'] ) || ! is_string( $key['n'] ) || ! is_string( $key['e'] ) ) {
+			return new WP_Error( 'mad4b_oauth_jwk_material_missing', 'RSA JWKS signing key must provide x5c or n/e public-key material.' );
+		}
+		$modulus = self::base64url_decode( $key['n'] );
+		$exponent = self::base64url_decode( $key['e'] );
+		if ( false === $modulus || false === $exponent || '' === $modulus || '' === $exponent ) return new WP_Error( 'mad4b_oauth_jwk_material_invalid', 'RSA JWK n/e material is invalid.' );
+		$rsa = self::asn1_sequence( self::asn1_integer( $modulus ) . self::asn1_integer( $exponent ) );
+		$rsa_algorithm = hex2bin( '300d06092a864886f70d0101010500' );
+		if ( false === $rsa_algorithm ) return new WP_Error( 'mad4b_oauth_jwk_material_invalid', 'RSA algorithm identifier is unavailable.' );
+		$subject_public_key = self::asn1_sequence( $rsa_algorithm . "\x03" . self::asn1_length( strlen( $rsa ) + 1 ) . "\x00" . $rsa );
+		return "-----BEGIN PUBLIC KEY-----\n" . chunk_split( base64_encode( $subject_public_key ), 64, "\n" ) . "-----END PUBLIC KEY-----\n";
+	}
+
+	private static function asn1_integer( $bytes ) {
+		$bytes = ltrim( (string) $bytes, "\x00" );
+		if ( '' === $bytes ) $bytes = "\x00";
+		if ( ord( $bytes[0] ) & 0x80 ) $bytes = "\x00" . $bytes;
+		return "\x02" . self::asn1_length( strlen( $bytes ) ) . $bytes;
+	}
+
+	private static function asn1_sequence( $bytes ) {
+		return "\x30" . self::asn1_length( strlen( $bytes ) ) . $bytes;
+	}
+
+	private static function asn1_length( $length ) {
+		$length = (int) $length;
+		if ( $length < 128 ) return chr( $length );
+		$encoded = '';
+		while ( $length > 0 ) { $encoded = chr( $length & 0xff ) . $encoded; $length >>= 8; }
+		return chr( 0x80 | strlen( $encoded ) ) . $encoded;
 	}
 
 	private static function configured_issuer() {
