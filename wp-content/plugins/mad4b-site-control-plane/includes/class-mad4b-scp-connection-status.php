@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /** Read-only local truth for MAD4B MCP connection readiness. */
 final class MAD4B_SCP_Connection_Status {
-	const CONTRACT = 'mad4b.connection-readiness.v3';
+	const CONTRACT = 'mad4b.connection-readiness.v4';
 
 	public static function status() {
 		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
@@ -28,6 +28,8 @@ final class MAD4B_SCP_Connection_Status {
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
 		$isolation = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) ? MAD4B_SCP_MCP_Provider_Isolation::status() : array( 'configured' => false, 'effective' => false );
+		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array( 'available' => false );
+		$oauth_blockers = self::oauth_preflight_blockers( $oauth );
 
 		$local_blockers = array();
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
@@ -38,9 +40,9 @@ final class MAD4B_SCP_Connection_Status {
 		if ( ! empty( $peer['blockers'] ) && is_array( $peer['blockers'] ) ) $local_blockers = array_merge( $local_blockers, $peer['blockers'] );
 		$local_blockers = array_values( array_unique( array_map( 'sanitize_key', $local_blockers ) ) );
 
-		$remote_preflight_blockers = $local_blockers;
+		$remote_preflight_blockers = array_merge( $local_blockers, $oauth_blockers );
 		if ( ! $https ) $remote_preflight_blockers[] = 'https_required_for_remote_mcp';
-		$remote_preflight_blockers = array_values( array_unique( $remote_preflight_blockers ) );
+		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
 		$certification_blockers = array_values( array_unique( array_merge( $remote_preflight_blockers, array( 'external_handshake_unverified' ) ) ) );
 
 		return array(
@@ -65,6 +67,7 @@ final class MAD4B_SCP_Connection_Status {
 			'servers' => $servers,
 			'write_surface' => self::write_surface_summary( $servers ),
 			'provider_mcp_isolation' => self::bounded_isolation_status( $isolation ),
+			'oauth_resource_server' => self::bounded_oauth_status( $oauth, $oauth_blockers ),
 			'authentication' => array(
 				'transport_model' => 'wordpress-authenticated-request-plus-server-bound-mad4b-transport-context',
 				'credential_material_exposed' => false,
@@ -74,14 +77,60 @@ final class MAD4B_SCP_Connection_Status {
 			),
 			'external_handshake' => array(
 				'verified' => false,
-				'status' => 'requires_real_remote_mcp_session',
-				'note' => 'Local readiness never certifies Internet reachability, OAuth/Application Password behavior, MCP session establishment, or the remote subject bridge.',
+				'status' => empty( $remote_preflight_blockers ) ? 'requires_real_remote_mcp_session' : 'local_remote_preflight_incomplete',
+				'note' => 'Local readiness never certifies Internet reachability, authorization-server conformance, OAuth client registration, MCP session establishment, or the remote subject bridge.',
 			),
 			'mcp_peer_governance' => self::bounded_peer_summary( $peer ),
 			'breakglass' => array(
 				'configured_enabled' => defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ),
 				'effective_for_current_request' => class_exists( 'MAD4B_SCP_Policy' ) ? (bool) MAD4B_SCP_Policy::can_breakglass() : false,
 			),
+		);
+	}
+
+	private static function oauth_preflight_blockers( $oauth ) {
+		if ( ! is_array( $oauth ) || isset( $oauth['available'] ) && false === $oauth['available'] ) return array( 'oauth_resource_bridge_unavailable' );
+		$blockers = array();
+		if ( empty( $oauth['configured'] ) ) $blockers[] = 'oauth_resource_bridge_not_configured';
+		if ( empty( $oauth['issuer_configured'] ) ) $blockers[] = 'oauth_issuer_unconfigured';
+		if ( empty( $oauth['wp_user_id'] ) ) $blockers[] = 'oauth_wp_subject_unconfigured';
+		elseif ( empty( $oauth['wp_user_capable'] ) ) $blockers[] = 'oauth_wp_subject_invalid';
+		if ( empty( $oauth['https'] ) ) $blockers[] = 'oauth_https_required';
+		$env = isset( $oauth['environment'] ) ? sanitize_key( (string) $oauth['environment'] ) : '';
+		$environment_allowed = 'staging' === $env || ( 'production' === $env && ! empty( $oauth['production_approved'] ) );
+		if ( ! $environment_allowed ) $blockers[] = 'oauth_environment_not_allowed';
+		if ( empty( $oauth['effective'] ) && ! $blockers ) $blockers[] = 'oauth_resource_bridge_not_effective';
+		return array_values( array_unique( $blockers ) );
+	}
+
+	private static function bounded_oauth_status( $oauth, array $blockers ) {
+		if ( ! is_array( $oauth ) ) $oauth = array();
+		$authoritative_metadata = class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url() : '';
+		$metadata_candidates = isset( $oauth['authorization_server_metadata_urls'] ) && is_array( $oauth['authorization_server_metadata_urls'] ) ? array_slice( array_map( 'esc_url_raw', $oauth['authorization_server_metadata_urls'] ), 0, 4 ) : array();
+		return array(
+			'contract' => isset( $oauth['contract'] ) ? sanitize_text_field( (string) $oauth['contract'] ) : '',
+			'available' => ! isset( $oauth['available'] ) || false !== $oauth['available'],
+			'configured' => ! empty( $oauth['configured'] ),
+			'effective' => ! empty( $oauth['effective'] ),
+			'environment' => isset( $oauth['environment'] ) ? sanitize_key( (string) $oauth['environment'] ) : '',
+			'production_approved' => ! empty( $oauth['production_approved'] ),
+			'issuer' => isset( $oauth['issuer'] ) ? esc_url_raw( (string) $oauth['issuer'] ) : '',
+			'issuer_configured' => ! empty( $oauth['issuer_configured'] ),
+			'resource' => isset( $oauth['resource'] ) ? esc_url_raw( (string) $oauth['resource'] ) : '',
+			'authoritative_metadata_url' => esc_url_raw( $authoritative_metadata ),
+			'authorization_server_metadata_urls' => $metadata_candidates,
+			'scopes_supported' => isset( $oauth['scopes_supported'] ) && is_array( $oauth['scopes_supported'] ) ? array_slice( array_map( 'sanitize_text_field', $oauth['scopes_supported'] ), 0, 20 ) : array(),
+			'wp_user_id' => isset( $oauth['wp_user_id'] ) ? absint( $oauth['wp_user_id'] ) : 0,
+			'wp_user_capable' => ! empty( $oauth['wp_user_capable'] ),
+			'https' => ! empty( $oauth['https'] ),
+			'accepted_access_token_algorithms' => array( 'RS256' ),
+			'jwks_x5c_required' => true,
+			'outbound_discovery_on_admin' => false,
+			'stores_bearer_tokens' => ! empty( $oauth['stores_bearer_tokens'] ),
+			'creates_credentials' => ! empty( $oauth['creates_credentials'] ),
+			'write_surfaces_enabled' => ! empty( $oauth['write_surfaces_enabled'] ),
+			'preflight_ready' => empty( $blockers ),
+			'blockers' => array_values( array_map( 'sanitize_key', $blockers ) ),
 		);
 	}
 
