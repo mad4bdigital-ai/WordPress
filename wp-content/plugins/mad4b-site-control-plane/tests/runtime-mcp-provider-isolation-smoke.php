@@ -17,19 +17,9 @@ if ( ! MAD4B_SCP_MCP_Provider_Isolation::effective() ) {
 	mad4b_isolation_fail( 'Provider MCP isolation should be effective on staging.' );
 }
 
-// Recreate the exact callback identities observed on live Staging without
-// installing or mutating the provider plugins themselves.
-if ( ! class_exists( 'Hostinger\\AiAssistant\\Mcp\\McpServer' ) ) {
-	eval( 'namespace Hostinger\\AiAssistant\\Mcp; class McpServer { public function create_server( $adapter = null ) { $GLOBALS["mad4b_hostinger_callback_hit"] = true; } }' );
-}
-if ( ! class_exists( 'ElementsKit_Lite\\Mcp\\Server' ) ) {
-	eval( 'namespace ElementsKit_Lite\\Mcp; class Server { public function register_server( $adapter = null ) { $GLOBALS["mad4b_elementskit_callback_hit"] = true; } }' );
-}
-if ( ! class_exists( 'MAD4B_Isolation_Unknown_Server_Callback' ) ) {
-	class MAD4B_Isolation_Unknown_Server_Callback {
-		public function register_server( $adapter = null ) { $GLOBALS['mad4b_unknown_callback_hit'] = true; }
-	}
-}
+// Load test-only class declarations carrying the exact callback identities
+// observed on live Staging. No provider code or arbitrary execution primitive is used.
+require_once __DIR__ . '/fixtures/provider-mcp-registration-callbacks.php';
 
 $hostinger = new \Hostinger\AiAssistant\Mcp\McpServer();
 $elementskit = new \ElementsKit_Lite\Mcp\Server();
