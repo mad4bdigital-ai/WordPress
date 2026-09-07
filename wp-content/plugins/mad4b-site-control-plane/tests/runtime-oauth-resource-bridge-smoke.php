@@ -2,6 +2,9 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit( 1 ); }
 
+$_SERVER['HTTPS'] = 'on';
+$_SERVER['SERVER_PORT'] = '443';
+
 function mad4b_oauth_smoke_fail( $message, $data = null ) {
 	fwrite( STDERR, 'FAIL: ' . $message . ( null !== $data ? ' ' . wp_json_encode( $data ) : '' ) . PHP_EOL );
 	exit( 1 );
