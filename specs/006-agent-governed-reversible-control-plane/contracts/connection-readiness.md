@@ -120,6 +120,8 @@ An independent product such as miniOrange Secure MCP Server may be useful for ot
 
 Provider-native MCP/AI surfaces can coexist with otherwise required WordPress plugins. MAD4B therefore supports a bounded **deny-only provider isolation mode** rather than requiring the whole provider plugin to be disabled.
 
+The current implementation contract is `mad4b.mcp-provider-isolation.v2`.
+
 The isolation layer is subject to all of the following requirements:
 
 - it is **OFF by default**;
@@ -127,24 +129,55 @@ The isolation layer is subject to all of the following requirements:
 - Production remains ineffective unless the separate `MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED === true` gate is also present;
 - it suppresses the generic official MCP Adapter default server while effective, leaving the five explicit MAD4B servers as the intended Adapter surfaces;
 - it removes only exact, bounded provider MCP/control routes encoded in the certified descriptor set;
+- it may suppress a provider custom MCP server registration only when the exact reviewed callback class and method match the certified server-registration descriptor;
+- it MUST NOT mutate the MCP Adapter private server registry, use reflection to delete an already-created server, or convert an unknown callback into an allowed peer;
+- if a reviewed provider server is already registered before the suppression guard can act, peer governance MUST continue to see it and `mcp_write_side_channel_detected` remains blocking;
 - it does not modify provider options/settings, credentials, NHI records, grants, approvals or mutation switches;
+- it does not deactivate or uninstall the provider plugin;
 - it performs no outbound request;
 - it is a deny/isolation list, never an allowlist for provider authority;
-- unknown or future MCP-looking routes are deliberately untouched and therefore remain visible to foreign-transport inventory and continue to fail governed mutation closed.
+- unknown or future MCP-looking routes and unknown server-registration callbacks are deliberately untouched and therefore remain visible/blocking.
 
-The initial certified descriptor families cover exact MCP/control surfaces for Fluent Forms, JetEngine, UAE/HFE and ElementsKit. A descriptor match only authorizes **removal of that route from the REST endpoint table**; it does not certify the provider itself as writable through MAD4B.
+### 7.1 Exact live-proven server-registration isolation
+
+Live Staging evidence identified two custom servers in the official Adapter registry outside MAD4B:
+
+- `hostinger-ai-assistant-mcp-server`, registered by `Hostinger\AiAssistant\Mcp\McpServer::create_server`;
+- `elementskit-mcp-server`, registered by `ElementsKit_Lite\Mcp\Server::register_server`.
+
+The v2 isolation descriptor set may remove those exact `mcp_adapter_init` callbacks while isolation is effective. Matching is by exact class and method identity, not server-name substring, namespace prefix, plugin basename guess, or wildcard.
+
+The suppression guard MUST run before the official Adapter initialization point used by REST and WP-CLI and MAY run defensively at an early `mcp_adapter_init` priority. It MUST leave any non-matching callback registered.
+
+### 7.2 Hostinger MCP credential-control boundary
+
+The Hostinger AI Assistant MCP implementation has an authority bundle beyond its `/mcp` transport: it exposes JWT token creation/revocation endpoints used by that independent transport. Under MAD4B provider isolation the reviewed Hostinger MCP bundle therefore includes exact removal of:
+
+- `/hostinger-ai-assistant/v1/mcp`;
+- `/hostinger-ai-assistant/v1/jwt/token`;
+- `/hostinger-ai-assistant/v1/jwt/revoke`.
+
+Removing only the MCP route while leaving a credential-creation control surface would not satisfy C1/C11. These descriptors authorize route removal only; MAD4B does not create, revoke, inspect or migrate Hostinger JWTs.
+
+### 7.3 Other reviewed route families
+
+The bounded route descriptor families continue to cover reviewed MCP/control surfaces for Fluent Forms, JetEngine, UAE/HFE and ElementsKit, including the ElementsKit dedicated `/elementskit/mcp` transport and its `/elementskit/v1/mcp-proxy` execution surface. A descriptor match only authorizes **removal of that route from the REST endpoint table**; it does not certify the provider itself as writable through MAD4B.
 
 `MAD4B_SCP_MCP_Provider_Isolation::status()` MUST expose bounded non-secret evidence including:
 
 - configured/effective state;
 - environment and separate Production approval state;
 - whether the default Adapter server is suppressed;
+- whether server-registration suppression was attempted;
+- bounded suppressed-server count/IDs/callback identities;
 - bounded removed-route count/list;
 - `unknown_routes_fail_closed=true`;
+- `unknown_server_callbacks_fail_closed=true`;
 - `changes_provider_settings=false`;
+- `disables_provider_plugins=false`;
 - `creates_authority=false`.
 
-A provider route not covered by the exact descriptor set remains a blocker. In particular, independent third-party MCP servers are not silently absorbed into this mechanism merely because they contain `mcp` in the path.
+A provider route or server callback not covered by the exact descriptor set remains a blocker. Independent third-party MCP servers are not silently absorbed into this mechanism merely because they contain `mcp` in a path, class or server ID.
 
 ## 8. Admin UX
 
@@ -161,7 +194,7 @@ It displays:
 - non-sensitive current request subject facts;
 - explicit external-handshake-unverified state;
 - provider MCP isolation configured/effective/default-server/removed-route evidence;
-- official Adapter peer status;
+- official Adapter peer status, including bounded external peer identities/risk reasons;
 - foreign MCP route/plugin evidence;
 - Breakglass configured/effective status.
 
@@ -183,7 +216,10 @@ Repository CI MUST prove on WordPress 6.9 and current latest at minimum:
 - the foreign-MCP and namespace-index-hijack blockers continue to pass;
 - provider isolation is ineffective by default;
 - explicit Staging isolation suppresses only the certified provider routes and default Adapter server;
+- exact Hostinger and ElementsKit custom-server registration callbacks are suppressed while non-matching callbacks remain registered;
+- Hostinger MCP transport and JWT credential-control routes are absent while isolation is effective;
 - an unknown MCP-looking route remains visible and keeps mutation fail-closed even when isolation is enabled;
+- an unknown custom-server callback is not silently removed;
 - Production isolation remains ineffective without its second explicit approval gate.
 
 Repository success certifies the implementation contract only. It does not prove a remote write connection on the target site.
@@ -202,6 +238,8 @@ T103 remains incomplete until a separate WordPress Staging target proves at mini
 - authenticated transport subject resolves through the MAD4B subject bridge;
 - a write request proves the effective exact grant is bound to `mad4b-write`, not to an alternate specialist server;
 - provider isolation evidence is effective where intentionally configured and the removed routes match the target's known provider MCP surfaces;
+- the official Adapter inventory contains only the five intended MAD4B servers after isolation; in particular `hostinger-ai-assistant-mcp-server` and `elementskit-mcp-server` are absent;
+- Hostinger MCP JWT token/revoke controls are absent from the isolated Staging REST surface;
 - no unreviewed foreign MCP write transport remains after isolation;
 - a deliberately unknown MCP route still produces the fail-closed blocker during negative certification;
 - the existing T103 governed mutation/undo/drift/budget/audit scenarios pass.
