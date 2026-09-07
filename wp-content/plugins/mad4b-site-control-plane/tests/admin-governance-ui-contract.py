@@ -40,6 +40,16 @@ require(admin, 'Read-only governance and runtime evidence.', 'read-only-disclosu
 require(bootstrap, "class-mad4b-scp-admin-ui.php", 'bootstrap-load')
 require(plugin, 'MAD4B_SCP_Admin_UI::boot()', 'plugin-boot')
 
+# wp-admin does not naturally run rest_api_init. The Control Plane primes the
+# local in-memory REST/MCP registry before rendering readiness snapshots so the
+# server/permission evidence is from the same initialized request state.
+require(plugin, "add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 )", 'admin-mcp-prime-hook')
+require(plugin, 'public static function prime_admin_mcp_runtime()', 'admin-mcp-prime-method')
+require(plugin, "0 !== strpos( $page, 'mad4b-control-plane' )", 'admin-mcp-prime-scope')
+require(plugin, 'rest_get_server();', 'admin-mcp-local-rest-bootstrap')
+for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_safe_remote_get(', 'wp_safe_remote_post('):
+    forbid(plugin, outbound, 'admin-mcp-no-outbound-probe')
+
 # This first UI slice is visibility only. No admin mutation primitive may be added here.
 for forbidden_write in (
     '$_POST', 'admin_post_', 'check_admin_referer(', 'wp_nonce_field(',
@@ -56,4 +66,4 @@ for forbidden_sensitive in (
 ):
     forbid(admin, forbidden_sensitive, 'admin-ui-no-sensitive-fields')
 
-print('mad4b.site-control-plane.admin-governance-ui-contract.v2: PASS')
+print('mad4b.site-control-plane.admin-governance-ui-contract.v3: PASS')
