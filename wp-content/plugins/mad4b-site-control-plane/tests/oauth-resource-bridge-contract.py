@@ -3,6 +3,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 bridge = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
+alignment = (root / 'includes' / 'class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
@@ -38,6 +39,18 @@ for marker in required:
     if marker not in bridge:
         raise SystemExit(f"missing OAuth bridge marker: {marker}")
 
+alignment_required = [
+    "mad4b.oauth-challenge-alignment.v1",
+    "rest_post_dispatch",
+    "/mcp/mad4b-read",
+    "resource_metadata=",
+    "authoritative_well_known_url",
+    "MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE",
+]
+for marker in alignment_required:
+    if marker not in alignment:
+        raise SystemExit(f"missing OAuth challenge alignment marker: {marker}")
+
 for forbidden in [
     "update_option(",
     "add_option(",
@@ -51,10 +64,16 @@ for forbidden in [
 ]:
     if forbidden in bridge:
         raise SystemExit(f"forbidden OAuth bridge primitive: {forbidden}")
+    if forbidden in alignment:
+        raise SystemExit(f"forbidden OAuth challenge alignment primitive: {forbidden}")
 
 if "class-mad4b-scp-oauth-resource-bridge.php" not in main:
     raise SystemExit("main plugin does not load OAuth resource bridge")
+if "class-mad4b-scp-oauth-challenge-alignment.php" not in main:
+    raise SystemExit("main plugin does not load OAuth challenge alignment")
 if "MAD4B_SCP_OAuth_Resource_Bridge::boot()" not in plugin:
     raise SystemExit("plugin boot does not initialize OAuth resource bridge")
+if "MAD4B_SCP_OAuth_Challenge_Alignment::boot()" not in plugin:
+    raise SystemExit("plugin boot does not initialize OAuth challenge alignment")
 
 print('mad4b.site-control-plane.oauth-resource-bridge.v1: PASS')
