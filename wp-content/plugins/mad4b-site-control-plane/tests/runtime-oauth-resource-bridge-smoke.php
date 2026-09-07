@@ -23,6 +23,9 @@ function mad4b_oauth_request( $token = '' ) {
 	return $request;
 }
 function mad4b_oauth_status_code( $value ) { return $value instanceof WP_REST_Response ? $value->get_status() : 0; }
+function mad4b_oauth_http_response( $code, $body ) {
+	return array( 'headers' => array(), 'body' => is_string( $body ) ? $body : wp_json_encode( $body ), 'response' => array( 'code' => $code, 'message' => 200 === $code ? 'OK' : 'Not Found' ), 'cookies' => array(), 'filename' => null );
+}
 
 if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) mad4b_oauth_smoke_fail( 'OAuth resource bridge class unavailable.' );
 if ( ! defined( 'MAD4B_MCP_OAUTH_ENABLED' ) || true !== MAD4B_MCP_OAUTH_ENABLED ) mad4b_oauth_smoke_fail( 'OAuth test requires enabled bridge.' );
@@ -34,35 +37,44 @@ if ( empty( $status['effective'] ) || 'staging' !== $status['environment'] ) mad
 if ( 'https' !== wp_parse_url( $status['resource'], PHP_URL_SCHEME ) ) mad4b_oauth_smoke_fail( 'OAuth resource must be HTTPS.', $status );
 if ( array( 'mad4b:read' ) !== $status['scopes_supported'] ) mad4b_oauth_smoke_fail( 'Unexpected OAuth scope contract.', $status );
 if ( ! empty( $status['stores_bearer_tokens'] ) || ! empty( $status['creates_credentials'] ) || ! empty( $status['write_surfaces_enabled'] ) ) mad4b_oauth_smoke_fail( 'OAuth bridge safety claims invalid.', $status );
+if ( array( 'RS256' ) !== $status['accepted_bearer_algorithms'] || empty( $status['jwks_rsa_ne_supported'] ) || ! empty( $status['jwks_x5c_required'] ) ) mad4b_oauth_smoke_fail( 'OAuth JWKS compatibility truth is invalid.', $status );
+
+$issuer = rtrim( (string) MAD4B_MCP_OAUTH_ISSUER, '/' );
+$issuer_parts = wp_parse_url( $issuer );
+$issuer_origin = $issuer_parts['scheme'] . '://' . $issuer_parts['host'];
+$rfc8414 = $issuer_origin . '/.well-known/oauth-authorization-server' . ( isset( $issuer_parts['path'] ) ? $issuer_parts['path'] : '' );
+$documents = MAD4B_SCP_OAuth_Resource_Bridge::authorization_server_metadata_urls();
+if ( ! in_array( $rfc8414, $documents, true ) ) mad4b_oauth_smoke_fail( 'RFC 8414 path-scoped issuer metadata candidate missing.', $documents );
 
 $private_key = openssl_pkey_new( array( 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048 ) );
 if ( false === $private_key ) mad4b_oauth_smoke_fail( 'Unable to create RSA key.' );
-$csr = openssl_csr_new( array( 'commonName' => 'auth.mad4b.test' ), $private_key, array( 'digest_alg' => 'sha256' ) );
-$cert = openssl_csr_sign( $csr, null, $private_key, 2, array( 'digest_alg' => 'sha256' ) );
-$pem = '';
-if ( ! openssl_x509_export( $cert, $pem ) ) mad4b_oauth_smoke_fail( 'Unable to export certificate.' );
-$x5c = preg_replace( '/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s+/', '', $pem );
+$key_details = openssl_pkey_get_details( $private_key );
+if ( ! is_array( $key_details ) || empty( $key_details['rsa']['n'] ) || empty( $key_details['rsa']['e'] ) ) mad4b_oauth_smoke_fail( 'Unable to extract RSA JWK material.' );
 $kid = 'mad4b-ci-key';
-$issuer = rtrim( (string) MAD4B_MCP_OAUTH_ISSUER, '/' );
-$jwks_uri = $issuer . '/.well-known/jwks.json';
+$jwks_uri = $issuer_origin . '/auth/mcp/.well-known/jwks.json';
+$jwk = array(
+	'kty' => 'RSA',
+	'use' => 'sig',
+	'alg' => 'RS256',
+	'kid' => $kid,
+	'n' => mad4b_oauth_b64url( $key_details['rsa']['n'] ),
+	'e' => mad4b_oauth_b64url( $key_details['rsa']['e'] ),
+);
 
 add_filter(
 	'pre_http_request',
-	function ( $preempt, $args, $url ) use ( $issuer, $jwks_uri, $kid, $x5c ) {
-		if ( $issuer . '/.well-known/openid-configuration' === $url ) {
-			$body = array(
+	function ( $preempt, $args, $url ) use ( $issuer, $rfc8414, $jwks_uri, $jwk ) {
+		if ( $issuer . '/.well-known/openid-configuration' === $url ) return mad4b_oauth_http_response( 404, '{}' );
+		if ( $rfc8414 === $url ) {
+			return mad4b_oauth_http_response( 200, array(
 				'issuer' => $issuer,
-				'authorization_endpoint' => $issuer . '/authorize',
+				'authorization_endpoint' => $issuer . '/oauth/authorize',
 				'token_endpoint' => $issuer . '/oauth/token',
 				'jwks_uri' => $jwks_uri,
 				'code_challenge_methods_supported' => array( 'S256' ),
-			);
-			return array( 'headers' => array(), 'body' => wp_json_encode( $body ), 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array(), 'filename' => null );
+			) );
 		}
-		if ( $jwks_uri === $url ) {
-			$body = array( 'keys' => array( array( 'kty' => 'RSA', 'use' => 'sig', 'alg' => 'RS256', 'kid' => $kid, 'x5c' => array( $x5c ) ) ) );
-			return array( 'headers' => array(), 'body' => wp_json_encode( $body ), 'response' => array( 'code' => 200, 'message' => 'OK' ), 'cookies' => array(), 'filename' => null );
-		}
+		if ( $jwks_uri === $url ) return mad4b_oauth_http_response( 200, array( 'keys' => array( $jwk ) ) );
 		return $preempt;
 	},
 	10,
@@ -108,9 +120,10 @@ wp_set_current_user( 0 );
 $response = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, mad4b_oauth_request() );
 if ( 401 !== mad4b_oauth_status_code( $response ) ) mad4b_oauth_smoke_fail( 'Anonymous request without bearer must fail 401.', $response );
 $challenge = $response instanceof WP_REST_Response ? $response->get_headers() : array();
-if ( empty( $challenge['WWW-Authenticate'] ) || false === strpos( $challenge['WWW-Authenticate'], 'resource_metadata=' ) || false === strpos( $challenge['WWW-Authenticate'], 'mad4b:read' ) ) mad4b_oauth_smoke_fail( '401 must advertise protected-resource metadata and read scope.', $challenge );
+$expected_metadata = class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url() : '';
+if ( empty( $challenge['WWW-Authenticate'] ) || false === strpos( $challenge['WWW-Authenticate'], 'resource_metadata=' ) || false === strpos( $challenge['WWW-Authenticate'], 'mad4b:read' ) || ( $expected_metadata && false === strpos( $challenge['WWW-Authenticate'], $expected_metadata ) ) ) mad4b_oauth_smoke_fail( '401 must advertise authoritative protected-resource metadata and read scope.', $challenge );
 
 $metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
 if ( $status['resource'] !== $metadata['resource'] || array( $issuer ) !== $metadata['authorization_servers'] || array( 'mad4b:read' ) !== $metadata['scopes_supported'] ) mad4b_oauth_smoke_fail( 'Protected resource metadata mismatch.', $metadata );
 
-echo 'mad4b.site-control-plane.runtime-oauth-resource-bridge.v1: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.runtime-oauth-resource-bridge.v2: PASS' . PHP_EOL;
