@@ -8,12 +8,14 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Authorization remains owned by the configured OAuth authorization server.
  * This class publishes RFC 9728 protected-resource metadata at the exact
  * path-derived well-known location expected by standards-compliant MCP
- * clients. Vendor names are evidence profiles only and create no authority.
+ * clients. Client profiles are dynamic evidence only and never authorize.
  */
 final class MAD4B_SCP_MCP_Client_Compatibility {
-	const CONTRACT = 'mad4b.mcp-client-compatibility.v1';
+	const CONTRACT = 'mad4b.mcp-client-compatibility.v2';
 	const WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource';
 	const RESOURCE_PATH = '/wp-json/mcp/mad4b-read';
+	const MANIFEST_NAMESPACE = 'mad4b/v1';
+	const MANIFEST_ROUTE = '/mcp-client-compatibility';
 
 	private static $booted = false;
 
@@ -21,10 +23,55 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'parse_request', array( __CLASS__, 'serve_well_known_metadata' ), 0 );
+		add_action( 'rest_api_init', array( __CLASS__, 'register_manifest_route' ), 1 );
+	}
+
+	public static function register_manifest_route() {
+		register_rest_route(
+			self::MANIFEST_NAMESPACE,
+			self::MANIFEST_ROUTE,
+			array(
+				'methods' => WP_REST_Server::READABLE,
+				'callback' => array( __CLASS__, 'manifest_endpoint' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+	}
+
+	public static function manifest_endpoint() {
+		$response = new WP_REST_Response( self::manifest(), 200 );
+		$response->header( 'Cache-Control', 'no-store' );
+		return $response;
+	}
+
+	public static function manifest() {
+		$status = self::status();
+		$detected = class_exists( 'MAD4B_SCP_MCP_Client_Profile_Registry' ) ? MAD4B_SCP_MCP_Client_Profile_Registry::detect_request_profile() : array();
+		return array(
+			'contract' => self::CONTRACT,
+			'client_agnostic' => true,
+			'resource' => self::resource_identifier(),
+			'transport' => 'streamable_http',
+			'authentication' => array(
+				'methods' => array( 'oauth_discovery', 'bearer_header' ),
+				'protected_resource_metadata' => self::authoritative_well_known_url(),
+				'scope' => $status['scope'],
+				'authorization_servers' => self::authorization_servers(),
+			),
+			'profile_registry' => class_exists( 'MAD4B_SCP_MCP_Client_Profile_Registry' ) ? MAD4B_SCP_MCP_Client_Profile_Registry::status() : array(),
+			'profiles' => class_exists( 'MAD4B_SCP_MCP_Client_Profile_Registry' ) ? MAD4B_SCP_MCP_Client_Profile_Registry::profiles() : array(),
+			'detected_profile' => isset( $detected['profile'] ) ? $detected['profile'] : array(),
+			'detection_matched' => ! empty( $detected['matched'] ),
+			'detection_authoritative' => false,
+			'authorization_depends_on_vendor' => false,
+			'unknown_client_fallback' => 'generic-mcp',
+			'write_surfaces_exposed_by_this_manifest' => false,
+		);
 	}
 
 	public static function status() {
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
+		$registry = class_exists( 'MAD4B_SCP_MCP_Client_Profile_Registry' ) ? MAD4B_SCP_MCP_Client_Profile_Registry::status() : array();
 		return array(
 			'contract' => self::CONTRACT,
 			'client_agnostic' => true,
@@ -35,9 +82,12 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'oauth_discovery_ready' => self::oauth_discovery_ready( $oauth ),
 			'authoritative_well_known_url' => self::authoritative_well_known_url(),
 			'compatibility_alias_url' => self::compatibility_alias_url(),
-			'client_profiles' => array( 'openai_chatgpt', 'anthropic_claude', 'google_gemini', 'manus', 'generic_mcp_client' ),
+			'compatibility_manifest_url' => untrailingslashit( rest_url( self::MANIFEST_NAMESPACE . self::MANIFEST_ROUTE ) ),
+			'profile_registry_contract' => isset( $registry['contract'] ) ? $registry['contract'] : '',
+			'profile_count' => isset( $registry['profile_count'] ) ? (int) $registry['profile_count'] : 0,
 			'client_profiles_create_authority' => false,
 			'client_vendor_required_for_authorization' => false,
+			'unknown_clients_supported' => true,
 			'resource' => self::resource_identifier(),
 			'scope' => class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE : 'mad4b:read',
 		);
@@ -70,6 +120,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		$metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
 		$metadata['resource'] = self::resource_identifier();
 		$metadata['resource_name'] = 'MAD4B WordPress Staging Read MCP';
+		$metadata['mad4b_client_compatibility'] = untrailingslashit( rest_url( self::MANIFEST_NAMESPACE . self::MANIFEST_ROUTE ) );
 		return $metadata;
 	}
 
@@ -97,6 +148,12 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		header( 'Cache-Control: no-store' );
 		echo wp_json_encode( $metadata );
 		exit;
+	}
+
+	private static function authorization_servers() {
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return array();
+		$metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
+		return isset( $metadata['authorization_servers'] ) && is_array( $metadata['authorization_servers'] ) ? $metadata['authorization_servers'] : array();
 	}
 
 	private static function oauth_discovery_ready( $status ) {
