@@ -18,13 +18,14 @@ status = read('includes/class-mad4b-scp-connection-status.php')
 ability = read('includes/class-mad4b-scp-connection-ability.php')
 ui = read('includes/class-mad4b-scp-connection-admin-ui.php')
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
+isolation = read('includes/class-mad4b-scp-mcp-provider-isolation.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
 servers = read('includes/class-mad4b-scp-servers.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
-require(status, "mad4b.connection-readiness.v2", 'connection-contract')
+require(status, "mad4b.connection-readiness.v3", 'connection-contract')
 for marker in (
     'get_server_route_namespace', 'get_server_route', 'get_transport_permission_callback',
     'rest_get_server()', 'route_registered', 'permission_callback_match',
@@ -33,6 +34,7 @@ for marker in (
     "'credential_material_exposed' => false", "'credential_creation_supported_here' => false",
     "'remote_subject_bridge_required' => true", "'write_surface'",
     "'exact_transport_grant_required' => true", "'generic_dispatcher_exposed' => false",
+    "'provider_mcp_isolation'",
 ):
     require(status, marker, 'connection-status-truth')
 
@@ -78,12 +80,34 @@ if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > auth
 require(ui, 'add_submenu_page(', 'connection-admin-submenu')
 require(ui, "'manage_options'", 'connection-admin-capability')
 require(ui, 'Read-only transport evidence.', 'connection-admin-disclosure')
+for marker in (
+    'Provider MCP isolation', 'Production separately approved',
+    'Default MCP server suppressed', 'Unknown routes fail closed',
+    'Changes provider settings', 'Creates authority', 'Provider MCP routes removed',
+):
+    require(ui, marker, 'connection-isolation-evidence')
 require(bootstrap, 'class-mad4b-scp-transport-context.php', 'transport-context-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-status.php', 'connection-status-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-ability.php', 'connection-ability-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-admin-ui.php', 'connection-ui-bootstrap')
+require(bootstrap, 'class-mad4b-scp-mcp-provider-isolation.php', 'isolation-bootstrap')
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
 require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot')
+require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
+
+for marker in (
+    "const CONTRACT = 'mad4b.mcp-provider-isolation.v1'",
+    "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'",
+    "add_filter( 'mcp_adapter_create_default_server'",
+    "add_filter( 'rest_endpoints'",
+    "'unknown_routes_fail_closed' => true",
+    "'changes_provider_settings' => false",
+    "'creates_authority' => false",
+):
+    require(isolation, marker, 'provider-isolation-contract')
+for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post('):
+    forbid(isolation, forbidden, 'provider-isolation-deny-only')
 
 for marker in (
     "const CONTRACT = 'mad4b.mcp-peer-governance.v2'",
@@ -101,4 +125,4 @@ for bypass in (
 ):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v3: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v4: PASS')
