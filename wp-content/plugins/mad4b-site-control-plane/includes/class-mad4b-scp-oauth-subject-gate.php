@@ -3,13 +3,16 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Defense-in-depth subject policy for externally verified OAuth bearer tokens.
+ * Defense-in-depth subject policy for external OAuth bearer tokens.
  *
- * The OAuth resource bridge remains responsible for RS256/JWKS verification.
- * This gate runs immediately after that bridge and independently requires the
- * verified token's iss + sub + aud/resource binding to match an explicitly
- * configured subject allowlist before the fixed WordPress service identity may
- * be used. It creates no credential, grant, approval or mutation authority.
+ * The OAuth resource bridge remains authoritative for RS256/JWKS verification.
+ * This gate runs before that bridge and uses unverified JWT claims only to deny
+ * requests that cannot possibly satisfy the configured iss + sub + aud/resource
+ * policy. Passing this gate grants nothing: the bridge must still verify the
+ * signature and all token claims before any fixed WordPress service identity is
+ * selected. This ordering prevents an unapproved subject from ever reaching the
+ * privileged identity mapping. The gate creates no credential, grant, approval
+ * or mutation authority.
  */
 final class MAD4B_SCP_OAuth_Subject_Gate {
 	const CONTRACT = 'mad4b.oauth-subject-gate.v1';
@@ -19,9 +22,9 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		// OAuth_Resource_Bridge authenticates at priority 1. Run directly after it
-		// so an accepted bearer has already passed cryptographic verification.
-		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'enforce' ), 2, 3 );
+		// Fail closed on subject/resource policy at priority 0. The resource bridge
+		// follows at priority 1 and remains responsible for cryptographic trust.
+		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'enforce' ), 0, 3 );
 	}
 
 	public static function status() {
@@ -33,6 +36,8 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 			'effective' => ! empty( $subjects ) && ! empty( $bridge['effective'] ),
 			'allowed_subject_count' => count( $subjects ),
 			'binding' => 'iss+sub+aud+resource',
+			'enforcement_order' => 'pre-cryptographic-deny-then-rs256-verify',
+			'claims_used_before_signature' => 'deny-only',
 			'fail_closed' => true,
 			'stores_bearer_tokens' => false,
 			'creates_credentials' => false,
