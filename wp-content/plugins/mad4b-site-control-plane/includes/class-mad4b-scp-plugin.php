@@ -21,6 +21,8 @@ final class MAD4B_SCP_Plugin {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
+		MAD4B_SCP_MCP_Provider_Isolation::boot();
+
 		if ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
 			if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
