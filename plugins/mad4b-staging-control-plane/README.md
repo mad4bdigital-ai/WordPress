@@ -1,23 +1,49 @@
-# MAD4B Staging Control Plane ChatGPT Plugin
+# MAD4B Staging Control Plane Remote MCP
 
-This package is the repo-local ChatGPT/Codex plugin scaffold for the isolated WordPress Staging control plane.
+This package is the repo-local client package for the isolated MAD4B WordPress Staging control plane. The MCP resource server is intentionally **client-agnostic**: ChatGPT/OpenAI, Claude, Gemini, Manus, and other standards-compliant MCP clients may use the same read endpoint and the same OAuth authorization server.
 
-## Connection registration
+## Shared remote MCP endpoint
 
-Register the MCP connection in ChatGPT Developer mode only after the Staging OAuth resource bridge is effective.
+Use the same initial read-only resource for every client:
 
-Use:
+`https://staging.egypttourgates.com/wp-json/mcp/mad4b-read`
+
+Transport: Streamable HTTP.
+
+OAuth protected-resource metadata is published using RFC 9728, including the path-derived location:
+
+`https://staging.egypttourgates.com/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-read`
+
+The resource server does not authorize a request because it came from a named AI vendor. Authorization is based only on the trusted OAuth issuer, exact resource/audience, token validity, scope, subject mapping, WordPress capability, and the existing MAD4B governance layers.
+
+## Client profiles
+
+### ChatGPT / OpenAI
+
+Register a custom MCP/Plugin connection with:
 
 - Name: `MAD4B Staging Control Plane`
 - Server URL: `https://staging.egypttourgates.com/wp-json/mcp/mad4b-read`
-- Authentication: `OAuth`
+- Authentication: OAuth
 - Tunnel: off
 
-The initial connection is intentionally read-only. Do not point this package at Production and do not register `mad4b-write`, `mad4b-admin`, or `mad4b-breakglass` as the first app connection.
+After ChatGPT creates the connection, copy the real technical ID beginning with `plugin_asdk_app`. Only then add `.app.json`; no placeholder ID is committed.
 
-After ChatGPT creates the connection, copy the technical ID beginning with `plugin_asdk_app`. Then add `.app.json` using the current OpenAI plugin-creator output/schema and add `"apps": "./.app.json"` to `.codex-plugin/plugin.json`.
+### Claude
 
-No placeholder `.app.json` is committed because a fake technical ID would create an invalid package mapping.
+Add the same URL as a Remote MCP custom connector. Claude may use OAuth discovery/Dynamic Client Registration when supported by the configured authorization server, or an explicitly registered OAuth client when DCR is not enabled.
+
+### Gemini
+
+Use the same Streamable HTTP MCP URL. Gemini Remote MCP callers can send a bearer access token in the configured request headers. The token still must satisfy the exact MAD4B resource/audience and `mad4b:read` scope.
+
+### Manus
+
+Use the same remote MCP resource through Manus connector/MCP integration when available for the account. Authentication remains OAuth/Bearer at the MAD4B resource boundary; Manus receives no vendor-specific bypass.
+
+### Other MCP clients
+
+Any client capable of Streamable HTTP and presenting an OAuth bearer token accepted by the configured authorization server can use the same read resource. Unknown clients do not receive broader authority.
 
 ## Staging OAuth configuration
 
@@ -35,12 +61,16 @@ Do not set the following on Staging or Production during initial certification:
 define( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED', true );
 ```
 
-The OAuth authorization server must issue RS256 JWT access tokens for the exact resource:
+The authorization server should create a separate OAuth client registration for each consuming product where needed, while all clients target the same protected resource:
 
 `https://staging.egypttourgates.com/wp-json/mcp/mad4b-read`
 
-and include scope:
+Required scope:
 
 `mad4b:read`
 
-The bridge verifies issuer, exact audience/resource, expiry/not-before/issued-at, scope, `kid`, RS256 signature, same-origin HTTPS discovery/JWKS, and S256 PKCE metadata. It maps a verified OAuth subject to the configured dedicated WordPress user and stores only a SHA-256 subject fingerprint plus normalized scopes in the MAD4B identity context. Raw bearer tokens are never persisted.
+The resource bridge verifies issuer, exact audience/resource, expiry/not-before/issued-at, scope, `kid`, RS256 signature, same-origin HTTPS authorization-server discovery/JWKS, and S256 PKCE metadata. It maps a verified OAuth subject to the configured dedicated WordPress user and stores only a SHA-256 subject fingerprint plus normalized scopes in the MAD4B identity context. Raw bearer tokens are never persisted.
+
+## Safety boundary
+
+The initial multi-client profile remains read-only. Do not register `mad4b-write`, `mad4b-admin`, or `mad4b-breakglass` as a generic client connection. Those surfaces remain governed separately through NHI, exact grants, approvals, budgets, and target certification.
