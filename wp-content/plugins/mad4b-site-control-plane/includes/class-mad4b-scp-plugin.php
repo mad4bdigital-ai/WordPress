@@ -24,6 +24,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_MCP_Provider_Isolation::boot();
 		MAD4B_SCP_OAuth_Resource_Bridge::boot();
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
+		MAD4B_SCP_OAuth_Challenge_Alignment::boot();
 
 		if ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
