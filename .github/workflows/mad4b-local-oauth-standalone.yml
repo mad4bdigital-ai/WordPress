@@ -28,6 +28,7 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-local-oauth-store.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-server.php"
+          php -l "$root/includes/class-mad4b-scp-local-oauth-loopback-guard.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
           python3 "$root/tests/local-oauth-standalone-contract.py"
 
