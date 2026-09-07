@@ -13,7 +13,7 @@ required_compat = [
     "mad4b.mcp-client-compatibility.v2",
     "WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource'",
     "RESOURCE_PATH = '/wp-json/mcp/mad4b-read'",
-    "MANIFEST_ROUTE = '/mcp-client-compatibility'",
+    "MANIFEST_ROUTE = '/client-compatibility'",
     "'client_agnostic' => true",
     "'client_profiles_create_authority' => false",
     "'client_vendor_required_for_authorization' => false",
