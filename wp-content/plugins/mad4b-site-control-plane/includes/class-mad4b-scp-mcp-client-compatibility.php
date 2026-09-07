@@ -15,7 +15,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 	const WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource';
 	const RESOURCE_PATH = '/wp-json/mcp/mad4b-read';
 	const MANIFEST_NAMESPACE = 'mad4b/v1';
-	const MANIFEST_ROUTE = '/mcp-client-compatibility';
+	const MANIFEST_ROUTE = '/client-compatibility';
 
 	private static $booted = false;
 
