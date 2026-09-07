@@ -28,9 +28,15 @@ function mad4b_oauth_http_response( $code, $body ) {
 }
 
 if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) mad4b_oauth_smoke_fail( 'OAuth resource bridge class unavailable.' );
+if ( ! class_exists( 'MAD4B_SCP_OAuth_Subject_Gate' ) ) mad4b_oauth_smoke_fail( 'OAuth subject gate class unavailable.' );
 if ( ! defined( 'MAD4B_MCP_OAUTH_ENABLED' ) || true !== MAD4B_MCP_OAUTH_ENABLED ) mad4b_oauth_smoke_fail( 'OAuth test requires enabled bridge.' );
 if ( ! defined( 'MAD4B_MCP_OAUTH_ISSUER' ) ) mad4b_oauth_smoke_fail( 'OAuth issuer missing.' );
 if ( ! defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) mad4b_oauth_smoke_fail( 'OAuth WP user missing.' );
+if ( ! defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ) mad4b_oauth_smoke_fail( 'OAuth external subject allowlist missing.' );
+
+$gate_priority = has_filter( 'rest_pre_dispatch', array( 'MAD4B_SCP_OAuth_Subject_Gate', 'enforce' ) );
+$bridge_priority = has_filter( 'rest_pre_dispatch', array( 'MAD4B_SCP_OAuth_Resource_Bridge', 'authenticate_rest_request' ) );
+if ( 0 !== $gate_priority || 1 !== $bridge_priority ) mad4b_oauth_smoke_fail( 'OAuth subject gate must deny before bridge privileged mapping.', array( 'gate' => $gate_priority, 'bridge' => $bridge_priority ) );
 
 $status = MAD4B_SCP_OAuth_Resource_Bridge::status();
 if ( empty( $status['effective'] ) || 'staging' !== $status['environment'] ) mad4b_oauth_smoke_fail( 'OAuth bridge should be effective only for staging runtime.', $status );
@@ -38,6 +44,9 @@ if ( 'https' !== wp_parse_url( $status['resource'], PHP_URL_SCHEME ) ) mad4b_oau
 if ( array( 'mad4b:read' ) !== $status['scopes_supported'] ) mad4b_oauth_smoke_fail( 'Unexpected OAuth scope contract.', $status );
 if ( ! empty( $status['stores_bearer_tokens'] ) || ! empty( $status['creates_credentials'] ) || ! empty( $status['write_surfaces_enabled'] ) ) mad4b_oauth_smoke_fail( 'OAuth bridge safety claims invalid.', $status );
 if ( array( 'RS256' ) !== $status['accepted_bearer_algorithms'] || empty( $status['jwks_rsa_ne_supported'] ) || ! empty( $status['jwks_x5c_required'] ) ) mad4b_oauth_smoke_fail( 'OAuth JWKS compatibility truth is invalid.', $status );
+$gate_status = MAD4B_SCP_OAuth_Subject_Gate::status();
+if ( empty( $gate_status['configured'] ) || empty( $gate_status['effective'] ) || 1 !== (int) $gate_status['allowed_subject_count'] || empty( $gate_status['fail_closed'] ) ) mad4b_oauth_smoke_fail( 'OAuth subject gate should be configured and effective.', $gate_status );
+if ( 'iss+sub+aud+resource' !== $gate_status['binding'] || 'deny-only' !== $gate_status['claims_used_before_signature'] ) mad4b_oauth_smoke_fail( 'OAuth subject gate binding/order truth is invalid.', $gate_status );
 
 $issuer = rtrim( (string) MAD4B_MCP_OAUTH_ISSUER, '/' );
 $issuer_parts = wp_parse_url( $issuer );
@@ -82,24 +91,43 @@ add_filter(
 );
 
 $now = time();
+$resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
 $base_claims = array(
 	'iss' => $issuer,
-	'sub' => 'chatgpt-staging-ci-subject',
-	'aud' => MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier(),
+	'sub' => 'user:user-1',
+	'aud' => $resource,
+	'resource' => $resource,
 	'exp' => $now + 300,
 	'nbf' => $now - 5,
 	'iat' => $now - 5,
 	'scope' => 'mad4b:read',
 );
 $token = mad4b_oauth_jwt( $base_claims, $private_key, $kid );
+
+// The subject gate is deny-only and runs before the cryptographic bridge.
 wp_set_current_user( 0 );
-$result = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, mad4b_oauth_request( $token ) );
-if ( null !== $result ) mad4b_oauth_smoke_fail( 'Valid bearer should pass pre-dispatch.', $result );
+$request = mad4b_oauth_request( $token );
+$gate_result = MAD4B_SCP_OAuth_Subject_Gate::enforce( null, null, $request );
+if ( null !== $gate_result || 0 !== get_current_user_id() ) mad4b_oauth_smoke_fail( 'Approved subject gate must not itself grant WordPress identity.', $gate_result );
+$result = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $request );
+if ( null !== $result ) mad4b_oauth_smoke_fail( 'Valid bearer should pass cryptographic pre-dispatch.', $result );
 $identity = MAD4B_SCP_Identity_Context::current();
 if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || 'oauth' !== $identity['subject_type'] || 'oauth2_bearer' !== $identity['auth_method'] ) mad4b_oauth_smoke_fail( 'Verified bearer did not create normalized OAuth identity.', $identity );
 if ( ! in_array( 'mad4b:read', $identity['token_scopes'], true ) || empty( $identity['subject_fingerprint'] ) ) mad4b_oauth_smoke_fail( 'OAuth identity scope/fingerprint missing.', $identity );
 if ( false !== strpos( wp_json_encode( $identity ), $token ) ) mad4b_oauth_smoke_fail( 'Raw bearer token leaked into identity context.' );
 if ( (int) MAD4B_MCP_OAUTH_WP_USER_ID !== get_current_user_id() || ! current_user_can( 'manage_options' ) ) mad4b_oauth_smoke_fail( 'OAuth identity did not bind exact configured WordPress subject.' );
+
+// An unapproved but otherwise well-formed subject is denied before the bridge
+// can map the fixed privileged WordPress service identity.
+$unapproved = $base_claims; $unapproved['sub'] = 'user:user-2';
+wp_set_current_user( 0 );
+$response = MAD4B_SCP_OAuth_Subject_Gate::enforce( null, null, mad4b_oauth_request( mad4b_oauth_jwt( $unapproved, $private_key, $kid ) ) );
+if ( 403 !== mad4b_oauth_status_code( $response ) || 0 !== get_current_user_id() ) mad4b_oauth_smoke_fail( 'Unapproved OAuth subject must fail before privileged WordPress mapping.', $response );
+
+$wrong_resource_claim = $base_claims; $wrong_resource_claim['resource'] = 'https://example.invalid/not-mad4b';
+wp_set_current_user( 0 );
+$response = MAD4B_SCP_OAuth_Subject_Gate::enforce( null, null, mad4b_oauth_request( mad4b_oauth_jwt( $wrong_resource_claim, $private_key, $kid ) ) );
+if ( 403 !== mad4b_oauth_status_code( $response ) || 0 !== get_current_user_id() ) mad4b_oauth_smoke_fail( 'Wrong resource claim must fail before privileged WordPress mapping.', $response );
 
 $wrong_aud = $base_claims; $wrong_aud['aud'] = 'https://example.invalid/not-mad4b';
 wp_set_current_user( 0 );
@@ -126,4 +154,4 @@ if ( empty( $challenge['WWW-Authenticate'] ) || false === strpos( $challenge['WW
 $metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
 if ( $status['resource'] !== $metadata['resource'] || array( $issuer ) !== $metadata['authorization_servers'] || array( 'mad4b:read' ) !== $metadata['scopes_supported'] ) mad4b_oauth_smoke_fail( 'Protected resource metadata mismatch.', $metadata );
 
-echo 'mad4b.site-control-plane.runtime-oauth-resource-bridge.v2: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.runtime-oauth-resource-bridge.v3: PASS' . PHP_EOL;
