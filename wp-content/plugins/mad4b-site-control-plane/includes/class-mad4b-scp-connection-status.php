@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Read-only local truth for MAD4B MCP connection readiness. */
 final class MAD4B_SCP_Connection_Status {
 	const CONTRACT = 'mad4b.connection-readiness.v4';
+	const PREVIOUS_CONTRACT = 'mad4b.connection-readiness.v3';
 
 	public static function status() {
 		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
@@ -107,6 +108,7 @@ final class MAD4B_SCP_Connection_Status {
 		if ( ! is_array( $oauth ) ) $oauth = array();
 		$authoritative_metadata = class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url() : '';
 		$metadata_candidates = isset( $oauth['authorization_server_metadata_urls'] ) && is_array( $oauth['authorization_server_metadata_urls'] ) ? array_slice( array_map( 'esc_url_raw', $oauth['authorization_server_metadata_urls'] ), 0, 4 ) : array();
+		$accepted_algorithms = isset( $oauth['accepted_bearer_algorithms'] ) && is_array( $oauth['accepted_bearer_algorithms'] ) ? array_slice( array_map( 'sanitize_text_field', $oauth['accepted_bearer_algorithms'] ), 0, 8 ) : array();
 		return array(
 			'contract' => isset( $oauth['contract'] ) ? sanitize_text_field( (string) $oauth['contract'] ) : '',
 			'available' => ! isset( $oauth['available'] ) || false !== $oauth['available'],
@@ -123,8 +125,9 @@ final class MAD4B_SCP_Connection_Status {
 			'wp_user_id' => isset( $oauth['wp_user_id'] ) ? absint( $oauth['wp_user_id'] ) : 0,
 			'wp_user_capable' => ! empty( $oauth['wp_user_capable'] ),
 			'https' => ! empty( $oauth['https'] ),
-			'accepted_access_token_algorithms' => array( 'RS256' ),
-			'jwks_x5c_required' => true,
+			'accepted_bearer_algorithms' => $accepted_algorithms,
+			'jwks_x5c_required' => ! empty( $oauth['jwks_x5c_required'] ),
+			'jwks_rsa_ne_supported' => ! empty( $oauth['jwks_rsa_ne_supported'] ),
 			'outbound_discovery_on_admin' => false,
 			'stores_bearer_tokens' => ! empty( $oauth['stores_bearer_tokens'] ),
 			'creates_credentials' => ! empty( $oauth['creates_credentials'] ),
@@ -265,9 +268,9 @@ final class MAD4B_SCP_Connection_Status {
 				'inventory_ready' => ! empty( $foreign['inventory_ready'] ),
 				'detected' => ! empty( $foreign['foreign_mcp_detected'] ),
 				'route_count' => isset( $foreign['foreign_route_count'] ) ? (int) $foreign['foreign_route_count'] : 0,
-				'routes' => isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? array_slice( array_map( 'sanitize_text_field', $foreign['foreign_routes'] ), 0, 100 ) : array(),
+				'routes' => isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? array_slice( array_map( 'sanitize_text_field', $foreign['foreign_routes'] ), 0, 100 ),
 				'plugin_count' => isset( $foreign['foreign_plugin_count'] ) ? (int) $foreign['foreign_plugin_count'] : 0,
-				'plugins' => isset( $foreign['foreign_plugins'] ) && is_array( $foreign['foreign_plugins'] ) ? array_slice( array_map( 'sanitize_text_field', $foreign['foreign_plugins'] ), 0, 100 ) : array(),
+				'plugins' => isset( $foreign['foreign_plugins'] ) && is_array( $foreign['foreign_plugins'] ) ? array_slice( array_map( 'sanitize_text_field', $foreign['foreign_plugins'] ), 0, 100 ),
 			),
 		);
 	}
