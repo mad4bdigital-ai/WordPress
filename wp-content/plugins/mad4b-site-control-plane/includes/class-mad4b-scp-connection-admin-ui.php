@@ -127,6 +127,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'Foreign MCP plugin count' => isset( $peer['foreign_transport']['plugin_count'] ) ? (int) $peer['foreign_transport']['plugin_count'] : 0,
 		) );
 		self::blockers( 'MCP blockers', isset( $peer['blockers'] ) ? $peer['blockers'] : array() );
+		self::peer_table( 'External Adapter peers', isset( $peer['peers'] ) ? $peer['peers'] : array() );
 		self::code_list( 'Foreign MCP routes', isset( $peer['foreign_transport']['routes'] ) ? $peer['foreign_transport']['routes'] : array() );
 		self::code_list( 'Foreign MCP plugins', isset( $peer['foreign_transport']['plugins'] ) ? $peer['foreign_transport']['plugins'] : array() );
 
@@ -154,6 +155,30 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		echo '<ul>';
 		foreach ( $items as $item ) echo '<li><code>' . esc_html( (string) $item ) . '</code></li>';
 		echo '</ul>';
+	}
+
+	private static function peer_table( $title, $items ) {
+		$items = is_array( $items ) ? $items : array();
+		$external = array();
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) || ! empty( $item['governed'] ) ) continue;
+			$external[] = $item;
+			if ( count( $external ) >= 20 ) break;
+		}
+		echo '<h3>' . esc_html( $title ) . '</h3>';
+		if ( ! $external ) { echo '<p>' . esc_html__( 'None detected.', 'mad4b-site-control-plane' ) . '</p>'; return; }
+		echo '<table class="widefat striped" style="max-width:1100px"><thead><tr><th>Server</th><th>Tool count</th><th>Risk count</th><th>Risk reasons</th></tr></thead><tbody>';
+		foreach ( $external as $item ) {
+			$reasons = isset( $item['risk_reasons'] ) && is_array( $item['risk_reasons'] ) ? array_slice( $item['risk_reasons'], 0, 20 ) : array();
+			echo '<tr><td><code>' . esc_html( isset( $item['server_id'] ) ? (string) $item['server_id'] : '' ) . '</code></td><td>' . esc_html( isset( $item['tool_count'] ) ? (string) (int) $item['tool_count'] : '0' ) . '</td><td>' . esc_html( isset( $item['risk_count'] ) ? (string) (int) $item['risk_count'] : '0' ) . '</td><td>';
+			if ( $reasons ) {
+				foreach ( $reasons as $reason ) echo '<code style="margin-right:8px">' . esc_html( (string) $reason ) . '</code>';
+			} else {
+				echo esc_html__( 'No write risk classified.', 'mad4b-site-control-plane' );
+			}
+			echo '</td></tr>';
+		}
+		echo '</tbody></table>';
 	}
 
 	private static function code_list( $title, $items ) {
