@@ -160,6 +160,7 @@ final class MAD4B_SCP_Admin_UI {
 		self::key_value_table(
 			array(
 				'Inventory ready' => ! empty( $peer['inventory_ready'] ),
+				'Inventory reason' => isset( $peer['reason'] ) ? $peer['reason'] : '',
 				'Write side-channel detected' => ! empty( $peer['write_side_channel_detected'] ),
 				'Peer count' => isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? count( $peer['peers'] ) : 0,
 			)
@@ -231,7 +232,7 @@ final class MAD4B_SCP_Admin_UI {
 				'Ready' => ! empty( $audit['ready'] ),
 				'Transactional storage' => ! empty( $audit['transactional'] ),
 				'Legacy chain valid' => ! empty( $audit['legacy_chain_valid'] ),
-				'Legacy anchor matches' => ! empty( $audit['legacy_anchor_matches'] ),
+				'Legacy anchor matches' => ! empty( $audit['legacy_anchor_match'] ),
 				'Head consistent' => ! empty( $audit['head_consistent'] ),
 				'Event count' => isset( $audit['event_count'] ) ? $audit['event_count'] : 0,
 				'Head sequence' => isset( $audit['head_sequence'] ) ? $audit['head_sequence'] : 0,
