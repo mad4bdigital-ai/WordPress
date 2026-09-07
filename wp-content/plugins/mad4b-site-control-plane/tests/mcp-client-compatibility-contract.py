@@ -20,8 +20,13 @@ required = [
     "'client_vendor_required_for_authorization' => false",
     "'transport' => 'streamable_http'",
     "'oauth_resource_metadata' => 'rfc9728'",
+    "'oauth_discovery_ready'",
+    "authoritative_well_known_url",
+    "compatibility_alias_url",
     "metadata_for_path",
     "serve_well_known_metadata",
+    "status_header( 302 )",
+    "header( 'Location: ' . esc_url_raw( self::authoritative_well_known_url() ) )",
 ]
 for marker in required:
     assert marker in compat, f'missing compatibility marker: {marker}'
@@ -36,6 +41,7 @@ for forbidden in [
     'MAD4B_MCP_MANUS_ONLY',
     'create_credentials',
     'update_option(',
+    'wp_set_current_user(',
 ]:
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
 
