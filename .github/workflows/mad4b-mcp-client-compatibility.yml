@@ -21,13 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify client-agnostic discovery contract
+      - name: Verify dynamic client-agnostic discovery contract
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
+          python3 -m json.tool "$root/config/mcp-client-profiles.json" >/dev/null
           python3 "$root/tests/mcp-client-compatibility-contract.py"
 
   runtime:
@@ -98,7 +100,7 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
-      - name: Prove client-agnostic RFC 9728 discovery
+      - name: Prove dynamic vendor-neutral RFC 9728 discovery
         shell: bash
         run: |
           set -euo pipefail
