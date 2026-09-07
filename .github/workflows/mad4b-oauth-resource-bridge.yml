@@ -1,0 +1,111 @@
+name: MAD4B OAuth Resource Bridge
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-oauth-resource-bridge.yml'
+      - '.agents/plugins/marketplace.json'
+      - 'plugins/mad4b-staging-control-plane/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-oauth-resource-bridge-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    name: OAuth bridge and plugin package contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify OAuth resource bridge and ChatGPT package
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-oauth-resource-bridge.php"
+          php -l "$root/tests/runtime-oauth-resource-bridge-smoke.php"
+          python3 "$root/tests/oauth-resource-bridge-contract.py"
+          python3 "$root/tests/chatgpt-plugin-package-contract.py"
+          python3 -m json.tool plugins/mad4b-staging-control-plane/.codex-plugin/plugin.json >/dev/null
+          python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
+
+  runtime:
+    name: OAuth bridge runtime (${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.9', 'latest']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable HTTPS-identified WordPress
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-oauth.test' --title='MAD4B OAuth Bridge' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar option update home 'https://mad4b-oauth.test' --path="$WP_PATH"
+          php /tmp/wp-cli.phar option update siteurl 'https://mad4b-oauth.test' --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ISSUER 'https://auth.mad4b.test' --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_WP_USER_ID 1 --raw --type=constant --path="$WP_PATH"
+
+      - name: Install exact MCP Adapter and control plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove OAuth resource bridge token verification and fail-closed behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-oauth-resource-bridge-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
