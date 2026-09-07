@@ -22,6 +22,7 @@ final class MAD4B_SCP_Plugin {
 		self::$booted = true;
 
 		MAD4B_SCP_MCP_Provider_Isolation::boot();
+		MAD4B_SCP_Local_OAuth_Server::boot();
 		MAD4B_SCP_OAuth_Resource_Bridge::boot();
 		MAD4B_SCP_OAuth_Subject_Gate::boot();
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
