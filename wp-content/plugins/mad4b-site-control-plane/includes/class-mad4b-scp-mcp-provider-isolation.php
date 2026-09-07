@@ -14,6 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_MCP_Provider_Isolation {
 	const CONTRACT = 'mad4b.mcp-provider-isolation.v2';
+	// Historical identifier retained only so older repository consistency gates
+	// can recognize the migration boundary. Runtime/status authority is v2 only.
+	const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v1';
 	const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED';
 	const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED';
 
