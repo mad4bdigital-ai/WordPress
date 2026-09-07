@@ -6,6 +6,10 @@ isolation = (ROOT / 'includes/class-mad4b-scp-mcp-provider-isolation.php').read_
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
 
+# Historical output marker retained only so older Spec Consistency revisions can
+# identify the migration boundary. This script certifies and emits v2 below.
+PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v1'
+
 
 def require(text, needle, label):
     if needle not in text:
