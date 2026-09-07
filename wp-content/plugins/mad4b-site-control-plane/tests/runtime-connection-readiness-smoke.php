@@ -78,6 +78,7 @@ $check( false !== strpos( $html, esc_html( $status['write_surface']['endpoint'] 
 $check( false !== strpos( $html, 'Governed write ingress' ), 'Connection admin page omitted the governed write readiness section.' );
 $check( false !== strpos( $html, 'Provider MCP isolation' ), 'Connection admin page omitted provider isolation evidence.' );
 $check( false !== strpos( $html, 'Unknown routes fail closed' ), 'Connection admin page omitted provider isolation fail-closed truth.' );
+$check( false !== strpos( $html, 'External Adapter peers' ), 'Connection admin page omitted bounded external Adapter peer evidence.' );
 $check( false !== strpos( $html, 'external_handshake_unverified' ), 'Connection admin page omitted external-handshake truth.' );
 foreach ( array( 'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'rollback_payload' ) as $secret ) $check( false === stripos( $html, $secret ), 'Connection admin page exposed forbidden material: ' . $secret );
 $after = array(
@@ -87,4 +88,4 @@ $after = array(
 );
 $check( $before === $after, 'Read-only connection rendering changed governance state.' );
 
-echo "mad4b.site-control-plane.runtime-connection-readiness.v4: PASS\n";
+echo "mad4b.site-control-plane.runtime-connection-readiness.v5: PASS\n";
