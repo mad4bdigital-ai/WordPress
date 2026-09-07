@@ -17,12 +17,49 @@ if ( ! MAD4B_SCP_MCP_Provider_Isolation::effective() ) {
 	mad4b_isolation_fail( 'Provider MCP isolation should be effective on staging.' );
 }
 
+// Recreate the exact callback identities observed on live Staging without
+// installing or mutating the provider plugins themselves.
+if ( ! class_exists( 'Hostinger\\AiAssistant\\Mcp\\McpServer' ) ) {
+	eval( 'namespace Hostinger\\AiAssistant\\Mcp; class McpServer { public function create_server( $adapter = null ) { $GLOBALS["mad4b_hostinger_callback_hit"] = true; } }' );
+}
+if ( ! class_exists( 'ElementsKit_Lite\\Mcp\\Server' ) ) {
+	eval( 'namespace ElementsKit_Lite\\Mcp; class Server { public function register_server( $adapter = null ) { $GLOBALS["mad4b_elementskit_callback_hit"] = true; } }' );
+}
+if ( ! class_exists( 'MAD4B_Isolation_Unknown_Server_Callback' ) ) {
+	class MAD4B_Isolation_Unknown_Server_Callback {
+		public function register_server( $adapter = null ) { $GLOBALS['mad4b_unknown_callback_hit'] = true; }
+	}
+}
+
+$hostinger = new \Hostinger\AiAssistant\Mcp\McpServer();
+$elementskit = new \ElementsKit_Lite\Mcp\Server();
+$unknown = new MAD4B_Isolation_Unknown_Server_Callback();
+add_action( 'mcp_adapter_init', array( $hostinger, 'create_server' ), 10 );
+add_action( 'mcp_adapter_init', array( $elementskit, 'register_server' ), 10 );
+add_action( 'mcp_adapter_init', array( $unknown, 'register_server' ), 10 );
+
+MAD4B_SCP_MCP_Provider_Isolation::suppress_provider_server_registrations();
+if ( false !== has_action( 'mcp_adapter_init', array( $hostinger, 'create_server' ) ) ) {
+	mad4b_isolation_fail( 'Hostinger MCP server registration callback was not suppressed.' );
+}
+if ( false !== has_action( 'mcp_adapter_init', array( $elementskit, 'register_server' ) ) ) {
+	mad4b_isolation_fail( 'ElementsKit MCP server registration callback was not suppressed.' );
+}
+if ( false === has_action( 'mcp_adapter_init', array( $unknown, 'register_server' ) ) ) {
+	mad4b_isolation_fail( 'Unknown server callback was removed instead of remaining fail-closed.' );
+}
+remove_action( 'mcp_adapter_init', array( $unknown, 'register_server' ), 10 );
+
 add_action( 'rest_api_init', function () {
 	$permission = function () { return true; };
 	$callback = function () { return rest_ensure_response( array( 'ok' => true ) ); };
+	register_rest_route( 'hostinger-ai-assistant/v1', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
+	register_rest_route( 'hostinger-ai-assistant/v1', '/jwt/token', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
+	register_rest_route( 'hostinger-ai-assistant/v1', '/jwt/revoke', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'fluentform/v1', '/mcp/status', array( 'methods' => 'GET', 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'jet-engine/v1', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'hfe/v1', '/mcp-settings', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
+	register_rest_route( 'elementskit', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit/v1', '/mcp-proxy', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 	// Deliberately unknown MCP-looking route: isolation must NOT hide it.
 	register_rest_route( 'unknown-provider/v1', '/mcp-unreviewed', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
@@ -32,12 +69,16 @@ $rest = rest_get_server();
 $routes = $rest->get_routes();
 
 foreach ( array(
+	'/hostinger-ai-assistant/v1/mcp',
+	'/hostinger-ai-assistant/v1/jwt/token',
+	'/hostinger-ai-assistant/v1/jwt/revoke',
 	'/fluentform/v1/mcp/status',
 	'/jet-engine/v1/mcp',
 	'/hfe/v1/mcp-settings',
+	'/elementskit/mcp',
 	'/elementskit/v1/mcp-proxy',
 ) as $route ) {
-	if ( isset( $routes[ $route ] ) ) mad4b_isolation_fail( 'Certified provider MCP route remained exposed.', $route );
+	if ( isset( $routes[ $route ] ) ) mad4b_isolation_fail( 'Certified provider MCP/control route remained exposed.', $route );
 }
 if ( ! isset( $routes['/unknown-provider/v1/mcp-unreviewed'] ) ) {
 	mad4b_isolation_fail( 'Unknown MCP route was hidden instead of remaining fail-closed.' );
@@ -47,10 +88,21 @@ $status = MAD4B_SCP_MCP_Provider_Isolation::status();
 if ( empty( $status['effective'] ) || empty( $status['default_server_suppressed'] ) ) {
 	mad4b_isolation_fail( 'Isolation status did not report effective/default suppression.', $status );
 }
-if ( (int) $status['removed_route_count'] < 4 ) {
+if ( empty( $status['server_registration_suppression_attempted'] ) ) {
+	mad4b_isolation_fail( 'Server-registration suppression was not attempted.', $status );
+}
+if ( (int) $status['suppressed_server_count'] < 2 ) {
+	mad4b_isolation_fail( 'Expected exact provider server callbacks were not recorded as suppressed.', $status );
+}
+foreach ( array( 'hostinger-ai-assistant-mcp-server', 'elementskit-mcp-server' ) as $server_id ) {
+	if ( ! in_array( $server_id, $status['suppressed_server_ids'], true ) ) {
+		mad4b_isolation_fail( 'Expected provider server id missing from suppression evidence.', array( $server_id, $status ) );
+	}
+}
+if ( (int) $status['removed_route_count'] < 8 ) {
 	mad4b_isolation_fail( 'Expected provider routes were not recorded as isolated.', $status );
 }
-if ( empty( $status['unknown_routes_fail_closed'] ) || ! empty( $status['changes_provider_settings'] ) || ! empty( $status['creates_authority'] ) ) {
+if ( empty( $status['unknown_routes_fail_closed'] ) || empty( $status['unknown_server_callbacks_fail_closed'] ) || ! empty( $status['changes_provider_settings'] ) || ! empty( $status['disables_provider_plugins'] ) || ! empty( $status['creates_authority'] ) ) {
 	mad4b_isolation_fail( 'Isolation safety metadata is invalid.', $status );
 }
 
@@ -58,8 +110,10 @@ if ( class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) {
 	$adapter = \WP\MCP\Core\McpAdapter::instance();
 	$servers = method_exists( $adapter, 'get_servers' ) ? $adapter->get_servers() : array();
 	foreach ( is_array( $servers ) ? $servers : array() as $server ) {
-		if ( is_object( $server ) && method_exists( $server, 'get_server_id' ) && 'mcp-adapter-default-server' === $server->get_server_id() ) {
-			mad4b_isolation_fail( 'Official default MCP server remained registered while isolation is effective.' );
+		if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) ) continue;
+		$id = (string) $server->get_server_id();
+		if ( in_array( $id, array( 'mcp-adapter-default-server', 'hostinger-ai-assistant-mcp-server', 'elementskit-mcp-server' ), true ) ) {
+			mad4b_isolation_fail( 'Suppressed MCP server remained registered while isolation is effective.', $id );
 		}
 	}
 }
@@ -74,4 +128,4 @@ if ( empty( $peer['write_side_channel_detected'] ) || ! in_array( 'mcp_foreign_t
 	mad4b_isolation_fail( 'Unknown MCP route must continue to fail closed.', $peer );
 }
 
-fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v1: PASS' . PHP_EOL );
+fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v2: PASS' . PHP_EOL );
