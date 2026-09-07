@@ -30,6 +30,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-provider-isolation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-peer-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-client-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-transport-context.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-status.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-authorization.php';
