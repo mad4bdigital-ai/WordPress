@@ -27,6 +27,8 @@ Register a custom MCP/Plugin connection with:
 - Authentication: OAuth
 - Tunnel: off
 
+The dedicated Staging authorization server supports Dynamic Client Registration for allowlisted ChatGPT callback origins, PKCE S256, refresh-token rotation, and `offline_access` as a non-authoritative refresh capability. The protected WordPress resource itself remains `mad4b:read` only.
+
 After ChatGPT creates the connection, copy the real technical ID beginning with `plugin_asdk_app`. Only then add `.app.json`; no placeholder ID is committed.
 
 ### Claude
@@ -51,9 +53,11 @@ The WordPress resource server requires these `wp-config.php` constants on Stagin
 
 ```php
 define( 'MAD4B_MCP_OAUTH_ENABLED', true );
-define( 'MAD4B_MCP_OAUTH_ISSUER', 'https://YOUR-AUTHORIZATION-SERVER' );
+define( 'MAD4B_MCP_OAUTH_ISSUER', 'https://dev.mad4b.com/auth/mcp/wordpress-staging' );
 define( 'MAD4B_MCP_OAUTH_WP_USER_ID', 123 ); // dedicated Staging admin subject
 ```
+
+`MAD4B_MCP_OAUTH_WP_USER_ID` must be replaced by the existing dedicated Staging administrator user selected for the remote subject bridge. The package does not create or auto-select that user.
 
 Do not set the following on Staging or Production during initial certification:
 
@@ -61,15 +65,21 @@ Do not set the following on Staging or Production during initial certification:
 define( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED', true );
 ```
 
-The authorization server should create a separate OAuth client registration for each consuming product where needed, while all clients target the same protected resource:
+The dedicated issuer is intentionally separate from the primary `mcp-dev.mad4b.com` OAuth resource profile:
 
-`https://staging.egypttourgates.com/wp-json/mcp/mad4b-read`
+- Issuer: `https://dev.mad4b.com/auth/mcp/wordpress-staging`
+- RFC 8414 metadata: `https://dev.mad4b.com/.well-known/oauth-authorization-server/auth/mcp/wordpress-staging`
+- JWKS: `https://dev.mad4b.com/auth/mcp/wordpress-staging/oauth/jwks`
+- Protected resource: `https://staging.egypttourgates.com/wp-json/mcp/mad4b-read`
+- Resource authority scope: `mad4b:read`
+- Optional refresh capability scope: `offline_access`
+- Access-token signature: `RS256`
 
-Required scope:
+The authorization server may create a separate OAuth client registration for each consuming product. Its DCR authority is confined to the dedicated WordPress Staging issuer and an explicit callback-origin allowlist; it does not enable DCR on the primary Remote MCP issuer.
 
-`mad4b:read`
+The resource bridge verifies issuer, exact audience/resource, expiry/not-before/issued-at, required `mad4b:read` scope, `kid`, RS256 signature, same-origin HTTPS authorization-server discovery/JWKS, and S256 PKCE metadata. Additional non-authoritative OAuth scopes such as `offline_access` do not create MAD4B write authority. It maps a verified OAuth subject to the configured dedicated WordPress user and stores only a SHA-256 subject fingerprint plus normalized scopes in the MAD4B identity context. Raw bearer tokens are never persisted.
 
-The resource bridge verifies issuer, exact audience/resource, expiry/not-before/issued-at, scope, `kid`, RS256 signature, same-origin HTTPS authorization-server discovery/JWKS, and S256 PKCE metadata. It maps a verified OAuth subject to the configured dedicated WordPress user and stores only a SHA-256 subject fingerprint plus normalized scopes in the MAD4B identity context. Raw bearer tokens are never persisted.
+The RS256 private key remains only on the Staging authorization-server runtime. WordPress fetches public JWKS material and cannot mint access tokens.
 
 ## Safety boundary
 
