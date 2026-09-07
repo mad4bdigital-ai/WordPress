@@ -22,12 +22,20 @@ $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/connection
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-status' ), 'Connection status ability is not mounted on mad4b-read.' );
 
 $status = MAD4B_SCP_Connection_Status::status();
-$check( isset( $status['contract'] ) && 'mad4b.connection-readiness.v3' === $status['contract'], 'Unexpected connection readiness contract.' );
+$check( isset( $status['contract'] ) && 'mad4b.connection-readiness.v4' === $status['contract'], 'Unexpected connection readiness contract.' );
 $check( ! empty( $status['local_transport_ready'] ), 'Clean local transport should be ready: ' . wp_json_encode( $status['local_blockers'] ) );
-$check( empty( $status['remote_endpoint_preflight_ready'] ), 'HTTP CI target must not claim remote endpoint preflight readiness.' );
+$check( empty( $status['remote_endpoint_preflight_ready'] ), 'Unconfigured OAuth resource server must not claim remote endpoint preflight readiness.' );
 $check( in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTP CI target did not report HTTPS remote blocker.' );
+$check( in_array( 'oauth_resource_bridge_not_configured', $status['remote_preflight_blockers'], true ), 'Unconfigured OAuth bridge did not block remote preflight.' );
+$check( in_array( 'oauth_issuer_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth issuer did not block remote preflight.' );
+$check( in_array( 'oauth_wp_subject_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth WordPress subject did not block remote preflight.' );
+$check( isset( $status['oauth_resource_server'] ) && is_array( $status['oauth_resource_server'] ), 'OAuth resource-server truth missing from connection status.' );
+$check( empty( $status['oauth_resource_server']['configured'] ), 'Disposable connection runtime unexpectedly reports OAuth configured.' );
+$check( empty( $status['oauth_resource_server']['effective'] ), 'Disposable connection runtime unexpectedly reports OAuth effective.' );
+$check( empty( $status['oauth_resource_server']['preflight_ready'] ), 'Disposable connection runtime unexpectedly reports OAuth preflight ready.' );
 $check( empty( $status['connection_certified'] ), 'Local inspection must never self-certify the external connection.' );
 $check( empty( $status['external_handshake']['verified'] ), 'External handshake was incorrectly marked verified.' );
+$check( 'local_remote_preflight_incomplete' === $status['external_handshake']['status'], 'External handshake status must distinguish local OAuth/preflight incompleteness.' );
 $check( in_array( 'external_handshake_unverified', $status['certification_blockers'], true ), 'External handshake blocker missing.' );
 $check( empty( $status['authentication']['credential_material_exposed'] ), 'Connection status claims credential material is exposed.' );
 $check( empty( $status['authentication']['credential_creation_supported_here'] ), 'Connection status claims credential creation in read-only surface.' );
@@ -75,6 +83,8 @@ $check( false !== strpos( $html, 'MAD4B Connection' ), 'Connection admin page di
 $check( false !== strpos( $html, 'mad4b-read' ), 'Connection admin page omitted the read endpoint.' );
 $check( false !== strpos( $html, 'mad4b-write' ), 'Connection admin page omitted the write endpoint.' );
 $check( false !== strpos( $html, esc_html( $status['write_surface']['endpoint'] ) ), 'Connection admin page did not render the runtime-derived write endpoint.' );
+$check( false !== strpos( $html, 'OAuth resource server' ), 'Connection admin page omitted OAuth resource-server truth.' );
+$check( false !== strpos( $html, 'oauth_resource_bridge_not_configured' ), 'Connection admin page omitted OAuth blocker truth.' );
 $check( false !== strpos( $html, 'Governed write ingress' ), 'Connection admin page omitted the governed write readiness section.' );
 $check( false !== strpos( $html, 'Provider MCP isolation' ), 'Connection admin page omitted provider isolation evidence.' );
 $check( false !== strpos( $html, 'Unknown routes fail closed' ), 'Connection admin page omitted provider isolation fail-closed truth.' );
@@ -88,4 +98,4 @@ $after = array(
 );
 $check( $before === $after, 'Read-only connection rendering changed governance state.' );
 
-echo "mad4b.site-control-plane.runtime-connection-readiness.v4: PASS\n";
+echo "mad4b.site-control-plane.runtime-connection-readiness.v5: PASS\n";
