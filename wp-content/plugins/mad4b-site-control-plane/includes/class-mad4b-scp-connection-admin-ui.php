@@ -100,6 +100,22 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			'Note' => $status['external_handshake']['note'],
 		) );
 
+		$isolation = isset( $status['provider_mcp_isolation'] ) && is_array( $status['provider_mcp_isolation'] ) ? $status['provider_mcp_isolation'] : array();
+		echo '<h2>' . esc_html__( 'Provider MCP isolation', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Isolation is deny-only and OFF by default. When explicitly enabled it suppresses only the certified provider MCP/control routes; unknown MCP routes remain visible to fail-closed peer governance.', 'mad4b-site-control-plane' ) . '</p>';
+		self::kv( array(
+			'Configured' => ! empty( $isolation['configured'] ),
+			'Effective' => ! empty( $isolation['effective'] ),
+			'Environment' => isset( $isolation['environment'] ) ? $isolation['environment'] : '',
+			'Production separately approved' => ! empty( $isolation['production_approved'] ),
+			'Default MCP server suppressed' => ! empty( $isolation['default_server_suppressed'] ),
+			'Removed route count' => isset( $isolation['removed_route_count'] ) ? (int) $isolation['removed_route_count'] : 0,
+			'Unknown routes fail closed' => ! empty( $isolation['unknown_routes_fail_closed'] ),
+			'Changes provider settings' => ! empty( $isolation['changes_provider_settings'] ),
+			'Creates authority' => ! empty( $isolation['creates_authority'] ),
+		) );
+		self::code_list( 'Provider MCP routes removed', isset( $isolation['removed_routes'] ) ? $isolation['removed_routes'] : array() );
+
 		$peer = $status['mcp_peer_governance'];
 		echo '<h2>' . esc_html__( 'MCP side-channel governance', 'mad4b-site-control-plane' ) . '</h2>';
 		self::kv( array(
