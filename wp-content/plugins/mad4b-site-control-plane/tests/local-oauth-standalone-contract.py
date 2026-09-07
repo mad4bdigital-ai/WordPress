@@ -4,6 +4,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 server = (root / 'includes' / 'class-mad4b-scp-local-oauth-server.php').read_text(encoding='utf-8')
 store = (root / 'includes' / 'class-mad4b-scp-local-oauth-store.php').read_text(encoding='utf-8')
+guard = (root / 'includes' / 'class-mad4b-scp-local-oauth-loopback-guard.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
@@ -70,10 +71,28 @@ for marker in required_store:
     if marker not in store:
         raise SystemExit(f'missing local OAuth store marker: {marker}')
 
+required_guard = [
+    'pre_http_request',
+    '/.well-known/openid-configuration',
+    '/.well-known/oauth-authorization-server',
+    'MAD4B_SCP_Local_OAuth_Server::metadata()',
+    'MAD4B_SCP_Local_OAuth_Server::jwks_document()',
+]
+for marker in required_guard:
+    if marker not in guard:
+        raise SystemExit(f'missing local OAuth loopback guard marker: {marker}')
+for forbidden in ['wp_remote_get(', 'wp_safe_remote_get(', 'curl_exec(']:
+    if forbidden in guard:
+        raise SystemExit(f'forbidden loopback guard network primitive: {forbidden}')
+
 if 'class-mad4b-scp-local-oauth-store.php' not in main:
     raise SystemExit('main plugin does not load local OAuth store')
 if 'class-mad4b-scp-local-oauth-server.php' not in main:
     raise SystemExit('main plugin does not load local OAuth server')
+if 'class-mad4b-scp-local-oauth-loopback-guard.php' not in main:
+    raise SystemExit('main plugin does not load local OAuth loopback guard')
+if 'MAD4B_SCP_Local_OAuth_Loopback_Guard::boot()' not in plugin:
+    raise SystemExit('plugin boot does not initialize local OAuth loopback guard')
 if 'MAD4B_SCP_Local_OAuth_Server::boot()' not in plugin:
     raise SystemExit('plugin boot does not initialize local OAuth server')
 
