@@ -96,17 +96,35 @@ require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
 
 for marker in (
-    "const CONTRACT = 'mad4b.mcp-provider-isolation.v1'",
+    "const CONTRACT = 'mad4b.mcp-provider-isolation.v2'",
+    "const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v1'",
     "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
     "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'",
     "add_filter( 'mcp_adapter_create_default_server'",
+    "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
+    "add_action( 'init', array( __CLASS__, 'suppress_provider_server_registrations' ), 19 )",
+    "add_action( 'mcp_adapter_init', array( __CLASS__, 'suppress_provider_server_registrations' ), -1000000 )",
     "add_filter( 'rest_endpoints'",
+    "'hostinger-ai-assistant-mcp-server'",
+    "'elementskit-mcp-server'",
+    "'Hostinger\\\\AiAssistant\\\\Mcp\\\\McpServer'",
+    "'ElementsKit_Lite\\\\Mcp\\\\Server'",
+    "'create_server'",
+    "'register_server'",
+    "/hostinger-ai-assistant/v1/mcp/",
+    "/hostinger-ai-assistant/v1/jwt/",
+    "/elementskit/mcp/",
     "'unknown_routes_fail_closed' => true",
+    "'unknown_server_callbacks_fail_closed' => true",
     "'changes_provider_settings' => false",
+    "'disables_provider_plugins' => false",
     "'creates_authority' => false",
 ):
     require(isolation, marker, 'provider-isolation-contract')
-for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post('):
+for forbidden in (
+    'update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post(',
+    'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible(',
+):
     forbid(isolation, forbidden, 'provider-isolation-deny-only')
 
 for marker in (
@@ -125,4 +143,4 @@ for bypass in (
 ):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v4: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v5: PASS')
