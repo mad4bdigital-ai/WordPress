@@ -1,6 +1,8 @@
 # MAD4B Connection Readiness Contract
 
-Contract: `mad4b.connection-readiness.v3`
+Contract: `mad4b.connection-readiness.v4`
+
+Supersedes: `mad4b.connection-readiness.v3`.
 
 This contract defines what MAD4B may truthfully claim before a real external MCP client is connected. It is a read-only evidence surface and must not become a second mutation or credential authority.
 
@@ -9,10 +11,12 @@ This contract defines what MAD4B may truthfully claim before a real external MCP
 MAD4B MUST keep these states separate:
 
 1. **Local transport ready** — the exact certified MCP Adapter is available; all governed MAD4B custom servers are registered; their REST routes exist; each transport permission callback exactly matches the intended MAD4B server-bound callback; and MCP peer governance is inspectable with no write-side-channel blocker.
-2. **Remote endpoint preflight ready** — local transport is ready and the site is using HTTPS. This is only configuration readiness.
-3. **Connection certified** — a real external MCP session has established transport/authentication and the authenticated transport subject has been resolved through the MAD4B subject bridge on the target environment.
+2. **Remote endpoint preflight ready** — local transport is ready, the site is using HTTPS, and the Staging OAuth protected-resource bridge is locally configured and effective: OAuth enablement is explicit, a valid HTTPS issuer is configured, the dedicated WordPress subject exists with the required capability, and the environment gate permits the bridge. This is local configuration truth only. It does **not** prove that the authorization server is reachable, standards-compliant, able to issue a token for this exact resource, or accepted by an external MCP client.
+3. **Connection certified** — a real external MCP session has completed OAuth discovery/authorization, established transport, and the authenticated transport subject has been resolved through the MAD4B subject bridge on the target environment.
 
 A local WordPress process MUST NOT infer level 3 from level 1 or 2. `connection_certified` therefore remains false in the local status surface until target-specific external evidence is produced by the staging certification process.
+
+Remote preflight MUST fail closed with explicit blockers when OAuth is missing or invalid. At minimum the implementation may surface bounded non-secret blockers for an unavailable bridge, disabled bridge, missing issuer, missing/invalid WordPress subject, HTTPS failure, environment denial, or an otherwise ineffective bridge. A report MUST NOT claim `remote_endpoint_preflight_ready=true` while the OAuth bridge is not locally effective.
 
 ## 2. Exact MAD4B server surfaces
 
@@ -69,9 +73,11 @@ The central authorization engine MUST resolve the actual bound MCP transport ser
 
 Direct internal/runtime calls that have no MCP transport context may continue to use their explicitly declared server ID; once an MCP transport is bound, the active transport server is authoritative and the Ability MUST be mounted there.
 
-## 4. Authentication truth
+## 4. Authentication and OAuth truth
 
 The official MCP Adapter HTTP transport authorizes the WordPress request and then applies the custom server transport permission callback. MAD4B adds request-local transport binding plus its NHI subject binding and exact-grant authority for governed mutations.
+
+For the Staging read transport, the OAuth resource-server bridge is a distinct prerequisite. The Connection surface MAY inspect only bounded local configuration from `MAD4B_SCP_OAuth_Resource_Bridge::status()`; it MUST NOT perform authorization-server discovery from the admin page. The bridge configuration is expected to be gated by `MAD4B_MCP_OAUTH_ENABLED`, `MAD4B_MCP_OAUTH_ISSUER`, and `MAD4B_MCP_OAUTH_WP_USER_ID`, with Production separately denied unless its explicit approval gate is present.
 
 The Connection surface MAY report non-sensitive facts such as:
 
@@ -80,9 +86,16 @@ The Connection surface MAY report non-sensitive facts such as:
 - whether a subject fingerprint is present, as a boolean only;
 - number of exact token scopes;
 - WordPress user ID for the current authenticated request;
-- whether a transport server is bound and its non-secret server ID.
+- whether a transport server is bound and its non-secret server ID;
+- whether the OAuth bridge is configured/effective;
+- configured issuer/resource URLs;
+- authoritative RFC 9728 protected-resource metadata URL;
+- bounded authorization-server metadata candidate URLs;
+- supported read scope and accepted asymmetric token algorithm identifiers;
+- whether the configured WordPress subject exists with the required capability;
+- bounded OAuth preflight blockers.
 
-It MUST NOT render or return raw credential material, including passwords, authorization headers, bearer tokens, application passwords, client secrets, access tokens, refresh tokens or raw subject fingerprints.
+It MUST NOT render or return raw credential material, including passwords, authorization headers, bearer tokens, application passwords, client secrets, access tokens, refresh tokens, private signing keys or raw subject fingerprints.
 
 The transport context MUST NOT retain credential/session material. It may retain only bounded request-local routing evidence needed to bind authorization to the actual governed MCP server.
 
@@ -90,9 +103,9 @@ The page MUST NOT create OAuth clients, Application Passwords, NHI records, gran
 
 ## 5. No self-probe / SSRF boundary
 
-The WordPress admin Connection page and `mad4b/connection-status` MUST NOT perform outbound requests to their own endpoint or to a user-supplied URL.
+The WordPress admin Connection page and `mad4b/connection-status` MUST NOT perform outbound requests to their own endpoint, the configured issuer, or a user-supplied URL.
 
-Local readiness is derived from in-process server registration, REST route registration, provider certification and peer inventory. Internet reachability and a real MCP handshake are proved externally in T103.
+Local readiness is derived from in-process server registration, REST route registration, provider certification, peer inventory, and bounded local OAuth configuration truth. Internet reachability, authorization-server metadata/JWKS conformance, token issuance for the exact WordPress resource, and a real MCP handshake are proved externally in T103.
 
 This prevents a diagnostic UI from becoming an SSRF primitive or from producing misleading self-reachability evidence.
 
@@ -190,6 +203,7 @@ It displays:
 - local/remote/certification readiness as separate states;
 - all five runtime-derived MAD4B endpoints;
 - route-registration and permission-binding evidence;
+- a dedicated OAuth resource-server section with configured/effective state, issuer/resource, RFC 9728 metadata URL, WordPress subject capability, bounded metadata candidates and blockers;
 - a dedicated `mad4b-write` summary including mounted-write count and exact-transport-grant requirement;
 - non-sensitive current request subject facts;
 - explicit external-handshake-unverified state;
@@ -205,6 +219,10 @@ It contains no POST handler, nonce mutation path, remote probe, configuration wr
 Repository CI MUST prove on WordPress 6.9 and current latest at minimum:
 
 - all five MAD4B servers register with exact route/permission evidence;
+- local transport readiness remains independent from OAuth readiness;
+- missing OAuth enablement/issuer/subject blocks `remote_endpoint_preflight_ready` rather than being hidden behind `external_handshake_unverified`;
+- the OAuth bridge supports the path-derived RFC 9728 challenge and standards-correct RFC 8414 discovery for path-scoped issuers;
+- RS256 verification accepts standards-compliant RSA JWKS `n`/`e` material and does not require `x5c`;
 - `mad4b-write` contains at least one explicitly non-readonly Ability;
 - representative governed writers such as reversible content update, structured DB update and mutation undo are projected;
 - representative read-only abilities are absent from `mad4b-write`;
@@ -222,7 +240,7 @@ Repository CI MUST prove on WordPress 6.9 and current latest at minimum:
 - an unknown custom-server callback is not silently removed;
 - Production isolation remains ineffective without its second explicit approval gate.
 
-Repository success certifies the implementation contract only. It does not prove a remote write connection on the target site.
+Repository success certifies the implementation contract only. It does not prove a remote OAuth or write connection on the target site.
 
 ## 10. T103 target evidence
 
@@ -232,16 +250,21 @@ T103 remains incomplete until a separate WordPress Staging target proves at mini
 
 - environment is Staging;
 - exact certified package is deployed;
+- OAuth resource bridge is locally configured/effective with the dedicated Staging subject;
+- the authoritative RFC 9728 protected-resource document is publicly reachable and references the intended authorization issuer;
+- the authorization issuer's RFC 8414/OIDC metadata is externally reachable and compatible, including PKCE S256 and the signing-key discovery required by the resource server;
+- the authorization server can issue a token whose `aud`/resource is exactly the WordPress `mad4b-read` endpoint, whose scope includes `mad4b:read`, and whose asymmetric signature is verifiable by the WordPress resource server without sharing a token-minting secret;
 - remote HTTPS endpoint is reachable from the actual MCP client;
+- OAuth authorization completes from the actual external client;
 - MCP initialization and tool discovery occur on the intended MAD4B server;
-- `mad4b-write` tool discovery exposes only the certified write projection;
 - authenticated transport subject resolves through the MAD4B subject bridge;
-- a write request proves the effective exact grant is bound to `mad4b-write`, not to an alternate specialist server;
+- `mad4b-write` tool discovery exposes only the certified write projection when that later phase is intentionally certified;
+- a write request proves the effective exact grant is bound to `mad4b-write`, not to an alternate specialist server, only after the write phase is separately enabled;
 - provider isolation evidence is effective where intentionally configured and the removed routes match the target's known provider MCP surfaces;
 - the official Adapter inventory contains only the five intended MAD4B servers after isolation; in particular `hostinger-ai-assistant-mcp-server` and `elementskit-mcp-server` are absent;
 - Hostinger MCP JWT token/revoke controls are absent from the isolated Staging REST surface;
 - no unreviewed foreign MCP write transport remains after isolation;
 - a deliberately unknown MCP route still produces the fail-closed blocker during negative certification;
-- the existing T103 governed mutation/undo/drift/budget/audit scenarios pass.
+- the existing T103 governed mutation/undo/drift/budget/audit scenarios pass only in their separately approved phase.
 
 Production write remains NO-GO until T103 and all other Production gates pass.
