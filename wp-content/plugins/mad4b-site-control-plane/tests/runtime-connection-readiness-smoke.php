@@ -22,7 +22,7 @@ $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/connection
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-status' ), 'Connection status ability is not mounted on mad4b-read.' );
 
 $status = MAD4B_SCP_Connection_Status::status();
-$check( isset( $status['contract'] ) && 'mad4b.connection-readiness.v2' === $status['contract'], 'Unexpected connection readiness contract.' );
+$check( isset( $status['contract'] ) && 'mad4b.connection-readiness.v3' === $status['contract'], 'Unexpected connection readiness contract.' );
 $check( ! empty( $status['local_transport_ready'] ), 'Clean local transport should be ready: ' . wp_json_encode( $status['local_blockers'] ) );
 $check( empty( $status['remote_endpoint_preflight_ready'] ), 'HTTP CI target must not claim remote endpoint preflight readiness.' );
 $check( in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTP CI target did not report HTTPS remote blocker.' );
@@ -31,6 +31,12 @@ $check( empty( $status['external_handshake']['verified'] ), 'External handshake 
 $check( in_array( 'external_handshake_unverified', $status['certification_blockers'], true ), 'External handshake blocker missing.' );
 $check( empty( $status['authentication']['credential_material_exposed'] ), 'Connection status claims credential material is exposed.' );
 $check( empty( $status['authentication']['credential_creation_supported_here'] ), 'Connection status claims credential creation in read-only surface.' );
+$check( isset( $status['provider_mcp_isolation'] ) && is_array( $status['provider_mcp_isolation'] ), 'Provider MCP isolation evidence missing from connection status.' );
+$check( empty( $status['provider_mcp_isolation']['configured'] ), 'Provider MCP isolation must be OFF by default.' );
+$check( empty( $status['provider_mcp_isolation']['effective'] ), 'Provider MCP isolation must be ineffective by default.' );
+$check( ! empty( $status['provider_mcp_isolation']['unknown_routes_fail_closed'] ), 'Provider isolation did not report unknown-route fail-closed semantics.' );
+$check( empty( $status['provider_mcp_isolation']['changes_provider_settings'] ), 'Provider isolation claims provider settings mutation.' );
+$check( empty( $status['provider_mcp_isolation']['creates_authority'] ), 'Provider isolation claims authority creation.' );
 
 $expected = MAD4B_SCP_Servers::expected_server_ids();
 $check( count( $status['servers'] ) === count( $expected ), 'MAD4B server count drifted from the server registry.' );
@@ -70,6 +76,8 @@ $check( false !== strpos( $html, 'mad4b-read' ), 'Connection admin page omitted 
 $check( false !== strpos( $html, 'mad4b-write' ), 'Connection admin page omitted the write endpoint.' );
 $check( false !== strpos( $html, esc_html( $status['write_surface']['endpoint'] ) ), 'Connection admin page did not render the runtime-derived write endpoint.' );
 $check( false !== strpos( $html, 'Governed write ingress' ), 'Connection admin page omitted the governed write readiness section.' );
+$check( false !== strpos( $html, 'Provider MCP isolation' ), 'Connection admin page omitted provider isolation evidence.' );
+$check( false !== strpos( $html, 'Unknown routes fail closed' ), 'Connection admin page omitted provider isolation fail-closed truth.' );
 $check( false !== strpos( $html, 'external_handshake_unverified' ), 'Connection admin page omitted external-handshake truth.' );
 foreach ( array( 'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'rollback_payload' ) as $secret ) $check( false === stripos( $html, $secret ), 'Connection admin page exposed forbidden material: ' . $secret );
 $after = array(
@@ -79,4 +87,4 @@ $after = array(
 );
 $check( $before === $after, 'Read-only connection rendering changed governance state.' );
 
-echo "mad4b.site-control-plane.runtime-connection-readiness.v3: PASS\n";
+echo "mad4b.site-control-plane.runtime-connection-readiness.v4: PASS\n";
