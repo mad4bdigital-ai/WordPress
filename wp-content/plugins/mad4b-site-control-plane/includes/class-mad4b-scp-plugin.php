@@ -57,8 +57,27 @@ final class MAD4B_SCP_Plugin {
 		if ( class_exists( 'WP\\MCP\\Core\\McpAdapter' ) ) {
 			$servers = new MAD4B_SCP_Servers();
 			add_action( 'mcp_adapter_init', array( $servers, 'register_servers' ) );
+			add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 );
 		} else {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
+		}
+	}
+
+	/**
+	 * The official Adapter initializes on rest_api_init. Control-plane admin pages
+	 * are ordinary wp-admin requests, so prime the in-memory REST/MCP registry
+	 * locally before any readiness snapshot is rendered. This performs no HTTP
+	 * request and creates no credentials or persistent authority.
+	 */
+	public static function prime_admin_mcp_runtime() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only admin page bootstrap.
+		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
+		if ( ! function_exists( 'rest_get_server' ) ) return;
+		try {
+			rest_get_server();
+		} catch ( Throwable $e ) {
+			// Readiness surfaces remain fail-closed and will report the unavailable registry.
 		}
 	}
 
