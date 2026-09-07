@@ -88,4 +88,4 @@ $after = array(
 );
 $check( $before === $after, 'Read-only connection rendering changed governance state.' );
 
-echo "mad4b.site-control-plane.runtime-connection-readiness.v5: PASS\n";
+echo "mad4b.site-control-plane.runtime-connection-readiness.v4: PASS\n";
