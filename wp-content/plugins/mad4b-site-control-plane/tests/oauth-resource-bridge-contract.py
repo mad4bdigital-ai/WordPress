@@ -55,7 +55,7 @@ required = [
     "S256",
     "public_key_from_jwk",
     "jwks_rsa_ne_supported",
-    "rest_url( 'mcp/mad4b-chatgpt' )",
+    "home_url( '/wp-json/mcp/mad4b-chatgpt' )",
     "'/mcp/mad4b-chatgpt'",
     "'protected_transport_server' => 'mad4b-chatgpt'",
     "stores_bearer_tokens' => false",
@@ -65,6 +65,9 @@ required = [
 for marker in required:
     if marker not in bridge:
         raise SystemExit(f"missing OAuth bridge marker: {marker}")
+
+if "rest_url( 'mcp/mad4b-chatgpt' )" in bridge:
+    raise SystemExit("OAuth protected-resource identity must not depend on WordPress REST permalink representation")
 
 for marker in [
     "mad4b.oauth-request-context-guard.v1",
@@ -198,4 +201,4 @@ for boot_marker in [
 if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
-print('mad4b.site-control-plane.oauth-resource-bridge.v7: PASS')
+print('mad4b.site-control-plane.oauth-resource-bridge.v8: PASS')
