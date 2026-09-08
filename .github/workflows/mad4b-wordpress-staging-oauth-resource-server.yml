@@ -103,6 +103,8 @@ jobs:
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_SCP_WORDPRESS_STAGING_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set WP_HOME 'https://staging.egypttourgates.com' --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set WP_SITEURL 'https://staging.egypttourgates.com' --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B OAuth Resource Server CI' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
 
       - name: Install exact MCP Adapter and Site Control Plane
