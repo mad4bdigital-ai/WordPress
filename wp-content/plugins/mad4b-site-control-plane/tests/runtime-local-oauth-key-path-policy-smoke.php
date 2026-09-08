@@ -9,9 +9,11 @@ function mad4b_key_path_fail( $message, $data = null ) {
 
 if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) ) mad4b_key_path_fail( 'Local OAuth key-path policy unavailable.' );
 $status = MAD4B_SCP_Local_OAuth_Key_Path_Policy::status();
-if ( 'mad4b.local-oauth-key-path-policy.v2' !== $status['contract'] ) mad4b_key_path_fail( 'Unexpected key-path policy contract.', $status );
+if ( 'mad4b.local-oauth-key-path-policy.v3' !== $status['contract'] ) mad4b_key_path_fail( 'Unexpected key-path policy contract.', $status );
 if ( empty( $status['effective'] ) || empty( $status['path_selected'] ) || empty( $status['outside_wordpress_root'] ) ) mad4b_key_path_fail( 'Current CLI fixture key path is not proven outside WordPress.', $status );
 if ( empty( $status['canonical_path_checks'] ) || empty( $status['symlink_ancestor_resolution'] ) ) mad4b_key_path_fail( 'Canonical key-path protections are not declared effective.', $status );
+if ( ! empty( $status['operator_blocker_visible'] ) ) mad4b_key_path_fail( 'Safe key-path fixture unexpectedly reports an operator blocker.', $status );
+if ( true !== MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready() ) mad4b_key_path_fail( 'Safe key-path fixture is not transport-ready.', $status );
 if ( ! empty( $status['key_material_exposed'] ) ) mad4b_key_path_fail( 'Key-path policy must never expose key material.', $status );
 
 // Model a common subdirectory installation: the WordPress root is below the
