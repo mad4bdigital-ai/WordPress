@@ -27,7 +27,20 @@ function mad4b_oauth_sign( array $claims, $private_key, $kid, array $extra_heade
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
 
-mad4b_oauth_smoke_assert( MAD4B_SCP_Staging_OAuth_Bridge::enabled(), 'bridge must be enabled on disposable staging target' );
+if ( ! MAD4B_SCP_Staging_OAuth_Bridge::enabled() ) {
+	$flag_defined = defined( MAD4B_SCP_Staging_OAuth_Bridge::ENABLE_FLAG );
+	$diagnostics = array(
+		'flag_defined' => $flag_defined,
+		'flag_value' => $flag_defined ? constant( MAD4B_SCP_Staging_OAuth_Bridge::ENABLE_FLAG ) : null,
+		'openssl_loaded' => extension_loaded( 'openssl' ),
+		'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : null,
+		'home_option' => function_exists( 'get_option' ) ? get_option( 'home' ) : null,
+		'home_url' => function_exists( 'home_url' ) ? home_url( '/' ) : null,
+		'https' => isset( $_SERVER['HTTPS'] ) ? (string) $_SERVER['HTTPS'] : null,
+		'server_port' => isset( $_SERVER['SERVER_PORT'] ) ? (string) $_SERVER['SERVER_PORT'] : null,
+	);
+	mad4b_oauth_smoke_fail( 'bridge must be enabled on disposable staging target; diagnostics=' . wp_json_encode( $diagnostics, JSON_UNESCAPED_SLASHES ) );
+}
 $metadata = MAD4B_SCP_Staging_OAuth_Bridge::protected_resource_metadata();
 mad4b_oauth_smoke_assert( MAD4B_SCP_Staging_OAuth_Bridge::RESOURCE === $metadata['resource'], 'resource metadata mismatch' );
 mad4b_oauth_smoke_assert( array( MAD4B_SCP_Staging_OAuth_Bridge::ISSUER ) === $metadata['authorization_servers'], 'authorization server metadata mismatch' );
