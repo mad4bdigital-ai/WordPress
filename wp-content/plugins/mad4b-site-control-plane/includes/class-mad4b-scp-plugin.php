@@ -50,6 +50,7 @@ final class MAD4B_SCP_Plugin {
 
 		MAD4B_SCP_Admin_UI::boot();
 		MAD4B_SCP_Connection_Admin_UI::boot();
+		MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot();
 		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();
 		MAD4B_SCP_Runtime_Components_Admin_UI::boot();
 		MAD4B_SCP_Local_OAuth_Browser_Canary::boot();
