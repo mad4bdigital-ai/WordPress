@@ -9,11 +9,14 @@ main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
 required_server = [
-    'mad4b.local-oauth-server.v1',
+    'mad4b.local-oauth-server.v2',
     'MAD4B_MCP_LOCAL_OAUTH_ENABLED',
     'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED',
     'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',
     'MAD4B_MCP_LOCAL_OAUTH_PRIVATE_KEY_PATH',
+    'const MAX_CLIENT_ID_BYTES = 191;',
+    'const MAX_URI_BYTES = 2048;',
+    'const MAX_TOKEN_INPUT_BYTES = 2048;',
     "authorization_response_iss_parameter_supported' => true",
     "client_id_metadata_document_supported' => false",
     "dynamic_client_registration_supported' => false",
@@ -21,6 +24,8 @@ required_server = [
     "code_challenge_methods_supported' => array( 'S256' )",
     "'protected_resources' => array( self::resource_identifier() )",
     "'alg' => 'RS256'",
+    "'use' => 'sig'",
+    "'key_ops' => array( 'verify' )",
     "'resource' => $resource",
     "'iss' => self::issuer()",
     "'aud' => $resource",
@@ -36,6 +41,18 @@ required_server = [
     'private_key_stored_in_database',
     'outside the WordPress web root',
     'Refresh token replay detected; token family revoked.',
+    'configured_issuer_validation',
+    'mad4b_local_oauth_issuer_cross_origin',
+    'issuer_same_origin_required',
+    'issuer_configuration_valid',
+    'consent_clickjacking_protected',
+    "X-Frame-Options: DENY",
+    "frame-ancestors 'none'",
+    'Referrer-Policy: no-referrer',
+    'X-Content-Type-Options: nosniff',
+    'request_param(',
+    'OAuth parameter must be scalar',
+    'OAuth parameter exceeds its size limit',
 ]
 for marker in required_server:
     if marker not in server:
@@ -48,6 +65,7 @@ for forbidden in [
     'wp_safe_remote_get(',
     "update_option( 'mad4b_mcp_local_oauth_private_key'",
     "add_option( 'mad4b_mcp_local_oauth_private_key'",
+    'strlen( $client_id ) > 512',
 ]:
     if forbidden in server:
         raise SystemExit(f'forbidden local OAuth server primitive: {forbidden}')
@@ -58,6 +76,10 @@ required_store = [
     'code_hash char(64)',
     'token_hash char(64)',
     'family_id char(36)',
+    'client_id varchar(191)',
+    'const MAX_CLIENT_ID_BYTES = 191;',
+    'valid_client_id',
+    'valid_sha256_hex',
     'used_at datetime NULL',
     'revoked_at datetime NULL',
     'replacement_hash char(64)',
@@ -101,11 +123,14 @@ if 'MAD4B_SCP_Local_OAuth_Server::boot()' not in plugin:
 
 runtime = (root / 'tests' / 'runtime-local-oauth-standalone-smoke.php').read_text(encoding='utf-8')
 for marker in [
-    'local-oauth-standalone.runtime.v2',
+    'local-oauth-standalone.runtime.v3',
     'family_is_revoked',
     'Model the dangerous interleaving explicitly',
+    'too_long_client',
+    'configured_issuer_validation',
+    'mad4b_local_oauth_issuer_cross_origin',
 ]:
     if marker not in runtime:
-        raise SystemExit(f'missing local OAuth runtime replay-race proof: {marker}')
+        raise SystemExit(f'missing local OAuth runtime hardening proof: {marker}')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v2: PASS')
+print('mad4b.site-control-plane.local-oauth-standalone.v3: PASS')
