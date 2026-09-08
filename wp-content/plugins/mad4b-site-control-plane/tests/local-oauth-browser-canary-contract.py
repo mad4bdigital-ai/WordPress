@@ -27,6 +27,8 @@ for marker in [
     "MAD4B_MCP_OAUTH_MODE', 'local'",
     "application_type' => 'web'",
     "application_type' => 'native'",
+    'Canary configuration is intentionally unavailable outside Staging.',
+    "if ( 'staging' !== $status['environment'] ) return;",
 ]:
     if marker not in php:
         raise SystemExit(f'missing browser canary PHP marker: {marker}')
@@ -45,11 +47,14 @@ for marker in [
     "window.crypto.subtle.digest('SHA-256'",
     "code_challenge_method', 'S256'",
     "grant_type', 'authorization_code'",
+    "credentials: 'omit'",
+    "anonymousProbe.status !== 401",
     "'Authorization': 'Bearer ' + accessToken",
     "delete tokenPayload.refresh_token",
     "delete tokenPayload.access_token",
     "window.history.replaceState",
     "window.sessionStorage.removeItem(storageKey)",
+    "Anonymous ingress was denied with HTTP 401",
     "External-client certification is still required",
 ]:
     if marker not in js:
@@ -57,10 +62,10 @@ for marker in [
 
 for forbidden in [
     'localStorage', 'document.cookie', 'console.log(accessToken)', 'console.log(tokenPayload)',
-    'window.name', 'IndexedDB', 'indexedDB',
+    'window.name', 'IndexedDB', 'indexedDB', "credentials: 'same-origin'",
 ]:
     if forbidden in js:
-        raise SystemExit(f'forbidden browser canary JS persistence/debug primitive: {forbidden}')
+        raise SystemExit(f'forbidden browser canary JS persistence/auth primitive: {forbidden}')
 
 for marker in [
     "[string]$ClientId = 'mad4b-staging-canary'",
@@ -79,4 +84,4 @@ if 'class-mad4b-scp-local-oauth-browser-canary.php' not in main:
 if 'MAD4B_SCP_Local_OAuth_Browser_Canary::boot()' not in plugin:
     raise SystemExit('plugin boot does not initialize browser canary')
 
-print('mad4b.site-control-plane.local-oauth-browser-canary.v2: PASS')
+print('mad4b.site-control-plane.local-oauth-browser-canary.v3: PASS')
