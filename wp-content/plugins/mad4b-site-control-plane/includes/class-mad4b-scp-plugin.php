@@ -43,6 +43,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Admin_UI::boot();
 		MAD4B_SCP_Connection_Admin_UI::boot();
 		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();
+		MAD4B_SCP_Runtime_Components_Admin_UI::boot();
 
 		if ( ! function_exists( 'wp_register_ability' ) ) {
 			add_action( 'admin_notices', array( __CLASS__, 'abilities_notice' ) );
