@@ -1,5 +1,5 @@
 <?php
-/** Runtime proof for read-only local connection truth and admin rendering. */
+/** Runtime proof for read-only local connection truth and staged admin rendering. */
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
 $check = static function ( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); };
 
@@ -14,9 +14,22 @@ $endpoint_matches_route = static function ( $endpoint, $server_id ) {
     return isset( $query['rest_route'] ) && $target === rawurldecode( (string) $query['rest_route'] );
 };
 
+$render_tab = static function ( $tab ) {
+    $had_tab = array_key_exists( 'tab', $_GET );
+    $previous_tab = $had_tab ? $_GET['tab'] : null;
+    $_GET['tab'] = $tab;
+    ob_start();
+    MAD4B_SCP_Connection_Admin_UI::render_page();
+    $html = ob_get_clean();
+    if ( $had_tab ) $_GET['tab'] = $previous_tab;
+    else unset( $_GET['tab'] );
+    return $html;
+};
+
 $check( current_user_can( 'manage_options' ), 'Connection readiness smoke requires an administrator.' );
 $check( class_exists( 'MAD4B_SCP_Connection_Status' ), 'Connection status class unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Connection_Admin_UI' ), 'Connection admin UI class unavailable.' );
+$check( class_exists( 'MAD4B_SCP_Admin_Experience' ), 'Shared staged admin experience class unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Transport_Context' ), 'Transport context class unavailable.' );
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/connection-status' ), 'Connection status ability is not registered.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-status' ), 'Connection status ability is not mounted on mad4b-read.' );
@@ -76,26 +89,36 @@ $before = array(
     (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['approvals']}" ),
     (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['mutations']}" ),
 );
-ob_start();
-MAD4B_SCP_Connection_Admin_UI::render_page();
-$html = ob_get_clean();
-$check( false !== strpos( $html, 'MAD4B Connection' ), 'Connection admin page did not render.' );
-$check( false !== strpos( $html, 'mad4b-read' ), 'Connection admin page omitted the read endpoint.' );
-$check( false !== strpos( $html, 'mad4b-write' ), 'Connection admin page omitted the write endpoint.' );
-$check( false !== strpos( $html, esc_html( $status['write_surface']['endpoint'] ) ), 'Connection admin page did not render the runtime-derived write endpoint.' );
-$check( false !== strpos( $html, 'OAuth resource server' ), 'Connection admin page omitted OAuth resource-server truth.' );
-$check( false !== strpos( $html, 'oauth_resource_bridge_not_configured' ), 'Connection admin page omitted OAuth blocker truth.' );
-$check( false !== strpos( $html, 'Governed write ingress' ), 'Connection admin page omitted the governed write readiness section.' );
-$check( false !== strpos( $html, 'Provider MCP isolation' ), 'Connection admin page omitted provider isolation evidence.' );
-$check( false !== strpos( $html, 'Unknown routes fail closed' ), 'Connection admin page omitted provider isolation fail-closed truth.' );
-$check( false !== strpos( $html, 'External Adapter peers' ), 'Connection admin page omitted bounded external Adapter peer evidence.' );
-$check( false !== strpos( $html, 'external_handshake_unverified' ), 'Connection admin page omitted external-handshake truth.' );
-foreach ( array( 'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'rollback_payload' ) as $secret ) $check( false === stripos( $html, $secret ), 'Connection admin page exposed forbidden material: ' . $secret );
+
+$readiness_html = $render_tab( 'readiness' );
+$oauth_html = $render_tab( 'oauth' );
+$endpoints_html = $render_tab( 'endpoints' );
+$isolation_html = $render_tab( 'isolation' );
+$certification_html = $render_tab( 'certification' );
+$html = $readiness_html . $oauth_html . $endpoints_html . $isolation_html . $certification_html;
+
+$check( false !== strpos( $readiness_html, 'MAD4B Connection' ), 'Connection admin workspace did not render.' );
+$check( false !== strpos( $readiness_html, 'Stage 1' ), 'Connection readiness tab omitted staged guidance.' );
+$check( false !== strpos( $readiness_html, 'Next step' ), 'Connection readiness tab omitted next-step guidance.' );
+$check( false !== strpos( $oauth_html, 'WordPress local OAuth authority' ), 'OAuth tab omitted the standalone WordPress authority.' );
+$check( false !== strpos( $oauth_html, 'External / federated OAuth resource bridge' ), 'OAuth tab omitted the external federated authority.' );
+$check( false !== strpos( $oauth_html, 'oauth_resource_bridge_not_configured' ), 'OAuth tab omitted OAuth blocker truth.' );
+$check( false !== strpos( $endpoints_html, 'mad4b-read' ), 'MCP Endpoints tab omitted the read endpoint.' );
+$check( false !== strpos( $endpoints_html, 'mad4b-write' ), 'MCP Endpoints tab omitted the write endpoint.' );
+$check( false !== strpos( $endpoints_html, esc_html( $status['write_surface']['endpoint'] ) ), 'MCP Endpoints tab did not render the runtime-derived write endpoint.' );
+$check( false !== strpos( $endpoints_html, 'Governed write ingress' ), 'MCP Endpoints tab omitted governed write readiness.' );
+$check( false !== strpos( $isolation_html, 'Provider MCP isolation' ), 'Isolation tab omitted provider isolation evidence.' );
+$check( false !== strpos( $isolation_html, 'Unknown routes fail closed' ), 'Isolation tab omitted provider isolation fail-closed truth.' );
+$check( false !== strpos( $isolation_html, 'External Adapter peers' ), 'Isolation tab omitted bounded external Adapter peer evidence.' );
+$check( false !== strpos( $certification_html, 'external_handshake_unverified' ), 'Certification tab omitted external-handshake truth.' );
+$check( false !== strpos( $certification_html, 'Required evidence' ), 'Certification tab omitted explicit evidence guidance.' );
+foreach ( array( 'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'rollback_payload' ) as $secret ) $check( false === stripos( $html, $secret ), 'Connection admin workspace exposed forbidden material: ' . $secret );
+
 $after = array(
     (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['agents']}" ),
     (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['approvals']}" ),
     (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['mutations']}" ),
 );
-$check( $before === $after, 'Read-only connection rendering changed governance state.' );
+$check( $before === $after, 'Read-only staged connection rendering changed governance state.' );
 
-echo "mad4b.site-control-plane.runtime-connection-readiness.v5: PASS\n";
+echo "mad4b.site-control-plane.runtime-connection-readiness.v6: PASS\n";
