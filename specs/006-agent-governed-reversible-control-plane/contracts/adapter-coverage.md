@@ -4,7 +4,7 @@ Contract: `mad4b.adapter-coverage.v1`
 
 This contract extends the governed control plane without creating a second mutation authority. Discovery is read-only and advisory. It may identify missing support or runtime components, but it must never install a plugin/theme, generate executable adapter code, create an NHI/grant/approval, enable mutation, rewrite WordPress Core, or replace bootstrap-critical files.
 
-## Repository and runtime inventories
+## Repository package inventory and runtime inventories
 
 1. **Repository plugin package inventory** — every `wp-content/plugins/*.zip` is classified by the repository CI contract. A package that has no known family falls back to `adapter_required`; it is never silently omitted.
 2. **Runtime installed-plugin inventory** — WordPress `get_plugins()` plus active/network-active state is mapped to registered MAD4B adapters, provider certification, reversible contracts, risk, and runtime blockers.
