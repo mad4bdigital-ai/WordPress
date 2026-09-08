@@ -1,0 +1,125 @@
+name: MAD4B WordPress Staging OAuth Resource Server
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-wordpress-staging-oauth-resource-server.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wordpress-staging-oauth-resource-server-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-wordpress-staging-oauth-resource-server-smoke.php'
+      - 'wp-content/plugins/mcp-adapter.zip'
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/mad4b-wordpress-staging-oauth-resource-server.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wordpress-staging-oauth-resource-server-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-wordpress-staging-oauth-resource-server-smoke.php'
+      - 'wp-content/plugins/mcp-adapter.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-wordpress-staging-oauth-resource-server-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  static-contract:
+    name: OAuth resource-server contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: openssl
+          coverage: none
+      - name: Verify bridge syntax and fail-closed contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/mad4b-site-control-plane.php"
+          php -l "$root/includes/class-mad4b-scp-plugin.php"
+          php -l "$root/includes/class-mad4b-scp-staging-oauth-bridge.php"
+          php -l "$root/tests/runtime-wordpress-staging-oauth-resource-server-smoke.php"
+          python3 "$root/tests/wordpress-staging-oauth-resource-server-contract.py"
+
+  runtime:
+    name: OAuth resource-server runtime (${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.9', 'latest']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable exact-origin Staging WordPress
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress-oauth
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_SCP_WORDPRESS_STAGING_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B OAuth Resource Server CI' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+
+      - name: Install exact MCP Adapter and Site Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress-oauth
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove RS256 verification, subject binding and deny paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-wordpress-staging-oauth-resource-server-smoke.php" \
+            --path=/tmp/mad4b-wordpress-oauth
