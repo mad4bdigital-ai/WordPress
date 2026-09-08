@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 define( 'ETG_DFSB_VERSION', '0.4.0-alpha.13' );
 define( 'ETG_DFSB_DIR', plugin_dir_path( __FILE__ ) );
-define( 'ETG_DFSB_BOOT_BUILD', 'alpha13-live-rescue-2' );
+define( 'ETG_DFSB_BOOT_BUILD', 'alpha13-container-background-1' );
 
 spl_autoload_register(static function ( $class ) {
     $prefix = 'ETG\\DynamicFilterSEOBridge\\';
@@ -35,5 +35,12 @@ register_activation_hook( __FILE__, static function () {
 add_action( 'plugins_loaded', static function () {
     $guard = 'ETG\\DynamicFilterSEOBridge\\Runtime\\BootGuard';
     if ( $guard::shouldHold() ) { return; }
-    $guard::run( static function () { ETG\DynamicFilterSEOBridge\Bootstrap::instance()->boot(); } );
+    $guard::run( static function () {
+        $bootstrap = ETG\DynamicFilterSEOBridge\Bootstrap::instance();
+        $bootstrap->boot();
+        ( new ETG\DynamicFilterSEOBridge\Elementor\ContainerDynamicBackground(
+            $bootstrap->presentationResolver(),
+            new ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry()
+        ) )->register();
+    } );
 }, 20 );

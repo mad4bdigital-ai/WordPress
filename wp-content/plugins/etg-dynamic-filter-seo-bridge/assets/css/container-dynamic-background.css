@@ -1,0 +1,90 @@
+.etg-dfsb-dynamic-background {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.etg-dfsb-dynamic-background > .etg-dfsb-background-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: inherit;
+    background: transparent;
+}
+
+.etg-dfsb-dynamic-background > .etg-dfsb-background-stage[hidden] {
+    display: none !important;
+}
+
+.etg-dfsb-background-stage__slide {
+    position: absolute;
+    inset: -1px;
+    opacity: 0;
+    background-repeat: no-repeat;
+    background-size: var(--etg-dfsb-background-fit, cover);
+    background-position: var(--etg-dfsb-background-position, center center);
+    transition-property: opacity, transform;
+    transition-duration: var(--etg-dfsb-background-transition-duration, 800ms);
+    transition-timing-function: ease;
+    transform: scale(1.001);
+    will-change: opacity, transform;
+}
+
+.etg-dfsb-background-stage[data-transition="fade"] .etg-dfsb-background-stage__slide,
+.etg-dfsb-background-stage[data-transition="crossfade"] .etg-dfsb-background-stage__slide {
+    transform: scale(1.001);
+}
+
+.etg-dfsb-background-stage[data-transition="slide"] .etg-dfsb-background-stage__slide {
+    transform: translate3d(100%, 0, 0);
+}
+
+.etg-dfsb-background-stage__slide.is-active {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.001);
+}
+
+.etg-dfsb-background-stage[data-transition="slide"] .etg-dfsb-background-stage__slide.is-active {
+    transform: translate3d(0, 0, 0);
+}
+
+.etg-dfsb-background-stage[data-ken-burns="1"] .etg-dfsb-background-stage__slide.is-active {
+    animation: etg-dfsb-background-ken-burns var(--etg-dfsb-background-duration, 5000ms) ease-out both;
+}
+
+.etg-dfsb-background-stage__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: var(--etg-dfsb-background-overlay-color, transparent);
+    opacity: var(--etg-dfsb-background-overlay-opacity, 0);
+}
+
+/* ETG owns only the background layer. Existing Elementor/third-party overlays stay above it. */
+.etg-dfsb-dynamic-background::before,
+.etg-dfsb-dynamic-background > .elementor-background-overlay,
+.etg-dfsb-dynamic-background > .elementor-motion-effects-container,
+.etg-dfsb-dynamic-background > .elementor-background-video-container,
+.etg-dfsb-dynamic-background > .elementor-background-slideshow {
+    z-index: 1;
+}
+
+.etg-dfsb-dynamic-background > :not(.etg-dfsb-background-stage):not(.elementor-background-overlay):not(.elementor-motion-effects-container):not(.elementor-background-video-container):not(.elementor-background-slideshow) {
+    position: relative;
+    z-index: 3;
+}
+
+@keyframes etg-dfsb-background-ken-burns {
+    from { transform: scale(1.001); }
+    to { transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .etg-dfsb-background-stage__slide {
+        transition: none !important;
+        animation: none !important;
+    }
+}

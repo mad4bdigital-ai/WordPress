@@ -17,6 +17,13 @@ final class ContentSlotRegistry {
         'role_priority'=>'Combined by profile role priority',
     );}
 
+    public static function backgroundSlotId(string$type,string$mode):string{
+        $type=sanitize_key($type);$mode=sanitize_key($mode);
+        if(!in_array($type,array('image','gallery'),true)){$type='gallery';}
+        if(!isset(self::mediaModes()[$mode])){$mode='gallery'===$type?'balanced':'priority';}
+        return'etg_background_'.$type.'_'.$mode;
+    }
+
     public function defaults():array{
         $definitions=array(
             'hero_title'=>array('id'=>'hero_title','label'=>'Hero Title','enabled'=>true,'type'=>'text','template'=>'{{title}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>240),
@@ -28,39 +35,47 @@ final class ContentSlotRegistry {
             'style_section'=>array('id'=>'style_section','label'=>'Style Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--style"><h2>{{term:style:name}}</h2><div>{{term:style:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000),
             'results_summary'=>array('id'=>'results_summary','label'=>'Results Summary','enabled'=>true,'type'=>'text','template'=>'{{result_summary}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>300),
         );
-        $out=array();foreach($definitions as $id=>$slot){$n=$this->normalize($slot,$id);$n['origin']='built_in';$out[$id]=$n;}return$out;
+        $out=array();foreach($definitions as$id=>$slot){$n=$this->normalize($slot,$id);$n['origin']='built_in';$out[$id]=$n;}return$out;
     }
 
     public function all():array{$out=$this->defaults();foreach($this->stored()as$id=>$slot){$n=$this->normalize($slot,(string)$id);if(''===$n['id']){continue;}$n['origin']=isset($out[$n['id']])?'override':'custom';$out[$n['id']]=$n;}ksort($out,SORT_STRING);return array_slice($out,0,self::MAX_SLOTS,true);}
-    public function get(string $id):array{$slots=$this->all();$id=sanitize_key($id);return isset($slots[$id])?(array)$slots[$id]:array();}
-    public function isDefault(string $id):bool{$id=sanitize_key($id);return isset($this->defaults()[$id]);}
+    public function get(string$id):array{$id=sanitize_key($id);$virtual=$this->backgroundSlot($id);if($virtual){return$virtual;}$slots=$this->all();return isset($slots[$id])?(array)$slots[$id]:array();}
+    public function isDefault(string$id):bool{$id=sanitize_key($id);return isset($this->defaults()[$id]);}
 
-    public function save(array $slot):array{
+    private function backgroundSlot(string$id):array{
+        if(!preg_match('/\Aetg_background_(image|gallery)_([a-z0-9_-]+)\z/',$id,$match)){return array();}
+        $type=(string)$match[1];$mode=sanitize_key((string)$match[2]);$modes=self::mediaModes();if(!isset($modes[$mode])){return array();}
+        $slot=$this->normalize(array('id'=>$id,'label'=>'ETG Container Background — '.$modes[$mode],'enabled'=>true,'type'=>$type,'template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>$mode),$id);
+        $slot['origin']='virtual';$slot['internal']=true;return$slot;
+    }
+
+    public function save(array$slot):array{
         $stored=$this->stored();$slot=$this->normalize($slot,(string)($slot['id']??''));
-        if(''===$slot['id']){return array('saved'=>false,'reason'=>'slot_id_required','slot'=>array());}
+        if(''==$slot['id']){return array('saved'=>false,'reason'=>'slot_id_required','slot'=>array());}
+        if(0===strpos($slot['id'],'etg_background_')){return array('saved'=>false,'reason'=>'reserved_slot_id','slot'=>$slot);}
         $all=$this->all();if(!isset($stored[$slot['id']])&&!isset($all[$slot['id']])&&count($all)>=self::MAX_SLOTS){return array('saved'=>false,'reason'=>'slot_limit_exceeded','slot'=>$slot);}
         unset($slot['origin']);$stored[$slot['id']]=$slot;ksort($stored,SORT_STRING);if(function_exists('update_option')){update_option(self::OPTION_NAME,$stored,false);} $slot['origin']=$this->isDefault($slot['id'])?'override':'custom';
         return array('saved'=>true,'reason'=>'saved','slot'=>$slot,'authorizing'=>false,'profile_mutation'=>false);
     }
 
-    public function delete(string $id):bool{$id=sanitize_key($id);$stored=$this->stored();if(!isset($stored[$id])){return false;}unset($stored[$id]);if(function_exists('update_option')){update_option(self::OPTION_NAME,$stored,false);}return true;}
+    public function delete(string$id):bool{$id=sanitize_key($id);$stored=$this->stored();if(!isset($stored[$id])){return false;}unset($stored[$id]);if(function_exists('update_option')){update_option(self::OPTION_NAME,$stored,false);}return true;}
 
-    public function normalize(array $slot,string $fallbackId=''):array{
+    public function normalize(array$slot,string$fallbackId=''):array{
         $id=sanitize_key((string)($slot['id']??$fallbackId));$type=sanitize_key((string)($slot['type']??'text'));
         if(!in_array($type,array('text','html','url','image','gallery','json'),true)){$type='text';}
-        $template=$this->boundedText($slot['template']??'',12000,'html'===$type);$fallback=$this->boundedText($slot['fallback']??'',4000,'html'===$type);$prefix=$this->boundedText($slot['prefix']??'',1000,'html'===$type);$suffix=$this->boundedText($slot['suffix']??'',1000,'html'===$type);
+        $template=$this->boundedText($slot['template']??'',12000,'html'==$type);$fallback=$this->boundedText($slot['fallback']??'',4000,'html'==$type);$prefix=$this->boundedText($slot['prefix']??'',1000,'html'==$type);$suffix=$this->boundedText($slot['suffix']??'',1000,'html'==$type);
         $max=is_numeric($slot['max_length']??null)?(int)$slot['max_length']:0;$max=max(0,min(20000,$max));$enabled=$this->truthy($slot['enabled']??true);
         $fingerprint=preg_replace('/[^a-f0-9]/','',strtolower((string)($slot['source_inventory_fingerprint']??'')));if(!is_string($fingerprint)||64!==strlen($fingerprint)){$fingerprint='';}
         $sources=$this->sources($slot['sources']??array());$chain=$this->chain($slot['fallback_chain']??array(),array_keys($sources));
-        $defaultMediaMode='image'===$type?'priority':'combined';$mediaMode=sanitize_key((string)($slot['media_mode']??$defaultMediaMode));if(!isset(self::mediaModes()[$mediaMode])){$mediaMode=$defaultMediaMode;}
+        $defaultMediaMode='image'==$type?'priority':'combined';$mediaMode=sanitize_key((string)($slot['media_mode']??$defaultMediaMode));if(!isset(self::mediaModes()[$mediaMode])){$mediaMode=$defaultMediaMode;}
         return array('contract'=>self::CONTRACT,'id'=>$id,'label'=>sanitize_text_field((string)($slot['label']??$id)),'enabled'=>$enabled,'type'=>$type,'template'=>$template,'fallback'=>$fallback,'prefix'=>$prefix,'suffix'=>$suffix,'max_length'=>$max,'media_mode'=>$mediaMode,'sources'=>$sources,'fallback_chain'=>$chain,'source_inventory_fingerprint'=>$fingerprint,'authorizing'=>false,'profile_mutation'=>false);
     }
 
     private function sources($value):array{
         if(is_string($value)){$decoded=json_decode($value,true);$value=is_array($decoded)?$decoded:array();}
-        $out=array();foreach(array_slice((array)$value,0,self::MAX_SOURCES)as$source){if(!is_array($source)){continue;}$alias=sanitize_key((string)($source['alias']??''));if(''===$alias){continue;}$source['alias']=$alias;$out[$alias]=$source;}ksort($out,SORT_STRING);return$out;
+        $out=array();foreach(array_slice((array)$value,0,self::MAX_SOURCES)as$source){if(!is_array($source)){continue;}$alias=sanitize_key((string)($source['alias']??''));if(''==$alias){continue;}$source['alias']=$alias;$out[$alias]=$source;}ksort($out,SORT_STRING);return$out;
     }
-    private function chain($value,array $aliases):array{
+    private function chain($value,array$aliases):array{
         if(is_string($value)){$value=preg_split('/[\r\n,|]+/',$value);}
         $allowed=array_fill_keys($aliases,true);$out=array();foreach((array)$value as$alias){$alias=sanitize_key((string)$alias);if(''!==$alias&&isset($allowed[$alias])&&!in_array($alias,$out,true)){$out[]=$alias;}}if(!$out){$out=$aliases;}return array_slice($out,0,self::MAX_SOURCES);
     }
