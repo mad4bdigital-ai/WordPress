@@ -12,7 +12,7 @@ function mad4b_edge_token( array $header ) {
 	return mad4b_edge_b64url( wp_json_encode( $header ) ) . '.' . mad4b_edge_b64url( wp_json_encode( $claims ) ) . '.' . mad4b_edge_b64url( 'signature' );
 }
 function mad4b_edge_request( $token ) {
-	$request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
+	$request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
 	$request->set_header( 'Authorization', 'Bearer ' . $token );
 	return $request;
 }
