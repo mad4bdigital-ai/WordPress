@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * dirname(ABSPATH) can still be web-addressable in that topology.
  */
 final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
-	const CONTRACT = 'mad4b.local-oauth-key-path-policy.v1';
+	const CONTRACT = 'mad4b.local-oauth-key-path-policy.v2';
 	private static $booted = false;
 	private static $error = null;
 	private static $selected_path = '';
@@ -30,7 +30,7 @@ final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
 			$path = trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_PRIVATE_KEY_PATH' ) );
 			$valid = self::validate_path_against_roots( $path, ABSPATH, self::document_root() );
 			if ( is_wp_error( $valid ) ) self::$error = $valid;
-			else self::$selected_path = $path;
+			else self::$selected_path = self::canonical_candidate_path( $path );
 		}
 
 		add_action( 'init', array( __CLASS__, 'enforce_runtime' ), 0 );
@@ -82,15 +82,17 @@ final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
 			'outside_wordpress_root' => '' !== self::$selected_path && ! self::path_within( self::$selected_path, ABSPATH ),
 			'document_root_available' => '' !== $document_root,
 			'outside_document_root' => '' === $document_root || ( '' !== self::$selected_path && ! self::path_within( self::$selected_path, $document_root ) ),
+			'canonical_path_checks' => true,
+			'symlink_ancestor_resolution' => true,
 			'error' => is_wp_error( self::$error ) ? self::$error->get_error_code() : '',
 			'key_material_exposed' => false,
 		);
 	}
 
 	public static function validate_path_against_roots( $path, $wordpress_root, $document_root = '' ) {
-		$path = wp_normalize_path( trim( (string) $path ) );
-		$wordpress_root = wp_normalize_path( trim( (string) $wordpress_root ) );
-		$document_root = wp_normalize_path( trim( (string) $document_root ) );
+		$path = self::canonical_candidate_path( trim( (string) $path ) );
+		$wordpress_root = self::canonical_candidate_path( trim( (string) $wordpress_root ) );
+		$document_root = '' === trim( (string) $document_root ) ? '' : self::canonical_candidate_path( trim( (string) $document_root ) );
 		if ( '' === $path || ! self::absolute_path( $path ) ) return new WP_Error( 'mad4b_local_oauth_key_path_invalid', 'Local OAuth private-key path must be absolute.' );
 		if ( '' === $wordpress_root || self::path_within( $path, $wordpress_root ) ) return new WP_Error( 'mad4b_local_oauth_key_path_wordpress_exposed', 'Local OAuth private-key path must be outside the WordPress root.' );
 		if ( '' !== $document_root && self::path_within( $path, $document_root ) ) return new WP_Error( 'mad4b_local_oauth_key_path_document_root_exposed', 'Local OAuth private-key path must be outside the HTTP document root.' );
@@ -98,8 +100,8 @@ final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
 	}
 
 	public static function safe_default_path_for_roots( $wordpress_root, $document_root = '' ) {
-		$wordpress_root = wp_normalize_path( rtrim( (string) $wordpress_root, '/\\' ) );
-		$document_root = wp_normalize_path( rtrim( (string) $document_root, '/\\' ) );
+		$wordpress_root = self::canonical_candidate_path( rtrim( (string) $wordpress_root, '/\\' ) );
+		$document_root = '' === trim( (string) $document_root ) ? '' : self::canonical_candidate_path( rtrim( (string) $document_root, '/\\' ) );
 		if ( '' !== $document_root && self::absolute_path( $document_root ) ) {
 			$base = dirname( $document_root );
 		} elseif ( 'cli' === PHP_SAPI || 'phpdbg' === PHP_SAPI ) {
@@ -109,7 +111,7 @@ final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
 		} else {
 			return new WP_Error( 'mad4b_local_oauth_document_root_unknown', 'HTTP document root is unavailable; configure an explicit private-key path outside the web root.' );
 		}
-		$path = trailingslashit( $base ) . '.mad4b/oauth/wordpress-local-rs256-private.pem';
+		$path = self::canonical_candidate_path( trailingslashit( $base ) . '.mad4b/oauth/wordpress-local-rs256-private.pem' );
 		$valid = self::validate_path_against_roots( $path, $wordpress_root, $document_root );
 		return is_wp_error( $valid ) ? $valid : $path;
 	}
@@ -121,13 +123,64 @@ final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
 	private static function document_root() {
 		$root = isset( $_SERVER['DOCUMENT_ROOT'] ) ? trim( (string) wp_unslash( $_SERVER['DOCUMENT_ROOT'] ) ) : '';
 		if ( '' === $root || ! self::absolute_path( $root ) ) return '';
-		return wp_normalize_path( rtrim( $root, '/\\' ) );
+		return self::canonical_candidate_path( $root );
+	}
+
+	private static function canonical_candidate_path( $path ) {
+		$path = self::collapse_path( wp_normalize_path( trim( (string) $path ) ) );
+		if ( '' === $path || ! self::absolute_path( $path ) ) return $path;
+		if ( file_exists( $path ) ) {
+			$real = realpath( $path );
+			if ( false !== $real ) return self::collapse_path( wp_normalize_path( $real ) );
+		}
+
+		$basename = basename( $path );
+		$cursor = dirname( $path );
+		$suffix = array();
+		while ( '' !== $cursor && ! file_exists( $cursor ) ) {
+			$parent = dirname( $cursor );
+			if ( $parent === $cursor ) break;
+			array_unshift( $suffix, basename( $cursor ) );
+			$cursor = $parent;
+		}
+		$real_base = '' !== $cursor ? realpath( $cursor ) : false;
+		if ( false === $real_base ) return $path;
+		$resolved = wp_normalize_path( $real_base );
+		foreach ( $suffix as $segment ) $resolved = trailingslashit( $resolved ) . $segment;
+		return self::collapse_path( trailingslashit( $resolved ) . $basename );
+	}
+
+	private static function collapse_path( $path ) {
+		$path = wp_normalize_path( (string) $path );
+		if ( '' === $path ) return '';
+		$drive = '';
+		$absolute = 0 === strpos( $path, '/' );
+		if ( preg_match( '#^([A-Za-z]:)(/.*)?$#', $path, $matches ) ) {
+			$drive = strtoupper( $matches[1] );
+			$path = isset( $matches[2] ) ? $matches[2] : '/';
+			$absolute = true;
+		}
+		$parts = array();
+		foreach ( explode( '/', $path ) as $segment ) {
+			if ( '' === $segment || '.' === $segment ) continue;
+			if ( '..' === $segment ) {
+				if ( ! empty( $parts ) ) array_pop( $parts );
+				continue;
+			}
+			$parts[] = $segment;
+		}
+		$prefix = '' !== $drive ? $drive . '/' : ( $absolute ? '/' : '' );
+		return $prefix . implode( '/', $parts );
 	}
 
 	private static function path_within( $path, $root ) {
-		$path = wp_normalize_path( (string) $path );
-		$root = trailingslashit( wp_normalize_path( rtrim( (string) $root, '/\\' ) ) );
+		$path = self::canonical_candidate_path( $path );
+		$root = trailingslashit( self::canonical_candidate_path( rtrim( (string) $root, '/\\' ) ) );
 		if ( '' === $path || '/' === $root ) return '/' === $root && 0 === strpos( $path, '/' );
+		if ( preg_match( '#^[A-Za-z]:/#', $path ) && preg_match( '#^[A-Za-z]:/#', $root ) ) {
+			$path = strtolower( $path );
+			$root = strtolower( $root );
+		}
 		return 0 === strpos( $path, $root );
 	}
 
