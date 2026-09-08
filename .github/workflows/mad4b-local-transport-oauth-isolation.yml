@@ -28,15 +28,17 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-plugin.php"
           php -l "$root/tests/runtime-local-transport-oauth-isolation-smoke.php"
+          php -l "$root/tests/runtime-local-transport-oauth-misconfigured-smoke.php"
           python3 "$root/tests/local-transport-oauth-isolation-contract.py"
 
   runtime:
-    name: Local transport without OAuth (${{ matrix.wordpress }})
+    name: Local transport OAuth isolation (${{ matrix.wordpress }}, ${{ matrix.oauth_fixture }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         wordpress: ['6.9', 'latest']
+        oauth_fixture: ['disabled', 'misconfigured']
 
     services:
       mysql:
@@ -69,10 +71,11 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
           php /tmp/wp-cli.phar --info
 
-      - name: Provision disposable WordPress without OAuth
+      - name: Provision disposable WordPress
         shell: bash
         env:
           WP_VERSION: ${{ matrix.wordpress }}
+          OAUTH_FIXTURE: ${{ matrix.oauth_fixture }}
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
@@ -82,6 +85,10 @@ jobs:
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-local-transport.test' --title='MAD4B Local Transport' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          if [ "$OAUTH_FIXTURE" = 'misconfigured' ]; then
+            php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
+            php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ISSUER 'https://auth.mad4b.test/auth/mcp' --type=constant --path="$WP_PATH"
+          fi
 
       - name: Install exact MCP Adapter and control plane
         shell: bash
@@ -94,8 +101,15 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
-      - name: Prove local read transport survives with OAuth disabled
+      - name: Prove local read transport survives optional OAuth state
         shell: bash
+        env:
+          OAUTH_FIXTURE: ${{ matrix.oauth_fixture }}
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-transport-oauth-isolation-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          if [ "$OAUTH_FIXTURE" = 'misconfigured' ]; then
+            smoke='runtime-local-transport-oauth-misconfigured-smoke.php'
+          else
+            smoke='runtime-local-transport-oauth-isolation-smoke.php'
+          fi
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/$smoke" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
