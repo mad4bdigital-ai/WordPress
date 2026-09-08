@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[4]
 PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
 MANIFEST = PLUGIN / "config/repository-runtime-components.json"
 ADAPTERS = PLUGIN / "includes/adapters/class-mad4b-scp-runtime-component-adapters.php"
+RUNTIME_SMOKE = PLUGIN / "tests/runtime-component-adapter-smoke.php"
 LOADER = PLUGIN / "mad4b-site-control-plane.php"
 PLUGIN_BOOT = PLUGIN / "includes/class-mad4b-scp-plugin.php"
 UI = PLUGIN / "includes/class-mad4b-scp-runtime-components-admin-ui.php"
@@ -99,6 +100,41 @@ def main():
     if "read_only_non_authorizing" not in source:
         fail("runtime component authority mode is not explicit")
 
+    # Filesystem discovery is remotely reachable through the governed read
+    # surface. Its traversal bound is therefore a security/resource contract,
+    # not merely a performance optimization. Excluded dependency/VCS trees must
+    # be pruned before descent, symlinks must not be followed, and an independent
+    # entry budget/depth bound must exist in addition to the returned-file cap.
+    traversal_markers = [
+        "new DirectoryIterator(",
+        "$entry_budget = 1200;",
+        "$max_depth = 16;",
+        "'scan_entry_budget' => $entry_budget",
+        "'pruned_directory_count'",
+        "'skipped_symlink_count'",
+        "in_array( $name, array( 'vendor', 'node_modules', '.git' ), true )",
+        "$entry->isLink()",
+    ]
+    for marker in traversal_markers:
+        if marker not in source:
+            fail(f"Astra child filesystem hard bound missing: {marker}")
+    for unsafe in ("new RecursiveIteratorIterator(", "new RecursiveDirectoryIterator("):
+        if unsafe in source:
+            fail(f"Astra child filesystem scan regressed to unbounded recursive traversal: {unsafe}")
+
+    runtime = RUNTIME_SMOKE.read_text(encoding="utf-8")
+    for marker in (
+        "runtime-component-adapters.v2",
+        "pruned_directory_count",
+        "scanned_entry_count",
+        "scan_entry_budget",
+        "vendor/deep",
+        "node_modules/pkg",
+        ".git/objects",
+    ):
+        if marker not in runtime:
+            fail(f"runtime child-theme traversal proof missing: {marker}")
+
     loader = LOADER.read_text(encoding="utf-8")
     if "class-mad4b-scp-runtime-component-adapters.php" not in loader:
         fail("runtime component adapters are not loaded by plugin bootstrap")
@@ -117,7 +153,7 @@ def main():
         fail("runtime components admin UI does not state read-only boundary")
 
     evidence = {
-        "contract": "mad4b.repository-runtime-component-coverage-evidence.v1",
+        "contract": "mad4b.repository-runtime-component-coverage-evidence.v2",
         "status": "passed",
         "wordpress_core_markers": core.get("required_markers", []),
         "repository_theme_count": len(actual_themes),
@@ -129,6 +165,13 @@ def main():
             "wordpress-core", "mu-plugins", "drop-ins", "themes",
             "astra-theme", "astra-child-theme", "runtime-components"
         ],
+        "astra_child_scan": {
+            "prunes_before_descent": ["vendor", "node_modules", ".git"],
+            "symlinks_followed": False,
+            "entry_budget": 1200,
+            "max_depth": 16,
+            "returned_file_limit": 300,
+        },
         "mutation_exposed": False,
         "normal_write_default": "deny",
     }
