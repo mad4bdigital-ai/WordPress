@@ -1,0 +1,55 @@
+name: MAD4B ETG DFSB Adapter
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py'
+      - '.github/workflows/mad4b-etg-dfsb-adapter.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py'
+      - '.github/workflows/mad4b-etg-dfsb-adapter.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-etg-dfsb-adapter-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: ETG DFSB read-only MCP contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify read-only adapter contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py
+
+  php-compatibility:
+    name: ETG adapter PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint adapter
+        run: php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
