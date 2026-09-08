@@ -25,6 +25,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	const MAX_JWKS_KEYS = 100;
 	const MIN_RSA_BITS = 2048;
 	const CACHE_TTL = 300;
+	const JWKS_REFRESH_COOLDOWN = 30;
 
 	private static $booted = false;
 	private static $verified_context = null;
@@ -118,7 +119,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'jwks_minimum_rsa_bits' => self::MIN_RSA_BITS,
 			'jwks_use_sig_enforced' => true,
 			'jwks_key_ops_verify_enforced' => true,
+			'jwks_refresh_cooldown_seconds' => self::JWKS_REFRESH_COOLDOWN,
+			'jwks_cache_bound_to_issuer' => true,
 			'jwt_resource_claim_required' => true,
+			'bearer_request_resets_identity_before_verification' => true,
 			'stores_bearer_tokens' => false,
 			'creates_credentials' => false,
 			'outbound_discovery_on_admin' => false,
@@ -135,13 +139,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		);
 	}
 
-	public static function resource_identifier() {
-		return untrailingslashit( rest_url( 'mcp/mad4b-read' ) );
-	}
-
-	public static function metadata_url() {
-		return untrailingslashit( rest_url( self::METADATA_NAMESPACE . self::METADATA_ROUTE ) );
-	}
+	public static function resource_identifier() { return untrailingslashit( rest_url( 'mcp/mad4b-read' ) ); }
+	public static function metadata_url() { return untrailingslashit( rest_url( self::METADATA_NAMESPACE . self::METADATA_ROUTE ) ); }
 
 	public static function authority_mode() {
 		if ( defined( 'MAD4B_MCP_OAUTH_MODE' ) ) {
@@ -149,19 +148,13 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			if ( in_array( $mode, array( 'local', 'external', 'hybrid' ), true ) ) return $mode;
 			return 'invalid';
 		}
-
-		// Preserve the pre-v3 behavior: an explicit external issuer wins when both
-		// local OAuth and an external issuer are configured. Local-only deployments
-		// continue to infer local mode from the issuer bound by Local OAuth boot.
 		$local = self::local_issuer();
 		$raw = self::raw_configured_issuer();
 		if ( '' !== $local && ( '' === $raw || hash_equals( $local, $raw ) ) ) return 'local';
 		return 'external';
 	}
 
-	public static function trusted_issuers() {
-		return array_keys( self::authority_registry() );
-	}
+	public static function trusted_issuers() { return array_keys( self::authority_registry() ); }
 
 	public static function is_trusted_issuer( $issuer ) {
 		if ( ! is_string( $issuer ) || '' === $issuer || strlen( $issuer ) > self::MAX_URI_BYTES ) return false;
@@ -172,16 +165,13 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	public static function primary_issuer() {
 		$mode = self::authority_mode();
 		$registry = self::authority_registry();
-		if ( 'external' === $mode || 'hybrid' === $mode ) {
-			foreach ( $registry as $issuer => $authority ) if ( 'external' === $authority['type'] ) return $issuer;
-		}
+		if ( 'external' === $mode || 'hybrid' === $mode ) foreach ( $registry as $issuer => $authority ) if ( 'external' === $authority['type'] ) return $issuer;
 		foreach ( $registry as $issuer => $authority ) return $issuer;
 		return '';
 	}
 
 	public static function allowed_subjects_for_issuer( $issuer ) {
 		if ( ! self::is_trusted_issuer( $issuer ) ) return array();
-
 		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ) ) {
 			$bindings = constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' );
 			if ( is_array( $bindings ) ) {
@@ -193,10 +183,6 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 				}
 			}
 		}
-
-		// Legacy unbound subjects are accepted only when exactly one authority is
-		// trusted. Hybrid mode requires issuer-bound subjects to prevent identity
-		// confusion between authorities that can mint the same `sub` string.
 		if ( 'hybrid' === self::authority_mode() || 1 !== count( self::authority_registry() ) ) return array();
 		if ( ! defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ) return array();
 		return self::normalize_subjects( constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) );
@@ -204,8 +190,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	public static function subject_allowed( $issuer, $subject ) {
 		if ( ! is_string( $subject ) || '' === $subject || strlen( $subject ) > self::MAX_SUBJECT_BYTES || preg_match( '/[\s,]/', $subject ) ) return false;
-		$subjects = self::allowed_subjects_for_issuer( $issuer );
-		foreach ( $subjects as $allowed ) if ( hash_equals( $allowed, $subject ) ) return true;
+		foreach ( self::allowed_subjects_for_issuer( $issuer ) as $allowed ) if ( hash_equals( $allowed, $subject ) ) return true;
 		return false;
 	}
 
@@ -213,10 +198,12 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return is_array( self::$verified_context ) && ! empty( self::$verified_context['authenticated'] ) && 'oauth2_bearer' === (string) self::$verified_context['auth_method'];
 	}
 
-	/**
-	 * Return standards-first discovery candidates for one exact trusted issuer.
-	 * When omitted, the primary authority is used for backward compatibility.
-	 */
+	/** Reset request-local OAuth authority before a bearer is evaluated. */
+	public static function reset_verified_bearer_context( $bearer_request = false ) {
+		self::$verified_context = null;
+		if ( $bearer_request ) wp_set_current_user( 0 );
+	}
+
 	public static function authorization_server_metadata_urls( $issuer = '' ) {
 		$issuer = '' === $issuer ? self::primary_issuer() : (string) $issuer;
 		if ( '' === $issuer || ! self::is_trusted_issuer( $issuer ) ) return array();
@@ -226,12 +213,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( isset( $parts['port'] ) ) $origin .= ':' . (int) $parts['port'];
 		$issuer_path = isset( $parts['path'] ) ? '/' . ltrim( rtrim( (string) $parts['path'], '/' ), '/' ) : '';
 		if ( '/' === $issuer_path ) $issuer_path = '';
-		$documents = array(
+		return array_values( array_unique( array_map( 'esc_url_raw', array(
 			$issuer . '/.well-known/openid-configuration',
 			$origin . '/.well-known/oauth-authorization-server' . $issuer_path,
 			$issuer . '/.well-known/oauth-authorization-server',
-		);
-		return array_values( array_unique( array_map( 'esc_url_raw', $documents ) ) );
+		) ) ) );
 	}
 
 	public static function authenticate_rest_request( $result, $server, $request ) {
@@ -241,15 +227,15 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( '/mcp/mad4b-read' !== $route ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
 
-		self::$verified_context = null;
 		$status = self::status();
 		if ( empty( $status['effective'] ) ) return self::unauthorized_response( 'mad4b_oauth_resource_bridge_not_effective', 'OAuth resource bridge is not effective for this environment.', 503 );
-
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) {
+			self::reset_verified_bearer_context( false );
 			if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) return $result;
 			return self::unauthorized_response( 'mad4b_oauth_bearer_required', 'OAuth bearer token is required for remote MAD4B read transport.' );
 		}
+		self::reset_verified_bearer_context( true );
 
 		$token = self::extract_bearer_token( $authorization );
 		if ( is_wp_error( $token ) ) return self::unauthorized_response( $token->get_error_code(), $token->get_error_message() );
@@ -263,7 +249,6 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$user_id = self::configured_user_id( $verified['issuer'] );
 		$user = $user_id > 0 ? get_userdata( $user_id ) : false;
 		if ( ! $user || ! user_can( $user, 'manage_options' ) ) return self::unauthorized_response( 'mad4b_oauth_wp_subject_invalid', 'Configured OAuth WordPress subject is missing required capability.', 403 );
-
 		wp_set_current_user( $user_id );
 		self::$verified_context = array(
 			'authenticated' => true,
@@ -316,13 +301,12 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 		$issuer = isset( $claims['iss'] ) && is_string( $claims['iss'] ) ? $claims['iss'] : '';
 		if ( '' === $issuer || strlen( $issuer ) > self::MAX_URI_BYTES || ! self::is_trusted_issuer( $issuer ) ) return new WP_Error( 'mad4b_oauth_issuer_untrusted', 'Access token issuer is not a configured trusted authority.' );
-
 		$discovery = self::authorization_server_metadata( $issuer );
 		if ( is_wp_error( $discovery ) ) return $discovery;
 		$jwks = self::jwks( $discovery['jwks_uri'], $issuer, false );
 		if ( is_wp_error( $jwks ) ) return $jwks;
 		$key = self::matching_jwk( $jwks, $kid );
-		if ( is_wp_error( $key ) && 'mad4b_oauth_jwk_not_found' === $key->get_error_code() ) {
+		if ( is_wp_error( $key ) && 'mad4b_oauth_jwk_not_found' === $key->get_error_code() && self::claim_jwks_refresh_slot( $issuer, $discovery['jwks_uri'] ) ) {
 			$jwks = self::jwks( $discovery['jwks_uri'], $issuer, true );
 			if ( is_wp_error( $jwks ) ) return $jwks;
 			$key = self::matching_jwk( $jwks, $kid );
@@ -332,7 +316,6 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( is_wp_error( $public_key ) ) return $public_key;
 		$verified = openssl_verify( $parts[0] . '.' . $parts[1], $signature, $public_key, OPENSSL_ALGO_SHA256 );
 		if ( 1 !== $verified ) return new WP_Error( 'mad4b_oauth_jwt_signature_invalid', 'JWT signature verification failed.' );
-
 		$validated = self::validate_claims( $claims, $issuer );
 		if ( is_wp_error( $validated ) ) return $validated;
 		if ( ! self::subject_allowed( $issuer, $validated['subject'] ) ) return new WP_Error( 'mad4b_oauth_subject_not_approved', 'OAuth subject is not approved for this issuer and protected resource.' );
@@ -346,12 +329,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$resource = self::resource_identifier();
 		if ( ! self::audience_contains( isset( $claims['aud'] ) ? $claims['aud'] : null, $resource ) ) return new WP_Error( 'mad4b_oauth_audience_mismatch', 'Access token audience does not match the MAD4B read resource.' );
 		if ( ! isset( $claims['resource'] ) || ! is_string( $claims['resource'] ) || ! hash_equals( $resource, untrailingslashit( trim( $claims['resource'] ) ) ) ) return new WP_Error( 'mad4b_oauth_resource_mismatch', 'Access token resource claim must exactly match the MAD4B read resource.' );
-
 		$now = time();
 		if ( ! isset( $claims['exp'] ) || ! is_numeric( $claims['exp'] ) || (int) $claims['exp'] < $now - self::CLOCK_SKEW ) return new WP_Error( 'mad4b_oauth_token_expired', 'Access token is expired or missing exp.' );
 		if ( isset( $claims['nbf'] ) && ( ! is_numeric( $claims['nbf'] ) || (int) $claims['nbf'] > $now + self::CLOCK_SKEW ) ) return new WP_Error( 'mad4b_oauth_token_not_yet_valid', 'Access token is not yet valid.' );
 		if ( isset( $claims['iat'] ) && ( ! is_numeric( $claims['iat'] ) || (int) $claims['iat'] > $now + self::CLOCK_SKEW ) ) return new WP_Error( 'mad4b_oauth_token_iat_invalid', 'Access token issued-at time is invalid.' );
-
 		$scopes = self::extract_scopes( $claims );
 		if ( is_wp_error( $scopes ) ) return $scopes;
 		if ( ! in_array( self::READ_SCOPE, $scopes, true ) ) return new WP_Error( 'mad4b_oauth_scope_missing', 'Access token does not grant mad4b:read.' );
@@ -388,7 +369,6 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$key = 'mad4b_oauth_discovery_' . substr( hash( 'sha256', $issuer ), 0, 32 );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) return $cached;
-
 		foreach ( self::authorization_server_metadata_urls( $issuer ) as $url ) {
 			$response = wp_safe_remote_get( $url, array( 'timeout' => 5, 'redirection' => 0, 'headers' => array( 'Accept' => 'application/json' ) ) );
 			if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) continue;
@@ -415,7 +395,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	private static function jwks( $jwks_uri, $issuer, $force_refresh = false ) {
 		if ( ! self::same_origin_https_url( $jwks_uri, $issuer ) ) return new WP_Error( 'mad4b_oauth_jwks_origin_invalid', 'OAuth JWKS URI must remain on the selected issuer origin.' );
-		$key = 'mad4b_oauth_jwks_' . substr( hash( 'sha256', (string) $jwks_uri ), 0, 32 );
+		$key = 'mad4b_oauth_jwks_' . substr( hash( 'sha256', $issuer . "\0" . (string) $jwks_uri ), 0, 32 );
 		if ( $force_refresh ) delete_transient( $key );
 		$cached = get_transient( $key );
 		if ( is_array( $cached ) ) return $cached;
@@ -428,6 +408,13 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$bounded = array( 'keys' => array_slice( $jwks['keys'], 0, self::MAX_JWKS_KEYS ) );
 		set_transient( $key, $bounded, self::CACHE_TTL );
 		return $bounded;
+	}
+
+	private static function claim_jwks_refresh_slot( $issuer, $jwks_uri ) {
+		$key = 'mad4b_oauth_jwks_refresh_' . substr( hash( 'sha256', $issuer . "\0" . (string) $jwks_uri ), 0, 32 );
+		if ( false !== get_transient( $key ) ) return false;
+		set_transient( $key, 1, self::JWKS_REFRESH_COOLDOWN );
+		return true;
 	}
 
 	private static function matching_jwk( array $jwks, $kid ) {
@@ -511,9 +498,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( ord( $bytes[0] ) & 0x80 ) $bytes = "\x00" . $bytes;
 		return "\x02" . self::asn1_length( strlen( $bytes ) ) . $bytes;
 	}
-
 	private static function asn1_sequence( $bytes ) { return "\x30" . self::asn1_length( strlen( $bytes ) ) . $bytes; }
-
 	private static function asn1_length( $length ) {
 		$length = (int) $length;
 		if ( $length < 128 ) return chr( $length );
@@ -529,7 +514,6 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$registry = array();
 		$local = self::local_issuer();
 		$raw = self::raw_configured_issuer();
-
 		if ( in_array( $mode, array( 'local', 'hybrid' ), true ) && '' !== $local ) {
 			$local_ready = true;
 			if ( class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'status' ) ) {
@@ -538,10 +522,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			}
 			$registry[ $local ] = array( 'type' => 'local', 'runtime_ready' => $local_ready );
 		}
-
-		if ( in_array( $mode, array( 'external', 'hybrid' ), true ) && '' !== $raw && ( '' === $local || ! hash_equals( $local, $raw ) ) ) {
-			$registry[ $raw ] = array( 'type' => 'external', 'runtime_ready' => true );
-		}
+		if ( in_array( $mode, array( 'external', 'hybrid' ), true ) && '' !== $raw && ( '' === $local || ! hash_equals( $local, $raw ) ) ) $registry[ $raw ] = array( 'type' => 'external', 'runtime_ready' => true );
 		return $registry;
 	}
 
@@ -573,11 +554,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	private static function configured_user_id( $issuer = '' ) {
 		if ( '' !== $issuer && defined( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' ) ) {
 			$mapping = constant( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' );
-			if ( is_array( $mapping ) ) {
-				foreach ( $mapping as $bound_issuer => $user_id ) {
-					if ( is_string( $bound_issuer ) && hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) return absint( $user_id );
-				}
-			}
+			if ( is_array( $mapping ) ) foreach ( $mapping as $bound_issuer => $user_id ) if ( is_string( $bound_issuer ) && hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) return absint( $user_id );
 		}
 		return defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ? absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) : 0;
 	}
@@ -610,13 +587,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	private static function resource_is_https() { return 'https' === strtolower( (string) wp_parse_url( self::resource_identifier(), PHP_URL_SCHEME ) ); }
-
 	private static function valid_https_url( $url ) {
 		if ( ! is_string( $url ) || '' === $url || strlen( $url ) > self::MAX_URI_BYTES ) return false;
 		$parts = wp_parse_url( $url );
 		return is_array( $parts ) && isset( $parts['scheme'], $parts['host'] ) && 'https' === strtolower( (string) $parts['scheme'] ) && '' !== (string) $parts['host'] && empty( $parts['user'] ) && empty( $parts['pass'] ) && empty( $parts['query'] ) && empty( $parts['fragment'] );
 	}
-
 	private static function same_origin_https_url( $url, $issuer ) {
 		if ( ! self::valid_https_url( $url ) || ! self::valid_https_url( $issuer ) ) return false;
 		$url_parts = wp_parse_url( (string) $url );
@@ -625,14 +600,12 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$issuer_port = isset( $issuer_parts['port'] ) ? (int) $issuer_parts['port'] : 443;
 		return strtolower( (string) $url_parts['host'] ) === strtolower( (string) $issuer_parts['host'] ) && $url_port === $issuer_port;
 	}
-
 	private static function decode_json_segment( $segment ) {
 		$decoded = self::base64url_decode( $segment );
 		if ( false === $decoded || strlen( $decoded ) > 65536 ) return new WP_Error( 'mad4b_oauth_jwt_segment_invalid', 'JWT segment is invalid.' );
 		$value = json_decode( $decoded, true );
 		return is_array( $value ) ? $value : new WP_Error( 'mad4b_oauth_jwt_json_invalid', 'JWT segment JSON is invalid.' );
 	}
-
 	private static function base64url_decode( $value ) {
 		if ( ! is_string( $value ) || '' === $value || ! preg_match( '/^[A-Za-z0-9_-]+$/', $value ) ) return false;
 		$padding = strlen( $value ) % 4;
