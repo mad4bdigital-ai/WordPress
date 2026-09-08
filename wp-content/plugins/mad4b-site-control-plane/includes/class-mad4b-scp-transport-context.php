@@ -17,7 +17,7 @@ final class MAD4B_SCP_Transport_Context {
 		$server_id = sanitize_key( (string) $server_id );
 		$expected = class_exists( 'MAD4B_SCP_Servers' )
 			? MAD4B_SCP_Servers::expected_server_ids()
-			: array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
+			: array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
 		if ( ! in_array( $server_id, $expected, true ) ) {
 			return new WP_Error( 'mad4b_transport_server_unknown', 'The MCP transport server is not a governed MAD4B server.' );
 		}
