@@ -32,6 +32,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-peer-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-store.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-oauth-autoconfig.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-server.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-consent-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-key-path-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-init-lock.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guard.php';
@@ -77,5 +78,6 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
+MAD4B_SCP_Local_OAuth_Consent_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
 add_action( 'plugins_loaded', array( 'MAD4B_SCP_Plugin', 'boot' ), 20 );
