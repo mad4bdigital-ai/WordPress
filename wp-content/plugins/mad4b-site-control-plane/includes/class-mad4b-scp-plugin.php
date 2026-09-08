@@ -27,13 +27,20 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Local_OAuth_Init_Lock::boot();
 		MAD4B_SCP_Local_OAuth_Loopback_Guard::boot();
 		MAD4B_SCP_Local_OAuth_Server::boot();
-		MAD4B_SCP_OAuth_Request_Context_Guard::boot();
-		MAD4B_SCP_OAuth_JWT_Header_Guard::boot();
-		MAD4B_SCP_OAuth_Resource_Bridge::boot();
-		MAD4B_SCP_OAuth_Outbound_Budget_Guard::boot();
-		MAD4B_SCP_OAuth_Subject_Gate::boot();
+
+		// OAuth is an optional remote authentication layer over mad4b-read, not a
+		// prerequisite for the WordPress-authenticated local MCP transport. Only
+		// register bearer pre-dispatch interception when an OAuth authority has
+		// explicitly been enabled (Local OAuth boot derives the bridge constant).
+		if ( self::oauth_transport_enabled() ) {
+			MAD4B_SCP_OAuth_Request_Context_Guard::boot();
+			MAD4B_SCP_OAuth_JWT_Header_Guard::boot();
+			MAD4B_SCP_OAuth_Resource_Bridge::boot();
+			MAD4B_SCP_OAuth_Outbound_Budget_Guard::boot();
+			MAD4B_SCP_OAuth_Subject_Gate::boot();
+			MAD4B_SCP_OAuth_Challenge_Alignment::boot();
+		}
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
-		MAD4B_SCP_OAuth_Challenge_Alignment::boot();
 
 		if ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) {
 			$schema = MAD4B_SCP_Schema::install_or_upgrade();
@@ -76,6 +83,10 @@ final class MAD4B_SCP_Plugin {
 		} else {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
 		}
+	}
+
+	private static function oauth_transport_enabled() {
+		return defined( 'MAD4B_MCP_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_OAUTH_ENABLED' );
 	}
 
 	/**
