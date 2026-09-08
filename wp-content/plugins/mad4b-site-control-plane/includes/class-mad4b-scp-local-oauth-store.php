@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Local_OAuth_Store {
 	const VERSION = 1;
 	const OPTION = 'mad4b_scp_local_oauth_store_version';
+	const MAX_CLIENT_ID_BYTES = 191;
 
 	public static function tables() {
 		global $wpdb;
@@ -88,19 +89,31 @@ final class MAD4B_SCP_Local_OAuth_Store {
 			'installed_version' => (int) get_option( self::OPTION, 0 ),
 			'ready' => self::is_ready(),
 			'tables' => self::tables(),
+			'max_client_id_bytes' => self::MAX_CLIENT_ID_BYTES,
 			'plaintext_authorization_codes_stored' => false,
 			'plaintext_refresh_tokens_stored' => false,
 		);
 	}
 
+	private static function valid_client_id( $client_id ) {
+		return is_string( $client_id ) && '' !== $client_id && strlen( $client_id ) <= self::MAX_CLIENT_ID_BYTES;
+	}
+
+	private static function valid_sha256_hex( $value ) {
+		return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $value );
+	}
+
 	public static function insert_code( array $record ) {
 		global $wpdb;
 		$t = self::tables();
+		$client_id = isset( $record['client_id'] ) ? (string) $record['client_id'] : '';
+		$code_hash = isset( $record['code_hash'] ) ? (string) $record['code_hash'] : '';
+		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $code_hash ) ) return false;
 		$inserted = $wpdb->insert(
 			$t['codes'],
 			array(
-				'code_hash' => (string) $record['code_hash'],
-				'client_id' => (string) $record['client_id'],
+				'code_hash' => $code_hash,
+				'client_id' => $client_id,
 				'wp_user_id' => (int) $record['wp_user_id'],
 				'redirect_uri' => (string) $record['redirect_uri'],
 				'resource' => (string) $record['resource'],
@@ -117,6 +130,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 	public static function get_code( $code_hash ) {
 		global $wpdb;
 		$t = self::tables();
+		if ( ! self::valid_sha256_hex( (string) $code_hash ) ) return null;
 		return $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM {$t['codes']} WHERE code_hash = %s LIMIT 1", (string) $code_hash ),
 			ARRAY_A
@@ -157,6 +171,10 @@ final class MAD4B_SCP_Local_OAuth_Store {
 		global $wpdb;
 		$t = self::tables();
 		$family_id = isset( $record['family_id'] ) ? (string) $record['family_id'] : '';
+		$client_id = isset( $record['client_id'] ) ? (string) $record['client_id'] : '';
+		$token_hash = isset( $record['token_hash'] ) ? (string) $record['token_hash'] : '';
+		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $token_hash ) ) return false;
+		if ( strlen( $family_id ) > 36 ) return false;
 
 		// Pre-insert guard catches a replay/revocation that completed before this
 		// request reached the replacement insert.
@@ -165,9 +183,9 @@ final class MAD4B_SCP_Local_OAuth_Store {
 		$inserted = $wpdb->insert(
 			$t['refresh_tokens'],
 			array(
-				'token_hash' => (string) $record['token_hash'],
+				'token_hash' => $token_hash,
 				'family_id' => $family_id,
-				'client_id' => (string) $record['client_id'],
+				'client_id' => $client_id,
 				'wp_user_id' => (int) $record['wp_user_id'],
 				'resource' => (string) $record['resource'],
 				'scope' => (string) $record['scope'],
@@ -194,6 +212,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 	public static function get_refresh_token( $token_hash ) {
 		global $wpdb;
 		$t = self::tables();
+		if ( ! self::valid_sha256_hex( (string) $token_hash ) ) return null;
 		return $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM {$t['refresh_tokens']} WHERE token_hash = %s LIMIT 1", (string) $token_hash ),
 			ARRAY_A
@@ -203,6 +222,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 	public static function rotate_refresh_token( $id, $used_at, $replacement_hash ) {
 		global $wpdb;
 		$t = self::tables();
+		if ( ! self::valid_sha256_hex( (string) $replacement_hash ) ) return false;
 		$updated = $wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$t['refresh_tokens']} SET used_at = %s, replacement_hash = %s WHERE id = %d AND used_at IS NULL AND revoked_at IS NULL",
@@ -217,6 +237,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 	public static function revoke_family( $family_id, $revoked_at ) {
 		global $wpdb;
 		$t = self::tables();
+		if ( '' === (string) $family_id || strlen( (string) $family_id ) > 36 ) return false;
 		return $wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$t['refresh_tokens']} SET revoked_at = %s WHERE family_id = %s AND revoked_at IS NULL",
