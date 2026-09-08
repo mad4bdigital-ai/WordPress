@@ -1,6 +1,8 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge\Presentation;
 
+require_once __DIR__ . '/MediaAssetValidator.php';
+
 use ETG\DynamicFilterSEOBridge\Identifiers\FieldKey;
 use WP_Term;
 
@@ -32,7 +34,8 @@ final class MediaInspector {
      *
      * Includes safe scalar/complex/repeater Meta so admin pickers can discover
      * exact keys instead of asking users to type identifiers. Media candidates
-     * are verified as WordPress image attachments when attachment APIs exist.
+     * are verified as renderable WordPress image attachments. Stale attachment
+     * references remain visible as non-authorizing health evidence.
      */
     public function scanTaxonomyMetadata(string $taxonomy, int $termLimit = 10, bool $mediaOnly = false): array {
         $taxonomy = sanitize_key($taxonomy);
@@ -62,7 +65,9 @@ final class MediaInspector {
             foreach (array_slice((array) $meta, 0, self::MAX_FIELDS, true) as $rawKey => $rawValues) {
                 $key = FieldKey::normalize($rawKey);
                 if ('' === $key || $this->sensitive($key)) { continue; }
-                $ids = $this->attachmentIds($rawValues);
+                $report = $this->attachmentReport($rawValues);
+                $ids = $report['ids'];
+                $rejected = $report['rejected'];
                 if ($mediaOnly && !$ids) { continue; }
                 $kind = $this->guessKind($key, $rawValues, $ids);
                 if (!isset($fieldStats[$key])) {
@@ -73,6 +78,7 @@ final class MediaInspector {
                         'confidence' => $this->confidence($kind, $ids),
                         'term_hits' => 0,
                         'media_ids' => array(),
+                        'rejected_media' => array(),
                         'sample_terms' => array(),
                         'sample_values' => array(),
                         'configured_as' => array(),
@@ -85,12 +91,18 @@ final class MediaInspector {
                 }
                 $fieldStats[$key]['term_hits']++;
                 $fieldStats[$key]['media_ids'] = array_values(array_unique(array_merge((array) $fieldStats[$key]['media_ids'], $ids)));
+                $fieldStats[$key]['rejected_media'] = $this->mergeRejected((array) $fieldStats[$key]['rejected_media'], $rejected);
                 if (count($fieldStats[$key]['sample_terms']) < self::MAX_SAMPLE_VALUES) { $fieldStats[$key]['sample_terms'][] = (string) $term->name; }
                 $sample = $this->sampleValue($rawValues);
                 if ('' !== $sample && count($fieldStats[$key]['sample_values']) < self::MAX_SAMPLE_VALUES && !in_array($sample, $fieldStats[$key]['sample_values'], true)) {
                     $fieldStats[$key]['sample_values'][] = $sample;
                 }
-                $termRow['meta_fields'][$key] = array('kind' => $kind, 'ids' => array_slice($ids, 0, self::MAX_SAMPLE_IDS), 'sample' => $sample);
+                $termRow['meta_fields'][$key] = array(
+                    'kind' => $kind,
+                    'ids' => array_slice($ids, 0, self::MAX_SAMPLE_IDS),
+                    'rejected_media' => array_slice($rejected, 0, self::MAX_SAMPLE_IDS),
+                    'sample' => $sample,
+                );
             }
             $base['terms'][] = $termRow;
         }
@@ -100,6 +112,7 @@ final class MediaInspector {
             if (in_array($key, (array) $configured['image'], true)) { $row['configured_as'][] = 'image'; }
             if (in_array($key, (array) $configured['gallery'], true)) { $row['configured_as'][] = 'gallery'; }
             $row['media_ids'] = array_slice(array_values(array_unique(array_map('absint', (array) $row['media_ids']))), 0, self::MAX_SAMPLE_IDS);
+            $row['rejected_media'] = array_slice((array) $row['rejected_media'], 0, self::MAX_SAMPLE_IDS);
         }
         unset($row);
         uasort($fieldStats, static function($a, $b) {
@@ -179,37 +192,51 @@ final class MediaInspector {
         return $trim;
     }
 
-    private function attachmentIds($value): array {
-        $ids = array(); $this->collect($value, $ids);
-        return array_values(array_unique(array_filter(array_map('absint', $ids))));
+    private function attachmentReport($value): array {
+        $candidates = array();
+        $this->collectCandidates($value, $candidates);
+        $ids = array();
+        $rejected = array();
+        foreach (array_values(array_unique(array_filter(array_map('absint', $candidates)))) as $id) {
+            $health = MediaAssetValidator::inspect((int) $id);
+            if (!empty($health['valid'])) { $ids[] = (int) $id; continue; }
+            $rejected[] = array('id'=>(int)$id, 'reason'=>(string)($health['reason'] ?? 'unrenderable'));
+        }
+        return array('ids'=>array_values(array_unique($ids)), 'rejected'=>$rejected);
     }
 
-    private function collect($value, array &$ids): void {
-        if (is_numeric($value)) { $this->addAttachmentCandidate((int) $value, $ids); return; }
+    private function collectCandidates($value, array &$ids): void {
+        if (is_numeric($value)) { $ids[] = (int) $value; return; }
         if (is_object($value)) {
-            foreach (array('ID', 'id', 'attachment_id') as $key) { if (isset($value->{$key}) && is_numeric($value->{$key})) { $this->addAttachmentCandidate((int) $value->{$key}, $ids); return; } }
+            foreach (array('ID', 'id', 'attachment_id') as $key) { if (isset($value->{$key}) && is_numeric($value->{$key})) { $ids[] = (int) $value->{$key}; return; } }
             $value = get_object_vars($value);
         }
         if (is_array($value)) {
-            foreach (array('ID', 'id', 'attachment_id') as $key) { if (isset($value[$key]) && is_numeric($value[$key])) { $this->addAttachmentCandidate((int) $value[$key], $ids); return; } }
-            foreach ($value as $item) { $this->collect($item, $ids); }
+            foreach (array('ID', 'id', 'attachment_id') as $key) { if (isset($value[$key]) && is_numeric($value[$key])) { $ids[] = (int) $value[$key]; return; } }
+            foreach ($value as $item) { $this->collectCandidates($item, $ids); }
             return;
         }
         if (!is_string($value)) { return; }
         $value = trim($value); if ('' === $value) { return; }
-        if (function_exists('maybe_unserialize')) { $unserialized = maybe_unserialize($value); if ($unserialized !== $value) { $this->collect($unserialized, $ids); return; } }
-        $decoded = json_decode($value, true); if (JSON_ERROR_NONE === json_last_error() && is_array($decoded)) { $this->collect($decoded, $ids); return; }
-        if (false !== strpos($value, ',')) { foreach (explode(',', $value) as $part) { $this->collect(trim($part), $ids); } return; }
-        if (filter_var($value, FILTER_VALIDATE_URL) && function_exists('attachment_url_to_postid')) { $id = attachment_url_to_postid($value); if ($id) { $this->addAttachmentCandidate((int) $id, $ids); } }
+        if (function_exists('maybe_unserialize')) { $unserialized = maybe_unserialize($value); if ($unserialized !== $value) { $this->collectCandidates($unserialized, $ids); return; } }
+        $decoded = json_decode($value, true); if (JSON_ERROR_NONE === json_last_error() && is_array($decoded)) { $this->collectCandidates($decoded, $ids); return; }
+        if (false !== strpos($value, ',')) { foreach (explode(',', $value) as $part) { $this->collectCandidates(trim($part), $ids); } return; }
+        if (filter_var($value, FILTER_VALIDATE_URL) && function_exists('attachment_url_to_postid')) { $id = attachment_url_to_postid($value); if ($id) { $ids[] = (int) $id; } }
     }
 
-    private function addAttachmentCandidate(int $id, array &$ids): void {
-        $id = abs($id); if (!$id) { return; }
-        if (function_exists('wp_attachment_is_image')) { if (wp_attachment_is_image($id)) { $ids[] = $id; } return; }
-        if (function_exists('get_post_type')) { if ('attachment' === get_post_type($id)) { $ids[] = $id; } return; }
-        // Minimal test doubles may not expose WordPress attachment APIs. Runtime
-        // WordPress does, so this compatibility fallback is not used in production.
-        $ids[] = $id;
+    private function mergeRejected(array $left, array $right): array {
+        $out = array(); $seen = array();
+        foreach (array_merge($left, $right) as $row) {
+            if (!is_array($row)) { continue; }
+            $id = absint($row['id'] ?? 0); $reason = sanitize_key((string)($row['reason'] ?? 'unrenderable'));
+            if (!$id) { continue; }
+            $key = $id . ':' . $reason;
+            if (isset($seen[$key])) { continue; }
+            $seen[$key] = true;
+            $out[] = array('id'=>$id, 'reason'=>$reason);
+            if (count($out) >= self::MAX_SAMPLE_IDS) { break; }
+        }
+        return $out;
     }
 
     private function sensitive(string $key): bool { return (bool) preg_match('/(?:password|passwd|secret|token|api[_-]?key|credential|auth[_-]?key|nonce|session)/i', $key); }
