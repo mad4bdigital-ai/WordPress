@@ -25,6 +25,10 @@ required_compat = [
     "'authorization_server_local'",
     "'authorization_server_hybrid'",
     "'authorization_server_count'",
+    "'oauth_effective'",
+    "'oauth_discovery_ready'",
+    "&& ! empty( $status['effective'] )",
+    "if ( ! self::oauth_discovery_ready( $status ) ) return array();",
     "'remote_oauth_read_policy'",
     "remote_oauth_read_policy_status",
     "resource_name",
@@ -85,4 +89,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v3: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v4: PASS')
