@@ -1,6 +1,10 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge\Terms;
 
+require_once dirname( __DIR__ ) . '/Identifiers/FieldKey.php';
+
+use ETG\DynamicFilterSEOBridge\Identifiers\FieldKey;
+use ETG\DynamicFilterSEOBridge\Presentation\MediaDiscoveryRegistry;
 use WP_Term;
 
 final class TermMetaReader {
@@ -14,8 +18,12 @@ final class TermMetaReader {
 		'location_level' => array( 'location_level', 'level' ),
 	);
 
-	public function read( WP_Term $term ): array {
-		$map = apply_filters( 'etg_filter_seo_term_field_map', self::FIELD_MAP, $term );
+	private $mediaRegistry;
+
+	public function __construct( MediaDiscoveryRegistry $mediaRegistry = null ) { $this->mediaRegistry = $mediaRegistry; }
+
+	public function read( WP_Term $term, array $profileFieldMap = array() ): array {
+		$map = $this->mergedFieldMap( $profileFieldMap, $term );
 		$data = array(
 			'term_id' => (int) $term->term_id,
 			'taxonomy' => (string) $term->taxonomy,
@@ -25,20 +33,43 @@ final class TermMetaReader {
 			'count' => isset( $term->count ) ? (int) $term->count : 0,
 			'seo_title' => '', 'meta_description' => '', 'focus_keyword' => '', 'short_description' => '',
 			'image_id' => 0, 'gallery_ids' => array(), 'location_level' => '', 'parent_chain' => array(),
+			'media_sources' => array( 'image'=>array(), 'gallery'=>array() ),
 		);
 
 		foreach ( array( 'seo_title', 'meta_description', 'focus_keyword', 'short_description', 'location_level' ) as $key ) {
 			$data[ $key ] = $this->firstValue( $term, isset( $map[ $key ] ) ? (array) $map[ $key ] : array() );
 		}
 
-		$imageIds = $this->normalizeAttachmentIds( $this->firstRawValue( $term, isset( $map['image'] ) ? (array) $map['image'] : array() ) );
-		if ( $imageIds ) { $data['image_id'] = (int) reset( $imageIds ); }
-		$data['gallery_ids'] = $this->normalizeAttachmentIds( $this->firstRawValue( $term, isset( $map['gallery'] ) ? (array) $map['gallery'] : array() ) );
-		if ( $data['image_id'] && ! in_array( $data['image_id'], $data['gallery_ids'], true ) ) {
-			array_unshift( $data['gallery_ids'], $data['image_id'] );
-		}
+		$imageScan = $this->mediaValues( $term, isset( $map['image'] ) ? (array) $map['image'] : array(), true );
+		if ( ! empty( $imageScan['ids'] ) ) { $data['image_id'] = (int) reset( $imageScan['ids'] ); }
+		$data['media_sources']['image'] = $imageScan['sources'];
+
+		$galleryScan = $this->mediaValues( $term, isset( $map['gallery'] ) ? (array) $map['gallery'] : array(), false );
+		$data['gallery_ids'] = array_values( array_unique( array_filter( array_map( 'absint', (array) $galleryScan['ids'] ) ) ) );
+		$data['media_sources']['gallery'] = $galleryScan['sources'];
+		if ( $data['image_id'] && ! in_array( $data['image_id'], $data['gallery_ids'], true ) ) { array_unshift( $data['gallery_ids'], $data['image_id'] ); }
 		$data['parent_chain'] = $this->parentChain( $term );
 		return $data;
+	}
+
+	private function mergedFieldMap( array $profileFieldMap, WP_Term $term ): array {
+		$map = self::FIELD_MAP;
+		if ( $this->mediaRegistry ) {
+			$registry = $this->mediaRegistry->keysForTaxonomy( (string) $term->taxonomy );
+			foreach ( array( 'image', 'gallery' ) as $canonical ) {
+				$custom = isset( $registry[ $canonical ] ) ? (array) $registry[ $canonical ] : array();
+				if ( $custom ) { $map[ $canonical ] = array_values( array_unique( array_merge( $custom, (array) $map[ $canonical ] ) ) ); }
+			}
+		}
+		foreach ( $profileFieldMap as $canonical => $fields ) {
+			$canonical = sanitize_key( (string) $canonical );
+			if ( ! array_key_exists( $canonical, self::FIELD_MAP ) ) { continue; }
+			$custom = array();
+			foreach ( (array) $fields as $field ) { $field = FieldKey::normalize( $field ); if ( '' !== $field ) { $custom[] = $field; } }
+			if ( $custom ) { $map[ $canonical ] = array_values( array_unique( array_merge( $custom, (array) $map[ $canonical ] ) ) ); }
+		}
+		if ( function_exists( 'apply_filters' ) ) { $map = (array) apply_filters( 'etg_filter_seo_term_field_map', $map, $term, $profileFieldMap ); }
+		return $map;
 	}
 
 	private function firstValue( WP_Term $term, array $fields ): string {
@@ -47,26 +78,45 @@ final class TermMetaReader {
 	}
 
 	private function firstRawValue( WP_Term $term, array $fields ) {
+		$values = $this->allRawValues( $term, $fields, true );
+		return $values ? reset( $values ) : '';
+	}
+
+	private function allRawValues( WP_Term $term, array $fields, bool $stopAtFirst = false ): array {
+		$out = array();
 		foreach ( $fields as $field ) {
-			$field = sanitize_key( $field );
+			$field = FieldKey::normalize( $field );
 			if ( '' === $field ) { continue; }
 			$value = get_term_meta( $term->term_id, $field, true );
-			if ( ! $this->isEmpty( $value ) ) { return $value; }
+			if ( ! $this->isEmpty( $value ) ) { $out[] = $value; if ( $stopAtFirst ) { break; } continue; }
 			if ( function_exists( 'get_field' ) ) {
 				$value = get_field( $field, $term->taxonomy . '_' . $term->term_id );
-				if ( ! $this->isEmpty( $value ) ) { return $value; }
+				if ( ! $this->isEmpty( $value ) ) { $out[] = $value; if ( $stopAtFirst ) { break; } }
 			}
 		}
-		return '';
+		return $out;
 	}
 
-	private function isEmpty( $value ): bool {
-		return null === $value || false === $value || '' === $value || array() === $value;
+	private function mediaValues( WP_Term $term, array $fields, bool $stopAtFirst ): array {
+		$ids = array(); $sources = array();
+		foreach ( $fields as $field ) {
+			$field = FieldKey::normalize( $field ); if ( '' === $field ) { continue; }
+			$value = get_term_meta( $term->term_id, $field, true );
+			if ( $this->isEmpty( $value ) && function_exists( 'get_field' ) ) { $value = get_field( $field, $term->taxonomy . '_' . $term->term_id ); }
+			if ( $this->isEmpty( $value ) ) { continue; }
+			$fieldIds = $this->normalizeAttachmentIds( $value );
+			if ( ! $fieldIds ) { continue; }
+			$sources[] = array( 'key'=>$field, 'ids'=>$fieldIds, 'count'=>count($fieldIds), 'authorizing'=>false );
+			$ids = array_merge( $ids, $fieldIds );
+			if ( $stopAtFirst ) { break; }
+		}
+		return array( 'ids'=>array_values(array_unique(array_filter(array_map('absint',$ids)))), 'sources'=>$sources );
 	}
+
+	private function isEmpty( $value ): bool { return null === $value || false === $value || '' === $value || array() === $value; }
 
 	private function normalizeAttachmentIds( $value ): array {
-		$ids = array();
-		$this->collectAttachmentIds( $value, $ids );
+		$ids = array(); $this->collectAttachmentIds( $value, $ids );
 		return array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
 	}
 
@@ -74,25 +124,16 @@ final class TermMetaReader {
 		if ( is_numeric( $value ) ) { $ids[] = (int) $value; return; }
 		if ( is_object( $value ) && isset( $value->ID ) && is_numeric( $value->ID ) ) { $ids[] = (int) $value->ID; return; }
 		if ( is_array( $value ) ) {
-			foreach ( array( 'ID', 'id', 'attachment_id' ) as $key ) {
-				if ( isset( $value[ $key ] ) && is_numeric( $value[ $key ] ) ) { $ids[] = (int) $value[ $key ]; return; }
-			}
+			foreach ( array( 'ID', 'id', 'attachment_id' ) as $key ) { if ( isset( $value[ $key ] ) && is_numeric( $value[ $key ] ) ) { $ids[] = (int) $value[ $key ]; return; } }
 			foreach ( $value as $item ) { $this->collectAttachmentIds( $item, $ids ); }
 			return;
 		}
 		if ( ! is_string( $value ) ) { return; }
-		$value = trim( $value );
-		if ( '' === $value ) { return; }
+		$value = trim( $value ); if ( '' === $value ) { return; }
 		$decoded = json_decode( $value, true );
 		if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) { $this->collectAttachmentIds( $decoded, $ids ); return; }
-		if ( false !== strpos( $value, ',' ) ) {
-			foreach ( explode( ',', $value ) as $item ) { $this->collectAttachmentIds( trim( $item ), $ids ); }
-			return;
-		}
-		if ( filter_var( $value, FILTER_VALIDATE_URL ) && function_exists( 'attachment_url_to_postid' ) ) {
-			$id = attachment_url_to_postid( $value );
-			if ( $id ) { $ids[] = (int) $id; }
-		}
+		if ( false !== strpos( $value, ',' ) ) { foreach ( explode( ',', $value ) as $item ) { $this->collectAttachmentIds( trim( $item ), $ids ); } return; }
+		if ( filter_var( $value, FILTER_VALIDATE_URL ) && function_exists( 'attachment_url_to_postid' ) ) { $id = attachment_url_to_postid( $value ); if ( $id ) { $ids[] = (int) $id; } }
 	}
 
 	private function parentChain( WP_Term $term ): array {
@@ -100,9 +141,7 @@ final class TermMetaReader {
 		$chain = array();
 		foreach ( array_reverse( get_ancestors( $term->term_id, $term->taxonomy, 'taxonomy' ) ) as $id ) {
 			$ancestor = get_term( (int) $id, $term->taxonomy );
-			if ( $ancestor instanceof WP_Term ) {
-				$chain[] = array( 'term_id' => (int) $ancestor->term_id, 'name' => (string) $ancestor->name, 'slug' => (string) $ancestor->slug );
-			}
+			if ( $ancestor instanceof WP_Term ) { $chain[] = array( 'term_id'=>(int)$ancestor->term_id, 'name'=>(string)$ancestor->name, 'slug'=>(string)$ancestor->slug ); }
 		}
 		return $chain;
 	}
