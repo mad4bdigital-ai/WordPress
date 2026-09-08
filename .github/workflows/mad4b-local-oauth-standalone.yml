@@ -32,14 +32,17 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-local-oauth-init-lock.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-loopback-guard.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-browser-canary.php"
+          php -l "$root/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
           php -l "$root/tests/runtime-local-oauth-key-path-policy-smoke.php"
           php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-production-smoke.php"
           node --check "$root/assets/local-oauth-canary.js"
+          node --check "$root/assets/chatgpt-connection.js"
           python3 "$root/tests/local-oauth-standalone-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
+          python3 "$root/tests/chatgpt-connection-ui-contract.py"
           pwsh -NoLogo -NoProfile -File "$root/tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1" -SelfTest
 
   runtime:
