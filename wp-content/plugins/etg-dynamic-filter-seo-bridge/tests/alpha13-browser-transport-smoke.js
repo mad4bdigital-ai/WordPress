@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { execFileSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'assets/js/ajax-filter-state.js'), 'utf8');
@@ -232,6 +233,7 @@ async function main() {
     await testStaleResponseGate();
     await testAbortIsNotTransportFailure();
     await testRuntimeContractFailClosed();
+    execFileSync(process.execPath, [path.join(__dirname, 'alpha13-browser-background-smoke.js')], { stdio: 'inherit' });
     console.log('Alpha13 browser transport smoke tests passed.');
 }
 
