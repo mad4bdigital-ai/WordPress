@@ -22,6 +22,7 @@ final class MAD4B_SCP_Plugin {
 		self::$booted = true;
 
 		MAD4B_SCP_MCP_Provider_Isolation::boot();
+		self::bind_local_oauth_subject_compatibility();
 		MAD4B_SCP_Local_OAuth_Loopback_Guard::boot();
 		MAD4B_SCP_Local_OAuth_Server::boot();
 		MAD4B_SCP_OAuth_Resource_Bridge::boot();
@@ -69,6 +70,38 @@ final class MAD4B_SCP_Plugin {
 			add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 );
 		} else {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
+		}
+	}
+
+	/**
+	 * Keep issuer-bound subject configuration as the single source of truth while
+	 * preserving Local OAuth's legacy constant contract. This creates no new
+	 * authority: the alias is defined only for the exact local issuer and only
+	 * when the legacy constant is absent. Missing/invalid local bindings remain
+	 * fail-closed.
+	 */
+	private static function bind_local_oauth_subject_compatibility() {
+		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ) return;
+		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) || true !== constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) return;
+		if ( ! defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ) || ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) return;
+		$bindings = constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' );
+		if ( ! is_array( $bindings ) ) return;
+		$local_issuer = rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' );
+		if ( '' === $local_issuer ) return;
+		foreach ( $bindings as $issuer => $subjects ) {
+			if ( ! is_string( $issuer ) || ! hash_equals( $local_issuer, rtrim( trim( $issuer ), '/' ) ) ) continue;
+			$items = is_array( $subjects ) ? $subjects : preg_split( '/[\s,]+/', (string) $subjects );
+			$bounded = array();
+			foreach ( is_array( $items ) ? array_slice( $items, 0, 500 ) : array() as $subject ) {
+				if ( ! is_string( $subject ) ) continue;
+				$subject = trim( $subject );
+				if ( '' === $subject || strlen( $subject ) > 512 || preg_match( '/[\s,]/', $subject ) ) continue;
+				if ( 0 !== strpos( $subject, 'user:' ) && 0 !== strpos( $subject, 'tenant:' ) ) continue;
+				$bounded[] = $subject;
+			}
+			$bounded = array_values( array_unique( $bounded ) );
+			if ( ! empty( $bounded ) ) define( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS', $bounded );
+			return;
 		}
 	}
 
