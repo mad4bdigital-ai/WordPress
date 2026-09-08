@@ -12,6 +12,12 @@ $bootGuard=file_get_contents($root.'/includes/Runtime/BootGuard.php');
 $entry=file_get_contents($root.'/etg-dynamic-filter-seo-bridge.php');
 $listing=file_get_contents($root.'/includes/JetEngine/ListingIntegration.php');
 $registrar=file_get_contents($root.'/includes/Elementor/DynamicTagRegistrar.php');
+$termMetaTag=file_get_contents($root.'/includes/Elementor/DynamicTags/TermMetaTag.php');
+$dynamicRuntime=file_get_contents($root.'/includes/Elementor/DynamicTags/DynamicTagRuntime.php');
+$catalog=file_get_contents($root.'/includes/Presentation/InventoryContentCatalog.php');
+$mediaValidator=file_get_contents($root.'/includes/Presentation/MediaAssetValidator.php');
+$termMetaReader=file_get_contents($root.'/includes/Terms/TermMetaReader.php');
+$mediaInspector=file_get_contents($root.'/includes/Presentation/MediaInspector.php');
 
 expect_contains("const SLUG = 'etg-dfsb-usage-guide'",$page,'usage guide slug');
 foreach(array('Quick Start','Dynamic Tags','Shortcodes','Tokens','Content Slots','JetEngine','Recipes','Safety & SEO') as $label){expect_contains($label,$page,'guide tab '.$label);}
@@ -43,6 +49,28 @@ expect_contains('etg-guide-token-search',$js,'token search interaction present')
 expect_true(false===strpos($js,'pushState'),'guide JS cannot push history');
 expect_true(false===strpos($js,'replaceState'),'guide JS cannot replace history');
 
+// Fetch-first Elementor differentiation: scalar Term Meta becomes a discoverable
+// Dynamic Tag without asking the editor to know or type raw Meta keys.
+expect_contains('TermMetaTag::class',$registrar,'discovered Term Meta Dynamic Tag is registered');
+expect_contains("return 'ETG Term Meta Value'",$termMetaTag,'dedicated Term Meta Dynamic Tag has an operator-facing title');
+expect_contains('DynamicTagRuntime::termMetaOptions()',$termMetaTag,'Term Meta tag uses the fetched token catalog rather than a manual key');
+expect_contains("strpos($token,'termmeta:')",$termMetaTag,'Term Meta tag is restricted to termmeta token authority');
+expect_contains('use LiveBindingTrait',$termMetaTag,'Term Meta tag supports the existing presentation-only live transport');
+expect_contains('tokenOptionsBySource',$dynamicRuntime,'Dynamic Tag runtime can expose source-filtered catalogs');
+expect_contains("termMetaOptions():array{return self::tokenOptionsBySource('term-meta');}",$dynamicRuntime,'Term Meta options are source-scoped');
+expect_contains('safe_scalar_term_meta_tokens',$catalog,'catalog declares safe scalar Term Meta discovery');
+expect_contains('sensitiveMetaKey',$catalog,'sensitive-looking Term Meta keys are excluded from automatic Dynamic Tags');
+expect_contains('hasRenderableScalar',$catalog,'complex/repeater Term Meta is excluded from scalar Dynamic Tags');
+
+// Media health differentiation: DB-valid but physically missing image attachments
+// are rejected before discovery/runtime presentation and can fall through safely.
+expect_contains('class MediaAssetValidator',$mediaValidator,'shared media health validator is shipped');
+expect_contains('missing_local_file',$mediaValidator,'orphaned local attachment files have an explicit health reason');
+expect_contains('etg_dfsb_media_allow_missing_local_file',$mediaValidator,'offload/CDN installs have an explicit compatibility escape hatch');
+expect_contains('MediaAssetValidator::isRenderableImage',$termMetaReader,'runtime Term media uses the shared health gate');
+expect_contains('MediaAssetValidator::inspect',$mediaInspector,'Media Lab discovery uses the same health gate as runtime');
+expect_contains('rejected_media',$mediaInspector,'Media discovery preserves stale-media diagnostics without treating them as verified media');
+
 // Live-install rescue contract: package replacement must never immediately load the
 // full optional integration graph before wp-admin proves the new build can boot.
 expect_contains('class BootGuard',$bootGuard,'safe boot guard is shipped');
@@ -58,4 +86,4 @@ expect_contains('dataTagCompatible',$registrar,'Elementor media tags verify the 
 expect_contains("BootGuard::recordThrowable('elementor_dynamic_tags'",$registrar,'Elementor registration failures arm safe boot instead of white-screening wp-admin');
 
 require __DIR__.'/alpha13-admin-ui-shell-smoke.php';
-echo "Alpha13 in-product usage guide, JetEngine helper and live-boot rescue smoke tests passed.\n";
+echo "Alpha13 in-product usage guide, fetched Term Meta, media health, JetEngine helper and live-boot rescue smoke tests passed.\n";
