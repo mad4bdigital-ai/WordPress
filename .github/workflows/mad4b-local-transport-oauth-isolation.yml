@@ -85,7 +85,12 @@ jobs:
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-local-transport.test' --title='MAD4B Local Transport' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
-          if [ "$OAUTH_FIXTURE" = 'misconfigured' ]; then
+          if [ "$OAUTH_FIXTURE" = 'disabled' ]; then
+            # Zero-touch Staging now enables Local OAuth by default. This fixture
+            # proves an explicit operator disable still wins and leaves local
+            # WordPress-authenticated transport usable.
+            php /tmp/wp-cli.phar config set MAD4B_MCP_LOCAL_OAUTH_ENABLED false --raw --type=constant --path="$WP_PATH"
+          elif [ "$OAUTH_FIXTURE" = 'misconfigured' ]; then
             php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
             php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ISSUER 'https://auth.mad4b.test/auth/mcp' --type=constant --path="$WP_PATH"
           fi
