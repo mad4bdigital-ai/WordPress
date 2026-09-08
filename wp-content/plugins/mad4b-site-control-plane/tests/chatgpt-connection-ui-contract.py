@@ -8,20 +8,24 @@ main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
 required_ui = [
-    'mad4b.chatgpt-connection-ui.v1',
+    'mad4b.chatgpt-connection-ui.v2',
     'Connect to ChatGPT',
     'https://chatgpt.com/oauth/client.json',
     'https://chatgpt.com/connector_platform_oauth_redirect',
     'https://chatgpt.com/plugins#settings/Connectors?create-connector=true',
     "'server_url' => $server_url",
     "'authentication' => 'OAuth'",
-    "'client_registration' => 'user_defined_oauth_client'",
+    "'client_registration' => 'client_id_metadata_document'",
     "'token_endpoint_auth_method' => 'none'",
     "array( 'mad4b:read', 'offline_access' )",
+    "'gateway_server_id' => 'mad4b-chatgpt'",
+    "'generic_filesystem_exposed' => false",
+    "'generic_database_exposed' => false",
+    "'write_admin_breakglass_exposed' => false",
     "'creates_chatgpt_connector' => false",
     "'stores_chatgpt_credentials' => false",
     "'external_connection_certified' => false",
-    'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',
+    'CIMD / ChatGPT managed',
     'Open ChatGPT Plugin Builder',
     'Run OAuth Canary',
 ]
@@ -32,6 +36,8 @@ for marker in required_ui:
 for forbidden in [
     'update_option(', 'add_option(', 'delete_option(', '$wpdb->',
     'client_secret', 'access_token', 'refresh_token', 'file_put_contents(',
+    'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',
+    "'client_registration' => 'user_defined_oauth_client'",
     'MAD4B_MCP_MUTATION_ENABLED', 'MAD4B_MCP_BREAKGLASS_ENABLED',
 ]:
     if forbidden in ui:
@@ -46,4 +52,4 @@ if 'class-mad4b-scp-chatgpt-connection-admin-ui.php' not in main:
 if 'MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot()' not in plugin:
     raise SystemExit('plugin boot does not initialize ChatGPT connection UI')
 
-print('mad4b.site-control-plane.chatgpt-connection-ui.v1: PASS')
+print('mad4b.site-control-plane.chatgpt-connection-ui.v2: PASS')
