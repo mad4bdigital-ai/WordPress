@@ -5,6 +5,7 @@ root = Path(__file__).resolve().parents[1]
 server = (root / 'includes' / 'class-mad4b-scp-local-oauth-server.php').read_text(encoding='utf-8')
 store = (root / 'includes' / 'class-mad4b-scp-local-oauth-store.php').read_text(encoding='utf-8')
 guard = (root / 'includes' / 'class-mad4b-scp-local-oauth-loopback-guard.php').read_text(encoding='utf-8')
+init_lock = (root / 'includes' / 'class-mad4b-scp-local-oauth-init-lock.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
@@ -110,16 +111,39 @@ for forbidden in ['wp_remote_get(', 'wp_safe_remote_get(', 'curl_exec(']:
     if forbidden in guard:
         raise SystemExit(f'forbidden loopback guard network primitive: {forbidden}')
 
-if 'class-mad4b-scp-local-oauth-store.php' not in main:
-    raise SystemExit('main plugin does not load local OAuth store')
-if 'class-mad4b-scp-local-oauth-server.php' not in main:
-    raise SystemExit('main plugin does not load local OAuth server')
-if 'class-mad4b-scp-local-oauth-loopback-guard.php' not in main:
-    raise SystemExit('main plugin does not load local OAuth loopback guard')
-if 'MAD4B_SCP_Local_OAuth_Loopback_Guard::boot()' not in plugin:
-    raise SystemExit('plugin boot does not initialize local OAuth loopback guard')
-if 'MAD4B_SCP_Local_OAuth_Server::boot()' not in plugin:
-    raise SystemExit('plugin boot does not initialize local OAuth server')
+required_lock = [
+    'mad4b.local-oauth-init-lock.v1',
+    "add_action( 'init', array( __CLASS__, 'acquire' ), 0 )",
+    "add_action( 'init', array( __CLASS__, 'release' ), 2 )",
+    "flock( $handle, LOCK_EX )",
+    "flock( self::$handle, LOCK_UN )",
+    "'.init.lock'",
+    "lock_contains_secret_material' => false",
+    'is_file( $key_path )',
+    'outside',
+]
+for marker in required_lock:
+    if marker not in init_lock:
+        raise SystemExit(f'missing local OAuth init-lock marker: {marker}')
+for forbidden in ['file_put_contents(', 'openssl_pkey_new(', 'openssl_sign(', 'update_option(', 'add_option(']:
+    if forbidden in init_lock:
+        raise SystemExit(f'init lock must not own credentials or persistent authority: {forbidden}')
+
+for loaded in [
+    'class-mad4b-scp-local-oauth-store.php',
+    'class-mad4b-scp-local-oauth-server.php',
+    'class-mad4b-scp-local-oauth-init-lock.php',
+    'class-mad4b-scp-local-oauth-loopback-guard.php',
+]:
+    if loaded not in main:
+        raise SystemExit(f'main plugin does not load local OAuth component: {loaded}')
+for boot_marker in [
+    'MAD4B_SCP_Local_OAuth_Init_Lock::boot()',
+    'MAD4B_SCP_Local_OAuth_Loopback_Guard::boot()',
+    'MAD4B_SCP_Local_OAuth_Server::boot()',
+]:
+    if boot_marker not in plugin:
+        raise SystemExit(f'plugin boot missing local OAuth component: {boot_marker}')
 
 runtime = (root / 'tests' / 'runtime-local-oauth-standalone-smoke.php').read_text(encoding='utf-8')
 for marker in [
@@ -133,4 +157,14 @@ for marker in [
     if marker not in runtime:
         raise SystemExit(f'missing local OAuth runtime hardening proof: {marker}')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v3: PASS')
+lock_runtime = (root / 'tests' / 'runtime-local-oauth-init-lock-smoke.php').read_text(encoding='utf-8')
+for marker in [
+    'local-oauth-init-lock.runtime.v1',
+    "has_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Init_Lock', 'acquire' ) )",
+    "has_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Server', 'ensure_runtime' ) )",
+    "'.init.lock'",
+]:
+    if marker not in lock_runtime:
+        raise SystemExit(f'missing local OAuth init-lock runtime proof: {marker}')
+
+print('mad4b.site-control-plane.local-oauth-standalone.v4: PASS')
