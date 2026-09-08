@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Issuer = 'https://staging.egypttourgates.com/oauth/mcp',
-    [string]$Resource = 'https://staging.egypttourgates.com/wp-json/mcp/mad4b-read',
+    [string]$Resource = 'https://staging.egypttourgates.com/wp-json/mcp/mad4b-chatgpt',
     [string]$ClientId = 'mad4b-staging-canary',
     [string]$RedirectUri = 'http://127.0.0.1:8765/callback',
     [string]$Scope = 'mad4b:read offline_access',
@@ -111,5 +111,5 @@ Write-Host 'MAD4B Local OAuth Staging Canary: PASS'
 Write-Host 'OAuth browser round-trip: PASS'
 Write-Host 'PKCE S256: PASS'
 Write-Host 'Token exchange: PASS'
-Write-Host "Bearer accepted by mad4b-read: PASS (HTTP $status)"
+Write-Host "Bearer accepted by mad4b-chatgpt: PASS (HTTP $status)"
 Write-Host 'The access token was intentionally not printed or persisted.'
