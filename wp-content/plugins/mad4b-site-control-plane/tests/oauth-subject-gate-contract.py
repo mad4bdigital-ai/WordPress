@@ -12,7 +12,7 @@ required_gate_markers = (
     "allowed_subjects_for_issuer",
     "is_trusted_issuer",
     "subject_allowed",
-    "/mcp/mad4b-read",
+    "/mcp/mad4b-chatgpt",
     "issuer+subject+aud+resource",
     "mad4b_oauth_subject_not_approved",
     "post_signature_subject_reauthorization",
