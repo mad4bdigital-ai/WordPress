@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import json
 from pathlib import Path
 
@@ -25,6 +26,10 @@ def family_for_archive(name, catalog):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default="")
+    args = parser.parse_args()
+
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
     adapter_source = FAMILY_ADAPTER.read_text(encoding="utf-8")
@@ -93,7 +98,9 @@ def main():
         "high_risk_normal_write_allowed": False,
         "catalog": catalog_rows,
     }
-    print(json.dumps(evidence, indent=2, sort_keys=True))
+    encoded = json.dumps(evidence, indent=2, sort_keys=True) + "\n"
+    if args.output:
+        Path(args.output).write_text(encoded, encoding="utf-8")
     print(f"mad4b.repository-plugin-artifact-coverage.v2: PASS artifacts={len(repository_artifacts)} families={len(families)} unresolved=0")
 
 
