@@ -120,11 +120,12 @@ required_lock = [
     "'.init.lock'",
     "lock_contains_secret_material' => false",
     'is_file( $key_path )',
-    'outside',
+    "trailingslashit( wp_normalize_path( ABSPATH ) )",
+    "0 === strpos( trailingslashit( dirname( $normalized ) ), $web_root )",
 ]
 for marker in required_lock:
     if marker not in init_lock:
-        raise SystemExit(f'missing local OAuth init-lock marker: {marker}')
+        raise SystemExit(f'missing local OAuth init-lock structural guard: {marker}')
 for forbidden in ['file_put_contents(', 'openssl_pkey_new(', 'openssl_sign(', 'update_option(', 'add_option(']:
     if forbidden in init_lock:
         raise SystemExit(f'init lock must not own credentials or persistent authority: {forbidden}')
