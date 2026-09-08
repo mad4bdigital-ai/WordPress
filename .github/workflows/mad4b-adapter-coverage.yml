@@ -6,6 +6,13 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/*.zip'
       - 'wp-content/plugins/*.php'
+      - 'wp-content/mu-plugins.zip'
+      - 'wp-content/mu-plugins/**'
+      - 'wp-content/themes/**'
+      - 'wp-content/*.php'
+      - 'wp-includes/version.php'
+      - 'wp-settings.php'
+      - 'wp-admin/admin.php'
       - '.github/workflows/mad4b-adapter-coverage.yml'
   push:
     branches:
@@ -14,6 +21,13 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/*.zip'
       - 'wp-content/plugins/*.php'
+      - 'wp-content/mu-plugins.zip'
+      - 'wp-content/mu-plugins/**'
+      - 'wp-content/themes/**'
+      - 'wp-content/*.php'
+      - 'wp-includes/version.php'
+      - 'wp-settings.php'
+      - 'wp-admin/admin.php'
       - '.github/workflows/mad4b-adapter-coverage.yml'
   workflow_dispatch:
 
@@ -26,7 +40,7 @@ concurrency:
 
 jobs:
   repository-coverage-contract:
-    name: Repository plugin adapter coverage contract
+    name: Repository runtime adapter coverage contract
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,16 +54,20 @@ jobs:
             --output /tmp/mad4b-repository-plugin-adapter-coverage.json
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-plugin-artifact-coverage.py \
             --output /tmp/mad4b-repository-plugin-artifact-coverage.json
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-runtime-component-coverage.py \
+            --output /tmp/mad4b-repository-runtime-component-coverage.json
           cat /tmp/mad4b-repository-plugin-adapter-coverage.json
           cat /tmp/mad4b-repository-plugin-artifact-coverage.json
+          cat /tmp/mad4b-repository-runtime-component-coverage.json
 
       - name: Upload repository adapter coverage evidence
         uses: actions/upload-artifact@v4
         with:
-          name: mad4b-repository-plugin-adapter-coverage-${{ github.sha }}
+          name: mad4b-repository-runtime-adapter-coverage-${{ github.sha }}
           path: |
             /tmp/mad4b-repository-plugin-adapter-coverage.json
             /tmp/mad4b-repository-plugin-artifact-coverage.json
+            /tmp/mad4b-repository-runtime-component-coverage.json
           if-no-files-found: error
           retention-days: 30
 
@@ -122,6 +140,14 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php" \
+            --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove Core MU drop-in theme and Astra adapters
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-component-adapter-smoke.php" \
             --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove reversible Media adapter envelope and drift-safe undo
