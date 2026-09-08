@@ -26,9 +26,19 @@ final class DynamicTagRuntime {
     public static function previewContext(string$previewUrl):?array{$previewUrl=trim($previewUrl);if(''===$previewUrl||!is_callable(self::$previewContextProvider)){return null;}try{$context=call_user_func(self::$previewContextProvider,$previewUrl);return is_array($context)&&$context?$context:null;}catch(\Throwable$error){return null;}}
 
     public static function tokenOptions():array{
-        $options=array();foreach((array)(self::catalog()['tokens']??array())as$token=>$meta){$token=PresentationToken::normalize($token);if(''===$token){continue;}$options[$token]=(string)($meta['label']??$token).' ['.$token.']';}
-        if(!$options){$options=array('title'=>'Filter Title [title]');}return$options;
+        return self::tokenOptionsBySource('');
     }
+    public static function tokenOptionsBySource(string$source):array{
+        $source=sanitize_key($source);$options=array();
+        foreach((array)(self::catalog()['tokens']??array())as$token=>$meta){
+            $token=PresentationToken::normalize($token);if(''===$token){continue;}
+            if(''!==$source&&$source!==sanitize_key((string)($meta['source']??''))){continue;}
+            $options[$token]=(string)($meta['label']??$token).' ['.$token.']';
+        }
+        if(!$options&&''===$source){$options=array('title'=>'Filter Title [title]');}
+        return$options;
+    }
+    public static function termMetaOptions():array{return self::tokenOptionsBySource('term-meta');}
     public static function tokenTypes():array{
         $types=array();foreach((array)(self::catalog()['tokens']??array())as$token=>$meta){$token=PresentationToken::normalize($token);if(''===$token){continue;}$types[$token]=(string)($meta['type']??'text');}
         if(!$types){$types=array('title'=>'text');}return$types;
