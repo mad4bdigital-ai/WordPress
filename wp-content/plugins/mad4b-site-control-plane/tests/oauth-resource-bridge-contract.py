@@ -69,6 +69,7 @@ for marker in required:
 for marker in [
     "mad4b.oauth-request-context-guard.v1",
     "add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_request_context' ), -1, 3 )",
+    "'/mcp/mad4b-chatgpt'",
     "verified_bearer_active",
     "reset_verified_bearer_context( true )",
     "reset_verified_bearer_context( false )",
@@ -81,6 +82,7 @@ for marker in [
 
 for marker in [
     "mad4b.oauth-jwt-header-guard.v1",
+    "'/mcp/mad4b-chatgpt'",
     "'at+jwt'",
     "'RS256'",
     "mad4b_oauth_jwt_typ_denied",
@@ -140,7 +142,7 @@ for marker in [
         raise SystemExit(f"missing ChatGPT gateway marker: {marker}")
 
 for marker in [
-    'runtime-oauth-context-cooldown.v2',
+    'runtime-oauth-context-cooldown.v3',
     'claim_jwks_refresh_slot',
     'Second unknown-kid refresh attempt must be suppressed during cooldown.',
     'Pre-gate denial path retained stale OAuth service identity.',
