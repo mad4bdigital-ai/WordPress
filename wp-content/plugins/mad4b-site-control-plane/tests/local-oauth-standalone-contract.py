@@ -64,6 +64,9 @@ required_store = [
     'mark_code_used',
     'rotate_refresh_token',
     'revoke_family',
+    'family_is_revoked',
+    'Pre-insert guard catches a replay/revocation',
+    'Post-insert guard closes the important race',
     "plaintext_authorization_codes_stored' => false",
     "plaintext_refresh_tokens_stored' => false",
 ]
@@ -96,4 +99,13 @@ if 'MAD4B_SCP_Local_OAuth_Loopback_Guard::boot()' not in plugin:
 if 'MAD4B_SCP_Local_OAuth_Server::boot()' not in plugin:
     raise SystemExit('plugin boot does not initialize local OAuth server')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v1: PASS')
+runtime = (root / 'tests' / 'runtime-local-oauth-standalone-smoke.php').read_text(encoding='utf-8')
+for marker in [
+    'local-oauth-standalone.runtime.v2',
+    'family_is_revoked',
+    'Model the dangerous interleaving explicitly',
+]:
+    if marker not in runtime:
+        raise SystemExit(f'missing local OAuth runtime replay-race proof: {marker}')
+
+print('mad4b.site-control-plane.local-oauth-standalone.v2: PASS')
