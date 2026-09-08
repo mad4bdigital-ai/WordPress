@@ -111,5 +111,4 @@ $binding = MAD4B_SCP_Staging_OAuth_Bridge::resolve_bound_user_id( $verified_unbo
 mad4b_oauth_smoke_assert( is_wp_error( $binding ) && 'mad4b_oauth_subject_unbound' === $binding->get_error_code(), 'unbound subject did not fail closed' );
 
 delete_user_meta( $user_id, MAD4B_SCP_Staging_OAuth_Bridge::USER_META_KEY );
-wp_delete_user( $user_id );
 echo "mad4b.wordpress-staging-mcp-resource-server-runtime.v1: PASS\n";
