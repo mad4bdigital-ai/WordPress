@@ -25,7 +25,7 @@ $normalize = static function ( $value ) {
 foreach ( array( 'MAD4B_SCP_Local_OAuth_Server', 'MAD4B_SCP_OAuth_Resource_Bridge', 'MAD4B_SCP_Servers' ) as $class ) {
 	if ( ! class_exists( $class ) ) $fail( 'Required OAuth/MCP class is unavailable.', $class );
 }
-if ( ! function_exists( 'rest_do_request' ) ) $fail( 'WordPress REST dispatcher is unavailable.' );
+if ( ! function_exists( 'rest_do_request' ) || ! function_exists( 'rest_get_server' ) ) $fail( 'WordPress REST dispatcher is unavailable.' );
 
 MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
 $local_status = MAD4B_SCP_Local_OAuth_Server::status();
@@ -59,9 +59,16 @@ $dispatch = static function ( array $payload, $bearer, $session_id = '' ) {
 	$request->set_header( 'Authorization', 'Bearer ' . $bearer );
 	$request->set_header( 'Accept', 'application/json, text/event-stream' );
 	$request->set_header( 'Content-Type', 'application/json' );
+	$request->set_header( 'MCP-Protocol-Version', '2025-11-25' );
 	if ( '' !== $session_id ) $request->set_header( 'Mcp-Session-Id', $session_id );
 	$request->set_body( wp_json_encode( $payload ) );
-	return rest_do_request( $request );
+
+	// rest_do_request() intentionally stops at WP_REST_Server::dispatch(). The
+	// live REST serving path then runs rest_post_dispatch; MCP Adapter attaches
+	// Mcp-Session-Id at that stage. WordPress core tests mirror this same pattern.
+	$response = rest_do_request( $request );
+	$response = rest_ensure_response( $response );
+	return apply_filters( 'rest_post_dispatch', $response, rest_get_server(), $request );
 };
 
 $initialize = $dispatch(
@@ -93,7 +100,7 @@ foreach ( $headers as $name => $value ) {
 		break;
 	}
 }
-if ( '' === $session_id ) $fail( 'Initialize did not establish an MCP session.', $headers );
+if ( '' === $session_id ) $fail( 'Initialize did not establish an MCP session after rest_post_dispatch.', $headers );
 
 $tools_response = $dispatch(
 	array( 'jsonrpc' => '2.0', 'id' => 71, 'method' => 'tools/list', 'params' => array() ),
@@ -105,6 +112,7 @@ remove_filter( 'pre_http_request', $http_spy, 9999 );
 if ( ! $tools_response instanceof WP_REST_Response ) $fail( 'tools/list did not return WP_REST_Response.', gettype( $tools_response ) );
 if ( 200 !== (int) $tools_response->get_status() ) $fail( 'OAuth bearer tools/list failed.', array( 'status' => $tools_response->get_status(), 'body' => $tools_response->get_data() ) );
 $tools_data = $normalize( $tools_response->get_data() );
+if ( isset( $tools_data['error'] ) ) $fail( 'OAuth bearer tools/list returned a JSON-RPC error.', $tools_data );
 $tools = isset( $tools_data['result']['tools'] ) && is_array( $tools_data['result']['tools'] ) ? $tools_data['result']['tools'] : array();
 if ( empty( $tools ) ) $fail( 'OAuth bearer tools/list returned an empty inventory.', $tools_data );
 
@@ -126,7 +134,7 @@ if ( ! empty( $unpreempted_http ) ) $fail( 'Local OAuth bearer verification atte
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v1: PASS ' .
+	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v2: PASS ' .
 	wp_json_encode(
 		array(
 			'tool_count' => count( $names ),
