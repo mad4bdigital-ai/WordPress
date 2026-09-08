@@ -104,6 +104,17 @@ jobs:
                   'breakglass_enabled': False,
                   'bitflows_execution_enabled': False,
                   'elementor_legacy_write_enabled': False,
+                  'wordpress_staging_oauth_enabled': False,
+              },
+              'oauth_resource_server': {
+                  'staging_only': True,
+                  'resource': 'https://staging.egypttourgates.com/wp-json/mcp/mad4b-read',
+                  'issuer': 'https://dev.mad4b.com/auth/mcp/wordpress-staging',
+                  'jwks_uri': 'https://dev.mad4b.com/auth/mcp/wordpress-staging/oauth/jwks',
+                  'protected_resource_metadata': 'https://staging.egypttourgates.com/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-read',
+                  'enable_constant': 'MAD4B_SCP_WORDPRESS_STAGING_OAUTH_ENABLED',
+                  'subject_binding_user_meta': 'mad4b_scp_oauth_subject_fingerprint',
+                  'private_signing_key_required_on_wordpress': False,
               },
               'required_post_install_check': 'mad4b/runtime-self-test',
           }
@@ -115,11 +126,13 @@ jobs:
 
           1. Install and activate the exact `mcp-adapter-0.6.1.zip` first.
           2. Install and activate the MAD4B Site Control Plane ZIP.
-          3. Do not define any MAD4B mutation/Breakglass/lifecycle/Flow/Elementor legacy-write enable constants during discovery certification.
-          4. Authenticate a dedicated control identity and execute `mad4b/runtime-self-test`.
-          5. Verify provider versions/runtime critical-file hashes, custom-server isolation, and backup-root placement before any mutation gate is enabled.
+          3. Keep every mutation/Breakglass/lifecycle/Flow/Elementor legacy-write gate OFF during discovery certification.
+          4. The WordPress Staging OAuth resource-server bridge is also OFF by default. Enable `MAD4B_SCP_WORDPRESS_STAGING_OAUTH_ENABLED` only on `WP_ENVIRONMENT_TYPE=staging` at the exact origin `https://staging.egypttourgates.com` after the OAuth issuer/JWKS exact-head deployment is ready.
+          5. Bind the verified OAuth subject to exactly one dedicated Staging WordPress user by storing SHA-256(`oauth_subject` + NUL + canonical `sub`) in user meta `mad4b_scp_oauth_subject_fingerprint`. Do not store bearer tokens or private signing keys in WordPress.
+          6. Verify `/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-read`, unauthenticated `401` + `WWW-Authenticate` resource metadata, exact JWKS validation, and a real ChatGPT OAuth/MCP handshake.
+          7. Execute `mad4b/runtime-self-test` and verify provider versions/runtime critical-file hashes, custom-server isolation, and backup-root placement before any mutation gate is enabled.
 
-          This package is suitable for controlled staging/read-only discovery. It does not authorize production mutation.
+          This package is suitable for controlled Staging certification. It does not authorize Production mutation and does not activate OAuth merely by being installed.
           EOF
 
       - name: Verify package excludes development tests and preserves runtime baseline
@@ -131,11 +144,14 @@ jobs:
           test -n "$control_zip"
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-bridge.php'
           if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
             exit 1
           fi
           grep -Fq "\"commit\": \"$SOURCE_SHA\"" "$stage/install-manifest.json"
+          grep -Fq '"wordpress_staging_oauth_enabled": false' "$stage/install-manifest.json"
+          grep -Fq '"private_signing_key_required_on_wordpress": false' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
       - name: Upload staging installation kit
