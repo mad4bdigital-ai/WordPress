@@ -4,6 +4,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 connection = (root / 'includes/class-mad4b-scp-connection-status.php').read_text(encoding='utf-8')
+compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
 runtime_disabled = (root / 'tests/runtime-local-transport-oauth-isolation-smoke.php').read_text(encoding='utf-8')
 runtime_misconfigured = (root / 'tests/runtime-local-transport-oauth-misconfigured-smoke.php').read_text(encoding='utf-8')
 
@@ -37,6 +38,13 @@ for marker in [
     assert marker in connection, f'connection readiness no longer separates local and remote auth: {marker}'
 
 for marker in [
+    "&& ! empty( $status['effective'] )",
+    'if ( ! self::oauth_discovery_ready( $status ) ) return array();',
+    'mad4b_oauth_resource_discovery_not_ready',
+]:
+    assert marker in compat, f'ineffective OAuth discovery is not fail-closed: {marker}'
+
+for marker in [
     'runtime-local-transport-oauth-isolation.v1',
     'OAuth resource bridge must not intercept an OAuth-disabled local transport.',
     'WordPress-authenticated admin lost local read permission.',
@@ -44,11 +52,13 @@ for marker in [
     assert marker in runtime_disabled, f'missing OAuth-disabled local transport proof: {marker}'
 
 for marker in [
-    'runtime-local-transport-oauth-misconfigured.v1',
+    'runtime-local-transport-oauth-misconfigured.v2',
     'Ineffective OAuth must not intercept local MCP transport.',
     'Configured-but-ineffective OAuth disabled local WordPress read permission.',
     'oauth_wp_subject_unconfigured',
+    'Ineffective OAuth published protected-resource metadata as ready.',
+    'Compatibility manifest advertised authorization servers for ineffective OAuth.',
 ]:
     assert marker in runtime_misconfigured, f'missing ineffective-OAuth local transport proof: {marker}'
 
-print('mad4b.site-control-plane.local-transport-oauth-isolation.v2: PASS')
+print('mad4b.site-control-plane.local-transport-oauth-isolation.v3: PASS')
