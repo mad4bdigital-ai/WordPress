@@ -77,6 +77,8 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		$registry = class_exists( 'MAD4B_SCP_MCP_Client_Profile_Registry' ) ? MAD4B_SCP_MCP_Client_Profile_Registry::status() : array();
 		$mode = isset( $oauth['authority_mode'] ) ? sanitize_key( (string) $oauth['authority_mode'] ) : '';
 		$count = isset( $oauth['authority_count'] ) ? (int) $oauth['authority_count'] : 0;
+		$local_key_ready = self::local_key_policy_ready( $oauth );
+		$discovery_ready = self::oauth_discovery_ready( $oauth );
 		return array(
 			'contract' => self::CONTRACT,
 			'client_agnostic' => true,
@@ -87,8 +89,9 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'authorization_server_local' => in_array( $mode, array( 'local', 'hybrid' ), true ),
 			'authorization_server_hybrid' => 'hybrid' === $mode,
 			'authorization_server_count' => $count,
-			'oauth_effective' => ! empty( $oauth['effective'] ),
-			'oauth_discovery_ready' => self::oauth_discovery_ready( $oauth ),
+			'oauth_effective' => ! empty( $oauth['effective'] ) && $local_key_ready,
+			'oauth_discovery_ready' => $discovery_ready,
+			'local_key_path_policy_ready' => $local_key_ready,
 			'authoritative_well_known_url' => self::authoritative_well_known_url(),
 			'compatibility_alias_url' => self::compatibility_alias_url(),
 			'compatibility_manifest_url' => untrailingslashit( rest_url( self::MANIFEST_NAMESPACE . self::MANIFEST_ROUTE ) ),
@@ -171,11 +174,18 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		$environment_allowed = 'staging' === $environment || ( 'production' === $environment && ! empty( $status['production_approved'] ) );
 		return ! empty( $status['configured'] )
 			&& ! empty( $status['effective'] )
+			&& self::local_key_policy_ready( $status )
 			&& ! empty( $status['authority_registry_valid'] )
 			&& ! empty( $status['subject_policy_ready'] )
 			&& ! empty( $status['authority_count'] )
 			&& ! empty( $status['https'] )
 			&& $environment_allowed;
+	}
+
+	private static function local_key_policy_ready( $status ) {
+		$mode = is_array( $status ) && isset( $status['authority_mode'] ) ? sanitize_key( (string) $status['authority_mode'] ) : '';
+		if ( ! in_array( $mode, array( 'local', 'hybrid' ), true ) ) return true;
+		return class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) && MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready();
 	}
 
 	private static function resource_name() {
