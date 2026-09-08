@@ -36,6 +36,7 @@ jobs:
           php -l "$root/tests/runtime-local-oauth-key-path-policy-smoke.php"
           php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-smoke.php"
+          php -l "$root/tests/runtime-local-oauth-browser-canary-production-smoke.php"
           node --check "$root/assets/local-oauth-canary.js"
           python3 "$root/tests/local-oauth-standalone-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
@@ -110,7 +111,7 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
-      - name: Prove local key, metadata, JWT, token-ledger and canary invariants
+      - name: Prove local key, metadata, JWT, token-ledger and Staging canary invariants
         shell: bash
         run: |
           set -euo pipefail
@@ -118,3 +119,11 @@ jobs:
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-key-path-policy-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-init-lock-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove browser canary is unavailable in Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE production --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-production-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
