@@ -16,6 +16,11 @@ $fail = static function ( $message, $data = null ) {
 		$message . ( null !== $data ? ' ' . wp_json_encode( $data, JSON_UNESCAPED_SLASHES ) : '' )
 	);
 };
+$normalize = static function ( $value ) {
+	$encoded = wp_json_encode( $value );
+	if ( false === $encoded ) return null;
+	return json_decode( $encoded, true );
+};
 
 foreach ( array( 'MAD4B_SCP_Local_OAuth_Server', 'MAD4B_SCP_OAuth_Resource_Bridge', 'MAD4B_SCP_Servers' ) as $class ) {
 	if ( ! class_exists( $class ) ) $fail( 'Required OAuth/MCP class is unavailable.', $class );
@@ -73,8 +78,8 @@ $initialize = $dispatch(
 );
 if ( ! $initialize instanceof WP_REST_Response ) $fail( 'Initialize did not return WP_REST_Response.', gettype( $initialize ) );
 if ( 200 !== (int) $initialize->get_status() ) $fail( 'OAuth bearer initialize failed.', array( 'status' => $initialize->get_status(), 'body' => $initialize->get_data() ) );
-$initialize_data = $initialize->get_data();
-if ( ! is_array( $initialize_data ) || empty( $initialize_data['result']['capabilities']['tools'] ) && ! isset( $initialize_data['result']['capabilities']['tools'] ) ) {
+$initialize_data = $normalize( $initialize->get_data() );
+if ( ! is_array( $initialize_data ) || ! isset( $initialize_data['result']['capabilities']['tools'] ) ) {
 	$fail( 'Initialize did not advertise the MCP tools capability.', $initialize_data );
 }
 if ( empty( $initialize_data['result']['serverInfo']['name'] ) || 'MAD4B ChatGPT MCP' !== $initialize_data['result']['serverInfo']['name'] ) {
@@ -99,7 +104,7 @@ remove_filter( 'pre_http_request', $http_spy, 9999 );
 
 if ( ! $tools_response instanceof WP_REST_Response ) $fail( 'tools/list did not return WP_REST_Response.', gettype( $tools_response ) );
 if ( 200 !== (int) $tools_response->get_status() ) $fail( 'OAuth bearer tools/list failed.', array( 'status' => $tools_response->get_status(), 'body' => $tools_response->get_data() ) );
-$tools_data = $tools_response->get_data();
+$tools_data = $normalize( $tools_response->get_data() );
 $tools = isset( $tools_data['result']['tools'] ) && is_array( $tools_data['result']['tools'] ) ? $tools_data['result']['tools'] : array();
 if ( empty( $tools ) ) $fail( 'OAuth bearer tools/list returned an empty inventory.', $tools_data );
 
