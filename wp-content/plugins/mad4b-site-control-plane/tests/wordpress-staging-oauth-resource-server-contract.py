@@ -17,7 +17,7 @@ def forbid(text, needle, label):
 bridge = read('includes/class-mad4b-scp-staging-oauth-bridge.php')
 bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
-workflow = (ROOT.parents[2] / '.github/workflows/mad4b-connection-governance.yml').read_text('utf-8')
+workflow = (ROOT.parents[2] / '.github/workflows/mad4b-wordpress-staging-oauth-resource-server.yml').read_text('utf-8')
 
 for marker in (
     "const CONTRACT = 'mad4b.wordpress-staging-mcp-resource-server.v1'",
@@ -95,5 +95,8 @@ require(bootstrap, 'class-mad4b-scp-staging-oauth-bridge.php', 'bridge-bootstrap
 require(plugin, 'MAD4B_SCP_Staging_OAuth_Bridge::boot();', 'bridge-boot')
 require(workflow, 'wordpress-staging-oauth-resource-server-contract.py', 'bridge-static-ci')
 require(workflow, 'runtime-wordpress-staging-oauth-resource-server-smoke.php', 'bridge-runtime-ci')
+require(workflow, "WP_ENVIRONMENT_TYPE staging", 'bridge-staging-runtime')
+require(workflow, "MAD4B_SCP_WORDPRESS_STAGING_OAUTH_ENABLED true", 'bridge-explicit-opt-in-runtime')
+require(workflow, "--url='https://staging.egypttourgates.com'", 'bridge-exact-origin-runtime')
 
 print('mad4b.wordpress-staging-mcp-resource-server-contract.v1: PASS')
