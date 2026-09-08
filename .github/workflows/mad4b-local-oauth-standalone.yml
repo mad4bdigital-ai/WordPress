@@ -37,6 +37,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
           php -l "$root/tests/local-oauth-consent-ui-contract.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
+          php -l "$root/tests/runtime-local-oauth-chatgpt-http-smoke.php"
           php -l "$root/tests/runtime-local-oauth-key-path-policy-smoke.php"
           php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
           php -l "$root/tests/runtime-local-oauth-browser-canary-smoke.php"
@@ -125,6 +126,12 @@ jobs:
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-key-path-policy-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-init-lock-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove local OAuth bearer through REST initialize session and tools/list
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
       - name: Prove browser canary is unavailable in Production
         shell: bash
