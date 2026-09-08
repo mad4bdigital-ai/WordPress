@@ -22,10 +22,27 @@
         return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
 
+    function breakpointValue(value, fallback) {
+        if (value && typeof value === 'object' && isFinite(Number(value.value))) { value = value.value; }
+        value = Number(value);
+        return isFinite(value) && value > 0 ? value : fallback;
+    }
+
+    function responsiveBreakpoints() {
+        var mobile = 767, tablet = 1024;
+        var config = window.elementorFrontend && window.elementorFrontend.config && window.elementorFrontend.config.responsive;
+        var active = config && config.activeBreakpoints && typeof config.activeBreakpoints === 'object' ? config.activeBreakpoints : {};
+        mobile = breakpointValue(active.mobile, mobile);
+        tablet = breakpointValue(active.tablet, tablet);
+        if (tablet < mobile) { tablet = mobile; }
+        return { mobile: mobile, tablet: tablet };
+    }
+
     function device() {
         var width = window.innerWidth || document.documentElement.clientWidth || 1280;
-        if (width <= 767) { return 'mobile'; }
-        if (width <= 1024) { return 'tablet'; }
+        var breakpoints = responsiveBreakpoints();
+        if (width <= breakpoints.mobile) { return 'mobile'; }
+        if (width <= breakpoints.tablet) { return 'tablet'; }
         return 'desktop';
     }
 
@@ -76,6 +93,15 @@
     function ensureStage(el) {
         var state = states && states.get(el);
         if (state && state.stage && state.stage.parentNode === el) { return state; }
+        if (!state) {
+            state = { element: el, stage: null, overlay: null, slides: [], sourceItems: [], items: [], index: 0, timer: null, paused: false, hoverBound: false };
+            if (states) { states.set(el, state); }
+        } else {
+            clearTimer(state);
+            state.slides = [];
+            state.items = [];
+            state.paused = false;
+        }
 
         var stage = document.createElement('div');
         stage.className = 'etg-dfsb-background-stage';
@@ -84,15 +110,32 @@
         overlay.className = 'etg-dfsb-background-stage__overlay';
         stage.appendChild(overlay);
         if (el.firstChild) { el.insertBefore(stage, el.firstChild); } else { el.appendChild(stage); }
+        state.stage = stage;
+        state.overlay = overlay;
 
-        state = { element: el, stage: stage, overlay: overlay, slides: [], items: [], index: 0, timer: null, paused: false };
-        if (states) { states.set(el, state); }
-
-        if ((el.getAttribute('data-etg-dfsb-background-pause-hover') || '0') === '1') {
-            el.addEventListener('mouseenter', function () { state.paused = true; clearTimer(state); });
-            el.addEventListener('mouseleave', function () { state.paused = false; schedule(state); });
+        if (!state.hoverBound) {
+            el.addEventListener('mouseenter', function () {
+                var current = states && states.get(el) ? states.get(el) : state;
+                if (!current || (el.getAttribute('data-etg-dfsb-background-pause-hover') || '0') !== '1') { return; }
+                current.paused = true;
+                clearTimer(current);
+            });
+            el.addEventListener('mouseleave', function () {
+                var current = states && states.get(el) ? states.get(el) : state;
+                if (!current || (el.getAttribute('data-etg-dfsb-background-pause-hover') || '0') !== '1') { return; }
+                current.paused = false;
+                schedule(current);
+            });
+            state.hoverBound = true;
         }
         return state;
+    }
+
+    function elementConnected(el) {
+        if (!el) { return false; }
+        if (typeof el.isConnected === 'boolean') { return el.isConnected; }
+        if (document.documentElement && typeof document.documentElement.contains === 'function') { return document.documentElement.contains(el); }
+        return true;
     }
 
     function configure(state) {
@@ -144,8 +187,10 @@
     function effectiveItems(state, items) {
         var mode = (state.element.getAttribute('data-etg-dfsb-background-mode') || 'image').trim();
         var currentBehavior = behavior(state.element);
+        var minimum = intValue(state.element.getAttribute('data-etg-dfsb-background-min-slides'), 2, 1, 30);
         if (currentBehavior === 'disabled') { return []; }
         if (mode === 'image' || currentBehavior === 'first_image' || reducedMotion()) { return items.length ? [items[0]] : []; }
+        if (mode === 'slideshow' && items.length > 0 && items.length < minimum) { return [items[0]]; }
         return items;
     }
 
@@ -157,10 +202,11 @@
 
     function schedule(state) {
         clearTimer(state);
-        if (!state || state.paused || !autoplayEnabled(state) || state.slides.length < 2) { return; }
+        if (!state || !elementConnected(state.element) || state.paused || !autoplayEnabled(state) || state.slides.length < 2) { return; }
         var duration = intValue(state.element.getAttribute('data-etg-dfsb-background-duration'), 5000, 1000, 30000);
         state.timer = window.setTimeout(function () {
             state.timer = null;
+            if (!elementConnected(state.element)) { return; }
             activate(state, state.index + 1, false);
             schedule(state);
         }, duration);
@@ -170,9 +216,10 @@
         var state = ensureStage(el);
         configure(state);
         var maximum = intValue(el.getAttribute('data-etg-dfsb-background-max-slides'), 30, 1, 30);
-        var items = uniqueGallery(incoming == null ? readGallery(el) : incoming, maximum);
-        if (!items.length) { items = readFallback(el); }
-        items = effectiveItems(state, items);
+        var sourceItems = uniqueGallery(incoming == null ? readGallery(el) : incoming, maximum);
+        if (!sourceItems.length) { sourceItems = readFallback(el); }
+        state.sourceItems = sourceItems;
+        var items = effectiveItems(state, sourceItems);
         clearTimer(state);
         state.items = items;
         if (!items.length) {
@@ -190,7 +237,7 @@
 
     function init(el) {
         if (!el || !el.matches || !el.matches(selector)) { return; }
-        render(el, null, { index: 0 });
+        render(el, null, null);
     }
 
     function scan(root) {
@@ -220,11 +267,25 @@
             resizeTimer = null;
             Array.prototype.forEach.call(document.querySelectorAll(selector), function (el) {
                 var state = states && states.get(el);
-                var items = state && state.items && state.items.length ? state.items : readGallery(el);
-                render(el, items, { index: 0 });
+                var items = state && state.sourceItems ? state.sourceItems : readGallery(el);
+                var index = state && typeof state.index === 'number' ? state.index : 0;
+                render(el, items, { index: index });
             });
         }, 100);
     });
+
+    if (window.matchMedia) {
+        var motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+        var onMotionChange = function () {
+            Array.prototype.forEach.call(document.querySelectorAll(selector), function (el) {
+                var state = states && states.get(el);
+                var items = state && state.sourceItems ? state.sourceItems : readGallery(el);
+                render(el, items, { index: 0 });
+            });
+        };
+        if (motionPreference && typeof motionPreference.addEventListener === 'function') { motionPreference.addEventListener('change', onMotionChange); }
+        else if (motionPreference && typeof motionPreference.addListener === 'function') { motionPreference.addListener(onMotionChange); }
+    }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function () { scan(document); }); }
     else { scan(document); }

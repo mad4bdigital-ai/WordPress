@@ -1,6 +1,5 @@
 .etg-dfsb-dynamic-background {
     position: relative;
-    overflow: hidden;
     isolation: isolate;
 }
 
@@ -9,6 +8,7 @@
     inset: 0;
     z-index: 0;
     overflow: hidden;
+    contain: paint;
     pointer-events: none;
     border-radius: inherit;
     background: transparent;
@@ -29,7 +29,6 @@
     transition-duration: var(--etg-dfsb-background-transition-duration, 800ms);
     transition-timing-function: ease;
     transform: scale(1.001);
-    will-change: opacity, transform;
 }
 
 .etg-dfsb-background-stage[data-transition="fade"] .etg-dfsb-background-stage__slide,
@@ -73,7 +72,6 @@
 }
 
 .etg-dfsb-dynamic-background > :not(.etg-dfsb-background-stage):not(.elementor-background-overlay):not(.elementor-motion-effects-container):not(.elementor-background-video-container):not(.elementor-background-slideshow) {
-    position: relative;
     z-index: 3;
 }
 
