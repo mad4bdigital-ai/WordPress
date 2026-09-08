@@ -10,9 +10,10 @@ plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-
 catalog = json.loads((root / 'config/mcp-client-profiles.json').read_text(encoding='utf-8'))
 
 required_compat = [
-    "mad4b.mcp-client-compatibility.v3",
+    "mad4b.mcp-client-compatibility.v4",
     "WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource'",
-    "RESOURCE_PATH = '/wp-json/mcp/mad4b-read'",
+    "RESOURCE_PATH = '/wp-json/mcp/mad4b-chatgpt'",
+    "rest_url( 'mcp/mad4b-chatgpt' )",
     "MANIFEST_ROUTE = '/client-compatibility'",
     "'client_agnostic' => true",
     "'client_profiles_create_authority' => false",
@@ -92,4 +93,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v5: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v6: PASS')
