@@ -21,6 +21,12 @@ function mad4b_oauth_sign( array $claims, $private_key, $kid, array $extra_heade
 	return $h . '.' . $p . '.' . mad4b_oauth_b64u( $signature );
 }
 
+// WP-CLI has no inbound HTTPS transport context. Emulate the exact external
+// Staging request so home_url() preserves the configured HTTPS origin while
+// the bridge still fails closed for real non-HTTPS requests.
+$_SERVER['HTTPS'] = 'on';
+$_SERVER['SERVER_PORT'] = '443';
+
 mad4b_oauth_smoke_assert( MAD4B_SCP_Staging_OAuth_Bridge::enabled(), 'bridge must be enabled on disposable staging target' );
 $metadata = MAD4B_SCP_Staging_OAuth_Bridge::protected_resource_metadata();
 mad4b_oauth_smoke_assert( MAD4B_SCP_Staging_OAuth_Bridge::RESOURCE === $metadata['resource'], 'resource metadata mismatch' );
