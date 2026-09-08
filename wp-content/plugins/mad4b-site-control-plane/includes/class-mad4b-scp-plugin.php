@@ -7,6 +7,7 @@ final class MAD4B_SCP_Plugin {
 	private static $schema_error = null;
 
 	public static function activate() {
+		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
 		$schema = MAD4B_SCP_Schema::install_or_upgrade();
 		if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		update_option( 'mad4b_scp_version', MAD4B_SCP_VERSION, false );
@@ -21,6 +22,10 @@ final class MAD4B_SCP_Plugin {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
+		// Staging is zero-touch by default: bind a safe WordPress administrator
+		// subject before Local OAuth key/store/transport components inspect config.
+		// Production and explicit operator OAuth configuration remain fail-closed.
+		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
 		MAD4B_SCP_MCP_Provider_Isolation::boot();
 		self::bind_local_oauth_subject_compatibility();
 		MAD4B_SCP_Local_OAuth_Key_Path_Policy::boot();
