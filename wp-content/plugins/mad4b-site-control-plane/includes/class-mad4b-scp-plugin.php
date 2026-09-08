@@ -82,6 +82,9 @@ final class MAD4B_SCP_Plugin {
 
 	public static function boot_oauth_transport_if_effective() {
 		if ( ! self::oauth_transport_enabled() || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return;
+		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) || ! MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready() ) return;
+		}
 		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
 		if ( ! is_array( $status ) || empty( $status['effective'] ) ) return;
 
