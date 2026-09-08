@@ -40,7 +40,7 @@ final class DynamicTagRegistrar {
         }catch(\Throwable$e){\ETG\DynamicFilterSEOBridge\Runtime\BootGuard::recordThrowable('elementor_dynamic_tags',$e);}
     }
     private function dataTagCompatible():bool{
-        try{$method=new \ReflectionMethod('Elementor\\Core\\DynamicTags\\Data_Tag','get_value');if(!$method->isAbstract()){return false;}if($method->hasReturnType()){return false;}if($method->getNumberOfRequiredParameters()>0||$method->getNumberOfParameters()>1){return false;}$params=$method->getParameters();if($params&&$params[0]->hasType()&&(string)$params[0]->getType()!=='array'){return false;}return true;}catch(\Throwable$e){return false;}
+        try{$method=new \ReflectionMethod('Elementor\\Core\\DynamicTags\\Data_Tag','get_value');if($method->hasReturnType()){return false;}if($method->getNumberOfRequiredParameters()>0||$method->getNumberOfParameters()>1){return false;}$params=$method->getParameters();if($params&&$params[0]->hasType()&&(string)$params[0]->getType()!=='array'){return false;}return true;}catch(\Throwable$e){return false;}
     }
     private function registerTagClass($manager,string$class):void{if(method_exists($manager,'register')){$manager->register(new$class());return;}if(method_exists($manager,'register_tag')){$manager->register_tag($class);}}
 }
