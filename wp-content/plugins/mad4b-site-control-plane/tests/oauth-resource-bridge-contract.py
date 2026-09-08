@@ -4,11 +4,14 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 bridge = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
 context_guard = (root / 'includes' / 'class-mad4b-scp-oauth-request-context-guard.php').read_text(encoding='utf-8')
+header_guard = (root / 'includes' / 'class-mad4b-scp-oauth-jwt-header-guard.php').read_text(encoding='utf-8')
+outbound_guard = (root / 'includes' / 'class-mad4b-scp-oauth-outbound-budget-guard.php').read_text(encoding='utf-8')
 alignment = (root / 'includes' / 'class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 overrides = (root / 'includes' / 'class-mad4b-scp-governed-ability-overrides.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 runtime_context = (root / 'tests' / 'runtime-oauth-context-cooldown-smoke.php').read_text(encoding='utf-8')
+runtime_edges = (root / 'tests' / 'runtime-oauth-edge-guards-smoke.php').read_text(encoding='utf-8')
 
 required = [
     "mad4b.oauth-resource-bridge.v3",
@@ -73,6 +76,31 @@ for marker in [
         raise SystemExit(f"missing OAuth request-context guard marker: {marker}")
 
 for marker in [
+    "mad4b.oauth-jwt-header-guard.v1",
+    "'at+jwt'",
+    "'RS256'",
+    "mad4b_oauth_jwt_typ_denied",
+    "protected_header_verified_later' => true",
+    "claims_used_for_authority' => false",
+    "creates_authority' => false",
+]:
+    if marker not in header_guard:
+        raise SystemExit(f"missing OAuth JWT-header guard marker: {marker}")
+
+for marker in [
+    "mad4b.oauth-outbound-budget-guard.v1",
+    "WINDOW_SECONDS = 30",
+    "MAX_REQUESTS_PER_URL = 2",
+    "add_option( $name, $now, '', false )",
+    "mad4b_oauth_outbound_budget_exhausted",
+    "cross_process_atomic_slots' => true",
+    "credential_material_stored' => false",
+    "creates_authority' => false",
+]:
+    if marker not in outbound_guard:
+        raise SystemExit(f"missing OAuth outbound-budget marker: {marker}")
+
+for marker in [
     "mad4b.remote-oauth-read-policy.v1",
     "MAD4B_MCP_OAUTH_REMOTE_READ_ALLOWLIST",
     "mad4b/filesystem-read",
@@ -107,6 +135,16 @@ for marker in [
     if marker not in runtime_context:
         raise SystemExit(f"missing OAuth cooldown/context runtime proof: {marker}")
 
+for marker in [
+    'runtime-oauth-edge-guards.v1',
+    'JWT without at+jwt typ must be rejected.',
+    'Generic JWT typ must not be accepted as an access-token JWT.',
+    'Third concurrent outbound request exceeded the atomic URL budget.',
+    'Outbound URL budget did not reopen after its window.',
+]:
+    if marker not in runtime_edges:
+        raise SystemExit(f"missing OAuth edge-guard runtime proof: {marker}")
+
 for forbidden in [
     "file_put_contents(",
     "error_log( $token",
@@ -126,17 +164,21 @@ for forbidden in [
 for loaded in [
     "class-mad4b-scp-oauth-resource-bridge.php",
     "class-mad4b-scp-oauth-request-context-guard.php",
+    "class-mad4b-scp-oauth-jwt-header-guard.php",
+    "class-mad4b-scp-oauth-outbound-budget-guard.php",
     "class-mad4b-scp-oauth-challenge-alignment.php",
 ]:
     if loaded not in main:
         raise SystemExit(f"main plugin does not load OAuth component: {loaded}")
 for boot_marker in [
     "MAD4B_SCP_OAuth_Request_Context_Guard::boot()",
+    "MAD4B_SCP_OAuth_JWT_Header_Guard::boot()",
     "MAD4B_SCP_OAuth_Resource_Bridge::boot()",
+    "MAD4B_SCP_OAuth_Outbound_Budget_Guard::boot()",
 ]:
     if boot_marker not in plugin:
         raise SystemExit(f"plugin boot does not initialize OAuth component: {boot_marker}")
 if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
-print('mad4b.site-control-plane.oauth-resource-bridge.v5: PASS')
+print('mad4b.site-control-plane.oauth-resource-bridge.v6: PASS')
