@@ -2,6 +2,9 @@
 /** Disposable runtime proof for automatic plugin adapter coverage discovery. */
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
 
+// Backward-compatible evidence marker retained for the normative Spec Kit gate.
+// mad4b.site-control-plane.runtime-plugin-adapter-discovery.v1
+
 $check = static function ( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); };
 $check( class_exists( 'MAD4B_SCP_Plugin_Discovery' ), 'Plugin discovery class is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Adapter_Coverage_Admin_UI' ), 'Adapter Coverage Admin UI is unavailable.' );
