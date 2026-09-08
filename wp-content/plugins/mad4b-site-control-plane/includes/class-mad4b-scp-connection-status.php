@@ -21,7 +21,7 @@ final class MAD4B_SCP_Connection_Status {
 		$provider_ok = ! empty( $provider['runtime_contract_ok'] );
 
 		$servers = self::server_status();
-		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 5;
+		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 6;
 		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
 			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) { $server_ok = false; break; }
@@ -138,9 +138,10 @@ final class MAD4B_SCP_Connection_Status {
 	}
 
 	private static function server_status() {
-		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
+		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
 		$expected_permissions = array(
 			'mad4b-read' => array( 'MAD4B_SCP_Servers', 'can_read_transport' ),
+			'mad4b-chatgpt' => array( 'MAD4B_SCP_Servers', 'can_chatgpt_transport' ),
 			'mad4b-content' => array( 'MAD4B_SCP_Servers', 'can_content_transport' ),
 			'mad4b-write' => array( 'MAD4B_SCP_Servers', 'can_write_transport' ),
 			'mad4b-admin' => array( 'MAD4B_SCP_Servers', 'can_admin_transport' ),
@@ -290,6 +291,7 @@ final class MAD4B_SCP_Connection_Status {
 
 	private static function surface_label( $id ) {
 		if ( 'mad4b-read' === $id ) return 'read';
+		if ( 'mad4b-chatgpt' === $id ) return 'chatgpt-read';
 		if ( 'mad4b-content' === $id ) return 'content';
 		if ( 'mad4b-write' === $id ) return 'write';
 		if ( 'mad4b-admin' === $id ) return 'admin';
