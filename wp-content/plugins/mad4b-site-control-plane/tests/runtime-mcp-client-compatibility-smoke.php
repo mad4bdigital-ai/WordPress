@@ -33,13 +33,13 @@ if ( empty( $status['unknown_clients_supported'] ) ) mad4b_client_compat_fail( '
 if ( empty( $status['oauth_discovery_ready'] ) ) mad4b_client_compat_fail( 'OAuth discovery should be policy-ready in the disposable Staging fixture.', $status );
 if ( 'external' !== $status['oauth_authority_mode'] || 1 !== (int) $status['authorization_server_count'] ) mad4b_client_compat_fail( 'Fixture must truthfully report one external authority.', $status );
 if ( empty( $status['authorization_server_external'] ) || ! empty( $status['authorization_server_local'] ) || ! empty( $status['authorization_server_hybrid'] ) ) mad4b_client_compat_fail( 'Authority type booleans are inconsistent.', $status );
-if ( 'MAD4B WordPress Staging Read MCP' !== $status['resource_name'] ) mad4b_client_compat_fail( 'Resource name must derive Staging environment rather than be hardcoded.', $status );
+if ( 'MAD4B WordPress Staging ChatGPT Read MCP' !== $status['resource_name'] ) mad4b_client_compat_fail( 'Resource name must derive Staging environment and ChatGPT gateway rather than be hardcoded.', $status );
 if ( $status['profile_count'] < 6 ) mad4b_client_compat_fail( 'Dynamic client profile extension was not loaded.', $status );
 
-$resource = 'https://mad4b-client.test/wp-json/mcp/mad4b-read';
+$resource = 'https://mad4b-client.test/wp-json/mcp/mad4b-chatgpt';
 if ( $resource !== MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() ) mad4b_client_compat_fail( 'Unexpected protected resource identifier.', MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() );
 
-$path_specific = '/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-read';
+$path_specific = '/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt';
 $host_alias = '/.well-known/oauth-protected-resource';
 if ( ! MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $path_specific ) ) mad4b_client_compat_fail( 'Path-derived well-known location was not recognized.' );
 if ( ! MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $host_alias ) ) mad4b_client_compat_fail( 'Host compatibility alias was not recognized.' );
@@ -51,7 +51,7 @@ if ( 'https://mad4b-client.test' . $host_alias !== $status['compatibility_alias_
 $metadata = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( $path_specific );
 if ( is_wp_error( $metadata ) ) mad4b_client_compat_fail( 'Path-derived well-known metadata unexpectedly unavailable.', $metadata->get_error_code() );
 if ( $resource !== $metadata['resource'] ) mad4b_client_compat_fail( 'Metadata resource mismatch.', $metadata );
-if ( 'MAD4B WordPress Staging Read MCP' !== $metadata['resource_name'] ) mad4b_client_compat_fail( 'Metadata resource name mismatch.', $metadata );
+if ( 'MAD4B WordPress Staging ChatGPT Read MCP' !== $metadata['resource_name'] ) mad4b_client_compat_fail( 'Metadata resource name mismatch.', $metadata );
 if ( 'external' !== $metadata['mad4b_authority_mode'] ) mad4b_client_compat_fail( 'Metadata authority mode mismatch.', $metadata );
 if ( empty( $metadata['authorization_servers'][0] ) || 'https://auth.mad4b.test' !== $metadata['authorization_servers'][0] ) mad4b_client_compat_fail( 'Authorization server metadata mismatch.', $metadata );
 if ( empty( $metadata['scopes_supported'] ) || ! in_array( 'mad4b:read', $metadata['scopes_supported'], true ) ) mad4b_client_compat_fail( 'Read scope missing from metadata.', $metadata );
@@ -78,4 +78,4 @@ foreach ( array( 'openai-chatgpt', 'anthropic-claude', 'google-gemini', 'manus',
 $unknown = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( '/.well-known/oauth-protected-resource/not-mad4b' );
 if ( ! is_wp_error( $unknown ) || 'mad4b_oauth_resource_metadata_path_unknown' !== $unknown->get_error_code() ) mad4b_client_compat_fail( 'Unknown metadata path must fail closed.', $unknown );
 
-fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-client-compatibility.v3: PASS' . PHP_EOL );
+fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-client-compatibility.v4: PASS' . PHP_EOL );
