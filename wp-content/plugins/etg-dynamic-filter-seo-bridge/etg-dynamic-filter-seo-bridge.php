@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 define( 'ETG_DFSB_VERSION', '0.4.0-alpha.13' );
 define( 'ETG_DFSB_DIR', plugin_dir_path( __FILE__ ) );
-define( 'ETG_DFSB_BOOT_BUILD', 'alpha13-live-rescue-1' );
+define( 'ETG_DFSB_BOOT_BUILD', 'alpha13-live-rescue-2' );
 
 spl_autoload_register(static function ( $class ) {
     $prefix = 'ETG\\DynamicFilterSEOBridge\\';
