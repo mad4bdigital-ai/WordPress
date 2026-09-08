@@ -1,7 +1,12 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge\Content;
 
+require_once dirname( __DIR__ ) . '/Presentation/MediaAssetValidator.php';
+
+use ETG\DynamicFilterSEOBridge\Presentation\MediaAssetValidator;
+
 final class GalleryComposer {
+    private $healthCache = array();
     public function ids( array $context, string $mode = 'combined' ): array {
         $mode = sanitize_key( $mode );
         if ( '' === $mode ) { $mode = 'combined'; }
@@ -153,5 +158,15 @@ final class GalleryComposer {
         return $out;
     }
 
-    private function uniqueIds( array $ids ): array { return array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) ); }
+    private function uniqueIds( array $ids ): array {
+        $ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+        $out = array();
+        foreach ( $ids as $id ) {
+            if ( ! array_key_exists( $id, $this->healthCache ) ) {
+                $this->healthCache[ $id ] = MediaAssetValidator::isRenderableImage( (int) $id );
+            }
+            if ( $this->healthCache[ $id ] ) { $out[] = (int) $id; }
+        }
+        return $out;
+    }
 }

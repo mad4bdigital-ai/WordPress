@@ -1,6 +1,10 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge\Elementor\DynamicTags;
 
+require_once dirname( __DIR__, 2 ) . '/Presentation/MediaAssetValidator.php';
+
+use ETG\DynamicFilterSEOBridge\Presentation\MediaAssetValidator;
+
 final class FilterImageTag extends \Elementor\Core\DynamicTags\Data_Tag {
     use PreviewContextTrait;
 
@@ -69,9 +73,14 @@ final class FilterImageTag extends \Elementor\Core\DynamicTags\Data_Tag {
         } elseif (is_string($value)) {
             $url = trim($value);
         }
-        if ('' === $url && $id > 0 && function_exists('wp_get_attachment_image_url')) {
-            $resolved = wp_get_attachment_image_url($id, 'full');
-            $url = is_string($resolved) ? $resolved : '';
+        if ($id > 0) {
+            $health = MediaAssetValidator::inspect($id);
+            if (empty($health['valid'])) { return array('id'=>0,'url'=>''); }
+            $url = isset($health['url']) && is_scalar($health['url']) ? trim((string) $health['url']) : '';
+            if ('' === $url && function_exists('wp_get_attachment_image_url')) {
+                $resolved = wp_get_attachment_image_url($id, 'full');
+                $url = is_string($resolved) ? $resolved : '';
+            }
         }
         if ('' !== $url && function_exists('esc_url_raw')) { $url = esc_url_raw($url); }
         return array('id'=>$id,'url'=>$url);

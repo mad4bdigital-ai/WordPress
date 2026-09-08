@@ -2,10 +2,12 @@
 namespace ETG\DynamicFilterSEOBridge\Elementor;
 
 require_once dirname( __DIR__ ) . '/Identifiers/PresentationToken.php';
+require_once dirname( __DIR__ ) . '/Presentation/MediaAssetValidator.php';
 
 use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
 use ETG\DynamicFilterSEOBridge\Content\GalleryComposer;
 use ETG\DynamicFilterSEOBridge\Identifiers\PresentationToken;
+use ETG\DynamicFilterSEOBridge\Presentation\MediaAssetValidator;
 use ETG\DynamicFilterSEOBridge\Presentation\PresentationResolver;
 
 final class Shortcodes {
@@ -86,10 +88,15 @@ final class Shortcodes {
         $field = sanitize_key((string) $atts['field']);
         $allowed = array('name','slug','description','short_description','seo_title','meta_description','focus_keyword','image_url','image_id','count','location_level');
         if (!in_array($field, $allowed, true)) { return ''; }
-        if ('image_url' === $field) {
+        if (in_array($field, array('image_id','image_url'), true)) {
             $id = (int) ($term['image_id'] ?? 0);
-            if (!$id || !function_exists('wp_get_attachment_image_url')) { return ''; }
-            $url = wp_get_attachment_image_url($id, sanitize_key((string) $atts['size']) ?: 'full');
+            if (!$id) { return ''; }
+            $health = MediaAssetValidator::inspect($id);
+            if (empty($health['valid'])) { return ''; }
+            if ('image_id' === $field) { return esc_html((string) $id); }
+            $size = sanitize_key((string) $atts['size']) ?: 'full';
+            $url = function_exists('wp_get_attachment_image_url') ? wp_get_attachment_image_url($id, $size) : false;
+            if (!$url && !empty($health['url'])) { $url = (string) $health['url']; }
             return $url ? esc_url($url) : '';
         }
         $value = $term[$field] ?? '';
@@ -161,7 +168,6 @@ final class Shortcodes {
         return is_string($json) ? esc_html($json) : '';
     }
 
-    /** Native image helper backed by an image Content Slot. */
     public function dynamicImage($atts = array()): string {
         if (!$this->presentation) { return ''; }
         $atts = shortcode_atts(array('id'=>'','group'=>'','live'=>'1','alt'=>'','class'=>'','loading'=>'lazy'), (array) $atts, 'etg_dynamic_image');
@@ -181,7 +187,6 @@ final class Shortcodes {
         return $html . '>';
     }
 
-    /** Background helper; content remains ordinary WordPress/Elementor markup. */
     public function dynamicBackground($atts = array(), $content = ''): string {
         if (!$this->presentation) { return ''; }
         $atts = shortcode_atts(array('id'=>'','group'=>'','live'=>'1','class'=>''), (array) $atts, 'etg_dynamic_background');
@@ -196,7 +201,6 @@ final class Shortcodes {
         return '<div class="' . esc_attr($class) . '"' . $style . $binding . '>' . wp_kses_post($body) . '</div>';
     }
 
-    /** Gallery payload helper for Swiper/JetEngine/custom adapters. */
     public function dynamicGallery($atts = array()): string {
         if (!$this->presentation) { return ''; }
         $atts = shortcode_atts(array('id'=>'','group'=>'','live'=>'1','limit'=>'12','class'=>''), (array) $atts, 'etg_dynamic_gallery');
