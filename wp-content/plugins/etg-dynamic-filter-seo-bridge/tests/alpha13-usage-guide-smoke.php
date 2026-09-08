@@ -54,7 +54,7 @@ expect_true(false===strpos($js,'replaceState'),'guide JS cannot replace history'
 expect_contains('TermMetaTag::class',$registrar,'discovered Term Meta Dynamic Tag is registered');
 expect_contains("return 'ETG Term Meta Value'",$termMetaTag,'dedicated Term Meta Dynamic Tag has an operator-facing title');
 expect_contains('DynamicTagRuntime::termMetaOptions()',$termMetaTag,'Term Meta tag uses the fetched token catalog rather than a manual key');
-expect_contains("strpos($token,'termmeta:')",$termMetaTag,'Term Meta tag is restricted to termmeta token authority');
+expect_contains("strpos(\$token,'termmeta:')",$termMetaTag,'Term Meta tag is restricted to termmeta token authority');
 expect_contains('use LiveBindingTrait',$termMetaTag,'Term Meta tag supports the existing presentation-only live transport');
 expect_contains('tokenOptionsBySource',$dynamicRuntime,'Dynamic Tag runtime can expose source-filtered catalogs');
 expect_contains("termMetaOptions():array{return self::tokenOptionsBySource('term-meta');}",$dynamicRuntime,'Term Meta options are source-scoped');
