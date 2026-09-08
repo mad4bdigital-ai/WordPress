@@ -64,7 +64,7 @@ final class InventoryContentCatalog {
         }
         foreach($groups as $key=>$group){$groups[$key]['profile_ids']=array_keys((array)$group['profile_ids']);$groups[$key]['archive_paths']=array_keys((array)$group['archive_paths']);sort($groups[$key]['profile_ids'],SORT_STRING);sort($groups[$key]['archive_paths'],SORT_STRING);}ksort($groups,SORT_STRING);
         ksort($tokens,SORT_STRING);$tokens=array_slice($tokens,0,self::MAX_TOKENS,true);
-        return array('contract'=>self::CONTRACT,'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'supports_ajax_runtime_state'=>true,'supports_elementor_media_tags'=>true,'case_sensitive_field_tokens'=>true,'snapshot_fingerprint'=>(string)($snapshot['snapshot_fingerprint']??''),'token_count'=>count($tokens),'tokens'=>$tokens,'group_count'=>count($groups),'groups'=>$groups);
+        return array('contract'=>self::CONTRACT,'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'supports_ajax_runtime_state'=>true,'supports_elementor_media_tags'=>true,'case_sensitive_field_tokens'=>true,'safe_scalar_term_meta_tokens'=>true,'snapshot_fingerprint'=>(string)($snapshot['snapshot_fingerprint']??''),'token_count'=>count($tokens),'tokens'=>$tokens,'group_count'=>count($groups),'groups'=>$groups);
     }
 
     private function token(array &$tokens,string $token,string $label,string $type,string $source,array $evidence=array()):void{if(count($tokens)>=self::MAX_TOKENS){return;}$token=PresentationToken::normalize($token);if(''===$token||isset($tokens[$token])){return;}$tokens[$token]=array('token'=>$token,'placeholder'=>'{{'.$token.'}}','label'=>$label,'type'=>$type,'source'=>$source,'evidence'=>$evidence,'authorizing'=>false);}
@@ -72,6 +72,32 @@ final class InventoryContentCatalog {
 
     private function metaKeys(string $taxonomy):array{
         if(!function_exists('get_terms')||!function_exists('get_term_meta')){return array();}
-        try{$ids=get_terms(array('taxonomy'=>$taxonomy,'hide_empty'=>false,'number'=>self::MAX_META_TERMS,'fields'=>'ids','orderby'=>'term_id','order'=>'ASC'));if(is_wp_error($ids)||!is_array($ids)){return array();}$keys=array();foreach($ids as $id){$all=get_term_meta((int)$id);if(!is_array($all)){continue;}foreach(array_keys($all) as $key){$key=FieldKey::normalize($key);if(''===$key){continue;}$keys[$key]=true;if(count($keys)>=self::MAX_META_KEYS){break 2;}}}ksort($keys,SORT_STRING);return array_keys($keys);}catch(\Throwable $e){return array();}
+        try{
+            $ids=get_terms(array('taxonomy'=>$taxonomy,'hide_empty'=>false,'number'=>self::MAX_META_TERMS,'fields'=>'ids','orderby'=>'term_id','order'=>'ASC'));
+            if((function_exists('is_wp_error')&&is_wp_error($ids))||!is_array($ids)){return array();}
+            $keys=array();
+            foreach($ids as$id){
+                $all=get_term_meta((int)$id);if(!is_array($all)){continue;}
+                foreach($all as$rawKey=>$values){
+                    $key=FieldKey::normalize($rawKey);
+                    if(''===$key||$this->sensitiveMetaKey($key)||!$this->hasRenderableScalar($values)){continue;}
+                    $keys[$key]=true;
+                    if(count($keys)>=self::MAX_META_KEYS){break 2;}
+                }
+            }
+            ksort($keys,SORT_STRING);return array_keys($keys);
+        }catch(\Throwable $e){return array();}
     }
+
+    private function hasRenderableScalar($values):bool{
+        foreach((array)$values as$value){
+            $decoded=$value;
+            if(is_string($decoded)&&function_exists('maybe_unserialize')){$candidate=maybe_unserialize($decoded);if($candidate!==$decoded){$decoded=$candidate;}}
+            if(is_string($decoded)){$json=json_decode($decoded,true);if(JSON_ERROR_NONE===json_last_error()){$decoded=$json;}}
+            if(is_scalar($decoded)&&''!==trim((string)$decoded)){return true;}
+        }
+        return false;
+    }
+
+    private function sensitiveMetaKey(string$key):bool{return(bool)preg_match('/(?:password|passwd|secret|token|api[_-]?key|credential|auth[_-]?key|nonce|session)/i',$key);}
 }
