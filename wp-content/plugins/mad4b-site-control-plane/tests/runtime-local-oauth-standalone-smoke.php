@@ -21,8 +21,11 @@ if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS' ) ) {
 MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
 $status = MAD4B_SCP_Local_OAuth_Server::status();
 if ( empty( $status['effective'] ) ) { fwrite( STDERR, 'Local OAuth not effective: ' . wp_json_encode( $status ) . "\n" ); exit( 1 ); }
+if ( 'mad4b.local-oauth-server.v2' !== $status['contract'] ) exit( 1 );
 if ( 'pre_registered' !== $status['client_registration_mode'] || ! empty( $status['client_id_metadata_document_supported'] ) || ! empty( $status['dynamic_client_registration_supported'] ) ) exit( 1 );
 if ( empty( $status['authorization_response_iss_parameter_supported'] ) || 'RS256' !== $status['access_token_signing_alg'] ) exit( 1 );
+if ( empty( $status['issuer_same_origin_required'] ) || empty( $status['issuer_configuration_valid'] ) || empty( $status['consent_clickjacking_protected'] ) ) exit( 1 );
+if ( 191 !== (int) $status['max_client_id_bytes'] || 191 !== MAD4B_SCP_Local_OAuth_Store::MAX_CLIENT_ID_BYTES ) exit( 1 );
 if ( empty( $status['private_key_present'] ) || ! empty( $status['private_key_exposed'] ) || ! empty( $status['private_key_stored_in_database'] ) ) exit( 1 );
 
 $metadata = MAD4B_SCP_Local_OAuth_Server::metadata();
@@ -35,7 +38,7 @@ if ( isset( $metadata['registration_endpoint'] ) ) exit( 1 );
 $jwks = MAD4B_SCP_Local_OAuth_Server::jwks_document();
 if ( is_wp_error( $jwks ) || empty( $jwks['keys'][0]['kid'] ) || empty( $jwks['keys'][0]['n'] ) || empty( $jwks['keys'][0]['e'] ) ) exit( 1 );
 $key = $jwks['keys'][0];
-if ( 'RSA' !== $key['kty'] || 'RS256' !== $key['alg'] ) exit( 1 );
+if ( 'RSA' !== $key['kty'] || 'RS256' !== $key['alg'] || 'sig' !== $key['use'] || ! in_array( 'verify', $key['key_ops'], true ) ) exit( 1 );
 
 $key_path_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'private_key_path' );
 $key_path_method->setAccessible( true );
@@ -50,6 +53,16 @@ $mint = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'mint_access_token
 $mint->setAccessible( true );
 $token = $mint->invoke( null, 'https://client.example.test/mcp-client.json', 1, $resource, array( 'mad4b:read', 'offline_access' ) );
 if ( is_wp_error( $token ) ) { fwrite( STDERR, $token->get_error_message() . "\n" ); exit( 1 ); }
+$too_long_client = str_repeat( 'c', 192 );
+if ( ! is_wp_error( $mint->invoke( null, $too_long_client, 1, $resource, array( 'mad4b:read' ) ) ) ) exit( 1 );
+
+$request_param = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'request_param' );
+$request_param->setAccessible( true );
+$bounded = $request_param->invoke( null, array( 'client_id' => str_repeat( 'a', 191 ) ), 'client_id', 191, true );
+$oversized = $request_param->invoke( null, array( 'client_id' => str_repeat( 'a', 192 ) ), 'client_id', 191, true );
+$array_param = $request_param->invoke( null, array( 'client_id' => array( 'not', 'scalar' ) ), 'client_id', 191, true );
+if ( is_wp_error( $bounded ) || ! is_wp_error( $oversized ) || ! is_wp_error( $array_param ) ) exit( 1 );
+
 $parts = explode( '.', $token );
 if ( 3 !== count( $parts ) ) exit( 1 );
 $decode = static function ( $value ) {
@@ -84,6 +97,17 @@ if ( ! MAD4B_SCP_Local_OAuth_Store::insert_code( array(
 	'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 300 ),
 	'created_at' => $now,
 ) ) ) exit( 1 );
+if ( MAD4B_SCP_Local_OAuth_Store::insert_code( array(
+	'code_hash' => hash( 'sha256', 'ci-overlong-' . wp_generate_uuid4() ),
+	'client_id' => $too_long_client,
+	'wp_user_id' => 1,
+	'redirect_uri' => 'https://client.example.test/callback',
+	'resource' => $resource,
+	'scope' => 'mad4b:read',
+	'code_challenge' => str_repeat( 'A', 43 ),
+	'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 300 ),
+	'created_at' => $now,
+) ) ) exit( 1 );
 $code_row = MAD4B_SCP_Local_OAuth_Store::get_code( $code_hash );
 if ( ! is_array( $code_row ) || ! MAD4B_SCP_Local_OAuth_Store::mark_code_used( (int) $code_row['id'], $now ) ) exit( 1 );
 if ( MAD4B_SCP_Local_OAuth_Store::mark_code_used( (int) $code_row['id'], $now ) ) exit( 1 );
@@ -98,6 +122,16 @@ if ( ! MAD4B_SCP_Local_OAuth_Store::insert_refresh_token( array(
 	'wp_user_id' => 1,
 	'resource' => $resource,
 	'scope' => 'mad4b:read offline_access',
+	'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ),
+	'created_at' => $now,
+) ) ) exit( 1 );
+if ( MAD4B_SCP_Local_OAuth_Store::insert_refresh_token( array(
+	'token_hash' => hash( 'sha256', 'ci-overlong-refresh-' . wp_generate_uuid4() ),
+	'family_id' => wp_generate_uuid4(),
+	'client_id' => $too_long_client,
+	'wp_user_id' => 1,
+	'resource' => $resource,
+	'scope' => 'mad4b:read',
 	'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ),
 	'created_at' => $now,
 ) ) ) exit( 1 );
@@ -127,4 +161,15 @@ global $wpdb;
 $wpdb->delete( $tables['codes'], array( 'code_hash' => $code_hash ), array( '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 $wpdb->delete( $tables['refresh_tokens'], array( 'family_id' => $family ), array( '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
-echo "mad4b.site-control-plane.local-oauth-standalone.runtime.v2: PASS\n";
+// Cross-origin issuer configuration is a configuration error, not an alternate
+// local authority. Define it only after all valid-authority proofs above so the
+// same process can verify the fail-closed transition deterministically.
+if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) define( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER', 'https://foreign-issuer.example.test/oauth/mcp' );
+$issuer_validation = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'configured_issuer_validation' );
+$issuer_validation->setAccessible( true );
+$issuer_error = $issuer_validation->invoke( null );
+if ( ! is_wp_error( $issuer_error ) || 'mad4b_local_oauth_issuer_cross_origin' !== $issuer_error->get_error_code() ) exit( 1 );
+$invalid_status = MAD4B_SCP_Local_OAuth_Server::status();
+if ( ! empty( $invalid_status['effective'] ) || ! empty( $invalid_status['issuer_configuration_valid'] ) ) exit( 1 );
+
+echo "mad4b.site-control-plane.local-oauth-standalone.runtime.v3: PASS\n";
