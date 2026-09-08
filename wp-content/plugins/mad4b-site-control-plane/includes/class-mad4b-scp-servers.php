@@ -6,7 +6,7 @@ final class MAD4B_SCP_Servers {
 	private static $registrations = array();
 
 	public static function expected_server_ids() {
-		return array( 'mad4b-read', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
+		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
 	}
 
 	public static function core_tools( $server_id ) {
@@ -14,6 +14,12 @@ final class MAD4B_SCP_Servers {
 			'mad4b-read' => array(
 				'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
+			),
+			// Purpose-built remote gateway for ChatGPT. Keep generic filesystem and
+			// database inspection on the privileged local/read transport only.
+			'mad4b-chatgpt' => array(
+				'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
+				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 			),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
@@ -59,8 +65,44 @@ final class MAD4B_SCP_Servers {
 		return array_values( array_unique( $write ) );
 	}
 
+	/**
+	 * ChatGPT receives only abilities that are already on the read surface and
+	 * explicitly declare readonly=true. Core generic file/database readers are
+	 * intentionally not candidates at all. Missing metadata fails closed.
+	 */
+	public static function chatgpt_tools() {
+		$candidates = self::core_tools( 'mad4b-chatgpt' );
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			$registry->register_defaults();
+			$candidates = array_merge( $candidates, $registry->ability_names( 'read' ) );
+		}
+
+		$forbidden = array(
+			'mad4b/filesystem-list', 'mad4b/filesystem-read',
+			'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query',
+		);
+		$tools = array();
+		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
+			if ( in_array( $ability_name, $forbidden, true ) ) continue;
+			if ( ! function_exists( 'wp_get_ability' ) ) {
+				// Registration happens after Abilities bootstrap in supported runtime;
+				// without that API, do not infer adapter safety.
+				if ( in_array( $ability_name, self::core_tools( 'mad4b-chatgpt' ), true ) ) $tools[] = $ability_name;
+				continue;
+			}
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
+			$meta = $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+			$tools[] = (string) $ability_name;
+		}
+		return array_values( array_unique( $tools ) );
+	}
+
 	private static function surface_for_server( $server_id ) {
-		if ( 'mad4b-read' === $server_id ) return 'read';
+		if ( 'mad4b-read' === $server_id || 'mad4b-chatgpt' === $server_id ) return 'read';
 		if ( 'mad4b-content' === $server_id ) return 'content';
 		if ( 'mad4b-admin' === $server_id ) return 'admin';
 		return '';
@@ -99,6 +141,7 @@ final class MAD4B_SCP_Servers {
 			return null;
 		}
 
+		if ( 'mad4b-chatgpt' === $server_id && ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return null;
 		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return 'core';
 		$surface = self::surface_for_server( $server_id );
 		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
@@ -123,6 +166,9 @@ final class MAD4B_SCP_Servers {
 
 	public static function can_read_transport( $request = null ) {
 		return self::transport_permission( 'mad4b-read', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) );
+	}
+	public static function can_chatgpt_transport( $request = null ) {
+		return self::transport_permission( 'mad4b-chatgpt', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) );
 	}
 	public static function can_content_transport( $request = null ) {
 		return self::transport_permission( 'mad4b-content', $request, array( 'MAD4B_SCP_Policy', 'can_content' ) );
@@ -157,11 +203,13 @@ final class MAD4B_SCP_Servers {
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
 
 		$read_tools = array_merge( self::core_tools( 'mad4b-read' ), $registry->ability_names( 'read' ) );
+		$chatgpt_tools = self::chatgpt_tools();
 		$content_tools = array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) );
 		$write_tools = self::write_tools();
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
 
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.', $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write ingress containing only abilities explicitly annotated non-readonly. Exact grants bind to this transport server.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
