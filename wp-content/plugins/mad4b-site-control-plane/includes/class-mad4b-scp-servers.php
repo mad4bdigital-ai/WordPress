@@ -66,31 +66,29 @@ final class MAD4B_SCP_Servers {
 	}
 
 	/**
-	 * ChatGPT receives only abilities that are already on the read surface and
-	 * explicitly declare readonly=true. Core generic file/database readers are
-	 * intentionally not candidates at all. Missing metadata fails closed.
+	 * The hard-coded ChatGPT core inventory is already an explicit governed
+	 * allowlist. Keep it present during MCP server bootstrap even when the
+	 * Abilities registry has not fired yet. Adapter abilities are additive only
+	 * after their readonly=true metadata is actually observable; missing metadata
+	 * therefore remains fail-closed without collapsing the gateway to zero tools.
 	 */
 	public static function chatgpt_tools() {
-		$candidates = self::core_tools( 'mad4b-chatgpt' );
+		$core = self::core_tools( 'mad4b-chatgpt' );
+		$adapter_candidates = array();
 		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
 			$registry = MAD4B_SCP_Adapter_Registry::instance();
 			$registry->register_defaults();
-			$candidates = array_merge( $candidates, $registry->ability_names( 'read' ) );
+			$adapter_candidates = $registry->ability_names( 'read' );
 		}
 
 		$forbidden = array(
 			'mad4b/filesystem-list', 'mad4b/filesystem-read',
 			'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query',
 		);
-		$tools = array();
-		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
+		$tools = array_values( array_diff( $core, $forbidden ) );
+		foreach ( array_values( array_unique( $adapter_candidates ) ) as $ability_name ) {
 			if ( in_array( $ability_name, $forbidden, true ) ) continue;
-			if ( ! function_exists( 'wp_get_ability' ) ) {
-				// Registration happens after Abilities bootstrap in supported runtime;
-				// without that API, do not infer adapter safety.
-				if ( in_array( $ability_name, self::core_tools( 'mad4b-chatgpt' ), true ) ) $tools[] = $ability_name;
-				continue;
-			}
+			if ( ! function_exists( 'wp_get_ability' ) ) continue;
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
 			$meta = $ability->get_meta();
