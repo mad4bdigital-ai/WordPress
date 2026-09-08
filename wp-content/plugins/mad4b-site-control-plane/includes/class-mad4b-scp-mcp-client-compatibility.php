@@ -11,9 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * profiles are dynamic evidence only and never authorize.
  */
 final class MAD4B_SCP_MCP_Client_Compatibility {
-	const CONTRACT = 'mad4b.mcp-client-compatibility.v3';
+	const CONTRACT = 'mad4b.mcp-client-compatibility.v4';
 	const WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource';
-	const RESOURCE_PATH = '/wp-json/mcp/mad4b-read';
+	const RESOURCE_PATH = '/wp-json/mcp/mad4b-chatgpt';
 	const MANIFEST_NAMESPACE = 'mad4b/v1';
 	const MANIFEST_ROUTE = '/client-compatibility';
 
@@ -109,7 +109,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 
 	public static function resource_identifier() {
 		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
-		return untrailingslashit( rest_url( 'mcp/mad4b-read' ) );
+		return untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
 	}
 
 	public static function authoritative_well_known_url() { return self::origin() . self::WELL_KNOWN_PREFIX . self::RESOURCE_PATH; }
@@ -194,7 +194,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		if ( 'staging' === $environment ) $label .= ' Staging';
 		elseif ( 'production' === $environment ) $label .= ' Production';
 		elseif ( '' !== $environment && 'unknown' !== $environment ) $label .= ' ' . ucfirst( $environment );
-		return $label . ' Read MCP';
+		return $label . ' ChatGPT Read MCP';
 	}
 
 	private static function authoritative_path() { return self::WELL_KNOWN_PREFIX . self::RESOURCE_PATH; }
