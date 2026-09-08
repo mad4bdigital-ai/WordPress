@@ -121,19 +121,39 @@ final class TermMetaReader {
 	}
 
 	private function collectAttachmentIds( $value, array &$ids ): void {
-		if ( is_numeric( $value ) ) { $ids[] = (int) $value; return; }
-		if ( is_object( $value ) && isset( $value->ID ) && is_numeric( $value->ID ) ) { $ids[] = (int) $value->ID; return; }
+		if ( is_numeric( $value ) ) { $this->addImageAttachmentCandidate( (int) $value, $ids ); return; }
+		if ( is_object( $value ) ) {
+			foreach ( array( 'ID', 'id', 'attachment_id' ) as $key ) {
+				if ( isset( $value->{$key} ) && is_numeric( $value->{$key} ) ) { $this->addImageAttachmentCandidate( (int) $value->{$key}, $ids ); return; }
+			}
+			$value = get_object_vars( $value );
+		}
 		if ( is_array( $value ) ) {
-			foreach ( array( 'ID', 'id', 'attachment_id' ) as $key ) { if ( isset( $value[ $key ] ) && is_numeric( $value[ $key ] ) ) { $ids[] = (int) $value[ $key ]; return; } }
+			foreach ( array( 'ID', 'id', 'attachment_id' ) as $key ) {
+				if ( isset( $value[ $key ] ) && is_numeric( $value[ $key ] ) ) { $this->addImageAttachmentCandidate( (int) $value[ $key ], $ids ); return; }
+			}
 			foreach ( $value as $item ) { $this->collectAttachmentIds( $item, $ids ); }
 			return;
 		}
 		if ( ! is_string( $value ) ) { return; }
 		$value = trim( $value ); if ( '' === $value ) { return; }
+		if ( function_exists( 'maybe_unserialize' ) ) {
+			$unserialized = maybe_unserialize( $value );
+			if ( $unserialized !== $value ) { $this->collectAttachmentIds( $unserialized, $ids ); return; }
+		}
 		$decoded = json_decode( $value, true );
 		if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) { $this->collectAttachmentIds( $decoded, $ids ); return; }
 		if ( false !== strpos( $value, ',' ) ) { foreach ( explode( ',', $value ) as $item ) { $this->collectAttachmentIds( trim( $item ), $ids ); } return; }
-		if ( filter_var( $value, FILTER_VALIDATE_URL ) && function_exists( 'attachment_url_to_postid' ) ) { $id = attachment_url_to_postid( $value ); if ( $id ) { $ids[] = (int) $id; } }
+		if ( filter_var( $value, FILTER_VALIDATE_URL ) && function_exists( 'attachment_url_to_postid' ) ) {
+			$id = attachment_url_to_postid( $value ); if ( $id ) { $this->addImageAttachmentCandidate( (int) $id, $ids ); }
+		}
+	}
+
+	private function addImageAttachmentCandidate( int $id, array &$ids ): void {
+		$id = absint( $id ); if ( ! $id ) { return; }
+		if ( function_exists( 'wp_attachment_is_image' ) ) { if ( wp_attachment_is_image( $id ) ) { $ids[] = $id; } return; }
+		if ( function_exists( 'get_post_type' ) ) { if ( 'attachment' === get_post_type( $id ) ) { $ids[] = $id; } return; }
+		$ids[] = $id;
 	}
 
 	private function parentChain( WP_Term $term ): array {
