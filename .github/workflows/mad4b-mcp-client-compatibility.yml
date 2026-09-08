@@ -89,6 +89,7 @@ jobs:
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ISSUER 'https://auth.mad4b.test' --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_WP_USER_ID 1 --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS 'user:compatibility-ci' --type=constant --path="$WP_PATH"
 
       - name: Install exact MCP Adapter and control plane
         shell: bash
