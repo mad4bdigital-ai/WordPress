@@ -18,7 +18,7 @@ function mad4b_oauth_jwt( array $claims, $private_key, $kid ) {
 	return $input . '.' . mad4b_oauth_b64url( $signature );
 }
 function mad4b_oauth_request( $token = '' ) {
-	$request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
+	$request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
 	if ( '' !== $token ) $request->set_header( 'Authorization', 'Bearer ' . $token );
 	return $request;
 }
@@ -60,6 +60,7 @@ if ( empty( $status['effective'] ) || 'staging' !== $status['environment'] ) mad
 if ( 'external' !== $status['authority_mode'] || 1 !== (int) $status['authority_count'] ) mad4b_oauth_smoke_fail( 'Single external authority mode drifted.', $status );
 if ( empty( $status['authority_registry_valid'] ) || empty( $status['subject_policy_ready'] ) ) mad4b_oauth_smoke_fail( 'External authority registry should be policy-ready.', $status );
 if ( 2048 !== (int) $status['jwks_minimum_rsa_bits'] || empty( $status['jwks_use_sig_enforced'] ) || empty( $status['jwks_key_ops_verify_enforced'] ) || empty( $status['jwt_resource_claim_required'] ) ) mad4b_oauth_smoke_fail( 'JWK/JWT hardening truth is incomplete.', $status );
+if ( 'mad4b-chatgpt' !== $status['protected_transport_server'] ) mad4b_oauth_smoke_fail( 'OAuth bridge must protect only the ChatGPT gateway transport.', $status );
 if ( ! empty( $status['stores_bearer_tokens'] ) || ! empty( $status['creates_credentials'] ) || ! empty( $status['write_surfaces_enabled'] ) ) mad4b_oauth_smoke_fail( 'OAuth bridge safety claims invalid.', $status );
 
 $gate_status = MAD4B_SCP_OAuth_Subject_Gate::status();
@@ -221,6 +222,6 @@ if ( $status['resource'] !== $metadata['resource'] || array( $issuer ) !== $meta
 
 $compat = MAD4B_SCP_MCP_Client_Compatibility::status();
 if ( 'external' !== $compat['oauth_authority_mode'] || empty( $compat['authorization_server_external'] ) || ! empty( $compat['authorization_server_local'] ) || 1 !== (int) $compat['authorization_server_count'] ) mad4b_oauth_smoke_fail( 'Client compatibility metadata does not truthfully report external authority mode.', $compat );
-if ( 'MAD4B WordPress Staging Read MCP' !== $compat['resource_name'] ) mad4b_oauth_smoke_fail( 'Staging resource name should be derived from environment.', $compat );
+if ( 'MAD4B WordPress Staging ChatGPT Read MCP' !== $compat['resource_name'] ) mad4b_oauth_smoke_fail( 'Staging ChatGPT resource name should be derived from environment.', $compat );
 
-echo 'mad4b.site-control-plane.runtime-oauth-resource-bridge.v4: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.runtime-oauth-resource-bridge.v5: PASS' . PHP_EOL;
