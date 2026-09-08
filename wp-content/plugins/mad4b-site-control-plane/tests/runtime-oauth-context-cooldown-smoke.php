@@ -8,9 +8,19 @@ function mad4b_oauth_context_fail( $message, $data = null ) {
 }
 
 if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) mad4b_oauth_context_fail( 'OAuth resource bridge unavailable.' );
+if ( ! class_exists( 'MAD4B_SCP_OAuth_Request_Context_Guard' ) ) mad4b_oauth_context_fail( 'OAuth request context guard unavailable.' );
+if ( ! class_exists( 'MAD4B_SCP_OAuth_Subject_Gate' ) ) mad4b_oauth_context_fail( 'OAuth subject gate unavailable.' );
+
+$guard_priority = has_filter( 'rest_pre_dispatch', array( 'MAD4B_SCP_OAuth_Request_Context_Guard', 'reset_request_context' ) );
+$subject_priority = has_filter( 'rest_pre_dispatch', array( 'MAD4B_SCP_OAuth_Subject_Gate', 'enforce' ) );
+$bridge_priority = has_filter( 'rest_pre_dispatch', array( 'MAD4B_SCP_OAuth_Resource_Bridge', 'authenticate_rest_request' ) );
+if ( -1 !== $guard_priority || 0 !== $subject_priority || 1 !== $bridge_priority ) mad4b_oauth_context_fail( 'OAuth request ordering must be context reset -> deny-only subject gate -> cryptographic bridge.', array( 'guard' => $guard_priority, 'subject' => $subject_priority, 'bridge' => $bridge_priority ) );
+
 $status = MAD4B_SCP_OAuth_Resource_Bridge::status();
 if ( 30 !== (int) $status['jwks_refresh_cooldown_seconds'] ) mad4b_oauth_context_fail( 'JWKS refresh cooldown truth drifted.', $status );
 if ( empty( $status['jwks_cache_bound_to_issuer'] ) || empty( $status['bearer_request_resets_identity_before_verification'] ) ) mad4b_oauth_context_fail( 'OAuth context/cache hardening truth is incomplete.', $status );
+$guard_status = MAD4B_SCP_OAuth_Request_Context_Guard::status();
+if ( empty( $guard_status['clears_stale_oauth_service_user'] ) || empty( $guard_status['preserves_clean_local_admin_session'] ) || ! empty( $guard_status['creates_authority'] ) ) mad4b_oauth_context_fail( 'OAuth request context guard truth is invalid.', $guard_status );
 
 $issuer = isset( $status['issuer'] ) ? (string) $status['issuer'] : '';
 if ( '' === $issuer ) mad4b_oauth_context_fail( 'Fixture issuer unavailable.', $status );
@@ -36,26 +46,46 @@ $fake_context = array(
 	'wp_user_id' => 1,
 );
 
-// A bearer-shaped request must clear both stale OAuth context and a previously
-// selected WordPress service user before parsing or verifying the new token.
+// The priority -1 guard must clear stale authority before Subject Gate can
+// return a denial that prevents the bridge from running at priority 1.
+$context_property->setValue( null, $fake_context );
+wp_set_current_user( 1 );
+$denied_request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
+$denied_request->set_header( 'Authorization', 'Bearer definitely-not-a-jwt' );
+$preexisting_result = new WP_REST_Response( array( 'error' => 'earlier_filter' ), 401 );
+$guard_result = MAD4B_SCP_OAuth_Request_Context_Guard::reset_request_context( $preexisting_result, null, $denied_request );
+if ( $preexisting_result !== $guard_result ) mad4b_oauth_context_fail( 'Context guard must preserve prior filter result while clearing authority.' );
+if ( 0 !== get_current_user_id() || MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) mad4b_oauth_context_fail( 'Pre-gate denial path retained stale OAuth service identity.' );
+
+// A malformed bearer also starts anonymous before bridge parsing/verification.
 $context_property->setValue( null, $fake_context );
 wp_set_current_user( 1 );
 $request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
 $request->set_header( 'Authorization', 'Bearer definitely-not-a-jwt' );
+MAD4B_SCP_OAuth_Request_Context_Guard::reset_request_context( null, null, $request );
 $response = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $request );
 if ( ! ( $response instanceof WP_REST_Response ) || 401 !== $response->get_status() ) mad4b_oauth_context_fail( 'Malformed bearer should fail 401.', $response );
 if ( 0 !== get_current_user_id() ) mad4b_oauth_context_fail( 'Bearer verification failure retained stale WordPress service-user identity.', get_current_user_id() );
 if ( MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) mad4b_oauth_context_fail( 'Bearer verification failure retained stale OAuth context.' );
 
-// A local authenticated WordPress admin with no bearer remains a local session,
-// but any stale OAuth overlay must still be removed.
+// A no-bearer subrequest after OAuth must not inherit the previous service user.
 $context_property->setValue( null, $fake_context );
 wp_set_current_user( 1 );
-$local_request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
-$result = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $local_request );
-if ( null !== $result ) mad4b_oauth_context_fail( 'Authenticated local admin should continue through the existing local permission path.', $result );
-if ( 1 !== get_current_user_id() ) mad4b_oauth_context_fail( 'No-bearer local session should not be demoted.' );
-if ( MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) mad4b_oauth_context_fail( 'No-bearer local session retained stale OAuth overlay.' );
+$stale_local_request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
+MAD4B_SCP_OAuth_Request_Context_Guard::reset_request_context( null, null, $stale_local_request );
+if ( 0 !== get_current_user_id() || MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) mad4b_oauth_context_fail( 'No-bearer subrequest inherited stale OAuth service identity.' );
+$response = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $stale_local_request );
+if ( ! ( $response instanceof WP_REST_Response ) || 401 !== $response->get_status() ) mad4b_oauth_context_fail( 'Demoted stale no-bearer subrequest must require authentication.', $response );
+
+// A genuine clean local WordPress admin session remains supported.
+$context_property->setValue( null, null );
+wp_set_current_user( 1 );
+$clean_local_request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
+MAD4B_SCP_OAuth_Request_Context_Guard::reset_request_context( null, null, $clean_local_request );
+if ( 1 !== get_current_user_id() ) mad4b_oauth_context_fail( 'Clean no-bearer local admin session was incorrectly demoted.' );
+$result = MAD4B_SCP_OAuth_Resource_Bridge::authenticate_rest_request( null, null, $clean_local_request );
+if ( null !== $result ) mad4b_oauth_context_fail( 'Authenticated clean local admin should continue through the local permission path.', $result );
+if ( MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) mad4b_oauth_context_fail( 'Clean local session unexpectedly gained OAuth overlay.' );
 
 wp_set_current_user( 0 );
-echo 'mad4b.site-control-plane.runtime-oauth-context-cooldown.v1: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.runtime-oauth-context-cooldown.v2: PASS' . PHP_EOL;
