@@ -8,13 +8,14 @@ header_guard = (root / 'includes' / 'class-mad4b-scp-oauth-jwt-header-guard.php'
 outbound_guard = (root / 'includes' / 'class-mad4b-scp-oauth-outbound-budget-guard.php').read_text(encoding='utf-8')
 alignment = (root / 'includes' / 'class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 overrides = (root / 'includes' / 'class-mad4b-scp-governed-ability-overrides.php').read_text(encoding='utf-8')
+servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 runtime_context = (root / 'tests' / 'runtime-oauth-context-cooldown-smoke.php').read_text(encoding='utf-8')
 runtime_edges = (root / 'tests' / 'runtime-oauth-edge-guards-smoke.php').read_text(encoding='utf-8')
 
 required = [
-    "mad4b.oauth-resource-bridge.v3",
+    "mad4b.oauth-resource-bridge.v4",
     "MAD4B_MCP_OAUTH_MODE",
     "array( 'local', 'external', 'hybrid' )",
     "MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS",
@@ -54,6 +55,9 @@ required = [
     "S256",
     "public_key_from_jwk",
     "jwks_rsa_ne_supported",
+    "rest_url( 'mcp/mad4b-chatgpt' )",
+    "'/mcp/mad4b-chatgpt'",
+    "'protected_transport_server' => 'mad4b-chatgpt'",
     "stores_bearer_tokens' => false",
     "creates_credentials' => false",
     "write_surfaces_enabled' => false",
@@ -113,9 +117,9 @@ for marker in [
         raise SystemExit(f"missing remote OAuth read-policy marker: {marker}")
 
 alignment_required = [
-    "mad4b.oauth-challenge-alignment.v1",
+    "mad4b.oauth-challenge-alignment.v2",
     "rest_post_dispatch",
-    "/mcp/mad4b-read",
+    "/mcp/mad4b-chatgpt",
     "resource_metadata=",
     "authoritative_well_known_url",
     "MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE",
@@ -123,6 +127,17 @@ alignment_required = [
 for marker in alignment_required:
     if marker not in alignment:
         raise SystemExit(f"missing OAuth challenge alignment marker: {marker}")
+
+for marker in [
+    "'mad4b-chatgpt'",
+    'public static function chatgpt_tools()',
+    "'MAD4B ChatGPT MCP'",
+    'can_chatgpt_transport',
+    "'mad4b/filesystem-read'",
+    "'mad4b/database-select'",
+]:
+    if marker not in servers:
+        raise SystemExit(f"missing ChatGPT gateway marker: {marker}")
 
 for marker in [
     'runtime-oauth-context-cooldown.v2',
@@ -181,4 +196,4 @@ for boot_marker in [
 if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
-print('mad4b.site-control-plane.oauth-resource-bridge.v6: PASS')
+print('mad4b.site-control-plane.oauth-resource-bridge.v7: PASS')
