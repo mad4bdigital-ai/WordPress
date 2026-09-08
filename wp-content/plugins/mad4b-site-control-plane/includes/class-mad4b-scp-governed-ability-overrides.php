@@ -27,6 +27,14 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 			$args['meta']['mcp']['mad4b_reversible_contract'] = 'mad4b.rollback.post.v1';
 		}
 
+		if ( 'mad4b/diagnostics-health' === $name ) {
+			$args['execute_callback'] = array( __CLASS__, 'diagnostics_health_readonly' );
+			$args['description'] = 'Inspect runtime health without creating backup directories, changing permissions, or preparing mutation state.';
+			if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
+			if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+			$args['meta']['mcp']['mad4b_observational_contract'] = 'mad4b.readonly-diagnostics.v1';
+		}
+
 		if ( in_array( $name, self::remote_oauth_sensitive_read_abilities(), true ) && isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) ) {
 			$original_permission = $args['permission_callback'];
 			$args['permission_callback'] = static function ( $input = null ) use ( $original_permission, $name ) {
@@ -90,6 +98,57 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 			'explicit_allowlist' => self::remote_oauth_sensitive_read_allowlist(),
 			'local_wordpress_session_affected' => false,
 			'authorization_source' => 'verified_oauth_bearer_context_plus_exact_ability',
+		);
+	}
+
+	public static function diagnostics_health_readonly() {
+		global $wpdb;
+		$uploads = wp_upload_dir( null, false );
+		$backup = self::backup_root_readonly_status();
+		return array(
+			'status' => 'ok',
+			'contract' => 'mad4b.readonly-diagnostics.v1',
+			'checks' => array(
+				'database' => '1' === (string) $wpdb->get_var( 'SELECT 1' ),
+				'abilities_api' => function_exists( 'wp_register_ability' ),
+				'mcp_adapter' => class_exists( 'WP\\MCP\\Core\\McpAdapter' ),
+				'wp_content_write' => is_writable( WP_CONTENT_DIR ),
+				'plugins_write' => is_writable( WP_PLUGIN_DIR ),
+				'uploads_write' => isset( $uploads['basedir'] ) ? is_writable( $uploads['basedir'] ) : false,
+				'protected_backup_root' => ! empty( $backup['ready'] ),
+				'breakglass_enabled' => MAD4B_SCP_Policy::can_breakglass(),
+			),
+			'backup_root' => $backup,
+			'observational_only' => true,
+			'prepares_backup_root' => false,
+		);
+	}
+
+	private static function backup_root_readonly_status() {
+		$path = (string) MAD4B_SCP_Policy::backup_root();
+		$exists = '' !== $path && is_dir( $path );
+		$resolved = $exists ? realpath( $path ) : false;
+		$candidate = false !== $resolved ? $resolved : '';
+		if ( '' === $candidate && '' !== $path ) {
+			$parent = realpath( dirname( $path ) );
+			if ( false !== $parent ) $candidate = $parent . DIRECTORY_SEPARATOR . basename( $path );
+		}
+		$safe_location = '' !== $candidate;
+		$normalized = str_replace( '\\', '/', (string) $candidate );
+		foreach ( array( ABSPATH, WP_CONTENT_DIR ) as $web_root ) {
+			$web = realpath( $web_root );
+			if ( false === $web ) continue;
+			$web = rtrim( str_replace( '\\', '/', $web ), '/' );
+			if ( $normalized === $web || 0 === strpos( $normalized, $web . '/' ) ) $safe_location = false;
+		}
+		return array(
+			'configured' => '' !== $path,
+			'exists' => $exists,
+			'writable' => $exists && is_writable( $path ),
+			'safe_location' => $safe_location,
+			'ready' => $exists && is_writable( $path ) && $safe_location,
+			'requires_preparation' => ! $exists,
+			'path_disclosed' => false,
 		);
 	}
 
