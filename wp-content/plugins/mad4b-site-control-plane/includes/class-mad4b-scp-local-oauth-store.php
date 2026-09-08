@@ -132,14 +132,41 @@ final class MAD4B_SCP_Local_OAuth_Store {
 		return 1 === (int) $updated;
 	}
 
+	/**
+	 * A refresh-token family is permanently poisoned after any replay/revocation.
+	 *
+	 * This intentionally asks whether *any* row in the family has revoked_at set,
+	 * rather than only looking at the current token. That makes family revocation
+	 * monotonic and lets insertion fail closed when a concurrent replay races a
+	 * legitimate rotation.
+	 */
+	public static function family_is_revoked( $family_id ) {
+		global $wpdb;
+		$t = self::tables();
+		if ( '' === (string) $family_id ) return true;
+		$found = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$t['refresh_tokens']} WHERE family_id = %s AND revoked_at IS NOT NULL LIMIT 1",
+				(string) $family_id
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return null !== $found;
+	}
+
 	public static function insert_refresh_token( array $record ) {
 		global $wpdb;
 		$t = self::tables();
+		$family_id = isset( $record['family_id'] ) ? (string) $record['family_id'] : '';
+
+		// Pre-insert guard catches a replay/revocation that completed before this
+		// request reached the replacement insert.
+		if ( '' === $family_id || self::family_is_revoked( $family_id ) ) return false;
+
 		$inserted = $wpdb->insert(
 			$t['refresh_tokens'],
 			array(
 				'token_hash' => (string) $record['token_hash'],
-				'family_id' => (string) $record['family_id'],
+				'family_id' => $family_id,
 				'client_id' => (string) $record['client_id'],
 				'wp_user_id' => (int) $record['wp_user_id'],
 				'resource' => (string) $record['resource'],
@@ -149,7 +176,19 @@ final class MAD4B_SCP_Local_OAuth_Store {
 			),
 			array( '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
 		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		return false !== $inserted;
+		if ( false === $inserted ) return false;
+
+		// Post-insert guard closes the important race:
+		// A rotates the old token, B detects the replay and revokes the family,
+		// then A inserts its replacement. If B revoked before this row existed,
+		// the old implementation could return a live replacement. Re-checking the
+		// monotonic family poison state here makes the replacement unusable and
+		// causes the caller to fail closed instead of returning it.
+		if ( self::family_is_revoked( $family_id ) ) {
+			self::revoke_family( $family_id, gmdate( 'Y-m-d H:i:s' ) );
+			return false;
+		}
+		return true;
 	}
 
 	public static function get_refresh_token( $token_hash ) {
