@@ -11,18 +11,21 @@ main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
 required_server = [
-    'mad4b.local-oauth-server.v2',
+    'mad4b.local-oauth-server.v3',
     'MAD4B_MCP_LOCAL_OAUTH_ENABLED',
     'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED',
     'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',
     'MAD4B_MCP_LOCAL_OAUTH_PRIVATE_KEY_PATH',
+    "CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
+    'const MAX_CIMD_BYTES = 65536;',
+    'const CIMD_CACHE_TTL = 300;',
     'const MAX_CLIENT_ID_BYTES = 191;',
     'const MAX_URI_BYTES = 2048;',
     'const MAX_TOKEN_INPUT_BYTES = 2048;',
     "authorization_response_iss_parameter_supported' => true",
-    "client_id_metadata_document_supported' => false",
+    "client_id_metadata_document_supported' => true",
     "dynamic_client_registration_supported' => false",
-    "client_registration_mode' => 'pre_registered'",
+    "client_registration_mode' => 'cimd_or_pre_registered'",
     "code_challenge_methods_supported' => array( 'S256' )",
     "'protected_resources' => array( self::resource_identifier() )",
     "'alg' => 'RS256'",
@@ -39,6 +42,19 @@ required_server = [
     'OPENSSL_ALGO_SHA256',
     'pre_http_request',
     'intercept_local_discovery',
+    'wp_safe_remote_get(',
+    "'redirection' => 0",
+    "'sslverify' => true",
+    "'limit_response_size' => self::MAX_CIMD_BYTES + 1",
+    'fetch_cimd_client',
+    'validate_cimd_metadata',
+    'cimd_client_id_allowed',
+    'valid_cimd_client_id',
+    'cimd_cache_ttl',
+    "'registration_mode' => 'cimd'",
+    "'registration_mode' => 'pre_registered'",
+    "! in_array( 'none', $token_methods, true )",
+    'Client ID Metadata Document client_id must exactly match the requested URL.',
     'private_key_exposed',
     'private_key_stored_in_database',
     'outside the WordPress web root',
@@ -55,6 +71,7 @@ required_server = [
     'request_param(',
     'OAuth parameter must be scalar',
     'OAuth parameter exceeds its size limit',
+    "rest_url( 'mcp/mad4b-chatgpt' )",
 ]
 for marker in required_server:
     if marker not in server:
@@ -64,7 +81,6 @@ for forbidden in [
     'registration_endpoint',
     'client_secret',
     'wp_remote_get(',
-    'wp_safe_remote_get(',
     "update_option( 'mad4b_mcp_local_oauth_private_key'",
     "add_option( 'mad4b_mcp_local_oauth_private_key'",
     'strlen( $client_id ) > 512',
@@ -179,12 +195,13 @@ for boot_marker in [
 
 runtime = (root / 'tests' / 'runtime-local-oauth-standalone-smoke.php').read_text(encoding='utf-8')
 for marker in [
-    'local-oauth-standalone.runtime.v3',
+    'local-oauth-standalone.runtime.v4',
     'family_is_revoked',
     'Model the dangerous interleaving explicitly',
     'too_long_client',
     'configured_issuer_validation',
     'mad4b_local_oauth_issuer_cross_origin',
+    'CHATGPT_CIMD_CLIENT_ID',
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing local OAuth runtime hardening proof: {marker}')
@@ -213,4 +230,4 @@ for marker in [
     if marker not in key_runtime:
         raise SystemExit(f'missing local OAuth document-root runtime proof: {marker}')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v7: PASS')
+print('mad4b.site-control-plane.local-oauth-standalone.v8: PASS')
