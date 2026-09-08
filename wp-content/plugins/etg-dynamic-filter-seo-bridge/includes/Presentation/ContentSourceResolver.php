@@ -2,6 +2,7 @@
 namespace ETG\DynamicFilterSEOBridge\Presentation;
 
 require_once dirname(__DIR__) . '/Identifiers/FieldKey.php';
+require_once __DIR__ . '/MediaAssetValidator.php';
 
 use ETG\DynamicFilterSEOBridge\Identifiers\FieldKey;
 use ETG\DynamicFilterSEOBridge\JetEngine\ListingContextResolver;
@@ -37,23 +38,27 @@ final class ContentSourceResolver {
         return$this->normalizer->rows($this->raw($source,$context));
     }
 
-    public function mediaIds(array$source,array$context=array()):array{
+    public function discoveredMediaIds(array$source,array$context=array()):array{
         $source=$this->normalizeSource($source);$ids=array();if(in_array($source['type'],array('repeater','query','relation'),true)){foreach($this->rows($source,$context)as$item){$value=$this->itemValue($item,$source['field']);$ids=array_merge($ids,$this->normalizer->attachmentIds($value));}}else{$ids=$this->normalizer->attachmentIds($this->raw($source,$context));}
         return array_slice(array_values(array_unique(array_filter(array_map('absint',$ids)))),0,$source['limit']);
     }
 
+    public function mediaIds(array$source,array$context=array()):array{
+        $source=$this->normalizeSource($source);$out=array();foreach($this->discoveredMediaIds($source,$context)as$id){if(MediaAssetValidator::isRenderableImage((int)$id)){$out[]=(int)$id;}}return array_slice($out,0,$source['limit']);
+    }
+
     public function diagnose(array$source,array$context=array()):array{
-        $source=$this->normalizeSource($source);$reason='ready';$available=true;$rows=0;$media=array();$sample='';
+        $source=$this->normalizeSource($source);$reason='ready';$available=true;$rows=0;$media=array();$discoveredMedia=array();$rejectedMedia=array();$sample='';
         if('query'===$source['type']&&!isset($this->queries->options()[$source['query_id']])){$available=false;$reason='query_not_found';}
         elseif(in_array($source['type'],array('relation','relation_meta'),true)&&!isset($this->relations->options()[$source['relation_id']])){$available=false;$reason='relation_not_found';}
         elseif(in_array($source['type'],array('term_field','term_meta'),true)&&empty($source['role'])){$available=false;$reason='taxonomy_role_required';}
         elseif(in_array($source['type'],array('listing_meta','repeater','term_meta','relation_meta'),true)&&''===$source['meta_key']){$available=false;$reason='meta_key_required';}
         if($available){
             if(in_array($source['type'],array('repeater','query','relation'),true)){$rows=count($this->rows($source,$context));}
-            $sample=$this->value($source,$context);if(in_array($source['aggregate'],array('image','gallery'),true)){$media=$this->mediaIds($source,$context);}
-            if(''===$sample&&0===$rows&&!$media){$reason='empty_at_current_context';}
+            $sample=$this->value($source,$context);if(in_array($source['aggregate'],array('image','gallery'),true)){$discoveredMedia=$this->discoveredMediaIds($source,$context);$media=$this->mediaIds($source,$context);$rejectedMedia=array_values(array_diff($discoveredMedia,$media));}
+            if($discoveredMedia&&!$media&&in_array($source['aggregate'],array('image','gallery'),true)){$reason='media_not_renderable';}elseif(''===$sample&&0===$rows&&!$media){$reason='empty_at_current_context';}
         }
-        return array('contract'=>'etg.dfsb.jetengine-source-diagnostic.v1','authorizing'=>false,'read_only'=>true,'available'=>$available,'reason'=>$reason,'source'=>$source,'row_count'=>$rows,'media_ids'=>array_slice($media,0,10),'sample'=>strlen($sample)>240?substr($sample,0,240):$sample);
+        return array('contract'=>'etg.dfsb.jetengine-source-diagnostic.v1','authorizing'=>false,'read_only'=>true,'available'=>$available,'reason'=>$reason,'source'=>$source,'row_count'=>$rows,'media_ids'=>array_slice($media,0,10),'discovered_media_ids'=>array_slice($discoveredMedia,0,10),'rejected_media_ids'=>array_slice($rejectedMedia,0,10),'media_health_filtered'=>!empty($rejectedMedia),'sample'=>strlen($sample)>240?substr($sample,0,240):$sample);
     }
 
     public function catalog():array{

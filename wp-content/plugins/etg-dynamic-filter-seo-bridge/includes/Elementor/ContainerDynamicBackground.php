@@ -229,7 +229,7 @@ final class ContainerDynamicBackground {
 
         $items = 'image' === $mode
             ? $this->initialImageItems($element, $slotId, $context)
-            : $this->initialGalleryItems($element, $slotId, $context, $limit, $minimum, $collection);
+            : $this->initialGalleryItems($element, $slotId, $context, $limit, $minimum);
 
         $group = trim((string)($settings['etg_dfsb_background_group'] ?? 'auto'));
         if ('' === $group) { $group = 'auto'; }
@@ -270,11 +270,11 @@ final class ContainerDynamicBackground {
         return $this->hasImage($image) ? array($image) : array();
     }
 
-    private function initialGalleryItems($element, string $slotId, array $context = null, int $limit = 8, int $minimum = 2, string $collection = 'balanced'): array {
+    private function initialGalleryItems($element, string $slotId, array $context = null, int $limit = 8, int $minimum = 2): array {
         $value = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_gallery') : array();
         $items = $this->normalizeGallery($value, $limit);
         if (!$items) { $items = $this->resolver->slotGallery($slotId, $context, $limit); }
-        if (count($items) < $minimum && 'combined' !== $collection) { $items = $this->resolver->gallery('combined', $context, $limit); }
+        if ($items && count($items) < $minimum) { $items = array($items[0]); }
         if (!$items) {
             $fallback = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_fallback_image') : array();
             $image = $this->normalizeImage($fallback);if ($this->hasImage($image)) { $items = array($image); }
