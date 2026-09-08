@@ -1,9 +1,12 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { fwrite( STDERR, "WordPress not loaded\n" ); exit( 1 ); }
-if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) || ! class_exists( 'MAD4B_SCP_Local_OAuth_Store' ) ) {
-	fwrite( STDERR, "Local OAuth classes unavailable\n" );
+function mad4b_local_oauth_fail( $message, $data = null ) {
+	fwrite( STDERR, 'FAIL: ' . $message . ( null !== $data ? ' ' . wp_json_encode( $data ) : '' ) . PHP_EOL );
 	exit( 1 );
+}
+if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) || ! class_exists( 'MAD4B_SCP_Local_OAuth_Store' ) ) {
+	mad4b_local_oauth_fail( 'Local OAuth classes unavailable.' );
 }
 if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS' ) ) {
 	define(
@@ -20,22 +23,22 @@ if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS' ) ) {
 
 MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
 $status = MAD4B_SCP_Local_OAuth_Server::status();
-if ( empty( $status['effective'] ) ) { fwrite( STDERR, 'Local OAuth not effective: ' . wp_json_encode( $status ) . "\n" ); exit( 1 ); }
-if ( 'mad4b.local-oauth-server.v3' !== $status['contract'] ) exit( 1 );
-if ( 'cimd_or_pre_registered' !== $status['client_registration_mode'] || empty( $status['client_id_metadata_document_supported'] ) || ! empty( $status['dynamic_client_registration_supported'] ) ) exit( 1 );
-if ( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID !== $status['cimd_chatgpt_client_id'] ) exit( 1 );
-if ( empty( $status['authorization_response_iss_parameter_supported'] ) || 'RS256' !== $status['access_token_signing_alg'] ) exit( 1 );
-if ( empty( $status['issuer_same_origin_required'] ) || empty( $status['issuer_configuration_valid'] ) || empty( $status['consent_clickjacking_protected'] ) ) exit( 1 );
-if ( 191 !== (int) $status['max_client_id_bytes'] || 191 !== MAD4B_SCP_Local_OAuth_Store::MAX_CLIENT_ID_BYTES ) exit( 1 );
-if ( empty( $status['private_key_present'] ) || ! empty( $status['private_key_exposed'] ) || ! empty( $status['private_key_stored_in_database'] ) ) exit( 1 );
+if ( empty( $status['effective'] ) ) mad4b_local_oauth_fail( 'Local OAuth not effective.', $status );
+if ( 'mad4b.local-oauth-server.v3' !== $status['contract'] ) mad4b_local_oauth_fail( 'Local OAuth contract drifted.', $status );
+if ( 'cimd_or_pre_registered' !== $status['client_registration_mode'] || empty( $status['client_id_metadata_document_supported'] ) || ! empty( $status['dynamic_client_registration_supported'] ) ) mad4b_local_oauth_fail( 'Local OAuth client-registration truth drifted.', $status );
+if ( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID !== $status['cimd_chatgpt_client_id'] ) mad4b_local_oauth_fail( 'ChatGPT CIMD client id drifted.', $status );
+if ( empty( $status['authorization_response_iss_parameter_supported'] ) || 'RS256' !== $status['access_token_signing_alg'] ) mad4b_local_oauth_fail( 'OAuth issuer/signing status drifted.', $status );
+if ( empty( $status['issuer_same_origin_required'] ) || empty( $status['issuer_configuration_valid'] ) || empty( $status['consent_clickjacking_protected'] ) ) mad4b_local_oauth_fail( 'OAuth issuer/consent hardening truth drifted.', $status );
+if ( 191 !== (int) $status['max_client_id_bytes'] || 191 !== MAD4B_SCP_Local_OAuth_Store::MAX_CLIENT_ID_BYTES ) mad4b_local_oauth_fail( 'OAuth client-id schema bound drifted.', $status );
+if ( empty( $status['private_key_present'] ) || ! empty( $status['private_key_exposed'] ) || ! empty( $status['private_key_stored_in_database'] ) ) mad4b_local_oauth_fail( 'OAuth private-key safety truth drifted.', $status );
 
 $metadata = MAD4B_SCP_Local_OAuth_Server::metadata();
-if ( $metadata['issuer'] !== MAD4B_SCP_Local_OAuth_Server::issuer() ) exit( 1 );
-if ( empty( $metadata['authorization_response_iss_parameter_supported'] ) || empty( $metadata['client_id_metadata_document_supported'] ) ) exit( 1 );
-if ( ! in_array( 'S256', $metadata['code_challenge_methods_supported'], true ) ) exit( 1 );
-if ( ! in_array( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), $metadata['protected_resources'], true ) ) exit( 1 );
-if ( isset( $metadata['registration_endpoint'] ) ) exit( 1 );
-if ( false === strpos( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), '/wp-json/mcp/mad4b-chatgpt' ) ) exit( 1 );
+if ( $metadata['issuer'] !== MAD4B_SCP_Local_OAuth_Server::issuer() ) mad4b_local_oauth_fail( 'Authorization-server metadata issuer mismatch.', $metadata );
+if ( empty( $metadata['authorization_response_iss_parameter_supported'] ) || empty( $metadata['client_id_metadata_document_supported'] ) ) mad4b_local_oauth_fail( 'Authorization-server metadata omitted iss/CIMD support.', $metadata );
+if ( ! in_array( 'S256', $metadata['code_challenge_methods_supported'], true ) ) mad4b_local_oauth_fail( 'Authorization-server metadata omitted PKCE S256.', $metadata );
+if ( ! in_array( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), $metadata['protected_resources'], true ) ) mad4b_local_oauth_fail( 'Authorization-server metadata resource mismatch.', $metadata );
+if ( isset( $metadata['registration_endpoint'] ) ) mad4b_local_oauth_fail( 'Local OAuth unexpectedly exposed DCR.', $metadata );
+if ( false === strpos( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), '/wp-json/mcp/mad4b-chatgpt' ) ) mad4b_local_oauth_fail( 'Local OAuth resource is not the ChatGPT gateway.', MAD4B_SCP_Local_OAuth_Server::resource_identifier() );
 
 // Resolve the exact ChatGPT CIMD client without internet access. The runtime
 // HTTP filter models ChatGPT's production metadata document and proves that an
@@ -69,13 +72,13 @@ add_filter( 'pre_http_request', $cimd_filter, -100, 3 );
 $client_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'client' );
 $client_method->setAccessible( true );
 $chatgpt_client = $client_method->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID );
-if ( ! is_array( $chatgpt_client ) || 'cimd' !== $chatgpt_client['registration_mode'] || 'ChatGPT' !== $chatgpt_client['client_name'] ) exit( 1 );
-if ( ! in_array( 'https://chatgpt.com/connector_platform_oauth_redirect', $chatgpt_client['redirect_uris'], true ) ) exit( 1 );
-if ( 1 !== $chatgpt_fetches ) exit( 1 );
+if ( ! is_array( $chatgpt_client ) || 'cimd' !== $chatgpt_client['registration_mode'] || 'ChatGPT' !== $chatgpt_client['client_name'] ) mad4b_local_oauth_fail( 'ChatGPT CIMD normalization failed.', $chatgpt_client );
+if ( ! in_array( 'https://chatgpt.com/connector_platform_oauth_redirect', $chatgpt_client['redirect_uris'], true ) ) mad4b_local_oauth_fail( 'ChatGPT CIMD redirect was not retained.', $chatgpt_client );
+if ( 1 !== $chatgpt_fetches ) mad4b_local_oauth_fail( 'ChatGPT CIMD fetch count drifted after first resolution.', $chatgpt_fetches );
 $cached_chatgpt = $client_method->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID );
-if ( ! is_array( $cached_chatgpt ) || 1 !== $chatgpt_fetches ) exit( 1 );
+if ( ! is_array( $cached_chatgpt ) || 1 !== $chatgpt_fetches ) mad4b_local_oauth_fail( 'ChatGPT CIMD cache did not suppress the second fetch.', array( 'client' => $cached_chatgpt, 'fetches' => $chatgpt_fetches ) );
 $untrusted_client = $client_method->invoke( null, 'https://evil.example.test/client.json' );
-if ( null !== $untrusted_client || 0 !== $unexpected_fetches ) exit( 1 );
+if ( null !== $untrusted_client || 0 !== $unexpected_fetches ) mad4b_local_oauth_fail( 'Untrusted CIMD URL escaped the exact allowlist.', array( 'client' => $untrusted_client, 'unexpected_fetches' => $unexpected_fetches ) );
 remove_filter( 'pre_http_request', $cimd_filter, -100 );
 
 $validate_cimd = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'validate_cimd_metadata' );
@@ -86,35 +89,35 @@ $wrong_identity = $validate_cimd->invoke( null, MAD4B_SCP_Local_OAuth_Server::CH
 	'redirect_uris' => array( 'https://chatgpt.com/connector_platform_oauth_redirect' ),
 	'token_endpoint_auth_methods_supported' => array( 'none' ),
 ) );
-if ( ! is_wp_error( $wrong_identity ) || 'invalid_client' !== $wrong_identity->get_error_code() ) exit( 1 );
+if ( ! is_wp_error( $wrong_identity ) || 'invalid_client' !== $wrong_identity->get_error_code() ) mad4b_local_oauth_fail( 'CIMD client-id substitution was not rejected.', $wrong_identity );
 $private_only = $validate_cimd->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, array(
 	'client_id' => MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID,
 	'client_name' => 'ChatGPT',
 	'redirect_uris' => array( 'https://chatgpt.com/connector_platform_oauth_redirect' ),
 	'token_endpoint_auth_methods_supported' => array( 'private_key_jwt' ),
 ) );
-if ( ! is_wp_error( $private_only ) ) exit( 1 );
+if ( ! is_wp_error( $private_only ) ) mad4b_local_oauth_fail( 'Private-only CIMD metadata was accepted by a public PKCE authority.', $private_only );
 
 $jwks = MAD4B_SCP_Local_OAuth_Server::jwks_document();
-if ( is_wp_error( $jwks ) || empty( $jwks['keys'][0]['kid'] ) || empty( $jwks['keys'][0]['n'] ) || empty( $jwks['keys'][0]['e'] ) ) exit( 1 );
+if ( is_wp_error( $jwks ) || empty( $jwks['keys'][0]['kid'] ) || empty( $jwks['keys'][0]['n'] ) || empty( $jwks['keys'][0]['e'] ) ) mad4b_local_oauth_fail( 'Local OAuth JWKS is incomplete.', $jwks );
 $key = $jwks['keys'][0];
-if ( 'RSA' !== $key['kty'] || 'RS256' !== $key['alg'] || 'sig' !== $key['use'] || ! in_array( 'verify', $key['key_ops'], true ) ) exit( 1 );
+if ( 'RSA' !== $key['kty'] || 'RS256' !== $key['alg'] || 'sig' !== $key['use'] || ! in_array( 'verify', $key['key_ops'], true ) ) mad4b_local_oauth_fail( 'Local OAuth JWK metadata drifted.', $key );
 
 $key_path_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'private_key_path' );
 $key_path_method->setAccessible( true );
 $key_path = $key_path_method->invoke( null );
-if ( is_wp_error( $key_path ) || ! is_file( $key_path ) ) exit( 1 );
-if ( 0 === strpos( trailingslashit( wp_normalize_path( dirname( $key_path ) ) ), trailingslashit( wp_normalize_path( ABSPATH ) ) ) ) exit( 1 );
+if ( is_wp_error( $key_path ) || ! is_file( $key_path ) ) mad4b_local_oauth_fail( 'Local OAuth private key is unavailable.', is_wp_error( $key_path ) ? $key_path->get_error_code() : $key_path );
+if ( 0 === strpos( trailingslashit( wp_normalize_path( dirname( $key_path ) ) ), trailingslashit( wp_normalize_path( ABSPATH ) ) ) ) mad4b_local_oauth_fail( 'Local OAuth private key escaped outside-webroot policy.', $key_path );
 $mode = fileperms( $key_path ) & 0777;
-if ( 0600 !== $mode ) { fwrite( STDERR, sprintf( "Unexpected key permissions: %o\n", $mode ) ); exit( 1 ); }
+if ( 0600 !== $mode ) mad4b_local_oauth_fail( 'Unexpected local OAuth key permissions.', sprintf( '%o', $mode ) );
 
 $resource = MAD4B_SCP_Local_OAuth_Server::resource_identifier();
 $mint = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'mint_access_token' );
 $mint->setAccessible( true );
 $token = $mint->invoke( null, 'https://client.example.test/mcp-client.json', 1, $resource, array( 'mad4b:read', 'offline_access' ) );
-if ( is_wp_error( $token ) ) { fwrite( STDERR, $token->get_error_message() . "\n" ); exit( 1 ); }
+if ( is_wp_error( $token ) ) mad4b_local_oauth_fail( 'Unable to mint local OAuth access token.', $token->get_error_message() );
 $too_long_client = str_repeat( 'c', 192 );
-if ( ! is_wp_error( $mint->invoke( null, $too_long_client, 1, $resource, array( 'mad4b:read' ) ) ) ) exit( 1 );
+if ( ! is_wp_error( $mint->invoke( null, $too_long_client, 1, $resource, array( 'mad4b:read' ) ) ) ) mad4b_local_oauth_fail( 'Overlong OAuth client id was accepted by token minting.' );
 
 $request_param = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'request_param' );
 $request_param->setAccessible( true );
