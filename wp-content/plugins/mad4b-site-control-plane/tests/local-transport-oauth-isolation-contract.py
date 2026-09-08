@@ -14,6 +14,7 @@ for marker in [
     "add_action( 'init', array( __CLASS__, 'boot_oauth_transport_if_effective' ), 3 )",
     'public static function boot_oauth_transport_if_effective()',
     "empty( $status['effective'] )",
+    'MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready()',
     'MAD4B_SCP_OAuth_Request_Context_Guard::boot();',
     'MAD4B_SCP_OAuth_JWT_Header_Guard::boot();',
     'MAD4B_SCP_OAuth_Resource_Bridge::boot();',
@@ -24,11 +25,13 @@ for marker in [
     assert marker in plugin, f'missing local/OAuth isolation marker: {marker}'
 
 # Readiness/client metadata is always available, but bearer interception is
-# activated only after the authority graph is effective.
+# activated only after the authority graph and local signing-key policy are
+# effective.
 assert 'MAD4B_SCP_MCP_Client_Compatibility::boot();' in plugin
 method = plugin.split('public static function boot_oauth_transport_if_effective()', 1)[1].split('private static function oauth_transport_enabled()', 1)[0]
 assert 'MAD4B_SCP_MCP_Client_Compatibility::boot();' not in method
 assert "empty( $status['effective'] )" in method
+assert 'MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready()' in method
 
 for marker in [
     "'local_transport_ready' => empty( $local_blockers )",
@@ -39,6 +42,8 @@ for marker in [
 
 for marker in [
     "&& ! empty( $status['effective'] )",
+    'self::local_key_policy_ready( $status )',
+    'MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready()',
     'if ( ! self::oauth_discovery_ready( $status ) ) return array();',
     'mad4b_oauth_resource_discovery_not_ready',
 ]:
@@ -61,4 +66,4 @@ for marker in [
 ]:
     assert marker in runtime_misconfigured, f'missing ineffective-OAuth local transport proof: {marker}'
 
-print('mad4b.site-control-plane.local-transport-oauth-isolation.v3: PASS')
+print('mad4b.site-control-plane.local-transport-oauth-isolation.v4: PASS')
