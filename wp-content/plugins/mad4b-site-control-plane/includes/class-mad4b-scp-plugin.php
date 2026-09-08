@@ -23,11 +23,14 @@ final class MAD4B_SCP_Plugin {
 
 		MAD4B_SCP_MCP_Provider_Isolation::boot();
 		self::bind_local_oauth_subject_compatibility();
+		MAD4B_SCP_Local_OAuth_Key_Path_Policy::boot();
 		MAD4B_SCP_Local_OAuth_Init_Lock::boot();
 		MAD4B_SCP_Local_OAuth_Loopback_Guard::boot();
 		MAD4B_SCP_Local_OAuth_Server::boot();
 		MAD4B_SCP_OAuth_Request_Context_Guard::boot();
+		MAD4B_SCP_OAuth_JWT_Header_Guard::boot();
 		MAD4B_SCP_OAuth_Resource_Bridge::boot();
+		MAD4B_SCP_OAuth_Outbound_Budget_Guard::boot();
 		MAD4B_SCP_OAuth_Subject_Gate::boot();
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
 		MAD4B_SCP_OAuth_Challenge_Alignment::boot();
