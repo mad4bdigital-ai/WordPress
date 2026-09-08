@@ -83,6 +83,7 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 		if ( self::PAGE_SLUG !== $page ) return;
 
 		$status = self::status();
+		if ( 'staging' !== $status['environment'] ) return;
 		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
 		wp_enqueue_script(
 			'mad4b-scp-local-oauth-canary',
@@ -117,6 +118,11 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'MAD4B Local OAuth Browser Canary', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Staging-only proof of the local browser Authorization Code + PKCE S256 round trip. This does not certify an external MCP client and does not persist OAuth tokens.', 'mad4b-site-control-plane' ); ?></p>
+			<?php if ( 'staging' !== $status['environment'] ) : ?>
+				<div class="notice notice-warning inline"><p><?php echo esc_html__( 'Canary configuration is intentionally unavailable outside Staging.', 'mad4b-site-control-plane' ); ?></p></div>
+			</div>
+				<?php return; ?>
+			<?php endif; ?>
 
 			<table class="widefat striped" style="max-width:980px">
 				<tbody>
