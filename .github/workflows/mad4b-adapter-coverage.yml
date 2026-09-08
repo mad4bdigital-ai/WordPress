@@ -40,7 +40,7 @@ concurrency:
 
 jobs:
   repository-coverage-contract:
-    name: Repository runtime adapter coverage contract
+    name: Repository plugin adapter coverage contract + runtime components
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
