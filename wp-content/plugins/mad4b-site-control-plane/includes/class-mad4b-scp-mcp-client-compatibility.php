@@ -159,6 +159,8 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 
 	private static function authorization_servers() {
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return array();
+		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
+		if ( ! self::oauth_discovery_ready( $status ) ) return array();
 		$metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
 		return isset( $metadata['authorization_servers'] ) && is_array( $metadata['authorization_servers'] ) ? $metadata['authorization_servers'] : array();
 	}
@@ -168,6 +170,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		$environment = isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : '';
 		$environment_allowed = 'staging' === $environment || ( 'production' === $environment && ! empty( $status['production_approved'] ) );
 		return ! empty( $status['configured'] )
+			&& ! empty( $status['effective'] )
 			&& ! empty( $status['authority_registry_valid'] )
 			&& ! empty( $status['subject_policy_ready'] )
 			&& ! empty( $status['authority_count'] )
