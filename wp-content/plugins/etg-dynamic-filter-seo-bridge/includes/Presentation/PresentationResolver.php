@@ -4,6 +4,7 @@ namespace ETG\DynamicFilterSEOBridge\Presentation;
 require_once dirname( __DIR__ ) . '/Identifiers/QueryId.php';
 require_once dirname( __DIR__ ) . '/Identifiers/FieldKey.php';
 require_once dirname( __DIR__ ) . '/Identifiers/PresentationToken.php';
+require_once __DIR__ . '/MediaAssetValidator.php';
 
 use ETG\DynamicFilterSEOBridge\Content\ContentComposer;
 use ETG\DynamicFilterSEOBridge\Content\GalleryComposer;
@@ -49,7 +50,7 @@ final class PresentationResolver {
     }
 
     public function image(string $mode='priority',array $context=null):array{
-        $c=null===$context?$this->context():$context;if(!$this->renderable($c)){return array('id'=>0,'url'=>'');}$mode=sanitize_key($mode);if(''===$mode){$mode='priority';}$ids=$this->gallery->ids($c,$mode);if(!$ids){return array('id'=>0,'url'=>'');}$id=(int)reset($ids);$url=$id&&function_exists('wp_get_attachment_image_url')?(string)(wp_get_attachment_image_url($id,'full')?:''):'';return array('id'=>$id,'url'=>$url);
+        $c=null===$context?$this->context():$context;if(!$this->renderable($c)){return array('id'=>0,'url'=>'');}$mode=sanitize_key($mode);if(''===$mode){$mode='priority';}$ids=$this->gallery->ids($c,$mode);if(!$ids){return array('id'=>0,'url'=>'');}$media=$this->mediaArray(array((int)reset($ids)));return$media?(array)$media[0]:array('id'=>0,'url'=>'');
     }
 
     public function gallery(string $mode='combined',array $context=null,int $limit=30):array{
@@ -99,7 +100,7 @@ final class PresentationResolver {
         foreach((array)($slot['fallback_chain']??array_keys((array)($slot['sources']??array()))) as$alias){$alias=sanitize_key((string)$alias);if(!isset($slot['sources'][$alias])){continue;}if(in_array((string)($slot['type']??''),array('image','gallery'),true)){$ids=$this->sources->mediaIds((array)$slot['sources'][$alias],$c);if($ids){return'image'===(string)$slot['type']?(string)$ids[0]:implode(',',$ids);}}else{$value=$this->sources->value((array)$slot['sources'][$alias],$c);if(''!==trim($value)){return$value;}}}
         if('image'===(string)($slot['type']??'')){return(string)($this->image($mediaMode,$c)['id']??0);}if('gallery'===(string)($slot['type']??'')){return implode(',',array_map('absint',$this->gallery->ids($c,$mediaMode)));}return'';
     }
-    private function slotMediaIds(array $slot,array $c,int $limit):array{if($this->sources){foreach((array)($slot['fallback_chain']??array_keys((array)($slot['sources']??array())))as$alias){$alias=sanitize_key((string)$alias);if(!isset($slot['sources'][$alias])){continue;}$ids=$this->sources->mediaIds((array)$slot['sources'][$alias],$c);if($ids){return array_slice($ids,0,$limit);}}}$mode=sanitize_key((string)($slot['media_mode']??('image'===(string)($slot['type']??'')?'priority':'combined')));if(''===$mode){$mode='image'===(string)($slot['type']??'')?'priority':'combined';}return array_slice($this->gallery->ids($c,$mode),0,$limit);}
+    private function slotMediaIds(array $slot,array$c,int $limit):array{if($this->sources){foreach((array)($slot['fallback_chain']??array_keys((array)($slot['sources']??array())))as$alias){$alias=sanitize_key((string)$alias);if(!isset($slot['sources'][$alias])){continue;}$ids=$this->sources->mediaIds((array)$slot['sources'][$alias],$c);if($ids){return array_slice($ids,0,$limit);}}}$mode=sanitize_key((string)($slot['media_mode']??('image'===(string)($slot['type']??'')?'priority':'combined')));if(''===$mode){$mode='image'===(string)($slot['type']??'')?'priority':'combined';}return array_slice($this->gallery->ids($c,$mode),0,$limit);}
     private function mediaArray(array $ids):array{$out=array();foreach($ids as$id){$id=absint($id);if(!$id){continue;}$health=MediaAssetValidator::inspect($id);if(empty($health['valid'])){continue;}$url=isset($health['url'])&&is_scalar($health['url'])?trim((string)$health['url']):'';if(''===$url&&function_exists('wp_get_attachment_image_url')){$url=(string)(wp_get_attachment_image_url($id,'full')?:'');}if(''===$url){continue;}$out[]=array('id'=>$id,'url'=>$url);}return$out;}
 
     private function termValue(array $c,string $role,string $field){$term=(array)($c['terms'][$role]??array());if(!$term){return'';}if('image_url'===$field){$id=(int)($term['image_id']??0);return$id&&function_exists('wp_get_attachment_image_url')?(string)(wp_get_attachment_image_url($id,'full')?:''):'';}if(!array_key_exists($field,$term)){return'';}$v=$term[$field];return is_scalar($v)?$v:'';}
