@@ -4,6 +4,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 php = (root / 'includes' / 'class-mad4b-scp-local-oauth-browser-canary.php').read_text(encoding='utf-8')
 js = (root / 'assets' / 'local-oauth-canary.js').read_text(encoding='utf-8')
+ps1 = (root / 'tools' / 'Invoke-MAD4BLocalOAuthStagingCanary.ps1').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
@@ -11,6 +12,8 @@ for marker in [
     'mad4b.local-oauth-browser-canary.v1',
     'mad4b-control-plane-oauth-canary',
     'mad4b-staging-browser-canary',
+    'mad4b-staging-canary',
+    'http://127.0.0.1:8765/callback',
     "'staging_only' => true",
     "'persists_pkce_material' => false",
     "'persists_bearer_tokens' => false",
@@ -23,6 +26,7 @@ for marker in [
     "MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS",
     "MAD4B_MCP_OAUTH_MODE', 'local'",
     "application_type' => 'web'",
+    "application_type' => 'native'",
 ]:
     if marker not in php:
         raise SystemExit(f'missing browser canary PHP marker: {marker}')
@@ -58,9 +62,21 @@ for forbidden in [
     if forbidden in js:
         raise SystemExit(f'forbidden browser canary JS persistence/debug primitive: {forbidden}')
 
+for marker in [
+    "[string]$ClientId = 'mad4b-staging-canary'",
+    "[string]$RedirectUri = 'http://127.0.0.1:8765/callback'",
+    'PKCE RFC 7636 self-test failed',
+    'The access token was intentionally not printed or persisted.',
+]:
+    if marker not in ps1:
+        raise SystemExit(f'missing bundled PowerShell canary marker: {marker}')
+for forbidden in ['Write-Host $accessToken', 'Write-Output $accessToken', 'Set-Content', 'Out-File']:
+    if forbidden in ps1:
+        raise SystemExit(f'forbidden PowerShell token persistence/output primitive: {forbidden}')
+
 if 'class-mad4b-scp-local-oauth-browser-canary.php' not in main:
     raise SystemExit('main plugin does not load browser canary class')
 if 'MAD4B_SCP_Local_OAuth_Browser_Canary::boot()' not in plugin:
     raise SystemExit('plugin boot does not initialize browser canary')
 
-print('mad4b.site-control-plane.local-oauth-browser-canary.v1: PASS')
+print('mad4b.site-control-plane.local-oauth-browser-canary.v2: PASS')
