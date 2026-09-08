@@ -10,7 +10,7 @@ plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-
 catalog = json.loads((root / 'config/mcp-client-profiles.json').read_text(encoding='utf-8'))
 
 required_compat = [
-    "mad4b.mcp-client-compatibility.v2",
+    "mad4b.mcp-client-compatibility.v3",
     "WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource'",
     "RESOURCE_PATH = '/wp-json/mcp/mad4b-read'",
     "MANIFEST_ROUTE = '/client-compatibility'",
@@ -20,7 +20,17 @@ required_compat = [
     "'unknown_clients_supported' => true",
     "'transport' => 'streamable_http'",
     "'oauth_resource_metadata' => 'rfc9728'",
-    "'oauth_discovery_ready'",
+    "'oauth_authority_mode'",
+    "'authorization_server_external'",
+    "'authorization_server_local'",
+    "'authorization_server_hybrid'",
+    "'authorization_server_count'",
+    "'remote_oauth_read_policy'",
+    "remote_oauth_read_policy_status",
+    "resource_name",
+    "mad4b_authority_mode",
+    "authority_registry_valid",
+    "subject_policy_ready",
     "authoritative_well_known_url",
     "compatibility_alias_url",
     "manifest_endpoint",
@@ -31,6 +41,9 @@ required_compat = [
 ]
 for marker in required_compat:
     assert marker in compat, f'missing compatibility marker: {marker}'
+
+assert "'authorization_server_external' => true" not in compat, 'external authority truth must not be hardcoded'
+assert "MAD4B WordPress Staging Read MCP'" not in compat, 'resource name must not be hardcoded to Staging'
 
 required_registry = [
     'mad4b.mcp-client-profile-registry.v1',
@@ -72,4 +85,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v2: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v3: PASS')
