@@ -30,6 +30,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-provider-isolation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-peer-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-store.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-oauth-autoconfig.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-server.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-key-path-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-init-lock.php';
