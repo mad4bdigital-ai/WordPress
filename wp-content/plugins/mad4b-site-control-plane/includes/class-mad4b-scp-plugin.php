@@ -29,17 +29,12 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Local_OAuth_Server::boot();
 
 		// OAuth is an optional remote authentication layer over mad4b-read, not a
-		// prerequisite for the WordPress-authenticated local MCP transport. Only
-		// register bearer pre-dispatch interception when an OAuth authority has
-		// explicitly been enabled (Local OAuth boot derives the bridge constant).
-		if ( self::oauth_transport_enabled() ) {
-			MAD4B_SCP_OAuth_Request_Context_Guard::boot();
-			MAD4B_SCP_OAuth_JWT_Header_Guard::boot();
-			MAD4B_SCP_OAuth_Resource_Bridge::boot();
-			MAD4B_SCP_OAuth_Outbound_Budget_Guard::boot();
-			MAD4B_SCP_OAuth_Subject_Gate::boot();
-			MAD4B_SCP_OAuth_Challenge_Alignment::boot();
-		}
+		// prerequisite for the WordPress-authenticated local MCP transport. Delay
+		// bearer interception until init priority 3: Local OAuth finishes key/store
+		// bootstrap at priority 1 and releases its init lock at priority 2 first.
+		// A configured-but-ineffective OAuth authority therefore cannot take down
+		// the local WordPress-authenticated read transport.
+		add_action( 'init', array( __CLASS__, 'boot_oauth_transport_if_effective' ), 3 );
 		MAD4B_SCP_MCP_Client_Compatibility::boot();
 
 		if ( ! MAD4B_SCP_Schema::is_ready() || (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) < MAD4B_SCP_Schema::VERSION ) {
@@ -83,6 +78,19 @@ final class MAD4B_SCP_Plugin {
 		} else {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
 		}
+	}
+
+	public static function boot_oauth_transport_if_effective() {
+		if ( ! self::oauth_transport_enabled() || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return;
+		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
+		if ( ! is_array( $status ) || empty( $status['effective'] ) ) return;
+
+		MAD4B_SCP_OAuth_Request_Context_Guard::boot();
+		MAD4B_SCP_OAuth_JWT_Header_Guard::boot();
+		MAD4B_SCP_OAuth_Resource_Bridge::boot();
+		MAD4B_SCP_OAuth_Outbound_Budget_Guard::boot();
+		MAD4B_SCP_OAuth_Subject_Gate::boot();
+		MAD4B_SCP_OAuth_Challenge_Alignment::boot();
 	}
 
 	private static function oauth_transport_enabled() {
