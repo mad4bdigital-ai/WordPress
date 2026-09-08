@@ -21,8 +21,9 @@ if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS' ) ) {
 MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
 $status = MAD4B_SCP_Local_OAuth_Server::status();
 if ( empty( $status['effective'] ) ) { fwrite( STDERR, 'Local OAuth not effective: ' . wp_json_encode( $status ) . "\n" ); exit( 1 ); }
-if ( 'mad4b.local-oauth-server.v2' !== $status['contract'] ) exit( 1 );
-if ( 'pre_registered' !== $status['client_registration_mode'] || ! empty( $status['client_id_metadata_document_supported'] ) || ! empty( $status['dynamic_client_registration_supported'] ) ) exit( 1 );
+if ( 'mad4b.local-oauth-server.v3' !== $status['contract'] ) exit( 1 );
+if ( 'cimd_or_pre_registered' !== $status['client_registration_mode'] || empty( $status['client_id_metadata_document_supported'] ) || ! empty( $status['dynamic_client_registration_supported'] ) ) exit( 1 );
+if ( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID !== $status['cimd_chatgpt_client_id'] ) exit( 1 );
 if ( empty( $status['authorization_response_iss_parameter_supported'] ) || 'RS256' !== $status['access_token_signing_alg'] ) exit( 1 );
 if ( empty( $status['issuer_same_origin_required'] ) || empty( $status['issuer_configuration_valid'] ) || empty( $status['consent_clickjacking_protected'] ) ) exit( 1 );
 if ( 191 !== (int) $status['max_client_id_bytes'] || 191 !== MAD4B_SCP_Local_OAuth_Store::MAX_CLIENT_ID_BYTES ) exit( 1 );
@@ -30,10 +31,69 @@ if ( empty( $status['private_key_present'] ) || ! empty( $status['private_key_ex
 
 $metadata = MAD4B_SCP_Local_OAuth_Server::metadata();
 if ( $metadata['issuer'] !== MAD4B_SCP_Local_OAuth_Server::issuer() ) exit( 1 );
-if ( empty( $metadata['authorization_response_iss_parameter_supported'] ) ) exit( 1 );
+if ( empty( $metadata['authorization_response_iss_parameter_supported'] ) || empty( $metadata['client_id_metadata_document_supported'] ) ) exit( 1 );
 if ( ! in_array( 'S256', $metadata['code_challenge_methods_supported'], true ) ) exit( 1 );
 if ( ! in_array( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), $metadata['protected_resources'], true ) ) exit( 1 );
 if ( isset( $metadata['registration_endpoint'] ) ) exit( 1 );
+if ( false === strpos( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), '/wp-json/mcp/mad4b-chatgpt' ) ) exit( 1 );
+
+// Resolve the exact ChatGPT CIMD client without internet access. The runtime
+// HTTP filter models ChatGPT's production metadata document and proves that an
+// arbitrary HTTPS client URL is rejected before any outbound request occurs.
+$chatgpt_fetches = 0;
+$unexpected_fetches = 0;
+$cimd_filter = static function ( $preempt, $args, $url ) use ( &$chatgpt_fetches, &$unexpected_fetches ) {
+	if ( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID !== $url ) {
+		++$unexpected_fetches;
+		return new WP_Error( 'ci_unexpected_outbound', 'Unexpected CIMD outbound URL.' );
+	}
+	++$chatgpt_fetches;
+	$payload = array(
+		'client_id' => MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID,
+		'client_name' => 'ChatGPT',
+		'redirect_uris' => array( 'https://chatgpt.com/connector_platform_oauth_redirect' ),
+		'grant_types' => array( 'authorization_code' ),
+		'response_types' => array( 'code' ),
+		'token_endpoint_auth_methods_supported' => array( 'none', 'private_key_jwt' ),
+		'token_endpoint_auth_method' => 'private_key_jwt',
+	);
+	return array(
+		'headers' => array( 'content-type' => 'application/json', 'cache-control' => 'max-age=120' ),
+		'body' => wp_json_encode( $payload ),
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+		'cookies' => array(),
+		'filename' => null,
+	);
+};
+add_filter( 'pre_http_request', $cimd_filter, -100, 3 );
+$client_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'client' );
+$client_method->setAccessible( true );
+$chatgpt_client = $client_method->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID );
+if ( ! is_array( $chatgpt_client ) || 'cimd' !== $chatgpt_client['registration_mode'] || 'ChatGPT' !== $chatgpt_client['client_name'] ) exit( 1 );
+if ( ! in_array( 'https://chatgpt.com/connector_platform_oauth_redirect', $chatgpt_client['redirect_uris'], true ) ) exit( 1 );
+if ( 1 !== $chatgpt_fetches ) exit( 1 );
+$cached_chatgpt = $client_method->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID );
+if ( ! is_array( $cached_chatgpt ) || 1 !== $chatgpt_fetches ) exit( 1 );
+$untrusted_client = $client_method->invoke( null, 'https://evil.example.test/client.json' );
+if ( null !== $untrusted_client || 0 !== $unexpected_fetches ) exit( 1 );
+remove_filter( 'pre_http_request', $cimd_filter, -100 );
+
+$validate_cimd = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'validate_cimd_metadata' );
+$validate_cimd->setAccessible( true );
+$wrong_identity = $validate_cimd->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, array(
+	'client_id' => 'https://chatgpt.com/oauth/other.json',
+	'client_name' => 'ChatGPT',
+	'redirect_uris' => array( 'https://chatgpt.com/connector_platform_oauth_redirect' ),
+	'token_endpoint_auth_methods_supported' => array( 'none' ),
+) );
+if ( ! is_wp_error( $wrong_identity ) || 'invalid_client' !== $wrong_identity->get_error_code() ) exit( 1 );
+$private_only = $validate_cimd->invoke( null, MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID, array(
+	'client_id' => MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID,
+	'client_name' => 'ChatGPT',
+	'redirect_uris' => array( 'https://chatgpt.com/connector_platform_oauth_redirect' ),
+	'token_endpoint_auth_methods_supported' => array( 'private_key_jwt' ),
+) );
+if ( ! is_wp_error( $private_only ) ) exit( 1 );
 
 $jwks = MAD4B_SCP_Local_OAuth_Server::jwks_document();
 if ( is_wp_error( $jwks ) || empty( $jwks['keys'][0]['kid'] ) || empty( $jwks['keys'][0]['n'] ) || empty( $jwks['keys'][0]['e'] ) ) exit( 1 );
@@ -172,4 +232,4 @@ if ( ! is_wp_error( $issuer_error ) || 'mad4b_local_oauth_issuer_cross_origin' !
 $invalid_status = MAD4B_SCP_Local_OAuth_Server::status();
 if ( ! empty( $invalid_status['effective'] ) || ! empty( $invalid_status['issuer_configuration_valid'] ) ) exit( 1 );
 
-echo "mad4b.site-control-plane.local-oauth-standalone.runtime.v3: PASS\n";
+echo "mad4b.site-control-plane.local-oauth-standalone.runtime.v4: PASS\n";
