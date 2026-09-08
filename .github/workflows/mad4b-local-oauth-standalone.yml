@@ -27,6 +27,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-local-oauth-store.php"
+          php -l "$root/includes/class-mad4b-scp-staging-oauth-autoconfig.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-server.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-key-path-policy.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-init-lock.php"
@@ -40,6 +41,7 @@ jobs:
           php -l "$root/tests/runtime-local-oauth-browser-canary-production-smoke.php"
           node --check "$root/assets/local-oauth-canary.js"
           node --check "$root/assets/chatgpt-connection.js"
+          python3 "$root/tests/staging-oauth-autoconfig-contract.py"
           python3 "$root/tests/local-oauth-standalone-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
           python3 "$root/tests/chatgpt-connection-ui-contract.py"
@@ -99,11 +101,8 @@ jobs:
           php /tmp/wp-cli.phar option update home 'https://mad4b-local-oauth.test' --path="$WP_PATH"
           php /tmp/wp-cli.phar option update siteurl 'https://mad4b-local-oauth.test' --path="$WP_PATH"
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
-          php /tmp/wp-cli.phar config set MAD4B_MCP_LOCAL_OAUTH_ENABLED true --raw --type=constant --path="$WP_PATH"
-          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_WP_USER_ID 1 --raw --type=constant --path="$WP_PATH"
-          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS 'user:1' --type=constant --path="$WP_PATH"
 
-      - name: Install exact MCP Adapter and control plane
+      - name: Install exact MCP Adapter and control plane with zero-touch OAuth configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -113,6 +112,7 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          test "$(php /tmp/wp-cli.phar option get mad4b_scp_staging_oauth_autoconfig_v1 --format=json --path="$WP_PATH" | php -r '$v=json_decode(stream_get_contents(STDIN),true); echo isset($v["wp_user_id"]) ? (int)$v["wp_user_id"] : 0;')" = "1"
 
       - name: Prove local key, metadata, JWT, token-ledger and Staging canary invariants
         shell: bash
