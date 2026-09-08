@@ -39,8 +39,9 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/adapter-discovery-reversibility-contract.py \
             --output /tmp/mad4b-repository-plugin-adapter-coverage.json
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-plugin-artifact-coverage.py \
-            | tee /tmp/mad4b-repository-plugin-artifact-coverage.json
+            --output /tmp/mad4b-repository-plugin-artifact-coverage.json
           cat /tmp/mad4b-repository-plugin-adapter-coverage.json
+          cat /tmp/mad4b-repository-plugin-artifact-coverage.json
 
       - name: Upload repository adapter coverage evidence
         uses: actions/upload-artifact@v4
