@@ -35,6 +35,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
           php -l "$root/includes/class-mad4b-scp-plugin.php"
           php -l "$root/tests/runtime-oauth-resource-bridge-smoke.php"
+          php -l "$root/tests/runtime-oauth-context-cooldown-smoke.php"
           php -l "$root/tests/runtime-oauth-hybrid-smoke.php"
           python3 "$root/tests/oauth-resource-bridge-contract.py"
           python3 "$root/tests/oauth-subject-gate-contract.py"
@@ -118,6 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-oauth-resource-bridge-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-oauth-context-cooldown-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
   hybrid-runtime:
     name: OAuth hybrid runtime (${{ matrix.wordpress }})
