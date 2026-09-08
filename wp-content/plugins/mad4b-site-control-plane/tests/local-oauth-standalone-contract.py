@@ -113,12 +113,17 @@ for forbidden in ['wp_remote_get(', 'wp_safe_remote_get(', 'curl_exec(']:
         raise SystemExit(f'forbidden loopback guard network primitive: {forbidden}')
 
 required_key_policy = [
-    'mad4b.local-oauth-key-path-policy.v1',
+    'mad4b.local-oauth-key-path-policy.v2',
     'safe_default_path_for_roots',
     'validate_path_against_roots',
+    'canonical_candidate_path',
+    'collapse_path',
+    'realpath(',
     'DOCUMENT_ROOT',
     'mad4b_local_oauth_key_path_document_root_exposed',
     'mad4b_local_oauth_document_root_unknown',
+    "canonical_path_checks' => true",
+    "symlink_ancestor_resolution' => true",
     "remove_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Server', 'ensure_runtime' ), 1 )",
     "add_action( 'parse_request', array( __CLASS__, 'block_unsafe_protocol' ), -20 )",
     "add_filter( 'pre_http_request', array( __CLASS__, 'block_unsafe_local_discovery' ), 0, 3 )",
@@ -192,14 +197,16 @@ for marker in [
 
 key_runtime = (root / 'tests' / 'runtime-local-oauth-key-path-policy-smoke.php').read_text(encoding='utf-8')
 for marker in [
-    'local-oauth-key-path-policy.runtime.v1',
+    'local-oauth-key-path-policy.runtime.v2',
     '/var/www/html/wp/',
     '/var/www/html',
     '/var/www/.mad4b/oauth/wordpress-local-rs256-private.pem',
+    'Dot-segment traversal bypassed document-root containment.',
+    'Symlink ancestor bypassed document-root containment.',
     'mad4b_local_oauth_key_path_document_root_exposed',
     'mad4b_local_oauth_key_path_wordpress_exposed',
 ]:
     if marker not in key_runtime:
         raise SystemExit(f'missing local OAuth document-root runtime proof: {marker}')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v5: PASS')
+print('mad4b.site-control-plane.local-oauth-standalone.v6: PASS')
