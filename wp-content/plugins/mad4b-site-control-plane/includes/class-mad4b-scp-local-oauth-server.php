@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * token contract.
  */
 final class MAD4B_SCP_Local_OAuth_Server {
-	const CONTRACT = 'mad4b.local-oauth-server.v1';
+	const CONTRACT = 'mad4b.local-oauth-server.v2';
 	const ISSUER_PATH = '/oauth/mcp';
 	const AUTHORIZE_PATH = '/oauth/mcp/authorize';
 	const TOKEN_PATH = '/oauth/mcp/token';
@@ -28,7 +28,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	const CLOCK_SKEW = 60;
 	const MAX_CLIENTS = 50;
 	const MAX_REDIRECTS_PER_CLIENT = 20;
+	const MAX_CLIENT_ID_BYTES = 191;
+	const MAX_URI_BYTES = 2048;
+	const MAX_TOKEN_INPUT_BYTES = 2048;
 	const MAX_SCOPE_BYTES = 1024;
+	const MAX_STATE_BYTES = 1024;
 
 	private static $booted = false;
 	private static $runtime_error = null;
@@ -44,8 +48,17 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 	public static function ensure_runtime() {
 		if ( ! self::enabled() || ! self::environment_allowed() ) return;
+		$issuer = self::configured_issuer_validation();
+		if ( is_wp_error( $issuer ) ) {
+			self::$runtime_error = $issuer;
+			return;
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Store' ) ) {
 			self::$runtime_error = new WP_Error( 'mad4b_local_oauth_store_missing', 'Local OAuth store class is unavailable.' );
+			return;
+		}
+		if ( self::MAX_CLIENT_ID_BYTES !== MAD4B_SCP_Local_OAuth_Store::MAX_CLIENT_ID_BYTES ) {
+			self::$runtime_error = new WP_Error( 'mad4b_local_oauth_client_id_schema_mismatch', 'Local OAuth client-id bounds do not match the durable schema.' );
 			return;
 		}
 		if ( ! MAD4B_SCP_Local_OAuth_Store::is_ready() || (int) get_option( MAD4B_SCP_Local_OAuth_Store::OPTION, 0 ) < MAD4B_SCP_Local_OAuth_Store::VERSION ) {
@@ -64,8 +77,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$key_ready = ! is_wp_error( $key );
 		$store_ready = class_exists( 'MAD4B_SCP_Local_OAuth_Store' ) && MAD4B_SCP_Local_OAuth_Store::is_ready();
 		$clients = self::clients();
+		$issuer_validation = self::configured_issuer_validation();
+		$issuer_valid = ! is_wp_error( $issuer_validation );
 		$https = 'https' === strtolower( (string) wp_parse_url( self::issuer(), PHP_URL_SCHEME ) );
-		$effective = self::enabled() && self::environment_allowed() && $https && $store_ready && $key_ready && ! empty( $clients ) && ! is_wp_error( self::$runtime_error );
+		$effective = self::enabled() && self::environment_allowed() && $https && $issuer_valid && $store_ready && $key_ready && ! empty( $clients ) && ! is_wp_error( self::$runtime_error );
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => self::enabled(),
@@ -73,6 +88,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
 			'production_approved' => self::production_approved(),
 			'issuer' => self::issuer(),
+			'issuer_same_origin_required' => true,
+			'issuer_configuration_valid' => $issuer_valid,
 			'authorization_endpoint' => self::authorize_url(),
 			'token_endpoint' => self::token_url(),
 			'jwks_uri' => self::jwks_url(),
@@ -83,15 +100,18 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'client_id_metadata_document_supported' => false,
 			'dynamic_client_registration_supported' => false,
 			'client_count' => count( $clients ),
+			'max_client_id_bytes' => self::MAX_CLIENT_ID_BYTES,
+			'max_uri_bytes' => self::MAX_URI_BYTES,
 			'pkce_methods_supported' => array( 'S256' ),
 			'authorization_response_iss_parameter_supported' => true,
 			'access_token_signing_alg' => 'RS256',
+			'consent_clickjacking_protected' => true,
 			'private_key_present' => $key_ready,
 			'private_key_exposed' => false,
 			'private_key_stored_in_database' => false,
 			'key_id' => $key_ready && isset( $key['kid'] ) ? $key['kid'] : '',
 			'oauth_store_ready' => $store_ready,
-			'runtime_error' => is_wp_error( self::$runtime_error ) ? self::$runtime_error->get_error_code() : '',
+			'runtime_error' => is_wp_error( self::$runtime_error ) ? self::$runtime_error->get_error_code() : ( is_wp_error( $issuer_validation ) ? $issuer_validation->get_error_code() : '' ),
 		);
 	}
 
@@ -119,10 +139,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	public static function issuer() {
-		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) {
-			$configured = rtrim( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ), '/' );
-			if ( self::valid_https_url( $configured ) ) return $configured;
-		}
+		$validated = self::configured_issuer_validation();
+		if ( is_string( $validated ) && '' !== $validated ) return $validated;
 		return self::origin() . self::ISSUER_PATH;
 	}
 
@@ -143,7 +161,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	public static function intercept_local_discovery( $preempt, $args, $url ) {
-		if ( ! self::enabled() ) return $preempt;
+		if ( ! self::enabled() || ! self::effective_for_protocol() ) return $preempt;
 		$url = untrailingslashit( (string) $url );
 		if ( hash_equals( untrailingslashit( self::metadata_url() ), $url ) ) return self::http_json_response( self::metadata() );
 		if ( hash_equals( untrailingslashit( self::jwks_url() ), $url ) ) {
@@ -161,6 +179,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! is_string( $path ) ) return;
 		$path = rtrim( '/' . ltrim( $path, '/' ), '/' );
 		$metadata_path = (string) wp_parse_url( self::metadata_url(), PHP_URL_PATH );
+		$known = in_array( $path, array( rtrim( $metadata_path, '/' ), self::JWKS_PATH, self::AUTHORIZE_PATH, self::TOKEN_PATH, self::REVOCATION_PATH ), true );
+		if ( $known && ! self::effective_for_protocol() ) self::send_oauth_error( 'temporarily_unavailable', 'Local OAuth authority is not effective.', 503 );
 		if ( rtrim( $metadata_path, '/' ) === $path ) self::send_json( self::metadata(), 200 );
 		if ( self::JWKS_PATH === $path ) {
 			$jwks = self::jwks_document();
@@ -189,9 +209,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! self::user_authorized( $user_id ) ) self::redirect_authorization_error( $validated, 'access_denied' );
 		if ( 'POST' !== $method ) self::render_consent( $validated, $user_id );
 
-		$nonce = isset( $params['_mad4b_oauth_nonce'] ) ? (string) $params['_mad4b_oauth_nonce'] : '';
-		if ( ! wp_verify_nonce( $nonce, 'mad4b_local_oauth_consent' ) ) self::send_oauth_error( 'invalid_request', 'Consent request expired.', 400 );
-		$decision = isset( $params['decision'] ) ? sanitize_key( (string) $params['decision'] ) : 'deny';
+		$nonce = self::request_param( $params, '_mad4b_oauth_nonce', 256 );
+		if ( is_wp_error( $nonce ) || ! wp_verify_nonce( $nonce, 'mad4b_local_oauth_consent' ) ) self::send_oauth_error( 'invalid_request', 'Consent request expired.', 400 );
+		$decision = self::request_param( $params, 'decision', 32 );
+		$decision = is_wp_error( $decision ) ? 'deny' : sanitize_key( $decision );
 		if ( 'approve' !== $decision ) self::redirect_authorization_error( $validated, 'access_denied' );
 
 		$code = self::random_token( 32 );
@@ -225,22 +246,32 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function validate_authorization_request( array $params ) {
-		$client_id = isset( $params['client_id'] ) ? trim( (string) $params['client_id'] ) : '';
+		$client_id = self::request_param( $params, 'client_id', self::MAX_CLIENT_ID_BYTES );
+		if ( is_wp_error( $client_id ) ) return $client_id;
 		$client = self::client( $client_id );
 		if ( ! is_array( $client ) ) return new WP_Error( 'invalid_client', 'OAuth client is not pre-registered.' );
-		$redirect_uri = isset( $params['redirect_uri'] ) ? trim( (string) $params['redirect_uri'] ) : '';
+		$redirect_uri = self::request_param( $params, 'redirect_uri', self::MAX_URI_BYTES );
+		if ( is_wp_error( $redirect_uri ) ) return $redirect_uri;
 		if ( ! self::redirect_uri_allowed( $client, $redirect_uri ) ) return new WP_Error( 'invalid_redirect_uri', 'OAuth redirect URI is not registered for this client.' );
-		$response_type = isset( $params['response_type'] ) ? trim( (string) $params['response_type'] ) : '';
+		$response_type = self::request_param( $params, 'response_type', 32 );
+		if ( is_wp_error( $response_type ) ) return $response_type;
 		if ( 'code' !== $response_type ) return new WP_Error( 'unsupported_response_type', 'Only authorization code response type is supported.' );
-		$resource = isset( $params['resource'] ) ? untrailingslashit( trim( (string) $params['resource'] ) ) : '';
+		$resource = self::request_param( $params, 'resource', self::MAX_URI_BYTES );
+		if ( is_wp_error( $resource ) ) return $resource;
+		$resource = untrailingslashit( $resource );
 		if ( ! hash_equals( self::resource_identifier(), $resource ) ) return new WP_Error( 'invalid_target', 'OAuth resource must exactly match the MCP protected resource.' );
-		$challenge = isset( $params['code_challenge'] ) ? trim( (string) $params['code_challenge'] ) : '';
-		$method = isset( $params['code_challenge_method'] ) ? strtoupper( trim( (string) $params['code_challenge_method'] ) ) : '';
+		$challenge = self::request_param( $params, 'code_challenge', 128 );
+		if ( is_wp_error( $challenge ) ) return $challenge;
+		$method = self::request_param( $params, 'code_challenge_method', 16 );
+		if ( is_wp_error( $method ) ) return $method;
+		$method = strtoupper( $method );
 		if ( 'S256' !== $method || ! preg_match( '/^[A-Za-z0-9_-]{43,128}$/', $challenge ) ) return new WP_Error( 'invalid_request', 'PKCE S256 code challenge is required.' );
-		$scopes = self::normalize_scopes( isset( $params['scope'] ) ? (string) $params['scope'] : 'mad4b:read' );
+		$scope = self::request_param( $params, 'scope', self::MAX_SCOPE_BYTES );
+		if ( is_wp_error( $scope ) ) return $scope;
+		$scopes = self::normalize_scopes( '' !== $scope ? $scope : 'mad4b:read' );
 		if ( is_wp_error( $scopes ) ) return $scopes;
-		$state = isset( $params['state'] ) ? (string) $params['state'] : '';
-		if ( strlen( $state ) > 1024 ) return new WP_Error( 'invalid_request', 'OAuth state is too large.' );
+		$state = self::request_param( $params, 'state', self::MAX_STATE_BYTES, false );
+		if ( is_wp_error( $state ) ) return $state;
 		return array(
 			'client_id' => $client_id,
 			'client' => $client,
@@ -253,13 +284,14 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function authorization_request_error( WP_Error $error, array $params ) {
-		$client_id = isset( $params['client_id'] ) ? trim( (string) $params['client_id'] ) : '';
-		$redirect_uri = isset( $params['redirect_uri'] ) ? trim( (string) $params['redirect_uri'] ) : '';
-		$client = self::client( $client_id );
-		if ( is_array( $client ) && self::redirect_uri_allowed( $client, $redirect_uri ) ) {
+		$client_id = self::request_param( $params, 'client_id', self::MAX_CLIENT_ID_BYTES );
+		$redirect_uri = self::request_param( $params, 'redirect_uri', self::MAX_URI_BYTES );
+		$client = is_wp_error( $client_id ) ? null : self::client( $client_id );
+		if ( is_array( $client ) && ! is_wp_error( $redirect_uri ) && self::redirect_uri_allowed( $client, $redirect_uri ) ) {
+			$state = self::request_param( $params, 'state', self::MAX_STATE_BYTES, false );
 			$validated = array(
 				'redirect_uri' => $redirect_uri,
-				'state' => isset( $params['state'] ) && strlen( (string) $params['state'] ) <= 1024 ? (string) $params['state'] : '',
+				'state' => is_wp_error( $state ) ? '' : $state,
 			);
 			self::redirect_authorization_error( $validated, $error->get_error_code() );
 		}
@@ -286,6 +318,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		nocache_headers();
 		status_header( 200 );
 		header( 'Content-Type: text/html; charset=utf-8' );
+		header( 'X-Frame-Options: DENY' );
+		header( "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" );
+		header( 'Referrer-Policy: no-referrer' );
+		header( 'X-Content-Type-Options: nosniff' );
 		$hidden = array(
 			'client_id' => $validated['client_id'],
 			'redirect_uri' => $validated['redirect_uri'],
@@ -316,18 +352,22 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET';
 		if ( 'POST' !== $method ) self::send_oauth_error( 'invalid_request', 'Token endpoint requires POST.', 405 );
 		$params = wp_unslash( $_POST );
-		$grant_type = isset( $params['grant_type'] ) ? trim( (string) $params['grant_type'] ) : '';
+		$params = is_array( $params ) ? $params : array();
+		$grant_type = self::request_param( $params, 'grant_type', 64 );
+		if ( is_wp_error( $grant_type ) ) self::send_oauth_error( 'invalid_request', $grant_type->get_error_message(), 400 );
 		if ( 'authorization_code' === $grant_type ) self::exchange_authorization_code( $params );
 		if ( 'refresh_token' === $grant_type ) self::exchange_refresh_token( $params );
 		self::send_oauth_error( 'unsupported_grant_type', 'Unsupported OAuth grant type.', 400 );
 	}
 
 	private static function exchange_authorization_code( array $params ) {
-		$code = isset( $params['code'] ) ? trim( (string) $params['code'] ) : '';
-		$client_id = isset( $params['client_id'] ) ? trim( (string) $params['client_id'] ) : '';
-		$redirect_uri = isset( $params['redirect_uri'] ) ? trim( (string) $params['redirect_uri'] ) : '';
-		$resource = isset( $params['resource'] ) ? untrailingslashit( trim( (string) $params['resource'] ) ) : '';
-		$verifier = isset( $params['code_verifier'] ) ? trim( (string) $params['code_verifier'] ) : '';
+		$code = self::request_param( $params, 'code', self::MAX_TOKEN_INPUT_BYTES );
+		$client_id = self::request_param( $params, 'client_id', self::MAX_CLIENT_ID_BYTES );
+		$redirect_uri = self::request_param( $params, 'redirect_uri', self::MAX_URI_BYTES );
+		$resource = self::request_param( $params, 'resource', self::MAX_URI_BYTES );
+		$verifier = self::request_param( $params, 'code_verifier', 128 );
+		foreach ( array( $code, $client_id, $redirect_uri, $resource, $verifier ) as $value ) if ( is_wp_error( $value ) ) self::send_oauth_error( 'invalid_request', $value->get_error_message(), 400 );
+		$resource = untrailingslashit( $resource );
 		if ( '' === $code || '' === $client_id || '' === $redirect_uri || '' === $verifier ) self::send_oauth_error( 'invalid_request', 'Authorization-code exchange is incomplete.', 400 );
 		if ( ! preg_match( '/^[A-Za-z0-9\-._~]{43,128}$/', $verifier ) ) self::send_oauth_error( 'invalid_grant', 'PKCE verifier is invalid.', 400 );
 		$row = MAD4B_SCP_Local_OAuth_Store::get_code( hash( 'sha256', $code ) );
@@ -344,9 +384,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function exchange_refresh_token( array $params ) {
-		$token = isset( $params['refresh_token'] ) ? trim( (string) $params['refresh_token'] ) : '';
-		$client_id = isset( $params['client_id'] ) ? trim( (string) $params['client_id'] ) : '';
-		$resource = isset( $params['resource'] ) ? untrailingslashit( trim( (string) $params['resource'] ) ) : '';
+		$token = self::request_param( $params, 'refresh_token', self::MAX_TOKEN_INPUT_BYTES );
+		$client_id = self::request_param( $params, 'client_id', self::MAX_CLIENT_ID_BYTES );
+		$resource = self::request_param( $params, 'resource', self::MAX_URI_BYTES );
+		foreach ( array( $token, $client_id, $resource ) as $value ) if ( is_wp_error( $value ) ) self::send_oauth_error( 'invalid_request', $value->get_error_message(), 400 );
+		$resource = untrailingslashit( $resource );
 		if ( '' === $token || '' === $client_id || '' === $resource ) self::send_oauth_error( 'invalid_request', 'Refresh-token exchange is incomplete.', 400 );
 		$row = MAD4B_SCP_Local_OAuth_Store::get_refresh_token( hash( 'sha256', $token ) );
 		if ( ! is_array( $row ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token is invalid.', 400 );
@@ -428,8 +470,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET';
 		if ( 'POST' !== $method ) self::send_oauth_error( 'invalid_request', 'Revocation endpoint requires POST.', 405 );
 		$params = wp_unslash( $_POST );
-		$token = isset( $params['token'] ) ? trim( (string) $params['token'] ) : '';
-		$client_id = isset( $params['client_id'] ) ? trim( (string) $params['client_id'] ) : '';
+		$params = is_array( $params ) ? $params : array();
+		$token = self::request_param( $params, 'token', self::MAX_TOKEN_INPUT_BYTES );
+		$client_id = self::request_param( $params, 'client_id', self::MAX_CLIENT_ID_BYTES );
+		if ( is_wp_error( $token ) || is_wp_error( $client_id ) ) self::send_oauth_error( 'invalid_request', 'Revocation request contains an invalid parameter.', 400 );
 		if ( '' !== $token ) {
 			$row = MAD4B_SCP_Local_OAuth_Store::get_refresh_token( hash( 'sha256', $token ) );
 			if ( is_array( $row ) && '' !== $client_id && hash_equals( (string) $row['client_id'], $client_id ) ) MAD4B_SCP_Local_OAuth_Store::revoke_family( (string) $row['family_id'], gmdate( 'Y-m-d H:i:s' ) );
@@ -438,6 +482,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function mint_access_token( $client_id, $wp_user_id, $resource, array $scopes ) {
+		if ( ! is_string( $client_id ) || '' === $client_id || strlen( $client_id ) > self::MAX_CLIENT_ID_BYTES ) return new WP_Error( 'mad4b_local_oauth_client_id_invalid', 'OAuth client identifier exceeds the durable schema bound.' );
 		$key = self::public_jwk();
 		if ( is_wp_error( $key ) ) return $key;
 		$now = time();
@@ -491,13 +536,15 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! is_array( $value ) ) return array();
 		$clients = array();
 		foreach ( array_slice( $value, 0, self::MAX_CLIENTS, true ) as $client_id => $config ) {
-			if ( ! is_string( $client_id ) || '' === trim( $client_id ) || strlen( $client_id ) > 512 || ! is_array( $config ) ) continue;
+			$client_id = is_string( $client_id ) ? trim( $client_id ) : '';
+			if ( '' === $client_id || strlen( $client_id ) > self::MAX_CLIENT_ID_BYTES || ! is_array( $config ) ) continue;
 			$redirects = isset( $config['redirect_uris'] ) && is_array( $config['redirect_uris'] ) ? array_slice( $config['redirect_uris'], 0, self::MAX_REDIRECTS_PER_CLIENT ) : array();
 			$bounded = array();
-			foreach ( $redirects as $redirect ) if ( is_string( $redirect ) && self::valid_redirect_uri( $redirect ) ) $bounded[] = trim( $redirect );
+			foreach ( $redirects as $redirect ) if ( is_string( $redirect ) && strlen( trim( $redirect ) ) <= self::MAX_URI_BYTES && self::valid_redirect_uri( $redirect ) ) $bounded[] = trim( $redirect );
 			if ( empty( $bounded ) ) continue;
-			$clients[ trim( $client_id ) ] = array(
-				'client_name' => isset( $config['client_name'] ) ? sanitize_text_field( (string) $config['client_name'] ) : trim( $client_id ),
+			$client_name = isset( $config['client_name'] ) ? sanitize_text_field( (string) $config['client_name'] ) : $client_id;
+			$clients[ $client_id ] = array(
+				'client_name' => substr( $client_name, 0, 191 ),
 				'redirect_uris' => array_values( array_unique( $bounded ) ),
 				'application_type' => isset( $config['application_type'] ) && 'native' === sanitize_key( (string) $config['application_type'] ) ? 'native' : 'web',
 			);
@@ -506,18 +553,21 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function client( $client_id ) {
+		if ( ! is_string( $client_id ) || '' === $client_id || strlen( $client_id ) > self::MAX_CLIENT_ID_BYTES ) return null;
 		$clients = self::clients();
 		return isset( $clients[ $client_id ] ) ? $clients[ $client_id ] : null;
 	}
 
 	private static function redirect_uri_allowed( array $client, $redirect_uri ) {
-		if ( ! is_string( $redirect_uri ) || '' === $redirect_uri ) return false;
+		if ( ! is_string( $redirect_uri ) || '' === $redirect_uri || strlen( $redirect_uri ) > self::MAX_URI_BYTES ) return false;
 		foreach ( isset( $client['redirect_uris'] ) && is_array( $client['redirect_uris'] ) ? $client['redirect_uris'] : array() as $allowed ) if ( is_string( $allowed ) && hash_equals( $allowed, $redirect_uri ) ) return true;
 		return false;
 	}
 
 	private static function valid_redirect_uri( $uri ) {
-		$parts = wp_parse_url( trim( (string) $uri ) );
+		$uri = trim( (string) $uri );
+		if ( '' === $uri || strlen( $uri ) > self::MAX_URI_BYTES ) return false;
+		$parts = wp_parse_url( $uri );
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || ! empty( $parts['fragment'] ) ) return false;
 		$scheme = strtolower( (string) $parts['scheme'] );
 		$host = strtolower( (string) $parts['host'] );
@@ -620,9 +670,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( false === $key ) return new WP_Error( 'mad4b_local_oauth_private_key_invalid', 'Local OAuth private key is invalid.' );
 		$details = openssl_pkey_get_details( $key );
 		if ( ! is_array( $details ) || empty( $details['key'] ) || empty( $details['rsa']['n'] ) || empty( $details['rsa']['e'] ) ) return new WP_Error( 'mad4b_local_oauth_public_key_unavailable', 'Unable to derive local OAuth public key.' );
+		if ( empty( $details['bits'] ) || (int) $details['bits'] < 2048 ) return new WP_Error( 'mad4b_local_oauth_rsa_key_too_small', 'Local OAuth RSA signing key must be at least 2048 bits.' );
 		return array(
 			'kty' => 'RSA',
 			'use' => 'sig',
+			'key_ops' => array( 'verify' ),
 			'alg' => 'RS256',
 			'kid' => substr( hash( 'sha256', (string) $details['key'] ), 0, 32 ),
 			'n' => self::base64url_encode( $details['rsa']['n'] ),
@@ -632,6 +684,27 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 	private static function absolute_path( $path ) {
 		return 1 === preg_match( '#^(?:[A-Za-z]:[\\\\/]|/)#', (string) $path );
+	}
+
+	private static function configured_issuer_validation() {
+		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::origin() . self::ISSUER_PATH;
+		$configured = rtrim( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ), '/' );
+		if ( strlen( $configured ) > self::MAX_URI_BYTES || ! self::valid_https_url( $configured ) ) return new WP_Error( 'mad4b_local_oauth_issuer_invalid', 'Configured local OAuth issuer must be a bounded HTTPS URL without credentials, query or fragment.' );
+		if ( ! self::same_origin( $configured, self::origin() ) ) return new WP_Error( 'mad4b_local_oauth_issuer_cross_origin', 'Configured local OAuth issuer must use the same origin as this WordPress site.' );
+		return $configured;
+	}
+
+	private static function same_origin( $url, $origin ) {
+		$a = wp_parse_url( (string) $url );
+		$b = wp_parse_url( (string) $origin );
+		if ( ! is_array( $a ) || ! is_array( $b ) ) return false;
+		$scheme_a = strtolower( (string) ( isset( $a['scheme'] ) ? $a['scheme'] : '' ) );
+		$scheme_b = strtolower( (string) ( isset( $b['scheme'] ) ? $b['scheme'] : '' ) );
+		$host_a = strtolower( (string) ( isset( $a['host'] ) ? $a['host'] : '' ) );
+		$host_b = strtolower( (string) ( isset( $b['host'] ) ? $b['host'] : '' ) );
+		$port_a = isset( $a['port'] ) ? (int) $a['port'] : ( 'https' === $scheme_a ? 443 : 80 );
+		$port_b = isset( $b['port'] ) ? (int) $b['port'] : ( 'https' === $scheme_b ? 443 : 80 );
+		return '' !== $host_a && $scheme_a === $scheme_b && $host_a === $host_b && $port_a === $port_b;
 	}
 
 	private static function valid_https_url( $url ) {
@@ -647,8 +720,20 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		return $origin;
 	}
 
+	private static function request_param( array $params, $name, $max_bytes, $trim = true ) {
+		if ( ! array_key_exists( $name, $params ) ) return '';
+		$value = $params[ $name ];
+		if ( ! is_scalar( $value ) && null !== $value ) return new WP_Error( 'invalid_request', 'OAuth parameter must be scalar: ' . sanitize_key( (string) $name ) );
+		$value = (string) $value;
+		if ( $trim ) $value = trim( $value );
+		if ( strlen( $value ) > (int) $max_bytes ) return new WP_Error( 'invalid_request', 'OAuth parameter exceeds its size limit: ' . sanitize_key( (string) $name ) );
+		return $value;
+	}
+
 	private static function trusted_client_redirect( $location ) {
 		nocache_headers();
+		header( 'Referrer-Policy: no-referrer' );
+		header( 'X-Content-Type-Options: nosniff' );
 		wp_redirect( esc_url_raw( $location ), 302, 'MAD4B Local OAuth' ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- destination was exact-matched against pre-registered redirect URIs.
 		exit;
 	}
@@ -658,6 +743,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		status_header( (int) $status );
 		header( 'Content-Type: application/json; charset=utf-8' );
 		header( 'Cache-Control: no-store' );
+		header( 'Referrer-Policy: no-referrer' );
+		header( 'X-Content-Type-Options: nosniff' );
 		echo wp_json_encode( $payload );
 		exit;
 	}
@@ -674,7 +761,12 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 	private static function http_json_response( array $payload ) {
 		return array(
-			'headers' => array( 'content-type' => 'application/json; charset=utf-8', 'cache-control' => 'no-store' ),
+			'headers' => array(
+				'content-type' => 'application/json; charset=utf-8',
+				'cache-control' => 'no-store',
+				'referrer-policy' => 'no-referrer',
+				'x-content-type-options' => 'nosniff',
+			),
 			'body' => wp_json_encode( $payload ),
 			'response' => array( 'code' => 200, 'message' => 'OK' ),
 			'cookies' => array(),
