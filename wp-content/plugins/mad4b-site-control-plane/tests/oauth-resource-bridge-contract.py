@@ -7,6 +7,7 @@ alignment = (root / 'includes' / 'class-mad4b-scp-oauth-challenge-alignment.php'
 overrides = (root / 'includes' / 'class-mad4b-scp-governed-ability-overrides.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+runtime_context = (root / 'tests' / 'runtime-oauth-context-cooldown-smoke.php').read_text(encoding='utf-8')
 
 required = [
     "mad4b.oauth-resource-bridge.v3",
@@ -16,6 +17,10 @@ required = [
     "MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER",
     "subject_allowed",
     "verified_bearer_active",
+    "reset_verified_bearer_context",
+    "self::reset_verified_bearer_context( true )",
+    "self::reset_verified_bearer_context( false )",
+    "bearer_request_resets_identity_before_verification",
     "mad4b_oauth_issuer_untrusted",
     "mad4b_oauth_resource_mismatch",
     "mad4b_oauth_subject_not_approved",
@@ -24,6 +29,11 @@ required = [
     "mad4b_oauth_jwk_use_invalid",
     "mad4b_oauth_jwk_key_ops_invalid",
     "mad4b_oauth_jwk_kid_ambiguous",
+    "JWKS_REFRESH_COOLDOWN = 30",
+    "claim_jwks_refresh_slot",
+    "jwks_refresh_cooldown_seconds",
+    "jwks_cache_bound_to_issuer",
+    "$issuer . \"\\0\" . (string) $jwks_uri",
     "delete_transient( $key )",
     "'redirection' => 0",
     "MAX_DISCOVERY_BYTES",
@@ -72,6 +82,16 @@ for marker in alignment_required:
     if marker not in alignment:
         raise SystemExit(f"missing OAuth challenge alignment marker: {marker}")
 
+for marker in [
+    'runtime-oauth-context-cooldown.v1',
+    'claim_jwks_refresh_slot',
+    'Second unknown-kid refresh attempt must be suppressed during cooldown.',
+    'Bearer verification failure retained stale WordPress service-user identity.',
+    'No-bearer local session retained stale OAuth overlay.',
+]:
+    if marker not in runtime_context:
+        raise SystemExit(f"missing OAuth cooldown/context runtime proof: {marker}")
+
 for forbidden in [
     "file_put_contents(",
     "error_log( $token",
@@ -95,4 +115,4 @@ if "MAD4B_SCP_OAuth_Resource_Bridge::boot()" not in plugin:
 if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
-print('mad4b.site-control-plane.oauth-resource-bridge.v3: PASS')
+print('mad4b.site-control-plane.oauth-resource-bridge.v4: PASS')
