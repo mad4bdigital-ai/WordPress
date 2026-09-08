@@ -1,4 +1,4 @@
-.etg-dfsb-dynamic-background {
+:where(.etg-dfsb-dynamic-background) {
     position: relative;
     isolation: isolate;
 }
@@ -6,7 +6,7 @@
 .etg-dfsb-dynamic-background > .etg-dfsb-background-stage {
     position: absolute;
     inset: 0;
-    z-index: 0;
+    z-index: -1;
     overflow: hidden;
     contain: paint;
     pointer-events: none;
@@ -62,18 +62,11 @@
     opacity: var(--etg-dfsb-background-overlay-opacity, 0);
 }
 
-/* ETG owns only the background layer. Existing Elementor/third-party overlays stay above it. */
-.etg-dfsb-dynamic-background::before,
-.etg-dfsb-dynamic-background > .elementor-background-overlay,
-.etg-dfsb-dynamic-background > .elementor-motion-effects-container,
-.etg-dfsb-dynamic-background > .elementor-background-video-container,
-.etg-dfsb-dynamic-background > .elementor-background-slideshow {
-    z-index: 1;
-}
-
-.etg-dfsb-dynamic-background > :not(.etg-dfsb-background-stage):not(.elementor-background-overlay):not(.elementor-motion-effects-container):not(.elementor-background-video-container):not(.elementor-background-slideshow) {
-    z-index: 3;
-}
+/*
+ * ETG owns only its isolated negative background stage. Elementor, UAE, Jet
+ * shape dividers, particles, overlays, sticky/motion layers and widgets retain
+ * their native stacking order.
+ */
 
 @keyframes etg-dfsb-background-ken-burns {
     from { transform: scale(1.001); }

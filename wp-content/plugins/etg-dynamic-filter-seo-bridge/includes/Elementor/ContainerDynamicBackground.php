@@ -3,6 +3,7 @@ namespace ETG\DynamicFilterSEOBridge\Elementor;
 
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\DynamicTagRuntime;
 use ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry;
+use ETG\DynamicFilterSEOBridge\Presentation\MediaAssetValidator;
 use ETG\DynamicFilterSEOBridge\Presentation\PresentationResolver;
 
 final class ContainerDynamicBackground {
@@ -305,11 +306,31 @@ final class ContainerDynamicBackground {
 
     private function normalizeImage($value): array {
         $id = 0;$url = '';
-        if (is_array($value)) { $id = isset($value['id']) && is_numeric($value['id']) ? max(0, (int)$value['id']) : 0;$url = isset($value['url']) && is_scalar($value['url']) ? trim((string)$value['url']) : ''; }
-        elseif (is_numeric($value)) { $id = max(0, (int)$value); }
-        elseif (is_string($value)) { $url = trim($value); }
-        if ('' === $url && $id > 0 && function_exists('wp_get_attachment_image_url')) { $candidate = wp_get_attachment_image_url($id, 'full');$url = is_string($candidate) ? $candidate : ''; }
-        if ('' !== $url && function_exists('esc_url_raw')) { $url = esc_url_raw($url); }
+        if (is_array($value)) {
+            $id = isset($value['id']) && is_numeric($value['id']) ? max(0, (int)$value['id']) : 0;
+            $url = isset($value['url']) && is_scalar($value['url']) ? trim((string)$value['url']) : '';
+        } elseif (is_numeric($value)) {
+            $id = max(0, (int)$value);
+        } elseif (is_string($value)) {
+            $url = trim($value);
+        }
+
+        // An Elementor Media/Gallery control can preserve a stale URL even when its
+        // attachment row points at a missing physical file. Attachment identity is
+        // therefore authoritative whenever an ID is present: the same shared media
+        // health contract used by Term discovery must approve it before rendering.
+        if ($id > 0) {
+            $health = MediaAssetValidator::inspect($id);
+            if (empty($health['valid'])) { return array('id' => 0, 'url' => ''); }
+            $url = isset($health['url']) && is_scalar($health['url']) ? trim((string)$health['url']) : '';
+            if ('' === $url && function_exists('wp_get_attachment_image_url')) {
+                $candidate = wp_get_attachment_image_url($id, 'full');
+                $url = is_string($candidate) ? trim($candidate) : '';
+            }
+        }
+
+        if ('' !== $url && function_exists('esc_url_raw')) { $url = (string)esc_url_raw($url); }
+        if ('' === $url) { return array('id' => 0, 'url' => ''); }
         return array('id' => $id, 'url' => $url);
     }
 

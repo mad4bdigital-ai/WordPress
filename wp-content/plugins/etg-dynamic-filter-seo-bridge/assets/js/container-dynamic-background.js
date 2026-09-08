@@ -4,6 +4,7 @@
     var selector = '.etg-dfsb-dynamic-background';
     var states = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var resizeTimer = null;
+    var viewportObserver = null;
 
     function intValue(value, fallback, min, max) {
         value = Number(value);
@@ -94,7 +95,7 @@
         var state = states && states.get(el);
         if (state && state.stage && state.stage.parentNode === el) { return state; }
         if (!state) {
-            state = { element: el, stage: null, overlay: null, slides: [], sourceItems: [], items: [], index: 0, timer: null, paused: false, hoverBound: false };
+            state = { element: el, stage: null, overlay: null, slides: [], sourceItems: [], items: [], index: 0, timer: null, paused: false, hoverBound: false, observed: false, inViewport: true };
             if (states) { states.set(el, state); }
         } else {
             clearTimer(state);
@@ -112,6 +113,7 @@
         if (el.firstChild) { el.insertBefore(stage, el.firstChild); } else { el.appendChild(stage); }
         state.stage = stage;
         state.overlay = overlay;
+        if (viewportObserver && !state.observed) { viewportObserver.observe(el); state.observed = true; }
 
         if (!state.hoverBound) {
             el.addEventListener('mouseenter', function () {
@@ -136,6 +138,10 @@
         if (typeof el.isConnected === 'boolean') { return el.isConnected; }
         if (document.documentElement && typeof document.documentElement.contains === 'function') { return document.documentElement.contains(el); }
         return true;
+    }
+
+    function pageVisible() {
+        return typeof document.hidden === 'boolean' ? !document.hidden : true;
     }
 
     function configure(state) {
@@ -166,17 +172,28 @@
         items.forEach(function (item) {
             var slide = document.createElement('div');
             slide.className = 'etg-dfsb-background-stage__slide';
-            slide.style.backgroundImage = safeBackgroundUrl(item.url);
             slide.setAttribute('data-etg-dfsb-attachment-id', String(item.id || 0));
+            slide.setAttribute('data-etg-dfsb-hydrated', '0');
             stage.insertBefore(slide, state.overlay);
             state.slides.push(slide);
         });
+    }
+
+    function hydrateSlide(state, index) {
+        if (!state || !state.slides.length || !state.items.length) { return; }
+        index = ((index % state.slides.length) + state.slides.length) % state.slides.length;
+        var slide = state.slides[index], item = state.items[index];
+        if (!slide || !item || slide.getAttribute('data-etg-dfsb-hydrated') === '1') { return; }
+        slide.style.backgroundImage = safeBackgroundUrl(item.url);
+        slide.setAttribute('data-etg-dfsb-hydrated', '1');
     }
 
     function activate(state, index, immediate) {
         if (!state.slides.length) { return; }
         index = ((index % state.slides.length) + state.slides.length) % state.slides.length;
         if (immediate) { state.stage.style.setProperty('--etg-dfsb-background-transition-duration', '0ms'); }
+        hydrateSlide(state, index);
+        if (state.slides.length > 1 && autoplayEnabled(state)) { hydrateSlide(state, index + 1); }
         state.slides.forEach(function (slide, i) { slide.classList.toggle('is-active', i === index); });
         state.index = index;
         if (immediate) {
@@ -202,11 +219,11 @@
 
     function schedule(state) {
         clearTimer(state);
-        if (!state || !elementConnected(state.element) || state.paused || !autoplayEnabled(state) || state.slides.length < 2) { return; }
+        if (!state || !elementConnected(state.element) || !pageVisible() || state.inViewport === false || state.paused || !autoplayEnabled(state) || state.slides.length < 2) { return; }
         var duration = intValue(state.element.getAttribute('data-etg-dfsb-background-duration'), 5000, 1000, 30000);
         state.timer = window.setTimeout(function () {
             state.timer = null;
-            if (!elementConnected(state.element)) { return; }
+            if (!elementConnected(state.element) || !pageVisible() || state.inViewport === false) { return; }
             activate(state, state.index + 1, false);
             schedule(state);
         }, duration);
@@ -272,6 +289,26 @@
                 render(el, items, { index: index });
             });
         }, 100);
+    });
+
+    if (typeof IntersectionObserver !== 'undefined') {
+        viewportObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                var el = entry && entry.target;
+                var state = el && states ? states.get(el) : null;
+                if (!state) { return; }
+                state.inViewport = !!(entry.isIntersecting || Number(entry.intersectionRatio) > 0);
+                if (!state.inViewport) { clearTimer(state); } else { schedule(state); }
+            });
+        }, { rootMargin: '200px 0px' });
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        Array.prototype.forEach.call(document.querySelectorAll(selector), function (el) {
+            var state = states && states.get(el);
+            if (!state) { return; }
+            if (!pageVisible()) { clearTimer(state); } else { schedule(state); }
+        });
     });
 
     if (window.matchMedia) {
