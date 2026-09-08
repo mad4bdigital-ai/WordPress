@@ -17,6 +17,9 @@ def forbid(text, needle, label):
 status = read('includes/class-mad4b-scp-connection-status.php')
 ability = read('includes/class-mad4b-scp-connection-ability.php')
 ui = read('includes/class-mad4b-scp-connection-admin-ui.php')
+admin_ui = read('includes/class-mad4b-scp-admin-ui.php')
+adapter_ui = read('includes/class-mad4b-scp-adapter-coverage-admin-ui.php')
+admin_experience = read('includes/class-mad4b-scp-admin-experience.php')
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 isolation = read('includes/class-mad4b-scp-mcp-provider-isolation.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
@@ -48,7 +51,7 @@ if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.ind
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_remote_request(', 'curl_exec(', 'fsockopen('):
     forbid(status + '\n' + ui, outbound, 'no-self-probe-ssrf')
 for write in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'update_option(', 'add_option(', 'delete_option('):
-    forbid(ui, write, 'connection-ui-read-only')
+    forbid(ui + '\n' + adapter_ui + '\n' + admin_experience, write, 'admin-experience-read-only')
 for secret_key in ("'client_secret'", "'access_token'", "'refresh_token'", "'authorization_header'", "'raw_token'", "'password_hash'"):
     forbid(ui + '\n' + status, secret_key, 'connection-no-secret-material')
 
@@ -86,19 +89,44 @@ if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > auth
 
 require(ui, 'add_submenu_page(', 'connection-admin-submenu')
 require(ui, "'manage_options'", 'connection-admin-capability')
-require(ui, 'Read-only transport evidence.', 'connection-admin-disclosure')
 for marker in (
-    'OAuth resource server', 'Bridge configured', 'Bridge effective', 'Issuer configured',
-    'RFC 9728 metadata', 'Authorization-server metadata candidates', 'OAuth blockers',
-    'Outbound discovery on this screen',
-    'Provider MCP isolation', 'Production separately approved',
-    'Default MCP server suppressed', 'Unknown routes fail closed',
-    'Changes provider settings', 'Creates authority', 'Provider MCP routes removed',
+    "'readiness' =>", "'oauth' =>", "'endpoints' =>", "'isolation' =>", "'certification' =>",
+    'MAD4B_SCP_Admin_Experience::stages', 'MAD4B_SCP_Admin_Experience::tabs', 'MAD4B_SCP_Admin_Experience::next_step',
+    'WordPress local OAuth authority', 'External / federated OAuth resource bridge', 'MAD4B_SCP_Local_OAuth_Server::status()',
+    'OAuth & Identity', 'Isolation & Safety', 'Required evidence', 'real external OAuth browser round-trip',
+    'Bridge configured', 'Bridge effective', 'Issuer configured', 'RFC 9728 metadata',
+    'Authorization-server metadata candidates', 'OAuth blockers', 'Outbound discovery on this screen',
+    'Provider MCP isolation', 'Production separately approved', 'Default MCP server suppressed',
+    'Unknown routes fail closed', 'Changes provider settings', 'Creates authority', 'Provider MCP routes removed',
 ):
-    require(ui, marker, 'connection-ui-evidence')
+    require(ui, marker, 'connection-staged-admin-experience')
+
+for marker in (
+    "'overview' =>", "'agents' =>", "'approvals' =>", "'mutations' =>", "'audit' =>",
+    'Agents & Access', 'Approval tickets', 'Mutation / undo evidence', 'Append-only audit integrity',
+):
+    require(admin_ui, marker, 'main-governance-tabs')
+
+for marker in (
+    "'overview' =>", "'installed' =>", "'priority' =>", "'requests' =>",
+    'MAD4B_SCP_Admin_Experience::stages', 'MAD4B_SCP_Admin_Experience::tabs', 'MAD4B_SCP_Admin_Experience::next_step',
+    'Discover', 'Match adapter', 'Certify provider', 'Clear runtime blockers',
+    'Installed Plugins', 'Priority Coverage', 'Support Requests', 'How to read coverage',
+    'adapter_present_side_channel_blocked', 'Runtime blocker',
+):
+    require(adapter_ui, marker, 'adapter-staged-admin-experience')
+
+for marker in (
+    'mad4b-scp-stage-rail', 'mad4b-scp-card-grid', 'mad4b-scp-table-wrap',
+    'aria-current', 'public static function tabs', 'public static function stages',
+    'public static function cards', 'public static function next_step', 'public static function tab_url',
+):
+    require(admin_experience, marker, 'shared-admin-experience')
+
 require(bootstrap, 'class-mad4b-scp-transport-context.php', 'transport-context-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-status.php', 'connection-status-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-ability.php', 'connection-ability-bootstrap')
+require(bootstrap, 'class-mad4b-scp-admin-experience.php', 'admin-experience-bootstrap')
 require(bootstrap, 'class-mad4b-scp-connection-admin-ui.php', 'connection-ui-bootstrap')
 require(bootstrap, 'class-mad4b-scp-mcp-provider-isolation.php', 'isolation-bootstrap')
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
@@ -153,4 +181,4 @@ for bypass in (
 ):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v6: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v7: PASS')
