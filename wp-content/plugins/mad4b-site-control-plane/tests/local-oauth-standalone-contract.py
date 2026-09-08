@@ -113,7 +113,7 @@ for forbidden in ['wp_remote_get(', 'wp_safe_remote_get(', 'curl_exec(']:
         raise SystemExit(f'forbidden loopback guard network primitive: {forbidden}')
 
 required_key_policy = [
-    'mad4b.local-oauth-key-path-policy.v2',
+    'mad4b.local-oauth-key-path-policy.v3',
     'safe_default_path_for_roots',
     'validate_path_against_roots',
     'canonical_candidate_path',
@@ -124,6 +124,9 @@ required_key_policy = [
     'mad4b_local_oauth_document_root_unknown',
     "canonical_path_checks' => true",
     "symlink_ancestor_resolution' => true",
+    "operator_blocker_visible'",
+    'public static function transport_ready()',
+    "add_action( 'admin_notices', array( __CLASS__, 'admin_notice' ) )",
     "remove_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Server', 'ensure_runtime' ), 1 )",
     "add_action( 'parse_request', array( __CLASS__, 'block_unsafe_protocol' ), -20 )",
     "add_filter( 'pre_http_request', array( __CLASS__, 'block_unsafe_local_discovery' ), 0, 3 )",
@@ -169,6 +172,7 @@ for boot_marker in [
     'MAD4B_SCP_Local_OAuth_Init_Lock::boot()',
     'MAD4B_SCP_Local_OAuth_Loopback_Guard::boot()',
     'MAD4B_SCP_Local_OAuth_Server::boot()',
+    'MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready()',
 ]:
     if boot_marker not in plugin:
         raise SystemExit(f'plugin boot missing local OAuth component: {boot_marker}')
@@ -209,4 +213,4 @@ for marker in [
     if marker not in key_runtime:
         raise SystemExit(f'missing local OAuth document-root runtime proof: {marker}')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v6: PASS')
+print('mad4b.site-control-plane.local-oauth-standalone.v7: PASS')
