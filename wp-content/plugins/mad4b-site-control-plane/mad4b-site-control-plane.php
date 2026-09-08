@@ -46,6 +46,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governed-ability-overrides.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-runtime-component-adapters.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-elementor-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-jetengine-adapter.php';
@@ -65,6 +66,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
