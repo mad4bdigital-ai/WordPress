@@ -28,6 +28,7 @@
   ],
   "families": [
     {"id":"mad4b-platform","match":["mad4b-site-control-plane/","mcp-adapter/"],"adapter_id":"","strategy":"platform","risk":"high","requested_contracts":[]},
+    {"id":"etg-dfsb","match":["etg-dynamic-filter-seo-bridge/"],"adapter_id":"etg-dfsb","strategy":"registered_adapter","risk":"high","requested_contracts":["status_read","configuration_read","runtime_inventory_read","profile_read","profile_blueprint_plan_only","profile_inventory_plan_only","dynamic_content_catalog_read"],"mutation_scope":"none_read_only_non_authorizing"},
     {"id":"elementor","match":["elementor/","elementor-pro/","ultimate-elementor/","header-footer-elementor/"],"adapter_id":"elementor","strategy":"registered_adapter","risk":"high","requested_contracts":["read","provider_native_write","reversible_restore_where_certified"]},
     {"id":"jetengine","match":["jet-engine/","jet-engine-"],"adapter_id":"jetengine","strategy":"registered_adapter","risk":"high","known_parallel_mcp_namespace":"jet-engine/v1","requested_contracts":["read","exact_field_write","reversible_meta_restore","native_mcp_isolation"]},
     {"id":"jetsmartfilters","match":["jet-smart-filters/","jet-smart-filters-"],"adapter_id":"jetsmartfilters","strategy":"registered_adapter","risk":"medium","requested_contracts":["read","bounded_filter_write","reversible_restore_where_provider_safe"]},
