@@ -97,6 +97,8 @@ require(workflow, 'wordpress-staging-oauth-resource-server-contract.py', 'bridge
 require(workflow, 'runtime-wordpress-staging-oauth-resource-server-smoke.php', 'bridge-runtime-ci')
 require(workflow, "WP_ENVIRONMENT_TYPE staging", 'bridge-staging-runtime')
 require(workflow, "MAD4B_SCP_WORDPRESS_STAGING_OAUTH_ENABLED true", 'bridge-explicit-opt-in-runtime')
+require(workflow, "config set WP_HOME 'https://staging.egypttourgates.com'", 'bridge-canonical-home-runtime')
+require(workflow, "config set WP_SITEURL 'https://staging.egypttourgates.com'", 'bridge-canonical-siteurl-runtime')
 require(workflow, "--url='https://staging.egypttourgates.com'", 'bridge-exact-origin-runtime')
 
 print('mad4b.wordpress-staging-mcp-resource-server-contract.v1: PASS')
