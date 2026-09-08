@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * requests could otherwise generate different keys and let the later rename
  * replace the first key. This lock spans init priorities 0..2 around Local
  * OAuth ensure_runtime() at priority 1. Once the key exists, no lock is taken.
+ * The lock follows the same private-key boundary and is never created inside
+ * the WordPress web root; it contains no credential or signing material.
  */
 final class MAD4B_SCP_Local_OAuth_Init_Lock {
 	const CONTRACT = 'mad4b.local-oauth-init-lock.v1';
