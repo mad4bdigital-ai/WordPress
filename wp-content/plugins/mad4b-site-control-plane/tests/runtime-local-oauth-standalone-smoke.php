@@ -105,9 +105,26 @@ $refresh_row = MAD4B_SCP_Local_OAuth_Store::get_refresh_token( $refresh_hash );
 if ( ! is_array( $refresh_row ) || ! MAD4B_SCP_Local_OAuth_Store::rotate_refresh_token( (int) $refresh_row['id'], $now, $replacement_hash ) ) exit( 1 );
 if ( MAD4B_SCP_Local_OAuth_Store::rotate_refresh_token( (int) $refresh_row['id'], $now, $replacement_hash ) ) exit( 1 );
 
+// Model the dangerous interleaving explicitly: request A has rotated the old
+// token but has not inserted its replacement yet; request B detects replay and
+// poisons the family. The replacement must never become a live token afterward.
+MAD4B_SCP_Local_OAuth_Store::revoke_family( $family, $now );
+if ( ! MAD4B_SCP_Local_OAuth_Store::family_is_revoked( $family ) ) exit( 1 );
+if ( MAD4B_SCP_Local_OAuth_Store::insert_refresh_token( array(
+	'token_hash' => $replacement_hash,
+	'family_id' => $family,
+	'client_id' => 'https://client.example.test/mcp-client.json',
+	'wp_user_id' => 1,
+	'resource' => $resource,
+	'scope' => 'mad4b:read offline_access',
+	'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ),
+	'created_at' => $now,
+) ) ) exit( 1 );
+if ( is_array( MAD4B_SCP_Local_OAuth_Store::get_refresh_token( $replacement_hash ) ) ) exit( 1 );
+
 $tables = MAD4B_SCP_Local_OAuth_Store::tables();
 global $wpdb;
 $wpdb->delete( $tables['codes'], array( 'code_hash' => $code_hash ), array( '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 $wpdb->delete( $tables['refresh_tokens'], array( 'family_id' => $family ), array( '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
-echo "mad4b.site-control-plane.local-oauth-standalone.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.local-oauth-standalone.runtime.v2: PASS\n";
