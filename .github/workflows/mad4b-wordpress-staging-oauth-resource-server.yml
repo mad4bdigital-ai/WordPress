@@ -122,4 +122,5 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-wordpress-staging-oauth-resource-server-smoke.php" \
-            --path=/tmp/mad4b-wordpress-oauth
+            --path=/tmp/mad4b-wordpress-oauth \
+            --url=https://staging.egypttourgates.com
