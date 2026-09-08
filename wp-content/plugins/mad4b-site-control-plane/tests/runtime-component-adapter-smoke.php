@@ -84,6 +84,16 @@ try {
 	file_put_contents( $child_dir . '/index.php', "<?php // Astra CI child.\n" );
 	file_put_contents( $child_dir . '/functions.php', "<?php // Astra CI child functions.\n" );
 	file_put_contents( $child_dir . '/header.php', "<?php // Astra CI child header override.\n" );
+
+	// Excluded dependency/VCS trees deliberately contain enough files that a
+	// post-traversal filter would inflate the scan. The adapter must prune these
+	// directories before descent while still seeing the real child override.
+	foreach ( array( 'vendor/deep', 'node_modules/pkg', '.git/objects' ) as $excluded_dir ) {
+		$full = $child_dir . '/' . $excluded_dir;
+		wp_mkdir_p( $full );
+		for ( $i = 0; $i < 40; ++$i ) file_put_contents( $full . '/fixture-' . $i . '.php', "<?php // excluded fixture.\n" );
+	}
+
 	file_put_contents( $mu_file, "<?php\n/*\nPlugin Name: MAD4B CI Must-Use Plugin\nVersion: 9.9.9\n*/\n" );
 	file_put_contents( $dropin_file, "<?php\n/*\nPlugin Name: MAD4B CI Install Drop-in\nVersion: 9.9.9\n*/\n" );
 	if ( function_exists( 'wp_clean_themes_cache' ) ) wp_clean_themes_cache( true );
@@ -118,8 +128,15 @@ try {
 	$child = null;
 	foreach ( $children['items'] as $item ) if ( 'astra-child-ci' === $item['stylesheet'] ) $child = $item;
 	$check( is_array( $child ), 'Astra Child CI fixture missing from specialized inventory.' );
-	$check( in_array( 'header.php', $child['filesystem']['override_files'], true ), 'Astra Child override inventory did not resolve a parent override.' );
-	$check( $child['filesystem']['returned_file_count'] <= 300, 'Astra Child filesystem scan escaped its bound.' );
+	$fs = $child['filesystem'];
+	$check( in_array( 'header.php', $fs['override_files'], true ), 'Astra Child override inventory did not resolve a parent override.' );
+	$check( $fs['returned_file_count'] <= 300, 'Astra Child filesystem scan escaped its returned-file bound.' );
+	$check( $fs['scanned_entry_count'] <= $fs['scan_entry_budget'], 'Astra Child filesystem scan escaped its entry budget.' );
+	$check( 3 <= (int) $fs['pruned_directory_count'], 'Astra Child scan did not prune dependency/VCS directories before traversal.' );
+	$check( (int) $fs['scanned_entry_count'] < 60, 'Astra Child scan traversed excluded dependency/VCS trees.' );
+	foreach ( $fs['files'] as $relative ) {
+		$check( ! preg_match( '#(^|/)(?:vendor|node_modules|\.git)(?:/|$)#', $relative ), 'Excluded dependency/VCS path leaked from Astra Child inventory: ' . $relative );
+	}
 
 	$theme = wp_get_ability( 'themes/get-theme' )->execute( array( 'stylesheet' => 'astra-child-ci' ) );
 	$check( ! is_wp_error( $theme ) && 'child_theme' === $theme['component_type'] && 'astra' === $theme['template'], 'Theme lookup did not preserve child topology.' );
@@ -143,4 +160,4 @@ try {
 	if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true );
 }
 
-echo "mad4b.site-control-plane.runtime-component-adapters.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-component-adapters.v2: PASS\n";
