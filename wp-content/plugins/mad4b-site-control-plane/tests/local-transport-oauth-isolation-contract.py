@@ -4,12 +4,15 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 connection = (root / 'includes/class-mad4b-scp-connection-status.php').read_text(encoding='utf-8')
-runtime = (root / 'tests/runtime-local-transport-oauth-isolation-smoke.php').read_text(encoding='utf-8')
+runtime_disabled = (root / 'tests/runtime-local-transport-oauth-isolation-smoke.php').read_text(encoding='utf-8')
+runtime_misconfigured = (root / 'tests/runtime-local-transport-oauth-misconfigured-smoke.php').read_text(encoding='utf-8')
 
 for marker in [
     'private static function oauth_transport_enabled()',
     "defined( 'MAD4B_MCP_OAUTH_ENABLED' )",
-    'if ( self::oauth_transport_enabled() ) {',
+    "add_action( 'init', array( __CLASS__, 'boot_oauth_transport_if_effective' ), 3 )",
+    'public static function boot_oauth_transport_if_effective()',
+    "empty( $status['effective'] )",
     'MAD4B_SCP_OAuth_Request_Context_Guard::boot();',
     'MAD4B_SCP_OAuth_JWT_Header_Guard::boot();',
     'MAD4B_SCP_OAuth_Resource_Bridge::boot();',
@@ -19,11 +22,12 @@ for marker in [
 ]:
     assert marker in plugin, f'missing local/OAuth isolation marker: {marker}'
 
-# Client-compatibility/readiness metadata remains available outside the optional
-# bearer interception block.
-gated = plugin.split('if ( self::oauth_transport_enabled() ) {', 1)[1].split('\n\t\t}', 1)[0]
-assert 'MAD4B_SCP_MCP_Client_Compatibility::boot();' not in gated
+# Readiness/client metadata is always available, but bearer interception is
+# activated only after the authority graph is effective.
 assert 'MAD4B_SCP_MCP_Client_Compatibility::boot();' in plugin
+method = plugin.split('public static function boot_oauth_transport_if_effective()', 1)[1].split('private static function oauth_transport_enabled()', 1)[0]
+assert 'MAD4B_SCP_MCP_Client_Compatibility::boot();' not in method
+assert "empty( $status['effective'] )" in method
 
 for marker in [
     "'local_transport_ready' => empty( $local_blockers )",
@@ -37,6 +41,14 @@ for marker in [
     'OAuth resource bridge must not intercept an OAuth-disabled local transport.',
     'WordPress-authenticated admin lost local read permission.',
 ]:
-    assert marker in runtime, f'missing runtime local transport proof: {marker}'
+    assert marker in runtime_disabled, f'missing OAuth-disabled local transport proof: {marker}'
 
-print('mad4b.site-control-plane.local-transport-oauth-isolation.v1: PASS')
+for marker in [
+    'runtime-local-transport-oauth-misconfigured.v1',
+    'Ineffective OAuth must not intercept local MCP transport.',
+    'Configured-but-ineffective OAuth disabled local WordPress read permission.',
+    'oauth_wp_subject_unconfigured',
+]:
+    assert marker in runtime_misconfigured, f'missing ineffective-OAuth local transport proof: {marker}'
+
+print('mad4b.site-control-plane.local-transport-oauth-isolation.v2: PASS')
