@@ -2,8 +2,10 @@
 namespace ETG\DynamicFilterSEOBridge\Terms;
 
 require_once dirname( __DIR__ ) . '/Identifiers/FieldKey.php';
+require_once dirname( __DIR__ ) . '/Presentation/MediaAssetValidator.php';
 
 use ETG\DynamicFilterSEOBridge\Identifiers\FieldKey;
+use ETG\DynamicFilterSEOBridge\Presentation\MediaAssetValidator;
 use ETG\DynamicFilterSEOBridge\Presentation\MediaDiscoveryRegistry;
 use WP_Term;
 
@@ -151,9 +153,7 @@ final class TermMetaReader {
 
 	private function addImageAttachmentCandidate( int $id, array &$ids ): void {
 		$id = absint( $id ); if ( ! $id ) { return; }
-		if ( function_exists( 'wp_attachment_is_image' ) ) { if ( wp_attachment_is_image( $id ) ) { $ids[] = $id; } return; }
-		if ( function_exists( 'get_post_type' ) ) { if ( 'attachment' === get_post_type( $id ) ) { $ids[] = $id; } return; }
-		$ids[] = $id;
+		if ( MediaAssetValidator::isRenderableImage( $id ) ) { $ids[] = $id; }
 	}
 
 	private function parentChain( WP_Term $term ): array {
