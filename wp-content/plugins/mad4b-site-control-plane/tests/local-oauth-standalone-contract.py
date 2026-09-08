@@ -5,6 +5,7 @@ root = Path(__file__).resolve().parents[1]
 server = (root / 'includes' / 'class-mad4b-scp-local-oauth-server.php').read_text(encoding='utf-8')
 store = (root / 'includes' / 'class-mad4b-scp-local-oauth-store.php').read_text(encoding='utf-8')
 guard = (root / 'includes' / 'class-mad4b-scp-local-oauth-loopback-guard.php').read_text(encoding='utf-8')
+key_policy = (root / 'includes' / 'class-mad4b-scp-local-oauth-key-path-policy.php').read_text(encoding='utf-8')
 init_lock = (root / 'includes' / 'class-mad4b-scp-local-oauth-init-lock.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
@@ -111,6 +112,25 @@ for forbidden in ['wp_remote_get(', 'wp_safe_remote_get(', 'curl_exec(']:
     if forbidden in guard:
         raise SystemExit(f'forbidden loopback guard network primitive: {forbidden}')
 
+required_key_policy = [
+    'mad4b.local-oauth-key-path-policy.v1',
+    'safe_default_path_for_roots',
+    'validate_path_against_roots',
+    'DOCUMENT_ROOT',
+    'mad4b_local_oauth_key_path_document_root_exposed',
+    'mad4b_local_oauth_document_root_unknown',
+    "remove_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Server', 'ensure_runtime' ), 1 )",
+    "add_action( 'parse_request', array( __CLASS__, 'block_unsafe_protocol' ), -20 )",
+    "add_filter( 'pre_http_request', array( __CLASS__, 'block_unsafe_local_discovery' ), 0, 3 )",
+    "key_material_exposed' => false",
+]
+for marker in required_key_policy:
+    if marker not in key_policy:
+        raise SystemExit(f'missing local OAuth key-path policy marker: {marker}')
+for forbidden in ['openssl_pkey_new(', 'openssl_sign(', 'file_get_contents(', 'file_put_contents(']:
+    if forbidden in key_policy:
+        raise SystemExit(f'key-path policy must not read/write key material: {forbidden}')
+
 required_lock = [
     'mad4b.local-oauth-init-lock.v1',
     "add_action( 'init', array( __CLASS__, 'acquire' ), 0 )",
@@ -133,12 +153,14 @@ for forbidden in ['file_put_contents(', 'openssl_pkey_new(', 'openssl_sign(', 'u
 for loaded in [
     'class-mad4b-scp-local-oauth-store.php',
     'class-mad4b-scp-local-oauth-server.php',
+    'class-mad4b-scp-local-oauth-key-path-policy.php',
     'class-mad4b-scp-local-oauth-init-lock.php',
     'class-mad4b-scp-local-oauth-loopback-guard.php',
 ]:
     if loaded not in main:
         raise SystemExit(f'main plugin does not load local OAuth component: {loaded}')
 for boot_marker in [
+    'MAD4B_SCP_Local_OAuth_Key_Path_Policy::boot()',
     'MAD4B_SCP_Local_OAuth_Init_Lock::boot()',
     'MAD4B_SCP_Local_OAuth_Loopback_Guard::boot()',
     'MAD4B_SCP_Local_OAuth_Server::boot()',
@@ -168,4 +190,16 @@ for marker in [
     if marker not in lock_runtime:
         raise SystemExit(f'missing local OAuth init-lock runtime proof: {marker}')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v4: PASS')
+key_runtime = (root / 'tests' / 'runtime-local-oauth-key-path-policy-smoke.php').read_text(encoding='utf-8')
+for marker in [
+    'local-oauth-key-path-policy.runtime.v1',
+    '/var/www/html/wp/',
+    '/var/www/html',
+    '/var/www/.mad4b/oauth/wordpress-local-rs256-private.pem',
+    'mad4b_local_oauth_key_path_document_root_exposed',
+    'mad4b_local_oauth_key_path_wordpress_exposed',
+]:
+    if marker not in key_runtime:
+        raise SystemExit(f'missing local OAuth document-root runtime proof: {marker}')
+
+print('mad4b.site-control-plane.local-oauth-standalone.v5: PASS')
