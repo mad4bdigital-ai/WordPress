@@ -29,6 +29,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-mcp-client-profile-registry.php"
           php -l "$root/includes/class-mad4b-scp-mcp-client-compatibility.php"
           php -l "$root/tests/runtime-mcp-client-compatibility-smoke.php"
+          php -l "$root/tests/runtime-chatgpt-tool-inventory-smoke.php"
           python3 -m json.tool "$root/config/mcp-client-profiles.json" >/dev/null
           python3 "$root/tests/mcp-client-compatibility-contract.py"
 
@@ -107,3 +108,83 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove ChatGPT server contains the actual governed protocol tool inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove initialize and tools/list over the pinned Adapter protocol
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          cat > /tmp/mad4b-chatgpt-protocol.jsonl <<'JSONRPC'
+          {"jsonrpc":"2.0","id":40,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"mad4b-chatgpt-ci","version":"1.0.0"}}}
+          {"jsonrpc":"2.0","id":41,"method":"tools/list","params":{}}
+          JSONRPC
+
+          php /tmp/wp-cli.phar --path="$WP_PATH" mcp-adapter serve --server=mad4b-chatgpt --user=mad4b-ci-admin \
+            < /tmp/mad4b-chatgpt-protocol.jsonl \
+            > /tmp/mad4b-chatgpt-protocol-response.jsonl
+
+          cat /tmp/mad4b-chatgpt-protocol-response.jsonl
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('/tmp/mad4b-chatgpt-protocol-response.jsonl')
+          responses = []
+          for line in path.read_text(encoding='utf-8').splitlines():
+              line = line.strip()
+              if line:
+                  responses.append(json.loads(line))
+
+          by_id = {item.get('id'): item for item in responses if isinstance(item, dict)}
+          init = by_id.get(40)
+          tools_response = by_id.get(41)
+          if not init or 'result' not in init or 'error' in init:
+              raise SystemExit(f'initialize failed: {init!r}')
+          if not tools_response or 'result' not in tools_response or 'error' in tools_response:
+              raise SystemExit(f'tools/list failed: {tools_response!r}')
+
+          tools = tools_response['result'].get('tools', [])
+          if not isinstance(tools, list) or not tools:
+              raise SystemExit('tools/list returned an empty tool inventory')
+          names = sorted({tool.get('name') for tool in tools if isinstance(tool, dict) and isinstance(tool.get('name'), str)})
+
+          required = {
+              'mad4b-site-info',
+              'mad4b-list-post-types',
+              'mad4b-list-plugins',
+              'mad4b-abilities-inventory',
+              'mad4b-diagnostics-health',
+              'mad4b-runtime-authority-status',
+              'mad4b-connection-status',
+          }
+          missing = sorted(required.difference(names))
+          if missing:
+              raise SystemExit(f'tools/list missing required ChatGPT safe-read tools: {missing}')
+
+          forbidden = {
+              'mad4b-filesystem-list',
+              'mad4b-filesystem-read',
+              'mad4b-filesystem-write',
+              'mad4b-filesystem-patch',
+              'mad4b-database-list-tables',
+              'mad4b-database-describe-table',
+              'mad4b-database-select',
+              'mad4b-database-update',
+              'mad4b-database-raw-query',
+              'mad4b-content-update-post',
+              'mad4b-plugin-activate',
+              'mad4b-plugin-deactivate',
+              'mad4b-mutation-undo',
+          }
+          leaked = sorted(forbidden.intersection(names))
+          if leaked:
+              raise SystemExit(f'tools/list leaked forbidden privileged tools: {leaked}')
+
+          print(json.dumps({'status': 'PASS', 'tool_count': len(names), 'tools': names}, indent=2))
+          PY
