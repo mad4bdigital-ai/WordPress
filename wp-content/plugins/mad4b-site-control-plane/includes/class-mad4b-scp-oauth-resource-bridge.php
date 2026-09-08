@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * OAuth 2.1 resource-server bridge for the MAD4B read MCP surface.
+ * OAuth 2.1 resource-server bridge for the MAD4B ChatGPT-safe MCP gateway.
  *
  * Supports local, external and explicitly enabled hybrid trust without turning
  * client identity into authority. Every bearer is selected by exact `iss`, then
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * gate remains deny-only defense in depth.
  */
 final class MAD4B_SCP_OAuth_Resource_Bridge {
-	const CONTRACT = 'mad4b.oauth-resource-bridge.v3';
+	const CONTRACT = 'mad4b.oauth-resource-bridge.v4';
 	const READ_SCOPE = 'mad4b:read';
 	const METADATA_NAMESPACE = 'mad4b/v1';
 	const METADATA_ROUTE = '/oauth-protected-resource';
@@ -127,6 +127,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'creates_credentials' => false,
 			'outbound_discovery_on_admin' => false,
 			'write_surfaces_enabled' => false,
+			'protected_transport_server' => 'mad4b-chatgpt',
 		);
 	}
 
@@ -139,7 +140,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		);
 	}
 
-	public static function resource_identifier() { return untrailingslashit( rest_url( 'mcp/mad4b-read' ) ); }
+	public static function resource_identifier() { return untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) ); }
 	public static function metadata_url() { return untrailingslashit( rest_url( self::METADATA_NAMESPACE . self::METADATA_ROUTE ) ); }
 
 	public static function authority_mode() {
@@ -224,7 +225,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( '/mcp/mad4b-read' !== $route ) return $result;
+		if ( '/mcp/mad4b-chatgpt' !== $route ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
 
 		$status = self::status();
@@ -233,7 +234,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( '' === $authorization ) {
 			self::reset_verified_bearer_context( false );
 			if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) return $result;
-			return self::unauthorized_response( 'mad4b_oauth_bearer_required', 'OAuth bearer token is required for remote MAD4B read transport.' );
+			return self::unauthorized_response( 'mad4b_oauth_bearer_required', 'OAuth bearer token is required for the remote MAD4B ChatGPT transport.' );
 		}
 		self::reset_verified_bearer_context( true );
 
@@ -327,8 +328,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$subject = isset( $claims['sub'] ) && is_string( $claims['sub'] ) ? trim( $claims['sub'] ) : '';
 		if ( '' === $subject || strlen( $subject ) > self::MAX_SUBJECT_BYTES ) return new WP_Error( 'mad4b_oauth_subject_missing', 'Access token subject is missing.' );
 		$resource = self::resource_identifier();
-		if ( ! self::audience_contains( isset( $claims['aud'] ) ? $claims['aud'] : null, $resource ) ) return new WP_Error( 'mad4b_oauth_audience_mismatch', 'Access token audience does not match the MAD4B read resource.' );
-		if ( ! isset( $claims['resource'] ) || ! is_string( $claims['resource'] ) || ! hash_equals( $resource, untrailingslashit( trim( $claims['resource'] ) ) ) ) return new WP_Error( 'mad4b_oauth_resource_mismatch', 'Access token resource claim must exactly match the MAD4B read resource.' );
+		if ( ! self::audience_contains( isset( $claims['aud'] ) ? $claims['aud'] : null, $resource ) ) return new WP_Error( 'mad4b_oauth_audience_mismatch', 'Access token audience does not match the MAD4B ChatGPT resource.' );
+		if ( ! isset( $claims['resource'] ) || ! is_string( $claims['resource'] ) || ! hash_equals( $resource, untrailingslashit( trim( $claims['resource'] ) ) ) ) return new WP_Error( 'mad4b_oauth_resource_mismatch', 'Access token resource claim must exactly match the MAD4B ChatGPT resource.' );
 		$now = time();
 		if ( ! isset( $claims['exp'] ) || ! is_numeric( $claims['exp'] ) || (int) $claims['exp'] < $now - self::CLOCK_SKEW ) return new WP_Error( 'mad4b_oauth_token_expired', 'Access token is expired or missing exp.' );
 		if ( isset( $claims['nbf'] ) && ( ! is_numeric( $claims['nbf'] ) || (int) $claims['nbf'] > $now + self::CLOCK_SKEW ) ) return new WP_Error( 'mad4b_oauth_token_not_yet_valid', 'Access token is not yet valid.' );
