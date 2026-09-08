@@ -135,7 +135,7 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 		$runtime = MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family( $this->family_id );
 		$active = 0; foreach ( $runtime as $plugin ) if ( ! empty( $plugin['active'] ) || ! empty( $plugin['network_active'] ) ) ++$active;
 		return array(
-			'id'=>$this->family_id,'label'=>$this->label(),'available'=>!empty($runtime),'version'=>$this->detect_plugin_version(),
+			'id'=>$this->family_id,'label'=>$this->label(),'available'=>!empty($runtime),'version'=>$this->detect_plugin_version(),'abilities'=>$this->ability_names(),
 			'contract'=>'mad4b.repository-family-read-adapter.v1','authority_mode'=>'read_only_non_authorizing','mutation_master_enabled'=>false,
 			'mutation_requires_certification'=>false,'mutation_exposed'=>false,'reversible_contracts'=>array(),
 			'support_mode'=>sanitize_key((string)($this->descriptor['support_mode']??'inventory_read')),
@@ -154,6 +154,14 @@ final class MAD4B_SCP_Repository_Plugins_Adapter extends MAD4B_SCP_Adapter_Base 
 	public function ability_names() { return array( 'read'=>array( 'repository-plugins/inventory', 'repository-plugins/get-artifact' ), 'content'=>array(), 'admin'=>array() ); }
 	protected function mutation_requires_certification() { return false; }
 	protected function provider_certification( $available ) { return null; }
+	public function status() {
+		return array(
+			'id'=>$this->id(),'label'=>$this->label(),'available'=>$this->is_available(),'version'=>'','abilities'=>$this->ability_names(),
+			'contract'=>'mad4b.repository-plugin-coverage-adapter.v1','authority_mode'=>'read_only_non_authorizing','mutation_master_enabled'=>false,
+			'mutation_requires_certification'=>false,'mutation_exposed'=>false,'reversible_contracts'=>array(),
+			'artifact_count'=>MAD4B_SCP_Repository_Artifact_Catalog::artifact_count(),'family_count'=>count(MAD4B_SCP_Repository_Artifact_Catalog::families()),
+		);
+	}
 	public function register_abilities() {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$this->add_ability( 'repository-plugins/inventory', 'Read Repository Plugin Adapter Inventory', 'inventory', $read );
