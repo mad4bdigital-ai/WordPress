@@ -28,8 +28,10 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-local-oauth-store.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-server.php"
+          php -l "$root/includes/class-mad4b-scp-local-oauth-init-lock.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-loopback-guard.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
+          php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
           python3 "$root/tests/local-oauth-standalone-contract.py"
 
   runtime:
@@ -106,3 +108,4 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-standalone-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-init-lock-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
