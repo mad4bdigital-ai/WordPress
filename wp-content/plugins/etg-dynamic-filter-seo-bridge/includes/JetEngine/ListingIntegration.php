@@ -20,7 +20,7 @@ final class ListingIntegration {
     }
 
     public function registerMacros():void{
-        if(!class_exists('\\Jet_Engine_Base_Macros')){return;}
+        if(!class_exists('\\Jet_Engine_Base_Macros')||!$this->macroBaseCompatible()){return;}
         $slotMacro=new class extends \Jet_Engine_Base_Macros {
             public $resolver;public function macros_tag(){return'etg_content_slot';}public function macros_name(){return'ETG Content Slot';}
             public function macros_args(){return array('slot_id'=>array('label'=>'Content Slot ID','type'=>'text','default'=>''));}
@@ -79,13 +79,16 @@ final class ListingIntegration {
     public function allowedContexts($contexts):array{$contexts=is_array($contexts)?$contexts:array();$contexts['etg-filter-context']='ETG Filter Context (presentation only)';return$contexts;}
 
     public function filterContextObject($object=null){
-        $c=$this->presentation->context();if(empty($c['active'])||empty($c['in_scope'])||empty($c['runtime_ready'])||empty($c['filters'])){return false;}
-        $out=array('etg_context'=>true,'authorizing'=>false,'title'=>(string)$this->presentation->value('title',$c),'intro'=>(string)$this->presentation->value('intro',$c),'keyword'=>(string)$this->presentation->value('keyword',$c),'result_count'=>(string)$this->presentation->value('result_count',$c),'query_id'=>(string)($c['query_id']??''),'provider'=>(string)($c['provider']??''),'language'=>(string)($c['language']??''));
-        $roles=array_unique(array_merge(array_keys((array)($c['terms']??array())),array_keys((array)($c['term_sets']??array()))));
-        foreach($roles as$rawRole){$role=sanitize_key((string)$rawRole);if(!$role){continue;}$term=(array)($c['terms'][$role]??array());foreach(array('term_id','name','slug','description','short_description','seo_title','meta_description','focus_keyword','image_id','location_level')as$key){$value=$term[$key]??'';if(is_scalar($value)){$out[$role.'_'.$key]=$value;}}if(!empty($term['gallery_ids'])&&is_array($term['gallery_ids'])){$out[$role.'_gallery_ids']=implode(',',array_filter(array_map('absint',$term['gallery_ids'])));}
-            $set=(array)($c['term_sets'][$role]??array());if(!$set&&$term){$set=array($term);}$ids=$slugs=array();foreach(array_slice($set,0,self::MAX_MACRO_TERMS)as$item){$item=(array)$item;$id=(int)($item['term_id']??0);if($id){$ids[]=$id;}$slug=$item['slug']??'';if(is_scalar($slug)&&''!==trim((string)$slug)){$slugs[]=trim((string)$slug);}}$out[$role.'_term_ids']=implode(',',array_values(array_unique($ids)));$out[$role.'_term_slugs']=implode(',',array_values(array_unique($slugs)));
-        }
-        return(object)$out;
+        static $resolving=false;if($resolving){return false;}$resolving=true;
+        try{
+            $c=$this->presentation->context();if(empty($c['active'])||empty($c['in_scope'])||empty($c['runtime_ready'])||empty($c['filters'])){return false;}
+            $out=array('etg_context'=>true,'authorizing'=>false,'title'=>(string)$this->presentation->value('title',$c),'intro'=>(string)$this->presentation->value('intro',$c),'keyword'=>(string)$this->presentation->value('keyword',$c),'result_count'=>(string)$this->presentation->value('result_count',$c),'query_id'=>(string)($c['query_id']??''),'provider'=>(string)($c['provider']??''),'language'=>(string)($c['language']??''));
+            $roles=array_unique(array_merge(array_keys((array)($c['terms']??array())),array_keys((array)($c['term_sets']??array()))));
+            foreach($roles as$rawRole){$role=sanitize_key((string)$rawRole);if(!$role){continue;}$term=(array)($c['terms'][$role]??array());foreach(array('term_id','name','slug','description','short_description','seo_title','meta_description','focus_keyword','image_id','location_level')as$key){$value=$term[$key]??'';if(is_scalar($value)){$out[$role.'_'.$key]=$value;}}if(!empty($term['gallery_ids'])&&is_array($term['gallery_ids'])){$out[$role.'_gallery_ids']=implode(',',array_filter(array_map('absint',$term['gallery_ids'])));}
+                $set=(array)($c['term_sets'][$role]??array());if(!$set&&$term){$set=array($term);}$ids=$slugs=array();foreach(array_slice($set,0,self::MAX_MACRO_TERMS)as$item){$item=(array)$item;$id=(int)($item['term_id']??0);if($id){$ids[]=$id;}$slug=$item['slug']??'';if(is_scalar($slug)&&''!==trim((string)$slug)){$slugs[]=trim((string)$slug);}}$out[$role.'_term_ids']=implode(',',array_values(array_unique($ids)));$out[$role.'_term_slugs']=implode(',',array_values(array_unique($slugs)));
+            }
+            return(object)$out;
+        }catch(\Throwable$e){return false;}finally{$resolving=false;}
     }
 
     public function repeaterRows($items,$settings){
@@ -93,7 +96,21 @@ final class ListingIntegration {
         if(!empty($settings['etg_dfsb_slot'])&&!empty($settings['etg_dfsb_source'])){$slot=sanitize_key((string)$settings['etg_dfsb_slot']);$alias=sanitize_key((string)$settings['etg_dfsb_source']);}
         if(''===$slot||''===$alias){foreach(array('_css_classes','css_classes','class')as$key){$classes=(string)($settings[$key]??'');if(preg_match('/(?:^|\s)etg-source--([a-z0-9_-]+)--([a-z0-9_-]+)(?:\s|$)/i',$classes,$m)){$slot=sanitize_key($m[1]);$alias=sanitize_key($m[2]);break;}}}
         if(''===$slot||''===$alias){foreach(array('dynamic_field_source','source','repeater_field','field')as$key){$candidate=(string)($settings[$key]??'');if(preg_match('/^etg-slot:([a-z0-9_-]+):([a-z0-9_-]+)$/i',$candidate,$m)){$slot=sanitize_key($m[1]);$alias=sanitize_key($m[2]);break;}}}
-        if(''===$slot||''===$alias){return$items;}$rows=$this->presentation->slotRows($slot,$alias);return$rows?:$items;
+        if(''===$slot||''===$alias){return$items;}static $resolving=false;if($resolving){return$items;}$resolving=true;try{$rows=$this->presentation->slotRows($slot,$alias);return$rows?:$items;}catch(\Throwable$e){return$items;}finally{$resolving=false;}
+    }
+
+    private function macroBaseCompatible():bool{
+        try{
+            $ref=new \ReflectionClass('Jet_Engine_Base_Macros');
+            $supported=array('macros_tag'=>array(0,0),'macros_name'=>array(0,0),'macros_callback'=>array(0,1),'macros_args'=>array(0,0));
+            foreach($ref->getMethods(\ReflectionMethod::IS_ABSTRACT)as$method){
+                $name=$method->getName();if(!isset($supported[$name])){return false;}
+                if($method->hasReturnType()){return false;}
+                list($required,$total)=$supported[$name];
+                if($method->getNumberOfRequiredParameters()>$required||$method->getNumberOfParameters()>$total){return false;}
+            }
+            return true;
+        }catch(\Throwable$e){return false;}
     }
 
     public static function repeaterMarker(string$slot,string$alias):string{return'etg-source--'.sanitize_key($slot).'--'.sanitize_key($alias);}

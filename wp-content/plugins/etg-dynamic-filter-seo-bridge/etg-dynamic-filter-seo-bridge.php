@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 define( 'ETG_DFSB_VERSION', '0.4.0-alpha.13' );
 define( 'ETG_DFSB_DIR', plugin_dir_path( __FILE__ ) );
+define( 'ETG_DFSB_BOOT_BUILD', 'alpha13-live-rescue-1' );
 
 spl_autoload_register(static function ( $class ) {
     $prefix = 'ETG\\DynamicFilterSEOBridge\\';
@@ -24,4 +25,15 @@ spl_autoload_register(static function ( $class ) {
 
 require_once ETG_DFSB_DIR . 'includes/Presentation/functions.php';
 
-add_action('plugins_loaded',static function () { ETG\DynamicFilterSEOBridge\Bootstrap::instance()->boot(); },20);
+ETG\DynamicFilterSEOBridge\Runtime\BootGuard::register( ETG_DFSB_BOOT_BUILD );
+register_activation_hook( __FILE__, static function () {
+    // New or replaced packages start inert. An administrator explicitly opts into
+    // the guarded full boot after wp-admin has proven it can load safely.
+    ETG\DynamicFilterSEOBridge\Runtime\BootGuard::holdOnFirstLoad( 'activation' );
+} );
+
+add_action( 'plugins_loaded', static function () {
+    $guard = 'ETG\\DynamicFilterSEOBridge\\Runtime\\BootGuard';
+    if ( $guard::shouldHold() ) { return; }
+    $guard::run( static function () { ETG\DynamicFilterSEOBridge\Bootstrap::instance()->boot(); } );
+}, 20 );

@@ -8,6 +8,10 @@ $bootstrap=file_get_contents($root.'/includes/Bootstrap.php');
 $assets=file_get_contents($root.'/includes/Admin/AdminAssets.php');
 $js=file_get_contents($root.'/assets/js/usage-guide.js');
 $shortcodes=file_get_contents($root.'/includes/Elementor/Shortcodes.php');
+$bootGuard=file_get_contents($root.'/includes/Runtime/BootGuard.php');
+$entry=file_get_contents($root.'/etg-dynamic-filter-seo-bridge.php');
+$listing=file_get_contents($root.'/includes/JetEngine/ListingIntegration.php');
+$registrar=file_get_contents($root.'/includes/Elementor/DynamicTagRegistrar.php');
 
 expect_contains("const SLUG = 'etg-dfsb-usage-guide'",$page,'usage guide slug');
 foreach(array('Quick Start','Dynamic Tags','Shortcodes','Tokens','Content Slots','JetEngine','Recipes','Safety & SEO') as $label){expect_contains($label,$page,'guide tab '.$label);}
@@ -38,5 +42,20 @@ expect_contains('.etg-copy-button',$js,'copy interaction present');
 expect_contains('etg-guide-token-search',$js,'token search interaction present');
 expect_true(false===strpos($js,'pushState'),'guide JS cannot push history');
 expect_true(false===strpos($js,'replaceState'),'guide JS cannot replace history');
+
+// Live-install rescue contract: package replacement must never immediately load the
+// full optional integration graph before wp-admin proves the new build can boot.
+expect_contains('class BootGuard',$bootGuard,'safe boot guard is shipped');
+expect_contains('fatal_shutdown',$bootGuard,'fatal shutdown is captured for next-request recovery');
+expect_contains('retryFullBoot',$bootGuard,'administrator can explicitly retry the full integration boot');
+expect_contains('ETG_DFSB_BOOT_BUILD',$entry,'entry point carries a boot generation marker');
+expect_contains('BootGuard::register',$entry,'entry point registers safe boot before Bootstrap');
+expect_contains('$guard::shouldHold()',$entry,'first-load circuit breaker gates full Bootstrap');
+expect_contains('macroBaseCompatible',$listing,'JetEngine macro inheritance has a reflection preflight');
+expect_true(strpos($listing,'macroBaseCompatible')<strpos($listing,'new class extends \\Jet_Engine_Base_Macros'),'JetEngine macro preflight appears before external inheritance declaration');
+expect_true(substr_count($listing,'static $resolving=false')>=2,'JetEngine listing context and repeater paths are recursion guarded');
+expect_contains('dataTagCompatible',$registrar,'Elementor media tags verify the parent Data_Tag contract');
+expect_contains("BootGuard::recordThrowable('elementor_dynamic_tags'",$registrar,'Elementor registration failures arm safe boot instead of white-screening wp-admin');
+
 require __DIR__.'/alpha13-admin-ui-shell-smoke.php';
-echo "Alpha13 in-product usage guide and JetEngine helper smoke tests passed.\n";
+echo "Alpha13 in-product usage guide, JetEngine helper and live-boot rescue smoke tests passed.\n";
