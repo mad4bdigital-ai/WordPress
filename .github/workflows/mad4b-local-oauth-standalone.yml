@@ -31,10 +31,15 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-local-oauth-key-path-policy.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-init-lock.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-loopback-guard.php"
+          php -l "$root/includes/class-mad4b-scp-local-oauth-browser-canary.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
           php -l "$root/tests/runtime-local-oauth-key-path-policy-smoke.php"
           php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
+          php -l "$root/tests/runtime-local-oauth-browser-canary-smoke.php"
+          node --check "$root/assets/local-oauth-canary.js"
           python3 "$root/tests/local-oauth-standalone-contract.py"
+          python3 "$root/tests/local-oauth-browser-canary-contract.py"
+          pwsh -NoLogo -NoProfile -File "$root/tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1" -SelfTest
 
   runtime:
     name: Local OAuth runtime (${{ matrix.wordpress }})
@@ -105,10 +110,11 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
-      - name: Prove local key, metadata, JWT and token-ledger invariants
+      - name: Prove local key, metadata, JWT, token-ledger and canary invariants
         shell: bash
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-standalone-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-key-path-policy-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-init-lock-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
