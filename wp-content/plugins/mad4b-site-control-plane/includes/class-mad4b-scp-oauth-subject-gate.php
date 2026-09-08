@@ -49,7 +49,7 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( '/mcp/mad4b-read' !== $route ) return $result;
+		if ( '/mcp/mad4b-chatgpt' !== $route ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
 
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
