@@ -17,6 +17,7 @@ use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\FilterResultSummaryTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\FilterTitleTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\InventoryValueTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\TermFieldTag;
+use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\TermMetaTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\TermSectionTag;
 use ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry;
 use ETG\DynamicFilterSEOBridge\Presentation\PresentationResolver;
@@ -33,7 +34,7 @@ final class DynamicTagRegistrar {
         // attributes. Registrar's contract is to keep every live-capable named tag
         // connected to that trait/runtime without constructor dependency drift.
         if(method_exists($manager,'register_group')){$manager->register_group('etg-dfsb',array('title'=>'ETG Filter SEO'));}
-        $classes=array(FilterTitleTag::class,FilterIntroTag::class,FilterResultSummaryTag::class,FilterKeywordTag::class,FilterArchiveUrlTag::class,FilterCurrentUrlTag::class,InventoryValueTag::class,ContentSlotTag::class,TermFieldTag::class,TermSectionTag::class);
+        $classes=array(FilterTitleTag::class,FilterIntroTag::class,FilterResultSummaryTag::class,FilterKeywordTag::class,FilterArchiveUrlTag::class,FilterCurrentUrlTag::class,InventoryValueTag::class,ContentSlotTag::class,TermFieldTag::class,TermMetaTag::class,TermSectionTag::class);
         $mediaAvailable=class_exists('\\Elementor\\Core\\DynamicTags\\Data_Tag')&&class_exists('\\Elementor\\Modules\\DynamicTags\\Module')&&$this->dataTagCompatible();
         if($mediaAvailable){$classes[]=FilterImageTag::class;$classes[]=FilterImageUrlTag::class;$classes[]=FilterGalleryTag::class;$classes[]=FilterSlideshowTag::class;$classes[]=ContentSlotImageTag::class;$classes[]=ContentSlotGalleryTag::class;}
         foreach($classes as$class){if(!class_exists($class)){continue;}$this->registerTagClass($manager,$class);}
