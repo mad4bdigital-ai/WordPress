@@ -16,14 +16,81 @@ final class MAD4B_SCP_Governed_Ability_Overrides {
 	}
 
 	public static function filter_registration_args( $args, $name ) {
-		if ( 'mad4b/content-update-post' !== (string) $name ) return $args;
 		if ( ! is_array( $args ) ) return $args;
-		$args['execute_callback'] = array( __CLASS__, 'content_update_post' );
-		$args['description'] = 'Update one WordPress post through the governed reversible mutation envelope with optimistic state validation and read-after-write verification.';
-		if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
-		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
-		$args['meta']['mcp']['mad4b_reversible_contract'] = 'mad4b.rollback.post.v1';
+		$name = (string) $name;
+
+		if ( 'mad4b/content-update-post' === $name ) {
+			$args['execute_callback'] = array( __CLASS__, 'content_update_post' );
+			$args['description'] = 'Update one WordPress post through the governed reversible mutation envelope with optimistic state validation and read-after-write verification.';
+			if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
+			if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+			$args['meta']['mcp']['mad4b_reversible_contract'] = 'mad4b.rollback.post.v1';
+		}
+
+		if ( in_array( $name, self::remote_oauth_sensitive_read_abilities(), true ) && isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) ) {
+			$original_permission = $args['permission_callback'];
+			$args['permission_callback'] = static function ( $input = null ) use ( $original_permission, $name ) {
+				$granted = call_user_func( $original_permission, $input );
+				if ( is_wp_error( $granted ) || ! $granted ) return $granted;
+				return MAD4B_SCP_Governed_Ability_Overrides::can_remote_oauth_read_ability( $name );
+			};
+			if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
+			if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+			$args['meta']['mcp']['mad4b_remote_oauth_sensitive_read'] = true;
+			$args['meta']['mcp']['mad4b_remote_oauth_default'] = 'deny';
+		}
 		return $args;
+	}
+
+	public static function remote_oauth_sensitive_read_abilities() {
+		$abilities = array(
+			'mad4b/filesystem-list',
+			'mad4b/filesystem-read',
+			'mad4b/database-list-tables',
+			'mad4b/database-describe-table',
+			'mad4b/database-select',
+		);
+		$filtered = apply_filters( 'mad4b_scp_remote_oauth_sensitive_read_abilities', $abilities );
+		if ( ! is_array( $filtered ) ) return $abilities;
+		$result = array();
+		foreach ( array_slice( $filtered, 0, 200 ) as $ability ) {
+			if ( is_string( $ability ) && '' !== trim( $ability ) && strlen( $ability ) <= 191 ) $result[] = trim( $ability );
+		}
+		return array_values( array_unique( $result ) );
+	}
+
+	public static function remote_oauth_sensitive_read_allowlist() {
+		if ( ! defined( 'MAD4B_MCP_OAUTH_REMOTE_READ_ALLOWLIST' ) ) return array();
+		$value = constant( 'MAD4B_MCP_OAUTH_REMOTE_READ_ALLOWLIST' );
+		if ( ! is_array( $value ) ) return array();
+		$restricted = self::remote_oauth_sensitive_read_abilities();
+		$allowed = array();
+		foreach ( array_slice( $value, 0, 200 ) as $ability ) {
+			if ( is_string( $ability ) && in_array( trim( $ability ), $restricted, true ) ) $allowed[] = trim( $ability );
+		}
+		return array_values( array_unique( $allowed ) );
+	}
+
+	public static function can_remote_oauth_read_ability( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( ! in_array( $ability_name, self::remote_oauth_sensitive_read_abilities(), true ) ) return true;
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return true;
+		if ( in_array( $ability_name, self::remote_oauth_sensitive_read_allowlist(), true ) ) return true;
+		return new WP_Error(
+			'mad4b_remote_oauth_sensitive_read_denied',
+			'Generic filesystem/database introspection is denied to remote OAuth bearers by default. Explicitly allowlist the exact read ability only when the target environment requires it.'
+		);
+	}
+
+	public static function remote_oauth_read_policy_status() {
+		return array(
+			'contract' => 'mad4b.remote-oauth-read-policy.v1',
+			'default' => 'deny_sensitive_generic_introspection',
+			'restricted_abilities' => self::remote_oauth_sensitive_read_abilities(),
+			'explicit_allowlist' => self::remote_oauth_sensitive_read_allowlist(),
+			'local_wordpress_session_affected' => false,
+			'authorization_source' => 'verified_oauth_bearer_context_plus_exact_ability',
+		);
 	}
 
 	public static function content_update_post( $input ) {
