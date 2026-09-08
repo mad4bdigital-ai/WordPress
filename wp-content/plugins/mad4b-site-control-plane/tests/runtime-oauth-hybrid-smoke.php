@@ -17,7 +17,7 @@ function mad4b_hybrid_jwt( array $claims, $private_key, $kid ) {
 	return $input . '.' . mad4b_hybrid_b64url( $signature );
 }
 function mad4b_hybrid_request( $token ) {
-	$request = new WP_REST_Request( 'POST', '/mcp/mad4b-read' );
+	$request = new WP_REST_Request( 'POST', '/mcp/mad4b-chatgpt' );
 	$request->set_header( 'Authorization', 'Bearer ' . $token );
 	return $request;
 }
@@ -42,6 +42,7 @@ $external_issuer = rtrim( (string) MAD4B_MCP_OAUTH_ISSUER, '/' );
 $resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
 $status = MAD4B_SCP_OAuth_Resource_Bridge::status();
 if ( empty( $status['effective'] ) || 'hybrid' !== $status['authority_mode'] || 2 !== (int) $status['authority_count'] ) mad4b_hybrid_fail( 'Hybrid authority registry is not effective.', $status );
+if ( 'mad4b-chatgpt' !== $status['protected_transport_server'] ) mad4b_hybrid_fail( 'Hybrid bridge is not bound to the ChatGPT gateway.', $status );
 if ( empty( $status['authority_registry_valid'] ) || empty( $status['subject_policy_ready'] ) ) mad4b_hybrid_fail( 'Hybrid authority registry is not policy-ready.', $status );
 $trusted = MAD4B_SCP_OAuth_Resource_Bridge::trusted_issuers();
 if ( ! in_array( $local_issuer, $trusted, true ) || ! in_array( $external_issuer, $trusted, true ) ) mad4b_hybrid_fail( 'Hybrid trusted issuers are incomplete.', $trusted );
@@ -142,4 +143,4 @@ $manifest = MAD4B_SCP_MCP_Client_Compatibility::manifest();
 if ( 'hybrid' !== $manifest['authentication']['authority_mode'] || 2 !== count( $manifest['authentication']['authorization_servers'] ) ) mad4b_hybrid_fail( 'Hybrid client manifest authority metadata is incomplete.', $manifest );
 if ( 'deny_sensitive_generic_introspection' !== $manifest['remote_oauth_read_policy']['default'] ) mad4b_hybrid_fail( 'Hybrid client manifest omits remote read blast-radius policy.', $manifest );
 
-echo 'mad4b.site-control-plane.runtime-oauth-hybrid.v1: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.runtime-oauth-hybrid.v2: PASS' . PHP_EOL;
