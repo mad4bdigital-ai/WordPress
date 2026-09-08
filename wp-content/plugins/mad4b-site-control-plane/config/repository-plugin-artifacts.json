@@ -1,0 +1,30 @@
+{
+  "contract": "mad4b.repository-plugin-artifacts.v1",
+  "authority": "inventory_only",
+  "unknown_artifact_policy": "ci_fail_closed",
+  "runtime_write_default": "deny",
+  "families": {
+    "admin-utilities": {"support_mode":"family_read","mutation_scope":"none","artifacts":["admin-site-enhancements.zip","duplicate-page.zip","folders.zip","hello.php","query-monitor.zip","tinymce-advanced.zip"]},
+    "astra": {"support_mode":"family_read","mutation_scope":"none","artifacts":["astra-addon.zip"]},
+    "dangerous-code-execution": {"support_mode":"excluded_high_risk","mutation_scope":"breakglass_review_only","artifacts":["better-search-replace.zip","code-snippets.zip","custom-css-js.zip","user-role-editor.zip","wp-file-manager.zip"]},
+    "bitflows": {"support_mode":"specialized","mutation_scope":"governed_execution_where_certified","artifacts":["bit-pi.zip"]},
+    "content-utilities": {"support_mode":"family_read","mutation_scope":"none","artifacts":["bulk-taxonomy-editor.zip","custom-mega-menu-v43.zip","meta-catalog-feed-mapper-pro.zip"]},
+    "jet-ecosystem": {"support_mode":"family_read","mutation_scope":"none","artifacts":["crocoblock-timber-library.zip","crocoblock-wizard.zip","jet-blocks.zip","jet-blog.zip","jet-elements.zip","jet-forms-popup-notification-master.zip","jet-search.zip","jet-tabs.zip","jet-woo-product-gallery.zip"]},
+    "analytics": {"support_mode":"family_read","mutation_scope":"none","artifacts":["duracelltomi-google-tag-manager.zip"]},
+    "elementor": {"support_mode":"specialized","mutation_scope":"provider_native_write_where_certified","artifacts":["elementor-pro.zip","elementor.zip","header-footer-elementor.zip","ultimate-elementor.zip"]},
+    "fluentforms": {"support_mode":"family_read","mutation_scope":"none","artifacts":["fluentform.zip","fluentformpro.zip","multilingual-forms-fluent-forms-wpml.zip"]},
+    "hostinger": {"support_mode":"family_read","mutation_scope":"none","artifacts":["hostinger.zip"]},
+    "media": {"support_mode":"specialized_or_adjacent","mutation_scope":"metadata_write_where_certified","artifacts":["imagify.zip","shortpixel-image-optimiser.zip","smart-media-converter.zip","webp-converter-for-media.zip"]},
+    "jetengine": {"support_mode":"specialized_or_adjacent","mutation_scope":"exact_field_write_where_certified","artifacts":["jet-elements-dynamic-data-master.zip","jet-engine-attachment-link-callback.zip","jet-engine-custom-contexts-master.zip","jet-engine-custom-visibility-conditions.zip","jet-engine-data-stores-clear-posts-on-delete-master.zip","jet-engine-dynamic-charts-module.zip","jet-engine-dynamic-tables-module.zip","jet-engine-extend-form-action-master.zip","jet-engine-injection-inherit-post-master.zip","jet-engine-items-number-filter.zip","jet-engine-layout-switcher.zip","jet-engine-list-counter-callback-main.zip","jet-engine-phone-number-format-callback-main.zip","jet-engine-post-expiration-period.zip","jet-engine-public-user-meta-stores-master.zip","jet-engine-repeater-shortcode-main.zip","jet-engine-sub-query-main.zip","jet-engine-trim-callback.zip","jet-engine-wp-all-import.zip","jet-engine.zip"]},
+    "jetsmartfilters": {"support_mode":"specialized","mutation_scope":"bounded_filter_write_where_certified","artifacts":["jet-smart-filters-advanced-date-filter-master.zip","jet-smart-filters-astra-master.zip","jet-smart-filters.zip"]},
+    "jetformbuilder": {"support_mode":"family_read","mutation_scope":"none","artifacts":["jetformbuilder.zip"]},
+    "litespeed": {"support_mode":"specialized","mutation_scope":"bounded_cache_actions_where_certified","artifacts":["litespeed-cache.zip"]},
+    "mad4b-platform": {"support_mode":"platform","mutation_scope":"none","artifacts":["mad4b-site-control-plane","mcp-adapter.zip"]},
+    "wpml": {"support_mode":"family_read","mutation_scope":"none","artifacts":["otgs-installer-plugin.zip","sitepress-multilingual-cms.zip","wp-seo-multilingual.zip","wpml-cms-nav.zip","wpml-import.zip","wpml-meta-id-mapper-ui.zip","wpml-string-translation.zip"]},
+    "reviews": {"support_mode":"family_read","mutation_scope":"none","artifacts":["review-widgets-for-tripadvisor.zip"]},
+    "seo": {"support_mode":"specialized","mutation_scope":"allowlisted_meta_write_where_certified","artifacts":["seo-by-rank-math-pro.zip","seo-by-rank-math.zip"]},
+    "identity-admin": {"support_mode":"restricted_read","mutation_scope":"none","artifacts":["user-switching.zip"]},
+    "wp-import-export": {"support_mode":"family_read","mutation_scope":"none","artifacts":["wp-all-export-csv-excel-xml-for-acf.zip","wp-all-export-pro.zip","wp-all-import-pro.zip","wpae-acf-add-on.zip","wpai-woocommerce-add-on.zip"]},
+    "wpl-client": {"support_mode":"family_read","mutation_scope":"none","artifacts":["wpl-client-1238.zip","wpl-client.zip"]}
+  }
+}
