@@ -139,7 +139,7 @@
 		try {
 			var tokenResponse = await window.fetch(cfg.tokenEndpoint, {
 				method: 'POST',
-				credentials: 'same-origin',
+				credentials: 'omit',
 				cache: 'no-store',
 				headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json'},
 				body: form.toString()
@@ -152,9 +152,18 @@
 			if (Object.prototype.hasOwnProperty.call(tokenPayload, 'refresh_token')) delete tokenPayload.refresh_token;
 			if (Object.prototype.hasOwnProperty.call(tokenPayload, 'access_token')) delete tokenPayload.access_token;
 
+			var anonymousProbe = await window.fetch(cfg.resource, {
+				method: 'POST',
+				credentials: 'omit',
+				cache: 'no-store',
+				headers: {'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream'},
+				body: JSON.stringify({jsonrpc: '2.0', id: 0, method: 'ping'})
+			});
+			if (anonymousProbe.status !== 401) throw new Error('Anonymous MCP ingress must fail closed with HTTP 401; received ' + anonymousProbe.status + '.');
+
 			var probe = await window.fetch(cfg.resource, {
 				method: 'POST',
-				credentials: 'same-origin',
+				credentials: 'omit',
 				cache: 'no-store',
 				headers: {
 					'Authorization': 'Bearer ' + accessToken,
@@ -165,7 +174,7 @@
 			});
 			var denied = [401, 403, 404, 405, 503].indexOf(probe.status) !== -1 || probe.status >= 500;
 			if (denied) throw new Error('Authenticated MCP ingress returned HTTP ' + probe.status + '.');
-			render('success', 'MAD4B Local OAuth Browser Canary: PASS', 'Authorization Code + PKCE S256 + token exchange + bearer acceptance passed. MCP HTTP status: ' + probe.status + '. External-client certification is still required.');
+			render('success', 'MAD4B Local OAuth Browser Canary: PASS', 'Anonymous ingress was denied with HTTP 401, then Authorization Code + PKCE S256 + token exchange + bearer-only acceptance passed. MCP HTTP status: ' + probe.status + '. External-client certification is still required.');
 		} catch (error) {
 			render('error', 'MAD4B Local OAuth Browser Canary: FAIL', error && error.message ? error.message : String(error));
 		} finally {
