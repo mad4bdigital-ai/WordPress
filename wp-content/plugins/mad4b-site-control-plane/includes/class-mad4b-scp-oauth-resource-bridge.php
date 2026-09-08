@@ -140,7 +140,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		);
 	}
 
-	public static function resource_identifier() { return untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) ); }
+	public static function resource_identifier() { return untrailingslashit( home_url( '/wp-json/mcp/mad4b-chatgpt' ) ); }
 	public static function metadata_url() { return untrailingslashit( rest_url( self::METADATA_NAMESPACE . self::METADATA_ROUTE ) ); }
 
 	public static function authority_mode() {
