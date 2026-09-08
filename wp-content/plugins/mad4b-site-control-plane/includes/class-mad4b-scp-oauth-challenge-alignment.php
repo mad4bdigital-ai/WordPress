@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * approval, mutation authority, or production authorization.
  */
 final class MAD4B_SCP_OAuth_Challenge_Alignment {
-	const CONTRACT = 'mad4b.oauth-challenge-alignment.v1';
+	const CONTRACT = 'mad4b.oauth-challenge-alignment.v2';
 
 	private static $booted = false;
 
@@ -25,7 +25,7 @@ final class MAD4B_SCP_OAuth_Challenge_Alignment {
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $response;
 
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( '/mcp/mad4b-read' !== $route ) return $response;
+		if ( '/mcp/mad4b-chatgpt' !== $route ) return $response;
 
 		$headers = $response->get_headers();
 		$challenge = isset( $headers['WWW-Authenticate'] ) ? (string) $headers['WWW-Authenticate'] : '';
