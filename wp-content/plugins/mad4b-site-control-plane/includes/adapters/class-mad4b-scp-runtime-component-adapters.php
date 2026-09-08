@@ -233,23 +233,72 @@ final class MAD4B_SCP_Runtime_Component_Catalog {
 	}
 
 	private static function bounded_child_files( $child_theme, $limit = 300 ) {
-		$result = array( 'scanned_file_count' => 0, 'returned_file_count' => 0, 'truncated' => false, 'files' => array(), 'override_files' => array() );
+		$entry_budget = 1200;
+		$max_depth = 16;
+		$result = array(
+			'scanned_entry_count' => 0,
+			'scanned_file_count' => 0,
+			'returned_file_count' => 0,
+			'pruned_directory_count' => 0,
+			'skipped_symlink_count' => 0,
+			'scan_entry_budget' => $entry_budget,
+			'max_depth' => $max_depth,
+			'truncated' => false,
+			'files' => array(),
+			'override_files' => array(),
+		);
 		if ( ! is_object( $child_theme ) || ! $child_theme->exists() || ! method_exists( $child_theme, 'get_stylesheet_directory' ) || ! method_exists( $child_theme, 'get_template_directory' ) ) return $result;
 		$child_root = $child_theme->get_stylesheet_directory();
 		$parent_root = $child_theme->get_template_directory();
-		if ( ! is_dir( $child_root ) || ! is_dir( $parent_root ) || realpath( $child_root ) === realpath( $parent_root ) ) return $result;
+		$child_real = realpath( $child_root );
+		$parent_real = realpath( $parent_root );
+		if ( false === $child_real || false === $parent_real || ! is_dir( $child_real ) || ! is_dir( $parent_real ) || $child_real === $parent_real ) return $result;
+
+		// Use an explicit directory stack instead of RecursiveDirectoryIterator.
+		// This lets the scan stop at a hard entry budget and prunes vendor,
+		// node_modules and .git *before* traversal rather than merely hiding their
+		// returned files after an unbounded walk. Symlinks are never followed.
+		$stack = array( array( 'path' => $child_real, 'relative' => '', 'depth' => 0 ) );
 		try {
-			$iterator = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $child_root, FilesystemIterator::SKIP_DOTS ) );
-			foreach ( $iterator as $file ) {
-				if ( ! $file->isFile() ) continue;
-				++$result['scanned_file_count'];
-				$absolute = str_replace( '\\', '/', $file->getPathname() );
-				$root = rtrim( str_replace( '\\', '/', $child_root ), '/' ) . '/';
-				$relative = ltrim( substr( $absolute, strlen( $root ) ), '/' );
-				if ( preg_match( '#(^|/)(?:vendor|node_modules|\.git)(?:/|$)#', $relative ) ) continue;
-				if ( count( $result['files'] ) >= $limit ) { $result['truncated'] = true; break; }
-				$result['files'][] = $relative;
-				if ( is_file( rtrim( $parent_root, '/\\' ) . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $relative ) ) ) $result['override_files'][] = $relative;
+			while ( ! empty( $stack ) ) {
+				$frame = array_pop( $stack );
+				$directory = new DirectoryIterator( $frame['path'] );
+				foreach ( $directory as $entry ) {
+					if ( $entry->isDot() ) continue;
+					if ( $result['scanned_entry_count'] >= $entry_budget ) {
+						$result['truncated'] = true;
+						break 2;
+					}
+					++$result['scanned_entry_count'];
+					$name = $entry->getFilename();
+					$relative = '' === $frame['relative'] ? $name : $frame['relative'] . '/' . $name;
+
+					if ( $entry->isLink() ) {
+						++$result['skipped_symlink_count'];
+						continue;
+					}
+					if ( $entry->isDir() ) {
+						if ( in_array( $name, array( 'vendor', 'node_modules', '.git' ), true ) ) {
+							++$result['pruned_directory_count'];
+							continue;
+						}
+						if ( (int) $frame['depth'] >= $max_depth ) {
+							$result['truncated'] = true;
+							continue;
+						}
+						$stack[] = array( 'path' => $entry->getPathname(), 'relative' => $relative, 'depth' => (int) $frame['depth'] + 1 );
+						continue;
+					}
+					if ( ! $entry->isFile() ) continue;
+					++$result['scanned_file_count'];
+					if ( count( $result['files'] ) >= $limit ) {
+						$result['truncated'] = true;
+						break 2;
+					}
+					$result['files'][] = str_replace( '\\', '/', $relative );
+					$parent_candidate = $parent_real . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $relative );
+					if ( is_file( $parent_candidate ) ) $result['override_files'][] = str_replace( '\\', '/', $relative );
+				}
 			}
 		} catch ( Throwable $e ) {
 			$result['scan_error'] = 'filesystem_scan_unavailable';
