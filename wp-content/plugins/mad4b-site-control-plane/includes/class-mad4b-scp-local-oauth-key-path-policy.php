@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * dirname(ABSPATH) can still be web-addressable in that topology.
  */
 final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
-	const CONTRACT = 'mad4b.local-oauth-key-path-policy.v2';
+	const CONTRACT = 'mad4b.local-oauth-key-path-policy.v3';
 	private static $booted = false;
 	private static $error = null;
 	private static $selected_path = '';
@@ -36,11 +36,28 @@ final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
 		add_action( 'init', array( __CLASS__, 'enforce_runtime' ), 0 );
 		add_action( 'parse_request', array( __CLASS__, 'block_unsafe_protocol' ), -20 );
 		add_filter( 'pre_http_request', array( __CLASS__, 'block_unsafe_local_discovery' ), 0, 3 );
+		if ( is_wp_error( self::$error ) ) add_action( 'admin_notices', array( __CLASS__, 'admin_notice' ) );
 	}
 
 	public static function enforce_runtime() {
 		if ( ! is_wp_error( self::$error ) ) return;
 		remove_action( 'init', array( 'MAD4B_SCP_Local_OAuth_Server', 'ensure_runtime' ), 1 );
+	}
+
+	public static function admin_notice() {
+		if ( ! is_wp_error( self::$error ) || ! current_user_can( 'manage_options' ) ) return;
+		$message = sprintf(
+			/* translators: %s is a bounded internal error code, never a filesystem path. */
+			__( 'MAD4B Local OAuth is blocked because the private signing-key path is not proven outside the WordPress/HTTP document roots. Configure a safe absolute path outside the web root. Blocker: %s', 'mad4b-site-control-plane' ),
+			sanitize_key( self::$error->get_error_code() )
+		);
+		echo '<div class="notice notice-error"><p>' . esc_html( $message ) . '</p></div>';
+	}
+
+	public static function transport_ready() {
+		if ( ! self::enabled() ) return true;
+		$status = self::status();
+		return ! empty( $status['effective'] );
 	}
 
 	public static function block_unsafe_protocol() {
@@ -84,6 +101,7 @@ final class MAD4B_SCP_Local_OAuth_Key_Path_Policy {
 			'outside_document_root' => '' === $document_root || ( '' !== self::$selected_path && ! self::path_within( self::$selected_path, $document_root ) ),
 			'canonical_path_checks' => true,
 			'symlink_ancestor_resolution' => true,
+			'operator_blocker_visible' => is_wp_error( self::$error ),
 			'error' => is_wp_error( self::$error ) ? self::$error->get_error_code() : '',
 			'key_material_exposed' => false,
 		);
