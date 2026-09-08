@@ -130,7 +130,7 @@ jobs:
             test -f "$root/$file"
           done
 
-          grep -Fq "Version: 0.3.0" "$root/mad4b-site-control-plane.php"
+          grep -Fq "Version: 0.3.1" "$root/mad4b-site-control-plane.php"
           grep -Fq "mad4b.site-control-plane.packaged-provider-contracts.v1" "$scanner"
           grep -Fq "static_zip_inspection_only" "$scanner"
           grep -Fq "Unsafe ZIP entry" "$scanner"
