@@ -45,5 +45,19 @@ if ( ! in_array( 'oauth_wp_subject_unconfigured', $status['remote_preflight_bloc
 	mad4b_local_transport_misconfigured_fail( 'Expected OAuth subject configuration blocker missing.', $status['remote_preflight_blockers'] );
 }
 
+if ( ! class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ) {
+	mad4b_local_transport_misconfigured_fail( 'Client compatibility layer unavailable.' );
+}
+$metadata_path = (string) wp_parse_url( MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url(), PHP_URL_PATH );
+$metadata = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( $metadata_path );
+if ( ! is_wp_error( $metadata ) || 'mad4b_oauth_resource_discovery_not_ready' !== $metadata->get_error_code() ) {
+	mad4b_local_transport_misconfigured_fail( 'Ineffective OAuth published protected-resource metadata as ready.', $metadata );
+}
+$manifest = MAD4B_SCP_MCP_Client_Compatibility::manifest();
+$authorization_servers = isset( $manifest['authentication']['authorization_servers'] ) && is_array( $manifest['authentication']['authorization_servers'] ) ? $manifest['authentication']['authorization_servers'] : array();
+if ( ! empty( $authorization_servers ) ) {
+	mad4b_local_transport_misconfigured_fail( 'Compatibility manifest advertised authorization servers for ineffective OAuth.', $authorization_servers );
+}
+
 wp_set_current_user( 0 );
-echo 'mad4b.site-control-plane.runtime-local-transport-oauth-misconfigured.v1: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.runtime-local-transport-oauth-misconfigured.v2: PASS' . PHP_EOL;
