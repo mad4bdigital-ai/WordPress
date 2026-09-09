@@ -22,17 +22,32 @@ for marker in (
     "const CONTRACT = 'mad4b.mcp-registration-bridge.v1'",
     'public static function boot_early()',
     "did_action( 'mcp_adapter_init' ) > 0",
-    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_categories' )",
-    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' )",
-    "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' )",
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 )",
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
+    "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 )",
+    'public static function register_core_categories()',
+    'public static function register_registry_categories()',
+    'public static function register_core_abilities()',
+    'public static function register_registry_abilities()',
     'self::$registry->register_defaults();',
     'self::$servers->register_servers( $adapter );',
+    "'core_ability_hook_bound'",
+    "'registry_ability_hook_bound'",
+    "'ability_hook_bound' => $core_ability_hook_bound && $registry_ability_hook_bound",
     "'adapter_runtime_from_official_plugin'",
     "ReflectionClass( '\\\\WP\\\\MCP\\\\Core\\\\McpAdapter' )",
     "'registration_errors'",
     "'adapter_init_seen_before_bridge_boot'",
 ):
     require(bridge, marker, 'bridge-contract')
+
+for stale in (
+    "array( __CLASS__, 'register_categories' )",
+    "array( __CLASS__, 'register_abilities' )",
+):
+    forbid(bridge, stale, 'no-collapsed-registration-priority')
 
 require(bootstrap, "class-mad4b-scp-mcp-registration-bridge.php", 'bootstrap-load-bridge')
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'bootstrap-early-bridge')
@@ -68,4 +83,4 @@ forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v1: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v2: PASS')
