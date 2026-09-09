@@ -23,30 +23,37 @@ if ( empty( $registry['portable_app_id_configured'] ) ) $fail( 'Portable App map
 
 $seed = MAD4B_SCP_Skill_Seeder::status();
 if ( ! isset( $seed['state'] ) || 'ready' !== $seed['state'] ) $fail( 'Seed pack is not ready.' );
+if ( ! isset( $seed['seed_version'] ) || 2 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v2.' );
+if ( ! empty( $seed['overwrites_user_owned'] ) ) $fail( 'Seeder must never overwrite user-owned Skills.' );
+if ( empty( $seed['refreshes_only_digest_clean_managed'] ) ) $fail( 'Managed seed refresh must remain digest-clean only.' );
 
 $provider = MAD4B_SCP_Skill_Provider_Discovery::status();
 if ( ! isset( $provider['state'] ) || 'ready' !== $provider['state'] ) $fail( 'Provider Skill reconciliation is not ready.' );
 if ( ! empty( $provider['provider_plugin_mutation'] ) ) $fail( 'Provider discovery reported plugin mutation.' );
 if ( ! empty( $provider['deletes_skills'] ) ) $fail( 'Provider discovery reported Skill deletion.' );
 
-$base = array(
-	array( 'site', '_site', 'wordpress-site-diagnostics' ),
-	array( 'connection', 'mad4b-chatgpt', 'wordpress-connection-diagnostics' ),
-	array( 'workflow', 'archive-audit', 'wordpress-archive-audit' ),
-	array( 'workflow', 'change-safety', 'wordpress-change-safety' ),
+$seed_identities = array(
+	array( 'site', '_site', 'wordpress-site-diagnostics', true ),
+	array( 'connection', 'mad4b-chatgpt', 'wordpress-connection-diagnostics', true ),
+	array( 'provider', 'elementor', 'elementor-dynamic-content', false ),
+	array( 'provider', 'jet-engine', 'jetengine-content-modeling', false ),
+	array( 'workflow', 'archive-audit', 'wordpress-archive-audit', true ),
+	array( 'workflow', 'change-safety', 'wordpress-change-safety', true ),
 );
-foreach ( $base as $identity ) {
-	$skill = MAD4B_SCP_Skill_Registry::get_skill( $identity[0], $identity[1], $identity[2] );
-	if ( is_wp_error( $skill ) || empty( $skill['enabled'] ) ) $fail( 'Missing or disabled base Skill: ' . implode( ':', $identity ) );
-}
+$workspace = getenv( 'GITHUB_WORKSPACE' );
+if ( ! is_string( $workspace ) || '' === $workspace ) $fail( 'GITHUB_WORKSPACE is unavailable for canonical seed parity proof.' );
 
-foreach ( array(
-	array( 'provider', 'elementor', 'elementor-dynamic-content' ),
-	array( 'provider', 'jet-engine', 'jetengine-content-modeling' ),
-) as $identity ) {
+foreach ( $seed_identities as $identity ) {
 	$skill = MAD4B_SCP_Skill_Registry::get_skill( $identity[0], $identity[1], $identity[2] );
-	if ( is_wp_error( $skill ) ) $fail( 'Expected provider handoff seed is missing: ' . implode( ':', $identity ) );
-	if ( ! empty( $skill['enabled'] ) ) $fail( 'Provider handoff seed must remain disabled when provider is absent: ' . implode( ':', $identity ) );
+	if ( is_wp_error( $skill ) ) $fail( 'Missing canonical runtime Skill: ' . implode( ':', array_slice( $identity, 0, 3 ) ) );
+	if ( (bool) $identity[3] !== ! empty( $skill['enabled'] ) ) $fail( 'Unexpected canonical Skill enabled state: ' . $identity[2] );
+
+	$portable_path = wp_normalize_path( $workspace . '/plugins/mad4b-wordpress/skills/' . $identity[2] . '/SKILL.md' );
+	if ( ! is_file( $portable_path ) ) $fail( 'Portable canonical Skill is missing: ' . $identity[2] );
+	$portable_content = file_get_contents( $portable_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	if ( ! is_string( $portable_content ) || ! hash_equals( hash( 'sha256', $portable_content ), hash( 'sha256', (string) $skill['content'] ) ) || $portable_content !== (string) $skill['content'] ) {
+		$fail( 'Runtime/portable canonical Skill byte drift: ' . $identity[2] );
+	}
 }
 
 $required_read = array(
@@ -83,6 +90,9 @@ $export = MAD4B_SCP_Skill_Exporter::build_temp_zip();
 if ( is_wp_error( $export ) ) $fail( 'Portable export failed: ' . $export->get_error_code() );
 if ( empty( $export['path'] ) || ! is_file( $export['path'] ) ) $fail( 'Portable export file is missing.' );
 if ( empty( $export['identity_token'] ) || ! hash_equals( (string) $snapshot_identity['identity_token'], (string) $export['identity_token'] ) ) $fail( 'Exporter result identity token mismatch.' );
+if ( ! isset( $export['skill_count'] ) || (int) $export['skill_count'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_SKILLS ) $fail( 'Exporter Skill count is outside the bounded limit.' );
+if ( ! isset( $export['resource_count'] ) || (int) $export['resource_count'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_RESOURCES ) $fail( 'Exporter resource count is outside the bounded limit.' );
+if ( ! isset( $export['uncompressed_payload_bytes'] ) || (int) $export['uncompressed_payload_bytes'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_UNCOMPRESSED_BYTES ) $fail( 'Exporter payload bytes exceed the bounded limit.' );
 
 $zip = new ZipArchive();
 if ( true !== $zip->open( $export['path'] ) ) { @unlink( $export['path'] ); $fail( 'Portable export ZIP could not be reopened.' ); }
@@ -95,8 +105,10 @@ $zip->close();
 if ( '' === $token_file || ! hash_equals( (string) $snapshot_identity['identity_token'], $token_file ) ) $fail( 'MAD4B-SNAPSHOT-ID.txt does not match runtime identity.' );
 $meta = json_decode( (string) $meta_json, true );
 if ( ! is_array( $meta ) || empty( $meta['identity_token'] ) || ! hash_equals( $token_file, (string) $meta['identity_token'] ) ) $fail( 'MAD4B-SNAPSHOT.json identity token mismatch.' );
+if ( ! isset( $meta['resource_count'], $meta['uncompressed_payload_bytes'], $meta['export_limits'] ) ) $fail( 'MAD4B-SNAPSHOT.json is missing bounded export evidence.' );
+if ( (int) $meta['resource_count'] !== (int) $export['resource_count'] || (int) $meta['uncompressed_payload_bytes'] !== (int) $export['uncompressed_payload_bytes'] ) $fail( 'Export result and embedded payload counters disagree.' );
 $app = json_decode( (string) $app_json, true );
 $zip_app_id = is_array( $app ) && isset( $app['apps']['mad4b-wordpress']['id'] ) ? (string) $app['apps']['mad4b-wordpress']['id'] : '';
 if ( '' === $zip_app_id || ! hash_equals( MAD4B_SCP_Skill_Autoconfig::staging_app_id(), $zip_app_id ) ) $fail( 'Portable .app.json does not bind the governed Staging App.' );
 
-echo 'mad4b.runtime-dynamic-skills.v1: PASS' . PHP_EOL;
+echo 'mad4b.runtime-dynamic-skills.v2: PASS' . PHP_EOL;
