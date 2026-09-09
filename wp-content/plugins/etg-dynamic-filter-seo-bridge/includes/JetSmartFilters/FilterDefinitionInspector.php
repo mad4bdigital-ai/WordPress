@@ -14,13 +14,17 @@ final class FilterDefinitionInspector {
 
     private $templateProvider;
     private $filterProvider;
+    private static $nativeMemoryCache = null;
 
     public function __construct( callable $templateProvider = null, callable $filterProvider = null ) {
         $this->templateProvider = $templateProvider;
         $this->filterProvider = $filterProvider;
     }
 
-    public function inspect(): array {
+    public function inspect( bool $refresh = false ): array {
+        $native = ! $this->templateProvider && ! $this->filterProvider;
+        if ( $native && ! $refresh && is_array( self::$nativeMemoryCache ) ) { return self::$nativeMemoryCache; }
+
         $templates = $this->templates();
         $definitionSourceAvailable = (bool) $this->filterProvider || function_exists( 'get_post_meta' );
         $surfaces = array();
@@ -72,7 +76,7 @@ final class FilterDefinitionInspector {
         } );
 
         $available = ! empty( $templates['available'] ) && $definitionSourceAvailable;
-        return array(
+        $result = array(
             'contract' => self::CONTRACT,
             'authorizing' => false,
             'read_only' => true,
@@ -82,6 +86,7 @@ final class FilterDefinitionInspector {
                 'templates' => (string) ( $templates['source'] ?? '' ),
                 'filter_definitions' => $this->filterProvider ? 'injected_filter_provider' : ( $definitionSourceAvailable ? 'wordpress_post_meta' : 'wordpress_post_meta_unavailable' ),
             ),
+            'cache_scope' => 'request_memory_only',
             'templates_scanned' => count( $templates['items'] ),
             'elements_scanned' => $elementsScanned,
             'truncated' => $truncated || ! empty( $templates['truncated'] ),
@@ -93,6 +98,8 @@ final class FilterDefinitionInspector {
             'drift' => array_slice( $drift, 0, self::MAX_DRIFT ),
             'drift_truncated' => count( $drift ) > self::MAX_DRIFT,
         );
+        if ( $native ) { self::$nativeMemoryCache = $result; }
+        return $result;
     }
 
     private function templates(): array {
