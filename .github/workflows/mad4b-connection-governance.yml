@@ -38,6 +38,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-authorization.php"
           php -l "$root/includes/class-mad4b-scp-servers.php"
           php -l "$root/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php"
+          php -l "$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
           php -l "$root/includes/class-mad4b-scp-mcp-registration-bridge.php"
           php -l "$root/includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php"
           php -l "$root/includes/class-mad4b-scp-connection-status.php"
@@ -164,7 +165,7 @@ jobs:
           php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED true --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
 
-      - name: Prove Hostinger bundled Adapter collision self-heals on exact Staging origin
+      - name: Prove Hostinger pre-active-plugin Adapter collision self-heals on exact Staging origin
         shell: bash
         run: |
           set -euo pipefail
@@ -201,8 +202,8 @@ jobs:
           php /tmp/wp-cli.phar option update siteurl 'https://staging.egypttourgates.com' --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate hostinger-ai-assistant --path="$WP_PATH"
 
-          # Force the reviewed collision shape for the next PHP request while
-          # preserving every other active plugin entry.
+          # Keep active_plugins canonical: official MCP Adapter before Hostinger.
+          # The live defect bypasses this list through an earlier loader.
           php /tmp/wp-cli.phar eval '
           $active = get_option( "active_plugins", array() );
           $rest = array();
@@ -211,15 +212,25 @@ jobs:
               if ( 0 === strpos( $plugin, "hostinger-ai-assistant/" ) ) continue;
               $rest[] = $plugin;
           }
-          array_unshift( $rest, "mcp-adapter/mcp-adapter.php" );
           array_unshift( $rest, "hostinger-ai-assistant/hostinger-ai-assistant.php" );
+          array_unshift( $rest, "mcp-adapter/mcp-adapter.php" );
           update_option( "active_plugins", array_values( $rest ) );
           ' --path="$WP_PATH"
 
-          # Request 1 is intentionally shadowed. The guard must persist a
-          # canonical order without attempting to replace the loaded class.
+          # Reproduce the Staging evidence: Hostinger claims McpAdapter before
+          # normal active plugins despite the canonical active_plugins order.
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cat > "$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php" <<'PHP'
+          <?php
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+          require_once WP_PLUGIN_DIR . '/hostinger-ai-assistant/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php';
+          PHP
+
+          # Request 1 must detect provenance mismatch and install the managed
+          # 000-* MU bootstrap. It cannot replace the already-declared class.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
 
-          # Request 2 must load the canonical 0.6.1 class first and register all
-          # six MAD4B servers through the normal mcp_adapter_init lifecycle.
+          # Request 2 loads 000-* before the simulated Hostinger preloader,
+          # making the canonical 0.6.1 runtime owner and registering all six
+          # MAD4B MCP servers through the normal mcp_adapter_init lifecycle.
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
