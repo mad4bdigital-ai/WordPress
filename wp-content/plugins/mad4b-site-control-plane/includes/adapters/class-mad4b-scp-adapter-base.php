@@ -23,6 +23,9 @@ abstract class MAD4B_SCP_Adapter_Base {
 			'reversible_contracts' => $this->reversible_contracts(),
 		);
 		if ( is_array( $certification ) ) $status['provider_certification'] = $certification;
+		if ( class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
+			$status['provider_runtime_evidence'] = MAD4B_SCP_Provider_Contracts::runtime_evidence( $this->certified_provider_key() );
+		}
 		$status['mutation_requires_certification'] = $this->mutation_requires_certification();
 		return $status;
 	}
