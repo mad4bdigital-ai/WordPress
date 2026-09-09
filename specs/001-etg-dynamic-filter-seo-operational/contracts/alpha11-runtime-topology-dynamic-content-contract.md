@@ -16,6 +16,18 @@ Alpha11 removes side-channel/manual identity discovery from the normal operator 
 6. Correlation must fail closed on missing, ambiguous, unbounded, non-posts or custom-ID-missing records.
 7. Runtime topology discovery is read-only, non-authorizing and profile-non-mutating.
 
+## Provider-group drift
+
+1. A verified Elementor Listing → Query Builder binding establishes a provider-group anchor for the template in which it was observed.
+2. JetSmartFilters widgets in the same template may be compared with those verified anchors without mutating Elementor or Profile configuration.
+3. A widget that names a different provider query ID must remain visible as topology drift evidence.
+4. If the foreign provider group can be resolved to a bounded Posts query whose post types do not intersect the verified anchor post types, the drift reason is `provider_group_post_type_mismatch` and its severity hint is `blocking`.
+5. For an enabled Surface Profile whose route is one of the verified expected provider groups, a proven cross-post-type mismatch is a fail-closed reconciliation blocker.
+6. The same proven drift on a disabled Profile remains warning/review evidence and does not create activation authority.
+7. If a foreign provider group cannot be resolved to sufficient post-type authority, the drift reason is `provider_group_unbound_in_template`; it remains advisory `warning` evidence and must not be promoted to a route blocker merely because the Profile is enabled.
+8. Inventory-level drift summaries remain warning evidence even when individual proven route mismatches can block an enabled Profile.
+9. Provider-group drift detection is diagnostic only: it does not rewrite Elementor settings, Query Builder objects, Profiles, URLs or SEO publication state.
+
 ## Inventory scale
 
 1. Detailed Query Builder output remains bounded to 100 records for explainability and payload safety.
