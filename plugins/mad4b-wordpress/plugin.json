@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "mad4b-wordpress",
-  "version": "0.1.0",
+  "version": "0.2.0-rc.1",
   "description": "Governed WordPress diagnostics and reusable workflow skills for the MAD4B MCP control plane.",
   "author": {
     "name": "MAD4B",
