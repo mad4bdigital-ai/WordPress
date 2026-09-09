@@ -210,9 +210,9 @@ jobs:
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
-          grep -Fq "mad4b.write-runtime-certification.v1" "$write_cert"
+          grep -Fq "mad4b.write-runtime-certification.v2" "$write_cert"
           grep -Fq "all_write_tools_exposed_on_same_plugin_transport" "$write_cert"
-          grep -Fq "mad4b.rest-compatibility.v1" "$rest_compat"
+          grep -Fq "mad4b.rest-compatibility.v2" "$rest_compat"
           grep -Fq "'/wpml/v1/rest/status'" "$rest_compat"
           grep -Fq "rest_do_request" "$rest_compat"
           if grep -Fq "add_filter( 'rest_enabled'" "$rest_compat" || grep -Fq "add_filter( 'rest_authentication_errors'" "$rest_compat"; then
