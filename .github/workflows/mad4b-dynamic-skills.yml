@@ -13,11 +13,16 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php'
       - '.github/workflows/mad4b-dynamic-skills.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: mad4b-dynamic-skills-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   contract:
@@ -49,7 +54,8 @@ jobs:
             includes/class-mad4b-scp-skill-runtime-certification.php \
             includes/class-mad4b-scp-skill-abilities.php \
             includes/class-mad4b-scp-skills-admin-ui.php \
-            includes/adapters/class-mad4b-scp-skills-adapter.php; do
+            includes/adapters/class-mad4b-scp-skills-adapter.php \
+            tests/runtime-dynamic-skills-smoke.php; do
             php -l "$root/$file"
           done
 
@@ -98,3 +104,71 @@ jobs:
             dist/SOURCE_HEAD.txt
           if-no-files-found: error
           retention-days: 14
+
+  runtime-staging:
+    name: Dynamic Skills zero-touch Staging runtime
+    needs: contract
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable Staging WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-dynamic-skills.test' --title='MAD4B Dynamic Skills' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+
+      - name: Install exact MCP Adapter and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove automatic Skill bootstrap, provider handoff and certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills --user=mad4b-ci-admin
