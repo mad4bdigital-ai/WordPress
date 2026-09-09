@@ -234,7 +234,8 @@ jobs:
           # first governed Staging request after the preloader exists.
           mysql --protocol=tcp -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress \
             -e "UPDATE wp_options SET option_value='https://staging.egypttourgates.com' WHERE option_name IN ('home','siteurl');"
-          test "$(mysql --protocol=tcp -N -B -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress -e \"SELECT COUNT(*) FROM wp_options WHERE option_name IN ('home','siteurl') AND option_value='https://staging.egypttourgates.com';\")" = "2"
+          staging_count="$(mysql --protocol=tcp -N -B -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress -e "SELECT COUNT(*) FROM wp_options WHERE option_name IN ('home','siteurl') AND option_value='https://staging.egypttourgates.com';")"
+          test "$staging_count" = "2"
 
           # Request 1 must detect provenance mismatch and install the managed
           # 000-* MU bootstrap. It cannot replace the already-declared class.
