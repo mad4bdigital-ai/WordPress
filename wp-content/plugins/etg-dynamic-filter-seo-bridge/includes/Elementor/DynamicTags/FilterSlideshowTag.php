@@ -21,9 +21,9 @@ final class FilterSlideshowTag extends \Elementor\Core\DynamicTags\Data_Tag {
             'role_priority'=>'Combined By Role Priority',
         );
         foreach($roles as$role=>$label){$modes[$role]=$label.' only';}
-        $this->add_control('mode',array('label'=>'Slideshow Collection Mode','type'=>\Elementor\Controls_Manager::SELECT,'options'=>$modes,'default'=>'balanced','description'=>'Returns an Elementor-native Gallery value suitable for Slideshow/Carousel controls. Autoplay, transition and timing stay under Elementor.'));
+        $this->add_control('mode',array('label'=>'Slideshow Collection Mode','type'=>\Elementor\Controls_Manager::SELECT,'options'=>$modes,'default'=>'balanced','description'=>'Returns a Gallery value. Animation stays in Elementor.'));
         $this->add_control('limit',array('label'=>'Maximum Slides','type'=>\Elementor\Controls_Manager::NUMBER,'min'=>1,'max'=>30,'default'=>12));
-        $this->add_control('minimum',array('label'=>'Minimum Slides','type'=>\Elementor\Controls_Manager::NUMBER,'min'=>1,'max'=>30,'default'=>2,'description'=>'If the selected mode produces fewer images, ETG falls back to Combined Media.'));
+        $this->add_control('minimum',array('label'=>'Minimum Slides','type'=>\Elementor\Controls_Manager::NUMBER,'min'=>1,'max'=>30,'default'=>2,'description'=>'Below this count, Combined Media is tried.'));
         $this->etgRegisterPreviewControl();
     }
 
