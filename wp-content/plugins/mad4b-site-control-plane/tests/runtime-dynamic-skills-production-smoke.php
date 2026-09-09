@@ -43,7 +43,8 @@ if ( ! empty( $cert['external_client_snapshot_verified'] ) ) $fail( 'WordPress m
 
 $write_cert = MAD4B_SCP_Write_Runtime_Certification::observe();
 if ( ! empty( $write_cert['ready'] ) ) $fail( 'Production must not receive governed Staging write certification.' );
-if ( ! in_array( 'exact_staging_origin', isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array(), true ) ) $fail( 'Production write certification did not fail on exact Staging origin.' );
+if ( ! isset( $write_cert['state'] ) || 'ineligible' !== $write_cert['state'] ) $fail( 'Production write certification did not remain ineligible.' );
+if ( ! in_array( 'environment_not_staging', isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array(), true ) ) $fail( 'Production write certification did not fail on the environment boundary.' );
 if ( ! empty( $write_cert['external_client_tools_verified'] ) ) $fail( 'Production certification claimed external client write-tool verification.' );
 
 $chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
