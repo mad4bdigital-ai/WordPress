@@ -34,6 +34,11 @@ trait PreviewContextTrait {
     }
 
     private function etgIsEditorPreview(): bool {
+        // Elementor resolves dynamic-tag values through its authenticated
+        // render_tags AJAX endpoint. That request is not guaranteed to report
+        // editor/preview mode through Plugin::$instance, so the registrar brackets
+        // the render pass explicitly via elementor/dynamic_tags/before_render.
+        if (DynamicTagRuntime::isEditorRenderPass()) { return true; }
         if (!class_exists('\\Elementor\\Plugin') || !isset(\Elementor\Plugin::$instance)) { return false; }
         $plugin = \Elementor\Plugin::$instance;
         try {
