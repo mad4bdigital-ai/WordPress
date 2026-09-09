@@ -23,6 +23,8 @@ adapter_ui = read('includes/class-mad4b-scp-adapter-coverage-admin-ui.php')
 admin_experience = read('includes/class-mad4b-scp-admin-experience.php')
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 isolation = read('includes/class-mad4b-scp-mcp-provider-isolation.php')
+bridge = read('includes/class-mad4b-scp-mcp-registration-bridge.php')
+diagnostics = read('includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
 servers = read('includes/class-mad4b-scp-servers.php')
@@ -71,11 +73,11 @@ for forbidden in (
     forbid(evidence, forbidden, 'external-evidence-no-secret-or-outbound')
 
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_remote_request(', 'curl_exec(', 'fsockopen('):
-    forbid(status + '\n' + ui, outbound, 'no-self-probe-ssrf')
+    forbid(status + '\n' + ui + '\n' + diagnostics, outbound, 'no-self-probe-ssrf')
 for write in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'update_option(', 'add_option(', 'delete_option('):
-    forbid(ui + '\n' + adapter_ui + '\n' + admin_experience, write, 'admin-experience-read-only')
+    forbid(ui + '\n' + adapter_ui + '\n' + admin_experience + '\n' + diagnostics, write, 'admin-experience-read-only')
 for secret_key in ("'client_secret'", "'access_token'", "'refresh_token'", "'authorization_header'", "'raw_token'", "'password_hash'"):
-    forbid(ui + '\n' + status, secret_key, 'connection-no-secret-material')
+    forbid(ui + '\n' + status + '\n' + diagnostics, secret_key, 'connection-no-secret-material')
 
 require(ability, "const ABILITY = 'mad4b/connection-status'", 'connection-ability')
 require(ability, "'readonly' => true", 'connection-ability-readonly')
@@ -152,17 +154,40 @@ for marker in (
     'class-mad4b-scp-mcp-provider-isolation.php', 'class-mad4b-scp-external-handshake-evidence.php',
     'class-mad4b-scp-transport-context.php', 'class-mad4b-scp-connection-status.php',
     'class-mad4b-scp-connection-ability.php', 'class-mad4b-scp-admin-experience.php',
-    'class-mad4b-scp-connection-admin-ui.php',
+    'class-mad4b-scp-connection-admin-ui.php', 'class-mad4b-scp-mcp-registration-bridge.php',
+    'class-mad4b-scp-mcp-registration-diagnostics-admin.php',
 ):
     require(bootstrap, marker, 'bootstrap-load')
+require(bootstrap, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'mcp-registration-early-boot')
+require(bootstrap, 'MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();', 'mcp-registration-diagnostics-boot')
 require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'provider-early-boot')
 require(bootstrap, 'MAD4B_SCP_External_Handshake_Evidence::boot();', 'external-evidence-boot')
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
 require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
+require(plugin, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'registration-bridge-idempotent-boot')
+forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_servers' )", 'no-late-mcp-server-binding')
 
 for marker in (
-    "const CONTRACT = 'mad4b.mcp-provider-isolation.v2'", "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const CONTRACT = 'mad4b.mcp-registration-bridge.v1'",
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_categories' )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' )",
+    "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' )",
+    "'adapter_init_seen_before_bridge_boot'", "'adapter_runtime_from_official_plugin'", "'registration_errors'",
+):
+    require(bridge, marker, 'mcp-registration-bridge')
+for marker in (
+    'MAD4B MCP registration diagnostics', 'Adapter runtime from official plugin',
+    'Adapter init happened before bridge boot', 'Registration error:',
+):
+    require(diagnostics, marker, 'mcp-registration-diagnostics')
+
+for marker in (
+    "const CONTRACT = 'mad4b.mcp-provider-isolation.v3'",
+    "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED'",
+    'public static function runtime_suppression_approved()',
+    'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;',
     "add_filter( 'wpmedia_mcp_oauth_server_enabled'", 'filter_wpmedia_oauth_server_enabled',
     "add_filter( 'mcp_adapter_create_default_server'", "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
     "add_action( 'init', array( __CLASS__, 'suppress_provider_server_registrations' ), 19 )",
@@ -170,6 +195,7 @@ for marker in (
     "add_filter( 'rest_endpoints'", "'hostinger-ai-assistant-mcp-server'", "'elementskit-mcp-server'",
     "/hostinger-ai-assistant/v1/mcp/", "/hostinger-ai-assistant/v1/jwt/", "/elementskit/mcp/",
     "'unknown_routes_fail_closed' => true", "'changes_provider_settings' => false", "'creates_authority' => false",
+    "'legacy_enable_flag_alone_is_non_mutating' => true", "'runtime_suppression_requires_second_gate' => true",
 ):
     require(isolation, marker, 'provider-isolation-contract')
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post(', 'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible('):
@@ -186,4 +212,4 @@ for marker in (
 for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v7: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v8: PASS')
