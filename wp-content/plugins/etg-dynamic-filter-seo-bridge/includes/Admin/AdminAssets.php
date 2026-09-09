@@ -78,6 +78,13 @@ final class AdminAssets {
             );
         }
 
+        wp_enqueue_style(
+            'etg-dfsb-admin-shell-responsive',
+            plugins_url('assets/css/admin-shell-responsive.css', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
+            array('etg-dfsb-admin-alpha13'),
+            ETG_DFSB_VERSION
+        );
+
         if ('etg-dfsb-usage-guide' === $page) {
             wp_enqueue_script(
                 'etg-dfsb-usage-guide',
