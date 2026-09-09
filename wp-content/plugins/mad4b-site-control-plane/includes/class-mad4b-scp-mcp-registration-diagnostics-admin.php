@@ -20,6 +20,7 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ) return;
 
 		$status = MAD4B_SCP_MCP_Registration_Bridge::status();
+		$refresh = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) ? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::status() : array();
 		$conflict = class_exists( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard' ) ? MAD4B_SCP_MCP_Runtime_Conflict_Guard::status() : array();
 		$build = self::disk_evidence();
 		$errors = isset( $status['registration_errors'] ) && is_array( $status['registration_errors'] ) ? $status['registration_errors'] : array();
@@ -48,7 +49,14 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		self::row( 'Adapter runtime source', isset( $status['adapter_runtime_source'] ) ? $status['adapter_runtime_source'] : '' );
 		self::row( 'Adapter runtime version', isset( $status['adapter_runtime_version'] ) ? $status['adapter_runtime_version'] : '' );
 		self::row( 'mcp_adapter_init count', isset( $status['mcp_adapter_init_count'] ) ? (string) (int) $status['mcp_adapter_init_count'] : '0' );
+		self::row( 'REST API init count', isset( $status['rest_api_init_count'] ) ? (string) (int) $status['rest_api_init_count'] : '0' );
 		self::row( 'Abilities init count', isset( $status['abilities_init_count'] ) ? (string) (int) $status['abilities_init_count'] : '0' );
+		if ( ! empty( $refresh ) ) {
+			self::row( 'MU bootstrap source refresh applied', ! empty( $refresh['refresh_applied'] ) ? 'yes' : 'no' );
+			self::row( 'MU bootstrap refresh next request required', ! empty( $refresh['next_request_required'] ) ? 'yes' : 'no' );
+			self::row( 'MU bootstrap refresh state', isset( $refresh['state'] ) ? sanitize_key( (string) $refresh['state'] ) : '' );
+			self::row( 'MU bootstrap refresh blocker', isset( $refresh['blocker'] ) && '' !== (string) $refresh['blocker'] ? sanitize_key( (string) $refresh['blocker'] ) : 'none' );
+		}
 		if ( ! empty( $conflict ) ) {
 			self::row( 'Runtime conflict guard eligible', ! empty( $conflict['eligible'] ) ? 'yes' : 'no' );
 			self::row( 'Official MCP Adapter active', ! empty( $conflict['official_plugin_active'] ) ? 'yes' : 'no' );
