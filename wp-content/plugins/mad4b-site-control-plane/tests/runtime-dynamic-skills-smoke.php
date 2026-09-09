@@ -75,9 +75,8 @@ foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete
 }
 
 // Register a disposable WPML-compatible route directly on the REST server. The
-// probe then traverses rest_do_request + every rest_pre_dispatch guard and must
-// preserve both GET parameters exactly. This proves the Control Plane does not
-// create the WPML "REST enabled: No" symptom through global interception.
+// probe traverses rest_do_request + every rest_pre_dispatch guard and must
+// preserve both query parameters exactly.
 $rest_server = rest_get_server();
 $rest_server->register_route( 'wpml/v1', '/rest/status', array(
 	array(
@@ -94,7 +93,10 @@ $rest_server->register_route( 'wpml/v1', '/rest/status', array(
 $rest_compat = MAD4B_SCP_REST_Compatibility::status();
 if ( empty( $rest_compat['rest_enabled'] ) ) $fail( 'REST API is disabled in the disposable Staging runtime.' );
 if ( ! empty( $rest_compat['control_plane_disables_rest'] ) ) $fail( 'Control Plane reports REST disablement.' );
-if ( empty( $rest_compat['wpml']['ready'] ) || empty( $rest_compat['wpml']['query_parameters_preserved'] ) ) $fail( 'WPML-compatible REST probe did not preserve query parameters.' );
+if ( ! empty( $rest_compat['control_plane_filters_rest_enabled'] ) ) $fail( 'Control Plane unexpectedly owns a rest_enabled callback.' );
+if ( ! empty( $rest_compat['control_plane_filters_rest_authentication_errors'] ) ) $fail( 'Control Plane unexpectedly owns a global rest_authentication_errors callback.' );
+if ( ! empty( $rest_compat['rest_enabled_hook']['truncated'] ) || ! empty( $rest_compat['rest_authentication_errors_hook']['truncated'] ) ) $fail( 'REST hook evidence was truncated.' );
+if ( empty( $rest_compat['wpml']['route_registered'] ) || empty( $rest_compat['wpml']['ready'] ) || empty( $rest_compat['wpml']['query_parameters_preserved'] ) ) $fail( 'WPML-compatible REST probe did not preserve query parameters.' );
 if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST probe.' );
 
 $write_authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
@@ -120,7 +122,37 @@ if ( in_array( 'mad4b/database-raw-query', $write_tools, true ) ) $fail( 'Breakg
 foreach ( $write_tools as $ability ) {
 	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability ) ) $fail( 'Write action is not mounted on mad4b-write: ' . $ability );
 	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability ) ) $fail( 'Write action is not exposed through the same ChatGPT Plugin transport: ' . $ability );
+	$write_ability = wp_get_ability( $ability );
+	$write_meta = is_object( $write_ability ) && method_exists( $write_ability, 'get_meta' ) ? $write_ability->get_meta() : array();
+	if ( ! isset( $write_meta['annotations']['readonly'] ) || false !== $write_meta['annotations']['readonly'] ) $fail( 'Write inventory contains an ability without readonly=false: ' . $ability );
 }
+
+// The approval planner is itself a governed mutation, but cannot require a
+// ticket to create the first pending ticket. Prove its bootstrap is narrowly
+// constrained to this agent + mad4b-write + mutation class and denies breakglass.
+$planner = MAD4B_SCP_Staging_Write_Planning_Guard::status();
+if ( empty( $planner['remote_planner_requires_nhi'] ) || empty( $planner['remote_planner_requires_exact_mad4b_write_grant'] ) || empty( $planner['remote_planner_budgeted'] ) ) $fail( 'Approval planner is missing NHI/grant/budget governance.' );
+if ( ! isset( $planner['remote_planner_requires_prior_ticket'] ) || false !== $planner['remote_planner_requires_prior_ticket'] ) $fail( 'Approval planner bootstrap incorrectly requires a prior ticket.' );
+if ( 'mad4b-write' !== $planner['target_server'] || 'mutation' !== $planner['target_ticket_class'] || ! empty( $planner['breakglass_target_allowed'] ) || empty( $planner['creates_pending_ticket_only'] ) || ! empty( $planner['auto_approves'] ) ) $fail( 'Approval planner target boundary is unsafe.' );
+$planner_ability = wp_get_ability( 'mad4b/approval-plan' );
+$planner_meta = is_object( $planner_ability ) && method_exists( $planner_ability, 'get_meta' ) ? $planner_ability->get_meta() : array();
+if ( empty( $planner_meta['mcp']['mad4b_approval_bootstrap_operation'] ) || empty( $planner_meta['mcp']['mad4b_creates_pending_ticket_only'] ) ) $fail( 'Approval planner registration was not wrapped by the governed bootstrap guard.' );
+$valid_plan = array(
+	'agent_public_id' => $write_authority['agent_public_id'],
+	'server_id' => 'mad4b-write',
+	'ability' => 'mad4b/content-update-post',
+	'provider' => 'core',
+	'input' => array( 'post_id' => 1, 'expected_modified_gmt' => '2000-01-01 00:00:00' ),
+	'ticket_class' => 'mutation',
+	'reason' => 'CI bootstrap contract proof',
+);
+if ( true !== MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $valid_plan ) ) $fail( 'Valid self-agent mad4b-write approval plan was denied by bootstrap guard.' );
+$cross_agent = $valid_plan;
+$cross_agent['agent_public_id'] = '00000000-0000-0000-0000-000000000000';
+if ( ! is_wp_error( MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $cross_agent ) ) ) $fail( 'Approval planner accepted another agent.' );
+$breakglass_plan = $valid_plan;
+$breakglass_plan['ability'] = 'mad4b/database-raw-query';
+if ( ! is_wp_error( MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $breakglass_plan ) ) ) $fail( 'Approval planner accepted breakglass.' );
 
 $fake_identity = array(
 	'authenticated' => true,
@@ -150,8 +182,10 @@ if ( empty( $readback['ready'] ) || ! hash_equals( (string) $cert['evidence_dige
 $write_cert = MAD4B_SCP_Write_Runtime_Certification::observe();
 if ( empty( $write_cert['ready'] ) || 'ready' !== $write_cert['state'] ) $fail( 'Governed write certification is blocked: ' . wp_json_encode( isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array() ) );
 if ( empty( $write_cert['exact_approval_required_for_remote_write'] ) ) $fail( 'Write certification does not require exact remote approvals.' );
+if ( 'pending_ticket_creation_only' !== $write_cert['approval_planner_bootstrap_exception'] ) $fail( 'Write certification did not record the bounded planner bootstrap exception.' );
 if ( ! empty( $write_cert['external_client_tools_verified'] ) ) $fail( 'WordPress must not claim external client tool refresh.' );
 if ( (int) $write_cert['write_tool_count'] !== count( $write_tools ) ) $fail( 'Write certification inventory count mismatch.' );
+if ( empty( $write_cert['checks']['control_plane_not_on_rest_enabled_hook'] ) || empty( $write_cert['checks']['control_plane_not_on_rest_authentication_hook'] ) ) $fail( 'Write certification did not prove REST global-hook isolation.' );
 
 if ( ! class_exists( 'ZipArchive' ) ) $fail( 'ZipArchive is unavailable for portable export proof.' );
 $export = MAD4B_SCP_Skill_Exporter::build_temp_zip();
@@ -186,4 +220,4 @@ $plugin = json_decode( (string) $plugin_json, true );
 $capabilities = is_array( $plugin ) && isset( $plugin['extensions']['com.openai']['interface']['capabilities'] ) && is_array( $plugin['extensions']['com.openai']['interface']['capabilities'] ) ? $plugin['extensions']['com.openai']['interface']['capabilities'] : array();
 if ( ! in_array( 'Read', $capabilities, true ) || ! in_array( 'Write', $capabilities, true ) ) $fail( 'Runtime portable plugin.json does not declare Read + Write on certified Staging.' );
 
-echo 'mad4b.runtime-dynamic-skills.v3: PASS' . PHP_EOL;
+echo 'mad4b.runtime-dynamic-skills.v4: PASS' . PHP_EOL;
