@@ -273,7 +273,7 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			return $status;
 		}
 
-		$temp = $destination . '.tmp-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . wp_rand() ), 0, 12 );
+		$temp = $destination . '.tmp-' . (int) getmypid() . '-' . substr( hash( 'sha256', microtime( true ) . ':' . uniqid( '', true ) ), 0, 12 );
 		if ( ! copy( $source, $temp ) ) {
 			$status['blocker'] = 'mu_bootstrap_temp_write_failed';
 			return $status;
