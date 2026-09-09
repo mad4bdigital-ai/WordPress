@@ -86,6 +86,71 @@ final class MAD4B_SCP_Provider_Contracts {
 		return $result;
 	}
 
+	/**
+	 * Read-only runtime evidence for the exact provider manifest. The caller can
+	 * select only a provider key; file paths always come from the packaged
+	 * certification manifest and are containment checked under that plugin root.
+	 * No file contents or absolute filesystem paths are returned.
+	 */
+	public static function runtime_evidence( $provider ) {
+		$provider = sanitize_key( (string) $provider );
+		$contract = self::get( $provider );
+		if ( empty( $contract ) ) return array( 'provider' => $provider, 'available' => false, 'error' => 'uncertified_provider' );
+
+		$plugin_file = isset( $contract['plugin_file'] ) ? str_replace( '\\', '/', (string) $contract['plugin_file'] ) : '';
+		$result = array(
+			'contract' => 'mad4b.provider-runtime-evidence.v1',
+			'provider' => $provider,
+			'plugin_file' => $plugin_file,
+			'installed_version' => self::installed_version( $provider ),
+			'plugin_root_present' => false,
+			'critical_files' => array(),
+			'native_abilities' => array(),
+			'verified_absent_abilities' => array(),
+		);
+		if ( '' === $plugin_file || empty( $contract['critical_files'] ) || ! is_array( $contract['critical_files'] ) ) return $result;
+
+		$plugin_dir = dirname( $plugin_file );
+		$runtime_root = realpath( trailingslashit( WP_PLUGIN_DIR ) . $plugin_dir );
+		if ( false === $runtime_root ) return $result;
+		$result['plugin_root_present'] = true;
+		$root_normalized = rtrim( str_replace( '\\', '/', $runtime_root ), '/' );
+
+		foreach ( array_keys( $contract['critical_files'] ) as $manifest_relative ) {
+			$relative = ltrim( str_replace( '\\', '/', (string) $manifest_relative ), '/' );
+			$entry = array( 'exists' => false, 'sha256' => '' );
+			if ( '' === $relative || false !== strpos( $relative, '../' ) ) {
+				$entry['reason'] = 'invalid_manifest_path';
+				$result['critical_files'][ $relative ] = $entry;
+				continue;
+			}
+			$candidate = realpath( trailingslashit( $runtime_root ) . $relative );
+			if ( false === $candidate || ! is_file( $candidate ) ) {
+				$result['critical_files'][ $relative ] = $entry;
+				continue;
+			}
+			$normalized = str_replace( '\\', '/', $candidate );
+			if ( $normalized !== $root_normalized && 0 !== strpos( $normalized, $root_normalized . '/' ) ) {
+				$entry['reason'] = 'path_escape';
+				$result['critical_files'][ $relative ] = $entry;
+				continue;
+			}
+			$actual_sha = hash_file( 'sha256', $candidate );
+			$entry['exists'] = true;
+			$entry['sha256'] = false === $actual_sha ? '' : strtolower( (string) $actual_sha );
+			if ( false === $actual_sha ) $entry['reason'] = 'hash_unavailable';
+			$result['critical_files'][ $relative ] = $entry;
+		}
+
+		foreach ( isset( $contract['native_abilities'] ) && is_array( $contract['native_abilities'] ) ? $contract['native_abilities'] : array() as $ability_name ) {
+			$result['native_abilities'][ (string) $ability_name ] = function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name );
+		}
+		foreach ( isset( $contract['verified_absent_abilities'] ) && is_array( $contract['verified_absent_abilities'] ) ? $contract['verified_absent_abilities'] : array() as $ability_name ) {
+			$result['verified_absent_abilities'][ (string) $ability_name ] = ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability_name ) );
+		}
+		return $result;
+	}
+
 	public static function runtime_status( $provider, $available = null ) {
 		$contract = self::get( $provider );
 		if ( empty( $contract ) ) return array( 'provider' => $provider, 'status' => 'uncertified_provider', 'runtime_contract_ok' => false );
