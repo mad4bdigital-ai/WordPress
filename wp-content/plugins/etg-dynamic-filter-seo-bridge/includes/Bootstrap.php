@@ -22,6 +22,7 @@ use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryProfilePlanner;
 use ETG\DynamicFilterSEOBridge\Diagnostics\PublicationEvidenceBundle;
 use ETG\DynamicFilterSEOBridge\Elementor\Shortcodes;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTagRegistrar;
+use ETG\DynamicFilterSEOBridge\Elementor\ArchiveHeroPreset;
 use ETG\DynamicFilterSEOBridge\Elementor\ContainerDynamicBackground;
 use ETG\DynamicFilterSEOBridge\JetEngine\QueryIdentityResolver;
 use ETG\DynamicFilterSEOBridge\JetEngine\ValueNormalizer;
@@ -76,6 +77,7 @@ final class Bootstrap {
         $shortcodes=new Shortcodes($provider,$content,$gallery,$evidenceProvider,$this->presentation);add_action('init',array($shortcodes,'register'),20);
         $catalogProvider=function()use($catalog,$catalogInventory,$profiles):array{static$cached=null;if(null!==$cached){return$cached;}$cached=$catalog->build($catalogInventory->collect(),$profiles->all());return$cached;};$previewContextProvider=function(string$previewUrl):array{return$this->previewEvidenceContext($previewUrl);};
         (new DynamicTagRegistrar($this->presentation,$slots,$catalogProvider,$previewContextProvider))->registerHooks();
+        (new ArchiveHeroPreset())->register();
         (new ContainerDynamicBackground($this->presentation,$slots))->register();
         (new ListingIntegration($this->presentation))->register();
         (new AdminAssets())->register();
