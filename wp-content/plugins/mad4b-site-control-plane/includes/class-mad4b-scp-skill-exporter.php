@@ -16,6 +16,8 @@ final class MAD4B_SCP_Skill_Exporter {
 
 		$skills = MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) );
 		if ( empty( $skills ) ) return new WP_Error( 'mad4b_skill_export_empty', 'No enabled runtime skills are available to export.' );
+		$identity = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array();
+		if ( empty( $identity['ready'] ) || empty( $identity['identity_token'] ) ) return new WP_Error( 'mad4b_skill_snapshot_identity_unavailable', 'Portable snapshot identity is unavailable; export is denied until a deterministic identity can be computed.' );
 
 		$tmp = function_exists( 'wp_tempnam' ) ? wp_tempnam( 'mad4b-wordpress-plugin.zip' ) : tempnam( sys_get_temp_dir(), 'mad4b-plugin-' );
 		if ( ! is_string( $tmp ) || '' === $tmp ) return new WP_Error( 'mad4b_skill_export_temp_failed', 'Unable to create the temporary export file.' );
@@ -90,8 +92,12 @@ final class MAD4B_SCP_Skill_Exporter {
 			'skill_count' => count( $index ),
 			'skills' => $index,
 			'publication_semantics' => 'snapshot',
+			'snapshot_identity_contract' => isset( $identity['contract'] ) ? $identity['contract'] : '',
+			'snapshot_digest' => isset( $identity['snapshot_digest'] ) ? $identity['snapshot_digest'] : '',
+			'identity_token' => isset( $identity['identity_token'] ) ? $identity['identity_token'] : '',
 		);
 		$zip->addFromString( 'MAD4B-SNAPSHOT.json', wp_json_encode( $export_meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
+		$zip->addFromString( 'MAD4B-SNAPSHOT-ID.txt', (string) $identity['identity_token'] . "\n" );
 		$zip->close();
 
 		if ( ! is_file( $tmp ) || filesize( $tmp ) < 1 ) { @unlink( $tmp ); return new WP_Error( 'mad4b_skill_export_empty_zip', 'Portable Plugin ZIP was not created correctly.' ); }
@@ -103,6 +109,8 @@ final class MAD4B_SCP_Skill_Exporter {
 			'bytes' => filesize( $tmp ),
 			'skill_count' => count( $index ),
 			'app_mapping_included' => '' !== $app_id,
+			'snapshot_digest' => (string) $identity['snapshot_digest'],
+			'identity_token' => (string) $identity['identity_token'],
 		);
 	}
 }
