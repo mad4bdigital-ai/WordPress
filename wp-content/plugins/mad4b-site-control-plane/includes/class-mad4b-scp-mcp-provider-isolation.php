@@ -5,17 +5,23 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Explicit deny-only isolation for provider-native MCP/AI surfaces.
  *
- * This is deliberately OFF by default. When enabled it suppresses only bounded,
- * reviewed provider MCP registrations and REST/control routes. It never grants
- * MAD4B authority, changes provider settings, creates credentials, disables the
- * provider plugin, or auto-enables mutation. Unknown routes and unknown server
- * callbacks remain untouched and therefore remain visible to fail-closed peer
- * governance.
+ * Runtime suppression is deliberately OFF by default and now requires two
+ * independent opt-ins: the isolation intent flag plus an explicit runtime
+ * suppression approval flag. This prevents a stale/legacy isolation setting
+ * from deleting provider REST routes or MCP registrations by itself.
+ *
+ * When both gates are enabled it suppresses only bounded, reviewed provider MCP
+ * registrations and REST/control routes. It never grants MAD4B authority,
+ * changes provider settings, creates credentials, disables the provider plugin,
+ * or auto-enables mutation. Unknown routes and unknown server callbacks remain
+ * untouched and therefore remain visible to fail-closed peer governance.
  */
 final class MAD4B_SCP_MCP_Provider_Isolation {
-	const CONTRACT = 'mad4b.mcp-provider-isolation.v2';
-	const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v1';
+	const CONTRACT = 'mad4b.mcp-provider-isolation.v3';
+	const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v2';
+	const LEGACY_CONTRACT = 'mad4b.mcp-provider-isolation.v1';
 	const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED';
+	const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED';
 	const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED';
 
 	private static $early_booted = false;
@@ -52,12 +58,16 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		return defined( self::ENABLE_FLAG ) && true === constant( self::ENABLE_FLAG );
 	}
 
+	public static function runtime_suppression_approved() {
+		return defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG ) && true === constant( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG );
+	}
+
 	public static function production_approved() {
 		return defined( self::PRODUCTION_APPROVAL_FLAG ) && true === constant( self::PRODUCTION_APPROVAL_FLAG );
 	}
 
 	public static function effective() {
-		if ( ! self::configured() ) return false;
+		if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 		if ( 'production' === $environment && ! self::production_approved() ) return false;
 		return in_array( $environment, array( 'staging', 'development', 'local', 'production' ), true );
@@ -164,9 +174,12 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => self::configured(),
+			'runtime_suppression_approved' => self::runtime_suppression_approved(),
 			'effective' => self::effective(),
 			'environment' => $environment,
 			'production_approved' => self::production_approved(),
+			'legacy_enable_flag_alone_is_non_mutating' => true,
+			'runtime_suppression_requires_second_gate' => true,
 			'default_server_suppressed' => self::effective(),
 			'wpmedia_oauth_server_suppressed' => self::effective(),
 			'server_registration_suppression_attempted' => (bool) self::$suppression_attempted,
