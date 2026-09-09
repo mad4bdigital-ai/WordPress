@@ -12,6 +12,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py'
       - '.github/workflows/mad4b-dynamic-skills.yml'
   workflow_dispatch:
 
@@ -45,6 +46,7 @@ jobs:
             includes/class-mad4b-scp-skill-resource-reader.php \
             includes/class-mad4b-scp-skill-resource-writer.php \
             includes/class-mad4b-scp-skill-exporter.php \
+            includes/class-mad4b-scp-skill-runtime-certification.php \
             includes/class-mad4b-scp-skill-abilities.php \
             includes/class-mad4b-scp-skills-admin-ui.php \
             includes/adapters/class-mad4b-scp-skills-adapter.php; do
@@ -56,6 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
 
       - name: Deny Skill mutation exposure on ChatGPT read gateway
         shell: bash
