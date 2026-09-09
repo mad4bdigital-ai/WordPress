@@ -44,18 +44,28 @@ for marker in (
 for forbidden in (
     'deactivate_plugins(', 'activate_plugin(', 'delete_plugins(', 'wp_remote_get(',
     'wp_remote_post(', 'curl_exec(', 'active_sitewide_plugins', 'switch_to_blog(',
+    'wp_rand(',
 ):
     forbid(guard, forbidden, 'bounded-repair')
 
 for marker in (
-    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v1'",
+    "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v2'",
     "'staging' === $mad4b_mcp_mu_status['environment']",
     "'staging.egypttourgates.com' === $mad4b_mcp_mu_status['host']",
     "in_array( 'mcp-adapter/mcp-adapter.php'",
     "in_array( 'mad4b-site-control-plane/mad4b-site-control-plane.php'",
-    "class_exists( $mad4b_mcp_mu_class, false )",
+    "'WP\\\\MCP\\\\Autoloader'",
+    "'WP\\\\MCP\\\\Core\\\\McpAdapter'",
+    "'WP\\\\MCP\\\\Plugin'",
+    "class_exists( $mad4b_mcp_mu_symbol, false )",
     "'runtime_preclaimed_before_mu_bootstrap'",
-    "require_once $mad4b_mcp_mu_official",
+    "'preclaimed_symbol'",
+    "includes/Autoloader.php",
+    "includes/Core/McpAdapter.php",
+    "includes/Plugin.php",
+    "foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once $mad4b_mcp_mu_pin_file;",
+    "'canonical_symbols_pinned'",
+    "require_once $mad4b_mcp_mu_main",
     "'official_adapter_loaded'",
     "'runtime_from_official_plugin'",
 ):
@@ -83,4 +93,4 @@ for marker in (
 ):
     require(diagnostics, marker, 'diagnostics-evidence')
 
-print('mad4b.site-control-plane.mcp-runtime-conflict-guard-contract.v2: PASS')
+print('mad4b.site-control-plane.mcp-runtime-conflict-guard-contract.v3: PASS')
