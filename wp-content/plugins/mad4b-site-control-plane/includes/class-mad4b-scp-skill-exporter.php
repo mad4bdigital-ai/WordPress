@@ -26,6 +26,8 @@ final class MAD4B_SCP_Skill_Exporter {
 		if ( empty( $skills ) ) return new WP_Error( 'mad4b_skill_export_empty', 'No enabled runtime skills are available to export.' );
 		if ( count( $skills ) > self::MAX_EXPORT_SKILLS ) return new WP_Error( 'mad4b_skill_export_skill_limit_exceeded', 'Enabled Skill count exceeds the bounded portable export limit.' );
 		$app_id = isset( $identity['app_id'] ) ? (string) $identity['app_id'] : '';
+		$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+		$capabilities = $write_ready ? array( 'Read', 'Write' ) : array( 'Read' );
 
 		$tmp = function_exists( 'wp_tempnam' ) ? wp_tempnam( 'mad4b-wordpress-plugin.zip' ) : tempnam( sys_get_temp_dir(), 'mad4b-plugin-' );
 		if ( ! is_string( $tmp ) || '' === $tmp ) return new WP_Error( 'mad4b_skill_export_temp_failed', 'Unable to create the temporary export file.' );
@@ -39,13 +41,17 @@ final class MAD4B_SCP_Skill_Exporter {
 		$openai = array(
 			'interface' => array(
 				'displayName' => 'MAD4B WordPress — Egypt Tour Gates',
-				'shortDescription' => 'Governed WordPress diagnostics and workflow skills.',
-				'longDescription' => 'WordPress diagnostics, Elementor, JetEngine, archive and governed workflow guidance backed by the MAD4B MCP connection.',
+				'shortDescription' => $write_ready ? 'Governed WordPress diagnostics, workflows and Staging changes.' : 'Governed WordPress diagnostics and workflow skills.',
+				'longDescription' => $write_ready
+					? 'WordPress diagnostics and governed Staging update/write/mutation workflows backed by exact mad4b-write NHI grants, one-time approvals and runtime certification.'
+					: 'WordPress diagnostics, Elementor, JetEngine, archive and governed workflow guidance backed by the MAD4B MCP connection.',
 				'developerName' => 'MAD4B',
 				'category' => 'Productivity',
-				'capabilities' => array( 'Read' ),
+				'capabilities' => $capabilities,
 				'defaultPrompt' => array(
 					'Diagnose my WordPress site.',
+					'Show the governed Staging write authority status.',
+					'Plan a safe approved Staging change.',
 					'Audit this Elementor template.',
 					'Analyze my JetEngine dynamic content setup.',
 				),
@@ -57,7 +63,9 @@ final class MAD4B_SCP_Skill_Exporter {
 			'$schema' => 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
 			'name' => 'mad4b-wordpress',
 			'version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '0.1.0',
-			'description' => 'Governed WordPress operations, diagnostics and reusable workflow skills.',
+			'description' => $write_ready
+				? 'Governed WordPress operations, diagnostics, reusable workflow skills and exact-approval Staging writes.'
+				: 'Governed WordPress operations, diagnostics and reusable workflow skills.',
 			'author' => array( 'name' => 'MAD4B' ),
 			'repository' => 'https://github.com/mad4bdigital-ai/WordPress',
 			'license' => 'GPL-2.0-or-later',
@@ -135,11 +143,18 @@ final class MAD4B_SCP_Skill_Exporter {
 			return self::abort_zip( $zip, $tmp, 'mad4b_skill_snapshot_changed_during_export', 'The enabled Skill snapshot changed while the portable package was being built. Retry the export from the new stable snapshot.' );
 		}
 
+		$write_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+		$write_certification = class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::status() : array();
 		$export_meta = array(
 			'contract' => self::CONTRACT,
 			'generated_at' => gmdate( 'c' ),
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
 			'app_mapping_included' => '' !== $app_id,
+			'plugin_capabilities' => $capabilities,
+			'governed_write_ready' => $write_ready,
+			'governed_write_contract' => isset( $write_authority['contract'] ) ? $write_authority['contract'] : '',
+			'write_certification_contract' => isset( $write_certification['contract'] ) ? $write_certification['contract'] : '',
+			'write_certification_ready' => ! empty( $write_certification['ready'] ),
 			'skill_count' => count( $index ),
 			'resource_count' => $resource_count,
 			'uncompressed_payload_bytes' => $total_payload_bytes,
@@ -169,6 +184,9 @@ final class MAD4B_SCP_Skill_Exporter {
 			'resource_count' => $resource_count,
 			'uncompressed_payload_bytes' => $total_payload_bytes,
 			'app_mapping_included' => '' !== $app_id,
+			'plugin_capabilities' => $capabilities,
+			'governed_write_ready' => $write_ready,
+			'write_certification_ready' => ! empty( $write_certification['ready'] ),
 			'snapshot_digest' => (string) $identity['snapshot_digest'],
 			'identity_token' => (string) $identity['identity_token'],
 		);
