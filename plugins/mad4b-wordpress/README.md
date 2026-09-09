@@ -37,7 +37,7 @@ Active + adapter-ready provider → Skill enabled
 Inactive/unavailable provider       → MAD4B-managed Skill disabled
 ```
 
-No `wp-config.php` edit and no administrator form submission are required for this Staging lifecycle.
+No `wp-config.php` edit is required on Staging. No administrator form submission is required for this lifecycle.
 
 The base pack includes:
 
