@@ -9,11 +9,18 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/**'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php'
       - '.github/workflows/mad4b-dynamic-skills.yml'
@@ -23,8 +30,6 @@ permissions:
   contents: read
 
 concurrency:
-  # One live run per PR/ref. A moving PR must cancel stale exact-head runs rather
-  # than consuming runners for snapshots that can no longer authorize release.
   group: mad4b-dynamic-skills-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
@@ -65,7 +70,7 @@ jobs:
             exit 1
           fi
 
-      - name: PHP lint Skill implementation
+      - name: PHP lint Skill/write implementation
         shell: bash
         run: |
           set -euo pipefail
@@ -82,26 +87,34 @@ jobs:
             includes/class-mad4b-scp-skill-runtime-certification.php \
             includes/class-mad4b-scp-skill-abilities.php \
             includes/class-mad4b-scp-skills-admin-ui.php \
+            includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-write-runtime-certification.php \
+            includes/class-mad4b-scp-rest-compatibility.php \
+            includes/class-mad4b-scp-authorization.php \
+            includes/class-mad4b-scp-transport-context.php \
+            includes/class-mad4b-scp-servers.php \
             includes/adapters/class-mad4b-scp-skills-adapter.php \
             tests/runtime-dynamic-skills-smoke.php \
             tests/runtime-dynamic-skills-production-smoke.php; do
             php -l "$root/$file"
           done
 
-      - name: Verify dynamic Skill and portable Plugin contracts
+      - name: Verify dynamic Skill and governed write contracts
         shell: bash
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py
 
-      - name: Deny Skill mutation exposure on ChatGPT read gateway
+      - name: Deny Skill mutation and breakglass leakage
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           abilities="$root/includes/class-mad4b-scp-skill-abilities.php"
           adapter="$root/includes/adapters/class-mad4b-scp-skills-adapter.php"
+          write="$root/includes/class-mad4b-scp-staging-write-authority.php"
           grep -Fq "'readonly' => true" "$abilities"
           grep -Fq "'content' => array()" "$adapter"
           grep -Fq "'admin' => array()" "$adapter"
@@ -109,6 +122,7 @@ jobs:
             echo 'Skill write ability leaked into MCP projection.' >&2
             exit 1
           fi
+          grep -Fq "array_diff( \$tools, array( 'mad4b/database-raw-query' ) )" "$write"
 
       - name: Build portable Plugin snapshot artifact
         shell: bash
@@ -135,7 +149,7 @@ jobs:
           retention-days: 14
 
   runtime-staging:
-    name: Dynamic Skills zero-touch Staging runtime
+    name: Dynamic Skills + governed write Staging runtime
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -171,7 +185,7 @@ jobs:
           set -euo pipefail
           curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
           php /tmp/wp-cli.phar --info
-      - name: Provision disposable Staging WordPress
+      - name: Provision disposable governed Staging WordPress
         shell: bash
         run: |
           set -euo pipefail
@@ -194,14 +208,14 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
-      - name: Prove automatic Skill bootstrap, provider handoff, snapshot export and certification
+      - name: Prove zero-touch Skills, governed writes, WPML REST pass-through and portable certification
         shell: bash
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
 
   runtime-production:
-    name: Dynamic Skills Production fail-closed runtime
+    name: Dynamic Skills + write authority Production fail-closed runtime
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -258,7 +272,7 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
-      - name: Prove Production receives no Staging Skill authority or App binding
+      - name: Prove Production receives no Staging Skill/App/write authority
         shell: bash
         run: |
           set -euo pipefail
