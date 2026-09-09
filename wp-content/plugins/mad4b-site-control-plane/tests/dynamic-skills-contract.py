@@ -67,7 +67,7 @@ for file_marker in [
         raise SystemExit(f'main plugin is not loading {file_marker}')
 
 for marker in [
-    'runtime registry is dynamic',
+    'registry is dynamic',
     'versioned snapshots',
     'Scan Tools',
     'Export Portable Plugin ZIP',
