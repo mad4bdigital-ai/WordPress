@@ -44,9 +44,11 @@ for marker in [
     "snapshot_identity_contract",
     "snapshot_digest",
     "identity_token",
+    "mad4b_skill_snapshot_changed_during_export",
+    "hash_equals( (string) $identity['identity_token'], (string) $identity_after['identity_token'] )",
 ]:
     if marker not in exporter:
-        raise SystemExit(f'portable exporter is not snapshot-identity bound: {marker}')
+        raise SystemExit(f'portable exporter is not snapshot-identity/race bound: {marker}')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-runtime-certification.v1'",
