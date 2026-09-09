@@ -16,6 +16,7 @@ final class DynamicTagRuntime {
     private static $previewContextProvider;
     private static $catalogCache = null;
     private static $imageFallbackDepth = 0;
+    private static $editorRenderDepth = 0;
 
     public static function configure(PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider, callable $previewContextProvider = null): void {
         self::$resolver=$resolver;self::$slots=$slots;self::$catalogProvider=$catalogProvider;self::$previewContextProvider=$previewContextProvider;self::$catalogCache=null;self::$imageFallbackDepth=0;
@@ -24,6 +25,10 @@ final class DynamicTagRuntime {
     public static function slots():?ContentSlotRegistry{return self::$slots instanceof ContentSlotRegistry?self::$slots:null;}
     public static function catalog():array{if(null!==self::$catalogCache){return self::$catalogCache;}if(!is_callable(self::$catalogProvider)){return self::$catalogCache=array();}try{$catalog=call_user_func(self::$catalogProvider);return self::$catalogCache=is_array($catalog)?$catalog:array();}catch(\Throwable$error){return self::$catalogCache=array();}}
     public static function previewContext(string$previewUrl):?array{$previewUrl=trim($previewUrl);if(''===$previewUrl||!is_callable(self::$previewContextProvider)){return null;}try{$context=call_user_func(self::$previewContextProvider,$previewUrl);return is_array($context)&&$context?$context:null;}catch(\Throwable$error){return null;}}
+
+    public static function beginEditorRenderPass():void{self::$editorRenderDepth++;}
+    public static function endEditorRenderPass():void{self::$editorRenderDepth=max(0,self::$editorRenderDepth-1);}
+    public static function isEditorRenderPass():bool{return self::$editorRenderDepth>0;}
 
     public static function tokenOptions():array{
         return self::tokenOptionsBySource('');
