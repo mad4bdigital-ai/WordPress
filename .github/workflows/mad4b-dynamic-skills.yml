@@ -1,0 +1,92 @@
+name: MAD4B Dynamic Skills
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/mad4b-wordpress/**'
+      - '.agents/plugins/marketplace.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py'
+      - '.github/workflows/mad4b-dynamic-skills.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Dynamic Skills contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+
+      - name: PHP lint Skill implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          for file in \
+            includes/class-mad4b-scp-skill-registry.php \
+            includes/class-mad4b-scp-skill-resource-reader.php \
+            includes/class-mad4b-scp-skill-exporter.php \
+            includes/class-mad4b-scp-skill-abilities.php \
+            includes/class-mad4b-scp-skills-admin-ui.php \
+            includes/adapters/class-mad4b-scp-skills-adapter.php; do
+            php -l "$root/$file"
+          done
+
+      - name: Verify dynamic Skill and portable Plugin contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
+
+      - name: Deny Skill mutation exposure on ChatGPT read gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          abilities="$root/includes/class-mad4b-scp-skill-abilities.php"
+          adapter="$root/includes/adapters/class-mad4b-scp-skills-adapter.php"
+          grep -Fq "'readonly' => true" "$abilities"
+          grep -Fq "'content' => array()" "$adapter"
+          grep -Fq "'admin' => array()" "$adapter"
+          if grep -Eiq "mad4b/skill-(create|update|delete|write)" "$abilities" "$adapter"; then
+            echo 'Skill write ability leaked into MCP projection.' >&2
+            exit 1
+          fi
+
+      - name: Build portable Plugin snapshot artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          (
+            cd plugins
+            zip -qr ../dist/mad4b-wordpress-portable.zip mad4b-wordpress
+          )
+          unzip -tqq dist/mad4b-wordpress-portable.zip
+          sha256sum dist/mad4b-wordpress-portable.zip > dist/mad4b-wordpress-portable.zip.sha256
+          printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/SOURCE_HEAD.txt
+
+      - name: Upload portable Plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-wordpress-portable-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            dist/mad4b-wordpress-portable.zip
+            dist/mad4b-wordpress-portable.zip.sha256
+            dist/SOURCE_HEAD.txt
+          if-no-files-found: error
+          retention-days: 14
