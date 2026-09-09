@@ -12,6 +12,14 @@ final class PublicationEvidenceBundle {
 	public function collect( int $previewLimit = 50 ): array {
 		$previewLimit=max(1,min(100,$previewLimit));
 		$inventory=$this->inventory->collect(); $readiness=$this->readiness->report(); $summary=$this->publication->publicationSummary($previewLimit); $profileEvidence=array(); $activationBlockers=array();
+		$ajaxPersistentCache=function_exists('wp_using_ext_object_cache')&&wp_using_ext_object_cache()&&function_exists('wp_cache_add')&&function_exists('wp_cache_incr');
+		$ajaxRateProtection=array(
+			'mode'=>$ajaxPersistentCache?'persistent_object_cache':'external_waf_required',
+			'built_in_cross_request_limit'=>$ajaxPersistentCache,
+			'external_evidence_required'=>!$ajaxPersistentCache,
+			'endpoint'=>'/wp-json/etg-dfsb/v1/ajax-presentation',
+			'authorizing'=>false,
+		);
 		if($this->config->enabled()){$activationBlockers[]='global_bridge_on_during_dark_validation_evidence';}
 		if((string)($inventory['contract']??'')!==RuntimeInventory::CONTRACT||empty($inventory['evidence_complete'])){$activationBlockers[]='runtime_inventory_incomplete';}
 		if(!empty($readiness['missing_dependencies'])){$activationBlockers[]='missing_dependencies';}
@@ -30,6 +38,7 @@ final class PublicationEvidenceBundle {
 		}
 		if(0===$enabledProfiles){$activationBlockers[]='no_enabled_profiles_for_activation';}
 		foreach($profileEvidence as $row){if(!empty($row['enabled'])){foreach((array)$row['blockers'] as $blocker){$activationBlockers[]='profile_blocker:'.$blocker;}}}
-		return array('contract'=>'etg.dfsb.publication-evidence-bundle.v1','plugin_version'=>defined('ETG_DFSB_VERSION')?(string)ETG_DFSB_VERSION:'','generated_at_gmt'=>gmdate('c'),'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'merge_authorized'=>false,'production_activation_authorized'=>false,'global_enabled'=>$this->config->enabled(),'configuration_revision'=>$this->config->revision(),'evidence_complete'=>empty($activationBlockers),'activation_blockers'=>array_values(array_unique($activationBlockers)),'required_external_evidence'=>array('server_side_elementor_html_snapshot','frontend_vs_request_adapter_vs_background_count_parity','multilingual_hreflang_and_translated_slug_validation','global_off_empty_live_sitemap_validation','bounded_global_on_sitemap_validation','sitemap_ttfb_query_count_and_memory_baseline'),'profile_evidence'=>$profileEvidence,'readiness'=>$readiness,'runtime_inventory'=>$inventory,'publication_preview'=>$summary);
+		$requiredExternalEvidence=array('server_side_elementor_html_snapshot','frontend_vs_request_adapter_vs_background_count_parity','multilingual_hreflang_and_translated_slug_validation','global_off_empty_live_sitemap_validation','bounded_global_on_sitemap_validation','sitemap_ttfb_query_count_and_memory_baseline','ajax_rate_protection_persistent_cache_or_waf_evidence');
+		return array('contract'=>'etg.dfsb.publication-evidence-bundle.v1','plugin_version'=>defined('ETG_DFSB_VERSION')?(string)ETG_DFSB_VERSION:'','generated_at_gmt'=>gmdate('c'),'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'merge_authorized'=>false,'production_activation_authorized'=>false,'global_enabled'=>$this->config->enabled(),'configuration_revision'=>$this->config->revision(),'evidence_complete'=>empty($activationBlockers),'activation_blockers'=>array_values(array_unique($activationBlockers)),'required_external_evidence'=>$requiredExternalEvidence,'ajax_rate_protection'=>$ajaxRateProtection,'profile_evidence'=>$profileEvidence,'readiness'=>$readiness,'runtime_inventory'=>$inventory,'publication_preview'=>$summary);
 	}
 }
