@@ -92,12 +92,15 @@ require(servers, "return 'core';", 'write-core-provider-binding')
 for generic in ('execute-any', 'generic-dispatch', 'call_user_func( $input', 'ability_name_from_request'):
     forbid(servers, generic, 'write-no-generic-dispatcher')
 
-require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v1'", 'transport-context-contract')
+require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v2'", 'transport-context-contract')
 require(transport_context, "'/mcp/' . $server_id", 'transport-exact-route')
 require(transport_context, "'mad4b_transport_route_mismatch'", 'transport-route-mismatch')
 require(transport_context, 'resolve_server_for_ability', 'transport-effective-server-resolver')
 require(transport_context, 'MAD4B_SCP_Servers::ability_is_mounted', 'transport-mount-verification')
 require(transport_context, "'mad4b_transport_ability_not_mounted'", 'transport-ability-mount-denial')
+require(transport_context, 'MAD4B_SCP_Staging_Write_Authority::is_write_ability', 'transport-chatgpt-write-delegation')
+require(transport_context, "return 'mad4b-write';", 'transport-dedicated-write-authority')
+require(transport_context, "'mad4b_write_authority_mount_missing'", 'transport-write-authority-mount-denial')
 for bypass in ("apply_filters( 'mad4b_scp_transport", "$_REQUEST", "$_GET", "$_POST"):
     forbid(transport_context, bypass, 'transport-context-no-bypass-input')
 
