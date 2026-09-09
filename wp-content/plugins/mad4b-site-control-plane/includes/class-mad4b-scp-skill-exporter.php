@@ -14,10 +14,14 @@ final class MAD4B_SCP_Skill_Exporter {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_export_capability_denied', 'Administrator capability is required to export skills.' );
 		if ( ! class_exists( 'ZipArchive' ) ) return new WP_Error( 'mad4b_skill_export_zip_unavailable', 'PHP ZipArchive is required to export a portable Plugin package.' );
 
-		$skills = MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) );
-		if ( empty( $skills ) ) return new WP_Error( 'mad4b_skill_export_empty', 'No enabled runtime skills are available to export.' );
+		// Establish the exact live identity before taking the export work-list. The
+		// exported bytes are independently re-hashed below and must reproduce this
+		// identity, closing stale-list and transient mixed-read races.
 		$identity = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array();
 		if ( empty( $identity['ready'] ) || empty( $identity['identity_token'] ) ) return new WP_Error( 'mad4b_skill_snapshot_identity_unavailable', 'Portable snapshot identity is unavailable; export is denied until a deterministic identity can be computed.' );
+		$skills = MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) );
+		if ( empty( $skills ) ) return new WP_Error( 'mad4b_skill_export_empty', 'No enabled runtime skills are available to export.' );
+		$app_id = isset( $identity['app_id'] ) ? (string) $identity['app_id'] : '';
 
 		$tmp = function_exists( 'wp_tempnam' ) ? wp_tempnam( 'mad4b-wordpress-plugin.zip' ) : tempnam( sys_get_temp_dir(), 'mad4b-plugin-' );
 		if ( ! is_string( $tmp ) || '' === $tmp ) return new WP_Error( 'mad4b_skill_export_temp_failed', 'Unable to create the temporary export file.' );
@@ -28,7 +32,6 @@ final class MAD4B_SCP_Skill_Exporter {
 			return new WP_Error( 'mad4b_skill_export_open_failed', 'Unable to initialize the portable Plugin ZIP.' );
 		}
 
-		$app_id = MAD4B_SCP_Skill_Registry::openai_app_id();
 		$openai = array(
 			'interface' => array(
 				'displayName' => 'MAD4B WordPress — Egypt Tour Gates',
@@ -57,41 +60,66 @@ final class MAD4B_SCP_Skill_Exporter {
 			'keywords' => array( 'wordpress', 'mcp', 'skills', 'elementor', 'jetengine', 'governance' ),
 			'extensions' => array( 'com.openai' => $openai ),
 		);
-		$zip->addFromString( 'plugin.json', wp_json_encode( $manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
+		if ( false === $zip->addFromString( 'plugin.json', wp_json_encode( $manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_manifest_write_failed', 'Unable to write plugin.json into the portable package.' );
 
 		if ( '' !== $app_id ) {
 			$app_mapping = array( 'apps' => array( 'mad4b-wordpress' => array( 'id' => $app_id ) ) );
-			$zip->addFromString( '.app.json', wp_json_encode( $app_mapping, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
+			if ( false === $zip->addFromString( '.app.json', wp_json_encode( $app_mapping, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_app_mapping_write_failed', 'Unable to write .app.json into the portable package.' );
 		}
 
 		$index = array();
+		$observed_entries = array();
 		foreach ( $skills as $summary ) {
 			$skill = MAD4B_SCP_Skill_Registry::get_skill( $summary['level'], $summary['target'], $summary['name'] );
 			if ( is_wp_error( $skill ) ) { $zip->close(); @unlink( $tmp ); return $skill; }
 			$name = (string) $skill['name'];
-			$zip->addFromString( 'skills/' . $name . '/SKILL.md', (string) $skill['content'] );
+			$content = (string) $skill['content'];
+			$skill_sha = hash( 'sha256', $content );
+			$skill_bytes = strlen( $content );
+			if ( false === $zip->addFromString( 'skills/' . $name . '/SKILL.md', $content ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_skill_write_failed', 'Unable to write a Skill document into the portable package.' );
+
+			$observed_resources = array();
 			foreach ( isset( $skill['resources'] ) && is_array( $skill['resources'] ) ? $skill['resources'] : array() as $resource ) {
 				$relative = isset( $resource['path'] ) ? (string) $resource['path'] : '';
 				$data = MAD4B_SCP_Skill_Resource_Reader::read( $skill['level'], $skill['target'], $name, $relative );
 				if ( is_wp_error( $data ) ) { $zip->close(); @unlink( $tmp ); return $data; }
-				$zip->addFromString( 'skills/' . $name . '/' . $relative, $data['content'] );
+				$resource_content = isset( $data['content'] ) ? (string) $data['content'] : '';
+				if ( false === $zip->addFromString( 'skills/' . $name . '/' . $relative, $resource_content ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_resource_write_failed', 'Unable to write a Skill resource into the portable package.' );
+				$observed_resources[] = array(
+					'path' => $relative,
+					'sha256' => hash( 'sha256', $resource_content ),
+					'bytes' => strlen( $resource_content ),
+				);
 			}
+
+			$observed_entries[] = array(
+				'logical_id' => (string) $skill['logical_id'],
+				'name' => $name,
+				'sha256' => $skill_sha,
+				'bytes' => $skill_bytes,
+				'resources' => $observed_resources,
+			);
 			$index[] = array(
 				'name' => $name,
-				'logical_id' => $skill['logical_id'],
-				'sha256' => $skill['sha256'],
-				'bytes' => $skill['bytes'],
+				'logical_id' => (string) $skill['logical_id'],
+				'sha256' => $skill_sha,
+				'bytes' => $skill_bytes,
 			);
 		}
 
-		// Recompute after reading every file so an administrator edit racing the
-		// export cannot produce a ZIP whose embedded identity describes a different
-		// runtime state. Fail closed and require a fresh export instead.
+		// Prove that the bytes actually placed into the ZIP reproduce the original
+		// live identity. This catches a stale work-list even if the live registry has
+		// already converged to a new stable state before the final re-read.
+		$export_identity = MAD4B_SCP_Skill_Snapshot_Identity::from_entries( $observed_entries, $app_id );
+		if ( empty( $export_identity['ready'] ) || empty( $export_identity['identity_token'] ) || ! hash_equals( (string) $identity['identity_token'], (string) $export_identity['identity_token'] ) ) {
+			return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_observed_identity_mismatch', 'The bytes observed during export do not match the initial enabled Skill snapshot. Retry from the new stable snapshot.' );
+		}
+
+		// Also require the live registry to remain on the same identity after all
+		// bytes were read. No stale/mixed package is published across either race.
 		$identity_after = MAD4B_SCP_Skill_Snapshot_Identity::build();
 		if ( empty( $identity_after['ready'] ) || empty( $identity_after['identity_token'] ) || ! hash_equals( (string) $identity['identity_token'], (string) $identity_after['identity_token'] ) ) {
-			$zip->close();
-			@unlink( $tmp );
-			return new WP_Error( 'mad4b_skill_snapshot_changed_during_export', 'The enabled Skill snapshot changed while the portable package was being built. Retry the export from the new stable snapshot.' );
+			return self::abort_zip( $zip, $tmp, 'mad4b_skill_snapshot_changed_during_export', 'The enabled Skill snapshot changed while the portable package was being built. Retry the export from the new stable snapshot.' );
 		}
 
 		$export_meta = array(
@@ -106,8 +134,8 @@ final class MAD4B_SCP_Skill_Exporter {
 			'snapshot_digest' => isset( $identity['snapshot_digest'] ) ? $identity['snapshot_digest'] : '',
 			'identity_token' => isset( $identity['identity_token'] ) ? $identity['identity_token'] : '',
 		);
-		$zip->addFromString( 'MAD4B-SNAPSHOT.json', wp_json_encode( $export_meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
-		$zip->addFromString( 'MAD4B-SNAPSHOT-ID.txt', (string) $identity['identity_token'] . "\n" );
+		if ( false === $zip->addFromString( 'MAD4B-SNAPSHOT.json', wp_json_encode( $export_meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_snapshot_meta_write_failed', 'Unable to write snapshot metadata into the portable package.' );
+		if ( false === $zip->addFromString( 'MAD4B-SNAPSHOT-ID.txt', (string) $identity['identity_token'] . "\n" ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_snapshot_id_write_failed', 'Unable to write snapshot identity into the portable package.' );
 		$zip->close();
 
 		if ( ! is_file( $tmp ) || filesize( $tmp ) < 1 ) { @unlink( $tmp ); return new WP_Error( 'mad4b_skill_export_empty_zip', 'Portable Plugin ZIP was not created correctly.' ); }
@@ -122,5 +150,11 @@ final class MAD4B_SCP_Skill_Exporter {
 			'snapshot_digest' => (string) $identity['snapshot_digest'],
 			'identity_token' => (string) $identity['identity_token'],
 		);
+	}
+
+	private static function abort_zip( $zip, $tmp, $code, $message ) {
+		if ( is_object( $zip ) ) $zip->close();
+		if ( is_string( $tmp ) && '' !== $tmp ) @unlink( $tmp );
+		return new WP_Error( sanitize_key( (string) $code ), (string) $message );
 	}
 }
