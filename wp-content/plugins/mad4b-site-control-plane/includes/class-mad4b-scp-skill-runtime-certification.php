@@ -49,6 +49,7 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			array(
 				'ready' => ! empty( $result['ready'] ),
 				'evidence_digest' => $current_digest,
+				'snapshot_identity_token' => isset( $result['snapshot_identity_token'] ) ? $result['snapshot_identity_token'] : '',
 				'blockers' => isset( $result['blockers'] ) ? $result['blockers'] : array(),
 				'local_runtime_only' => true,
 			),
@@ -75,9 +76,10 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'ready' => false,
 			'state' => 'pending',
 			'blockers' => array( 'runtime_certification_not_observed' ),
+			'snapshot_identity_token' => '',
 			'local_runtime_only' => true,
 			'external_client_snapshot_verified' => false,
-			'external_client_action' => 'ChatGPT/Codex must install or refresh the published snapshot outside WordPress.',
+			'external_client_action' => 'ChatGPT/Codex must install or refresh the published snapshot outside WordPress, then compare the package MAD4B-SNAPSHOT-ID.txt token with snapshot_identity_token.',
 		);
 	}
 
@@ -157,6 +159,15 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		$checks['snapshot_has_enabled_skills'] = isset( $snapshot['skill_count'] ) && (int) $snapshot['skill_count'] >= count( $base_skills );
 		if ( ! $checks['snapshot_has_enabled_skills'] ) $blockers[] = 'portable_snapshot_empty';
 
+		$snapshot_identity = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array();
+		$checks['snapshot_identity_ready'] = ! empty( $snapshot_identity['ready'] ) && ! empty( $snapshot_identity['snapshot_digest'] ) && ! empty( $snapshot_identity['identity_token'] );
+		if ( ! $checks['snapshot_identity_ready'] ) $blockers[] = 'snapshot_identity_unavailable';
+		$checks['snapshot_identity_skill_count_matches'] = $checks['snapshot_identity_ready']
+			&& isset( $snapshot_identity['skill_count'], $snapshot['skill_count'] )
+			&& (int) $snapshot_identity['skill_count'] === (int) $snapshot['skill_count'];
+		if ( ! $checks['snapshot_identity_skill_count_matches'] ) $blockers[] = 'snapshot_identity_count_mismatch';
+
+		$identity_token = isset( $snapshot_identity['identity_token'] ) ? (string) $snapshot_identity['identity_token'] : '';
 		$evidence = array(
 			'environment' => $environment,
 			'checks' => $checks,
@@ -166,6 +177,7 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? $autoconfig['app_mapping_source'] : '',
 			'provider_families' => isset( $provider['families'] ) ? $provider['families'] : array(),
 			'snapshot_skill_count' => isset( $snapshot['skill_count'] ) ? (int) $snapshot['skill_count'] : 0,
+			'snapshot_identity_token' => $identity_token,
 		);
 		$digest = hash( 'sha256', wp_json_encode( $evidence, JSON_UNESCAPED_SLASHES ) );
 
@@ -180,12 +192,14 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'write_ability_leaks' => $write_leaks,
 			'provider_families' => isset( $provider['families'] ) ? $provider['families'] : array(),
 			'snapshot_skill_count' => isset( $snapshot['skill_count'] ) ? (int) $snapshot['skill_count'] : 0,
+			'snapshot_identity_token' => $identity_token,
+			'snapshot_digest' => isset( $snapshot_identity['snapshot_digest'] ) ? (string) $snapshot_identity['snapshot_digest'] : '',
 			'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? $autoconfig['app_mapping_source'] : '',
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),
 			'local_runtime_only' => true,
 			'external_client_snapshot_verified' => false,
-			'external_client_action' => 'ChatGPT/Codex must install or refresh the published snapshot outside WordPress.',
+			'external_client_action' => 'ChatGPT/Codex must install or refresh the published snapshot outside WordPress, then compare the package MAD4B-SNAPSHOT-ID.txt token with snapshot_identity_token.',
 		);
 	}
 }
