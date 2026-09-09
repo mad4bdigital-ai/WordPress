@@ -10,6 +10,7 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 - Canonical site/connection/workflow seed pack: auto-provisioned on Staging
 - Provider Skill packs: discovered, placed, enabled and disabled automatically from live plugin + adapter state
 - Local runtime certification: generated automatically and exposed read-only through MCP
+- Deterministic snapshot identity: generated from enabled Skill contents/resources + App mapping for exact external package comparison
 - Runtime-authored custom Skill creation: WordPress administrator UI only
 - ChatGPT MCP Skill tools: read-only (`skills-list`, `skill-get`, `skills-export-status`, `skills-runtime-certification`)
 - No Skill create/update/delete MCP tool
@@ -38,6 +39,8 @@ Provider Skill catalog reconciliation
    ↓
 Active + adapter-ready provider → Skill enabled
 Inactive/unavailable provider       → MAD4B-managed Skill disabled
+   ↓
+Deterministic snapshot identity
    ↓
 Local runtime certification
 ```
@@ -106,6 +109,7 @@ The Control Plane records a digest-bound Staging certification after the Abiliti
 - all read-only Skill abilities are registered
 - no Skill create/update/delete/write ability is registered
 - the portable snapshot has enabled Skills
+- deterministic snapshot identity is available and its Skill count matches the portable snapshot
 
 Read it through:
 
@@ -116,6 +120,34 @@ mad4b/skills-runtime-certification
 Certification transitions are append-only-audited and persisted only when their evidence digest changes.
 
 This certification is deliberately `local_runtime_only`. WordPress cannot truthfully prove that a remote ChatGPT/Codex client has installed or refreshed a portable Plugin snapshot. That final client-side snapshot import remains outside the WordPress trust boundary.
+
+## Deterministic snapshot identity
+
+`MAD4B_SCP_Skill_Snapshot_Identity` computes a stable SHA-256 identity from the enabled Skill set. The digest includes the governed App ID plus every enabled Skill logical ID, `SKILL.md` hash/size, and each supporting resource path/hash/size. Timestamps and presentation-only metadata are excluded so the identity remains stable for identical content.
+
+The read-only `mad4b/skills-export-status` response exposes:
+
+```text
+snapshot_identity.snapshot_digest
+snapshot_identity.identity_token
+```
+
+The portable runtime export includes the exact same token in:
+
+```text
+MAD4B-SNAPSHOT.json
+MAD4B-SNAPSHOT-ID.txt
+```
+
+The final external-client acceptance can therefore compare one value instead of manually comparing every Skill file:
+
+```text
+WordPress snapshot_identity.identity_token
+            ==
+installed/exported MAD4B-SNAPSHOT-ID.txt
+```
+
+An exact match proves the package represents the same enabled Skill contents/resources and App mapping. It still does not prove that the client executed a Skill successfully; the live ChatGPT/Codex read flow remains a separate acceptance check.
 
 ## Dynamic WordPress registry
 
@@ -148,6 +180,7 @@ The WordPress Skills page exports enabled runtime Skills as a portable Plugin ZI
 plugin.json
 .app.json
 MAD4B-SNAPSHOT.json
+MAD4B-SNAPSHOT-ID.txt
 skills/
   <skill>/SKILL.md
   <skill>/references/...
@@ -161,7 +194,7 @@ The site registry is live and dynamic, but packaged ChatGPT/Codex Plugin Skills 
 
 ## CI runtime proof
 
-`MAD4B Dynamic Skills` includes a disposable WordPress Staging runtime job. It installs the exact repository MCP Adapter and Control Plane, then proves automatic editor/App bootstrap, seed creation, provider handoff, read-only Abilities, certification persistence, and absence of Skill write abilities without manually defining any Skills or App mapping.
+`MAD4B Dynamic Skills` includes a disposable WordPress Staging runtime job. It installs the exact repository MCP Adapter and Control Plane, then proves automatic editor/App bootstrap, seed creation, provider handoff, deterministic snapshot identity, read-only Abilities, certification persistence, and absence of Skill write abilities without manually defining any Skills or App mapping.
 
 ## Local marketplace
 
