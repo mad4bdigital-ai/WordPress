@@ -6,6 +6,7 @@ bridge = (ROOT / 'includes/class-mad4b-scp-mcp-registration-bridge.php').read_te
 diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
+build_marker = ROOT / 'MAD4B-RUNTIME-BUILD.txt'
 
 
 def require(text, needle, label):
@@ -53,6 +54,8 @@ require(bootstrap, "class-mad4b-scp-mcp-registration-bridge.php", 'bootstrap-loa
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'bootstrap-early-bridge')
 require(bootstrap, "class-mad4b-scp-mcp-registration-diagnostics-admin.php", 'bootstrap-load-diagnostics')
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();', 'bootstrap-diagnostics')
+require(bootstrap, "Version: 0.4.0-rc.6", 'diagnostic-build-version')
+require(bootstrap, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.6' );", 'diagnostic-runtime-version')
 if bootstrap.index('MAD4B_SCP_MCP_Registration_Bridge::boot_early();') > bootstrap.index("add_action( 'plugins_loaded'"):
     raise SystemExit('FAIL bridge-order: registration bridge must bind before plugins_loaded callback is registered')
 
@@ -67,9 +70,29 @@ for marker in (
     'MAD4B_SCP_MCP_Registration_Bridge::status()',
     'Adapter runtime from official plugin',
     'Adapter init happened before bridge boot',
+    'Control Plane runtime version',
+    'Control Plane main file disk version',
+    'Control Plane runtime stale vs disk',
+    'Control Plane main file SHA-256 prefix',
+    'Control Plane build marker present',
+    'Control Plane build marker release',
+    'Control Plane build marker matches disk',
+    'Runtime provenance mismatch',
+    'Runtime from Hostinger bundle',
+    'MU bootstrap present',
+    'MU bootstrap integrity',
+    'MU bootstrap executed this request',
     'Registration error:',
+    'private static function disk_evidence()',
+    "hash_file( 'sha256', $main )",
 ):
     require(diagnostics, marker, 'diagnostics-surface')
+
+if not build_marker.is_file():
+    raise SystemExit('FAIL build-marker: MAD4B-RUNTIME-BUILD.txt is missing')
+marker_text = build_marker.read_text('utf-8')
+require(marker_text, 'release=0.4.0-rc.6', 'build-marker-release')
+require(marker_text, 'contract=mad4b.runtime-build-evidence.v1', 'build-marker-contract')
 
 for forbidden in (
     'wp_remote_get(', 'wp_remote_post(', 'wp_remote_request(', 'curl_exec(', 'fsockopen(',
@@ -83,4 +106,4 @@ forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v2: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v3: PASS')
