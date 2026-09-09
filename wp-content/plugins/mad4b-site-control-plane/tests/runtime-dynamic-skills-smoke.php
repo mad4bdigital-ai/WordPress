@@ -61,6 +61,11 @@ foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete
 	if ( wp_has_ability( $ability ) ) $fail( 'Forbidden Skill write ability is registered: ' . $ability );
 }
 
+$snapshot_identity = MAD4B_SCP_Skill_Snapshot_Identity::build();
+if ( empty( $snapshot_identity['ready'] ) ) $fail( 'Deterministic snapshot identity is not ready.' );
+if ( empty( $snapshot_identity['snapshot_digest'] ) || empty( $snapshot_identity['identity_token'] ) ) $fail( 'Deterministic snapshot digest/token is missing.' );
+if ( 0 !== strpos( (string) $snapshot_identity['identity_token'], 'sha256:' ) ) $fail( 'Snapshot identity token is not SHA-256 qualified.' );
+
 $cert = MAD4B_SCP_Skill_Runtime_Certification::observe();
 if ( empty( $cert['ready'] ) || ! isset( $cert['state'] ) || 'ready' !== $cert['state'] ) {
 	$fail( 'Automatic runtime certification is blocked: ' . wp_json_encode( isset( $cert['blockers'] ) ? $cert['blockers'] : array() ) );
@@ -68,6 +73,7 @@ if ( empty( $cert['ready'] ) || ! isset( $cert['state'] ) || 'ready' !== $cert['
 if ( empty( $cert['local_runtime_only'] ) ) $fail( 'Certification trust boundary is not declared local-runtime-only.' );
 if ( ! empty( $cert['external_client_snapshot_verified'] ) ) $fail( 'WordPress must not claim remote ChatGPT snapshot verification.' );
 if ( empty( $cert['evidence_digest'] ) ) $fail( 'Runtime certification evidence digest is missing.' );
+if ( empty( $cert['snapshot_identity_token'] ) || ! hash_equals( (string) $snapshot_identity['identity_token'], (string) $cert['snapshot_identity_token'] ) ) $fail( 'Certification snapshot identity token mismatch.' );
 
 $readback = MAD4B_SCP_Skill_Runtime_Certification::status();
 if ( empty( $readback['ready'] ) || ! hash_equals( (string) $cert['evidence_digest'], (string) $readback['evidence_digest'] ) ) $fail( 'Persisted runtime certification readback mismatch.' );
