@@ -18,60 +18,83 @@ final class MAD4B_SCP_Skill_Seeder {
 	const SEED_DIR = 'skill-seeds';
 
 	private static $ran = false;
+	private static $runtime_status = null;
 
 	public static function bootstrap() {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;
 
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		if ( 'staging' !== $environment || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::status( 'not_eligible' );
+		if ( 'staging' !== $environment || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::set_status( 'not_eligible' );
 
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
-		if ( empty( $audit_status['ready'] ) ) return self::status( 'audit_unavailable' );
+		if ( empty( $audit_status['ready'] ) ) return self::set_status( 'audit_unavailable' );
 
 		$root = MAD4B_SCP_Skill_Registry::storage_root();
 		if ( '' === $root && defined( 'WP_CONTENT_DIR' ) ) $root = wp_normalize_path( WP_CONTENT_DIR . '/mad4b-skills' );
-		if ( '' === $root || ( ! is_dir( $root ) && ! wp_mkdir_p( $root ) ) ) return self::status( 'storage_unavailable' );
+		if ( '' === $root || ( ! is_dir( $root ) && ! wp_mkdir_p( $root ) ) ) return self::set_status( 'storage_unavailable' );
 
 		$created = array();
 		$refreshed = array();
 		$skipped = array();
 		foreach ( self::seeds() as $seed ) {
 			$result = self::seed_one( $root, $seed );
-			if ( is_wp_error( $result ) ) return self::status( $result->get_error_code(), $created, $refreshed, $skipped );
+			if ( is_wp_error( $result ) ) return self::set_status( $result->get_error_code(), $created, $refreshed, $skipped );
 			if ( ! empty( $result['created'] ) ) $created[] = $seed['name'];
 			elseif ( ! empty( $result['refreshed'] ) ) $refreshed[] = $seed['name'];
 			else $skipped[] = $seed['name'];
 		}
 
-		update_option(
-			self::OPTION,
-			array(
-				'contract' => self::CONTRACT,
-				'version' => self::SEED_VERSION,
-				'created' => $created,
-				'refreshed_managed' => $refreshed,
-				'skipped_existing' => $skipped,
-				'updated_at' => gmdate( 'c' ),
-			),
-			false
+		$stored = array(
+			'contract' => self::CONTRACT,
+			'version' => self::SEED_VERSION,
+			'created' => $created,
+			'refreshed_managed' => $refreshed,
+			'skipped_existing' => $skipped,
+			'updated_at' => gmdate( 'c' ),
 		);
-		return self::status( 'ready', $created, $refreshed, $skipped );
+		update_option( self::OPTION, $stored, false );
+		return self::set_status( 'ready', $created, $refreshed, $skipped );
 	}
 
-	public static function status( $state = '', array $created = array(), array $refreshed = array(), array $skipped = array() ) {
+	/**
+	 * Current-request truth always wins. Persisted success from an earlier request
+	 * is never promoted to current readiness before bootstrap observes this runtime.
+	 */
+	public static function status() {
+		if ( is_array( self::$runtime_status ) ) return self::$runtime_status;
 		$stored = get_option( self::OPTION, array() );
+		$previous_ready = is_array( $stored ) && ! empty( $stored['updated_at'] ) && isset( $stored['version'] ) && self::SEED_VERSION === (int) $stored['version'];
 		return array(
 			'contract' => self::CONTRACT,
 			'seed_version' => self::SEED_VERSION,
-			'state' => '' !== $state ? $state : ( is_array( $stored ) && ! empty( $stored['updated_at'] ) && isset( $stored['version'] ) && self::SEED_VERSION === (int) $stored['version'] ? 'ready' : 'pending' ),
-			'created' => ! empty( $created ) ? $created : ( is_array( $stored ) && isset( $stored['created'] ) && is_array( $stored['created'] ) ? $stored['created'] : array() ),
-			'refreshed_managed' => ! empty( $refreshed ) ? $refreshed : ( is_array( $stored ) && isset( $stored['refreshed_managed'] ) && is_array( $stored['refreshed_managed'] ) ? $stored['refreshed_managed'] : array() ),
-			'skipped_existing' => ! empty( $skipped ) ? $skipped : ( is_array( $stored ) && isset( $stored['skipped_existing'] ) && is_array( $stored['skipped_existing'] ) ? $stored['skipped_existing'] : array() ),
+			'state' => 'pending',
+			'created' => array(),
+			'refreshed_managed' => array(),
+			'skipped_existing' => array(),
+			'previous_persisted_ready' => $previous_ready,
+			'current_request_observed' => false,
 			'overwrites_user_owned' => false,
 			'refreshes_only_digest_clean_managed' => true,
 			'production_auto_seed' => false,
 		);
+	}
+
+	private static function set_status( $state, array $created = array(), array $refreshed = array(), array $skipped = array() ) {
+		self::$runtime_status = array(
+			'contract' => self::CONTRACT,
+			'seed_version' => self::SEED_VERSION,
+			'state' => sanitize_key( (string) $state ),
+			'created' => array_values( array_unique( $created ) ),
+			'refreshed_managed' => array_values( array_unique( $refreshed ) ),
+			'skipped_existing' => array_values( array_unique( $skipped ) ),
+			'previous_persisted_ready' => false,
+			'current_request_observed' => true,
+			'overwrites_user_owned' => false,
+			'refreshes_only_digest_clean_managed' => true,
+			'production_auto_seed' => false,
+		);
+		return self::$runtime_status;
 	}
 
 	private static function seed_one( $root, array $seed ) {
@@ -112,14 +135,22 @@ final class MAD4B_SCP_Skill_Seeder {
 		$written = self::atomic_write( $file, $document );
 		if ( is_wp_error( $written ) ) return $written;
 		$written_meta = self::atomic_write( $meta_file, wp_json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
-		if ( is_wp_error( $written_meta ) ) { @unlink( $file ); return $written_meta; }
+		if ( is_wp_error( $written_meta ) ) {
+			$removed = self::remove_file_verified( $file );
+			return is_wp_error( $removed ) ? new WP_Error( 'mad4b_skill_seed_rollback_failed', 'Seed metadata write failed and the newly created Skill could not be removed.', array( 'write_error' => $written_meta->get_error_code() ) ) : $written_meta;
+		}
 
 		$audit = MAD4B_SCP_Audit::record(
 			'mad4b/skill-seed-provision',
 			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'enabled' => $enabled, 'seed_version' => self::SEED_VERSION, 'after_sha256' => $sha, 'bytes' => strlen( $document ) ),
 			'ok'
 		);
-		if ( is_wp_error( $audit ) ) { @unlink( $file ); @unlink( $meta_file ); return new WP_Error( 'mad4b_skill_seed_audit_failed', 'Seed Skill provisioning rolled back because audit commit failed.' ); }
+		if ( is_wp_error( $audit ) ) {
+			$remove_file = self::remove_file_verified( $file );
+			$remove_meta = self::remove_file_verified( $meta_file );
+			if ( is_wp_error( $remove_file ) || is_wp_error( $remove_meta ) ) return new WP_Error( 'mad4b_skill_seed_rollback_failed', 'Seed Skill audit failed and newly created state could not be fully removed.' );
+			return new WP_Error( 'mad4b_skill_seed_audit_failed', 'Seed Skill provisioning rolled back and verified because audit commit failed.' );
+		}
 		return array( 'created' => true, 'refreshed' => false );
 	}
 
@@ -128,7 +159,7 @@ final class MAD4B_SCP_Skill_Seeder {
 		$before_skill = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$before_meta = file_get_contents( $meta_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$meta = is_string( $before_meta ) ? json_decode( $before_meta, true ) : null;
-		if ( ! is_string( $before_skill ) || ! is_array( $meta ) || self::CONTRACT !== ( isset( $meta['provisioned_by'] ) ? (string) $meta['provisioned_by'] : '' ) ) {
+		if ( ! is_string( $before_skill ) || ! is_string( $before_meta ) || ! is_array( $meta ) || self::CONTRACT !== ( isset( $meta['provisioned_by'] ) ? (string) $meta['provisioned_by'] : '' ) ) {
 			return array( 'created' => false, 'refreshed' => false );
 		}
 
@@ -153,8 +184,8 @@ final class MAD4B_SCP_Skill_Seeder {
 		if ( is_wp_error( $written ) ) return $written;
 		$written_meta = self::atomic_write( $meta_file, $meta_json );
 		if ( is_wp_error( $written_meta ) ) {
-			self::atomic_write( $file, $before_skill );
-			return $written_meta;
+			$restored = self::restore_exact( $file, $before_skill );
+			return is_wp_error( $restored ) ? new WP_Error( 'mad4b_skill_seed_refresh_rollback_failed', 'Seed metadata write failed and previous Skill bytes could not be verified after rollback.', array( 'write_error' => $written_meta->get_error_code() ) ) : $written_meta;
 		}
 
 		$audit = MAD4B_SCP_Audit::record(
@@ -163,11 +194,9 @@ final class MAD4B_SCP_Skill_Seeder {
 			'ok'
 		);
 		if ( is_wp_error( $audit ) ) {
-			$restore_skill = self::atomic_write( $file, $before_skill );
-			$restore_meta = self::atomic_write( $meta_file, $before_meta );
-			if ( is_wp_error( $restore_skill ) || is_wp_error( $restore_meta ) || ! is_file( $file ) || ! hash_equals( $current_sha, (string) hash_file( 'sha256', $file ) ) ) {
-				return new WP_Error( 'mad4b_skill_seed_refresh_rollback_failed', 'Canonical seed refresh audit failed and the previous bytes could not be verified after rollback.' );
-			}
+			$restore_skill = self::restore_exact( $file, $before_skill );
+			$restore_meta = self::restore_exact( $meta_file, $before_meta );
+			if ( is_wp_error( $restore_skill ) || is_wp_error( $restore_meta ) ) return new WP_Error( 'mad4b_skill_seed_refresh_rollback_failed', 'Canonical seed refresh audit failed and the complete previous state could not be verified after rollback.' );
 			return new WP_Error( 'mad4b_skill_seed_refresh_audit_failed', 'Canonical seed refresh was rolled back and verified because its audit commit failed.' );
 		}
 		return array( 'created' => false, 'refreshed' => true );
@@ -207,6 +236,20 @@ final class MAD4B_SCP_Skill_Seeder {
 		if ( false === $bytes || $bytes !== strlen( (string) $content ) ) { @unlink( $tmp ); return new WP_Error( 'mad4b_skill_seed_write_failed', 'Unable to write the complete seed Skill file.' ); }
 		if ( ! @rename( $tmp, $file ) ) { @unlink( $tmp ); return new WP_Error( 'mad4b_skill_seed_replace_failed', 'Unable to atomically publish seed Skill file.' ); }
 		return true;
+	}
+
+	private static function restore_exact( $file, $before ) {
+		$restored = self::atomic_write( $file, (string) $before );
+		if ( is_wp_error( $restored ) ) return $restored;
+		$after = is_file( $file ) && ! is_link( $file ) ? file_get_contents( $file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( ! is_string( $after ) || ! hash_equals( hash( 'sha256', (string) $before ), hash( 'sha256', $after ) ) || (string) $before !== $after ) return new WP_Error( 'mad4b_skill_seed_restore_mismatch', 'Restored seed state does not match exact pre-change bytes.' );
+		return true;
+	}
+
+	private static function remove_file_verified( $file ) {
+		if ( is_link( $file ) ) return new WP_Error( 'mad4b_skill_seed_rollback_symlink_denied', 'Rollback target became a symbolic link.' );
+		if ( is_file( $file ) && ! @unlink( $file ) ) return new WP_Error( 'mad4b_skill_seed_rollback_remove_failed', 'Rollback could not remove a newly created seed file.' );
+		return file_exists( $file ) ? new WP_Error( 'mad4b_skill_seed_rollback_remove_mismatch', 'Seed file still exists after rollback.' ) : true;
 	}
 
 	private static function seeds() {
