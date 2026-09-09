@@ -28,6 +28,7 @@ $render_tab = static function ( $tab ) {
 
 $check( current_user_can( 'manage_options' ), 'Connection readiness smoke requires an administrator.' );
 $check( class_exists( 'MAD4B_SCP_Connection_Status' ), 'Connection status class unavailable.' );
+$check( class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ), 'External handshake evidence class unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Connection_Admin_UI' ), 'Connection admin UI class unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Admin_Experience' ), 'Shared staged admin experience class unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Transport_Context' ), 'Transport context class unavailable.' );
@@ -46,9 +47,9 @@ $check( isset( $status['oauth_resource_server'] ) && is_array( $status['oauth_re
 $check( empty( $status['oauth_resource_server']['configured'] ), 'Disposable connection runtime unexpectedly reports OAuth configured.' );
 $check( empty( $status['oauth_resource_server']['effective'] ), 'Disposable connection runtime unexpectedly reports OAuth effective.' );
 $check( empty( $status['oauth_resource_server']['preflight_ready'] ), 'Disposable connection runtime unexpectedly reports OAuth preflight ready.' );
-$check( empty( $status['connection_certified'] ), 'Local inspection must never self-certify the external connection.' );
+$check( empty( $status['connection_certified'] ), 'Repository/local inspection must never self-certify the external connection.' );
 $check( empty( $status['external_handshake']['verified'] ), 'External handshake was incorrectly marked verified.' );
-$check( 'local_remote_preflight_incomplete' === $status['external_handshake']['status'], 'External handshake status must distinguish local OAuth/preflight incompleteness.' );
+$check( 'unverified' === $status['external_handshake']['status'], 'Absent durable external evidence must remain explicitly unverified.' );
 $check( in_array( 'external_handshake_unverified', $status['certification_blockers'], true ), 'External handshake blocker missing.' );
 $check( empty( $status['authentication']['credential_material_exposed'] ), 'Connection status claims credential material is exposed.' );
 $check( empty( $status['authentication']['credential_creation_supported_here'] ), 'Connection status claims credential creation in read-only surface.' );
@@ -61,6 +62,7 @@ $check( empty( $status['provider_mcp_isolation']['creates_authority'] ), 'Provid
 
 $expected = MAD4B_SCP_Servers::expected_server_ids();
 $check( count( $status['servers'] ) === count( $expected ), 'MAD4B server count drifted from the server registry.' );
+$check( in_array( 'mad4b-chatgpt', $expected, true ), 'mad4b-chatgpt is missing from the governed server registry.' );
 $check( in_array( 'mad4b-write', $expected, true ), 'mad4b-write is missing from the governed server registry.' );
 $seen = array();
 foreach ( $status['servers'] as $server ) {
@@ -104,6 +106,7 @@ $check( false !== strpos( $oauth_html, 'WordPress local OAuth authority' ), 'OAu
 $check( false !== strpos( $oauth_html, 'External / federated OAuth resource bridge' ), 'OAuth tab omitted the external federated authority.' );
 $check( false !== strpos( $oauth_html, 'oauth_resource_bridge_not_configured' ), 'OAuth tab omitted OAuth blocker truth.' );
 $check( false !== strpos( $endpoints_html, 'mad4b-read' ), 'MCP Endpoints tab omitted the read endpoint.' );
+$check( false !== strpos( $endpoints_html, 'mad4b-chatgpt' ), 'MCP Endpoints tab omitted the ChatGPT endpoint.' );
 $check( false !== strpos( $endpoints_html, 'mad4b-write' ), 'MCP Endpoints tab omitted the write endpoint.' );
 $check( false !== strpos( $endpoints_html, esc_html( $status['write_surface']['endpoint'] ) ), 'MCP Endpoints tab did not render the runtime-derived write endpoint.' );
 $check( false !== strpos( $endpoints_html, 'Governed write ingress' ), 'MCP Endpoints tab omitted governed write readiness.' );
@@ -121,4 +124,4 @@ $after = array(
 );
 $check( $before === $after, 'Read-only staged connection rendering changed governance state.' );
 
-echo "mad4b.site-control-plane.runtime-connection-readiness.v6: PASS\n";
+echo "mad4b.site-control-plane.runtime-connection-readiness.v7: PASS\n";
