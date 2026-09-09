@@ -20,6 +20,12 @@ trait InventoryReconcilerBindingTrait {
         return array('resolved'=>false,'code'=>$code,'details'=>array('provider_query_id'=>$providerQueryId,'topology_available'=>!empty($topology['available'])));
     }
 
+    private function routeProviderGroupDrift(string $providerQueryId,array $topology):array{
+        $providerQueryId=QueryId::normalize($providerQueryId);if(''===$providerQueryId){return array();}$out=array();
+        foreach((array)($topology['provider_group_drift']??array()) as $drift){if(!is_array($drift)){continue;}$expected=array();foreach((array)($drift['expected_provider_query_ids']??array()) as $candidate){$candidate=QueryId::normalize($candidate);if(''!==$candidate){$expected[$candidate]=true;}}if(!isset($expected[$providerQueryId])){continue;}$out[]=$drift;if(count($out)>=20){break;}}
+        return $out;
+    }
+
     private function inventoryQualityFindings(array $inventory):array{
         $out=array();
         foreach(array('post_types','taxonomies','languages','archive_path_translations') as $section){$r=(array)(((array)($inventory['completeness']??array()))[$section]??array());if(empty($r['truncated'])){continue;}$out[]=$this->findingValue('blocking','inventory_'.$section.'_truncated','inventory:'.$section,array('observed_count'=>(int)($r['observed_count']??0),'included_count'=>(int)($r['included_count']??0),'limit'=>(int)($r['limit']??0)));}
@@ -28,6 +34,7 @@ trait InventoryReconcilerBindingTrait {
         if(empty($queryBuilder['available'])){$out[]=$this->findingValue('blocking','inventory_query_builder_unavailable','inventory:query_builder',array('source'=>(string)($queryBuilder['source']??'unavailable')));}
         $count=(int)($queryBuilder['identity_conflict_count']??0);if($count>0){$out[]=$this->findingValue('warning','query_builder_identity_collision','inventory:query_builder',array('identity_conflict_count'=>$count,'identity_conflicts_truncated'=>!empty($queryBuilder['identity_conflicts_truncated']),'identity_conflicts'=>array_slice((array)($queryBuilder['identity_conflicts']??array()),0,20)));}
         $topology=(array)($inventory['elementor_topology']??array());if(!empty($topology['truncated'])){$out[]=$this->findingValue('warning','elementor_topology_truncated','inventory:elementor_topology',array('templates_scanned'=>(int)($topology['templates_scanned']??0),'elements_scanned'=>(int)($topology['elements_scanned']??0)));}
+        $driftCount=(int)($topology['provider_group_drift_count']??count((array)($topology['provider_group_drift']??array())));if($driftCount>0){$out[]=$this->findingValue('warning','elementor_provider_group_drift_detected','inventory:elementor_topology',array('drift_count'=>$driftCount,'drift_truncated'=>!empty($topology['provider_group_drift_truncated']),'examples'=>array_slice((array)($topology['provider_group_drift']??array()),0,10),'authorizing'=>false));}
         return $out;
     }
 
