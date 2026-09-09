@@ -141,6 +141,7 @@ final class MAD4B_SCP_Servers {
 					if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
 						return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
 					}
+				}
 			}
 			return null;
 		}
