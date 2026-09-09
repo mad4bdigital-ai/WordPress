@@ -29,10 +29,13 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$registry = MAD4B_SCP_Adapter_Registry::instance();
 		self::$servers = new MAD4B_SCP_Servers();
 
-		// Register callbacks immediately. The callbacks themselves still execute
-		// only on the canonical lazy registry actions.
-		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_categories' ), 10 );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 10 );
+		// Preserve the established registration ordering: core first (10),
+		// certified adapters second (20). Hooks are bound immediately, while the
+		// actual registrations still execute only on the canonical lazy actions.
+		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 );
+		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 );
 		add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 );
 	}
 
@@ -41,15 +44,21 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$registry->register_defaults();
 	}
 
-	public static function register_categories() {
-		self::prepare_registry();
+	public static function register_core_categories() {
 		if ( self::$abilities ) self::$abilities->register_categories();
+	}
+
+	public static function register_registry_categories() {
+		self::prepare_registry();
 		if ( self::$registry ) self::$registry->register_categories();
 	}
 
-	public static function register_abilities() {
-		self::prepare_registry();
+	public static function register_core_abilities() {
 		if ( self::$abilities ) self::$abilities->register_abilities();
+	}
+
+	public static function register_registry_abilities() {
+		self::prepare_registry();
 		if ( self::$registry ) self::$registry->register_abilities();
 	}
 
@@ -94,6 +103,11 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			$errors[ sanitize_key( (string) $server_id ) ] = isset( $entry['error'] ) ? sanitize_key( (string) $entry['error'] ) : '';
 		}
 
+		$core_ability_hook_bound = false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ) );
+		$registry_ability_hook_bound = false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ) );
+		$core_category_hook_bound = false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ) );
+		$registry_category_hook_bound = false !== has_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ) );
+
 		return array(
 			'contract' => self::CONTRACT,
 			'bridge_booted' => self::$booted,
@@ -103,7 +117,12 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			'abilities_init_count' => did_action( 'wp_abilities_api_init' ),
 			'category_init_count' => did_action( 'wp_abilities_api_categories_init' ),
 			'server_hook_bound' => false !== has_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ) ),
-			'ability_hook_bound' => false !== has_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ) ),
+			'core_ability_hook_bound' => $core_ability_hook_bound,
+			'registry_ability_hook_bound' => $registry_ability_hook_bound,
+			'ability_hook_bound' => $core_ability_hook_bound && $registry_ability_hook_bound,
+			'core_category_hook_bound' => $core_category_hook_bound,
+			'registry_category_hook_bound' => $registry_category_hook_bound,
+			'category_hook_bound' => $core_category_hook_bound && $registry_category_hook_bound,
 			'adapter_runtime_version' => $runtime_version,
 			'adapter_runtime_source' => sanitize_text_field( $runtime_source ),
 			'adapter_runtime_from_official_plugin' => $runtime_from_official_plugin,
