@@ -45,6 +45,11 @@ $preset->beforeRender($explicitOff);
 etg_archive_expect(!isset($explicitOff->set['etg_dfsb_background_mode']),'explicitly saved Elementor Default remains a hard off override');
 etg_archive_expect(empty($explicitOff->attrs),'explicit off does not emit ETG background ownership');
 
+$killSwitch=new EtgArchiveHeroElementFixture(array('_css_classes'=>'archive etg-dfsb-background-off','etg_dfsb_background_mode'=>'slideshow'));
+$preset->beforeRender($killSwitch);
+etg_archive_expect(($killSwitch->set['etg_dfsb_background_mode']??'')==='off','kill-switch class overrides a stale saved slideshow mode in memory');
+etg_archive_expect(($killSwitch->attrs['_wrapper']['data-etg-dfsb-background-origin']??'')==='archive_background_off','kill-switch origin is observable');
+
 $explicitImage=new EtgArchiveHeroElementFixture(array('etg_dfsb_background_mode'=>'image'));
 $preset->beforeRender($explicitImage);
 etg_archive_expect(($explicitImage->set['etg_dfsb_background_suitability']??'')==='any','explicit dynamic image defaults to any healthy image rather than slideshow Wide Hero policy');
@@ -55,4 +60,4 @@ $preset->beforeRender($explicitSlideshow);
 etg_archive_expect(!isset($explicitSlideshow->set['etg_dfsb_background_suitability']),'explicit suitability remains authoritative');
 etg_archive_expect(!isset($explicitSlideshow->set['etg_dfsb_background_fit']),'explicit fit remains authoritative');
 
-echo "Alpha13 archive hero marker, raw-setting authority, explicit-off override and safe preset smoke tests passed.\n";
+echo "Alpha13 archive hero marker, raw-setting authority, kill-switch and safe preset smoke tests passed.\n";
