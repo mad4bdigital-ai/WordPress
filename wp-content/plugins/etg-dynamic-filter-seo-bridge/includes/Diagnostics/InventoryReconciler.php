@@ -50,6 +50,8 @@ final class InventoryReconciler {
                 if(empty($queryBuilder['available'])){$this->finding($findings,$severity,'profile_query_inventory_unavailable','profile:'.$id,array('query_id'=>$providerQueryId,'profile_enabled'=>$enabled));continue;}
                 $binding=$this->resolveRouteIdentity($provider,$providerQueryId,$route,$queryIndex,$queryConflicts,$topology);
                 if(empty($binding['resolved'])){$this->finding($findings,$severity,(string)$binding['code'],'profile:'.$id,array_merge(array('query_id'=>$providerQueryId,'profile_enabled'=>$enabled),(array)($binding['details']??array())));continue;}
+                $routeDrift=$this->routeProviderGroupDrift($providerQueryId,$topology);
+                if($routeDrift){$this->finding($findings,$severity,'profile_elementor_provider_group_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($routeDrift),'drift'=>array_slice($routeDrift,0,10),'authorizing'=>false));}
                 $queryId=(string)$binding['query_builder_query_id'];
                 if(isset($queryConflicts[$queryId])){$this->finding($findings,$severity,'profile_query_identity_collision','profile:'.$id,array('query_id'=>$queryId,'provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'conflict'=>$queryConflicts[$queryId]));continue;}
                 if(!isset($queryIndex[$queryId])){$code=$this->queryIdentityComplete($inventory)?'profile_query_missing':'profile_query_unresolved_inventory_truncated';$this->finding($findings,$severity,$code,'profile:'.$id,array('query_id'=>$queryId,'provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled));continue;}
