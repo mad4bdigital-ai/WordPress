@@ -70,7 +70,7 @@ final class MAD4B_SCP_Skill_Exporter {
 			$zip->addFromString( 'skills/' . $name . '/SKILL.md', (string) $skill['content'] );
 			foreach ( isset( $skill['resources'] ) && is_array( $skill['resources'] ) ? $skill['resources'] : array() as $resource ) {
 				$relative = isset( $resource['path'] ) ? (string) $resource['path'] : '';
-				$data = MAD4B_SCP_Skill_Registry::read_resource( $skill['level'], $skill['target'], $name, $relative );
+				$data = MAD4B_SCP_Skill_Resource_Reader::read( $skill['level'], $skill['target'], $name, $relative );
 				if ( is_wp_error( $data ) ) { $zip->close(); @unlink( $tmp ); return $data; }
 				$zip->addFromString( 'skills/' . $name . '/' . $relative, $data['content'] );
 			}
