@@ -84,18 +84,12 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Skills_Adapter::boot();
 		MAD4B_SCP_Skill_Runtime_Certification::boot();
 
-		$abilities = new MAD4B_SCP_Abilities();
-		$registry = MAD4B_SCP_Adapter_Registry::instance();
-		$registry->register_defaults();
-
-		add_action( 'wp_abilities_api_categories_init', array( $abilities, 'register_categories' ) );
-		add_action( 'wp_abilities_api_categories_init', array( $registry, 'register_categories' ), 20 );
-		add_action( 'wp_abilities_api_init', array( $abilities, 'register_abilities' ) );
-		add_action( 'wp_abilities_api_init', array( $registry, 'register_abilities' ), 20 );
+		// Ability + MCP server hooks are bound at plugin-file load by the bridge so
+		// a lazy registry cannot consume its one-shot init action before this
+		// plugins_loaded callback. Keep this idempotent call as a lifecycle guard.
+		MAD4B_SCP_MCP_Registration_Bridge::boot_early();
 
 		if ( class_exists( 'WP\\MCP\\Core\\McpAdapter' ) ) {
-			$servers = new MAD4B_SCP_Servers();
-			add_action( 'mcp_adapter_init', array( $servers, 'register_servers' ) );
 			add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 );
 		} else {
 			add_action( 'admin_notices', array( __CLASS__, 'mcp_notice' ) );
