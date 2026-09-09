@@ -29,10 +29,25 @@ final class MAD4B_SCP_Authorization {
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability_name, $provider );
 		if ( is_wp_error( $grant ) ) return self::deny( $grant->get_error_code(), $grant->get_error_message(), $ability_name, $identity, $agent );
 
+		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
+		$approval_ticket_id = isset( $identity['approval_ticket_id'] ) ? strtolower( trim( (string) $identity['approval_ticket_id'] ) ) : '';
+		$approval_ticket_source = '' !== $approval_ticket_id ? 'identity' : 'none';
+		if ( '' === $approval_ticket_id && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+			$from_input = MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input );
+			if ( '' !== $from_input ) { $approval_ticket_id = $from_input; $approval_ticket_source = 'governance_input'; }
+		}
+		if ( '' !== $approval_ticket_id && ! preg_match( '/^[a-f0-9-]{36}$/', $approval_ticket_id ) ) return self::deny( 'mad4b_approval_id_invalid', 'Approval ticket identifier is malformed.', $ability_name, $identity, $agent );
+
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		$require_scopes = (bool) apply_filters( 'mad4b_scp_require_token_scopes', false, $identity, $agent, $ability_name );
 		if ( $require_scopes && empty( $scopes ) ) return self::deny( 'mad4b_nhi_scope_required', 'Authenticated subject did not provide required token scopes.', $ability_name, $identity, $agent );
-		if ( $scopes && ! in_array( 'ability:' . $ability_name, $scopes, true ) ) return self::deny( 'mad4b_nhi_scope_denied', 'Token scope does not include this exact ability.', $ability_name, $identity, $agent );
+		if ( $scopes ) {
+			$scope_allowed = in_array( 'ability:' . $ability_name, $scopes, true ) || in_array( 'server:' . $server_id, $scopes, true );
+			if ( ! $scope_allowed && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+				$scope_allowed = MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $identity, $server_id, $ability_name, $input );
+			}
+			if ( ! $scope_allowed ) return self::deny( 'mad4b_nhi_scope_denied', 'Token scope does not include this exact ability/server and no certified one-time Staging write delegation applies.', $ability_name, $identity, $agent );
+		}
 
 		$constraints = array();
 		if ( ! empty( $grant['resource_constraints'] ) ) {
@@ -40,30 +55,29 @@ final class MAD4B_SCP_Authorization {
 			if ( ! is_array( $decoded ) ) return self::deny( 'mad4b_nhi_constraints_invalid', 'Stored resource constraints are invalid.', $ability_name, $identity, $agent );
 			$constraints = $decoded;
 		}
-		if ( $constraints && ! apply_filters( 'mad4b_scp_resource_constraints_allowed', false, $constraints, $ability_name, $input, $agent, $identity ) ) {
+		if ( $constraints && ! apply_filters( 'mad4b_scp_resource_constraints_allowed', false, $constraints, $ability_name, $authorization_input, $agent, $identity ) ) {
 			return self::deny( 'mad4b_nhi_resource_constraints_unresolved', 'Resource constraints are present but no certified evaluator authorized this target.', $ability_name, $identity, $agent );
 		}
 
-		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $input ) : 'high';
-		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $input ) : true;
-		$approval_ticket_id = isset( $identity['approval_ticket_id'] ) ? (string) $identity['approval_ticket_id'] : '';
-		$target_fingerprint = self::target_fingerprint( $ability_name, $provider, $input, $agent, $identity );
+		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $authorization_input ) : 'high';
+		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $authorization_input ) : true;
+		$target_fingerprint = self::target_fingerprint( $ability_name, $provider, $authorization_input, $agent, $identity );
 
 		if ( ! class_exists( 'MAD4B_SCP_Budgets' ) ) return self::deny( 'mad4b_budget_service_unavailable', 'NHI budget service is unavailable.', $ability_name, $identity, $agent );
-		$budget_reservation = MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $provider, $input, $approval_required );
+		$budget_reservation = MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $provider, $authorization_input, $approval_required );
 		if ( is_wp_error( $budget_reservation ) ) return self::deny( $budget_reservation->get_error_code(), $budget_reservation->get_error_message(), $ability_name, $identity, $agent );
 
 		if ( $approval_required ) {
 			if ( '' === $approval_ticket_id ) {
 				MAD4B_SCP_Budgets::rollback( $budget_reservation );
-				return self::deny( 'mad4b_approval_required', 'This high-impact mutation requires an exact short-lived approval ticket.', $ability_name, $identity, $agent );
+				return self::deny( 'mad4b_approval_required', 'This governed mutation requires an exact short-lived one-time approval ticket.', $ability_name, $identity, $agent );
 			}
 			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) {
 				MAD4B_SCP_Budgets::rollback( $budget_reservation );
 				return self::deny( 'mad4b_approval_service_unavailable', 'Approval service is unavailable.', $ability_name, $identity, $agent );
 			}
-			$ticket_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $input );
-			$approval = MAD4B_SCP_Approval_Tickets::consume_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+			$ticket_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $authorization_input );
+			$approval = MAD4B_SCP_Approval_Tickets::consume_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class );
 			if ( is_wp_error( $approval ) ) {
 				MAD4B_SCP_Budgets::rollback( $budget_reservation );
 				return self::deny( $approval->get_error_code(), $approval->get_error_message(), $ability_name, $identity, $agent );
@@ -92,6 +106,7 @@ final class MAD4B_SCP_Authorization {
 			'impact' => $impact,
 			'approval_required' => $approval_required,
 			'approval_ticket_id' => $approval_required ? $approval_ticket_id : '',
+			'approval_ticket_source' => $approval_required ? $approval_ticket_source : 'not_required',
 			'target_fingerprint' => $target_fingerprint,
 			'budget' => array(
 				'configured' => ! empty( $budget_reservation['active'] ),
@@ -109,6 +124,7 @@ final class MAD4B_SCP_Authorization {
 		$mutation_configured = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED;
 		$mutation_effective = $mutation_configured ? MAD4B_SCP_Policy::can_mutate() : false;
 		$peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
+		$staging_write = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
 		$blockers = array();
 		if ( empty( $schema['ready'] ) ) $blockers[] = 'governance_schema_unavailable';
 		if ( ! empty( $counts['wildcard_grants'] ) ) $blockers[] = 'wildcard_grants_detected';
@@ -130,6 +146,7 @@ final class MAD4B_SCP_Authorization {
 			'budget_service_ready' => class_exists( 'MAD4B_SCP_Budgets' ) && ! empty( $schema['ready'] ),
 			'transport_context' => class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::status() : array( 'bound' => false, 'server_id' => '', 'credential_material_stored' => false ),
 			'mcp_peer_governance' => $peer_governance,
+			'staging_write_authority' => $staging_write,
 			'blockers' => $blockers,
 			'status' => $blockers ? 'blocked' : ( $mutation_configured ? ( $mutation_effective ? 'ready_for_governed_mutation' : 'mutation_configured_identity_required' ) : 'ready_read_only' ),
 		);
