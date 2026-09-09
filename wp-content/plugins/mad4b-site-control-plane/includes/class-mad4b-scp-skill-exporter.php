@@ -9,6 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Skill_Exporter {
 	const CONTRACT = 'mad4b.skill-export.v1';
+	const MAX_EXPORT_SKILLS = 250;
+	const MAX_EXPORT_RESOURCES = 2000;
+	const MAX_EXPORT_UNCOMPRESSED_BYTES = 67108864; // 64 MiB across Skill/resource payloads.
 
 	public static function build_temp_zip() {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_export_capability_denied', 'Administrator capability is required to export skills.' );
@@ -21,6 +24,7 @@ final class MAD4B_SCP_Skill_Exporter {
 		if ( empty( $identity['ready'] ) || empty( $identity['identity_token'] ) ) return new WP_Error( 'mad4b_skill_snapshot_identity_unavailable', 'Portable snapshot identity is unavailable; export is denied until a deterministic identity can be computed.' );
 		$skills = MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) );
 		if ( empty( $skills ) ) return new WP_Error( 'mad4b_skill_export_empty', 'No enabled runtime skills are available to export.' );
+		if ( count( $skills ) > self::MAX_EXPORT_SKILLS ) return new WP_Error( 'mad4b_skill_export_skill_limit_exceeded', 'Enabled Skill count exceeds the bounded portable export limit.' );
 		$app_id = isset( $identity['app_id'] ) ? (string) $identity['app_id'] : '';
 
 		$tmp = function_exists( 'wp_tempnam' ) ? wp_tempnam( 'mad4b-wordpress-plugin.zip' ) : tempnam( sys_get_temp_dir(), 'mad4b-plugin-' );
@@ -69,6 +73,8 @@ final class MAD4B_SCP_Skill_Exporter {
 
 		$index = array();
 		$observed_entries = array();
+		$total_payload_bytes = 0;
+		$resource_count = 0;
 		foreach ( $skills as $summary ) {
 			$skill = MAD4B_SCP_Skill_Registry::get_skill( $summary['level'], $summary['target'], $summary['name'] );
 			if ( is_wp_error( $skill ) ) { $zip->close(); @unlink( $tmp ); return $skill; }
@@ -76,19 +82,26 @@ final class MAD4B_SCP_Skill_Exporter {
 			$content = (string) $skill['content'];
 			$skill_sha = hash( 'sha256', $content );
 			$skill_bytes = strlen( $content );
+			$total_payload_bytes += $skill_bytes;
+			if ( $total_payload_bytes > self::MAX_EXPORT_UNCOMPRESSED_BYTES ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_size_limit_exceeded', 'Portable Skill payload exceeds the bounded uncompressed export size.' );
 			if ( false === $zip->addFromString( 'skills/' . $name . '/SKILL.md', $content ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_skill_write_failed', 'Unable to write a Skill document into the portable package.' );
 
 			$observed_resources = array();
 			foreach ( isset( $skill['resources'] ) && is_array( $skill['resources'] ) ? $skill['resources'] : array() as $resource ) {
+				++$resource_count;
+				if ( $resource_count > self::MAX_EXPORT_RESOURCES ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_resource_limit_exceeded', 'Portable Skill resource count exceeds the bounded export limit.' );
 				$relative = isset( $resource['path'] ) ? (string) $resource['path'] : '';
 				$data = MAD4B_SCP_Skill_Resource_Reader::read( $skill['level'], $skill['target'], $name, $relative );
 				if ( is_wp_error( $data ) ) { $zip->close(); @unlink( $tmp ); return $data; }
 				$resource_content = isset( $data['content'] ) ? (string) $data['content'] : '';
+				$resource_bytes = strlen( $resource_content );
+				$total_payload_bytes += $resource_bytes;
+				if ( $total_payload_bytes > self::MAX_EXPORT_UNCOMPRESSED_BYTES ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_size_limit_exceeded', 'Portable Skill payload exceeds the bounded uncompressed export size.' );
 				if ( false === $zip->addFromString( 'skills/' . $name . '/' . $relative, $resource_content ) ) return self::abort_zip( $zip, $tmp, 'mad4b_skill_export_resource_write_failed', 'Unable to write a Skill resource into the portable package.' );
 				$observed_resources[] = array(
 					'path' => $relative,
 					'sha256' => hash( 'sha256', $resource_content ),
-					'bytes' => strlen( $resource_content ),
+					'bytes' => $resource_bytes,
 				);
 			}
 
@@ -128,6 +141,13 @@ final class MAD4B_SCP_Skill_Exporter {
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
 			'app_mapping_included' => '' !== $app_id,
 			'skill_count' => count( $index ),
+			'resource_count' => $resource_count,
+			'uncompressed_payload_bytes' => $total_payload_bytes,
+			'export_limits' => array(
+				'max_skills' => self::MAX_EXPORT_SKILLS,
+				'max_resources' => self::MAX_EXPORT_RESOURCES,
+				'max_uncompressed_payload_bytes' => self::MAX_EXPORT_UNCOMPRESSED_BYTES,
+			),
 			'skills' => $index,
 			'publication_semantics' => 'snapshot',
 			'snapshot_identity_contract' => isset( $identity['contract'] ) ? $identity['contract'] : '',
@@ -146,6 +166,8 @@ final class MAD4B_SCP_Skill_Exporter {
 			'sha256' => hash_file( 'sha256', $tmp ),
 			'bytes' => filesize( $tmp ),
 			'skill_count' => count( $index ),
+			'resource_count' => $resource_count,
+			'uncompressed_payload_bytes' => $total_payload_bytes,
 			'app_mapping_included' => '' !== $app_id,
 			'snapshot_digest' => (string) $identity['snapshot_digest'],
 			'identity_token' => (string) $identity['identity_token'],
