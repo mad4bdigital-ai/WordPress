@@ -1,0 +1,112 @@
+# MAD4B WordPress Plugin + Skills
+
+This package wraps the existing MAD4B WordPress MCP App with reusable workflow Skills while keeping live WordPress data, OAuth, authorization and tool execution in MCP.
+
+## Current safety boundary
+
+- Portable Plugin capability: `Read`
+- Local test app mapping: existing **Staging** MCP App only
+- Runtime-authored Skill creation: WordPress administrator UI only
+- ChatGPT MCP Skill tools: read-only (`skills-list`, `skill-get`, `skills-export-status`)
+- No Skill create/update/delete MCP tool
+- WordPress global mutation authority is not enabled by this package
+
+## Seed Skills
+
+- `wordpress-site-diagnostics`
+- `wordpress-connection-diagnostics`
+- `elementor-dynamic-content`
+- `jetengine-content-modeling`
+- `wordpress-archive-audit`
+- `wordpress-change-safety`
+
+Each Skill is a directory under root `skills/` with a required `SKILL.md` file. Supporting `references/`, `assets/`, and `scripts/` directories can be included when needed.
+
+## Dynamic WordPress registry
+
+The WordPress plugin adds **MAD4B Control Plane → Skills**.
+
+Runtime-authored Skills are stored as real files under:
+
+```text
+wp-content/mad4b-skills/
+├── site/_site/<skill>/SKILL.md
+├── connection/<target>/<skill>/SKILL.md
+├── provider/<plugin-or-provider>/<skill>/SKILL.md
+├── adapter/<adapter>/<skill>/SKILL.md
+└── workflow/<workflow-family>/<skill>/SKILL.md
+```
+
+A `.mad4b.json` sidecar stores bounded registry metadata next to each Skill.
+
+The files are deliberately stored **outside third-party plugin directories**. Writing into `wp-content/plugins/elementor/`, `jet-engine/`, or another vendor plugin would be fragile because updates can replace those directories. The level + target namespace preserves ownership without mutating vendor code. The storage root can be moved by the `mad4b_scp_skill_storage_root` filter for a MAD4B-controlled deployment.
+
+### Authoring gates
+
+Authoring is fail-closed. On Staging:
+
+```php
+define( 'MAD4B_SKILLS_EDITOR_ENABLED', true );
+```
+
+Production additionally requires a second explicit gate:
+
+```php
+define( 'MAD4B_SKILLS_PRODUCTION_EDITOR_ENABLED', true );
+```
+
+Supporting `scripts/` authoring additionally requires:
+
+```php
+define( 'MAD4B_SKILLS_SCRIPTS_EDITOR_ENABLED', true );
+```
+
+These flags only control local Skill-file authoring. They do **not** enable `mad4b-content`, `mad4b-write`, `mad4b-admin`, breakglass, or the global mutation gate.
+
+Do not place passwords, access tokens, private keys, OAuth credentials, or other secret material inside Skill files.
+
+## Portable export
+
+The WordPress Skills page can export the currently enabled runtime Skills as a portable Plugin ZIP containing:
+
+```text
+plugin.json
+.app.json                 # only when an App ID is configured
+MAD4B-SNAPSHOT.json
+skills/
+  <skill>/SKILL.md
+  <skill>/references/...
+  <skill>/assets/...
+  <skill>/scripts/...
+```
+
+For runtime-generated exports, bind an already registered ChatGPT MCP App with:
+
+```php
+define( 'MAD4B_OPENAI_PLUGIN_APP_ID', 'plugin_asdk_app_...' );
+```
+
+The App technical ID is an identifier, not an OAuth token or signing key.
+
+## Dynamic does not mean hot-reloaded in ChatGPT
+
+The WordPress registry is live and dynamic on the site, but packaged ChatGPT/Codex Skills are a **snapshot**. After changing a Skill you must publish another package, or if Skills are imported from the MCP server, deploy the changed server source and run **Scan Tools** again. Installed clients do not continuously re-read a changed `SKILL.md` from WordPress.
+
+This split is intentional:
+
+```text
+WordPress / Growth OS
+  canonical + runtime Skill files
+          ↓
+  governed snapshot/export
+          ↓
+Plugin package / MCP skill import
+          ↓
+ChatGPT / Codex
+          ↕
+existing MAD4B MCP App for live data and tools
+```
+
+## Local marketplace
+
+The repository marketplace entry is under `.agents/plugins/marketplace.json`. The package in this branch is wired to the already registered **Staging** App for safe local testing. Do not replace the App mapping with a Production App ID as part of this branch.
