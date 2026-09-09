@@ -80,6 +80,9 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-litespeed-adapte
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-family-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-rest-compatibility.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-write-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
@@ -94,6 +97,11 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 // Staging Skills are zero-touch by default. Explicit operator configuration
 // always wins, Production is never auto-enabled, and scripts remain gated.
 MAD4B_SCP_Skill_Autoconfig::bootstrap();
+
+// Exact-origin Staging write authority is a separate governed plane. It may
+// configure the mutation gate only for staging.egypttourgates.com; Production
+// and breakglass are never auto-enabled.
+MAD4B_SCP_Staging_Write_Authority::bootstrap();
 
 // Provider kill-switch filters must exist before plugins_loaded provider bootstraps.
 MAD4B_SCP_MCP_Provider_Isolation::boot_early();
