@@ -41,21 +41,24 @@ A `.mad4b.json` sidecar stores bounded registry metadata next to each Skill.
 
 The files are deliberately stored **outside third-party plugin directories**. Writing into `wp-content/plugins/elementor/`, `jet-engine/`, or another vendor plugin would be fragile because updates can replace those directories. The level + target namespace preserves ownership without mutating vendor code. The storage root can be moved by the `mad4b_scp_skill_storage_root` filter for a MAD4B-controlled deployment.
 
-### Authoring gates
+### Zero-touch Staging authoring
 
-Authoring is fail-closed. On Staging:
+When WordPress reports `wp_get_environment_type() === 'staging'`, the Control Plane automatically enables the local Skill editor. No `wp-config.php` edit is required.
+
+Explicit operator configuration still wins. To deliberately disable authoring on Staging, an operator may set:
+
+```php
+define( 'MAD4B_SKILLS_EDITOR_ENABLED', false );
+```
+
+Production is never auto-enabled. Production authoring still requires both explicit gates:
 
 ```php
 define( 'MAD4B_SKILLS_EDITOR_ENABLED', true );
-```
-
-Production additionally requires a second explicit gate:
-
-```php
 define( 'MAD4B_SKILLS_PRODUCTION_EDITOR_ENABLED', true );
 ```
 
-Supporting `scripts/` authoring additionally requires:
+Supporting `scripts/` authoring remains independently disabled and additionally requires:
 
 ```php
 define( 'MAD4B_SKILLS_SCRIPTS_EDITOR_ENABLED', true );
