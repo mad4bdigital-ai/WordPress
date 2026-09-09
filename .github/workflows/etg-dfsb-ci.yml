@@ -31,6 +31,10 @@ on:
       - 'wp-content/plugins/wpml-string-translation.zip'
       - 'wp-content/plugins/wp-seo-multilingual.zip'
 
+concurrency:
+  group: etg-dfsb-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   actions: read
