@@ -81,6 +81,7 @@ jobs:
             inventory-reconciliation-smoke.php \
             pre-staging-authority-hardening-smoke.php \
             publication-layer-smoke.php \
+            build-identity-smoke.php \
             alpha9-governance-smoke.php \
             alpha10-query-identity-smoke.php \
             alpha11-runtime-topology-dynamic-content-smoke.php \
@@ -193,6 +194,7 @@ jobs:
           slot_tag=open(f'{p}/includes/Elementor/DynamicTags/ContentSlotTag.php').read()
           query_id=open(f'{p}/includes/Identifiers/QueryId.php').read()
           catalog=open(f'{p}/includes/Presentation/InventoryContentCatalog.php').read()
+          build_identity=open(f'{p}/includes/Diagnostics/BuildIdentity.php').read()
           bootstrap=open(f'{p}/includes/Bootstrap.php').read()
           assert 'etg.dfsb.ajax-filter-state.v1' in parser and "'url_authority' => false" in parser and "'authorizing' => false" in parser
           assert 'MAX_QUERY_NODES = 500' in parser and 'MAX_TERMS_PER_TAXONOMY = 20' in parser
@@ -219,6 +221,8 @@ jobs:
           assert 'resolveFilteredQuery' in adapter and 'provider_observation_matches_state' in adapter and 'resolveFilteredQuery' in resolver
           assert 'data-etg-dfsb-token' in tags and 'data-etg-dfsb-slot' in tags
           assert 'supports_ajax_runtime_state' in catalog and "'terms:'" in catalog and "'groups'=>$groups" in catalog
+          assert 'etg.dfsb.embedded-build-identity.v1' in build_identity and 'MAX_BYTES = 4096' in build_identity
+          assert 'etg-dfsb-source-sha' in source and 'etg-dfsb-source-tree' in source
           assert 'new AjaxFilterStateParser' in bootstrap and 'new AjaxPresentationEndpoint' in bootstrap and '$topology->discover(false)' in bootstrap
           PY
 
@@ -304,10 +308,49 @@ jobs:
 
           OUT="$RUNNER_TEMP/etg-package"; mkdir -p "$OUT/etg-dynamic-filter-seo-bridge"
           rsync -a --exclude tests "$PLUGIN/" "$OUT/etg-dynamic-filter-seo-bridge/"
+          IDENTITY="$OUT/etg-dynamic-filter-seo-bridge/build-identity.json"
+          python - "$IDENTITY" "$SOURCE_SHA" "$TREE_SHA" "$VERSION" <<'PY'
+          import json,re,sys
+          path,git_sha,tree_sha,version=sys.argv[1:]
+          assert re.fullmatch(r'[0-9a-f]{40}',git_sha)
+          assert re.fullmatch(r'[0-9a-f]{40}',tree_sha)
+          payload={
+              'contract':'etg.dfsb.embedded-build-identity.v1',
+              'git_sha':git_sha,
+              'tree_sha':tree_sha,
+              'plugin_version':version,
+          }
+          with open(path,'w',encoding='utf-8',newline='\n') as handle:
+              json.dump(payload,handle,indent=2,ensure_ascii=False)
+              handle.write('\n')
+          PY
+          IDENTITY_SHA256=$(sha256sum "$IDENTITY" | awk '{print $1}')
+          python - "$IDENTITY" "$SOURCE_SHA" "$TREE_SHA" "$VERSION" <<'PY'
+          import json,re,sys
+          path,git_sha,tree_sha,version=sys.argv[1:]
+          data=json.load(open(path,encoding='utf-8'))
+          assert set(data)=={'contract','git_sha','tree_sha','plugin_version'}
+          assert data['contract']=='etg.dfsb.embedded-build-identity.v1'
+          assert data['git_sha']==git_sha and data['tree_sha']==tree_sha and data['plugin_version']==version
+          assert not any(key in data for key in ('current_run_id','current_event','build_timestamp','token','credential'))
+          PY
           find "$OUT/etg-dynamic-filter-seo-bridge" -exec touch -t 198001010000 {} +
           ZIP="$OUT/etg-dynamic-filter-seo-bridge-${VERSION}.zip"
           (cd "$OUT"; find etg-dynamic-filter-seo-bridge -type f -print | LC_ALL=C sort | zip -X -q "$ZIP" -@)
           unzip -t "$ZIP"
+          python - "$ZIP" "$SOURCE_SHA" "$TREE_SHA" "$VERSION" <<'PY'
+          import json,sys,zipfile
+          zip_path,git_sha,tree_sha,version=sys.argv[1:]
+          with zipfile.ZipFile(zip_path) as archive:
+              data=json.loads(archive.read('etg-dynamic-filter-seo-bridge/build-identity.json'))
+          assert set(data)=={'contract','git_sha','tree_sha','plugin_version'}
+          assert data=={
+              'contract':'etg.dfsb.embedded-build-identity.v1',
+              'git_sha':git_sha,
+              'tree_sha':tree_sha,
+              'plugin_version':version,
+          }
+          PY
           DIGEST=$(sha256sum "$ZIP" | awk '{print $1}')
           BUILD_TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           {
@@ -316,6 +359,8 @@ jobs:
             echo "tree_sha=$TREE_SHA"
             echo "plugin_version=$VERSION"
             echo "package_sha256=$DIGEST"
+            echo "embedded_identity_contract=etg.dfsb.embedded-build-identity.v1"
+            echo "embedded_identity_sha256=$IDENTITY_SHA256"
             echo "push_run_id=$PUSH_RUN_ID"
             echo "pr_run_id=$PR_RUN_ID"
             echo "current_run_id=$GITHUB_RUN_ID"
@@ -325,7 +370,7 @@ jobs:
             echo "node_version=20"
             echo "test_manifest_sha256=$TEST_MANIFEST_SHA256"
             echo "vendor_contract_sha256=$VENDOR_CONTRACT_SHA256"
-            echo "build_contract=deterministic_zip_epoch1980_zipX_v1"
+            echo "build_contract=deterministic_zip_epoch1980_zipX_embedded_identity_v2"
             echo "build_environment=github_actions_ubuntu_latest"
             echo "build_timestamp=$BUILD_TIMESTAMP"
             echo "profile_engine=generic_surface_profile_v1"
@@ -349,6 +394,8 @@ jobs:
           grep -qx "git_sha=$SOURCE_SHA" "$OUT/etg-dfsb-provenance.txt"
           grep -qx "tree_sha=$TREE_SHA" "$OUT/etg-dfsb-provenance.txt"
           grep -qx "package_sha256=$DIGEST" "$OUT/etg-dfsb-provenance.txt"
+          grep -qx 'embedded_identity_contract=etg.dfsb.embedded-build-identity.v1' "$OUT/etg-dfsb-provenance.txt"
+          grep -qx "embedded_identity_sha256=$IDENTITY_SHA256" "$OUT/etg-dfsb-provenance.txt"
           grep -Eq '^push_run_id=[0-9]+$' "$OUT/etg-dfsb-provenance.txt"
           grep -Eq '^pr_run_id=[0-9]+$' "$OUT/etg-dfsb-provenance.txt"
           grep -Eq '^test_manifest_sha256=[0-9a-f]{64}$' "$OUT/etg-dfsb-provenance.txt"

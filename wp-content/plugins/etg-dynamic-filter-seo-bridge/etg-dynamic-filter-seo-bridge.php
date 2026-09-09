@@ -17,11 +17,17 @@ define( 'ETG_DFSB_BOOT_BUILD', 'alpha13-container-background-4' );
 define( 'ETG_DFSB_ASSET_VERSION', '0.4.0-alpha.13-build4' );
 define( 'ETG_DFSB_RUNTIME_REVISION', 'archive-hero-render-5' );
 
-// Observable, non-authorizing build identity. This distinguishes exact alpha builds
-// that intentionally share the same semantic plugin version during certification.
+// Observable, non-authorizing runtime revision plus packaged source identity.
+// The runtime revision describes behavior; exact Git/tree identity comes only from
+// the deterministic build-identity.json embedded by the governed package builder.
 add_action( 'wp_head', static function () {
     if ( ! function_exists( 'esc_attr' ) ) { return; }
     echo '<meta name="etg-dfsb-runtime-build" content="' . esc_attr( ETG_DFSB_RUNTIME_REVISION ) . '" />' . "\n";
+    $identity = ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
+    if ( ! empty( $identity['valid'] ) ) {
+        echo '<meta name="etg-dfsb-source-sha" content="' . esc_attr( (string) $identity['git_sha'] ) . '" />' . "\n";
+        echo '<meta name="etg-dfsb-source-tree" content="' . esc_attr( (string) $identity['tree_sha'] ) . '" />' . "\n";
+    }
 }, 1 );
 
 spl_autoload_register(static function ( $class ) {

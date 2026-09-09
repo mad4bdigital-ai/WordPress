@@ -2,6 +2,7 @@
 namespace ETG\DynamicFilterSEOBridge\CLI;
 
 use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
+use ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity;
 use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryReconciler;
 use ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory;
 
@@ -20,6 +21,7 @@ final class Commands {
 	public function register(): void {
 		\WP_CLI::add_command( 'etg-dfsb inventory', array( $this, 'inventoryCommand' ) );
 		\WP_CLI::add_command( 'etg-dfsb reconcile', array( $this, 'reconcileCommand' ) );
+		\WP_CLI::add_command( 'etg-dfsb build-identity', array( $this, 'buildIdentityCommand' ) );
 	}
 
 	/**
@@ -28,6 +30,14 @@ final class Commands {
 	public function inventoryCommand( array $args, array $assocArgs ): void {
 		unset( $args, $assocArgs );
 		\WP_CLI::line( $this->encode( $this->inventory->collect() ) );
+	}
+
+	/**
+	 * Report the deterministic, read-only source identity embedded in an installable package.
+	 */
+	public function buildIdentityCommand( array $args, array $assocArgs ): void {
+		unset( $args, $assocArgs );
+		\WP_CLI::line( $this->encode( BuildIdentity::collect() ) );
 	}
 
 	/**

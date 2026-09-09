@@ -48,6 +48,15 @@ It MUST NOT create or update canonical URLs, robots directives, Rank Math metada
 - Provider/query identity and Query Builder binding MUST remain the same authority chain used by URL-state execution.
 - Runtime AJAX result count is presentation evidence only and does not satisfy publication parity or URL indexing evidence by itself.
 
+## Embedded build identity
+
+- Governed installable packages MUST embed `build-identity.json` using contract `etg.dfsb.embedded-build-identity.v1` before deterministic ZIP creation.
+- Embedded identity MUST contain only the exact source `git_sha`, repository `tree_sha`, and semantic `plugin_version` plus the contract identifier. Event names, run IDs, timestamps, credentials and other run-specific fields MUST NOT enter the installable package.
+- The same exact source SHA MUST therefore produce byte-identical installable plugin ZIPs across push and pull-request provenance runs.
+- Runtime source identity is read-only and non-authorizing. It MAY be exposed through bounded diagnostics, WP-CLI and HTML meta evidence, but MUST NOT enable Global, Profiles, indexing, publication or SEO mutation.
+- Semantic plugin version and behavioral runtime revision are not sufficient proof of exact packaged source identity. Post-deploy certification MUST correlate the embedded source SHA with the certified deterministic package provenance.
+- Missing, malformed, oversized, version-mismatched or structurally unexpected embedded identity MUST fail closed as unverified evidence; it MUST NOT be guessed from the semantic version.
+
 ## Failure behavior
 
 Missing provider/query identity, profile mismatch, unknown taxonomy, malformed state, unavailable runtime, failed Post Type binding, stale/missing terms, or disabled dark rendering MUST fail closed without altering the page SEO authority surface.

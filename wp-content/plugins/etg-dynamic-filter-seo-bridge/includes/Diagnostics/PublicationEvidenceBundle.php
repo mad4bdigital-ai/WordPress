@@ -11,7 +11,7 @@ final class PublicationEvidenceBundle {
 	public function __construct(Configuration $config, ProfileRegistry $profiles, Readiness $readiness, RuntimeInventory $inventory, PublicationRegistry $publication){$this->config=$config;$this->profiles=$profiles;$this->readiness=$readiness;$this->inventory=$inventory;$this->publication=$publication;}
 	public function collect( int $previewLimit = 50 ): array {
 		$previewLimit=max(1,min(100,$previewLimit));
-		$inventory=$this->inventory->collect(); $readiness=$this->readiness->report(); $summary=$this->publication->publicationSummary($previewLimit); $profileEvidence=array(); $activationBlockers=array();
+		$inventory=$this->inventory->collect(); $readiness=$this->readiness->report(); $summary=$this->publication->publicationSummary($previewLimit); $buildIdentity=BuildIdentity::collect(); $profileEvidence=array(); $activationBlockers=array();
 		$ajaxPersistentCache=function_exists('wp_using_ext_object_cache')&&wp_using_ext_object_cache()&&function_exists('wp_cache_add')&&function_exists('wp_cache_incr');
 		$ajaxRateProtection=array(
 			'mode'=>$ajaxPersistentCache?'persistent_object_cache':'external_waf_required',
@@ -57,6 +57,7 @@ final class PublicationEvidenceBundle {
 			'evidence_completeness_reason'=>'external_runtime_evidence_not_ingested',
 			'activation_blockers'=>array_values(array_unique($activationBlockers)),
 			'required_external_evidence'=>$requiredExternalEvidence,
+			'build_identity'=>$buildIdentity,
 			'ajax_rate_protection'=>$ajaxRateProtection,
 			'profile_evidence'=>$profileEvidence,
 			'readiness'=>$readiness,
