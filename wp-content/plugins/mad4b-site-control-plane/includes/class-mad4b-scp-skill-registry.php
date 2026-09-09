@@ -119,7 +119,7 @@ final class MAD4B_SCP_Skill_Registry {
 
 	public static function save_skill( array $input ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_capability_denied', 'Administrator capability is required to author skills.' );
-		if ( ! self::editor_enabled() ) return new WP_Error( 'mad4b_skill_editor_disabled', 'Skill authoring is disabled. Enable MAD4B_SKILLS_EDITOR_ENABLED outside Production; Production requires a second explicit gate.' );
+		if ( ! self::editor_enabled() ) return new WP_Error( 'mad4b_skill_editor_disabled', 'Skill authoring is disabled. Staging is normally auto-configured; Production requires both explicit editor gates.' );
 
 		$level = self::sanitize_level( isset( $input['level'] ) ? $input['level'] : '' );
 		if ( is_wp_error( $level ) ) return $level;
@@ -151,6 +151,7 @@ final class MAD4B_SCP_Skill_Registry {
 		$meta_file = $dir . '/' . self::META_FILE;
 		$before_skill = is_file( $skill_file ) ? file_get_contents( $skill_file ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$before_meta = is_file( $meta_file ) ? file_get_contents( $meta_file ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( false === $before_skill || false === $before_meta ) return new WP_Error( 'mad4b_skill_before_state_read_failed', 'Unable to capture the complete pre-change Skill state.' );
 		$previous_sha = is_string( $before_skill ) ? hash( 'sha256', $before_skill ) : '';
 		$sha = hash( 'sha256', $document );
 		$meta = array(
@@ -170,7 +171,11 @@ final class MAD4B_SCP_Skill_Registry {
 		$meta_json = wp_json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n";
 		$written_meta = self::atomic_write( $meta_file, $meta_json );
 		if ( is_wp_error( $written_meta ) ) {
-			self::restore_file( $skill_file, $before_skill );
+			$restore_skill = self::restore_file( $skill_file, $before_skill );
+			$verify_meta = self::verify_file_state( $meta_file, $before_meta );
+			if ( is_wp_error( $restore_skill ) || is_wp_error( $verify_meta ) ) {
+				return new WP_Error( 'mad4b_skill_rollback_failed', 'Skill metadata write failed and the previous file state could not be verified after rollback.', array( 'write_error' => $written_meta->get_error_code() ) );
+			}
 			return $written_meta;
 		}
 
@@ -186,9 +191,20 @@ final class MAD4B_SCP_Skill_Registry {
 			'ok'
 		);
 		if ( is_wp_error( $audit ) ) {
-			self::restore_file( $skill_file, $before_skill );
-			self::restore_file( $meta_file, $before_meta );
-			return new WP_Error( 'mad4b_skill_audit_failed', 'Skill change was rolled back because its audit event could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
+			$restore_skill = self::restore_file( $skill_file, $before_skill );
+			$restore_meta = self::restore_file( $meta_file, $before_meta );
+			if ( is_wp_error( $restore_skill ) || is_wp_error( $restore_meta ) ) {
+				return new WP_Error(
+					'mad4b_skill_rollback_failed',
+					'Skill audit commit failed and the complete previous state could not be verified after rollback.',
+					array(
+						'audit_error' => $audit->get_error_code(),
+						'skill_restore_error' => is_wp_error( $restore_skill ) ? $restore_skill->get_error_code() : '',
+						'meta_restore_error' => is_wp_error( $restore_meta ) ? $restore_meta->get_error_code() : '',
+					)
+				);
+			}
+			return new WP_Error( 'mad4b_skill_audit_failed', 'Skill change was rolled back and verified because its audit event could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
 		}
 
 		return self::read_entry( $level, $target, $name, true );
@@ -277,12 +293,18 @@ final class MAD4B_SCP_Skill_Registry {
 		foreach ( array( 'references', 'assets', 'scripts' ) as $root ) {
 			$base = $dir . '/' . $root;
 			if ( ! is_dir( $base ) || is_link( $base ) ) continue;
-			$iterator = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $base, FilesystemIterator::SKIP_DOTS ) );
-			foreach ( $iterator as $file ) {
-				if ( ! $file->isFile() || $file->isLink() ) continue;
-				$relative = ltrim( str_replace( wp_normalize_path( $dir ), '', wp_normalize_path( $file->getPathname() ) ), '/' );
-				$out[] = array( 'path' => $relative, 'bytes' => $file->getSize(), 'sha256' => hash_file( 'sha256', $file->getPathname() ) );
-				if ( count( $out ) >= 100 ) break 2;
+			try {
+				$iterator = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $base, FilesystemIterator::SKIP_DOTS ) );
+				foreach ( $iterator as $file ) {
+					if ( ! $file->isFile() || $file->isLink() ) continue;
+					$relative = ltrim( str_replace( wp_normalize_path( $dir ), '', wp_normalize_path( $file->getPathname() ) ), '/' );
+					$sha = hash_file( 'sha256', $file->getPathname() );
+					if ( false === $sha ) continue;
+					$out[] = array( 'path' => $relative, 'bytes' => $file->getSize(), 'sha256' => $sha );
+					if ( count( $out ) >= 100 ) break 2;
+				}
+			} catch ( UnexpectedValueException $e ) {
+				continue;
 			}
 		}
 		return $out;
@@ -370,8 +392,24 @@ final class MAD4B_SCP_Skill_Registry {
 	}
 
 	private static function restore_file( $file, $before ) {
-		if ( null === $before ) { if ( is_file( $file ) && ! is_link( $file ) ) @unlink( $file ); return; }
-		self::atomic_write( $file, (string) $before );
+		if ( null === $before ) {
+			if ( is_link( $file ) ) return new WP_Error( 'mad4b_skill_restore_symlink_denied', 'Rollback target became a symbolic link.' );
+			if ( is_file( $file ) && ! @unlink( $file ) ) return new WP_Error( 'mad4b_skill_restore_remove_failed', 'Rollback could not remove the newly created file.' );
+			return self::verify_file_state( $file, null );
+		}
+		$restored = self::atomic_write( $file, (string) $before );
+		if ( is_wp_error( $restored ) ) return $restored;
+		return self::verify_file_state( $file, (string) $before );
+	}
+
+	private static function verify_file_state( $file, $before ) {
+		if ( null === $before ) return ! file_exists( $file ) ? true : new WP_Error( 'mad4b_skill_restore_remove_mismatch', 'Rollback expected the file to be absent.' );
+		if ( ! is_file( $file ) || is_link( $file ) ) return new WP_Error( 'mad4b_skill_restore_file_missing', 'Rollback target is missing or unsafe.' );
+		$after = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( ! is_string( $after ) || ! hash_equals( hash( 'sha256', (string) $before ), hash( 'sha256', $after ) ) || (string) $before !== $after ) {
+			return new WP_Error( 'mad4b_skill_restore_digest_mismatch', 'Rollback target does not match its exact pre-change bytes.' );
+		}
+		return true;
 	}
 
 	private static function read_meta( $file ) {
