@@ -28,7 +28,7 @@ trait LiveBindingTrait {
             'options' => $options,
             'default' => '',
             'condition' => array_merge($condition, array('live_update' => 'yes')),
-            'description' => 'Auto resolves one provider/query safely. Choose an explicit group only when needed.',
+            'description' => 'Auto resolution order: URL group → active group → single group. Remaining ambiguity fails closed.',
         ));
     }
 
