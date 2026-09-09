@@ -57,7 +57,10 @@
         var id = Number(item.id) > 0 ? Math.floor(Number(item.id)) : 0;
         var url = typeof item.url === 'string' ? item.url.trim() : '';
         if (!url) { return null; }
-        return { id: id, url: url };
+        var width = Number(item.width) > 0 ? Math.floor(Number(item.width)) : 0;
+        var height = Number(item.height) > 0 ? Math.floor(Number(item.height)) : 0;
+        var ratio = Number(item.aspect_ratio) > 0 ? Number(item.aspect_ratio) : (height > 0 ? width / height : 0);
+        return { id: id, url: url, width: width, height: height, aspect_ratio: ratio };
     }
 
     function uniqueGallery(items, maximum) {
@@ -71,6 +74,38 @@
             out.push(image);
         });
         return out;
+    }
+
+    function playback(el) {
+        var value = (el.getAttribute('data-etg-dfsb-background-playback') || 'animated').trim();
+        return value === 'static' ? 'static' : 'animated';
+    }
+
+    function suitabilityPolicy(el) {
+        var name = (el.getAttribute('data-etg-dfsb-background-suitability') || 'any').trim();
+        if (['any','landscape','wide','custom'].indexOf(name) === -1) { name = 'any'; }
+        return {
+            name: name,
+            minWidth: floatValue(el.getAttribute('data-etg-dfsb-background-min-width'), 0, 0, 10000),
+            minHeight: floatValue(el.getAttribute('data-etg-dfsb-background-min-height'), 0, 0, 10000),
+            minRatio: floatValue(el.getAttribute('data-etg-dfsb-background-min-ratio'), 0, 0, 5),
+            empty: (el.getAttribute('data-etg-dfsb-background-no-suitable') || 'fallback').trim() === 'hide' ? 'hide' : 'fallback'
+        };
+    }
+
+    function imageSuitable(item, rule) {
+        if (!item || !item.url) { return false; }
+        if (rule.name === 'any') { return true; }
+        var width = Number(item.width) || 0, height = Number(item.height) || 0;
+        var ratio = Number(item.aspect_ratio) || (height > 0 ? width / height : 0);
+        if (!(width > 0 && height > 0 && ratio > 0)) { return false; }
+        return width >= rule.minWidth && height >= rule.minHeight && ratio >= rule.minRatio;
+    }
+
+    function suitableGallery(el, items) {
+        var rule = suitabilityPolicy(el);
+        if (rule.name === 'any') { return items.slice(); }
+        return items.filter(function (item) { return imageSuitable(item, rule); });
     }
 
     function readFallback(el) {
@@ -156,7 +191,7 @@
         if (['cover', 'contain'].indexOf(fit) === -1) { fit = 'cover'; }
         if (['fade', 'crossfade', 'slide'].indexOf(transition) === -1) { transition = 'crossfade'; }
         stage.setAttribute('data-transition', reducedMotion() ? 'fade' : transition);
-        stage.setAttribute('data-ken-burns', !reducedMotion() && (el.getAttribute('data-etg-dfsb-background-ken-burns') || '0') === '1' ? '1' : '0');
+        stage.setAttribute('data-ken-burns', !reducedMotion() && playback(el) === 'animated' && (el.getAttribute('data-etg-dfsb-background-ken-burns') || '0') === '1' ? '1' : '0');
         stage.style.setProperty('--etg-dfsb-background-fit', fit);
         stage.style.setProperty('--etg-dfsb-background-position', position);
         stage.style.setProperty('--etg-dfsb-background-transition-duration', reducedMotion() ? '0ms' : transitionDuration + 'ms');
@@ -206,13 +241,13 @@
         var currentBehavior = behavior(state.element);
         var minimum = intValue(state.element.getAttribute('data-etg-dfsb-background-min-slides'), 2, 1, 30);
         if (currentBehavior === 'disabled') { return []; }
-        if (mode === 'image' || currentBehavior === 'first_image' || reducedMotion()) { return items.length ? [items[0]] : []; }
+        if (mode === 'image' || currentBehavior === 'first_image' || reducedMotion() || playback(state.element) === 'static') { return items.length ? [items[0]] : []; }
         if (mode === 'slideshow' && items.length > 0 && items.length < minimum) { return [items[0]]; }
         return items;
     }
 
     function autoplayEnabled(state) {
-        if (reducedMotion() || behavior(state.element) !== 'inherit') { return false; }
+        if (reducedMotion() || behavior(state.element) !== 'inherit' || playback(state.element) !== 'animated') { return false; }
         if ((state.element.getAttribute('data-etg-dfsb-background-mode') || '') !== 'slideshow') { return false; }
         return (state.element.getAttribute('data-etg-dfsb-background-autoplay') || '0') === '1';
     }
@@ -234,9 +269,13 @@
         configure(state);
         var maximum = intValue(el.getAttribute('data-etg-dfsb-background-max-slides'), 30, 1, 30);
         var sourceItems = uniqueGallery(incoming == null ? readGallery(el) : incoming, maximum);
-        if (!sourceItems.length) { sourceItems = readFallback(el); }
         state.sourceItems = sourceItems;
-        var items = effectiveItems(state, sourceItems);
+        var rule = suitabilityPolicy(el);
+        var eligible = suitableGallery(el, sourceItems);
+        var usedFallback = false;
+        if (!eligible.length && rule.empty === 'fallback') { eligible = readFallback(el); usedFallback = eligible.length > 0; }
+        var items = effectiveItems(state, eligible);
+        document.dispatchEvent(new CustomEvent('etg-dfsb/background-policy-applied', { detail: { element: el, policy: rule.name, source_count: sourceItems.length, eligible_count: eligible.length, used_fallback: usedFallback } }));
         clearTimer(state);
         state.items = items;
         if (!items.length) {
@@ -246,7 +285,7 @@
         }
         state.stage.removeAttribute('hidden');
         buildSlides(state, items);
-        var random = (el.getAttribute('data-etg-dfsb-background-random-start') || '0') === '1' && items.length > 1;
+        var random = playback(el) === 'animated' && (el.getAttribute('data-etg-dfsb-background-random-start') || '0') === '1' && items.length > 1;
         var index = options && typeof options.index === 'number' ? options.index : (random ? Math.floor(Math.random() * items.length) : 0);
         activate(state, index, true);
         schedule(state);

@@ -30,13 +30,13 @@ final class ContainerDynamicBackground {
             'etg-dfsb-container-background',
             plugins_url('assets/css/container-dynamic-background.css', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
             array(),
-            ETG_DFSB_VERSION
+            defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION
         );
         wp_enqueue_script(
             'etg-dfsb-container-background',
             plugins_url('assets/js/container-dynamic-background.js', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
             array(),
-            ETG_DFSB_VERSION,
+            defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION,
             true
         );
     }
@@ -63,6 +63,39 @@ final class ContainerDynamicBackground {
             'options' => $mediaModes,
             'default' => 'balanced',
             'condition' => array('etg_dfsb_background_mode!' => 'off'),
+        ));
+        $element->add_control('etg_dfsb_background_suitability', array(
+            'label' => 'Background Suitability',
+            'type' => $controls::SELECT,
+            'options' => array(
+                'any' => 'Any healthy image',
+                'landscape' => 'Landscape',
+                'wide' => 'Wide Hero',
+                'custom' => 'Custom dimensions',
+            ),
+            'default' => 'any',
+            'condition' => array('etg_dfsb_background_mode!' => 'off'),
+            'description' => 'Filters ETG media before rendering. Wide Hero requires at least 1200px width and 1.5 aspect ratio.',
+        ));
+        $element->add_control('etg_dfsb_background_min_width', array(
+            'label' => 'Minimum Width (px)', 'type' => $controls::NUMBER, 'min' => 0, 'max' => 10000, 'step' => 10, 'default' => 1200,
+            'condition' => array('etg_dfsb_background_mode!' => 'off', 'etg_dfsb_background_suitability' => 'custom'),
+        ));
+        $element->add_control('etg_dfsb_background_min_height', array(
+            'label' => 'Minimum Height (px)', 'type' => $controls::NUMBER, 'min' => 0, 'max' => 10000, 'step' => 10, 'default' => 0,
+            'condition' => array('etg_dfsb_background_mode!' => 'off', 'etg_dfsb_background_suitability' => 'custom'),
+        ));
+        $element->add_control('etg_dfsb_background_min_ratio', array(
+            'label' => 'Minimum Aspect Ratio', 'type' => $controls::NUMBER, 'min' => 0, 'max' => 5, 'step' => 0.05, 'default' => 1.5,
+            'condition' => array('etg_dfsb_background_mode!' => 'off', 'etg_dfsb_background_suitability' => 'custom'),
+            'description' => 'Width ÷ height. 1.78 is approximately 16:9.',
+        ));
+        $element->add_control('etg_dfsb_background_no_suitable', array(
+            'label' => 'When No Suitable Image Exists',
+            'type' => $controls::SELECT,
+            'options' => array('fallback' => 'Use configured fallback', 'hide' => 'Hide ETG background'),
+            'default' => 'fallback',
+            'condition' => array('etg_dfsb_background_mode!' => 'off', 'etg_dfsb_background_suitability!' => 'any'),
         ));
         $element->add_control('etg_dfsb_background_preview_url', array(
             'label' => 'Preview Filter URL',
@@ -123,12 +156,20 @@ final class ContainerDynamicBackground {
             'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
             'description' => 'Below this threshold the first healthy image remains visible; no broken slide is invented.',
         ));
+        $element->add_control('etg_dfsb_background_playback', array(
+            'label' => 'Slideshow Playback',
+            'type' => $controls::SELECT,
+            'options' => array('animated' => 'Animated slideshow', 'static' => 'Static — first suitable image'),
+            'default' => 'animated',
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'description' => 'Static keeps the selected collection but disables rotation and motion effects.',
+        ));
         $element->add_control('etg_dfsb_background_autoplay', array(
             'label' => 'Autoplay',
             'type' => $controls::SWITCHER,
             'return_value' => 'yes',
             'default' => 'yes',
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated'),
         ));
         $element->add_control('etg_dfsb_background_duration', array(
             'label' => 'Slide Duration (ms)',
@@ -137,14 +178,14 @@ final class ContainerDynamicBackground {
             'max' => 30000,
             'step' => 250,
             'default' => 5000,
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_autoplay' => 'yes'),
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated', 'etg_dfsb_background_autoplay' => 'yes'),
         ));
         $element->add_control('etg_dfsb_background_transition', array(
             'label' => 'Transition',
             'type' => $controls::SELECT,
             'options' => array('fade' => 'Fade', 'crossfade' => 'Crossfade', 'slide' => 'Slide'),
             'default' => 'crossfade',
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated'),
         ));
         $element->add_control('etg_dfsb_background_transition_duration', array(
             'label' => 'Transition Duration (ms)',
@@ -153,7 +194,7 @@ final class ContainerDynamicBackground {
             'max' => 5000,
             'step' => 100,
             'default' => 800,
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated'),
         ));
         $element->add_control('etg_dfsb_background_fit', array(
             'label' => 'Image Fit',
@@ -177,21 +218,21 @@ final class ContainerDynamicBackground {
             'type' => $controls::SWITCHER,
             'return_value' => 'yes',
             'default' => '',
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated'),
         ));
         $element->add_control('etg_dfsb_background_pause_hover', array(
             'label' => 'Pause on Hover',
             'type' => $controls::SWITCHER,
             'return_value' => 'yes',
             'default' => 'yes',
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated'),
         ));
         $element->add_control('etg_dfsb_background_random_start', array(
             'label' => 'Random Start',
             'type' => $controls::SWITCHER,
             'return_value' => 'yes',
             'default' => '',
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow', 'etg_dfsb_background_playback' => 'animated'),
         ));
         $element->add_control('etg_dfsb_background_overlay_color', array(
             'label' => 'ETG Overlay Color',
@@ -244,10 +285,18 @@ final class ContainerDynamicBackground {
 
         $gallerySource = sanitize_key((string)($settings['etg_dfsb_background_gallery_source'] ?? 'collection'));
         if (!in_array($gallerySource, array('collection', 'dynamic_gallery'), true)) { $gallerySource = 'collection'; }
+        $playback = sanitize_key((string)($settings['etg_dfsb_background_playback'] ?? 'animated'));
+        if (!in_array($playback, array('animated', 'static'), true)) { $playback = 'animated'; }
+        $suitability = $this->suitabilityPolicy($settings);
+        $noSuitable = sanitize_key((string)($settings['etg_dfsb_background_no_suitable'] ?? 'fallback'));
+        if (!in_array($noSuitable, array('fallback', 'hide'), true)) { $noSuitable = 'fallback'; }
 
         $items = 'image' === $mode
             ? $this->initialImageItems($element, $slotId, $context)
             : $this->initialGalleryItems($element, $slotId, $context, $limit, $minimum, $gallerySource);
+        $items = $this->filterSuitableItems($items, $suitability);
+        if (!$items && 'fallback' === $noSuitable) { $items = $this->fallbackItems($element, $mode); }
+        $fallbackItems = 'hide' === $noSuitable ? array() : $this->fallbackItems($element, $mode);
 
         $group = trim((string)($settings['etg_dfsb_background_group'] ?? 'auto'));
         if ('' === $group) { $group = 'auto'; }
@@ -261,18 +310,24 @@ final class ContainerDynamicBackground {
             'data-etg-dfsb-media-target' => 'gallery',
             'data-etg-dfsb-group' => $group,
             'data-etg-dfsb-gallery' => $this->encode($items),
-            'data-etg-dfsb-background-fallback' => $this->encode($this->fallbackItems($element, $mode)),
+            'data-etg-dfsb-background-fallback' => $this->encode($fallbackItems),
             'data-etg-dfsb-background-max-slides' => (string)$limit,
             'data-etg-dfsb-background-min-slides' => (string)$minimum,
+            'data-etg-dfsb-background-playback' => $playback,
+            'data-etg-dfsb-background-suitability' => $suitability['name'],
+            'data-etg-dfsb-background-min-width' => (string)$suitability['min_width'],
+            'data-etg-dfsb-background-min-height' => (string)$suitability['min_height'],
+            'data-etg-dfsb-background-min-ratio' => (string)$suitability['min_ratio'],
+            'data-etg-dfsb-background-no-suitable' => $noSuitable,
             'data-etg-dfsb-background-fit' => in_array((string)($settings['etg_dfsb_background_fit'] ?? 'cover'), array('cover', 'contain'), true) ? (string)$settings['etg_dfsb_background_fit'] : 'cover',
             'data-etg-dfsb-background-position' => $this->position((string)($settings['etg_dfsb_background_position'] ?? 'center center')),
-            'data-etg-dfsb-background-autoplay' => !empty($settings['etg_dfsb_background_autoplay']) ? '1' : '0',
+            'data-etg-dfsb-background-autoplay' => 'animated' === $playback && !empty($settings['etg_dfsb_background_autoplay']) ? '1' : '0',
             'data-etg-dfsb-background-duration' => (string)max(1000, min(30000, (int)($settings['etg_dfsb_background_duration'] ?? 5000))),
             'data-etg-dfsb-background-transition' => $this->transition((string)($settings['etg_dfsb_background_transition'] ?? 'crossfade')),
             'data-etg-dfsb-background-transition-duration' => (string)max(0, min(5000, (int)($settings['etg_dfsb_background_transition_duration'] ?? 800))),
-            'data-etg-dfsb-background-ken-burns' => !empty($settings['etg_dfsb_background_ken_burns']) ? '1' : '0',
+            'data-etg-dfsb-background-ken-burns' => 'animated' === $playback && !empty($settings['etg_dfsb_background_ken_burns']) ? '1' : '0',
             'data-etg-dfsb-background-pause-hover' => !empty($settings['etg_dfsb_background_pause_hover']) ? '1' : '0',
-            'data-etg-dfsb-background-random-start' => !empty($settings['etg_dfsb_background_random_start']) ? '1' : '0',
+            'data-etg-dfsb-background-random-start' => 'animated' === $playback && !empty($settings['etg_dfsb_background_random_start']) ? '1' : '0',
             'data-etg-dfsb-background-overlay-color' => $this->color((string)($settings['etg_dfsb_background_overlay_color'] ?? '')),
             'data-etg-dfsb-background-overlay-opacity' => (string)max(0, min(1, (float)($settings['etg_dfsb_background_overlay_opacity'] ?? 0))),
             'data-etg-dfsb-background-desktop' => $this->behavior((string)($settings['etg_dfsb_background_desktop_behavior'] ?? 'inherit')),
@@ -301,10 +356,6 @@ final class ContainerDynamicBackground {
         }
 
         if ($items && count($items) < $minimum) { $items = array($items[0]); }
-        if (!$items) {
-            $fallback = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_fallback_image') : array();
-            $image = $this->normalizeImage($fallback);if ($this->hasImage($image)) { $items = array($image); }
-        }
         return array_slice($this->normalizeGallery($items, $limit), 0, $limit);
     }
 
@@ -331,24 +382,28 @@ final class ContainerDynamicBackground {
     }
 
     private function normalizeImage($value): array {
-        $id = 0;$url = '';
+        $id = 0;$url = '';$width = 0;$height = 0;$ratio = 0.0;$dimensionsSource = 'unknown';
         if (is_array($value)) {
             $id = isset($value['id']) && is_numeric($value['id']) ? max(0, (int)$value['id']) : 0;
             $url = isset($value['url']) && is_scalar($value['url']) ? trim((string)$value['url']) : '';
+            $width = isset($value['width']) && is_numeric($value['width']) ? max(0, (int)$value['width']) : 0;
+            $height = isset($value['height']) && is_numeric($value['height']) ? max(0, (int)$value['height']) : 0;
+            $ratio = isset($value['aspect_ratio']) && is_numeric($value['aspect_ratio']) ? max(0.0, (float)$value['aspect_ratio']) : ($height > 0 ? round($width / $height, 4) : 0.0);
+            $dimensionsSource = isset($value['dimensions_source']) && is_scalar($value['dimensions_source']) ? sanitize_key((string)$value['dimensions_source']) : 'unknown';
         } elseif (is_numeric($value)) {
             $id = max(0, (int)$value);
         } elseif (is_string($value)) {
             $url = trim($value);
         }
 
-        // An Elementor Media/Gallery control can preserve a stale URL even when its
-        // attachment row points at a missing physical file. Attachment identity is
-        // therefore authoritative whenever an ID is present: the same shared media
-        // health contract used by Term discovery must approve it before rendering.
         if ($id > 0) {
             $health = MediaAssetValidator::inspect($id);
-            if (empty($health['valid'])) { return array('id' => 0, 'url' => ''); }
+            if (empty($health['valid'])) { return array('id' => 0, 'url' => '', 'width' => 0, 'height' => 0, 'aspect_ratio' => 0.0, 'dimensions_source' => 'invalid'); }
             $url = isset($health['url']) && is_scalar($health['url']) ? trim((string)$health['url']) : '';
+            $width = max(0, (int)($health['width'] ?? $width));
+            $height = max(0, (int)($health['height'] ?? $height));
+            $ratio = isset($health['aspect_ratio']) && is_numeric($health['aspect_ratio']) ? max(0.0, (float)$health['aspect_ratio']) : ($height > 0 ? round($width / $height, 4) : $ratio);
+            $dimensionsSource = sanitize_key((string)($health['dimensions_source'] ?? $dimensionsSource));
             if ('' === $url && function_exists('wp_get_attachment_image_url')) {
                 $candidate = wp_get_attachment_image_url($id, 'full');
                 $url = is_string($candidate) ? trim($candidate) : '';
@@ -356,8 +411,35 @@ final class ContainerDynamicBackground {
         }
 
         if ('' !== $url && function_exists('esc_url_raw')) { $url = (string)esc_url_raw($url); }
-        if ('' === $url) { return array('id' => 0, 'url' => ''); }
-        return array('id' => $id, 'url' => $url);
+        if ('' === $url) { return array('id' => 0, 'url' => '', 'width' => 0, 'height' => 0, 'aspect_ratio' => 0.0, 'dimensions_source' => 'missing_url'); }
+        return array('id' => $id, 'url' => $url, 'width' => $width, 'height' => $height, 'aspect_ratio' => $ratio, 'dimensions_source' => $dimensionsSource);
+    }
+
+    private function suitabilityPolicy(array $settings): array {
+        $name = sanitize_key((string)($settings['etg_dfsb_background_suitability'] ?? 'any'));
+        if (!in_array($name, array('any','landscape','wide','custom'), true)) { $name = 'any'; }
+        $minWidth = 0;$minHeight = 0;$minRatio = 0.0;
+        if ('landscape' === $name) { $minRatio = 1.15; }
+        elseif ('wide' === $name) { $minWidth = 1200;$minRatio = 1.5; }
+        elseif ('custom' === $name) {
+            $minWidth = max(0, min(10000, (int)($settings['etg_dfsb_background_min_width'] ?? 0)));
+            $minHeight = max(0, min(10000, (int)($settings['etg_dfsb_background_min_height'] ?? 0)));
+            $minRatio = max(0.0, min(5.0, (float)($settings['etg_dfsb_background_min_ratio'] ?? 0)));
+        }
+        return array('name'=>$name,'min_width'=>$minWidth,'min_height'=>$minHeight,'min_ratio'=>rtrim(rtrim(number_format($minRatio,4,'.',''),'0'),'.'));
+    }
+
+    private function filterSuitableItems(array $items, array $policy): array {
+        if ('any' === (string)($policy['name'] ?? 'any')) { return $items; }
+        $out = array();foreach($items as$item){$item=is_array($item)?$item:array();if($this->imageSuitable($item,$policy)){$out[]=$item;}}return$out;
+    }
+
+    private function imageSuitable(array $image, array $policy): bool {
+        if (!$this->hasImage($image)) { return false; }
+        if ('any' === (string)($policy['name'] ?? 'any')) { return true; }
+        $width=max(0,(int)($image['width']??0));$height=max(0,(int)($image['height']??0));$ratio=isset($image['aspect_ratio'])&&is_numeric($image['aspect_ratio'])?(float)$image['aspect_ratio']:($height>0?$width/$height:0.0);
+        if ($width <= 0 || $height <= 0 || $ratio <= 0) { return false; }
+        return $width >= (int)($policy['min_width']??0) && $height >= (int)($policy['min_height']??0) && $ratio >= (float)($policy['min_ratio']??0);
     }
 
     private function hasImage(array $image): bool { return !empty($image['id']) || !empty($image['url']); }

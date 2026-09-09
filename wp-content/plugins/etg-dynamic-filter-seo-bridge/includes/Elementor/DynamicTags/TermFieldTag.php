@@ -21,7 +21,9 @@ final class TermFieldTag extends \Elementor\Core\DynamicTags\Tag {
         $this->add_control('role', array('label'=>'Role','type'=>\Elementor\Controls_Manager::SELECT,'options'=>$roles,'default'=>isset($roles['location'])?'location':(string) key($roles)));
         $this->add_control('field', array('label'=>'Field','type'=>\Elementor\Controls_Manager::SELECT,'options'=>$fields,'default'=>'description'));
         $this->etgRegisterPreviewControl();
-        $this->etgRegisterLiveBindingControls();
+        $this->etgRegisterLiveBindingControls(array('field!' => 'image_url'));
+        $rawType=defined('\\Elementor\\Controls_Manager::RAW_HTML')?constant('\\Elementor\\Controls_Manager::RAW_HTML'):'raw_html';
+        $this->add_control('image_url_live_notice',array('type'=>$rawType,'raw'=>'Image URL is render-time only here. Use ETG Filter Image or ETG Dynamic Background for live AJAX media.','content_classes'=>'elementor-panel-alert elementor-panel-alert-info etg-dfsb-tag-help','condition'=>array('field'=>'image_url')));
     }
 
     private function token(): string {

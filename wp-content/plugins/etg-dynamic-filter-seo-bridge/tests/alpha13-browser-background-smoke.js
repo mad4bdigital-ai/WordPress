@@ -24,6 +24,11 @@ for (const token of [
     "document.addEventListener('visibilitychange'",
     "window.matchMedia('(prefers-reduced-motion: reduce)')",
     "if (mode === 'slideshow' && items.length > 0 && items.length < minimum) { return [items[0]]; }",
+    'suitabilityPolicy',
+    'imageSuitable',
+    'suitableGallery',
+    "playback(state.element) === 'static'",
+    'used_fallback',
     'render(el, null, null);',
     'current.paused = true;',
     'current.paused = false;'
@@ -43,7 +48,8 @@ assert(!css.includes('> :not(.etg-dfsb-background-stage)'), 'ETG must not rewrit
 assert(!css.includes('.elementor-background-overlay'), 'Elementor overlay stacking remains Elementor-owned');
 assert(css.includes('contain: paint') && css.includes('pointer-events: none'), 'background stage keeps paint and pointer containment');
 assert(!css.includes('will-change:'), 'all slideshow layers must not be permanently GPU-promoted');
-assert(main.includes("ETG_DFSB_BOOT_BUILD', 'alpha13-container-background-3'"), 'replacement must advance Safe Boot generation');
+assert(main.includes("ETG_DFSB_BOOT_BUILD', 'alpha13-container-background-4'"), 'replacement must advance Safe Boot generation');
+assert(main.includes("ETG_DFSB_ASSET_VERSION', '0.4.0-alpha.13-build4'"), 'replacement must cache-bust changed editor/admin/runtime assets');
 assert(!main.includes('new ETG\\DynamicFilterSEOBridge\\Elementor\\ContainerDynamicBackground'), 'entrypoint must not own a second container runtime');
 assert(bootstrap.includes('new ContainerDynamicBackground($this->presentation,$slots)'), 'Bootstrap must own the container runtime with shared slots');
 
@@ -93,7 +99,7 @@ class FakeElement {
     }
 }
 
-const gallery = [1,2,3,4].map((id) => ({ id, url: `https://example.test/${id}.jpg` }));
+const gallery = [1,2,3,4].map((id) => ({ id, url: `https://example.test/${id}.jpg`, width: 1600, height: 900, aspect_ratio: 1.7778 }));
 const container = new FakeElement('section', {
     class: 'etg-dfsb-dynamic-background',
     'data-etg-dfsb-background-mode': 'slideshow',
@@ -101,6 +107,12 @@ const container = new FakeElement('section', {
     'data-etg-dfsb-background-fallback': '[]',
     'data-etg-dfsb-background-max-slides': '8',
     'data-etg-dfsb-background-min-slides': '2',
+    'data-etg-dfsb-background-playback': 'animated',
+    'data-etg-dfsb-background-suitability': 'wide',
+    'data-etg-dfsb-background-min-width': '1200',
+    'data-etg-dfsb-background-min-height': '0',
+    'data-etg-dfsb-background-min-ratio': '1.5',
+    'data-etg-dfsb-background-no-suitable': 'fallback',
     'data-etg-dfsb-background-autoplay': '1',
     'data-etg-dfsb-background-duration': '5000',
     'data-etg-dfsb-background-transition': 'crossfade',
@@ -145,8 +157,8 @@ vm.runInNewContext(source, context, { filename: 'container-dynamic-background.js
 const stage = container.children.find((child) => child.className === 'etg-dfsb-background-stage');
 assert(stage, 'background stage must be created');
 const slides = stage.children.filter((child) => child.className === 'etg-dfsb-background-stage__slide');
-assert.strictEqual(slides.length, 4, 'all logical slides remain available for rotation');
+assert.strictEqual(slides.length, 4, 'all suitable logical slides remain available for rotation');
 assert.strictEqual(slides.filter((slide) => slide.style.backgroundImage).length, 2, 'only active + next slide hydrate initially');
 assert.strictEqual(slides.filter((slide) => slide.getAttribute('data-etg-dfsb-hydrated') === '1').length, 2, 'hydration state matches assigned URLs');
 
-console.log('Alpha13 browser container-background deep behavior/stack/performance tests passed.');
+console.log('Alpha13 browser container-background deep behavior/stack/performance/policy tests passed.');

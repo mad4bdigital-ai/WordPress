@@ -3,6 +3,7 @@ namespace ETG\DynamicFilterSEOBridge\Elementor;
 
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\ContentSlotTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\ContentSlotImageTag;
+use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\ContentSlotUrlTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\ContentSlotGalleryTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\DynamicTagRuntime;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\FilterArchiveUrlTag;
@@ -16,6 +17,7 @@ use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\FilterKeywordTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\FilterResultSummaryTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\FilterTitleTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\InventoryValueTag;
+use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\InventoryUrlTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\TermFieldTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\TermMetaTag;
 use ETG\DynamicFilterSEOBridge\Elementor\DynamicTags\TermSectionTag;
@@ -36,7 +38,7 @@ final class DynamicTagRegistrar {
             'etg-dfsb-elementor-dynamic-tag-editor',
             plugins_url('assets/css/elementor-dynamic-tag-editor.css', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
             array(),
-            ETG_DFSB_VERSION
+            defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION
         );
     }
     public function register($manager):void{
@@ -47,7 +49,7 @@ final class DynamicTagRegistrar {
         // attributes. Registrar's contract is to keep every live-capable named tag
         // connected to that trait/runtime without constructor dependency drift.
         if(method_exists($manager,'register_group')){$manager->register_group('etg-dfsb',array('title'=>'ETG Filter SEO'));}
-        $classes=array(FilterTitleTag::class,FilterIntroTag::class,FilterResultSummaryTag::class,FilterKeywordTag::class,FilterArchiveUrlTag::class,FilterCurrentUrlTag::class,InventoryValueTag::class,ContentSlotTag::class,TermFieldTag::class,TermMetaTag::class,TermSectionTag::class);
+        $classes=array(FilterTitleTag::class,FilterIntroTag::class,FilterResultSummaryTag::class,FilterKeywordTag::class,FilterArchiveUrlTag::class,FilterCurrentUrlTag::class,InventoryValueTag::class,InventoryUrlTag::class,ContentSlotTag::class,ContentSlotUrlTag::class,TermFieldTag::class,TermMetaTag::class,TermSectionTag::class);
         $mediaAvailable=class_exists('\\Elementor\\Core\\DynamicTags\\Data_Tag')&&class_exists('\\Elementor\\Modules\\DynamicTags\\Module')&&$this->dataTagCompatible();
         if($mediaAvailable){$classes[]=FilterImageTag::class;$classes[]=FilterImageUrlTag::class;$classes[]=FilterGalleryTag::class;$classes[]=FilterSlideshowTag::class;$classes[]=ContentSlotImageTag::class;$classes[]=ContentSlotGalleryTag::class;}
         foreach($classes as$class){if(!class_exists($class)){continue;}$this->registerTagClass($manager,$class);}

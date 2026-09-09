@@ -33,6 +33,11 @@ final class DynamicTagRuntime {
     public static function tokenOptions():array{
         return self::tokenOptionsBySource('');
     }
+    public static function tokenOptionsByTypes(array$types):array{
+        $types=array_values(array_unique(array_filter(array_map('sanitize_key',$types))));$options=array();
+        foreach((array)(self::catalog()['tokens']??array())as$token=>$meta){$token=PresentationToken::normalize($token);if(''===$token){continue;}$type=sanitize_key((string)($meta['type']??'text'));if($types&&!in_array($type,$types,true)){continue;}$options[$token]=(string)($meta['label']??$token).' ['.$token.']';}
+        return$options;
+    }
     public static function tokenOptionsBySource(string$source):array{
         $source=sanitize_key($source);$options=array();
         foreach((array)(self::catalog()['tokens']??array())as$token=>$meta){
@@ -48,7 +53,8 @@ final class DynamicTagRuntime {
         $types=array();foreach((array)(self::catalog()['tokens']??array())as$token=>$meta){$token=PresentationToken::normalize($token);if(''===$token){continue;}$types[$token]=(string)($meta['type']??'text');}
         if(!$types){$types=array('title'=>'text');}return$types;
     }
-    public static function slotOptions():array{$slots=self::slots();$options=array();if(!$slots){return$options;}foreach($slots->all()as$slot){$id=sanitize_key((string)($slot['id']??''));if(''===$id){continue;}$origin=(string)($slot['origin']??'custom');$suffix='built_in'===$origin?' · built-in':('override'===$origin?' · customized':'');$options[$id]=(string)($slot['label']??$id).$suffix.' ['.$id.']';}return$options;}
+    public static function slotOptions():array{return self::slotOptionsByTypes(array());}
+    public static function slotOptionsByTypes(array$types):array{$slots=self::slots();$options=array();if(!$slots){return$options;}$types=array_values(array_unique(array_filter(array_map('sanitize_key',$types))));foreach($slots->all()as$slot){$id=sanitize_key((string)($slot['id']??''));if(''===$id){continue;}$type=sanitize_key((string)($slot['type']??'text'));if($types&&!in_array($type,$types,true)){continue;}$origin=(string)($slot['origin']??'custom');$suffix='built_in'===$origin?' · built-in':('override'===$origin?' · customized':'');$options[$id]=(string)($slot['label']??$id).$suffix.' ['.$id.']';}return$options;}
     public static function groupOptions():array{$options=array();foreach((array)(self::catalog()['groups']??array())as$key=>$meta){$key=self::normalizeGroup((string)$key);if(''===$key){continue;}$profiles=array_values(array_filter(array_map('sanitize_key',(array)($meta['profile_ids']??array()))));$label=$key;if($profiles){$label.=' · '.implode(', ',$profiles);}$options[$key]=$label;}ksort($options,SORT_STRING);return$options;}
     public static function normalizeGroup(string$group):string{$group=trim($group);if(''===$group||'auto'===strtolower($group)){return'';}$parts=explode('/',$group,2);if(2!==count($parts)){return'';}$provider=sanitize_key((string)$parts[0]);$queryId=QueryId::normalize($parts[1]);return''!==$provider&&''!==$queryId?$provider.'/'.$queryId:'';}
     public static function enterImageFallback():bool{if(self::$imageFallbackDepth>=1){return false;}self::$imageFallbackDepth++;return true;}

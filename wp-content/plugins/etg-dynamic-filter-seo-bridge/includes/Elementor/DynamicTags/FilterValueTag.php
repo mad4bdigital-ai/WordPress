@@ -14,7 +14,14 @@ abstract class FilterValueTag extends \Elementor\Core\DynamicTags\Tag {
 
     protected function register_controls(){
         $this->etgRegisterPreviewControl();
-        $this->etgRegisterLiveBindingControls();
+        $d=$this->etgDefinition();
+        if('url'!==(string)$d[3]){$this->etgRegisterLiveBindingControls();return;}
+        $rawType=defined('\\Elementor\\Controls_Manager::RAW_HTML')?constant('\\Elementor\\Controls_Manager::RAW_HTML'):'raw_html';
+        $this->add_control('etg_url_runtime_notice',array(
+            'type'=>$rawType,
+            'raw'=>'URL Dynamic Tags are resolved at Elementor render time. For live AJAX media use ETG Dynamic Background or ETG media-slot tags.',
+            'content_classes'=>'elementor-panel-alert elementor-panel-alert-info etg-dfsb-tag-help',
+        ));
     }
 
     public function get_value(array $options = array()) {

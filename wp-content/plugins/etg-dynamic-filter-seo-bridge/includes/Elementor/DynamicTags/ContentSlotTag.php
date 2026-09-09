@@ -8,16 +8,16 @@ final class ContentSlotTag extends \Elementor\Core\DynamicTags\Tag {
     public function get_name(){ return 'etg-dynamic-content-slot'; }
     public function get_title(){ return 'ETG Dynamic Content Slot'; }
     public function get_group(){ return 'etg-dfsb'; }
-    public function get_categories(){ return array('text','url'); }
+    public function get_categories(){ return array('text'); }
 
     protected function register_controls(){
-        $options = array(''=>'— Select Content Slot —') + DynamicTagRuntime::slotOptions();
+        $options = array(''=>'— Select Content Slot —') + DynamicTagRuntime::slotOptionsByTypes(array('text','html'));
         $this->add_control('slot_id', array(
             'label'=>'Content Slot',
             'type'=>\Elementor\Controls_Manager::SELECT,
             'options'=>$options,
             'default'=>'',
-            'description'=>'Select an explicit slot. Blank is intentionally empty and never falls back to another slot. Built-in slots are available immediately; custom slots are managed under Settings → ETG Dynamic Content.',
+            'description'=>'Select an explicit slot. Blank is intentionally empty and never falls back to another slot. Built-in text/HTML slots are available immediately. URL, Image and Gallery slots use their dedicated ETG tags. AJAX live binding applies to this text/HTML surface.',
         ));
         $this->etgRegisterPreviewControl();
         $this->etgRegisterLiveBindingControls();

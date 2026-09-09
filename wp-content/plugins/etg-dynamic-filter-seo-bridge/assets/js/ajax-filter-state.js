@@ -3,7 +3,7 @@
     var cfg = window.ETGDFSB_AJAX || {};
     if (!cfg.endpoint) { return; }
 
-    var timers = {}, sequences = {}, controllers = {}, activeKeys = {}, eventSeenKeys = {};
+    var timers = {}, sequences = {}, controllers = {}, activeKeys = {}, eventSeenKeys = {}, originallyFilteredKeys = {};
     var initialized = false, runtimeBlockedSignature = '';
     var initialValues = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
     var boundGroups = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
@@ -38,7 +38,7 @@
         var signature = report.version + '|' + report.reasons.join(',');
         if (signature === runtimeBlockedSignature) { return; }
         runtimeBlockedSignature = signature;
-        Object.keys(activeKeys).forEach(function (key) { restoreInitial('jsf_runtime_contract_unavailable', key); });
+        Object.keys(activeKeys).forEach(function (key) { clearBaselinePresentation('jsf_runtime_contract_unavailable', key); });
         document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', { detail: { reason: 'jsf_runtime_contract_unavailable', jsf_version: report.version, supported_jsf_versions: report.supported_versions, blocking_reasons: report.reasons } }));
     }
 
@@ -74,7 +74,6 @@
         return { group: key, query: query, valid: true, reason: 'pretty_url_group' };
     }
 
-    function pathDeclaredGroupKey() { var state = prettyPathState(); return state.valid ? state.group : ''; }
     function queryHasSemanticFilters(query) { if (!query || typeof query !== 'object') { return false; } return Object.keys(query).some(function (key) { return key === 'tax_query' || key === 'meta_query' || key === 'date_query' || key === 's' || key.indexOf('_tax_query_') === 0 || key.indexOf('_meta_query_') === 0 || key.indexOf('_date_query_') === 0 || key.indexOf('__s_query') === 0 || key.indexOf('_alphabet_') === 0; }); }
     function activeGroupKeys() { var jsf = window.JetSmartFilters; if (!jsf || !jsf.filterGroups) { return []; } return groupKeys().filter(function (key) { var group = jsf.filterGroups[key]; return !!(group && queryHasSemanticFilters(group.currentQuery)); }); }
 
@@ -103,7 +102,7 @@
     }
     function restoreAttribute(el, name) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } var value = original[name]; if (value === null || typeof value === 'undefined') { el.removeAttribute(name); } else { el.setAttribute(name, value); } }
     function syncSectionVisibility(el) { if (!el || typeof el.closest !== 'function') { return; } var section = el.closest('[data-etg-dfsb-live-section]'); if (!section) { return; } var text = (section.textContent || '').replace(/\s+/g, ' ').trim(); if (text) { section.removeAttribute('hidden'); } else { section.setAttribute('hidden', 'hidden'); } }
-    function restoreElement(el) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } el.innerHTML = original.html; restoreAttribute(el, 'href'); restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); restoreAttribute(el, 'data-etg-dfsb-gallery'); if (el.style && original.backgroundImage !== null) { el.style.backgroundImage = original.backgroundImage; } if (boundGroups) { boundGroups.delete(el); } syncSectionVisibility(el); }
+    function restoreElement(el) { if (!initialValues) { return; } var original = initialValues.get(el); if (!original) { return; } el.innerHTML = original.html; restoreAttribute(el, 'href'); restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); restoreAttribute(el, 'data-etg-dfsb-gallery'); if (el.style && original.backgroundImage !== null) { el.style.backgroundImage = original.backgroundImage; } el.removeAttribute('data-etg-dfsb-live-content'); el.removeAttribute('data-etg-dfsb-live-html'); if (boundGroups) { boundGroups.delete(el); } syncSectionVisibility(el); }
     function elementGroup(el) { var own = (el.getAttribute('data-etg-dfsb-group') || '').trim(); if (own) { return own; } if (typeof el.closest === 'function') { var parent = el.closest('[data-etg-dfsb-group]'); if (parent) { return (parent.getAttribute('data-etg-dfsb-group') || '').trim(); } } return 'auto'; }
     function elementsFor(selector, key) { var auto = autoGroupKey(); return Array.prototype.filter.call(document.querySelectorAll(selector), function (el) { var group = elementGroup(el); if (!group || group === 'auto') { return !!auto && auto === key; } return group === key; }); }
 
@@ -123,7 +122,52 @@
         return { tokens: tokens, slots: slots };
     }
 
-    function restoreInitial(reason, key) { if (!initialValues) { return; } Array.prototype.forEach.call(document.querySelectorAll(allBindingSelector()), function (el) { var bound = boundGroups ? boundGroups.get(el) : ''; if (bound === key || (!bound && elementsFor(allBindingSelector(), key).indexOf(el) !== -1)) { restoreElement(el); } }); delete activeKeys[key]; document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-reset', { detail: { reason: reason || 'reset', group: key || '' } })); }
+    function restoreInitial(reason, key) {
+        if (!initialValues) { return; }
+        Array.prototype.forEach.call(document.querySelectorAll(allBindingSelector()), function (el) {
+            var bound = boundGroups ? boundGroups.get(el) : '';
+            if (bound === key || (!bound && elementsFor(allBindingSelector(), key).indexOf(el) !== -1)) { restoreElement(el); }
+        });
+        delete activeKeys[key];
+        document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-reset', { detail: { reason: reason || 'reset', group: key || '', restored_initial: true } }));
+    }
+
+    function clearElement(el, key) {
+        remember(el);
+        var mediaSlot = (el.getAttribute('data-etg-dfsb-media-slot') || '').trim().toLowerCase();
+        if (mediaSlot) {
+            var mediaTarget = (el.getAttribute('data-etg-dfsb-media-target') || 'auto').trim().toLowerCase();
+            if (mediaTarget === 'auto') { mediaTarget = String(el.tagName || '').toLowerCase() === 'img' ? 'src' : 'background'; }
+            if (mediaTarget === 'src') { el.removeAttribute('src'); el.removeAttribute('srcset'); el.removeAttribute('data-etg-dfsb-attachment-id'); }
+            else if (mediaTarget === 'background') { if (el.style) { el.style.backgroundImage = ''; } }
+            else if (mediaTarget === 'gallery') { el.setAttribute('data-etg-dfsb-gallery', '[]'); }
+            document.dispatchEvent(new CustomEvent('etg-dfsb/media-updated', { detail: { group: key, slot: mediaSlot, target: mediaTarget, image: { id: 0, url: '' }, gallery: [], element: el } }));
+        } else {
+            var target = (el.getAttribute('data-etg-dfsb-target') || '').trim().toLowerCase();
+            if (target === 'href') { el.removeAttribute('href'); }
+            else if (target === 'src') { el.removeAttribute('src'); el.removeAttribute('srcset'); }
+            else { el.innerHTML = ''; }
+        }
+        el.removeAttribute('data-etg-dfsb-live-content');
+        el.removeAttribute('data-etg-dfsb-live-html');
+        if (boundGroups) { boundGroups.delete(el); }
+        syncSectionVisibility(el);
+    }
+
+    function clearBaselinePresentation(reason, key) {
+        Array.prototype.forEach.call(document.querySelectorAll(allBindingSelector()), function (el) {
+            var bound = boundGroups ? boundGroups.get(el) : '';
+            if (bound === key || (!bound && elementsFor(allBindingSelector(), key).indexOf(el) !== -1)) { clearElement(el, key); }
+        });
+        delete activeKeys[key];
+        document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-reset', { detail: { reason: reason || 'reset', group: key || '', restored_initial: false } }));
+    }
+
+    function resetBaselinePresentation(reason, key) {
+        if (originallyFilteredKeys[key]) { clearBaselinePresentation(reason, key); }
+        else { restoreInitial(reason, key); }
+    }
+
     function syncAutoBindings() { var resolved = autoGroupKey(); if (resolved) { resetGroupRetry(); } Array.prototype.forEach.call(document.querySelectorAll(allBindingSelector()), function (el) { var declared = elementGroup(el); if (declared !== 'auto') { return; } remember(el); var previous = boundGroups ? boundGroups.get(el) : ''; if (previous && previous !== resolved) { restoreElement(el); } }); emitAutoGroupStatus(); return resolved; }
 
     function applyValue(el, item) {
@@ -131,7 +175,7 @@
         if (target === 'href') { if (type === 'url' && value) { el.setAttribute('href', value); } else { restoreAttribute(el, 'href'); } return; }
         if (target === 'src') { var imageUrl = item.image && item.image.url ? String(item.image.url) : (type === 'url' ? value : ''); if (imageUrl) { el.setAttribute('src', imageUrl); el.removeAttribute('srcset'); } else { restoreAttribute(el, 'src'); restoreAttribute(el, 'srcset'); } return; }
         if (!value) { var fallback = (el.getAttribute('data-etg-dfsb-fallback') || '').trim(); if (fallback) { value = fallback; type = 'text'; } }
-        if (type === 'html') { el.innerHTML = value; } else { el.textContent = value; } syncSectionVisibility(el);
+        if (type === 'html') { el.innerHTML = value; el.setAttribute('data-etg-dfsb-live-html', '1'); } else { el.textContent = value; el.setAttribute('data-etg-dfsb-live-content', '1'); } syncSectionVisibility(el);
     }
 
     function applyMedia(el, item, slot, key) {
@@ -149,10 +193,16 @@
         document.dispatchEvent(new CustomEvent('etg-dfsb/media-updated', { detail: { group: key, slot: slot, target: target, image: image || { id: 0, url: '' }, gallery: gallery, element: el } }));
     }
 
+    function blockFailClosed(reason, key, detail) {
+        clearBaselinePresentation(reason, key);
+        detail = detail || {}; detail.reason = reason; detail.group = key;
+        document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', { detail: detail }));
+    }
+
     function applyResponse(data, key) {
-        if (!data || data.contract !== cfg.contract || data.authorizing !== false || data.url_authority !== false || data.seo_mutation !== false) { return; }
-        if (groupKey(data.provider, data.query_id) !== key) { return; }
-        if (data.status !== 'ready' || data.filtered_query_complete !== true) { if (activeKeys[key]) { restoreInitial(data.status || 'blocked', key); } document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', { detail: { reason: data.status || 'blocked', group: key, blocking_reasons: data.blocking_reasons || [] } })); return; }
+        if (!data || data.contract !== cfg.contract || data.authorizing !== false || data.url_authority !== false || data.seo_mutation !== false) { blockFailClosed('invalid_contract', key); return; }
+        if (groupKey(data.provider, data.query_id) !== key) { blockFailClosed('group_mismatch', key); return; }
+        if (data.status !== 'ready' || data.presentation_state_complete !== true) { blockFailClosed(data.status || 'blocked', key, { blocking_reasons: data.blocking_reasons || [] }); return; }
         activeKeys[key] = true; var tokenValues = (data.values && data.values.tokens) || {}, slotValues = (data.values && data.values.slots) || {};
         elementsFor('[data-etg-dfsb-token]', key).forEach(function (el) { remember(el); var token = (el.getAttribute('data-etg-dfsb-token') || '').trim(); if (Object.prototype.hasOwnProperty.call(tokenValues, token)) { applyValue(el, tokenValues[token]); if (boundGroups) { boundGroups.set(el, key); } } });
         elementsFor('[data-etg-dfsb-slot]', key).forEach(function (el) { remember(el); var slot = (el.getAttribute('data-etg-dfsb-slot') || '').trim().toLowerCase(); if (Object.prototype.hasOwnProperty.call(slotValues, slot)) { applyValue(el, slotValues[slot]); if (boundGroups) { boundGroups.set(el, key); } } });
@@ -165,7 +215,7 @@
         var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters, key = groupKey(provider, queryId), group = jsf.filterGroups[key]; if (!group) { return; }
         var currentQuery = effectiveCurrentQuery(key, group);
-        if (!queryHasSemanticFilters(currentQuery)) { if (activeKeys[key]) { restoreInitial('filters_cleared', key); } if (controllers[key]) { controllers[key].abort(); delete controllers[key]; } var resolvedAfterClear = syncAutoBindings(); if (resolvedAfterClear && resolvedAfterClear !== key) { scheduleKey(resolvedAfterClear); } return; }
+        if (!queryHasSemanticFilters(currentQuery)) { resetBaselinePresentation('filters_cleared', key); if (controllers[key]) { controllers[key].abort(); delete controllers[key]; } var resolvedAfterClear = syncAutoBindings(); if (resolvedAfterClear && resolvedAfterClear !== key) { scheduleKey(resolvedAfterClear); } return; }
         var b = bindings(key); if (!b.tokens.length && !b.slots.length) { emitAutoGroupStatus(); return; }
         sequences[key] = (sequences[key] || 0) + 1; var requestId = sequences[key]; if (controllers[key]) { controllers[key].abort(); } controllers[key] = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var requestPath = window.location.pathname || '/';
@@ -175,14 +225,14 @@
         var deadline = new Promise(function (resolve, reject) { timeoutId = window.setTimeout(function () { timedOut = true; if (controllers[key]) { controllers[key].abort(); } var error = new Error('ETG AJAX presentation timeout'); error.name = 'ETGTimeoutError'; reject(error); }, requestTimeoutMs); });
         Promise.race([transport, deadline]).then(function (result) {
             if (requestId !== sequences[key]) { return; }
-            if (!result.ok) { document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', { detail: { reason: 'http_error', http_status: result.status, group: key } })); return; }
-            if (result.invalidJson || !result.data) { document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', { detail: { reason: 'invalid_response', http_status: result.status, group: key } })); return; }
+            if (!result.ok) { blockFailClosed('http_error', key, { http_status: result.status }); return; }
+            if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
             applyResponse(result.data, key);
         }).catch(function (error) {
             if (requestId !== sequences[key]) { return; }
-            if (timedOut || (error && error.name === 'ETGTimeoutError')) { document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', { detail: { reason: 'timeout', timeout_ms: requestTimeoutMs, group: key } })); return; }
+            if (timedOut || (error && error.name === 'ETGTimeoutError')) { blockFailClosed('timeout', key, { timeout_ms: requestTimeoutMs }); return; }
             if (error && error.name === 'AbortError') { return; }
-            document.dispatchEvent(new CustomEvent('etg-dfsb/ajax-presentation-blocked', { detail: { reason: 'transport_error', group: key } }));
+            blockFailClosed('transport_error', key);
         }).then(function () { if (timeoutId) { window.clearTimeout(timeoutId); } if (requestId === sequences[key]) { delete controllers[key]; } });
     }
 
@@ -191,8 +241,11 @@
     function init() {
         if (initialized) { return; } var contract = jsfRuntimeContract(); if (!contract.ready) { emitRuntimeContractBlocked(contract); return; } runtimeBlockedSignature = '';
         var jsf = window.JetSmartFilters; initialized = true;
+        var pathState = prettyPathState();
+        if (pathState.valid && pathState.group && queryHasSemanticFilters(pathState.query)) { originallyFilteredKeys[pathState.group] = true; }
+        groupKeys().forEach(function (key) { var group = jsf.filterGroups[key]; if (group && queryHasSemanticFilters(group.currentQuery)) { originallyFilteredKeys[key] = true; } });
         jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) { var key = groupKey(provider, queryId); eventSeenKeys[key] = true; var resolved = syncAutoBindings(); schedule(provider, queryId); if (resolved && resolved !== key) { scheduleKey(resolved); } });
-        var pathState = prettyPathState(); if (pathState.valid && pathState.group && groupKeys().indexOf(pathState.group) !== -1 && queryHasSemanticFilters(pathState.query)) { scheduleKey(pathState.group); }
+        if (pathState.valid && pathState.group && groupKeys().indexOf(pathState.group) !== -1 && queryHasSemanticFilters(pathState.query)) { scheduleKey(pathState.group); }
         groupKeys().forEach(function (key) { var parts = key.split('/'), group = jsf.filterGroups[key]; if (parts.length >= 2 && group && queryHasSemanticFilters(group.currentQuery)) { schedule(parts[0], parts.slice(1).join('/')); } });
         syncAutoBindings();
     }

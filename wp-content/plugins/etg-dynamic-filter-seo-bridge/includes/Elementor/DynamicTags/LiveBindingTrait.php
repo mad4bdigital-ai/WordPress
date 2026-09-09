@@ -10,24 +10,25 @@ namespace ETG\DynamicFilterSEOBridge\Elementor\DynamicTags;
  * group. Any remaining ambiguity fails closed.
  */
 trait LiveBindingTrait {
-    protected function etgRegisterLiveBindingControls(): void {
+    protected function etgRegisterLiveBindingControls(array $condition = array()): void {
         $this->add_control('live_update', array(
             'label' => 'AJAX Live Update',
             'type' => \Elementor\Controls_Manager::SWITCHER,
             'return_value' => 'yes',
             'default' => 'yes',
-            'description' => 'Presentation-only live update. It never grants URL, SEO, sitemap or indexing authority.',
+            'description' => 'Updates ETG text/HTML after JetSmartFilters AJAX. Presentation only.',
+            'condition' => $condition,
         ));
 
-        $options = array('' => 'Auto — URL group → active group → single group');
+        $options = array('' => 'Auto — URL → active → single');
         foreach (DynamicTagRuntime::groupOptions() as $key => $label) { $options[$key] = $label; }
         $this->add_control('live_group', array(
             'label' => 'AJAX Group',
             'type' => \Elementor\Controls_Manager::SELECT,
             'options' => $options,
             'default' => '',
-            'condition' => array('live_update' => 'yes'),
-            'description' => 'Auto safely follows the exact provider/query encoded in a /jsf/... URL when present. Otherwise it requires one active or one available group. You can still choose an explicit group such as jet-engine/tours_query_archive.',
+            'condition' => array_merge($condition, array('live_update' => 'yes')),
+            'description' => 'Auto resolves one provider/query safely. Choose an explicit group only when needed.',
         ));
     }
 

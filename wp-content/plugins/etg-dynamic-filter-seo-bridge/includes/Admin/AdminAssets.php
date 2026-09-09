@@ -24,13 +24,13 @@ final class AdminAssets {
             'etg-dfsb-admin-alpha13',
             plugins_url('assets/css/admin-alpha13.css', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
             array(),
-            ETG_DFSB_VERSION
+            defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION
         );
         wp_enqueue_script(
             'etg-dfsb-admin-shell',
             plugins_url('assets/js/admin-shell.js', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
             array(),
-            ETG_DFSB_VERSION,
+            defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION,
             true
         );
 
@@ -39,7 +39,7 @@ final class AdminAssets {
                 'etg-dfsb-media-lab',
                 plugins_url('assets/css/media-lab.css', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
                 array('etg-dfsb-admin-alpha13'),
-                ETG_DFSB_VERSION
+                defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION
             );
         }
 
@@ -48,13 +48,13 @@ final class AdminAssets {
                 'etg-dfsb-admin-discovery',
                 plugins_url('assets/css/admin-discovery.css', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
                 array('etg-dfsb-admin-alpha13'),
-                ETG_DFSB_VERSION
+                defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION
             );
             wp_enqueue_script(
                 'etg-dfsb-admin-discovery',
                 plugins_url('assets/js/admin-discovery.js', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
                 array('etg-dfsb-admin-shell'),
-                ETG_DFSB_VERSION,
+                defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION,
                 true
             );
             wp_localize_script('etg-dfsb-admin-discovery', 'ETGDFSB_ADMIN_DISCOVERY', array(
@@ -73,7 +73,7 @@ final class AdminAssets {
                 'etg-dfsb-dynamic-content-admin',
                 plugins_url('assets/js/dynamic-content-admin.js', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
                 array('etg-dfsb-admin-shell', 'etg-dfsb-admin-discovery'),
-                ETG_DFSB_VERSION,
+                defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION,
                 true
             );
         }
@@ -82,7 +82,7 @@ final class AdminAssets {
             'etg-dfsb-admin-shell-responsive',
             plugins_url('assets/css/admin-shell-responsive.css', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
             array('etg-dfsb-admin-alpha13'),
-            ETG_DFSB_VERSION
+            defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION
         );
 
         if ('etg-dfsb-usage-guide' === $page) {
@@ -90,7 +90,7 @@ final class AdminAssets {
                 'etg-dfsb-usage-guide',
                 plugins_url('assets/js/usage-guide.js', ETG_DFSB_DIR . 'etg-dynamic-filter-seo-bridge.php'),
                 array('etg-dfsb-admin-shell'),
-                ETG_DFSB_VERSION,
+                defined('ETG_DFSB_ASSET_VERSION') ? ETG_DFSB_ASSET_VERSION : ETG_DFSB_VERSION,
                 true
             );
         }

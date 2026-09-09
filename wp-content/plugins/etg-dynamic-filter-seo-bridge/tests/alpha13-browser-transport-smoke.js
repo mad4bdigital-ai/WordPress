@@ -30,7 +30,9 @@ function readyBody(provider, queryId, title) {
         seo_mutation: false,
         provider,
         query_id: queryId,
+        presentation_state_complete: true,
         filtered_query_complete: true,
+        result_query_complete: true,
         values: { tokens: { title: { value: title, type: 'text' } }, slots: {} },
         blocking_reasons: []
     });
@@ -227,6 +229,7 @@ async function main() {
     assert(source.includes('scheduleUrlGroupRetry'), 'bounded URL-group retry missing');
     assert(source.includes('jsfRuntimeContract'), 'JetSmartFilters runtime contract probe missing');
     assert(source.includes("reason: 'jsf_runtime_contract_unavailable'"), 'JetSmartFilters fail-closed diagnostic missing');
+    assert(source.includes('presentation_state_complete'), 'presentation completeness gate missing');
     await testHttpDiagnostics();
     await testTimeout();
     await testBoundedUrlGroupRetry();
@@ -234,6 +237,7 @@ async function main() {
     await testAbortIsNotTransportFailure();
     await testRuntimeContractFailClosed();
     execFileSync(process.execPath, [path.join(__dirname, 'alpha13-browser-background-smoke.js')], { stdio: 'inherit' });
+    execFileSync(process.execPath, [path.join(__dirname, 'alpha13-browser-ajax-reset-smoke.js')], { stdio: 'inherit' });
     console.log('Alpha13 browser transport smoke tests passed.');
 }
 

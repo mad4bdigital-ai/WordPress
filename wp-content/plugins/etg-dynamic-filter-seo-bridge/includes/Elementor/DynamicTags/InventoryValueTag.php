@@ -8,10 +8,10 @@ final class InventoryValueTag extends \Elementor\Core\DynamicTags\Tag {
     public function get_name(){ return 'etg-inventory-value'; }
     public function get_title(){ return 'ETG Inventory Value'; }
     public function get_group(){ return 'etg-dfsb'; }
-    public function get_categories(){ return array('text','url'); }
+    public function get_categories(){ return array('text'); }
 
     protected function register_controls(){
-        $options = DynamicTagRuntime::tokenOptions();
+        $options = DynamicTagRuntime::tokenOptionsByTypes(array('text','html'));
         $this->add_control('token', array(
             'label'=>'Inventory Token',
             'type'=>\Elementor\Controls_Manager::SELECT,

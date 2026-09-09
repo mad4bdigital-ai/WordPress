@@ -32,9 +32,9 @@ final class AjaxPresentationEndpoint {
     public function assets():void{
         if(is_admin()||!function_exists('jet_smart_filters')){return;}
         $helper=plugins_url('assets/js/ajax-taxonomy-reconcile.js',ETG_DFSB_DIR.'etg-dynamic-filter-seo-bridge.php');
-        wp_enqueue_script('etg-dfsb-ajax-taxonomy-reconcile',$helper,array(),ETG_DFSB_VERSION,true);
+        wp_enqueue_script('etg-dfsb-ajax-taxonomy-reconcile',$helper,array(),defined('ETG_DFSB_ASSET_VERSION')?ETG_DFSB_ASSET_VERSION:ETG_DFSB_VERSION,true);
         $src=plugins_url('assets/js/ajax-filter-state.js',ETG_DFSB_DIR.'etg-dynamic-filter-seo-bridge.php');
-        wp_enqueue_script('etg-dfsb-ajax-filter-state',$src,array('etg-dfsb-ajax-taxonomy-reconcile'),ETG_DFSB_VERSION,true);
+        wp_enqueue_script('etg-dfsb-ajax-filter-state',$src,array('etg-dfsb-ajax-taxonomy-reconcile'),defined('ETG_DFSB_ASSET_VERSION')?ETG_DFSB_ASSET_VERSION:ETG_DFSB_VERSION,true);
         wp_localize_script('etg-dfsb-ajax-filter-state','ETGDFSB_AJAX',array('endpoint'=>esc_url_raw(rest_url('etg-dfsb/v1/ajax-presentation')),'contract'=>self::CONTRACT,'maxTokens'=>self::MAX_TOKENS,'maxSlots'=>self::MAX_SLOTS,'timeoutMs'=>self::CLIENT_TIMEOUT_MS,'groupRetryAttempts'=>self::GROUP_RETRY_ATTEMPTS,'groupRetryDelayMs'=>self::GROUP_RETRY_DELAY_MS,'jsfVersion'=>$this->jetSmartFiltersVersion(),'supportedJsfVersions'=>array(self::CERTIFIED_JSF_VERSION),'rateLimitMode'=>$this->rateLimitMode(),'rateLimitRequests'=>self::RATE_LIMIT_REQUESTS,'rateLimitWindowSeconds'=>self::RATE_LIMIT_WINDOW_SECONDS));
     }
 
@@ -79,8 +79,6 @@ final class AjaxPresentationEndpoint {
             'dark_presentation_allowed' => !empty($context['dark_presentation_allowed']),
             'dark_presentation_source' => (string)($context['dark_presentation_source']??'blocked'),
             'filters' => (array)($context['filter_values']??$context['filters']??array()),
-            // Existing v1 browser code reads filtered_query_complete as its presentation-ready gate.
-            // Result-count completeness is carried separately and remains fail-closed.
             'presentation_state_complete' => $presentationComplete,
             'filtered_query_complete' => $presentationComplete,
             'result_query_complete' => $resultQueryComplete,

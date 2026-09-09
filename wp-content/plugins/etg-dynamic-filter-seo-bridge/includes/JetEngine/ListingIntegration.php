@@ -2,9 +2,11 @@
 namespace ETG\DynamicFilterSEOBridge\JetEngine;
 
 require_once dirname(__DIR__) . '/Identifiers/FieldKey.php';
+require_once dirname(__DIR__) . '/Presentation/MediaAssetValidator.php';
 
 use ETG\DynamicFilterSEOBridge\Identifiers\FieldKey;
 use ETG\DynamicFilterSEOBridge\Presentation\PresentationResolver;
+use ETG\DynamicFilterSEOBridge\Presentation\MediaAssetValidator;
 
 final class ListingIntegration {
     const MAX_MACRO_TERMS=20;
@@ -84,7 +86,7 @@ final class ListingIntegration {
             $c=$this->presentation->context();if(empty($c['active'])||empty($c['in_scope'])||empty($c['runtime_ready'])||empty($c['filters'])){return false;}
             $out=array('etg_context'=>true,'authorizing'=>false,'title'=>(string)$this->presentation->value('title',$c),'intro'=>(string)$this->presentation->value('intro',$c),'keyword'=>(string)$this->presentation->value('keyword',$c),'result_count'=>(string)$this->presentation->value('result_count',$c),'query_id'=>(string)($c['query_id']??''),'provider'=>(string)($c['provider']??''),'language'=>(string)($c['language']??''));
             $roles=array_unique(array_merge(array_keys((array)($c['terms']??array())),array_keys((array)($c['term_sets']??array()))));
-            foreach($roles as$rawRole){$role=sanitize_key((string)$rawRole);if(!$role){continue;}$term=(array)($c['terms'][$role]??array());foreach(array('term_id','name','slug','description','short_description','seo_title','meta_description','focus_keyword','image_id','location_level')as$key){$value=$term[$key]??'';if(is_scalar($value)){$out[$role.'_'.$key]=$value;}}if(!empty($term['gallery_ids'])&&is_array($term['gallery_ids'])){$out[$role.'_gallery_ids']=implode(',',array_filter(array_map('absint',$term['gallery_ids'])));}
+            foreach($roles as$rawRole){$role=sanitize_key((string)$rawRole);if(!$role){continue;}$term=(array)($c['terms'][$role]??array());foreach(array('term_id','name','slug','description','short_description','seo_title','meta_description','focus_keyword','location_level')as$key){$value=$term[$key]??'';if(is_scalar($value)){$out[$role.'_'.$key]=$value;}}$imageId=absint($term['image_id']??0);if($imageId){$health=MediaAssetValidator::inspect($imageId);if(!empty($health['valid'])){$out[$role.'_image_id']=$imageId;$out[$role.'_image_url']=(string)($health['url']??'');}}if(!empty($term['gallery_ids'])&&is_array($term['gallery_ids'])){$out[$role.'_gallery_ids']=implode(',',$this->healthyMediaIds($term['gallery_ids']));}
                 $set=(array)($c['term_sets'][$role]??array());if(!$set&&$term){$set=array($term);}$ids=$slugs=array();foreach(array_slice($set,0,self::MAX_MACRO_TERMS)as$item){$item=(array)$item;$id=(int)($item['term_id']??0);if($id){$ids[]=$id;}$slug=$item['slug']??'';if(is_scalar($slug)&&''!==trim((string)$slug)){$slugs[]=trim((string)$slug);}}$out[$role.'_term_ids']=implode(',',array_values(array_unique($ids)));$out[$role.'_term_slugs']=implode(',',array_values(array_unique($slugs)));
             }
             return(object)$out;
@@ -98,6 +100,8 @@ final class ListingIntegration {
         if(''===$slot||''===$alias){foreach(array('dynamic_field_source','source','repeater_field','field')as$key){$candidate=(string)($settings[$key]??'');if(preg_match('/^etg-slot:([a-z0-9_-]+):([a-z0-9_-]+)$/i',$candidate,$m)){$slot=sanitize_key($m[1]);$alias=sanitize_key($m[2]);break;}}}
         if(''===$slot||''===$alias){return$items;}static $resolving=false;if($resolving){return$items;}$resolving=true;try{$rows=$this->presentation->slotRows($slot,$alias);return$rows?:$items;}catch(\Throwable$e){return$items;}finally{$resolving=false;}
     }
+
+    private function healthyMediaIds(array$ids):array{$out=array();foreach($ids as$id){$id=absint($id);if(!$id){continue;}$health=MediaAssetValidator::inspect($id);if(empty($health['valid'])){continue;}$out[]=$id;}return array_values(array_unique($out));}
 
     private function macroBaseCompatible():bool{
         try{

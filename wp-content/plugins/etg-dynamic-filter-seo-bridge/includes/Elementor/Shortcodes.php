@@ -194,7 +194,7 @@ final class Shortcodes {
         if (!$id || 'image' !== $this->presentation->slotType($id)) { return ''; }
         $image = $this->presentation->slotImage($id);
         $url = (string) ($image['url'] ?? '');
-        $class = $this->classList((string) $atts['class'], 'etg-dfsb-dynamic-background');
+        $class = $this->classList((string) $atts['class'], 'etg-dfsb-dynamic-background-shortcode');
         $style = '' !== $url ? ' style="background-image:url(&quot;' . esc_attr($url) . '&quot;)"' : '';
         $binding = $this->truthy($atts['live']) ? $this->mediaBindingAttributes($id, 'background', (string) $atts['group']) : '';
         $body = function_exists('do_shortcode') ? do_shortcode((string) $content) : (string) $content;
@@ -268,7 +268,9 @@ final class Shortcodes {
         if (isset($c['scope_valid']) && empty($c['scope_valid'])) { return false; }
         $ajax = 'ajax' === (string) ($c['state_transport'] ?? '');
         if ($ajax) {
-            if (empty($c['provider_observation_matches_state']) || (array_key_exists('filtered_query_complete', $c) && empty($c['filtered_query_complete'])) || !empty($c['unsupported_filter_props'])) { return false; }
+            if (empty($c['provider_observation_matches_state'])) { return false; }
+            if (array_key_exists('presentation_state_complete', $c)) { if (empty($c['presentation_state_complete'])) { return false; } }
+            elseif ((array_key_exists('filtered_query_complete', $c) && empty($c['filtered_query_complete'])) || !empty($c['unsupported_filter_props'])) { return false; }
         } elseif (isset($c['provider_observation_matches_url']) && empty($c['provider_observation_matches_url'])) { return false; }
         $profile = (array) ($c['profile'] ?? array());
         $binding = (array) ($c['post_type_binding'] ?? array());
