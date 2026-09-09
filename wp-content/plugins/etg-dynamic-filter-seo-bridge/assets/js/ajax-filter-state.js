@@ -51,15 +51,21 @@
         if (path.length > 4096) { return { group: '', query: {}, valid: false, reason: 'pretty_path_too_large' }; }
         var jsfMarker = path.indexOf('/jsf/');
         if (jsfMarker === -1) { return { group: '', query: {}, valid: true, reason: 'no_pretty_jsf_path' }; }
-        var providerStart = jsfMarker + '/jsf/'.length, taxMarker = path.indexOf('/tax/', providerStart);
-        var providerEnd = taxMarker === -1 ? path.indexOf('/', providerStart) : taxMarker; if (providerEnd === -1) { providerEnd = path.length; }
+        var providerStart = jsfMarker + '/jsf/'.length, providerEnd = path.length;
+        ['/tax/','/meta/','/date/','/sort/','/alphabet/','/_s/','/search/','/pagenum/'].forEach(function (part) {
+            var at = path.indexOf(part, providerStart); if (at !== -1 && at < providerEnd) { providerEnd = at; }
+        });
         var providerRaw = decodePathPart(path.slice(providerStart, providerEnd).replace(/^\/+|\/+$/g, '')), colon = providerRaw.indexOf(':');
         if (colon <= 0 || colon === providerRaw.length - 1) { return { group: '', query: {}, valid: false, reason: 'pretty_path_group_malformed' }; }
         var provider = providerRaw.slice(0, colon).trim(), queryId = providerRaw.slice(colon + 1).trim();
         if (!/^[A-Za-z0-9_-]+$/.test(provider) || !/^[A-Za-z0-9_-]+$/.test(queryId)) { return { group: '', query: {}, valid: false, reason: 'pretty_path_group_malformed' }; }
-        var key = groupKey(provider, queryId);
+        var key = groupKey(provider, queryId), taxMarker = path.indexOf('/tax/', providerStart);
         if (taxMarker === -1) { return { group: key, query: {}, valid: true, reason: 'pretty_url_group' }; }
-        var encodedTax = path.slice(taxMarker + '/tax/'.length).replace(/^\/+|\/+$/g, ''), taxRaw = decodePathPart(encodedTax);
+        var taxStart = taxMarker + '/tax/'.length, taxEnd = path.length;
+        ['/meta/','/date/','/sort/','/alphabet/','/_s/','/search/','/pagenum/'].forEach(function (part) {
+            var at = path.indexOf(part, taxStart); if (at !== -1 && at < taxEnd) { taxEnd = at; }
+        });
+        var encodedTax = path.slice(taxStart, taxEnd).replace(/^\/+|\/+$/g, ''), taxRaw = decodePathPart(encodedTax);
         if (!taxRaw && encodedTax) { return { group: key, query: {}, valid: false, reason: 'pretty_path_tax_decode_failed' }; }
         var pairs = taxRaw ? taxRaw.split(';') : [];
         if (pairs.length > 30) { return { group: key, query: {}, valid: false, reason: 'pretty_path_filter_limit_exceeded' }; }
