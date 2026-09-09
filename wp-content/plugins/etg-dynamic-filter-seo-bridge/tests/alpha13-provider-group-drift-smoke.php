@@ -37,6 +37,7 @@ $templateProvider=function(){return array(
         array('id'=>'property-listing','elType'=>'widget','widgetType'=>'jet-listing-grid','settings'=>array('_element_id'=>'property_query_archive','custom_query'=>'yes','custom_query_id'=>'239')),
         array('id'=>'property-active','elType'=>'widget','widgetType'=>'jet-smart-filters-active','settings'=>array('query_id'=>'property_query_archive','content_provider'=>'jet-engine')),
         array('id'=>'property-sort','elType'=>'widget','widgetType'=>'jet-smart-filters-sorting','settings'=>array('query_id'=>'trans_query_archive','content_provider'=>'jet-engine')),
+        array('id'=>'property-unbound','elType'=>'widget','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('query_id'=>'future_unbound_group','content_provider'=>'jet-engine')),
     )),
     array('id'=>40308,'data'=>array(
         array('id'=>'transport-listing','elType'=>'widget','widgetType'=>'jet-listing-grid','settings'=>array('_element_id'=>'trans_query_archive','custom_query'=>'yes','custom_query_id'=>'246')),
@@ -46,10 +47,12 @@ $templateProvider=function(){return array(
 
 $topology=(new RuntimeTopologyDiscoverer($templateProvider,$queryProvider))->discover(true);
 etg_drift_same(2,$topology['binding_count'],'both archive listing bindings are verified');
-etg_drift_same(1,$topology['provider_group_drift_count'],'only the mismatched Properties sorting surface is drift');
-$drift=$topology['provider_group_drift'][0];
+etg_drift_same(2,$topology['provider_group_drift_count'],'cross-CPT and unbound Properties surfaces are both visible');
+$driftByNode=array();foreach($topology['provider_group_drift'] as $item){$driftByNode[(string)($item['node_id']??'')]=$item;}
+etg_drift_expect(isset($driftByNode['property-sort']),'cross-CPT Properties sorting drift is present');
+etg_drift_expect(isset($driftByNode['property-unbound']),'unbound Properties filter drift is present');
+$drift=$driftByNode['property-sort'];
 etg_drift_same(37924,$drift['template_id'],'drift is bound to the Properties archive template');
-etg_drift_same('property-sort',$drift['node_id'],'drift preserves the exact Elementor node ID');
 etg_drift_same('jet-smart-filters-sorting',$drift['widget_type'],'drift preserves widget type');
 etg_drift_same('trans_query_archive',$drift['observed_query_id'],'foreign provider query ID is preserved');
 etg_drift_same(array('property_query_archive'),$drift['expected_provider_query_ids'],'verified listing group defines expected query authority');
@@ -58,6 +61,10 @@ etg_drift_same(array('transportations'),$drift['observed_post_types'],'foreign q
 etg_drift_same('provider_group_post_type_mismatch',$drift['reason'],'cross-CPT drift receives the strongest diagnostic reason');
 etg_drift_same('blocking',$drift['severity_hint'],'cross-CPT drift carries blocking severity hint without itself authorizing mutation');
 etg_drift_same(false,$drift['authorizing'],'topology drift evidence remains non-authorizing');
+$unbound=$driftByNode['property-unbound'];
+etg_drift_same('provider_group_unbound_in_template',$unbound['reason'],'unbound group is distinguished from proven cross-CPT mismatch');
+etg_drift_same('warning',$unbound['severity_hint'],'unbound group remains advisory until stronger post-type evidence exists');
+etg_drift_same(array(),$unbound['observed_post_types'],'unbound group does not invent post-type authority');
 
 $queryRecords=array(
     array('id'=>'239','custom_query_id'=>'property_qb','identity_key'=>'property_qb','type'=>'posts','post_types'=>array('properties'),'post_type_bounded'=>true),
@@ -116,14 +123,20 @@ $profile=array(
 $reconciler=new InventoryReconciler();
 $enabled=$reconciler->analyze($snapshot,array('properties'=>$profile));
 $enabledFindings=array_values(array_filter($enabled['findings'],static function($finding){return 'profile_elementor_provider_group_drift'===(string)($finding['code']??'');}));
-etg_drift_same(1,count($enabledFindings),'enabled Properties profile receives one route-scoped drift finding');
-etg_drift_same('blocking',$enabledFindings[0]['severity'],'enabled profile fails closed on the live-style cross-provider mismatch');
+etg_drift_same(1,count($enabledFindings),'enabled Properties profile receives one route-scoped proven drift finding');
+etg_drift_same('blocking',$enabledFindings[0]['severity'],'enabled profile fails closed only on the proven cross-provider post-type mismatch');
+etg_drift_same(1,$enabledFindings[0]['details']['drift_count'],'advisory unbound drift is excluded from the route blocker');
+etg_drift_same('property-sort',$enabledFindings[0]['details']['drift'][0]['node_id'],'route blocker points only to the proven foreign-CPT widget');
 etg_drift_expect($enabled['summary']['blocking']>=1,'enabled route drift contributes to blocking summary');
+$inventoryWarnings=array_values(array_filter($enabled['findings'],static function($finding){return 'elementor_provider_group_drift_detected'===(string)($finding['code']??'');}));
+etg_drift_same(1,count($inventoryWarnings),'inventory-level warning keeps the full drift set visible');
+etg_drift_same('warning',$inventoryWarnings[0]['severity'],'inventory drift summary remains non-authorizing review evidence');
+etg_drift_same(2,$inventoryWarnings[0]['details']['drift_count'],'inventory warning includes both blocking-hint and advisory drift evidence');
 
 $profile['enabled']=false;
 $disabled=$reconciler->analyze($snapshot,array('properties'=>$profile));
 $disabledFindings=array_values(array_filter($disabled['findings'],static function($finding){return 'profile_elementor_provider_group_drift'===(string)($finding['code']??'');}));
-etg_drift_same(1,count($disabledFindings),'disabled profile keeps the same drift visible');
+etg_drift_same(1,count($disabledFindings),'disabled profile keeps the proven route drift visible');
 etg_drift_same('warning',$disabledFindings[0]['severity'],'disabled profile drift is review evidence, not an activation blocker');
 etg_drift_same(0,$disabled['summary']['blocking'],'disabled profile does not convert drift into global blocking authority');
 
