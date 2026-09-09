@@ -8,6 +8,7 @@ final class MAD4B_SCP_Plugin {
 
 	public static function activate() {
 		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
+		MAD4B_SCP_Skill_Autoconfig::bootstrap();
 		$schema = MAD4B_SCP_Schema::install_or_upgrade();
 		if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		update_option( 'mad4b_scp_version', MAD4B_SCP_VERSION, false );
@@ -16,6 +17,7 @@ final class MAD4B_SCP_Plugin {
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
+		if ( ! is_wp_error( self::$schema_error ) ) MAD4B_SCP_Skill_Seeder::bootstrap();
 	}
 
 	public static function boot() {
@@ -26,6 +28,7 @@ final class MAD4B_SCP_Plugin {
 		// subject before Local OAuth key/store/transport components inspect config.
 		// Production and explicit operator OAuth configuration remain fail-closed.
 		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
+		MAD4B_SCP_Skill_Autoconfig::bootstrap();
 		MAD4B_SCP_MCP_Provider_Isolation::boot();
 		self::bind_local_oauth_subject_compatibility();
 		MAD4B_SCP_Local_OAuth_Key_Path_Policy::boot();
@@ -51,6 +54,7 @@ final class MAD4B_SCP_Plugin {
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
+		if ( ! is_wp_error( self::$schema_error ) ) MAD4B_SCP_Skill_Seeder::bootstrap();
 		if ( is_wp_error( self::$schema_error ) ) add_action( 'admin_notices', array( __CLASS__, 'schema_notice' ) );
 
 		MAD4B_SCP_Admin_UI::boot();
