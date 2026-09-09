@@ -7,6 +7,7 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 - Portable Plugin capability: `Read`
 - Local test app mapping: existing **Staging** MCP App only
 - Runtime-authored Skill creation: WordPress administrator UI only
+- Staging Skill authoring: auto-enabled by the Control Plane with no manual `wp-config.php` edit
 - ChatGPT MCP Skill tools: read-only (`skills-list`, `skill-get`, `skills-export-status`)
 - No Skill create/update/delete MCP tool
 - WordPress global mutation authority is not enabled by this package
