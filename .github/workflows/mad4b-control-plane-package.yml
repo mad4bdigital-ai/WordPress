@@ -24,8 +24,9 @@ concurrency:
 
 jobs:
   package:
-    name: Build staging installation kit
+    name: Build reviewed staging installation kit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -40,6 +41,56 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           echo "Packaging exact source: $SOURCE_SHA"
+
+      - name: Reject distributable symlinks and secret-like files
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          symlink="$(find "$plugin" -type l -print -quit)"
+          if [ -n "$symlink" ]; then
+            echo "Symlink is forbidden in the distributable Control Plane: $symlink" >&2
+            exit 1
+          fi
+          suspicious="$(find "$plugin" -type f \( \
+            -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.p12' -o \
+            -name '*.pfx' -o -name '*.key' -o -name 'id_rsa' -o -name 'id_ed25519' \
+          \) -print -quit)"
+          if [ -n "$suspicious" ]; then
+            echo "Secret-like file is forbidden in the distributable Control Plane: $suspicious" >&2
+            exit 1
+          fi
+          if grep -RIlE --exclude-dir=tests -- '-----BEGIN ([A-Z ]+ )?PRIVATE KEY-----' "$plugin" | grep -q .; then
+            echo 'Embedded private-key material is forbidden in the distributable Control Plane.' >&2
+            exit 1
+          fi
+
+      - name: PHP lint distributable plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0)
+
+      - name: Verify canonical Skill seed package
+        shell: bash
+        run: |
+          set -euo pipefail
+          seed='wp-content/plugins/mad4b-site-control-plane/skill-seeds'
+          expected=(
+            wordpress-site-diagnostics
+            wordpress-connection-diagnostics
+            elementor-dynamic-content
+            jetengine-content-modeling
+            wordpress-archive-audit
+            wordpress-change-safety
+          )
+          test -d "$seed"
+          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '6'
+          for name in "${expected[@]}"; do
+            cmp --silent "$seed/$name/SKILL.md" "plugins/mad4b-wordpress/skills/$name/SKILL.md"
+          done
 
       - name: Verify certified MCP Adapter asset
         shell: bash
@@ -83,9 +134,10 @@ jobs:
           stage = Path(sys.argv[1])
           version, control_sha, adapter_sha = sys.argv[2:]
           data = {
-              'contract': 'mad4b.site-control-plane.staging-install-kit.v1',
+              'contract': 'mad4b.site-control-plane.staging-install-kit.v2',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
               'commit': os.environ.get('SOURCE_SHA'),
+              'release_class': 'staging-release-candidate',
               'control_plane': {
                   'version': version,
                   'archive': f'mad4b-site-control-plane-{version}.zip',
@@ -98,6 +150,15 @@ jobs:
                   'official_release_sha256': '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676',
               },
               'install_order': ['mcp-adapter-0.6.1.zip', f'mad4b-site-control-plane-{version}.zip'],
+              'reviewed_invariants': {
+                  'exact_source_bound': True,
+                  'php_linted': True,
+                  'symlinks_denied': True,
+                  'secret_like_files_denied': True,
+                  'canonical_skill_seed_parity': True,
+                  'development_tests_excluded': True,
+                  'read_only_default': True,
+              },
               'default_safety': {
                   'mutation_enabled': False,
                   'plugin_lifecycle_enabled': False,
@@ -105,7 +166,11 @@ jobs:
                   'bitflows_execution_enabled': False,
                   'elementor_legacy_write_enabled': False,
               },
-              'required_post_install_check': 'mad4b/runtime-self-test',
+              'required_post_install_checks': [
+                  'mad4b/runtime-self-test',
+                  'mad4b/skills-runtime-certification',
+                  'mad4b/skills-export-status',
+              ],
           }
           (stage / 'install-manifest.json').write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
           PY
@@ -115,30 +180,39 @@ jobs:
 
           1. Install and activate the exact `mcp-adapter-0.6.1.zip` first.
           2. Install and activate the MAD4B Site Control Plane ZIP.
-          3. Do not define any MAD4B mutation/Breakglass/lifecycle/Flow/Elementor legacy-write enable constants during discovery certification.
-          4. Authenticate a dedicated control identity and execute `mad4b/runtime-self-test`.
-          5. Verify provider versions/runtime critical-file hashes, custom-server isolation, and backup-root placement before any mutation gate is enabled.
+          3. Staging Skills bootstrap automatically; do not add a manual Skills enable constant for the normal path.
+          4. Do not define any MAD4B mutation/Breakglass/lifecycle/Flow/Elementor legacy-write enable constants during discovery certification.
+          5. Authenticate a dedicated control identity and execute `mad4b/runtime-self-test`.
+          6. Read `mad4b/skills-runtime-certification` and require `ready` before accepting the local Skills runtime.
+          7. Compare the later portable ChatGPT package `MAD4B-SNAPSHOT-ID.txt` with `mad4b/skills-export-status` snapshot identity before external acceptance.
 
-          This package is suitable for controlled staging/read-only discovery. It does not authorize production mutation.
+          This is a controlled Staging release candidate. It does not authorize Production mutation or PR merge by itself.
           EOF
 
-      - name: Verify package excludes development tests and preserves runtime baseline
+      - name: Verify package boundaries and checksums
         shell: bash
         run: |
           set -euo pipefail
           stage='/tmp/mad4b-install-kit'
           control_zip="$(find "$stage" -maxdepth 1 -name 'mad4b-site-control-plane-*.zip' -print -quit)"
           test -n "$control_zip"
+          unzip -tqq "$control_zip"
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md'
           if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
             exit 1
           fi
+          if zipinfo -1 "$control_zip" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+            echo 'Unsafe absolute/parent path found in distributable ZIP.' >&2
+            exit 1
+          fi
           grep -Fq "\"commit\": \"$SOURCE_SHA\"" "$stage/install-manifest.json"
+          grep -Fq '"release_class": "staging-release-candidate"' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
-      - name: Upload staging installation kit
+      - name: Upload reviewed staging installation kit
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-site-control-plane-staging-kit-${{ env.SOURCE_SHA }}
