@@ -1,60 +1,137 @@
 # MAD4B WordPress Plugin + Skills
 
-This package wraps the existing MAD4B WordPress MCP App with reusable workflow Skills while keeping live WordPress data, OAuth, authorization and tool execution in MCP.
+This package wraps the existing MAD4B WordPress MCP App with reusable workflow Skills and an exact-origin governed Staging write plane. Live WordPress data, OAuth authentication, NHI authorization, approvals, audit and tool execution stay in the MAD4B MCP control plane.
 
 ## Current safety boundary
 
-- Portable Plugin capability: `Read`
-- Staging App mapping: auto-bound to the governed existing Staging App unless an explicit operator mapping is present
-- Staging Skill authoring: auto-enabled by the Control Plane with no manual `wp-config.php` edit
-- Canonical site/connection/workflow seed pack: auto-provisioned on Staging
-- Provider Skill packs: discovered, placed, enabled and disabled automatically from live plugin + adapter state
-- Local runtime certification: generated automatically and exposed read-only through MCP
-- Deterministic snapshot identity: generated from enabled Skill contents/resources + App mapping for exact external package comparison
-- Runtime-authored custom Skill creation: WordPress administrator UI only
-- ChatGPT MCP Skill tools: read-only (`skills-list`, `skill-get`, `skills-export-status`, `skills-runtime-certification`)
-- No Skill create/update/delete MCP tool
-- WordPress global mutation authority is not enabled by this package
+- Portable Plugin capability: `Read + Write`.
+- The existing ChatGPT transport remains `mad4b-chatgpt`.
+- On **`staging.egypttourgates.com` only**, supported non-readonly MAD4B/core and certified-adapter actions are exposed through the same Plugin and rebound to the dedicated `mad4b-write` authority server.
+- Production never receives this automatic write authority.
+- Breakglass and `mad4b/database-raw-query` are never part of the normal write surface.
+- OAuth remains identity/authentication only; a `mad4b:read` bearer is not write authority.
+- Actual remote mutations require a dedicated enabled NHI, an exact `mad4b-write` grant, provider/runtime policy, budgets, audit and a short-lived one-time exact approval ticket.
+- `mad4b/approval-plan` is itself governed by NHI + exact grant + budget. It is the bounded bootstrap exception that may create a **pending** mutation ticket only; it never auto-approves or executes the target operation.
+- Runtime-authored custom Skill creation remains WordPress-administrator UI only.
+- ChatGPT Skill management remains read-only: `skills-list`, `skill-get`, `skills-export-status`, `skills-runtime-certification`.
+- No Skill create/update/delete/write MCP tool is exposed.
 
-## Zero-touch Skill lifecycle
+## Zero-touch Staging lifecycle
 
-On Staging the Control Plane performs the base workflow setup without administrator intervention. It automatically enables the local Skill editor and binds the known Staging OpenAI App ID unless an explicit operator configuration already exists.
+On the exact governed Staging origin the Control Plane performs the normal setup without administrator intervention. It **automatically enables the local Skill editor**, binds the governed Staging OpenAI App mapping and configures the governed mutation gate unless an explicit operator disable is already present.
 
 ```text
 Plugin boots
    ↓
-Staging autoconfig
+Exact environment + staging.egypttourgates.com origin check
    ↓
 Skill editor + Staging App mapping
    ↓
-Governance schema + append-only audit ready
+Governance schema + append-only audit
    ↓
-Base site/connection/workflow Skills provisioned
+Base site/connection/workflow Skills
    ↓
-Installed plugin discovery
+Provider discovery + MAD4B adapter registry
    ↓
-MAD4B adapter registry readback
+Provider Skill reconciliation
    ↓
-Provider Skill catalog reconciliation
+Dedicated Staging write NHI + exact mad4b-write grants
    ↓
-Active + adapter-ready provider → Skill enabled
-Inactive/unavailable provider       → MAD4B-managed Skill disabled
+Deterministic Skill snapshot identity
    ↓
-Deterministic snapshot identity
+Skill runtime certification
    ↓
-Local runtime certification
+Write runtime certification
 ```
 
-No `wp-config.php` edit is required on Staging. No administrator form submission is required for this lifecycle.
+No `wp-config.php` edit is required on Staging for the normal governed path. No administrator form submission is required for the automatic bootstrap.
 
-The base pack includes:
+Production is never auto-enabled for Staging Skill authoring, Staging App binding or the governed mutation gate. Supporting Skill `scripts/` authoring also remains separately gated.
 
-- `wordpress-site-diagnostics`
-- `wordpress-connection-diagnostics`
-- `wordpress-archive-audit`
-- `wordpress-change-safety`
+## Governed write inventory
 
-Elementor and JetEngine definitions are seeded disabled and handed to provider discovery, so they are enabled only when their providers are active and the corresponding MAD4B adapter is runtime-available.
+`MAD4B_SCP_Servers::write_tools()` projects every MAD4B/core or certified MAD4B adapter ability that is registered on the `content` or `admin` surfaces with explicit `readonly=false` metadata. It does not infer write capability from an ability name and it does not automatically trust arbitrary third-party abilities outside the certified MAD4B adapter registry.
+
+Core examples include:
+
+- `mad4b/content-update-post`
+- `mad4b/plugin-activate`
+- `mad4b/plugin-deactivate`
+- `mad4b/filesystem-write`
+- `mad4b/filesystem-patch`
+- `mad4b/database-update`
+- `mad4b/mutation-undo`
+- `mad4b/approval-plan`
+
+Provider-specific update/write/mutation actions are added from the live certified adapter registry. Their own capability, provider certification, stale-state, target and policy gates remain active.
+
+`mad4b/database-raw-query` remains isolated under `mad4b-breakglass` and is excluded from `mad4b-write` and from the ChatGPT Plugin.
+
+## Approval bootstrap
+
+Every actual remote write requires an exact one-time approval ticket. The first ticket needs a safe bootstrap path, so `mad4b/approval-plan` has a deliberately narrower exception:
+
+```text
+verified OAuth identity
+       ↓
+dedicated Staging NHI
+       ↓
+exact grant: mad4b-write + mad4b/approval-plan
+       ↓
+budget + audit
+       ↓
+validate same Staging agent + mad4b-write target
+       ↓
+validate target is certified write inventory
+       ↓
+mutation ticket class only
+       ↓
+create PENDING ticket
+       ↓
+human approval remains separate
+```
+
+The remote planner cannot target itself, another agent, Breakglass/raw SQL, recovery authority, an unmounted ability or a provider that does not match the certified mount.
+
+## WPML / WordPress REST compatibility
+
+The Control Plane does not need to disable the WordPress REST API or globally intercept unrelated REST authentication.
+
+The read-only `mad4b/rest-compatibility-status` evidence surface:
+
+- reads the live `rest_enabled` hook inventory;
+- reads the live `rest_authentication_errors` hook inventory;
+- reports whether a callback belongs to the MAD4B Control Plane without exposing absolute server filesystem paths;
+- exercises `/wpml/v1/rest/status` through the WordPress REST dispatcher with `test_get_parameter=1` and a `cachebuster`;
+- requires WPML's `status=valid` and `get_parameters=valid` when WPML is active and its route is registered;
+- fails closed if WPML is active but its health route is missing.
+
+The internal probe proves WordPress/PHP/plugin behavior. CDN, WAF, Apache/Nginx and external reverse-proxy behavior remain a separate live HTTP acceptance boundary and must also be checked on the real Staging URL.
+
+## Automatic runtime certifications
+
+### Skill runtime
+
+`mad4b/skills-runtime-certification` verifies the local Skill registry, seed pack, provider reconciliation, exact Staging App mapping, deterministic snapshot identity and absence of Skill mutation abilities.
+
+### Write runtime
+
+`mad4b/write-runtime-certification` verifies locally provable write facts including:
+
+- exact Staging environment and origin;
+- governed mutation gate;
+- OAuth identity boundary;
+- dedicated Staging NHI and exact grants;
+- complete non-readonly write mounting on `mad4b-write` and the same ChatGPT Plugin transport;
+- approval-plan bootstrap governance;
+- one-time approval requirement for actual writes;
+- Breakglass exclusion;
+- no wildcard grants;
+- REST global-hook isolation and WPML internal query-parameter probe;
+- peer-governance readiness;
+- append-only evidence digest.
+
+Both certifications remain local-runtime evidence. WordPress never claims that ChatGPT/Codex refreshed the external Plugin snapshot or successfully executed a write.
 
 ## Provider-aware Skill packs
 
@@ -64,66 +141,24 @@ The provider catalog is stored at:
 wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json
 ```
 
-Current automatic families include:
+Automatic families include Elementor, JetEngine, JetSmartFilters, WooCommerce, Polylang, Rank Math, LiteSpeed Cache, media optimization providers, ETG Dynamic Filter SEO Bridge, BitFlows, Fluent Forms and WPML.
 
-- Elementor
-- JetEngine
-- JetSmartFilters
-- WooCommerce
-- Polylang
-- Rank Math
-- LiteSpeed Cache
-- media optimization providers
-- ETG Dynamic Filter SEO Bridge
-- BitFlows
-- Fluent Forms
-- WPML
-
-The catalog can define a Skill at any supported registry level: `site`, `connection`, `provider`, `adapter`, or `workflow`. Placement follows the Skill definition, for example:
+Runtime Skills live outside third-party plugin directories:
 
 ```text
-wp-content/mad4b-skills/provider/elementor/elementor-dynamic-content/SKILL.md
-wp-content/mad4b-skills/provider/jet-engine/jetengine-content-modeling/SKILL.md
-wp-content/mad4b-skills/provider/jet-smart-filters/jetsmartfilters-query-audit/SKILL.md
-wp-content/mad4b-skills/provider/woocommerce/woocommerce-catalog-diagnostics/SKILL.md
-wp-content/mad4b-skills/adapter/litespeed/litespeed-cache-diagnostics/SKILL.md
+wp-content/mad4b-skills/
+├── site/_site/<skill>/SKILL.md
+├── connection/<target>/<skill>/SKILL.md
+├── provider/<provider>/<skill>/SKILL.md
+├── adapter/<adapter>/<skill>/SKILL.md
+└── workflow/<workflow-family>/<skill>/SKILL.md
 ```
 
-Provider discovery reads `MAD4B_SCP_Plugin_Discovery::coverage()` after adapter registration. A provider Skill is automatically enabled only when the provider is active, its MAD4B adapter is registered, and that adapter is runtime-available.
-
-If a provider becomes inactive or its adapter becomes unavailable, only MAD4B-managed Skill metadata is disabled. The Skill file is not deleted. When the provider becomes ready again it is re-enabled automatically.
-
-Existing administrator-authored Skills always win. Provider discovery does not overwrite, disable, move, or delete a Skill it does not own. All automatic create/activation changes are audit-recorded and rolled back when the audit commit fails.
-
-## Automatic local runtime certification
-
-The Control Plane records a digest-bound Staging certification after the Abilities/MCP runtime is initialized. The certification checks local facts including:
-
-- Staging environment and Skill editor state
-- scripts authoring remains disabled
-- managed Skill storage is initialized and writable
-- exact governed Staging App mapping is bound
-- base seed pack is ready
-- provider reconciliation is ready and non-mutating toward provider plugins
-- required base Skills are enabled
-- all read-only Skill abilities are registered
-- no Skill create/update/delete/write ability is registered
-- the portable snapshot has enabled Skills
-- deterministic snapshot identity is available and its Skill count matches the portable snapshot
-
-Read it through:
-
-```text
-mad4b/skills-runtime-certification
-```
-
-Certification transitions are append-only-audited and persisted only when their evidence digest changes.
-
-This certification is deliberately `local_runtime_only`. WordPress cannot truthfully prove that a remote ChatGPT/Codex client has installed or refreshed a portable Plugin snapshot. That final client-side snapshot import remains outside the WordPress trust boundary.
+Existing administrator-authored Skills always win. MAD4B-managed provider metadata can be enabled/disabled according to provider runtime state, but user-owned Skill contents are not overwritten or deleted.
 
 ## Deterministic snapshot identity
 
-`MAD4B_SCP_Skill_Snapshot_Identity` computes a stable SHA-256 identity from the enabled Skill set. The digest includes the governed App ID plus every enabled Skill logical ID, `SKILL.md` hash/size, and each supporting resource path/hash/size. Timestamps and presentation-only metadata are excluded so the identity remains stable for identical content.
+`MAD4B_SCP_Skill_Snapshot_Identity` computes a stable SHA-256 identity from the governed App ID plus every enabled Skill logical ID, `SKILL.md` hash/size and supporting resource path/hash/size.
 
 The read-only `mad4b/skills-export-status` response exposes:
 
@@ -132,16 +167,16 @@ snapshot_identity.snapshot_digest
 snapshot_identity.identity_token
 ```
 
-The portable runtime export includes the exact same token in:
+Runtime portable exports embed the same token in:
 
 ```text
 MAD4B-SNAPSHOT.json
 MAD4B-SNAPSHOT-ID.txt
 ```
 
-The exporter computes the identity before reading the files and recomputes it after the last Skill/resource is read. If the token changes during the export, the ZIP is discarded and the export fails closed with `mad4b_skill_snapshot_changed_during_export`; a mixed or stale package is never published.
+The exporter is race-closed: it captures the initial identity, hashes the exact bytes written into the ZIP and recomputes the live identity after the read. Any observed-byte mismatch or registry change deletes the temporary package instead of publishing a mixed snapshot.
 
-The final external-client acceptance can therefore compare one value instead of manually comparing every Skill file:
+External snapshot acceptance therefore requires:
 
 ```text
 WordPress snapshot_identity.identity_token
@@ -149,34 +184,11 @@ WordPress snapshot_identity.identity_token
 installed/exported MAD4B-SNAPSHOT-ID.txt
 ```
 
-An exact match proves the package represents the same enabled Skill contents/resources and App mapping. It does not prove that ChatGPT/Codex actually loaded the snapshot or successfully invoked the MCP-backed workflow; those remain external client-side acceptance facts and are never inferred by WordPress.
-
-## Dynamic WordPress registry
-
-The WordPress plugin adds **MAD4B Control Plane → Skills**.
-
-Runtime Skills are stored as real files under:
-
-```text
-wp-content/mad4b-skills/
-├── site/_site/<skill>/SKILL.md
-├── connection/<target>/<skill>/SKILL.md
-├── provider/<plugin-or-provider>/<skill>/SKILL.md
-├── adapter/<adapter>/<skill>/SKILL.md
-└── workflow/<workflow-family>/<skill>/SKILL.md
-```
-
-A `.mad4b.json` sidecar stores bounded registry metadata next to each Skill.
-
-The files are deliberately stored **outside third-party plugin directories**. Updates to Elementor, JetEngine, WooCommerce, or other vendor plugins therefore cannot erase MAD4B workflow files.
-
-Production is never auto-enabled, auto-seeded, provider-auto-provisioned, or bound to the Staging App. Supporting `scripts/` authoring also remains separately gated. None of these features enable `mad4b-content`, `mad4b-write`, `mad4b-admin`, breakglass, or the global mutation gate.
-
-Do not place passwords, access tokens, private keys, OAuth credentials, or other secret material inside Skill files.
+A token match proves snapshot byte/App-mapping parity. It does not prove that an external client loaded or executed the tools.
 
 ## Portable export
 
-The WordPress Skills page exports enabled runtime Skills as a portable Plugin ZIP containing:
+The WordPress Skills page can export the certified Staging Plugin snapshot containing:
 
 ```text
 plugin.json
@@ -190,14 +202,16 @@ skills/
   <skill>/scripts/...
 ```
 
-On Staging the existing governed App ID is bound automatically, so `.app.json` does not require a manual `wp-config.php` constant for the normal Staging path. Explicit valid operator mapping still wins, but local runtime certification blocks if it drifts from the governed Staging App expected by this branch.
+The runtime exporter declares `Write` only when the exact-origin governed write authority and write runtime certification are ready. Otherwise it fails closed to the non-write state rather than treating a manifest declaration as authority.
 
-The site registry is live and dynamic, but packaged ChatGPT/Codex Plugin Skills remain a **snapshot**. After a Skill changes, publish another package or redeploy the MCP Skill source and run **Scan Tools** again.
+After a Skill or tool surface changes, publish/refresh the Plugin snapshot and run **Scan Tools** again before external acceptance.
 
 ## CI runtime proof
 
-`MAD4B Dynamic Skills` includes a disposable WordPress Staging runtime job. It installs the exact repository MCP Adapter and Control Plane, then proves automatic editor/App bootstrap, seed creation, provider handoff, deterministic snapshot identity, read-only Abilities, certification persistence, and absence of Skill write abilities without manually defining any Skills or App mapping.
+`MAD4B Dynamic Skills` provisions disposable Staging and Production WordPress runtimes. Staging proves zero-touch Skills, governed write inventory, approval bootstrap boundaries, WPML-compatible REST query pass-through, deterministic export and Read + Write certification. Production proves the Staging App/Skill/write authority and write tools remain absent.
 
 ## Local marketplace
 
-The repository marketplace entry is under `.agents/plugins/marketplace.json`. The package in this branch remains wired to the already registered **Staging** App for safe testing.
+The repository marketplace entry is `.agents/plugins/marketplace.json`. This branch remains wired to the already registered **Staging** App for controlled acceptance.
+
+Do not put passwords, OAuth credentials, access/refresh tokens, private keys or other secret material in Skill files.
