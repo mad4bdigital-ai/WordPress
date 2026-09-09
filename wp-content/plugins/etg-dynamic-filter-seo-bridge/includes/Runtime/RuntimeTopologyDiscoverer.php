@@ -10,6 +10,8 @@ final class RuntimeTopologyDiscoverer {
     const MAX_TEMPLATES = 250;
     const MAX_ELEMENTS = 10000;
     const MAX_BINDINGS = 500;
+    const MAX_QUERY_SURFACES = 2000;
+    const MAX_PROVIDER_GROUP_DRIFT = 200;
     const CACHE_TTL = 300;
 
     private $templateProvider;
@@ -48,6 +50,8 @@ final class RuntimeTopologyDiscoverer {
         $queryIndex = $this->queryIndex( $queries['items'] );
         $bindings = array();
         $providerIds = array();
+        $querySurfaces = array();
+        $querySurfaceCount = 0;
         $elementsScanned = 0;
         $truncated = false;
 
@@ -60,11 +64,12 @@ final class RuntimeTopologyDiscoverer {
                 $data = is_array( $decoded ) ? $decoded : array();
             }
             if ( ! is_array( $data ) ) { continue; }
-            $this->walkElements( $data, $templateId, $queryIndex, $bindings, $providerIds, $elementsScanned, $truncated );
+            $this->walkElements( $data, $templateId, $queryIndex, $bindings, $providerIds, $querySurfaces, $querySurfaceCount, $elementsScanned, $truncated );
             if ( $truncated ) { break; }
         }
 
         $bindings = $this->normalizeBindings( $bindings );
+        $drift = $this->providerGroupDrift( $bindings, $querySurfaces, $queryIndex );
         $result = array(
             'contract' => self::CONTRACT,
             'authorizing' => false,
@@ -80,6 +85,12 @@ final class RuntimeTopologyDiscoverer {
             'bindings' => array_slice( $bindings, 0, self::MAX_BINDINGS ),
             'binding_count' => count( $bindings ),
             'bindings_truncated' => count( $bindings ) > self::MAX_BINDINGS,
+            'query_surfaces' => array_slice( $querySurfaces, 0, self::MAX_QUERY_SURFACES ),
+            'query_surface_count' => $querySurfaceCount,
+            'query_surfaces_truncated' => $querySurfaceCount > self::MAX_QUERY_SURFACES,
+            'provider_group_drift' => array_slice( $drift, 0, self::MAX_PROVIDER_GROUP_DRIFT ),
+            'provider_group_drift_count' => count( $drift ),
+            'provider_group_drift_truncated' => count( $drift ) > self::MAX_PROVIDER_GROUP_DRIFT,
         );
         self::$memoryCache = $result;
         if ( function_exists( 'set_transient' ) ) { set_transient( 'etg_dfsb_runtime_topology_v1', $result, self::CACHE_TTL ); }
@@ -162,16 +173,35 @@ final class RuntimeTopologyDiscoverer {
         return array( 'internal'=>$byInternal, 'custom'=>$byCustom );
     }
 
-    private function walkElements( array $nodes, int $templateId, array $queryIndex, array &$bindings, array &$providerIds, int &$elementsScanned, bool &$truncated ): void {
+    private function walkElements( array $nodes, int $templateId, array $queryIndex, array &$bindings, array &$providerIds, array &$querySurfaces, int &$querySurfaceCount, int &$elementsScanned, bool &$truncated ): void {
         foreach ( $nodes as $node ) {
             if ( $elementsScanned >= self::MAX_ELEMENTS ) { $truncated = true; return; }
             if ( ! is_array( $node ) ) { continue; }
             $elementsScanned++;
             $settings = isset( $node['settings'] ) && is_array( $node['settings'] ) ? $node['settings'] : array();
+            $nodeId = isset( $node['id'] ) && is_scalar( $node['id'] ) ? sanitize_text_field( (string) $node['id'] ) : '';
+            $elType = isset( $node['elType'] ) && is_scalar( $node['elType'] ) ? sanitize_key( (string) $node['elType'] ) : '';
+            $widgetType = isset( $node['widgetType'] ) && is_scalar( $node['widgetType'] ) ? sanitize_key( (string) $node['widgetType'] ) : '';
             foreach ( array( 'query_id', '_element_id' ) as $key ) {
                 if ( isset( $settings[$key] ) && is_scalar( $settings[$key] ) ) {
                     $candidate = QueryId::normalize( $settings[$key] );
-                    if ( '' !== $candidate ) { $providerIds[$candidate] = true; }
+                    if ( '' !== $candidate ) {
+                        $providerIds[$candidate] = true;
+                        if ( 'query_id' === $key ) {
+                            $querySurfaceCount++;
+                            if ( count( $querySurfaces ) < self::MAX_QUERY_SURFACES ) {
+                                $querySurfaces[] = array(
+                                    'template_id'=>$templateId,
+                                    'node_id'=>$nodeId,
+                                    'el_type'=>$elType,
+                                    'widget_type'=>$widgetType,
+                                    'setting'=>$key,
+                                    'query_id'=>$candidate,
+                                    'content_provider'=>isset( $settings['content_provider'] ) && is_scalar( $settings['content_provider'] ) ? sanitize_key( (string) $settings['content_provider'] ) : '',
+                                );
+                            }
+                        }
+                    }
                 }
             }
             $providerQueryId = isset( $settings['_element_id'] ) && is_scalar( $settings['_element_id'] ) ? QueryId::normalize( $settings['_element_id'] ) : '';
@@ -201,9 +231,75 @@ final class RuntimeTopologyDiscoverer {
                 } elseif ( count( $matches ) > 1 ) { $record['reason'] = 'query_builder_locator_ambiguous'; }
                 $bindings[] = $record;
             }
-            if ( isset( $node['elements'] ) && is_array( $node['elements'] ) ) { $this->walkElements( $node['elements'], $templateId, $queryIndex, $bindings, $providerIds, $elementsScanned, $truncated ); }
+            if ( isset( $node['elements'] ) && is_array( $node['elements'] ) ) { $this->walkElements( $node['elements'], $templateId, $queryIndex, $bindings, $providerIds, $querySurfaces, $querySurfaceCount, $elementsScanned, $truncated ); }
             if ( $truncated ) { return; }
         }
+    }
+
+    private function providerGroupDrift( array $bindings, array $querySurfaces, array $queryIndex ): array {
+        $anchors = array();
+        $providerPostTypes = array();
+        foreach ( $bindings as $binding ) {
+            if ( ! is_array( $binding ) || 'verified' !== (string) ( $binding['status'] ?? '' ) ) { continue; }
+            $providerQueryId = QueryId::normalize( $binding['provider_query_id'] ?? '' );
+            if ( '' === $providerQueryId ) { continue; }
+            $postTypes = $this->postTypes( $binding['post_types'] ?? array() );
+            if ( ! isset( $providerPostTypes[$providerQueryId] ) ) { $providerPostTypes[$providerQueryId] = array(); }
+            $providerPostTypes[$providerQueryId] = array_values( array_unique( array_merge( $providerPostTypes[$providerQueryId], $postTypes ) ) );
+            sort( $providerPostTypes[$providerQueryId], SORT_STRING );
+            foreach ( (array) ( $binding['template_ids'] ?? array() ) as $templateId ) {
+                $templateId = absint( $templateId );
+                if ( ! $templateId ) { continue; }
+                if ( ! isset( $anchors[$templateId] ) ) { $anchors[$templateId] = array(); }
+                $anchors[$templateId][$providerQueryId] = array( 'post_types'=>$postTypes );
+            }
+        }
+
+        $out = array();
+        $seen = array();
+        foreach ( $querySurfaces as $surface ) {
+            if ( ! is_array( $surface ) ) { continue; }
+            $widgetType = sanitize_key( (string) ( $surface['widget_type'] ?? '' ) );
+            if ( 0 !== strpos( $widgetType, 'jet-smart-filters-' ) ) { continue; }
+            $templateId = absint( $surface['template_id'] ?? 0 );
+            $observed = QueryId::normalize( $surface['query_id'] ?? '' );
+            if ( ! $templateId || '' === $observed || empty( $anchors[$templateId] ) || isset( $anchors[$templateId][$observed] ) ) { continue; }
+
+            $expectedIds = array_keys( $anchors[$templateId] );
+            sort( $expectedIds, SORT_STRING );
+            $expectedPostTypes = array();
+            foreach ( $anchors[$templateId] as $record ) { $expectedPostTypes = array_merge( $expectedPostTypes, (array) ( $record['post_types'] ?? array() ) ); }
+            $expectedPostTypes = array_values( array_unique( $this->postTypes( $expectedPostTypes ) ) );
+
+            $observedPostTypes = isset( $providerPostTypes[$observed] ) ? (array) $providerPostTypes[$observed] : array();
+            if ( ! $observedPostTypes && isset( $queryIndex['custom'][$observed] ) && 1 === count( (array) $queryIndex['custom'][$observed] ) ) {
+                $match = reset( $queryIndex['custom'][$observed] );
+                if ( is_array( $match ) && 'posts' === (string) ( $match['query_type'] ?? '' ) ) { $observedPostTypes = $this->postTypes( $match['post_types'] ?? array() ); }
+            }
+            $crossPostType = ! empty( $expectedPostTypes ) && ! empty( $observedPostTypes ) && ! array_intersect( $expectedPostTypes, $observedPostTypes );
+            $key = implode( '|', array( $templateId, (string) ( $surface['node_id'] ?? '' ), $observed ) );
+            if ( isset( $seen[$key] ) ) { continue; }
+            $seen[$key] = true;
+            $out[] = array(
+                'status'=>'drift',
+                'reason'=>$crossPostType ? 'provider_group_post_type_mismatch' : 'provider_group_unbound_in_template',
+                'severity_hint'=>$crossPostType ? 'blocking' : 'warning',
+                'template_id'=>$templateId,
+                'node_id'=>(string) ( $surface['node_id'] ?? '' ),
+                'widget_type'=>$widgetType,
+                'observed_query_id'=>$observed,
+                'observed_post_types'=>$observedPostTypes,
+                'expected_provider_query_ids'=>$expectedIds,
+                'expected_post_types'=>$expectedPostTypes,
+                'authorizing'=>false,
+            );
+        }
+        usort( $out, static function ( $a, $b ) {
+            $ak = sprintf( '%010d|%s|%s', (int) ( $a['template_id'] ?? 0 ), (string) ( $a['node_id'] ?? '' ), (string) ( $a['observed_query_id'] ?? '' ) );
+            $bk = sprintf( '%010d|%s|%s', (int) ( $b['template_id'] ?? 0 ), (string) ( $b['node_id'] ?? '' ), (string) ( $b['observed_query_id'] ?? '' ) );
+            return strcmp( $ak, $bk );
+        } );
+        return $out;
     }
 
     private function normalizeBindings( array $bindings ): array {
