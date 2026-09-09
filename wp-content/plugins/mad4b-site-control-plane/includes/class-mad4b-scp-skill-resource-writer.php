@@ -5,10 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Audited wrapper for local wp-admin supporting-file writes.
  *
- * The first UI implementation calls Skill_Registry::save_text_resource() from
- * the render callback. Intercept that POST on admin_init so every supporting
- * file mutation has append-only audit evidence and a rollback path before the
- * page-level handler can run.
+ * Every supporting-file mutation passes through this wrapper so append-only
+ * audit evidence and verified rollback are part of the mutation contract.
  */
 final class MAD4B_SCP_Skill_Resource_Writer {
 	private static $booted = false;
@@ -73,12 +71,32 @@ final class MAD4B_SCP_Skill_Resource_Writer {
 		);
 		if ( ! is_wp_error( $audit ) ) return $written;
 
-		if ( $had_before ) {
-			MAD4B_SCP_Skill_Registry::save_text_resource( $level, $target, $name, $relative, $before['content'] );
-		} else {
-			self::remove_new_resource( $level, $target, $name, $relative );
+		$rollback = self::rollback( $level, $target, $name, $relative, $before, $had_before );
+		if ( is_wp_error( $rollback ) ) {
+			return new WP_Error(
+				'mad4b_skill_resource_rollback_failed',
+				'Supporting Skill file audit failed and the previous resource state could not be verified after rollback.',
+				array( 'audit_error' => $audit->get_error_code(), 'rollback_error' => $rollback->get_error_code() )
+			);
 		}
-		return new WP_Error( 'mad4b_skill_resource_audit_failed', 'Supporting Skill file change was rolled back because its audit event could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
+		return new WP_Error( 'mad4b_skill_resource_audit_failed', 'Supporting Skill file change was rolled back and verified because its audit event could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
+	}
+
+	private static function rollback( $level, $target, $name, $relative, $before, $had_before ) {
+		if ( $had_before ) {
+			$restored = MAD4B_SCP_Skill_Registry::save_text_resource( $level, $target, $name, $relative, (string) $before['content'] );
+			if ( is_wp_error( $restored ) ) return $restored;
+			$readback = MAD4B_SCP_Skill_Resource_Reader::read( $level, $target, $name, $relative );
+			if ( is_wp_error( $readback ) || empty( $before['sha256'] ) || empty( $readback['sha256'] ) || ! hash_equals( (string) $before['sha256'], (string) $readback['sha256'] ) ) {
+				return new WP_Error( 'mad4b_skill_resource_restore_mismatch', 'Restored resource does not match its pre-change digest.' );
+			}
+			return true;
+		}
+
+		if ( ! self::remove_new_resource( $level, $target, $name, $relative ) ) return new WP_Error( 'mad4b_skill_resource_remove_failed', 'New unaudited resource could not be removed.' );
+		$readback = MAD4B_SCP_Skill_Resource_Reader::read( $level, $target, $name, $relative );
+		if ( ! is_wp_error( $readback ) ) return new WP_Error( 'mad4b_skill_resource_remove_mismatch', 'New unaudited resource still exists after rollback.' );
+		return true;
 	}
 
 	private static function remove_new_resource( $level, $target, $name, $relative ) {
