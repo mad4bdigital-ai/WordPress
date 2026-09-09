@@ -11,10 +11,12 @@ Alpha11 removes side-channel/manual identity discovery from the normal operator 
 1. JetSmartFilters/provider `query_id` and JetEngine Query Builder custom `query_id` are separate namespaces.
 2. Elementor `_element_id` may identify the provider/filtering surface while Elementor `custom_query_id` is only a locator to the Query Builder object.
 3. A numeric internal Query Builder ID is evidence/locator only and is never stable route authority.
-4. A provider query ID may resolve directly when it exactly equals one unique Query Builder custom ID.
-5. Otherwise the plugin may correlate Elementor `_element_id` + `custom_query_id` with the Query Builder inventory.
-6. Correlation must fail closed on missing, ambiguous, unbounded, non-posts or custom-ID-missing records.
-7. Runtime topology discovery is read-only, non-authorizing and profile-non-mutating.
+4. When the exact matching Surface Profile route explicitly declares `query_builder_query_id`, that value is the deliberate namespace bridge for the route. Runtime consumers must resolve that exact Query Builder custom ID first and fail closed if it is missing or ambiguous; they must not silently fall back to an equal provider query ID or topology for that route.
+5. Without an explicit route bridge, a provider query ID may resolve directly when it exactly equals one unique Query Builder custom ID.
+6. Otherwise the plugin may correlate Elementor `_element_id` + `custom_query_id` with the Query Builder inventory.
+7. Correlation must fail closed on missing, ambiguous, unbounded, non-posts or custom-ID-missing records.
+8. Runtime topology discovery and explicit route resolution do not by themselves enable a Profile, Global bridge, indexing or publication authority.
+9. Runtime topology discovery is read-only, non-authorizing and profile-non-mutating.
 
 ## Nested Elementor template topology
 

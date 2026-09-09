@@ -80,7 +80,7 @@ final class AjaxPresentationEndpoint {
             'dark_presentation_source' => (string)($context['dark_presentation_source']??'blocked'),
             'filters' => (array)($context['filter_values']??$context['filters']??array()),
             'presentation_state_complete' => $presentationComplete,
-            'filtered_query_complete' => $presentationComplete,
+            'filtered_query_complete' => $resultQueryComplete,
             'result_query_complete' => $resultQueryComplete,
             'unsupported_filter_props' => array_values((array)($context['unsupported_filter_props']??array())),
             'result_count' => $context['result_count']??null,

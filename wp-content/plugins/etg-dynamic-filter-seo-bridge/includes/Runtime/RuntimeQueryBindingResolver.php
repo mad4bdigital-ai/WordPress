@@ -25,6 +25,26 @@ final class RuntimeQueryBindingResolver {
         if ( '' === $providerQueryId ) { return $this->failure( 'missing_or_invalid_provider_query_id', $provider, $providerQueryId ); }
         if ( 'jet-engine' !== $provider ) { return $this->failure( 'unsupported_provider', $provider, $providerQueryId ); }
 
+        // An exact matching Profile route may explicitly bridge the JetSmartFilters
+        // provider namespace to a distinct Query Builder custom ID. When present,
+        // that mapping is authoritative for this route and must fail closed rather
+        // than silently falling back to a coincidentally equal provider/query ID.
+        $explicit = $this->explicitProfileBinding( $provider, $providerQueryId, $profile );
+        if ( ! empty( $explicit['matched'] ) ) {
+            $evidence = (array) ( $explicit['evidence'] ?? array() );
+            $customIds = (array) ( $explicit['query_builder_custom_query_ids'] ?? array() );
+            if ( 1 !== count( $customIds ) ) {
+                return $this->failure( 'profile_explicit_query_binding_ambiguous', $provider, $providerQueryId, count( $customIds ), array(), $evidence );
+            }
+            $customId = (string) reset( $customIds );
+            $identity = $this->identity->resolve( $customId );
+            if ( empty( $identity['resolved'] ) ) {
+                $reason = sanitize_key( (string) ( $identity['reason'] ?? 'query_identity_inventory_unavailable' ) );
+                return $this->failure( 'profile_explicit_' . ( $reason ?: 'query_identity_inventory_unavailable' ), $provider, $providerQueryId, (int) ( $identity['match_count'] ?? 0 ), array(), $evidence );
+            }
+            return $this->success( $provider, $providerQueryId, $identity, 'profile_explicit_query_builder_query_id', $evidence );
+        }
+
         // Backward-compatible fast path: some sites use the same identifier in
         // JetSmartFilters and Query Builder. Exact custom-ID resolution remains
         // the only authority; an internal numeric ID is never a fallback.
@@ -66,6 +86,34 @@ final class RuntimeQueryBindingResolver {
             return $this->failure( (string) ( $identity['reason'] ?? 'query_identity_inventory_unavailable' ), $provider, $providerQueryId, (int) ( $identity['match_count'] ?? 0 ), $topology, reset( $unique ) );
         }
         return $this->success( $provider, $providerQueryId, $identity, 'elementor_runtime_topology', reset( $unique ) );
+    }
+
+    private function explicitProfileBinding( string $provider, string $providerQueryId, array $profile ): array {
+        $customIds = array();
+        $evidence = array();
+        foreach ( array_slice( (array) ( $profile['routes'] ?? array() ), 0, 50 ) as $route ) {
+            if ( ! is_array( $route ) ) { continue; }
+            if ( $provider !== sanitize_key( (string) ( $route['provider'] ?? '' ) ) ) { continue; }
+            $routeProviderQueryId = QueryId::normalize( ( $route['provider_query_id'] ?? '' ) ?: ( $route['query_id'] ?? '' ) );
+            if ( $providerQueryId !== $routeProviderQueryId ) { continue; }
+            $customId = QueryId::normalize( $route['query_builder_query_id'] ?? '' );
+            if ( '' === $customId ) { continue; }
+            $customIds[$customId] = true;
+            if ( count( $evidence ) < 20 ) {
+                $evidence[] = array(
+                    'profile_id' => sanitize_key( (string) ( $profile['id'] ?? '' ) ),
+                    'provider' => $provider,
+                    'provider_query_id' => $providerQueryId,
+                    'query_builder_custom_query_id' => $customId,
+                    'authorizing' => false,
+                );
+            }
+        }
+        return array(
+            'matched' => ! empty( $customIds ),
+            'query_builder_custom_query_ids' => array_keys( $customIds ),
+            'evidence' => $evidence,
+        );
     }
 
     private function success( string $provider, string $providerQueryId, array $identity, string $source, array $evidence ): array {
