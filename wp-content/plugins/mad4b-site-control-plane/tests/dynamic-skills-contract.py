@@ -208,19 +208,29 @@ for marker in [
     'mad4b_skill_export_size_limit_exceeded',
     'uncompressed_payload_bytes',
     'resource_count',
-    "'capabilities' => array( 'Read' )",
+    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
+    "MAD4B_SCP_Write_Runtime_Certification::observe()",
+    "$write_ready = ! empty( $write_authority['ready'] ) && ! empty( $write_certification['ready'] )",
+    "$capabilities = $write_ready ? array( 'Read', 'Write' ) : array( 'Read' )",
+    "'capabilities' => $capabilities",
+    "'write_certification_ready'",
     "'publication_semantics' => 'snapshot'",
 ]:
     if marker not in exporter:
-        raise SystemExit(f'missing bounded read-only exporter guard: {marker}')
+        raise SystemExit(f'missing bounded certification-gated exporter guard: {marker}')
 
 for marker in [
     'automatically enables the local Skill editor',
     'No `wp-config.php` edit is required',
     'Production is never auto-enabled',
+    'Portable Plugin capability: `Read + Write`',
+    'mad4b-write',
+    'approval-plan',
+    'rest-compatibility-status',
+    'WPML',
 ]:
     if marker not in readme:
-        raise SystemExit(f'missing zero-touch Staging documentation marker: {marker}')
+        raise SystemExit(f'missing governed Staging documentation marker: {marker}')
 
 manifest = json.loads((portable / 'plugin.json').read_text(encoding='utf-8'))
 compat = json.loads((portable / '.codex-plugin' / 'plugin.json').read_text(encoding='utf-8'))
@@ -232,10 +242,14 @@ if manifest.get('name') != 'mad4b-wordpress':
 openai = manifest.get('extensions', {}).get('com.openai', {})
 if openai.get('apps') != './.app.json':
     raise SystemExit('portable plugin must reference the existing MCP app mapping')
-if openai.get('interface', {}).get('capabilities') != ['Read']:
-    raise SystemExit('portable OpenAI interface must stay Read-only')
+if openai.get('interface', {}).get('capabilities') != ['Read', 'Write']:
+    raise SystemExit('portable OpenAI interface must declare governed Read + Write')
 if compat.get('apps') != './.app.json' or compat.get('skills') != './skills/':
     raise SystemExit('compatibility manifest must point to app mapping and root skills directory')
+if compat.get('interface', {}).get('capabilities') != ['Read', 'Write']:
+    raise SystemExit('Codex compatibility manifest must match governed Read + Write capability')
+if compat.get('version') != manifest.get('version'):
+    raise SystemExit('portable and Codex compatibility manifest versions must match')
 
 app_id = app.get('apps', {}).get('mad4b-wordpress', {}).get('id', '')
 if not re.fullmatch(r'plugin_asdk_app_[A-Za-z0-9]+', app_id):
@@ -285,4 +299,4 @@ if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpres
 if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
-print('mad4b.dynamic-skills.v3: PASS')
+print('mad4b.dynamic-skills.v4: PASS')
