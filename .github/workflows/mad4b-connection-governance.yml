@@ -171,6 +171,7 @@ jobs:
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
           FIXTURE="$WP_PATH/wp-content/plugins/hostinger-ai-assistant"
+          MANAGED_MU="$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
           mkdir -p "$FIXTURE/vendor/wordpress/mcp-adapter/includes/Core"
           cat > "$FIXTURE/hostinger-ai-assistant.php" <<'PHP'
           <?php
@@ -198,12 +199,9 @@ jobs:
           }
           PHP
 
-          php /tmp/wp-cli.phar option update home 'https://staging.egypttourgates.com' --path="$WP_PATH"
-          php /tmp/wp-cli.phar option update siteurl 'https://staging.egypttourgates.com' --path="$WP_PATH"
+          # Configure the collision while the origin is still non-Staging, so
+          # no governed repair can run before the intended first request.
           php /tmp/wp-cli.phar plugin activate hostinger-ai-assistant --path="$WP_PATH"
-
-          # Keep active_plugins canonical: official MCP Adapter before Hostinger.
-          # The live defect bypasses this list through an earlier loader.
           php /tmp/wp-cli.phar eval '
           $active = get_option( "active_plugins", array() );
           $rest = array();
@@ -217,14 +215,26 @@ jobs:
           update_option( "active_plugins", array_values( $rest ) );
           ' --path="$WP_PATH"
 
+          if [ -e "$MANAGED_MU" ]; then
+            echo "FAIL fixture contamination: managed MU bootstrap exists before Hostinger preloader" >&2
+            exit 1
+          fi
+
           # Reproduce the Staging evidence: Hostinger claims McpAdapter before
-          # normal active plugins despite the canonical active_plugins order.
+          # normal active plugins despite canonical active_plugins order.
           mkdir -p "$WP_PATH/wp-content/mu-plugins"
           cat > "$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php" <<'PHP'
           <?php
           if ( ! defined( 'ABSPATH' ) ) { exit; }
           require_once WP_PLUGIN_DIR . '/hostinger-ai-assistant/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php';
           PHP
+
+          # Move the disposable site onto the exact Staging origin without a
+          # WordPress bootstrap. This guarantees the next eval-file is the
+          # first governed Staging request after the preloader exists.
+          mysql --protocol=tcp -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress \
+            -e "UPDATE wp_options SET option_value='https://staging.egypttourgates.com' WHERE option_name IN ('home','siteurl');"
+          test "$(mysql --protocol=tcp -N -B -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress -e \"SELECT COUNT(*) FROM wp_options WHERE option_name IN ('home','siteurl') AND option_value='https://staging.egypttourgates.com';\")" = "2"
 
           # Request 1 must detect provenance mismatch and install the managed
           # 000-* MU bootstrap. It cannot replace the already-declared class.
