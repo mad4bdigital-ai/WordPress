@@ -10,11 +10,11 @@
  * WPMU_PLUGIN_DIR regardless of plugin headers, so the managed MU copy remains
  * executable without one.
  *
- * Important lifecycle rule: this MU bootstrap pins the canonical MCP Adapter
- * classes and package autoloader only. It MUST NOT include mcp-adapter.php or
- * call WP\MCP\Plugin::instance() during the MU phase. The official plugin main
- * file performs dependency checks (including wp_register_ability()) and must be
- * allowed to execute later in WordPress' normal active-plugin phase.
+ * Lifecycle rule: pin canonical symbols + package autoloader, then instantiate
+ * McpAdapter only to arm its canonical init hook early. Do not include the MCP
+ * Adapter plugin main file and do not initialize servers in the MU phase. The
+ * normal active-plugin phase remains responsible for the official plugin main
+ * bootstrap; the singleton call there is idempotent.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -32,7 +32,9 @@ $mad4b_mcp_mu_status = array(
 	'preclaimed_symbol' => '',
 	'canonical_symbols_pinned' => false,
 	'canonical_autoloader_loaded' => false,
-	'official_plugin_bootstrap_deferred' => false,
+	'adapter_instance_armed' => false,
+	'adapter_init_hook' => '',
+	'adapter_init_hook_bound' => false,
 	'runtime_from_official_plugin' => false,
 	'runtime_source' => 'unavailable',
 );
@@ -82,10 +84,6 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 		}
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] && 'official_adapter_file_unreadable' !== $mad4b_mcp_mu_status['state'] ) {
-			// Pin canonical symbols before Hostinger's regular-plugin bootstrap can
-			// claim them, then register the official package autoloader. Do not run
-			// the MCP Adapter plugin main file here: its dependency check belongs to
-			// the later normal active-plugin phase.
 			foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once $mad4b_mcp_mu_pin_file;
 			$mad4b_mcp_mu_status['canonical_symbols_pinned'] = class_exists( 'WP\\MCP\\Autoloader', false )
 				&& class_exists( 'WP\\MCP\\Core\\McpAdapter', false )
@@ -98,8 +96,13 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 				if ( ! $mad4b_mcp_mu_status['canonical_autoloader_loaded'] ) {
 					$mad4b_mcp_mu_status['state'] = 'canonical_autoloader_load_failed';
 				} else {
-					$mad4b_mcp_mu_status['official_plugin_bootstrap_deferred'] = true;
-					$mad4b_mcp_mu_status['state'] = 'canonical_runtime_pinned_plugin_bootstrap_deferred';
+					$mad4b_mcp_mu_adapter = \WP\MCP\Core\McpAdapter::instance();
+					$mad4b_mcp_mu_status['adapter_instance_armed'] = is_object( $mad4b_mcp_mu_adapter );
+					$mad4b_mcp_mu_status['adapter_init_hook'] = defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ? 'init' : 'rest_api_init';
+					$mad4b_mcp_mu_status['adapter_init_hook_bound'] = false !== has_action( $mad4b_mcp_mu_status['adapter_init_hook'], array( $mad4b_mcp_mu_adapter, 'init' ) );
+					$mad4b_mcp_mu_status['state'] = $mad4b_mcp_mu_status['adapter_instance_armed'] && $mad4b_mcp_mu_status['adapter_init_hook_bound']
+						? 'canonical_runtime_pinned_adapter_hook_armed'
+						: 'canonical_adapter_hook_arm_failed';
 				}
 			}
 		}
@@ -126,7 +129,7 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 			}
 		}
 
-		if ( 'canonical_runtime_pinned_plugin_bootstrap_deferred' === $mad4b_mcp_mu_status['state'] && empty( $mad4b_mcp_mu_status['runtime_from_official_plugin'] ) ) {
+		if ( 'canonical_runtime_pinned_adapter_hook_armed' === $mad4b_mcp_mu_status['state'] && empty( $mad4b_mcp_mu_status['runtime_from_official_plugin'] ) ) {
 			$mad4b_mcp_mu_status['state'] = 'runtime_not_official_after_bootstrap';
 		}
 	}
@@ -144,6 +147,7 @@ unset(
 	$mad4b_mcp_mu_pin_file,
 	$mad4b_mcp_mu_autoloader,
 	$mad4b_mcp_mu_autoload_result,
+	$mad4b_mcp_mu_adapter,
 	$mad4b_mcp_mu_required_file,
 	$mad4b_mcp_mu_class,
 	$mad4b_mcp_mu_reflection,
