@@ -81,6 +81,7 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-famil
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-planning-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-rest-compatibility.php';
@@ -108,6 +109,7 @@ MAD4B_SCP_Staging_Write_Authority::bootstrap();
 // Register lazy Abilities/MCP callbacks before plugins_loaded so a third-party
 // REST prime cannot consume the one-shot MCP Adapter init action first.
 MAD4B_SCP_MCP_Registration_Bridge::boot_early();
+MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();
 
 // Provider kill-switch filters must exist before plugins_loaded provider bootstraps.
 MAD4B_SCP_MCP_Provider_Isolation::boot_early();
