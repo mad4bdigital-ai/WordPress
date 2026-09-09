@@ -76,6 +76,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Governance_Abilities::boot();
 		MAD4B_SCP_Skill_Abilities::boot();
 		MAD4B_SCP_Skills_Adapter::boot();
+		MAD4B_SCP_Skill_Runtime_Certification::boot();
 
 		$abilities = new MAD4B_SCP_Abilities();
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
