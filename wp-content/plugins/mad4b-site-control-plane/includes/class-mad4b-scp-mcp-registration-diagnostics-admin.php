@@ -20,6 +20,7 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ) return;
 
 		$status = MAD4B_SCP_MCP_Registration_Bridge::status();
+		$conflict = class_exists( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard' ) ? MAD4B_SCP_MCP_Runtime_Conflict_Guard::status() : array();
 		$errors = isset( $status['registration_errors'] ) && is_array( $status['registration_errors'] ) ? $status['registration_errors'] : array();
 		$nonempty_errors = array_filter( $errors, static function ( $value ) { return '' !== (string) $value; } );
 		$official = ! empty( $status['adapter_runtime_from_official_plugin'] );
@@ -40,6 +41,17 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		self::row( 'Adapter runtime version', isset( $status['adapter_runtime_version'] ) ? $status['adapter_runtime_version'] : '' );
 		self::row( 'mcp_adapter_init count', isset( $status['mcp_adapter_init_count'] ) ? (string) (int) $status['mcp_adapter_init_count'] : '0' );
 		self::row( 'Abilities init count', isset( $status['abilities_init_count'] ) ? (string) (int) $status['abilities_init_count'] : '0' );
+		if ( ! empty( $conflict ) ) {
+			self::row( 'Runtime conflict guard eligible', ! empty( $conflict['eligible'] ) ? 'yes' : 'no' );
+			self::row( 'Official MCP Adapter active', ! empty( $conflict['official_plugin_active'] ) ? 'yes' : 'no' );
+			self::row( 'Hostinger bundled adapter active', ! empty( $conflict['hostinger_bundle_active'] ) ? 'yes' : 'no' );
+			self::row( 'Official loads before Hostinger', ! empty( $conflict['official_loads_before_hostinger'] ) ? 'yes' : 'no' );
+			self::row( 'Collision risk detected', ! empty( $conflict['collision_risk_detected'] ) ? 'yes' : 'no' );
+			self::row( 'Load-order repair applied', ! empty( $conflict['repair_applied'] ) ? 'yes' : 'no' );
+			self::row( 'Next request required', ! empty( $conflict['next_request_required'] ) ? 'yes' : 'no' );
+			self::row( 'Load-order guard state', isset( $conflict['state'] ) ? sanitize_key( (string) $conflict['state'] ) : '' );
+			self::row( 'Load-order guard blocker', isset( $conflict['blocker'] ) && '' !== (string) $conflict['blocker'] ? sanitize_key( (string) $conflict['blocker'] ) : 'none' );
+		}
 		foreach ( $errors as $server_id => $error ) self::row( 'Registration error: ' . sanitize_key( (string) $server_id ), '' === (string) $error ? 'none' : sanitize_key( (string) $error ) );
 		echo '</tbody></table></div>';
 	}
