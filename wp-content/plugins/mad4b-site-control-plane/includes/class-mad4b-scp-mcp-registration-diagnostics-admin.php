@@ -21,6 +21,7 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 
 		$status = MAD4B_SCP_MCP_Registration_Bridge::status();
 		$conflict = class_exists( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard' ) ? MAD4B_SCP_MCP_Runtime_Conflict_Guard::status() : array();
+		$build = self::disk_evidence();
 		$errors = isset( $status['registration_errors'] ) && is_array( $status['registration_errors'] ) ? $status['registration_errors'] : array();
 		$nonempty_errors = array_filter( $errors, static function ( $value ) { return '' !== (string) $value; } );
 		$official = ! empty( $status['adapter_runtime_from_official_plugin'] );
@@ -30,10 +31,17 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		foreach ( MAD4B_SCP_Servers::registration_status() as $entry ) {
 			if ( empty( $entry['registered'] ) ) { $registered = false; break; }
 		}
-		$type = $registered && $official && ! $missed && $hook_bound ? 'success' : 'warning';
+		$type = $registered && $official && ! $missed && $hook_bound && empty( $build['runtime_stale_vs_disk'] ) ? 'success' : 'warning';
 
 		echo '<div class="notice notice-' . esc_attr( $type ) . '"><p><strong>' . esc_html__( 'MAD4B MCP registration diagnostics', 'mad4b-site-control-plane' ) . '</strong></p>';
 		echo '<table class="widefat striped" style="max-width:1100px;margin:8px 0 12px"><tbody>';
+		self::row( 'Control Plane runtime version', $build['runtime_version'] );
+		self::row( 'Control Plane main file disk version', $build['disk_version'] );
+		self::row( 'Control Plane runtime stale vs disk', ! empty( $build['runtime_stale_vs_disk'] ) ? 'yes' : 'no' );
+		self::row( 'Control Plane main file SHA-256 prefix', $build['main_sha256_prefix'] );
+		self::row( 'Control Plane build marker present', ! empty( $build['marker_present'] ) ? 'yes' : 'no' );
+		self::row( 'Control Plane build marker release', $build['marker_release'] );
+		self::row( 'Control Plane build marker matches disk', ! empty( $build['marker_matches_disk'] ) ? 'yes' : 'no' );
 		self::row( 'Bridge hook bound', $hook_bound ? 'yes' : 'no' );
 		self::row( 'Adapter init happened before bridge boot', $missed ? 'yes' : 'no' );
 		self::row( 'Adapter runtime from official plugin', $official ? 'yes' : 'no' );
@@ -62,6 +70,45 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		}
 		foreach ( $errors as $server_id => $error ) self::row( 'Registration error: ' . sanitize_key( (string) $server_id ), '' === (string) $error ? 'none' : sanitize_key( (string) $error ) );
 		echo '</tbody></table></div>';
+	}
+
+	/**
+	 * Read-only deployment evidence. This intentionally reports only bounded
+	 * version/hash values and never exposes an absolute filesystem path.
+	 */
+	private static function disk_evidence() {
+		$runtime_version = defined( 'MAD4B_SCP_VERSION' ) ? sanitize_text_field( (string) MAD4B_SCP_VERSION ) : '';
+		$main = defined( 'MAD4B_SCP_FILE' ) ? MAD4B_SCP_FILE : '';
+		$disk_version = '';
+		$main_sha = '';
+		if ( $main && is_readable( $main ) ) {
+			$header = file_get_contents( $main, false, null, 0, 4096 );
+			if ( is_string( $header ) && preg_match( '/^[ \t]*\*[ \t]*Version:\s*([^\r\n]+)/mi', $header, $match ) ) {
+				$disk_version = sanitize_text_field( trim( (string) $match[1] ) );
+			}
+			$hash = hash_file( 'sha256', $main );
+			if ( is_string( $hash ) ) $main_sha = substr( strtolower( $hash ), 0, 16 );
+		}
+
+		$marker = defined( 'MAD4B_SCP_DIR' ) ? trailingslashit( MAD4B_SCP_DIR ) . 'MAD4B-RUNTIME-BUILD.txt' : '';
+		$marker_present = $marker && is_readable( $marker );
+		$marker_release = '';
+		if ( $marker_present ) {
+			$text = file_get_contents( $marker, false, null, 0, 2048 );
+			if ( is_string( $text ) && preg_match( '/^release=([^\r\n]+)$/mi', $text, $match ) ) {
+				$marker_release = sanitize_text_field( trim( (string) $match[1] ) );
+			}
+		}
+
+		return array(
+			'runtime_version' => $runtime_version,
+			'disk_version' => $disk_version,
+			'runtime_stale_vs_disk' => '' !== $runtime_version && '' !== $disk_version && ! hash_equals( $runtime_version, $disk_version ),
+			'main_sha256_prefix' => $main_sha,
+			'marker_present' => (bool) $marker_present,
+			'marker_release' => $marker_release,
+			'marker_matches_disk' => '' !== $marker_release && '' !== $disk_version && hash_equals( $marker_release, $disk_version ),
+		);
 	}
 
 	private static function row( $label, $value ) {
