@@ -16,7 +16,10 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 37 );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' ), 110 );
+		// Do not inspect REST while abilities are still registering. MCP Adapter's
+		// HTTP transports attach their rest_api_init callbacks only when servers are
+		// constructed. Observing here used to let rest_get_server() fire too early,
+		// leaving every /mcp/* route unregistered in WP-CLI/runtime processes.
 		add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' ), 110 );
 		add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 );
 	}
@@ -41,6 +44,13 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 	public static function observe() {
 		if ( self::$observing ) return self::status();
+		// Certification is meaningful only on the exact governed Staging origin.
+		// Off-origin/Production processes must stay fail-closed without producing
+		// audit or option churn merely because WordPress booted.
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+			return self::ineligible_status();
+		}
+
 		self::$observing = true;
 		$result = self::evaluate();
 		self::$observing = false;
@@ -84,6 +94,11 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 	}
 
 	public static function status() {
+		// Never surface a previously persisted exact-Staging certification as current
+		// truth after this database/site is moved to another origin or environment.
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+			return self::ineligible_status();
+		}
 		$stored = get_option( self::OPTION, array() );
 		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) return $stored;
 		return array(
@@ -95,6 +110,22 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'authority_server' => 'mad4b-write',
 			'external_client_tools_verified' => false,
 			'external_client_action' => 'Refresh/Scan Tools for the same Plugin after this exact Staging build is deployed, then verify the write tool inventory through ChatGPT.',
+		);
+	}
+
+	private static function ineligible_status() {
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$blocker = 'staging' === $environment ? 'origin_not_governed_staging' : 'environment_not_staging';
+		return array(
+			'contract' => self::CONTRACT,
+			'ready' => false,
+			'state' => 'ineligible',
+			'blockers' => array( $blocker ),
+			'remote_transport' => 'mad4b-chatgpt',
+			'authority_server' => 'mad4b-write',
+			'external_client_tools_verified' => false,
+			'persistence' => 'not_applicable',
+			'external_client_action' => 'Write runtime certification is evaluated only on the exact governed Staging origin.',
 		);
 	}
 
