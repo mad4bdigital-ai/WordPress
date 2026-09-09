@@ -1,8 +1,14 @@
 <?php
 /**
- * Plugin Name: MAD4B MCP Adapter Early Bootstrap
- * Description: Staging-only early loader that ensures the canonical MCP Adapter owns the runtime before normal plugins load.
- * Version: 1.1.0
+ * MAD4B MCP Adapter Early Bootstrap.
+ *
+ * Staging-only early loader that ensures the canonical MCP Adapter owns the
+ * runtime before normal plugins load. This source intentionally has no
+ * WordPress `Plugin Name:` header while it lives under the regular plugin:
+ * the installer scans one subdirectory deep and must not discover this file as
+ * a second activatable plugin. WordPress loads PHP files placed directly in
+ * WPMU_PLUGIN_DIR regardless of plugin headers, so the managed MU copy remains
+ * executable without one.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -64,7 +70,7 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 					$mad4b_mcp_mu_status['state'] = 'official_adapter_file_unreadable';
 					break;
 				}
-			}
+		}
 		}
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] && 'official_adapter_file_unreadable' !== $mad4b_mcp_mu_status['state'] ) {
