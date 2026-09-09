@@ -58,6 +58,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot();
 		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();
 		MAD4B_SCP_Runtime_Components_Admin_UI::boot();
+		MAD4B_SCP_Skills_Admin_UI::boot();
 		MAD4B_SCP_Local_OAuth_Browser_Canary::boot();
 
 		if ( ! function_exists( 'wp_register_ability' ) ) {
@@ -68,6 +69,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Connection_Ability::boot();
 		MAD4B_SCP_Governed_Ability_Overrides::boot();
 		MAD4B_SCP_Governance_Abilities::boot();
+		MAD4B_SCP_Skill_Abilities::boot();
 
 		$abilities = new MAD4B_SCP_Abilities();
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
