@@ -107,18 +107,25 @@ jobs:
           set -euo pipefail
           plugin='wp-content/plugins/mad4b-site-control-plane'
           write="$plugin/includes/class-mad4b-scp-staging-write-authority.php"
+          planning="$plugin/includes/class-mad4b-scp-staging-write-planning-guard.php"
           cert="$plugin/includes/class-mad4b-scp-write-runtime-certification.php"
           rest="$plugin/includes/class-mad4b-scp-rest-compatibility.php"
           servers="$plugin/includes/class-mad4b-scp-servers.php"
-          test -f "$write" -a -f "$cert" -a -f "$rest" -a -f "$servers"
+          test -f "$write" -a -f "$planning" -a -f "$cert" -a -f "$rest" -a -f "$servers"
           grep -Fq "const STAGING_HOST = 'staging.egypttourgates.com'" "$write"
           grep -Fq "'production_auto_enable' => false" "$write"
           grep -Fq "'breakglass_auto_enable' => false" "$write"
           grep -Fq "'all_remote_writes_require_exact_approval' => true" "$write"
           grep -Fq "MAD4B_SCP_Agent_Registry::grant_ability" "$write"
           grep -Fq "'mad4b/database-raw-query' === \$ability_name" "$servers"
-          grep -Fq "mad4b.write-runtime-certification.v1" "$cert"
-          grep -Fq "mad4b.rest-compatibility.v1" "$rest"
+          grep -Fq "mad4b.staging-write-planning-guard.v2" "$planning"
+          grep -Fq "remote_planner_requires_exact_mad4b_write_grant" "$planning"
+          grep -Fq "creates_pending_ticket_only" "$planning"
+          grep -Fq "mad4b.write-runtime-certification.v2" "$cert"
+          grep -Fq "approval_planner_bootstrap_exception" "$cert"
+          grep -Fq "mad4b.rest-compatibility.v2" "$rest"
+          grep -Fq "hook_inventory( 'rest_enabled' )" "$rest"
+          grep -Fq "hook_inventory( 'rest_authentication_errors' )" "$rest"
           if grep -Fq "add_filter( 'rest_enabled'" "$rest" || grep -Fq "add_filter( 'rest_authentication_errors'" "$rest"; then
             echo 'Control Plane REST compatibility code must not globally modify REST access.' >&2
             exit 1
@@ -157,7 +164,7 @@ jobs:
           stage = Path(sys.argv[1])
           version, control_sha, adapter_sha = sys.argv[2:]
           data = {
-              'contract': 'mad4b.site-control-plane.staging-install-kit.v3',
+              'contract': 'mad4b.site-control-plane.staging-install-kit.v4',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
               'commit': os.environ.get('SOURCE_SHA'),
               'release_class': 'staging-governed-write-release-candidate',
@@ -184,9 +191,12 @@ jobs:
                   'governed_staging_write_authority': True,
                   'all_registered_nonreadonly_content_admin_actions_projected_to_mad4b_write': True,
                   'remote_writes_require_exact_one_time_approval': True,
+                  'approval_plan_bootstrap_governed_by_nhi_grant_budget': True,
+                  'approval_plan_creates_pending_ticket_only': True,
+                  'approval_plan_breakglass_target_denied': True,
                   'breakglass_excluded_from_write_surface': True,
                   'production_auto_write_disabled': True,
-                  'wpml_rest_global_interception_absent': True,
+                  'wpml_rest_live_hook_inventory_evidenced': True,
               },
               'environment_safety': {
                   'staging_exact_origin_mutation_autoconfig': True,
@@ -215,10 +225,10 @@ jobs:
           2. Install and activate the MAD4B Site Control Plane ZIP on **staging.egypttourgates.com only**.
           3. Skills, the Staging App mapping and the governed mutation gate bootstrap automatically on that exact Staging origin; do not add manual enable constants for the normal path.
           4. The plugin creates/binds a site-local NHI and exact `mad4b-write` grants for every registered non-readonly content/admin ability. Breakglass is excluded.
-          5. Remote OAuth is identity-only. Every remote write requires a short-lived exact one-time approval ticket; a read bearer alone cannot authorize mutation.
+          5. Remote OAuth is identity-only. Actual mutations require a short-lived exact one-time approval ticket. `mad4b/approval-plan` is the bounded bootstrap exception: it is itself NHI/grant/budget governed, may create only a pending mutation ticket for the same Staging agent + `mad4b-write`, and may never target breakglass/recovery or auto-approve.
           6. Provider-specific mutations remain subject to their provider certification, capability, stale-state and policy gates.
           7. Read `mad4b/write-authority-status` and `mad4b/write-runtime-certification` and require `ready` before external write acceptance.
-          8. Read `mad4b/rest-compatibility-status`; on a WPML-enabled Staging site require the internal `/wpml/v1/rest/status` probe to return valid GET/query-parameter evidence.
+          8. Read `mad4b/rest-compatibility-status`; on a WPML-enabled Staging site require the internal `/wpml/v1/rest/status` probe to return valid GET/query-parameter evidence and require no MAD4B callback on global `rest_enabled`/`rest_authentication_errors` hooks.
           9. Compare the portable ChatGPT package `MAD4B-SNAPSHOT-ID.txt` with `mad4b/skills-export-status` before external snapshot acceptance, then Refresh/Scan Tools in ChatGPT.
 
           Production mutation and Breakglass are not authorized by this package. PR merge still requires exact-head live Staging acceptance.
@@ -235,6 +245,7 @@ jobs:
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md'
@@ -249,6 +260,7 @@ jobs:
           grep -Fq "\"commit\": \"$SOURCE_SHA\"" "$stage/install-manifest.json"
           grep -Fq '"release_class": "staging-governed-write-release-candidate"' "$stage/install-manifest.json"
           grep -Fq '"governed_staging_write_authority": true' "$stage/install-manifest.json"
+          grep -Fq '"approval_plan_bootstrap_governed_by_nhi_grant_budget": true' "$stage/install-manifest.json"
           grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
