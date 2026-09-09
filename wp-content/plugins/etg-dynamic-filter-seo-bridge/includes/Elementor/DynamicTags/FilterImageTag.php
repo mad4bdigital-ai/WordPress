@@ -30,7 +30,7 @@ final class FilterImageTag extends \Elementor\Core\DynamicTags\Data_Tag {
             'type'=>\Elementor\Controls_Manager::SELECT,
             'options'=>$modes,
             'default'=>'priority',
-            'description'=>'Returns one image: the first media item from the selected collection strategy. Use ETG Filter Gallery/Slideshow when you need multiple images.',
+            'description'=>'Returns the first healthy image from this collection.',
         ));
         $mediaControl = defined('Elementor\\Controls_Manager::MEDIA') ? \Elementor\Controls_Manager::MEDIA : 'media';
         $this->add_control('fallback_image', array(
@@ -38,7 +38,7 @@ final class FilterImageTag extends \Elementor\Core\DynamicTags\Data_Tag {
             'type'=>$mediaControl,
             'default'=>array('id'=>0,'url'=>''),
             'dynamic'=>array('active'=>true),
-            'description'=>'Used only when ETG has no governed image. Choose Media Library or any Elementor/JetEngine Dynamic Tag compatible with the Image category.',
+            'description'=>'Used only when ETG returns no image.',
         ));
         $this->etgRegisterPreviewControl();
     }
