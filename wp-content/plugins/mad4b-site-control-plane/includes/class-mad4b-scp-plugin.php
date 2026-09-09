@@ -76,6 +76,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Connection_Ability::boot();
 		MAD4B_SCP_Governed_Ability_Overrides::boot();
 		MAD4B_SCP_Staging_Write_Authority::boot();
+		MAD4B_SCP_Staging_Write_Planning_Guard::boot();
 		MAD4B_SCP_REST_Compatibility::boot();
 		MAD4B_SCP_Write_Runtime_Certification::boot();
 		MAD4B_SCP_Governance_Abilities::boot();
