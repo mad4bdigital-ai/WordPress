@@ -1,0 +1,32 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mad4b-wordpress",
+  "version": "0.1.0",
+  "description": "Governed WordPress diagnostics and reusable workflow skills for the MAD4B MCP control plane.",
+  "author": {
+    "name": "MAD4B",
+    "url": "https://github.com/mad4bdigital-ai/WordPress"
+  },
+  "repository": "https://github.com/mad4bdigital-ai/WordPress",
+  "license": "GPL-2.0-or-later",
+  "keywords": ["wordpress", "mcp", "skills", "elementor", "jetengine", "governance"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "MAD4B WordPress — Egypt Tour Gates",
+        "shortDescription": "Governed WordPress diagnostics and workflow skills.",
+        "longDescription": "WordPress diagnostics, connection checks, Elementor, JetEngine, archive audits and change-safety workflows backed by the governed MAD4B MCP control plane.",
+        "developerName": "MAD4B",
+        "category": "Productivity",
+        "capabilities": ["Read"],
+        "websiteURL": "https://github.com/mad4bdigital-ai/WordPress",
+        "defaultPrompt": [
+          "Diagnose my WordPress site.",
+          "Check my MAD4B WordPress connection.",
+          "Audit this Elementor template.",
+          "Analyze my JetEngine dynamic content setup."
+        ]
+      }
+    }
+  }
+}
