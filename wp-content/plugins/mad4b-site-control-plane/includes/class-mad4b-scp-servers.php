@@ -10,17 +10,20 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function core_tools( $server_id ) {
+		$governed_status = array( 'mad4b/write-authority-status', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status' );
 		$map = array(
-			'mad4b-read' => array(
+			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
-			),
-			// Purpose-built remote gateway for ChatGPT. Keep generic filesystem and
-			// database inspection on the privileged local/read transport only.
-			'mad4b-chatgpt' => array(
+			), $governed_status ),
+			// Purpose-built remote gateway for ChatGPT. Generic filesystem/database
+			// introspection remains excluded. On the exact governed Staging origin,
+			// certified write abilities are added separately by chatgpt_tools() and
+			// rebound to exact mad4b-write NHI authority at execution time.
+			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
-			),
+			), $governed_status ),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
@@ -33,9 +36,9 @@ final class MAD4B_SCP_Servers {
 	}
 
 	/**
-	 * Project only abilities that are explicitly annotated non-readonly from the
-	 * existing content/admin authorities. This creates no generic dispatcher and
-	 * does not infer write capability from names.
+	 * Project every registered content/admin ability explicitly annotated
+	 * non-readonly. No name inference or generic dispatcher is used. Breakglass is
+	 * not a candidate surface and remains isolated.
 	 */
 	public static function write_tools() {
 		$candidates = array_merge(
@@ -54,6 +57,7 @@ final class MAD4B_SCP_Servers {
 
 		$write = array();
 		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
+			if ( 'mad4b/database-raw-query' === $ability_name ) continue;
 			if ( ! function_exists( 'wp_get_ability' ) ) continue;
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
@@ -66,11 +70,10 @@ final class MAD4B_SCP_Servers {
 	}
 
 	/**
-	 * The hard-coded ChatGPT core inventory is already an explicit governed
-	 * allowlist. Keep it present during MCP server bootstrap even when the
-	 * Abilities registry has not fired yet. Adapter abilities are additive only
-	 * after their readonly=true metadata is actually observable; missing metadata
-	 * therefore remains fail-closed without collapsing the gateway to zero tools.
+	 * The hard-coded ChatGPT read inventory remains an explicit governed allowlist.
+	 * On the exact Staging origin only, a ready MAD4B_SCP_Staging_Write_Authority
+	 * appends the complete non-readonly write inventory. Those tools remain bound
+	 * to mad4b-write exact grants and one-time approvals during execution.
 	 */
 	public static function chatgpt_tools() {
 		$core = self::core_tools( 'mad4b-chatgpt' );
@@ -95,6 +98,10 @@ final class MAD4B_SCP_Servers {
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
 			$tools[] = (string) $ability_name;
+		}
+
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) {
+			$tools = array_merge( $tools, self::write_tools() );
 		}
 		return array_values( array_unique( $tools ) );
 	}
@@ -134,12 +141,18 @@ final class MAD4B_SCP_Servers {
 					if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
 						return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
 					}
-				}
 			}
 			return null;
 		}
 
-		if ( 'mad4b-chatgpt' === $server_id && ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return null;
+		if ( 'mad4b-chatgpt' === $server_id ) {
+			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return null;
+			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+				&& MAD4B_SCP_Staging_Write_Authority::effective()
+				&& MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) {
+				return self::provider_for_ability( 'mad4b-write', $ability_name );
+			}
+		}
 		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return 'core';
 		$surface = self::surface_for_server( $server_id );
 		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
@@ -205,11 +218,15 @@ final class MAD4B_SCP_Servers {
 		$content_tools = array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) );
 		$write_tools = self::write_tools();
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
+		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+		$chatgpt_description = $chatgpt_write_ready
+			? 'ChatGPT Staging gateway with read diagnostics plus governed write tools delegated to exact mad4b-write NHI grants and one-time approvals. Generic filesystem/database introspection and breakglass remain excluded.'
+			: 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.', $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write ingress containing only abilities explicitly annotated non-readonly. Exact grants bind to this transport server.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every registered content/admin ability explicitly annotated non-readonly. Exact grants bind to this server; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', self::core_tools( 'mad4b-breakglass' ), array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability );
 	}
