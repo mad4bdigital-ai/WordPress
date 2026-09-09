@@ -10,6 +10,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
@@ -88,6 +89,7 @@ jobs:
             includes/class-mad4b-scp-skill-abilities.php \
             includes/class-mad4b-scp-skills-admin-ui.php \
             includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-staging-write-planning-guard.php \
             includes/class-mad4b-scp-write-runtime-certification.php \
             includes/class-mad4b-scp-rest-compatibility.php \
             includes/class-mad4b-scp-authorization.php \
