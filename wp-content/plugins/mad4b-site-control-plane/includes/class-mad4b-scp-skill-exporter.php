@@ -84,6 +84,16 @@ final class MAD4B_SCP_Skill_Exporter {
 			);
 		}
 
+		// Recompute after reading every file so an administrator edit racing the
+		// export cannot produce a ZIP whose embedded identity describes a different
+		// runtime state. Fail closed and require a fresh export instead.
+		$identity_after = MAD4B_SCP_Skill_Snapshot_Identity::build();
+		if ( empty( $identity_after['ready'] ) || empty( $identity_after['identity_token'] ) || ! hash_equals( (string) $identity['identity_token'], (string) $identity_after['identity_token'] ) ) {
+			$zip->close();
+			@unlink( $tmp );
+			return new WP_Error( 'mad4b_skill_snapshot_changed_during_export', 'The enabled Skill snapshot changed while the portable package was being built. Retry the export from the new stable snapshot.' );
+		}
+
 		$export_meta = array(
 			'contract' => self::CONTRACT,
 			'generated_at' => gmdate( 'c' ),
