@@ -10,6 +10,8 @@ portable = repo / 'plugins' / 'mad4b-wordpress'
 autoconfig = (wp / 'includes' / 'class-mad4b-scp-skill-autoconfig.php').read_text(encoding='utf-8')
 registry = (wp / 'includes' / 'class-mad4b-scp-skill-registry.php').read_text(encoding='utf-8')
 seeder = (wp / 'includes' / 'class-mad4b-scp-skill-seeder.php').read_text(encoding='utf-8')
+provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
+provider_catalog = json.loads((wp / 'config' / 'skill-provider-catalog.json').read_text(encoding='utf-8'))
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
 admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(encoding='utf-8')
@@ -66,9 +68,71 @@ for marker in [
     "jetengine-content-modeling",
     "wordpress-archive-audit",
     "wordpress-change-safety",
+    "'enabled' => false",
+    "class-mad4b-scp-skill-provider-discovery.php",
+    "MAD4B_SCP_Skill_Provider_Discovery",
+    "plugins_loaded",
+    "30",
 ]:
     if marker not in seeder:
-        raise SystemExit(f'missing automatic seed-pack guard: {marker}')
+        raise SystemExit(f'missing automatic seed/provider handoff guard: {marker}')
+
+for marker in [
+    "const CONTRACT = 'mad4b.skill-provider-discovery.v1'",
+    "const CATALOG_CONTRACT = 'mad4b.skill-provider-catalog.v1'",
+    "'staging' !== $environment",
+    "MAD4B_SCP_Plugin_Discovery::coverage()",
+    "adapter_registered",
+    "adapter_runtime_available",
+    "provider_active_adapter_ready",
+    "provider_adapter_unavailable",
+    "provider_inactive",
+    "mad4b/skill-provider-autoprovision",
+    "mad4b/skill-provider-activation",
+    "'production_auto_provision' => false",
+    "'provider_plugin_mutation' => false",
+    "'deletes_skills' => false",
+    "'mad4b.skill-seeder.v1'",
+    "user_owned",
+    "is_file( $file )",
+    "realpath( $root )",
+    "atomic_write",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing dynamic provider Skill guard: {marker}')
+
+if provider_catalog.get('contract') != 'mad4b.skill-provider-catalog.v1':
+    raise SystemExit('provider Skill catalog contract is invalid')
+expected_provider_families = {
+    'elementor',
+    'jetengine',
+    'jetsmartfilters',
+    'woocommerce',
+    'polylang',
+    'rank-math',
+    'litespeed',
+    'media-optimization',
+    'etg-dfsb',
+    'bitflows',
+    'fluentforms',
+    'wpml',
+}
+provider_packs = provider_catalog.get('packs', {})
+missing_families = expected_provider_families - set(provider_packs)
+if missing_families:
+    raise SystemExit(f'missing provider Skill packs: {sorted(missing_families)}')
+for family, definitions in provider_packs.items():
+    if not isinstance(definitions, list) or not definitions:
+        raise SystemExit(f'provider Skill family {family} must have at least one definition')
+    for definition in definitions:
+        if definition.get('level') not in {'site', 'connection', 'provider', 'adapter', 'workflow'}:
+            raise SystemExit(f'provider Skill {family} has invalid level')
+        if not re.fullmatch(r'[a-z0-9_-]+', definition.get('target', '')):
+            raise SystemExit(f'provider Skill {family} has invalid target')
+        if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', definition.get('name', '')):
+            raise SystemExit(f'provider Skill {family} has invalid name')
+        if not definition.get('description') or not definition.get('body'):
+            raise SystemExit(f'provider Skill {family} must contain description and body')
 
 if "MAD4B_SCP_DIR . 'skills" in registry:
     raise SystemExit('runtime-authored skills must not be persisted inside the upgradeable plugin directory')
@@ -183,4 +247,4 @@ if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpres
 if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
-print('mad4b.dynamic-skills.v1: PASS')
+print('mad4b.dynamic-skills.v2: PASS')
