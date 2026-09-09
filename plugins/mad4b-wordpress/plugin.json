@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "mad4b-wordpress",
   "version": "0.2.0-rc.1",
-  "description": "Governed WordPress diagnostics and reusable workflow skills for the MAD4B MCP control plane.",
+  "description": "Governed WordPress diagnostics, reusable workflow skills and exact-approval Staging write operations for the MAD4B MCP control plane.",
   "author": {
     "name": "MAD4B",
     "url": "https://github.com/mad4bdigital-ai/WordPress"
@@ -15,15 +15,17 @@
       "apps": "./.app.json",
       "interface": {
         "displayName": "MAD4B WordPress — Egypt Tour Gates",
-        "shortDescription": "Governed WordPress diagnostics and workflow skills.",
-        "longDescription": "WordPress diagnostics, connection checks, Elementor, JetEngine, archive audits and change-safety workflows backed by the governed MAD4B MCP control plane.",
+        "shortDescription": "Governed WordPress diagnostics, workflows and Staging changes.",
+        "longDescription": "WordPress diagnostics, connection checks, Elementor, JetEngine, archive audits and governed Staging update/write/mutation workflows backed by exact NHI grants, one-time approvals and MAD4B MCP certification.",
         "developerName": "MAD4B",
         "category": "Productivity",
-        "capabilities": ["Read"],
+        "capabilities": ["Read", "Write"],
         "websiteURL": "https://github.com/mad4bdigital-ai/WordPress",
         "defaultPrompt": [
           "Diagnose my WordPress site.",
           "Check my MAD4B WordPress connection.",
+          "Show the governed Staging write authority status.",
+          "Plan a safe approved change on Staging.",
           "Audit this Elementor template.",
           "Analyze my JetEngine dynamic content setup."
         ]
