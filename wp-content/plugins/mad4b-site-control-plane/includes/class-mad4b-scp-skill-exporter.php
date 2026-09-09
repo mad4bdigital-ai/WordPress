@@ -26,7 +26,13 @@ final class MAD4B_SCP_Skill_Exporter {
 		if ( empty( $skills ) ) return new WP_Error( 'mad4b_skill_export_empty', 'No enabled runtime skills are available to export.' );
 		if ( count( $skills ) > self::MAX_EXPORT_SKILLS ) return new WP_Error( 'mad4b_skill_export_skill_limit_exceeded', 'Enabled Skill count exceeds the bounded portable export limit.' );
 		$app_id = isset( $identity['app_id'] ) ? (string) $identity['app_id'] : '';
-		$write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+
+		// A manifest declaration is not authority. Export Write only after a fresh
+		// exact-origin authority reconciliation AND a fresh runtime certification.
+		// Stale stored certification therefore cannot keep Write in a new package.
+		$write_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconcile() : array();
+		$write_certification = class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::observe() : array();
+		$write_ready = ! empty( $write_authority['ready'] ) && ! empty( $write_certification['ready'] );
 		$capabilities = $write_ready ? array( 'Read', 'Write' ) : array( 'Read' );
 
 		$tmp = function_exists( 'wp_tempnam' ) ? wp_tempnam( 'mad4b-wordpress-plugin.zip' ) : tempnam( sys_get_temp_dir(), 'mad4b-plugin-' );
@@ -143,8 +149,6 @@ final class MAD4B_SCP_Skill_Exporter {
 			return self::abort_zip( $zip, $tmp, 'mad4b_skill_snapshot_changed_during_export', 'The enabled Skill snapshot changed while the portable package was being built. Retry the export from the new stable snapshot.' );
 		}
 
-		$write_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
-		$write_certification = class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::status() : array();
 		$export_meta = array(
 			'contract' => self::CONTRACT,
 			'generated_at' => gmdate( 'c' ),
