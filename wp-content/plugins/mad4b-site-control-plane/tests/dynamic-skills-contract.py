@@ -15,6 +15,7 @@ provider_catalog = json.loads((wp / 'config' / 'skill-provider-catalog.json').re
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
 admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(encoding='utf-8')
+resource_writer = (wp / 'includes' / 'class-mad4b-scp-skill-resource-writer.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
@@ -53,15 +54,21 @@ for marker in [
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
+    "const SEED_VERSION = 2",
+    "const SEED_DIR = 'skill-seeds'",
     "'staging' !== $environment",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
     "MAD4B_SCP_Audit::storage_status()",
     "MAD4B_SCP_Audit::record",
-    "'overwrites_existing' => false",
+    "mad4b/skill-seed-refresh",
+    "refresh_existing_if_managed",
+    "canonical_document",
+    "'overwrites_user_owned' => false",
+    "'refreshes_only_digest_clean_managed' => true",
     "'production_auto_seed' => false",
-    "is_file( $file )",
-    "realpath( $root )",
-    "atomic_write",
+    "recorded_sha",
+    "hash_equals( $recorded_sha, $current_sha )",
+    "mad4b_skill_seed_refresh_rollback_failed",
     "wordpress-site-diagnostics",
     "wordpress-connection-diagnostics",
     "elementor-dynamic-content",
@@ -75,7 +82,7 @@ for marker in [
     "30",
 ]:
     if marker not in seeder:
-        raise SystemExit(f'missing automatic seed/provider handoff guard: {marker}')
+        raise SystemExit(f'missing canonical automatic seed/provider handoff guard: {marker}')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-provider-discovery.v1'",
@@ -104,18 +111,9 @@ for marker in [
 if provider_catalog.get('contract') != 'mad4b.skill-provider-catalog.v1':
     raise SystemExit('provider Skill catalog contract is invalid')
 expected_provider_families = {
-    'elementor',
-    'jetengine',
-    'jetsmartfilters',
-    'woocommerce',
-    'polylang',
-    'rank-math',
-    'litespeed',
-    'media-optimization',
-    'etg-dfsb',
-    'bitflows',
-    'fluentforms',
-    'wpml',
+    'elementor', 'jetengine', 'jetsmartfilters', 'woocommerce', 'polylang',
+    'rank-math', 'litespeed', 'media-optimization', 'etg-dfsb', 'bitflows',
+    'fluentforms', 'wpml',
 }
 provider_packs = provider_catalog.get('packs', {})
 missing_families = expected_provider_families - set(provider_packs)
@@ -141,6 +139,7 @@ expected_read_abilities = [
     'mad4b/skills-list',
     'mad4b/skill-get',
     'mad4b/skills-export-status',
+    'mad4b/skills-runtime-certification',
 ]
 for name in expected_read_abilities:
     if name not in abilities or name not in adapter:
@@ -152,6 +151,7 @@ for forbidden in ['mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delet
 
 for marker in [
     'MAD4B_SCP_Skills_Admin_UI::boot()',
+    'MAD4B_SCP_Skill_Resource_Writer::boot()',
     'MAD4B_SCP_Skill_Abilities::boot()',
     'MAD4B_SCP_Skills_Adapter::boot()',
     'MAD4B_SCP_Skill_Seeder::bootstrap()',
@@ -164,6 +164,7 @@ for file_marker in [
     'class-mad4b-scp-skill-registry.php',
     'class-mad4b-scp-skill-seeder.php',
     'class-mad4b-scp-skill-resource-reader.php',
+    'class-mad4b-scp-skill-resource-writer.php',
     'class-mad4b-scp-skill-exporter.php',
     'class-mad4b-scp-skill-abilities.php',
     'class-mad4b-scp-skills-adapter.php',
@@ -175,13 +176,43 @@ if 'MAD4B_SCP_Skill_Autoconfig::bootstrap()' not in main:
     raise SystemExit('main plugin must bootstrap Staging Skills automatically')
 
 for marker in [
-    'registry is dynamic',
-    'versioned snapshots',
-    'Scan Tools',
-    'Export Portable Plugin ZIP',
+    'admin_init',
+    'intercept_export',
+    'Portable Plugin export failed',
+    'Skill identity is immutable while editing',
+    'MAD4B_SCP_Skill_Resource_Writer::save',
+    'enables the Skill editor automatically',
+    'Snapshot identity',
+    'MAD4B-SNAPSHOT-ID.txt',
 ]:
-    if marker.lower() not in admin.lower():
-        raise SystemExit(f'missing admin snapshot/UX contract marker: {marker}')
+    if marker not in admin:
+        raise SystemExit(f'missing hardened admin UX contract marker: {marker}')
+if 'define MAD4B_SKILLS_EDITOR_ENABLED=true' in admin:
+    raise SystemExit('admin UI must not instruct manual Staging editor activation')
+
+for marker in [
+    'mad4b_skill_resource_rollback_failed',
+    'Restored resource does not match its pre-change digest',
+    'MAD4B_SCP_Skill_Resource_Reader::read',
+    'hash_equals',
+]:
+    if marker not in resource_writer:
+        raise SystemExit(f'missing verified resource rollback guard: {marker}')
+
+for marker in [
+    "const MAX_EXPORT_SKILLS = 250",
+    "const MAX_EXPORT_RESOURCES = 2000",
+    "const MAX_EXPORT_UNCOMPRESSED_BYTES = 67108864",
+    'mad4b_skill_export_skill_limit_exceeded',
+    'mad4b_skill_export_resource_limit_exceeded',
+    'mad4b_skill_export_size_limit_exceeded',
+    'uncompressed_payload_bytes',
+    'resource_count',
+    "'capabilities' => array( 'Read' )",
+    "'publication_semantics' => 'snapshot'",
+]:
+    if marker not in exporter:
+        raise SystemExit(f'missing bounded read-only exporter guard: {marker}')
 
 for marker in [
     'automatically enables the local Skill editor',
@@ -190,11 +221,6 @@ for marker in [
 ]:
     if marker not in readme:
         raise SystemExit(f'missing zero-touch Staging documentation marker: {marker}')
-
-if "'capabilities' => array( 'Read' )" not in exporter:
-    raise SystemExit('runtime exporter must advertise Read capability only')
-if "'publication_semantics' => 'snapshot'" not in exporter:
-    raise SystemExit('runtime exporter must identify snapshot publication semantics')
 
 manifest = json.loads((portable / 'plugin.json').read_text(encoding='utf-8'))
 compat = json.loads((portable / '.codex-plugin' / 'plugin.json').read_text(encoding='utf-8'))
@@ -224,13 +250,15 @@ expected_skills = {
     'wordpress-change-safety',
 }
 found = set()
+seed_root = wp / 'skill-seeds'
 for skill_dir in (portable / 'skills').iterdir():
     if not skill_dir.is_dir():
         continue
     skill_file = skill_dir / 'SKILL.md'
     if not skill_file.is_file():
         raise SystemExit(f'missing SKILL.md in {skill_dir.name}')
-    text = skill_file.read_text(encoding='utf-8')
+    raw = skill_file.read_bytes()
+    text = raw.decode('utf-8')
     if not text.startswith('---\n'):
         raise SystemExit(f'{skill_dir.name} missing YAML frontmatter')
     if f'name: {skill_dir.name}' not in text:
@@ -238,8 +266,18 @@ for skill_dir in (portable / 'skills').iterdir():
     if 'description:' not in text.split('---', 2)[1]:
         raise SystemExit(f'{skill_dir.name} missing frontmatter description')
     found.add(skill_dir.name)
+
+    canonical = seed_root / skill_dir.name / 'SKILL.md'
+    if skill_dir.name in expected_skills:
+        if not canonical.is_file():
+            raise SystemExit(f'missing canonical Control Plane seed for {skill_dir.name}')
+        if canonical.read_bytes() != raw:
+            raise SystemExit(f'canonical/runtime seed drift detected for {skill_dir.name}')
+
 if not expected_skills.issubset(found):
-    raise SystemExit(f'missing seed skills: {sorted(expected_skills - found)}')
+    raise SystemExit(f'missing portable seed skills: {sorted(expected_skills - found)}')
+if {p.parent.name for p in seed_root.glob('*/SKILL.md')} != expected_skills:
+    raise SystemExit('canonical Control Plane seed set must exactly match the six portable baseline Skills')
 
 entry = next((x for x in marketplace.get('plugins', []) if x.get('name') == 'mad4b-wordpress'), None)
 if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpress':
@@ -247,4 +285,4 @@ if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpres
 if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
-print('mad4b.dynamic-skills.v2: PASS')
+print('mad4b.dynamic-skills.v3: PASS')
