@@ -60,6 +60,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-seeder.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-resource-reader.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-resource-writer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-snapshot-identity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-exporter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-abilities.php';
