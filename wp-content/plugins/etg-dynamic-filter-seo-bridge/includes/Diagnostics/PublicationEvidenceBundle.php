@@ -39,6 +39,29 @@ final class PublicationEvidenceBundle {
 		if(0===$enabledProfiles){$activationBlockers[]='no_enabled_profiles_for_activation';}
 		foreach($profileEvidence as $row){if(!empty($row['enabled'])){foreach((array)$row['blockers'] as $blocker){$activationBlockers[]='profile_blocker:'.$blocker;}}}
 		$requiredExternalEvidence=array('server_side_elementor_html_snapshot','frontend_vs_request_adapter_vs_background_count_parity','multilingual_hreflang_and_translated_slug_validation','global_off_empty_live_sitemap_validation','bounded_global_on_sitemap_validation','sitemap_ttfb_query_count_and_memory_baseline','ajax_rate_protection_persistent_cache_or_waf_evidence');
-		return array('contract'=>'etg.dfsb.publication-evidence-bundle.v1','plugin_version'=>defined('ETG_DFSB_VERSION')?(string)ETG_DFSB_VERSION:'','generated_at_gmt'=>gmdate('c'),'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'merge_authorized'=>false,'production_activation_authorized'=>false,'global_enabled'=>$this->config->enabled(),'configuration_revision'=>$this->config->revision(),'evidence_complete'=>empty($activationBlockers),'activation_blockers'=>array_values(array_unique($activationBlockers)),'required_external_evidence'=>$requiredExternalEvidence,'ajax_rate_protection'=>$ajaxRateProtection,'profile_evidence'=>$profileEvidence,'readiness'=>$readiness,'runtime_inventory'=>$inventory,'publication_preview'=>$summary);
+		$internalEvidenceComplete=empty($activationBlockers);
+		return array(
+			'contract'=>'etg.dfsb.publication-evidence-bundle.v1',
+			'plugin_version'=>defined('ETG_DFSB_VERSION')?(string)ETG_DFSB_VERSION:'',
+			'generated_at_gmt'=>gmdate('c'),
+			'authorizing'=>false,
+			'read_only'=>true,
+			'profile_mutation'=>false,
+			'merge_authorized'=>false,
+			'production_activation_authorized'=>false,
+			'global_enabled'=>$this->config->enabled(),
+			'configuration_revision'=>$this->config->revision(),
+			'internal_evidence_complete'=>$internalEvidenceComplete,
+			'external_evidence_complete'=>false,
+			'evidence_complete'=>false,
+			'evidence_completeness_reason'=>'external_runtime_evidence_not_ingested',
+			'activation_blockers'=>array_values(array_unique($activationBlockers)),
+			'required_external_evidence'=>$requiredExternalEvidence,
+			'ajax_rate_protection'=>$ajaxRateProtection,
+			'profile_evidence'=>$profileEvidence,
+			'readiness'=>$readiness,
+			'runtime_inventory'=>$inventory,
+			'publication_preview'=>$summary,
+		);
 	}
 }
