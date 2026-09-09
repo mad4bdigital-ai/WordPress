@@ -7,26 +7,85 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 - Portable Plugin capability: `Read`
 - Local test app mapping: existing **Staging** MCP App only
 - Staging Skill authoring: auto-enabled by the Control Plane with no manual `wp-config.php` edit
-- Canonical seed pack: auto-provisioned on Staging; no manual Skill creation is required for the base workflows
+- Canonical site/connection/workflow seed pack: auto-provisioned on Staging
+- Provider Skill packs: discovered, placed, enabled and disabled automatically from live plugin + adapter state
 - Runtime-authored custom Skill creation: WordPress administrator UI only
 - ChatGPT MCP Skill tools: read-only (`skills-list`, `skill-get`, `skills-export-status`)
 - No Skill create/update/delete MCP tool
 - WordPress global mutation authority is not enabled by this package
 
-## Seed Skills
+## Zero-touch Skill lifecycle
 
-The Control Plane automatically provisions the following enabled seed workflows on Staging after governance schema and append-only audit storage are ready:
+On Staging the Control Plane performs the base workflow setup without administrator intervention:
+
+```text
+Plugin boots
+   ↓
+Staging autoconfig
+   ↓
+Governance schema + append-only audit ready
+   ↓
+Base site/connection/workflow Skills provisioned
+   ↓
+Installed plugin discovery
+   ↓
+MAD4B adapter registry readback
+   ↓
+Provider Skill catalog reconciliation
+   ↓
+Active + adapter-ready provider → Skill enabled
+Inactive/unavailable provider       → MAD4B-managed Skill disabled
+```
+
+No `wp-config.php` edit and no administrator form submission are required for this Staging lifecycle.
+
+The base pack includes:
 
 - `wordpress-site-diagnostics`
 - `wordpress-connection-diagnostics`
-- `elementor-dynamic-content`
-- `jetengine-content-modeling`
 - `wordpress-archive-audit`
 - `wordpress-change-safety`
 
-Existing `SKILL.md` files always win. The seed provisioner never overwrites a runtime-authored Skill with the same logical location. Seed writes are audit-recorded and rolled back if the audit commit fails.
+Elementor and JetEngine definitions are seeded disabled and handed to provider discovery, so they are enabled only when their providers are active and the corresponding MAD4B adapter is runtime-available.
 
-Each portable Skill is a directory under root `skills/` with a required `SKILL.md` file. Supporting `references/`, `assets/`, and `scripts/` directories can be included when needed.
+## Provider-aware Skill packs
+
+The provider catalog is stored at:
+
+```text
+wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json
+```
+
+Current automatic families include:
+
+- Elementor
+- JetEngine
+- JetSmartFilters
+- WooCommerce
+- Polylang
+- Rank Math
+- LiteSpeed Cache
+- media optimization providers
+- ETG Dynamic Filter SEO Bridge
+- BitFlows
+- Fluent Forms
+- WPML
+
+The catalog can define a Skill at any supported registry level: `site`, `connection`, `provider`, `adapter`, or `workflow`. Placement follows the Skill definition, for example:
+
+```text
+wp-content/mad4b-skills/provider/elementor/elementor-dynamic-content/SKILL.md
+wp-content/mad4b-skills/provider/jet-engine/jetengine-content-modeling/SKILL.md
+wp-content/mad4b-skills/provider/jet-smart-filters/jetsmartfilters-query-audit/SKILL.md
+wp-content/mad4b-skills/provider/woocommerce/woocommerce-catalog-diagnostics/SKILL.md
+wp-content/mad4b-skills/adapter/litespeed/litespeed-cache-diagnostics/SKILL.md
+```
+
+Provider discovery reads `MAD4B_SCP_Plugin_Discovery::coverage()` after adapter registration. A provider Skill is automatically enabled only when the provider is active, its MAD4B adapter is registered, and that adapter is runtime-available.
+
+If a provider becomes inactive or its adapter becomes unavailable, only MAD4B-managed Skill metadata is disabled. The Skill file is not deleted. When the provider becomes ready again it is re-enabled automatically.
+
+Existing administrator-authored Skills always win. Provider discovery does not overwrite, disable, move, or delete a Skill it does not own. All automatic create/activation changes are audit-recorded and rolled back when the audit commit fails.
 
 ## Dynamic WordPress registry
 
@@ -45,40 +104,15 @@ wp-content/mad4b-skills/
 
 A `.mad4b.json` sidecar stores bounded registry metadata next to each Skill.
 
-The files are deliberately stored **outside third-party plugin directories**. Writing into `wp-content/plugins/elementor/`, `jet-engine/`, or another vendor plugin would be fragile because updates can replace those directories. The level + target namespace preserves ownership without mutating vendor code. The storage root can be moved by the `mad4b_scp_skill_storage_root` filter for a MAD4B-controlled deployment.
+The files are deliberately stored **outside third-party plugin directories**. Updates to Elementor, JetEngine, WooCommerce, or other vendor plugins therefore cannot erase MAD4B workflow files.
 
-### Zero-touch Staging authoring
-
-When WordPress reports `wp_get_environment_type() === 'staging'`, the Control Plane automatically enables the local Skill editor. No `wp-config.php` edit is required.
-
-It then provisions the canonical seed pack automatically once governance schema and append-only audit storage are ready. No administrator form submission is required for the base Skills.
-
-Explicit operator configuration still wins. To deliberately disable authoring on Staging, an operator may set:
-
-```php
-define( 'MAD4B_SKILLS_EDITOR_ENABLED', false );
-```
-
-Production is never auto-enabled and is never auto-seeded. Production authoring still requires both explicit gates:
-
-```php
-define( 'MAD4B_SKILLS_EDITOR_ENABLED', true );
-define( 'MAD4B_SKILLS_PRODUCTION_EDITOR_ENABLED', true );
-```
-
-Supporting `scripts/` authoring remains independently disabled and additionally requires:
-
-```php
-define( 'MAD4B_SKILLS_SCRIPTS_EDITOR_ENABLED', true );
-```
-
-These flags only control local Skill-file authoring. They do **not** enable `mad4b-content`, `mad4b-write`, `mad4b-admin`, breakglass, or the global mutation gate.
+Production is never auto-enabled, auto-seeded, or provider-auto-provisioned. Supporting `scripts/` authoring also remains separately gated. None of these features enable `mad4b-content`, `mad4b-write`, `mad4b-admin`, breakglass, or the global mutation gate.
 
 Do not place passwords, access tokens, private keys, OAuth credentials, or other secret material inside Skill files.
 
 ## Portable export
 
-The WordPress Skills page can export the currently enabled runtime Skills as a portable Plugin ZIP containing:
+The WordPress Skills page exports enabled runtime Skills as a portable Plugin ZIP containing:
 
 ```text
 plugin.json
@@ -91,33 +125,8 @@ skills/
   <skill>/scripts/...
 ```
 
-For runtime-generated exports, bind an already registered ChatGPT MCP App with:
-
-```php
-define( 'MAD4B_OPENAI_PLUGIN_APP_ID', 'plugin_asdk_app_...' );
-```
-
-The App technical ID is an identifier, not an OAuth token or signing key.
-
-## Dynamic does not mean hot-reloaded in ChatGPT
-
-The WordPress registry is live and dynamic on the site, but packaged ChatGPT/Codex Plugin skills are a **snapshot**. After changing a Skill you must publish another package, or if Skills are imported from the MCP server, deploy the changed server source and run **Scan Tools** again. Installed clients do not continuously re-read a changed `SKILL.md` from WordPress.
-
-This split is intentional:
-
-```text
-WordPress / Growth OS
-  canonical + runtime Skill files
-          ↓
-  governed snapshot/export
-          ↓
-Plugin package / MCP skill import
-          ↓
-ChatGPT / Codex
-          ↕
-existing MAD4B MCP App for live data and tools
-```
+The site registry is live and dynamic, but packaged ChatGPT/Codex Plugin Skills remain a **snapshot**. After a Skill changes, publish another package or redeploy the MCP Skill source and run **Scan Tools** again.
 
 ## Local marketplace
 
-The repository marketplace entry is under `.agents/plugins/marketplace.json`. The package in this branch is wired to the already registered **Staging** App for safe local testing. Do not replace the App mapping with a Production App ID as part of this branch.
+The repository marketplace entry is under `.agents/plugins/marketplace.json`. The package in this branch remains wired to the already registered **Staging** App for safe testing.
