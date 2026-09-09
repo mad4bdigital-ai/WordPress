@@ -37,6 +37,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-transport-context.php"
           php -l "$root/includes/class-mad4b-scp-authorization.php"
           php -l "$root/includes/class-mad4b-scp-servers.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-registration-bridge.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php"
           php -l "$root/includes/class-mad4b-scp-connection-status.php"
           php -l "$root/includes/class-mad4b-scp-external-handshake-evidence.php"
           php -l "$root/includes/class-mad4b-scp-connection-ability.php"
@@ -52,6 +54,7 @@ jobs:
           python3 "$root/tests/connection-readiness-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
           python3 "$root/tests/mcp-provider-isolation-contract.py"
+          python3 "$root/tests/mcp-registration-bridge-contract.py"
 
   runtime:
     name: Connection runtime (${{ matrix.wordpress }})
