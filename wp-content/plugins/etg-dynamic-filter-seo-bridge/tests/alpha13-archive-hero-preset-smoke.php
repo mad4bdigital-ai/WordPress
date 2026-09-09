@@ -14,6 +14,7 @@ final class EtgArchiveHeroElementFixture {
     public $display=array();
     public $set=array();
     public $attrs=array();
+    public $displayReads=0;
 
     public function __construct(array $raw,array $display=array()){
         $this->raw=$raw;
@@ -21,7 +22,7 @@ final class EtgArchiveHeroElementFixture {
     }
     public function get_data($key=null){return 'settings'===$key?$this->raw:array('settings'=>$this->raw);}
     public function get_settings(){return $this->display;}
-    public function get_settings_for_display(){return $this->set+$this->display;}
+    public function get_settings_for_display(){$this->displayReads++;return $this->set+$this->display;}
     public function set_settings($key,$value){$this->set[$key]=$value;}
     public function add_render_attribute($key,$value){$this->attrs[$key]=$value;}
 }
@@ -32,7 +33,8 @@ $marked=new EtgArchiveHeroElementFixture(
     array('etg_dfsb_background_mode'=>'off')
 );
 $preset->beforeRender($marked);
-etg_archive_expect(($marked->set['etg_dfsb_background_mode']??'')==='slideshow','marker activates slideshow when raw mode is absent even if display controls expose the default off value');
+etg_archive_expect(($marked->set['etg_dfsb_background_mode']??'')==='slideshow','marker activates slideshow when raw mode is absent even if display controls would expose the default off value');
+etg_archive_expect($marked->displayReads===0,'preset must not prewarm Elementor display settings before in-memory normalization');
 etg_archive_expect(($marked->set['etg_dfsb_background_collection_mode']??'')==='balanced','marker uses balanced collection');
 etg_archive_expect(($marked->set['etg_dfsb_background_suitability']??'')==='wide','marker slideshow defaults to Wide Hero suitability');
 etg_archive_expect(($marked->set['etg_dfsb_background_fit']??'')==='cover','unsaved fit is normalized before ContainerDynamicBackground');
@@ -60,4 +62,4 @@ $preset->beforeRender($explicitSlideshow);
 etg_archive_expect(!isset($explicitSlideshow->set['etg_dfsb_background_suitability']),'explicit suitability remains authoritative');
 etg_archive_expect(!isset($explicitSlideshow->set['etg_dfsb_background_fit']),'explicit fit remains authoritative');
 
-echo "Alpha13 archive hero marker, raw-setting authority, kill-switch and safe preset smoke tests passed.\n";
+echo "Alpha13 archive hero marker, raw-setting authority, display-cache avoidance, kill-switch and safe preset smoke tests passed.\n";
