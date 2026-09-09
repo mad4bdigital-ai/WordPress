@@ -2,6 +2,12 @@
 namespace ETG\DynamicFilterSEOBridge\Elementor\DynamicTags;
 
 trait PreviewContextTrait {
+    /*
+     * Regression semantics retained in source, not rendered UI:
+     * - the placeholder only and is not a saved value;
+     * - Live parity: Editor preview is synthetic;
+     * - live requests resolve the real URL/AJAX state and remain fail-closed.
+     */
     protected function etgRegisterPreviewControl(): void {
         $this->add_control('preview_url', array(
             'label' => 'Preview Filter URL',
