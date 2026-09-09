@@ -7,6 +7,7 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 portable = repo / 'plugins' / 'mad4b-wordpress'
 
+autoconfig = (wp / 'includes' / 'class-mad4b-scp-skill-autoconfig.php').read_text(encoding='utf-8')
 registry = (wp / 'includes' / 'class-mad4b-scp-skill-registry.php').read_text(encoding='utf-8')
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
@@ -14,6 +15,21 @@ admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(enco
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+
+for marker in [
+    "const CONTRACT = 'mad4b.skill-autoconfig.v1'",
+    "'staging' !== $environment",
+    "defined( 'MAD4B_SKILLS_EDITOR_ENABLED' )",
+    "true !== constant( 'MAD4B_SKILLS_EDITOR_ENABLED' )",
+    "define( 'MAD4B_SKILLS_EDITOR_ENABLED', true )",
+    "'configuration_source' => 'none'",
+    "'production_auto_enable' => false",
+    "'scripts_auto_enable' => false",
+    "'explicit_editor_disabled'",
+    "'staging_auto'",
+]:
+    if marker not in autoconfig:
+        raise SystemExit(f'missing zero-touch Staging Skill autoconfig guard: {marker}')
 
 for marker in [
     "const ROOT_DIRNAME = 'mad4b-skills'",
@@ -56,6 +72,7 @@ for marker in [
         raise SystemExit(f'missing Skill boot wiring: {marker}')
 
 for file_marker in [
+    'class-mad4b-scp-skill-autoconfig.php',
     'class-mad4b-scp-skill-registry.php',
     'class-mad4b-scp-skill-resource-reader.php',
     'class-mad4b-scp-skill-exporter.php',
@@ -65,6 +82,8 @@ for file_marker in [
 ]:
     if file_marker not in main:
         raise SystemExit(f'main plugin is not loading {file_marker}')
+if 'MAD4B_SCP_Skill_Autoconfig::bootstrap()' not in main:
+    raise SystemExit('main plugin must bootstrap Staging Skills automatically')
 
 for marker in [
     'registry is dynamic',
