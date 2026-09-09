@@ -146,4 +146,5 @@ jobs:
           WP_PATH=/tmp/mad4b-wordpress
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_ENABLED true --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED true --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
