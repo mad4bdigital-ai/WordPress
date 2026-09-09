@@ -9,6 +9,7 @@ portable = repo / 'plugins' / 'mad4b-wordpress'
 
 autoconfig = (wp / 'includes' / 'class-mad4b-scp-skill-autoconfig.php').read_text(encoding='utf-8')
 registry = (wp / 'includes' / 'class-mad4b-scp-skill-registry.php').read_text(encoding='utf-8')
+seeder = (wp / 'includes' / 'class-mad4b-scp-skill-seeder.php').read_text(encoding='utf-8')
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
 admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(encoding='utf-8')
@@ -48,6 +49,27 @@ for marker in [
     if marker not in registry:
         raise SystemExit(f'missing dynamic skill registry guard: {marker}')
 
+for marker in [
+    "const CONTRACT = 'mad4b.skill-seeder.v1'",
+    "'staging' !== $environment",
+    "MAD4B_SCP_Skill_Registry::editor_enabled()",
+    "MAD4B_SCP_Audit::storage_status()",
+    "MAD4B_SCP_Audit::record",
+    "'overwrites_existing' => false",
+    "'production_auto_seed' => false",
+    "is_file( $file )",
+    "realpath( $root )",
+    "atomic_write",
+    "wordpress-site-diagnostics",
+    "wordpress-connection-diagnostics",
+    "elementor-dynamic-content",
+    "jetengine-content-modeling",
+    "wordpress-archive-audit",
+    "wordpress-change-safety",
+]:
+    if marker not in seeder:
+        raise SystemExit(f'missing automatic seed-pack guard: {marker}')
+
 if "MAD4B_SCP_DIR . 'skills" in registry:
     raise SystemExit('runtime-authored skills must not be persisted inside the upgradeable plugin directory')
 
@@ -68,6 +90,7 @@ for marker in [
     'MAD4B_SCP_Skills_Admin_UI::boot()',
     'MAD4B_SCP_Skill_Abilities::boot()',
     'MAD4B_SCP_Skills_Adapter::boot()',
+    'MAD4B_SCP_Skill_Seeder::bootstrap()',
 ]:
     if marker not in plugin_boot:
         raise SystemExit(f'missing Skill boot wiring: {marker}')
@@ -75,6 +98,7 @@ for marker in [
 for file_marker in [
     'class-mad4b-scp-skill-autoconfig.php',
     'class-mad4b-scp-skill-registry.php',
+    'class-mad4b-scp-skill-seeder.php',
     'class-mad4b-scp-skill-resource-reader.php',
     'class-mad4b-scp-skill-exporter.php',
     'class-mad4b-scp-skill-abilities.php',
