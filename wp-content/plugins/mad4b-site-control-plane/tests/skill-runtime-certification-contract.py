@@ -28,6 +28,10 @@ for marker in [
     "const CONTRACT = 'mad4b.skill-snapshot-identity.v1'",
     "MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) )",
     "MAD4B_SCP_Skill_Registry::openai_app_id()",
+    "public static function from_entries( array $entries, $app_id = '' )",
+    "return self::from_entries( $entries, MAD4B_SCP_Skill_Registry::openai_app_id() )",
+    "entry_collision",
+    "resource_collision",
     "snapshot_digest",
     "identity_token",
     "sha256:",
@@ -40,15 +44,26 @@ for marker in [
 
 for marker in [
     "MAD4B_SCP_Skill_Snapshot_Identity::build()",
+    "MAD4B_SCP_Skill_Snapshot_Identity::from_entries( $observed_entries, $app_id )",
     "MAD4B-SNAPSHOT-ID.txt",
     "snapshot_identity_contract",
     "snapshot_digest",
     "identity_token",
+    "$skill_sha = hash( 'sha256', $content )",
+    "$resource_content = isset( $data['content'] ) ? (string) $data['content'] : ''",
+    "'sha256' => hash( 'sha256', $resource_content )",
+    "mad4b_skill_export_observed_identity_mismatch",
     "mad4b_skill_snapshot_changed_during_export",
+    "hash_equals( (string) $identity['identity_token'], (string) $export_identity['identity_token'] )",
     "hash_equals( (string) $identity['identity_token'], (string) $identity_after['identity_token'] )",
 ]:
     if marker not in exporter:
-        raise SystemExit(f'portable exporter is not snapshot-identity/race bound: {marker}')
+        raise SystemExit(f'portable exporter is not actual-byte snapshot/race bound: {marker}')
+
+identity_pos = exporter.find("MAD4B_SCP_Skill_Snapshot_Identity::build()")
+list_pos = exporter.find("MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) )")
+if identity_pos < 0 or list_pos < 0 or identity_pos > list_pos:
+    raise SystemExit('exporter must establish the initial identity before taking its enabled-Skill work-list')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-runtime-certification.v1'",
