@@ -22,4 +22,8 @@ etg_pf_has('Operational Alpha `0.4.0-alpha.13`',$readme,'README version is synch
 etg_pf_has('presentation state != SEO/indexing authority',$readme,'README preserves the presentation/SEO authority separation');
 etg_pf_has('AJAX rate-protection boundary',$readme,'README documents the Production rate-protection requirement');
 
+$cmd=escapeshellarg(PHP_BINARY).' '.escapeshellarg($root.'/tests/alpha13-provider-group-drift-smoke.php');
+passthru($cmd,$code);
+etg_pf_expect(0===$code,'Elementor provider-group drift regression passes');
+
 echo "Alpha13 Production preflight smoke tests passed.\n";
