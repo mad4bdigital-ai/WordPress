@@ -134,6 +134,10 @@ for forbidden in [
 
 for marker in [
     "const CONTRACT = 'mad4b.write-runtime-certification.v2'",
+    "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' ), 110 )",
+    "MAD4B_SCP_Staging_Write_Authority::eligible()",
+    "return self::ineligible_status()",
+    "'persistence' => 'not_applicable'",
     "all_write_tools_exposed_on_same_plugin_transport",
     "breakglass_absent_from_write_inventory",
     "approval_planner_governed",
@@ -151,6 +155,13 @@ for marker in [
 ]:
     if marker not in cert:
         raise SystemExit(f'missing write certification invariant: {marker}')
+
+if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' )" in cert:
+    raise SystemExit('write certification must not inspect REST before MCP transports are constructed')
+if cert.index("MAD4B_SCP_Staging_Write_Authority::eligible()") > cert.index("MAD4B_SCP_Audit::record"):
+    raise SystemExit('write certification eligibility must be checked before any audit persistence')
+if cert.index("MAD4B_SCP_Staging_Write_Authority::eligible()") > cert.index("update_option( self::OPTION"):
+    raise SystemExit('write certification eligibility must be checked before option persistence')
 
 for marker in [
     'class-mad4b-scp-staging-write-authority.php',
@@ -183,4 +194,4 @@ caps = portable['extensions']['com.openai']['interface'].get('capabilities', [])
 if caps != ['Read', 'Write']:
     raise SystemExit(f'portable Plugin capability contract must be [Read, Write], got {caps!r}')
 
-print('mad4b.staging-write-authority.v2: PASS')
+print('mad4b.staging-write-authority.v3: PASS')
