@@ -22,7 +22,11 @@ trait InventoryReconcilerBindingTrait {
 
     private function routeProviderGroupDrift(string $providerQueryId,array $topology):array{
         $providerQueryId=QueryId::normalize($providerQueryId);if(''===$providerQueryId){return array();}$out=array();
-        foreach((array)($topology['provider_group_drift']??array()) as $drift){if(!is_array($drift)){continue;}$expected=array();foreach((array)($drift['expected_provider_query_ids']??array()) as $candidate){$candidate=QueryId::normalize($candidate);if(''!==$candidate){$expected[$candidate]=true;}}if(!isset($expected[$providerQueryId])){continue;}$out[]=$drift;if(count($out)>=20){break;}}
+        foreach((array)($topology['provider_group_drift']??array()) as $drift){
+            if(!is_array($drift)||'blocking'!==(string)($drift['severity_hint']??'warning')){continue;}
+            $expected=array();foreach((array)($drift['expected_provider_query_ids']??array()) as $candidate){$candidate=QueryId::normalize($candidate);if(''!==$candidate){$expected[$candidate]=true;}}
+            if(!isset($expected[$providerQueryId])){continue;}$out[]=$drift;if(count($out)>=20){break;}
+        }
         return $out;
     }
 
