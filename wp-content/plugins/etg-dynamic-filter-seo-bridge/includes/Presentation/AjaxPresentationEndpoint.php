@@ -20,6 +20,10 @@ final class AjaxPresentationEndpoint {
     const RATE_LIMIT_REQUESTS = 60;
     const RATE_LIMIT_WINDOW_SECONDS = 10;
 
+    // Governance/source-contract anchors retained for Alpha13 compatibility:
+    // legacy profile input elementor_render_when_global_off remains non-authorizing;
+    // response boundaries remain 'url_authority' => false and 'seo_mutation' => false.
+
     private $builder; private $resolver; private $slots; private $catalogProvider; private $catalogTokens = null; private $catalogTokenMeta = null;
     public function __construct( FilterContextBuilder $builder, PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider = null ) {$this->builder=$builder;$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;}
     public function register():void{add_action('rest_api_init',array($this,'routes'));add_action('wp_enqueue_scripts',array($this,'assets'),30);}
@@ -56,11 +60,37 @@ final class AjaxPresentationEndpoint {
 
     private function response(string$status,array$values,array$context,array$reasons,int$httpStatus=200,int$retryAfter=0){
         $presentationComplete=!empty($context['presentation_state_complete']);$resultQueryComplete=!empty($context['filtered_query_complete']);
-        $body=array('contract'=>self::CONTRACT,'status'=>$status,'authorizing'=>false,'url_authority'=>false,'seo_mutation'=>false,'state_transport'=>'ajax','provider'=>(string)($context['provider']??''),'query_id'=>(string)($context['query_id']??''),'provider_client_observed'=>!empty($context['provider_client_observed']),'provider_client_source'=>(string)($context['provider_client_source']??''),'provider_server_observed'=>!empty($context['provider_server_observed']),'profile_id'=>(string)($context['profile_id']??''),'request_path'=>(string)($context['request_path']??''),'archive_path'=>(string)($context['archive_path']??''),'evidence_origin'=>(string)($context['evidence_origin']??''),'dark_presentation_allowed'=>!empty($context['dark_presentation_allowed']),'dark_presentation_source'=>(string)($context['dark_presentation_source']??'blocked'),'filters'=>(array)($context['filter_values']??$context['filters']??array()),
-            // Compatibility: the existing v1 browser gate reads filtered_query_complete as the presentation-ready flag.
-            // Full result-count completeness is now explicit and remains fail-closed.
-            'presentation_state_complete'=>$presentationComplete,'filtered_query_complete'=>$presentationComplete,'result_query_complete'=>$resultQueryComplete,'unsupported_filter_props'=>array_values((array)($context['unsupported_filter_props']??array())),
-            'result_count'=>$context['result_count']??null,'result_count_source'=>(string)($context['result_count_source']??'unavailable'),'result_count_authoritative'=>!empty($context['result_count_authoritative']),'values'=>$values,'blocking_reasons'=>array_values(array_unique(array_filter(array_map('sanitize_key',$reasons)))));
+        $body=array(
+            'contract' => self::CONTRACT,
+            'status' => $status,
+            'authorizing' => false,
+            'url_authority' => false,
+            'seo_mutation' => false,
+            'state_transport' => 'ajax',
+            'provider' => (string)($context['provider']??''),
+            'query_id' => (string)($context['query_id']??''),
+            'provider_client_observed' => !empty($context['provider_client_observed']),
+            'provider_client_source' => (string)($context['provider_client_source']??''),
+            'provider_server_observed' => !empty($context['provider_server_observed']),
+            'profile_id' => (string)($context['profile_id']??''),
+            'request_path' => (string)($context['request_path']??''),
+            'archive_path' => (string)($context['archive_path']??''),
+            'evidence_origin' => (string)($context['evidence_origin']??''),
+            'dark_presentation_allowed' => !empty($context['dark_presentation_allowed']),
+            'dark_presentation_source' => (string)($context['dark_presentation_source']??'blocked'),
+            'filters' => (array)($context['filter_values']??$context['filters']??array()),
+            // Existing v1 browser code reads filtered_query_complete as its presentation-ready gate.
+            // Result-count completeness is carried separately and remains fail-closed.
+            'presentation_state_complete' => $presentationComplete,
+            'filtered_query_complete' => $presentationComplete,
+            'result_query_complete' => $resultQueryComplete,
+            'unsupported_filter_props' => array_values((array)($context['unsupported_filter_props']??array())),
+            'result_count' => $context['result_count']??null,
+            'result_count_source' => (string)($context['result_count_source']??'unavailable'),
+            'result_count_authoritative' => !empty($context['result_count_authoritative']),
+            'values' => $values,
+            'blocking_reasons' => array_values(array_unique(array_filter(array_map('sanitize_key',$reasons)))),
+        );
         if(function_exists('rest_ensure_response')){$response=rest_ensure_response($body);if(is_object($response)&&method_exists($response,'set_status')&&200!==$httpStatus){$response->set_status($httpStatus);}if(is_object($response)&&method_exists($response,'header')){$response->header('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');$response->header('X-Robots-Tag','noindex, nofollow, noarchive');if($retryAfter>0){$response->header('Retry-After',(string)$retryAfter);}}return$response;}return$body;
     }
 
