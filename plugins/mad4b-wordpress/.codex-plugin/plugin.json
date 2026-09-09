@@ -1,0 +1,15 @@
+{
+  "name": "mad4b-wordpress",
+  "version": "0.1.0",
+  "description": "Governed WordPress diagnostics and reusable workflow skills for MAD4B.",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "MAD4B WordPress — Egypt Tour Gates",
+    "shortDescription": "Governed WordPress diagnostics and workflow skills.",
+    "longDescription": "WordPress diagnostics, connection checks, Elementor, JetEngine, archive audits and change-safety workflows backed by MAD4B.",
+    "developerName": "MAD4B",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "websiteURL": "https://github.com/mad4bdigital-ai/WordPress"
+  }
+}
