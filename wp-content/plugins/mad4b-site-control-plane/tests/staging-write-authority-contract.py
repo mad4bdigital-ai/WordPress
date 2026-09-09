@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import json
+
+repo = Path(__file__).resolve().parents[4]
+wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
+
+write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
+cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
+rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
+servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+transport = (wp / 'includes' / 'class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
+auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8')
+plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
+portable = json.loads((repo / 'plugins' / 'mad4b-wordpress' / 'plugin.json').read_text(encoding='utf-8'))
+
+for marker in [
+    "const STAGING_HOST = 'staging.egypttourgates.com'",
+    "const AGENT_SLUG = 'chatgpt-staging-write'",
+    "const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id'",
+    "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
+    "'production_auto_enable' => false",
+    "'breakglass_auto_enable' => false",
+    "'all_remote_writes_require_exact_approval' => true",
+    "MAD4B_SCP_Agent_Registry::grant_ability",
+    "'mad4b-write'",
+    "'staging'",
+    "remote_scope_delegation_allowed",
+    "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
+    "mad4b:read",
+    "approval_ticket_from_input",
+]:
+    if marker not in write:
+        raise SystemExit(f'missing governed Staging write invariant: {marker}')
+
+if "'mad4b/database-raw-query'" not in write or "array_diff( $tools, array( 'mad4b/database-raw-query' ) )" not in write:
+    raise SystemExit('write authority must explicitly remove breakglass raw-query')
+
+for ability in [
+    'mad4b/content-update-post',
+    'mad4b/plugin-activate',
+    'mad4b/plugin-deactivate',
+    'mad4b/filesystem-write',
+    'mad4b/filesystem-patch',
+    'mad4b/database-update',
+    'mad4b/mutation-undo',
+    'mad4b/approval-plan',
+]:
+    if ability not in servers:
+        raise SystemExit(f'known core update/write/mutation action missing from server catalog: {ability}')
+
+for marker in [
+    "false !== $annotations['readonly']",
+    "$registry->ability_names( 'content' )",
+    "$registry->ability_names( 'admin' )",
+    "array_merge( $tools, self::write_tools() )",
+    "return self::provider_for_ability( 'mad4b-write', $ability_name )",
+    "'mad4b/write-authority-status'",
+    "'mad4b/write-runtime-certification'",
+    "'mad4b/rest-compatibility-status'",
+]:
+    if marker not in servers:
+        raise SystemExit(f'missing complete write inventory/same-Plugin projection invariant: {marker}')
+
+for marker in [
+    "MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name )",
+    "return 'mad4b-write'",
+    "mad4b_write_authority_mount_missing",
+]:
+    if marker not in transport:
+        raise SystemExit(f'missing transport-to-write-authority binding: {marker}')
+
+for marker in [
+    "MAD4B_SCP_Staging_Write_Authority::authorization_input( $input )",
+    "MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input )",
+    "MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed",
+    "MAD4B_SCP_Approval_Tickets::consume_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class )",
+    "MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $provider, $authorization_input, $approval_required )",
+    "'approval_ticket_source'",
+]:
+    if marker not in auth:
+        raise SystemExit(f'missing central write authorization binding: {marker}')
+
+for marker in [
+    "const WPML_ROUTE = '/wpml/v1/rest/status'",
+    "apply_filters( 'rest_enabled', true )",
+    "rest_do_request( $request )",
+    "'test_get_parameter' => '1'",
+    "'query_parameters_preserved'",
+    "'control_plane_filters_rest_enabled' => false",
+    "'control_plane_filters_rest_authentication_errors' => false",
+]:
+    if marker not in rest:
+        raise SystemExit(f'missing WPML REST compatibility invariant: {marker}')
+
+# The compatibility class must diagnose, never force or globally intercept REST.
+for forbidden in [
+    "add_filter( 'rest_enabled'",
+    "add_filter( 'rest_authentication_errors'",
+    "remove_all_filters( 'rest_",
+]:
+    if forbidden in rest:
+        raise SystemExit(f'REST compatibility layer may not globally modify WordPress REST behavior: {forbidden}')
+
+for marker in [
+    "const CONTRACT = 'mad4b.write-runtime-certification.v1'",
+    "all_write_tools_exposed_on_same_plugin_transport",
+    "breakglass_absent_from_write_inventory",
+    "control_plane_does_not_block_wpml_rest",
+    "wpml_query_parameters_preserved",
+    "exact_approval_required_for_remote_write",
+    "external_client_tools_verified",
+    "MAD4B_SCP_Audit::record",
+]:
+    if marker not in cert:
+        raise SystemExit(f'missing write certification invariant: {marker}')
+
+for marker in [
+    'class-mad4b-scp-staging-write-authority.php',
+    'class-mad4b-scp-rest-compatibility.php',
+    'class-mad4b-scp-write-runtime-certification.php',
+    'MAD4B_SCP_Staging_Write_Authority::bootstrap()',
+]:
+    if marker not in main:
+        raise SystemExit(f'main plugin missing write/REST component: {marker}')
+
+for marker in [
+    'MAD4B_SCP_Staging_Write_Authority::boot()',
+    'MAD4B_SCP_REST_Compatibility::boot()',
+    'MAD4B_SCP_Write_Runtime_Certification::boot()',
+]:
+    if marker not in plugin:
+        raise SystemExit(f'plugin lifecycle missing write/REST boot: {marker}')
+
+for marker in [
+    "array( 'Read', 'Write' )",
+    "'governed_write_ready'",
+    "'write_certification_ready'",
+]:
+    if marker not in exporter:
+        raise SystemExit(f'runtime portable export missing governed Write state: {marker}')
+
+caps = portable['extensions']['com.openai']['interface'].get('capabilities', [])
+if caps != ['Read', 'Write']:
+    raise SystemExit(f'portable Plugin capability contract must be [Read, Write], got {caps!r}')
+
+print('mad4b.staging-write-authority.v1: PASS')
