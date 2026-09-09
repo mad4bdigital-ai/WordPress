@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.3
+ * Version: 0.4.0-rc.4
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.3' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.4' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -80,6 +80,7 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-litespeed-adapte
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-family-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.php';
@@ -105,6 +106,11 @@ MAD4B_SCP_Skill_Autoconfig::bootstrap();
 // configure the mutation gate only for staging.egypttourgates.com; Production
 // and breakglass are never auto-enabled.
 MAD4B_SCP_Staging_Write_Authority::bootstrap();
+
+// A reviewed bundled MCP Adapter may shadow the canonical plugin if it appears
+// earlier in active_plugins. Repair only that exact Staging load-order collision
+// for the next request; never disable either plugin and never mutate Production.
+MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
 
 // Register lazy Abilities/MCP callbacks before plugins_loaded so a third-party
 // REST prime cannot consume the one-shot MCP Adapter init action first.
