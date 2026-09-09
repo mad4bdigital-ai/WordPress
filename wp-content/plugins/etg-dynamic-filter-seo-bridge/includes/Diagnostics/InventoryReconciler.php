@@ -24,6 +24,7 @@ final class InventoryReconciler {
         $identityRecords=$this->identityRecords($queryBuilder);
         $languages=(array)($inventory['languages']??array());
         $topology=(array)($inventory['elementor_topology']??array());
+        $filterInspection=(array)($inventory['jet_smart_filters']??array());
         $queryConflicts=$this->queryConflictIndex((array)($queryBuilder['identity_conflicts']??array()));
         $queryIndex=$this->queryIndex($identityRecords,$queryConflicts);
         $findings=$this->inventoryQualityFindings($inventory);
@@ -34,8 +35,9 @@ final class InventoryReconciler {
             $id=sanitize_key((string)($profile['id']??$profileId));if(''===$id){continue;}
             $enabled=!empty($profile['enabled']);$severity=$enabled?'blocking':'warning';
             $allowedPostTypes=$this->cleanKeys((array)($profile['post_types']??array()));$allowedMap=array_fill_keys($allowedPostTypes,true);
+            $taxonomyRules=(array)($profile['taxonomy_rules']??array());
             foreach($allowedPostTypes as $postType){$profiledPostTypes[$postType]=true;if(isset($postTypes[$postType])){continue;}$code=$this->sectionTruncated($inventory,'post_types')?'profile_post_type_unresolved_inventory_truncated':'profile_post_type_missing';$this->finding($findings,$severity,$code,'profile:'.$id,array('post_type'=>$postType,'profile_enabled'=>$enabled));}
-            foreach(array_slice((array)($profile['taxonomy_rules']??array()),0,50,true) as $taxonomy=>$rule){
+            foreach(array_slice($taxonomyRules,0,50,true) as $taxonomy=>$rule){
                 $taxonomy=sanitize_key((string)$taxonomy);if(''===$taxonomy){continue;}$profiledTaxonomies[$taxonomy]=true;
                 if(!isset($taxonomies[$taxonomy])){$code=$this->sectionTruncated($inventory,'taxonomies')?'profile_taxonomy_unresolved_inventory_truncated':'profile_taxonomy_missing';$this->finding($findings,$severity,$code,'profile:'.$id,array('taxonomy'=>$taxonomy,'profile_enabled'=>$enabled));continue;}
                 $attached=$this->cleanKeys((array)($taxonomies[$taxonomy]['object_type']??array()));
@@ -52,6 +54,8 @@ final class InventoryReconciler {
                 if(empty($binding['resolved'])){$this->finding($findings,$severity,(string)$binding['code'],'profile:'.$id,array_merge(array('query_id'=>$providerQueryId,'profile_enabled'=>$enabled),(array)($binding['details']??array())));continue;}
                 $routeDrift=$this->routeProviderGroupDrift($providerQueryId,$topology);
                 if($routeDrift){$this->finding($findings,$severity,'profile_elementor_provider_group_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($routeDrift),'drift'=>array_slice($routeDrift,0,10),'authorizing'=>false));}
+                $filterTaxonomyDrift=$this->routeFilterTaxonomyDrift($providerQueryId,$taxonomyRules,$filterInspection);
+                if($filterTaxonomyDrift){$this->finding($findings,$severity,'profile_filter_taxonomy_target_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($filterTaxonomyDrift),'drift'=>array_slice($filterTaxonomyDrift,0,10),'authorizing'=>false));}
                 $queryId=(string)$binding['query_builder_query_id'];
                 if(isset($queryConflicts[$queryId])){$this->finding($findings,$severity,'profile_query_identity_collision','profile:'.$id,array('query_id'=>$queryId,'provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'conflict'=>$queryConflicts[$queryId]));continue;}
                 if(!isset($queryIndex[$queryId])){$code=$this->queryIdentityComplete($inventory)?'profile_query_missing':'profile_query_unresolved_inventory_truncated';$this->finding($findings,$severity,$code,'profile:'.$id,array('query_id'=>$queryId,'provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled));continue;}
