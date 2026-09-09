@@ -101,6 +101,29 @@ jobs:
           test "$(stat -c '%s' wp-content/plugins/mcp-adapter.zip)" = '455463'
           unzip -tqq wp-content/plugins/mcp-adapter.zip
 
+      - name: Verify governed Staging write package invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          write="$plugin/includes/class-mad4b-scp-staging-write-authority.php"
+          cert="$plugin/includes/class-mad4b-scp-write-runtime-certification.php"
+          rest="$plugin/includes/class-mad4b-scp-rest-compatibility.php"
+          servers="$plugin/includes/class-mad4b-scp-servers.php"
+          test -f "$write" -a -f "$cert" -a -f "$rest" -a -f "$servers"
+          grep -Fq "const STAGING_HOST = 'staging.egypttourgates.com'" "$write"
+          grep -Fq "'production_auto_enable' => false" "$write"
+          grep -Fq "'breakglass_auto_enable' => false" "$write"
+          grep -Fq "'all_remote_writes_require_exact_approval' => true" "$write"
+          grep -Fq "MAD4B_SCP_Agent_Registry::grant_ability" "$write"
+          grep -Fq "'mad4b/database-raw-query' === \$ability_name" "$servers"
+          grep -Fq "mad4b.write-runtime-certification.v1" "$cert"
+          grep -Fq "mad4b.rest-compatibility.v1" "$rest"
+          if grep -Fq "add_filter( 'rest_enabled'" "$rest" || grep -Fq "add_filter( 'rest_authentication_errors'" "$rest"; then
+            echo 'Control Plane REST compatibility code must not globally modify REST access.' >&2
+            exit 1
+          fi
+
       - name: Build exact control-plane ZIP and manifest
         shell: bash
         run: |
@@ -134,10 +157,11 @@ jobs:
           stage = Path(sys.argv[1])
           version, control_sha, adapter_sha = sys.argv[2:]
           data = {
-              'contract': 'mad4b.site-control-plane.staging-install-kit.v2',
+              'contract': 'mad4b.site-control-plane.staging-install-kit.v3',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
               'commit': os.environ.get('SOURCE_SHA'),
-              'release_class': 'staging-release-candidate',
+              'release_class': 'staging-governed-write-release-candidate',
+              'governed_origin': 'staging.egypttourgates.com',
               'control_plane': {
                   'version': version,
                   'archive': f'mad4b-site-control-plane-{version}.zip',
@@ -157,36 +181,47 @@ jobs:
                   'secret_like_files_denied': True,
                   'canonical_skill_seed_parity': True,
                   'development_tests_excluded': True,
-                  'read_only_default': True,
+                  'governed_staging_write_authority': True,
+                  'all_registered_nonreadonly_content_admin_actions_projected_to_mad4b_write': True,
+                  'remote_writes_require_exact_one_time_approval': True,
+                  'breakglass_excluded_from_write_surface': True,
+                  'production_auto_write_disabled': True,
+                  'wpml_rest_global_interception_absent': True,
               },
-              'default_safety': {
-                  'mutation_enabled': False,
-                  'plugin_lifecycle_enabled': False,
-                  'breakglass_enabled': False,
-                  'bitflows_execution_enabled': False,
-                  'elementor_legacy_write_enabled': False,
+              'environment_safety': {
+                  'staging_exact_origin_mutation_autoconfig': True,
+                  'production_mutation_auto_enabled': False,
+                  'breakglass_auto_enabled': False,
+                  'plugin_lifecycle_still_requires_policy_allowlist': True,
+                  'bitflows_execution_still_requires_provider_policy': True,
+                  'elementor_legacy_write_still_requires_provider_policy': True,
               },
               'required_post_install_checks': [
                   'mad4b/runtime-self-test',
                   'mad4b/skills-runtime-certification',
                   'mad4b/skills-export-status',
+                  'mad4b/write-authority-status',
+                  'mad4b/write-runtime-certification',
+                  'mad4b/rest-compatibility-status',
               ],
           }
           (stage / 'install-manifest.json').write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
           PY
 
           cat > "$stage/INSTALL-STAGING.md" <<'EOF'
-          # MAD4B staging installation kit
+          # MAD4B governed Staging installation kit
 
           1. Install and activate the exact `mcp-adapter-0.6.1.zip` first.
-          2. Install and activate the MAD4B Site Control Plane ZIP.
-          3. Staging Skills bootstrap automatically; do not add a manual Skills enable constant for the normal path.
-          4. Do not define any MAD4B mutation/Breakglass/lifecycle/Flow/Elementor legacy-write enable constants during discovery certification.
-          5. Authenticate a dedicated control identity and execute `mad4b/runtime-self-test`.
-          6. Read `mad4b/skills-runtime-certification` and require `ready` before accepting the local Skills runtime.
-          7. Compare the later portable ChatGPT package `MAD4B-SNAPSHOT-ID.txt` with `mad4b/skills-export-status` snapshot identity before external acceptance.
+          2. Install and activate the MAD4B Site Control Plane ZIP on **staging.egypttourgates.com only**.
+          3. Skills, the Staging App mapping and the governed mutation gate bootstrap automatically on that exact Staging origin; do not add manual enable constants for the normal path.
+          4. The plugin creates/binds a site-local NHI and exact `mad4b-write` grants for every registered non-readonly content/admin ability. Breakglass is excluded.
+          5. Remote OAuth is identity-only. Every remote write requires a short-lived exact one-time approval ticket; a read bearer alone cannot authorize mutation.
+          6. Provider-specific mutations remain subject to their provider certification, capability, stale-state and policy gates.
+          7. Read `mad4b/write-authority-status` and `mad4b/write-runtime-certification` and require `ready` before external write acceptance.
+          8. Read `mad4b/rest-compatibility-status`; on a WPML-enabled Staging site require the internal `/wpml/v1/rest/status` probe to return valid GET/query-parameter evidence.
+          9. Compare the portable ChatGPT package `MAD4B-SNAPSHOT-ID.txt` with `mad4b/skills-export-status` before external snapshot acceptance, then Refresh/Scan Tools in ChatGPT.
 
-          This is a controlled Staging release candidate. It does not authorize Production mutation or PR merge by itself.
+          Production mutation and Breakglass are not authorized by this package. PR merge still requires exact-head live Staging acceptance.
           EOF
 
       - name: Verify package boundaries and checksums
@@ -199,6 +234,9 @@ jobs:
           unzip -tqq "$control_zip"
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md'
           if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
@@ -209,7 +247,9 @@ jobs:
             exit 1
           fi
           grep -Fq "\"commit\": \"$SOURCE_SHA\"" "$stage/install-manifest.json"
-          grep -Fq '"release_class": "staging-release-candidate"' "$stage/install-manifest.json"
+          grep -Fq '"release_class": "staging-governed-write-release-candidate"' "$stage/install-manifest.json"
+          grep -Fq '"governed_staging_write_authority": true' "$stage/install-manifest.json"
+          grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
       - name: Upload reviewed staging installation kit
