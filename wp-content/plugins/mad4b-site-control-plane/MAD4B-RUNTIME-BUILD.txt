@@ -1,0 +1,3 @@
+release=0.4.0-rc.6
+contract=mad4b.runtime-build-evidence.v1
+purpose=distinguish-on-disk-build-from-loaded-runtime
