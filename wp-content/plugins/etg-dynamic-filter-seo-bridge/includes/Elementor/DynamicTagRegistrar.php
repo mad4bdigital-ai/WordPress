@@ -27,6 +27,8 @@ final class DynamicTagRegistrar {
     public function __construct(PresentationResolver$resolver,ContentSlotRegistry$slots,callable$catalogProvider,callable$previewContextProvider=null){$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;$this->previewContextProvider=$previewContextProvider;}
     public function registerHooks():void{
         add_action('elementor/dynamic_tags/register',array($this,'register'));
+        add_action('elementor/dynamic_tags/before_render',array(DynamicTagRuntime::class,'beginEditorRenderPass'));
+        add_action('elementor/dynamic_tags/after_render',array(DynamicTagRuntime::class,'endEditorRenderPass'));
         add_action('elementor/editor/after_enqueue_styles',array($this,'enqueueEditorStyles'));
     }
     public function enqueueEditorStyles():void{
