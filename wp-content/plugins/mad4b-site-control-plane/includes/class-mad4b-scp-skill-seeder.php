@@ -69,6 +69,7 @@ final class MAD4B_SCP_Skill_Seeder {
 		$level = sanitize_key( $seed['level'] );
 		$target = sanitize_key( $seed['target'] );
 		$name = sanitize_key( $seed['name'] );
+		$enabled = ! array_key_exists( 'enabled', $seed ) || (bool) $seed['enabled'];
 		$dir = wp_normalize_path( $root . '/' . $level . '/' . $target . '/' . $name );
 		$file = $dir . '/SKILL.md';
 		$meta_file = $dir . '/.mad4b.json';
@@ -90,7 +91,7 @@ final class MAD4B_SCP_Skill_Seeder {
 				'level' => $level,
 				'target' => $target,
 				'name' => $name,
-				'enabled' => true,
+				'enabled' => $enabled,
 				'sha256' => $sha,
 				'previous_sha256' => '',
 				'updated_at' => gmdate( 'c' ),
@@ -107,7 +108,7 @@ final class MAD4B_SCP_Skill_Seeder {
 
 		$audit = MAD4B_SCP_Audit::record(
 			'mad4b/skill-seed-provision',
-			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'after_sha256' => $sha, 'bytes' => strlen( $document ) ),
+			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'enabled' => $enabled, 'after_sha256' => $sha, 'bytes' => strlen( $document ) ),
 			'ok'
 		);
 		if ( is_wp_error( $audit ) ) { @unlink( $file ); @unlink( $meta_file ); return new WP_Error( 'mad4b_skill_seed_audit_failed', 'Seed Skill provisioning rolled back because audit commit failed.' ); }
@@ -140,12 +141,12 @@ final class MAD4B_SCP_Skill_Seeder {
 				'body' => "1. Read connection status and exact protected-resource identity.\n2. Check OAuth authority, CIMD/PKCE alignment, and external-handshake evidence.\n3. Distinguish local transport readiness from external certification.\n4. Do not create credentials or widen scopes.\n5. Return the first failing gate and the minimum remediation."
 			),
 			array(
-				'level' => 'provider', 'target' => 'elementor', 'name' => 'elementor-dynamic-content',
+				'level' => 'provider', 'target' => 'elementor', 'name' => 'elementor-dynamic-content', 'enabled' => false,
 				'description' => 'Inspect Elementor templates, widgets, dynamic tags, conditions, and dynamic-content bindings using MAD4B read tools.',
 				'body' => "1. Identify the exact Elementor document/template in scope.\n2. Inspect widget structure and dynamic-tag bindings.\n3. Resolve provider-backed fields before recommending shortcode fallbacks.\n4. Check display conditions and archive/singular context.\n5. Return broken bindings, viable dynamic-tag sources, and safe remediation."
 			),
 			array(
-				'level' => 'provider', 'target' => 'jet-engine', 'name' => 'jetengine-content-modeling',
+				'level' => 'provider', 'target' => 'jet-engine', 'name' => 'jetengine-content-modeling', 'enabled' => false,
 				'description' => 'Analyze JetEngine CPTs, meta fields, relations, listings, queries, and dynamic-content models through MAD4B.',
 				'body' => "1. Map CPT/taxonomy/meta/relation ownership.\n2. Inspect listing/query dependencies and provider field keys.\n3. Prefer Dynamic Tags and provider-native data contracts over hard-coded shortcodes.\n4. Identify model drift, missing relations, and rendering gaps.\n5. Return the canonical content model and required changes without applying mutation."
 			),
@@ -162,3 +163,9 @@ final class MAD4B_SCP_Skill_Seeder {
 		);
 	}
 }
+
+// Provider Skill packs are discovered only after the Control Plane has registered
+// its adapter defaults at plugins_loaded priority 20. This hook is read-only with
+// respect to provider plugins; it only reconciles MAD4B-managed Skill files.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-provider-discovery.php';
+add_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
