@@ -15,6 +15,7 @@ admin = (wp / 'includes' / 'class-mad4b-scp-skills-admin-ui.php').read_text(enco
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+readme = (portable / 'README.md').read_text(encoding='utf-8')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-autoconfig.v1'",
@@ -93,6 +94,14 @@ for marker in [
 ]:
     if marker.lower() not in admin.lower():
         raise SystemExit(f'missing admin snapshot/UX contract marker: {marker}')
+
+for marker in [
+    'automatically enables the local Skill editor',
+    'No `wp-config.php` edit is required',
+    'Production is never auto-enabled',
+]:
+    if marker not in readme:
+        raise SystemExit(f'missing zero-touch Staging documentation marker: {marker}')
 
 if "'capabilities' => array( 'Read' )" not in exporter:
     raise SystemExit('runtime exporter must advertise Read capability only')
