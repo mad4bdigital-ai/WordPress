@@ -139,6 +139,8 @@ MAD4B-SNAPSHOT.json
 MAD4B-SNAPSHOT-ID.txt
 ```
 
+The exporter computes the identity before reading the files and recomputes it after the last Skill/resource is read. If the token changes during the export, the ZIP is discarded and the export fails closed with `mad4b_skill_snapshot_changed_during_export`; a mixed or stale package is never published.
+
 The final external-client acceptance can therefore compare one value instead of manually comparing every Skill file:
 
 ```text
