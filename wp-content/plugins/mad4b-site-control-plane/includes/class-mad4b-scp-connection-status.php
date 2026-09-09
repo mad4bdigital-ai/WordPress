@@ -30,6 +30,7 @@ final class MAD4B_SCP_Connection_Status {
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_identity_context_unavailable', 'Identity context is unavailable.' );
 		$isolation = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) ? MAD4B_SCP_MCP_Provider_Isolation::status() : array( 'configured' => false, 'effective' => false );
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array( 'available' => false );
+		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array( 'verified' => false, 'status' => 'evidence_component_unavailable' );
 		$oauth_blockers = self::oauth_preflight_blockers( $oauth );
 
 		$local_blockers = array();
@@ -44,7 +45,14 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = array_merge( $local_blockers, $oauth_blockers );
 		if ( ! $https ) $remote_preflight_blockers[] = 'https_required_for_remote_mcp';
 		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
-		$certification_blockers = array_values( array_unique( array_merge( $remote_preflight_blockers, array( 'external_handshake_unverified' ) ) ) );
+
+		$certification_blockers = $remote_preflight_blockers;
+		if ( empty( $handshake['verified'] ) ) {
+			$handshake_status = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : 'unverified';
+			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
+		}
+		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
+		$connection_certified = empty( $certification_blockers );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -63,7 +71,7 @@ final class MAD4B_SCP_Connection_Status {
 			'local_blockers' => $local_blockers,
 			'remote_endpoint_preflight_ready' => empty( $remote_preflight_blockers ),
 			'remote_preflight_blockers' => $remote_preflight_blockers,
-			'connection_certified' => false,
+			'connection_certified' => $connection_certified,
 			'certification_blockers' => $certification_blockers,
 			'servers' => $servers,
 			'write_surface' => self::write_surface_summary( $servers ),
@@ -76,11 +84,7 @@ final class MAD4B_SCP_Connection_Status {
 				'current_request_subject' => self::identity_status( $identity ),
 				'remote_subject_bridge_required' => true,
 			),
-			'external_handshake' => array(
-				'verified' => false,
-				'status' => empty( $remote_preflight_blockers ) ? 'requires_real_remote_mcp_session' : 'local_remote_preflight_incomplete',
-				'note' => 'Local readiness never certifies Internet reachability, authorization-server conformance, OAuth client registration, MCP session establishment, or the remote subject bridge.',
-			),
+			'external_handshake' => self::bounded_handshake_status( $handshake, $remote_preflight_blockers ),
 			'mcp_peer_governance' => self::bounded_peer_summary( $peer ),
 			'breakglass' => array(
 				'configured_enabled' => defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ),
@@ -134,6 +138,31 @@ final class MAD4B_SCP_Connection_Status {
 			'write_surfaces_enabled' => ! empty( $oauth['write_surfaces_enabled'] ),
 			'preflight_ready' => empty( $blockers ),
 			'blockers' => array_values( array_map( 'sanitize_key', $blockers ) ),
+		);
+	}
+
+	private static function bounded_handshake_status( $handshake, array $remote_preflight_blockers ) {
+		if ( ! is_array( $handshake ) ) $handshake = array();
+		$verified = ! empty( $handshake['verified'] );
+		return array(
+			'contract' => isset( $handshake['contract'] ) ? sanitize_text_field( (string) $handshake['contract'] ) : '',
+			'verified' => $verified,
+			'status' => isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : ( $verified ? 'verified_external_chatgpt_session' : ( empty( $remote_preflight_blockers ) ? 'requires_real_remote_mcp_session' : 'local_remote_preflight_incomplete' ) ),
+			'environment' => isset( $handshake['environment'] ) ? sanitize_key( (string) $handshake['environment'] ) : '',
+			'server_id' => isset( $handshake['server_id'] ) ? sanitize_key( (string) $handshake['server_id'] ) : '',
+			'client_id' => isset( $handshake['client_id'] ) ? esc_url_raw( (string) $handshake['client_id'] ) : '',
+			'resource' => isset( $handshake['resource'] ) ? esc_url_raw( (string) $handshake['resource'] ) : '',
+			'issuer' => isset( $handshake['issuer'] ) ? esc_url_raw( (string) $handshake['issuer'] ) : '',
+			'auth_method' => isset( $handshake['auth_method'] ) ? sanitize_key( (string) $handshake['auth_method'] ) : '',
+			'wp_user_id' => isset( $handshake['wp_user_id'] ) ? absint( $handshake['wp_user_id'] ) : 0,
+			'subject_fingerprint_present' => ! empty( $handshake['subject_fingerprint_present'] ),
+			'mcp_session_fingerprint_present' => ! empty( $handshake['mcp_session_fingerprint_present'] ),
+			'scope_set' => isset( $handshake['scope_set'] ) && is_array( $handshake['scope_set'] ) ? array_slice( array_map( 'sanitize_text_field', $handshake['scope_set'] ), 0, 20 ) : array(),
+			'tool_count' => isset( $handshake['tool_count'] ) ? (int) $handshake['tool_count'] : 0,
+			'verified_at' => isset( $handshake['verified_at'] ) ? sanitize_text_field( (string) $handshake['verified_at'] ) : '',
+			'build_fingerprint_match' => ! empty( $handshake['build_fingerprint_match'] ),
+			'credential_material_stored' => false,
+			'note' => $verified ? 'Verified from a real Staging REST OAuth bearer session that completed MCP initialize and tools/list on the same hashed session identity. No bearer or raw MCP session id is persisted.' : 'Local readiness never self-certifies the external connection; a real ChatGPT OAuth/MCP session must complete initialize and tools/list.',
 		);
 	}
 
@@ -240,6 +269,7 @@ final class MAD4B_SCP_Connection_Status {
 			'environment' => isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : '',
 			'production_approved' => ! empty( $status['production_approved'] ),
 			'default_server_suppressed' => ! empty( $status['default_server_suppressed'] ),
+			'wpmedia_oauth_server_suppressed' => ! empty( $status['wpmedia_oauth_server_suppressed'] ),
 			'removed_route_count' => isset( $status['removed_route_count'] ) ? (int) $status['removed_route_count'] : 0,
 			'removed_routes' => array_slice( array_map( 'sanitize_text_field', $routes ), 0, 100 ),
 			'unknown_routes_fail_closed' => ! empty( $status['unknown_routes_fail_closed'] ),
@@ -268,6 +298,8 @@ final class MAD4B_SCP_Connection_Status {
 			'foreign_transport' => array(
 				'inventory_ready' => ! empty( $foreign['inventory_ready'] ),
 				'detected' => ! empty( $foreign['foreign_mcp_detected'] ),
+				'reviewed_non_transport_route_count' => isset( $foreign['reviewed_non_transport_route_count'] ) ? (int) $foreign['reviewed_non_transport_route_count'] : 0,
+				'reviewed_non_transport_routes' => isset( $foreign['reviewed_non_transport_routes'] ) && is_array( $foreign['reviewed_non_transport_routes'] ) ? array_slice( array_map( 'sanitize_text_field', $foreign['reviewed_non_transport_routes'] ), 0, 100 ) : array(),
 				'route_count' => isset( $foreign['foreign_route_count'] ) ? (int) $foreign['foreign_route_count'] : 0,
 				'routes' => isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? array_slice( array_map( 'sanitize_text_field', $foreign['foreign_routes'] ), 0, 100 ) : array(),
 				'plugin_count' => isset( $foreign['foreign_plugin_count'] ) ? (int) $foreign['foreign_plugin_count'] : 0,

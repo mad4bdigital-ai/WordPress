@@ -15,6 +15,7 @@ def forbid(text, needle, label):
         raise SystemExit(f'FAIL {label}: forbidden {needle!r}')
 
 status = read('includes/class-mad4b-scp-connection-status.php')
+evidence = read('includes/class-mad4b-scp-external-handshake-evidence.php')
 ability = read('includes/class-mad4b-scp-connection-ability.php')
 ui = read('includes/class-mad4b-scp-connection-admin-ui.php')
 admin_ui = read('includes/class-mad4b-scp-admin-ui.php')
@@ -32,21 +33,42 @@ require(status, "mad4b.connection-readiness.v4", 'connection-contract')
 for marker in (
     'get_server_route_namespace', 'get_server_route', 'get_transport_permission_callback',
     'rest_get_server()', 'route_registered', 'permission_callback_match',
-    "'local_transport_ready'", "'remote_endpoint_preflight_ready'",
-    "'connection_certified' => false", "'external_handshake_unverified'",
+    "'local_transport_ready'", "'remote_endpoint_preflight_ready'", '$connection_certified',
+    "'external_handshake_unverified'", "'external_handshake_stale'",
     "'credential_material_exposed' => false", "'credential_creation_supported_here' => false",
     "'remote_subject_bridge_required' => true", "'write_surface'",
     "'exact_transport_grant_required' => true", "'generic_dispatcher_exposed' => false",
     "'provider_mcp_isolation'", "'oauth_resource_server'",
     'MAD4B_SCP_OAuth_Resource_Bridge::status()', 'oauth_preflight_blockers',
+    'MAD4B_SCP_External_Handshake_Evidence::status()', 'bounded_handshake_status',
     'oauth_resource_bridge_not_configured', 'oauth_issuer_unconfigured',
     'oauth_wp_subject_unconfigured', 'oauth_wp_subject_invalid',
     "'preflight_ready' => empty( $blockers )",
 ):
     require(status, marker, 'connection-status-truth')
+forbid(status, "'connection_certified' => false", 'connection-no-permanent-false')
 
 if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
     raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')
+if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = empty( $certification_blockers )'):
+    raise SystemExit('FAIL preflight-before-certification: remote blockers must be assembled before final certification')
+
+for marker in (
+    "const CONTRACT = 'mad4b.external-handshake-evidence.v1'",
+    "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
+    "const SERVER_ID = 'mad4b-chatgpt'",
+    "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
+    "defined( 'DOING_CRON' ) && DOING_CRON", 'verified_bearer_active()',
+    "'initialize'", "'tools/list'", "hash( 'sha256', $session_id )",
+    "update_option( self::OPTION, $evidence, false )", "'credential_material_stored' => false",
+    "'stale_build_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
+):
+    require(evidence, marker, 'external-handshake-evidence')
+for forbidden in (
+    "'access_token' =>", "'refresh_token' =>", "'authorization_header' =>", "'raw_token' =>",
+    '$_SERVER[\'HTTP_AUTHORIZATION\']', 'wp_remote_get(', 'wp_remote_post(', 'curl_exec(', 'fsockopen(',
+):
+    forbid(evidence, forbidden, 'external-evidence-no-secret-or-outbound')
 
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_remote_request(', 'curl_exec(', 'fsockopen('):
     forbid(status + '\n' + ui, outbound, 'no-self-probe-ssrf')
@@ -123,62 +145,42 @@ for marker in (
 ):
     require(admin_experience, marker, 'shared-admin-experience')
 
-require(bootstrap, 'class-mad4b-scp-transport-context.php', 'transport-context-bootstrap')
-require(bootstrap, 'class-mad4b-scp-connection-status.php', 'connection-status-bootstrap')
-require(bootstrap, 'class-mad4b-scp-connection-ability.php', 'connection-ability-bootstrap')
-require(bootstrap, 'class-mad4b-scp-admin-experience.php', 'admin-experience-bootstrap')
-require(bootstrap, 'class-mad4b-scp-connection-admin-ui.php', 'connection-ui-bootstrap')
-require(bootstrap, 'class-mad4b-scp-mcp-provider-isolation.php', 'isolation-bootstrap')
+for marker in (
+    'class-mad4b-scp-mcp-provider-isolation.php', 'class-mad4b-scp-external-handshake-evidence.php',
+    'class-mad4b-scp-transport-context.php', 'class-mad4b-scp-connection-status.php',
+    'class-mad4b-scp-connection-ability.php', 'class-mad4b-scp-admin-experience.php',
+    'class-mad4b-scp-connection-admin-ui.php',
+):
+    require(bootstrap, marker, 'bootstrap-load')
+require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'provider-early-boot')
+require(bootstrap, 'MAD4B_SCP_External_Handshake_Evidence::boot();', 'external-evidence-boot')
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
 require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
 
 for marker in (
-    "const CONTRACT = 'mad4b.mcp-provider-isolation.v2'",
-    "const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v1'",
-    "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
-    "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'",
-    "add_filter( 'mcp_adapter_create_default_server'",
-    "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
+    "const CONTRACT = 'mad4b.mcp-provider-isolation.v2'", "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "add_filter( 'wpmedia_mcp_oauth_server_enabled'", 'filter_wpmedia_oauth_server_enabled',
+    "add_filter( 'mcp_adapter_create_default_server'", "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
     "add_action( 'init', array( __CLASS__, 'suppress_provider_server_registrations' ), 19 )",
     "add_action( 'mcp_adapter_init', array( __CLASS__, 'suppress_provider_server_registrations' ), -1000000 )",
-    "add_filter( 'rest_endpoints'",
-    "'hostinger-ai-assistant-mcp-server'",
-    "'elementskit-mcp-server'",
-    "'Hostinger\\\\AiAssistant\\\\Mcp\\\\McpServer'",
-    "'ElementsKit_Lite\\\\Mcp\\\\Server'",
-    "'create_server'",
-    "'register_server'",
-    "/hostinger-ai-assistant/v1/mcp/",
-    "/hostinger-ai-assistant/v1/jwt/",
-    "/elementskit/mcp/",
-    "'unknown_routes_fail_closed' => true",
-    "'unknown_server_callbacks_fail_closed' => true",
-    "'changes_provider_settings' => false",
-    "'disables_provider_plugins' => false",
-    "'creates_authority' => false",
+    "add_filter( 'rest_endpoints'", "'hostinger-ai-assistant-mcp-server'", "'elementskit-mcp-server'",
+    "/hostinger-ai-assistant/v1/mcp/", "/hostinger-ai-assistant/v1/jwt/", "/elementskit/mcp/",
+    "'unknown_routes_fail_closed' => true", "'changes_provider_settings' => false", "'creates_authority' => false",
 ):
     require(isolation, marker, 'provider-isolation-contract')
-for forbidden in (
-    'update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post(',
-    'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible(',
-):
+for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post(', 'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible('):
     forbid(isolation, forbidden, 'provider-isolation-deny-only')
 
 for marker in (
-    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'",
-    'foreign_transport_inventory', 'rest_get_server()', "get_option( 'active_plugins'",
-    "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
-    'is_known_namespace_index', "'get_namespace_index'",
-    '$callback[0] !== $rest_server', "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
+    "const CONTRACT = 'mad4b.mcp-peer-governance.v2'", 'foreign_transport_inventory', 'rest_get_server()',
+    "get_option( 'active_plugins'", "'mcp-adapter/mcp-adapter.php'", "'mad4b-site-control-plane/mad4b-site-control-plane.php'",
+    'is_known_namespace_index', "'get_namespace_index'", '$callback[0] !== $rest_server',
+    'HOSTINGER_BANNER_CONTROL_ROUTE', 'is_reviewed_non_transport_route', 'reviewed_non_transport_routes',
+    "'mcp_foreign_transport_unreviewed'", "'mcp_write_side_channel_detected'",
 ):
     require(peer, marker, 'foreign-mcp-fail-closed')
-for bypass in (
-    "apply_filters( 'mad4b_scp_mcp_peer",
-    "apply_filters( 'mad4b_scp_ignore_mcp",
-    "apply_filters( 'mad4b_scp_side_channel",
-    "if ( '/mcp' === $route ) continue",
-):
+for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
 print('mad4b.site-control-plane.connection-readiness-contract.v7: PASS')

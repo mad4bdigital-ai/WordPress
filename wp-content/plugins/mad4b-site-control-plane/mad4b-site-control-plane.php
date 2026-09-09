@@ -39,6 +39,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-init-lock.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canary.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-request-context-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-jwt-header-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-outbound-budget-guard.php';
@@ -81,6 +82,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
 // Provider kill-switch filters must exist before plugins_loaded provider bootstraps.
 MAD4B_SCP_MCP_Provider_Isolation::boot_early();
+MAD4B_SCP_External_Handshake_Evidence::boot();
 MAD4B_SCP_ChatGPT_OAuth_Lifecycle::boot();
 MAD4B_SCP_Local_OAuth_Consent_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
