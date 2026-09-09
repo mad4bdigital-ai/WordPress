@@ -9,12 +9,18 @@
  * a second activatable plugin. WordPress loads PHP files placed directly in
  * WPMU_PLUGIN_DIR regardless of plugin headers, so the managed MU copy remains
  * executable without one.
+ *
+ * Important lifecycle rule: this MU bootstrap pins the canonical MCP Adapter
+ * classes and package autoloader only. It MUST NOT include mcp-adapter.php or
+ * call WP\MCP\Plugin::instance() during the MU phase. The official plugin main
+ * file performs dependency checks (including wp_register_ability()) and must be
+ * allowed to execute later in WordPress' normal active-plugin phase.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 $mad4b_mcp_mu_status = array(
-	'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v2',
+	'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v3',
 	'executed' => true,
 	'environment' => function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown',
 	'host' => '',
@@ -25,6 +31,8 @@ $mad4b_mcp_mu_status = array(
 	'runtime_preclaimed' => false,
 	'preclaimed_symbol' => '',
 	'canonical_symbols_pinned' => false,
+	'canonical_autoloader_loaded' => false,
+	'official_plugin_bootstrap_deferred' => false,
 	'runtime_from_official_plugin' => false,
 	'runtime_source' => 'unavailable',
 );
@@ -62,20 +70,22 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 			$mad4b_mcp_mu_root . 'includes/Core/McpAdapter.php',
 			$mad4b_mcp_mu_root . 'includes/Plugin.php',
 		);
-		$mad4b_mcp_mu_main = $mad4b_mcp_mu_root . 'mcp-adapter.php';
+		$mad4b_mcp_mu_autoloader = $mad4b_mcp_mu_root . 'vendor/autoload_packages.php';
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] ) {
-			foreach ( array_merge( $mad4b_mcp_mu_pin_files, array( $mad4b_mcp_mu_main ) ) as $mad4b_mcp_mu_required_file ) {
+			foreach ( array_merge( $mad4b_mcp_mu_pin_files, array( $mad4b_mcp_mu_autoloader ) ) as $mad4b_mcp_mu_required_file ) {
 				if ( ! is_readable( $mad4b_mcp_mu_required_file ) ) {
 					$mad4b_mcp_mu_status['state'] = 'official_adapter_file_unreadable';
 					break;
 				}
-		}
+			}
 		}
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] && 'official_adapter_file_unreadable' !== $mad4b_mcp_mu_status['state'] ) {
-			// Pin the canonical symbols by direct file inclusion before any already-
-			// registered third-party autoloader can satisfy these class names.
+			// Pin canonical symbols before Hostinger's regular-plugin bootstrap can
+			// claim them, then register the official package autoloader. Do not run
+			// the MCP Adapter plugin main file here: its dependency check belongs to
+			// the later normal active-plugin phase.
 			foreach ( $mad4b_mcp_mu_pin_files as $mad4b_mcp_mu_pin_file ) require_once $mad4b_mcp_mu_pin_file;
 			$mad4b_mcp_mu_status['canonical_symbols_pinned'] = class_exists( 'WP\\MCP\\Autoloader', false )
 				&& class_exists( 'WP\\MCP\\Core\\McpAdapter', false )
@@ -83,8 +93,14 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 			if ( ! $mad4b_mcp_mu_status['canonical_symbols_pinned'] ) {
 				$mad4b_mcp_mu_status['state'] = 'canonical_symbol_pin_failed';
 			} else {
-				require_once $mad4b_mcp_mu_main;
-				$mad4b_mcp_mu_status['state'] = 'official_adapter_loaded';
+				$mad4b_mcp_mu_autoload_result = require_once $mad4b_mcp_mu_autoloader;
+				$mad4b_mcp_mu_status['canonical_autoloader_loaded'] = false !== $mad4b_mcp_mu_autoload_result;
+				if ( ! $mad4b_mcp_mu_status['canonical_autoloader_loaded'] ) {
+					$mad4b_mcp_mu_status['state'] = 'canonical_autoloader_load_failed';
+				} else {
+					$mad4b_mcp_mu_status['official_plugin_bootstrap_deferred'] = true;
+					$mad4b_mcp_mu_status['state'] = 'canonical_runtime_pinned_plugin_bootstrap_deferred';
+				}
 			}
 		}
 
@@ -110,7 +126,7 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 			}
 		}
 
-		if ( 'official_adapter_loaded' === $mad4b_mcp_mu_status['state'] && empty( $mad4b_mcp_mu_status['runtime_from_official_plugin'] ) ) {
+		if ( 'canonical_runtime_pinned_plugin_bootstrap_deferred' === $mad4b_mcp_mu_status['state'] && empty( $mad4b_mcp_mu_status['runtime_from_official_plugin'] ) ) {
 			$mad4b_mcp_mu_status['state'] = 'runtime_not_official_after_bootstrap';
 		}
 	}
@@ -126,7 +142,8 @@ unset(
 	$mad4b_mcp_mu_root,
 	$mad4b_mcp_mu_pin_files,
 	$mad4b_mcp_mu_pin_file,
-	$mad4b_mcp_mu_main,
+	$mad4b_mcp_mu_autoloader,
+	$mad4b_mcp_mu_autoload_result,
 	$mad4b_mcp_mu_required_file,
 	$mad4b_mcp_mu_class,
 	$mad4b_mcp_mu_reflection,
