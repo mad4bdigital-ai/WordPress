@@ -13,6 +13,9 @@ $autoconfig = MAD4B_SCP_Skill_Autoconfig::status();
 if ( empty( $autoconfig['configured'] ) ) $fail( 'Skill editor was not auto-configured.' );
 if ( empty( $autoconfig['app_mapping_configured'] ) ) $fail( 'Staging OpenAI App mapping was not auto-configured.' );
 if ( empty( $autoconfig['app_mapping_matches_staging'] ) ) $fail( 'Staging OpenAI App mapping does not match the governed Staging App.' );
+if ( empty( $autoconfig['app_mapping_origin_bound'] ) ) $fail( 'Staging OpenAI App mapping is not bound to the governed ETG origin.' );
+if ( ! isset( $autoconfig['expected_staging_host'], $autoconfig['observed_host'] ) || ! hash_equals( (string) $autoconfig['expected_staging_host'], (string) $autoconfig['observed_host'] ) ) $fail( 'Observed Staging host does not match the governed ETG Staging host.' );
+if ( ! hash_equals( MAD4B_SCP_Skill_Autoconfig::staging_app_host(), (string) $autoconfig['observed_host'] ) ) $fail( 'Autoconfig Staging host contract mismatch.' );
 if ( 'staging_auto' !== $autoconfig['app_mapping_source'] ) $fail( 'Expected automatic Staging App mapping source.' );
 
 $registry = MAD4B_SCP_Skill_Registry::status();
