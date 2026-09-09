@@ -28,6 +28,20 @@ Alpha11 removes side-channel/manual identity discovery from the normal operator 
 8. Inventory-level drift summaries remain warning evidence even when individual proven route mismatches can block an enabled Profile.
 9. Provider-group drift detection is diagnostic only: it does not rewrite Elementor settings, Query Builder objects, Profiles, URLs or SEO publication state.
 
+## JetSmartFilters definition drift
+
+1. A taxonomy-based JetSmartFilters definition has distinct source and query-target evidence. `_source_taxonomy` does not prove that `_query_var` or `_custom_query_var` targets the same taxonomy.
+2. The diagnostic inspector may read Elementor filter surfaces and the referenced JetSmartFilters filter metadata, but it remains read-only, non-authorizing and profile-non-mutating.
+3. Only strict `_tax_query::<taxonomy>` targets are interpreted as taxonomy target authority. Unknown or unsupported query-variable shapes must not be rewritten or guessed.
+4. When `data_source=taxonomies` and a non-empty source taxonomy differs from a non-empty parsed target taxonomy, the inspector emits `source_taxonomy_query_target_mismatch` evidence.
+5. Inventory-level filter-definition drift remains a `warning` so a facet outside SEO scope does not globally block an otherwise safe profile.
+6. A mismatch becomes `profile_filter_taxonomy_target_drift` for a Surface Profile only when:
+   - the Elementor filter surface uses the exact provider query ID of that Profile route, and
+   - either the source taxonomy or target taxonomy is explicitly governed by that Profile's `taxonomy_rules`.
+7. For an enabled Profile, a governed route mismatch is fail-closed and blocking. For a disabled Profile it remains warning/review evidence.
+8. A mismatch whose source and target are both outside the Profile's governed taxonomy rules must not be promoted to a route blocker; it remains visible only through the inventory-level diagnostic finding.
+9. Filter-definition diagnostics must never mutate JetSmartFilters posts/meta, Elementor templates, Profiles, URLs, or SEO publication authority.
+
 ## Inventory scale
 
 1. Detailed Query Builder output remains bounded to 100 records for explainability and payload safety.
@@ -35,6 +49,7 @@ Alpha11 removes side-channel/manual identity discovery from the normal operator 
 3. Reconciliation may use the complete identity index even when the detailed list is truncated.
 4. A collision on the exact Query Builder identity used by a profile remains blocking for that profile.
 5. Unrelated collisions are visible evidence and do not automatically invalidate an otherwise uniquely resolved profile binding.
+6. JetSmartFilters filter-definition diagnostics are optional inventory evidence. Their absence does not reclassify the core Runtime Inventory as unavailable; when present they participate in the snapshot fingerprint and drift review.
 
 ## Inventory-driven dynamic content
 
