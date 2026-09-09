@@ -2,6 +2,12 @@
 function sanitize_key($value){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$value));}
 function sanitize_text_field($value){return trim(strip_tags((string)$value));}
 function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
+function absint($value){return abs((int)$value);}
+$GLOBALS['etg_listing_config_test_meta']=array();
+function get_post_meta($postId,$key,$single=true){
+    if('_elementor_data'!==$key){return $single?'':array();}
+    return $GLOBALS['etg_listing_config_test_meta'][(int)$postId]??'';
+}
 require_once __DIR__ . '/../includes/Diagnostics/RuntimeInventory.php';
 require_once __DIR__ . '/../includes/Diagnostics/InventoryReconciler.php';
 use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryReconciler;
@@ -164,5 +170,61 @@ $badCompleteness['inventory']['completeness']['query_builder']['included_count']
 $badCompleteness['snapshot_fingerprint']=hash('sha256',json_encode($badCompleteness['inventory'],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
 $outBadCompleteness=$r->analyze($badCompleteness,array('properties'=>$profile));
 check($outBadCompleteness['state']==='invalid_inventory' && in_array('inventory_query_builder_completeness_included_count_mismatch',$outBadCompleteness['errors'],true),'tampered completeness metadata rejected');
+
+/* Listing configuration drift is evaluated only against verified topology bindings and runtime taxonomy authority. */
+$listingInventory=inventory();
+$listingInventory['inventory']['elementor_topology']=array(
+    'contract'=>'etg.dfsb.runtime-topology.v1','authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'available'=>true,'truncated'=>false,
+    'bindings'=>array(array(
+        'provider'=>'jet-engine','provider_query_id'=>'property_archive','status'=>'verified','reason'=>'verified',
+        'query_builder_internal_id'=>'10','query_builder_custom_query_id'=>'property_archive','query_type'=>'posts',
+        'post_types'=>array('property'),'template_ids'=>array(9001),'evidence_count'=>1,
+    )),
+    'provider_group_drift'=>array(),'provider_group_drift_count'=>0,'provider_group_drift_truncated'=>false,
+);
+refreshFingerprint($listingInventory);
+$GLOBALS['etg_listing_config_test_meta'][9001]=json_encode(array(
+    array('id'=>'listing-stale','elType'=>'widget','widgetType'=>'jet-listing-grid','settings'=>array(
+        '_element_id'=>'property_archive','custom_query'=>'yes','custom_query_id'=>'10',
+        'custom_post_types'=>array('product'),
+        'posts_query'=>array(array('_id'=>'foreign-tax','type'=>'tax_query','tax_query_taxonomy'=>'brand')),
+    )),
+),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+$outListing=$r->analyze($listingInventory,array('properties'=>$profile));
+$listingFindings=array_values(array_filter($outListing['findings'],static function($finding){return 'profile_elementor_listing_configuration_drift'===(string)($finding['code']??'');}));
+check(count($listingFindings)===1,'stale Listing configuration creates one route-scoped drift finding');
+check($listingFindings[0]['severity']==='blocking','enabled profile fails closed on proven Listing configuration drift');
+check($listingFindings[0]['details']['drift_count']===2,'post-type and taxonomy cloning debt are both preserved as evidence');
+$listingReasons=array_column($listingFindings[0]['details']['drift'],'reason'); sort($listingReasons,SORT_STRING);
+check($listingReasons===array('listing_custom_post_type_mismatch','listing_taxonomy_post_type_mismatch'),'Listing drift reasons distinguish local post type from local taxonomy mismatch');
+check($listingFindings[0]['details']['authorizing']===false,'Listing configuration evidence remains non-authorizing');
+
+$disabledProfile=$profile;$disabledProfile['enabled']=false;
+$outListingDisabled=$r->analyze($listingInventory,array('properties'=>$disabledProfile));
+$disabledListingFindings=array_values(array_filter($outListingDisabled['findings'],static function($finding){return 'profile_elementor_listing_configuration_drift'===(string)($finding['code']??'');}));
+check(count($disabledListingFindings)===1 && $disabledListingFindings[0]['severity']==='warning','disabled profile preserves Listing drift as warning-only review evidence');
+check($outListingDisabled['summary']['blocking']===0,'disabled profile does not turn Listing cloning debt into global activation authority');
+
+$GLOBALS['etg_listing_config_test_meta'][9001]=json_encode(array(
+    array('id'=>'listing-clean','elType'=>'widget','widgetType'=>'jet-listing-grid','settings'=>array(
+        '_element_id'=>'property_archive','custom_query'=>'yes','custom_query_id'=>'10',
+        'custom_post_types'=>array('property'),
+        'posts_query'=>array(array('_id'=>'property-tax','type'=>'tax_query','tax_query_taxonomy'=>'property_type')),
+    )),
+),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+$outListingClean=$r->analyze($listingInventory,array('properties'=>$profile));
+check(!in_array('profile_elementor_listing_configuration_drift',array_column($outListingClean['findings'],'code'),true),'matching saved Listing configuration does not create false drift');
+
+$GLOBALS['etg_listing_config_test_meta'][9001]=json_encode(array(
+    array('id'=>'listing-unknown-tax','elType'=>'widget','widgetType'=>'jet-listing-grid','settings'=>array(
+        '_element_id'=>'property_archive','custom_query'=>'yes','custom_query_id'=>'10',
+        'custom_post_types'=>array('property'),
+        'posts_query'=>array(array('_id'=>'unknown-tax','type'=>'tax_query','tax_query_taxonomy'=>'future_taxonomy')),
+    )),
+),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+$outListingUnknown=$r->analyze($listingInventory,array('properties'=>$profile));
+$unknownCodes=array_column($outListingUnknown['findings'],'code');
+check(!in_array('profile_elementor_listing_configuration_drift',$unknownCodes,true),'unknown taxonomy authority is not promoted to a blocking Listing mismatch');
+check(in_array('profile_elementor_listing_configuration_review',$unknownCodes,true),'unknown taxonomy authority remains explicit review evidence');
 
 echo "Inventory reconciliation smoke tests passed.\n";

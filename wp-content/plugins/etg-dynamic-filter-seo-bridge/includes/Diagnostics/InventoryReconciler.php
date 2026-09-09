@@ -4,6 +4,7 @@ namespace ETG\DynamicFilterSEOBridge\Diagnostics;
 require_once __DIR__ . '/InventoryReconcilerBindingTrait.php';
 require_once __DIR__ . '/InventoryReconcilerDriftTrait.php';
 require_once __DIR__ . '/InventoryReconcilerSupportTrait.php';
+require_once __DIR__ . '/ListingConfigurationInspector.php';
 require_once dirname( __DIR__ ) . '/Identifiers/QueryId.php';
 
 use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
@@ -29,6 +30,7 @@ final class InventoryReconciler {
         $queryIndex=$this->queryIndex($identityRecords,$queryConflicts);
         $findings=$this->inventoryQualityFindings($inventory);
         $profiledPostTypes=array();$profiledTaxonomies=array();
+        $listingInspector=new ListingConfigurationInspector();
 
         foreach(array_slice($profiles,0,50,true) as $profileId=>$profile){
             if(!is_array($profile)){continue;}
@@ -56,6 +58,11 @@ final class InventoryReconciler {
                 if($routeDrift){$this->finding($findings,$severity,'profile_elementor_provider_group_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($routeDrift),'drift'=>array_slice($routeDrift,0,10),'authorizing'=>false));}
                 $filterTaxonomyDrift=$this->routeFilterTaxonomyDrift($providerQueryId,$taxonomyRules,$filterInspection);
                 if($filterTaxonomyDrift){$this->finding($findings,$severity,'profile_filter_taxonomy_target_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($filterTaxonomyDrift),'drift'=>array_slice($filterTaxonomyDrift,0,10),'authorizing'=>false));}
+                $listingInspection=$listingInspector->inspectRoute($providerQueryId,$topology,$taxonomies);
+                $listingBlocking=array();$listingReview=array();
+                foreach((array)($listingInspection['drift']??array()) as $item){if(!is_array($item)){continue;}if('blocking'===(string)($item['severity_hint']??'warning')){$listingBlocking[]=$item;}else{$listingReview[]=$item;}}
+                if($listingBlocking){$this->finding($findings,$severity,'profile_elementor_listing_configuration_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($listingBlocking),'drift'=>array_slice($listingBlocking,0,10),'inspection_source'=>(string)($listingInspection['source']??''),'authorizing'=>false));}
+                if($listingReview){$this->finding($findings,'warning','profile_elementor_listing_configuration_review','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($listingReview),'drift'=>array_slice($listingReview,0,10),'inspection_source'=>(string)($listingInspection['source']??''),'authorizing'=>false));}
                 $queryId=(string)$binding['query_builder_query_id'];
                 if(isset($queryConflicts[$queryId])){$this->finding($findings,$severity,'profile_query_identity_collision','profile:'.$id,array('query_id'=>$queryId,'provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'conflict'=>$queryConflicts[$queryId]));continue;}
                 if(!isset($queryIndex[$queryId])){$code=$this->queryIdentityComplete($inventory)?'profile_query_missing':'profile_query_unresolved_inventory_truncated';$this->finding($findings,$severity,$code,'profile:'.$id,array('query_id'=>$queryId,'provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled));continue;}
