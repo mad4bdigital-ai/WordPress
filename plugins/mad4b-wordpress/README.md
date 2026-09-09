@@ -15,7 +15,7 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 
 ## Seed Skills
 
-The Control Plane automatically provisions the following enabled seed workflows on Staging after audit storage is ready:
+The Control Plane automatically provisions the following enabled seed workflows on Staging after governance schema and append-only audit storage are ready:
 
 - `wordpress-site-diagnostics`
 - `wordpress-connection-diagnostics`
@@ -24,7 +24,7 @@ The Control Plane automatically provisions the following enabled seed workflows 
 - `wordpress-archive-audit`
 - `wordpress-change-safety`
 
-Existing `SKILL.md` files always win. The seed provisioner never overwrites a runtime-authored Skill with the same logical location.
+Existing `SKILL.md` files always win. The seed provisioner never overwrites a runtime-authored Skill with the same logical location. Seed writes are audit-recorded and rolled back if the audit commit fails.
 
 Each portable Skill is a directory under root `skills/` with a required `SKILL.md` file. Supporting `references/`, `assets/`, and `scripts/` directories can be included when needed.
 
