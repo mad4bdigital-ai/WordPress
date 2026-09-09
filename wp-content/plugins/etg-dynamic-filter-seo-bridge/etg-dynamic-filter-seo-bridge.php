@@ -15,6 +15,14 @@ define( 'ETG_DFSB_VERSION', '0.4.0-alpha.13' );
 define( 'ETG_DFSB_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ETG_DFSB_BOOT_BUILD', 'alpha13-container-background-4' );
 define( 'ETG_DFSB_ASSET_VERSION', '0.4.0-alpha.13-build4' );
+define( 'ETG_DFSB_RUNTIME_REVISION', 'archive-hero-render-5' );
+
+// Observable, non-authorizing build identity. This distinguishes exact alpha builds
+// that intentionally share the same semantic plugin version during certification.
+add_action( 'wp_head', static function () {
+    if ( ! function_exists( 'esc_attr' ) ) { return; }
+    echo '<meta name="etg-dfsb-runtime-build" content="' . esc_attr( ETG_DFSB_RUNTIME_REVISION ) . '" />' . "\n";
+}, 1 );
 
 spl_autoload_register(static function ( $class ) {
     $prefix = 'ETG\\DynamicFilterSEOBridge\\';
