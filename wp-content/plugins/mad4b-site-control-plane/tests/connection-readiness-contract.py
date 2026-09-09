@@ -170,9 +170,12 @@ forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_serve
 
 for marker in (
     "const CONTRACT = 'mad4b.mcp-registration-bridge.v1'",
-    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_categories' )",
-    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' )",
-    "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' )",
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 )",
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
+    "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 )",
+    "'ability_hook_bound' => $core_ability_hook_bound && $registry_ability_hook_bound",
     "'adapter_init_seen_before_bridge_boot'", "'adapter_runtime_from_official_plugin'", "'registration_errors'",
 ):
     require(bridge, marker, 'mcp-registration-bridge')
@@ -212,4 +215,4 @@ for marker in (
 for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v8: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v9: PASS')
