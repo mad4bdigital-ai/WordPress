@@ -42,6 +42,17 @@ Alpha11 removes side-channel/manual identity discovery from the normal operator 
 8. A mismatch whose source and target are both outside the Profile's governed taxonomy rules must not be promoted to a route blocker; it remains visible only through the inventory-level diagnostic finding.
 9. Filter-definition diagnostics must never mutate JetSmartFilters posts/meta, Elementor templates, Profiles, URLs, or SEO publication authority.
 
+## Elementor Listing saved-configuration drift
+
+1. Saved Listing Grid configuration may be inspected only after Runtime Topology has verified the exact Elementor provider route and its bounded Query Builder post-type authority.
+2. When a matching `jet-listing-grid` uses `custom_query=yes`, a non-empty saved `custom_post_types` set that differs from the verified Query Builder post types is `listing_custom_post_type_mismatch` with `blocking` severity hint.
+3. Saved local `posts_query` taxonomy clauses may be compared with the Runtime Inventory taxonomy registry. A taxonomy proven to belong only to foreign post types is `listing_taxonomy_post_type_mismatch` with `blocking` severity hint; an unknown taxonomy remains `listing_taxonomy_authority_unresolved` warning evidence.
+4. The Listing Grid may reference a JetEngine Listing Item through the live vendor spelling `lisitng_id` or the forward-compatible spelling `listing_id`. The inspector may read only that referenced item's `_listing_data` metadata for source diagnostics.
+5. When `_listing_data.source=posts` and its non-empty `post_type` differs from the verified Query Builder post types, the inspector emits `listing_item_source_post_type_mismatch` as `warning` / review evidence. This metadata is not promoted to blocking authority until its runtime effect under `custom_query=yes` is independently proven.
+6. Non-post Listing Item sources are not reinterpreted as posts authority, and malformed or absent `_listing_data` must not be guessed or rewritten.
+7. Blocking Listing Grid findings may fail closed an enabled affected Profile through `profile_elementor_listing_configuration_drift`; Listing Item source metadata warnings flow only through `profile_elementor_listing_configuration_review` and do not block by themselves.
+8. Template and referenced Listing Item metadata may be cached only in request/reconciliation memory. No transient, option, post-meta, Elementor document, JetEngine Listing Item, Profile, URL, or SEO publication mutation is authorized by diagnostics.
+
 ## Inventory scale
 
 1. Detailed Query Builder output remains bounded to 100 records for explainability and payload safety.

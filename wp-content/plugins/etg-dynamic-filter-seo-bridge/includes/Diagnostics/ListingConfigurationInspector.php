@@ -12,6 +12,7 @@ final class ListingConfigurationInspector {
     const MAX_DRIFT = 100;
 
     private $templateMemoryCache = array();
+    private $listingMemoryCache = array();
 
     public function inspectRoute( string $providerQueryId, array $topology, array $taxonomies ): array {
         $providerQueryId = QueryId::normalize( $providerQueryId );
@@ -86,8 +87,8 @@ final class ListingConfigurationInspector {
         }
 
         usort( $drift, static function ( $a, $b ) {
-            $ak = sprintf( '%010d|%s|%s|%s', (int) ( $a['template_id'] ?? 0 ), (string) ( $a['node_id'] ?? '' ), (string) ( $a['reason'] ?? '' ), (string) ( $a['taxonomy'] ?? '' ) );
-            $bk = sprintf( '%010d|%s|%s|%s', (int) ( $b['template_id'] ?? 0 ), (string) ( $b['node_id'] ?? '' ), (string) ( $b['reason'] ?? '' ), (string) ( $b['taxonomy'] ?? '' ) );
+            $ak = sprintf( '%010d|%s|%s|%s|%010d', (int) ( $a['template_id'] ?? 0 ), (string) ( $a['node_id'] ?? '' ), (string) ( $a['reason'] ?? '' ), (string) ( $a['taxonomy'] ?? '' ), (int) ( $a['listing_id'] ?? 0 ) );
+            $bk = sprintf( '%010d|%s|%s|%s|%010d', (int) ( $b['template_id'] ?? 0 ), (string) ( $b['node_id'] ?? '' ), (string) ( $b['reason'] ?? '' ), (string) ( $b['taxonomy'] ?? '' ), (int) ( $b['listing_id'] ?? 0 ) );
             return strcmp( $ak, $bk );
         } );
 
@@ -169,6 +170,30 @@ final class ListingConfigurationInspector {
                         );
                     }
                 }
+
+                $listingId = $this->listingId( $settings );
+                if ( $listingId ) {
+                    $listingData = $this->listingData( $listingId );
+                    $source = sanitize_key( (string) ( $listingData['source'] ?? '' ) );
+                    $listingPostTypes = 'posts' === $source ? $this->cleanKeys( (array) ( $listingData['post_type'] ?? array() ) ) : array();
+                    if ( $listingPostTypes && $listingPostTypes !== $expectedPostTypes ) {
+                        $drift[] = array(
+                            'status' => 'review',
+                            'reason' => 'listing_item_source_post_type_mismatch',
+                            'severity_hint' => 'warning',
+                            'template_id' => $templateId,
+                            'node_id' => $nodeId,
+                            'widget_type' => $widgetType,
+                            'listing_id' => $listingId,
+                            'provider_query_id' => $providerQueryId,
+                            'expected_post_types' => $expectedPostTypes,
+                            'observed_listing_source_post_types' => $listingPostTypes,
+                            'listing_source' => $source,
+                            'source_meta_key' => '_listing_data',
+                            'authorizing' => false,
+                        );
+                    }
+                }
             }
 
             if ( isset( $node['elements'] ) && is_array( $node['elements'] ) ) {
@@ -186,6 +211,29 @@ final class ListingConfigurationInspector {
         if ( ! is_array( $raw ) ) { $raw = array(); }
         $this->templateMemoryCache[$templateId] = $raw;
         return $raw;
+    }
+
+    private function listingData( int $listingId ): array {
+        if ( isset( $this->listingMemoryCache[$listingId] ) ) { return $this->listingMemoryCache[$listingId]; }
+        $raw = array();
+        try { $raw = get_post_meta( $listingId, '_listing_data', true ); } catch ( \Throwable $error ) { $raw = array(); }
+        if ( is_string( $raw ) && function_exists( 'maybe_unserialize' ) ) {
+            $candidate = maybe_unserialize( $raw );
+            if ( $candidate !== $raw ) { $raw = $candidate; }
+        }
+        if ( is_string( $raw ) ) { $decoded = json_decode( $raw, true ); $raw = is_array( $decoded ) ? $decoded : array(); }
+        if ( ! is_array( $raw ) ) { $raw = array(); }
+        $this->listingMemoryCache[$listingId] = $raw;
+        return $raw;
+    }
+
+    private function listingId( array $settings ): int {
+        foreach ( array( 'lisitng_id', 'listing_id' ) as $key ) {
+            if ( ! array_key_exists( $key, $settings ) || ! is_scalar( $settings[$key] ) || ! is_numeric( $settings[$key] ) ) { continue; }
+            $id = absint( $settings[$key] );
+            if ( $id ) { return $id; }
+        }
+        return 0;
     }
 
     private function localTaxonomies( array $postsQuery ): array {
