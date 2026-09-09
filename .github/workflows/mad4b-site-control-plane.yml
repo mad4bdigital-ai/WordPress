@@ -130,7 +130,13 @@ jobs:
             test -f "$root/$file"
           done
 
-          grep -Fq "Version: 0.3.0" "$root/mad4b-site-control-plane.php"
+          plugin_file="$root/mad4b-site-control-plane.php"
+          header_version="$(sed -nE 's/^ \* Version: ([^[:space:]]+).*/\1/p' "$plugin_file" | head -n1)"
+          constant_version="$(sed -nE "s/^define\( 'MAD4B_SCP_VERSION', '([^']+)' \);/\1/p" "$plugin_file" | head -n1)"
+          test -n "$header_version"
+          test -n "$constant_version"
+          test "$header_version" = "$constant_version"
+          [[ "$header_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
           grep -Fq "mad4b.site-control-plane.packaged-provider-contracts.v1" "$scanner"
           grep -Fq "static_zip_inspection_only" "$scanner"
           grep -Fq "Unsafe ZIP entry" "$scanner"
