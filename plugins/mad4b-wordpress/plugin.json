@@ -12,6 +12,7 @@
   "keywords": ["wordpress", "mcp", "skills", "elementor", "jetengine", "governance"],
   "extensions": {
     "com.openai": {
+      "apps": "./.app.json",
       "interface": {
         "displayName": "MAD4B WordPress — Egypt Tour Gates",
         "shortDescription": "Governed WordPress diagnostics and workflow skills.",
