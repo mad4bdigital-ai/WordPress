@@ -16,7 +16,7 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 
 ## Zero-touch Skill lifecycle
 
-On Staging the Control Plane performs the base workflow setup without administrator intervention:
+On Staging the Control Plane performs the base workflow setup without administrator intervention. It automatically enables the local Skill editor unless an explicit operator disable is present.
 
 ```text
 Plugin boots
