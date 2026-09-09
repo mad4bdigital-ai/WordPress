@@ -38,12 +38,9 @@ final class AjaxFilterStateParser {
         $malformed = $this->limitReasons;
         $unsupported = $this->unsupportedFilterProps( $query );
 
-        // WordPress-style tax_query is retained for backward compatibility and server-side simulations.
         $taxQuery = is_array( $query['tax_query'] ?? null ) ? (array) $query['tax_query'] : array();
         if ( $taxQuery ) { $this->inspectTaxQueryLogic( $taxQuery, $malformed ); }
         $safeTaxQuery = $this->extractTaxQuery( $taxQuery, $values, $unknown, $malformed );
-
-        // JetSmartFilters browser currentQuery uses keys such as _tax_query_location_jet.
         $nativeTaxQuery = $this->extractNativeJetSmartFiltersTaxQuery( $query, $values, $unknown, $malformed );
 
         foreach ( $this->allowedTaxonomies as $taxonomy ) {
@@ -80,7 +77,8 @@ final class AjaxFilterStateParser {
             $malformed[] = is_scalar( $queryIdRaw ) && '' === trim( (string) $queryIdRaw ) ? 'missing_query_id' : 'query_id_malformed';
         }
         $malformed = array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $malformed ) ) ) );
-        $filteredQueryComplete = empty( $unknown ) && empty( $malformed ) && empty( $unsupported );
+        $presentationStateComplete = empty( $unknown ) && empty( $malformed );
+        $filteredQueryComplete = $presentationStateComplete && empty( $unsupported );
         $active = '' !== $provider && '' !== $queryId && ( ! empty( $filters ) || ! empty( $unsupported ) || ! empty( $unknown ) || ! empty( $malformed ) );
 
         return array(
@@ -100,6 +98,7 @@ final class AjaxFilterStateParser {
             'unknown_filters' => $unknown,
             'malformed' => $malformed,
             'unsupported_filter_props' => $unsupported,
+            'presentation_state_complete' => $presentationStateComplete,
             'filtered_query_complete' => $filteredQueryComplete,
             'filtered_query' => $filteredQuery,
             'duplicates' => array(),
@@ -245,7 +244,6 @@ final class AjaxFilterStateParser {
         foreach ( $query as $rawKey => $value ) {
             if ( ! is_string( $rawKey ) || array() === $value || '' === $value || null === $value || false === $value ) { continue; }
             if ( 'tax_query' === $rawKey || in_array( sanitize_key( $rawKey ), $this->allowedTaxonomies, true ) || 0 === strpos( $rawKey, '_tax_query_' ) ) { continue; }
-            // Transport/order controls do not change the semantic filter set or total result count.
             if ( in_array( $rawKey, array( 'hc','paged','jet_paged' ), true ) || 0 === strpos( $rawKey, '_pagenum_' ) || 0 === strpos( $rawKey, '_sort_' ) ) { continue; }
             if ( 0 === strpos( $rawKey, '_meta_query_' ) ) { $out[] = 'native_meta_query'; continue; }
             if ( 0 === strpos( $rawKey, '_date_query_' ) ) { $out[] = 'native_date_query'; continue; }
