@@ -5,6 +5,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - '.agents/plugins/marketplace.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php'
@@ -40,6 +41,7 @@ jobs:
             includes/class-mad4b-scp-skill-autoconfig.php \
             includes/class-mad4b-scp-skill-registry.php \
             includes/class-mad4b-scp-skill-seeder.php \
+            includes/class-mad4b-scp-skill-provider-discovery.php \
             includes/class-mad4b-scp-skill-resource-reader.php \
             includes/class-mad4b-scp-skill-resource-writer.php \
             includes/class-mad4b-scp-skill-exporter.php \
