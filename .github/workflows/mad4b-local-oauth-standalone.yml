@@ -29,6 +29,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-local-oauth-store.php"
           php -l "$root/includes/class-mad4b-scp-staging-oauth-autoconfig.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-server.php"
+          php -l "$root/includes/class-mad4b-scp-chatgpt-oauth-lifecycle.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-consent-ui.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-key-path-policy.php"
           php -l "$root/includes/class-mad4b-scp-local-oauth-init-lock.php"
@@ -37,6 +38,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
           php -l "$root/tests/local-oauth-consent-ui-contract.php"
           php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
+          php -l "$root/tests/runtime-chatgpt-oauth-lifecycle-smoke.php"
           php -l "$root/tests/runtime-local-oauth-chatgpt-http-smoke.php"
           php -l "$root/tests/runtime-local-oauth-key-path-policy-smoke.php"
           php -l "$root/tests/runtime-local-oauth-init-lock-smoke.php"
@@ -47,6 +49,7 @@ jobs:
           node --check "$root/assets/chatgpt-connection.js"
           python3 "$root/tests/staging-oauth-autoconfig-contract.py"
           python3 "$root/tests/local-oauth-standalone-contract.py"
+          python3 "$root/tests/chatgpt-oauth-lifecycle-contract.py"
           python3 "$root/tests/local-oauth-browser-canary-contract.py"
           python3 "$root/tests/chatgpt-connection-ui-contract.py"
           pwsh -NoLogo -NoProfile -File "$root/tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1" -SelfTest
@@ -123,6 +126,7 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-standalone-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-oauth-lifecycle-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-key-path-policy-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-init-lock-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-browser-canary-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
