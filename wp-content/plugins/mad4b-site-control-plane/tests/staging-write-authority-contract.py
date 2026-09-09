@@ -6,6 +6,7 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
+planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
 servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
@@ -83,19 +84,46 @@ for marker in [
     if marker not in auth:
         raise SystemExit(f'missing central write authorization binding: {marker}')
 
+# approval-plan is the bootstrap mutation: exact NHI/grant/budget, no prior ticket,
+# same dedicated Staging agent, mad4b-write only, mutation ticket class only.
 for marker in [
+    "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
+    "const ABILITY = 'mad4b/approval-plan'",
+    "MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input )",
+    "'ability:' . self::ABILITY",
+    "planner_approval_exception",
+    "validate_remote_plan_input",
+    "mad4b_remote_plan_agent_mismatch",
+    "'mad4b-write' !== $server_id",
+    "'mad4b/database-raw-query' === $target_ability",
+    "MAD4B_SCP_Staging_Write_Authority::is_write_ability( $target_ability )",
+    "MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability )",
+    "'mutation' !== MAD4B_SCP_Impact_Policy::ticket_class_for",
+    "'remote_planner_requires_prior_ticket' => false",
+    "'creates_pending_ticket_only' => true",
+    "'auto_approves' => false",
+]:
+    if marker not in planning:
+        raise SystemExit(f'missing approval planner bootstrap guard: {marker}')
+
+for marker in [
+    "const CONTRACT = 'mad4b.rest-compatibility.v2'",
     "const WPML_ROUTE = '/wpml/v1/rest/status'",
     "apply_filters( 'rest_enabled', true )",
     "rest_do_request( $request )",
     "'test_get_parameter' => '1'",
     "'query_parameters_preserved'",
-    "'control_plane_filters_rest_enabled' => false",
-    "'control_plane_filters_rest_authentication_errors' => false",
+    "hook_inventory( 'rest_enabled' )",
+    "hook_inventory( 'rest_authentication_errors' )",
+    "'control_plane_detected'",
+    "ReflectionMethod",
+    "ReflectionFunction",
+    "wpml_route_missing",
 ]:
     if marker not in rest:
-        raise SystemExit(f'missing WPML REST compatibility invariant: {marker}')
+        raise SystemExit(f'missing WPML REST compatibility evidence invariant: {marker}')
 
-# The compatibility class must diagnose, never force or globally intercept REST.
+# The compatibility class may inspect/execute the hook chain, never modify it.
 for forbidden in [
     "add_filter( 'rest_enabled'",
     "add_filter( 'rest_authentication_errors'",
@@ -105,12 +133,19 @@ for forbidden in [
         raise SystemExit(f'REST compatibility layer may not globally modify WordPress REST behavior: {forbidden}')
 
 for marker in [
-    "const CONTRACT = 'mad4b.write-runtime-certification.v1'",
+    "const CONTRACT = 'mad4b.write-runtime-certification.v2'",
     "all_write_tools_exposed_on_same_plugin_transport",
     "breakglass_absent_from_write_inventory",
+    "approval_planner_governed",
+    "approval_planner_no_prior_ticket",
+    "approval_planner_self_agent_only",
+    "approval_planner_breakglass_denied",
+    "control_plane_not_on_rest_enabled_hook",
+    "control_plane_not_on_rest_authentication_hook",
     "control_plane_does_not_block_wpml_rest",
     "wpml_query_parameters_preserved",
     "exact_approval_required_for_remote_write",
+    "approval_planner_bootstrap_exception",
     "external_client_tools_verified",
     "MAD4B_SCP_Audit::record",
 ]:
@@ -119,6 +154,7 @@ for marker in [
 
 for marker in [
     'class-mad4b-scp-staging-write-authority.php',
+    'class-mad4b-scp-staging-write-planning-guard.php',
     'class-mad4b-scp-rest-compatibility.php',
     'class-mad4b-scp-write-runtime-certification.php',
     'MAD4B_SCP_Staging_Write_Authority::bootstrap()',
@@ -128,6 +164,7 @@ for marker in [
 
 for marker in [
     'MAD4B_SCP_Staging_Write_Authority::boot()',
+    'MAD4B_SCP_Staging_Write_Planning_Guard::boot()',
     'MAD4B_SCP_REST_Compatibility::boot()',
     'MAD4B_SCP_Write_Runtime_Certification::boot()',
 ]:
@@ -146,4 +183,4 @@ caps = portable['extensions']['com.openai']['interface'].get('capabilities', [])
 if caps != ['Read', 'Write']:
     raise SystemExit(f'portable Plugin capability contract must be [Read, Write], got {caps!r}')
 
-print('mad4b.staging-write-authority.v1: PASS')
+print('mad4b.staging-write-authority.v2: PASS')
