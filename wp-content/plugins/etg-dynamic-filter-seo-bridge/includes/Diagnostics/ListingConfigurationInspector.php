@@ -11,6 +11,8 @@ final class ListingConfigurationInspector {
     const MAX_ELEMENTS = 5000;
     const MAX_DRIFT = 100;
 
+    private $templateMemoryCache = array();
+
     public function inspectRoute( string $providerQueryId, array $topology, array $taxonomies ): array {
         $providerQueryId = QueryId::normalize( $providerQueryId );
         $base = array(
@@ -67,9 +69,8 @@ final class ListingConfigurationInspector {
         $templatesScanned = 0;
         foreach ( $templateIds as $templateId ) {
             if ( $elementsScanned >= self::MAX_ELEMENTS || count( $drift ) >= self::MAX_DRIFT ) { $truncated = true; break; }
-            try { $raw = get_post_meta( $templateId, '_elementor_data', true ); } catch ( \Throwable $error ) { continue; }
-            if ( is_string( $raw ) ) { $decoded = json_decode( $raw, true ); $raw = is_array( $decoded ) ? $decoded : array(); }
-            if ( ! is_array( $raw ) || ! $raw ) { continue; }
+            $raw = $this->templateData( $templateId );
+            if ( ! $raw ) { continue; }
             $templatesScanned++;
             $this->walk(
                 $raw,
@@ -175,6 +176,16 @@ final class ListingConfigurationInspector {
                 if ( $truncated ) { return; }
             }
         }
+    }
+
+    private function templateData( int $templateId ): array {
+        if ( isset( $this->templateMemoryCache[$templateId] ) ) { return $this->templateMemoryCache[$templateId]; }
+        $raw = array();
+        try { $raw = get_post_meta( $templateId, '_elementor_data', true ); } catch ( \Throwable $error ) { $raw = array(); }
+        if ( is_string( $raw ) ) { $decoded = json_decode( $raw, true ); $raw = is_array( $decoded ) ? $decoded : array(); }
+        if ( ! is_array( $raw ) ) { $raw = array(); }
+        $this->templateMemoryCache[$templateId] = $raw;
+        return $raw;
     }
 
     private function localTaxonomies( array $postsQuery ): array {
