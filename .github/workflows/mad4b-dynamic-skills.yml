@@ -6,6 +6,7 @@ on:
       - 'plugins/mad4b-wordpress/**'
       - '.agents/plugins/marketplace.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/**'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-*.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php'
@@ -22,13 +23,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-dynamic-skills-${{ github.event.pull_request.head.sha || github.sha }}
+  # One live run per PR/ref. A moving PR must cancel stale exact-head runs rather
+  # than consuming runners for snapshots that can no longer authorize release.
+  group: mad4b-dynamic-skills-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   contract:
     name: Dynamic Skills contract
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout exact ref
         uses: actions/checkout@v4
@@ -38,6 +42,28 @@ jobs:
         with:
           php-version: '7.4'
           coverage: none
+
+      - name: Reject package symlinks and secret-like files
+        shell: bash
+        run: |
+          set -euo pipefail
+          roots=(
+            plugins/mad4b-wordpress
+            wp-content/plugins/mad4b-site-control-plane/skill-seeds
+          )
+          symlink="$(find "${roots[@]}" -type l -print -quit)"
+          if [ -n "$symlink" ]; then
+            echo "Symlink is forbidden in portable Skill package inputs: $symlink" >&2
+            exit 1
+          fi
+          suspicious="$(find "${roots[@]}" -type f \( \
+            -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.p12' -o \
+            -name '*.pfx' -o -name '*.key' -o -name 'id_rsa' -o -name 'id_ed25519' \
+          \) -print -quit)"
+          if [ -n "$suspicious" ]; then
+            echo "Secret-like file is forbidden in portable Skill package inputs: $suspicious" >&2
+            exit 1
+          fi
 
       - name: PHP lint Skill implementation
         shell: bash
@@ -112,6 +138,7 @@ jobs:
     name: Dynamic Skills zero-touch Staging runtime
     needs: contract
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       mysql:
@@ -175,6 +202,7 @@ jobs:
     name: Dynamic Skills Production fail-closed runtime
     needs: contract
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     services:
       mysql:
