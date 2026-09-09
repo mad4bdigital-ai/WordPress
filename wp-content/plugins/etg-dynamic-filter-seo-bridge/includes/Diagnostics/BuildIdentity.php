@@ -11,6 +11,30 @@ final class BuildIdentity {
 		return self::inspectFile( rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'build-identity.json', $version );
 	}
 
+	public static function bootBuild( string $fallback = '' ): string {
+		$identity = self::collect();
+		if ( ! empty( $identity['valid'] ) ) {
+			return 'identity:' . (string) $identity['git_sha'] . ':' . (string) $identity['tree_sha'];
+		}
+		if ( ! empty( $identity['embedded'] ) ) {
+			$path = self::identityPath();
+			$fingerprint = 'unreadable';
+			if ( is_readable( $path ) ) {
+				$handle = @fopen( $path, 'rb' );
+				if ( is_resource( $handle ) ) {
+					$raw = fread( $handle, self::MAX_BYTES + 1 );
+					fclose( $handle );
+					if ( is_string( $raw ) ) {
+						$fingerprint = hash( 'sha256', $raw );
+					}
+				}
+			}
+			return 'identity-invalid:' . (string) $identity['reason'] . ':' . $fingerprint;
+		}
+		$fallback = trim( $fallback );
+		return 'fallback:' . ( '' !== $fallback ? $fallback : 'unknown' );
+	}
+
 	public static function inspectFile( string $path, string $expectedVersion = '' ): array {
 		$result = self::baseResult();
 		if ( '' === trim( $path ) || ! is_file( $path ) ) {
@@ -69,6 +93,11 @@ final class BuildIdentity {
 		$result['tree_sha'] = $treeSha;
 		$result['plugin_version'] = $version;
 		return $result;
+	}
+
+	private static function identityPath(): string {
+		$root = defined( 'ETG_DFSB_DIR' ) ? (string) ETG_DFSB_DIR : dirname( __DIR__, 2 ) . DIRECTORY_SEPARATOR;
+		return rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'build-identity.json';
 	}
 
 	private static function baseResult(): array {

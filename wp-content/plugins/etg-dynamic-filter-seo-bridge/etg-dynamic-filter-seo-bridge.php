@@ -40,7 +40,12 @@ spl_autoload_register(static function ( $class ) {
 
 require_once ETG_DFSB_DIR . 'includes/Presentation/functions.php';
 
-ETG\DynamicFilterSEOBridge\Runtime\BootGuard::register( ETG_DFSB_BOOT_BUILD );
+// Installed packages key Safe Boot to their exact embedded source identity. The
+// legacy label remains only as a deterministic source/dev fallback when no
+// build-identity.json exists.
+ETG\DynamicFilterSEOBridge\Runtime\BootGuard::register(
+    ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::bootBuild( ETG_DFSB_BOOT_BUILD )
+);
 register_activation_hook( __FILE__, static function () {
     // New or replaced packages start inert. An administrator explicitly opts into
     // the guarded full boot after wp-admin has proven it can load safely.

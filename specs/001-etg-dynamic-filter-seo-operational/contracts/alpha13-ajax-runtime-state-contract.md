@@ -56,6 +56,8 @@ It MUST NOT create or update canonical URLs, robots directives, Rank Math metada
 - Runtime source identity is read-only and non-authorizing. It MAY be exposed through bounded diagnostics, WP-CLI and HTML meta evidence, but MUST NOT enable Global, Profiles, indexing, publication or SEO mutation.
 - Semantic plugin version and behavioral runtime revision are not sufficient proof of exact packaged source identity. Post-deploy certification MUST correlate the embedded source SHA with the certified deterministic package provenance.
 - Missing, malformed, oversized, version-mismatched or structurally unexpected embedded identity MUST fail closed as unverified evidence; it MUST NOT be guessed from the semantic version.
+- Safe Boot package-change detection MUST use the valid embedded `git_sha` + `tree_sha` identity when an installable package provides it. Replacing an active package with a different exact source identity MUST re-enter guarded hold even when semantic version, runtime revision, asset version or legacy boot label are unchanged.
+- An embedded but invalid identity MUST NOT reuse a previously verified Safe Boot build key. Source/development checkouts with no embedded identity MAY use an explicit deterministic fallback key.
 
 ## Failure behavior
 
