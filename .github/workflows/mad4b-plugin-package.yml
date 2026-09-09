@@ -29,9 +29,32 @@ jobs:
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
-          test -f "$root/mad4b-site-control-plane.php"
-          grep -Fq 'Plugin Name: MAD4B Site Control Plane' "$root/mad4b-site-control-plane.php"
-          grep -Fq 'Requires Plugins: mcp-adapter' "$root/mad4b-site-control-plane.php"
+          main="$root/mad4b-site-control-plane.php"
+          bootstrap="$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
+          test -f "$main"
+          test -f "$bootstrap"
+          grep -Fq 'Plugin Name: MAD4B Site Control Plane' "$main"
+          grep -Fq 'Requires Plugins: mcp-adapter' "$main"
+          if grep -Eq '^[[:space:]]*\*[[:space:]]*Plugin Name:' "$bootstrap"; then
+            echo 'MU bootstrap source must not expose a regular-plugin header inside the distributable plugin.' >&2
+            exit 1
+          fi
+
+          # Mirror the WordPress installer discovery boundary: PHP files directly
+          # in the plugin root and one immediate subdirectory. There must be
+          # exactly one activatable plugin header and it must belong to main.
+          headers=()
+          while IFS= read -r -d '' file; do
+            if grep -Eq '^[[:space:]]*\*[[:space:]]*Plugin Name:' "$file"; then
+              headers+=("$file")
+            fi
+          done < <(find "$root" -mindepth 1 -maxdepth 2 -type f -name '*.php' -print0)
+          if [ "${#headers[@]}" -ne 1 ] || [ "${headers[0]:-}" != "$main" ]; then
+            printf 'Expected exactly one WordPress activation candidate (%s); found:\n' "$main" >&2
+            printf '  %s\n' "${headers[@]:-none}" >&2
+            exit 1
+          fi
+
           test -f 'wp-content/plugins/mcp-adapter.zip'
 
       - name: Build WordPress installable ZIP
