@@ -64,12 +64,71 @@ $required_read = array(
 	'mad4b/skill-get',
 	'mad4b/skills-export-status',
 	'mad4b/skills-runtime-certification',
+	'mad4b/write-authority-status',
+	'mad4b/write-runtime-certification',
+	'mad4b/rest-compatibility-status',
 );
 foreach ( $required_read as $ability ) if ( ! wp_has_ability( $ability ) ) $fail( 'Missing read ability: ' . $ability );
 
 foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete', 'mad4b/skill-write' ) as $ability ) {
 	if ( wp_has_ability( $ability ) ) $fail( 'Forbidden Skill write ability is registered: ' . $ability );
 }
+
+// Register a disposable WPML-compatible route directly on the REST server. The
+// probe then traverses rest_do_request + every rest_pre_dispatch guard and must
+// preserve both GET parameters exactly. This proves the Control Plane does not
+// create the WPML "REST enabled: No" symptom through global interception.
+$rest_server = rest_get_server();
+$rest_server->register_route( 'wpml/v1', '/rest/status', array(
+	array(
+		'methods' => 'GET',
+		'callback' => static function ( $request ) {
+			return new WP_REST_Response( array(
+				'status' => '1' === (string) $request->get_param( 'test_get_parameter' ) ? 'valid' : 'invalid',
+				'get_parameters' => null !== $request->get_param( 'cachebuster' ) ? 'valid' : 'invalid',
+			), 200 );
+		},
+		'permission_callback' => '__return_true',
+	),
+), true );
+$rest_compat = MAD4B_SCP_REST_Compatibility::status();
+if ( empty( $rest_compat['rest_enabled'] ) ) $fail( 'REST API is disabled in the disposable Staging runtime.' );
+if ( ! empty( $rest_compat['control_plane_disables_rest'] ) ) $fail( 'Control Plane reports REST disablement.' );
+if ( empty( $rest_compat['wpml']['ready'] ) || empty( $rest_compat['wpml']['query_parameters_preserved'] ) ) $fail( 'WPML-compatible REST probe did not preserve query parameters.' );
+if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST probe.' );
+
+$write_authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
+if ( empty( $write_authority['ready'] ) || 'ready' !== $write_authority['state'] ) $fail( 'Governed Staging write authority is not ready: ' . wp_json_encode( $write_authority ) );
+if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Staging mutation gate was not configured.' );
+if ( empty( $write_authority['all_remote_writes_require_exact_approval'] ) ) $fail( 'Remote Staging writes are not forced through exact approvals.' );
+if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into Staging write authority.' );
+if ( empty( $write_authority['write_tool_count'] ) ) $fail( 'Write authority inventory is empty.' );
+
+$expected_core_writes = array(
+	'mad4b/content-update-post',
+	'mad4b/plugin-activate',
+	'mad4b/plugin-deactivate',
+	'mad4b/filesystem-write',
+	'mad4b/filesystem-patch',
+	'mad4b/database-update',
+	'mad4b/mutation-undo',
+	'mad4b/approval-plan',
+);
+$write_tools = MAD4B_SCP_Staging_Write_Authority::write_tools();
+foreach ( $expected_core_writes as $ability ) if ( ! in_array( $ability, $write_tools, true ) ) $fail( 'Expected core write action is missing from mad4b-write: ' . $ability );
+if ( in_array( 'mad4b/database-raw-query', $write_tools, true ) ) $fail( 'Breakglass raw query leaked into mad4b-write.' );
+foreach ( $write_tools as $ability ) {
+	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability ) ) $fail( 'Write action is not mounted on mad4b-write: ' . $ability );
+	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability ) ) $fail( 'Write action is not exposed through the same ChatGPT Plugin transport: ' . $ability );
+}
+
+$fake_identity = array(
+	'authenticated' => true,
+	'auth_method' => 'oauth2_bearer',
+	'token_scopes' => array( 'mad4b:read' ),
+);
+if ( MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $fake_identity, 'mad4b-write', 'mad4b/content-update-post', array() ) ) $fail( 'Read OAuth identity crossed into write authority without an approval ticket.' );
+if ( ! MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $fake_identity, 'mad4b-write', 'mad4b/content-update-post', array( '_mad4b_approval_ticket_id' => '11111111-1111-1111-1111-111111111111' ) ) ) $fail( 'Syntactically valid approval envelope did not unlock scope delegation for later exact ticket consumption.' );
 
 $snapshot_identity = MAD4B_SCP_Skill_Snapshot_Identity::build();
 if ( empty( $snapshot_identity['ready'] ) ) $fail( 'Deterministic snapshot identity is not ready.' );
@@ -88,11 +147,19 @@ if ( empty( $cert['snapshot_identity_token'] ) || ! hash_equals( (string) $snaps
 $readback = MAD4B_SCP_Skill_Runtime_Certification::status();
 if ( empty( $readback['ready'] ) || ! hash_equals( (string) $cert['evidence_digest'], (string) $readback['evidence_digest'] ) ) $fail( 'Persisted runtime certification readback mismatch.' );
 
+$write_cert = MAD4B_SCP_Write_Runtime_Certification::observe();
+if ( empty( $write_cert['ready'] ) || 'ready' !== $write_cert['state'] ) $fail( 'Governed write certification is blocked: ' . wp_json_encode( isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array() ) );
+if ( empty( $write_cert['exact_approval_required_for_remote_write'] ) ) $fail( 'Write certification does not require exact remote approvals.' );
+if ( ! empty( $write_cert['external_client_tools_verified'] ) ) $fail( 'WordPress must not claim external client tool refresh.' );
+if ( (int) $write_cert['write_tool_count'] !== count( $write_tools ) ) $fail( 'Write certification inventory count mismatch.' );
+
 if ( ! class_exists( 'ZipArchive' ) ) $fail( 'ZipArchive is unavailable for portable export proof.' );
 $export = MAD4B_SCP_Skill_Exporter::build_temp_zip();
 if ( is_wp_error( $export ) ) $fail( 'Portable export failed: ' . $export->get_error_code() );
 if ( empty( $export['path'] ) || ! is_file( $export['path'] ) ) $fail( 'Portable export file is missing.' );
 if ( empty( $export['identity_token'] ) || ! hash_equals( (string) $snapshot_identity['identity_token'], (string) $export['identity_token'] ) ) $fail( 'Exporter result identity token mismatch.' );
+if ( empty( $export['governed_write_ready'] ) || empty( $export['write_certification_ready'] ) ) $fail( 'Portable export did not carry governed Write readiness.' );
+if ( ! isset( $export['plugin_capabilities'] ) || ! in_array( 'Write', $export['plugin_capabilities'], true ) ) $fail( 'Portable export did not declare Write capability on certified Staging.' );
 if ( ! isset( $export['skill_count'] ) || (int) $export['skill_count'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_SKILLS ) $fail( 'Exporter Skill count is outside the bounded limit.' );
 if ( ! isset( $export['resource_count'] ) || (int) $export['resource_count'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_RESOURCES ) $fail( 'Exporter resource count is outside the bounded limit.' );
 if ( ! isset( $export['uncompressed_payload_bytes'] ) || (int) $export['uncompressed_payload_bytes'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_UNCOMPRESSED_BYTES ) $fail( 'Exporter payload bytes exceed the bounded limit.' );
@@ -102,16 +169,21 @@ if ( true !== $zip->open( $export['path'] ) ) { @unlink( $export['path'] ); $fai
 $token_file = trim( (string) $zip->getFromName( 'MAD4B-SNAPSHOT-ID.txt' ) );
 $meta_json = $zip->getFromName( 'MAD4B-SNAPSHOT.json' );
 $app_json = $zip->getFromName( '.app.json' );
+$plugin_json = $zip->getFromName( 'plugin.json' );
 $zip->close();
 @unlink( $export['path'] );
 
 if ( '' === $token_file || ! hash_equals( (string) $snapshot_identity['identity_token'], $token_file ) ) $fail( 'MAD4B-SNAPSHOT-ID.txt does not match runtime identity.' );
 $meta = json_decode( (string) $meta_json, true );
 if ( ! is_array( $meta ) || empty( $meta['identity_token'] ) || ! hash_equals( $token_file, (string) $meta['identity_token'] ) ) $fail( 'MAD4B-SNAPSHOT.json identity token mismatch.' );
+if ( empty( $meta['governed_write_ready'] ) || empty( $meta['write_certification_ready'] ) ) $fail( 'MAD4B-SNAPSHOT.json is missing governed Write certification.' );
 if ( ! isset( $meta['resource_count'], $meta['uncompressed_payload_bytes'], $meta['export_limits'] ) ) $fail( 'MAD4B-SNAPSHOT.json is missing bounded export evidence.' );
 if ( (int) $meta['resource_count'] !== (int) $export['resource_count'] || (int) $meta['uncompressed_payload_bytes'] !== (int) $export['uncompressed_payload_bytes'] ) $fail( 'Export result and embedded payload counters disagree.' );
 $app = json_decode( (string) $app_json, true );
 $zip_app_id = is_array( $app ) && isset( $app['apps']['mad4b-wordpress']['id'] ) ? (string) $app['apps']['mad4b-wordpress']['id'] : '';
 if ( '' === $zip_app_id || ! hash_equals( MAD4B_SCP_Skill_Autoconfig::staging_app_id(), $zip_app_id ) ) $fail( 'Portable .app.json does not bind the governed Staging App.' );
+$plugin = json_decode( (string) $plugin_json, true );
+$capabilities = is_array( $plugin ) && isset( $plugin['extensions']['com.openai']['interface']['capabilities'] ) && is_array( $plugin['extensions']['com.openai']['interface']['capabilities'] ) ? $plugin['extensions']['com.openai']['interface']['capabilities'] : array();
+if ( ! in_array( 'Read', $capabilities, true ) || ! in_array( 'Write', $capabilities, true ) ) $fail( 'Runtime portable plugin.json does not declare Read + Write on certified Staging.' );
 
-echo 'mad4b.runtime-dynamic-skills.v2: PASS' . PHP_EOL;
+echo 'mad4b.runtime-dynamic-skills.v3: PASS' . PHP_EOL;
