@@ -9,6 +9,7 @@ final class MAD4B_SCP_Plugin {
 	public static function activate() {
 		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
 		MAD4B_SCP_Skill_Autoconfig::bootstrap();
+		MAD4B_SCP_Staging_Write_Authority::bootstrap();
 		$schema = MAD4B_SCP_Schema::install_or_upgrade();
 		if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		update_option( 'mad4b_scp_version', MAD4B_SCP_VERSION, false );
@@ -29,6 +30,7 @@ final class MAD4B_SCP_Plugin {
 		// Production and explicit operator OAuth configuration remain fail-closed.
 		MAD4B_SCP_Staging_OAuth_Autoconfig::bootstrap();
 		MAD4B_SCP_Skill_Autoconfig::bootstrap();
+		MAD4B_SCP_Staging_Write_Authority::bootstrap();
 		MAD4B_SCP_MCP_Provider_Isolation::boot();
 		self::bind_local_oauth_subject_compatibility();
 		MAD4B_SCP_Local_OAuth_Key_Path_Policy::boot();
@@ -73,6 +75,9 @@ final class MAD4B_SCP_Plugin {
 
 		MAD4B_SCP_Connection_Ability::boot();
 		MAD4B_SCP_Governed_Ability_Overrides::boot();
+		MAD4B_SCP_Staging_Write_Authority::boot();
+		MAD4B_SCP_REST_Compatibility::boot();
+		MAD4B_SCP_Write_Runtime_Certification::boot();
 		MAD4B_SCP_Governance_Abilities::boot();
 		MAD4B_SCP_Skill_Abilities::boot();
 		MAD4B_SCP_Skills_Adapter::boot();
