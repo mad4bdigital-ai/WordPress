@@ -1,0 +1,72 @@
+name: ETG DFSB Admin HTTP Remediation
+
+on:
+  push:
+    branches: [feat/etg-dynamic-filter-seo-bridge]
+    paths:
+      - '.github/workflows/etg-dfsb-admin-http-remediation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Guard exact parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "d5c2253d40888bfb5c326913fe39cc1e16f7ca44"
+          test "${GITHUB_REF_NAME}" = "feat/etg-dynamic-filter-seo-bridge"
+      - name: Apply bounded HTTP status remediation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          root=Path('wp-content/plugins/etg-dynamic-filter-seo-bridge')
+          files=[
+              root/'includes/Runtime/BootGuard.php',
+              root/'includes/Admin/DynamicContentPage.php',
+              root/'includes/Admin/InventoryControlPage.php',
+              root/'includes/Admin/MediaLabPage.php',
+          ]
+          before=sum(f.read_text().count("wp_die('Forbidden', 403)")+f.read_text().count("wp_die('Forbidden',403)") for f in files)
+          if before != 6:
+              raise SystemExit(f'expected exactly 6 legacy Forbidden wp_die call sites, found {before}')
+          for f in files:
+              s=f.read_text()
+              s=s.replace("wp_die('Forbidden', 403)", "wp_die('Forbidden', 'Forbidden', array('response' => 403))")
+              s=s.replace("wp_die('Forbidden',403)", "wp_die('Forbidden','Forbidden',array('response'=>403))")
+              f.write_text(s)
+          after=sum(f.read_text().count("wp_die('Forbidden', 403)")+f.read_text().count("wp_die('Forbidden',403)") for f in files)
+          if after != 0:
+              raise SystemExit(f'legacy Forbidden wp_die call sites remain: {after}')
+          test=root/'tests/alpha13-admin-http-semantics-smoke.php'
+          test.write_text("""<?php\ndeclare(strict_types=1);\n$root=dirname(__DIR__);\n$files=array(\n    $root.'/includes/Runtime/BootGuard.php',\n    $root.'/includes/Admin/DynamicContentPage.php',\n    $root.'/includes/Admin/InventoryControlPage.php',\n    $root.'/includes/Admin/MediaLabPage.php',\n);\n$legacy=0;$correct=0;\nforeach($files as $file){$source=file_get_contents($file);$legacy+=substr_count($source,\"wp_die('Forbidden', 403)\")+substr_count($source,\"wp_die('Forbidden',403)\");$correct+=substr_count($source,\"'response' => 403\")+substr_count($source,\"'response'=>403\");}\nif(0!==$legacy){fwrite(STDERR,\"FAIL: legacy wp_die Forbidden HTTP semantics remain\\n\");exit(1);}\nif(6>$correct){fwrite(STDERR,\"FAIL: expected six corrected Forbidden response guards\\n\");exit(1);}\necho \"Alpha13 admin Forbidden HTTP semantics smoke tests passed.\\n\";\n""")
+          PY
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Runtime/BootGuard.php
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Admin/DynamicContentPage.php
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Admin/InventoryControlPage.php
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Admin/MediaLabPage.php
+          php wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-admin-http-semantics-smoke.php
+          git diff --check
+      - name: Commit exact remediation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Runtime/BootGuard.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Admin/DynamicContentPage.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Admin/InventoryControlPage.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Admin/MediaLabPage.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-admin-http-semantics-smoke.php
+          test "$(git diff --cached --name-only | wc -l)" -eq 5
+          git commit -m 'fix(admin): return correct forbidden HTTP status'
+          git push origin HEAD:feat/etg-dynamic-filter-seo-bridge
