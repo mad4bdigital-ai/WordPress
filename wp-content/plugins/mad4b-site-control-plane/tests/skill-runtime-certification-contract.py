@@ -5,6 +5,8 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 autoconfig = (wp / 'includes' / 'class-mad4b-scp-skill-autoconfig.php').read_text(encoding='utf-8')
+identity = (wp / 'includes' / 'class-mad4b-scp-skill-snapshot-identity.php').read_text(encoding='utf-8')
+exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
@@ -23,6 +25,30 @@ for marker in [
         raise SystemExit(f'missing zero-touch Staging App mapping guard: {marker}')
 
 for marker in [
+    "const CONTRACT = 'mad4b.skill-snapshot-identity.v1'",
+    "MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) )",
+    "MAD4B_SCP_Skill_Registry::openai_app_id()",
+    "snapshot_digest",
+    "identity_token",
+    "sha256:",
+    "resources",
+    "logical_id",
+    "usort",
+]:
+    if marker not in identity:
+        raise SystemExit(f'missing deterministic snapshot identity invariant: {marker}')
+
+for marker in [
+    "MAD4B_SCP_Skill_Snapshot_Identity::build()",
+    "MAD4B-SNAPSHOT-ID.txt",
+    "snapshot_identity_contract",
+    "snapshot_digest",
+    "identity_token",
+]:
+    if marker not in exporter:
+        raise SystemExit(f'portable exporter is not snapshot-identity bound: {marker}')
+
+for marker in [
     "const CONTRACT = 'mad4b.skill-runtime-certification.v1'",
     "wp_abilities_api_init",
     "mcp_adapter_init",
@@ -34,6 +60,9 @@ for marker in [
     "base_skills_missing_or_disabled",
     "skills_read_abilities_incomplete",
     "skill_write_ability_leak",
+    "snapshot_identity_unavailable",
+    "snapshot_identity_count_mismatch",
+    "snapshot_identity_token",
     "external_client_snapshot_verified",
     "local_runtime_only",
     "MAD4B_SCP_Audit::record",
@@ -52,6 +81,9 @@ for name in required_read:
     if name not in abilities or name not in adapter:
         raise SystemExit(f'missing read-only Skill ability projection: {name}')
 
+if 'MAD4B_SCP_Skill_Snapshot_Identity::build()' not in abilities:
+    raise SystemExit('skills-export-status must expose deterministic snapshot identity')
+
 for forbidden in [
     'mad4b/skill-create',
     'mad4b/skill-update',
@@ -68,8 +100,12 @@ for marker in [
     if marker not in plugin:
         raise SystemExit(f'missing runtime certification/autoconfig boot wiring: {marker}')
 
-if 'class-mad4b-scp-skill-runtime-certification.php' not in main:
-    raise SystemExit('main plugin does not load runtime certification class')
+for marker in [
+    'class-mad4b-scp-skill-snapshot-identity.php',
+    'class-mad4b-scp-skill-runtime-certification.php',
+]:
+    if marker not in main:
+        raise SystemExit(f'main plugin does not load {marker}')
 
 if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
     raise SystemExit('Skills adapter must remain read-only')
