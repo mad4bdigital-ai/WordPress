@@ -37,7 +37,7 @@ final class DynamicContentPage {
     }
 
     public function save(): void {
-        if (!current_user_can('manage_options')) { wp_die('Forbidden', 403); }
+        if (!current_user_can('manage_options')) { wp_die('Forbidden', 'Forbidden', array('response' => 403)); }
         check_admin_referer('etg_dfsb_save_dynamic_slot');
         $snapshot = $this->inventory->collect();
         $sources = $this->postedSources();
@@ -68,7 +68,7 @@ final class DynamicContentPage {
     }
 
     public function delete(): void {
-        if (!current_user_can('manage_options')) { wp_die('Forbidden', 403); }
+        if (!current_user_can('manage_options')) { wp_die('Forbidden', 'Forbidden', array('response' => 403)); }
         check_admin_referer('etg_dfsb_delete_dynamic_slot');
         $id = isset($_POST['slot_id']) ? sanitize_key(wp_unslash((string) $_POST['slot_id'])) : '';
         $wasDefault = $this->slots->isDefault($id);

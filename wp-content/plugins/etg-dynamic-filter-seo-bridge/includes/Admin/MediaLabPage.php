@@ -19,7 +19,7 @@ final class MediaLabPage {
     public function menu():void{add_options_page('ETG Media Lab','ETG Media Lab','manage_options',self::SLUG,array($this,'render'));}
 
     public function save():void{
-        if(!current_user_can('manage_options')){wp_die('Forbidden',403);}check_admin_referer('etg_dfsb_save_media_discovery');
+        if(!current_user_can('manage_options')){wp_die('Forbidden','Forbidden',array('response'=>403));}check_admin_referer('etg_dfsb_save_media_discovery');
         $settings=$this->registry->all();$taxonomy=sanitize_key((string)($_POST['taxonomy']??''));
         $settings['image']=$this->postList('global_image_keys');$settings['gallery']=$this->postList('global_gallery_keys');
         if($taxonomy){$settings['taxonomies'][$taxonomy]=array('image'=>$this->postList('taxonomy_image_keys'),'gallery'=>$this->postList('taxonomy_gallery_keys'));}
@@ -28,7 +28,7 @@ final class MediaLabPage {
     }
 
     public function addKey():void{
-        if(!current_user_can('manage_options')){wp_die('Forbidden',403);}check_admin_referer('etg_dfsb_add_media_key');
+        if(!current_user_can('manage_options')){wp_die('Forbidden','Forbidden',array('response'=>403));}check_admin_referer('etg_dfsb_add_media_key');
         $taxonomy=sanitize_key((string)($_POST['taxonomy']??''));$kind=sanitize_key((string)($_POST['kind']??''));$key=isset($_POST['media_key'])?wp_unslash((string)$_POST['media_key']):'';
         if($taxonomy&&in_array($kind,array('image','gallery'),true)&&''!==trim($key)){$settings=$this->registry->all();$current=(array)($settings['taxonomies'][$taxonomy][$kind]??array());$current[]=$key;if(!isset($settings['taxonomies'][$taxonomy])){$settings['taxonomies'][$taxonomy]=array('image'=>array(),'gallery'=>array());}$settings['taxonomies'][$taxonomy][$kind]=$current;$this->registry->save($settings);}
         wp_safe_redirect(AdminUi::pageUrl(self::SLUG,array('tab'=>'discovery','taxonomy'=>$taxonomy,'scan'=>'1','added'=>$kind)));exit;

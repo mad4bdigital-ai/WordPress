@@ -88,7 +88,7 @@ final class BootGuard {
     }
 
     public static function retryFullBoot(): void {
-        if (!current_user_can('manage_options')) { wp_die('Forbidden', 403); }
+        if (!current_user_can('manage_options')) { wp_die('Forbidden', 'Forbidden', array('response' => 403)); }
         check_admin_referer(self::RETRY_ACTION);
         self::writeState(array(
             'build' => self::$build,
