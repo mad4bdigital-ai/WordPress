@@ -6,10 +6,12 @@ namespace ETG\DynamicFilterSEOBridge\Elementor;
  *
  * This layer never writes Elementor settings. It only supplies safe in-memory
  * defaults before ContainerDynamicBackground reads the Container on front-end
- * render. Explicitly saved ETG Background Mode always wins.
+ * render. Priority is: explicit kill-switch class, explicitly saved ETG mode,
+ * then the archive-hero marker preset.
  */
 final class ArchiveHeroPreset {
     const MARKER_CLASS = 'etg-dfsb-archive-hero';
+    const DISABLE_CLASS = 'etg-dfsb-background-off';
 
     public function register(): void {
         add_action('elementor/frontend/container/before_render', array($this, 'beforeRender'), 5, 1);
@@ -19,7 +21,22 @@ final class ArchiveHeroPreset {
         if (!is_object($element) || !method_exists($element, 'get_settings_for_display') || !method_exists($element, 'set_settings')) { return; }
         $raw = $this->rawSettings($element);
         $display = (array)$element->get_settings_for_display();
-        $marked = $this->hasMarker($raw, $display);
+
+        // Explicit class-level kill switch is intentionally stronger than a
+        // stale saved ETG mode. It provides a targeted, non-destructive way to
+        // retire a wrongly-owned background from a wrapper Container.
+        if ($this->hasClass($raw, $display, self::DISABLE_CLASS)) {
+            $element->set_settings('etg_dfsb_background_mode', 'off');
+            if (method_exists($element, 'add_render_attribute')) {
+                $element->add_render_attribute('_wrapper', array(
+                    'data-etg-dfsb-background-origin' => 'archive_background_off',
+                    'data-etg-dfsb-background-scope' => 'container',
+                ));
+            }
+            return;
+        }
+
+        $marked = $this->hasClass($raw, $display, self::MARKER_CLASS);
         $hasSavedMode = array_key_exists('etg_dfsb_background_mode', $raw);
         $mode = sanitize_key((string)($raw['etg_dfsb_background_mode'] ?? $display['etg_dfsb_background_mode'] ?? 'off'));
         $origin = 'explicit';
@@ -88,14 +105,14 @@ final class ArchiveHeroPreset {
         if (!array_key_exists($key, $raw)) { $element->set_settings($key, $value); }
     }
 
-    private function hasMarker(array $raw, array $display): bool {
+    private function hasClass(array $raw, array $display, string $needle): bool {
         foreach (array('_css_classes', 'css_classes', 'css_class') as $key) {
             $value = '';
             if (isset($raw[$key]) && is_scalar($raw[$key])) { $value = trim((string)$raw[$key]); }
             elseif (isset($display[$key]) && is_scalar($display[$key])) { $value = trim((string)$display[$key]); }
             if ('' === $value) { continue; }
             foreach (preg_split('/\s+/', $value) as $className) {
-                if (self::MARKER_CLASS === trim((string)$className)) { return true; }
+                if ($needle === trim((string)$className)) { return true; }
             }
         }
         return false;
