@@ -47,6 +47,7 @@ jobs:
           php -l "$root/tests/runtime-write-surface-smoke.php"
           php -l "$root/tests/runtime-foreign-mcp-transport-blocker.php"
           php -l "$root/tests/runtime-mcp-namespace-index-hijack-blocker.php"
+          php -l "$root/tests/runtime-mcp-provider-isolation-legacy-flag-smoke.php"
           php -l "$root/tests/runtime-mcp-provider-isolation-smoke.php"
           python3 "$root/tests/connection-readiness-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
@@ -139,12 +140,19 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-namespace-index-hijack-blocker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
-      - name: Prove explicit provider MCP isolation remains deny-only
+      - name: Prove legacy provider isolation flag alone is non-mutating
         shell: bash
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_ENABLED true --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-legacy-flag-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Prove explicit provider MCP isolation remains deny-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
           php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED true --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
