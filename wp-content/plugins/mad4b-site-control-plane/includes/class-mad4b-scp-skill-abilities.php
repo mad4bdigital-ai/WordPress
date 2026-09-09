@@ -107,7 +107,8 @@ final class MAD4B_SCP_Skill_Abilities {
 			'contract' => 'mad4b.skills-export-status.v1',
 			'registry' => MAD4B_SCP_Skill_Registry::status(),
 			'portable_snapshot' => MAD4B_SCP_Skill_Registry::portable_snapshot(),
-			'note' => 'ChatGPT/Codex packaged or MCP-imported skills are snapshots. Runtime WordPress edits require a new package or a new Scan Tools import before the installed Plugin skill badges change.',
+			'snapshot_identity' => class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array(),
+			'note' => 'ChatGPT/Codex packaged or MCP-imported skills are snapshots. Runtime WordPress edits require a new package or a new Scan Tools import before the installed Plugin skill badges change. Compare snapshot_identity.identity_token to the exported package token for exact snapshot verification.',
 		);
 	}
 
