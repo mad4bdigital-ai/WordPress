@@ -2,6 +2,7 @@
   "name": "mad4b-wordpress",
   "version": "0.1.0",
   "description": "Governed WordPress diagnostics and reusable workflow skills for MAD4B.",
+  "apps": "./.app.json",
   "skills": "./skills/",
   "interface": {
     "displayName": "MAD4B WordPress — Egypt Tour Gates",
