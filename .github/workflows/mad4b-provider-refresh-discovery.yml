@@ -1,0 +1,67 @@
+name: MAD4B Provider Refresh Discovery
+
+on:
+  push:
+    branches:
+      - 'feat/provider-cert-refresh-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-provider-discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download exact WordPress.org provider packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/provider-refresh"
+          curl --fail --location --retry 4 --retry-delay 2 \
+            --output "$RUNNER_TEMP/provider-refresh/elementor.4.2.4.zip" \
+            https://downloads.wordpress.org/plugin/elementor.4.2.4.zip
+          curl --fail --location --retry 4 --retry-delay 2 \
+            --output "$RUNNER_TEMP/provider-refresh/bit-pi.1.29.0.zip" \
+            https://downloads.wordpress.org/plugin/bit-pi.1.29.0.zip
+          unzip -q "$RUNNER_TEMP/provider-refresh/elementor.4.2.4.zip" -d "$RUNNER_TEMP/provider-refresh/elementor"
+          unzip -q "$RUNNER_TEMP/provider-refresh/bit-pi.1.29.0.zip" -d "$RUNNER_TEMP/provider-refresh/bit-pi"
+          test -f "$RUNNER_TEMP/provider-refresh/elementor/elementor/elementor.php"
+          test -f "$RUNNER_TEMP/provider-refresh/bit-pi/bit-pi/bit-pi.php"
+
+      - name: Discover exact packaged contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/discover-provider-refresh.py \
+            "$RUNNER_TEMP/provider-refresh/elementor/elementor" \
+            "$RUNNER_TEMP/provider-refresh/elementor.4.2.4.zip" \
+            "$RUNNER_TEMP/provider-refresh/bit-pi/bit-pi" \
+            "$RUNNER_TEMP/provider-refresh/bit-pi.1.29.0.zip" \
+            "$RUNNER_TEMP/provider-refresh/provider-refresh-discovery.json"
+
+      - name: Validate discovered versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/provider-refresh/provider-refresh-discovery.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], encoding='utf-8'))
+          assert data['elementor']['installed_package_version'] == '4.2.4', data['elementor']['installed_package_version']
+          assert data['bit_pi']['installed_package_version'] == '1.29.0', data['bit_pi']['installed_package_version']
+          assert not data['elementor']['critical_files']['missing'], data['elementor']['critical_files']['missing']
+          assert not data['bit_pi']['critical_files']['missing'], data['bit_pi']['critical_files']['missing']
+          print('mad4b.provider-refresh-public-discovery.v1: PASS')
+          PY
+
+      - name: Upload discovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-provider-refresh-discovery
+          path: ${{ runner.temp }}/provider-refresh/provider-refresh-discovery.json
+          if-no-files-found: error
+          retention-days: 7
