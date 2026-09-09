@@ -6,8 +6,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Zero-touch provider Skill discovery for Staging.
  *
  * Installed/active provider discovery is read-only. This class only manages
- * Skill files that MAD4B itself provisioned; administrator-authored Skills are
- * never overwritten, disabled, moved, or deleted. Production remains fail-closed.
+ * Skill files that MAD4B itself provisioned and whose bytes still match their
+ * recorded digest. Administrator/external edits are treated as user-owned and
+ * never overwritten or toggled automatically. Production remains fail-closed.
  */
 final class MAD4B_SCP_Skill_Provider_Discovery {
 	const CONTRACT = 'mad4b.skill-provider-discovery.v1';
@@ -26,6 +27,12 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		if ( 'staging' !== $environment ) return self::status( 'environment_not_staging' );
 		if ( ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::status( 'skill_editor_disabled' );
 		if ( ! class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) return self::status( 'plugin_discovery_unavailable' );
+
+		// Provider reconciliation is a second-stage lifecycle. Never create/toggle
+		// provider packs when the canonical baseline seed transaction did not reach
+		// its current ready version.
+		$seed_status = class_exists( 'MAD4B_SCP_Skill_Seeder' ) ? MAD4B_SCP_Skill_Seeder::status() : array();
+		if ( empty( $seed_status['state'] ) || 'ready' !== $seed_status['state'] ) return self::status( 'seed_pack_not_ready' );
 
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit_status['ready'] ) ) return self::status( 'audit_unavailable' );
@@ -88,6 +95,8 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			'skipped_user_owned' => array_values( array_unique( $skipped_user_owned ) ),
 			'skipped_conflict' => array_values( array_unique( $skipped_conflict ) ),
 			'updated_at' => gmdate( 'c' ),
+			'requires_seed_pack_ready' => true,
+			'digest_clean_managed_only' => true,
 			'production_auto_provision' => false,
 			'provider_plugin_mutation' => false,
 			'deletes_skills' => false,
@@ -108,6 +117,8 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			'deactivated' => array(),
 			'skipped_user_owned' => array(),
 			'skipped_conflict' => array(),
+			'requires_seed_pack_ready' => true,
+			'digest_clean_managed_only' => true,
 			'production_auto_provision' => false,
 			'provider_plugin_mutation' => false,
 			'deletes_skills' => false,
@@ -168,7 +179,7 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$meta_file = $dir . '/' . MAD4B_SCP_Skill_Registry::META_FILE;
 		$logical_id = $level . ':' . $target . ':' . $name;
 
-		if ( is_file( $file ) ) return self::reconcile_existing( $family, $logical_id, $meta_file, $desired_enabled, $reason );
+		if ( is_file( $file ) ) return self::reconcile_existing( $family, $logical_id, $file, $meta_file, $desired_enabled, $reason );
 		if ( ! $desired_enabled ) return array( 'logical_id' => $logical_id, 'created' => false, 'activated' => false, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
 
 		foreach ( MAD4B_SCP_Skill_Registry::list_skills() as $existing ) {
@@ -199,19 +210,37 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$written = self::atomic_write( $file, $document );
 		if ( is_wp_error( $written ) ) return $written;
 		$written_meta = self::atomic_write( $meta_file, wp_json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
-		if ( is_wp_error( $written_meta ) ) { @unlink( $file ); return $written_meta; }
+		if ( is_wp_error( $written_meta ) ) {
+			$removed = self::remove_file_verified( $file );
+			return is_wp_error( $removed ) ? $removed : $written_meta;
+		}
 		$audit = MAD4B_SCP_Audit::record( 'mad4b/skill-provider-autoprovision', array( 'logical_id' => $logical_id, 'provider_family' => $family, 'enabled' => true, 'after_sha256' => $sha ), 'ok' );
-		if ( is_wp_error( $audit ) ) { @unlink( $file ); @unlink( $meta_file ); return new WP_Error( 'audit_failed', 'Provider Skill provisioning rolled back because audit commit failed.' ); }
+		if ( is_wp_error( $audit ) ) {
+			$remove_file = self::remove_file_verified( $file );
+			$remove_meta = self::remove_file_verified( $meta_file );
+			if ( is_wp_error( $remove_file ) || is_wp_error( $remove_meta ) ) return new WP_Error( 'provider_provision_rollback_failed', 'Provider Skill audit failed and newly provisioned files could not be fully removed.' );
+			return new WP_Error( 'audit_failed', 'Provider Skill provisioning rolled back and verified because audit commit failed.' );
+		}
 		return array( 'logical_id' => $logical_id, 'created' => true, 'activated' => true, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
 	}
 
-	private static function reconcile_existing( $family, $logical_id, $meta_file, $desired_enabled, $reason ) {
-		if ( ! is_file( $meta_file ) || is_link( $meta_file ) ) return array( 'logical_id' => $logical_id, 'user_owned' => true );
+	private static function reconcile_existing( $family, $logical_id, $file, $meta_file, $desired_enabled, $reason ) {
+		if ( ! is_file( $file ) || is_link( $file ) || ! is_file( $meta_file ) || is_link( $meta_file ) ) return array( 'logical_id' => $logical_id, 'user_owned' => true );
+		$skill_raw = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$raw = file_get_contents( $meta_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$meta = false === $raw ? null : json_decode( $raw, true );
-		if ( ! is_array( $meta ) ) return array( 'logical_id' => $logical_id, 'user_owned' => true );
+		if ( ! is_string( $skill_raw ) || ! is_array( $meta ) ) return array( 'logical_id' => $logical_id, 'user_owned' => true );
 		$owner = isset( $meta['provisioned_by'] ) ? (string) $meta['provisioned_by'] : '';
 		if ( ! in_array( $owner, array( self::CONTRACT, 'mad4b.skill-seeder.v1' ), true ) ) return array( 'logical_id' => $logical_id, 'user_owned' => true );
+
+		$current_sha = hash( 'sha256', $skill_raw );
+		$recorded_sha = isset( $meta['sha256'] ) ? strtolower( trim( (string) $meta['sha256'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) || ! hash_equals( $recorded_sha, $current_sha ) ) {
+			// MAD4B no longer has clean ownership of the document bytes. Never toggle
+			// metadata on an externally modified managed Skill.
+			return array( 'logical_id' => $logical_id, 'user_owned' => true, 'drifted_managed' => true );
+		}
+
 		$current = ! empty( $meta['enabled'] );
 		if ( $current === (bool) $desired_enabled ) return array( 'logical_id' => $logical_id, 'created' => false, 'activated' => false, 'deactivated' => false, 'user_owned' => false, 'conflict' => false );
 
@@ -225,7 +254,14 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$written = self::atomic_write( $meta_file, wp_json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
 		if ( is_wp_error( $written ) ) return $written;
 		$audit = MAD4B_SCP_Audit::record( 'mad4b/skill-provider-activation', array( 'logical_id' => $logical_id, 'provider_family' => $family, 'before_enabled' => $current, 'after_enabled' => (bool) $desired_enabled, 'reason' => $reason ), 'ok' );
-		if ( is_wp_error( $audit ) ) { self::atomic_write( $meta_file, $before ); return new WP_Error( 'audit_failed', 'Provider Skill activation change rolled back because audit commit failed.' ); }
+		if ( is_wp_error( $audit ) ) {
+			$restored = self::atomic_write( $meta_file, $before );
+			$after = is_file( $meta_file ) && ! is_link( $meta_file ) ? file_get_contents( $meta_file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			if ( is_wp_error( $restored ) || ! is_string( $after ) || ! hash_equals( hash( 'sha256', $before ), hash( 'sha256', $after ) ) || $before !== $after ) {
+				return new WP_Error( 'provider_activation_rollback_failed', 'Provider Skill activation audit failed and previous metadata could not be verified after rollback.' );
+			}
+			return new WP_Error( 'audit_failed', 'Provider Skill activation change rolled back and verified because audit commit failed.' );
+		}
 		return array( 'logical_id' => $logical_id, 'created' => false, 'activated' => (bool) $desired_enabled, 'deactivated' => ! $desired_enabled, 'user_owned' => false, 'conflict' => false );
 	}
 
@@ -239,11 +275,20 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 	}
 
 	private static function atomic_write( $file, $content ) {
+		$dir = dirname( $file );
+		if ( ! is_dir( $dir ) ) return new WP_Error( 'directory_missing', 'Provider Skill target directory does not exist.' );
+		if ( is_link( $file ) ) return new WP_Error( 'symlink_denied', 'Provider Skill state cannot be written through a symbolic link.' );
 		$tmp = $file . '.tmp-' . wp_generate_uuid4();
 		$bytes = file_put_contents( $tmp, $content, LOCK_EX ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		if ( false === $bytes ) return new WP_Error( 'write_failed', 'Unable to write provider Skill state.' );
+		if ( false === $bytes || $bytes !== strlen( (string) $content ) ) { @unlink( $tmp ); return new WP_Error( 'write_failed', 'Unable to write the complete provider Skill state.' ); }
 		if ( ! @rename( $tmp, $file ) ) { @unlink( $tmp ); return new WP_Error( 'replace_failed', 'Unable to atomically publish provider Skill state.' ); }
 		return true;
+	}
+
+	private static function remove_file_verified( $file ) {
+		if ( is_link( $file ) ) return new WP_Error( 'rollback_symlink_denied', 'Rollback target became a symbolic link.' );
+		if ( is_file( $file ) && ! @unlink( $file ) ) return new WP_Error( 'rollback_remove_failed', 'Rollback could not remove a newly created provider Skill file.' );
+		return file_exists( $file ) ? new WP_Error( 'rollback_remove_mismatch', 'Provider Skill file still exists after rollback.' ) : true;
 	}
 
 	private static function yaml_scalar( $value ) {
