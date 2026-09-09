@@ -5,11 +5,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Local certification for the exact-origin governed Staging write plane.
  *
- * This proves WordPress-side authority, mounting and non-leakage. It does not
- * claim that the external ChatGPT client has refreshed its tool snapshot.
+ * This proves WordPress-side authority, mounting, approval bootstrapping,
+ * REST/WPML compatibility and non-leakage. It does not claim that the external
+ * ChatGPT client has refreshed its tool snapshot or executed a mutation.
  */
 final class MAD4B_SCP_Write_Runtime_Certification {
-	const CONTRACT = 'mad4b.write-runtime-certification.v1';
+	const CONTRACT = 'mad4b.write-runtime-certification.v2';
 	const OPTION = 'mad4b_scp_write_runtime_certification_v1';
 	private static $observing = false;
 
@@ -24,7 +25,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		if ( ! function_exists( 'wp_register_ability' ) || wp_has_ability( 'mad4b/write-runtime-certification' ) ) return;
 		wp_register_ability( 'mad4b/write-runtime-certification', array(
 			'label' => 'Get Governed Write Runtime Certification',
-			'description' => 'Read exact-origin Staging write authority, NHI grants, approval enforcement, transport mounting and REST compatibility evidence.',
+			'description' => 'Read exact-origin Staging write authority, NHI grants, approval bootstrap/enforcement, transport mounting and REST compatibility evidence.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'status' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
@@ -138,16 +139,38 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['breakglass_absent_from_write_inventory'] = empty( $breakglass );
 		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
+		// approval-plan is a mutation because it persists a pending ticket. It must
+		// itself use NHI + exact mad4b-write grant + budget, but it is the only remote
+		// write that cannot require a prior approval ticket. Its target is strictly
+		// the same Staging agent, mad4b-write, mutation class, never breakglass.
+		$planner = class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ? MAD4B_SCP_Staging_Write_Planning_Guard::status() : array();
+		$planner_ability = function_exists( 'wp_get_ability' ) ? wp_get_ability( 'mad4b/approval-plan' ) : null;
+		$planner_meta = is_object( $planner_ability ) && method_exists( $planner_ability, 'get_meta' ) ? $planner_ability->get_meta() : array();
+		$planner_mcp = isset( $planner_meta['mcp'] ) && is_array( $planner_meta['mcp'] ) ? $planner_meta['mcp'] : array();
+		$checks['approval_planner_in_write_inventory'] = in_array( 'mad4b/approval-plan', $tools, true );
+		$checks['approval_planner_governed'] = ! empty( $planner_mcp['mad4b_approval_bootstrap_operation'] ) && ! empty( $planner_mcp['mad4b_creates_pending_ticket_only'] );
+		$checks['approval_planner_nhi_required'] = ! empty( $planner['remote_planner_requires_nhi'] );
+		$checks['approval_planner_exact_grant_required'] = ! empty( $planner['remote_planner_requires_exact_mad4b_write_grant'] );
+		$checks['approval_planner_budgeted'] = ! empty( $planner['remote_planner_budgeted'] );
+		$checks['approval_planner_no_prior_ticket'] = isset( $planner['remote_planner_requires_prior_ticket'] ) && false === $planner['remote_planner_requires_prior_ticket'];
+		$checks['approval_planner_self_agent_only'] = isset( $planner['target_agent'] ) && 'dedicated_staging_write_agent_only' === $planner['target_agent'];
+		$checks['approval_planner_write_server_only'] = isset( $planner['target_server'] ) && 'mad4b-write' === $planner['target_server'];
+		$checks['approval_planner_mutation_class_only'] = isset( $planner['target_ticket_class'] ) && 'mutation' === $planner['target_ticket_class'];
+		$checks['approval_planner_breakglass_denied'] = isset( $planner['breakglass_target_allowed'] ) && false === $planner['breakglass_target_allowed'];
+		foreach ( array( 'approval_planner_in_write_inventory', 'approval_planner_governed', 'approval_planner_nhi_required', 'approval_planner_exact_grant_required', 'approval_planner_budgeted', 'approval_planner_no_prior_ticket', 'approval_planner_self_agent_only', 'approval_planner_write_server_only', 'approval_planner_mutation_class_only', 'approval_planner_breakglass_denied' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+
 		$counts = class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array();
 		$checks['no_wildcard_grants'] = empty( $counts['wildcard_grants'] );
 		if ( ! $checks['no_wildcard_grants'] ) $blockers[] = 'wildcard_grants_detected';
 
 		$rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
 		$checks['rest_enabled'] = ! empty( $rest['rest_enabled'] );
+		$checks['control_plane_not_on_rest_enabled_hook'] = empty( $rest['control_plane_filters_rest_enabled'] );
+		$checks['control_plane_not_on_rest_authentication_hook'] = empty( $rest['control_plane_filters_rest_authentication_errors'] );
 		$checks['control_plane_does_not_block_wpml_rest'] = empty( $rest['wpml']['control_plane_block_detected'] );
 		$checks['wpml_query_parameters_preserved'] = ! empty( $rest['wpml']['query_parameters_preserved'] );
-		$checks['wpml_internal_probe_ready_or_route_absent'] = ! empty( $rest['wpml']['ready'] );
-		foreach ( array( 'rest_enabled', 'control_plane_does_not_block_wpml_rest', 'wpml_query_parameters_preserved', 'wpml_internal_probe_ready_or_route_absent' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		$checks['wpml_internal_probe_ready_or_not_active'] = ! empty( $rest['wpml']['ready'] );
+		foreach ( array( 'rest_enabled', 'control_plane_not_on_rest_enabled_hook', 'control_plane_not_on_rest_authentication_hook', 'control_plane_does_not_block_wpml_rest', 'wpml_query_parameters_preserved', 'wpml_internal_probe_ready_or_not_active' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array();
 		$checks['peer_inventory_ready'] = ! empty( $peer['inventory_ready'] );
@@ -156,6 +179,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$evidence = array(
 			'checks' => $checks,
 			'authority' => $authority,
+			'planner' => $planner,
 			'write_tools' => $tools,
 			'missing_write_mounts' => $missing_write_mounts,
 			'missing_remote_mounts' => $missing_remote_mounts,
@@ -177,11 +201,13 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'missing_remote_mounts' => $missing_remote_mounts,
 			'metadata_mismatch' => $metadata_mismatch,
 			'authority' => $authority,
+			'approval_planner' => $planner,
 			'rest_compatibility' => $rest,
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
 			'exact_approval_required_for_remote_write' => true,
+			'approval_planner_bootstrap_exception' => 'pending_ticket_creation_only',
 			'external_client_tools_verified' => false,
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),
