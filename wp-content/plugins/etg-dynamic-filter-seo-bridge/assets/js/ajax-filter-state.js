@@ -74,6 +74,7 @@
         return { group: key, query: query, valid: true, reason: 'pretty_url_group' };
     }
 
+    function pathDeclaredGroupKey() { var state = prettyPathState(); return state.valid ? state.group : ''; }
     function queryHasSemanticFilters(query) { if (!query || typeof query !== 'object') { return false; } return Object.keys(query).some(function (key) { return key === 'tax_query' || key === 'meta_query' || key === 'date_query' || key === 's' || key.indexOf('_tax_query_') === 0 || key.indexOf('_meta_query_') === 0 || key.indexOf('_date_query_') === 0 || key.indexOf('__s_query') === 0 || key.indexOf('_alphabet_') === 0; }); }
     function activeGroupKeys() { var jsf = window.JetSmartFilters; if (!jsf || !jsf.filterGroups) { return []; } return groupKeys().filter(function (key) { var group = jsf.filterGroups[key]; return !!(group && queryHasSemanticFilters(group.currentQuery)); }); }
 
@@ -225,12 +226,12 @@
         var deadline = new Promise(function (resolve, reject) { timeoutId = window.setTimeout(function () { timedOut = true; if (controllers[key]) { controllers[key].abort(); } var error = new Error('ETG AJAX presentation timeout'); error.name = 'ETGTimeoutError'; reject(error); }, requestTimeoutMs); });
         Promise.race([transport, deadline]).then(function (result) {
             if (requestId !== sequences[key]) { return; }
-            if (!result.ok) { blockFailClosed('http_error', key, { http_status: result.status }); return; }
+            if (!result.ok) { blockFailClosed('http_error', key, { reason: 'http_error', http_status: result.status }); return; }
             if (result.invalidJson || !result.data) { blockFailClosed('invalid_response', key, { http_status: result.status }); return; }
             applyResponse(result.data, key);
         }).catch(function (error) {
             if (requestId !== sequences[key]) { return; }
-            if (timedOut || (error && error.name === 'ETGTimeoutError')) { blockFailClosed('timeout', key, { timeout_ms: requestTimeoutMs }); return; }
+            if (timedOut || (error && error.name === 'ETGTimeoutError')) { blockFailClosed('timeout', key, { reason: 'timeout', timeout_ms: requestTimeoutMs }); return; }
             if (error && error.name === 'AbortError') { return; }
             blockFailClosed('transport_error', key);
         }).then(function () { if (timeoutId) { window.clearTimeout(timeoutId); } if (requestId === sequences[key]) { delete controllers[key]; } });

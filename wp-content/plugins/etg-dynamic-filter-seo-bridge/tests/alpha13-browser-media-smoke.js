@@ -42,7 +42,7 @@ function readyTokenResponse() {
     return response({
         contract: 'etg.dfsb.ajax-presentation.v1',
         status: 'ready', authorizing: false, url_authority: false, seo_mutation: false,
-        provider: 'jet-engine', query_id: 'myGrid', filtered_query_complete: true,
+        provider: 'jet-engine', query_id: 'myGrid', presentation_state_complete: true, filtered_query_complete: true, result_query_complete: true,
         values: { tokens: { 'termmeta:location:HeroImage': { value: '901', type: 'text' } }, slots: {} },
         blocking_reasons: []
     });
@@ -52,7 +52,7 @@ function readyMediaResponse() {
     return response({
         contract: 'etg.dfsb.ajax-presentation.v1',
         status: 'ready', authorizing: false, url_authority: false, seo_mutation: false,
-        provider: 'jet-engine', query_id: 'myGrid', filtered_query_complete: true,
+        provider: 'jet-engine', query_id: 'myGrid', presentation_state_complete: true, filtered_query_complete: true, result_query_complete: true,
         values: { tokens: {}, slots: { hero_media: { value: '901', type: 'image', image: { id: 901, url: 'https://example.test/901.jpg' } } } },
         blocking_reasons: []
     });
