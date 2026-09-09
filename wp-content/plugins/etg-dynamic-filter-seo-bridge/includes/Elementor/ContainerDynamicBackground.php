@@ -64,6 +64,25 @@ final class ContainerDynamicBackground {
             'default' => 'balanced',
             'condition' => array('etg_dfsb_background_mode!' => 'off'),
         ));
+        $element->add_control('etg_dfsb_background_preview_url', array(
+            'label' => 'Preview Filter URL',
+            'type' => $controls::TEXT,
+            'default' => '',
+            'condition' => array('etg_dfsb_background_mode!' => 'off'),
+            'description' => 'Editor preview only. Live rendering uses the real URL/AJAX state.',
+            'label_block' => true,
+        ));
+        $element->add_control('etg_dfsb_background_gallery_source', array(
+            'label' => 'Slideshow Source',
+            'type' => $controls::SELECT,
+            'options' => array(
+                'collection' => 'ETG Collection (Recommended)',
+                'dynamic_gallery' => 'External Dynamic Gallery (Initial only)',
+            ),
+            'default' => 'collection',
+            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
+            'description' => 'ETG Collection resolves Collection Mode directly. Use External only for a separate Gallery Dynamic Tag.',
+        ));
         $element->add_control('etg_dfsb_background_image', array(
             'label' => 'Initial / Fallback Image',
             'type' => $controls::MEDIA,
@@ -72,11 +91,14 @@ final class ContainerDynamicBackground {
             'description' => 'Optional. Dynamic Tags are supported. ETG live filtering still uses the selected Collection Mode.',
         ));
         $element->add_control('etg_dfsb_background_gallery', array(
-            'label' => 'Initial Dynamic Gallery',
+            'label' => 'External Dynamic Gallery',
             'type' => $controls::GALLERY,
             'dynamic' => array('active' => true),
-            'condition' => array('etg_dfsb_background_mode' => 'slideshow'),
-            'description' => 'Optional. Choose ETG Filter Slideshow or another Gallery Dynamic Tag. Live JetSmartFilters refresh uses the selected Collection Mode.',
+            'condition' => array(
+                'etg_dfsb_background_mode' => 'slideshow',
+                'etg_dfsb_background_gallery_source' => 'dynamic_gallery',
+            ),
+            'description' => 'Optional initial source only. Live JetSmartFilters refresh still uses Collection Mode.',
         ));
         $element->add_control('etg_dfsb_background_fallback_image', array(
             'label' => 'Slideshow Fallback Image',
@@ -203,13 +225,6 @@ final class ContainerDynamicBackground {
             'condition' => array('etg_dfsb_background_mode!' => 'off'),
             'description' => 'Use auto for deterministic URL → active group → single group resolution, or provider/query_id for an explicit group.',
         ));
-        $element->add_control('etg_dfsb_background_preview_url', array(
-            'label' => 'Preview Filter URL (Editor only)',
-            'type' => $controls::TEXT,
-            'default' => '',
-            'condition' => array('etg_dfsb_background_mode!' => 'off'),
-            'description' => 'Synthetic Elementor preview only. It never grants URL, SEO, indexing or publication authority.',
-        ));
         $element->end_controls_section();
     }
 
@@ -227,9 +242,12 @@ final class ContainerDynamicBackground {
         $context = $this->previewContext((string)($settings['etg_dfsb_background_preview_url'] ?? ''));
         $slotId = ContentSlotRegistry::backgroundSlotId($mode === 'image' ? 'image' : 'gallery', $collection);
 
+        $gallerySource = sanitize_key((string)($settings['etg_dfsb_background_gallery_source'] ?? 'collection'));
+        if (!in_array($gallerySource, array('collection', 'dynamic_gallery'), true)) { $gallerySource = 'collection'; }
+
         $items = 'image' === $mode
             ? $this->initialImageItems($element, $slotId, $context)
-            : $this->initialGalleryItems($element, $slotId, $context, $limit, $minimum);
+            : $this->initialGalleryItems($element, $slotId, $context, $limit, $minimum, $gallerySource);
 
         $group = trim((string)($settings['etg_dfsb_background_group'] ?? 'auto'));
         if ('' === $group) { $group = 'auto'; }
@@ -238,6 +256,7 @@ final class ContainerDynamicBackground {
         $attrs = array(
             'class' => array('etg-dfsb-dynamic-background', 'etg-dfsb-dynamic-background--' . $mode),
             'data-etg-dfsb-background-mode' => $mode,
+            'data-etg-dfsb-background-source' => 'slideshow' === $mode ? $gallerySource : 'collection',
             'data-etg-dfsb-media-slot' => $slotId,
             'data-etg-dfsb-media-target' => 'gallery',
             'data-etg-dfsb-group' => $group,
@@ -270,10 +289,17 @@ final class ContainerDynamicBackground {
         return $this->hasImage($image) ? array($image) : array();
     }
 
-    private function initialGalleryItems($element, string $slotId, array $context = null, int $limit = 8, int $minimum = 2): array {
-        $value = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_gallery') : array();
-        $items = $this->normalizeGallery($value, $limit);
-        if (!$items) { $items = $this->resolver->slotGallery($slotId, $context, $limit); }
+    private function initialGalleryItems($element, string $slotId, array $context = null, int $limit = 8, int $minimum = 2, string $source = 'collection'): array {
+        $source = in_array($source, array('collection', 'dynamic_gallery'), true) ? $source : 'collection';
+        $items = array();
+
+        if ('dynamic_gallery' === $source) {
+            $value = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_gallery') : array();
+            $items = $this->normalizeGallery($value, $limit);
+        } else {
+            $items = $this->resolver->slotGallery($slotId, $context, $limit);
+        }
+
         if ($items && count($items) < $minimum) { $items = array($items[0]); }
         if (!$items) {
             $fallback = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_fallback_image') : array();
