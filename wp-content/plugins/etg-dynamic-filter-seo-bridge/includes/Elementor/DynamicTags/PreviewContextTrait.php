@@ -4,10 +4,10 @@ namespace ETG\DynamicFilterSEOBridge\Elementor\DynamicTags;
 trait PreviewContextTrait {
     protected function etgRegisterPreviewControl(): void {
         $this->add_control('preview_url', array(
-            'label' => 'Preview Filter URL (Editor only)',
+            'label' => 'Preview Filter URL',
             'type' => \Elementor\Controls_Manager::TEXT,
-            'placeholder' => 'Paste a filtered URL, e.g. /tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:cairo/',
-            'description' => 'Editor-only non-authorizing evidence. The gray example is a placeholder only and is not a saved value. Leave blank for no synthetic editor context. This field is ignored on the live front end.',
+            'placeholder' => '/tours-and-activities/jsf/…',
+            'description' => 'Editor preview only. Leave blank to use no synthetic filter context.',
             'label_block' => true,
         ));
 
@@ -16,8 +16,8 @@ trait PreviewContextTrait {
             : 'raw_html';
         $this->add_control('preview_live_parity_notice', array(
             'type' => $rawType,
-            'raw' => '<strong>Live parity:</strong> Editor preview is synthetic. On the live front end ETG resolves the actual pretty URL / JetSmartFilters AJAX state against the disabled governed profile. A valid exact match may render presentation-only content while Global remains OFF; any route/profile/runtime mismatch stays blank and fail-closed.',
-            'content_classes' => 'elementor-panel-alert elementor-panel-alert-info',
+            'raw' => '<strong>Live:</strong> ETG uses the real URL/AJAX state. Invalid or mismatched context stays blank.',
+            'content_classes' => 'elementor-panel-alert elementor-panel-alert-info etg-dfsb-tag-help',
         ));
     }
 
