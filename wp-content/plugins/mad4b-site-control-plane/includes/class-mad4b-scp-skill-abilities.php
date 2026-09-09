@@ -52,6 +52,13 @@ final class MAD4B_SCP_Skill_Abilities {
 			array( 'type' => 'object', 'additionalProperties' => false ),
 			array( __CLASS__, 'skills_export_status' )
 		);
+
+		self::add(
+			'mad4b/skills-runtime-certification',
+			'Get Skills Runtime Certification',
+			array( 'type' => 'object', 'additionalProperties' => false ),
+			array( __CLASS__, 'skills_runtime_certification' )
+		);
 	}
 
 	private static function add( $name, $label, array $input_schema, $callback ) {
@@ -102,5 +109,11 @@ final class MAD4B_SCP_Skill_Abilities {
 			'portable_snapshot' => MAD4B_SCP_Skill_Registry::portable_snapshot(),
 			'note' => 'ChatGPT/Codex packaged or MCP-imported skills are snapshots. Runtime WordPress edits require a new package or a new Scan Tools import before the installed Plugin skill badges change.',
 		);
+	}
+
+	public static function skills_runtime_certification() {
+		return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::status()
+			: array( 'contract' => 'mad4b.skill-runtime-certification.v1', 'ready' => false, 'state' => 'unavailable' );
 	}
 }
