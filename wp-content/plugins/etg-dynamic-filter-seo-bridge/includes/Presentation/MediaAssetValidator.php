@@ -12,6 +12,10 @@ final class MediaAssetValidator {
             'valid' => false,
             'reason' => 'invalid_id',
             'url' => '',
+            'width' => 0,
+            'height' => 0,
+            'aspect_ratio' => 0.0,
+            'dimensions_source' => 'unknown',
             'local_file_checked' => false,
             'local_file_exists' => null,
             'authorizing' => false,
@@ -37,6 +41,20 @@ final class MediaAssetValidator {
             }
         }
 
+        if (function_exists('wp_get_attachment_metadata')) {
+            $metadata = wp_get_attachment_metadata($id);
+            if (is_array($metadata)) {
+                $width = isset($metadata['width']) && is_numeric($metadata['width']) ? max(0, (int)$metadata['width']) : 0;
+                $height = isset($metadata['height']) && is_numeric($metadata['height']) ? max(0, (int)$metadata['height']) : 0;
+                if ($width > 0 && $height > 0) {
+                    $result['width'] = $width;
+                    $result['height'] = $height;
+                    $result['aspect_ratio'] = round($width / $height, 4);
+                    $result['dimensions_source'] = 'attachment_metadata';
+                }
+            }
+        }
+
         if (function_exists('get_attached_file') && function_exists('file_exists')) {
             $file = get_attached_file($id);
             if (is_string($file) && '' !== trim($file)) {
@@ -56,6 +74,14 @@ final class MediaAssetValidator {
                     if (!$allowMissingLocal) {
                         $result['reason'] = 'missing_local_file';
                         return self::filtered($result);
+                    }
+                } elseif ((!$result['width'] || !$result['height']) && function_exists('getimagesize')) {
+                    $dimensions = @getimagesize($file);
+                    if (is_array($dimensions) && !empty($dimensions[0]) && !empty($dimensions[1])) {
+                        $result['width'] = max(0, (int)$dimensions[0]);
+                        $result['height'] = max(0, (int)$dimensions[1]);
+                        $result['aspect_ratio'] = $result['height'] > 0 ? round($result['width'] / $result['height'], 4) : 0.0;
+                        $result['dimensions_source'] = 'local_file';
                     }
                 }
             }
