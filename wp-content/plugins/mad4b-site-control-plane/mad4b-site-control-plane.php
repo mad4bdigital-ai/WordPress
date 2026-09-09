@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.4
+ * Version: 0.4.0-rc.5
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.4' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.5' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -107,9 +107,11 @@ MAD4B_SCP_Skill_Autoconfig::bootstrap();
 // and breakglass are never auto-enabled.
 MAD4B_SCP_Staging_Write_Authority::bootstrap();
 
-// A reviewed bundled MCP Adapter may shadow the canonical plugin if it appears
-// earlier in active_plugins. Repair only that exact Staging load-order collision
-// for the next request; never disable either plugin and never mutate Production.
+// active_plugins ordering is not sufficient evidence of runtime ownership: a
+// hosting/MU bootstrap can claim the MCP Adapter class first. On the exact
+// Staging origin only, reconcile the reviewed Hostinger collision by installing
+// an integrity-checked early MU bootstrap for the next request. No plugin is
+// disabled and Production is never mutated.
 MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
 
 // Register lazy Abilities/MCP callbacks before plugins_loaded so a third-party
