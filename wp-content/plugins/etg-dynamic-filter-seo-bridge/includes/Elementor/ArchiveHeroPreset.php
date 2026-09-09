@@ -18,14 +18,18 @@ final class ArchiveHeroPreset {
     }
 
     public function beforeRender($element): void {
-        if (!is_object($element) || !method_exists($element, 'get_settings_for_display') || !method_exists($element, 'set_settings')) { return; }
+        if (!is_object($element) || !method_exists($element, 'set_settings')) { return; }
         $raw = $this->rawSettings($element);
-        $display = (array)$element->get_settings_for_display();
+
+        // Do not call get_settings_for_display() here. Elementor may cache its
+        // parsed display settings; warming that cache before our in-memory
+        // normalization could make the later ContainerDynamicBackground hook
+        // observe stale defaults instead of the values set below.
 
         // Explicit class-level kill switch is intentionally stronger than a
         // stale saved ETG mode. It provides a targeted, non-destructive way to
         // retire a wrongly-owned background from a wrapper Container.
-        if ($this->hasClass($raw, $display, self::DISABLE_CLASS)) {
+        if ($this->hasClass($raw, self::DISABLE_CLASS)) {
             $element->set_settings('etg_dfsb_background_mode', 'off');
             if (method_exists($element, 'add_render_attribute')) {
                 $element->add_render_attribute('_wrapper', array(
@@ -36,9 +40,9 @@ final class ArchiveHeroPreset {
             return;
         }
 
-        $marked = $this->hasClass($raw, $display, self::MARKER_CLASS);
+        $marked = $this->hasClass($raw, self::MARKER_CLASS);
         $hasSavedMode = array_key_exists('etg_dfsb_background_mode', $raw);
-        $mode = sanitize_key((string)($raw['etg_dfsb_background_mode'] ?? $display['etg_dfsb_background_mode'] ?? 'off'));
+        $mode = sanitize_key((string)($raw['etg_dfsb_background_mode'] ?? 'off'));
         $origin = 'explicit';
 
         if (!$hasSavedMode && $marked) {
@@ -105,11 +109,10 @@ final class ArchiveHeroPreset {
         if (!array_key_exists($key, $raw)) { $element->set_settings($key, $value); }
     }
 
-    private function hasClass(array $raw, array $display, string $needle): bool {
+    private function hasClass(array $raw, string $needle): bool {
         foreach (array('_css_classes', 'css_classes', 'css_class') as $key) {
-            $value = '';
-            if (isset($raw[$key]) && is_scalar($raw[$key])) { $value = trim((string)$raw[$key]); }
-            elseif (isset($display[$key]) && is_scalar($display[$key])) { $value = trim((string)$display[$key]); }
+            if (!isset($raw[$key]) || !is_scalar($raw[$key])) { continue; }
+            $value = trim((string)$raw[$key]);
             if ('' === $value) { continue; }
             foreach (preg_split('/\s+/', $value) as $className) {
                 if ($needle === trim((string)$className)) { return true; }
