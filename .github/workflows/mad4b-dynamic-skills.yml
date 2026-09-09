@@ -51,6 +51,7 @@ jobs:
             includes/class-mad4b-scp-skill-provider-discovery.php \
             includes/class-mad4b-scp-skill-resource-reader.php \
             includes/class-mad4b-scp-skill-resource-writer.php \
+            includes/class-mad4b-scp-skill-snapshot-identity.php \
             includes/class-mad4b-scp-skill-exporter.php \
             includes/class-mad4b-scp-skill-runtime-certification.php \
             includes/class-mad4b-scp-skill-abilities.php \
