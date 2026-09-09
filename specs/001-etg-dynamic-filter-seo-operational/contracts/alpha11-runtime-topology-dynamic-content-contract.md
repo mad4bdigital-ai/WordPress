@@ -16,6 +16,17 @@ Alpha11 removes side-channel/manual identity discovery from the normal operator 
 6. Correlation must fail closed on missing, ambiguous, unbounded, non-posts or custom-ID-missing records.
 7. Runtime topology discovery is read-only, non-authorizing and profile-non-mutating.
 
+## Nested Elementor template topology
+
+1. An Elementor `template` widget with a scalar `settings.template_id` is an explicit local reference to another Elementor Library template and may be followed for diagnostic topology discovery.
+2. Referenced-template traversal is read-only and bounded independently from the global Elementor Library catalog: maximum cross-template depth, maximum on-demand referenced templates, maximum observed references and the existing global element budget all apply.
+3. Traversal must be cycle-safe and must never scan the same template twice in one discovery pass. A template already present in the bounded global catalog remains a single topology source; its parent→child relationship is recorded without duplicating bindings or query surfaces.
+4. Each observed relationship exposes non-authorizing provenance including source template, source widget node, target template, depth, resolution status and reference chain where available.
+5. Missing, malformed, cyclic, depth-limited or budget-limited references remain explicit warning/review evidence. They must not be guessed, rewritten or promoted to indexing authority.
+6. Provider-group enforcement remains scoped to the template in which the Listing/filter surface is actually observed. A composed root such as a Destination archive may contain multiple nested sections with different provider groups and post types; the root relationship alone must not merge those child groups into one authority scope.
+7. The legacy bounded global template scan remains available for independent template inventory. Explicit references may additionally load an Elementor Library template that falls outside that global catalog bound, but only through the same read-only `_elementor_data` source and allowed template statuses.
+8. Runtime topology cache reuse requires the nested-reference evidence fields introduced by this hardening so an older same-contract transient cannot mask the new discovery semantics.
+
 ## Provider-group drift
 
 1. A verified Elementor Listing → Query Builder binding establishes a provider-group anchor for the template in which it was observed.

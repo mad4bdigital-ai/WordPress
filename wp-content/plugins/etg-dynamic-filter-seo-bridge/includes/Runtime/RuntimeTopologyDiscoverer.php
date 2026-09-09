@@ -12,15 +12,20 @@ final class RuntimeTopologyDiscoverer {
     const MAX_BINDINGS = 500;
     const MAX_QUERY_SURFACES = 2000;
     const MAX_PROVIDER_GROUP_DRIFT = 200;
+    const MAX_TEMPLATE_REFERENCES = 1000;
+    const MAX_REFERENCED_TEMPLATES = 100;
+    const MAX_TEMPLATE_REFERENCE_DEPTH = 6;
     const CACHE_TTL = 300;
 
     private $templateProvider;
     private $queryProvider;
+    private $templateReferenceProvider;
     private static $memoryCache = null;
 
-    public function __construct( callable $templateProvider = null, callable $queryProvider = null ) {
+    public function __construct( callable $templateProvider = null, callable $queryProvider = null, callable $templateReferenceProvider = null ) {
         $this->templateProvider = $templateProvider;
         $this->queryProvider = $queryProvider;
+        $this->templateReferenceProvider = $templateReferenceProvider;
     }
 
     public function registerInvalidationHooks(): void {
@@ -36,10 +41,10 @@ final class RuntimeTopologyDiscoverer {
     }
 
     public function discover( bool $refresh = false ): array {
-        if ( ! $refresh && null !== self::$memoryCache ) { return self::$memoryCache; }
+        if ( ! $refresh && null !== self::$memoryCache && array_key_exists( 'template_reference_count', self::$memoryCache ) ) { return self::$memoryCache; }
         if ( ! $refresh && function_exists( 'get_transient' ) ) {
             $cached = get_transient( 'etg_dfsb_runtime_topology_v1' );
-            if ( is_array( $cached ) && self::CONTRACT === (string) ( $cached['contract'] ?? '' ) ) {
+            if ( is_array( $cached ) && self::CONTRACT === (string) ( $cached['contract'] ?? '' ) && array_key_exists( 'template_reference_count', $cached ) ) {
                 self::$memoryCache = $cached;
                 return $cached;
             }
@@ -54,19 +59,118 @@ final class RuntimeTopologyDiscoverer {
         $querySurfaceCount = 0;
         $elementsScanned = 0;
         $truncated = false;
+        $templateReferences = array();
+        $templateReferenceCount = 0;
+        $templateReferencesTruncated = false;
+        $referencedTemplatesScanned = 0;
+        $templateIndex = array();
+        $scanQueue = array();
+        $scheduled = array();
+        $scanned = array();
 
         foreach ( $templates['items'] as $template ) {
-            if ( $elementsScanned >= self::MAX_ELEMENTS ) { $truncated = true; break; }
-            $templateId = (int) ( $template['id'] ?? 0 );
-            $data = $template['data'] ?? array();
-            if ( is_string( $data ) ) {
-                $decoded = json_decode( $data, true );
-                $data = is_array( $decoded ) ? $decoded : array();
-            }
-            if ( ! is_array( $data ) ) { continue; }
-            $this->walkElements( $data, $templateId, $queryIndex, $bindings, $providerIds, $querySurfaces, $querySurfaceCount, $elementsScanned, $truncated );
-            if ( $truncated ) { break; }
+            $templateId = absint( $template['id'] ?? 0 );
+            if ( ! $templateId || isset( $scheduled[$templateId] ) ) { continue; }
+            $data = $this->normalizeTemplateData( $template['data'] ?? array() );
+            if ( ! $data ) { continue; }
+            $templateIndex[$templateId] = $data;
+            $scheduled[$templateId] = true;
+            $scanQueue[] = array(
+                'template_id' => $templateId,
+                'data' => $data,
+                'depth' => 0,
+                'reference_chain' => array( $templateId ),
+                'origin' => 'catalog',
+            );
         }
+
+        for ( $queueIndex = 0; $queueIndex < count( $scanQueue ); $queueIndex++ ) {
+            if ( $elementsScanned >= self::MAX_ELEMENTS ) { $truncated = true; break; }
+            $scan = $scanQueue[$queueIndex];
+            $templateId = absint( $scan['template_id'] ?? 0 );
+            if ( ! $templateId || isset( $scanned[$templateId] ) ) { continue; }
+            $data = isset( $scan['data'] ) && is_array( $scan['data'] ) ? $scan['data'] : array();
+            if ( ! $data ) { continue; }
+            $scanned[$templateId] = true;
+            if ( 'reference' === (string) ( $scan['origin'] ?? '' ) ) { $referencedTemplatesScanned++; }
+
+            $referenceCandidates = array();
+            $this->walkElements(
+                $data,
+                $templateId,
+                $queryIndex,
+                $bindings,
+                $providerIds,
+                $querySurfaces,
+                $querySurfaceCount,
+                $elementsScanned,
+                $truncated,
+                $referenceCandidates,
+                $templateReferenceCount,
+                $templateReferencesTruncated
+            );
+            if ( $truncated ) { break; }
+
+            foreach ( $referenceCandidates as $candidate ) {
+                $targetId = absint( $candidate['target_template_id'] ?? 0 );
+                $chain = isset( $scan['reference_chain'] ) && is_array( $scan['reference_chain'] ) ? array_values( array_map( 'absint', $scan['reference_chain'] ) ) : array( $templateId );
+                $nextDepth = (int) ( $scan['depth'] ?? 0 ) + 1;
+                $status = 'template_reference_invalid';
+                $resolved = false;
+
+                if ( $targetId ) {
+                    if ( in_array( $targetId, $chain, true ) ) {
+                        $status = 'cycle_detected';
+                    } elseif ( $nextDepth > self::MAX_TEMPLATE_REFERENCE_DEPTH ) {
+                        $status = 'depth_limit_exceeded';
+                        $templateReferencesTruncated = true;
+                    } elseif ( isset( $scheduled[$targetId] ) || isset( $scanned[$targetId] ) ) {
+                        $status = 'resolved_catalogued';
+                        $resolved = true;
+                    } elseif ( $referencedTemplatesScanned + $this->queuedReferencedTemplateCount( $scanQueue, $queueIndex + 1 ) >= self::MAX_REFERENCED_TEMPLATES ) {
+                        $status = 'template_budget_exceeded';
+                        $templateReferencesTruncated = true;
+                    } else {
+                        $targetData = $this->referencedTemplateData( $targetId, $templateIndex );
+                        if ( $targetData ) {
+                            $status = 'resolved_reference';
+                            $resolved = true;
+                            $scheduled[$targetId] = true;
+                            $templateIndex[$targetId] = $targetData;
+                            $scanQueue[] = array(
+                                'template_id' => $targetId,
+                                'data' => $targetData,
+                                'depth' => $nextDepth,
+                                'reference_chain' => array_merge( $chain, array( $targetId ) ),
+                                'origin' => 'reference',
+                            );
+                        } else {
+                            $status = 'template_reference_unresolved';
+                        }
+                    }
+                }
+
+                $edge = array(
+                    'source_template_id' => $templateId,
+                    'source_node_id' => (string) ( $candidate['node_id'] ?? '' ),
+                    'target_template_id' => $targetId,
+                    'depth' => $nextDepth,
+                    'status' => $status,
+                    'resolved' => $resolved,
+                    'reference_chain' => array_merge( $chain, $targetId ? array( $targetId ) : array() ),
+                    'severity_hint' => $resolved ? 'info' : 'warning',
+                    'authorizing' => false,
+                );
+                if ( count( $templateReferences ) < self::MAX_TEMPLATE_REFERENCES ) { $templateReferences[] = $edge; }
+                else { $templateReferencesTruncated = true; }
+            }
+        }
+
+        usort( $templateReferences, static function ( $a, $b ) {
+            $ak = sprintf( '%010d|%s|%010d|%s', (int) ( $a['source_template_id'] ?? 0 ), (string) ( $a['source_node_id'] ?? '' ), (int) ( $a['target_template_id'] ?? 0 ), (string) ( $a['status'] ?? '' ) );
+            $bk = sprintf( '%010d|%s|%010d|%s', (int) ( $b['source_template_id'] ?? 0 ), (string) ( $b['source_node_id'] ?? '' ), (int) ( $b['target_template_id'] ?? 0 ), (string) ( $b['status'] ?? '' ) );
+            return strcmp( $ak, $bk );
+        } );
 
         $bindings = $this->normalizeBindings( $bindings );
         $drift = $this->providerGroupDrift( $bindings, $querySurfaces, $queryIndex );
@@ -78,9 +182,17 @@ final class RuntimeTopologyDiscoverer {
             'available' => ! empty( $templates['available'] ) && ! empty( $queries['available'] ),
             'sources' => array( 'templates' => $templates['source'], 'query_builder' => $queries['source'] ),
             'templates_scanned' => count( $templates['items'] ),
+            'templates_processed' => count( $scanned ),
+            'root_templates_scanned' => count( $templates['items'] ),
+            'referenced_templates_scanned' => $referencedTemplatesScanned,
+            'template_references' => array_slice( $templateReferences, 0, self::MAX_TEMPLATE_REFERENCES ),
+            'template_reference_count' => $templateReferenceCount,
+            'template_references_truncated' => $templateReferencesTruncated || $templateReferenceCount > self::MAX_TEMPLATE_REFERENCES,
+            'template_reference_depth_limit' => self::MAX_TEMPLATE_REFERENCE_DEPTH,
+            'referenced_template_limit' => self::MAX_REFERENCED_TEMPLATES,
             'query_builder_records_observed' => count( $queries['items'] ),
             'elements_scanned' => $elementsScanned,
-            'truncated' => $truncated || ! empty( $templates['truncated'] ) || ! empty( $queries['truncated'] ),
+            'truncated' => $truncated || $templateReferencesTruncated || ! empty( $templates['truncated'] ) || ! empty( $queries['truncated'] ),
             'provider_query_ids' => array_values( array_keys( $providerIds ) ),
             'bindings' => array_slice( $bindings, 0, self::MAX_BINDINGS ),
             'binding_count' => count( $bindings ),
@@ -134,6 +246,36 @@ final class RuntimeTopologyDiscoverer {
         }
     }
 
+    private function referencedTemplateData( int $templateId, array $templateIndex ): array {
+        if ( isset( $templateIndex[$templateId] ) && is_array( $templateIndex[$templateId] ) ) { return $templateIndex[$templateId]; }
+        if ( $this->templateReferenceProvider ) {
+            try { return $this->normalizeTemplateData( call_user_func( $this->templateReferenceProvider, $templateId ) ); }
+            catch ( \Throwable $error ) { return array(); }
+        }
+        if ( ! function_exists( 'get_post_meta' ) ) { return array(); }
+        try {
+            if ( function_exists( 'get_post_type' ) && 'elementor_library' !== (string) get_post_type( $templateId ) ) { return array(); }
+            if ( function_exists( 'get_post_status' ) && ! in_array( (string) get_post_status( $templateId ), array( 'publish', 'draft', 'private' ), true ) ) { return array(); }
+            return $this->normalizeTemplateData( get_post_meta( $templateId, '_elementor_data', true ) );
+        } catch ( \Throwable $error ) { return array(); }
+    }
+
+    private function normalizeTemplateData( $data ): array {
+        if ( is_string( $data ) ) {
+            $decoded = json_decode( $data, true );
+            $data = is_array( $decoded ) ? $decoded : array();
+        }
+        return is_array( $data ) ? $data : array();
+    }
+
+    private function queuedReferencedTemplateCount( array $scanQueue, int $startIndex ): int {
+        $count = 0;
+        for ( $i = max( 0, $startIndex ); $i < count( $scanQueue ); $i++ ) {
+            if ( 'reference' === (string) ( $scanQueue[$i]['origin'] ?? '' ) ) { $count++; }
+        }
+        return $count;
+    }
+
     private function queries(): array {
         try {
             if ( $this->queryProvider ) { $items = call_user_func( $this->queryProvider ); $source = 'injected_query_provider'; }
@@ -173,7 +315,7 @@ final class RuntimeTopologyDiscoverer {
         return array( 'internal'=>$byInternal, 'custom'=>$byCustom );
     }
 
-    private function walkElements( array $nodes, int $templateId, array $queryIndex, array &$bindings, array &$providerIds, array &$querySurfaces, int &$querySurfaceCount, int &$elementsScanned, bool &$truncated ): void {
+    private function walkElements( array $nodes, int $templateId, array $queryIndex, array &$bindings, array &$providerIds, array &$querySurfaces, int &$querySurfaceCount, int &$elementsScanned, bool &$truncated, array &$templateReferenceCandidates = array(), int &$templateReferenceCount = 0, bool &$templateReferencesTruncated = false ): void {
         foreach ( $nodes as $node ) {
             if ( $elementsScanned >= self::MAX_ELEMENTS ) { $truncated = true; return; }
             if ( ! is_array( $node ) ) { continue; }
@@ -182,6 +324,17 @@ final class RuntimeTopologyDiscoverer {
             $nodeId = isset( $node['id'] ) && is_scalar( $node['id'] ) ? sanitize_text_field( (string) $node['id'] ) : '';
             $elType = isset( $node['elType'] ) && is_scalar( $node['elType'] ) ? sanitize_key( (string) $node['elType'] ) : '';
             $widgetType = isset( $node['widgetType'] ) && is_scalar( $node['widgetType'] ) ? sanitize_key( (string) $node['widgetType'] ) : '';
+
+            if ( 'template' === $widgetType && array_key_exists( 'template_id', $settings ) ) {
+                $templateReferenceCount++;
+                if ( $templateReferenceCount <= self::MAX_TEMPLATE_REFERENCES ) {
+                    $templateReferenceCandidates[] = array(
+                        'node_id' => $nodeId,
+                        'target_template_id' => is_scalar( $settings['template_id'] ) ? absint( $settings['template_id'] ) : 0,
+                    );
+                } else { $templateReferencesTruncated = true; }
+            }
+
             foreach ( array( 'query_id', '_element_id' ) as $key ) {
                 if ( isset( $settings[$key] ) && is_scalar( $settings[$key] ) ) {
                     $candidate = QueryId::normalize( $settings[$key] );
@@ -231,7 +384,9 @@ final class RuntimeTopologyDiscoverer {
                 } elseif ( count( $matches ) > 1 ) { $record['reason'] = 'query_builder_locator_ambiguous'; }
                 $bindings[] = $record;
             }
-            if ( isset( $node['elements'] ) && is_array( $node['elements'] ) ) { $this->walkElements( $node['elements'], $templateId, $queryIndex, $bindings, $providerIds, $querySurfaces, $querySurfaceCount, $elementsScanned, $truncated ); }
+            if ( isset( $node['elements'] ) && is_array( $node['elements'] ) ) {
+                $this->walkElements( $node['elements'], $templateId, $queryIndex, $bindings, $providerIds, $querySurfaces, $querySurfaceCount, $elementsScanned, $truncated, $templateReferenceCandidates, $templateReferenceCount, $templateReferencesTruncated );
+            }
             if ( $truncated ) { return; }
         }
     }
