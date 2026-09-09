@@ -6,6 +6,7 @@ $root=dirname(__DIR__);
 $ui=file_get_contents($root.'/includes/Admin/AdminUi.php');
 $assets=file_get_contents($root.'/includes/Admin/AdminAssets.php');
 $css=file_get_contents($root.'/assets/css/admin-alpha13.css');
+$responsiveCss=file_get_contents($root.'/assets/css/admin-shell-responsive.css');
 $shell=file_get_contents($root.'/assets/js/admin-shell.js');
 $dynamicJs=file_get_contents($root.'/assets/js/dynamic-content-admin.js');
 $pages=array(
@@ -31,6 +32,10 @@ foreach(array('Diagnostic Lab','Query Builder','Relations','Fields & CCT','Conte
 $inventory=file_get_contents($root.'/includes/Admin/InventoryControlPage.php');
 foreach(array('Overview','Profile Plans','Safety Contract')as$label){etg_ui_has($label,$inventory,'inventory tab '.$label);}
 foreach(array('.etg-product-nav','.etg-subtabs','.etg-table-tools','.etg-sticky-actions','.etg-editor-sections')as$needle){etg_ui_has($needle,$css,'shared CSS '.$needle);}
+etg_ui_has('assets/css/admin-shell-responsive.css',$assets,'responsive admin shell override is enqueued');
+etg_ui_has("'etg-dfsb-admin-shell-responsive'",$assets,'responsive admin shell has a dedicated style handle');
+foreach(array('.etg-dfsb-admin .etg-product-nav','flex-wrap:wrap!important','overflow:visible!important','text-decoration:none!important','.etg-dfsb-admin .nav-tab-wrapper.etg-subtabs','.etg-media-lab .etg-panel__body>form.etg-actions','grid-template-columns:minmax(240px,420px) auto!important','overflow-x:auto!important')as$needle){etg_ui_has($needle,$responsiveCss,'responsive admin shell contract '.$needle);}
+etg_ui_expect(false===strpos($responsiveCss,'position:fixed'),'admin shell hardening cannot introduce fixed overlays');
 etg_ui_has('assets/js/admin-shell.js',$assets,'shared admin shell enqueued');
 etg_ui_has('assets/js/dynamic-content-admin.js',$assets,'dynamic content behavior enqueued');
 foreach(array('listing_field','listing_meta','term_field','term_meta','context','repeater','query','relation','relation_meta')as$type){etg_ui_has($type,$dynamicJs,'dynamic source UX supports '.$type);}
@@ -44,4 +49,4 @@ etg_ui_has('data-etg-collapsible',$shell,'shared collapsible behavior present');
 etg_ui_expect(false===strpos($shell,'pushState')&&false===strpos($shell,'replaceState'),'shared admin shell cannot mutate browser history');
 etg_ui_expect(false===strpos($dynamicJs,'pushState')&&false===strpos($dynamicJs,'replaceState'),'dynamic admin UX cannot mutate browser history');
 etg_ui_expect(false===strpos($ui,'update_option('),'shared admin UI cannot mutate configuration');
-echo "Alpha13 shared admin UI shell smoke tests passed.\n";
+echo "Alpha13 shared admin UI shell and responsive navigation smoke tests passed.\n";
