@@ -149,7 +149,7 @@ WordPress snapshot_identity.identity_token
 installed/exported MAD4B-SNAPSHOT-ID.txt
 ```
 
-An exact match proves the package represents the same enabled Skill contents/resources and App mapping. It still does not prove that the client executed a Skill successfully; the live ChatGPT/Codex read flow remains a separate acceptance check.
+An exact match proves the package represents the same enabled Skill contents/resources and App mapping. It does not prove that ChatGPT/Codex actually loaded the snapshot or successfully invoked the MCP-backed workflow; those remain external client-side acceptance facts and are never inferred by WordPress.
 
 ## Dynamic WordPress registry
 
