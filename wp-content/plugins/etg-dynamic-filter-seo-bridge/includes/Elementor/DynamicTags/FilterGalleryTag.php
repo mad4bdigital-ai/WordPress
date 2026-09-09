@@ -21,7 +21,7 @@ final class FilterGalleryTag extends \Elementor\Core\DynamicTags\Data_Tag {
             'role_priority'=>'Combined By Role Priority',
         );
         foreach ($roles as $role => $label) { $modes[$role] = $label . ' only'; }
-        $this->add_control('mode', array('label'=>'Gallery Collection Mode','type'=>\Elementor\Controls_Manager::SELECT,'options'=>$modes,'default'=>'combined','description'=>'Collects existing WordPress media from active Terms. No gallery post or media record is created.'));
+        $this->add_control('mode', array('label'=>'Gallery Collection Mode','type'=>\Elementor\Controls_Manager::SELECT,'options'=>$modes,'default'=>'combined','description'=>'Returns healthy media from the selected collection.'));
         $this->add_control('limit', array('label'=>'Maximum Images','type'=>\Elementor\Controls_Manager::NUMBER,'min'=>1,'max'=>30,'default'=>9));
         $this->etgRegisterPreviewControl();
     }
