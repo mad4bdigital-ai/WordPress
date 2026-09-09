@@ -6,13 +6,16 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 
 - Portable Plugin capability: `Read`
 - Local test app mapping: existing **Staging** MCP App only
-- Runtime-authored Skill creation: WordPress administrator UI only
 - Staging Skill authoring: auto-enabled by the Control Plane with no manual `wp-config.php` edit
+- Canonical seed pack: auto-provisioned on Staging; no manual Skill creation is required for the base workflows
+- Runtime-authored custom Skill creation: WordPress administrator UI only
 - ChatGPT MCP Skill tools: read-only (`skills-list`, `skill-get`, `skills-export-status`)
 - No Skill create/update/delete MCP tool
 - WordPress global mutation authority is not enabled by this package
 
 ## Seed Skills
+
+The Control Plane automatically provisions the following enabled seed workflows on Staging after audit storage is ready:
 
 - `wordpress-site-diagnostics`
 - `wordpress-connection-diagnostics`
@@ -21,13 +24,15 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 - `wordpress-archive-audit`
 - `wordpress-change-safety`
 
-Each Skill is a directory under root `skills/` with a required `SKILL.md` file. Supporting `references/`, `assets/`, and `scripts/` directories can be included when needed.
+Existing `SKILL.md` files always win. The seed provisioner never overwrites a runtime-authored Skill with the same logical location.
+
+Each portable Skill is a directory under root `skills/` with a required `SKILL.md` file. Supporting `references/`, `assets/`, and `scripts/` directories can be included when needed.
 
 ## Dynamic WordPress registry
 
 The WordPress plugin adds **MAD4B Control Plane → Skills**.
 
-Runtime-authored Skills are stored as real files under:
+Runtime Skills are stored as real files under:
 
 ```text
 wp-content/mad4b-skills/
@@ -46,13 +51,15 @@ The files are deliberately stored **outside third-party plugin directories**. Wr
 
 When WordPress reports `wp_get_environment_type() === 'staging'`, the Control Plane automatically enables the local Skill editor. No `wp-config.php` edit is required.
 
+It then provisions the canonical seed pack automatically once governance schema and append-only audit storage are ready. No administrator form submission is required for the base Skills.
+
 Explicit operator configuration still wins. To deliberately disable authoring on Staging, an operator may set:
 
 ```php
 define( 'MAD4B_SKILLS_EDITOR_ENABLED', false );
 ```
 
-Production is never auto-enabled. Production authoring still requires both explicit gates:
+Production is never auto-enabled and is never auto-seeded. Production authoring still requires both explicit gates:
 
 ```php
 define( 'MAD4B_SKILLS_EDITOR_ENABLED', true );
@@ -94,7 +101,7 @@ The App technical ID is an identifier, not an OAuth token or signing key.
 
 ## Dynamic does not mean hot-reloaded in ChatGPT
 
-The WordPress registry is live and dynamic on the site, but packaged ChatGPT/Codex Skills are a **snapshot**. After changing a Skill you must publish another package, or if Skills are imported from the MCP server, deploy the changed server source and run **Scan Tools** again. Installed clients do not continuously re-read a changed `SKILL.md` from WordPress.
+The WordPress registry is live and dynamic on the site, but packaged ChatGPT/Codex Plugin skills are a **snapshot**. After changing a Skill you must publish another package, or if Skills are imported from the MCP server, deploy the changed server source and run **Scan Tools** again. Installed clients do not continuously re-read a changed `SKILL.md` from WordPress.
 
 This split is intentional:
 
