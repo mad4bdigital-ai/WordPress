@@ -10,6 +10,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 	const MAX_FOREIGN_ROUTES = 100;
 	const MAX_FOREIGN_PLUGINS = 100;
 	const GENERIC_EXECUTE_ABILITY = 'mcp-adapter/execute-ability';
+	const HOSTINGER_BANNER_CONTROL_ROUTE = '/hostinger-easy-onboarding/v1/update-mcp-connector-banner-status';
 
 	public static function mutation_guard() {
 		$status = self::status();
@@ -120,10 +121,15 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		if ( ! is_array( $routes ) ) return self::foreign_unavailable( 'rest_route_inventory_invalid' );
 
 		$foreign_routes = array();
+		$reviewed_non_transport_routes = array();
 		foreach ( $routes as $route => $route_definition ) {
 			$route = (string) $route;
 			if ( in_array( $route, $known_routes, true ) ) continue;
 			if ( self::is_known_namespace_index( $route, $route_definition, $known_namespaces, $rest_server ) ) continue;
+			if ( self::is_reviewed_non_transport_route( $route ) ) {
+				$reviewed_non_transport_routes[] = substr( $route, 0, 255 );
+				continue;
+			}
 			if ( ! self::looks_like_mcp_route( $route ) ) continue;
 			$foreign_routes[] = substr( $route, 0, 255 );
 			if ( count( $foreign_routes ) >= self::MAX_FOREIGN_ROUTES ) break;
@@ -131,6 +137,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		$foreign_plugins = self::foreign_mcp_plugins();
 		if ( is_wp_error( $foreign_plugins ) ) return self::foreign_unavailable( $foreign_plugins->get_error_code() );
 		$foreign_routes = array_values( array_unique( $foreign_routes ) );
+		$reviewed_non_transport_routes = array_values( array_unique( $reviewed_non_transport_routes ) );
 		$foreign_plugins = array_values( array_unique( $foreign_plugins ) );
 		$risk_count = count( $foreign_routes ) + count( $foreign_plugins );
 		return array(
@@ -140,6 +147,8 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			'risk_count' => $risk_count,
 			'known_adapter_namespaces' => $known_namespaces,
 			'known_adapter_routes' => $known_routes,
+			'reviewed_non_transport_route_count' => count( $reviewed_non_transport_routes ),
+			'reviewed_non_transport_routes' => $reviewed_non_transport_routes,
 			'foreign_route_count' => count( $foreign_routes ),
 			'foreign_routes' => $foreign_routes,
 			'foreign_plugin_count' => count( $foreign_plugins ),
@@ -147,20 +156,19 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		);
 	}
 
-	/**
-	 * WordPress automatically creates a read-only namespace index when the first
-	 * route is registered in a namespace. It is infrastructure, not another MCP
-	 * endpoint. Ignore it only when both conditions are proven: the namespace is
-	 * used by a registered Adapter server and every executable callback on the
-	 * route is the current WP_REST_Server::get_namespace_index callback.
-	 *
-	 * This deliberately does not allow-list a path such as /mcp by name alone.
-	 */
+	private static function is_reviewed_non_transport_route( $route ) {
+		// Exact live Hostinger Easy Onboarding UI/control endpoint. It updates the
+		// connector-banner state; it is not an MCP transport, tool discovery route,
+		// execution endpoint, credential endpoint, or Adapter server. The exception
+		// is deliberately exact so any future Hostinger MCP-looking route remains
+		// visible and fail-closed until separately reviewed.
+		return is_string( $route ) && hash_equals( self::HOSTINGER_BANNER_CONTROL_ROUTE, rtrim( $route, '/' ) );
+	}
+
 	private static function is_known_namespace_index( $route, $route_definition, array $known_namespaces, $rest_server ) {
 		$namespace = ltrim( (string) $route, '/' );
 		if ( '' === $namespace || ! in_array( $namespace, $known_namespaces, true ) ) return false;
 		if ( ! is_array( $route_definition ) || ! is_object( $rest_server ) ) return false;
-
 		$found = false;
 		foreach ( $route_definition as $key => $endpoint ) {
 			if ( ! is_int( $key ) ) continue;
@@ -264,7 +272,7 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 	}
 
 	private static function foreign_unavailable( $reason ) {
-		return array( 'contract' => 'mad4b.foreign-mcp-transport-inventory.v1', 'inventory_ready' => false, 'foreign_mcp_detected' => false, 'risk_count' => 0, 'foreign_route_count' => 0, 'foreign_routes' => array(), 'foreign_plugin_count' => 0, 'foreign_plugins' => array(), 'reason' => sanitize_key( (string) $reason ) );
+		return array( 'contract' => 'mad4b.foreign-mcp-transport-inventory.v1', 'inventory_ready' => false, 'foreign_mcp_detected' => false, 'risk_count' => 0, 'reviewed_non_transport_route_count' => 0, 'reviewed_non_transport_routes' => array(), 'foreign_route_count' => 0, 'foreign_routes' => array(), 'foreign_plugin_count' => 0, 'foreign_plugins' => array(), 'reason' => sanitize_key( (string) $reason ) );
 	}
 
 	private static function unavailable( $reason ) {

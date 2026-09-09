@@ -19,9 +19,10 @@ if ( 'staging' !== wp_get_environment_type() ) {
 if ( ! MAD4B_SCP_MCP_Provider_Isolation::effective() ) {
 	mad4b_isolation_fail( 'Provider MCP isolation should be effective on staging.' );
 }
+if ( false !== apply_filters( 'wpmedia_mcp_oauth_server_enabled', true ) ) {
+	mad4b_isolation_fail( 'Official wp-media/mcp-oauth kill switch did not suppress mcp-oauth-server.' );
+}
 
-// Load test-only class declarations carrying the exact callback identities
-// observed on live Staging. No provider code or arbitrary execution primitive is used.
 require_once __DIR__ . '/fixtures/provider-mcp-registration-callbacks.php';
 
 $hostinger = new \Hostinger\AiAssistant\Mcp\McpServer();
@@ -54,6 +55,11 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'hfe/v1', '/mcp-settings', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit/v1', '/mcp-proxy', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
+
+	// Reviewed Hostinger UI/control endpoint. It must remain registered and be
+	// classified as non-transport by peer governance, not deleted by isolation.
+	register_rest_route( 'hostinger-easy-onboarding/v1', '/update-mcp-connector-banner-status', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
+
 	// Deliberately unknown MCP-looking route: isolation must NOT hide it.
 	register_rest_route( 'unknown-provider/v1', '/mcp-unreviewed', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 }, 1000 );
@@ -73,13 +79,16 @@ foreach ( array(
 ) as $route ) {
 	if ( isset( $routes[ $route ] ) ) mad4b_isolation_fail( 'Certified provider MCP/control route remained exposed.', $route );
 }
+if ( ! isset( $routes['/hostinger-easy-onboarding/v1/update-mcp-connector-banner-status'] ) ) {
+	mad4b_isolation_fail( 'Reviewed Hostinger banner-control route was hidden instead of preserved.' );
+}
 if ( ! isset( $routes['/unknown-provider/v1/mcp-unreviewed'] ) ) {
 	mad4b_isolation_fail( 'Unknown MCP route was hidden instead of remaining fail-closed.' );
 }
 
 $status = MAD4B_SCP_MCP_Provider_Isolation::status();
-if ( empty( $status['effective'] ) || empty( $status['default_server_suppressed'] ) ) {
-	mad4b_isolation_fail( 'Isolation status did not report effective/default suppression.', $status );
+if ( empty( $status['effective'] ) || empty( $status['default_server_suppressed'] ) || empty( $status['wpmedia_oauth_server_suppressed'] ) ) {
+	mad4b_isolation_fail( 'Isolation status did not report effective/default/WP Media suppression.', $status );
 }
 if ( empty( $status['server_registration_suppression_attempted'] ) ) {
 	mad4b_isolation_fail( 'Server-registration suppression was not attempted.', $status );
@@ -105,7 +114,7 @@ if ( class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) {
 	foreach ( is_array( $servers ) ? $servers : array() as $server ) {
 		if ( ! is_object( $server ) || ! method_exists( $server, 'get_server_id' ) ) continue;
 		$id = (string) $server->get_server_id();
-		if ( in_array( $id, array( 'mcp-adapter-default-server', 'hostinger-ai-assistant-mcp-server', 'elementskit-mcp-server' ), true ) ) {
+		if ( in_array( $id, array( 'mcp-adapter-default-server', 'mcp-oauth-server', 'hostinger-ai-assistant-mcp-server', 'elementskit-mcp-server' ), true ) ) {
 			mad4b_isolation_fail( 'Suppressed MCP server remained registered while isolation is effective.', $id );
 		}
 	}
@@ -114,6 +123,11 @@ if ( class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) {
 $peer = MAD4B_SCP_MCP_Peer_Governance::status();
 $foreign = isset( $peer['foreign_transport_inventory'] ) && is_array( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
 $foreign_routes = isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? $foreign['foreign_routes'] : array();
+$reviewed_routes = isset( $foreign['reviewed_non_transport_routes'] ) && is_array( $foreign['reviewed_non_transport_routes'] ) ? $foreign['reviewed_non_transport_routes'] : array();
+$hostinger_banner = '/hostinger-easy-onboarding/v1/update-mcp-connector-banner-status';
+if ( ! in_array( $hostinger_banner, $reviewed_routes, true ) || in_array( $hostinger_banner, $foreign_routes, true ) ) {
+	mad4b_isolation_fail( 'Hostinger banner-control route was not classified as reviewed non-transport.', $foreign );
+}
 if ( ! in_array( '/unknown-provider/v1/mcp-unreviewed', $foreign_routes, true ) ) {
 	mad4b_isolation_fail( 'Unknown MCP route did not remain visible to peer governance.', $peer );
 }
@@ -121,4 +135,4 @@ if ( empty( $peer['write_side_channel_detected'] ) || ! in_array( 'mcp_foreign_t
 	mad4b_isolation_fail( 'Unknown MCP route must continue to fail closed.', $peer );
 }
 
-fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v2: PASS' . PHP_EOL );
+fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v3: PASS' . PHP_EOL );
