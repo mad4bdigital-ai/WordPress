@@ -75,10 +75,10 @@ foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete
 }
 
 // Register a disposable WPML-compatible route directly on the REST server. The
-// probe traverses rest_do_request + every rest_pre_dispatch guard and must
-// preserve both query parameters exactly.
+// low-level register_route() API expects the full route path; WordPress' public
+// register_rest_route() wrapper performs this namespace prefixing itself.
 $rest_server = rest_get_server();
-$rest_server->register_route( 'wpml/v1', '/rest/status', array(
+$rest_server->register_route( 'wpml/v1', '/wpml/v1/rest/status', array(
 	array(
 		'methods' => 'GET',
 		'callback' => static function ( $request ) {
