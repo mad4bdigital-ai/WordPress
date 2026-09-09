@@ -14,32 +14,34 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 	const CONTRACT = 'mad4b.skill-provider-discovery.v1';
 	const CATALOG_CONTRACT = 'mad4b.skill-provider-catalog.v1';
 	const OPTION = 'mad4b_scp_skill_provider_discovery_v1';
+	const DISCOVERY_VERSION = 2;
 	const MAX_PACKS = 100;
 
 	private static $ran = false;
 	private static $catalog = null;
+	private static $runtime_status = null;
 
 	public static function bootstrap() {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;
 
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		if ( 'staging' !== $environment ) return self::status( 'environment_not_staging' );
-		if ( ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::status( 'skill_editor_disabled' );
-		if ( ! class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) return self::status( 'plugin_discovery_unavailable' );
+		if ( 'staging' !== $environment ) return self::set_status( 'environment_not_staging' );
+		if ( ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::set_status( 'skill_editor_disabled' );
+		if ( ! class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) return self::set_status( 'plugin_discovery_unavailable' );
 
 		// Provider reconciliation is a second-stage lifecycle. Never create/toggle
 		// provider packs when the canonical baseline seed transaction did not reach
-		// its current ready version.
+		// its current ready version in this request.
 		$seed_status = class_exists( 'MAD4B_SCP_Skill_Seeder' ) ? MAD4B_SCP_Skill_Seeder::status() : array();
-		if ( empty( $seed_status['state'] ) || 'ready' !== $seed_status['state'] ) return self::status( 'seed_pack_not_ready' );
+		if ( empty( $seed_status['current_request_observed'] ) || empty( $seed_status['state'] ) || 'ready' !== $seed_status['state'] ) return self::set_status( 'seed_pack_not_ready' );
 
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
-		if ( empty( $audit_status['ready'] ) ) return self::status( 'audit_unavailable' );
+		if ( empty( $audit_status['ready'] ) ) return self::set_status( 'audit_unavailable' );
 
 		$catalog = self::catalog();
 		$packs = isset( $catalog['packs'] ) && is_array( $catalog['packs'] ) ? $catalog['packs'] : array();
-		if ( empty( $packs ) ) return self::status( 'catalog_empty' );
+		if ( empty( $packs ) ) return self::set_status( 'catalog_empty' );
 
 		$coverage = MAD4B_SCP_Plugin_Discovery::coverage();
 		$providers = self::provider_state_map( isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array() );
@@ -85,38 +87,57 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 			}
 		}
 
-		$record = array(
-			'contract' => self::CONTRACT,
-			'state' => 'ready',
-			'families' => $families,
-			'created' => array_values( array_unique( $created ) ),
-			'activated' => array_values( array_unique( $activated ) ),
-			'deactivated' => array_values( array_unique( $deactivated ) ),
-			'skipped_user_owned' => array_values( array_unique( $skipped_user_owned ) ),
-			'skipped_conflict' => array_values( array_unique( $skipped_conflict ) ),
-			'updated_at' => gmdate( 'c' ),
-			'requires_seed_pack_ready' => true,
-			'digest_clean_managed_only' => true,
-			'production_auto_provision' => false,
-			'provider_plugin_mutation' => false,
-			'deletes_skills' => false,
+		$record = self::build_status(
+			'ready',
+			$families,
+			array_values( array_unique( $created ) ),
+			array_values( array_unique( $activated ) ),
+			array_values( array_unique( $deactivated ) ),
+			array_values( array_unique( $skipped_user_owned ) ),
+			array_values( array_unique( $skipped_conflict ) )
 		);
+		$record['updated_at'] = gmdate( 'c' );
 		update_option( self::OPTION, $record, false );
+		self::$runtime_status = $record;
 		return $record;
 	}
 
-	public static function status( $state = '' ) {
+	/**
+	 * Do not surface a historical ready option as current-runtime truth before
+	 * this request has actually reconciled providers.
+	 */
+	public static function status() {
+		if ( is_array( self::$runtime_status ) ) return self::$runtime_status;
 		$stored = get_option( self::OPTION, array() );
-		if ( '' === $state && is_array( $stored ) && ! empty( $stored['state'] ) ) return $stored;
+		$previous_ready = is_array( $stored )
+			&& isset( $stored['discovery_version'], $stored['state'] )
+			&& self::DISCOVERY_VERSION === (int) $stored['discovery_version']
+			&& 'ready' === $stored['state'];
+		$status = self::build_status( 'pending' );
+		$status['previous_persisted_ready'] = $previous_ready;
+		$status['current_request_observed'] = false;
+		return $status;
+	}
+
+	private static function set_status( $state ) {
+		self::$runtime_status = self::build_status( $state );
+		self::$runtime_status['current_request_observed'] = true;
+		return self::$runtime_status;
+	}
+
+	private static function build_status( $state, array $families = array(), array $created = array(), array $activated = array(), array $deactivated = array(), array $user_owned = array(), array $conflicts = array() ) {
 		return array(
 			'contract' => self::CONTRACT,
-			'state' => '' !== $state ? $state : 'pending',
-			'families' => array(),
-			'created' => array(),
-			'activated' => array(),
-			'deactivated' => array(),
-			'skipped_user_owned' => array(),
-			'skipped_conflict' => array(),
+			'discovery_version' => self::DISCOVERY_VERSION,
+			'state' => sanitize_key( (string) $state ),
+			'families' => $families,
+			'created' => $created,
+			'activated' => $activated,
+			'deactivated' => $deactivated,
+			'skipped_user_owned' => $user_owned,
+			'skipped_conflict' => $conflicts,
+			'current_request_observed' => true,
+			'previous_persisted_ready' => false,
 			'requires_seed_pack_ready' => true,
 			'digest_clean_managed_only' => true,
 			'production_auto_provision' => false,
@@ -236,8 +257,6 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$current_sha = hash( 'sha256', $skill_raw );
 		$recorded_sha = isset( $meta['sha256'] ) ? strtolower( trim( (string) $meta['sha256'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) || ! hash_equals( $recorded_sha, $current_sha ) ) {
-			// MAD4B no longer has clean ownership of the document bytes. Never toggle
-			// metadata on an externally modified managed Skill.
 			return array( 'logical_id' => $logical_id, 'user_owned' => true, 'drifted_managed' => true );
 		}
 
