@@ -78,4 +78,25 @@ if ( empty( $cert['snapshot_identity_token'] ) || ! hash_equals( (string) $snaps
 $readback = MAD4B_SCP_Skill_Runtime_Certification::status();
 if ( empty( $readback['ready'] ) || ! hash_equals( (string) $cert['evidence_digest'], (string) $readback['evidence_digest'] ) ) $fail( 'Persisted runtime certification readback mismatch.' );
 
+if ( ! class_exists( 'ZipArchive' ) ) $fail( 'ZipArchive is unavailable for portable export proof.' );
+$export = MAD4B_SCP_Skill_Exporter::build_temp_zip();
+if ( is_wp_error( $export ) ) $fail( 'Portable export failed: ' . $export->get_error_code() );
+if ( empty( $export['path'] ) || ! is_file( $export['path'] ) ) $fail( 'Portable export file is missing.' );
+if ( empty( $export['identity_token'] ) || ! hash_equals( (string) $snapshot_identity['identity_token'], (string) $export['identity_token'] ) ) $fail( 'Exporter result identity token mismatch.' );
+
+$zip = new ZipArchive();
+if ( true !== $zip->open( $export['path'] ) ) { @unlink( $export['path'] ); $fail( 'Portable export ZIP could not be reopened.' ); }
+$token_file = trim( (string) $zip->getFromName( 'MAD4B-SNAPSHOT-ID.txt' ) );
+$meta_json = $zip->getFromName( 'MAD4B-SNAPSHOT.json' );
+$app_json = $zip->getFromName( '.app.json' );
+$zip->close();
+@unlink( $export['path'] );
+
+if ( '' === $token_file || ! hash_equals( (string) $snapshot_identity['identity_token'], $token_file ) ) $fail( 'MAD4B-SNAPSHOT-ID.txt does not match runtime identity.' );
+$meta = json_decode( (string) $meta_json, true );
+if ( ! is_array( $meta ) || empty( $meta['identity_token'] ) || ! hash_equals( $token_file, (string) $meta['identity_token'] ) ) $fail( 'MAD4B-SNAPSHOT.json identity token mismatch.' );
+$app = json_decode( (string) $app_json, true );
+$zip_app_id = is_array( $app ) && isset( $app['apps']['mad4b-wordpress']['id'] ) ? (string) $app['apps']['mad4b-wordpress']['id'] : '';
+if ( '' === $zip_app_id || ! hash_equals( MAD4B_SCP_Skill_Autoconfig::staging_app_id(), $zip_app_id ) ) $fail( 'Portable .app.json does not bind the governed Staging App.' );
+
 echo 'mad4b.runtime-dynamic-skills.v1: PASS' . PHP_EOL;
