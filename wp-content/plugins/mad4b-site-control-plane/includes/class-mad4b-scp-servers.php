@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Servers {
 	private static $registrations = array();
+	private static $adapter_write_projection_cache = null;
 
 	public static function expected_server_ids() {
 		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
@@ -90,48 +91,79 @@ final class MAD4B_SCP_Servers {
 		return true;
 	}
 
+	/**
+	 * Build the adapter write projection once per fully-initialized Ability request.
+	 *
+	 * Action/tool refresh can ask for the same projection through chatgpt_tools(),
+	 * write_tools(), blocked_write_tools() and provider resolution in one request.
+	 * Provider status may include exact critical-file hashing, so recomputing that
+	 * projection for every lookup can turn tools/list into an avoidable timeout.
+	 *
+	 * The cache is deliberately request-local and is not populated while the
+	 * Abilities API is still registering. Mutation execution continues to run the
+	 * adapter permission callback and provider mutation_guard independently, so
+	 * this discovery optimization never converts cached discovery into authority.
+	 */
 	private static function adapter_write_projection() {
 		$result = array( 'eligible' => array(), 'blocked' => array() );
 		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
+
+		$cacheable = function_exists( 'did_action' )
+			&& did_action( 'wp_abilities_api_init' ) > 0
+			&& ( ! function_exists( 'doing_action' ) || ! doing_action( 'wp_abilities_api_init' ) );
+		if ( $cacheable && is_array( self::$adapter_write_projection_cache ) ) {
+			return self::$adapter_write_projection_cache;
+		}
 
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
 		$registry->register_defaults();
 		foreach ( $registry->all() as $adapter ) {
 			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
+
+			// Filter to registered non-readonly mutations before asking the provider
+			// for status. Read-only/family adapters cannot contribute to the write
+			// projection and therefore must not trigger provider integrity hashing.
+			$map = $adapter->ability_names();
+			$mutation_candidates = array();
+			foreach ( array( 'content', 'admin' ) as $surface ) {
+				$abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
+				foreach ( $abilities as $ability_name ) {
+					$ability_name = (string) $ability_name;
+					if ( self::registered_mutation_ability( $ability_name ) ) $mutation_candidates[] = $ability_name;
+				}
+			}
+			$mutation_candidates = array_values( array_unique( $mutation_candidates ) );
+			if ( empty( $mutation_candidates ) ) continue;
+
 			$status = method_exists( $adapter, 'status' ) ? $adapter->status() : array();
 			$requires_certification = ! empty( $status['mutation_requires_certification'] );
 			$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
 			$runtime_contract_ok = ! $requires_certification || ! empty( $certification['runtime_contract_ok'] );
 			$provider = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : sanitize_key( (string) $adapter->id() );
-			$map = $adapter->ability_names();
 
-			foreach ( array( 'content', 'admin' ) as $surface ) {
-				$abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
-				foreach ( $abilities as $ability_name ) {
-					$ability_name = (string) $ability_name;
-					if ( ! self::registered_mutation_ability( $ability_name ) ) continue;
-					if ( $runtime_contract_ok ) {
-						$result['eligible'][] = $ability_name;
-						continue;
-					}
-
-					$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' )
-						? MAD4B_SCP_Provider_Contracts::violations_for_status( $certification )
-						: array( 'certification_authority_unavailable' );
-					$result['blocked'][ $ability_name ] = array(
-						'ability' => $ability_name,
-						'provider' => $provider,
-						'reason' => 'provider_runtime_contract_not_certified',
-						'runtime_status' => isset( $certification['status'] ) ? (string) $certification['status'] : 'unknown',
-						'installed_version' => isset( $certification['installed_version'] ) ? (string) $certification['installed_version'] : '',
-						'certified_version' => isset( $certification['certified_version'] ) ? (string) $certification['certified_version'] : '',
-						'violations' => array_values( array_unique( array_map( 'strval', $violations ) ) ),
-					);
+			foreach ( $mutation_candidates as $ability_name ) {
+				if ( $runtime_contract_ok ) {
+					$result['eligible'][] = $ability_name;
+					continue;
 				}
+
+				$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' )
+					? MAD4B_SCP_Provider_Contracts::violations_for_status( $certification )
+					: array( 'certification_authority_unavailable' );
+				$result['blocked'][ $ability_name ] = array(
+					'ability' => $ability_name,
+					'provider' => $provider,
+					'reason' => 'provider_runtime_contract_not_certified',
+					'runtime_status' => isset( $certification['status'] ) ? (string) $certification['status'] : 'unknown',
+					'installed_version' => isset( $certification['installed_version'] ) ? (string) $certification['installed_version'] : '',
+					'certified_version' => isset( $certification['certified_version'] ) ? (string) $certification['certified_version'] : '',
+					'violations' => array_values( array_unique( array_map( 'strval', $violations ) ) ),
+				);
 			}
 		}
 
 		$result['eligible'] = array_values( array_unique( $result['eligible'] ) );
+		if ( $cacheable ) self::$adapter_write_projection_cache = $result;
 		return $result;
 	}
 
