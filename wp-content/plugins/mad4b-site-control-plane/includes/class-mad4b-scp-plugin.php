@@ -76,9 +76,26 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Connection_Ability::boot();
 		MAD4B_SCP_Governed_Ability_Overrides::boot();
 		MAD4B_SCP_Staging_Write_Authority::boot();
+
+		// Reconciliation used to run on every wp-admin request. That created
+		// unnecessary database/audit churn and made unrelated admin screens pay for
+		// the governed write plane. Preserve automatic reconciliation on the
+		// Abilities lifecycle, but scope admin reconciliation to MAD4B screens only.
+		remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );
+		add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' ), 20 );
+
 		MAD4B_SCP_Staging_Write_Planning_Guard::boot();
 		MAD4B_SCP_REST_Compatibility::boot();
 		MAD4B_SCP_Write_Runtime_Certification::boot();
+
+		// Runtime certification is intentionally expensive: it reconciles authority,
+		// inspects all write mounts and executes the in-process WPML compatibility
+		// probe. Never run that work merely because an arbitrary wp-admin or REST
+		// request happened. It remains explicit on the MAD4B Certification tab.
+		remove_action( 'mcp_adapter_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );
+		remove_action( 'admin_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );
+		add_action( 'admin_init', array( __CLASS__, 'observe_write_certification_on_certification_page' ), 110 );
+
 		MAD4B_SCP_Governance_Abilities::boot();
 		MAD4B_SCP_Skill_Abilities::boot();
 		MAD4B_SCP_Skills_Adapter::boot();
@@ -149,6 +166,29 @@ final class MAD4B_SCP_Plugin {
 	}
 
 	/**
+	 * Keep automatic write-authority reconciliation off unrelated wp-admin pages.
+	 * Remote/MCP requests still reconcile through the Abilities lifecycle.
+	 */
+	public static function reconcile_authority_on_mad4b_admin() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing decision.
+		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
+		MAD4B_SCP_Staging_Write_Authority::reconcile();
+	}
+
+	/**
+	 * Certification is an explicit evidence collection operation. Restrict the
+	 * expensive WPML/REST probe and certification audit write to its own tab.
+	 */
+	public static function observe_write_certification_on_certification_page() {
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing decision.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing decision.
+		if ( 'mad4b-control-plane-connection' !== $page || 'certification' !== $tab ) return;
+		MAD4B_SCP_Write_Runtime_Certification::observe();
+	}
+
+	/**
 	 * The official Adapter initializes on rest_api_init. Control-plane admin pages
 	 * are ordinary wp-admin requests, so prime the in-memory REST/MCP registry
 	 * locally before any readiness snapshot is rendered. This performs no HTTP
@@ -161,6 +201,12 @@ final class MAD4B_SCP_Plugin {
 		if ( ! function_exists( 'rest_get_server' ) ) return;
 		try {
 			rest_get_server();
+			// Readiness used to capture registration_status() before the lazy REST
+			// lifecycle had completed. Reconcile the bounded exact-Staging rescue now,
+			// before any Connection_Status snapshot is rendered.
+			if ( class_exists( 'MAD4B_SCP_MCP_Registration_Rescue' ) ) {
+				MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );
+			}
 		} catch ( Throwable $e ) {
 			// Readiness surfaces remain fail-closed and will report the unavailable registry.
 		}
