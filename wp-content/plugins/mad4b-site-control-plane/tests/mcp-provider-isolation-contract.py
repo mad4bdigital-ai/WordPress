@@ -35,7 +35,7 @@ require(isolation, "define( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG, true )", 's
 require(isolation, 'public static function runtime_suppression_approved()', 'runtime-suppression-gate-method')
 require(isolation, 'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;', 'two-gate-effective-contract')
 require(isolation, "'production' === $environment && ! self::production_approved()", 'production-fail-closed')
-require(isolation, "'legacy_enable_flag_alone_is_non_mutating' => ! self::$staging_autoconfig_applied", 'legacy-flag-status-evidence')
+require(isolation, "'legacy_enable_flag_alone_is_non_mutating' => true", 'legacy-flag-status-evidence')
 require(isolation, "'staging_zero_touch_autoconfig_evaluated' => self::$staging_autoconfig_evaluated", 'staging-autoconfig-evaluated-evidence')
 require(isolation, "'staging_zero_touch_autoconfig_applied' => self::$staging_autoconfig_applied", 'staging-autoconfig-applied-evidence')
 require(isolation, "'staging_zero_touch_autoconfig_blocker' => self::$staging_autoconfig_blocker", 'staging-autoconfig-blocker-evidence')
