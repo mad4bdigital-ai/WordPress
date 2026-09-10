@@ -1,0 +1,102 @@
+name: MAD4B RC15 UTF-8 Remediation
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - '.github/workflows/mad4b-rc15-utf8-remediation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 0
+
+      - name: Apply rc.15 UTF-8 lifecycle remediation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          root = Path('wp-content/plugins/mad4b-site-control-plane')
+          registry_path = root / 'includes/class-mad4b-scp-skill-registry.php'
+          seeder_path = root / 'includes/class-mad4b-scp-skill-seeder.php'
+          main_path = root / 'mad4b-site-control-plane.php'
+          marker_path = root / 'MAD4B-RUNTIME-BUILD.txt'
+          admin_workflow_path = Path('.github/workflows/mad4b-admin-performance.yml')
+
+          registry = registry_path.read_text(encoding='utf-8')
+          legacy_registry = "\t\tif ( function_exists( 'seems_utf8' ) && ! seems_utf8( $content ) ) return new WP_Error( 'mad4b_skill_encoding_invalid', 'SKILL.md must be valid UTF-8 text.' );"
+          new_registry = "\t\tif ( ! self::is_valid_utf8( $content ) ) return new WP_Error( 'mad4b_skill_encoding_invalid', 'SKILL.md must be valid UTF-8 text.' );"
+          if registry.count(legacy_registry) != 1:
+              raise SystemExit('Expected exactly one legacy registry seems_utf8 call')
+          registry = registry.replace(legacy_registry, new_registry, 1)
+          registry_anchor = "\tprivate static function validate_document( $content, $expected_name = '' ) {"
+          registry_helper = "\tprivate static function is_valid_utf8( $value ) {\n\t\t// WordPress 6.9+ is the minimum supported runtime. Fail closed if the\n\t\t// canonical validator is unexpectedly unavailable rather than invoking\n\t\t// the deprecated seems_utf8() compatibility function.\n\t\tif ( ! function_exists( 'wp_is_valid_utf8' ) ) return false;\n\t\treturn wp_is_valid_utf8( (string) $value );\n\t}\n\n"
+          if registry.count(registry_anchor) != 1 or 'private static function is_valid_utf8' in registry:
+              raise SystemExit('Registry UTF-8 helper insertion boundary is not exact')
+          registry = registry.replace(registry_anchor, registry_helper + registry_anchor, 1)
+          registry_path.write_text(registry, encoding='utf-8')
+
+          seeder = seeder_path.read_text(encoding='utf-8')
+          legacy_seeder = "\t\tif ( function_exists( 'seems_utf8' ) && ! seems_utf8( $document ) ) return new WP_Error( 'mad4b_skill_seed_source_encoding_invalid', 'Canonical seed Skill source must be valid UTF-8.' );"
+          new_seeder = "\t\tif ( ! self::is_valid_utf8( $document ) ) return new WP_Error( 'mad4b_skill_seed_source_encoding_invalid', 'Canonical seed Skill source must be valid UTF-8.' );"
+          if seeder.count(legacy_seeder) != 1:
+              raise SystemExit('Expected exactly one legacy seeder seems_utf8 call')
+          seeder = seeder.replace(legacy_seeder, new_seeder, 1)
+          seeder_anchor = "\tprivate static function canonical_document( $name ) {"
+          seeder_helper = "\tprivate static function is_valid_utf8( $value ) {\n\t\t// WordPress 6.9+ is the minimum supported runtime. Fail closed if the\n\t\t// canonical validator is unexpectedly unavailable rather than invoking\n\t\t// the deprecated seems_utf8() compatibility function.\n\t\tif ( ! function_exists( 'wp_is_valid_utf8' ) ) return false;\n\t\treturn wp_is_valid_utf8( (string) $value );\n\t}\n\n"
+          if seeder.count(seeder_anchor) != 1 or 'private static function is_valid_utf8' in seeder:
+              raise SystemExit('Seeder UTF-8 helper insertion boundary is not exact')
+          seeder = seeder.replace(seeder_anchor, seeder_helper + seeder_anchor, 1)
+          seeder_path.write_text(seeder, encoding='utf-8')
+
+          main = main_path.read_text(encoding='utf-8')
+          if main.count('0.4.0-rc.14') != 2:
+              raise SystemExit('Expected exactly two rc.14 version markers in plugin main')
+          main_path.write_text(main.replace('0.4.0-rc.14', '0.4.0-rc.15'), encoding='utf-8')
+
+          marker = marker_path.read_text(encoding='utf-8')
+          if marker.count('release=0.4.0-rc.14') != 1:
+              raise SystemExit('Expected exact rc.14 build marker')
+          marker_path.write_text(marker.replace('release=0.4.0-rc.14', 'release=0.4.0-rc.15', 1), encoding='utf-8')
+
+          admin = admin_workflow_path.read_text(encoding='utf-8')
+          if admin.count('0.4.0-rc.14') != 3:
+              raise SystemExit('Expected three rc.14 references in admin-performance workflow')
+          admin = admin.replace('0.4.0-rc.14', '0.4.0-rc.15')
+          admin = admin.replace('rc.14 plugin version mismatch', 'rc.15 plugin version mismatch')
+          admin = admin.replace('rc.14 build marker mismatch', 'rc.15 build marker mismatch')
+          source_anchor = "          marker = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')\n"
+          source_insertion = "          skill_registry = (root / 'includes/class-mad4b-scp-skill-registry.php').read_text(encoding='utf-8')\n          skill_seeder = (root / 'includes/class-mad4b-scp-skill-seeder.php').read_text(encoding='utf-8')\n"
+          if admin.count(source_anchor) != 1 or 'skill_registry = (root /' in admin:
+              raise SystemExit('Admin-performance UTF-8 source insertion boundary is not exact')
+          admin = admin.replace(source_anchor, source_anchor + source_insertion, 1)
+          check_anchor = "          if 'release=0.4.0-rc.15' not in marker:\n              raise SystemExit('rc.15 build marker mismatch')\n"
+          utf8_checks = "\n          for label, source in [('skill-registry', skill_registry), ('skill-seeder', skill_seeder)]:\n              if \"function_exists( 'wp_is_valid_utf8' )\" not in source or 'wp_is_valid_utf8( (string) $value )' not in source:\n                  raise SystemExit(label + ' does not prefer the WordPress 6.9+ UTF-8 validator')\n              if \"function_exists( 'seems_utf8' )\" in source or 'seems_utf8( $content )' in source or 'seems_utf8( $document )' in source:\n                  raise SystemExit(label + ' still invokes deprecated seems_utf8()')\n"
+          if admin.count(check_anchor) != 1:
+              raise SystemExit('Admin-performance rc.15 assertion boundary is not exact')
+          admin = admin.replace(check_anchor, check_anchor + utf8_checks, 1)
+          admin_workflow_path.write_text(admin, encoding='utf-8')
+
+          # The workflow is a one-shot repository repair mechanism; remove it from
+          # the resulting product commit so the branch does not retain self-writing CI.
+          Path('.github/workflows/mad4b-rc15-utf8-remediation.yml').unlink()
+
+      - name: Commit exact remediation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B Repository Automation'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'fix(skills): replace deprecated UTF-8 validator'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
