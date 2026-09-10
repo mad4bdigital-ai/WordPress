@@ -23,6 +23,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-surface-smoke.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php'
       - '.github/workflows/mad4b-dynamic-skills.yml'
   workflow_dispatch:
@@ -97,6 +98,7 @@ jobs:
             includes/class-mad4b-scp-servers.php \
             includes/adapters/class-mad4b-scp-skills-adapter.php \
             tests/runtime-dynamic-skills-smoke.php \
+            tests/runtime-write-surface-smoke.php \
             tests/runtime-dynamic-skills-production-smoke.php; do
             php -l "$root/$file"
           done
@@ -215,6 +217,11 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+      - name: Prove provider-uncertified mutations stay outside governed remote write projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-surface-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
 
   runtime-production:
     name: Dynamic Skills + write authority Production fail-closed runtime
