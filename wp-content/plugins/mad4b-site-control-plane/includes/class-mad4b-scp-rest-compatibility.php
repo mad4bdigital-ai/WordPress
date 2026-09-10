@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * are explicitly isolated from that recovery machinery.
  */
 final class MAD4B_SCP_REST_Compatibility {
-	const CONTRACT = 'mad4b.rest-compatibility.v3';
+	const CONTRACT = 'mad4b.rest-compatibility.v2';
 	const WPML_ROUTE = '/wpml/v1/rest/status';
 	const MAX_HOOK_CALLBACKS = 200;
 
