@@ -144,8 +144,8 @@ jobs:
           cp wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php \
              "$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
           # Preserve executable behavior but mark the installed copy as a prior
-          # managed contract and force a byte mismatch. The first rc.7 request
-          # must atomically reconcile it to the current source.
+          # managed contract and force a byte mismatch. The first request must
+          # atomically reconcile it to the current source.
           python3 - "$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php" <<'PY'
           from pathlib import Path
           import sys
@@ -184,3 +184,20 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-web-lifecycle.php
+
+      - name: Prove REST pre-prime before MAD4B MU recovers without global replay
+        shell: bash
+        env:
+          MAD4B_TEST_WP_PATH: /tmp/mad4b-web-wordpress
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-web-wordpress
+          # This MU file sorts before 000-mad4b-* and reproduces the live host
+          # condition: WordPress REST already exists before MAD4B can arm the
+          # official Adapter's rest_api_init callback.
+          cat > "$WP_PATH/wp-content/mu-plugins/000-aaa-rest-prime.php" <<'PHP'
+          <?php
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+          if ( function_exists( 'rest_get_server' ) ) rest_get_server();
+          PHP
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-web-preprimed-lifecycle.php
