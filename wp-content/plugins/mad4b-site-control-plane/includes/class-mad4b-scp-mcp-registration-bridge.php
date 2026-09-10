@@ -29,6 +29,8 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	private static $missed_rest_recovery_route_count = 0;
 	private static $missed_rest_recovery_state = 'not_required';
 	private static $missed_rest_recovery_blocker = '';
+	private static $rest_postcondition_watchdog_bound = false;
+	private static $rest_postcondition_recovery_triggered = false;
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
@@ -49,6 +51,13 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 );
 		add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 );
 
+		// Tail-check every REST bootstrap. The official Adapter normally initializes
+		// at priority 15. If a host/provider removes or bypasses that callback after
+		// the MU bootstrap armed it, recover only the missing Adapter/MAD4B lifecycle
+		// without replaying rest_api_init globally.
+		add_action( 'rest_api_init', array( __CLASS__, 'verify_adapter_init_after_rest' ), PHP_INT_MAX );
+		self::$rest_postcondition_watchdog_bound = false !== has_action( 'rest_api_init', array( __CLASS__, 'verify_adapter_init_after_rest' ) );
+
 		if ( self::$rest_init_seen_before_boot && ! self::$adapter_init_seen_before_boot && self::governed_staging() && ! ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) ) {
 			if ( did_action( 'init' ) > 0 ) {
 				self::$missed_rest_recovery_state = 'missed_rest_detected_too_late';
@@ -59,6 +68,29 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 				add_action( 'init', array( __CLASS__, 'recover_missed_rest_lifecycle' ), 9999 );
 			}
 		}
+	}
+
+	public static function verify_adapter_init_after_rest() {
+		if ( did_action( 'mcp_adapter_init' ) > 0 ) return;
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return;
+		if ( ! self::governed_staging() ) return;
+		if ( self::$missed_rest_recovery_attempted ) return;
+
+		self::$rest_postcondition_recovery_triggered = true;
+
+		// REST can be primed before WordPress init. In that case defer recovery
+		// until init so the public Abilities API is legal to initialize.
+		if ( did_action( 'init' ) < 1 ) {
+			if ( ! self::$missed_rest_recovery_scheduled ) {
+				self::$missed_rest_recovery_scheduled = true;
+				self::$missed_rest_recovery_state = 'adapter_init_missing_after_rest_scheduled_for_init';
+				add_action( 'init', array( __CLASS__, 'recover_missed_rest_lifecycle' ), 9999 );
+			}
+			return;
+		}
+
+		self::$missed_rest_recovery_state = 'adapter_init_missing_after_rest';
+		self::recover_missed_rest_lifecycle();
 	}
 
 	private static function governed_staging() {
@@ -92,8 +124,8 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	}
 
 	/**
-	 * Recover only the canonical MCP lifecycle that was missed because REST was
-	 * created before the MAD4B MU bootstrap. No persistent state is changed.
+	 * Recover only the canonical MCP lifecycle that was missed after REST has
+	 * already initialized. No persistent state is changed.
 	 */
 	public static function recover_missed_rest_lifecycle() {
 		if ( self::$missed_rest_recovery_attempted ) return;
@@ -105,8 +137,8 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			self::$missed_rest_recovery_state = 'blocked';
 			return;
 		}
-		if ( ! self::$rest_init_seen_before_boot || did_action( 'rest_api_init' ) < 1 ) {
-			self::$missed_rest_recovery_blocker = 'rest_api_init_not_preprimed';
+		if ( did_action( 'rest_api_init' ) < 1 ) {
+			self::$missed_rest_recovery_blocker = 'rest_api_init_not_seen';
 			self::$missed_rest_recovery_state = 'blocked';
 			return;
 		}
@@ -121,8 +153,6 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			return;
 		}
 
-		// Public API initialization fires the canonical category/ability actions.
-		// Because this method runs on init, WordPress permits registry creation.
 		wp_get_abilities();
 		if ( did_action( 'wp_abilities_api_init' ) < 1 ) {
 			self::$missed_rest_recovery_blocker = 'abilities_api_not_initialized';
@@ -150,10 +180,6 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			return;
 		}
 
-		// The official default server cannot acquire its abilities after their
-		// one-shot registry action has already fired. Suppress only that optional
-		// server for this bounded missed-REST recovery; MAD4B servers remain bound
-		// to the normal mcp_adapter_init action.
 		add_filter( 'mcp_adapter_create_default_server', array( __CLASS__, 'disable_default_server_for_missed_rest_recovery' ), PHP_INT_MAX );
 		try {
 			$adapter->init();
@@ -258,7 +284,6 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		self::$servers->register_servers( $adapter );
 	}
 
-	/** Read-only lifecycle/provenance evidence. No absolute server path is exposed. */
 	public static function status() {
 		$runtime_source = 'unavailable';
 		$runtime_from_official_plugin = false;
@@ -309,6 +334,8 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			'missed_rest_recovery_route_count' => self::$missed_rest_recovery_route_count,
 			'missed_rest_recovery_state' => self::$missed_rest_recovery_state,
 			'missed_rest_recovery_blocker' => self::$missed_rest_recovery_blocker,
+			'rest_postcondition_watchdog_bound' => self::$rest_postcondition_watchdog_bound,
+			'rest_postcondition_recovery_triggered' => self::$rest_postcondition_recovery_triggered,
 			'mcp_adapter_init_count' => did_action( 'mcp_adapter_init' ),
 			'rest_api_init_count' => did_action( 'rest_api_init' ),
 			'abilities_init_count' => did_action( 'wp_abilities_api_init' ),
