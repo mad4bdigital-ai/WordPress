@@ -114,7 +114,7 @@ final class MAD4B_SCP_Skill_Abilities {
 
 	public static function skills_runtime_certification() {
 		return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
-			? MAD4B_SCP_Skill_Runtime_Certification::status()
+			? MAD4B_SCP_Skill_Runtime_Certification::observe()
 			: array( 'contract' => 'mad4b.skill-runtime-certification.v1', 'ready' => false, 'state' => 'unavailable' );
 	}
 }
