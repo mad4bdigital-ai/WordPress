@@ -27,6 +27,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php
+          php -l wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php
 
       - name: Prove expensive governance work is scoped
         shell: python
@@ -38,6 +39,7 @@ jobs:
           skill_cert = (root / 'includes/class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
           skill_abilities = (root / 'includes/class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
           request_scope = (root / 'includes/class-mad4b-scp-mcp-request-scope.php').read_text(encoding='utf-8')
+          mu_bootstrap = (root / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text(encoding='utf-8')
           main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
           marker = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')
 
@@ -71,6 +73,16 @@ jobs:
               if marker_text not in request_scope:
                   raise SystemExit('Missing REST request-scope invariant: ' + marker_text)
 
+          for marker_text in [
+              "'request_requires_mcp_runtime' => false",
+              "'request_scope_bypassed' => false",
+              "'non_mad4b_request_bypassed'",
+              "'/mcp/mad4b-chatgpt'",
+              "$mad4b_mcp_mu_status['eligible'] && ! $mad4b_mcp_mu_status['request_scope_bypassed']",
+          ]:
+              if marker_text not in mu_bootstrap:
+                  raise SystemExit('Missing MU request-scope invariant: ' + marker_text)
+
           forbidden_skill_hooks = [
               "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' ), 99 );",
               "add_action( 'admin_init', array( __CLASS__, 'observe' ), 99 );",
@@ -88,9 +100,9 @@ jobs:
           if rescue <= prime:
               raise SystemExit('Readiness rescue must run after REST priming and before page rendering')
 
-          if 'Version: 0.4.0-rc.12' not in main or "MAD4B_SCP_VERSION', '0.4.0-rc.12'" not in main:
-              raise SystemExit('rc.12 plugin version mismatch')
-          if 'release=0.4.0-rc.12' not in marker:
-              raise SystemExit('rc.12 build marker mismatch')
+          if 'Version: 0.4.0-rc.13' not in main or "MAD4B_SCP_VERSION', '0.4.0-rc.13'" not in main:
+              raise SystemExit('rc.13 plugin version mismatch')
+          if 'release=0.4.0-rc.13' not in marker:
+              raise SystemExit('rc.13 build marker mismatch')
 
-          print('mad4b-admin-performance.v4: PASS')
+          print('mad4b-admin-performance.v5: PASS')
