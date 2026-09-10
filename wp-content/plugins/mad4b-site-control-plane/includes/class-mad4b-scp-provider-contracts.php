@@ -37,6 +37,14 @@ final class MAD4B_SCP_Provider_Contracts {
 		return isset( $contracts[ $provider ] ) && is_array( $contracts[ $provider ] ) ? $contracts[ $provider ] : array();
 	}
 
+	private static function valid_profile( $version, $profile ) {
+		if ( ! is_array( $profile ) || ! preg_match( '/^[0-9A-Za-z._-]+$/', (string) $version ) ) return false;
+		if ( empty( $profile['version'] ) || ! hash_equals( (string) $version, (string) $profile['version'] ) ) return false;
+		// Extra versions must carry their own complete runtime integrity authority.
+		// Never let a version-only profile inherit old critical-file hashes and pass.
+		return ! empty( $profile['critical_files'] ) && is_array( $profile['critical_files'] );
+	}
+
 	public static function certified_versions( $provider ) {
 		$base = self::get( $provider );
 		$versions = array();
@@ -44,7 +52,7 @@ final class MAD4B_SCP_Provider_Contracts {
 		$profiles = self::profiles();
 		if ( ! empty( $profiles[ $provider ] ) && is_array( $profiles[ $provider ] ) ) {
 			foreach ( $profiles[ $provider ] as $version => $profile ) {
-				if ( is_array( $profile ) && preg_match( '/^[0-9A-Za-z._-]+$/', (string) $version ) ) $versions[] = (string) $version;
+				if ( self::valid_profile( $version, $profile ) ) $versions[] = (string) $version;
 			}
 		}
 		return array_values( array_unique( $versions ) );
@@ -56,10 +64,24 @@ final class MAD4B_SCP_Provider_Contracts {
 		$version = (string) $version;
 		if ( '' === $version || ( isset( $base['version'] ) && hash_equals( (string) $base['version'], $version ) ) ) return $base;
 		$profiles = self::profiles();
-		if ( empty( $profiles[ $provider ][ $version ] ) || ! is_array( $profiles[ $provider ][ $version ] ) ) return $base;
+		if ( empty( $profiles[ $provider ][ $version ] ) || ! self::valid_profile( $version, $profiles[ $provider ][ $version ] ) ) return $base;
 		$profile = $profiles[ $provider ][ $version ];
-		if ( empty( $profile['version'] ) || ! hash_equals( $version, (string) $profile['version'] ) ) return $base;
-		return array_replace_recursive( $base, $profile );
+		$contract = array_replace_recursive( $base, $profile );
+
+		// Security-sensitive collections are complete version-scoped declarations,
+		// not deltas. Replacing them wholesale prevents stale baseline entries or
+		// numeric-array tails from being inherited silently by a newer provider.
+		$replace_fields = array(
+			'critical_files',
+			'native_abilities',
+			'verified_absent_abilities',
+			'verified_contracts',
+			'known_upstream_constraints',
+			'native_mcp',
+			'native_mcp_security',
+		);
+		foreach ( $replace_fields as $field ) if ( array_key_exists( $field, $profile ) ) $contract[ $field ] = $profile[ $field ];
+		return $contract;
 	}
 
 	public static function required_providers() {
