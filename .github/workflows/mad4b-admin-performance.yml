@@ -20,8 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lint plugin coordinator
-        run: php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php
+      - name: Lint scoped runtime files
+        shell: bash
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php
 
       - name: Prove expensive governance work is scoped
         shell: python
@@ -30,12 +34,18 @@ jobs:
 
           root = Path('wp-content/plugins/mad4b-site-control-plane')
           plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+          skill_cert = (root / 'includes/class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
+          skill_abilities = (root / 'includes/class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
           main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
           marker = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')
 
           required = [
               "remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );",
+              "remove_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 95 );",
+              "add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile_authority_if_needed' ), 95 );",
               "add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' ), 20 );",
+              "MAD4B_SCP_Staging_Write_Authority::OPTION",
+              "(int) $stored['write_tool_count'] === count( $tools )",
               "remove_action( 'mcp_adapter_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );",
               "remove_action( 'admin_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );",
               "add_action( 'admin_init', array( __CLASS__, 'observe_write_certification_on_certification_page' ), 110 );",
@@ -49,6 +59,18 @@ jobs:
           if missing:
               raise SystemExit('Missing admin-performance contract: ' + ' | '.join(missing))
 
+          forbidden_skill_hooks = [
+              "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' ), 99 );",
+              "add_action( 'admin_init', array( __CLASS__, 'observe' ), 99 );",
+          ]
+          found = [item for item in forbidden_skill_hooks if item in skill_cert]
+          if found:
+              raise SystemExit('Skill certification still has broad observers: ' + ' | '.join(found))
+          if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' ), 99 );" not in skill_cert:
+              raise SystemExit('Canonical zero-touch Skill certification hook is missing')
+          if 'MAD4B_SCP_Skill_Runtime_Certification::observe()' not in skill_abilities:
+              raise SystemExit('Explicit Skill certification must refresh evidence on demand')
+
           prime = plugin.index('rest_get_server();', plugin.index('public static function prime_admin_mcp_runtime'))
           rescue = plugin.index("MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );", prime)
           if rescue <= prime:
@@ -59,4 +81,4 @@ jobs:
           if 'release=0.4.0-rc.11' not in marker:
               raise SystemExit('rc.11 build marker mismatch')
 
-          print('mad4b-admin-performance.v2: PASS')
+          print('mad4b-admin-performance.v3: PASS')
