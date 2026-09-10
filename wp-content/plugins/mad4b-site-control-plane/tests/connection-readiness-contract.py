@@ -56,14 +56,16 @@ if status.index('$remote_preflight_blockers = array_merge') > status.index('$con
     raise SystemExit('FAIL preflight-before-certification: remote blockers must be assembled before final certification')
 
 for marker in (
-    "const CONTRACT = 'mad4b.external-handshake-evidence.v1'",
+    "const CONTRACT = 'mad4b.external-handshake-evidence.v2'",
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
     "defined( 'DOING_CRON' ) && DOING_CRON", 'verified_bearer_active()',
     "'initialize'", "'tools/list'", "hash( 'sha256', $session_id )",
     "update_option( self::OPTION, $evidence, false )", "'credential_material_stored' => false",
-    "'stale_build_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
+    "'stale_build_evidence'", "'stale_tool_inventory_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
+    "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
+    'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
 ):
     require(evidence, marker, 'external-handshake-evidence')
 for forbidden in (
