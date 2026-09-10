@@ -36,9 +36,13 @@ final class MAD4B_SCP_Servers {
 	}
 
 	/**
-	 * Project every registered content/admin ability explicitly annotated
-	 * non-readonly. No name inference or generic dispatcher is used. Breakglass is
-	 * not a candidate surface and remains isolated.
+	 * Project only runtime-eligible registered content/admin mutations.
+	 *
+	 * Core mutations remain governed by the central authority. Adapter mutations
+	 * that require provider certification are mounted only when the exact runtime
+	 * contract is certified; drifted/unavailable providers stay discoverable on
+	 * their diagnostic/read surfaces but are never projected as dead write tools.
+	 * Breakglass is never a candidate.
 	 */
 	public static function write_tools() {
 		$candidates = array_merge(
@@ -49,24 +53,85 @@ final class MAD4B_SCP_Servers {
 			)
 		);
 
-		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
-			$registry = MAD4B_SCP_Adapter_Registry::instance();
-			$registry->register_defaults();
-			$candidates = array_merge( $candidates, $registry->ability_names( 'content' ), $registry->ability_names( 'admin' ) );
-		}
+		$projection = self::adapter_write_projection();
+		$candidates = array_merge( $candidates, $projection['eligible'] );
 
 		$write = array();
 		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
-			if ( 'mad4b/database-raw-query' === $ability_name ) continue;
-			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
-			$ability = wp_get_ability( $ability_name );
-			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
-			$meta = $ability->get_meta();
-			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-			if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) continue;
-			$write[] = (string) $ability_name;
+			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
 		}
+		sort( $write );
 		return array_values( array_unique( $write ) );
+	}
+
+	/**
+	 * Safe diagnostics for registered adapter mutations intentionally omitted from
+	 * the governed write surface because their runtime provider contract is not
+	 * certified. No absolute paths or provider internals are exposed.
+	 */
+	public static function blocked_write_tools() {
+		$projection = self::adapter_write_projection();
+		$blocked = array_values( $projection['blocked'] );
+		usort( $blocked, static function ( $a, $b ) {
+			return strcmp( isset( $a['ability'] ) ? $a['ability'] : '', isset( $b['ability'] ) ? $b['ability'] : '' );
+		} );
+		return $blocked;
+	}
+
+	private static function registered_mutation_ability( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		if ( '' === $ability_name || 'mad4b/database-raw-query' === $ability_name ) return false;
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return false;
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return false;
+		$meta = $ability->get_meta();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		return array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'];
+	}
+
+	private static function adapter_write_projection() {
+		$result = array( 'eligible' => array(), 'blocked' => array() );
+		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
+
+		$registry = MAD4B_SCP_Adapter_Registry::instance();
+		$registry->register_defaults();
+		foreach ( $registry->all() as $adapter ) {
+			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
+			$status = method_exists( $adapter, 'status' ) ? $adapter->status() : array();
+			$requires_certification = ! empty( $status['mutation_requires_certification'] );
+			$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
+			$runtime_contract_ok = ! $requires_certification || ! empty( $certification['runtime_contract_ok'] );
+			$provider = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : sanitize_key( (string) $adapter->id() );
+			$map = $adapter->ability_names();
+
+			foreach ( array( 'content', 'admin' ) as $surface ) {
+				$abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
+				foreach ( $abilities as $ability_name ) {
+					$ability_name = (string) $ability_name;
+					if ( ! self::registered_mutation_ability( $ability_name ) ) continue;
+					if ( $runtime_contract_ok ) {
+						$result['eligible'][] = $ability_name;
+						continue;
+					}
+
+					$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' )
+						? MAD4B_SCP_Provider_Contracts::violations_for_status( $certification )
+						: array( 'certification_authority_unavailable' );
+					$result['blocked'][ $ability_name ] = array(
+						'ability' => $ability_name,
+						'provider' => $provider,
+						'reason' => 'provider_runtime_contract_not_certified',
+						'runtime_status' => isset( $certification['status'] ) ? (string) $certification['status'] : 'unknown',
+						'installed_version' => isset( $certification['installed_version'] ) ? (string) $certification['installed_version'] : '',
+						'certified_version' => isset( $certification['certified_version'] ) ? (string) $certification['certified_version'] : '',
+						'violations' => array_values( array_unique( array_map( 'strval', $violations ) ) ),
+					);
+				}
+			}
+		}
+
+		$result['eligible'] = array_values( array_unique( $result['eligible'] ) );
+		return $result;
 	}
 
 	/**
@@ -227,7 +292,7 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every registered content/admin ability explicitly annotated non-readonly. Exact grants bind to this server; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin mutation explicitly annotated non-readonly. Provider-certified adapters are projected only while their exact runtime contract is valid; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', self::core_tools( 'mad4b-breakglass' ), array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability );
 	}
