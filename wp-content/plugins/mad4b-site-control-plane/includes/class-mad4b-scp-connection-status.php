@@ -49,7 +49,7 @@ final class MAD4B_SCP_Connection_Status {
 		$certification_blockers = $remote_preflight_blockers;
 		if ( empty( $handshake['verified'] ) ) {
 			$handshake_status = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : 'unverified';
-			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
+			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
 		}
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
 		$connection_certified = empty( $certification_blockers );
@@ -159,6 +159,12 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_session_fingerprint_present' => ! empty( $handshake['mcp_session_fingerprint_present'] ),
 			'scope_set' => isset( $handshake['scope_set'] ) && is_array( $handshake['scope_set'] ) ? array_slice( array_map( 'sanitize_text_field', $handshake['scope_set'] ), 0, 20 ) : array(),
 			'tool_count' => isset( $handshake['tool_count'] ) ? (int) $handshake['tool_count'] : 0,
+			'expected_tool_count' => isset( $handshake['expected_tool_count'] ) ? (int) $handshake['expected_tool_count'] : 0,
+			'write_tool_count' => isset( $handshake['write_tool_count'] ) ? (int) $handshake['write_tool_count'] : 0,
+			'expected_write_tool_count' => isset( $handshake['expected_write_tool_count'] ) ? (int) $handshake['expected_write_tool_count'] : 0,
+			'tool_inventory_fingerprint' => isset( $handshake['tool_inventory_fingerprint'] ) ? sanitize_text_field( (string) $handshake['tool_inventory_fingerprint'] ) : '',
+			'expected_tool_inventory_fingerprint' => isset( $handshake['expected_tool_inventory_fingerprint'] ) ? sanitize_text_field( (string) $handshake['expected_tool_inventory_fingerprint'] ) : '',
+			'tool_inventory_match' => ! empty( $handshake['tool_inventory_match'] ),
 			'verified_at' => isset( $handshake['verified_at'] ) ? sanitize_text_field( (string) $handshake['verified_at'] ) : '',
 			'build_fingerprint_match' => ! empty( $handshake['build_fingerprint_match'] ),
 			'credential_material_stored' => false,
