@@ -103,7 +103,7 @@ $check( is_array( $cache_after_first ), 'Write projection was not cached after t
 $check( $cache_after_first === $cache_after_second, 'Repeated write projection lookup replaced the request-local cache.' );
 $servers_source = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php' );
 $candidate_filter_pos = strpos( $servers_source, '$mutation_candidates = array();' );
-$provider_status_pos = strpos( $servers_source, "$status = method_exists( $adapter, 'status' )" );
+$provider_status_pos = strpos( $servers_source, '$status = method_exists( $adapter, \'status\' )' );
 $check( false !== $candidate_filter_pos && false !== $provider_status_pos && $candidate_filter_pos < $provider_status_pos, 'Provider status/hashing occurs before mutation-candidate filtering.' );
 $adapter_base_source = file_get_contents( MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php' );
 $check( false !== strpos( $adapter_base_source, 'MAD4B_SCP_Provider_Contracts::mutation_guard' ), 'Mutation-time provider certification guard was removed while optimizing discovery.' );
