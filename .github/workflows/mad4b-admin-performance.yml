@@ -33,6 +33,7 @@ jobs:
       - name: Prove expensive governance work is scoped
         shell: python
         run: |
+          import re
           from pathlib import Path
 
           root = Path('wp-content/plugins/mad4b-site-control-plane')
@@ -131,9 +132,16 @@ jobs:
               raise SystemExit('Metadata bridge is not loaded by the Control Plane')
           if 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();' not in main:
               raise SystemExit('Metadata bridge is not bootstrapped')
-          if 'Version: 0.4.0-rc.15' not in main or "MAD4B_SCP_VERSION', '0.4.0-rc.15'" not in main:
-              raise SystemExit('rc.15 plugin version mismatch')
-          if 'release=0.4.0-rc.15' not in marker:
-              raise SystemExit('rc.15 build marker mismatch')
 
-          print('mad4b-admin-performance.v6: PASS')
+          header = re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)', main)
+          runtime = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", main)
+          build = re.search(r'(?mi)^release=([^\r\n]+)$', marker)
+          if not header or not runtime or not build:
+              raise SystemExit('Control Plane release evidence is incomplete')
+          versions = [header.group(1).strip(), runtime.group(1).strip(), build.group(1).strip()]
+          if len(set(versions)) != 1:
+              raise SystemExit('Control Plane version evidence mismatch: ' + ' | '.join(versions))
+          if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', versions[0]):
+              raise SystemExit('Control Plane version format invalid: ' + versions[0])
+
+          print('mad4b-admin-performance.v7: PASS')
