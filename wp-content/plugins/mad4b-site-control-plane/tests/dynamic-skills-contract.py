@@ -10,6 +10,13 @@ portable = repo / 'plugins' / 'mad4b-wordpress'
 autoconfig = (wp / 'includes' / 'class-mad4b-scp-skill-autoconfig.php').read_text(encoding='utf-8')
 registry = (wp / 'includes' / 'class-mad4b-scp-skill-registry.php').read_text(encoding='utf-8')
 seeder = (wp / 'includes' / 'class-mad4b-scp-skill-seeder.php').read_text(encoding='utf-8')
+
+for label, source in [('skill-registry', registry), ('skill-seeder', seeder)]:
+    if "function_exists( 'wp_is_valid_utf8' )" not in source or 'wp_is_valid_utf8( (string) $value )' not in source:
+        raise SystemExit(f'{label} must use the WordPress 6.9+ UTF-8 validator')
+    if re.search(r'\bseems_utf8\s*\(', source):
+        raise SystemExit(f'{label} must not invoke deprecated seems_utf8()')
+
 provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
 provider_catalog = json.loads((wp / 'config' / 'skill-provider-catalog.json').read_text(encoding='utf-8'))
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')

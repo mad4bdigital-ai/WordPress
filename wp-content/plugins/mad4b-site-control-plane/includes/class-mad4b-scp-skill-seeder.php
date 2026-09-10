@@ -202,6 +202,14 @@ final class MAD4B_SCP_Skill_Seeder {
 		return array( 'created' => false, 'refreshed' => true );
 	}
 
+	private static function is_valid_utf8( $value ) {
+		// WordPress 6.9+ is the minimum supported runtime. Fail closed if the
+		// canonical validator is unexpectedly unavailable rather than invoking
+		// the deprecated compatibility helper.
+		if ( ! function_exists( 'wp_is_valid_utf8' ) ) return false;
+		return wp_is_valid_utf8( (string) $value );
+	}
+
 	private static function canonical_document( $name ) {
 		$seed_root = wp_normalize_path( MAD4B_SCP_DIR . self::SEED_DIR );
 		$path = wp_normalize_path( $seed_root . '/' . $name . '/SKILL.md' );
@@ -213,7 +221,7 @@ final class MAD4B_SCP_Skill_Seeder {
 		if ( false === $size || $size < 1 || $size > MAD4B_SCP_Skill_Registry::MAX_SKILL_BYTES ) return new WP_Error( 'mad4b_skill_seed_source_size_invalid', 'Canonical seed Skill source has an invalid size.' );
 		$document = file_get_contents( $path_real ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		if ( ! is_string( $document ) || false !== strpos( $document, "\0" ) ) return new WP_Error( 'mad4b_skill_seed_source_invalid', 'Canonical seed Skill source is invalid.' );
-		if ( function_exists( 'seems_utf8' ) && ! seems_utf8( $document ) ) return new WP_Error( 'mad4b_skill_seed_source_encoding_invalid', 'Canonical seed Skill source must be valid UTF-8.' );
+		if ( ! self::is_valid_utf8( $document ) ) return new WP_Error( 'mad4b_skill_seed_source_encoding_invalid', 'Canonical seed Skill source must be valid UTF-8.' );
 		if ( ! preg_match( '/\A---\Rname:\s*' . preg_quote( $name, '/' ) . '\Rdescription:\s*.+?\R---\R/s', $document ) ) return new WP_Error( 'mad4b_skill_seed_source_frontmatter_invalid', 'Canonical seed Skill frontmatter is invalid.' );
 		return $document;
 	}

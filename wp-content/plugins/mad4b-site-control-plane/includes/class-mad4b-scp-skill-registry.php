@@ -310,10 +310,18 @@ final class MAD4B_SCP_Skill_Registry {
 		return $out;
 	}
 
+	private static function is_valid_utf8( $value ) {
+		// WordPress 6.9+ is the minimum supported runtime. Fail closed if the
+		// canonical validator is unexpectedly unavailable rather than invoking
+		// the deprecated compatibility helper.
+		if ( ! function_exists( 'wp_is_valid_utf8' ) ) return false;
+		return wp_is_valid_utf8( (string) $value );
+	}
+
 	private static function validate_document( $content, $expected_name = '' ) {
 		$content = (string) $content;
 		if ( '' === trim( $content ) || strlen( $content ) > self::MAX_SKILL_BYTES || false !== strpos( $content, "\0" ) ) return new WP_Error( 'mad4b_skill_document_invalid', 'SKILL.md is empty, too large, or contains invalid bytes.' );
-		if ( function_exists( 'seems_utf8' ) && ! seems_utf8( $content ) ) return new WP_Error( 'mad4b_skill_encoding_invalid', 'SKILL.md must be valid UTF-8 text.' );
+		if ( ! self::is_valid_utf8( $content ) ) return new WP_Error( 'mad4b_skill_encoding_invalid', 'SKILL.md must be valid UTF-8 text.' );
 		if ( ! preg_match( '/\A---\R(.*?)\R---\R/s', $content, $match ) ) return new WP_Error( 'mad4b_skill_frontmatter_required', 'SKILL.md must start with YAML frontmatter.' );
 		$name = '';
 		$description = '';
