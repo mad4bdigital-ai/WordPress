@@ -10,6 +10,7 @@ exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(en
 cert = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
+provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 
@@ -88,6 +89,33 @@ for marker in [
     if marker not in cert:
         raise SystemExit(f'missing runtime certification invariant: {marker}')
 
+# Provider reconciliation must see the deterministic adapter registry before it
+# derives desired_enabled. This guards the live ETG DFSB failure shape where an
+# early empty registry persisted adapter_required/desired_enabled=false even
+# though the same request later exposed a healthy registered adapter.
+adapter_prepare = plugin.find("$adapter_registry = MAD4B_SCP_Adapter_Registry::instance();")
+adapter_register = plugin.find("$adapter_registry->register_defaults();", adapter_prepare)
+provider_reconcile = plugin.find("MAD4B_SCP_Skill_Provider_Discovery::bootstrap();")
+if adapter_prepare < 0 or adapter_register < 0 or provider_reconcile < 0:
+    raise SystemExit('provider reconciliation is missing deterministic adapter preparation')
+if not (adapter_prepare < adapter_register < provider_reconcile):
+    raise SystemExit('adapter defaults must be registered before provider Skill reconciliation')
+
+# Keep the zero-touch re-enable path limited to MAD4B-managed, digest-clean
+# Skills. User-owned or digest-drifted Skills must remain untouched.
+for marker in [
+    "in_array( $owner, array( self::CONTRACT, 'mad4b.skill-seeder.v1' ), true )",
+    "$current_sha = hash( 'sha256', $skill_raw )",
+    "$recorded_sha = isset( $meta['sha256'] )",
+    "hash_equals( $recorded_sha, $current_sha )",
+    "'drifted_managed' => true",
+    "$current === (bool) $desired_enabled",
+    "$meta['enabled'] = (bool) $desired_enabled",
+    "'provider_active_adapter_ready'",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing managed/digest-safe provider reconciliation invariant: {marker}')
+
 required_read = [
     'mad4b/skills-list',
     'mad4b/skill-get',
@@ -140,4 +168,4 @@ if "add_action( 'admin_init', array( __CLASS__, 'observe' )" in cert:
 if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
     raise SystemExit('Skills adapter must remain read-only')
 
-print('mad4b.skill-runtime-certification.v1: PASS')
+print('mad4b.skill-runtime-certification.v2: PASS')
