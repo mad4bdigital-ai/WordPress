@@ -1,0 +1,81 @@
+{
+  "contract": "mad4b.wordpress-staging-deployment-handoff.v1",
+  "producer": {
+    "repository": "mad4bdigital-ai/WordPress",
+    "workflow": ".github/workflows/mad4b-control-plane-package.yml",
+    "artifact_name_template": "mad4b-site-control-plane-staging-kit-{exact_head_sha}",
+    "install_manifest": "install-manifest.json",
+    "source_binding": "exact_head_sha"
+  },
+  "target": {
+    "environment": "staging",
+    "origin": "https://staging.egypttourgates.com",
+    "host": "staging.egypttourgates.com",
+    "plugin_slug": "mad4b-site-control-plane",
+    "mcp_adapter": {
+      "slug": "mcp-adapter",
+      "required_version": "0.6.1",
+      "deployment_mode": "require_exact_preinstalled"
+    }
+  },
+  "executor": {
+    "authority": "MAD4B Host Connector",
+    "operation": "wordpress_staging_plugin_deploy",
+    "transport": "hostinger_ssh_allowlisted",
+    "dry_run_default": true,
+    "human_approval_required_for_apply": true,
+    "exact_capability_envelope_required": true,
+    "exact_target_allowlist_required": true,
+    "caller_supplied_credentials_allowed": false
+  },
+  "preflight": {
+    "must_precede_first_write": true,
+    "required": [
+      "target_metadata_environment_is_staging",
+      "target_metadata_origin_matches_exact_staging_origin",
+      "live_wordpress_environment_is_staging",
+      "live_home_url_matches_exact_staging_origin",
+      "live_site_url_matches_exact_staging_origin",
+      "mcp_adapter_exact_version_is_0.6.1",
+      "artifact_run_completed_successfully",
+      "artifact_exact_head_sha_matches_request",
+      "install_manifest_contract_is_valid",
+      "install_manifest_commit_matches_exact_head_sha",
+      "control_plane_archive_sha256_matches_manifest"
+    ]
+  },
+  "apply": {
+    "source": "verified_control_plane_archive_from_exact_artifact",
+    "backup_before_replace": true,
+    "atomic_replace_required": true,
+    "activate_after_replace": true,
+    "same_cycle_readback_required": true,
+    "rollback_on_failed_readback": true,
+    "rollback_restores_previous_plugin_files": true
+  },
+  "post_deploy": {
+    "required_live_acceptance": [
+      "exact_control_plane_version_and_build_readback",
+      "skills_reconciliation_and_snapshot_identity",
+      "write_authority_ready",
+      "write_runtime_certification_ready",
+      "provider_blocked_write_tools_safely_unmounted",
+      "external_wpml_status_valid",
+      "external_wpml_get_parameters_valid",
+      "same_chatgpt_plugin_refresh_and_tool_inventory_match",
+      "exact_approval_plan_human_approval_one_time_mutation_replay_denied_undo_verified",
+      "production_unchanged_readback"
+    ]
+  },
+  "forbidden": {
+    "production_target": true,
+    "production_deployment_authority": true,
+    "breakglass": true,
+    "wordpress_mcp_source_edit": true,
+    "file_manager_side_channel": true,
+    "raw_shell_side_channel": true,
+    "caller_supplied_ssh_credentials": true,
+    "merge_or_ready_before_live_acceptance": true
+  },
+  "secrets_included": false
+}
