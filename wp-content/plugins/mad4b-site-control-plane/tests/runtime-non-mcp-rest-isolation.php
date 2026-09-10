@@ -1,8 +1,9 @@
 <?php
 /**
  * Exact-Staging regression proof: unrelated REST requests must never enter the
- * MCP Adapter/peer registration lifecycle, while their own routes remain fully
- * available. The fixture mirrors WPML's REST health endpoint and query contract.
+ * MCP Adapter/peer registration lifecycle or expensive Skill reconciliation,
+ * while their own routes remain fully available. The fixture mirrors WPML's
+ * REST health endpoint and query contract.
  */
 
 $wp_path = getenv( 'MAD4B_TEST_WP_PATH' );
@@ -56,6 +57,11 @@ $scope = MAD4B_SCP_MCP_Request_Scope::status();
 if ( empty( $scope['eligible'] ) ) $fail( 'request scope is not eligible on exact Staging', $scope );
 if ( ! empty( $scope['current_request_requires_mcp_runtime'] ) ) $fail( 'WPML request was misclassified as MAD4B MCP', $scope );
 
+$seed = class_exists( 'MAD4B_SCP_Skill_Seeder' ) ? MAD4B_SCP_Skill_Seeder::status() : array();
+$provider = class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) ? MAD4B_SCP_Skill_Provider_Discovery::status() : array();
+if ( ! empty( $seed['current_request_observed'] ) ) $fail( 'Skill Seeder ran on unrelated REST request', $seed );
+if ( ! empty( $provider['current_request_observed'] ) ) $fail( 'Provider Skill reconciliation ran on unrelated REST request', $provider );
+
 $adapter = \WP\MCP\Core\McpAdapter::instance();
 if ( false !== has_action( 'rest_api_init', array( $adapter, 'init' ) ) ) {
 	$fail( 'MCP Adapter init remained armed on unrelated REST request' );
@@ -98,4 +104,4 @@ if ( ! empty( $scope['production_changed'] ) || ! empty( $scope['provider_settin
 	$fail( 'request scope reported forbidden side effects', $scope );
 }
 
-echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v2: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v3: PASS' . PHP_EOL;
