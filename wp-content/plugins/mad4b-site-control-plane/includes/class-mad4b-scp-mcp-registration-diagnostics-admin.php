@@ -19,9 +19,17 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		if ( 'mad4b-control-plane-connection' !== $page || 'endpoints' !== $tab ) return;
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ) return;
 
+		// The MCP Adapter intentionally initializes lazily on rest_api_init. Prime
+		// WordPress' canonical in-process REST lifecycle before reading counters so
+		// this notice does not permanently report the pre-initialization snapshot.
+		// Connection_Status uses the same rest_get_server() lifecycle later on the
+		// page; this moves that read-only/in-memory initialization earlier only.
+		if ( function_exists( 'rest_get_server' ) ) rest_get_server();
+
 		$status = MAD4B_SCP_MCP_Registration_Bridge::status();
 		$refresh = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) ? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::status() : array();
 		$conflict = class_exists( 'MAD4B_SCP_MCP_Runtime_Conflict_Guard' ) ? MAD4B_SCP_MCP_Runtime_Conflict_Guard::status() : array();
+		$mu_runtime = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) ? $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] : array();
 		$build = self::disk_evidence();
 		$errors = isset( $status['registration_errors'] ) && is_array( $status['registration_errors'] ) ? $status['registration_errors'] : array();
 		$nonempty_errors = array_filter( $errors, static function ( $value ) { return '' !== (string) $value; } );
@@ -56,6 +64,11 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 			self::row( 'MU bootstrap refresh next request required', ! empty( $refresh['next_request_required'] ) ? 'yes' : 'no' );
 			self::row( 'MU bootstrap refresh state', isset( $refresh['state'] ) ? sanitize_key( (string) $refresh['state'] ) : '' );
 			self::row( 'MU bootstrap refresh blocker', isset( $refresh['blocker'] ) && '' !== (string) $refresh['blocker'] ? sanitize_key( (string) $refresh['blocker'] ) : 'none' );
+		}
+		if ( ! empty( $mu_runtime ) ) {
+			self::row( 'MU adapter instance armed', ! empty( $mu_runtime['adapter_instance_armed'] ) ? 'yes' : 'no' );
+			self::row( 'MU adapter init hook', isset( $mu_runtime['adapter_init_hook'] ) ? sanitize_key( (string) $mu_runtime['adapter_init_hook'] ) : '' );
+			self::row( 'MU adapter init hook bound', ! empty( $mu_runtime['adapter_init_hook_bound'] ) ? 'yes' : 'no' );
 		}
 		if ( ! empty( $conflict ) ) {
 			self::row( 'Runtime conflict guard eligible', ! empty( $conflict['eligible'] ) ? 'yes' : 'no' );
