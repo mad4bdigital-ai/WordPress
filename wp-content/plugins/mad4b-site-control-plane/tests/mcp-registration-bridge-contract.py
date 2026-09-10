@@ -80,6 +80,8 @@ require(bootstrap, "class-mad4b-scp-mcp-registration-bridge.php", 'bootstrap-loa
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'bootstrap-early-bridge')
 require(bootstrap, "class-mad4b-scp-mcp-registration-diagnostics-admin.php", 'bootstrap-load-diagnostics')
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();', 'bootstrap-diagnostics')
+require(bootstrap, "add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );", 'full-plugin-init-boundary')
+forbid(bootstrap, "add_action( 'plugins_loaded', array( 'MAD4B_SCP_Plugin', 'boot' )", 'no-pre-init-full-plugin-boot')
 
 # Release-candidate numbers change while this PR is under live Staging validation.
 # Verify all release evidence agrees instead of pinning the test to a stale rc.N.
@@ -96,8 +98,10 @@ if header_version != runtime_version:
 if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', header_version):
     raise SystemExit(f'FAIL diagnostic-version-format: invalid version {header_version!r}')
 
-if bootstrap.index('MAD4B_SCP_MCP_Registration_Bridge::boot_early();') > bootstrap.index("add_action( 'plugins_loaded'"):
-    raise SystemExit('FAIL bridge-order: registration bridge must bind before plugins_loaded callback is registered')
+bridge_index = bootstrap.index('MAD4B_SCP_MCP_Registration_Bridge::boot_early();')
+full_boot_index = bootstrap.index("add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );")
+if bridge_index > full_boot_index:
+    raise SystemExit('FAIL bridge-order: registration bridge must bind before the full Plugin init callback is registered')
 
 require(plugin, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'plugin-idempotent-bridge')
 forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_servers' )", 'no-late-server-binding')
@@ -160,4 +164,4 @@ forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v5: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v6: PASS')
