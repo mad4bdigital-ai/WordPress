@@ -83,6 +83,36 @@ require(bootstrap, 'MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();', 'boo
 require(bootstrap, "add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );", 'full-plugin-init-boundary')
 forbid(bootstrap, "add_action( 'plugins_loaded', array( 'MAD4B_SCP_Plugin', 'boot' )", 'no-pre-init-full-plugin-boot')
 
+# All Ability registration wiring must be present before any bootstrap that can
+# indirectly materialize the public registry. Registration remains distinct
+# from MCP exposure and mutation authorization; these calls only attach hooks.
+early_ability_wiring = (
+    'MAD4B_SCP_Connection_Ability::boot();',
+    'MAD4B_SCP_Governed_Ability_Overrides::boot();',
+    'MAD4B_SCP_Staging_Write_Authority::boot();',
+    'MAD4B_SCP_Staging_Write_Planning_Guard::boot();',
+    'MAD4B_SCP_REST_Compatibility::boot();',
+    'MAD4B_SCP_Write_Runtime_Certification::boot();',
+    'MAD4B_SCP_Governance_Abilities::boot();',
+    'MAD4B_SCP_Skill_Abilities::boot();',
+    'MAD4B_SCP_Skills_Adapter::boot();',
+    'MAD4B_SCP_Skill_Runtime_Certification::boot();',
+)
+metadata_bootstrap_index = bootstrap.index('MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();')
+for marker in early_ability_wiring:
+    require(bootstrap, marker, 'early-ability-registration-wiring')
+    if bootstrap.index(marker) > metadata_bootstrap_index:
+        raise SystemExit(f'FAIL early-ability-registration-order: {marker} must be wired before metadata/bootstrap execution')
+
+# Never probe the private registry directly. WordPress 6.9+ feature detection
+# must go through wp_has_ability()/wp_get_abilities() before wp_get_ability().
+for php_file in ROOT.rglob('*.php'):
+    source = php_file.read_text('utf-8')
+    if re.search(r'->\s*get_registered\s*\(', source):
+        raise SystemExit(f'FAIL unsafe-ability-probe: direct get_registered() in {php_file.relative_to(ROOT)}')
+    if re.search(r'\bseems_utf8\s*\(', source):
+        raise SystemExit(f'FAIL deprecated-utf8-probe: seems_utf8() in {php_file.relative_to(ROOT)}')
+
 # Release-candidate numbers change while this PR is under live Staging validation.
 # Verify all release evidence agrees instead of pinning the test to a stale rc.N.
 header_match = re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)', bootstrap)
@@ -164,4 +194,4 @@ forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v6: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v7: PASS')
