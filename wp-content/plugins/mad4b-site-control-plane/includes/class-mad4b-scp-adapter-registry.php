@@ -92,7 +92,11 @@ final class MAD4B_SCP_Adapter_Registry {
 		$required_provider_missing = array();
 		$mutation_blocked_adapters = array();
 		$ability_names = $this->core_ability_names();
-		foreach ( array( 'read', 'content', 'admin' ) as $surface ) $ability_names = array_merge( $ability_names, $this->ability_names( $surface ) );
+		$surface_abilities = array();
+		foreach ( array( 'read', 'content', 'admin' ) as $surface ) {
+			$surface_abilities[ $surface ] = $this->ability_names( $surface );
+			$ability_names = array_merge( $ability_names, $surface_abilities[ $surface ] );
+		}
 		$ability_names = array_values( array_unique( $ability_names ) );
 		$abilities = $this->abilities_snapshot();
 
@@ -140,11 +144,20 @@ final class MAD4B_SCP_Adapter_Registry {
 		foreach ( $server_status as $server ) if ( empty( $server['registered'] ) ) $server_registration_ok = false;
 
 		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
+			$surface_servers = array( 'read' => 'mad4b-read', 'content' => 'mad4b-content', 'admin' => 'mad4b-admin' );
 			foreach ( $ability_names as $name ) {
 				if ( ! isset( $abilities[ $name ] ) || ! is_object( $abilities[ $name ] ) ) continue;
 				$mounted = false;
-				foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
-					if ( MAD4B_SCP_Servers::ability_is_mounted( $server_id, $name ) ) { $mounted = true; break; }
+				foreach ( $surface_servers as $surface => $server_id ) {
+					if ( ! empty( $server_status[ $server_id ]['registered'] ) && in_array( $name, $surface_abilities[ $surface ], true ) ) {
+						$mounted = true;
+						break;
+					}
+				}
+				if ( ! $mounted ) {
+					foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
+						if ( MAD4B_SCP_Servers::ability_is_mounted( $server_id, $name ) ) { $mounted = true; break; }
+					}
 				}
 				if ( ! $mounted ) $registered_but_not_exposed[] = $name;
 			}
