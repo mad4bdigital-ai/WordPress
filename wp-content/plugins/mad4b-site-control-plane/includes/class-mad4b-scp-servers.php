@@ -58,7 +58,7 @@ final class MAD4B_SCP_Servers {
 		$write = array();
 		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) continue;
-			if ( ! function_exists( 'wp_get_ability' ) ) continue;
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
 			$meta = $ability->get_meta();
@@ -91,7 +91,7 @@ final class MAD4B_SCP_Servers {
 		$tools = array_values( array_diff( $core, $forbidden ) );
 		foreach ( array_values( array_unique( $adapter_candidates ) ) as $ability_name ) {
 			if ( in_array( $ability_name, $forbidden, true ) ) continue;
-			if ( ! function_exists( 'wp_get_ability' ) ) continue;
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
 			$meta = $ability->get_meta();
