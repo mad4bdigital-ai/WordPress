@@ -16,6 +16,7 @@ plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='ut
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
 portable = json.loads((repo / 'plugins' / 'mad4b-wordpress' / 'plugin.json').read_text(encoding='utf-8'))
+deployment = json.loads((wp / 'config' / 'staging-deployment-handoff.json').read_text(encoding='utf-8'))
 
 for marker in [
     "const STAGING_HOST = 'staging.egypttourgates.com'",
@@ -224,4 +225,96 @@ caps = portable['extensions']['com.openai']['interface'].get('capabilities', [])
 if caps != ['Read', 'Write']:
     raise SystemExit(f'portable Plugin capability contract must be [Read, Write], got {caps!r}')
 
-print('mad4b.staging-write-authority.v5: PASS')
+if deployment.get('contract') != 'mad4b.wordpress-staging-deployment-handoff.v1':
+    raise SystemExit('staging deployment handoff contract id mismatch')
+producer = deployment.get('producer', {})
+if producer.get('repository') != 'mad4bdigital-ai/WordPress':
+    raise SystemExit('staging deployment handoff must be bound to the WordPress repository')
+if producer.get('workflow') != '.github/workflows/mad4b-control-plane-package.yml':
+    raise SystemExit('staging deployment handoff must consume the reviewed package workflow')
+if producer.get('artifact_name_template') != 'mad4b-site-control-plane-staging-kit-{exact_head_sha}':
+    raise SystemExit('staging deployment artifact name must bind the exact head SHA')
+if producer.get('install_manifest') != 'install-manifest.json' or producer.get('source_binding') != 'exact_head_sha':
+    raise SystemExit('staging deployment handoff must use the exact-head install manifest')
+
+target = deployment.get('target', {})
+if target.get('environment') != 'staging':
+    raise SystemExit('staging deployment handoff target environment must be staging')
+if target.get('origin') != 'https://staging.egypttourgates.com' or target.get('host') != 'staging.egypttourgates.com':
+    raise SystemExit('staging deployment handoff must be bound to the exact Egypt Tour Gates Staging origin')
+if target.get('plugin_slug') != 'mad4b-site-control-plane':
+    raise SystemExit('staging deployment handoff plugin slug mismatch')
+mcp_adapter = target.get('mcp_adapter', {})
+if mcp_adapter != {
+    'slug': 'mcp-adapter',
+    'required_version': '0.6.1',
+    'deployment_mode': 'require_exact_preinstalled',
+}:
+    raise SystemExit('staging deployment handoff must require the certified preinstalled MCP Adapter 0.6.1')
+
+executor = deployment.get('executor', {})
+expected_executor = {
+    'authority': 'MAD4B Host Connector',
+    'operation': 'wordpress_staging_plugin_deploy',
+    'transport': 'hostinger_ssh_allowlisted',
+    'dry_run_default': True,
+    'human_approval_required_for_apply': True,
+    'exact_capability_envelope_required': True,
+    'exact_target_allowlist_required': True,
+    'caller_supplied_credentials_allowed': False,
+}
+if executor != expected_executor:
+    raise SystemExit(f'staging deployment executor contract drift: {executor!r}')
+
+preflight = deployment.get('preflight', {})
+if preflight.get('must_precede_first_write') is not True:
+    raise SystemExit('staging deployment live preflight must precede the first write')
+required_preflight = set(preflight.get('required', []))
+for item in [
+    'target_metadata_environment_is_staging',
+    'target_metadata_origin_matches_exact_staging_origin',
+    'live_wordpress_environment_is_staging',
+    'live_home_url_matches_exact_staging_origin',
+    'live_site_url_matches_exact_staging_origin',
+    'mcp_adapter_exact_version_is_0.6.1',
+    'artifact_run_completed_successfully',
+    'artifact_exact_head_sha_matches_request',
+    'install_manifest_contract_is_valid',
+    'install_manifest_commit_matches_exact_head_sha',
+    'control_plane_archive_sha256_matches_manifest',
+]:
+    if item not in required_preflight:
+        raise SystemExit(f'missing staging deployment preflight gate: {item}')
+
+apply_contract = deployment.get('apply', {})
+for key in [
+    'backup_before_replace',
+    'atomic_replace_required',
+    'activate_after_replace',
+    'same_cycle_readback_required',
+    'rollback_on_failed_readback',
+    'rollback_restores_previous_plugin_files',
+]:
+    if apply_contract.get(key) is not True:
+        raise SystemExit(f'staging deployment apply safety must remain enabled: {key}')
+if apply_contract.get('source') != 'verified_control_plane_archive_from_exact_artifact':
+    raise SystemExit('staging deployment apply source must be the verified exact-head control-plane archive')
+
+forbidden_contract = deployment.get('forbidden', {})
+for key in [
+    'production_target',
+    'production_deployment_authority',
+    'breakglass',
+    'wordpress_mcp_source_edit',
+    'file_manager_side_channel',
+    'raw_shell_side_channel',
+    'caller_supplied_ssh_credentials',
+    'merge_or_ready_before_live_acceptance',
+]:
+    if forbidden_contract.get(key) is not True:
+        raise SystemExit(f'staging deployment handoff must fail closed for forbidden path: {key}')
+
+if deployment.get('secrets_included') is not False:
+    raise SystemExit('staging deployment handoff must never contain secrets')
+
+print('mad4b.staging-write-authority.v6: PASS')
