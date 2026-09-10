@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.18
+ * Version: 0.4.0-rc.19
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.18' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.19' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -91,6 +91,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-planning-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-rest-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-write-runtime-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
@@ -101,6 +102,11 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
+
+// Fresh authority/certification truth must be wired before the one-shot Ability
+// registry can materialize. Read callbacks stay observational; reconciliation
+// remains an init-time lifecycle concern after the full Control Plane boot.
+MAD4B_SCP_Live_Truth::boot_early();
 
 // Wire the complete Ability catalog before anything can materialize the
 // WordPress Abilities registry. Only registration-time callbacks/filters are
