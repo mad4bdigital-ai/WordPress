@@ -39,6 +39,9 @@ jobs:
               "remove_action( 'mcp_adapter_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );",
               "remove_action( 'admin_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );",
               "add_action( 'admin_init', array( __CLASS__, 'observe_write_certification_on_certification_page' ), 110 );",
+              "add_filter( 'wp_register_ability_args', array( __CLASS__, 'make_write_certification_explicit' ), 90, 2 );",
+              "'mad4b/write-runtime-certification' !== (string) $name",
+              "array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' )",
               "'mad4b-control-plane-connection' !== $page || 'certification' !== $tab",
               "MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );",
           ]
@@ -56,4 +59,4 @@ jobs:
           if 'release=0.4.0-rc.11' not in marker:
               raise SystemExit('rc.11 build marker mismatch')
 
-          print('mad4b-admin-performance.v1: PASS')
+          print('mad4b-admin-performance.v2: PASS')
