@@ -61,27 +61,29 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 			'/mcp/mad4b-breakglass',
 		);
 		$mad4b_mcp_mu_request_requires_mcp = defined( 'WP_CLI' ) && constant( 'WP_CLI' );
-		$mad4b_mcp_mu_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
-		if ( ! $mad4b_mcp_mu_request_requires_mcp && '' !== $mad4b_mcp_mu_page && 0 === strpos( $mad4b_mcp_mu_page, 'mad4b-control-plane' ) ) {
+		$mad4b_mcp_mu_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
+		$mad4b_mcp_mu_query = '' !== $mad4b_mcp_mu_uri ? wp_parse_url( $mad4b_mcp_mu_uri, PHP_URL_QUERY ) : '';
+		$mad4b_mcp_mu_parsed = array();
+		if ( is_string( $mad4b_mcp_mu_query ) && '' !== $mad4b_mcp_mu_query ) {
+			parse_str( $mad4b_mcp_mu_query, $mad4b_mcp_mu_parsed );
+		}
+		$mad4b_mcp_mu_path = '' !== $mad4b_mcp_mu_uri ? wp_parse_url( $mad4b_mcp_mu_uri, PHP_URL_PATH ) : '';
+		$mad4b_mcp_mu_path = is_string( $mad4b_mcp_mu_path ) ? '/' . ltrim( rawurldecode( $mad4b_mcp_mu_path ), '/' ) : '';
+
+		// Admin classification is path-bound, not a raw query-variable shortcut:
+		// a front-end request carrying ?page=mad4b-control-plane-* must not be able
+		// to arm the privileged MCP runtime.
+		$mad4b_mcp_mu_page = isset( $mad4b_mcp_mu_parsed['page'] ) && is_string( $mad4b_mcp_mu_parsed['page'] )
+			? sanitize_key( $mad4b_mcp_mu_parsed['page'] )
+			: '';
+		$mad4b_mcp_mu_admin_path = '' !== $mad4b_mcp_mu_path && 1 === preg_match( '#(?:^|/)wp-admin/admin\.php$#', $mad4b_mcp_mu_path );
+		if ( ! $mad4b_mcp_mu_request_requires_mcp && $mad4b_mcp_mu_admin_path && '' !== $mad4b_mcp_mu_page && 0 === strpos( $mad4b_mcp_mu_page, 'mad4b-control-plane' ) ) {
 			$mad4b_mcp_mu_request_requires_mcp = true;
 		}
 
-		$mad4b_mcp_mu_route = '';
-		if ( isset( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
-			$mad4b_mcp_mu_route = wp_unslash( (string) $_GET['rest_route'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
-		}
-		$mad4b_mcp_mu_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
-		if ( '' === $mad4b_mcp_mu_route && '' !== $mad4b_mcp_mu_uri ) {
-			$mad4b_mcp_mu_query = wp_parse_url( $mad4b_mcp_mu_uri, PHP_URL_QUERY );
-			if ( is_string( $mad4b_mcp_mu_query ) && '' !== $mad4b_mcp_mu_query ) {
-				$mad4b_mcp_mu_parsed = array();
-				parse_str( $mad4b_mcp_mu_query, $mad4b_mcp_mu_parsed );
-				if ( isset( $mad4b_mcp_mu_parsed['rest_route'] ) && is_string( $mad4b_mcp_mu_parsed['rest_route'] ) ) {
-					$mad4b_mcp_mu_route = $mad4b_mcp_mu_parsed['rest_route'];
-				}
-			}
-		}
-
+		$mad4b_mcp_mu_route = isset( $mad4b_mcp_mu_parsed['rest_route'] ) && is_string( $mad4b_mcp_mu_parsed['rest_route'] )
+			? $mad4b_mcp_mu_parsed['rest_route']
+			: '';
 		if ( '' !== $mad4b_mcp_mu_route ) {
 			$mad4b_mcp_mu_route = '/' . ltrim( rtrim( rawurldecode( $mad4b_mcp_mu_route ), '/' ), '/' );
 		}
@@ -89,21 +91,17 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 			$mad4b_mcp_mu_request_requires_mcp = true;
 		}
 
-		if ( ! $mad4b_mcp_mu_request_requires_mcp && '' !== $mad4b_mcp_mu_uri ) {
-			$mad4b_mcp_mu_path = wp_parse_url( $mad4b_mcp_mu_uri, PHP_URL_PATH );
-			if ( is_string( $mad4b_mcp_mu_path ) && '' !== $mad4b_mcp_mu_path ) {
-				$mad4b_mcp_mu_path = '/' . ltrim( rawurldecode( $mad4b_mcp_mu_path ), '/' );
-				$mad4b_mcp_mu_rest_prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
-				$mad4b_mcp_mu_needle = '/' . $mad4b_mcp_mu_rest_prefix . '/';
-				$mad4b_mcp_mu_offset = strpos( $mad4b_mcp_mu_path, $mad4b_mcp_mu_needle );
-				if ( false !== $mad4b_mcp_mu_offset ) {
-					$mad4b_mcp_mu_path = '/' . ltrim( substr( $mad4b_mcp_mu_path, $mad4b_mcp_mu_offset + strlen( $mad4b_mcp_mu_needle ) ), '/' );
-				}
-				$mad4b_mcp_mu_path = '/' . ltrim( rtrim( $mad4b_mcp_mu_path, '/' ), '/' );
-				if ( in_array( $mad4b_mcp_mu_path, $mad4b_mcp_mu_allowed_routes, true ) ) {
-					$mad4b_mcp_mu_route = $mad4b_mcp_mu_path;
-					$mad4b_mcp_mu_request_requires_mcp = true;
-				}
+		if ( ! $mad4b_mcp_mu_request_requires_mcp && '' !== $mad4b_mcp_mu_path ) {
+			$mad4b_mcp_mu_rest_prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+			$mad4b_mcp_mu_needle = '/' . $mad4b_mcp_mu_rest_prefix . '/';
+			$mad4b_mcp_mu_offset = strpos( $mad4b_mcp_mu_path, $mad4b_mcp_mu_needle );
+			if ( false !== $mad4b_mcp_mu_offset ) {
+				$mad4b_mcp_mu_path = '/' . ltrim( substr( $mad4b_mcp_mu_path, $mad4b_mcp_mu_offset + strlen( $mad4b_mcp_mu_needle ) ), '/' );
+			}
+			$mad4b_mcp_mu_path = '/' . ltrim( rtrim( $mad4b_mcp_mu_path, '/' ), '/' );
+			if ( in_array( $mad4b_mcp_mu_path, $mad4b_mcp_mu_allowed_routes, true ) ) {
+				$mad4b_mcp_mu_route = $mad4b_mcp_mu_path;
+				$mad4b_mcp_mu_request_requires_mcp = true;
 			}
 		}
 
@@ -144,7 +142,6 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 					$mad4b_mcp_mu_status['state'] = 'official_adapter_file_unreadable';
 					break;
 				}
-			}
 		}
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] && 'official_adapter_file_unreadable' !== $mad4b_mcp_mu_status['state'] ) {
@@ -207,6 +204,7 @@ unset(
 	$mad4b_mcp_mu_allowed_routes,
 	$mad4b_mcp_mu_request_requires_mcp,
 	$mad4b_mcp_mu_page,
+	$mad4b_mcp_mu_admin_path,
 	$mad4b_mcp_mu_route,
 	$mad4b_mcp_mu_uri,
 	$mad4b_mcp_mu_query,
