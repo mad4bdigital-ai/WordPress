@@ -1,81 +1,143 @@
 #!/usr/bin/env python3
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-CERT = ROOT / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php'
-ABILITIES = ROOT / 'includes' / 'class-mad4b-scp-skill-abilities.php'
-BOOT = ROOT / 'includes' / 'class-mad4b-scp-plugin.php'
-ADMIN = ROOT / 'includes' / 'class-mad4b-scp-skills-admin-ui.php'
-MAIN = ROOT / 'mad4b-site-control-plane.php'
+repo = Path(__file__).resolve().parents[4]
+wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
-cert = CERT.read_text('utf-8')
-abilities = ABILITIES.read_text('utf-8')
-boot = BOOT.read_text('utf-8')
-admin = ADMIN.read_text('utf-8')
-main = MAIN.read_text('utf-8')
+autoconfig = (wp / 'includes' / 'class-mad4b-scp-skill-autoconfig.php').read_text(encoding='utf-8')
+identity = (wp / 'includes' / 'class-mad4b-scp-skill-snapshot-identity.php').read_text(encoding='utf-8')
+exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
+cert = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php').read_text(encoding='utf-8')
+abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
+adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
+plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 
-required_cert_markers = [
-    "CONTRACT = 'mad4b.skill-runtime-certification.v1'",
-    'wp_abilities_api_init',
-    'admin_init',
-    'MAD4B_SCP_Environment::is_staging()',
-    'MAD4B_SCP_Skill_Registry::editor_enabled()',
-    'MAD4B_SCP_Skill_Registry::scripts_editor_enabled()',
-    'MAD4B_SCP_Staging_Autoconfig::expected_skills_app_id()',
-    'MAD4B_SCP_Skill_Seeder::status()',
-    'MAD4B_SCP_Skill_Provider_Discovery::status()',
-    "MAD4B_SCP_Skill_Registry::get( 'site', '_site', self::BASE_SITE_SKILL )",
-    "MAD4B_SCP_Skill_Registry::get( 'connection', 'mad4b-chatgpt', self::BASE_CONNECTION_SKILL )",
-    "MAD4B_SCP_Skill_Registry::get( 'workflow', 'archive-audit', self::BASE_ARCHIVE_SKILL )",
-    "MAD4B_SCP_Skill_Registry::get( 'workflow', 'change-safety', self::BASE_CHANGE_SKILL )",
-    "'mad4b/skills-list'",
-    "'mad4b/skill-get'",
-    "'mad4b/skills-export-status'",
-    "'mad4b/skill-create'",
-    "'mad4b/skill-update'",
-    "'mad4b/skill-delete'",
-    'MAD4B_SCP_Skill_Export::snapshot_status()',
-    "'local_evidence_only' => true",
-]
-for marker in required_cert_markers:
+for marker in [
+    "const STAGING_OPENAI_APP_ID = 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2'",
+    "define( 'MAD4B_OPENAI_PLUGIN_APP_ID', self::STAGING_OPENAI_APP_ID )",
+    "'app_mapping_source' => 'none'",
+    "'app_mapping_matches_staging' => false",
+    "explicit_app_mapping_invalid",
+    "staging_app_id",
+]:
+    if marker not in autoconfig:
+        raise SystemExit(f'missing zero-touch Staging App mapping guard: {marker}')
+
+for marker in [
+    "const CONTRACT = 'mad4b.skill-snapshot-identity.v1'",
+    "MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) )",
+    "MAD4B_SCP_Skill_Registry::openai_app_id()",
+    "public static function from_entries( array $entries, $app_id = '' )",
+    "return self::from_entries( $entries, MAD4B_SCP_Skill_Registry::openai_app_id() )",
+    "entry_collision",
+    "resource_collision",
+    "snapshot_digest",
+    "identity_token",
+    "sha256:",
+    "resources",
+    "logical_id",
+    "usort",
+]:
+    if marker not in identity:
+        raise SystemExit(f'missing deterministic snapshot identity invariant: {marker}')
+
+for marker in [
+    "MAD4B_SCP_Skill_Snapshot_Identity::build()",
+    "MAD4B_SCP_Skill_Snapshot_Identity::from_entries( $observed_entries, $app_id )",
+    "MAD4B-SNAPSHOT-ID.txt",
+    "snapshot_identity_contract",
+    "snapshot_digest",
+    "identity_token",
+    "$skill_sha = hash( 'sha256', $content )",
+    "$resource_content = isset( $data['content'] ) ? (string) $data['content'] : ''",
+    "'sha256' => hash( 'sha256', $resource_content )",
+    "mad4b_skill_export_observed_identity_mismatch",
+    "mad4b_skill_snapshot_changed_during_export",
+    "hash_equals( (string) $identity['identity_token'], (string) $export_identity['identity_token'] )",
+    "hash_equals( (string) $identity['identity_token'], (string) $identity_after['identity_token'] )",
+]:
+    if marker not in exporter:
+        raise SystemExit(f'portable exporter is not actual-byte snapshot/race bound: {marker}')
+
+identity_pos = exporter.find("MAD4B_SCP_Skill_Snapshot_Identity::build()")
+list_pos = exporter.find("MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) )")
+if identity_pos < 0 or list_pos < 0 or identity_pos > list_pos:
+    raise SystemExit('exporter must establish the initial identity before taking its enabled-Skill work-list')
+
+for marker in [
+    "const CONTRACT = 'mad4b.skill-runtime-certification.v1'",
+    "wp_abilities_api_init",
+    "mcp_adapter_init",
+    "admin_init",
+    "mad4b/skill-runtime-certification",
+    "staging_app_mapping_mismatch",
+    "seed_pack_not_ready",
+    "provider_reconciliation_not_ready",
+    "base_skills_missing_or_disabled",
+    "skills_read_abilities_incomplete",
+    "skill_write_ability_leak",
+    "snapshot_identity_unavailable",
+    "snapshot_identity_count_mismatch",
+    "snapshot_identity_token",
+    "external_client_snapshot_verified",
+    "local_runtime_only",
+    "MAD4B_SCP_Audit::record",
+    "evidence_digest",
+]:
     if marker not in cert:
-        raise SystemExit(f'FAIL skill-runtime-certification-contract:missing:{marker}')
+        raise SystemExit(f'missing runtime certification invariant: {marker}')
 
-required_ability_markers = [
-    "name' => 'mad4b/skills-runtime-certification'",
-    "MAD4B_SCP_Skill_Runtime_Certification::observe()",
-    "'readonly' => true",
-    "'destructive' => false",
-    "'idempotent' => true",
+required_read = [
+    'mad4b/skills-list',
+    'mad4b/skill-get',
+    'mad4b/skills-export-status',
+    'mad4b/skills-runtime-certification',
 ]
-for marker in required_ability_markers:
-    if marker not in abilities:
-        raise SystemExit(f'FAIL skill-runtime-certification-ability:{marker}')
+for name in required_read:
+    if name not in abilities or name not in adapter:
+        raise SystemExit(f'missing read-only Skill ability projection: {name}')
 
-boot_markers = [
-    "require_once __DIR__ . '/class-mad4b-scp-skill-runtime-certification.php';",
-    'MAD4B_SCP_Skill_Runtime_Certification::boot();',
-]
-for marker in boot_markers:
-    if marker not in boot:
-        raise SystemExit(f'FAIL skill-runtime-certification-boot:{marker}')
+if 'MAD4B_SCP_Skill_Snapshot_Identity::build()' not in abilities:
+    raise SystemExit('skills-export-status must expose deterministic snapshot identity')
 
-skills_page_refresh_markers = [
+for forbidden in [
+    'mad4b/skill-create',
+    'mad4b/skill-update',
+    'mad4b/skill-delete',
+    'mad4b/skill-write',
+]:
+    if forbidden in abilities or forbidden in adapter:
+        raise SystemExit(f'write Skill ability leaked into runtime projection: {forbidden}')
+
+for marker in [
+    'MAD4B_SCP_Skill_Runtime_Certification::boot()',
+    'MAD4B_SCP_Skill_Autoconfig::bootstrap()',
+]:
+    if marker not in plugin:
+        raise SystemExit(f'missing runtime certification/autoconfig boot wiring: {marker}')
+
+for marker in [
+    'class-mad4b-scp-skill-snapshot-identity.php',
+    'class-mad4b-scp-skill-runtime-certification.php',
+]:
+    if marker not in main:
+        raise SystemExit(f'main plugin does not load {marker}')
+
+for marker in [
     "add_action( 'admin_init', static function () {",
     "current_user_can( 'manage_options' )",
     "'mad4b-control-plane-skills' !== $page",
-    "class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )",
-    'MAD4B_SCP_Skill_Runtime_Certification::observe();',
+    "MAD4B_SCP_Skill_Runtime_Certification::observe();",
     '}, 110 );',
-]
-for marker in skills_page_refresh_markers:
+]:
     if marker not in main:
-        raise SystemExit(f'FAIL skill-runtime-certification-skills-page-refresh:{marker}')
+        raise SystemExit(f'missing page-scoped Skill certification refresh: {marker}')
 
 if "add_action( 'admin_init', array( __CLASS__, 'observe' )" in cert:
-    raise SystemExit('FAIL skill-runtime-certification-global-admin-observer-restored')
+    raise SystemExit('global admin runtime-certification observer must remain disabled')
 
-if 'Runtime certification' not in admin or 'MAD4B_SCP_Skill_Runtime_Certification::status()' not in admin:
-    raise SystemExit('FAIL skill-runtime-certification-admin-status')
+if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
+    raise SystemExit('Skills adapter must remain read-only')
 
-print('skill-runtime-certification-contract: ok')
+print('mad4b.skill-runtime-certification.v1: PASS')
