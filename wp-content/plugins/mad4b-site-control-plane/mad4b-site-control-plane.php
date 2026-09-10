@@ -101,6 +101,13 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
+// Provider discovery used to run at plugins_loaded priority 30 from the Seeder
+// file. The full Control Plane now boots at init so that WordPress 6.9+ never
+// initializes the Abilities API before init. Disarm that legacy provider hook;
+// MAD4B_SCP_Plugin::boot() reconciles providers immediately after the Seeder has
+// reached current-request ready state.
+remove_action( 'plugins_loaded', array( 'MAD4B_SCP_Skill_Provider_Discovery', 'bootstrap' ), 30 );
+
 // Staging Skills are zero-touch by default. Explicit operator configuration
 // always wins, Production is never auto-enabled, and scripts remain gated.
 MAD4B_SCP_Skill_Autoconfig::bootstrap();
