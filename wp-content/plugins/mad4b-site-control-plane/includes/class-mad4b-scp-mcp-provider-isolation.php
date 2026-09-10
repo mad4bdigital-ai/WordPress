@@ -216,7 +216,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'effective' => self::effective(),
 			'environment' => $environment,
 			'production_approved' => self::production_approved(),
-			'legacy_enable_flag_alone_is_non_mutating' => ! self::$staging_autoconfig_applied,
+			'legacy_enable_flag_alone_is_non_mutating' => true,
 			'staging_zero_touch_autoconfig_evaluated' => self::$staging_autoconfig_evaluated,
 			'staging_zero_touch_autoconfig_applied' => self::$staging_autoconfig_applied,
 			'staging_zero_touch_autoconfig_blocker' => self::$staging_autoconfig_blocker,
