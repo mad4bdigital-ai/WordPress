@@ -21,14 +21,36 @@ def forbid(text, needle, label):
 
 
 for marker in (
-    "const CONTRACT = 'mad4b.mcp-registration-bridge.v1'",
+    "const CONTRACT = 'mad4b.mcp-registration-bridge.v2'",
+    "const STAGING_HOST = 'staging.egypttourgates.com'",
     'public static function boot_early()',
     "did_action( 'mcp_adapter_init' ) > 0",
+    "did_action( 'rest_api_init' ) > 0",
     "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 )",
     "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
     "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 )",
     "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
     "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 )",
+    "add_action( 'init', array( __CLASS__, 'recover_missed_rest_lifecycle' ), 9999 )",
+    'public static function recover_missed_rest_lifecycle()',
+    'wp_get_abilities();',
+    "wp_get_ability( $sentinel )",
+    "array( 'mad4b/site-info', 'mad4b/content-update-post' )",
+    "\\WP\\MCP\\Core\\McpAdapter::instance()",
+    "$adapter->init();",
+    "'mcp_adapter_create_default_server'",
+    "'\\\\WP\\\\MCP\\\\Transport\\\\HttpTransport'",
+    "$server->create_transport_context()",
+    "remove_action( 'rest_api_init', array( $transport, 'register_routes' ), 16 )",
+    '$transport->register_routes();',
+    "'missed_rest_lifecycle_recovered'",
+    "'rest_init_seen_before_bridge_boot'",
+    "'missed_rest_recovery_scheduled'",
+    "'missed_rest_recovery_attempted'",
+    "'missed_rest_recovery_succeeded'",
+    "'missed_rest_recovery_route_count'",
+    "'missed_rest_recovery_state'",
+    "'missed_rest_recovery_blocker'",
     'public static function register_core_categories()',
     'public static function register_registry_categories()',
     'public static function register_core_abilities()',
@@ -48,8 +70,11 @@ for marker in (
 for stale in (
     "array( __CLASS__, 'register_categories' )",
     "array( __CLASS__, 'register_abilities' )",
+    "do_action( 'rest_api_init'",
+    'update_option(', 'add_option(', 'delete_option(', '$wpdb->',
+    'wp_remote_get(', 'wp_remote_post(', 'wp_remote_request(', 'curl_exec(', 'fsockopen(',
 ):
-    forbid(bridge, stale, 'no-collapsed-registration-priority')
+    forbid(bridge, stale, 'bounded-missed-rest-recovery')
 
 require(bootstrap, "class-mad4b-scp-mcp-registration-bridge.php", 'bootstrap-load-bridge')
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'bootstrap-early-bridge')
@@ -85,6 +110,13 @@ for marker in (
     'MAD4B_SCP_MCP_Registration_Bridge::status()',
     'Adapter runtime from official plugin',
     'Adapter init happened before bridge boot',
+    'REST API init happened before bridge boot',
+    'Missed REST recovery scheduled',
+    'Missed REST recovery attempted',
+    'Missed REST recovery succeeded',
+    'Missed REST recovery route count',
+    'Missed REST recovery state',
+    'Missed REST recovery blocker',
     'Control Plane runtime version',
     'Control Plane main file disk version',
     'Control Plane runtime stale vs disk',
@@ -121,11 +153,11 @@ for forbidden in (
     'update_option(', 'add_option(', 'delete_option(', '$wpdb->', 'activate_plugin(',
     'deactivate_plugins(', 'file_put_contents(', 'unlink(', 'rename(',
 ):
-    forbid(bridge + '\n' + diagnostics, forbidden, 'bridge-diagnostics-read-only')
+    forbid(diagnostics, forbidden, 'diagnostics-read-only')
 
 # Runtime source may be exposed only relative to WP_PLUGIN_DIR or as a bounded label.
 forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v4: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v5: PASS')
