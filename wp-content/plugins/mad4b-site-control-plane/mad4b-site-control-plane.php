@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.15
+ * Version: 0.4.0-rc.16
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.15' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.16' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -101,6 +101,23 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
+
+// Wire every MAD4B Ability registration callback before anything can
+// materialize the WordPress Abilities registry. These boot methods only attach
+// hooks/filters here; actual registration remains on wp_abilities_api_init.
+// Registration is deliberately independent from MCP exposure and mutation
+// authorization, which remain governed by server allowlists, NHI/grants,
+// provider certification and exact approval.
+MAD4B_SCP_Connection_Ability::boot();
+MAD4B_SCP_Governed_Ability_Overrides::boot();
+MAD4B_SCP_Staging_Write_Authority::boot();
+MAD4B_SCP_Staging_Write_Planning_Guard::boot();
+MAD4B_SCP_REST_Compatibility::boot();
+MAD4B_SCP_Write_Runtime_Certification::boot();
+MAD4B_SCP_Governance_Abilities::boot();
+MAD4B_SCP_Skill_Abilities::boot();
+MAD4B_SCP_Skills_Adapter::boot();
+MAD4B_SCP_Skill_Runtime_Certification::boot();
 
 // WordPress core requests dependency metadata on the Plugins screen even when
 // MCP Adapter is already installed. The certified Adapter is distributed from
