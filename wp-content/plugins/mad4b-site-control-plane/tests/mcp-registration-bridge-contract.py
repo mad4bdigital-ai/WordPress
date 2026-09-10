@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,8 +55,22 @@ require(bootstrap, "class-mad4b-scp-mcp-registration-bridge.php", 'bootstrap-loa
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'bootstrap-early-bridge')
 require(bootstrap, "class-mad4b-scp-mcp-registration-diagnostics-admin.php", 'bootstrap-load-diagnostics')
 require(bootstrap, 'MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();', 'bootstrap-diagnostics')
-require(bootstrap, "Version: 0.4.0-rc.6", 'diagnostic-build-version')
-require(bootstrap, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.6' );", 'diagnostic-runtime-version')
+
+# Release-candidate numbers change while this PR is under live Staging validation.
+# Verify all release evidence agrees instead of pinning the test to a stale rc.N.
+header_match = re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)', bootstrap)
+runtime_match = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", bootstrap)
+if not header_match:
+    raise SystemExit('FAIL diagnostic-build-version: plugin Version header missing')
+if not runtime_match:
+    raise SystemExit('FAIL diagnostic-runtime-version: MAD4B_SCP_VERSION definition missing')
+header_version = header_match.group(1).strip()
+runtime_version = runtime_match.group(1).strip()
+if header_version != runtime_version:
+    raise SystemExit(f'FAIL diagnostic-version-consistency: header={header_version!r} runtime={runtime_version!r}')
+if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', header_version):
+    raise SystemExit(f'FAIL diagnostic-version-format: invalid version {header_version!r}')
+
 if bootstrap.index('MAD4B_SCP_MCP_Registration_Bridge::boot_early();') > bootstrap.index("add_action( 'plugins_loaded'"):
     raise SystemExit('FAIL bridge-order: registration bridge must bind before plugins_loaded callback is registered')
 
@@ -91,7 +106,14 @@ for marker in (
 if not build_marker.is_file():
     raise SystemExit('FAIL build-marker: MAD4B-RUNTIME-BUILD.txt is missing')
 marker_text = build_marker.read_text('utf-8')
-require(marker_text, 'release=0.4.0-rc.6', 'build-marker-release')
+marker_release = re.search(r'(?mi)^release=([^\r\n]+)$', marker_text)
+if not marker_release:
+    raise SystemExit('FAIL build-marker-release: release field missing')
+build_version = marker_release.group(1).strip()
+if build_version != header_version:
+    raise SystemExit(
+        f'FAIL build-marker-version-consistency: marker={build_version!r} header={header_version!r}'
+    )
 require(marker_text, 'contract=mad4b.runtime-build-evidence.v1', 'build-marker-contract')
 
 for forbidden in (
@@ -106,4 +128,4 @@ forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v3: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v4: PASS')
