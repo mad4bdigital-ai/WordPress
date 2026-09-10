@@ -1,9 +1,9 @@
 <?php
 /**
  * Exact-Staging regression proof: unrelated REST requests must never enter the
- * MCP Adapter/peer registration lifecycle or expensive Skill reconciliation,
- * while their own routes remain fully available. The fixture mirrors WPML's
- * REST health endpoint and the Core route used by Site Health.
+ * MAD4B-owned MCP Adapter/peer registration lifecycle or expensive Skill
+ * reconciliation, while their own routes remain fully available. The fixture
+ * mirrors WPML's REST health endpoint and the Core route used by Site Health.
  */
 
 $wp_path = getenv( 'MAD4B_TEST_WP_PATH' );
@@ -63,10 +63,10 @@ if ( ! empty( $seed['current_request_observed'] ) ) $fail( 'Skill Seeder ran on 
 if ( ! empty( $provider['current_request_observed'] ) ) $fail( 'Provider Skill reconciliation ran on unrelated REST request', $provider );
 
 $adapter = \WP\MCP\Core\McpAdapter::instance();
-if ( false !== has_action( 'rest_api_init', array( $adapter, 'init' ) ) ) {
-	$fail( 'MCP Adapter init remained armed on unrelated REST request' );
+if ( ! empty( $scope['adapter_runtime_from_official_plugin'] ) && false !== has_action( 'rest_api_init', array( $adapter, 'init' ) ) ) {
+	$fail( 'official MCP Adapter init remained armed on unrelated REST request' );
 }
-if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'MCP Adapter initialized before unrelated REST bootstrap' );
+if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'MAD4B MCP Adapter initialized before unrelated REST bootstrap' );
 
 add_action( 'rest_api_init', static function () {
 	register_rest_route( 'wpml/v1', '/rest/status', array(
@@ -85,7 +85,7 @@ $server = rest_get_server();
 if ( ! is_object( $server ) || ! method_exists( $server, 'get_routes' ) ) $fail( 'REST server unavailable' );
 $routes = $server->get_routes();
 if ( ! isset( $routes['/wpml/v1/rest/status'] ) ) $fail( 'WPML-compatible route disappeared from REST registry' );
-if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'unrelated REST bootstrap entered MCP Adapter lifecycle' );
+if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'unrelated REST bootstrap entered MAD4B MCP Adapter lifecycle' );
 
 $request = new WP_REST_Request( 'GET', '/wpml/v1/rest/status' );
 $request->set_query_params( array( 'test_get_parameter' => '1', 'cachebuster' => 'ci' ) );
@@ -110,12 +110,16 @@ if ( 200 !== $core_status ) $fail( 'Core Site Health REST target did not return 
 if ( ! is_array( $core_data ) || 'post' !== ( isset( $core_data['slug'] ) ? (string) $core_data['slug'] : '' ) ) {
 	$fail( 'Core Site Health REST target returned an unexpected payload', $core_data );
 }
-if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'REST dispatch initialized MCP Adapter after unrelated route registration' );
+if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'REST dispatch initialized MAD4B MCP Adapter after unrelated route registration' );
 
 $scope = MAD4B_SCP_MCP_Request_Scope::status();
-if ( empty( $scope['adapter_init_removed_for_unrelated_request'] ) ) $fail( 'request scope did not record Adapter suppression', $scope );
+if ( ! empty( $scope['adapter_runtime_from_official_plugin'] ) ) {
+	if ( empty( $scope['adapter_init_removed_for_unrelated_request'] ) ) $fail( 'request scope did not disarm official Adapter runtime', $scope );
+} elseif ( empty( $scope['adapter_suppression_skipped_non_official_runtime'] ) ) {
+	$fail( 'request scope did not preserve the non-official provider Adapter baseline', $scope );
+}
 if ( ! empty( $scope['production_changed'] ) || ! empty( $scope['provider_settings_changed'] ) || ! empty( $scope['wordpress_rest_routes_changed'] ) ) {
 	$fail( 'request scope reported forbidden side effects', $scope );
 }
 
-echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v4: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v5: PASS' . PHP_EOL;
