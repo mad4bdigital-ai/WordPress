@@ -98,6 +98,12 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 		return false;
 	}
 
+	/** Canonical temporary binder; called only while mcp_adapter_init is running. */
+	public static function register_servers_during_adapter_init( $adapter ) {
+		$servers = new MAD4B_SCP_Servers();
+		$servers->register_servers( $adapter );
+	}
+
 	/** One bounded in-process repair attempt; no persistent state is changed. */
 	public static function reconcile( $trigger = 'explicit_rescue' ) {
 		if ( did_action( 'mcp_adapter_init' ) > 0 && self::all_servers_registered() ) {
@@ -131,27 +137,30 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'init' ) ) return self::block( 'official_adapter_init_unavailable' );
 
 		if ( did_action( 'mcp_adapter_init' ) < 1 ) {
+			// Server creation is legal only while the Adapter is firing its canonical
+			// mcp_adapter_init action. If the host removed MAD4B's normal binder, add
+			// one temporary rescue binder for that single canonical init call.
+			$bridge_binder = false !== has_action( 'mcp_adapter_init', array( 'MAD4B_SCP_MCP_Registration_Bridge', 'register_servers' ) );
+			$temporary_binder = ! $bridge_binder;
+			if ( $temporary_binder ) {
+				add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers_during_adapter_init' ), PHP_INT_MAX, 1 );
+			}
+
 			add_filter( 'mcp_adapter_create_default_server', array( __CLASS__, 'disable_default_server' ), PHP_INT_MAX );
 			try {
 				$adapter->init();
 			} catch ( Throwable $e ) {
 				remove_filter( 'mcp_adapter_create_default_server', array( __CLASS__, 'disable_default_server' ), PHP_INT_MAX );
+				if ( $temporary_binder ) remove_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers_during_adapter_init' ), PHP_INT_MAX );
 				return self::block( 'official_adapter_init_failed' );
 			}
 			remove_filter( 'mcp_adapter_create_default_server', array( __CLASS__, 'disable_default_server' ), PHP_INT_MAX );
+			if ( $temporary_binder ) remove_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers_during_adapter_init' ), PHP_INT_MAX );
+		} elseif ( ! self::all_servers_registered() ) {
+			// Do not replay the global Adapter lifecycle once it has passed.
+			return self::block( 'adapter_init_already_passed_servers_missing' );
 		}
 
-		// If the host removed the bridge's mcp_adapter_init callback, invoke the
-		// canonical server registrar directly. This avoids depending on bridge
-		// bytecode for the rescue itself while preserving the exact server contract.
-		if ( ! self::all_servers_registered() ) {
-			try {
-				$servers = new MAD4B_SCP_Servers();
-				$servers->register_servers( $adapter );
-			} catch ( Throwable $e ) {
-				return self::block( 'mad4b_server_binding_failed' );
-			}
-		}
 		if ( ! self::all_servers_registered() ) return self::block( 'mad4b_servers_not_registered' );
 
 		$http_transport = '\\WP\\MCP\\Transport\\HttpTransport';
