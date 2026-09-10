@@ -185,6 +185,14 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-web-lifecycle.php
 
+      - name: Prove Ability API is never initialized before WordPress init
+        shell: bash
+        env:
+          MAD4B_TEST_WP_PATH: /tmp/mad4b-web-wordpress
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-pre-init-abilities-lifecycle.php
+
       - name: Prove unrelated WPML-like REST bypasses MCP lifecycle
         shell: bash
         env:
