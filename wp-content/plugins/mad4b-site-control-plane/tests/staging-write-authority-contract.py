@@ -119,11 +119,26 @@ for marker in [
     "ReflectionMethod",
     "ReflectionFunction",
     "wpml_route_missing",
+    "scope_mcp_recovery_to_current_http_request",
+    "current_http_request_targets_mad4b_mcp",
+    "'/mcp/mad4b-read'",
+    "'/mcp/mad4b-chatgpt'",
+    "'/mcp/mad4b-content'",
+    "'/mcp/mad4b-write'",
+    "'/mcp/mad4b-admin'",
+    "'/mcp/mad4b-breakglass'",
+    "array( 'MAD4B_SCP_MCP_Registration_Bridge', 'verify_adapter_init_after_rest' )",
+    "array( 'MAD4B_SCP_MCP_Registration_Rescue', 'after_rest_init' )",
+    "array( 'MAD4B_SCP_MCP_Registration_Rescue', 'before_rest_dispatch' )",
+    "array( 'MAD4B_SCP_MCP_Registration_Bridge', 'recover_missed_rest_lifecycle' )",
+    "mcp_recovery_callbacks_removed_for_unrelated_request",
 ]:
     if marker not in rest:
-        raise SystemExit(f'missing WPML REST compatibility evidence invariant: {marker}')
+        raise SystemExit(f'missing WPML/general REST compatibility evidence invariant: {marker}')
 
-# The compatibility class may inspect/execute the hook chain, never modify it.
+# The compatibility layer must never disable REST or rewrite global REST auth.
+# Its only mutation of hooks is deny-only removal of MAD4B's own MCP recovery
+# callbacks when the current HTTP request is unrelated to MAD4B MCP.
 for forbidden in [
     "add_filter( 'rest_enabled'",
     "add_filter( 'rest_authentication_errors'",
@@ -194,4 +209,4 @@ caps = portable['extensions']['com.openai']['interface'].get('capabilities', [])
 if caps != ['Read', 'Write']:
     raise SystemExit(f'portable Plugin capability contract must be [Read, Write], got {caps!r}')
 
-print('mad4b.staging-write-authority.v3: PASS')
+print('mad4b.staging-write-authority.v4: PASS')
