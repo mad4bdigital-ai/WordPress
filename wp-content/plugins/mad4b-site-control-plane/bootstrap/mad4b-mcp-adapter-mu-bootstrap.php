@@ -3,18 +3,15 @@
  * MAD4B MCP Adapter Early Bootstrap.
  *
  * Staging-only early loader that ensures the canonical MCP Adapter owns the
- * runtime before normal plugins load. This source intentionally has no
- * WordPress `Plugin Name:` header while it lives under the regular plugin:
- * the installer scans one subdirectory deep and must not discover this file as
- * a second activatable plugin. WordPress loads PHP files placed directly in
- * WPMU_PLUGIN_DIR regardless of plugin headers, so the managed MU copy remains
- * executable without one.
+ * runtime before normal plugins load, but only for MAD4B-owned MCP requests,
+ * explicit MAD4B Control Plane admin pages, and WP-CLI. Unrelated WordPress
+ * requests must retain the provider/host baseline and therefore never load or
+ * instantiate the official MCP Adapter from MU scope.
  *
- * Lifecycle rule: pin canonical symbols + package autoloader, then instantiate
- * McpAdapter only to arm its canonical init hook early. Do not include the MCP
- * Adapter plugin main file and do not initialize servers in the MU phase. The
- * normal active-plugin phase remains responsible for the official plugin main
- * bootstrap; the singleton call there is idempotent.
+ * This source intentionally has no WordPress `Plugin Name:` header while it
+ * lives under the regular plugin: WordPress loads PHP files placed directly in
+ * WPMU_PLUGIN_DIR regardless of plugin headers, while the installer must not
+ * discover this source as a second activatable plugin.
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -37,6 +34,9 @@ $mad4b_mcp_mu_status = array(
 	'adapter_init_hook_bound' => false,
 	'runtime_from_official_plugin' => false,
 	'runtime_source' => 'unavailable',
+	'request_requires_mcp_runtime' => false,
+	'request_scope_bypassed' => false,
+	'request_route' => '',
 );
 
 if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
@@ -52,6 +52,70 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 	$mad4b_mcp_mu_status['eligible'] = $mad4b_mcp_mu_status['official_plugin_active'] && $mad4b_mcp_mu_status['control_plane_active'];
 
 	if ( $mad4b_mcp_mu_status['eligible'] ) {
+		$mad4b_mcp_mu_allowed_routes = array(
+			'/mcp/mad4b-read',
+			'/mcp/mad4b-chatgpt',
+			'/mcp/mad4b-content',
+			'/mcp/mad4b-write',
+			'/mcp/mad4b-admin',
+			'/mcp/mad4b-breakglass',
+		);
+		$mad4b_mcp_mu_request_requires_mcp = defined( 'WP_CLI' ) && constant( 'WP_CLI' );
+		$mad4b_mcp_mu_page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
+		if ( ! $mad4b_mcp_mu_request_requires_mcp && '' !== $mad4b_mcp_mu_page && 0 === strpos( $mad4b_mcp_mu_page, 'mad4b-control-plane' ) ) {
+			$mad4b_mcp_mu_request_requires_mcp = true;
+		}
+
+		$mad4b_mcp_mu_route = '';
+		if ( isset( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
+			$mad4b_mcp_mu_route = wp_unslash( (string) $_GET['rest_route'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- request classification only.
+		}
+		$mad4b_mcp_mu_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
+		if ( '' === $mad4b_mcp_mu_route && '' !== $mad4b_mcp_mu_uri ) {
+			$mad4b_mcp_mu_query = wp_parse_url( $mad4b_mcp_mu_uri, PHP_URL_QUERY );
+			if ( is_string( $mad4b_mcp_mu_query ) && '' !== $mad4b_mcp_mu_query ) {
+				$mad4b_mcp_mu_parsed = array();
+				parse_str( $mad4b_mcp_mu_query, $mad4b_mcp_mu_parsed );
+				if ( isset( $mad4b_mcp_mu_parsed['rest_route'] ) && is_string( $mad4b_mcp_mu_parsed['rest_route'] ) ) {
+					$mad4b_mcp_mu_route = $mad4b_mcp_mu_parsed['rest_route'];
+				}
+			}
+		}
+
+		if ( '' !== $mad4b_mcp_mu_route ) {
+			$mad4b_mcp_mu_route = '/' . ltrim( rtrim( rawurldecode( $mad4b_mcp_mu_route ), '/' ), '/' );
+		}
+		if ( ! $mad4b_mcp_mu_request_requires_mcp && in_array( $mad4b_mcp_mu_route, $mad4b_mcp_mu_allowed_routes, true ) ) {
+			$mad4b_mcp_mu_request_requires_mcp = true;
+		}
+
+		if ( ! $mad4b_mcp_mu_request_requires_mcp && '' !== $mad4b_mcp_mu_uri ) {
+			$mad4b_mcp_mu_path = wp_parse_url( $mad4b_mcp_mu_uri, PHP_URL_PATH );
+			if ( is_string( $mad4b_mcp_mu_path ) && '' !== $mad4b_mcp_mu_path ) {
+				$mad4b_mcp_mu_path = '/' . ltrim( rawurldecode( $mad4b_mcp_mu_path ), '/' );
+				$mad4b_mcp_mu_rest_prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+				$mad4b_mcp_mu_needle = '/' . $mad4b_mcp_mu_rest_prefix . '/';
+				$mad4b_mcp_mu_offset = strpos( $mad4b_mcp_mu_path, $mad4b_mcp_mu_needle );
+				if ( false !== $mad4b_mcp_mu_offset ) {
+					$mad4b_mcp_mu_path = '/' . ltrim( substr( $mad4b_mcp_mu_path, $mad4b_mcp_mu_offset + strlen( $mad4b_mcp_mu_needle ) ), '/' );
+				}
+				$mad4b_mcp_mu_path = '/' . ltrim( rtrim( $mad4b_mcp_mu_path, '/' ), '/' );
+				if ( in_array( $mad4b_mcp_mu_path, $mad4b_mcp_mu_allowed_routes, true ) ) {
+					$mad4b_mcp_mu_route = $mad4b_mcp_mu_path;
+					$mad4b_mcp_mu_request_requires_mcp = true;
+				}
+			}
+		}
+
+		$mad4b_mcp_mu_status['request_requires_mcp_runtime'] = (bool) $mad4b_mcp_mu_request_requires_mcp;
+		$mad4b_mcp_mu_status['request_route'] = substr( (string) $mad4b_mcp_mu_route, 0, 255 );
+		if ( ! $mad4b_mcp_mu_request_requires_mcp ) {
+			$mad4b_mcp_mu_status['request_scope_bypassed'] = true;
+			$mad4b_mcp_mu_status['state'] = 'non_mad4b_request_bypassed';
+		}
+	}
+
+	if ( $mad4b_mcp_mu_status['eligible'] && ! $mad4b_mcp_mu_status['request_scope_bypassed'] ) {
 		$mad4b_mcp_mu_symbols = array(
 			'WP\\MCP\\Autoloader',
 			'WP\\MCP\\Core\\McpAdapter',
@@ -140,6 +204,17 @@ unset(
 	$mad4b_mcp_mu_status,
 	$mad4b_mcp_mu_host,
 	$mad4b_mcp_mu_active,
+	$mad4b_mcp_mu_allowed_routes,
+	$mad4b_mcp_mu_request_requires_mcp,
+	$mad4b_mcp_mu_page,
+	$mad4b_mcp_mu_route,
+	$mad4b_mcp_mu_uri,
+	$mad4b_mcp_mu_query,
+	$mad4b_mcp_mu_parsed,
+	$mad4b_mcp_mu_path,
+	$mad4b_mcp_mu_rest_prefix,
+	$mad4b_mcp_mu_needle,
+	$mad4b_mcp_mu_offset,
 	$mad4b_mcp_mu_symbols,
 	$mad4b_mcp_mu_symbol,
 	$mad4b_mcp_mu_root,
