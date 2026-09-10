@@ -7,6 +7,8 @@ on:
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/jet-smart-filters.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php'
       - '.github/workflows/mad4b-provider-certification-evidence.yml'
   workflow_dispatch:
 
@@ -35,6 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php
 
       - name: Fetch official exact-version candidates
         shell: bash
@@ -55,7 +58,7 @@ jobs:
           fetch_candidate jet-engine-3.8.15 https://downloads.wordpress.org/plugin/jet-engine.3.8.15.zip
           fetch_candidate jet-smart-filters-3.8.5 https://downloads.wordpress.org/plugin/jet-smart-filters.3.8.5.zip
 
-      - name: Capture deterministic provider evidence
+      - name: Capture and verify deterministic provider evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -63,7 +66,9 @@ jobs:
           import hashlib, json, pathlib, re, zipfile
 
           root = pathlib.Path('wp-content/plugins')
-          contract = json.loads((root / 'mad4b-site-control-plane/config/certified-providers.json').read_text(encoding='utf-8'))
+          config_root = root / 'mad4b-site-control-plane/config'
+          contract = json.loads((config_root / 'certified-providers.json').read_text(encoding='utf-8'))
+          profiles = json.loads((config_root / 'certified-provider-profiles.json').read_text(encoding='utf-8'))
           baseline = {
               'elementor': (root / 'elementor.zip', 'elementor/elementor.php'),
               'jetengine': (root / 'jet-engine.zip', 'jet-engine/jet-engine.php'),
@@ -103,19 +108,34 @@ jobs:
               }
 
           out = {
-              'contract': 'mad4b.provider-certification-evidence.v2',
+              'contract': 'mad4b.provider-certification-evidence.v3',
               'source_sha': pathlib.Path('.git/HEAD').read_text().strip(),
               'providers': {},
           }
           for provider, (archive, plugin_entry) in baseline.items():
               item = {'repository_baseline': inspect(provider, archive, plugin_entry)}
               candidate, candidate_entry, expected_version, authority = candidates[provider]
+              profile = profiles.get('providers', {}).get(provider, {}).get(expected_version)
               if candidate.is_file():
                   exact = inspect(provider, candidate, candidate_entry)
                   exact['authority'] = authority
                   exact['expected_version'] = expected_version
                   exact['version_match'] = exact['version'] == expected_version
                   exact['critical_manifest_complete'] = not exact['critical_files_missing']
+                  if not exact['version_match'] or not exact['critical_manifest_complete']:
+                      raise SystemExit(f'{provider}: official exact-version candidate is incomplete')
+                  if profile is not None:
+                      if profile.get('version') != expected_version:
+                          raise SystemExit(f'{provider}: profile version mismatch')
+                      if profile.get('archive_sha256') != exact['archive_sha256']:
+                          raise SystemExit(f'{provider}: profile archive SHA mismatch')
+                      if int(profile.get('archive_bytes', -1)) != exact['archive_bytes']:
+                          raise SystemExit(f'{provider}: profile archive byte count mismatch')
+                      if profile.get('critical_files') != exact['critical_files']:
+                          raise SystemExit(f'{provider}: profile critical-file manifest mismatch')
+                      item['profile_verified'] = True
+                  else:
+                      item['profile_verified'] = False
                   item['official_candidate'] = exact
               else:
                   item['official_candidate'] = {
@@ -123,7 +143,19 @@ jobs:
                       'expected_version': expected_version,
                       'available': False,
                   }
+                  item['profile_verified'] = False
               out['providers'][provider] = item
+
+          if not out['providers']['elementor'].get('profile_verified'):
+              raise SystemExit('Elementor 4.2.4 exact official profile is required and must verify')
+
+          premium = profiles.get('premium_provider_policy', {})
+          for provider, expected in [('jetengine', '3.8.15'), ('jetsmartfilters', '3.8.5')]:
+              policy = premium.get(provider, {})
+              if policy.get('observed_version') != expected:
+                  raise SystemExit(f'{provider}: premium observed-version policy missing')
+              if policy.get('mutation_policy') != 'fail_closed_until_attested_exact_package_manifest':
+                  raise SystemExit(f'{provider}: premium fail-closed policy missing')
 
           pathlib.Path('provider-certification-evidence.json').write_text(
               json.dumps(out, indent=2, sort_keys=True) + '\n', encoding='utf-8'
