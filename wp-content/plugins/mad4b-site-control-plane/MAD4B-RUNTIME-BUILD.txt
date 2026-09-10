@@ -1,3 +1,22 @@
-release=0.4.0-rc.16
-contract=mad4b.runtime-build-evidence.v1
-purpose=distinguish-on-disk-build-from-loaded-runtime
+MAD4B runtime build marker
+release=0.4.0-rc.17
+source=mad4b-site-control-plane.php
+source=includes/class-mad4b-scp-config.php
+source=includes/class-mad4b-scp-plugin.php
+source=includes/class-mad4b-scp-servers.php
+source=includes/class-mad4b-scp-abilities.php
+source=includes/class-mad4b-scp-skill-registry.php
+source=includes/class-mad4b-scp-skill-seeder.php
+source=includes/class-mad4b-scp-skill-provider-discovery.php
+source=includes/class-mad4b-scp-skill-export.php
+source=includes/class-mad4b-scp-skill-runtime-certification.php
+source=includes/class-mad4b-scp-staging-autoconfig.php
+source=includes/class-mad4b-scp-provider-bootstrap.php
+source=includes/class-mad4b-scp-connection.php
+source=includes/class-mad4b-scp-oauth.php
+source=includes/class-mad4b-scp-oauth-authority.php
+source=includes/class-mad4b-scp-mcp-request-scope.php
+source=includes/class-mad4b-scp-mcp-collision-guard.php
+source=includes/class-mad4b-scp-mcp-runtime-conflict-guard.php
+source=includes/class-mad4b-scp-mcp-runtime-provenance.php
+source=includes/class-mad4b-scp-mcp-registration-rescue.php
