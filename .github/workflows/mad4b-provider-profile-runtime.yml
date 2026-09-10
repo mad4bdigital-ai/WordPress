@@ -132,7 +132,7 @@ jobs:
 
           $main = WP_PLUGIN_DIR . '/elementor/elementor.php';
           $main_original = file_get_contents( $main );
-          $changed = preg_replace( '/(^\s*\*?\s*Version:\s*)4\.2\.4/m', '$14.2.5', $main_original, 1 );
+          $changed = preg_replace( '/(^\s*\*?\s*Version:\s*)4\.2\.4/m', '${1}4.2.5', $main_original, 1 );
           assert_true( is_string( $changed ) && $changed !== $main_original, 'unable to synthesize unknown version' );
           file_put_contents( $main, $changed );
           $unknown = MAD4B_SCP_Provider_Contracts::runtime_status( 'elementor', true );
