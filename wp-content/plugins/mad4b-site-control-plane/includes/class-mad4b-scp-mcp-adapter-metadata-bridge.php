@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Supplies local metadata for the certified MCP Adapter dependency on the exact
- * governed Staging origin.
+ * governed Staging admin boundary.
  *
  * WordPress core asks WordPress.org for plugin_information even when a required
  * plugin is already installed. MCP Adapter is distributed from the official
@@ -66,6 +66,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 			'contract' => self::CONTRACT,
 			'eligible' => self::eligible(),
 			'hook_registered' => self::$hook_registered,
+			'admin_request_only' => true,
 			'slug' => self::SLUG,
 			'version' => self::VERSION,
 			'short_circuit_count' => self::$short_circuit_count,
@@ -78,6 +79,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 	}
 
 	private static function eligible() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() ) return false;
 		if ( ! function_exists( 'wp_get_environment_type' ) || 'staging' !== wp_get_environment_type() ) return false;
 		if ( ! function_exists( 'home_url' ) || ! function_exists( 'wp_parse_url' ) ) return false;
 
