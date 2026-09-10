@@ -85,8 +85,6 @@ for marker in [
     if marker not in auth:
         raise SystemExit(f'missing central write authorization binding: {marker}')
 
-# approval-plan is the bootstrap mutation: exact NHI/grant/budget, no prior ticket,
-# same dedicated Staging agent, mad4b-write only, mutation ticket class only.
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "const ABILITY = 'mad4b/approval-plan'",
@@ -137,9 +135,6 @@ for marker in [
     if marker not in rest:
         raise SystemExit(f'missing WPML/general REST compatibility evidence invariant: {marker}')
 
-# The compatibility layer must never disable REST or rewrite global REST auth.
-# Its only mutation of hooks is deny-only removal of MAD4B's own MCP recovery
-# callbacks when the current HTTP request is unrelated to MAD4B MCP.
 for forbidden in [
     "add_filter( 'rest_enabled'",
     "add_filter( 'rest_authentication_errors'",
@@ -177,9 +172,6 @@ for marker in [
     if marker not in cert:
         raise SystemExit(f'missing write certification invariant: {marker}')
 
-# A missing WPML route inside an already-running MAD4B MCP request is diagnostic
-# evidence only. Local write certification must not claim or require external WPML
-# success; the real endpoint remains a separate mandatory live-acceptance gate.
 for forbidden in [
     "$checks['wpml_query_parameters_preserved']",
     "$checks['wpml_internal_probe_ready_or_not_active']",
@@ -289,7 +281,8 @@ for item in [
 apply_contract = deployment.get('apply', {})
 for key in [
     'backup_before_replace',
-    'atomic_replace_required',
+    'same_filesystem_rename_replace_required',
+    'maintenance_mode_during_swap',
     'activate_after_replace',
     'same_cycle_readback_required',
     'rollback_on_failed_readback',
@@ -297,6 +290,8 @@ for key in [
 ]:
     if apply_contract.get(key) is not True:
         raise SystemExit(f'staging deployment apply safety must remain enabled: {key}')
+if 'atomic_replace_required' in apply_contract:
+    raise SystemExit('staging deployment contract must not overclaim a literally atomic directory replacement')
 if apply_contract.get('source') != 'verified_control_plane_archive_from_exact_artifact':
     raise SystemExit('staging deployment apply source must be the verified exact-head control-plane archive')
 
@@ -317,4 +312,4 @@ for key in [
 if deployment.get('secrets_included') is not False:
     raise SystemExit('staging deployment handoff must never contain secrets')
 
-print('mad4b.staging-write-authority.v6: PASS')
+print('mad4b.staging-write-authority.v7: PASS')
