@@ -1,11 +1,17 @@
 <?php
 /**
- * Regression acceptance for WordPress 6.9+ lifecycle discipline.
+ * Regression acceptance for WordPress 6.9+ Ability lifecycle discipline.
  *
- * The live Staging debug log showed WP_Abilities_Registry::get_instance() being
- * invoked before init while MAD4B was active. Install an MU observer before
- * loading WordPress and fail if any request bootstrap initializes the Abilities
- * registry before init. The request is deliberately WPML-like/non-MCP.
+ * The live Staging failure had two distinct dimensions:
+ * 1. the Ability registry must never initialize before init; and
+ * 2. every MAD4B registration callback must already be wired if another
+ *    component legally materializes the registry at the very start of init.
+ *
+ * The MU observer below therefore materializes the public Ability catalog one
+ * priority before the full Control Plane init callback. rc.15 failed this shape:
+ * core bridge abilities registered, while governance/connection/write/Skill
+ * callbacks were attached too late and missed the one-shot
+ * wp_abilities_api_init action.
  */
 
 $wp_path = getenv( 'MAD4B_TEST_WP_PATH' );
@@ -29,10 +35,19 @@ $observer_source = <<<'PHP'
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 $GLOBALS['mad4b_ci_pre_init_ability_violations'] = array();
+$GLOBALS['mad4b_ci_missing_ability_lookups'] = array();
+$GLOBALS['mad4b_ci_early_init_catalog_materialized'] = false;
+
 add_action( 'doing_it_wrong_run', static function ( $function_name, $message, $version ) {
-	if ( did_action( 'init' ) > 0 ) return;
 	$name = (string) $function_name;
-	if ( false === strpos( $name, 'WP_Abilities_Registry' ) && false === strpos( (string) $message, 'Ability API should not be initialized before the init action has fired' ) ) return;
+	$text = wp_strip_all_tags( (string) $message );
+	$is_pre_init = did_action( 'init' ) < 1;
+	$is_pre_init_ability = false !== strpos( $name, 'WP_Abilities_Registry' )
+		|| false !== strpos( $text, 'Ability API should not be initialized before the init action has fired' );
+	$is_missing_lookup = false !== stripos( $text, 'Ability' ) && false !== stripos( $text, 'not found' );
+
+	if ( ! ( $is_pre_init && $is_pre_init_ability ) && ! $is_missing_lookup ) return;
+
 	$frames = array();
 	foreach ( array_slice( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS ), 0, 24 ) as $frame ) {
 		$file = isset( $frame['file'] ) ? wp_normalize_path( (string) $frame['file'] ) : '';
@@ -52,13 +67,24 @@ add_action( 'doing_it_wrong_run', static function ( $function_name, $message, $v
 			'function' => isset( $frame['function'] ) ? (string) $frame['function'] : '',
 		);
 	}
-	$GLOBALS['mad4b_ci_pre_init_ability_violations'][] = array(
+	$event = array(
 		'function' => $name,
-		'message' => wp_strip_all_tags( (string) $message ),
+		'message' => $text,
 		'version' => (string) $version,
 		'trace' => $frames,
 	);
+	if ( $is_pre_init && $is_pre_init_ability ) $GLOBALS['mad4b_ci_pre_init_ability_violations'][] = $event;
+	if ( $is_missing_lookup ) $GLOBALS['mad4b_ci_missing_ability_lookups'][] = $event;
 }, PHP_INT_MIN, 3 );
+
+// Materialize the public catalog legally at the first edge of init, before the
+// full MAD4B Plugin::boot() callback at -1000000. Every MAD4B registration hook
+// must therefore have been wired during plugin bootstrap, not from full boot.
+add_action( 'init', static function () {
+	if ( ! function_exists( 'wp_get_abilities' ) ) return;
+	$GLOBALS['mad4b_ci_early_init_catalog_materialized'] = true;
+	wp_get_abilities();
+}, -1000001 );
 PHP;
 if ( false === file_put_contents( $observer, $observer_source ) ) {
 	fwrite( STDERR, "FAIL pre-init-abilities-lifecycle: cannot write MU observer\n" );
@@ -87,5 +113,49 @@ if ( did_action( 'init' ) < 1 ) {
 	fwrite( STDERR, "FAIL pre-init-abilities-lifecycle: WordPress init did not complete\n" );
 	exit( 1 );
 }
+if ( empty( $GLOBALS['mad4b_ci_early_init_catalog_materialized'] ) ) {
+	fwrite( STDERR, "FAIL pre-init-abilities-lifecycle: early init Ability catalog was not materialized\n" );
+	exit( 1 );
+}
+if ( did_action( 'wp_abilities_api_init' ) < 1 ) {
+	fwrite( STDERR, "FAIL pre-init-abilities-lifecycle: wp_abilities_api_init did not fire\n" );
+	exit( 1 );
+}
+if ( ! function_exists( 'wp_has_ability' ) ) {
+	fwrite( STDERR, "FAIL pre-init-abilities-lifecycle: wp_has_ability is unavailable\n" );
+	exit( 1 );
+}
 
-echo 'mad4b.site-control-plane.pre-init-abilities-lifecycle.v1: PASS' . PHP_EOL;
+$expected = array(
+	'mad4b/site-info',
+	'mad4b/content-update-post',
+	'mad4b/mutation-get',
+	'mad4b/mutation-undo',
+	'mad4b/agent-list',
+	'mad4b/agent-effective-access',
+	'mad4b/approval-plan',
+	'mad4b/connection-status',
+	'mad4b/write-authority-status',
+	'mad4b/write-runtime-certification',
+	'mad4b/rest-compatibility-status',
+	'mad4b/skills-list',
+	'mad4b/skills-runtime-certification',
+);
+$missing = array();
+foreach ( $expected as $ability ) {
+	if ( ! wp_has_ability( $ability ) ) $missing[] = $ability;
+}
+if ( ! empty( $missing ) ) {
+	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: early-materialized catalog is incomplete: ' . json_encode( $missing, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
+	exit( 1 );
+}
+
+$missing_lookups = isset( $GLOBALS['mad4b_ci_missing_ability_lookups'] ) && is_array( $GLOBALS['mad4b_ci_missing_ability_lookups'] )
+	? $GLOBALS['mad4b_ci_missing_ability_lookups']
+	: array();
+if ( ! empty( $missing_lookups ) ) {
+	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: Ability not-found lookup warning emitted: ' . json_encode( $missing_lookups, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
+	exit( 1 );
+}
+
+echo 'mad4b.site-control-plane.pre-init-abilities-lifecycle.v2: PASS' . PHP_EOL;
