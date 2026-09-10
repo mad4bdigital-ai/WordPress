@@ -230,7 +230,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 		}
 		$fluent = in_array( $function_name, array( 'as_next_scheduled_action', 'as_schedule_single_action' ), true ) || false !== stripos( $message, 'Action Scheduler' );
 		$ability_not_found = false !== stripos( $message, 'Ability') && false !== stripos( $message, 'not found' );
-		$wp_get_missing = false !== stripos( $message, 'wp_get_ability' );
+		$wp_get_missing = 'wp_get_ability' === $function_name || false !== stripos( $message, 'wp_get_ability' );
 		$pre_init = ( false !== stripos( $message, 'Abilities' ) || false !== stripos( $function_name, 'WP_Abilities_Registry' ) ) && ! did_action( 'init' );
 		if ( $fluent ) {
 			return array( 'bucket' => 'third_party', 'severity' => 'third_party_non_blocking', 'component' => 'fluentform', 'plugin_slug' => 'fluentform', 'ability_not_found' => false, 'wp_get_ability_missing' => false, 'pre_init_abilities_violation' => false, 'fluentform_action_scheduler' => true, 'callers' => $callers );
