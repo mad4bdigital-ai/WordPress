@@ -3,7 +3,7 @@
  * Exact-Staging regression proof: unrelated REST requests must never enter the
  * MCP Adapter/peer registration lifecycle or expensive Skill reconciliation,
  * while their own routes remain fully available. The fixture mirrors WPML's
- * REST health endpoint and query contract.
+ * REST health endpoint and the Core route used by Site Health.
  */
 
 $wp_path = getenv( 'MAD4B_TEST_WP_PATH' );
@@ -96,7 +96,21 @@ if ( 200 !== $status ) $fail( 'WPML-compatible request did not return 200', arra
 if ( ! is_array( $data ) || 'valid' !== ( isset( $data['status'] ) ? (string) $data['status'] : '' ) || 'valid' !== ( isset( $data['get_parameters'] ) ? (string) $data['get_parameters'] : '' ) ) {
 	$fail( 'WPML-compatible response/query contract was not preserved', $data );
 }
-if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'REST dispatch initialized MCP Adapter after route registration' );
+
+// Mirror the Core REST target used by Site Health. The real Site Health check
+// reaches this through wp_remote_get(); here we prove the target remains alive
+// and does not enter MAD4B's MCP lifecycle before live HTTP acceptance.
+wp_set_current_user( 1 );
+$core_request = new WP_REST_Request( 'GET', '/wp/v2/types/post' );
+$core_request->set_query_params( array( 'context' => 'edit' ) );
+$core_response = rest_do_request( $core_request );
+$core_status = is_object( $core_response ) && method_exists( $core_response, 'get_status' ) ? (int) $core_response->get_status() : 0;
+$core_data = is_object( $core_response ) && method_exists( $core_response, 'get_data' ) ? $core_response->get_data() : null;
+if ( 200 !== $core_status ) $fail( 'Core Site Health REST target did not return 200', array( 'status' => $core_status, 'data' => $core_data ) );
+if ( ! is_array( $core_data ) || 'post' !== ( isset( $core_data['slug'] ) ? (string) $core_data['slug'] : '' ) ) {
+	$fail( 'Core Site Health REST target returned an unexpected payload', $core_data );
+}
+if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'REST dispatch initialized MCP Adapter after unrelated route registration' );
 
 $scope = MAD4B_SCP_MCP_Request_Scope::status();
 if ( empty( $scope['adapter_init_removed_for_unrelated_request'] ) ) $fail( 'request scope did not record Adapter suppression', $scope );
@@ -104,4 +118,4 @@ if ( ! empty( $scope['production_changed'] ) || ! empty( $scope['provider_settin
 	$fail( 'request scope reported forbidden side effects', $scope );
 }
 
-echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v3: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v4: PASS' . PHP_EOL;
