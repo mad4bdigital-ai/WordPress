@@ -67,14 +67,21 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Connection_Ability::boot();
 		MAD4B_SCP_Governed_Ability_Overrides::boot();
 		MAD4B_SCP_Staging_Write_Authority::boot();
+
+		// Reconciliation used to run twice on ordinary wp-admin requests and once
+		// on every Abilities bootstrap. Keep zero-touch reconciliation only when the
+		// persisted authority is absent/stale, while explicit MAD4B screens can
+		// always request a full reconciliation. This prevents stable audit churn.
 		remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );
+		remove_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 95 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile_authority_if_needed' ), 95 );
 		add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' ), 20 );
 
 		MAD4B_SCP_Staging_Write_Planning_Guard::boot();
 		MAD4B_SCP_REST_Compatibility::boot();
 
-		// Explicit callers of the certification Ability should receive fresh
-		// evidence, but ordinary wp-admin/REST bootstrap must never pay for it.
+		// Explicit callers receive fresh certification evidence. Ordinary wp-admin
+		// and MCP bootstrap no longer execute the expensive WPML compatibility probe.
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'make_write_certification_explicit' ), 90, 2 );
 		MAD4B_SCP_Write_Runtime_Certification::boot();
 		remove_action( 'mcp_adapter_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );
@@ -142,6 +149,23 @@ final class MAD4B_SCP_Plugin {
 		if ( ! is_array( $args ) || 'mad4b/write-runtime-certification' !== (string) $name ) return $args;
 		$args['execute_callback'] = array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' );
 		return $args;
+	}
+
+	public static function reconcile_authority_if_needed() {
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
+		$stored = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
+		$tools = MAD4B_SCP_Staging_Write_Authority::write_tools();
+		$stable = is_array( $stored )
+			&& isset( $stored['contract'] )
+			&& MAD4B_SCP_Staging_Write_Authority::CONTRACT === (string) $stored['contract']
+			&& ! empty( $stored['ready'] )
+			&& empty( $stored['blocker'] )
+			&& empty( $stored['grant_blockers'] )
+			&& empty( $stored['breakglass_included'] )
+			&& isset( $stored['write_tool_count'] )
+			&& (int) $stored['write_tool_count'] === count( $tools );
+		if ( $stable ) return;
+		MAD4B_SCP_Staging_Write_Authority::reconcile();
 	}
 
 	public static function reconcile_authority_on_mad4b_admin() {
