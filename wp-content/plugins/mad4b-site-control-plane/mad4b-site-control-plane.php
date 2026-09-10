@@ -102,22 +102,20 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
-// Wire every MAD4B Ability registration callback before anything can
-// materialize the WordPress Abilities registry. These boot methods only attach
-// hooks/filters here; actual registration remains on wp_abilities_api_init.
-// Registration is deliberately independent from MCP exposure and mutation
-// authorization, which remain governed by server allowlists, NHI/grants,
-// provider certification and exact approval.
+// Wire the complete Ability catalog before anything can materialize the
+// WordPress Abilities registry. Only registration-time callbacks/filters are
+// armed here; reconciliation, certification observation, MCP exposure and
+// mutation authorization remain owned by the full init-time boot.
 MAD4B_SCP_Connection_Ability::boot();
 MAD4B_SCP_Governed_Ability_Overrides::boot();
-MAD4B_SCP_Staging_Write_Authority::boot();
+add_filter( 'wp_register_ability_args', array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' ), 70, 2 );
+add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ), 35 );
 MAD4B_SCP_Staging_Write_Planning_Guard::boot();
-MAD4B_SCP_REST_Compatibility::boot();
-MAD4B_SCP_Write_Runtime_Certification::boot();
+add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_REST_Compatibility', 'register_ability' ), 36 );
+add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'register_ability' ), 37 );
 MAD4B_SCP_Governance_Abilities::boot();
 MAD4B_SCP_Skill_Abilities::boot();
 MAD4B_SCP_Skills_Adapter::boot();
-MAD4B_SCP_Skill_Runtime_Certification::boot();
 
 // WordPress core requests dependency metadata on the Plugins screen even when
 // MCP Adapter is already installed. The certified Adapter is distributed from
