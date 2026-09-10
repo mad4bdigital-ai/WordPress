@@ -86,7 +86,8 @@ final class MAD4B_SCP_Servers {
 		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return false;
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-		return array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'];
+		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return false;
+		return true;
 	}
 
 	private static function adapter_write_projection() {
