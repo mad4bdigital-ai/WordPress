@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.7
+ * Version: 0.4.0-rc.8
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.7' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.8' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -120,8 +120,9 @@ MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 // disabled and Production is never mutated.
 MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
 
-// Register lazy Abilities/MCP callbacks before plugins_loaded so a third-party
-// REST prime cannot consume the one-shot MCP Adapter init action first.
+// Register lazy Abilities/MCP callbacks before plugins_loaded. If another MU
+// component already primed REST, the bridge performs a bounded init-time
+// recovery without replaying the global rest_api_init action.
 MAD4B_SCP_MCP_Registration_Bridge::boot_early();
 MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();
 
