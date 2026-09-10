@@ -87,11 +87,12 @@ for forbidden in (
 ):
     forbid(mu_bootstrap, forbidden, 'mu-bootstrap-fail-closed')
 
+# Compatibility is semantic; PHP quote style is not part of the contract.
 for marker in (
     "const CONTRACT = 'mad4b.mcp-mu-bootstrap-refresh.v1'",
     "const STAGING_HOST = 'staging.egypttourgates.com'",
-    "'mad4b.mcp-adapter-mu-bootstrap.v2'",
-    "'mad4b.mcp-adapter-mu-bootstrap.v3'",
+    'mad4b.mcp-adapter-mu-bootstrap.v2',
+    'mad4b.mcp-adapter-mu-bootstrap.v3',
     "'unmanaged_mu_bootstrap_path_conflict'",
     "'mad4b/mcp-mu-bootstrap-refreshed'",
     "'managed_mu_refreshed_for_next_request'",
@@ -127,4 +128,4 @@ for marker in (
 ):
     require(diagnostics, marker, 'diagnostics-evidence')
 
-print('mad4b.site-control-plane.mcp-runtime-conflict-guard-contract.v4: PASS')
+print('mad4b.site-control-plane.mcp-runtime-conflict-guard-contract.v5: PASS')
