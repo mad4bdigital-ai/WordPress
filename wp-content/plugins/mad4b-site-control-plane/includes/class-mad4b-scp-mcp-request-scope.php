@@ -5,14 +5,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Exact-Staging request scope for the official MCP Adapter runtime.
  *
- * The official Adapter normally initializes on every WordPress REST bootstrap.
- * MAD4B only needs that runtime for its own six MCP transports and for explicit
- * Control Plane diagnostics. On the governed Staging origin, unrelated REST
- * requests (WPML, Core/Site Health, WooCommerce, Elementor, etc.) must not enter
- * the MCP Adapter/peer registration lifecycle at all.
+ * MAD4B only needs the official runtime for its own six MCP transports and for
+ * explicit Control Plane diagnostics. On the governed Staging origin, unrelated
+ * REST requests (WPML, Core/Site Health, WooCommerce, Elementor, etc.) must not
+ * enter a MAD4B-owned MCP lifecycle. A provider-owned/bundled Adapter runtime is
+ * left untouched so the request retains the same host/provider baseline it has
+ * when the MAD4B Control Plane is absent.
  *
- * This class is deny-only. It never initializes the Adapter, never registers a
- * route, never changes provider settings, and never affects Production.
+ * This class is deny-only. It never registers a route, never changes provider
+ * settings, never replaces a foreign Adapter runtime, and never affects
+ * Production.
  */
 final class MAD4B_SCP_MCP_Request_Scope {
 	const CONTRACT = 'mad4b.mcp-request-scope.v1';
@@ -22,6 +24,9 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	private static $eligible = false;
 	private static $current_request_requires_mcp = false;
 	private static $adapter_init_removed = false;
+	private static $adapter_runtime_from_official = false;
+	private static $adapter_suppression_skipped_non_official = false;
+	private static $adapter_runtime_source = 'unavailable';
 	private static $bridge_watchdog_removed = false;
 	private static $rescue_tail_removed = false;
 	private static $rescue_pre_dispatch_removed = false;
@@ -38,8 +43,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 
 		// Enforce immediately during normal plugin loading, again after every
 		// plugin has loaded, and once more at the very start of REST bootstrap.
-		// This closes both normal ordering and a later provider re-arming the
-		// official singleton before rest_api_init reaches priority 15.
+		// Only an official mcp-adapter-owned singleton can be disarmed here. If a
+		// host/provider bundle owns the class, leave that baseline untouched.
 		self::enforce();
 		add_action( 'plugins_loaded', array( __CLASS__, 'enforce' ), PHP_INT_MAX );
 		add_action( 'rest_api_init', array( __CLASS__, 'enforce' ), PHP_INT_MIN );
@@ -50,13 +55,35 @@ final class MAD4B_SCP_MCP_Request_Scope {
 
 		if ( class_exists( '\\WP\\MCP\\Core\\McpAdapter', false ) ) {
 			try {
-				$adapter = \WP\MCP\Core\McpAdapter::instance();
-				$priority = has_action( 'rest_api_init', array( $adapter, 'init' ) );
-				if ( false !== $priority && remove_action( 'rest_api_init', array( $adapter, 'init' ), (int) $priority ) ) {
-					self::$adapter_init_removed = true;
+				$reflection = new ReflectionClass( '\\WP\\MCP\\Core\\McpAdapter' );
+				$file = $reflection->getFileName();
+				$resolved = $file ? realpath( $file ) : false;
+				$plugin_root = defined( 'WP_PLUGIN_DIR' ) ? realpath( WP_PLUGIN_DIR ) : false;
+				$official_root = defined( 'WP_PLUGIN_DIR' ) ? realpath( trailingslashit( WP_PLUGIN_DIR ) . 'mcp-adapter' ) : false;
+				if ( $resolved && $plugin_root ) {
+					$normalized = wp_normalize_path( $resolved );
+					$plugins_prefix = rtrim( wp_normalize_path( $plugin_root ), '/' ) . '/';
+					self::$adapter_runtime_source = 0 === strpos( $normalized, $plugins_prefix )
+						? ltrim( substr( $normalized, strlen( $plugins_prefix ) ), '/' )
+						: 'outside-wp-plugin-dir';
+					if ( $official_root ) {
+						$official_prefix = rtrim( wp_normalize_path( $official_root ), '/' ) . '/';
+						self::$adapter_runtime_from_official = 0 === strpos( $normalized, $official_prefix );
+					}
+				}
+
+				if ( self::$adapter_runtime_from_official ) {
+					$adapter = \WP\MCP\Core\McpAdapter::instance();
+					$priority = has_action( 'rest_api_init', array( $adapter, 'init' ) );
+					if ( false !== $priority && remove_action( 'rest_api_init', array( $adapter, 'init' ), (int) $priority ) ) {
+						self::$adapter_init_removed = true;
+					}
+				} else {
+					self::$adapter_suppression_skipped_non_official = true;
 				}
 			} catch ( Throwable $e ) {
-				// Fail closed: do not initialize or reconstruct an Adapter lifecycle.
+				// Fail closed with respect to MAD4B: never reconstruct or replace an
+				// unknown Adapter lifecycle on an unrelated request.
 			}
 		}
 
@@ -142,6 +169,9 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'eligible' => self::$eligible,
 			'current_request_requires_mcp_runtime' => self::$current_request_requires_mcp,
 			'adapter_init_removed_for_unrelated_request' => self::$adapter_init_removed,
+			'adapter_runtime_from_official_plugin' => self::$adapter_runtime_from_official,
+			'adapter_suppression_skipped_non_official_runtime' => self::$adapter_suppression_skipped_non_official,
+			'adapter_runtime_source' => self::$adapter_runtime_source,
 			'bridge_watchdog_removed_for_unrelated_request' => self::$bridge_watchdog_removed,
 			'rescue_tail_removed_for_unrelated_request' => self::$rescue_tail_removed,
 			'rescue_pre_dispatch_removed_for_unrelated_request' => self::$rescue_pre_dispatch_removed,
