@@ -126,6 +126,13 @@ jobs:
           grep -Fq "mad4b.write-runtime-certification.v2" "$cert"
           grep -Fq "approval_planner_bootstrap_exception" "$cert"
           grep -Fq "provider_uncertified_write_tools_safely_unmounted" "$cert"
+          grep -Fq "mcp_recovery_scoped_to_mad4b_routes" "$cert"
+          grep -Fq "external_wpml_acceptance_required" "$cert"
+          grep -Fq "external_wpml_acceptance_verified" "$cert"
+          if grep -Fq "\$checks['wpml_query_parameters_preserved']" "$cert" || grep -Fq "\$checks['wpml_internal_probe_ready_or_not_active']" "$cert"; then
+            echo 'Local write certification must not depend on in-process WPML route availability.' >&2
+            exit 1
+          fi
           grep -Fq "mad4b.rest-compatibility.v2" "$rest"
           grep -Fq "hook_inventory( 'rest_enabled' )" "$rest"
           grep -Fq "hook_inventory( 'rest_authentication_errors' )" "$rest"
@@ -200,7 +207,9 @@ jobs:
                   'approval_plan_breakglass_target_denied': True,
                   'breakglass_excluded_from_write_surface': True,
                   'production_auto_write_disabled': True,
-                  'wpml_rest_live_hook_inventory_evidenced': True,
+                  'local_rest_isolation_certified': True,
+                  'external_wpml_live_acceptance_required': True,
+                  'external_wpml_acceptance_not_claimed_by_local_runtime': True,
               },
               'environment_safety': {
                   'staging_exact_origin_mutation_autoconfig': True,
@@ -217,6 +226,7 @@ jobs:
                   'mad4b/write-authority-status',
                   'mad4b/write-runtime-certification',
                   'mad4b/rest-compatibility-status',
+                  'external GET /wp-json/wpml/v1/rest/status?test_get_parameter=1',
               ],
           }
           (stage / 'install-manifest.json').write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
@@ -231,8 +241,8 @@ jobs:
           4. The plugin creates/binds a site-local NHI and exact `mad4b-write` grants for every runtime-eligible registered non-readonly content/admin ability. Provider mutations requiring certification are omitted when their exact runtime contract is not certified; Breakglass is excluded.
           5. Remote OAuth is identity-only. Actual mutations require a short-lived exact one-time approval ticket. `mad4b/approval-plan` is the bounded bootstrap exception: it is itself NHI/grant/budget governed, may create only a pending mutation ticket for the same Staging agent + `mad4b-write`, and may never target breakglass/recovery or auto-approve.
           6. Provider-specific mutations remain subject to provider certification, capability, stale-state and policy gates even after projection, providing defense in depth.
-          7. Read `mad4b/write-authority-status` and `mad4b/write-runtime-certification` and require `ready` before external write acceptance. Inspect `provider_blocked_write_tools` separately; blocked provider mutations must remain unmounted rather than appearing as dead client tools.
-          8. Read `mad4b/rest-compatibility-status`; on a WPML-enabled Staging site require the internal `/wpml/v1/rest/status` probe to return valid GET/query-parameter evidence and require no MAD4B callback on global `rest_enabled`/`rest_authentication_errors` hooks.
+          7. Read `mad4b/write-authority-status` and `mad4b/write-runtime-certification` and require local `ready` before external write acceptance. Inspect `provider_blocked_write_tools` separately; blocked provider mutations must remain unmounted rather than appearing as dead client tools.
+          8. Read `mad4b/rest-compatibility-status` and require REST enabled, no MAD4B global `rest_enabled`/`rest_authentication_errors` interception, no control-plane WPML block, and MCP recovery scoped only to MAD4B MCP routes. The in-process WPML probe is diagnostic only. Separately call the real external `https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1` endpoint and require `status=valid` plus `get_parameters=valid` before GO.
           9. Compare the portable ChatGPT package `MAD4B-SNAPSHOT-ID.txt` with `mad4b/skills-export-status` before external snapshot acceptance, then Refresh/Scan Tools in ChatGPT.
 
           Production mutation and Breakglass are not authorized by this package. PR merge still requires exact-head live Staging acceptance.
@@ -267,6 +277,9 @@ jobs:
           grep -Fq '"all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write": true' "$stage/install-manifest.json"
           grep -Fq '"provider_uncertified_write_actions_excluded_from_governed_write_surfaces": true' "$stage/install-manifest.json"
           grep -Fq '"approval_plan_bootstrap_governed_by_nhi_grant_budget": true' "$stage/install-manifest.json"
+          grep -Fq '"local_rest_isolation_certified": true' "$stage/install-manifest.json"
+          grep -Fq '"external_wpml_live_acceptance_required": true' "$stage/install-manifest.json"
+          grep -Fq '"external_wpml_acceptance_not_claimed_by_local_runtime": true' "$stage/install-manifest.json"
           grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
