@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.13
+ * Version: 0.4.0-rc.14
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.13' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.14' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -29,6 +29,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-provider-isolation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-request-scope.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-peer-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-store.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-oauth-autoconfig.php';
@@ -100,6 +101,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
+
+// WordPress core requests dependency metadata on the Plugins screen even when
+// MCP Adapter is already installed. The certified Adapter is distributed from
+// the official WordPress GitHub repository rather than WordPress.org, so exact
+// governed Staging supplies that one plugin_information result locally.
+MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();
 
 // Provider discovery used to run at plugins_loaded priority 30 from the Seeder
 // file. The full Control Plane now boots at init so that WordPress 6.9+ never
