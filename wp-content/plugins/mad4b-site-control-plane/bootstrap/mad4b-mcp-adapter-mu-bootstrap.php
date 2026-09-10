@@ -142,6 +142,7 @@ if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgate
 					$mad4b_mcp_mu_status['state'] = 'official_adapter_file_unreadable';
 					break;
 				}
+			}
 		}
 
 		if ( ! $mad4b_mcp_mu_status['runtime_preclaimed'] && 'official_adapter_file_unreadable' !== $mad4b_mcp_mu_status['state'] ) {
