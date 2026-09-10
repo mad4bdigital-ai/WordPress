@@ -169,7 +169,7 @@ require(plugin, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'registratio
 forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_servers' )", 'no-late-mcp-server-binding')
 
 for marker in (
-    "const CONTRACT = 'mad4b.mcp-registration-bridge.v1'",
+    "const CONTRACT = 'mad4b.mcp-registration-bridge.v2'",
     "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 )",
     "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
     "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 )",
@@ -177,6 +177,7 @@ for marker in (
     "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 )",
     "'ability_hook_bound' => $core_ability_hook_bound && $registry_ability_hook_bound",
     "'adapter_init_seen_before_bridge_boot'", "'adapter_runtime_from_official_plugin'", "'registration_errors'",
+    "'rest_init_seen_before_bridge_boot'", "'missed_rest_recovery_succeeded'", "'missed_rest_recovery_blocker'",
 ):
     require(bridge, marker, 'mcp-registration-bridge')
 for marker in (
