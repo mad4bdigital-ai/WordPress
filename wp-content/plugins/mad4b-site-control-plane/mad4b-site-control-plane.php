@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.9
+ * Version: 0.4.0-rc.10
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.9' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.10' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -83,6 +83,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-runtime-conflict-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-rescue-v1.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-authority.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-planning-guard.php';
@@ -124,6 +125,9 @@ MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
 // component already primed REST, the bridge performs a bounded init-time
 // recovery without replaying the global rest_api_init action.
 MAD4B_SCP_MCP_Registration_Bridge::boot_early();
+// Fresh-path rescue remains independent from the bridge bytecode and from the
+// rest_api_init callback set. It is exact-Staging-only and never replays REST.
+MAD4B_SCP_MCP_Registration_Rescue::boot();
 MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();
 
 // Provider kill-switch filters must exist before plugins_loaded provider bootstraps.
