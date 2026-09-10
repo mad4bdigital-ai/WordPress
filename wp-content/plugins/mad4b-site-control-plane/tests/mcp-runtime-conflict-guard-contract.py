@@ -78,7 +78,8 @@ for marker in (
     require(mu_bootstrap, marker, 'mu-bootstrap')
 
 for forbidden in (
-    'mcp-adapter.php',
+    "require_once $mad4b_mcp_mu_main",
+    "$mad4b_mcp_mu_root . 'mcp-adapter.php'",
     'WP\\MCP\\Plugin::instance()',
     'update_option(', 'add_option(', 'delete_option(', 'deactivate_plugins(',
     'activate_plugin(', 'delete_plugins(', 'wp_remote_get(', 'wp_remote_post(',
