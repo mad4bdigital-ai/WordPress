@@ -142,9 +142,13 @@ final class MAD4B_SCP_REST_Compatibility {
 			'wpml' => $wpml,
 			'wpml_internal_probe_ready' => ! empty( $wpml['ready'] ),
 			'query_parameters_preserved' => ! empty( $wpml['query_parameters_preserved'] ),
+			'wpml_internal_probe_role' => 'diagnostic_only',
+			'wpml_internal_probe_blocks_local_certification' => false,
+			'external_wpml_acceptance_required' => true,
+			'external_wpml_acceptance_verified' => false,
 			'external_http_probe_performed' => false,
 			'external_test_url' => self::wpml_external_test_url(),
-			'note' => 'MAD4B MCP recovery is disarmed on non-MAD4B HTTP requests before ordinary REST bootstrap. The internal WPML probe exercises the remaining WordPress REST dispatcher in-process.',
+			'note' => 'MAD4B MCP recovery is disarmed on non-MAD4B HTTP requests before ordinary REST bootstrap. The internal WPML probe is diagnostic only; external WPML HTTP acceptance is a separate live gate.',
 		);
 	}
 
