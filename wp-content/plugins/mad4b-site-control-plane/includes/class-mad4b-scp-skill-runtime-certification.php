@@ -16,11 +16,11 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 	private static $observing = false;
 
 	public static function boot() {
-		// Reconcile after Abilities registration and again after MCP registration.
-		// The persisted evidence changes only when the certification digest changes.
+		// One automatic observation at the canonical Abilities lifecycle is enough.
+		// Older builds also observed mcp_adapter_init and every admin_init, causing
+		// redundant registry/provider/snapshot work on ordinary wp-admin requests.
+		// Explicit Ability execution can call observe() when fresh evidence is wanted.
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' ), 99 );
-		add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' ), 99 );
-		add_action( 'admin_init', array( __CLASS__, 'observe' ), 99 );
 	}
 
 	public static function observe() {
