@@ -193,11 +193,15 @@ jobs:
           set -euo pipefail
           WP_PATH=/tmp/mad4b-web-wordpress
           # This MU file sorts before 000-mad4b-* and reproduces the live host
-          # condition: WordPress REST already exists before MAD4B can arm the
-          # official Adapter's rest_api_init callback.
+          # condition: a host component has loaded the one Core admin dependency
+          # needed by the initial REST route set, then creates REST before MAD4B
+          # can arm the official Adapter's rest_api_init callback.
           cat > "$WP_PATH/wp-content/mu-plugins/000-aaa-rest-prime.php" <<'PHP'
           <?php
           if ( ! defined( 'ABSPATH' ) ) { exit; }
+          if ( ! class_exists( 'WP_Site_Health', false ) ) {
+              require_once ABSPATH . 'wp-admin/includes/class-wp-site-health.php';
+          }
           if ( function_exists( 'rest_get_server' ) ) rest_get_server();
           PHP
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-web-preprimed-lifecycle.php
