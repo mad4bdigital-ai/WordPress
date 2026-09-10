@@ -127,19 +127,23 @@ MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
 // diagnostics may enter the MCP/peer registration lifecycle.
 MAD4B_SCP_MCP_Request_Scope::bootstrap();
 
-// Register lazy Abilities/MCP callbacks before plugins_loaded. If another MU
-// component already primed REST, the bridge performs a bounded init-time
-// recovery without replaying the global rest_api_init action.
+// Register lazy Abilities/MCP callbacks before init. If another MU component
+// already primed REST, the bridge performs a bounded init-time recovery without
+// replaying the global rest_api_init action.
 MAD4B_SCP_MCP_Registration_Bridge::boot_early();
-// Fresh-path rescue remains independent from the bridge bytecode and from the
-// rest_api_init callback set. It is exact-Staging-only and never replays REST.
 MAD4B_SCP_MCP_Registration_Rescue::boot();
 MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();
 
-// Provider kill-switch filters must exist before plugins_loaded provider bootstraps.
+// Provider kill-switch filters must exist before provider bootstraps.
 MAD4B_SCP_MCP_Provider_Isolation::boot_early();
 MAD4B_SCP_External_Handshake_Evidence::boot();
 MAD4B_SCP_ChatGPT_OAuth_Lifecycle::boot();
 MAD4B_SCP_Local_OAuth_Consent_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
-add_action( 'plugins_loaded', array( 'MAD4B_SCP_Plugin', 'boot' ), 20 );
+
+// WordPress 6.9+ explicitly forbids initializing the Abilities registry before
+// init. Boot the full Control Plane at the earliest init priority instead of
+// plugins_loaded: hooks required before init remain armed above, while adapter,
+// Skill, certification and admin bootstraps can no longer pull the Ability API
+// (or provider code reached through it) into the pre-init phase.
+add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );
