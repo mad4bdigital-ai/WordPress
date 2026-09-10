@@ -1,0 +1,166 @@
+name: MAD4B Web MCP Lifecycle
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-web-mcp-lifecycle.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-web-mcp-lifecycle-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  web-lifecycle:
+    name: Web lifecycle (${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.9', 'latest']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable WordPress before governed Staging mode
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-web-wordpress
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-web.test' --title='MAD4B Web MCP Lifecycle' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+
+      - name: Install official MCP Adapter and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-web-wordpress
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Add Hostinger bundled Adapter collision fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-web-wordpress
+          FIXTURE="$WP_PATH/wp-content/plugins/hostinger-ai-assistant"
+          mkdir -p "$FIXTURE/vendor/wordpress/mcp-adapter/includes/Core"
+          cat > "$FIXTURE/hostinger-ai-assistant.php" <<'PHP'
+          <?php
+          /**
+           * Plugin Name: Hostinger AI Assistant Web Collision Fixture
+           * Version: 0.0.0-ci
+           */
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+          require_once __DIR__ . '/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php';
+          PHP
+          cat > "$FIXTURE/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php" <<'PHP'
+          <?php
+          namespace WP\MCP\Core;
+          if ( ! class_exists( __NAMESPACE__ . '\\McpAdapter', false ) ) {
+              final class McpAdapter {
+                  public const VERSION = '0.1.0';
+                  private static $instance;
+                  public static function instance(): self {
+                      if ( ! isset( self::$instance ) ) self::$instance = new self();
+                      return self::$instance;
+                  }
+                  public function get_server( $server_id ) { return null; }
+                  public function get_servers(): array { return array(); }
+              }
+          }
+          PHP
+          php /tmp/wp-cli.phar plugin activate hostinger-ai-assistant --path="$WP_PATH"
+
+          # Match the live Staging shape: Hostinger appears before the official
+          # adapter in active_plugins. The managed 000-* MU loader must still
+          # own the canonical class and arm the web lifecycle first.
+          php /tmp/wp-cli.phar eval '
+          $active = get_option( "active_plugins", array() );
+          $ordered = array();
+          foreach ( array(
+              "hostinger-ai-assistant/hostinger-ai-assistant.php",
+              "mcp-adapter/mcp-adapter.php",
+              "mad4b-site-control-plane/mad4b-site-control-plane.php"
+          ) as $wanted ) {
+              if ( in_array( $wanted, $active, true ) ) $ordered[] = $wanted;
+          }
+          foreach ( $active as $plugin ) if ( ! in_array( $plugin, $ordered, true ) ) $ordered[] = $plugin;
+          update_option( "active_plugins", $ordered );
+          ' --path="$WP_PATH"
+
+      - name: Install current managed MU bootstrap without executing Staging WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-web-wordpress
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php \
+             "$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
+          cat > "$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php" <<'PHP'
+          <?php
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+          require_once WP_PLUGIN_DIR . '/hostinger-ai-assistant/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php';
+          PHP
+
+          # Set the environment in wp-config without loading WordPress.
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+
+          # Move onto the exact governed origin directly in MySQL so the next
+          # process is the first Staging WordPress bootstrap after MU install.
+          mysql --protocol=tcp -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress \
+            -e "UPDATE wp_options SET option_value='https://staging.egypttourgates.com' WHERE option_name IN ('home','siteurl');"
+
+      - name: Prove canonical MCP lifecycle in a non-WPCLI process
+        shell: bash
+        env:
+          MAD4B_TEST_WP_PATH: /tmp/mad4b-web-wordpress
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-web-lifecycle.php
