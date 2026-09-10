@@ -3,21 +3,99 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Read-only REST compatibility diagnostics.
+ * Read-only REST compatibility diagnostics plus a deny-only scope guard for
+ * MAD4B's MCP registration recovery callbacks.
  *
  * The Control Plane never needs to disable the REST API or globally rewrite
- * unrelated REST authentication. This probe inspects the live hook registry and
- * exercises WPML's query-parameter health route through the WordPress REST
- * dispatcher. External CDN/WAF/rewrite behavior is intentionally reported as a
- * separate acceptance boundary.
+ * unrelated REST authentication. MCP lifecycle recovery is permitted only when
+ * the current HTTP request targets one of MAD4B's own MCP routes. All ordinary
+ * WordPress REST requests (core, Site Health, WPML, WooCommerce, Elementor, etc.)
+ * are explicitly isolated from that recovery machinery.
  */
 final class MAD4B_SCP_REST_Compatibility {
-	const CONTRACT = 'mad4b.rest-compatibility.v2';
+	const CONTRACT = 'mad4b.rest-compatibility.v3';
 	const WPML_ROUTE = '/wpml/v1/rest/status';
 	const MAX_HOOK_CALLBACKS = 200;
 
+	private static $mcp_recovery_scope_evaluated = false;
+	private static $mcp_recovery_request = false;
+	private static $mcp_recovery_callbacks_removed = array();
+
 	public static function boot() {
+		// This runs on plugins_loaded before normal REST bootstrap. If a host/MU
+		// component primed REST even earlier, the bridge may already have scheduled
+		// an init-time recovery; disarm that too for every non-MAD4B HTTP request.
+		self::scope_mcp_recovery_to_current_http_request();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 36 );
+	}
+
+	private static function scope_mcp_recovery_to_current_http_request() {
+		if ( self::$mcp_recovery_scope_evaluated ) return;
+		self::$mcp_recovery_scope_evaluated = true;
+		self::$mcp_recovery_request = self::current_http_request_targets_mad4b_mcp();
+		if ( self::$mcp_recovery_request ) return;
+
+		$callbacks = array(
+			array( 'type' => 'action', 'hook' => 'rest_api_init', 'callback' => array( 'MAD4B_SCP_MCP_Registration_Bridge', 'verify_adapter_init_after_rest' ), 'priority' => PHP_INT_MAX ),
+			array( 'type' => 'action', 'hook' => 'rest_api_init', 'callback' => array( 'MAD4B_SCP_MCP_Registration_Rescue', 'after_rest_init' ), 'priority' => PHP_INT_MAX - 1 ),
+			array( 'type' => 'filter', 'hook' => 'rest_pre_dispatch', 'callback' => array( 'MAD4B_SCP_MCP_Registration_Rescue', 'before_rest_dispatch' ), 'priority' => -PHP_INT_MAX ),
+			array( 'type' => 'action', 'hook' => 'init', 'callback' => array( 'MAD4B_SCP_MCP_Registration_Bridge', 'recover_missed_rest_lifecycle' ), 'priority' => 9999 ),
+		);
+
+		foreach ( $callbacks as $entry ) {
+			$bound = 'filter' === $entry['type']
+				? false !== has_filter( $entry['hook'], $entry['callback'] )
+				: false !== has_action( $entry['hook'], $entry['callback'] );
+			if ( ! $bound ) continue;
+
+			$removed = 'filter' === $entry['type']
+				? remove_filter( $entry['hook'], $entry['callback'], $entry['priority'] )
+				: remove_action( $entry['hook'], $entry['callback'], $entry['priority'] );
+			if ( $removed ) self::$mcp_recovery_callbacks_removed[] = $entry['hook'] . ':' . (string) $entry['priority'];
+		}
+	}
+
+	private static function current_http_request_targets_mad4b_mcp() {
+		$route = '';
+		if ( isset( $_GET['rest_route'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+			$route = wp_unslash( (string) $_GET['rest_route'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		}
+
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed below, never executed.
+		if ( '' === $route && '' !== $uri ) {
+			$query = wp_parse_url( $uri, PHP_URL_QUERY );
+			if ( is_string( $query ) && '' !== $query ) {
+				$parsed = array();
+				parse_str( $query, $parsed );
+				if ( isset( $parsed['rest_route'] ) && is_string( $parsed['rest_route'] ) ) $route = $parsed['rest_route'];
+			}
+		}
+
+		if ( self::is_mad4b_mcp_route( $route ) ) return true;
+		if ( '' === $uri ) return false;
+
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) || '' === $path ) return false;
+		$path = '/' . ltrim( rawurldecode( $path ), '/' );
+		$prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+		$rest_prefix = '/' . $prefix . '/';
+		if ( 0 === strpos( $path, $rest_prefix ) ) $path = '/' . ltrim( substr( $path, strlen( $rest_prefix ) ), '/' );
+		return self::is_mad4b_mcp_route( $path );
+	}
+
+	private static function is_mad4b_mcp_route( $route ) {
+		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
+		if ( '/' === $route ) return false;
+
+		$allowed = array(
+			'/mcp/mad4b-read',
+			'/mcp/mad4b-chatgpt',
+			'/mcp/mad4b-content',
+			'/mcp/mad4b-write',
+			'/mcp/mad4b-admin',
+			'/mcp/mad4b-breakglass',
+		);
+		return in_array( $route, $allowed, true );
 	}
 
 	public static function register_ability() {
@@ -54,13 +132,19 @@ final class MAD4B_SCP_REST_Compatibility {
 			'control_plane_filters_rest_authentication_errors' => $control_plane_on_rest_auth,
 			'rest_enabled_hook' => $rest_enabled_hooks,
 			'rest_authentication_errors_hook' => $rest_auth_hooks,
-			'control_plane_rest_pre_dispatch_scope' => array( '/mcp/mad4b-chatgpt' ),
+			'control_plane_rest_pre_dispatch_scope' => array(
+				'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-content',
+				'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-breakglass',
+			),
+			'mcp_recovery_scope_evaluated' => self::$mcp_recovery_scope_evaluated,
+			'current_http_request_targets_mad4b_mcp' => self::$mcp_recovery_request,
+			'mcp_recovery_callbacks_removed_for_unrelated_request' => array_values( self::$mcp_recovery_callbacks_removed ),
 			'wpml' => $wpml,
 			'wpml_internal_probe_ready' => ! empty( $wpml['ready'] ),
 			'query_parameters_preserved' => ! empty( $wpml['query_parameters_preserved'] ),
 			'external_http_probe_performed' => false,
 			'external_test_url' => self::wpml_external_test_url(),
-			'note' => 'The internal probe exercises the WordPress REST dispatcher and live rest_pre_dispatch filters in-process. CDN/WAF/Apache/Nginx failures remain external hosting evidence and require a separate HTTP acceptance probe.',
+			'note' => 'MAD4B MCP recovery is disarmed on non-MAD4B HTTP requests before ordinary REST bootstrap. The internal WPML probe exercises the remaining WordPress REST dispatcher in-process.',
 		);
 	}
 
