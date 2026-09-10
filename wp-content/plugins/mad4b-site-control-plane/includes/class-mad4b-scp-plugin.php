@@ -47,7 +47,7 @@ final class MAD4B_SCP_Plugin {
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
-		if ( ! is_wp_error( self::$schema_error ) ) {
+		if ( ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation() ) {
 			MAD4B_SCP_Skill_Seeder::bootstrap();
 			MAD4B_SCP_Skill_Provider_Discovery::bootstrap();
 		}
@@ -121,6 +121,14 @@ final class MAD4B_SCP_Plugin {
 
 	private static function oauth_transport_enabled() {
 		return defined( 'MAD4B_MCP_OAUTH_ENABLED' ) && true === constant( 'MAD4B_MCP_OAUTH_ENABLED' );
+	}
+
+	private static function request_requires_skill_reconciliation() {
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) ) {
+			return MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime();
+		}
+		return false;
 	}
 
 	private static function bind_local_oauth_subject_compatibility() {
