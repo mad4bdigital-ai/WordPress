@@ -47,7 +47,10 @@ final class MAD4B_SCP_Plugin {
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
-		if ( ! is_wp_error( self::$schema_error ) ) MAD4B_SCP_Skill_Seeder::bootstrap();
+		if ( ! is_wp_error( self::$schema_error ) ) {
+			MAD4B_SCP_Skill_Seeder::bootstrap();
+			MAD4B_SCP_Skill_Provider_Discovery::bootstrap();
+		}
 		if ( is_wp_error( self::$schema_error ) ) add_action( 'admin_notices', array( __CLASS__, 'schema_notice' ) );
 
 		MAD4B_SCP_Admin_UI::boot();
