@@ -205,3 +205,13 @@ jobs:
           if ( function_exists( 'rest_get_server' ) ) rest_get_server();
           PHP
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-web-preprimed-lifecycle.php
+
+      - name: Prove missing Adapter init after normal REST bootstrap self-heals without global replay
+        shell: bash
+        env:
+          MAD4B_TEST_WP_PATH: /tmp/mad4b-web-wordpress
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-web-wordpress
+          rm -f "$WP_PATH/wp-content/mu-plugins/000-aaa-rest-prime.php"
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-web-postcondition-recovery.php
