@@ -75,6 +75,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'ready' => ! empty( $result['ready'] ),
 			'evidence_digest' => $current_digest,
 			'write_tool_count' => isset( $result['write_tool_count'] ) ? (int) $result['write_tool_count'] : 0,
+			'provider_blocked_write_tool_count' => isset( $result['provider_blocked_write_tool_count'] ) ? (int) $result['provider_blocked_write_tool_count'] : 0,
 			'blockers' => isset( $result['blockers'] ) ? $result['blockers'] : array(),
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
@@ -167,12 +168,24 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 			if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) $metadata_mismatch[] = $ability_name;
 		}
+		$provider_blocked_write_tools = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
+		$provider_blocked_mount_leaks = array();
+		foreach ( $provider_blocked_write_tools as $blocked_tool ) {
+			$blocked_ability = isset( $blocked_tool['ability'] ) ? (string) $blocked_tool['ability'] : '';
+			if ( '' === $blocked_ability ) continue;
+			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $blocked_ability )
+				|| MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $blocked_ability ) ) {
+				$provider_blocked_mount_leaks[] = $blocked_ability;
+			}
+		}
+
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
 		$checks['all_write_tools_mounted_on_authority'] = empty( $missing_write_mounts );
 		$checks['all_write_tools_exposed_on_same_plugin_transport'] = empty( $missing_remote_mounts );
 		$checks['all_write_tools_annotated_mutating'] = empty( $metadata_mismatch );
+		$checks['provider_uncertified_write_tools_safely_unmounted'] = empty( $provider_blocked_mount_leaks );
 		$checks['breakglass_absent_from_write_inventory'] = empty( $breakglass );
-		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		// approval-plan is a mutation because it persists a pending ticket. It must
 		// itself use NHI + exact mad4b-write grant + budget, but it is the only remote
@@ -216,6 +229,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'authority' => $authority,
 			'planner' => $planner,
 			'write_tools' => $tools,
+			'provider_blocked_write_tools' => $provider_blocked_write_tools,
+			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
 			'missing_remote_mounts' => $missing_remote_mounts,
 			'metadata_mismatch' => $metadata_mismatch,
@@ -232,6 +247,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'checks' => $checks,
 			'write_tool_count' => count( $tools ),
 			'write_tools' => $tools,
+			'provider_blocked_write_tool_count' => count( $provider_blocked_write_tools ),
+			'provider_blocked_write_tools' => $provider_blocked_write_tools,
+			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
 			'missing_remote_mounts' => $missing_remote_mounts,
 			'metadata_mismatch' => $metadata_mismatch,
