@@ -131,9 +131,9 @@ jobs:
               raise SystemExit('Metadata bridge is not loaded by the Control Plane')
           if 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();' not in main:
               raise SystemExit('Metadata bridge is not bootstrapped')
-          if 'Version: 0.4.0-rc.14' not in main or "MAD4B_SCP_VERSION', '0.4.0-rc.14'" not in main:
-              raise SystemExit('rc.14 plugin version mismatch')
-          if 'release=0.4.0-rc.14' not in marker:
-              raise SystemExit('rc.14 build marker mismatch')
+          if 'Version: 0.4.0-rc.15' not in main or "MAD4B_SCP_VERSION', '0.4.0-rc.15'" not in main:
+              raise SystemExit('rc.15 plugin version mismatch')
+          if 'release=0.4.0-rc.15' not in marker:
+              raise SystemExit('rc.15 build marker mismatch')
 
           print('mad4b-admin-performance.v6: PASS')
