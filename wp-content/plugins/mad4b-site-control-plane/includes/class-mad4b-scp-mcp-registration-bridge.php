@@ -147,7 +147,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			self::$missed_rest_recovery_state = 'adapter_initialized_before_recovery_execution';
 			return;
 		}
-		if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_get_ability' ) ) {
+		if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) ) {
 			self::$missed_rest_recovery_blocker = 'abilities_api_unavailable';
 			self::$missed_rest_recovery_state = 'blocked';
 			return;
@@ -160,7 +160,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			return;
 		}
 		foreach ( array( 'mad4b/site-info', 'mad4b/content-update-post' ) as $sentinel ) {
-			if ( ! is_object( wp_get_ability( $sentinel ) ) ) {
+			if ( ! wp_has_ability( $sentinel ) || ! is_object( wp_get_ability( $sentinel ) ) ) {
 				self::$missed_rest_recovery_blocker = 'mad4b_ability_registry_incomplete';
 				self::$missed_rest_recovery_state = 'blocked';
 				return;
