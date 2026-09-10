@@ -6,6 +6,7 @@ if ( ! is_string( $path ) || '' === $path ) {
 	exit( 1 );
 }
 
+if ( ! defined( 'WP_ADMIN' ) ) define( 'WP_ADMIN', true );
 $_SERVER['HTTP_HOST'] = 'staging.egypttourgates.com';
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -19,8 +20,8 @@ if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge' ) ) {
 }
 
 $status = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::status();
-if ( empty( $status['eligible'] ) || empty( $status['hook_registered'] ) ) {
-	fwrite( STDERR, 'Metadata bridge is not active on exact governed Staging: ' . wp_json_encode( $status ) . "\n" );
+if ( empty( $status['eligible'] ) || empty( $status['hook_registered'] ) || empty( $status['admin_request_only'] ) ) {
+	fwrite( STDERR, 'Metadata bridge is not active on exact governed Staging admin: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
 
