@@ -162,7 +162,12 @@ for marker in [
     "control_plane_not_on_rest_enabled_hook",
     "control_plane_not_on_rest_authentication_hook",
     "control_plane_does_not_block_wpml_rest",
-    "wpml_query_parameters_preserved",
+    "mcp_recovery_scope_evaluated",
+    "mcp_recovery_scoped_to_mad4b_routes",
+    "external_wpml_acceptance_not_claimed_locally",
+    "external_wpml_acceptance_required",
+    "external_wpml_acceptance_verified",
+    "external_wpml_test_url",
     "exact_approval_required_for_remote_write",
     "approval_planner_bootstrap_exception",
     "external_client_tools_verified",
@@ -170,6 +175,16 @@ for marker in [
 ]:
     if marker not in cert:
         raise SystemExit(f'missing write certification invariant: {marker}')
+
+# A missing WPML route inside an already-running MAD4B MCP request is diagnostic
+# evidence only. Local write certification must not claim or require external WPML
+# success; the real endpoint remains a separate mandatory live-acceptance gate.
+for forbidden in [
+    "$checks['wpml_query_parameters_preserved']",
+    "$checks['wpml_internal_probe_ready_or_not_active']",
+]:
+    if forbidden in cert:
+        raise SystemExit(f'write certification re-coupled to in-process WPML route state: {forbidden}')
 
 if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not inspect REST before MCP transports are constructed')
@@ -209,4 +224,4 @@ caps = portable['extensions']['com.openai']['interface'].get('capabilities', [])
 if caps != ['Read', 'Write']:
     raise SystemExit(f'portable Plugin capability contract must be [Read, Write], got {caps!r}')
 
-print('mad4b.staging-write-authority.v4: PASS')
+print('mad4b.staging-write-authority.v5: PASS')
