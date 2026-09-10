@@ -22,8 +22,8 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		// The MCP Adapter intentionally initializes lazily on rest_api_init. Prime
 		// WordPress' canonical in-process REST lifecycle before reading counters so
 		// this notice does not permanently report the pre-initialization snapshot.
-		// Connection_Status uses the same rest_get_server() lifecycle later on the
-		// page; this moves that read-only/in-memory initialization earlier only.
+		// If REST was already primed before MAD4B loaded, the bridge's bounded init
+		// recovery has already run by the time admin_notices renders.
 		if ( function_exists( 'rest_get_server' ) ) rest_get_server();
 
 		$status = MAD4B_SCP_MCP_Registration_Bridge::status();
@@ -53,6 +53,13 @@ final class MAD4B_SCP_MCP_Registration_Diagnostics_Admin {
 		self::row( 'Control Plane build marker matches disk', ! empty( $build['marker_matches_disk'] ) ? 'yes' : 'no' );
 		self::row( 'Bridge hook bound', $hook_bound ? 'yes' : 'no' );
 		self::row( 'Adapter init happened before bridge boot', $missed ? 'yes' : 'no' );
+		self::row( 'REST API init happened before bridge boot', ! empty( $status['rest_init_seen_before_bridge_boot'] ) ? 'yes' : 'no' );
+		self::row( 'Missed REST recovery scheduled', ! empty( $status['missed_rest_recovery_scheduled'] ) ? 'yes' : 'no' );
+		self::row( 'Missed REST recovery attempted', ! empty( $status['missed_rest_recovery_attempted'] ) ? 'yes' : 'no' );
+		self::row( 'Missed REST recovery succeeded', ! empty( $status['missed_rest_recovery_succeeded'] ) ? 'yes' : 'no' );
+		self::row( 'Missed REST recovery route count', isset( $status['missed_rest_recovery_route_count'] ) ? (string) (int) $status['missed_rest_recovery_route_count'] : '0' );
+		self::row( 'Missed REST recovery state', isset( $status['missed_rest_recovery_state'] ) ? sanitize_key( (string) $status['missed_rest_recovery_state'] ) : '' );
+		self::row( 'Missed REST recovery blocker', isset( $status['missed_rest_recovery_blocker'] ) && '' !== (string) $status['missed_rest_recovery_blocker'] ? sanitize_key( (string) $status['missed_rest_recovery_blocker'] ) : 'none' );
 		self::row( 'Adapter runtime from official plugin', $official ? 'yes' : 'no' );
 		self::row( 'Adapter runtime source', isset( $status['adapter_runtime_source'] ) ? $status['adapter_runtime_source'] : '' );
 		self::row( 'Adapter runtime version', isset( $status['adapter_runtime_version'] ) ? $status['adapter_runtime_version'] : '' );
