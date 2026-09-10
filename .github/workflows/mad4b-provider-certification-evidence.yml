@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   capture:
-    name: Exact packaged provider evidence
+    name: Exact provider certification evidence
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -36,7 +36,26 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
 
-      - name: Capture deterministic provider package evidence
+      - name: Fetch official exact-version candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mad4b-provider-candidates
+          fetch_candidate() {
+            local name="$1" url="$2"
+            if curl -fL --retry 2 --retry-delay 1 --connect-timeout 15 --max-time 120 \
+              -o "/tmp/mad4b-provider-candidates/${name}.zip" "$url"; then
+              echo "official candidate available: ${name}"
+            else
+              rm -f "/tmp/mad4b-provider-candidates/${name}.zip"
+              echo "official candidate unavailable: ${name}"
+            fi
+          }
+          fetch_candidate elementor-4.2.4 https://downloads.wordpress.org/plugin/elementor.4.2.4.zip
+          fetch_candidate jet-engine-3.8.15 https://downloads.wordpress.org/plugin/jet-engine.3.8.15.zip
+          fetch_candidate jet-smart-filters-3.8.5 https://downloads.wordpress.org/plugin/jet-smart-filters.3.8.5.zip
+
+      - name: Capture deterministic provider evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -44,52 +63,68 @@ jobs:
           import hashlib, json, pathlib, re, zipfile
 
           root = pathlib.Path('wp-content/plugins')
-          contract_path = root / 'mad4b-site-control-plane/config/certified-providers.json'
-          contract = json.loads(contract_path.read_text(encoding='utf-8'))
-          specs = {
-              'elementor': ('elementor.zip', 'elementor/elementor.php'),
-              'jetengine': ('jet-engine.zip', 'jet-engine/jet-engine.php'),
-              'jetsmartfilters': ('jet-smart-filters.zip', 'jet-smart-filters/jet-smart-filters.php'),
+          contract = json.loads((root / 'mad4b-site-control-plane/config/certified-providers.json').read_text(encoding='utf-8'))
+          baseline = {
+              'elementor': (root / 'elementor.zip', 'elementor/elementor.php'),
+              'jetengine': (root / 'jet-engine.zip', 'jet-engine/jet-engine.php'),
+              'jetsmartfilters': (root / 'jet-smart-filters.zip', 'jet-smart-filters/jet-smart-filters.php'),
           }
-          out = {
-              'contract': 'mad4b.provider-certification-evidence.v1',
-              'source_sha': pathlib.Path('.git/HEAD').read_text().strip() if pathlib.Path('.git/HEAD').is_file() else '',
-              'providers': {},
+          candidates = {
+              'elementor': (pathlib.Path('/tmp/mad4b-provider-candidates/elementor-4.2.4.zip'), 'elementor/elementor.php', '4.2.4', 'wordpress.org'),
+              'jetengine': (pathlib.Path('/tmp/mad4b-provider-candidates/jet-engine-3.8.15.zip'), 'jet-engine/jet-engine.php', '3.8.15', 'wordpress.org'),
+              'jetsmartfilters': (pathlib.Path('/tmp/mad4b-provider-candidates/jet-smart-filters-3.8.5.zip'), 'jet-smart-filters/jet-smart-filters.php', '3.8.5', 'wordpress.org'),
           }
-          for provider, (archive_name, plugin_entry) in specs.items():
-              archive = root / archive_name
-              if not archive.is_file():
-                  raise SystemExit(f'missing archive: {archive}')
+
+          def inspect(provider, archive, plugin_entry):
               raw = archive.read_bytes()
-              archive_sha = hashlib.sha256(raw).hexdigest()
               with zipfile.ZipFile(archive) as zf:
                   names = set(zf.namelist())
                   if plugin_entry not in names:
-                      raise SystemExit(f'{provider}: missing main plugin entry {plugin_entry}')
+                      raise SystemExit(f'{provider}: missing main plugin entry {plugin_entry} in {archive}')
                   header = zf.read(plugin_entry).decode('utf-8', errors='replace')[:32768]
                   match = re.search(r'^\s*\*?\s*Version:\s*([^\r\n]+)', header, re.I | re.M)
                   if not match:
-                      raise SystemExit(f'{provider}: Version header not found')
-                  version = match.group(1).strip()
-                  old = contract['providers'][provider]
-                  critical = {}
-                  missing = []
+                      raise SystemExit(f'{provider}: Version header not found in {archive}')
                   prefix = plugin_entry.rsplit('/', 1)[0] + '/'
-                  for rel in old.get('critical_files', {}):
+                  critical, missing = {}, []
+                  for rel in contract['providers'][provider].get('critical_files', {}):
                       member = prefix + rel
                       if member not in names:
                           missing.append(rel)
-                          continue
-                      critical[rel] = hashlib.sha256(zf.read(member)).hexdigest()
-              out['providers'][provider] = {
-                  'archive': archive_name,
-                  'archive_sha256': archive_sha,
+                      else:
+                          critical[rel] = hashlib.sha256(zf.read(member)).hexdigest()
+              return {
+                  'archive_sha256': hashlib.sha256(raw).hexdigest(),
                   'archive_bytes': len(raw),
-                  'version': version,
+                  'version': match.group(1).strip(),
                   'critical_files': critical,
                   'critical_files_missing': missing,
                   'critical_file_count': len(critical),
               }
+
+          out = {
+              'contract': 'mad4b.provider-certification-evidence.v2',
+              'source_sha': pathlib.Path('.git/HEAD').read_text().strip(),
+              'providers': {},
+          }
+          for provider, (archive, plugin_entry) in baseline.items():
+              item = {'repository_baseline': inspect(provider, archive, plugin_entry)}
+              candidate, candidate_entry, expected_version, authority = candidates[provider]
+              if candidate.is_file():
+                  exact = inspect(provider, candidate, candidate_entry)
+                  exact['authority'] = authority
+                  exact['expected_version'] = expected_version
+                  exact['version_match'] = exact['version'] == expected_version
+                  exact['critical_manifest_complete'] = not exact['critical_files_missing']
+                  item['official_candidate'] = exact
+              else:
+                  item['official_candidate'] = {
+                      'authority': authority,
+                      'expected_version': expected_version,
+                      'available': False,
+                  }
+              out['providers'][provider] = item
+
           pathlib.Path('provider-certification-evidence.json').write_text(
               json.dumps(out, indent=2, sort_keys=True) + '\n', encoding='utf-8'
           )
@@ -101,7 +136,7 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo '## Exact packaged provider certification evidence'
+            echo '## Exact provider certification evidence'
             echo
             echo '```json'
             cat provider-certification-evidence.json
