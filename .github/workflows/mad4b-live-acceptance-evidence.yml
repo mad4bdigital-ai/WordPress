@@ -212,7 +212,22 @@ jobs:
           cp -a plugins/mad4b-wordpress "$stage/portable/mad4b-wordpress"
           php /tmp/wp-cli.phar eval '
             $id = MAD4B_SCP_Skill_Snapshot_Identity::build();
-            if ( empty( $id["ready"] ) || empty( $id["identity_token"] ) || 6 !== (int) $id["skill_count"] ) { fwrite( STDERR, wp_json_encode( $id ) ); exit( 1 ); }
+            $expected = array(
+              "connection:mad4b-chatgpt:wordpress-connection-diagnostics",
+              "site:_site:wordpress-site-diagnostics",
+              "workflow:archive-audit:wordpress-archive-audit",
+              "workflow:change-safety:wordpress-change-safety",
+            );
+            $observed = array();
+            foreach ( isset( $id["entries"] ) && is_array( $id["entries"] ) ? $id["entries"] : array() as $entry ) {
+              if ( isset( $entry["logical_id"] ) ) $observed[] = (string) $entry["logical_id"];
+            }
+            sort( $expected, SORT_STRING );
+            sort( $observed, SORT_STRING );
+            if ( empty( $id["ready"] ) || empty( $id["identity_token"] ) || count( $expected ) !== (int) $id["skill_count"] || $expected !== $observed ) {
+              fwrite( STDERR, wp_json_encode( $id ) );
+              exit( 1 );
+            }
             echo $id["identity_token"];
           ' --path="$WP_PATH" --user=mad4b-ci-admin > "$stage/portable/mad4b-wordpress/MAD4B-SNAPSHOT-ID.txt"
           printf '\n' >> "$stage/portable/mad4b-wordpress/MAD4B-SNAPSHOT-ID.txt"
@@ -227,6 +242,9 @@ jobs:
           )
           unzip -tqq "$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip"
           unzip -l "$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip" | grep -Fq 'mad4b-wordpress/MAD4B-SNAPSHOT-ID.txt'
+          for skill in elementor-dynamic-content jetengine-content-modeling wordpress-archive-audit wordpress-change-safety wordpress-connection-diagnostics wordpress-site-diagnostics; do
+            unzip -l "$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip" | grep -Fq "mad4b-wordpress/skills/${skill}/SKILL.md"
+          done
 
       - name: Emit exact artifact manifest and checksums
         shell: bash
