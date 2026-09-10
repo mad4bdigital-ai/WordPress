@@ -6,8 +6,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Local certification for the exact-origin governed Staging write plane.
  *
  * This proves WordPress-side authority, mounting, approval bootstrapping,
- * REST/WPML compatibility and non-leakage. It does not claim that the external
- * ChatGPT client has refreshed its tool snapshot or executed a mutation.
+ * local REST isolation and non-leakage. External WPML HTTP acceptance and
+ * external ChatGPT tool refresh remain separate live-acceptance gates.
  */
 final class MAD4B_SCP_Write_Runtime_Certification {
 	const CONTRACT = 'mad4b.write-runtime-certification.v2';
@@ -28,7 +28,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		if ( ! function_exists( 'wp_register_ability' ) || wp_has_ability( 'mad4b/write-runtime-certification' ) ) return;
 		wp_register_ability( 'mad4b/write-runtime-certification', array(
 			'label' => 'Get Governed Write Runtime Certification',
-			'description' => 'Read exact-origin Staging write authority, NHI grants, approval bootstrap/enforcement, transport mounting and REST compatibility evidence.',
+			'description' => 'Read exact-origin Staging write authority, NHI grants, approval bootstrap/enforcement, transport mounting and local REST isolation evidence.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'status' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
@@ -79,6 +79,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'blockers' => isset( $result['blockers'] ) ? $result['blockers'] : array(),
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
+			'external_wpml_acceptance_required' => true,
+			'external_wpml_acceptance_verified' => false,
 			'external_client_tools_verified' => false,
 		), ! empty( $result['ready'] ) ? 'ok' : 'blocked' );
 		if ( is_wp_error( $record ) ) {
@@ -109,8 +111,10 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'blockers' => array( 'write_runtime_certification_not_observed' ),
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
+			'external_wpml_acceptance_required' => true,
+			'external_wpml_acceptance_verified' => false,
 			'external_client_tools_verified' => false,
-			'external_client_action' => 'Refresh/Scan Tools for the same Plugin after this exact Staging build is deployed, then verify the write tool inventory through ChatGPT.',
+			'external_client_action' => 'Run the external WPML HTTP acceptance and Refresh/Scan Tools for the same Plugin after this exact Staging build is deployed.',
 		);
 	}
 
@@ -124,6 +128,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'blockers' => array( $blocker ),
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
+			'external_wpml_acceptance_required' => true,
+			'external_wpml_acceptance_verified' => false,
 			'external_client_tools_verified' => false,
 			'persistence' => 'not_applicable',
 			'external_client_action' => 'Write runtime certification is evaluated only on the exact governed Staging origin.',
@@ -211,14 +217,29 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['no_wildcard_grants'] = empty( $counts['wildcard_grants'] );
 		if ( ! $checks['no_wildcard_grants'] ) $blockers[] = 'wildcard_grants_detected';
 
+		// Local certification proves only MAD4B's isolation from unrelated REST.
+		// The real WPML endpoint is an external acceptance gate because WPML may not
+		// register its route inside an already-running MAD4B MCP request lifecycle.
 		$rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
 		$checks['rest_enabled'] = ! empty( $rest['rest_enabled'] );
 		$checks['control_plane_not_on_rest_enabled_hook'] = empty( $rest['control_plane_filters_rest_enabled'] );
 		$checks['control_plane_not_on_rest_authentication_hook'] = empty( $rest['control_plane_filters_rest_authentication_errors'] );
 		$checks['control_plane_does_not_block_wpml_rest'] = empty( $rest['wpml']['control_plane_block_detected'] );
-		$checks['wpml_query_parameters_preserved'] = ! empty( $rest['wpml']['query_parameters_preserved'] );
-		$checks['wpml_internal_probe_ready_or_not_active'] = ! empty( $rest['wpml']['ready'] );
-		foreach ( array( 'rest_enabled', 'control_plane_not_on_rest_enabled_hook', 'control_plane_not_on_rest_authentication_hook', 'control_plane_does_not_block_wpml_rest', 'wpml_query_parameters_preserved', 'wpml_internal_probe_ready_or_not_active' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		$expected_rest_scope = array(
+			'/mcp/mad4b-read',
+			'/mcp/mad4b-chatgpt',
+			'/mcp/mad4b-content',
+			'/mcp/mad4b-write',
+			'/mcp/mad4b-admin',
+			'/mcp/mad4b-breakglass',
+		);
+		$actual_rest_scope = isset( $rest['control_plane_rest_pre_dispatch_scope'] ) && is_array( $rest['control_plane_rest_pre_dispatch_scope'] )
+			? array_values( $rest['control_plane_rest_pre_dispatch_scope'] )
+			: array();
+		$checks['mcp_recovery_scope_evaluated'] = ! empty( $rest['mcp_recovery_scope_evaluated'] );
+		$checks['mcp_recovery_scoped_to_mad4b_routes'] = $expected_rest_scope === $actual_rest_scope;
+		$checks['external_wpml_acceptance_not_claimed_locally'] = isset( $rest['external_http_probe_performed'] ) && false === $rest['external_http_probe_performed'];
+		foreach ( array( 'rest_enabled', 'control_plane_not_on_rest_enabled_hook', 'control_plane_not_on_rest_authentication_hook', 'control_plane_does_not_block_wpml_rest', 'mcp_recovery_scope_evaluated', 'mcp_recovery_scoped_to_mad4b_routes', 'external_wpml_acceptance_not_claimed_locally' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$peer = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array();
 		$checks['peer_inventory_ready'] = ! empty( $peer['inventory_ready'] );
@@ -261,10 +282,13 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'oauth_role' => 'identity_only',
 			'exact_approval_required_for_remote_write' => true,
 			'approval_planner_bootstrap_exception' => 'pending_ticket_creation_only',
+			'external_wpml_acceptance_required' => true,
+			'external_wpml_acceptance_verified' => false,
+			'external_wpml_test_url' => isset( $rest['external_test_url'] ) ? esc_url_raw( (string) $rest['external_test_url'] ) : '',
 			'external_client_tools_verified' => false,
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),
-			'external_client_action' => 'Refresh/Scan Tools in the same Plugin and verify this exact write inventory externally before merge.',
+			'external_client_action' => 'Run the real external WPML endpoint acceptance, then Refresh/Scan Tools in the same Plugin and verify this exact write inventory externally before merge.',
 		);
 	}
 }
