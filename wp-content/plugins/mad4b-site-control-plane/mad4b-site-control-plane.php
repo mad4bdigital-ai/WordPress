@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.11
+ * Version: 0.4.0-rc.12
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Requires Plugins: mcp-adapter
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.11' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.12' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -28,6 +28,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-impact-policy.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-approval-tickets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-budgets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-provider-isolation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-request-scope.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-peer-governance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-store.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-oauth-autoconfig.php';
@@ -120,6 +121,11 @@ MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap();
 // an integrity-checked early MU bootstrap for the next request. No plugin is
 // disabled and Production is never mutated.
 MAD4B_SCP_MCP_Runtime_Conflict_Guard::bootstrap();
+
+// On exact Staging, keep the official MCP Adapter completely out of unrelated
+// WordPress REST requests. Only MAD4B MCP transports and MAD4B Control Plane
+// diagnostics may enter the MCP/peer registration lifecycle.
+MAD4B_SCP_MCP_Request_Scope::bootstrap();
 
 // Register lazy Abilities/MCP callbacks before plugins_loaded. If another MU
 // component already primed REST, the bridge performs a bounded init-time
