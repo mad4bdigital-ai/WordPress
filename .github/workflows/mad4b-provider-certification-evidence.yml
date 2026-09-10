@@ -1,0 +1,117 @@
+name: MAD4B Provider Certification Evidence
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - '.github/workflows/mad4b-provider-certification-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-provider-certification-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Exact packaged provider evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Capture deterministic provider package evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, re, zipfile
+
+          root = pathlib.Path('wp-content/plugins')
+          contract_path = root / 'mad4b-site-control-plane/config/certified-providers.json'
+          contract = json.loads(contract_path.read_text(encoding='utf-8'))
+          specs = {
+              'elementor': ('elementor.zip', 'elementor/elementor.php'),
+              'jetengine': ('jet-engine.zip', 'jet-engine/jet-engine.php'),
+              'jetsmartfilters': ('jet-smart-filters.zip', 'jet-smart-filters/jet-smart-filters.php'),
+          }
+          out = {
+              'contract': 'mad4b.provider-certification-evidence.v1',
+              'source_sha': pathlib.Path('.git/HEAD').read_text().strip() if pathlib.Path('.git/HEAD').is_file() else '',
+              'providers': {},
+          }
+          for provider, (archive_name, plugin_entry) in specs.items():
+              archive = root / archive_name
+              if not archive.is_file():
+                  raise SystemExit(f'missing archive: {archive}')
+              raw = archive.read_bytes()
+              archive_sha = hashlib.sha256(raw).hexdigest()
+              with zipfile.ZipFile(archive) as zf:
+                  names = set(zf.namelist())
+                  if plugin_entry not in names:
+                      raise SystemExit(f'{provider}: missing main plugin entry {plugin_entry}')
+                  header = zf.read(plugin_entry).decode('utf-8', errors='replace')[:32768]
+                  match = re.search(r'^\s*\*?\s*Version:\s*([^\r\n]+)', header, re.I | re.M)
+                  if not match:
+                      raise SystemExit(f'{provider}: Version header not found')
+                  version = match.group(1).strip()
+                  old = contract['providers'][provider]
+                  critical = {}
+                  missing = []
+                  prefix = plugin_entry.rsplit('/', 1)[0] + '/'
+                  for rel in old.get('critical_files', {}):
+                      member = prefix + rel
+                      if member not in names:
+                          missing.append(rel)
+                          continue
+                      critical[rel] = hashlib.sha256(zf.read(member)).hexdigest()
+              out['providers'][provider] = {
+                  'archive': archive_name,
+                  'archive_sha256': archive_sha,
+                  'archive_bytes': len(raw),
+                  'version': version,
+                  'critical_files': critical,
+                  'critical_files_missing': missing,
+                  'critical_file_count': len(critical),
+              }
+          pathlib.Path('provider-certification-evidence.json').write_text(
+              json.dumps(out, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(out, indent=2, sort_keys=True))
+          PY
+
+      - name: Publish evidence summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '## Exact packaged provider certification evidence'
+            echo
+            echo '```json'
+            cat provider-certification-evidence.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-provider-certification-evidence-${{ env.SOURCE_SHA }}
+          path: provider-certification-evidence.json
+          if-no-files-found: error
+          retention-days: 14
