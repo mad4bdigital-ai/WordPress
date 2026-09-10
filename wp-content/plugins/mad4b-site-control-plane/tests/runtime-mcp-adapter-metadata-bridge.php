@@ -24,6 +24,10 @@ if ( empty( $status['eligible'] ) || empty( $status['hook_registered'] ) || empt
 	fwrite( STDERR, 'Metadata bridge is not active on exact governed Staging admin: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
+if ( ! isset( $status['fallback_priority'] ) || PHP_INT_MAX !== (int) $status['fallback_priority'] ) {
+	fwrite( STDERR, "Metadata bridge is not registered as the final fallback.\n" );
+	exit( 1 );
+}
 
 require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
 
@@ -77,6 +81,23 @@ if ( 0 !== $wordpress_org_requests ) {
 	exit( 1 );
 }
 
+// A real provider registered at a normal priority must win. The MAD4B bridge
+// is only the last false-sentinel fallback before Core would call WordPress.org.
+$provider_result = (object) array( 'provider' => 'existing-provider' );
+$provider_callback = static function ( $pre, $action, $args ) use ( $provider_result ) {
+	if ( false === $pre && 'plugin_information' === (string) $action && is_object( $args ) && isset( $args->slug ) && 'mcp-adapter' === (string) $args->slug ) {
+		return $provider_result;
+	}
+	return $pre;
+};
+add_filter( 'plugins_api', $provider_callback, 10, 3 );
+$preserved_provider = plugins_api( 'plugin_information', array( 'slug' => 'mcp-adapter' ) );
+remove_filter( 'plugins_api', $provider_callback, 10 );
+if ( $provider_result !== $preserved_provider ) {
+	fwrite( STDERR, "Metadata bridge replaced an existing provider response.\n" );
+	exit( 1 );
+}
+
 $other_slug = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::filter_plugin_information( false, 'plugin_information', (object) array( 'slug' => 'akismet' ) );
 if ( false !== $other_slug ) {
 	fwrite( STDERR, "Bridge changed another plugin slug.\n" );
@@ -92,7 +113,7 @@ if ( false !== $other_action ) {
 $existing = (object) array( 'sentinel' => 'preserve-me' );
 $preserved = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::filter_plugin_information( $existing, 'plugin_information', (object) array( 'slug' => 'mcp-adapter' ) );
 if ( $existing !== $preserved ) {
-	fwrite( STDERR, "Bridge replaced an earlier provider result.\n" );
+	fwrite( STDERR, "Bridge replaced a pre-existing direct result.\n" );
 	exit( 1 );
 }
 
@@ -103,8 +124,8 @@ foreach ( array( 'production_changed', 'other_plugin_api_requests_changed', 'out
 		exit( 1 );
 	}
 }
-if ( empty( $status['short_circuit_count'] ) ) {
-	fwrite( STDERR, "Bridge did not record the local short circuit.\n" );
+if ( 1 !== (int) $status['short_circuit_count'] ) {
+	fwrite( STDERR, 'Bridge short-circuited outside the exact fallback path: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
 
