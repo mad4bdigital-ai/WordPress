@@ -36,7 +36,21 @@ $fail = static function ( $message, $data = null ) {
 };
 
 if ( ! class_exists( 'MAD4B_SCP_MCP_Request_Scope' ) ) $fail( 'request-scope class unavailable' );
-if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) $fail( 'official MCP Adapter runtime unavailable' );
+if ( ! class_exists( '\\WP\\MCP\\Core\\McpAdapter' ) ) $fail( 'MCP Adapter runtime unavailable after normal active-plugin bootstrap' );
+
+$mu = isset( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] ) && is_array( $GLOBALS['mad4b_scp_mcp_mu_bootstrap'] )
+	? $GLOBALS['mad4b_scp_mcp_mu_bootstrap']
+	: array();
+if ( empty( $mu['eligible'] ) ) $fail( 'managed MU bootstrap was not eligible on exact Staging', $mu );
+if ( empty( $mu['request_scope_bypassed'] ) || ! empty( $mu['request_requires_mcp_runtime'] ) ) {
+	$fail( 'unrelated REST request entered the managed MU MCP bootstrap', $mu );
+}
+if ( 'non_mad4b_request_bypassed' !== ( isset( $mu['state'] ) ? (string) $mu['state'] : '' ) ) {
+	$fail( 'managed MU bootstrap did not record non-MAD4B bypass', $mu );
+}
+if ( ! empty( $mu['canonical_symbols_pinned'] ) || ! empty( $mu['canonical_autoloader_loaded'] ) || ! empty( $mu['adapter_instance_armed'] ) ) {
+	$fail( 'managed MU bootstrap loaded canonical MCP runtime on unrelated REST request', $mu );
+}
 
 $scope = MAD4B_SCP_MCP_Request_Scope::status();
 if ( empty( $scope['eligible'] ) ) $fail( 'request scope is not eligible on exact Staging', $scope );
@@ -44,7 +58,7 @@ if ( ! empty( $scope['current_request_requires_mcp_runtime'] ) ) $fail( 'WPML re
 
 $adapter = \WP\MCP\Core\McpAdapter::instance();
 if ( false !== has_action( 'rest_api_init', array( $adapter, 'init' ) ) ) {
-	$fail( 'official MCP Adapter init remained armed on unrelated REST request' );
+	$fail( 'MCP Adapter init remained armed on unrelated REST request' );
 }
 if ( did_action( 'mcp_adapter_init' ) > 0 ) $fail( 'MCP Adapter initialized before unrelated REST bootstrap' );
 
@@ -84,4 +98,4 @@ if ( ! empty( $scope['production_changed'] ) || ! empty( $scope['provider_settin
 	$fail( 'request scope reported forbidden side effects', $scope );
 }
 
-echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v1: PASS' . PHP_EOL;
+echo 'mad4b.site-control-plane.non-mcp-rest-isolation.v2: PASS' . PHP_EOL;
