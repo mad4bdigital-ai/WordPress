@@ -34,6 +34,7 @@ for marker in (
     "add_action( 'init', array( __CLASS__, 'recover_missed_rest_lifecycle' ), 9999 )",
     'public static function recover_missed_rest_lifecycle()',
     'wp_get_abilities();',
+    "wp_has_ability( $sentinel )",
     "wp_get_ability( $sentinel )",
     "array( 'mad4b/site-info', 'mad4b/content-update-post' )",
     "\\WP\\MCP\\Core\\McpAdapter::instance()",
@@ -83,26 +84,35 @@ require(bootstrap, 'MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();', 'boo
 require(bootstrap, "add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );", 'full-plugin-init-boundary')
 forbid(bootstrap, "add_action( 'plugins_loaded', array( 'MAD4B_SCP_Plugin', 'boot' )", 'no-pre-init-full-plugin-boot')
 
-# All Ability registration wiring must be present before any bootstrap that can
-# indirectly materialize the public registry. Registration remains distinct
-# from MCP exposure and mutation authorization; these calls only attach hooks.
-early_ability_wiring = (
+# The pre-init phase is registration-only. It may arm callbacks/filters that
+# populate the public catalog once WordPress fires wp_abilities_api_init, but it
+# must not run reconciliation/certification observers or write-authority boot.
+early_registration_wiring = (
     'MAD4B_SCP_Connection_Ability::boot();',
     'MAD4B_SCP_Governed_Ability_Overrides::boot();',
-    'MAD4B_SCP_Staging_Write_Authority::boot();',
+    "add_filter( 'wp_register_ability_args', array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' ), 70, 2 );",
+    "add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ), 35 );",
     'MAD4B_SCP_Staging_Write_Planning_Guard::boot();',
-    'MAD4B_SCP_REST_Compatibility::boot();',
-    'MAD4B_SCP_Write_Runtime_Certification::boot();',
+    "add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_REST_Compatibility', 'register_ability' ), 36 );",
+    "add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'register_ability' ), 37 );",
     'MAD4B_SCP_Governance_Abilities::boot();',
     'MAD4B_SCP_Skill_Abilities::boot();',
     'MAD4B_SCP_Skills_Adapter::boot();',
-    'MAD4B_SCP_Skill_Runtime_Certification::boot();',
 )
 metadata_bootstrap_index = bootstrap.index('MAD4B_SCP_MCP_Adapter_Metadata_Bridge::bootstrap();')
-for marker in early_ability_wiring:
+for marker in early_registration_wiring:
     require(bootstrap, marker, 'early-ability-registration-wiring')
     if bootstrap.index(marker) > metadata_bootstrap_index:
         raise SystemExit(f'FAIL early-ability-registration-order: {marker} must be wired before metadata/bootstrap execution')
+
+pre_metadata = bootstrap[:metadata_bootstrap_index]
+for forbidden_early_boot in (
+    'MAD4B_SCP_Staging_Write_Authority::boot();',
+    'MAD4B_SCP_REST_Compatibility::boot();',
+    'MAD4B_SCP_Write_Runtime_Certification::boot();',
+    'MAD4B_SCP_Skill_Runtime_Certification::boot();',
+):
+    forbid(pre_metadata, forbidden_early_boot, 'registration-only-pre-init-boundary')
 
 # Never probe the private registry directly. WordPress 6.9+ feature detection
 # must go through wp_has_ability()/wp_get_abilities() before wp_get_ability().
@@ -194,4 +204,4 @@ forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v7: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v8: PASS')
