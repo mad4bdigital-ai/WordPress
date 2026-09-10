@@ -135,7 +135,7 @@ jobs:
           update_option( "active_plugins", $ordered );
           ' --path="$WP_PATH"
 
-      - name: Install current managed MU bootstrap without executing Staging WordPress
+      - name: Seed stale managed MU state without executing Staging WordPress
         shell: bash
         run: |
           set -euo pipefail
@@ -143,6 +143,18 @@ jobs:
           mkdir -p "$WP_PATH/wp-content/mu-plugins"
           cp wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php \
              "$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
+          # Preserve executable behavior but mark the installed copy as a prior
+          # managed contract and force a byte mismatch. The first rc.7 request
+          # must atomically reconcile it to the current source.
+          python3 - "$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php" <<'PY'
+          from pathlib import Path
+          import sys
+          p = Path(sys.argv[1])
+          text = p.read_text('utf-8')
+          text = text.replace('mad4b.mcp-adapter-mu-bootstrap.v3', 'mad4b.mcp-adapter-mu-bootstrap.v2', 1)
+          p.write_text(text + '\n// stale-managed-fixture\n', encoding='utf-8')
+          PY
+
           cat > "$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php" <<'PHP'
           <?php
           if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -153,11 +165,19 @@ jobs:
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
 
           # Move onto the exact governed origin directly in MySQL so the next
-          # process is the first Staging WordPress bootstrap after MU install.
+          # process is the first Staging WordPress bootstrap after stale MU seed.
           mysql --protocol=tcp -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress \
             -e "UPDATE wp_options SET option_value='https://staging.egypttourgates.com' WHERE option_name IN ('home','siteurl');"
 
-      - name: Prove canonical MCP lifecycle in a non-WPCLI process
+      - name: Prove first web request refreshes stale managed MU bytes
+        shell: bash
+        env:
+          MAD4B_TEST_WP_PATH: /tmp/mad4b-web-wordpress
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-mu-refresh-first-request.php
+
+      - name: Prove second web request closes canonical MCP lifecycle
         shell: bash
         env:
           MAD4B_TEST_WP_PATH: /tmp/mad4b-web-wordpress
