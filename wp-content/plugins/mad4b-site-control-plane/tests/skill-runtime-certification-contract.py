@@ -13,6 +13,9 @@ adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').
 provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
+write_authority = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
+write_cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 
 for marker in [
     "const STAGING_OPENAI_APP_ID = 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2'",
@@ -148,6 +151,7 @@ for marker in [
 for marker in [
     'class-mad4b-scp-skill-snapshot-identity.php',
     'class-mad4b-scp-skill-runtime-certification.php',
+    'class-mad4b-scp-live-truth.php',
 ]:
     if marker not in main:
         raise SystemExit(f'main plugin does not load {marker}')
@@ -168,4 +172,56 @@ if "add_action( 'admin_init', array( __CLASS__, 'observe' )" in cert:
 if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
     raise SystemExit('Skills adapter must remain read-only')
 
-print('mad4b.skill-runtime-certification.v2: PASS')
+# rc.19 live truth contract: read abilities must never use persistence as current
+# truth, early Ability materialization must be recoverable, and WPML route
+# presence inside an MCP request must remain diagnostic rather than a local gate.
+for marker in [
+    "const CONTRACT = 'mad4b.live-truth.v1'",
+    "const FRESHNESS_OPTION = 'mad4b_scp_write_runtime_certification_freshness_v1'",
+    "add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_live_read_callbacks' ), 100, 2 )",
+    "'mad4b/write-authority-status'",
+    "'mad4b/write-runtime-certification'",
+    "'mad4b/rest-compatibility-status'",
+    "'inspection_source' => 'live_read_only'",
+    "'persistence' => 'read_only_live_inspection'",
+    "'state' => 'stale'",
+    "'stale_persisted_certification'",
+    "'control_plane_version_changed'",
+    "'write_inventory_changed'",
+    "'provider_blocked_projection_changed'",
+    "'wpml_internal_probe_blocks_local_certification' => false",
+    "'external_wpml_acceptance_required' => true",
+    "'external_wpml_acceptance_verified' => false",
+]:
+    if marker not in live_truth:
+        raise SystemExit(f'missing rc.19 live truth/freshness invariant: {marker}')
+
+# Reconciliation may run every relevant request to hydrate in-memory authority,
+# but stable state must not append another audit record or rewrite the option.
+for marker in [
+    "'write_inventory_fingerprint'",
+    "$changed = ! is_array( $stored )",
+    "if ( $changed )",
+    "'persistence'] = 'unchanged'",
+]:
+    if marker not in write_authority:
+        raise SystemExit(f'missing no-churn authority reconciliation invariant: {marker}')
+
+for marker in [
+    "$runtime = MAD4B_SCP_Staging_Write_Authority::status();",
+    "$stored_stable",
+    "$runtime_stable",
+    "MAD4B_SCP_Staging_Write_Authority::reconcile();",
+]:
+    if marker not in plugin:
+        raise SystemExit(f'missing current-request authority recovery invariant: {marker}')
+
+# The legacy persisted certification remains a historical record. The read
+# ability itself is overridden by live truth, so it must not be converted into
+# a hidden mutating callback merely to make status green.
+if "'execute_callback' => array( __CLASS__, 'status' )" not in write_cert:
+    raise SystemExit('write certification persistence contract unexpectedly changed registration semantics')
+if "MAD4B_SCP_Live_Truth::boot_early();" not in main:
+    raise SystemExit('live truth bridge must be armed before Ability materialization')
+
+print('mad4b.skill-runtime-certification.v3: PASS')
