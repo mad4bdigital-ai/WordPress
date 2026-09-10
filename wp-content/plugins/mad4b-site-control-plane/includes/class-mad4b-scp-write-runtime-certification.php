@@ -157,7 +157,11 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $missing_write_mounts[] = $ability_name;
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $missing_remote_mounts[] = $ability_name;
-			$ability = function_exists( 'wp_get_ability' ) ? wp_get_ability( $ability_name ) : null;
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
+				$metadata_mismatch[] = $ability_name;
+				continue;
+			}
+			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) { $metadata_mismatch[] = $ability_name; continue; }
 			$meta = $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
@@ -175,7 +179,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		// write that cannot require a prior approval ticket. Its target is strictly
 		// the same Staging agent, mad4b-write, mutation class, never breakglass.
 		$planner = class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ? MAD4B_SCP_Staging_Write_Planning_Guard::status() : array();
-		$planner_ability = function_exists( 'wp_get_ability' ) ? wp_get_ability( 'mad4b/approval-plan' ) : null;
+		$planner_ability = function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) && wp_has_ability( 'mad4b/approval-plan' ) ? wp_get_ability( 'mad4b/approval-plan' ) : null;
 		$planner_meta = is_object( $planner_ability ) && method_exists( $planner_ability, 'get_meta' ) ? $planner_ability->get_meta() : array();
 		$planner_mcp = isset( $planner_meta['mcp'] ) && is_array( $planner_meta['mcp'] ) ? $planner_meta['mcp'] : array();
 		$checks['approval_planner_in_write_inventory'] = in_array( 'mad4b/approval-plan', $tools, true );
