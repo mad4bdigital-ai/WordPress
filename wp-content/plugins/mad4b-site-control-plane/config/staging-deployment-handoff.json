@@ -47,7 +47,8 @@
   "apply": {
     "source": "verified_control_plane_archive_from_exact_artifact",
     "backup_before_replace": true,
-    "atomic_replace_required": true,
+    "same_filesystem_rename_replace_required": true,
+    "maintenance_mode_during_swap": true,
     "activate_after_replace": true,
     "same_cycle_readback_required": true,
     "rollback_on_failed_readback": true,
