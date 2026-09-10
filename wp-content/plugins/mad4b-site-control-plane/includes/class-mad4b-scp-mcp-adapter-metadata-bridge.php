@@ -28,7 +28,10 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 		self::$booted = true;
 		if ( ! self::eligible() ) return;
 
-		add_filter( 'plugins_api', array( __CLASS__, 'filter_plugin_information' ), 5, 3 );
+		// This is a fallback, not an ownership claim. Let any existing provider
+		// answer first; only replace the final false sentinel that would send Core
+		// to WordPress.org for this exact non-directory dependency.
+		add_filter( 'plugins_api', array( __CLASS__, 'filter_plugin_information' ), PHP_INT_MAX, 3 );
 		self::$hook_registered = true;
 	}
 
@@ -67,6 +70,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 			'eligible' => self::eligible(),
 			'hook_registered' => self::$hook_registered,
 			'admin_request_only' => true,
+			'fallback_priority' => PHP_INT_MAX,
 			'slug' => self::SLUG,
 			'version' => self::VERSION,
 			'short_circuit_count' => self::$short_circuit_count,
