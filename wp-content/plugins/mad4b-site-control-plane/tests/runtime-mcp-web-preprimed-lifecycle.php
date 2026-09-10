@@ -59,7 +59,7 @@ if ( count( $expected ) !== (int) ( isset( $bridge['missed_rest_recovery_route_c
 	$fail( 'targeted recovered route count does not match expected server count' );
 }
 if ( ! is_object( wp_get_ability( 'mad4b/site-info' ) ) ) $fail( 'read ability sentinel missing' );
-if ( ! is_object( wp_get_ability( 'mad4b/content-update-post' ) ) $fail( 'write ability sentinel missing' );
+if ( ! is_object( wp_get_ability( 'mad4b/content-update-post' ) ) ) $fail( 'write ability sentinel missing' );
 
 $registrations = MAD4B_SCP_Servers::registration_status();
 foreach ( $expected as $server_id ) {
