@@ -139,7 +139,9 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 
 	public static function write_runtime_certification_status() {
-		$status = class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::status() : array();
+		$status = class_exists( 'MAD4B_SCP_Live_Truth' )
+			? MAD4B_SCP_Live_Truth::current_write_certification()
+			: ( class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::status() : array() );
 		if ( ! is_array( $status ) ) $status = array();
 		$wpml = self::external_wpml_receipt_status();
 		$external = self::external_handshake_attestation_status();
