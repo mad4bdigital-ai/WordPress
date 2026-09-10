@@ -177,9 +177,12 @@ require(impl['peer'], 'mcp_foreign_transport_unreviewed', 'implementation-foreig
 require(impl['peer'], 'HOSTINGER_BANNER_CONTROL_ROUTE', 'implementation-reviewed-hostinger-banner-control')
 require(impl['peer'], 'reviewed_non_transport_routes', 'implementation-reviewed-nontransport-inventory')
 for marker in (
-    'mad4b.mcp-provider-isolation.v2',
+    'mad4b.mcp-provider-isolation.v3',
     "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED'",
     "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'",
+    'public static function runtime_suppression_approved()',
+    'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;',
     "add_filter( 'wpmedia_mcp_oauth_server_enabled'",
     'filter_wpmedia_oauth_server_enabled',
     "add_filter( 'mcp_adapter_create_default_server'",
@@ -187,6 +190,8 @@ for marker in (
     "'unknown_routes_fail_closed' => true",
     "'changes_provider_settings' => false",
     "'creates_authority' => false",
+    "'legacy_enable_flag_alone_is_non_mutating' => true",
+    "'runtime_suppression_requires_second_gate' => true",
 ): require(impl['isolation'], marker, 'implementation-provider-isolation')
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post('):
     forbid(impl['isolation'], forbidden, 'implementation-provider-isolation-deny-only')
@@ -204,13 +209,15 @@ require(impl['connection'], '$connection_certified = empty( $certification_block
 require(impl['connection'], "'external_handshake_unverified'", 'implementation-unverified-handshake-blocker')
 require(impl['connection'], "'external_handshake_stale'", 'implementation-stale-handshake-blocker')
 for marker in (
-    'mad4b.external-handshake-evidence.v1',
+    'mad4b.external-handshake-evidence.v2',
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
     'verified_bearer_active()', "'initialize'", "'tools/list'",
     "hash( 'sha256', $session_id )", "update_option( self::OPTION, $evidence, false )",
-    "'credential_material_stored' => false", "'stale_build_evidence'", 'build_fingerprint()',
+    "'credential_material_stored' => false", "'stale_build_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
+    "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
+    'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
 ): require(impl['external_evidence'], marker, 'implementation-external-handshake-evidence')
 for forbidden in ("'access_token' =>", "'refresh_token' =>", "'authorization_header' =>", "'raw_token' =>", 'wp_remote_get(', 'wp_remote_post('):
     forbid(impl['external_evidence'], forbidden, 'implementation-external-evidence-secret-free')
