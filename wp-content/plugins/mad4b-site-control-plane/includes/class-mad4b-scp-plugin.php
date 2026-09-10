@@ -48,6 +48,11 @@ final class MAD4B_SCP_Plugin {
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
 		if ( ! is_wp_error( self::$schema_error ) && self::request_requires_skill_reconciliation() ) {
+			// Provider discovery derives adapter readiness from the in-memory adapter
+			// registry. Register the deterministic defaults before the first provider
+			// reconciliation so the result cannot depend on a later MCP/server call.
+			$adapter_registry = MAD4B_SCP_Adapter_Registry::instance();
+			$adapter_registry->register_defaults();
 			MAD4B_SCP_Skill_Seeder::bootstrap();
 			MAD4B_SCP_Skill_Provider_Discovery::bootstrap();
 		}
