@@ -258,8 +258,12 @@ jobs:
 
           grep -Fq "elementor/manage-elements" "$elementor"
           grep -Fq "expected_sha256" "$elementor"
-          grep -Fq "mad4b_elementor_legacy_write_denied" "$elementor"
-          grep -Fq "elementor_native_ability" "$elementor"
+          grep -Fq "mad4b.rollback.elementor-widget-settings.v1" "$elementor"
+          grep -Fq "remove_settings" "$elementor"
+          grep -Fq "mad4b_elementor_widget_not_unique" "$elementor"
+          grep -Fq "mad4b_elementor_setting_policy_denied" "$elementor"
+          grep -Fq "mad4b_elementor_readback_mismatch" "$elementor"
+          grep -Fq "replace_widget_settings" "$elementor"
 
           grep -Fq "mad4b_scp_allow_protected_meta_write" "$jetengine"
           grep -Fq "mad4b_scp_allow_protected_meta_read" "$jetengine"
