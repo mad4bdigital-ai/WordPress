@@ -7,6 +7,7 @@ bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
 
 PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v4'
+LEGACY_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3'
 
 
 def require(text, needle, label):
