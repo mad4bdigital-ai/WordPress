@@ -201,50 +201,59 @@ jobs:
             echo "false-pass protections: PASS\n";
           ' --path="$WP_PATH" --user=mad4b-ci-admin
 
-      - name: Build portable Plugin with exact runtime snapshot token
+      - name: Build portable Plugin from exact enabled runtime snapshot
         shell: bash
         run: |
           set -euo pipefail
           stage='/tmp/mad4b-live-acceptance'
           out="$stage/out"
           WP_PATH=/tmp/mad4b-live-acceptance-wp
-          mkdir -p "$stage/portable"
-          cp -a plugins/mad4b-wordpress "$stage/portable/mad4b-wordpress"
+          portable="$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip"
+          export PORTABLE_OUT="$portable"
+          export SNAPSHOT_ID_OUT="$out/MAD4B-SNAPSHOT-ID.txt"
+          export SNAPSHOT_JSON_OUT="$out/MAD4B-SNAPSHOT-IDENTITY.json"
+
           php /tmp/wp-cli.phar eval '
             $id = MAD4B_SCP_Skill_Snapshot_Identity::build();
-            $expected = array(
-              "connection:mad4b-chatgpt:wordpress-connection-diagnostics",
-              "site:_site:wordpress-site-diagnostics",
-              "workflow:archive-audit:wordpress-archive-audit",
-              "workflow:change-safety:wordpress-change-safety",
-            );
-            $observed = array();
-            foreach ( isset( $id["entries"] ) && is_array( $id["entries"] ) ? $id["entries"] : array() as $entry ) {
-              if ( isset( $entry["logical_id"] ) ) $observed[] = (string) $entry["logical_id"];
+            if ( empty( $id["ready"] ) || empty( $id["identity_token"] ) || empty( $id["entries"] ) || (int) $id["skill_count"] !== count( $id["entries"] ) ) { fwrite( STDERR, wp_json_encode( $id ) ); exit( 1 ); }
+            if ( "plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2" !== (string) $id["app_id"] ) { fwrite( STDERR, "unexpected Staging App mapping" ); exit( 1 ); }
+            $names = array_map( static function ( $entry ) { return isset( $entry["name"] ) ? (string) $entry["name"] : ""; }, $id["entries"] );
+            foreach ( array("wordpress-site-diagnostics","wordpress-connection-diagnostics","wordpress-archive-audit","wordpress-change-safety") as $required ) {
+              if ( ! in_array( $required, $names, true ) ) { fwrite( STDERR, "missing always-enabled Skill: " . $required ); exit( 1 ); }
             }
-            sort( $expected, SORT_STRING );
-            sort( $observed, SORT_STRING );
-            if ( empty( $id["ready"] ) || empty( $id["identity_token"] ) || count( $expected ) !== (int) $id["skill_count"] || $expected !== $observed ) {
-              fwrite( STDERR, wp_json_encode( $id ) );
-              exit( 1 );
-            }
-            echo $id["identity_token"];
-          ' --path="$WP_PATH" --user=mad4b-ci-admin > "$stage/portable/mad4b-wordpress/MAD4B-SNAPSHOT-ID.txt"
-          printf '\n' >> "$stage/portable/mad4b-wordpress/MAD4B-SNAPSHOT-ID.txt"
-          php /tmp/wp-cli.phar eval '
-            $id = MAD4B_SCP_Skill_Snapshot_Identity::build();
-            echo wp_json_encode( $id, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
-          ' --path="$WP_PATH" --user=mad4b-ci-admin > "$out/MAD4B-SNAPSHOT-IDENTITY.json"
-          cp "$stage/portable/mad4b-wordpress/MAD4B-SNAPSHOT-ID.txt" "$out/MAD4B-SNAPSHOT-ID.txt"
-          (
-            cd "$stage/portable"
-            zip -qr "$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip" mad4b-wordpress
-          )
-          unzip -tqq "$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip"
-          unzip -l "$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip" | grep -Fq 'mad4b-wordpress/MAD4B-SNAPSHOT-ID.txt'
-          for skill in elementor-dynamic-content jetengine-content-modeling wordpress-archive-audit wordpress-change-safety wordpress-connection-diagnostics wordpress-site-diagnostics; do
-            unzip -l "$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip" | grep -Fq "mad4b-wordpress/skills/${skill}/SKILL.md"
-          done
+            $export = MAD4B_SCP_Skill_Exporter::build_temp_zip();
+            if ( is_wp_error( $export ) ) { fwrite( STDERR, $export->get_error_code() . ": " . $export->get_error_message() ); exit( 1 ); }
+            if ( empty( $export["path"] ) || ! is_file( $export["path"] ) || (int) $export["skill_count"] !== (int) $id["skill_count"] || empty( $export["identity_token"] ) || ! hash_equals( (string) $id["identity_token"], (string) $export["identity_token"] ) ) { fwrite( STDERR, "canonical exporter/runtime identity mismatch" ); exit( 1 ); }
+            if ( ! copy( $export["path"], getenv( "PORTABLE_OUT" ) ) ) { fwrite( STDERR, "portable export copy failed" ); exit( 1 ); }
+            @unlink( $export["path"] );
+            if ( false === file_put_contents( getenv( "SNAPSHOT_ID_OUT" ), (string) $id["identity_token"] . "\n" ) ) { fwrite( STDERR, "snapshot token write failed" ); exit( 1 ); }
+            if ( false === file_put_contents( getenv( "SNAPSHOT_JSON_OUT" ), wp_json_encode( $id, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" ) ) { fwrite( STDERR, "snapshot identity write failed" ); exit( 1 ); }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
+          unzip -tqq "$portable"
+          python3 - "$portable" "$out/MAD4B-SNAPSHOT-IDENTITY.json" "$out/MAD4B-SNAPSHOT-ID.txt" <<'PY'
+          import json, sys, zipfile
+          from pathlib import Path
+
+          portable = Path(sys.argv[1])
+          identity = json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+          token = Path(sys.argv[3]).read_text(encoding='utf-8').strip()
+          expected = sorted(entry['name'] for entry in identity['entries'])
+          if not expected or identity['skill_count'] != len(expected):
+              raise SystemExit('runtime snapshot identity is empty or internally inconsistent')
+          with zipfile.ZipFile(portable) as zf:
+              names = zf.namelist()
+              actual = sorted(name.split('/')[1] for name in names if name.startswith('skills/') and name.count('/') == 2 and name.endswith('/SKILL.md'))
+              package_token = zf.read('MAD4B-SNAPSHOT-ID.txt').decode('utf-8').strip()
+              package_meta = json.loads(zf.read('MAD4B-SNAPSHOT.json').decode('utf-8'))
+          if actual != expected:
+              raise SystemExit(f'portable Skill exact-set mismatch: expected={expected!r} actual={actual!r}')
+          if package_token != token or package_token != identity['identity_token']:
+              raise SystemExit('portable snapshot token mismatch')
+          if package_meta.get('identity_token') != token or package_meta.get('skill_count') != identity['skill_count']:
+              raise SystemExit('portable snapshot metadata mismatch')
+          print(f'portable enabled-snapshot parity: PASS ({len(expected)} skills)')
+          PY
 
       - name: Emit exact artifact manifest and checksums
         shell: bash
