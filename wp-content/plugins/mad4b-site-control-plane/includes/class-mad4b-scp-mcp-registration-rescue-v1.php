@@ -119,7 +119,7 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 		self::$trigger = sanitize_key( (string) $trigger );
 		self::$state = 'recovery_started';
 
-		if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_get_ability' ) ) {
+		if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) ) {
 			return self::block( 'abilities_api_unavailable' );
 		}
 		wp_get_abilities();
@@ -127,9 +127,10 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 
 		// Recovery is intentionally limited to MCP registration. If the Abilities
 		// registry itself is incomplete, fail closed rather than reconstructing a
-		// second lifecycle from this rescue path.
+		// second lifecycle from this rescue path. Probe existence before lookup so
+		// an incomplete registry never emits an Ability-not-found doing_it_wrong.
 		foreach ( array( 'mad4b/site-info', 'mad4b/content-update-post' ) as $sentinel ) {
-			if ( ! is_object( wp_get_ability( $sentinel ) ) ) return self::block( 'mad4b_ability_registry_incomplete' );
+			if ( ! wp_has_ability( $sentinel ) || ! is_object( wp_get_ability( $sentinel ) ) ) return self::block( 'mad4b_ability_registry_incomplete' );
 		}
 
 		if ( ! self::official_runtime() ) return self::block( 'official_mcp_adapter_runtime_required' );
