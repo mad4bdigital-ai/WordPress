@@ -128,5 +128,6 @@ final class MAD4B_SCP_Execution_Fence {
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-reconciler.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-portable-snapshot-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-snapshot-finalizer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php';
 
 if ( function_exists( 'add_filter' ) ) MAD4B_SCP_Execution_Fence::boot();

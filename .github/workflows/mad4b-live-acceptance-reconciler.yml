@@ -27,12 +27,16 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-reconciler.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-portable-snapshot-attestation.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-snapshot-finalizer.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-reconciler-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/external-snapshot-finalizer-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-wpml-authority-runtime.php
       - name: Verify finalization architecture
         run: python3 wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-reconciler-contract.py
       - name: Prove durable mutation reconstruction
         run: php wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-reconciler-runtime.php
       - name: Prove client-bound external snapshot finalization
         run: php wp-content/plugins/mad4b-site-control-plane/tests/external-snapshot-finalizer-runtime.php
+      - name: Prove external WPML authority separation
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-wpml-authority-runtime.php
