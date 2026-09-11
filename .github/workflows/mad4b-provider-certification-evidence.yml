@@ -39,7 +39,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php
 
-      - name: Fetch official exact-version candidates
+      - name: Fetch public exact-version candidates where available
         shell: bash
         run: |
           set -euo pipefail
@@ -48,10 +48,10 @@ jobs:
             local name="$1" url="$2"
             if curl -fL --retry 2 --retry-delay 1 --connect-timeout 15 --max-time 120 \
               -o "/tmp/mad4b-provider-candidates/${name}.zip" "$url"; then
-              echo "official candidate available: ${name}"
+              echo "public candidate available: ${name}"
             else
               rm -f "/tmp/mad4b-provider-candidates/${name}.zip"
-              echo "official candidate unavailable: ${name}"
+              echo "public candidate unavailable: ${name}"
             fi
           }
           fetch_candidate elementor-4.2.4 https://downloads.wordpress.org/plugin/elementor.4.2.4.zip
@@ -63,21 +63,36 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import hashlib, json, pathlib, re, zipfile
+          import hashlib, json, os, pathlib, re, zipfile
 
           root = pathlib.Path('wp-content/plugins')
           config_root = root / 'mad4b-site-control-plane/config'
           contract = json.loads((config_root / 'certified-providers.json').read_text(encoding='utf-8'))
           profiles = json.loads((config_root / 'certified-provider-profiles.json').read_text(encoding='utf-8'))
-          baseline = {
+          repository_archives = {
               'elementor': (root / 'elementor.zip', 'elementor/elementor.php'),
               'jetengine': (root / 'jet-engine.zip', 'jet-engine/jet-engine.php'),
               'jetsmartfilters': (root / 'jet-smart-filters.zip', 'jet-smart-filters/jet-smart-filters.php'),
           }
-          candidates = {
-              'elementor': (pathlib.Path('/tmp/mad4b-provider-candidates/elementor-4.2.4.zip'), 'elementor/elementor.php', '4.2.4', 'wordpress.org'),
-              'jetengine': (pathlib.Path('/tmp/mad4b-provider-candidates/jet-engine-3.8.15.zip'), 'jet-engine/jet-engine.php', '3.8.15', 'wordpress.org'),
-              'jetsmartfilters': (pathlib.Path('/tmp/mad4b-provider-candidates/jet-smart-filters-3.8.5.zip'), 'jet-smart-filters/jet-smart-filters.php', '3.8.5', 'wordpress.org'),
+          requested = {
+              'elementor': {
+                  'public': pathlib.Path('/tmp/mad4b-provider-candidates/elementor-4.2.4.zip'),
+                  'entry': 'elementor/elementor.php',
+                  'version': '4.2.4',
+                  'public_authority': 'wordpress.org',
+              },
+              'jetengine': {
+                  'public': pathlib.Path('/tmp/mad4b-provider-candidates/jet-engine-3.8.15.zip'),
+                  'entry': 'jet-engine/jet-engine.php',
+                  'version': '3.8.15',
+                  'public_authority': 'wordpress.org',
+              },
+              'jetsmartfilters': {
+                  'public': pathlib.Path('/tmp/mad4b-provider-candidates/jet-smart-filters-3.8.5.zip'),
+                  'entry': 'jet-smart-filters/jet-smart-filters.php',
+                  'version': '3.8.5',
+                  'public_authority': 'wordpress.org',
+              },
           }
 
           def inspect(provider, archive, plugin_entry):
@@ -107,43 +122,75 @@ jobs:
                   'critical_file_count': len(critical),
               }
 
+          def verify_profile(provider, expected_version, exact, authority):
+              profile = profiles.get('providers', {}).get(provider, {}).get(expected_version)
+              if profile is None:
+                  return False
+              if profile.get('version') != expected_version:
+                  raise SystemExit(f'{provider}: profile version mismatch')
+              if profile.get('archive_sha256') != exact['archive_sha256']:
+                  raise SystemExit(f'{provider}: profile archive SHA mismatch')
+              if int(profile.get('archive_bytes', -1)) != exact['archive_bytes']:
+                  raise SystemExit(f'{provider}: profile archive byte count mismatch')
+              if profile.get('critical_files') != exact['critical_files']:
+                  raise SystemExit(f'{provider}: profile critical-file manifest mismatch')
+              if profile.get('certification_authority') != authority:
+                  raise SystemExit(f'{provider}: profile certification authority mismatch')
+              return True
+
           out = {
-              'contract': 'mad4b.provider-certification-evidence.v3',
-              'source_sha': pathlib.Path('.git/HEAD').read_text().strip(),
+              'contract': 'mad4b.provider-certification-evidence.v4',
+              'source_sha': os.environ.get('SOURCE_SHA', ''),
               'providers': {},
           }
-          for provider, (archive, plugin_entry) in baseline.items():
-              item = {'repository_baseline': inspect(provider, archive, plugin_entry)}
-              candidate, candidate_entry, expected_version, authority = candidates[provider]
-              profile = profiles.get('providers', {}).get(provider, {}).get(expected_version)
-              if candidate.is_file():
-                  exact = inspect(provider, candidate, candidate_entry)
+
+          inspected_repository = {}
+          for provider, (archive, plugin_entry) in repository_archives.items():
+              inspected_repository[provider] = inspect(provider, archive, plugin_entry)
+
+          for provider, req in requested.items():
+              expected_version = req['version']
+              repository = inspected_repository[provider]
+              item = {
+                  'repository_archive': repository,
+                  'repository_exact_version_match': repository['version'] == expected_version,
+              }
+
+              exact = None
+              authority = None
+              source = None
+              public = req['public']
+              if public.is_file():
+                  exact = inspect(provider, public, req['entry'])
+                  authority = req['public_authority']
+                  source = 'public_exact_archive'
+              elif repository['version'] == expected_version:
+                  exact = repository
+                  archive_name = repository_archives[provider][0].name
+                  authority = f'repository_artifact:wp-content/plugins/{archive_name}'
+                  source = 'repository_exact_archive'
+
+              if exact is not None:
+                  exact = dict(exact)
                   exact['authority'] = authority
+                  exact['source'] = source
                   exact['expected_version'] = expected_version
                   exact['version_match'] = exact['version'] == expected_version
                   exact['critical_manifest_complete'] = not exact['critical_files_missing']
                   if not exact['version_match'] or not exact['critical_manifest_complete']:
-                      raise SystemExit(f'{provider}: official exact-version candidate is incomplete')
-                  if profile is not None:
-                      if profile.get('version') != expected_version:
-                          raise SystemExit(f'{provider}: profile version mismatch')
-                      if profile.get('archive_sha256') != exact['archive_sha256']:
-                          raise SystemExit(f'{provider}: profile archive SHA mismatch')
-                      if int(profile.get('archive_bytes', -1)) != exact['archive_bytes']:
-                          raise SystemExit(f'{provider}: profile archive byte count mismatch')
-                      if profile.get('critical_files') != exact['critical_files']:
-                          raise SystemExit(f'{provider}: profile critical-file manifest mismatch')
-                      item['profile_verified'] = True
-                  else:
-                      item['profile_verified'] = False
-                  item['official_candidate'] = exact
+                      raise SystemExit(f'{provider}: selected exact-version candidate is incomplete')
+                  item['exact_candidate'] = exact
+                  item['profile_verified'] = verify_profile(provider, expected_version, exact, authority)
               else:
-                  item['official_candidate'] = {
-                      'authority': authority,
-                      'expected_version': expected_version,
+                  item['exact_candidate'] = {
                       'available': False,
+                      'expected_version': expected_version,
+                      'public_available': False,
+                      'repository_archive_version': repository['version'],
+                      'repository_exact_version_match': False,
                   }
                   item['profile_verified'] = False
+
               out['providers'][provider] = item
 
           if not out['providers']['elementor'].get('profile_verified'):
@@ -152,10 +199,21 @@ jobs:
           premium = profiles.get('premium_provider_policy', {})
           for provider, expected in [('jetengine', '3.8.15'), ('jetsmartfilters', '3.8.5')]:
               policy = premium.get(provider, {})
+              repository = inspected_repository[provider]
               if policy.get('observed_version') != expected:
                   raise SystemExit(f'{provider}: premium observed-version policy missing')
               if policy.get('mutation_policy') != 'fail_closed_until_attested_exact_package_manifest':
                   raise SystemExit(f'{provider}: premium fail-closed policy missing')
+              if policy.get('repository_archive_version') != repository['version']:
+                  raise SystemExit(f'{provider}: repository archive version evidence drifted')
+              expected_match = repository['version'] == expected
+              if bool(policy.get('repository_archive_matches_observed')) != expected_match:
+                  raise SystemExit(f'{provider}: repository archive match flag drifted')
+              # Never accept a profile whose exact package is not available from
+              # either the public authority or the repository artifact.
+              has_profile = expected in profiles.get('providers', {}).get(provider, {})
+              if has_profile and not out['providers'][provider].get('profile_verified'):
+                  raise SystemExit(f'{provider}: exact profile exists without verified exact package authority')
 
           pathlib.Path('provider-certification-evidence.json').write_text(
               json.dumps(out, indent=2, sort_keys=True) + '\n', encoding='utf-8'
