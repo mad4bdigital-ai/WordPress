@@ -125,4 +125,6 @@ final class MAD4B_SCP_Execution_Fence {
 	}
 }
 
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-reconciler.php';
+
 if ( function_exists( 'add_filter' ) ) MAD4B_SCP_Execution_Fence::boot();
