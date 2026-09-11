@@ -107,6 +107,35 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		return true;
 	}
 
+	/**
+	 * Rehydrate the exact governed write runtime only after the human request has
+	 * passed capability, nonce and exact ticket/candidate validation. This closes
+	 * the admin-post request-local bootstrap gap without making admin_init itself
+	 * a mutation trigger for unauthenticated or invalid decision requests.
+	 */
+	private static function prepare_authority_runtime_after_validation() {
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
+			return new WP_Error( 'mad4b_approval_decision_write_authority_not_ready', 'Governed Staging write authority is unavailable.' );
+		}
+
+		if ( function_exists( 'rest_get_server' ) ) {
+			try {
+				rest_get_server();
+				if ( class_exists( 'MAD4B_SCP_MCP_Registration_Rescue' ) ) {
+					MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_approval_decision' );
+				}
+			} catch ( Throwable $e ) {
+				return new WP_Error( 'mad4b_approval_decision_runtime_prime_failed', 'Governed Staging runtime could not be primed for the approval decision.' );
+			}
+		}
+
+		$status = MAD4B_SCP_Staging_Write_Authority::reconcile();
+		if ( ! is_array( $status ) || empty( $status['ready'] ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) {
+			return new WP_Error( 'mad4b_approval_decision_write_authority_not_ready', 'Governed Staging write authority is not ready.' );
+		}
+		return $status;
+	}
+
 	public static function decide( array $request ) {
 		$ticket_id = isset( $request['ticket_id'] ) ? strtolower( trim( (string) $request['ticket_id'] ) ) : '';
 		$ticket = preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ? MAD4B_SCP_Approval_Tickets::get( $ticket_id ) : null;
@@ -126,7 +155,10 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 			time()
 		);
 		if ( is_wp_error( $validated ) ) return $validated;
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_approval_decision_write_authority_not_ready', 'Governed Staging write authority is not ready.' );
+
+		$runtime = self::prepare_authority_runtime_after_validation();
+		if ( is_wp_error( $runtime ) ) return $runtime;
+
 		$ability = (string) $ticket['ability_name'];
 		if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability ) ) return new WP_Error( 'mad4b_approval_decision_target_unmounted', 'Ticket target is no longer in the certified write inventory.' );
 		$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability );
