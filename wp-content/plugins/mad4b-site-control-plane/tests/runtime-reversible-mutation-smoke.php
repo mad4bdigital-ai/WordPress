@@ -12,10 +12,10 @@ $check = static function ( $condition, $message ) {
 	if ( ! $condition ) throw new RuntimeException( $message );
 };
 
-// This smoke exercises two independent high-impact undo requests inside one
-// WP-CLI process. Production HTTP/MCP calls receive fresh PHP request-local
-// state naturally. Reset only the private CI fixture overlay between those
-// logical requests; do not weaken the runtime conflict guard itself.
+// This smoke exercises independent high-impact undo requests inside one WP-CLI
+// process. Production HTTP/MCP calls receive fresh PHP request-local state
+// naturally. Reset only the private CI fixture overlay between those logical
+// requests; do not weaken the runtime conflict guard itself.
 $reset_request_ticket_overlay = static function () {
 	$reflection = new ReflectionClass( 'MAD4B_SCP_Identity_Context' );
 	$property = $reflection->getProperty( 'request_approval_ticket_id' );
@@ -25,6 +25,7 @@ $reset_request_ticket_overlay = static function () {
 
 $check( class_exists( 'MAD4B_SCP_Mutation_Manager' ), 'Mutation manager is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Governed_Ability_Overrides' ), 'Governed ability override layer is unavailable.' );
+$check( class_exists( '\\WP\\MCP\\Domain\\Tools\\McpTool' ), 'Exact MCP Adapter McpTool runtime is unavailable.' );
 $check( wp_has_ability( 'mad4b/content-update-post' ), 'Governed post update ability is missing.' );
 $check( wp_has_ability( 'mad4b/mutation-get' ), 'Mutation evidence ability is missing.' );
 $check( wp_has_ability( 'mad4b/mutation-undo' ), 'Mutation undo ability is missing.' );
@@ -40,6 +41,8 @@ $undo_ability = wp_get_ability( 'mad4b/mutation-undo' );
 $undo_meta = $undo_ability->get_meta();
 $check( empty( $undo_meta['public'] ) && empty( $undo_meta['mcp']['public'] ), 'Mutation undo leaked to a default/public surface.' );
 $check( ! empty( $undo_meta['annotations']['destructive'] ), 'Mutation undo must be annotated destructive.' );
+$undo_tool = \WP\MCP\Domain\Tools\McpTool::fromAbility( $undo_ability );
+$check( ! is_wp_error( $undo_tool ), 'MCP Adapter could not project the governed undo ability as a real McpTool.' );
 
 // Provision an isolated CI NHI. No production authority is created by plugin activation or migration.
 $subject_type = 'ci';
@@ -128,13 +131,38 @@ $check( 'verified' === $evidence['mutation']['status'], 'Mutation evidence did n
 $check( ! array_key_exists( 'rollback_payload', $evidence['mutation'] ), 'Mutation evidence leaked rollback payload.' );
 $check( ! array_key_exists( 'rollback_payload_sha256', $evidence['mutation'] ), 'Mutation evidence leaked rollback payload integrity material.' );
 
-// 3. Undo is high-impact. Approve the exact undo request and deterministic target fingerprint, place only the opaque ticket ID in authenticated context, then execute the real ability.
 $undo_input_one = array(
 	'mutation_id' => $first['mutation_id'],
 	'reason' => 'CI verifies drift-safe undo',
 );
 $undo_target_one = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_input_one );
 $check( is_string( $undo_target_one ) && preg_match( '/^[a-f0-9]{64}$/', $undo_target_one ), 'Unable to resolve first undo target fingerprint.' );
+
+// 3. Reproduce the MCP Adapter pre-execution phase exactly. A real McpTool
+// permission check must be side-effect free: if routing or transport fails after
+// pre-check and execution is never entered, the approved ticket remains usable.
+$precheck_ticket = MAD4B_SCP_Approval_Tickets::create_pending(
+	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $undo_target_one, $undo_input_one, 'mutation', 'CI MCP precheck-only approval', 600
+);
+$check( is_array( $precheck_ticket ) && 'pending' === $precheck_ticket['status'], 'Unable to create MCP precheck-only ticket.' );
+$precheck_approved = MAD4B_SCP_Approval_Tickets::approve( $precheck_ticket['ticket_id'] );
+$check( is_array( $precheck_approved ) && 'approved' === $precheck_approved['status'], 'Unable to approve MCP precheck-only ticket.' );
+$approval_ticket_id = $precheck_ticket['ticket_id'];
+$mcp_permission_only = $undo_tool->check_permission( $undo_input_one );
+$check( ! is_wp_error( $mcp_permission_only ) && true === $mcp_permission_only, 'Real MCP Adapter permission pre-check denied the exact approved ticket.' );
+$precheck_after = MAD4B_SCP_Approval_Tickets::get( $precheck_ticket['ticket_id'] );
+$check( is_array( $precheck_after ) && 'approved' === $precheck_after['status'], 'MCP permission pre-check consumed or changed the approval ticket before execution.' );
+
+// The next call is a separate incoming request. Leave the precheck-only ticket
+// approved/unused to prove an aborted pre-execution path has no ticket side effect.
+$reset_request_ticket_overlay();
+$approval_ticket_id = '';
+
+// 4. Exercise the actual double-permission path from MCP Adapter 0.6.1:
+// McpTool::check_permission() performs the transport pre-check, then
+// McpTool::execute() delegates to WP_Ability::execute(), which checks permission
+// again before entering the wrapped execute callback. Neither permission pass may
+// claim the ticket; only the execute boundary may transition approved->executing.
 $ticket_one = MAD4B_SCP_Approval_Tickets::create_pending(
 	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $undo_target_one, $undo_input_one, 'mutation', 'CI reversible undo approval', 600
 );
@@ -142,9 +170,15 @@ $check( is_array( $ticket_one ) && 'pending' === $ticket_one['status'], 'Unable 
 $approved_one = MAD4B_SCP_Approval_Tickets::approve( $ticket_one['ticket_id'] );
 $check( is_array( $approved_one ) && 'approved' === $approved_one['status'], 'Unable to approve first undo ticket.' );
 $approval_ticket_id = $ticket_one['ticket_id'];
-$undone = $undo_ability->execute( $undo_input_one );
-$check( ! is_wp_error( $undone ), 'Approved undo failed: ' . ( is_wp_error( $undone ) ? $undone->get_error_message() : '' ) );
-$check( isset( $undone['status'] ) && 'undone' === $undone['status'] && ! empty( $undone['verified'] ), 'Undo did not return verified undone state.' );
+$mcp_permission = $undo_tool->check_permission( $undo_input_one );
+$check( ! is_wp_error( $mcp_permission ) && true === $mcp_permission, 'MCP Adapter permission pre-check failed before governed undo.' );
+$still_approved = MAD4B_SCP_Approval_Tickets::get( $ticket_one['ticket_id'] );
+$check( is_array( $still_approved ) && 'approved' === $still_approved['status'], 'First MCP permission pass changed the ticket before WP_Ability execution.' );
+$undone = $undo_tool->execute( $undo_input_one );
+$check( ! is_wp_error( $undone ), 'Approved MCP-tool undo failed: ' . ( is_wp_error( $undone ) ? $undone->get_error_message() : '' ) );
+$check( isset( $undone['status'] ) && 'undone' === $undone['status'] && ! empty( $undone['verified'] ), 'MCP-tool undo did not return verified undone state.' );
+$used_ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_one['ticket_id'] );
+$check( is_array( $used_ticket ) && 'used' === $used_ticket['status'], 'Successful MCP-tool execution did not terminalize the exact ticket as used.' );
 $restored = get_post( $post_id );
 $check( 'MAD4B reversible before' === $restored->post_title && 'before-content' === $restored->post_content, 'Undo did not restore the exact before-state.' );
 $original_record = MAD4B_SCP_Mutation_Manager::get( $first['mutation_id'] );
@@ -152,11 +186,9 @@ $check( is_array( $original_record ) && 'undone' === $original_record['status'],
 $check( ! empty( $undone['recovery_mutation_id'] ), 'Undo did not create child recovery evidence.' );
 
 // The next section represents a separate incoming request with its own ticket.
-// Reset only CI's emulated request-local ticket overlay; all durable governance,
-// mutation records, grants and audit evidence remain intact in the disposable DB.
 $reset_request_ticket_overlay();
 
-// 4. Create a second governed mutation, then simulate a newer human change. Automatic undo must refuse to overwrite it.
+// 5. Create a second governed mutation, then simulate a newer human change. Automatic undo must refuse to overwrite it.
 $approval_ticket_id = '';
 $current = get_post( $post_id );
 $second_input = array(
@@ -199,4 +231,4 @@ $check( is_array( $failed_ticket ) && 'failed' === $failed_ticket['status'], 'Re
 
 wp_delete_post( $post_id, true );
 
-echo "mad4b.site-control-plane.runtime-reversible-mutation.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-reversible-mutation.v2: PASS\n";
