@@ -1,0 +1,104 @@
+name: MAD4B Premium Provider Attestation
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'tools/premium-provider-attestation.py'
+      - 'tests/premium-provider-attestation-contract.py'
+      - '.github/workflows/mad4b-premium-provider-attestation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-premium-provider-attestation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Exact premium package attestation contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json >/dev/null
+          python3 tests/premium-provider-attestation-contract.py
+
+      - name: Prove stale repository packages cannot self-certify current ETG runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          expect_exact_or_fail_closed() {
+            provider="$1"
+            archive="$2"
+            expected="$3"
+            if python3 tools/premium-provider-attestation.py \
+              --provider "$provider" \
+              --package "$archive" \
+              --expected-version "$expected" \
+              --source-kind owner_supplied_exact_package \
+              --source-locator ci-repository-artifact-negative-control \
+              --attested-by ci-negative-control \
+              --output "$tmp/${provider}.json"; then
+              python3 - "$provider" "$expected" <<'PY'
+          import json, pathlib, sys
+          provider, expected = sys.argv[1], sys.argv[2]
+          profiles = json.loads(pathlib.Path('wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json').read_text())
+          policy = profiles.get('premium_provider_policy', {}).get(provider, {})
+          if policy.get('repository_archive_version') != expected or not policy.get('repository_archive_matches_observed'):
+              raise SystemExit(f'{provider}: stale repository package unexpectedly self-certified {expected}')
+          PY
+            else
+              python3 - "$provider" "$expected" <<'PY'
+          import json, pathlib, sys
+          provider, expected = sys.argv[1], sys.argv[2]
+          profiles = json.loads(pathlib.Path('wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json').read_text())
+          policy = profiles.get('premium_provider_policy', {}).get(provider, {})
+          if policy.get('repository_archive_version') == expected and policy.get('repository_archive_matches_observed'):
+              raise SystemExit(f'{provider}: repository package is exact but attestation generator failed')
+          PY
+            fi
+          }
+
+          expect_exact_or_fail_closed jetengine wp-content/plugins/jet-engine.zip 3.8.15
+          expect_exact_or_fail_closed jetsmartfilters wp-content/plugins/jet-smart-filters.zip 3.8.5
+
+      - name: Assert no runtime-self-attestation authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E '"source_kind"[[:space:]]*:[[:space:]]*"(live_runtime|staging_runtime|runtime_hash_capture)"' \
+            wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json
+
+      - name: Publish contract summary
+        shell: bash
+        run: |
+          {
+            echo '## Premium provider attestation contract'
+            echo
+            echo '- exact package/version verification: required'
+            echo '- archive SHA256 + critical-file manifest: required'
+            echo '- live/staging runtime as sole authority: forbidden'
+            echo '- semantic review before profile activation: required'
+            echo '- current JetEngine / JetSmartFilters repository ZIP mismatch remains fail-closed until exact package evidence exists'
+          } >> "$GITHUB_STEP_SUMMARY"
