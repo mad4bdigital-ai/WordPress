@@ -19,6 +19,8 @@ jobs:
   execution-fence:
     name: Governed execution fence (${{ matrix.wordpress }})
     runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     strategy:
       fail-fast: false
       matrix:
@@ -44,7 +46,7 @@ jobs:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.SOURCE_SHA }}
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -81,16 +83,80 @@ jobs:
             --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
 
-      - name: Install exact MCP Adapter and rc candidate
+      - name: Install provenance-bound exact MCP Adapter and rc candidate
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           WP_PATH=/tmp/mad4b-execution-fence-wordpress
+          PACKAGE_ROOT=/tmp/mad4b-execution-fence-package
+          PLUGIN_STAGE="$PACKAGE_ROOT/mad4b-site-control-plane"
+          rm -rf "$PACKAGE_ROOT"
+          mkdir -p "$PLUGIN_STAGE"
+          cp -a wp-content/plugins/mad4b-site-control-plane/. "$PLUGIN_STAGE/"
+          rm -rf "$PLUGIN_STAGE/tests"
+
           unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
-          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          ADAPTER_SHA="$(sha256sum wp-content/plugins/mcp-adapter.zip | awk '{print $1}')"
+          test "$ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+          VERSION="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$PLUGIN_STAGE/mad4b-site-control-plane.php" | head -n1)"
+          test "$VERSION" = '0.4.0-rc.26'
+
+          export MAD4B_CONTROL_STAGE="$PLUGIN_STAGE"
+          export MAD4B_CONTROL_VERSION="$VERSION"
+          export MAD4B_ADAPTER_SHA="$ADAPTER_SHA"
+          python3 <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          root = Path(os.environ['MAD4B_CONTROL_STAGE'])
+          entries = []
+          canonical = []
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name != 'MAD4B-BUILD-PROVENANCE.json'):
+              rel = path.relative_to(root).as_posix()
+              raw = path.read_bytes()
+              digest = hashlib.sha256(raw).hexdigest()
+              entries.append({'path': rel, 'bytes': len(raw), 'sha256': digest})
+              canonical.append(f'{rel}\0{len(raw)}\0{digest}\n'.encode())
+
+          manifest_digest = hashlib.sha256(b''.join(canonical)).hexdigest()
+          version = os.environ['MAD4B_CONTROL_VERSION']
+          source = os.environ['SOURCE_SHA']
+          adapter_sha = os.environ['MAD4B_ADAPTER_SHA']
+          build_payload = f'mad4b.build-fingerprint.v1\n{version}\n{source}\n{manifest_digest}\n0.6.1\n{adapter_sha}\n'.encode()
+          build_fingerprint = hashlib.sha256(build_payload).hexdigest()
+          data = {
+              'contract': 'mad4b.build-provenance.v1',
+              'control_plane_version': version,
+              'source_commit_sha': source,
+              'build_fingerprint': build_fingerprint,
+              'package_manifest_digest': manifest_digest,
+              'build_workflow': os.environ.get('GITHUB_WORKFLOW', ''),
+              'build_run_id': os.environ.get('GITHUB_RUN_ID', ''),
+              'artifact_identity': f'mad4b-site-control-plane-staging-kit-{source}',
+              'mcp_adapter_version': '0.6.1',
+              'mcp_adapter_sha256': adapter_sha,
+              'package_files': entries,
+              'manifest_excludes_self': True,
+              'generated_at_is_identity_neutral': True,
+          }
+          (root / 'MAD4B-BUILD-PROVENANCE.json').write_text(
+              json.dumps(data, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          PY
+
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -a "$PLUGIN_STAGE" "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
-          php /tmp/wp-cli.phar eval 'if ( "0.4.0-rc.26" !== MAD4B_SCP_VERSION ) { throw new RuntimeException( "Expected rc.26" ); } echo MAD4B_SCP_VERSION . "\n";' --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval '
+          if ( "0.4.0-rc.26" !== MAD4B_SCP_VERSION ) throw new RuntimeException( "Expected rc.26" );
+          $p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+          if ( empty( $p["manifest_present"] ) || empty( $p["manifest_valid"] ) || empty( $p["runtime_manifest_match"] ) || ! empty( $p["stale"] ) ) {
+              throw new RuntimeException( "Exact candidate provenance is not runtime-valid: " . wp_json_encode( $p ) );
+          }
+          echo MAD4B_SCP_VERSION . " provenance=" . $p["source_commit_sha"] . " build=" . $p["build_fingerprint"] . "\n";
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
 
       - name: Prove bounded evidence survives a provider error after side effect
         shell: bash

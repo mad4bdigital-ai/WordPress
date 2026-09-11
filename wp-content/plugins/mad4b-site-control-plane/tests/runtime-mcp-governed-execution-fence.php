@@ -37,6 +37,15 @@ $check( MAD4B_SCP_Execution_Fence::CONTRACT === 'mad4b.same-request-execution-fe
 $check( function_exists( 'wp_get_environment_type' ) && 'staging' === wp_get_environment_type(), 'fixture is not staging' );
 $check( 'staging.egypttourgates.com' === wp_parse_url( home_url( '/' ), PHP_URL_HOST ), 'fixture is not the governed Staging origin' );
 $check( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED, 'Staging mutation gate not configured' );
+$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+$check(
+	is_array( $provenance )
+		&& ! empty( $provenance['manifest_present'] )
+		&& ! empty( $provenance['manifest_valid'] )
+		&& ! empty( $provenance['runtime_manifest_match'] )
+		&& empty( $provenance['stale'] ),
+	'exact candidate provenance is unavailable: ' . wp_json_encode( $provenance )
+);
 
 // Materialize the real REST/MCP lifecycle before assertions.
 rest_get_server();
@@ -74,6 +83,15 @@ add_filter( 'mad4b_scp_authenticated_subject_context', static function () use ( 
 		'origin' => 'ci',
 	);
 }, 999 );
+
+// Media is intentionally low-impact in the generic policy. Real remote Staging
+// OAuth forces an exact one-time approval for every write. This CI-only filter
+// reproduces that mandatory-approval property without pretending the CI subject
+// is an external OAuth bearer or weakening candidate binding.
+add_filter( 'mad4b_scp_low_impact_requires_approval', static function ( $required, $ability_name, $provider, $input ) {
+	if ( 'media/update-metadata' === (string) $ability_name && 'media' === sanitize_key( (string) $provider ) ) return true;
+	return $required;
+}, PHP_INT_MAX, 4 );
 
 $dispatch = static function ( array $payload, $session_id = '' ) {
 	$request = new WP_REST_Request( 'POST', '/mcp/mad4b-write' );
@@ -142,6 +160,11 @@ $target = MAD4B_SCP_Authorization::target_fingerprint( 'media/update-metadata', 
 $check( is_string( $target ) && preg_match( '/^[a-f0-9]{64}$/', $target ), 'unable to resolve Media target fingerprint' );
 $ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-write', 'media/update-metadata', 'media', $target, $clean_input, 'mutation', 'CI real MCP fence approval', 600 );
 $check( is_array( $ticket ) && 'pending' === $ticket['status'], 'unable to create execution approval' );
+$candidate_binding = MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate( $ticket['ticket_id'] );
+$check(
+	is_array( $candidate_binding ) && 'mad4b.approval-candidate-binding.v1' === $candidate_binding['contract'],
+	'unable to bind execution approval to exact candidate: ' . ( is_wp_error( $candidate_binding ) ? $candidate_binding->get_error_message() : wp_json_encode( $candidate_binding ) )
+);
 $approved = MAD4B_SCP_Approval_Tickets::approve( $ticket['ticket_id'] );
 $check( is_array( $approved ) && 'approved' === $approved['status'], 'unable to approve execution ticket' );
 $approval_ticket_id = $ticket['ticket_id'];
@@ -185,7 +208,7 @@ $mutation = $rows[0];
 $check( 'verified' === $mutation['status'] && ! empty( $mutation['mutation_id'] ), 'first real MCP mutation was not verified' );
 $check( false !== strpos( $first_json, (string) $mutation['mutation_id'] ), 'real MCP success response omitted mutation_id' );
 $used = MAD4B_SCP_Approval_Tickets::get( $approval_ticket_id );
-$check( is_array( $used ) && 'used' === $used['status'], 'execution ticket did not terminalize as used' );
+$check( is_array( $used ) && 'used' === $used['status'], 'execution ticket did not terminalize as used: ' . wp_json_encode( $used ) );
 
 // Same logical request + same exact operation must reuse the first completed result.
 $completed_duplicate = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => array( 'name' => 'media-update-metadata', 'arguments' => $call_input ) ), $session_id );
@@ -210,7 +233,14 @@ $request_id = 'ci-mcp-fence-undo-request';
 $undo_input = array( 'mutation_id' => $mutation['mutation_id'], 'reason' => 'CI restores real MCP execution fence fixture' );
 $undo_target = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_input );
 $undo_ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-write', 'mad4b/mutation-undo', 'core', $undo_target, $undo_input, 'mutation', 'CI real MCP fence undo', 600 );
-$check( is_array( $undo_ticket ) && is_array( MAD4B_SCP_Approval_Tickets::approve( $undo_ticket['ticket_id'] ) ), 'unable to approve undo ticket' );
+$check( is_array( $undo_ticket ) && 'pending' === $undo_ticket['status'], 'unable to create undo ticket' );
+$undo_binding = MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate( $undo_ticket['ticket_id'] );
+$check(
+	is_array( $undo_binding ) && 'mad4b.approval-candidate-binding.v1' === $undo_binding['contract'],
+	'unable to bind undo approval to exact candidate: ' . ( is_wp_error( $undo_binding ) ? $undo_binding->get_error_message() : wp_json_encode( $undo_binding ) )
+);
+$undo_approved = MAD4B_SCP_Approval_Tickets::approve( $undo_ticket['ticket_id'] );
+$check( is_array( $undo_approved ) && 'approved' === $undo_approved['status'], 'unable to approve undo ticket' );
 $approval_ticket_id = $undo_ticket['ticket_id'];
 $undo_args = $undo_input;
 $undo_args[ MAD4B_SCP_Staging_Write_Authority::APPROVAL_INPUT_KEY ] = $approval_ticket_id;
@@ -220,7 +250,7 @@ $check( false !== strpos( $undo_json, 'undone' ), 'real MCP undo did not complet
 $restored = $media_get->execute( array( 'attachment_id' => $attachment_id ) );
 $check( ! is_wp_error( $restored ) && hash_equals( $before['sha256'], $restored['sha256'] ), 'undo did not restore exact initial Media SHA' );
 $undo_used = MAD4B_SCP_Approval_Tickets::get( $approval_ticket_id );
-$check( is_array( $undo_used ) && 'used' === $undo_used['status'], 'undo ticket did not terminalize as used' );
+$check( is_array( $undo_used ) && 'used' === $undo_used['status'], 'undo ticket did not terminalize as used: ' . wp_json_encode( $undo_used ) );
 
 wp_delete_attachment( $attachment_id, true );
 echo "mad4b.site-control-plane.mcp-governed-execution-fence.v1: PASS\n";
