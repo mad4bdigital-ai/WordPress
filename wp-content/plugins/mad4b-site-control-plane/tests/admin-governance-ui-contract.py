@@ -41,11 +41,15 @@ require(bootstrap, "class-mad4b-scp-admin-ui.php", 'bootstrap-load')
 require(plugin, 'MAD4B_SCP_Admin_UI::boot()', 'plugin-boot')
 
 # wp-admin does not naturally run rest_api_init. The Control Plane primes the
-# local in-memory REST/MCP registry before rendering readiness snapshots so the
-# server/permission evidence is from the same initialized request state.
+# local in-memory REST/MCP registry only on bounded authority admin surfaces
+# before rendering readiness/decision state. Scope is centralized so the
+# governance console and human approval console cannot drift independently.
 require(plugin, "add_action( 'admin_init', array( __CLASS__, 'prime_admin_mcp_runtime' ), 1 )", 'admin-mcp-prime-hook')
 require(plugin, 'public static function prime_admin_mcp_runtime()', 'admin-mcp-prime-method')
-require(plugin, "0 !== strpos( $page, 'mad4b-control-plane' )", 'admin-mcp-prime-scope')
+require(plugin, 'public static function is_authority_admin_surface()', 'admin-authority-surface-helper')
+require(plugin, "return 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page;", 'admin-authority-surface-boundary')
+require(plugin, "if ( ! current_user_can( 'manage_options' ) || ! self::is_authority_admin_surface() ) return;", 'admin-mcp-prime-scope')
+require(plugin, 'public static function reconcile_authority_on_mad4b_admin()', 'admin-authority-reconcile-method')
 require(plugin, 'rest_get_server();', 'admin-mcp-local-rest-bootstrap')
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_safe_remote_get(', 'wp_safe_remote_post('):
     forbid(plugin, outbound, 'admin-mcp-no-outbound-probe')
@@ -66,4 +70,4 @@ for forbidden_sensitive in (
 ):
     forbid(admin, forbidden_sensitive, 'admin-ui-no-sensitive-fields')
 
-print('mad4b.site-control-plane.admin-governance-ui-contract.v3: PASS')
+print('mad4b.site-control-plane.admin-governance-ui-contract.v4: PASS')
