@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * a separate human-administrator action.
  */
 final class MAD4B_SCP_Staging_Write_Planning_Guard {
-	const CONTRACT = 'mad4b.staging-write-planning-guard.v3';
+	const CONTRACT = 'mad4b.staging-write-planning-guard.v2';
 	const ABILITY = 'mad4b/approval-plan';
 
 	private static $booted = false;
