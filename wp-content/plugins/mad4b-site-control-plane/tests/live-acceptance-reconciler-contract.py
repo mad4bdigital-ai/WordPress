@@ -41,6 +41,9 @@ for marker in [
 for marker in [
     "const CONTRACT = 'mad4b.portable-external-snapshot.v3'",
     "const TOKEN_LEDGER_OPTION = 'mad4b_scp_external_snapshot_export_tokens_v3'",
+    "const STAGING_HOST = 'staging.egypttourgates.com'",
+    "if ( ! self::staging_allowed() ) return;",
+    "mad4b_external_snapshot_wrong_target",
     "random_bytes( 32 )",
     "'mad4bext_' . bin2hex( $secret )",
     "'token_digest' => hash( 'sha256', $token )",
@@ -100,7 +103,7 @@ for marker in [
 ]:
     forbid(portable.split('private static function persist_record', 1)[-1], marker, 'no-plaintext-persistence')
 
-# No acceptance helper may gain direct raw SQL / Breakglass / Production writes.
+# No acceptance helper may gain direct raw SQL / Breakglass / Production write authority.
 for text, label in [(reconciler, 'reconciler'), (portable, 'portable'), (external, 'external-finalizer')]:
     for forbidden in [
         'mad4b/database-raw-query',
