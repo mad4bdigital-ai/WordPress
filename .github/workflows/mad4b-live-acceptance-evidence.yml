@@ -76,8 +76,10 @@ jobs:
           plugin='wp-content/plugins/mad4b-site-control-plane'
           main="$plugin/mad4b-site-control-plane.php"
           version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          runtime_release="$(sed -nE 's/^release=(.+)$/\1/p' "$plugin/MAD4B-RUNTIME-BUILD.txt" | head -n1)"
           test -n "$version"
-          test "$version" = '0.4.0-rc.21'
+          test -n "$runtime_release"
+          test "$version" = "$runtime_release"
 
           stage='/tmp/mad4b-live-acceptance'
           rm -rf "$stage"
@@ -169,8 +171,11 @@ jobs:
           set -euo pipefail
           stage='/tmp/mad4b-live-acceptance/out'
           WP_PATH=/tmp/mad4b-live-acceptance-wp
+          main='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+          version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          test -n "$version"
           unzip -q "$stage/mcp-adapter-0.6.1.zip" -d "$WP_PATH/wp-content/plugins"
-          unzip -q "$stage/mad4b-site-control-plane-0.4.0-rc.21.zip" -d "$WP_PATH/wp-content/plugins"
+          unzip -q "$stage/mad4b-site-control-plane-${version}.zip" -d "$WP_PATH/wp-content/plugins"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
           php /tmp/wp-cli.phar eval '
@@ -260,7 +265,10 @@ jobs:
         run: |
           set -euo pipefail
           out='/tmp/mad4b-live-acceptance/out'
-          control="$out/mad4b-site-control-plane-0.4.0-rc.21.zip"
+          main='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+          version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          test -n "$version"
+          control="$out/mad4b-site-control-plane-${version}.zip"
           adapter="$out/mcp-adapter-0.6.1.zip"
           portable="$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip"
           control_sha="$(sha256sum "$control" | awk '{print $1}')"
@@ -269,20 +277,21 @@ jobs:
           snapshot="$(tr -d '\r\n' < "$out/MAD4B-SNAPSHOT-ID.txt")"
           build_fingerprint="$(tr -d '\r\n' < "$out/BUILD-FINGERPRINT.txt")"
           package_digest="$(tr -d '\r\n' < "$out/PACKAGE-MANIFEST-DIGEST.txt")"
-          export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" PORTABLE_SHA="$portable_sha" SNAPSHOT_TOKEN="$snapshot" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest"
+          export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" PORTABLE_SHA="$portable_sha" SNAPSHOT_TOKEN="$snapshot" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest" CONTROL_VERSION="$version"
           python3 <<'PY'
           import json, os
           from pathlib import Path
           out = Path('/tmp/mad4b-live-acceptance/out')
+          version = os.environ['CONTROL_VERSION']
           data = {
               'contract': 'mad4b.live-acceptance-exact-artifact.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY', ''),
               'exact_head_sha': os.environ['SOURCE_SHA'],
-              'release_candidate': '0.4.0-rc.21',
+              'release_candidate': version,
               'workflow': os.environ.get('GITHUB_WORKFLOW', ''),
               'workflow_run_id': os.environ.get('GITHUB_RUN_ID', ''),
               'artifact_name': os.environ['ARTIFACT_NAME'],
-              'control_plane_archive': 'mad4b-site-control-plane-0.4.0-rc.21.zip',
+              'control_plane_archive': f'mad4b-site-control-plane-{version}.zip',
               'control_plane_sha256': os.environ['CONTROL_SHA'],
               'mcp_adapter_version': '0.6.1',
               'mcp_adapter_sha256': os.environ['ADAPTER_SHA'],
@@ -299,7 +308,7 @@ jobs:
           (
             cd "$out"
             sha256sum \
-              mad4b-site-control-plane-0.4.0-rc.21.zip \
+              "mad4b-site-control-plane-${version}.zip" \
               mcp-adapter-0.6.1.zip \
               "mad4b-wordpress-portable-${SOURCE_SHA}.zip" \
               MAD4B-SNAPSHOT-ID.txt \
@@ -314,7 +323,7 @@ jobs:
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: |
-            /tmp/mad4b-live-acceptance/out/mad4b-site-control-plane-0.4.0-rc.21.zip
+            /tmp/mad4b-live-acceptance/out/mad4b-site-control-plane-*.zip
             /tmp/mad4b-live-acceptance/out/mcp-adapter-0.6.1.zip
             /tmp/mad4b-live-acceptance/out/mad4b-wordpress-portable-*.zip
             /tmp/mad4b-live-acceptance/out/MAD4B-SNAPSHOT-ID.txt
