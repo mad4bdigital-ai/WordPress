@@ -8,7 +8,10 @@ on:
       - 'wp-content/plugins/jet-smart-filters.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php'
+      - 'tools/premium-provider-attestation.py'
+      - 'tests/premium-provider-attestation-contract.py'
       - '.github/workflows/mad4b-provider-certification-evidence.yml'
   workflow_dispatch:
 
@@ -32,12 +35,15 @@ jobs:
         with:
           ref: ${{ env.SOURCE_SHA }}
 
-      - name: Verify exact source identity
+      - name: Verify exact source identity and attestation policy
         shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json >/dev/null
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json >/dev/null
+          python3 tests/premium-provider-attestation-contract.py
 
       - name: Fetch public exact-version candidates where available
         shell: bash
@@ -69,6 +75,12 @@ jobs:
           config_root = root / 'mad4b-site-control-plane/config'
           contract = json.loads((config_root / 'certified-providers.json').read_text(encoding='utf-8'))
           profiles = json.loads((config_root / 'certified-provider-profiles.json').read_text(encoding='utf-8'))
+          attestation_doc = json.loads((config_root / 'premium-provider-attestations.json').read_text(encoding='utf-8'))
+          policy = attestation_doc.get('policy', {})
+          allowed_sources = set(policy.get('allowed_source_kinds', []))
+          forbidden_sources = set(policy.get('forbidden_source_kinds', []))
+          attestations = attestation_doc.get('attestations', {})
+
           repository_archives = {
               'elementor': (root / 'elementor.zip', 'elementor/elementor.php'),
               'jetengine': (root / 'jet-engine.zip', 'jet-engine/jet-engine.php'),
@@ -94,6 +106,10 @@ jobs:
                   'public_authority': 'wordpress.org:downloads/plugin/jet-smart-filters.3.8.5.zip',
               },
           }
+
+          def manifest_digest(files):
+              payload = '\n'.join(f'{path}={str(files[path]).lower()}' for path in sorted(files)) + '\n'
+              return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
           def inspect(provider, archive, plugin_entry):
               raw = archive.read_bytes()
@@ -122,6 +138,60 @@ jobs:
                   'critical_file_count': len(critical),
               }
 
+          def reviewed_attestation(provider, expected_version, plugin_entry):
+              record = attestations.get(provider, {}).get(expected_version)
+              if record is None:
+                  return None
+              if not isinstance(record, dict):
+                  raise SystemExit(f'{provider}: attestation must be an object')
+              if record.get('provider') != provider or record.get('version') != expected_version:
+                  raise SystemExit(f'{provider}: attestation provider/version mismatch')
+              source_kind = record.get('source_kind')
+              if source_kind not in allowed_sources or source_kind in forbidden_sources:
+                  raise SystemExit(f'{provider}: attestation source is not trusted')
+              if record.get('independent_from_runtime') is not True:
+                  raise SystemExit(f'{provider}: live runtime cannot self-attest')
+              review = record.get('semantic_review', {})
+              if review.get('status') != 'approved' or review.get('approved') is not True:
+                  raise SystemExit(f'{provider}: attestation semantic review is not approved')
+              if not str(review.get('review_id', '')).strip():
+                  raise SystemExit(f'{provider}: approved semantic review requires review_id')
+              if record.get('plugin_entry') != plugin_entry:
+                  raise SystemExit(f'{provider}: attestation plugin entry mismatch')
+              archive_sha = str(record.get('archive_sha256', ''))
+              if not re.fullmatch(r'[a-f0-9]{64}', archive_sha):
+                  raise SystemExit(f'{provider}: attestation archive SHA invalid')
+              archive_bytes = record.get('archive_bytes')
+              if not isinstance(archive_bytes, int) or archive_bytes <= 0:
+                  raise SystemExit(f'{provider}: attestation archive byte count invalid')
+              critical = record.get('critical_files', {})
+              expected_paths = set(contract['providers'][provider].get('critical_files', {}))
+              if not isinstance(critical, dict) or set(critical) != expected_paths:
+                  raise SystemExit(f'{provider}: attestation critical manifest incomplete')
+              if any(not re.fullmatch(r'[a-f0-9]{64}', str(value)) for value in critical.values()):
+                  raise SystemExit(f'{provider}: attestation critical SHA invalid')
+              if record.get('critical_manifest_sha256') != manifest_digest(critical):
+                  raise SystemExit(f'{provider}: attestation manifest digest mismatch')
+              attestation_id = str(record.get('attestation_id', '')).strip()
+              if not attestation_id:
+                  raise SystemExit(f'{provider}: attestation id missing')
+              if not str(record.get('source_locator', '')).strip():
+                  raise SystemExit(f'{provider}: attestation source locator missing')
+              return {
+                  'archive_sha256': archive_sha,
+                  'archive_bytes': archive_bytes,
+                  'version': expected_version,
+                  'critical_files': critical,
+                  'critical_files_missing': [],
+                  'critical_file_count': len(critical),
+                  'authority': f'premium-attestation:{attestation_id}',
+                  'source': 'attested_exact_archive',
+                  'attestation_id': attestation_id,
+                  'attestation_source_kind': source_kind,
+                  'attestation_source_locator': record.get('source_locator'),
+                  'semantic_review_id': review.get('review_id'),
+              }
+
           def verify_profile(provider, expected_version, exact, authority):
               profile = profiles.get('providers', {}).get(provider, {}).get(expected_version)
               if profile is None:
@@ -136,11 +206,14 @@ jobs:
                   raise SystemExit(f'{provider}: profile critical-file manifest mismatch')
               if profile.get('certification_authority') != authority:
                   raise SystemExit(f'{provider}: profile certification authority mismatch')
+              if exact.get('attestation_id') and profile.get('attestation_id') != exact['attestation_id']:
+                  raise SystemExit(f'{provider}: profile attestation id mismatch')
               return True
 
           out = {
-              'contract': 'mad4b.provider-certification-evidence.v4',
+              'contract': 'mad4b.provider-certification-evidence.v5',
               'source_sha': os.environ.get('SOURCE_SHA', ''),
+              'premium_attestation_contract': attestation_doc.get('contract', ''),
               'providers': {},
           }
 
@@ -169,6 +242,11 @@ jobs:
                   archive_name = repository_archives[provider][0].name
                   authority = f'repository_artifact:wp-content/plugins/{archive_name}'
                   source = 'repository_exact_archive'
+              elif provider in ('jetengine', 'jetsmartfilters'):
+                  exact = reviewed_attestation(provider, expected_version, req['entry'])
+                  if exact is not None:
+                      authority = exact['authority']
+                      source = exact['source']
 
               if exact is not None:
                   exact = dict(exact)
@@ -188,6 +266,7 @@ jobs:
                       'public_available': False,
                       'repository_archive_version': repository['version'],
                       'repository_exact_version_match': False,
+                      'reviewed_attestation_available': False,
                   }
                   item['profile_verified'] = False
 
@@ -198,19 +277,17 @@ jobs:
 
           premium = profiles.get('premium_provider_policy', {})
           for provider, expected in [('jetengine', '3.8.15'), ('jetsmartfilters', '3.8.5')]:
-              policy = premium.get(provider, {})
+              provider_policy = premium.get(provider, {})
               repository = inspected_repository[provider]
-              if policy.get('observed_version') != expected:
+              if provider_policy.get('observed_version') != expected:
                   raise SystemExit(f'{provider}: premium observed-version policy missing')
-              if policy.get('mutation_policy') != 'fail_closed_until_attested_exact_package_manifest':
+              if provider_policy.get('mutation_policy') != 'fail_closed_until_attested_exact_package_manifest':
                   raise SystemExit(f'{provider}: premium fail-closed policy missing')
-              if policy.get('repository_archive_version') != repository['version']:
+              if provider_policy.get('repository_archive_version') != repository['version']:
                   raise SystemExit(f'{provider}: repository archive version evidence drifted')
               expected_match = repository['version'] == expected
-              if bool(policy.get('repository_archive_matches_observed')) != expected_match:
+              if bool(provider_policy.get('repository_archive_matches_observed')) != expected_match:
                   raise SystemExit(f'{provider}: repository archive match flag drifted')
-              # Never accept a profile whose exact package is not available from
-              # either the public authority or the repository artifact.
               has_profile = expected in profiles.get('providers', {}).get(provider, {})
               if has_profile and not out['providers'][provider].get('profile_verified'):
                   raise SystemExit(f'{provider}: exact profile exists without verified exact package authority')
