@@ -44,6 +44,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-request-context-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-jwt-header-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-outbound-budget-guard.php';
@@ -110,6 +111,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 // persistent state is bounded/sanitized observability on the exact Staging host.
 MAD4B_SCP_Live_Acceptance_Observer::boot_early();
 MAD4B_SCP_Live_Acceptance_Finalizer::boot_early();
+MAD4B_SCP_WPML_Response_Contract::boot_early();
 
 // Fresh authority/certification truth must be wired before the one-shot Ability
 // registry can materialize. Read callbacks stay observational; reconciliation
