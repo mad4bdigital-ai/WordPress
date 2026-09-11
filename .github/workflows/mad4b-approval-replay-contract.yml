@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   replay-contract:
-    name: One-time approval replay denial (${{ matrix.php }})
+    name: One-time approval execution lifecycle (${{ matrix.php }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -38,7 +38,7 @@ jobs:
           php-version: ${{ matrix.php }}
           coverage: none
 
-      - name: Execute sequential replay regression
+      - name: Execute double-permission and replay regression
         shell: bash
         run: |
           set -euo pipefail
@@ -49,22 +49,33 @@ jobs:
           php -l "$root/tests/approval-ticket-replay-runtime.php"
           php "$root/tests/approval-ticket-replay-runtime.php"
 
-      - name: Verify Live Acceptance consumes the same authoritative denial
+      - name: Verify permission checks are non-consuming and execution claims are terminal
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane/includes'
           tickets="$root/class-mad4b-scp-approval-tickets.php"
           authz="$root/class-mad4b-scp-authorization.php"
-          identity="$root/class-mad4b-scp-identity-context.php"
           finalizer="$root/class-mad4b-scp-live-acceptance-finalizer.php"
-          grep -Fq "if ( 'used' === \$ticket['status'] ) return new WP_Error( 'mad4b_approval_replay_denied'" "$tickets"
-          grep -Fq "MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( \$approval_ticket_id )" "$authz"
-          grep -Fq "'approval_ticket_id' => isset( \$identity['approval_ticket_id'] )" "$authz"
-          grep -Fq "const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1'" "$authz"
-          grep -Fq 'canonicalize_target_value' "$authz"
-          grep -Fq "return hash( 'sha256', \$json )" "$authz"
-          grep -Fq 'private static $request_approval_ticket_id' "$identity"
-          grep -Fq 'public static function bind_approval_ticket_for_request' "$identity"
+
+          grep -Fq 'public static function validate_exact' "$tickets"
+          grep -Fq "array( 'used', 'executing', 'failed' )" "$tickets"
+          grep -Fq "SET status = 'executing'" "$tickets"
+          grep -Fq 'public static function finalize_claim' "$tickets"
+          grep -Fq "array( 'used', 'failed' )" "$tickets"
+
+          grep -Fq "const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.approval-execution-boundary.v1'" "$authz"
+          grep -Fq 'MAD4B_SCP_Approval_Tickets::validate_exact' "$authz"
+          grep -Fq 'public static function claim_mutation' "$authz"
+          grep -Fq 'MAD4B_SCP_Approval_Tickets::claim_exact' "$authz"
+          grep -Fq "'execution_side_effects' => false" "$authz"
+          grep -Fq "'mad4b_execution_boundary'" "$authz"
+          grep -Fq "if ( function_exists( 'add_filter' ) ) MAD4B_SCP_Authorization::boot();" "$authz"
+
+          if grep -Fq 'consume_exact(' "$authz"; then
+            echo 'Authorization permission/execution contract must not use legacy consume_exact().' >&2
+            exit 1
+          fi
+
           grep -Fq "'mad4b_approval_replay_denied' === (string) \$summary['reason_code']" "$finalizer"
           grep -Fq "'mad4b/live-acceptance-replay-denied-observed'" "$finalizer"
