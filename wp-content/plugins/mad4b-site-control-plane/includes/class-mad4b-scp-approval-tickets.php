@@ -89,7 +89,8 @@ final class MAD4B_SCP_Approval_Tickets {
 		global $wpdb;
 		$ticket = self::get( $ticket_id );
 		if ( ! $ticket ) return new WP_Error( 'mad4b_approval_missing', 'Approval ticket is missing.' );
-		if ( 'approved' !== $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approved', 'Approval ticket is not approved or has already been used.' );
+		if ( 'used' === $ticket['status'] ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket has already been consumed; replay is denied.' );
+		if ( 'approved' !== $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approved', 'Approval ticket is not approved.' );
 		if ( strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) return new WP_Error( 'mad4b_approval_expired', 'Approval ticket has expired.' );
 		if ( (int) $ticket['agent_id'] !== (int) $agent['id'] ) return new WP_Error( 'mad4b_approval_agent_mismatch', 'Approval ticket belongs to another agent.' );
 		if ( $ticket['ticket_class'] !== $ticket_class ) return new WP_Error( 'mad4b_approval_class_mismatch', 'Approval ticket class does not match this operation.' );
