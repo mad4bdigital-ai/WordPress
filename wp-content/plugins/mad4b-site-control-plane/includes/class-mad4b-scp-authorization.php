@@ -13,9 +13,6 @@ final class MAD4B_SCP_Authorization {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		// Runs after Staging write-envelope augmentation so the outer callback sees
-		// the approval ticket while the already-wrapped provider callback receives
-		// the cleaned business input only.
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 190, 2 );
 	}
 
@@ -67,11 +64,6 @@ final class MAD4B_SCP_Authorization {
 		return new WP_Error( 'mad4b_target_fingerprint_invalid_value', 'Mutation target input contains an unsupported value type.' );
 	}
 
-	/**
-	 * Pure permission preflight. This method intentionally performs no durable
-	 * writes: no ticket claim/consume, no budget reservation/commit and no audit.
-	 * WordPress Abilities and the MCP Adapter may invoke it more than once.
-	 */
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return self::error( 'mad4b_governance_schema_unavailable', 'Governance schema is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ) return self::error( 'mcp_peer_inventory_unavailable', 'MCP peer governance is unavailable.' );
@@ -107,9 +99,7 @@ final class MAD4B_SCP_Authorization {
 		if ( $require_scopes && empty( $scopes ) ) return self::error( 'mad4b_nhi_scope_required', 'Authenticated subject did not provide required token scopes.' );
 		if ( $scopes ) {
 			$scope_allowed = in_array( 'ability:' . $ability_name, $scopes, true ) || in_array( 'server:' . $server_id, $scopes, true );
-			if ( ! $scope_allowed && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
-				$scope_allowed = MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $identity, $server_id, $ability_name, $input );
-			}
+			if ( ! $scope_allowed && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) $scope_allowed = MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $identity, $server_id, $ability_name, $input );
 			if ( ! $scope_allowed ) return self::error( 'mad4b_nhi_scope_denied', 'Token scope does not include this exact ability/server and no certified one-time Staging write delegation applies.' );
 		}
 
@@ -119,9 +109,7 @@ final class MAD4B_SCP_Authorization {
 			if ( ! is_array( $decoded ) ) return self::error( 'mad4b_nhi_constraints_invalid', 'Stored resource constraints are invalid.' );
 			$constraints = $decoded;
 		}
-		if ( $constraints && ! apply_filters( 'mad4b_scp_resource_constraints_allowed', false, $constraints, $ability_name, $authorization_input, $agent, $identity ) ) {
-			return self::error( 'mad4b_nhi_resource_constraints_unresolved', 'Resource constraints are present but no certified evaluator authorized this target.' );
-		}
+		if ( $constraints && ! apply_filters( 'mad4b_scp_resource_constraints_allowed', false, $constraints, $ability_name, $authorization_input, $agent, $identity ) ) return self::error( 'mad4b_nhi_resource_constraints_unresolved', 'Resource constraints are present but no certified evaluator authorized this target.' );
 
 		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $authorization_input ) : 'high';
 		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $authorization_input ) : true;
@@ -167,10 +155,6 @@ final class MAD4B_SCP_Authorization {
 		);
 	}
 
-	/**
-	 * Re-run pure preflight at the execution boundary, then atomically reserve
-	 * budgets and claim approved -> executing. This is the first durable step.
-	 */
 	public static function claim_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
 		$decision = self::authorize_mutation( $ability_name, $server_id, $provider, $input );
 		if ( is_wp_error( $decision ) ) {
@@ -183,25 +167,14 @@ final class MAD4B_SCP_Authorization {
 
 		if ( ! empty( $decision['approval_required'] ) ) {
 			$ticket_id = (string) $decision['approval_ticket_id'];
-			if ( ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $ticket_id ) ) {
-				return self::deny( 'mad4b_approval_request_binding_conflict', 'A different approval ticket is already bound to this execution request.', $ability_name );
-			}
+			if ( ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $ticket_id ) ) return self::deny( 'mad4b_approval_request_binding_conflict', 'A different approval ticket is already bound to this execution request.', $ability_name );
 		}
 
 		$budget_reservation = MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $decision['provider'], $authorization_input, ! empty( $decision['approval_required'] ) );
 		if ( is_wp_error( $budget_reservation ) ) return self::deny( $budget_reservation->get_error_code(), $budget_reservation->get_error_message(), $ability_name );
 
 		if ( ! empty( $decision['approval_required'] ) ) {
-			$claim = MAD4B_SCP_Approval_Tickets::claim_exact(
-				$decision['approval_ticket_id'],
-				$agent,
-				$decision['server_id'],
-				$ability_name,
-				$decision['provider'],
-				$decision['target_fingerprint'],
-				$authorization_input,
-				$decision['ticket_class']
-			);
+			$claim = MAD4B_SCP_Approval_Tickets::claim_exact( $decision['approval_ticket_id'], $agent, $decision['server_id'], $ability_name, $decision['provider'], $decision['target_fingerprint'], $authorization_input, $decision['ticket_class'] );
 			if ( is_wp_error( $claim ) ) {
 				MAD4B_SCP_Budgets::rollback( $budget_reservation );
 				return self::deny( $claim->get_error_code(), $claim->get_error_message(), $ability_name );
@@ -334,18 +307,14 @@ final class MAD4B_SCP_Authorization {
 		), 'denied' );
 	}
 
-	private static function error( $code, $message ) {
-		return new WP_Error( $code, $message );
-	}
-
+	private static function error( $code, $message ) { return new WP_Error( $code, $message ); }
 	private static function deny( $code, $message, $ability_name ) {
 		self::audit( $ability_name, array( 'allowed' => false, 'reason_code' => $code ), 'denied' );
 		return new WP_Error( $code, $message );
 	}
-
 	private static function audit( $ability_name, array $summary, $status ) {
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/authorization:' . (string) $ability_name, $summary, $status );
 	}
 }
 
-MAD4B_SCP_Authorization::boot();
+if ( function_exists( 'add_filter' ) ) MAD4B_SCP_Authorization::boot();
