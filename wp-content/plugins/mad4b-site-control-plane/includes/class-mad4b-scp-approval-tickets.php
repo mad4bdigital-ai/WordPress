@@ -62,15 +62,33 @@ final class MAD4B_SCP_Approval_Tickets {
 			'created_at' => gmdate( 'Y-m-d H:i:s', $now ),
 		), array( '%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $ok ) return new WP_Error( 'mad4b_approval_create_failed', 'Approval ticket could not be created.', array( 'db_error' => $wpdb->last_error ) );
-
-		if ( self::exact_governed_staging() ) {
-			$binding = self::current_candidate_binding( $ticket_id, $payload_hash );
-			if ( is_wp_error( $binding ) || ! self::save_candidate_binding( $binding ) ) {
-				$wpdb->delete( $t['approvals'], array( 'ticket_id' => $ticket_id, 'status' => 'pending' ), array( '%s', '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-				return is_wp_error( $binding ) ? $binding : new WP_Error( 'mad4b_approval_candidate_binding_failed', 'Pending approval ticket could not be bound durably to the exact Staging candidate.' );
-			}
-		}
 		return self::get( $ticket_id );
+	}
+
+	/**
+	 * Bind a freshly-created remote Staging mutation ticket to the exact live
+	 * candidate. The planning guard calls this immediately after approval-plan;
+	 * lower-level/local callers remain usable without requiring package provenance.
+	 */
+	public static function bind_ticket_to_current_candidate( $ticket_id ) {
+		global $wpdb;
+		$ticket_id = strtolower( trim( (string) $ticket_id ) );
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return new WP_Error( 'mad4b_approval_candidate_ticket_invalid', 'Candidate binding requires an exact approval ticket id.' );
+		if ( ! self::exact_governed_staging() ) return new WP_Error( 'mad4b_approval_candidate_staging_only', 'Candidate-bound remote approval planning is restricted to the exact governed Staging origin.' );
+		$ticket = self::get( $ticket_id );
+		if ( ! is_array( $ticket ) ) return new WP_Error( 'mad4b_approval_missing', 'Approval ticket is missing.' );
+		if ( 'pending' !== (string) $ticket['status'] || 'mutation' !== (string) $ticket['ticket_class'] || 'mad4b-write' !== sanitize_key( (string) $ticket['server_id'] ) ) {
+			return new WP_Error( 'mad4b_approval_candidate_ticket_ineligible', 'Only fresh pending mad4b-write mutation tickets may receive a live candidate binding.' );
+		}
+		$payload_hash = isset( $ticket['payload_sha256'] ) ? strtolower( trim( (string) $ticket['payload_sha256'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $payload_hash ) ) return new WP_Error( 'mad4b_approval_candidate_payload_invalid', 'Approval ticket payload digest is invalid.' );
+		$binding = self::current_candidate_binding( $ticket_id, $payload_hash );
+		if ( is_wp_error( $binding ) || ! self::save_candidate_binding( $binding ) ) {
+			$t = MAD4B_SCP_Schema::tables();
+			$wpdb->delete( $t['approvals'], array( 'ticket_id' => $ticket_id, 'status' => 'pending' ), array( '%s', '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			return is_wp_error( $binding ) ? $binding : new WP_Error( 'mad4b_approval_candidate_binding_failed', 'Pending remote approval ticket could not be bound durably to the exact Staging candidate.' );
+		}
+		return $binding;
 	}
 
 	/**
@@ -188,14 +206,12 @@ final class MAD4B_SCP_Approval_Tickets {
 	}
 
 	private static function current_candidate_binding( $ticket_id, $payload_hash ) {
-		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Exact build provenance is unavailable for approval planning.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Exact build provenance is unavailable for remote approval planning.' );
 		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		$sha = is_array( $provenance ) && isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
 		$fingerprint = is_array( $provenance ) && isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
 		if ( ! is_array( $provenance ) || empty( $provenance['manifest_present'] ) || empty( $provenance['manifest_valid'] ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] )
-			|| ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) {
-			return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Pending approval planning requires exact current Staging build provenance.' );
-		}
+			|| ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Remote approval planning requires exact current Staging build provenance.' );
 		return array(
 			'contract' => self::CANDIDATE_BINDING_CONTRACT,
 			'ticket_id' => strtolower( (string) $ticket_id ),
@@ -219,7 +235,8 @@ final class MAD4B_SCP_Approval_Tickets {
 
 	private static function exact_governed_staging() {
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( home_url( '/' ) ) : parse_url( home_url( '/' ) );
+		$url = function_exists( 'home_url' ) ? home_url( '/' ) : '';
+		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
 		$host = is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( rtrim( (string) $parts['host'], '.' ) ) : '';
 		return 'staging' === $environment && self::STAGING_HOST === $host;
 	}
