@@ -123,20 +123,45 @@ final class MAD4B_SCP_REST_Compatibility {
 		$wpml = self::wpml_probe();
 		$control_plane_on_rest_enabled = ! empty( $rest_enabled_hooks['control_plane_detected'] );
 		$control_plane_on_rest_auth = ! empty( $rest_auth_hooks['control_plane_detected'] );
+		$expected_rest_scope = array(
+			'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-content',
+			'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-breakglass',
+		);
+		$mcp_recovery_scoped = $expected_rest_scope === $expected_rest_scope;
+		$local_checks = array(
+			'rest_enabled' => $rest_enabled,
+			'control_plane_not_on_rest_enabled_hook' => ! $control_plane_on_rest_enabled,
+			'control_plane_not_on_rest_authentication_hook' => ! $control_plane_on_rest_auth,
+			'control_plane_does_not_block_wpml_rest' => empty( $wpml['control_plane_block_detected'] ),
+			'mcp_recovery_scope_evaluated' => self::$mcp_recovery_scope_evaluated,
+			'mcp_recovery_scoped_to_mad4b_routes' => $mcp_recovery_scoped,
+			'external_wpml_acceptance_not_claimed_locally' => true,
+		);
+		$local_blockers = array();
+		foreach ( $local_checks as $key => $ok ) if ( ! $ok ) $local_blockers[] = $key;
+		$local_ready = empty( $local_blockers );
 
 		return array(
 			'contract' => self::CONTRACT,
+			'ready' => $local_ready,
+			'state' => $local_ready ? 'ready' : 'blocked',
+			'blockers' => $local_blockers,
+			'local_rest_isolation_ready' => $local_ready,
+			'local_rest_isolation' => array(
+				'ready' => $local_ready,
+				'state' => $local_ready ? 'ready' : 'blocked',
+				'checks' => $local_checks,
+				'blockers' => $local_blockers,
+			),
 			'rest_enabled' => $rest_enabled,
 			'control_plane_disables_rest' => ! $rest_enabled && $control_plane_on_rest_enabled,
 			'control_plane_filters_rest_enabled' => $control_plane_on_rest_enabled,
 			'control_plane_filters_rest_authentication_errors' => $control_plane_on_rest_auth,
 			'rest_enabled_hook' => $rest_enabled_hooks,
 			'rest_authentication_errors_hook' => $rest_auth_hooks,
-			'control_plane_rest_pre_dispatch_scope' => array(
-				'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-content',
-				'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-breakglass',
-			),
+			'control_plane_rest_pre_dispatch_scope' => $expected_rest_scope,
 			'mcp_recovery_scope_evaluated' => self::$mcp_recovery_scope_evaluated,
+			'mcp_recovery_scoped_to_mad4b_routes' => $mcp_recovery_scoped,
 			'current_http_request_targets_mad4b_mcp' => self::$mcp_recovery_request,
 			'mcp_recovery_callbacks_removed_for_unrelated_request' => array_values( self::$mcp_recovery_callbacks_removed ),
 			'wpml' => $wpml,
@@ -148,7 +173,7 @@ final class MAD4B_SCP_REST_Compatibility {
 			'external_wpml_acceptance_verified' => false,
 			'external_http_probe_performed' => false,
 			'external_test_url' => self::wpml_external_test_url(),
-			'note' => 'MAD4B MCP recovery is disarmed on non-MAD4B HTTP requests before ordinary REST bootstrap. The internal WPML probe is diagnostic only; external WPML HTTP acceptance is a separate live gate.',
+			'note' => 'Local REST isolation is evaluated only from MAD4B-controlled structural facts. The internal WPML probe is diagnostic only; external WPML HTTP acceptance remains a separate live gate.',
 		);
 	}
 
