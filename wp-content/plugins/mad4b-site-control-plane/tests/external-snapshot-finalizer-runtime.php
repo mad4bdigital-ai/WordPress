@@ -4,6 +4,7 @@ define( 'ABSPATH', __DIR__ );
 define( 'MAD4B_SCP_VERSION', '0.4.0-rc.27' );
 $GLOBALS['mad4b_options'] = array();
 $GLOBALS['mad4b_bearer'] = true;
+$GLOBALS['mad4b_environment'] = 'staging';
 $GLOBALS['mad4b_candidate_sha'] = str_repeat( '1', 40 );
 $GLOBALS['mad4b_build_fingerprint'] = str_repeat( '2', 64 );
 $GLOBALS['mad4b_snapshot_identity'] = 'sha256:' . str_repeat( 'a', 64 );
@@ -28,9 +29,9 @@ function add_action() { return true; }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $value ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
-function wp_get_environment_type() { return 'staging'; }
-function home_url( $path = '' ) { return 'https://staging.egypttourgates.com' . $path; }
-function site_url( $path = '' ) { return 'https://staging.egypttourgates.com' . $path; }
+function wp_get_environment_type() { return $GLOBALS['mad4b_environment']; }
+function home_url( $path = '' ) { return ( 'staging' === $GLOBALS['mad4b_environment'] ? 'https://staging.egypttourgates.com' : 'https://egypttourgates.com' ) . $path; }
+function site_url( $path = '' ) { return home_url( $path ); }
 function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
 function update_option( $name, $value, $autoload = null ) { $GLOBALS['mad4b_options'][ $name ] = $value; return true; }
 function get_option( $name, $default = false ) { return array_key_exists( $name, $GLOBALS['mad4b_options'] ) ? $GLOBALS['mad4b_options'][ $name ] : $default; }
@@ -198,6 +199,23 @@ $GLOBALS['mad4b_external_observed_offset'] = -1000;
 $stale_handshake = MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status();
 if ( ! empty( $stale_handshake['ready'] ) || ! in_array( 'fresh_post_export_external_context_required', $stale_handshake['blockers'], true ) ) {
 	fwrite( STDERR, "stale external inventory stayed eligible for snapshot finalization\n" ); exit( 1 );
+}
+
+// Production must not mint or accept persistent external snapshot proof state.
+$GLOBALS['mad4b_external_observed_offset'] = -5;
+$GLOBALS['mad4b_environment'] = 'production';
+$ledger_before = json_encode( $GLOBALS['mad4b_options'][ MAD4B_SCP_Portable_Snapshot_Attestation::TOKEN_LEDGER_OPTION ] );
+$production_issue = MAD4B_SCP_Portable_Snapshot_Attestation::issue_external_token( $GLOBALS['mad4b_snapshot_identity'], $candidate );
+if ( ! is_wp_error( $production_issue ) || 'mad4b_external_snapshot_wrong_target' !== $production_issue->get_error_code() ) {
+	fwrite( STDERR, "Production was able to mint external snapshot proof\n" ); exit( 1 );
+}
+$production_verify = MAD4B_SCP_External_Snapshot_Finalizer::snapshot_verify( array( 'client_snapshot_token' => $external_token ) );
+if ( ! empty( $production_verify['trusted_external_context'] ) || ! empty( $production_verify['attestation_recorded'] ) ) {
+	fwrite( STDERR, "Production accepted external snapshot finalization state\n" ); exit( 1 );
+}
+$ledger_after = json_encode( $GLOBALS['mad4b_options'][ MAD4B_SCP_Portable_Snapshot_Attestation::TOKEN_LEDGER_OPTION ] );
+if ( ! hash_equals( $ledger_before, $ledger_after ) ) {
+	fwrite( STDERR, "Production changed external snapshot token persistence\n" ); exit( 1 );
 }
 
 echo "mad4b.external-snapshot-finalizer-runtime.v3: PASS\n";
