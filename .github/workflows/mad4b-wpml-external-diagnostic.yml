@@ -24,6 +24,26 @@ jobs:
       WPML_URL: https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1
       REST_INDEX_URL: https://staging.egypttourgates.com/wp-json/
     steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Prove WPML response contract compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-wpml-response-contract.php"
+          php -l "$root/tests/wpml-response-contract-runtime.php"
+          php "$root/tests/wpml-response-contract-runtime.php"
+
       - name: Capture endpoint and REST index without writes
         shell: bash
         run: |
@@ -69,14 +89,36 @@ jobs:
               route_present = '/wpml/v1/rest/status' in routes
           except Exception as exc:
               parse_error = f'{type(exc).__name__}: {exc}'
+
+          wpml_parse_error = ''
+          wpml_status = ''
+          wpml_get_parameters = ''
+          wpml_success_envelope = False
+          try:
+              wpml = json.loads((root / 'wpml.body').read_text(encoding='utf-8', errors='replace'))
+              payload = wpml
+              if isinstance(wpml, dict) and wpml.get('success') is True and isinstance(wpml.get('data'), dict):
+                  payload = wpml['data']
+                  wpml_success_envelope = True
+              if isinstance(payload, dict):
+                  wpml_status = str(payload.get('status', ''))
+                  wpml_get_parameters = str(payload.get('get_parameters', ''))
+          except Exception as exc:
+              wpml_parse_error = f'{type(exc).__name__}: {exc}'
+
           evidence = {
-              'contract': 'mad4b.wpml-external-http-diagnostic.v1',
+              'contract': 'mad4b.wpml-external-http-diagnostic.v2',
               'source_sha': '${{ env.SOURCE_SHA }}',
               'target_url': '${{ env.WPML_URL }}',
               'rest_index_url': '${{ env.REST_INDEX_URL }}',
               'namespace_present': namespace_present,
               'route_present': route_present,
               'rest_index_parse_error': parse_error,
+              'wpml_parse_error': wpml_parse_error,
+              'wpml_success_envelope': wpml_success_envelope,
+              'wpml_status': wpml_status,
+              'wpml_get_parameters': wpml_get_parameters,
+              'wpml_contract_compatible': wpml_status == 'valid' and wpml_get_parameters == 'valid',
               'mutation_performed': False,
           }
           (root / 'diagnostic.json').write_text(json.dumps(evidence, indent=2, sort_keys=True) + '\n')
@@ -95,6 +137,7 @@ jobs:
             echo "- Location: \`${location:-<absent>}\`"
             echo "- namespace wpml/v1 present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["namespace_present"]).lower())')\`"
             echo "- route /wpml/v1/rest/status present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["route_present"]).lower())')\`"
+            echo "- compatible WPML contract: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["wpml_contract_compatible"]).lower())')\`"
             echo
             echo '### Raw response headers'
             echo '```text'
