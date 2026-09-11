@@ -1,0 +1,31 @@
+name: MAD4B Live Acceptance Reconciler
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-live-acceptance-reconciler.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reconciler-contract:
+    name: Live acceptance reconciler (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Lint finalization surfaces
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-reconciler.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-portable-snapshot-attestation.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php
+      - name: Verify finalization architecture
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-reconciler-contract.py
