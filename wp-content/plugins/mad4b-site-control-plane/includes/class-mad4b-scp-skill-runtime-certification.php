@@ -24,12 +24,12 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 	}
 
 	public static function observe() {
-		if ( self::$observing ) return self::status();
+		if ( self::$observing ) return self::persisted_status();
 		self::$observing = true;
 		$result = self::evaluate();
 		self::$observing = false;
 
-		if ( ! is_array( $result ) ) return self::status();
+		if ( ! is_array( $result ) ) return self::persisted_status();
 		$previous = get_option( self::OPTION, array() );
 		$previous_digest = is_array( $previous ) && isset( $previous['evidence_digest'] ) ? (string) $previous['evidence_digest'] : '';
 		$current_digest = isset( $result['evidence_digest'] ) ? (string) $result['evidence_digest'] : '';
@@ -68,7 +68,24 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		return $result;
 	}
 
+	/**
+	 * Current local truth for read-only callers such as Live Acceptance.
+	 * This path deliberately performs no audit or option write. Persisted evidence
+	 * remains available separately through persisted_status().
+	 */
+	public static function current_status() {
+		if ( self::$observing ) return self::persisted_status();
+		$result = self::evaluate();
+		if ( ! is_array( $result ) ) return self::persisted_status();
+		$result['persistence'] = 'read_only_live_inspection';
+		return $result;
+	}
+
 	public static function status() {
+		return self::current_status();
+	}
+
+	public static function persisted_status() {
 		$stored = get_option( self::OPTION, array() );
 		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) return $stored;
 		return array(
