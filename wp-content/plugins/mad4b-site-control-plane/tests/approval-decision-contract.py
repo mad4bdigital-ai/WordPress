@@ -2,6 +2,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 admin = (root / 'includes/class-mad4b-scp-approval-decision-admin.php').read_text(encoding='utf-8')
+plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 tickets = (root / 'includes/class-mad4b-scp-approval-tickets.php').read_text(encoding='utf-8')
 planner = (root / 'includes/class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
@@ -68,6 +69,28 @@ prepare_body = admin[prepare_start:prepare_end]
 for forbidden in ['decide_pending(', 'wp_register_ability(', 'MAD4B_SCP_Mutation_Manager', 'call_user_func(']:
     if forbidden in prepare_body:
         raise SystemExit('Authority runtime preparation gained decision or target-execution authority: ' + forbidden)
+
+required_plugin = [
+    'public static function is_authority_admin_surface()',
+    "'mad4b-approval-decisions' === $page",
+    'public static function reconcile_authority_on_mad4b_admin()',
+    'self::is_authority_admin_surface()',
+    'MAD4B_SCP_Staging_Write_Authority::reconcile();',
+    'public static function prime_admin_mcp_runtime()',
+    'rest_get_server();',
+]
+missing = [marker for marker in required_plugin if marker not in plugin]
+if missing:
+    raise SystemExit('Approval decision page is missing governed admin lifecycle routing: ' + ' | '.join(missing))
+
+# admin-post is intentionally NOT inferred from page routing: it must reach the
+# explicit nonce + validation + reconcile path in the decision class instead.
+authority_surface_start = plugin.index('public static function is_authority_admin_surface()')
+authority_surface_end = plugin.index('public static function reconcile_authority_on_mad4b_admin()', authority_surface_start)
+authority_surface_body = plugin[authority_surface_start:authority_surface_end]
+for forbidden in ['$_POST', "mad4b_approval_decision", 'admin-post.php']:
+    if forbidden in authority_surface_body:
+        raise SystemExit('Admin-post approval leaked into pre-nonce page-routing reconciliation: ' + forbidden)
 
 required_ticket = [
     "const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v1'",
@@ -139,4 +162,4 @@ found = [marker for marker in forbidden_handoff if marker in handoff]
 if found:
     raise SystemExit('Approval handoff gained decision or mutation authority: ' + ' | '.join(found))
 
-print('mad4b.approval-decision.contract.v3: PASS')
+print('mad4b.approval-decision.contract.v4: PASS')
