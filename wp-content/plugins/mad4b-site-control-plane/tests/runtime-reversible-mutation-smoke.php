@@ -12,6 +12,17 @@ $check = static function ( $condition, $message ) {
 	if ( ! $condition ) throw new RuntimeException( $message );
 };
 
+// This smoke exercises two independent high-impact undo requests inside one
+// WP-CLI process. Production HTTP/MCP calls receive fresh PHP request-local
+// state naturally. Reset only the private CI fixture overlay between those
+// logical requests; do not weaken the runtime conflict guard itself.
+$reset_request_ticket_overlay = static function () {
+	$reflection = new ReflectionClass( 'MAD4B_SCP_Identity_Context' );
+	$property = $reflection->getProperty( 'request_approval_ticket_id' );
+	$property->setAccessible( true );
+	$property->setValue( null, '' );
+};
+
 $check( class_exists( 'MAD4B_SCP_Mutation_Manager' ), 'Mutation manager is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Governed_Ability_Overrides' ), 'Governed ability override layer is unavailable.' );
 $check( wp_has_ability( 'mad4b/content-update-post' ), 'Governed post update ability is missing.' );
@@ -139,6 +150,11 @@ $check( 'MAD4B reversible before' === $restored->post_title && 'before-content' 
 $original_record = MAD4B_SCP_Mutation_Manager::get( $first['mutation_id'] );
 $check( is_array( $original_record ) && 'undone' === $original_record['status'], 'Original mutation was not marked undone.' );
 $check( ! empty( $undone['recovery_mutation_id'] ), 'Undo did not create child recovery evidence.' );
+
+// The next section represents a separate incoming request with its own ticket.
+// Reset only CI's emulated request-local ticket overlay; all durable governance,
+// mutation records, grants and audit evidence remain intact in the disposable DB.
+$reset_request_ticket_overlay();
 
 // 4. Create a second governed mutation, then simulate a newer human change. Automatic undo must refuse to overwrite it.
 $approval_ticket_id = '';
