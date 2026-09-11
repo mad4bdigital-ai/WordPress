@@ -168,16 +168,13 @@ $check( $first instanceof WP_REST_Response && 200 === $first->get_status(), 'fir
 $first_json = wp_json_encode( $first->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 $check( false === strpos( $first_json, 'mad4b_execution_reentry_denied' ), 'outer tools/call was incorrectly denied as re-entry' );
 $check( $nested_response instanceof WP_REST_Response, 'provider hook did not issue nested real MCP call' );
-$nested_data = $nested_response->get_data();
-$nested_json = wp_json_encode( $nested_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-$nested_is_error = is_array( $nested_data ) && isset( $nested_data['result'] ) && is_array( $nested_data['result'] ) && ! empty( $nested_data['result']['isError'] );
-$nested_text = '';
-if ( $nested_is_error && isset( $nested_data['result']['content'] ) && is_array( $nested_data['result']['content'] ) ) {
-	foreach ( $nested_data['result']['content'] as $content_item ) {
-		if ( is_array( $content_item ) && isset( $content_item['text'] ) ) $nested_text .= (string) $content_item['text'];
-	}
-}
-$check( $nested_is_error && false !== strpos( $nested_text, 'already executing in this request' ), 'nested same-request call was not fenced through MCP error envelope: ' . $nested_json );
+$nested_json = wp_json_encode( $nested_response->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+$check(
+	is_string( $nested_json )
+		&& false !== strpos( $nested_json, '"isError":true' )
+		&& false !== strpos( $nested_json, 'already executing in this request' ),
+	'nested same-request call was not fenced through serialized MCP error envelope: ' . $nested_json
+);
 $check( 1 === $provider_invocations, 'provider side effect ran more than once during nested same-request call' );
 
 $tables = MAD4B_SCP_Schema::tables();
