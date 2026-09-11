@@ -12,6 +12,13 @@ $check = static function ( $condition, $message ) {
 	if ( ! $condition ) throw new RuntimeException( $message );
 };
 
+$reset_request_ticket_overlay = static function () {
+	$reflection = new ReflectionClass( 'MAD4B_SCP_Identity_Context' );
+	$property = $reflection->getProperty( 'request_approval_ticket_id' );
+	$property->setAccessible( true );
+	$property->setValue( null, '' );
+};
+
 $check( class_exists( 'MAD4B_SCP_Budgets' ), 'Budget service is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Authorization' ), 'Central authorization is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Approval_Tickets' ), 'Approval service is unavailable.' );
@@ -78,6 +85,8 @@ $input = array(
 	'mutation_id' => wp_generate_uuid4(),
 	'reason' => 'CI budget authorization proof',
 );
+$target = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $input );
+$check( is_string( $target ) && preg_match( '/^[a-f0-9]{64}$/', $target ), 'Unable to resolve deterministic budget-test target fingerprint.' );
 
 // 1. A missing approval must roll back the provisional budget reservation.
 $missing_approval = MAD4B_SCP_Authorization::authorize_mutation( 'mad4b/mutation-undo', 'mad4b-admin', 'core', $input );
@@ -89,7 +98,7 @@ $check( 0 === $used_after_missing, 'Missing approval consumed budget despite tra
 
 // 2. Exact approved ticket + available budget must authorize, commit one unit, and consume the ticket.
 $ticket_one = MAD4B_SCP_Approval_Tickets::create_pending(
-	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', '', $input, 'mutation', 'CI budget commit approval', 600
+	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $target, $input, 'mutation', 'CI budget commit approval', 600
 );
 $check( is_array( $ticket_one ) && 'pending' === $ticket_one['status'], 'Unable to create first budget approval ticket.' );
 $approved_one = MAD4B_SCP_Approval_Tickets::approve( $ticket_one['ticket_id'] );
@@ -103,9 +112,14 @@ $check( 1 === count( $windows_after_allowed ) && 1 === (int) $windows_after_allo
 $ticket_one_after = MAD4B_SCP_Approval_Tickets::get( $ticket_one['ticket_id'] );
 $check( is_array( $ticket_one_after ) && 'used' === $ticket_one_after['status'], 'Successful budgeted authorization did not consume the exact approval ticket.' );
 
+// The next section represents a new request with a distinct approval ticket.
+// Runtime HTTP/MCP naturally gets fresh request-local state; reset only the CI
+// fixture overlay while preserving durable budget, grant and audit state.
+$reset_request_ticket_overlay();
+
 // 3. Exhaustion must happen before approval consumption; a fresh approved ticket remains reusable for a future window.
 $ticket_two = MAD4B_SCP_Approval_Tickets::create_pending(
-	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', '', $input, 'mutation', 'CI budget exhaustion approval', 600
+	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $target, $input, 'mutation', 'CI budget exhaustion approval', 600
 );
 $check( is_array( $ticket_two ), 'Unable to create exhaustion-test approval ticket.' );
 $approved_two = MAD4B_SCP_Approval_Tickets::approve( $ticket_two['ticket_id'] );
