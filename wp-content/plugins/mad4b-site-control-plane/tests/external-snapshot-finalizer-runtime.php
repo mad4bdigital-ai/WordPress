@@ -7,6 +7,7 @@ $GLOBALS['mad4b_bearer'] = true;
 $GLOBALS['mad4b_candidate_sha'] = str_repeat( '1', 40 );
 $GLOBALS['mad4b_build_fingerprint'] = str_repeat( '2', 64 );
 $GLOBALS['mad4b_snapshot_identity'] = 'sha256:' . str_repeat( 'a', 64 );
+$GLOBALS['mad4b_external_observed_offset'] = -5;
 $GLOBALS['mad4b_external'] = array(
 	'verified' => true,
 	'real_external_session' => true,
@@ -50,7 +51,7 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 	public static function external_handshake_attestation_status() {
 		$out = $GLOBALS['mad4b_external'];
-		$out['observed_at'] = gmdate( 'Y-m-d H:i:s', time() - 5 );
+		$out['observed_at'] = gmdate( 'Y-m-d H:i:s', time() + (int) $GLOBALS['mad4b_external_observed_offset'] );
 		return $out;
 	}
 }
@@ -130,11 +131,22 @@ if ( isset( $raw_attempt['live_snapshot_token'] ) || isset( $raw_attempt['expect
 	fwrite( STDERR, "snapshot verifier disclosed expected package evidence\n" ); exit( 1 );
 }
 
+// A valid package secret is still insufficient when the tools/list evidence is
+// older than the export. This proves export -> Scan/Refresh -> verify ordering.
+$GLOBALS['mad4b_external_observed_offset'] = -120;
+$pre_export = MAD4B_SCP_External_Snapshot_Finalizer::snapshot_verify(
+	array( 'client_snapshot_token' => $external_token )
+);
+if ( ! empty( $pre_export['trusted_external_context'] ) || ! empty( $pre_export['attestation_recorded'] ) || 'fresh_post_export_external_context_required' !== $pre_export['package_proof_state'] ) {
+	fwrite( STDERR, "pre-export external inventory was accepted for a new package\n" ); exit( 1 );
+}
+$GLOBALS['mad4b_external_observed_offset'] = -5;
+
 $verified = MAD4B_SCP_External_Snapshot_Finalizer::snapshot_verify(
 	array( 'client_snapshot_token' => $external_token )
 );
 if ( empty( $verified['exact_match'] ) || empty( $verified['trusted_external_context'] ) || empty( $verified['attestation_recorded'] ) ) {
-	fwrite( STDERR, "trusted external export-only proof was not accepted\n" ); exit( 1 );
+	fwrite( STDERR, "trusted fresh post-export proof was not accepted\n" ); exit( 1 );
 }
 if ( ! isset( $verified['expected_token_disclosed'], $verified['local_snapshot_identity_disclosed'] ) || $verified['expected_token_disclosed'] || $verified['local_snapshot_identity_disclosed'] ) {
 	fwrite( STDERR, "verification disclosure flags are unsafe\n" ); exit( 1 );
@@ -163,7 +175,7 @@ if ( ! empty( $untrusted['trusted_external_context'] ) || ! empty( $untrusted['a
 	fwrite( STDERR, "untrusted request recorded external snapshot evidence\n" ); exit( 1 );
 }
 $untrusted_status = MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status();
-if ( ! empty( $untrusted_status['ready'] ) || ! in_array( 'external_session_not_verified', $untrusted_status['blockers'], true ) ) {
+if ( ! empty( $untrusted_status['ready'] ) || ! in_array( 'fresh_post_export_external_context_required', $untrusted_status['blockers'], true ) ) {
 	fwrite( STDERR, "snapshot gate stayed ready without verified external bearer context\n" ); exit( 1 );
 }
 $GLOBALS['mad4b_bearer'] = true;
@@ -179,6 +191,13 @@ $GLOBALS['mad4b_snapshot_identity'] = 'sha256:' . str_repeat( '9', 64 );
 $moved_snapshot = MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status();
 if ( ! empty( $moved_snapshot['ready'] ) || ! in_array( 'snapshot_changed_after_export', $moved_snapshot['blockers'], true ) ) {
 	fwrite( STDERR, "stale portable package remained valid after local snapshot movement\n" ); exit( 1 );
+}
+
+$GLOBALS['mad4b_snapshot_identity'] = 'sha256:' . str_repeat( 'a', 64 );
+$GLOBALS['mad4b_external_observed_offset'] = -1000;
+$stale_handshake = MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status();
+if ( ! empty( $stale_handshake['ready'] ) || ! in_array( 'fresh_post_export_external_context_required', $stale_handshake['blockers'], true ) ) {
+	fwrite( STDERR, "stale external inventory stayed eligible for snapshot finalization\n" ); exit( 1 );
 }
 
 echo "mad4b.external-snapshot-finalizer-runtime.v3: PASS\n";
