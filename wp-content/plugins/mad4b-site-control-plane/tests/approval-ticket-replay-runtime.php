@@ -42,6 +42,7 @@ final class MAD4B_Test_WPDB {
 
 $wpdb = new MAD4B_Test_WPDB();
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identity-context.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-authorization.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-approval-tickets.php';
 
 function mad4b_replay_assert( $condition, $message ) {
@@ -61,8 +62,16 @@ $agent = array( 'id' => 7, 'public_id' => 'agent-staging-live-acceptance' );
 $server = 'mad4b-write';
 $ability = 'mad4b/content-update-post';
 $provider = 'core';
-$target = hash( 'sha256', 'post:123' );
-$input = array( 'post_id' => 123, 'post_title' => 'Live acceptance reversible probe' );
+$input = array( 'post_id' => 123, 'post_title' => 'Live acceptance reversible probe', 'expected_modified_gmt' => '2026-09-11 12:00:00' );
+$planning_fp = MAD4B_SCP_Authorization::target_fingerprint( $ability, $provider, $input, array(), array( 'planning' => true ) );
+$runtime_fp = MAD4B_SCP_Authorization::target_fingerprint( $ability, $provider, $input, $agent, $overlay );
+mad4b_replay_assert( 1 === preg_match( '/^[a-f0-9]{64}$/', $planning_fp ), 'Fallback target fingerprint must be a deterministic SHA-256.' );
+mad4b_replay_assert( hash_equals( $planning_fp, $runtime_fp ), 'Planning and execution target fingerprints must not depend on identity or ticket context.' );
+$changed_input = $input;
+$changed_input['post_title'] = 'Different exact operation';
+$changed_fp = MAD4B_SCP_Authorization::target_fingerprint( $ability, $provider, $changed_input, $agent, $overlay );
+mad4b_replay_assert( ! hash_equals( $planning_fp, $changed_fp ), 'Changing exact mutation input must change the fallback target fingerprint.' );
+$target = $planning_fp;
 $ticket_class = 'mutation';
 $payload = MAD4B_SCP_Approval_Tickets::canonical_payload_hash( $agent['public_id'], $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_string( $payload ) && 64 === strlen( $payload ), 'Canonical payload hash must be generated.' );
@@ -94,4 +103,4 @@ $wpdb->ticket['status'] = 'pending';
 $pending = MAD4B_SCP_Approval_Tickets::consume_exact( $wpdb->ticket['ticket_id'], $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_wp_error( $pending ) && 'mad4b_approval_not_approved' === $pending->get_error_code(), 'Pending tickets must remain distinct from replay denial.' );
 
-echo "mad4b.approval-ticket-replay.runtime.v2: PASS\n";
+echo "mad4b.approval-ticket-replay.runtime.v3: PASS\n";
