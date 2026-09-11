@@ -1,0 +1,60 @@
+name: MAD4B Approval Replay Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-finalizer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-ticket-replay-runtime.php'
+      - '.github/workflows/mad4b-approval-replay-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-approval-replay-contract-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-contract:
+    name: One-time approval replay denial (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Execute sequential replay regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-approval-tickets.php"
+          php -l "$root/tests/approval-ticket-replay-runtime.php"
+          php "$root/tests/approval-ticket-replay-runtime.php"
+
+      - name: Verify Live Acceptance consumes the same authoritative denial
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane/includes'
+          tickets="$root/class-mad4b-scp-approval-tickets.php"
+          authz="$root/class-mad4b-scp-authorization.php"
+          finalizer="$root/class-mad4b-scp-live-acceptance-finalizer.php"
+          grep -Fq "if ( 'used' === \$ticket['status'] ) return new WP_Error( 'mad4b_approval_replay_denied'" "$tickets"
+          grep -Fq "return self::deny( \$approval->get_error_code(), \$approval->get_error_message(), \$ability_name, \$identity, \$agent )" "$authz"
+          grep -Fq "'mad4b_approval_replay_denied' === (string) \$summary['reason_code']" "$finalizer"
+          grep -Fq "'mad4b/live-acceptance-replay-denied-observed'" "$finalizer"
