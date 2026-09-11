@@ -75,6 +75,10 @@ for marker in [
     "mcp_adapter_init",
     "admin_init",
     "mad4b/skill-runtime-certification",
+    "public static function current_status()",
+    "public static function persisted_status()",
+    "return self::current_status();",
+    "'persistence'] = 'read_only_live_inspection'",
     "staging_app_mapping_mismatch",
     "seed_pack_not_ready",
     "provider_reconciliation_not_ready",
@@ -92,6 +96,10 @@ for marker in [
     if marker not in cert:
         raise SystemExit(f'missing runtime certification invariant: {marker}')
 
+status_section = cert[cert.index('public static function status()'):cert.index('public static function persisted_status()')]
+if 'update_option(' in status_section or 'MAD4B_SCP_Audit::record' in status_section:
+    raise SystemExit('Skill current status must remain read-only and must not persist or audit')
+
 # Provider reconciliation must see the deterministic adapter registry before it
 # derives desired_enabled. This guards the live ETG DFSB failure shape where an
 # early empty registry persisted adapter_required/desired_enabled=false even
@@ -104,8 +112,6 @@ if adapter_prepare < 0 or adapter_register < 0 or provider_reconcile < 0:
 if not (adapter_prepare < adapter_register < provider_reconcile):
     raise SystemExit('adapter defaults must be registered before provider Skill reconciliation')
 
-# Keep the zero-touch re-enable path limited to MAD4B-managed, digest-clean
-# Skills. User-owned or digest-drifted Skills must remain untouched.
 for marker in [
     "in_array( $owner, array( self::CONTRACT, 'mad4b.skill-seeder.v1' ), true )",
     "$current_sha = hash( 'sha256', $skill_raw )",
@@ -172,9 +178,6 @@ if "add_action( 'admin_init', array( __CLASS__, 'observe' )" in cert:
 if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
     raise SystemExit('Skills adapter must remain read-only')
 
-# rc.19 live truth contract: read abilities must never use persistence as current
-# truth, early Ability materialization must be recoverable, and WPML route
-# presence inside an MCP request must remain diagnostic rather than a local gate.
 for marker in [
     "const CONTRACT = 'mad4b.live-truth.v1'",
     "const FRESHNESS_OPTION = 'mad4b_scp_write_runtime_certification_freshness_v1'",
@@ -196,8 +199,6 @@ for marker in [
     if marker not in live_truth:
         raise SystemExit(f'missing rc.19 live truth/freshness invariant: {marker}')
 
-# Reconciliation may run every relevant request to hydrate in-memory authority,
-# but stable state must not append another audit record or rewrite the option.
 for marker in [
     "'write_inventory_fingerprint'",
     "$changed = ! is_array( $stored )",
@@ -216,12 +217,9 @@ for marker in [
     if marker not in plugin:
         raise SystemExit(f'missing current-request authority recovery invariant: {marker}')
 
-# The legacy persisted certification remains a historical record. The read
-# ability itself is overridden by live truth, so it must not be converted into
-# a hidden mutating callback merely to make status green.
 if "'execute_callback' => array( __CLASS__, 'status' )" not in write_cert:
     raise SystemExit('write certification persistence contract unexpectedly changed registration semantics')
 if "MAD4B_SCP_Live_Truth::boot_early();" not in main:
     raise SystemExit('live truth bridge must be armed before Ability materialization')
 
-print('mad4b.skill-runtime-certification.v3: PASS')
+print('mad4b.skill-runtime-certification.v4: PASS')
