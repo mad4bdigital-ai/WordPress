@@ -7,8 +7,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * The verifier never exposes the expected proof. A client can satisfy this gate
  * only by presenting the fresh cryptographic nonce embedded in an authenticated
- * wp-admin portable Plugin export, from the same verified ChatGPT OAuth/MCP
- * finalizer context that produced the current exact tool inventory evidence.
+ * wp-admin portable Plugin export, from a fresh post-export ChatGPT OAuth/MCP
+ * inventory observation bound to the current external finalizer subject.
  */
 final class MAD4B_SCP_External_Snapshot_Finalizer {
 	const CONTRACT = 'mad4b.external-snapshot-finalizer.v3';
@@ -16,6 +16,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 	const VERIFY_CONTRACT = 'mad4b.external-snapshot-verification.v3';
 	const OPTION = 'mad4b_scp_external_snapshot_attestation_v3';
 	const TTL = 1800;
+	const HANDSHAKE_TTL = 900;
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const SERVER_ID = 'mad4b-chatgpt';
 	const STAGING_HOST = 'staging.egypttourgates.com';
@@ -50,7 +51,8 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 			? MAD4B_SCP_Portable_Snapshot_Attestation::validate_external_token( $client, $portable_candidate )
 			: array( 'valid' => false, 'reason' => 'portable_snapshot_attestation_unavailable' );
 		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status() : array();
-		$trusted = self::trusted_external_context( $external );
+		$export_issued_at = ! empty( $validation['issued_at'] ) ? (string) $validation['issued_at'] : '';
+		$trusted = self::trusted_external_context( $external, $export_issued_at );
 		$exact = ! empty( $validation['valid'] );
 		$recorded = false;
 
@@ -62,7 +64,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 				'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
 				'external_snapshot_token_digest' => isset( $validation['token_digest'] ) ? (string) $validation['token_digest'] : '',
 				'snapshot_identity_digest' => isset( $validation['snapshot_identity_digest'] ) ? (string) $validation['snapshot_identity_digest'] : '',
-				'export_issued_at' => isset( $validation['issued_at'] ) ? (string) $validation['issued_at'] : '',
+				'export_issued_at' => $export_issued_at,
 				'export_expires_at' => isset( $validation['expires_at'] ) ? (string) $validation['expires_at'] : '',
 				'client_id' => self::CHATGPT_CLIENT_ID,
 				'server_id' => self::SERVER_ID,
@@ -83,6 +85,9 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 				&& hash_equals( (string) $attestation['finalizer_context_digest'], (string) $stored['finalizer_context_digest'] );
 		}
 
+		$proof_state = ! $trusted
+			? 'fresh_post_export_external_context_required'
+			: ( $exact ? 'recognized_export_secret' : ( isset( $validation['reason'] ) ? (string) $validation['reason'] : 'unrecognized_export_secret' ) );
 		return array(
 			'contract' => self::VERIFY_CONTRACT,
 			'exact_match' => (bool) $exact,
@@ -92,7 +97,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 			'candidate_sha' => ! empty( $candidate['ready'] ) ? (string) $candidate['source_commit_sha'] : '',
 			'build_fingerprint' => ! empty( $candidate['ready'] ) ? (string) $candidate['build_fingerprint'] : '',
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
-			'package_proof_state' => $exact ? 'recognized_export_secret' : ( isset( $validation['reason'] ) ? (string) $validation['reason'] : 'unrecognized_export_secret' ),
+			'package_proof_state' => $proof_state,
 			'expected_token_disclosed' => false,
 			'local_snapshot_identity_disclosed' => false,
 		);
@@ -102,7 +107,8 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		$candidate = self::current_candidate();
 		$stored = get_option( self::OPTION, array() );
 		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status() : array();
-		$trusted = self::trusted_external_context( $external );
+		$export_issued_at = is_array( $stored ) && ! empty( $stored['export_issued_at'] ) ? (string) $stored['export_issued_at'] : '';
+		$trusted = self::trusted_external_context( $external, $export_issued_at );
 		$blockers = array();
 
 		if ( ! self::staging_allowed() ) $blockers[] = 'wrong_target';
@@ -112,7 +118,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		if ( empty( $stored['build_fingerprint'] ) || empty( $candidate['build_fingerprint'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $stored['build_fingerprint'] ) ) $blockers[] = 'build_fingerprint_mismatch';
 		if ( self::CHATGPT_CLIENT_ID !== ( isset( $stored['client_id'] ) ? (string) $stored['client_id'] : '' ) ) $blockers[] = 'client_binding_mismatch';
 		if ( self::SERVER_ID !== ( isset( $stored['server_id'] ) ? (string) $stored['server_id'] : '' ) ) $blockers[] = 'server_binding_mismatch';
-		if ( ! $trusted ) $blockers[] = 'external_session_not_verified';
+		if ( ! $trusted ) $blockers[] = 'fresh_post_export_external_context_required';
 
 		$stored_context = isset( $stored['finalizer_context_digest'] ) ? strtolower( trim( (string) $stored['finalizer_context_digest'] ) ) : '';
 		$current_context = isset( $external['finalizer_context_digest'] ) ? strtolower( trim( (string) $external['finalizer_context_digest'] ) ) : '';
@@ -133,7 +139,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		if ( ! empty( $export_status['snapshot_identity_digest'] ) && ! empty( $stored['snapshot_identity_digest'] ) && ! hash_equals( (string) $export_status['snapshot_identity_digest'], (string) $stored['snapshot_identity_digest'] ) ) $blockers[] = 'snapshot_binding_changed';
 
 		$observed_at = isset( $stored['observed_at'] ) ? (string) $stored['observed_at'] : '';
-		$ts = '' !== $observed_at ? strtotime( $observed_at ) : false;
+		$ts = self::parse_time( $observed_at );
 		$fresh = false !== $ts && $ts <= time() + 60 && ( time() - $ts ) <= self::TTL;
 		if ( ! $fresh ) $blockers[] = 'stale_external_snapshot_attestation';
 
@@ -176,7 +182,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		);
 	}
 
-	private static function trusted_external_context( array $external ) {
+	private static function trusted_external_context( array $external, $not_before = '' ) {
 		if ( ! self::staging_allowed() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return false;
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : null;
@@ -190,6 +196,13 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		if ( ! self::valid_hash( isset( $external['finalizer_context_digest'] ) ? strtolower( (string) $external['finalizer_context_digest'] ) : '' ) ) return false;
 		if ( ! self::valid_hash( isset( $external['external_tool_inventory_fingerprint'] ) ? strtolower( (string) $external['external_tool_inventory_fingerprint'] ) : '' ) ) return false;
 		if ( ! self::valid_hash( isset( $external['external_write_inventory_fingerprint'] ) ? strtolower( (string) $external['external_write_inventory_fingerprint'] ) : '' ) ) return false;
+		$observed = self::parse_time( isset( $external['observed_at'] ) ? $external['observed_at'] : '' );
+		$now = time();
+		if ( false === $observed || $observed > $now + 60 || ( $now - $observed ) > self::HANDSHAKE_TTL ) return false;
+		if ( '' !== (string) $not_before ) {
+			$minimum = self::parse_time( $not_before );
+			if ( false === $minimum || $observed + 60 < $minimum ) return false;
+		}
 		return true;
 	}
 
@@ -207,6 +220,12 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		$home_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
 		$site_host = function_exists( 'site_url' ) ? strtolower( (string) wp_parse_url( site_url( '/' ), PHP_URL_HOST ) ) : '';
 		return self::STAGING_HOST === $home_host && self::STAGING_HOST === $site_host;
+	}
+
+	private static function parse_time( $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value ) return false;
+		return strtotime( $value );
 	}
 
 	private static function valid_hash( $value ) { return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $value ); }
