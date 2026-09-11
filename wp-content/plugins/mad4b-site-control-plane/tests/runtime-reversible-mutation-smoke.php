@@ -194,8 +194,8 @@ $check( is_wp_error( $drift ) && 'mad4b_undo_state_drift' === $drift->get_error_
 $after_drift = get_post( $post_id );
 $check( 'Human change after AI mutation' === $after_drift->post_title, 'Rejected undo overwrote newer human work.' );
 
-$used_ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_two['ticket_id'] );
-$check( is_array( $used_ticket ) && 'used' === $used_ticket['status'], 'Attempted high-impact undo did not consume its single-use approval capability.' );
+$failed_ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_two['ticket_id'] );
+$check( is_array( $failed_ticket ) && 'failed' === $failed_ticket['status'], 'Rejected high-impact undo must terminalize the claimed single-use approval as failed.' );
 
 wp_delete_post( $post_id, true );
 
