@@ -97,4 +97,4 @@ $check( 'before' === get_post_meta( $post_id, $field, true ), 'Denied JetEngine 
 $check( $mutations_before === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['mutations']}" ), 'Denied JetEngine ability created a mutation envelope.' );
 
 wp_delete_post( $post_id, true );
-echo "mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v2: PASS\n";
+echo "mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1: PASS\n";
