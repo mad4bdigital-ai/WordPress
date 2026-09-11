@@ -10,6 +10,7 @@ final class MAD4B_CI_Failure_Evidence_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function is_available() { return true; }
 	public function ability_names() { return array( 'read' => array(), 'content' => array( 'ci/failure-evidence-write' ), 'admin' => array() ); }
 	public function reversible_contracts() { return array( 'ci/failure-evidence-write' => 'mad4b.rollback.ci-failure-evidence.v1' ); }
+	public function register_abilities() {}
 	protected function mutation_requires_certification() { return false; }
 	protected function detect_plugin_version() { return '1.0.0-ci'; }
 	public function mutate_then_fail( $input ) {
