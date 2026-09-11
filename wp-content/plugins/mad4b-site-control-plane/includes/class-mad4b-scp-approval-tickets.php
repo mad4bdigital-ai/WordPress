@@ -65,11 +65,6 @@ final class MAD4B_SCP_Approval_Tickets {
 		return self::get( $ticket_id );
 	}
 
-	/**
-	 * Bind a freshly-created remote Staging mutation ticket to the exact live
-	 * candidate. The planning guard calls this immediately after approval-plan;
-	 * lower-level/local callers remain usable without requiring package provenance.
-	 */
 	public static function bind_ticket_to_current_candidate( $ticket_id ) {
 		global $wpdb;
 		$ticket_id = strtolower( trim( (string) $ticket_id ) );
@@ -91,11 +86,6 @@ final class MAD4B_SCP_Approval_Tickets {
 		return $binding;
 	}
 
-	/**
-	 * Atomically decide one still-pending exact ticket. This transition never
-	 * executes the target ability and is intentionally callable only by the
-	 * independent wp-admin decision surface.
-	 */
 	public static function decide_pending( $ticket_id, $decision, $expected_payload_sha256, array $context = array() ) {
 		global $wpdb;
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_approval_admin_required', 'Administrator capability is required to decide a ticket.' );
@@ -168,27 +158,88 @@ final class MAD4B_SCP_Approval_Tickets {
 		return true;
 	}
 
-	public static function consume_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
-		global $wpdb;
+	/**
+	 * Pure/read-only exact-ticket validation. This method MUST NOT change ticket
+	 * state, consume budgets, persist audit records, or otherwise mutate durable
+	 * state because WordPress/MCP may call permission checks more than once.
+	 */
+	public static function validate_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
 		$ticket = self::get( $ticket_id );
 		if ( ! $ticket ) return new WP_Error( 'mad4b_approval_missing', 'Approval ticket is missing.' );
-		if ( 'used' === $ticket['status'] ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket has already been consumed; replay is denied.' );
-		if ( 'approved' !== $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approved', 'Approval ticket is not approved.' );
+		$status = isset( $ticket['status'] ) ? (string) $ticket['status'] : '';
+		if ( in_array( $status, array( 'used', 'executing', 'failed' ), true ) ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket is terminal or already claimed; replay is denied.' );
+		if ( 'approved' !== $status ) return new WP_Error( 'mad4b_approval_not_approved', 'Approval ticket is not approved.' );
 		if ( strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) return new WP_Error( 'mad4b_approval_expired', 'Approval ticket has expired.' );
 		if ( (int) $ticket['agent_id'] !== (int) $agent['id'] ) return new WP_Error( 'mad4b_approval_agent_mismatch', 'Approval ticket belongs to another agent.' );
-		if ( $ticket['ticket_class'] !== $ticket_class ) return new WP_Error( 'mad4b_approval_class_mismatch', 'Approval ticket class does not match this operation.' );
+		if ( sanitize_key( (string) $ticket['server_id'] ) !== sanitize_key( (string) $server_id ) ) return new WP_Error( 'mad4b_approval_server_mismatch', 'Approval ticket server does not match this operation.' );
+		if ( (string) $ticket['ability_name'] !== (string) $ability_name ) return new WP_Error( 'mad4b_approval_ability_mismatch', 'Approval ticket ability does not match this operation.' );
+		if ( sanitize_key( (string) $ticket['provider'] ) !== sanitize_key( (string) $provider ) ) return new WP_Error( 'mad4b_approval_provider_mismatch', 'Approval ticket provider does not match this operation.' );
+		if ( (string) $ticket['target_fingerprint'] !== (string) $target_fingerprint ) return new WP_Error( 'mad4b_approval_target_mismatch', 'Approval ticket target does not match this operation.' );
+		if ( (string) $ticket['ticket_class'] !== (string) $ticket_class ) return new WP_Error( 'mad4b_approval_class_mismatch', 'Approval ticket class does not match this operation.' );
 		$hash = self::canonical_payload_hash( $agent['public_id'], $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $hash ) ) return $hash;
 		if ( ! hash_equals( (string) $ticket['payload_sha256'], (string) $hash ) ) return new WP_Error( 'mad4b_approval_payload_mismatch', 'Approval ticket is not bound to this exact operation.' );
+
+		// Remote governed Staging tickets are additionally bound to the exact
+		// candidate SHA/build fingerprint. Permission checks only compare evidence;
+		// they never write or refresh the binding.
+		if ( 'mutation' === (string) $ticket_class && 'mad4b-write' === sanitize_key( (string) $server_id ) && self::exact_governed_staging() ) {
+			$saved = self::candidate_binding( $ticket_id );
+			if ( empty( $saved ) ) return new WP_Error( 'mad4b_approval_candidate_binding_missing', 'Remote Staging approval ticket is missing exact candidate binding evidence.' );
+			$current = self::current_candidate_binding( $ticket_id, $hash );
+			if ( is_wp_error( $current ) ) return $current;
+			foreach ( array( 'ticket_id', 'payload_sha256', 'candidate_sha', 'build_fingerprint', 'environment', 'host' ) as $key ) {
+				if ( ! isset( $saved[ $key ], $current[ $key ] ) || ! hash_equals( (string) $saved[ $key ], (string) $current[ $key ] ) ) {
+					return new WP_Error( 'mad4b_approval_candidate_mismatch', 'Approval ticket candidate binding no longer matches the exact live Staging build.' );
+				}
+			}
+		}
+		return array( 'ticket' => $ticket, 'payload_sha256' => $hash );
+	}
+
+	/** Atomically claim one approved ticket at the execution boundary. */
+	public static function claim_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+		global $wpdb;
+		$validated = self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+		if ( is_wp_error( $validated ) ) return $validated;
+		$ticket = $validated['ticket'];
+		$hash = $validated['payload_sha256'];
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$updated = $wpdb->query( $wpdb->prepare(
-			"UPDATE {$t['approvals']} SET status = 'used', used_at = %s WHERE id = %d AND status = 'approved' AND payload_sha256 = %s AND expires_at >= %s",
-			$now, (int) $ticket['id'], $hash, $now
+			"UPDATE {$t['approvals']} SET status = 'executing' WHERE id = %d AND status = 'approved' AND payload_sha256 = %s AND expires_at >= %s",
+			(int) $ticket['id'], $hash, $now
 		) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket was already consumed, expired, or changed.' );
-		MAD4B_SCP_Audit::record( 'mad4b/approval-consumed', array( 'ticket_id' => $ticket_id, 'ability' => $ability_name, 'agent_public_id' => $agent['public_id'] ), 'ok' );
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_replay_denied', 'Approval ticket was already claimed, expired, or changed.' );
+		MAD4B_SCP_Audit::record( 'mad4b/approval-claimed', array( 'ticket_id' => $ticket_id, 'ability' => $ability_name, 'agent_public_id' => $agent['public_id'] ), 'ok' );
+		$ticket['status'] = 'executing';
 		return $ticket;
+	}
+
+	/** Finalize an executing ticket. Failed tickets are terminal and never retryable. */
+	public static function finalize_claim( $ticket_id, $terminal_status ) {
+		global $wpdb;
+		$terminal_status = sanitize_key( (string) $terminal_status );
+		if ( ! in_array( $terminal_status, array( 'used', 'failed' ), true ) ) return new WP_Error( 'mad4b_approval_finalize_status_invalid', 'Approval ticket final status must be used or failed.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$now = gmdate( 'Y-m-d H:i:s' );
+		if ( 'used' === $terminal_status ) {
+			$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'used', used_at = %s WHERE ticket_id = %s AND status = 'executing'", $now, (string) $ticket_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		} else {
+			$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'failed' WHERE ticket_id = %s AND status = 'executing'", (string) $ticket_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		}
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_finalize_conflict', 'Approval ticket is not in the expected executing state.' );
+		$event = 'used' === $terminal_status ? 'mad4b/approval-consumed' : 'mad4b/approval-execution-failed';
+		MAD4B_SCP_Audit::record( $event, array( 'ticket_id' => $ticket_id, 'result_status' => $terminal_status ), 'used' === $terminal_status ? 'ok' : 'failed' );
+		return self::get( $ticket_id );
+	}
+
+	/** Compatibility helper for direct non-Ability callers and legacy tests. */
+	public static function consume_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+		$claim = self::claim_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
+		if ( is_wp_error( $claim ) ) return $claim;
+		$final = self::finalize_claim( $ticket_id, 'used' );
+		return is_wp_error( $final ) ? $final : $claim;
 	}
 
 	public static function get( $ticket_id ) {
@@ -209,7 +260,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Exact build provenance is unavailable for remote approval planning.' );
 		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		$sha = is_array( $provenance ) && isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
-		$fingerprint = is_array( $provenance ) && isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
+		$fingerprint = is_array( $provenance ) && isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) : '';
 		if ( ! is_array( $provenance ) || empty( $provenance['manifest_present'] ) || empty( $provenance['manifest_valid'] ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] )
 			|| ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Remote approval planning requires exact current Staging build provenance.' );
 		return array(
