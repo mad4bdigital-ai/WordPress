@@ -84,7 +84,9 @@ for marker in [
 # The external mutation evidence surface must remain read-only and bounded.
 for marker in [
     "'mad4b/mutation-get'",
-    "'readonly' => true",
+    "'meta' => self::meta( true, false, true )",
+    "private static function meta( $readonly, $destructive, $idempotent )",
+    "'annotations' => array( 'readonly' => (bool) $readonly",
     "unset( $record['rollback_payload'], $record['rollback_payload_sha256'] )",
 ]:
     require(overrides, marker, 'bounded-mutation-evidence')
