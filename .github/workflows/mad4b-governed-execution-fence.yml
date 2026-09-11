@@ -99,11 +99,16 @@ jobs:
           unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
           ADAPTER_SHA="$(sha256sum wp-content/plugins/mcp-adapter.zip | awk '{print $1}')"
           test "$ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+
           VERSION="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$PLUGIN_STAGE/mad4b-site-control-plane.php" | head -n1)"
-          test "$VERSION" = '0.4.0-rc.26'
+          RUNTIME_RELEASE="$(sed -nE 's/^release=(.+)$/\1/p' "$PLUGIN_STAGE/MAD4B-RUNTIME-BUILD.txt" | head -n1)"
+          test -n "$VERSION"
+          test -n "$RUNTIME_RELEASE"
+          test "$VERSION" = "$RUNTIME_RELEASE"
 
           export MAD4B_CONTROL_STAGE="$PLUGIN_STAGE"
           export MAD4B_CONTROL_VERSION="$VERSION"
+          export MAD4B_EXPECTED_VERSION="$VERSION"
           export MAD4B_ADAPTER_SHA="$ADAPTER_SHA"
           python3 <<'PY'
           import hashlib, json, os
@@ -150,7 +155,10 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
           php /tmp/wp-cli.phar eval '
-          if ( "0.4.0-rc.26" !== MAD4B_SCP_VERSION ) throw new RuntimeException( "Expected rc.26" );
+          $expected = (string) getenv( "MAD4B_EXPECTED_VERSION" );
+          if ( "" === $expected || $expected !== MAD4B_SCP_VERSION ) {
+              throw new RuntimeException( "Control Plane runtime/header version mismatch: expected=" . $expected . " actual=" . MAD4B_SCP_VERSION );
+          }
           $p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
           if ( empty( $p["manifest_present"] ) || empty( $p["manifest_valid"] ) || empty( $p["runtime_manifest_match"] ) || ! empty( $p["stale"] ) ) {
               throw new RuntimeException( "Exact candidate provenance is not runtime-valid: " . wp_json_encode( $p ) );
