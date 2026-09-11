@@ -38,6 +38,26 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php
           python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json >/dev/null
 
+      - name: Prove native-ability requirement is profile scoped
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('wp-content/plugins/mad4b-site-control-plane/config')
+          base = json.loads((root / 'certified-providers.json').read_text())['providers']['elementor']
+          profile = json.loads((root / 'certified-provider-profiles.json').read_text())['providers']['elementor']['4.2.4']
+          if not base.get('native_abilities'):
+              raise SystemExit('Elementor baseline must continue requiring its certified native abilities')
+          if profile.get('native_abilities') != []:
+              raise SystemExit('Elementor 4.2.4 guarded-fallback profile must replace native abilities with an empty exact declaration')
+          if profile.get('native_abilities_requirement') != 'not_required_for_certified_guarded_fallback':
+              raise SystemExit('Elementor 4.2.4 native-ability requirement mode is not explicit')
+          if profile.get('contract_mode') != 'certified_guarded_bounded_fallback':
+              raise SystemExit('Elementor 4.2.4 guarded-fallback contract mode missing')
+          PY
+
       - name: Fetch and pin official Elementor 4.2.4 package
         shell: bash
         run: |
@@ -70,7 +90,7 @@ jobs:
           done
           echo 'Elementor 4.2.4 MCP-critical files are byte-identical to the certified 4.1.4 baseline.'
 
-      - name: Execute profile resolution and fail-closed runtime tests
+      - name: Execute guarded-fallback profile and fail-closed runtime tests
         shell: bash
         run: |
           set -euo pipefail
@@ -84,16 +104,9 @@ jobs:
           function trailingslashit( $value ) { return rtrim( $value, '/\\' ) . '/'; }
           function apply_filters( $tag, $value ) { return $value; }
           function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $value ) ); }
-          function wp_has_ability( $name ) {
-              $present = array(
-                  'elementor/list-pages',
-                  'elementor/get-page-structure',
-                  'elementor/update-page-settings',
-                  'elementor/get-globals',
-                  'elementor/create-page',
-              );
-              return in_array( $name, $present, true );
-          }
+          // Live 4.2.4 evidence has no registered Elementor native abilities. The
+          // exact guarded fallback profile must therefore pass without faking them.
+          function wp_has_ability( $name ) { return false; }
           function get_plugins() {
               $path = WP_PLUGIN_DIR . '/elementor/elementor.php';
               $raw = file_get_contents( $path );
@@ -114,13 +127,14 @@ jobs:
           assert_true( in_array( '4.1.4', $status['certified_versions'], true ), 'baseline certified version missing' );
           assert_true( in_array( '4.2.4', $status['certified_versions'], true ), '4.2.4 certified profile missing' );
           assert_true( 'wordpress.org:downloads/plugin/elementor.4.2.4.zip' === $status['certification_authority'], 'certification authority mismatch' );
+          assert_true( 'certified_guarded_bounded_fallback' === $status['contract_mode'], 'guarded fallback contract mode not selected' );
           assert_true( ! empty( $status['runtime_integrity']['manifest_present'] ), 'integrity manifest missing' );
           assert_true( empty( $status['runtime_integrity']['missing'] ), 'critical files unexpectedly missing' );
           assert_true( empty( $status['runtime_integrity']['mismatched'] ), 'critical file hash mismatch on exact package' );
           assert_true( 20 === count( $status['runtime_integrity']['verified'] ), 'unexpected verified critical-file count' );
-          assert_true( empty( $status['native_abilities_missing'] ), 'certified native abilities missing' );
+          assert_true( empty( $status['native_abilities_missing'] ), '4.2.4 guarded fallback incorrectly requires absent native abilities' );
           assert_true( empty( $status['newly_present_abilities'] ), 'verified-absent ability unexpectedly present' );
-          assert_true( true === $status['runtime_contract_ok'], 'exact 4.2.4 runtime contract did not pass' );
+          assert_true( true === $status['runtime_contract_ok'], 'exact 4.2.4 guarded-fallback runtime contract did not pass' );
 
           $critical = WP_PLUGIN_DIR . '/elementor/includes/frontend.php';
           $original = file_get_contents( $critical );
@@ -142,6 +156,6 @@ jobs:
 
           $restored = MAD4B_SCP_Provider_Contracts::runtime_status( 'elementor', true );
           assert_true( true === $restored['runtime_contract_ok'], 'runtime contract did not recover after restoring exact files' );
-          echo "provider profile runtime: PASS\n";
+          echo "provider guarded-fallback profile runtime: PASS\n";
           PHP
           php /tmp/mad4b-provider-runtime/test.php
