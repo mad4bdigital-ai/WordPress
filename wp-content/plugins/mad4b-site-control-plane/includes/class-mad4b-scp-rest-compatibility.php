@@ -127,7 +127,15 @@ final class MAD4B_SCP_REST_Compatibility {
 			'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-content',
 			'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-breakglass',
 		);
-		$mcp_recovery_scoped = $expected_rest_scope === $expected_rest_scope;
+		$mcp_recovery_scoped = true;
+		foreach ( $expected_rest_scope as $route ) {
+			if ( ! self::is_mad4b_mcp_route( $route ) ) { $mcp_recovery_scoped = false; break; }
+		}
+		if ( $mcp_recovery_scoped ) {
+			foreach ( array( '/wpml/v1/rest/status', '/wp/v2/types/post', '/wc/v3/products' ) as $route ) {
+				if ( self::is_mad4b_mcp_route( $route ) ) { $mcp_recovery_scoped = false; break; }
+			}
+		}
 		$local_checks = array(
 			'rest_enabled' => $rest_enabled,
 			'control_plane_not_on_rest_enabled_hook' => ! $control_plane_on_rest_enabled,
