@@ -34,7 +34,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ETG_HEAD: 162ee66bdf8a8a472f5b547253064ade5842bf05
+  ETG_HEAD: 48936c4ff65f957599b6f18c892bf1ccb239efca
+  ETG_TREE: 7fea3c221a88d4b80bb6fcbd993bf39d126ae4ab
 
 jobs:
   contract:
@@ -95,6 +96,8 @@ jobs:
           test "$(git rev-parse FETCH_HEAD)" = "$ETG_HEAD"
           git checkout "$ETG_HEAD" -- wp-content/plugins/etg-dynamic-filter-seo-bridge
           grep -Fq "Version: 0.4.0-alpha.13" wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php
+          test "$(git rev-parse "$ETG_HEAD^{tree}")" = "$ETG_TREE"
+          printf '%s\n' "{\"contract\":\"etg.dfsb.embedded-build-identity.v1\",\"git_sha\":\"$ETG_HEAD\",\"tree_sha\":\"$ETG_TREE\",\"plugin_version\":\"0.4.0-alpha.13\"}" > wp-content/plugins/etg-dynamic-filter-seo-bridge/build-identity.json
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
