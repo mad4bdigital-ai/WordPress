@@ -10,6 +10,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json'
       - 'wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php'
+      - 'tools/normalize-premium-provider-package.py'
       - 'tools/premium-provider-attestation.py'
       - 'tests/premium-provider-attestation-contract.py'
       - '.github/workflows/mad4b-provider-certification-evidence.yml'
@@ -64,6 +65,28 @@ jobs:
           fetch_candidate jet-engine-3.8.15 https://downloads.wordpress.org/plugin/jet-engine.3.8.15.zip
           fetch_candidate jet-smart-filters-3.8.5 https://downloads.wordpress.org/plugin/jet-smart-filters.3.8.5.zip
 
+      - name: Normalize repository premium packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-provider-repository
+          rm -rf "$out"
+          mkdir -p "$out"
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetengine \
+            --input wp-content/plugins/jet-engine.zip \
+            --output "$out/jet-engine.zip" \
+            --expected-version 3.8.15 \
+            --report "$out/jetengine-normalization.json"
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetsmartfilters \
+            --input wp-content/plugins/jet-smart-filters.zip \
+            --output "$out/jet-smart-filters.zip" \
+            --expected-version 3.8.5 \
+            --report "$out/jetsmartfilters-normalization.json"
+          unzip -tqq "$out/jet-engine.zip"
+          unzip -tqq "$out/jet-smart-filters.zip"
+
       - name: Capture and verify deterministic provider evidence
         shell: bash
         run: |
@@ -73,6 +96,7 @@ jobs:
 
           root = pathlib.Path('wp-content/plugins')
           config_root = root / 'mad4b-site-control-plane/config'
+          normalized_root = pathlib.Path('/tmp/mad4b-provider-repository')
           contract = json.loads((config_root / 'certified-providers.json').read_text(encoding='utf-8'))
           profiles = json.loads((config_root / 'certified-provider-profiles.json').read_text(encoding='utf-8'))
           attestation_doc = json.loads((config_root / 'premium-provider-attestations.json').read_text(encoding='utf-8'))
@@ -80,11 +104,20 @@ jobs:
           allowed_sources = set(policy.get('allowed_source_kinds', []))
           forbidden_sources = set(policy.get('forbidden_source_kinds', []))
           attestations = attestation_doc.get('attestations', {})
+          premium_providers = {'jetengine', 'jetsmartfilters'}
 
           repository_archives = {
               'elementor': (root / 'elementor.zip', 'elementor/elementor.php'),
-              'jetengine': (root / 'jet-engine.zip', 'jet-engine/jet-engine.php'),
-              'jetsmartfilters': (root / 'jet-smart-filters.zip', 'jet-smart-filters/jet-smart-filters.php'),
+              'jetengine': (normalized_root / 'jet-engine.zip', 'jet-engine/jet-engine.php'),
+              'jetsmartfilters': (normalized_root / 'jet-smart-filters.zip', 'jet-smart-filters/jet-smart-filters.php'),
+          }
+          source_archives = {
+              'jetengine': root / 'jet-engine.zip',
+              'jetsmartfilters': root / 'jet-smart-filters.zip',
+          }
+          normalization_reports = {
+              'jetengine': json.loads((normalized_root / 'jetengine-normalization.json').read_text(encoding='utf-8')),
+              'jetsmartfilters': json.loads((normalized_root / 'jetsmartfilters-normalization.json').read_text(encoding='utf-8')),
           }
           requested = {
               'elementor': {
@@ -153,7 +186,9 @@ jobs:
                   raise SystemExit(f'{provider}: live runtime cannot self-attest')
               review = record.get('semantic_review', {})
               if review.get('status') != 'approved' or review.get('approved') is not True:
-                  raise SystemExit(f'{provider}: attestation semantic review is not approved')
+                  if review.get('status') == 'pending' and review.get('approved') is False:
+                      return None
+                  raise SystemExit(f'{provider}: attestation semantic review state is invalid')
               if not str(review.get('review_id', '')).strip():
                   raise SystemExit(f'{provider}: approved semantic review requires review_id')
               if record.get('plugin_entry') != plugin_entry:
@@ -211,7 +246,7 @@ jobs:
               return True
 
           out = {
-              'contract': 'mad4b.provider-certification-evidence.v5',
+              'contract': 'mad4b.provider-certification-evidence.v6',
               'source_sha': os.environ.get('SOURCE_SHA', ''),
               'premium_attestation_contract': attestation_doc.get('contract', ''),
               'providers': {},
@@ -221,6 +256,32 @@ jobs:
           for provider, (archive, plugin_entry) in repository_archives.items():
               inspected_repository[provider] = inspect(provider, archive, plugin_entry)
 
+          premium = profiles.get('premium_provider_policy', {})
+          for provider in premium_providers:
+              provider_policy = premium.get(provider, {})
+              normalization = normalization_reports[provider]
+              repository = inspected_repository[provider]
+              raw = source_archives[provider].read_bytes()
+              raw_sha = hashlib.sha256(raw).hexdigest()
+              if normalization.get('source_archive_sha256') != raw_sha:
+                  raise SystemExit(f'{provider}: normalizer source SHA does not bind repository archive')
+              if int(normalization.get('source_archive_bytes', -1)) != len(raw):
+                  raise SystemExit(f'{provider}: normalizer source byte count does not bind repository archive')
+              if provider_policy.get('repository_archive_sha256') != raw_sha:
+                  raise SystemExit(f'{provider}: policy source archive SHA drifted')
+              if int(provider_policy.get('repository_archive_bytes', -1)) != len(raw):
+                  raise SystemExit(f'{provider}: policy source archive byte count drifted')
+              if provider_policy.get('repository_archive_layout') != normalization.get('source_layout'):
+                  raise SystemExit(f'{provider}: policy source archive layout drifted')
+              if provider_policy.get('normalized_archive_sha256') != repository['archive_sha256']:
+                  raise SystemExit(f'{provider}: policy normalized archive SHA drifted')
+              if int(provider_policy.get('normalized_archive_bytes', -1)) != repository['archive_bytes']:
+                  raise SystemExit(f'{provider}: policy normalized archive byte count drifted')
+              if normalization.get('normalized_archive_sha256') != repository['archive_sha256']:
+                  raise SystemExit(f'{provider}: normalized repository candidate SHA mismatch')
+              if int(normalization.get('normalized_archive_bytes', -1)) != repository['archive_bytes']:
+                  raise SystemExit(f'{provider}: normalized repository candidate byte count mismatch')
+
           for provider, req in requested.items():
               expected_version = req['version']
               repository = inspected_repository[provider]
@@ -228,25 +289,39 @@ jobs:
                   'repository_archive': repository,
                   'repository_exact_version_match': repository['version'] == expected_version,
               }
+              if provider in premium_providers:
+                  item['repository_source_archive'] = {
+                      'archive_sha256': normalization_reports[provider]['source_archive_sha256'],
+                      'archive_bytes': normalization_reports[provider]['source_archive_bytes'],
+                      'layout': normalization_reports[provider]['source_layout'],
+                  }
+                  item['normalization'] = normalization_reports[provider]
 
               exact = None
               authority = None
               source = None
+              can_verify_profile = True
               public = req['public']
               if public.is_file():
                   exact = inspect(provider, public, req['entry'])
                   authority = req['public_authority']
                   source = 'public_exact_archive'
+              elif provider in premium_providers:
+                  reviewed = reviewed_attestation(provider, expected_version, req['entry'])
+                  if reviewed is not None:
+                      exact = reviewed
+                      authority = reviewed['authority']
+                      source = reviewed['source']
+                  elif repository['version'] == expected_version:
+                      exact = repository
+                      authority = f'pending-premium-attestation:wp-content/plugins/{source_archives[provider].name}'
+                      source = 'repository_normalized_exact_archive_pending_semantic_review'
+                      can_verify_profile = False
               elif repository['version'] == expected_version:
                   exact = repository
                   archive_name = repository_archives[provider][0].name
                   authority = f'repository_artifact:wp-content/plugins/{archive_name}'
                   source = 'repository_exact_archive'
-              elif provider in ('jetengine', 'jetsmartfilters'):
-                  exact = reviewed_attestation(provider, expected_version, req['entry'])
-                  if exact is not None:
-                      authority = exact['authority']
-                      source = exact['source']
 
               if exact is not None:
                   exact = dict(exact)
@@ -258,7 +333,10 @@ jobs:
                   if not exact['version_match'] or not exact['critical_manifest_complete']:
                       raise SystemExit(f'{provider}: selected exact-version candidate is incomplete')
                   item['exact_candidate'] = exact
-                  item['profile_verified'] = verify_profile(provider, expected_version, exact, authority)
+                  item['profile_verified'] = verify_profile(provider, expected_version, exact, authority) if can_verify_profile else False
+                  item['certification_state'] = 'certified_profile_verified' if item['profile_verified'] else (
+                      'pending_semantic_review' if provider in premium_providers and not can_verify_profile else 'candidate_not_profiled'
+                  )
               else:
                   item['exact_candidate'] = {
                       'available': False,
@@ -269,28 +347,33 @@ jobs:
                       'reviewed_attestation_available': False,
                   }
                   item['profile_verified'] = False
+                  item['certification_state'] = 'unavailable'
 
               out['providers'][provider] = item
 
           if not out['providers']['elementor'].get('profile_verified'):
               raise SystemExit('Elementor 4.2.4 exact official profile is required and must verify')
 
-          premium = profiles.get('premium_provider_policy', {})
           for provider, expected in [('jetengine', '3.8.15'), ('jetsmartfilters', '3.8.5')]:
               provider_policy = premium.get(provider, {})
               repository = inspected_repository[provider]
+              normalization = normalization_reports[provider]
               if provider_policy.get('observed_version') != expected:
                   raise SystemExit(f'{provider}: premium observed-version policy missing')
               if provider_policy.get('mutation_policy') != 'fail_closed_until_attested_exact_package_manifest':
                   raise SystemExit(f'{provider}: premium fail-closed policy missing')
-              if provider_policy.get('repository_archive_version') != repository['version']:
+              if provider_policy.get('repository_archive_version') != normalization.get('observed_version'):
                   raise SystemExit(f'{provider}: repository archive version evidence drifted')
-              expected_match = repository['version'] == expected
+              expected_match = normalization.get('observed_version') == expected
               if bool(provider_policy.get('repository_archive_matches_observed')) != expected_match:
                   raise SystemExit(f'{provider}: repository archive match flag drifted')
               has_profile = expected in profiles.get('providers', {}).get(provider, {})
               if has_profile and not out['providers'][provider].get('profile_verified'):
-                  raise SystemExit(f'{provider}: exact profile exists without verified exact package authority')
+                  raise SystemExit(f'{provider}: exact profile exists without verified approved package authority')
+              if not has_profile and out['providers'][provider].get('certification_state') != 'pending_semantic_review':
+                  raise SystemExit(f'{provider}: uncertified premium package must remain pending semantic review')
+              if not repository['critical_files'] or repository['critical_files_missing']:
+                  raise SystemExit(f'{provider}: normalized exact candidate critical manifest incomplete')
 
           pathlib.Path('provider-certification-evidence.json').write_text(
               json.dumps(out, indent=2, sort_keys=True) + '\n', encoding='utf-8'
@@ -314,6 +397,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-provider-certification-evidence-${{ env.SOURCE_SHA }}
-          path: provider-certification-evidence.json
+          path: |
+            provider-certification-evidence.json
+            /tmp/mad4b-provider-repository/*-normalization.json
           if-no-files-found: error
           retention-days: 14
