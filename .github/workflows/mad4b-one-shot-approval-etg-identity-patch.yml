@@ -1,0 +1,373 @@
+name: MAD4B One-shot Approval Handoff and ETG Identity Patch
+
+on:
+  push:
+    branches: [feat/dynamic-wordpress-skills-20260909]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'chore(ci): one-shot approval handoff and ETG identity patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Guard exact source parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "7aa042bb18d920c11367e42c6ccd3a22373bd035"
+
+      - name: Apply bounded governance patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          root = Path('.')
+          control = root / 'wp-content/plugins/mad4b-site-control-plane'
+
+          handoff = r'''<?php
+
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+          /**
+           * Read-only handoff from MCP diagnostics to the independent human approval console.
+           *
+           * This adapter never approves/rejects a ticket, never exposes a nonce or executable
+           * decision URL, and never invokes the target mutation. It only tells an administrator
+           * whether an exact pending ticket is still eligible for a human decision and where the
+           * existing wp-admin decision console lives.
+           */
+          final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
+              const CONTRACT = 'mad4b.approval-decision-handoff.v1';
+
+              public function id() { return 'approval-handoff'; }
+              public function label() { return 'Human Approval Handoff'; }
+              public function is_available() {
+                  return class_exists( 'MAD4B_SCP_Approval_Tickets' )
+                      && class_exists( 'MAD4B_SCP_Approval_Decision_Admin' );
+              }
+              public function ability_names() {
+                  return array(
+                      'read' => array( 'mad4b/approval-decision-handoff' ),
+                      'content' => array(),
+                      'admin' => array(),
+                  );
+              }
+              protected function mutation_requires_certification() { return false; }
+              protected function provider_certification( $available ) {
+                  return array(
+                      'provider' => 'approval-handoff',
+                      'label' => 'Human Approval Handoff',
+                      'status' => $available ? 'read_only_compatible' : 'unavailable',
+                      'contract_mode' => 'read_only_human_decision_handoff',
+                      'runtime_contract_ok' => (bool) $available,
+                      'mutation_certified' => false,
+                  );
+              }
+              public static function can_manage( $input = null ) { return current_user_can( 'manage_options' ); }
+              public function register_abilities() {
+                  $this->add_ability(
+                      'mad4b/approval-decision-handoff',
+                      'Inspect Human Approval Handoff',
+                      'handoff',
+                      array( __CLASS__, 'can_manage' ),
+                      $this->schema(
+                          array(
+                              'ticket_id' => array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 ),
+                          ),
+                          array( 'ticket_id' )
+                      )
+                  );
+              }
+              public function handoff( $input ) {
+                  $ticket_id = isset( $input['ticket_id'] ) ? strtolower( trim( (string) $input['ticket_id'] ) ) : '';
+                  if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) {
+                      return new WP_Error( 'mad4b_approval_handoff_ticket_invalid', 'A valid exact approval ticket id is required.' );
+                  }
+                  $ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_id );
+                  if ( ! is_array( $ticket ) ) return new WP_Error( 'mad4b_approval_handoff_ticket_missing', 'Approval ticket does not exist.' );
+
+                  $candidate = MAD4B_SCP_Approval_Decision_Admin::current_candidate();
+                  $binding = MAD4B_SCP_Approval_Tickets::candidate_binding( $ticket_id );
+                  $payload = isset( $ticket['payload_sha256'] ) ? strtolower( trim( (string) $ticket['payload_sha256'] ) ) : '';
+                  $blockers = array();
+
+                  if ( 'pending' !== ( isset( $ticket['status'] ) ? (string) $ticket['status'] : '' ) ) $blockers[] = 'ticket_not_pending';
+                  $expires = ! empty( $ticket['expires_at'] ) ? strtotime( (string) $ticket['expires_at'] . ' UTC' ) : false;
+                  if ( false === $expires || $expires < time() ) $blockers[] = 'ticket_expired';
+                  if ( 'mutation' !== ( isset( $ticket['ticket_class'] ) ? sanitize_key( (string) $ticket['ticket_class'] ) : '' ) ) $blockers[] = 'ticket_class_not_human_decidable';
+                  if ( 'mad4b-write' !== ( isset( $ticket['server_id'] ) ? sanitize_key( (string) $ticket['server_id'] ) : '' ) ) $blockers[] = 'ticket_server_not_human_decidable';
+                  if ( empty( $candidate['ready'] ) ) $blockers[] = 'current_candidate_not_ready';
+
+                  $binding_ok = is_array( $binding )
+                      && 'mad4b.approval-candidate-binding.v1' === ( isset( $binding['contract'] ) ? (string) $binding['contract'] : '' )
+                      && ! empty( $binding['ticket_id'] ) && hash_equals( $ticket_id, strtolower( (string) $binding['ticket_id'] ) )
+                      && ! empty( $binding['payload_sha256'] ) && '' !== $payload && hash_equals( $payload, strtolower( (string) $binding['payload_sha256'] ) )
+                      && ! empty( $binding['candidate_sha'] ) && ! empty( $candidate['source_commit_sha'] ) && hash_equals( (string) $candidate['source_commit_sha'], (string) $binding['candidate_sha'] )
+                      && ! empty( $binding['build_fingerprint'] ) && ! empty( $candidate['build_fingerprint'] ) && hash_equals( (string) $candidate['build_fingerprint'], (string) $binding['build_fingerprint'] );
+                  if ( ! $binding_ok ) $blockers[] = 'candidate_binding_missing_or_stale';
+
+                  $ability = isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '';
+                  $provider = isset( $ticket['provider'] ) ? sanitize_key( (string) $ticket['provider'] ) : '';
+                  $mounted_provider = '' !== $ability && class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
+                  if ( null === $mounted_provider ) $blockers[] = 'ticket_target_not_mounted';
+                  elseif ( '' === $provider || $provider !== sanitize_key( (string) $mounted_provider ) ) $blockers[] = 'ticket_provider_mismatch';
+                  if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) $blockers[] = 'write_authority_not_ready';
+
+                  $blockers = array_values( array_unique( $blockers ) );
+                  return array(
+                      'contract' => self::CONTRACT,
+                      'authorizing' => false,
+                      'read_only' => true,
+                      'mutation_exposed' => false,
+                      'decision_exposed' => false,
+                      'nonce_exposed' => false,
+                      'target_execution_exposed' => false,
+                      'human_action_required' => true,
+                      'decision_surface' => 'wp_admin_human_only',
+                      'admin_page_url' => admin_url( 'admin.php?page=' . MAD4B_SCP_Approval_Decision_Admin::PAGE_SLUG ),
+                      'ticket' => array(
+                          'ticket_id' => $ticket_id,
+                          'status' => isset( $ticket['status'] ) ? (string) $ticket['status'] : '',
+                          'ticket_class' => isset( $ticket['ticket_class'] ) ? (string) $ticket['ticket_class'] : '',
+                          'server_id' => isset( $ticket['server_id'] ) ? (string) $ticket['server_id'] : '',
+                          'ability' => $ability,
+                          'provider' => $provider,
+                          'payload_sha256' => $payload,
+                          'target_fingerprint' => isset( $ticket['target_fingerprint'] ) ? (string) $ticket['target_fingerprint'] : '',
+                          'expires_at' => isset( $ticket['expires_at'] ) ? (string) $ticket['expires_at'] : '',
+                      ),
+                      'candidate' => array(
+                          'ready' => ! empty( $candidate['ready'] ),
+                          'source_commit_sha' => isset( $candidate['source_commit_sha'] ) ? (string) $candidate['source_commit_sha'] : '',
+                          'build_fingerprint' => isset( $candidate['build_fingerprint'] ) ? (string) $candidate['build_fingerprint'] : '',
+                          'environment' => isset( $candidate['environment'] ) ? (string) $candidate['environment'] : '',
+                          'host' => isset( $candidate['host'] ) ? (string) $candidate['host'] : '',
+                      ),
+                      'candidate_binding_exact' => $binding_ok,
+                      'can_decide_in_admin' => empty( $blockers ),
+                      'blockers' => $blockers,
+                  );
+              }
+          }
+
+          add_action( 'mad4b_scp_register_adapters', static function ( $registry ) {
+              if ( is_object( $registry ) && method_exists( $registry, 'register' ) ) {
+                  $registry->register( new MAD4B_SCP_Approval_Handoff_Adapter() );
+              }
+          } );
+          '''
+          # Normalize indentation introduced by this heredoc.
+          handoff = '\n'.join(line[10:] if line.startswith('          ') else line for line in handoff.splitlines()) + '\n'
+          handoff_path = control / 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php'
+          if handoff_path.exists():
+              raise SystemExit('approval handoff adapter unexpectedly already exists')
+          handoff_path.write_text(handoff, encoding='utf-8')
+
+          main = control / 'mad4b-site-control-plane.php'
+          text = main.read_text(encoding='utf-8')
+          needle = "require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php';\n"
+          replacement = needle + "require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php';\n"
+          if text.count(needle) != 1:
+              raise SystemExit('unexpected ETG adapter require cardinality')
+          main.write_text(text.replace(needle, replacement), encoding='utf-8')
+
+          approval_contract = control / 'tests/approval-decision-contract.py'
+          text = approval_contract.read_text(encoding='utf-8')
+          needle = "servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')\n"
+          replacement = needle + "handoff = (root / 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php').read_text(encoding='utf-8')\n"
+          if text.count(needle) != 1:
+              raise SystemExit('approval contract import anchor drifted')
+          text = text.replace(needle, replacement)
+          anchor = "if 'approval-decision' in servers:\n    raise SystemExit('Human approval decision leaked into MCP server projection')\n\n"
+          addition = r'''required_handoff = [
+              "const CONTRACT = 'mad4b.approval-decision-handoff.v1'",
+              "'mad4b/approval-decision-handoff'",
+              "'read' => array( 'mad4b/approval-decision-handoff' )",
+              "'content' => array()",
+              "'admin' => array()",
+              "'human_action_required' => true",
+              "'decision_exposed' => false",
+              "'nonce_exposed' => false",
+              "'target_execution_exposed' => false",
+              "MAD4B_SCP_Approval_Decision_Admin::current_candidate()",
+              "MAD4B_SCP_Approval_Tickets::candidate_binding",
+              "MAD4B_SCP_Approval_Decision_Admin::PAGE_SLUG",
+          ]
+          missing = [marker for marker in required_handoff if marker not in handoff]
+          if missing:
+              raise SystemExit('Missing read-only approval handoff invariant: ' + ' | '.join(missing))
+          forbidden_handoff = [
+              'decide_pending(', 'wp_create_nonce(', 'wp_nonce_field(', 'admin_post_',
+              'MAD4B_SCP_Mutation_Manager', 'execute_callback', 'mad4b/database-update',
+              'mad4b/filesystem-write', "'decision' => 'approve'", 'update_option(', 'delete_option(',
+          ]
+          found = [marker for marker in forbidden_handoff if marker in handoff]
+          if found:
+              raise SystemExit('Approval handoff gained decision or mutation authority: ' + ' | '.join(found))
+
+          '''
+          addition = '\n'.join(line[10:] if line.startswith('          ') else line for line in addition.splitlines()) + '\n'
+          if text.count(anchor) != 1:
+              raise SystemExit('approval contract server anchor drifted')
+          approval_contract.write_text(text.replace(anchor, anchor + addition), encoding='utf-8')
+
+          approval_workflow = root / '.github/workflows/mad4b-approval-decision-contract.yml'
+          text = approval_workflow.read_text(encoding='utf-8')
+          path_anchor = "      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php'\n"
+          path_add = path_anchor + "      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'\n"
+          if text.count(path_anchor) != 1:
+              raise SystemExit('approval workflow path anchor drifted')
+          text = text.replace(path_anchor, path_add)
+          lint_anchor = "          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php\n"
+          lint_add = lint_anchor + "          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php\n"
+          if text.count(lint_anchor) != 1:
+              raise SystemExit('approval workflow lint anchor drifted')
+          approval_workflow.write_text(text.replace(lint_anchor, lint_add), encoding='utf-8')
+
+          etg = control / 'includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php'
+          text = etg.read_text(encoding='utf-8')
+          availability_anchor = "\t\t\t&& class_exists( '\\\\ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\RuntimeInventory' )\n"
+          availability_add = availability_anchor + "\t\t\t&& class_exists( '\\\\ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\BuildIdentity' )\n"
+          if text.count(availability_anchor) != 1:
+              raise SystemExit('ETG availability anchor drifted')
+          text = text.replace(availability_anchor, availability_add)
+          ability_anchor = "\t\t\t\t'etg-dfsb/status',\n"
+          ability_add = ability_anchor + "\t\t\t\t'etg-dfsb/build-identity',\n"
+          if text.count(ability_anchor) != 1:
+              raise SystemExit('ETG ability list anchor drifted')
+          text = text.replace(ability_anchor, ability_add)
+          register_anchor = "\t\t$this->add_ability( 'etg-dfsb/status', 'Get ETG DFSB MCP Integration Status', 'status', $read );\n"
+          register_add = register_anchor + "\t\t$this->add_ability( 'etg-dfsb/build-identity', 'Read ETG DFSB Exact Build Identity', 'build_identity', $read );\n"
+          if text.count(register_anchor) != 1:
+              raise SystemExit('ETG register anchor drifted')
+          text = text.replace(register_anchor, register_add)
+          method_anchor = "\n\tpublic function configuration() {\n"
+          method = r'''
+              public function build_identity() {
+                  $guard = $this->guard_runtime();
+                  if ( is_wp_error( $guard ) ) return $guard;
+                  try {
+                      $identity = \ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
+                      if ( ! is_array( $identity ) ) return $this->runtime_error( 'build_identity_unavailable' );
+                      $identity['adapter_contract'] = self::CONTRACT;
+                      $identity['authorizing'] = false;
+                      $identity['read_only'] = true;
+                      $identity['mutation_exposed'] = false;
+                      return $identity;
+                  } catch ( Throwable $error ) {
+                      return $this->runtime_error( 'build_identity_unavailable' );
+                  }
+              }
+
+          '''
+          method = '\n'.join(line[10:] if line.startswith('          ') else line for line in method.splitlines()) + '\n'
+          if text.count(method_anchor) != 1:
+              raise SystemExit('ETG method anchor drifted')
+          etg.write_text(text.replace(method_anchor, '\n' + method.lstrip('\n') + '\tpublic function configuration() {\n'), encoding='utf-8')
+
+          etg_contract = control / 'tests/etg-dfsb-adapter-contract.py'
+          text = etg_contract.read_text(encoding='utf-8')
+          ability_anchor = "    'etg-dfsb/status',\n"
+          if text.count(ability_anchor) != 1:
+              raise SystemExit('ETG contract ability anchor drifted')
+          text = text.replace(ability_anchor, ability_anchor + "    'etg-dfsb/build-identity',\n")
+          service_anchor = "    'ETG\\\\\\\\DynamicFilterSEOBridge\\\\\\\\Diagnostics\\\\\\\\RuntimeInventory',\n"
+          if text.count(service_anchor) != 1:
+              raise SystemExit('ETG contract service anchor drifted')
+          text = text.replace(service_anchor, service_anchor + "    'ETG\\\\\\\\DynamicFilterSEOBridge\\\\\\\\Diagnostics\\\\\\\\BuildIdentity',\n")
+          contract_anchor = "    'status_read', 'configuration_read', 'runtime_inventory_read', 'profile_read',\n"
+          if text.count(contract_anchor) != 1:
+              raise SystemExit('ETG catalog contract anchor drifted')
+          text = text.replace(contract_anchor, "    'status_read', 'build_identity_read', 'configuration_read', 'runtime_inventory_read', 'profile_read',\n")
+          etg_contract.write_text(text, encoding='utf-8')
+
+          catalog_path = control / 'config/adapter-support-catalog.json'
+          catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
+          matches = [item for item in catalog.get('families', []) if isinstance(item, dict) and item.get('id') == 'etg-dfsb']
+          if len(matches) != 1:
+              raise SystemExit('ETG support catalog family cardinality drifted')
+          contracts = list(matches[0].get('requested_contracts', []))
+          if 'build_identity_read' not in contracts:
+              contracts.insert(1 if contracts else 0, 'build_identity_read')
+          matches[0]['requested_contracts'] = contracts
+          catalog_path.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+          runtime = control / 'tests/runtime-etg-dfsb-mcp-smoke.php'
+          text = runtime.read_text(encoding='utf-8')
+          ability_anchor = "\t'etg-dfsb/status',\n"
+          if text.count(ability_anchor) != 1:
+              raise SystemExit('ETG runtime ability anchor drifted')
+          text = text.replace(ability_anchor, ability_anchor + "\t'etg-dfsb/build-identity',\n")
+          status_anchor = "$check( empty( $status['mutation_exposed'] ) && empty( $status['profile_mutation_exposed'] ) && empty( $status['seo_publication_mutation_exposed'] ) && empty( $status['ajax_proxy_exposed'] ), 'ETG adapter opened a mutation or side-channel surface.' );\n\n"
+          identity_check = r'''$identity = wp_get_ability( 'etg-dfsb/build-identity' )->execute();
+          $check( ! is_wp_error( $identity ), 'ETG exact build identity ability failed.' );
+          $check( ! empty( $identity['valid'] ) && ! empty( $identity['embedded'] ), 'ETG exact build identity is not valid/embedded.' );
+          $check( ! empty( $identity['read_only'] ) && empty( $identity['authorizing'] ) && empty( $identity['mutation_exposed'] ), 'ETG build identity authority boundary drifted.' );
+          $check( 'etg.dfsb.embedded-build-identity.v1' === (string) $identity['contract'], 'Unexpected ETG build identity contract.' );
+          $check( '48936c4ff65f957599b6f18c892bf1ccb239efca' === (string) $identity['git_sha'], 'ETG build identity git SHA drifted.' );
+          $check( '7fea3c221a88d4b80bb6fcbd993bf39d126ae4ab' === (string) $identity['tree_sha'], 'ETG build identity tree SHA drifted.' );
+          $check( '0.4.0-alpha.13' === (string) $identity['plugin_version'], 'ETG build identity plugin version drifted.' );
+
+          '''
+          identity_check = '\n'.join(line[10:] if line.startswith('          ') else line for line in identity_check.splitlines()) + '\n'
+          if text.count(status_anchor) != 1:
+              raise SystemExit('ETG runtime status anchor drifted')
+          runtime.write_text(text.replace(status_anchor, status_anchor + identity_check), encoding='utf-8')
+
+          etg_workflow = root / '.github/workflows/mad4b-etg-dfsb-adapter.yml'
+          text = etg_workflow.read_text(encoding='utf-8')
+          old_head = '  ETG_HEAD: 162ee66bdf8a8a472f5b547253064ade5842bf05\n'
+          new_head = '  ETG_HEAD: 48936c4ff65f957599b6f18c892bf1ccb239efca\n  ETG_TREE: 7fea3c221a88d4b80bb6fcbd993bf39d126ae4ab\n'
+          if text.count(old_head) != 1:
+              raise SystemExit('ETG_HEAD pin drifted')
+          text = text.replace(old_head, new_head)
+          materialize_anchor = "          git checkout \"$ETG_HEAD\" -- wp-content/plugins/etg-dynamic-filter-seo-bridge\n          grep -Fq \"Version: 0.4.0-alpha.13\" wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php\n"
+          materialize_add = materialize_anchor + "          test \"$(git rev-parse \"$ETG_HEAD^{tree}\")\" = \"$ETG_TREE\"\n          cat > wp-content/plugins/etg-dynamic-filter-seo-bridge/build-identity.json <<JSON\n          {\"contract\":\"etg.dfsb.embedded-build-identity.v1\",\"git_sha\":\"$ETG_HEAD\",\"tree_sha\":\"$ETG_TREE\",\"plugin_version\":\"0.4.0-alpha.13\"}\n          JSON\n"
+          if text.count(materialize_anchor) != 1:
+              raise SystemExit('ETG materialization anchor drifted')
+          etg_workflow.write_text(text.replace(materialize_anchor, materialize_add), encoding='utf-8')
+
+          print('bounded patch applied')
+          PY
+
+      - name: Validate patched contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json >/dev/null
+          grep -Fq 'ETG_HEAD: 48936c4ff65f957599b6f18c892bf1ccb239efca' .github/workflows/mad4b-etg-dfsb-adapter.yml
+          grep -Fq 'ETG_TREE: 7fea3c221a88d4b80bb6fcbd993bf39d126ae4ab' .github/workflows/mad4b-etg-dfsb-adapter.yml
+          ! grep -R "mad4b/approval-decision'" wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php
+
+      - name: Commit governed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add \
+            wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php \
+            wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json \
+            wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-contract.py \
+            wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py \
+            wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php \
+            .github/workflows/mad4b-approval-decision-contract.yml \
+            .github/workflows/mad4b-etg-dfsb-adapter.yml
+          test -n "$(git diff --cached --name-only)"
+          git commit -m 'fix(governance): expose human approval handoff and ETG build identity'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
