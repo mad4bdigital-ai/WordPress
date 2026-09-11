@@ -2,9 +2,10 @@
 /**
  * Disposable runtime proof for the exact packaged JetEngine adapter boundary.
  *
- * The reversible implementation exists, but JetEngine 3.8.11.2 also exposes a native
- * MCP REST plane. Under C1 that is a parallel privileged mutation authority, so normal
- * MAD4B mutation must fail closed until that provider-native plane is safely isolated.
+ * JetEngine 3.8.15 is now present as the exact owner-supplied package, but its
+ * version-scoped mutation profile remains fail-closed until semantic review is
+ * approved. JetEngine also exposes a native MCP REST plane, which independently
+ * blocks normal MAD4B mutation until that provider-native plane is isolated.
  */
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
 $check = static function ( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); };
@@ -12,7 +13,10 @@ $check = static function ( $condition, $message ) { if ( ! $condition ) throw ne
 $adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'jetengine' );
 $check( $adapter instanceof MAD4B_SCP_JetEngine_Adapter && $adapter->is_available(), 'JetEngine adapter/runtime is unavailable.' );
 $status = $adapter->status();
-$check( ! empty( $status['provider_certification']['runtime_contract_ok'] ), 'Exact packaged JetEngine provider contract is not certified at runtime.' );
+$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
+$check( isset( $certification['installed_version'] ) && '3.8.15' === (string) $certification['installed_version'], 'Exact owner-supplied JetEngine 3.8.15 runtime was not observed.' );
+$check( empty( $certification['runtime_contract_ok'] ), 'JetEngine 3.8.15 mutation contract must remain fail-closed before semantic attestation approval.' );
+$check( isset( $certification['status'] ) && 'version_drift' === (string) $certification['status'], 'Unattested JetEngine 3.8.15 must remain version-drifted against the certified mutation profile.' );
 $check( wp_has_ability( 'jetengine/get-post-meta' ) && wp_has_ability( 'jetengine/update-post-meta' ), 'JetEngine abilities are missing.' );
 $write_ability = wp_get_ability( 'jetengine/update-post-meta' );
 $meta = $write_ability->get_meta();
@@ -28,7 +32,7 @@ foreach ( isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_rou
 	$route = strtolower( (string) $route );
 	if ( 0 === strpos( $route, '/jet-engine/v1/' ) && false !== strpos( $route, 'mcp' ) ) { $jetengine_foreign_route = true; break; }
 }
-$check( $jetengine_foreign_route, 'Foreign MCP evidence was not attributable to the certified JetEngine namespace.' );
+$check( $jetengine_foreign_route, 'Foreign MCP evidence was not attributable to the exact JetEngine namespace.' );
 
 $coverage = MAD4B_SCP_Plugin_Discovery::coverage();
 $jetengine_coverage = null;
@@ -93,4 +97,4 @@ $check( 'before' === get_post_meta( $post_id, $field, true ), 'Denied JetEngine 
 $check( $mutations_before === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['mutations']}" ), 'Denied JetEngine ability created a mutation envelope.' );
 
 wp_delete_post( $post_id, true );
-echo "mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v2: PASS\n";
