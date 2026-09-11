@@ -4,6 +4,7 @@ import re
 root = Path(__file__).resolve().parents[1]
 observer = (root / 'includes/class-mad4b-scp-live-acceptance-observer.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+runtime_build = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')
 write = (root / 'includes/class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 rest = (root / 'includes/class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
@@ -47,15 +48,25 @@ missing = [marker for marker in required_observer if marker not in observer]
 if missing:
     raise SystemExit('Missing Live Acceptance observer contract: ' + ' | '.join(missing))
 
+# Release identity must stay internally exact without hard-coding a specific RC.
+header = re.search(r'(?mi)^\s*\*\s*Version:\s*([^\r\n]+)', main)
+runtime = re.search(r"define\(\s*'MAD4B_SCP_VERSION'\s*,\s*'([^']+)'\s*\);", main)
+build = re.search(r'(?mi)^release=([^\r\n]+)$', runtime_build)
+if not header or not runtime or not build:
+    raise SystemExit('Live Acceptance release identity evidence is incomplete.')
+versions = [header.group(1).strip(), runtime.group(1).strip(), build.group(1).strip()]
+if len(set(versions)) != 1:
+    raise SystemExit('Live Acceptance release identity mismatch: ' + ' | '.join(versions))
+if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', versions[0]):
+    raise SystemExit('Live Acceptance release identity format invalid: ' + versions[0])
+
 for marker in [
-    "Version: 0.4.0-rc.21",
-    "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.21' )",
     "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php'",
     "MAD4B_SCP_Live_Acceptance_Observer::boot_early();",
     "add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );",
 ]:
     if marker not in main:
-        raise SystemExit('Missing rc.21 bootstrap invariant: ' + marker)
+        raise SystemExit('Missing Live Acceptance bootstrap invariant: ' + marker)
 
 # Early observer is observation/registration only. It may persist bounded evidence,
 # but it must never create authorization, grants, servers, provider initialization,
@@ -120,4 +131,4 @@ if 'const MAX_EVENTS = 32' not in observer or 'const TELEMETRY_TTL = 21600' not 
 if "update_option( self::TELEMETRY_OPTION, self::$telemetry, false )" not in observer:
     raise SystemExit('Telemetry option must explicitly disable autoload.')
 
-print('mad4b.live-acceptance-evidence.contract.v1: PASS')
+print('mad4b.live-acceptance-evidence.contract.v2: PASS')
