@@ -202,10 +202,14 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Staging_Write_Authority::reconcile();
 	}
 
+	public static function is_authority_admin_surface() {
+		if ( ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only admin routing decision.
+		return 0 === strpos( $page, 'mad4b-control-plane' ) || 'mad4b-approval-decisions' === $page;
+	}
+
 	public static function reconcile_authority_on_mad4b_admin() {
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing decision.
-		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
+		if ( ! current_user_can( 'manage_options' ) || ! self::is_authority_admin_surface() ) return;
 		MAD4B_SCP_Staging_Write_Authority::reconcile();
 	}
 
@@ -218,9 +222,7 @@ final class MAD4B_SCP_Plugin {
 	}
 
 	public static function prime_admin_mcp_runtime() {
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only admin page bootstrap.
-		if ( 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
+		if ( ! current_user_can( 'manage_options' ) || ! self::is_authority_admin_surface() ) return;
 		if ( ! function_exists( 'rest_get_server' ) ) return;
 		try {
 			rest_get_server();
