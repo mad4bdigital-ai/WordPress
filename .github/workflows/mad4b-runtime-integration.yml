@@ -1,0 +1,270 @@
+name: MAD4B Runtime Integration
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - '.github/workflows/mad4b-runtime-integration.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - '.github/workflows/mad4b-runtime-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-runtime-integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wordpress-runtime-smoke:
+    name: WordPress runtime smoke (${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.9', 'latest']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify append-only audit and admin governance contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/audit-persistence-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-governance-ui-contract.py
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable WordPress
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download \
+            --path="$WP_PATH" \
+            --version="$WP_VERSION" \
+            --force
+          php /tmp/wp-cli.phar config create \
+            --path="$WP_PATH" \
+            --dbname=wordpress \
+            --dbuser=wordpress \
+            --dbpass=wordpress \
+            --dbhost=127.0.0.1:3306 \
+            --skip-check
+          php /tmp/wp-cli.phar core install \
+            --path="$WP_PATH" \
+            --url='http://mad4b-runtime.test' \
+            --title='MAD4B Runtime Integration' \
+            --admin_user='mad4b-ci-admin' \
+            --admin_password='ci-only-not-a-secret' \
+            --admin_email='ci@example.invalid' \
+            --skip-email
+          php /tmp/wp-cli.phar core version --path="$WP_PATH"
+
+      - name: Install exact packaged MCP Adapter and control plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin status mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin status mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Execute baseline runtime acceptance smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute reversible mutation and drift-safe undo smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-reversible-mutation-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute governance visibility and exact approval planning smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-governance-visibility-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute exact approval ticket expiry smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-approval-expiry-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute transactional NHI budget smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-budget-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute concurrent NHI budget contention smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST_ROOT="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-budget-concurrency-setup.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+          BARRIER="$(php -r 'printf("%.6f", microtime(true) + 3.0);')"
+          MAD4B_CI_BUDGET_WORKER=one MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
+              --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-one.log 2>&1 &
+          PID_ONE=$!
+          MAD4B_CI_BUDGET_WORKER=two MAD4B_CI_BUDGET_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-budget-concurrency-worker.php" \
+              --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > /tmp/mad4b-budget-worker-two.log 2>&1 &
+          PID_TWO=$!
+
+          RC_ONE=0
+          RC_TWO=0
+          wait "$PID_ONE" || RC_ONE=$?
+          wait "$PID_TWO" || RC_TWO=$?
+          cat /tmp/mad4b-budget-worker-one.log
+          cat /tmp/mad4b-budget-worker-two.log
+          test "$RC_ONE" -eq 0
+          test "$RC_TWO" -eq 0
+
+          ALLOWED="$(grep -h 'MAD4B_BUDGET_WORKER_RESULT=' /tmp/mad4b-budget-worker-*.log | grep -c '"status":"allowed"' || true)"
+          EXHAUSTED="$(grep -h 'MAD4B_BUDGET_WORKER_RESULT=' /tmp/mad4b-budget-worker-*.log | grep -c '"reason_code":"mad4b_budget_exhausted"' || true)"
+          test "$ALLOWED" -eq 1
+          test "$EXHAUSTED" -eq 1
+
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-budget-concurrency-verify.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute clean MCP peer inventory smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-side-channel-baseline.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
+
+      - name: Execute MCP write side-channel blocker smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          TEST_ROOT="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cp "$TEST_ROOT/fixtures/mad4b-ci-rogue-public-write.php" \
+             "$WP_PATH/wp-content/mu-plugins/mad4b-ci-rogue-public-write.php"
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-mcp-side-channel-blocker.php" \
+            --path="$WP_PATH" \
+            --user=mad4b-ci-admin
+          rm -f "$WP_PATH/wp-content/mu-plugins/mad4b-ci-rogue-public-write.php"
+
+      - name: Execute append-only audit concurrency and tamper smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST_ROOT="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests"
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-audit-concurrency-setup.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
+
+          BARRIER="$(php -r 'printf("%.6f", microtime(true) + 3.0);')"
+          MAD4B_CI_AUDIT_WORKER=one MAD4B_CI_AUDIT_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-audit-concurrency-worker.php" \
+              --path="$WP_PATH" --user=mad4b-ci-admin > /tmp/mad4b-audit-worker-one.log 2>&1 &
+          PID_ONE=$!
+          MAD4B_CI_AUDIT_WORKER=two MAD4B_CI_AUDIT_BARRIER="$BARRIER" \
+            php /tmp/wp-cli.phar eval-file "$TEST_ROOT/runtime-audit-concurrency-worker.php" \
+              --path="$WP_PATH" --user=mad4b-ci-admin > /tmp/mad4b-audit-worker-two.log 2>&1 &
+          PID_TWO=$!
+
+          RC_ONE=0
+          RC_TWO=0
+          wait "$PID_ONE" || RC_ONE=$?
+          wait "$PID_TWO" || RC_TWO=$?
+          cat /tmp/mad4b-audit-worker-one.log
+          cat /tmp/mad4b-audit-worker-two.log
+          test "$RC_ONE" -eq 0
+          test "$RC_TWO" -eq 0
+          test "$(grep -h 'MAD4B_AUDIT_WORKER_RESULT=' /tmp/mad4b-audit-worker-*.log | grep -c . || true)" -eq 2
+
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-audit-concurrency-verify.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file \
+            "$TEST_ROOT/runtime-audit-tamper.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Execute read-only admin governance console smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-admin-governance-ui-smoke.php" \
+            --path=/tmp/mad4b-wordpress \
+            --user=mad4b-ci-admin
