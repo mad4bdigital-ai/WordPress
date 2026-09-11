@@ -113,8 +113,8 @@ require(authz, '$declared_server_id', 'declared-server-evidence')
 require(authz, "'transport_bound'", 'transport-binding-evidence')
 if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > authz.index('MAD4B_SCP_Agent_Registry::exact_grant'):
     raise SystemExit('FAIL transport-before-grant: active MCP transport must bind before exact grant lookup')
-if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > authz.index('MAD4B_SCP_Approval_Tickets::consume_exact'):
-    raise SystemExit('FAIL transport-before-approval: active MCP transport must bind before approval consumption')
+if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > authz.index('MAD4B_SCP_Approval_Tickets::validate_exact'):
+    raise SystemExit('FAIL transport-before-approval: active MCP transport must bind before approval validation')
 
 require(ui, 'add_submenu_page(', 'connection-admin-submenu')
 require(ui, "'manage_options'", 'connection-admin-capability')

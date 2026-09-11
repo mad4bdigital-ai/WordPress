@@ -119,8 +119,8 @@ $approval_ticket_id = $ticket_two['ticket_id'];
 $drift = $undo_ability->execute( $undo_two_input );
 $check( is_wp_error( $drift ) && 'mad4b_undo_state_drift' === $drift->get_error_code(), 'Generic adapter undo did not fail closed on newer Media state.' );
 $check( 'human alt after AI' === get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ), 'Rejected adapter undo overwrote newer human Media state.' );
-$used = MAD4B_SCP_Approval_Tickets::get( $ticket_two['ticket_id'] );
-$check( is_array( $used ) && 'used' === $used['status'], 'Attempted high-impact adapter undo did not consume its single-use approval ticket.' );
+$failed_ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_two['ticket_id'] );
+$check( is_array( $failed_ticket ) && 'failed' === $failed_ticket['status'], 'Rejected high-impact adapter undo must terminalize the claimed single-use approval as failed.' );
 
 wp_delete_attachment( $attachment_id, true );
 echo "mad4b.site-control-plane.runtime-reversible-adapter.v1: PASS\n";
