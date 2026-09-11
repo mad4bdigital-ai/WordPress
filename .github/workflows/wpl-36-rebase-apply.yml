@@ -1,0 +1,81 @@
+name: WPL 3.6 Rebase Apply
+
+on:
+  push:
+    branches:
+      - fix/wpl-client-db-lifecycle-cleanup-20260906
+    paths:
+      - '.github/workflows/wpl-36-rebase-apply.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Materialize reviewed 3.6 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/wpl36-payload/part* | base64 -d > /tmp/wpl36-source.tgz
+          echo '102478368da98fb6fe5c735be333a86e008ac1601a4953aae09a1b30a21140bd  /tmp/wpl36-source.tgz' | sha256sum -c -
+          rm -rf /tmp/wpl36-src wp-content/plugins/wpl-client
+          mkdir -p /tmp/wpl36-src
+          tar -xzf /tmp/wpl36-source.tgz -C /tmp/wpl36-src
+          test -d /tmp/wpl36-src/wpl36
+          mv /tmp/wpl36-src/wpl36 wp-content/plugins/wpl-client
+
+      - name: Deep 3.6 assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/wpl-client -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          node --check wp-content/plugins/wpl-client/assets/js/client.js
+          grep -q 'Version:     3.6.0' wp-content/plugins/wpl-client/wpl-client.php
+          grep -q "WPL_CLIENT_VERSION', '3.6.0'" wp-content/plugins/wpl-client/wpl-client.php
+          grep -q 'WPL_Token::keep_alive' wp-content/plugins/wpl-client/wpl-client.php
+          grep -q 'wpl_install_package' wp-content/plugins/wpl-client/includes/class-wpl-installer.php
+          grep -q 'gate_fingerprint' wp-content/plugins/wpl-client/includes/class-wpl-client-admin.php
+          grep -q 'wpl-container-v35' wp-content/plugins/wpl-client/assets/css/client.css
+          grep -q 'wpl_bg_install_worker_lock' wp-content/plugins/wpl-client/includes/class-wpl-installer.php
+          grep -q 'zip_is_dangerous' wp-content/plugins/wpl-client/includes/class-wpl-installer.php
+          grep -q 'WPL_Database_Maintenance::activate' wp-content/plugins/wpl-client/wpl-client.php
+          grep -q 'WPL_License_Health_Monitor::activate' wp-content/plugins/wpl-client/wpl-client.php
+          grep -q 'WPL_Server_Client::request' wp-content/plugins/wpl-client/includes/class-wpl-installer.php
+          test "$(grep -c 'new WPL_Installer()' wp-content/plugins/wpl-client/wpl-client.php)" -eq 1
+          ! grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' wp-content/plugins/wpl-client
+          ! grep -R -n --include='*.php' 'sslverify' wp-content/plugins/wpl-client | grep -q 'false'
+          ! grep -R -n --include='*.php' -E 'SSL_VERIFYPEER.*false|SSL_VERIFYHOST.*false|DEFAULT@SECLEVEL=1|CURL_SSLVERSION_TLSv1|wpl_secure_remote_request|wpl_secure_download' wp-content/plugins/wpl-client
+          ! grep -R -n --include='*.php' 'WPL_SERVER_API_KEY' wp-content/plugins/wpl-client | grep -v 'class-wpl-server-client.php'
+          ! grep -R -n --include='*.php' 'WPL_SERVER_API_URL' wp-content/plugins/wpl-client | grep -Ev 'class-wpl-server-client.php|wpl-client.php|class-wpl-client-admin.php'
+
+      - name: Rebuild public distributable
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wp-content/plugins
+          rm -f wpl-client.zip
+          zip -qr wpl-client.zip wpl-client -x '*/.DS_Store' '*/includes/wpl-package-credential.php'
+          rm -rf /tmp/wpl36-package-check
+          mkdir -p /tmp/wpl36-package-check
+          unzip -q wpl-client.zip -d /tmp/wpl36-package-check
+          diff -qr wpl-client /tmp/wpl36-package-check/wpl-client
+          test ! -e /tmp/wpl36-package-check/wpl-client/includes/wpl-package-credential.php
+          ! grep -R -n -E 'wpl_live_[A-Za-z0-9_-]+' /tmp/wpl36-package-check/wpl-client
+
+      - name: Commit 3.6 rebased source and ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add wp-content/plugins/wpl-client wp-content/plugins/wpl-client.zip
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'feat(wpl-client): rebase hardening on account 3.5.0 as 3.6.0'
+          git pull --rebase origin fix/wpl-client-db-lifecycle-cleanup-20260906
+          git push origin HEAD:fix/wpl-client-db-lifecycle-cleanup-20260906
