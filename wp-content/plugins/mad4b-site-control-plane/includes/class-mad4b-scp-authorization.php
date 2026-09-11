@@ -3,8 +3,56 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Authorization {
+	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
+	const MAX_TARGET_CANONICAL_BYTES = 65536;
+	const MAX_TARGET_DEPTH = 8;
+
 	public static function target_fingerprint( $ability_name, $provider, $input, array $agent = array(), array $identity = array() ) {
-		return (string) apply_filters( 'mad4b_scp_authorization_target_fingerprint', '', (string) $ability_name, sanitize_key( (string) $provider ), $input, $agent, $identity );
+		$provider = sanitize_key( (string) $provider );
+		if ( '' === $provider ) $provider = 'core';
+		$filtered = apply_filters( 'mad4b_scp_authorization_target_fingerprint', '', (string) $ability_name, $provider, $input, $agent, $identity );
+		if ( is_string( $filtered ) && '' !== trim( $filtered ) ) return substr( trim( $filtered ), 0, 191 );
+
+		$normalized = self::canonicalize_target_value( $input, 0 );
+		if ( is_wp_error( $normalized ) ) return '';
+		$payload = array(
+			'contract' => self::TARGET_FINGERPRINT_CONTRACT,
+			'ability' => (string) $ability_name,
+			'provider' => $provider,
+			'input' => $normalized,
+		);
+		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( false === $json || strlen( $json ) > self::MAX_TARGET_CANONICAL_BYTES ) return '';
+		return hash( 'sha256', $json );
+	}
+
+	private static function canonicalize_target_value( $value, $depth ) {
+		if ( $depth > self::MAX_TARGET_DEPTH ) return new WP_Error( 'mad4b_target_fingerprint_too_deep', 'Mutation target input exceeds the maximum canonical nesting depth.' );
+		if ( is_array( $value ) ) {
+			$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
+			if ( $is_list ) {
+				$out = array();
+				foreach ( $value as $item ) {
+					$normalized = self::canonicalize_target_value( $item, $depth + 1 );
+					if ( is_wp_error( $normalized ) ) return $normalized;
+					$out[] = $normalized;
+				}
+				return $out;
+			}
+			$keys = array_keys( $value );
+			sort( $keys, SORT_STRING );
+			$out = array();
+			foreach ( $keys as $key ) {
+				if ( ! is_string( $key ) && ! is_int( $key ) ) return new WP_Error( 'mad4b_target_fingerprint_invalid_key', 'Mutation target input contains an unsupported object key.' );
+				$normalized = self::canonicalize_target_value( $value[ $key ], $depth + 1 );
+				if ( is_wp_error( $normalized ) ) return $normalized;
+				$out[ (string) $key ] = $normalized;
+			}
+			return $out;
+		}
+		if ( is_string( $value ) || is_int( $value ) || is_bool( $value ) || null === $value ) return $value;
+		if ( is_float( $value ) && is_finite( $value ) ) return $value;
+		return new WP_Error( 'mad4b_target_fingerprint_invalid_value', 'Mutation target input contains an unsupported value type.' );
 	}
 
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
@@ -71,6 +119,7 @@ final class MAD4B_SCP_Authorization {
 		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $authorization_input ) : 'high';
 		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $authorization_input ) : true;
 		$target_fingerprint = self::target_fingerprint( $ability_name, $provider, $authorization_input, $agent, $identity );
+		if ( '' === $target_fingerprint ) return self::deny( 'mad4b_approval_target_unresolved', 'A deterministic mutation target fingerprint could not be resolved.', $ability_name, $identity, $agent );
 
 		if ( ! class_exists( 'MAD4B_SCP_Budgets' ) ) return self::deny( 'mad4b_budget_service_unavailable', 'NHI budget service is unavailable.', $ability_name, $identity, $agent );
 		$budget_reservation = MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $provider, $authorization_input, $approval_required );
