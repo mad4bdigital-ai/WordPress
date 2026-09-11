@@ -19,6 +19,7 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 function get_current_user_id() { return 0; }
 function wp_generate_uuid4() { return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; }
 function apply_filters( $tag, $value ) { return $value; }
+function get_option( $name, $default = false ) { return $default; }
 
 class MAD4B_SCP_Schema {
 	public static function tables() { return array( 'approvals' => 'wp_mad4b_approvals' ); }
@@ -32,11 +33,25 @@ final class MAD4B_Test_WPDB {
 	public function prepare( $query, ...$args ) { return array( 'query' => $query, 'args' => $args ); }
 	public function get_row( $prepared, $format ) { return $this->ticket; }
 	public function query( $prepared ) {
-		if ( ! is_array( $prepared ) || false === strpos( $prepared['query'], "SET status = 'used'" ) ) return 0;
-		if ( 'approved' !== $this->ticket['status'] ) return 0;
-		$this->ticket['status'] = 'used';
-		$this->ticket['used_at'] = gmdate( 'Y-m-d H:i:s' );
-		return 1;
+		if ( ! is_array( $prepared ) ) return 0;
+		$query = $prepared['query'];
+		if ( false !== strpos( $query, "SET status = 'executing'" ) ) {
+			if ( 'approved' !== $this->ticket['status'] ) return 0;
+			$this->ticket['status'] = 'executing';
+			return 1;
+		}
+		if ( false !== strpos( $query, "SET status = 'used'" ) ) {
+			if ( 'executing' !== $this->ticket['status'] ) return 0;
+			$this->ticket['status'] = 'used';
+			$this->ticket['used_at'] = gmdate( 'Y-m-d H:i:s' );
+			return 1;
+		}
+		if ( false !== strpos( $query, "SET status = 'failed'" ) ) {
+			if ( 'executing' !== $this->ticket['status'] ) return 0;
+			$this->ticket['status'] = 'failed';
+			return 1;
+		}
+		return 0;
 	}
 }
 
@@ -91,16 +106,37 @@ $wpdb->ticket = array(
 	'used_at' => null,
 );
 
-$first = MAD4B_SCP_Approval_Tickets::consume_exact( $wpdb->ticket['ticket_id'], $agent, $server, $ability, $provider, $target, $input, $ticket_class );
-mad4b_replay_assert( is_array( $first ), 'First exact use must succeed.' );
-mad4b_replay_assert( 'used' === $wpdb->ticket['status'], 'First exact use must atomically consume the ticket.' );
+// Models the MCP Adapter pre-check followed by WP_Ability::execute()'s own
+// permission check. Both validations must be pure and leave the ticket approved.
+$precheck_one = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_array( $precheck_one ), 'First permission preflight must pass.' );
+mad4b_replay_assert( 'approved' === $wpdb->ticket['status'], 'First permission preflight must not consume or claim the ticket.' );
+$precheck_two = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_array( $precheck_two ), 'Second permission preflight must also pass.' );
+mad4b_replay_assert( 'approved' === $wpdb->ticket['status'], 'Second permission preflight must also be side-effect free.' );
 
-$second = MAD4B_SCP_Approval_Tickets::consume_exact( $wpdb->ticket['ticket_id'], $agent, $server, $ability, $provider, $target, $input, $ticket_class );
-mad4b_replay_assert( is_wp_error( $second ), 'Second exact use must be denied.' );
-mad4b_replay_assert( 'mad4b_approval_replay_denied' === $second->get_error_code(), 'Sequential replay must emit the authoritative replay-denied code consumed by Live Acceptance.' );
+$claim = MAD4B_SCP_Approval_Tickets::claim_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_array( $claim ), 'Execution-boundary claim must succeed once.' );
+mad4b_replay_assert( 'executing' === $wpdb->ticket['status'], 'Execution-boundary claim must transition approved to executing, not used.' );
+
+$executing_replay = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_wp_error( $executing_replay ) && 'mad4b_approval_replay_denied' === $executing_replay->get_error_code(), 'A claimed/executing ticket must deny replay.' );
+
+$final = MAD4B_SCP_Approval_Tickets::finalize_claim( $ticket_id, 'used' );
+mad4b_replay_assert( is_array( $final ), 'Successful execution must finalize the claim.' );
+mad4b_replay_assert( 'used' === $wpdb->ticket['status'], 'Successful execution must transition executing to used.' );
+
+$used_replay = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_wp_error( $used_replay ) && 'mad4b_approval_replay_denied' === $used_replay->get_error_code(), 'Used ticket replay must be denied.' );
+
+$wpdb->ticket['status'] = 'executing';
+$failed_final = MAD4B_SCP_Approval_Tickets::finalize_claim( $ticket_id, 'failed' );
+mad4b_replay_assert( is_array( $failed_final ) && 'failed' === $wpdb->ticket['status'], 'Execution failure must transition executing to terminal failed.' );
+$failed_replay = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_wp_error( $failed_replay ) && 'mad4b_approval_replay_denied' === $failed_replay->get_error_code(), 'Failed ticket replay must be denied.' );
 
 $wpdb->ticket['status'] = 'pending';
-$pending = MAD4B_SCP_Approval_Tickets::consume_exact( $wpdb->ticket['ticket_id'], $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+$pending = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_wp_error( $pending ) && 'mad4b_approval_not_approved' === $pending->get_error_code(), 'Pending tickets must remain distinct from replay denial.' );
 
-echo "mad4b.approval-ticket-replay.runtime.v3: PASS\n";
+echo "mad4b.approval-ticket-replay.runtime.v4: PASS\n";
