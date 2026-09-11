@@ -83,7 +83,7 @@ required_finalizer = [
     "'contract_mismatch'",
     "'non_json_response'",
     "'success'",
-    "'production_receipt_accepted_from_caller_boolean' => false",
+    "['production_receipt_accepted_from_caller_boolean'] = false",
 ]
 missing = [marker for marker in required_finalizer if marker not in finalizer]
 if missing:
