@@ -37,6 +37,10 @@ final class MAD4B_SCP_Authorization {
 			if ( '' !== $from_input ) { $approval_ticket_id = $from_input; $approval_ticket_source = 'governance_input'; }
 		}
 		if ( '' !== $approval_ticket_id && ! preg_match( '/^[a-f0-9-]{36}$/', $approval_ticket_id ) ) return self::deny( 'mad4b_approval_id_invalid', 'Approval ticket identifier is malformed.', $ability_name, $identity, $agent );
+		// Normalize both identity-bound and governance-input tickets into the local
+		// authorization context so every subsequent deny audit can bind the exact
+		// one-time ticket without depending on request-global identity mutation.
+		if ( '' !== $approval_ticket_id ) $identity['approval_ticket_id'] = $approval_ticket_id;
 
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		$require_scopes = (bool) apply_filters( 'mad4b_scp_require_token_scopes', false, $identity, $agent, $ability_name );
@@ -160,6 +164,7 @@ final class MAD4B_SCP_Authorization {
 			'subject_type' => isset( $identity['subject_type'] ) ? $identity['subject_type'] : '',
 			'subject_fingerprint' => isset( $identity['subject_fingerprint'] ) ? substr( $identity['subject_fingerprint'], 0, 16 ) : '',
 			'request_id' => isset( $identity['request_id'] ) ? $identity['request_id'] : '',
+			'approval_ticket_id' => isset( $identity['approval_ticket_id'] ) && preg_match( '/^[a-f0-9-]{36}$/', (string) $identity['approval_ticket_id'] ) ? strtolower( (string) $identity['approval_ticket_id'] ) : '',
 		), 'denied' );
 		return new WP_Error( $code, $message );
 	}
