@@ -79,19 +79,19 @@ jobs:
                   'public': pathlib.Path('/tmp/mad4b-provider-candidates/elementor-4.2.4.zip'),
                   'entry': 'elementor/elementor.php',
                   'version': '4.2.4',
-                  'public_authority': 'wordpress.org',
+                  'public_authority': 'wordpress.org:downloads/plugin/elementor.4.2.4.zip',
               },
               'jetengine': {
                   'public': pathlib.Path('/tmp/mad4b-provider-candidates/jet-engine-3.8.15.zip'),
                   'entry': 'jet-engine/jet-engine.php',
                   'version': '3.8.15',
-                  'public_authority': 'wordpress.org',
+                  'public_authority': 'wordpress.org:downloads/plugin/jet-engine.3.8.15.zip',
               },
               'jetsmartfilters': {
                   'public': pathlib.Path('/tmp/mad4b-provider-candidates/jet-smart-filters-3.8.5.zip'),
                   'entry': 'jet-smart-filters/jet-smart-filters.php',
                   'version': '3.8.5',
-                  'public_authority': 'wordpress.org',
+                  'public_authority': 'wordpress.org:downloads/plugin/jet-smart-filters.3.8.5.zip',
               },
           }
 
