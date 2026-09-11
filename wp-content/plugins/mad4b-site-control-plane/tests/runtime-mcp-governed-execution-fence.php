@@ -85,6 +85,14 @@ $dispatch = static function ( array $payload, $session_id = '' ) {
 	return rest_do_request( $request );
 };
 
+// Internal WordPress REST dispatch does not reliably propagate the transport's
+// Mcp-Session-Id response header. Keep initialize on the real MCP route, but
+// recover the exact session that initialize persisted through MCP Adapter's
+// official SessionManager when the header is absent.
+$session_manager = '\\WP\\MCP\\Transport\\Infrastructure\\SessionManager';
+$check( class_exists( $session_manager ) && method_exists( $session_manager, 'get_all_user_sessions' ), 'MCP Adapter SessionManager unavailable' );
+$sessions_before_initialize = $session_manager::get_all_user_sessions( get_current_user_id() );
+
 $init = $dispatch( array(
 	'jsonrpc' => '2.0',
 	'id' => 1,
@@ -98,7 +106,13 @@ $init = $dispatch( array(
 $check( $init instanceof WP_REST_Response && 200 === $init->get_status(), 'MCP initialize failed: ' . wp_json_encode( $init instanceof WP_REST_Response ? $init->get_data() : $init ) );
 $headers = $init->get_headers();
 $session_id = isset( $headers['Mcp-Session-Id'] ) ? (string) $headers['Mcp-Session-Id'] : ( isset( $headers['mcp-session-id'] ) ? (string) $headers['mcp-session-id'] : '' );
-$check( '' !== $session_id, 'MCP initialize did not return a session id' );
+if ( '' === $session_id ) {
+	$sessions_after_initialize = $session_manager::get_all_user_sessions( get_current_user_id() );
+	$new_session_ids = array_values( array_diff( array_keys( $sessions_after_initialize ), array_keys( $sessions_before_initialize ) ) );
+	$check( 1 === count( $new_session_ids ), 'MCP initialize did not expose exactly one recoverable session' );
+	$session_id = (string) $new_session_ids[0];
+}
+$check( '' !== $session_id, 'MCP initialize did not create a usable session id' );
 
 $initialized = $dispatch( array( 'jsonrpc' => '2.0', 'method' => 'notifications/initialized' ), $session_id );
 $check( $initialized instanceof WP_REST_Response && in_array( $initialized->get_status(), array( 200, 202 ), true ), 'initialized notification failed' );
