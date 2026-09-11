@@ -117,13 +117,15 @@ $check( 'verified' === $evidence['mutation']['status'], 'Mutation evidence did n
 $check( ! array_key_exists( 'rollback_payload', $evidence['mutation'] ), 'Mutation evidence leaked rollback payload.' );
 $check( ! array_key_exists( 'rollback_payload_sha256', $evidence['mutation'] ), 'Mutation evidence leaked rollback payload integrity material.' );
 
-// 3. Undo is high-impact. Approve the exact undo request, place only the opaque ticket ID in authenticated context, then execute the real ability.
+// 3. Undo is high-impact. Approve the exact undo request and deterministic target fingerprint, place only the opaque ticket ID in authenticated context, then execute the real ability.
 $undo_input_one = array(
 	'mutation_id' => $first['mutation_id'],
 	'reason' => 'CI verifies drift-safe undo',
 );
+$undo_target_one = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_input_one );
+$check( is_string( $undo_target_one ) && preg_match( '/^[a-f0-9]{64}$/', $undo_target_one ), 'Unable to resolve first undo target fingerprint.' );
 $ticket_one = MAD4B_SCP_Approval_Tickets::create_pending(
-	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', '', $undo_input_one, 'mutation', 'CI reversible undo approval', 600
+	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $undo_target_one, $undo_input_one, 'mutation', 'CI reversible undo approval', 600
 );
 $check( is_array( $ticket_one ) && 'pending' === $ticket_one['status'], 'Unable to create first undo approval ticket.' );
 $approved_one = MAD4B_SCP_Approval_Tickets::approve( $ticket_one['ticket_id'] );
@@ -162,8 +164,10 @@ $undo_input_two = array(
 	'mutation_id' => $second['mutation_id'],
 	'reason' => 'CI expects drift rejection',
 );
+$undo_target_two = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_input_two );
+$check( is_string( $undo_target_two ) && preg_match( '/^[a-f0-9]{64}$/', $undo_target_two ), 'Unable to resolve drift-test undo target fingerprint.' );
 $ticket_two = MAD4B_SCP_Approval_Tickets::create_pending(
-	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', '', $undo_input_two, 'mutation', 'CI drift rejection approval', 600
+	$agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $undo_target_two, $undo_input_two, 'mutation', 'CI drift rejection approval', 600
 );
 $check( is_array( $ticket_two ), 'Unable to create drift-test undo approval.' );
 $approved_two = MAD4B_SCP_Approval_Tickets::approve( $ticket_two['ticket_id'] );
