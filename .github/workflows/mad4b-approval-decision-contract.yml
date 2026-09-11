@@ -5,8 +5,10 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-contract.py'
       - '.github/workflows/mad4b-approval-decision-contract.yml'
@@ -45,6 +47,7 @@ jobs:
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-runtime.php
 
       - name: Execute fail-closed human decision matrix
