@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+bridge = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
+context_guard = (root / 'includes' / 'class-mad4b-scp-oauth-request-context-guard.php').read_text(encoding='utf-8')
+header_guard = (root / 'includes' / 'class-mad4b-scp-oauth-jwt-header-guard.php').read_text(encoding='utf-8')
+outbound_guard = (root / 'includes' / 'class-mad4b-scp-oauth-outbound-budget-guard.php').read_text(encoding='utf-8')
+alignment = (root / 'includes' / 'class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
+overrides = (root / 'includes' / 'class-mad4b-scp-governed-ability-overrides.php').read_text(encoding='utf-8')
+servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
+runtime_context = (root / 'tests' / 'runtime-oauth-context-cooldown-smoke.php').read_text(encoding='utf-8')
+runtime_edges = (root / 'tests' / 'runtime-oauth-edge-guards-smoke.php').read_text(encoding='utf-8')
+
+required = [
+    "mad4b.oauth-resource-bridge.v4",
+    "MAD4B_MCP_OAUTH_MODE",
+    "array( 'local', 'external', 'hybrid' )",
+    "MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS",
+    "MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER",
+    "subject_allowed",
+    "verified_bearer_active",
+    "reset_verified_bearer_context",
+    "self::reset_verified_bearer_context( true )",
+    "self::reset_verified_bearer_context( false )",
+    "bearer_request_resets_identity_before_verification",
+    "mad4b_oauth_issuer_untrusted",
+    "mad4b_oauth_resource_mismatch",
+    "mad4b_oauth_subject_not_approved",
+    "MIN_RSA_BITS = 2048",
+    "mad4b_oauth_jwk_rsa_too_small",
+    "mad4b_oauth_jwk_use_invalid",
+    "mad4b_oauth_jwk_key_ops_invalid",
+    "mad4b_oauth_jwk_kid_ambiguous",
+    "JWKS_REFRESH_COOLDOWN = 30",
+    "claim_jwks_refresh_slot",
+    "jwks_refresh_cooldown_seconds",
+    "jwks_cache_bound_to_issuer",
+    "$issuer . \"\\0\" . (string) $jwks_uri",
+    "delete_transient( $key )",
+    "'redirection' => 0",
+    "MAX_DISCOVERY_BYTES",
+    "MAX_JWKS_BYTES",
+    "MAX_JWKS_KEYS",
+    "resource_metadata=",
+    "authorization_server_metadata_urls",
+    "/.well-known/oauth-authorization-server",
+    "wp_safe_remote_get",
+    "openssl_verify",
+    "OPENSSL_ALGO_SHA256",
+    "RS256",
+    "code_challenge_methods_supported",
+    "S256",
+    "public_key_from_jwk",
+    "jwks_rsa_ne_supported",
+    "home_url( '/wp-json/mcp/mad4b-chatgpt' )",
+    "'/mcp/mad4b-chatgpt'",
+    "'protected_transport_server' => 'mad4b-chatgpt'",
+    "stores_bearer_tokens' => false",
+    "creates_credentials' => false",
+    "write_surfaces_enabled' => false",
+]
+for marker in required:
+    if marker not in bridge:
+        raise SystemExit(f"missing OAuth bridge marker: {marker}")
+
+if "rest_url( 'mcp/mad4b-chatgpt' )" in bridge:
+    raise SystemExit("OAuth protected-resource identity must not depend on WordPress REST permalink representation")
+
+for marker in [
+    "mad4b.oauth-request-context-guard.v1",
+    "add_filter( 'rest_pre_dispatch', array( __CLASS__, 'reset_request_context' ), -1, 3 )",
+    "'/mcp/mad4b-chatgpt'",
+    "verified_bearer_active",
+    "reset_verified_bearer_context( true )",
+    "reset_verified_bearer_context( false )",
+    "clears_stale_oauth_service_user",
+    "preserves_clean_local_admin_session",
+    "creates_authority' => false",
+]:
+    if marker not in context_guard:
+        raise SystemExit(f"missing OAuth request-context guard marker: {marker}")
+
+for marker in [
+    "mad4b.oauth-jwt-header-guard.v1",
+    "'/mcp/mad4b-chatgpt'",
+    "'at+jwt'",
+    "'RS256'",
+    "mad4b_oauth_jwt_typ_denied",
+    "protected_header_verified_later' => true",
+    "claims_used_for_authority' => false",
+    "creates_authority' => false",
+]:
+    if marker not in header_guard:
+        raise SystemExit(f"missing OAuth JWT-header guard marker: {marker}")
+
+for marker in [
+    "mad4b.oauth-outbound-budget-guard.v1",
+    "WINDOW_SECONDS = 30",
+    "MAX_REQUESTS_PER_URL = 2",
+    "add_option( $name, $now, '', false )",
+    "mad4b_oauth_outbound_budget_exhausted",
+    "cross_process_atomic_slots' => true",
+    "credential_material_stored' => false",
+    "creates_authority' => false",
+]:
+    if marker not in outbound_guard:
+        raise SystemExit(f"missing OAuth outbound-budget marker: {marker}")
+
+for marker in [
+    "mad4b.remote-oauth-read-policy.v1",
+    "MAD4B_MCP_OAUTH_REMOTE_READ_ALLOWLIST",
+    "mad4b/filesystem-read",
+    "mad4b/database-select",
+    "mad4b_remote_oauth_sensitive_read_denied",
+    "verified_bearer_active",
+    "mad4b_remote_oauth_default",
+]:
+    if marker not in overrides:
+        raise SystemExit(f"missing remote OAuth read-policy marker: {marker}")
+
+alignment_required = [
+    "mad4b.oauth-challenge-alignment.v2",
+    "rest_post_dispatch",
+    "/mcp/mad4b-chatgpt",
+    "resource_metadata=",
+    "authoritative_well_known_url",
+    "MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE",
+]
+for marker in alignment_required:
+    if marker not in alignment:
+        raise SystemExit(f"missing OAuth challenge alignment marker: {marker}")
+
+for marker in [
+    "'mad4b-chatgpt'",
+    'public static function chatgpt_tools()',
+    "'MAD4B ChatGPT MCP'",
+    'can_chatgpt_transport',
+    "'mad4b/filesystem-read'",
+    "'mad4b/database-select'",
+]:
+    if marker not in servers:
+        raise SystemExit(f"missing ChatGPT gateway marker: {marker}")
+
+for marker in [
+    'runtime-oauth-context-cooldown.v3',
+    'claim_jwks_refresh_slot',
+    'Second unknown-kid refresh attempt must be suppressed during cooldown.',
+    'Pre-gate denial path retained stale OAuth service identity.',
+    'No-bearer subrequest inherited stale OAuth service identity.',
+    'Clean no-bearer local admin session was incorrectly demoted.',
+]:
+    if marker not in runtime_context:
+        raise SystemExit(f"missing OAuth cooldown/context runtime proof: {marker}")
+
+for marker in [
+    'runtime-oauth-edge-guards.v1',
+    'JWT without at+jwt typ must be rejected.',
+    'Generic JWT typ must not be accepted as an access-token JWT.',
+    'Third concurrent outbound request exceeded the atomic URL budget.',
+    'Outbound URL budget did not reopen after its window.',
+]:
+    if marker not in runtime_edges:
+        raise SystemExit(f"missing OAuth edge-guard runtime proof: {marker}")
+
+for forbidden in [
+    "file_put_contents(",
+    "error_log( $token",
+    "MAD4B_MCP_MUTATION_ENABLED",
+    "mad4b-write' === $route",
+    "mad4b-admin' === $route",
+    "mad4b-breakglass' === $route",
+    "HS256",
+]:
+    if forbidden in bridge:
+        raise SystemExit(f"forbidden OAuth bridge primitive: {forbidden}")
+    if forbidden in context_guard:
+        raise SystemExit(f"forbidden OAuth context-guard primitive: {forbidden}")
+    if forbidden in alignment:
+        raise SystemExit(f"forbidden OAuth challenge alignment primitive: {forbidden}")
+
+for loaded in [
+    "class-mad4b-scp-oauth-resource-bridge.php",
+    "class-mad4b-scp-oauth-request-context-guard.php",
+    "class-mad4b-scp-oauth-jwt-header-guard.php",
+    "class-mad4b-scp-oauth-outbound-budget-guard.php",
+    "class-mad4b-scp-oauth-challenge-alignment.php",
+]:
+    if loaded not in main:
+        raise SystemExit(f"main plugin does not load OAuth component: {loaded}")
+for boot_marker in [
+    "MAD4B_SCP_OAuth_Request_Context_Guard::boot()",
+    "MAD4B_SCP_OAuth_JWT_Header_Guard::boot()",
+    "MAD4B_SCP_OAuth_Resource_Bridge::boot()",
+    "MAD4B_SCP_OAuth_Outbound_Budget_Guard::boot()",
+]:
+    if boot_marker not in plugin:
+        raise SystemExit(f"plugin boot does not initialize OAuth component: {boot_marker}")
+if "bind_local_oauth_subject_compatibility" not in plugin:
+    raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
+
+print('mad4b.site-control-plane.oauth-resource-bridge.v8: PASS')

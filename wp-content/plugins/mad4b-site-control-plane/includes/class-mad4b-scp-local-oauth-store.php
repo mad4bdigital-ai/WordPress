@@ -1,0 +1,249 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/**
+ * Durable, site-local OAuth state for the standalone WordPress authorization server.
+ *
+ * Authorization codes and refresh tokens are never stored in plaintext. Only
+ * SHA-256 token hashes and bounded binding metadata are persisted.
+ */
+final class MAD4B_SCP_Local_OAuth_Store {
+	const VERSION = 1;
+	const OPTION = 'mad4b_scp_local_oauth_store_version';
+	const MAX_CLIENT_ID_BYTES = 191;
+
+	public static function tables() {
+		global $wpdb;
+		return array(
+			'codes' => $wpdb->prefix . 'mad4b_scp_oauth_codes',
+			'refresh_tokens' => $wpdb->prefix . 'mad4b_scp_oauth_refresh_tokens',
+		);
+	}
+
+	public static function install_or_upgrade() {
+		global $wpdb;
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		$charset = $wpdb->get_charset_collate();
+		$t = self::tables();
+
+		$sql = array();
+		$sql[] = "CREATE TABLE {$t['codes']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			code_hash char(64) NOT NULL,
+			client_id varchar(191) NOT NULL,
+			wp_user_id bigint(20) unsigned NOT NULL,
+			redirect_uri text NOT NULL,
+			resource text NOT NULL,
+			scope text NOT NULL,
+			code_challenge varchar(128) NOT NULL,
+			expires_at datetime NOT NULL,
+			used_at datetime NULL,
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY code_hash (code_hash),
+			KEY client_created (client_id,created_at),
+			KEY expiry (expires_at)
+		) $charset;";
+
+		$sql[] = "CREATE TABLE {$t['refresh_tokens']} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			token_hash char(64) NOT NULL,
+			family_id char(36) NOT NULL,
+			client_id varchar(191) NOT NULL,
+			wp_user_id bigint(20) unsigned NOT NULL,
+			resource text NOT NULL,
+			scope text NOT NULL,
+			expires_at datetime NOT NULL,
+			used_at datetime NULL,
+			revoked_at datetime NULL,
+			replacement_hash char(64) NOT NULL DEFAULT '',
+			created_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY token_hash (token_hash),
+			KEY family_id (family_id),
+			KEY client_created (client_id,created_at),
+			KEY expiry (expires_at)
+		) $charset;";
+
+		foreach ( $sql as $statement ) dbDelta( $statement );
+		if ( ! self::is_ready() ) {
+			return new WP_Error( 'mad4b_local_oauth_store_unavailable', 'Local OAuth store is incomplete after migration.' );
+		}
+		update_option( self::OPTION, self::VERSION, false );
+		return true;
+	}
+
+	public static function is_ready() {
+		global $wpdb;
+		foreach ( self::tables() as $table ) {
+			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			if ( $found !== $table ) return false;
+		}
+		return true;
+	}
+
+	public static function status() {
+		return array(
+			'expected_version' => self::VERSION,
+			'installed_version' => (int) get_option( self::OPTION, 0 ),
+			'ready' => self::is_ready(),
+			'tables' => self::tables(),
+			'max_client_id_bytes' => self::MAX_CLIENT_ID_BYTES,
+			'plaintext_authorization_codes_stored' => false,
+			'plaintext_refresh_tokens_stored' => false,
+		);
+	}
+
+	private static function valid_client_id( $client_id ) {
+		return is_string( $client_id ) && '' !== $client_id && strlen( $client_id ) <= self::MAX_CLIENT_ID_BYTES;
+	}
+
+	private static function valid_sha256_hex( $value ) {
+		return is_string( $value ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $value );
+	}
+
+	public static function insert_code( array $record ) {
+		global $wpdb;
+		$t = self::tables();
+		$client_id = isset( $record['client_id'] ) ? (string) $record['client_id'] : '';
+		$code_hash = isset( $record['code_hash'] ) ? (string) $record['code_hash'] : '';
+		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $code_hash ) ) return false;
+		$inserted = $wpdb->insert(
+			$t['codes'],
+			array(
+				'code_hash' => $code_hash,
+				'client_id' => $client_id,
+				'wp_user_id' => (int) $record['wp_user_id'],
+				'redirect_uri' => (string) $record['redirect_uri'],
+				'resource' => (string) $record['resource'],
+				'scope' => (string) $record['scope'],
+				'code_challenge' => (string) $record['code_challenge'],
+				'expires_at' => (string) $record['expires_at'],
+				'created_at' => (string) $record['created_at'],
+			),
+			array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return false !== $inserted;
+	}
+
+	public static function get_code( $code_hash ) {
+		global $wpdb;
+		$t = self::tables();
+		if ( ! self::valid_sha256_hex( (string) $code_hash ) ) return null;
+		return $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$t['codes']} WHERE code_hash = %s LIMIT 1", (string) $code_hash ),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	public static function mark_code_used( $id, $used_at ) {
+		global $wpdb;
+		$t = self::tables();
+		$updated = $wpdb->query(
+			$wpdb->prepare( "UPDATE {$t['codes']} SET used_at = %s WHERE id = %d AND used_at IS NULL", (string) $used_at, (int) $id )
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return 1 === (int) $updated;
+	}
+
+	/**
+	 * A refresh-token family is permanently poisoned after any replay/revocation.
+	 *
+	 * This intentionally asks whether *any* row in the family has revoked_at set,
+	 * rather than only looking at the current token. That makes family revocation
+	 * monotonic and lets insertion fail closed when a concurrent replay races a
+	 * legitimate rotation.
+	 */
+	public static function family_is_revoked( $family_id ) {
+		global $wpdb;
+		$t = self::tables();
+		if ( '' === (string) $family_id ) return true;
+		$found = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$t['refresh_tokens']} WHERE family_id = %s AND revoked_at IS NOT NULL LIMIT 1",
+				(string) $family_id
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return null !== $found;
+	}
+
+	public static function insert_refresh_token( array $record ) {
+		global $wpdb;
+		$t = self::tables();
+		$family_id = isset( $record['family_id'] ) ? (string) $record['family_id'] : '';
+		$client_id = isset( $record['client_id'] ) ? (string) $record['client_id'] : '';
+		$token_hash = isset( $record['token_hash'] ) ? (string) $record['token_hash'] : '';
+		if ( ! self::valid_client_id( $client_id ) || ! self::valid_sha256_hex( $token_hash ) ) return false;
+		if ( strlen( $family_id ) > 36 ) return false;
+
+		// Pre-insert guard catches a replay/revocation that completed before this
+		// request reached the replacement insert.
+		if ( '' === $family_id || self::family_is_revoked( $family_id ) ) return false;
+
+		$inserted = $wpdb->insert(
+			$t['refresh_tokens'],
+			array(
+				'token_hash' => $token_hash,
+				'family_id' => $family_id,
+				'client_id' => $client_id,
+				'wp_user_id' => (int) $record['wp_user_id'],
+				'resource' => (string) $record['resource'],
+				'scope' => (string) $record['scope'],
+				'expires_at' => (string) $record['expires_at'],
+				'created_at' => (string) $record['created_at'],
+			),
+			array( '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' )
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( false === $inserted ) return false;
+
+		// Post-insert guard closes the important race:
+		// A rotates the old token, B detects the replay and revokes the family,
+		// then A inserts its replacement. If B revoked before this row existed,
+		// the old implementation could return a live replacement. Re-checking the
+		// monotonic family poison state here makes the replacement unusable and
+		// causes the caller to fail closed instead of returning it.
+		if ( self::family_is_revoked( $family_id ) ) {
+			self::revoke_family( $family_id, gmdate( 'Y-m-d H:i:s' ) );
+			return false;
+		}
+		return true;
+	}
+
+	public static function get_refresh_token( $token_hash ) {
+		global $wpdb;
+		$t = self::tables();
+		if ( ! self::valid_sha256_hex( (string) $token_hash ) ) return null;
+		return $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$t['refresh_tokens']} WHERE token_hash = %s LIMIT 1", (string) $token_hash ),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	public static function rotate_refresh_token( $id, $used_at, $replacement_hash ) {
+		global $wpdb;
+		$t = self::tables();
+		if ( ! self::valid_sha256_hex( (string) $replacement_hash ) ) return false;
+		$updated = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$t['refresh_tokens']} SET used_at = %s, replacement_hash = %s WHERE id = %d AND used_at IS NULL AND revoked_at IS NULL",
+				(string) $used_at,
+				(string) $replacement_hash,
+				(int) $id
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return 1 === (int) $updated;
+	}
+
+	public static function revoke_family( $family_id, $revoked_at ) {
+		global $wpdb;
+		$t = self::tables();
+		if ( '' === (string) $family_id || strlen( (string) $family_id ) > 36 ) return false;
+		return $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$t['refresh_tokens']} SET revoked_at = %s WHERE family_id = %s AND revoked_at IS NULL",
+				(string) $revoked_at,
+				(string) $family_id
+			)
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+}

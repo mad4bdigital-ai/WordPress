@@ -1,0 +1,143 @@
+name: MAD4B Core NHI Gate
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-apply-nhi-core-gate.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-manager.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-overrides.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governance-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/admin-governance-ui-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-admin-governance-ui-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-side-channel-governance-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-side-channel-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/fixtures/mad4b-ci-rogue-public-write.php'
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/mad4b-apply-nhi-core-gate.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-manager.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-overrides.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governance-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/admin-governance-ui-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-admin-governance-ui-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-side-channel-governance-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-side-channel-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/fixtures/mad4b-ci-rogue-public-write.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-core-nhi-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify NHI, reversible mutation, governance visibility, admin UI and MCP peer contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          abilities="$root/includes/class-mad4b-scp-abilities.php"
+          servers="$root/includes/class-mad4b-scp-servers.php"
+          peer_governance="$root/includes/class-mad4b-scp-mcp-peer-governance.php"
+          adapter="$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          adapter_registry="$root/includes/class-mad4b-scp-adapter-registry.php"
+          authz="$root/includes/class-mad4b-scp-authorization.php"
+          registry="$root/includes/class-mad4b-scp-agent-registry.php"
+          manager="$root/includes/class-mad4b-scp-mutation-manager.php"
+          overrides="$root/includes/class-mad4b-scp-governed-ability-overrides.php"
+          governance="$root/includes/class-mad4b-scp-governance-abilities.php"
+          admin_ui="$root/includes/class-mad4b-scp-admin-ui.php"
+          plugin="$root/includes/class-mad4b-scp-plugin.php"
+          bootstrap="$root/mad4b-site-control-plane.php"
+
+          php -l "$abilities"
+          php -l "$servers"
+          php -l "$peer_governance"
+          php -l "$adapter"
+          php -l "$adapter_registry"
+          php -l "$authz"
+          php -l "$registry"
+          php -l "$manager"
+          php -l "$overrides"
+          php -l "$governance"
+          php -l "$admin_ui"
+          php -l "$plugin"
+          php -l "$root/tests/runtime-admin-governance-ui-smoke.php"
+          php -l "$root/tests/runtime-mcp-side-channel-baseline.php"
+          php -l "$root/tests/runtime-mcp-side-channel-blocker.php"
+          php -l "$root/tests/fixtures/mad4b-ci-rogue-public-write.php"
+
+          grep -Fq "authorize_mutation( \$ability_name, \$server_id, 'core', \$input )" "$abilities"
+          grep -Fq "authorize_mutation( \$ability_name, 'mad4b-' . sanitize_key( \$surface )" "$adapter"
+          grep -Fq "mad4b/runtime-authority-status" "$abilities"
+          grep -Fq "mad4b/runtime-authority-status" "$servers"
+          grep -Fq "exact_grant" "$authz"
+          grep -Fq "public static function target_fingerprint" "$authz"
+          grep -Fq "MAD4B_SCP_MCP_Peer_Governance::mutation_guard()" "$authz"
+          grep -Fq "mcp_write_side_channel_detected" "$authz"
+          grep -Fq "mcp_write_side_channel_detected" "$peer_governance"
+          grep -Fq "get_servers" "$peer_governance"
+          grep -Fq "get_mcp_tool" "$peer_governance"
+          grep -Fq "get_adapter_meta" "$peer_governance"
+          grep -Fq "McpAbilityExposure::is_public" "$peer_governance"
+          grep -Fq "mad4b_wildcard_grant_denied" "$registry"
+          grep -Fq "mad4b_grant_server_ability_mismatch" "$registry"
+          grep -Fq "mad4b_grant_provider_mismatch" "$registry"
+
+          grep -Fq "wp_register_ability_args" "$overrides"
+          grep -Fq "MAD4B_SCP_Mutation_Manager::execute_post_update" "$overrides"
+          grep -Fq "mad4b/mutation-get" "$overrides"
+          grep -Fq "mad4b/mutation-undo" "$overrides"
+          grep -Fq "mad4b_undo_state_drift" "$manager"
+
+          grep -Fq "mad4b/agent-list" "$governance"
+          grep -Fq "mad4b/agent-effective-access" "$governance"
+          grep -Fq "mad4b/approval-plan" "$governance"
+          grep -Fq "MAD4B_SCP_Authorization::target_fingerprint" "$governance"
+          grep -Fq "'auto_approved' => false" "$governance"
+          grep -Fq "mad4b/agent-list" "$servers"
+          grep -Fq "mad4b/agent-effective-access" "$servers"
+          grep -Fq "mad4b/approval-plan" "$servers"
+          grep -Fq "mad4b/agent-list" "$adapter_registry"
+          grep -Fq "mcp_peer_governance_ok" "$adapter_registry"
+
+          grep -Fq "class MAD4B_SCP_Admin_UI" "$admin_ui"
+          grep -Fq "'manage_options'" "$admin_ui"
+          grep -Fq "MAD4B_SCP_Admin_UI::boot()" "$plugin"
+          grep -Fq "class-mad4b-scp-admin-ui.php" "$bootstrap"
+          grep -Fq "class-mad4b-scp-mcp-peer-governance.php" "$bootstrap"
+          grep -Fq "class-mad4b-scp-governance-abilities.php" "$bootstrap"
+
+          python3 "$root/tests/agent-governance-contract.py"
+          python3 "$root/tests/admin-governance-ui-contract.py"
+          python3 "$root/tests/mcp-side-channel-governance-contract.py"

@@ -1,0 +1,61 @@
+name: MAD4B Plugin Package
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-plugin-package.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-plugin-package-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Build installable plugin ZIP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify package contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          test -f "$root/mad4b-site-control-plane.php"
+          grep -Fq 'Plugin Name: MAD4B Site Control Plane' "$root/mad4b-site-control-plane.php"
+          grep -Fq 'Requires Plugins: mcp-adapter' "$root/mad4b-site-control-plane.php"
+          test -f 'wp-content/plugins/mcp-adapter.zip'
+
+      - name: Build WordPress installable ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist/stage
+          cp -R wp-content/plugins/mad4b-site-control-plane dist/stage/mad4b-site-control-plane
+          rm -rf dist/stage/mad4b-site-control-plane/tests
+          (
+            cd dist/stage
+            zip -qr ../mad4b-site-control-plane.zip mad4b-site-control-plane
+          )
+          sha256sum dist/mad4b-site-control-plane.zip > dist/mad4b-site-control-plane.zip.sha256
+          printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/SOURCE_HEAD.txt
+
+      - name: Upload installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-site-control-plane-installable
+          path: |
+            dist/mad4b-site-control-plane.zip
+            dist/mad4b-site-control-plane.zip.sha256
+            dist/SOURCE_HEAD.txt
+          if-no-files-found: error
+          retention-days: 14
