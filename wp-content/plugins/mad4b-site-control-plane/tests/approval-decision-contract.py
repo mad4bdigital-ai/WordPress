@@ -24,6 +24,10 @@ required_admin = [
     "MAD4B_SCP_Approval_Tickets::decide_pending",
     "MAD4B_SCP_Staging_Write_Authority::is_write_ability",
     "MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write'",
+    "prepare_authority_runtime_after_validation",
+    "rest_get_server()",
+    "MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_approval_decision' )",
+    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
     "This page never executes the target mutation",
 ]
 missing = [marker for marker in required_admin if marker not in admin]
@@ -37,6 +41,33 @@ forbidden_admin = [
 found = [marker for marker in forbidden_admin if marker in admin]
 if found:
     raise SystemExit('Human decision console gained target-execution or MCP authority: ' + ' | '.join(found))
+
+# The live rc.23 failure was a request-local bootstrap gap. Preserve the exact
+# ordering: nonce in the HTTP handler, then exact validation, then runtime prime
+# and authority reconciliation, then the atomic ticket transition.
+handler_start = admin.index('public static function handle_admin_post')
+handler_end = admin.index('public static function render_page', handler_start)
+handler_body = admin[handler_start:handler_end]
+if handler_body.index('check_admin_referer( $nonce_action )') > handler_body.index('self::decide( $request )'):
+    raise SystemExit('Approval admin-post can enter decision logic before nonce validation')
+
+decide_start = admin.index('public static function decide')
+decide_end = admin.index('public static function handle_admin_post', decide_start)
+decide_body = admin[decide_start:decide_end]
+for first, second, label in [
+    ('validate_decision_for_test(', 'prepare_authority_runtime_after_validation()', 'validation must precede authority runtime preparation'),
+    ('prepare_authority_runtime_after_validation()', 'MAD4B_SCP_Staging_Write_Authority::is_write_ability', 'runtime preparation must precede mounted-target recheck'),
+    ('MAD4B_SCP_Staging_Write_Authority::is_write_ability', 'MAD4B_SCP_Approval_Tickets::decide_pending', 'target recheck must precede ticket transition'),
+]:
+    if decide_body.index(first) > decide_body.index(second):
+        raise SystemExit('Approval lifecycle ordering regressed: ' + label)
+
+prepare_start = admin.index('private static function prepare_authority_runtime_after_validation')
+prepare_end = admin.index('public static function decide', prepare_start)
+prepare_body = admin[prepare_start:prepare_end]
+for forbidden in ['decide_pending(', 'wp_register_ability(', 'MAD4B_SCP_Mutation_Manager', 'call_user_func(']:
+    if forbidden in prepare_body:
+        raise SystemExit('Authority runtime preparation gained decision or target-execution authority: ' + forbidden)
 
 required_ticket = [
     "const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v1'",
@@ -108,4 +139,4 @@ found = [marker for marker in forbidden_handoff if marker in handoff]
 if found:
     raise SystemExit('Approval handoff gained decision or mutation authority: ' + ' | '.join(found))
 
-print('mad4b.approval-decision.contract.v2: PASS')
+print('mad4b.approval-decision.contract.v3: PASS')
