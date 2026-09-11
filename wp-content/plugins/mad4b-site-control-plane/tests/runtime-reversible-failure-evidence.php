@@ -32,7 +32,13 @@ final class MAD4B_CI_Failure_Evidence_Adapter extends MAD4B_SCP_Adapter_Base {
 }
 
 $check( class_exists( 'MAD4B_SCP_Reversible_Adapter_Mutations' ), 'reversible adapter manager unavailable' );
-$check( defined( 'MAD4B_SCP_VERSION' ) && '0.4.0-rc.26' === MAD4B_SCP_VERSION, 'failure-evidence regression must run against rc.26' );
+$check( defined( 'MAD4B_SCP_VERSION' ) && defined( 'MAD4B_SCP_DIR' ), 'Control Plane release identity is unavailable' );
+$runtime_build = @file_get_contents( MAD4B_SCP_DIR . 'MAD4B-RUNTIME-BUILD.txt' );
+$runtime_release = '';
+if ( is_string( $runtime_build ) && preg_match( '/^release=(.+)$/m', $runtime_build, $runtime_match ) ) {
+	$runtime_release = trim( (string) $runtime_match[1] );
+}
+$check( '' !== $runtime_release && hash_equals( (string) MAD4B_SCP_VERSION, $runtime_release ), 'failure-evidence regression requires matching runtime/build release identity' );
 
 $subject_type = 'ci-failure-evidence';
 $subject_identifier = 'ci-failure-evidence-subject';
