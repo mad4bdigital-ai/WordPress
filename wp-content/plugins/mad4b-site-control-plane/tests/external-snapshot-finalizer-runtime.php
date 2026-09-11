@@ -95,16 +95,29 @@ class MAD4B_SCP_Live_Acceptance_Finalizer {
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-portable-snapshot-attestation.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-external-snapshot-finalizer.php';
 
-$external_token = MAD4B_SCP_Portable_Snapshot_Attestation::external_token(
-	$GLOBALS['mad4b_snapshot_identity'],
-	$GLOBALS['mad4b_candidate_sha'],
-	$GLOBALS['mad4b_build_fingerprint']
+$candidate = array(
+	'ready' => true,
+	'candidate_sha' => $GLOBALS['mad4b_candidate_sha'],
+	'build_fingerprint' => $GLOBALS['mad4b_build_fingerprint'],
 );
-if ( 1 !== preg_match( '/^sha256:[a-f0-9]{64}$/', $external_token ) ) {
-	fwrite( STDERR, "candidate-bound package token was not produced\n" ); exit( 1 );
+$issued = MAD4B_SCP_Portable_Snapshot_Attestation::issue_external_token( $GLOBALS['mad4b_snapshot_identity'], $candidate );
+if ( is_wp_error( $issued ) || empty( $issued['external_snapshot_token'] ) || empty( $issued['record'] ) ) {
+	fwrite( STDERR, "export-only package proof was not issued\n" ); exit( 1 );
+}
+$external_token = (string) $issued['external_snapshot_token'];
+if ( 1 !== preg_match( '/^mad4bext_[a-f0-9]{64}$/', $external_token ) ) {
+	fwrite( STDERR, "export-only package proof has invalid format\n" ); exit( 1 );
 }
 if ( hash_equals( $external_token, $GLOBALS['mad4b_snapshot_identity'] ) ) {
-	fwrite( STDERR, "external package token collapsed to raw local snapshot identity\n" ); exit( 1 );
+	fwrite( STDERR, "external package proof collapsed to raw local snapshot identity\n" ); exit( 1 );
+}
+
+// Simulate the successful authenticated wp-admin export commit. Persistent state
+// contains only the digest; the package plaintext proof must not be recoverable.
+$GLOBALS['mad4b_options'][ MAD4B_SCP_Portable_Snapshot_Attestation::TOKEN_LEDGER_OPTION ] = array( $issued['record'] );
+$ledger_json = json_encode( $GLOBALS['mad4b_options'][ MAD4B_SCP_Portable_Snapshot_Attestation::TOKEN_LEDGER_OPTION ] );
+if ( false !== strpos( $ledger_json, $external_token ) ) {
+	fwrite( STDERR, "plaintext external package proof leaked into WordPress persistence\n" ); exit( 1 );
 }
 
 $raw_attempt = MAD4B_SCP_External_Snapshot_Finalizer::snapshot_verify(
@@ -113,18 +126,22 @@ $raw_attempt = MAD4B_SCP_External_Snapshot_Finalizer::snapshot_verify(
 if ( ! empty( $raw_attempt['exact_match'] ) || ! empty( $raw_attempt['attestation_recorded'] ) ) {
 	fwrite( STDERR, "raw local snapshot identity was accepted as external package evidence\n" ); exit( 1 );
 }
-if ( isset( $raw_attempt['live_snapshot_token'] ) || isset( $raw_attempt['expected_external_token'] ) ) {
-	fwrite( STDERR, "snapshot verifier disclosed expected evidence\n" ); exit( 1 );
+if ( isset( $raw_attempt['live_snapshot_token'] ) || isset( $raw_attempt['expected_external_token'] ) || isset( $raw_attempt['external_snapshot_token'] ) ) {
+	fwrite( STDERR, "snapshot verifier disclosed expected package evidence\n" ); exit( 1 );
 }
 
 $verified = MAD4B_SCP_External_Snapshot_Finalizer::snapshot_verify(
 	array( 'client_snapshot_token' => $external_token )
 );
 if ( empty( $verified['exact_match'] ) || empty( $verified['trusted_external_context'] ) || empty( $verified['attestation_recorded'] ) ) {
-	fwrite( STDERR, "trusted external package token was not accepted\n" ); exit( 1 );
+	fwrite( STDERR, "trusted external export-only proof was not accepted\n" ); exit( 1 );
 }
-if ( empty( $verified['expected_token_disclosed'] ) === false || empty( $verified['local_snapshot_identity_disclosed'] ) === false ) {
+if ( ! isset( $verified['expected_token_disclosed'], $verified['local_snapshot_identity_disclosed'] ) || $verified['expected_token_disclosed'] || $verified['local_snapshot_identity_disclosed'] ) {
 	fwrite( STDERR, "verification disclosure flags are unsafe\n" ); exit( 1 );
+}
+$stored_attestation = $GLOBALS['mad4b_options'][ MAD4B_SCP_External_Snapshot_Finalizer::OPTION ];
+if ( false !== strpos( json_encode( $stored_attestation ), $external_token ) ) {
+	fwrite( STDERR, "plaintext external package proof leaked into finalizer attestation\n" ); exit( 1 );
 }
 $status = MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status();
 if ( empty( $status['ready'] ) ) {
@@ -156,5 +173,12 @@ $moved_candidate = MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_stat
 if ( ! empty( $moved_candidate['ready'] ) || ! in_array( 'candidate_mismatch', $moved_candidate['blockers'], true ) ) {
 	fwrite( STDERR, "stale portable package remained valid after candidate movement\n" ); exit( 1 );
 }
+$GLOBALS['mad4b_candidate_sha'] = str_repeat( '1', 40 );
 
-echo "mad4b.external-snapshot-finalizer-runtime.v2: PASS\n";
+$GLOBALS['mad4b_snapshot_identity'] = 'sha256:' . str_repeat( '9', 64 );
+$moved_snapshot = MAD4B_SCP_External_Snapshot_Finalizer::external_snapshot_status();
+if ( ! empty( $moved_snapshot['ready'] ) || ! in_array( 'snapshot_changed_after_export', $moved_snapshot['blockers'], true ) ) {
+	fwrite( STDERR, "stale portable package remained valid after local snapshot movement\n" ); exit( 1 );
+}
+
+echo "mad4b.external-snapshot-finalizer-runtime.v3: PASS\n";
