@@ -199,7 +199,16 @@ jobs:
           grep -Fq "mad4b_transport_route_mismatch" "$transport_context"
           grep -Fq "mad4b_write_authority_mount_missing" "$transport_context"
           grep -Fq "MAD4B_SCP_Transport_Context::resolve_server_for_ability" "$authorization"
-          grep -Fq "MAD4B_SCP_Approval_Tickets::consume_exact" "$authorization"
+          grep -Fq "const EXECUTION_BOUNDARY_CONTRACT" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::validate_exact" "$authorization"
+          grep -Fq "public static function claim_mutation" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::claim_exact" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::finalize_claim" "$authorization"
+          grep -Fq "public static function wrap_execution_boundary" "$authorization"
+          if sed -n '/public static function authorize_mutation/,/public static function claim_mutation/p' "$authorization" | grep -Fq "MAD4B_SCP_Approval_Tickets::consume_exact"; then
+            echo 'Permission preflight must never consume approval tickets.' >&2
+            exit 1
+          fi
           grep -Fq "'transport_bound'" "$authorization"
           grep -Fq "'mad4b-write'" "$servers"
           grep -Fq "public static function write_tools" "$servers"
