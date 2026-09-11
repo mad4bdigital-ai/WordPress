@@ -39,11 +39,14 @@ for marker in [
     require(fence, marker, 'early-load')
 
 for marker in [
-    "const CONTRACT = 'mad4b.portable-external-snapshot.v2'",
-    "public static function external_token(",
-    "'candidate_sha' => $candidate_sha",
-    "'build_fingerprint' => $build_fingerprint",
-    "'MAD4B external package attestation ' . $external_token",
+    "const CONTRACT = 'mad4b.portable-external-snapshot.v3'",
+    "const TOKEN_LEDGER_OPTION = 'mad4b_scp_external_snapshot_export_tokens_v3'",
+    "random_bytes( 32 )",
+    "'mad4bext_' . bin2hex( $secret )",
+    "'token_digest' => hash( 'sha256', $token )",
+    "'snapshot_identity_digest' => hash( 'sha256', $snapshot_token )",
+    "public static function validate_external_token(",
+    "public static function validate_token_digest(",
     "MAD4B-EXTERNAL-SNAPSHOT-ATTESTATION.json",
     "MAD4B-EXTERNAL-SNAPSHOT-ID.txt",
     "X-MAD4B-External-Snapshot-Token",
@@ -52,8 +55,11 @@ for marker in [
     require(portable, marker, 'portable-attestation')
 
 for marker in [
-    "const ATTESTATION_CONTRACT = 'mad4b.external-snapshot-attestation.v2'",
-    "const VERIFY_CONTRACT = 'mad4b.external-snapshot-verification.v2'",
+    "const CONTRACT = 'mad4b.external-snapshot-finalizer.v3'",
+    "const ATTESTATION_CONTRACT = 'mad4b.external-snapshot-attestation.v3'",
+    "const VERIFY_CONTRACT = 'mad4b.external-snapshot-verification.v3'",
+    "MAD4B_SCP_Portable_Snapshot_Attestation::validate_external_token(",
+    "MAD4B_SCP_Portable_Snapshot_Attestation::validate_token_digest(",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "'oauth2_bearer'",
     "'mad4b:read'",
@@ -62,7 +68,7 @@ for marker in [
     "'finalizer_subject_binding_verified'",
     "'finalizer_context_digest'",
     "'external_session_binding_changed'",
-    "'external_package_token_mismatch'",
+    "'snapshot_changed_after_export'",
     "'expected_token_disclosed' => false",
     "'local_snapshot_identity_disclosed' => false",
     "update_option( self::OPTION",
@@ -77,12 +83,19 @@ for marker in [
 ]:
     require(overrides, marker, 'bounded-mutation-evidence')
 
-# The v2 verifier must never return the local/expected evidence token.
+# The strict verifier must not expose either the package secret or its expected value.
 for marker in [
     "'live_snapshot_token' =>",
     "'expected_external_token' =>",
+    "'external_snapshot_token' => $client",
 ]:
     forbid(external, marker, 'no-self-certification')
+
+# Persistent records contain digests only. Plaintext export proofs belong only in the ZIP.
+for marker in [
+    "'external_snapshot_token' => $token",
+]:
+    forbid(portable.split('private static function persist_record', 1)[-1], marker, 'no-plaintext-persistence')
 
 # No acceptance helper may gain direct raw SQL / Breakglass / Production writes.
 for text, label in [(reconciler, 'reconciler'), (portable, 'portable'), (external, 'external-finalizer')]:
@@ -96,4 +109,4 @@ for text, label in [(reconciler, 'reconciler'), (portable, 'portable'), (externa
     ]:
         forbid(text, forbidden, f'{label}-fail-closed')
 
-print('mad4b.live-acceptance-reconciler-contract.v2: PASS')
+print('mad4b.live-acceptance-reconciler-contract.v3: PASS')
