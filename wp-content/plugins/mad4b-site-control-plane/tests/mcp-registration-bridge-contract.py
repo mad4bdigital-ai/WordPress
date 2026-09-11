@@ -7,6 +7,7 @@ bridge = (ROOT / 'includes/class-mad4b-scp-mcp-registration-bridge.php').read_te
 diagnostics = (ROOT / 'includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
+staging_authority = (ROOT / 'includes/class-mad4b-scp-staging-write-authority.php').read_text('utf-8')
 build_marker = ROOT / 'MAD4B-RUNTIME-BUILD.txt'
 
 
@@ -90,7 +91,6 @@ forbid(bootstrap, "add_action( 'plugins_loaded', array( 'MAD4B_SCP_Plugin', 'boo
 early_registration_wiring = (
     'MAD4B_SCP_Connection_Ability::boot();',
     'MAD4B_SCP_Governed_Ability_Overrides::boot();',
-    "add_filter( 'wp_register_ability_args', array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' ), 70, 2 );",
     "add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'register_status_ability' ), 35 );",
     'MAD4B_SCP_Staging_Write_Planning_Guard::boot();',
     "add_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_REST_Compatibility', 'register_ability' ), 36 );",
@@ -104,6 +104,18 @@ for marker in early_registration_wiring:
     require(bootstrap, marker, 'early-ability-registration-wiring')
     if bootstrap.index(marker) > metadata_bootstrap_index:
         raise SystemExit(f'FAIL early-ability-registration-order: {marker} must be wired before metadata/bootstrap execution')
+
+# augment_write_ability has one owner: the full Staging Write Authority boot.
+# Binding it directly in the main bootstrap and again from boot() creates two
+# distinct WordPress callback registrations even though boot() itself is static-
+# guarded. Keep the pre-init phase registration-only and prove exactly one owner.
+authority_filter_bootstrap = "add_filter( 'wp_register_ability_args', array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' ), 70, 2 );"
+authority_filter_owner = "add_filter( 'wp_register_ability_args', array( __CLASS__, 'augment_write_ability' ), 70, 2 );"
+forbid(bootstrap, authority_filter_bootstrap, 'no-duplicate-authority-augmentation-binding')
+require(staging_authority, authority_filter_owner, 'authority-augmentation-owned-by-authority-boot')
+if staging_authority.count(authority_filter_owner) != 1:
+    raise SystemExit('FAIL authority-augmentation-owner-count: expected exactly one authority filter registration')
+require(plugin, 'MAD4B_SCP_Staging_Write_Authority::boot();', 'full-plugin-authority-boot')
 
 pre_metadata = bootstrap[:metadata_bootstrap_index]
 for forbidden_early_boot in (
@@ -204,4 +216,4 @@ forbid(diagnostics, 'getFileName(', 'diagnostics-do-not-resolve-path-directly')
 require(bridge, "'outside-wp-plugin-dir'", 'bounded-outside-path-label')
 require(bridge, "ltrim( substr( $normalized, strlen( $plugins ) ), '/' )", 'plugin-relative-runtime-source')
 
-print('mad4b.site-control-plane.mcp-registration-bridge-contract.v8: PASS')
+print('mad4b.site-control-plane.mcp-registration-bridge-contract.v9: PASS')
