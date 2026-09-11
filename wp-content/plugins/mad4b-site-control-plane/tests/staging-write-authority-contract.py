@@ -78,12 +78,27 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Authority::authorization_input( $input )",
     "MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input )",
     "MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed",
-    "MAD4B_SCP_Approval_Tickets::consume_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class )",
+    "MAD4B_SCP_Approval_Tickets::validate_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class )",
+    "public static function claim_mutation",
     "MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $provider, $authorization_input, $approval_required )",
+    "MAD4B_SCP_Approval_Tickets::claim_exact",
+    "MAD4B_SCP_Approval_Tickets::finalize_claim",
+    "public static function wrap_execution_boundary",
     "'approval_ticket_source'",
 ]:
     if marker not in auth:
         raise SystemExit(f'missing central write authorization binding: {marker}')
+
+preflight = auth[auth.index('public static function authorize_mutation'):auth.index('public static function claim_mutation')]
+for forbidden in [
+    'MAD4B_SCP_Budgets::reserve',
+    'MAD4B_SCP_Budgets::commit',
+    'MAD4B_SCP_Approval_Tickets::claim_exact',
+    'MAD4B_SCP_Approval_Tickets::consume_exact',
+    'MAD4B_SCP_Approval_Tickets::finalize_claim',
+]:
+    if forbidden in preflight:
+        raise SystemExit(f'permission preflight must remain non-consuming/read-only: {forbidden}')
 
 for marker in [
     "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
@@ -312,4 +327,4 @@ for key in [
 if deployment.get('secrets_included') is not False:
     raise SystemExit('staging deployment handoff must never contain secrets')
 
-print('mad4b.staging-write-authority.v7: PASS')
+print('mad4b.staging-write-authority.v8: PASS')
