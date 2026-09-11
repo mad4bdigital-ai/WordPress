@@ -12,8 +12,13 @@ class WP_Error {
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
+function sanitize_text_field( $value ) { return trim( (string) $value ); }
+function absint( $value ) { return abs( (int) $value ); }
 function site_url() { return 'https://staging.egypttourgates.com'; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function get_current_user_id() { return 0; }
+function wp_generate_uuid4() { return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; }
+function apply_filters( $tag, $value ) { return $value; }
 
 class MAD4B_SCP_Schema {
 	public static function tables() { return array( 'approvals' => 'wp_mad4b_approvals' ); }
@@ -36,6 +41,7 @@ final class MAD4B_Test_WPDB {
 }
 
 $wpdb = new MAD4B_Test_WPDB();
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identity-context.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-approval-tickets.php';
 
 function mad4b_replay_assert( $condition, $message ) {
@@ -44,6 +50,12 @@ function mad4b_replay_assert( $condition, $message ) {
 		exit( 1 );
 	}
 }
+
+$ticket_id = '11111111-1111-4111-8111-111111111111';
+mad4b_replay_assert( MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $ticket_id ), 'Governance-input ticket must bind to request-local identity evidence.' );
+$overlay = MAD4B_SCP_Identity_Context::current();
+mad4b_replay_assert( is_array( $overlay ) && $ticket_id === $overlay['approval_ticket_id'], 'Synchronous audit/finalizer reads must recover the bound ticket.' );
+mad4b_replay_assert( ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( '22222222-2222-4222-8222-222222222222' ), 'A second different ticket must not replace the request-local binding.' );
 
 $agent = array( 'id' => 7, 'public_id' => 'agent-staging-live-acceptance' );
 $server = 'mad4b-write';
@@ -57,7 +69,7 @@ mad4b_replay_assert( is_string( $payload ) && 64 === strlen( $payload ), 'Canoni
 
 $wpdb->ticket = array(
 	'id' => 11,
-	'ticket_id' => '11111111-1111-4111-8111-111111111111',
+	'ticket_id' => $ticket_id,
 	'ticket_class' => $ticket_class,
 	'agent_id' => 7,
 	'server_id' => $server,
@@ -82,4 +94,4 @@ $wpdb->ticket['status'] = 'pending';
 $pending = MAD4B_SCP_Approval_Tickets::consume_exact( $wpdb->ticket['ticket_id'], $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_wp_error( $pending ) && 'mad4b_approval_not_approved' === $pending->get_error_code(), 'Pending tickets must remain distinct from replay denial.' );
 
-echo "mad4b.approval-ticket-replay.runtime.v1: PASS\n";
+echo "mad4b.approval-ticket-replay.runtime.v2: PASS\n";
