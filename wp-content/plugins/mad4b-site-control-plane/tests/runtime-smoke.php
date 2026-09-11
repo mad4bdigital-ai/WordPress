@@ -151,7 +151,7 @@ $blocked_write = $write_ability->execute(
 $check( is_wp_error( $blocked_write ) && 'ability_invalid_permissions' === $blocked_write->get_error_code(), 'Core mutation master switch did not fail closed through the WordPress Abilities permission contract.' );
 $check( ! file_exists( $blocked_path ), 'A blocked mutation produced a filesystem side effect.' );
 
-// Prove approval canonicalization, exact payload binding, single use, and replay resistance in the disposable DB.
+// Prove approval canonicalization, exact payload binding, single use, and explicit replay resistance in the disposable DB.
 $agent = MAD4B_SCP_Agent_Registry::create_agent(
 	array(
 		'slug' => 'ci-approval-agent',
@@ -176,7 +176,7 @@ $check( is_wp_error( $wrong ) && 'mad4b_approval_payload_mismatch' === $wrong->g
 $consumed = MAD4B_SCP_Approval_Tickets::consume_exact( $ticket['ticket_id'], $agent, 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_b, 'mutation' );
 $check( is_array( $consumed ), 'Exact approved payload could not consume its ticket.' );
 $replay = MAD4B_SCP_Approval_Tickets::consume_exact( $ticket['ticket_id'], $agent, 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_b, 'mutation' );
-$check( is_wp_error( $replay ) && 'mad4b_approval_not_approved' === $replay->get_error_code(), 'Approval replay was not rejected.' );
+$check( is_wp_error( $replay ) && 'mad4b_approval_replay_denied' === $replay->get_error_code(), 'Approval replay did not return the explicit replay-denied contract.' );
 
 // Prove nested audit evidence is preserved, bounded, redacted, and chain-verifiable.
 MAD4B_SCP_Audit::record(
