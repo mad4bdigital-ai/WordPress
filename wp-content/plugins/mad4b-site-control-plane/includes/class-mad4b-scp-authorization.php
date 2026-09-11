@@ -39,8 +39,13 @@ final class MAD4B_SCP_Authorization {
 		if ( '' !== $approval_ticket_id && ! preg_match( '/^[a-f0-9-]{36}$/', $approval_ticket_id ) ) return self::deny( 'mad4b_approval_id_invalid', 'Approval ticket identifier is malformed.', $ability_name, $identity, $agent );
 		// Normalize both identity-bound and governance-input tickets into the local
 		// authorization context so every subsequent deny audit can bind the exact
-		// one-time ticket without depending on request-global identity mutation.
-		if ( '' !== $approval_ticket_id ) $identity['approval_ticket_id'] = $approval_ticket_id;
+		// one-time ticket without depending on transport-specific storage.
+		if ( '' !== $approval_ticket_id ) {
+			$identity['approval_ticket_id'] = $approval_ticket_id;
+			if ( ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $approval_ticket_id ) ) {
+				return self::deny( 'mad4b_approval_request_binding_conflict', 'A different approval ticket is already bound to this request.', $ability_name, $identity, $agent );
+			}
+		}
 
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		$require_scopes = (bool) apply_filters( 'mad4b_scp_require_token_scopes', false, $identity, $agent, $ability_name );
