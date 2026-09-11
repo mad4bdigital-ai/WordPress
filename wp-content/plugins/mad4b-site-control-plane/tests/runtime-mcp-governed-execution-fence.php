@@ -175,7 +175,7 @@ $call_payload = array( 'jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 
 $provider_invocations = 0;
 $nested_response = null;
 $inside_nested = false;
-add_filter( 'update_post_metadata', static function ( $check_value, $object_id, $meta_key, $meta_value, $prev_value ) use ( $attachment_id, &$provider_invocations, &$nested_response, &$inside_nested, $dispatch, $session_id, $call_payload ) {
+$provider_probe = static function ( $check_value, $object_id, $meta_key, $meta_value, $prev_value ) use ( $attachment_id, &$provider_invocations, &$nested_response, &$inside_nested, $dispatch, $session_id, $call_payload ) {
 	if ( (int) $object_id !== (int) $attachment_id || '_wp_attachment_image_alt' !== $meta_key ) return $check_value;
 	++$provider_invocations;
 	if ( ! $inside_nested ) {
@@ -184,7 +184,8 @@ add_filter( 'update_post_metadata', static function ( $check_value, $object_id, 
 		$inside_nested = false;
 	}
 	return $check_value;
-}, 10, 5 );
+};
+add_filter( 'update_post_metadata', $provider_probe, 10, 5 );
 
 $first = $dispatch( $call_payload, $session_id );
 $check( $first instanceof WP_REST_Response && 200 === $first->get_status(), 'first tools/call transport failed' );
@@ -222,6 +223,11 @@ $replay = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/ca
 $replay_json = wp_json_encode( $replay->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 $check( false !== strpos( $replay_json, 'replay' ) || false !== strpos( $replay_json, 'terminal or already claimed' ), 'independent tools/call did not hit replay denial: ' . $replay_json );
 $check( 1 === $provider_invocations, 'independent replay reached provider' );
+
+// The nested Media probe exists only to prove same-request re-entry fencing.
+// Remove it before recovery so the restore write itself cannot recursively issue
+// an unrelated stale Media tools/call under the new undo approval identity.
+remove_filter( 'update_post_metadata', $provider_probe, 10 );
 
 // Independent undo approval restores the exact original state.
 $reflection = new ReflectionClass( 'MAD4B_SCP_Identity_Context' );
