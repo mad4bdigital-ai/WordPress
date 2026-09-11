@@ -8,6 +8,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'tools/normalize-premium-provider-package.py'
       - '.github/workflows/mad4b-etg-dfsb-adapter.yml'
   push:
     branches: [master]
@@ -17,6 +20,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'tools/normalize-premium-provider-package.py'
       - '.github/workflows/mad4b-etg-dfsb-adapter.yml'
   workflow_dispatch:
 
@@ -110,6 +116,27 @@ jobs:
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=6.9 --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-etg.test' --title='MAD4B ETG MCP Runtime' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+      - name: Normalize exact premium provider packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-etg-providers
+          rm -rf "$out"
+          mkdir -p "$out"
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetengine \
+            --input wp-content/plugins/jet-engine.zip \
+            --output "$out/jet-engine.zip" \
+            --expected-version 3.8.15 \
+            --report "$out/jetengine-normalization.json"
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetsmartfilters \
+            --input wp-content/plugins/jet-smart-filters.zip \
+            --output "$out/jet-smart-filters.zip" \
+            --expected-version 3.8.5 \
+            --report "$out/jetsmartfilters-normalization.json"
+          unzip -tqq "$out/jet-engine.zip"
+          unzip -tqq "$out/jet-smart-filters.zip"
       - name: Install exact providers, ETG and MAD4B control plane
         shell: bash
         run: |
@@ -117,8 +144,8 @@ jobs:
           WP_PATH=/tmp/mad4b-etg-wordpress
           unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
           unzip -q wp-content/plugins/elementor.zip -d "$WP_PATH/wp-content/plugins"
-          unzip -q wp-content/plugins/jet-engine.zip -d "$WP_PATH/wp-content/plugins"
-          unzip -q wp-content/plugins/jet-smart-filters.zip -d "$WP_PATH/wp-content/plugins"
+          unzip -q /tmp/mad4b-etg-providers/jet-engine.zip -d "$WP_PATH/wp-content/plugins"
+          unzip -q /tmp/mad4b-etg-providers/jet-smart-filters.zip -d "$WP_PATH/wp-content/plugins"
           cp -R wp-content/plugins/etg-dynamic-filter-seo-bridge "$WP_PATH/wp-content/plugins/etg-dynamic-filter-seo-bridge"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
@@ -134,3 +161,11 @@ jobs:
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php" \
             --path=/tmp/mad4b-etg-wordpress --user=mad4b-ci-admin
+      - name: Upload premium package normalization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-etg-provider-normalization-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-etg-providers/*-normalization.json
+          if-no-files-found: error
+          retention-days: 14
