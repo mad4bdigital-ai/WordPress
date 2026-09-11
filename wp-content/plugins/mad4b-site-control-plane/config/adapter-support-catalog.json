@@ -3,54 +3,440 @@
   "default": {
     "strategy": "adapter_required",
     "risk": "unknown",
-    "requested_contracts": ["read", "bounded_write", "reversible_restore"]
+    "requested_contracts": [
+      "read",
+      "bounded_write",
+      "reversible_restore"
+    ]
   },
   "priority_external": [
     {
       "id": "woocommerce",
       "label": "WooCommerce",
       "adapter_id": "woocommerce",
-      "plugin_files": ["woocommerce/woocommerce.php"],
+      "plugin_files": [
+        "woocommerce/woocommerce.php"
+      ],
       "strategy": "first_class_external",
       "risk": "high",
-      "requested_contracts": ["product_read", "bounded_product_write", "reversible_product_restore"],
+      "requested_contracts": [
+        "product_read",
+        "bounded_product_write",
+        "reversible_product_restore"
+      ],
       "mutation_scope": "products_only_no_orders_payments_refunds"
     },
     {
       "id": "polylang",
       "label": "Polylang",
       "adapter_id": "polylang",
-      "plugin_files": ["polylang/polylang.php", "polylang-pro/polylang.php"],
+      "plugin_files": [
+        "polylang/polylang.php",
+        "polylang-pro/polylang.php"
+      ],
       "strategy": "first_class_external",
       "risk": "medium",
-      "requested_contracts": ["language_read", "bounded_language_assignment", "reversible_language_restore"]
+      "requested_contracts": [
+        "language_read",
+        "bounded_language_assignment",
+        "reversible_language_restore"
+      ]
     }
   ],
   "families": [
-    {"id":"mad4b-platform","match":["mad4b-site-control-plane/","mcp-adapter/"],"adapter_id":"mad4b-platform","strategy":"platform","risk":"high","requested_contracts":["platform_inventory"]},
-    {"id":"dangerous-code-execution","match":["better-search-replace/","code-snippets/","custom-css-js/","wp-file-manager/","file-manager-advanced/","user-role-editor/"],"adapter_id":"dangerous-code-execution","strategy":"excluded_high_risk","risk":"exceptional","requested_contracts":["read_only_inventory_or_breakglass_review"],"mutation_scope":"breakglass_review_only"},
-    {"id":"etg-dfsb","match":["etg-dynamic-filter-seo-bridge/"],"adapter_id":"etg-dfsb","strategy":"registered_adapter","risk":"high","requested_contracts":["status_read","configuration_read","runtime_inventory_read","profile_read","profile_blueprint_plan_only","profile_inventory_plan_only","dynamic_content_catalog_read"],"mutation_scope":"none_read_only_non_authorizing"},
-    {"id":"elementor","match":["elementor/","elementor-pro/","ultimate-elementor/","header-footer-elementor/"],"adapter_id":"elementor","strategy":"registered_adapter","risk":"high","requested_contracts":["read","provider_native_write","reversible_restore_where_certified"]},
-    {"id":"jetengine","match":["jet-engine/","jet-engine-","jet-elements-dynamic-data-"],"adapter_id":"jetengine","strategy":"registered_adapter","risk":"high","known_parallel_mcp_namespace":"jet-engine/v1","requested_contracts":["read","exact_field_write","reversible_meta_restore","native_mcp_isolation"]},
-    {"id":"jetsmartfilters","match":["jet-smart-filters/","jet-smart-filters-"],"adapter_id":"jetsmartfilters","strategy":"registered_adapter","risk":"medium","requested_contracts":["read","bounded_filter_write","reversible_restore_where_provider_safe"]},
-    {"id":"jetformbuilder","match":["jetformbuilder/","jet-form-builder/"],"adapter_id":"jetformbuilder","strategy":"registered_adapter","risk":"high","requested_contracts":["form_inventory_read"],"mutation_scope":"none_read_only"},
-    {"id":"jet-ecosystem","match":["crocoblock-timber-library/","crocoblock-wizard/","jet-search/","jet-tabs/","jet-blocks/","jet-blog/","jet-elements/","jet-forms-popup-notification-","jet-woo-product-gallery/"],"adapter_id":"jet-ecosystem","strategy":"registered_adapter","risk":"medium","requested_contracts":["plugin_status_read","runtime_inventory_read"],"mutation_scope":"none_read_only"},
-    {"id":"rank-math","match":["seo-by-rank-math/","seo-by-rank-math-pro/"],"adapter_id":"seo","strategy":"registered_adapter","risk":"medium","requested_contracts":["seo_read","allowlisted_meta_write","reversible_meta_restore"]},
-    {"id":"wpml","match":["sitepress-multilingual-cms/","wpml-string-translation/","wpml-cms-nav/","wpml-import/","wpml-meta-id-mapper-ui/","wp-seo-multilingual/","otgs-installer-plugin/"],"adapter_id":"wpml","strategy":"registered_adapter","risk":"medium","requested_contracts":["language_inventory_read","translation_plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"fluentforms","match":["fluentform/","fluentformpro/","fluentform-","fluent-forms-","multilingual-forms-fluent-forms-wpml/"],"adapter_id":"fluentforms","strategy":"registered_adapter","risk":"high","requested_contracts":["form_plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"bitflows","match":["bit-pi/","bit-flows/","bitflows/"],"adapter_id":"bitflows","strategy":"registered_adapter","risk":"high","requested_contracts":["flow_read","governed_execution"]},
-    {"id":"litespeed","match":["litespeed-cache/"],"adapter_id":"litespeed","strategy":"registered_adapter","risk":"medium","requested_contracts":["status","bounded_cache_actions"]},
-    {"id":"media-optimization","match":["imagify/","shortpixel-image-optimiser/","webp-converter-for-media/","smart-media-converter/"],"adapter_id":"media","strategy":"adjacent_media_adapter","risk":"medium","requested_contracts":["media_read","metadata_write","reversible_metadata_restore"]},
-    {"id":"wp-import-export","match":["wp-all-import-pro/","wp-all-export-pro/","wp-all-export-csv-excel-xml-for-acf/","wpae-acf-add-on/","wpai-woocommerce-add-on/"],"adapter_id":"wp-import-export","strategy":"registered_adapter","risk":"high","requested_contracts":["job_plugin_status_read","plan_only"],"mutation_scope":"none_read_only"},
-    {"id":"hostinger","match":["hostinger/"],"adapter_id":"hostinger","strategy":"registered_adapter","risk":"high","requested_contracts":["read_only_inventory","host_connector_separation"],"mutation_scope":"none_read_only"},
-    {"id":"admin-utilities","match":["admin-site-enhancements/","duplicate-page/","folders/","hello.php","query-monitor/","tinymce-advanced/"],"adapter_id":"admin-utilities","strategy":"registered_adapter","risk":"medium","requested_contracts":["plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"astra","match":["astra-addon/"],"adapter_id":"astra","strategy":"registered_adapter","risk":"medium","requested_contracts":["plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"content-utilities","match":["bulk-taxonomy-editor/","custom-mega-menu-v43/","meta-catalog-feed-mapper-pro/"],"adapter_id":"content-utilities","strategy":"registered_adapter","risk":"medium","requested_contracts":["plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"analytics","match":["duracelltomi-google-tag-manager/"],"adapter_id":"analytics","strategy":"registered_adapter","risk":"medium","requested_contracts":["plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"reviews","match":["review-widgets-for-tripadvisor/"],"adapter_id":"reviews","strategy":"registered_adapter","risk":"medium","requested_contracts":["plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"identity-admin","match":["user-switching/"],"adapter_id":"identity-admin","strategy":"registered_adapter","risk":"high","requested_contracts":["plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"wpl-client","match":["wpl-client/","wpl-client-"],"adapter_id":"wpl-client","strategy":"registered_adapter","risk":"high","requested_contracts":["plugin_status_read"],"mutation_scope":"none_read_only"},
-    {"id":"woocommerce","match":["woocommerce/"],"adapter_id":"woocommerce","strategy":"first_class_external","risk":"high","requested_contracts":["product_read","bounded_product_write","reversible_product_restore"]},
-    {"id":"polylang","match":["polylang/","polylang-pro/"],"adapter_id":"polylang","strategy":"first_class_external","risk":"medium","requested_contracts":["language_read","bounded_language_assignment","reversible_language_restore"]}
+    {
+      "id": "mad4b-platform",
+      "match": [
+        "mad4b-site-control-plane/",
+        "mcp-adapter/"
+      ],
+      "adapter_id": "mad4b-platform",
+      "strategy": "platform",
+      "risk": "high",
+      "requested_contracts": [
+        "platform_inventory"
+      ]
+    },
+    {
+      "id": "dangerous-code-execution",
+      "match": [
+        "better-search-replace/",
+        "code-snippets/",
+        "custom-css-js/",
+        "wp-file-manager/",
+        "file-manager-advanced/",
+        "user-role-editor/"
+      ],
+      "adapter_id": "dangerous-code-execution",
+      "strategy": "excluded_high_risk",
+      "risk": "exceptional",
+      "requested_contracts": [
+        "read_only_inventory_or_breakglass_review"
+      ],
+      "mutation_scope": "breakglass_review_only"
+    },
+    {
+      "id": "etg-dfsb",
+      "match": [
+        "etg-dynamic-filter-seo-bridge/"
+      ],
+      "adapter_id": "etg-dfsb",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "status_read",
+        "build_identity_read",
+        "configuration_read",
+        "runtime_inventory_read",
+        "profile_read",
+        "profile_blueprint_plan_only",
+        "profile_inventory_plan_only",
+        "dynamic_content_catalog_read"
+      ],
+      "mutation_scope": "none_read_only_non_authorizing"
+    },
+    {
+      "id": "elementor",
+      "match": [
+        "elementor/",
+        "elementor-pro/",
+        "ultimate-elementor/",
+        "header-footer-elementor/"
+      ],
+      "adapter_id": "elementor",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "read",
+        "provider_native_write",
+        "reversible_restore_where_certified"
+      ]
+    },
+    {
+      "id": "jetengine",
+      "match": [
+        "jet-engine/",
+        "jet-engine-",
+        "jet-elements-dynamic-data-"
+      ],
+      "adapter_id": "jetengine",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "known_parallel_mcp_namespace": "jet-engine/v1",
+      "requested_contracts": [
+        "read",
+        "exact_field_write",
+        "reversible_meta_restore",
+        "native_mcp_isolation"
+      ]
+    },
+    {
+      "id": "jetsmartfilters",
+      "match": [
+        "jet-smart-filters/",
+        "jet-smart-filters-"
+      ],
+      "adapter_id": "jetsmartfilters",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "read",
+        "bounded_filter_write",
+        "reversible_restore_where_provider_safe"
+      ]
+    },
+    {
+      "id": "jetformbuilder",
+      "match": [
+        "jetformbuilder/",
+        "jet-form-builder/"
+      ],
+      "adapter_id": "jetformbuilder",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "form_inventory_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "jet-ecosystem",
+      "match": [
+        "crocoblock-timber-library/",
+        "crocoblock-wizard/",
+        "jet-search/",
+        "jet-tabs/",
+        "jet-blocks/",
+        "jet-blog/",
+        "jet-elements/",
+        "jet-forms-popup-notification-",
+        "jet-woo-product-gallery/"
+      ],
+      "adapter_id": "jet-ecosystem",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read",
+        "runtime_inventory_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "rank-math",
+      "match": [
+        "seo-by-rank-math/",
+        "seo-by-rank-math-pro/"
+      ],
+      "adapter_id": "seo",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "seo_read",
+        "allowlisted_meta_write",
+        "reversible_meta_restore"
+      ]
+    },
+    {
+      "id": "wpml",
+      "match": [
+        "sitepress-multilingual-cms/",
+        "wpml-string-translation/",
+        "wpml-cms-nav/",
+        "wpml-import/",
+        "wpml-meta-id-mapper-ui/",
+        "wp-seo-multilingual/",
+        "otgs-installer-plugin/"
+      ],
+      "adapter_id": "wpml",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "language_inventory_read",
+        "translation_plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "fluentforms",
+      "match": [
+        "fluentform/",
+        "fluentformpro/",
+        "fluentform-",
+        "fluent-forms-",
+        "multilingual-forms-fluent-forms-wpml/"
+      ],
+      "adapter_id": "fluentforms",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "form_plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "bitflows",
+      "match": [
+        "bit-pi/",
+        "bit-flows/",
+        "bitflows/"
+      ],
+      "adapter_id": "bitflows",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "flow_read",
+        "governed_execution"
+      ]
+    },
+    {
+      "id": "litespeed",
+      "match": [
+        "litespeed-cache/"
+      ],
+      "adapter_id": "litespeed",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "status",
+        "bounded_cache_actions"
+      ]
+    },
+    {
+      "id": "media-optimization",
+      "match": [
+        "imagify/",
+        "shortpixel-image-optimiser/",
+        "webp-converter-for-media/",
+        "smart-media-converter/"
+      ],
+      "adapter_id": "media",
+      "strategy": "adjacent_media_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "media_read",
+        "metadata_write",
+        "reversible_metadata_restore"
+      ]
+    },
+    {
+      "id": "wp-import-export",
+      "match": [
+        "wp-all-import-pro/",
+        "wp-all-export-pro/",
+        "wp-all-export-csv-excel-xml-for-acf/",
+        "wpae-acf-add-on/",
+        "wpai-woocommerce-add-on/"
+      ],
+      "adapter_id": "wp-import-export",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "job_plugin_status_read",
+        "plan_only"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "hostinger",
+      "match": [
+        "hostinger/"
+      ],
+      "adapter_id": "hostinger",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "read_only_inventory",
+        "host_connector_separation"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "admin-utilities",
+      "match": [
+        "admin-site-enhancements/",
+        "duplicate-page/",
+        "folders/",
+        "hello.php",
+        "query-monitor/",
+        "tinymce-advanced/"
+      ],
+      "adapter_id": "admin-utilities",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "astra",
+      "match": [
+        "astra-addon/"
+      ],
+      "adapter_id": "astra",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "content-utilities",
+      "match": [
+        "bulk-taxonomy-editor/",
+        "custom-mega-menu-v43/",
+        "meta-catalog-feed-mapper-pro/"
+      ],
+      "adapter_id": "content-utilities",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "analytics",
+      "match": [
+        "duracelltomi-google-tag-manager/"
+      ],
+      "adapter_id": "analytics",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "reviews",
+      "match": [
+        "review-widgets-for-tripadvisor/"
+      ],
+      "adapter_id": "reviews",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "identity-admin",
+      "match": [
+        "user-switching/"
+      ],
+      "adapter_id": "identity-admin",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "wpl-client",
+      "match": [
+        "wpl-client/",
+        "wpl-client-"
+      ],
+      "adapter_id": "wpl-client",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only"
+    },
+    {
+      "id": "woocommerce",
+      "match": [
+        "woocommerce/"
+      ],
+      "adapter_id": "woocommerce",
+      "strategy": "first_class_external",
+      "risk": "high",
+      "requested_contracts": [
+        "product_read",
+        "bounded_product_write",
+        "reversible_product_restore"
+      ]
+    },
+    {
+      "id": "polylang",
+      "match": [
+        "polylang/",
+        "polylang-pro/"
+      ],
+      "adapter_id": "polylang",
+      "strategy": "first_class_external",
+      "risk": "medium",
+      "requested_contracts": [
+        "language_read",
+        "bounded_language_assignment",
+        "reversible_language_restore"
+      ]
+    }
   ]
 }

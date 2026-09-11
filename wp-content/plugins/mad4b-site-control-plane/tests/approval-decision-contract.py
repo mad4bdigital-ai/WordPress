@@ -5,6 +5,7 @@ admin = (root / 'includes/class-mad4b-scp-approval-decision-admin.php').read_tex
 tickets = (root / 'includes/class-mad4b-scp-approval-tickets.php').read_text(encoding='utf-8')
 planner = (root / 'includes/class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+handoff = (root / 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php').read_text(encoding='utf-8')
 
 required_admin = [
     "const CONTRACT = 'mad4b.approval-decision-admin.v1'",
@@ -83,5 +84,28 @@ for marker in [
 
 if 'approval-decision' in servers:
     raise SystemExit('Human approval decision leaked into MCP server projection')
+
+required_handoff = [
+    "const CONTRACT = 'mad4b.approval-decision-handoff.v1'",
+    "'mad4b/approval-decision-handoff'",
+    "'read' => array( 'mad4b/approval-decision-handoff' )",
+    "'content' => array()", "'admin' => array()",
+    "'human_action_required' => true", "'decision_exposed' => false",
+    "'nonce_exposed' => false", "'target_execution_exposed' => false",
+    "MAD4B_SCP_Approval_Decision_Admin::current_candidate()",
+    "MAD4B_SCP_Approval_Tickets::candidate_binding",
+    "MAD4B_SCP_Approval_Decision_Admin::PAGE_SLUG",
+]
+missing = [marker for marker in required_handoff if marker not in handoff]
+if missing:
+    raise SystemExit('Missing read-only approval handoff invariant: ' + ' | '.join(missing))
+forbidden_handoff = [
+    'decide_pending(', 'wp_create_nonce(', 'wp_nonce_field(', 'admin_post_',
+    'MAD4B_SCP_Mutation_Manager', 'execute_callback', 'mad4b/database-update',
+    'mad4b/filesystem-write', "'decision' => 'approve'", 'update_option(', 'delete_option(',
+]
+found = [marker for marker in forbidden_handoff if marker in handoff]
+if found:
+    raise SystemExit('Approval handoff gained decision or mutation authority: ' + ' | '.join(found))
 
 print('mad4b.approval-decision.contract.v2: PASS')

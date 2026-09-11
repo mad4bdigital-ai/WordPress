@@ -14,6 +14,7 @@ $check( $adapter->is_available(), 'ETG adapter did not accept the exact Alpha13 
 
 $read_abilities = array(
 	'etg-dfsb/status',
+	'etg-dfsb/build-identity',
 	'etg-dfsb/configuration',
 	'etg-dfsb/runtime-inventory',
 	'etg-dfsb/profiles',
@@ -40,6 +41,15 @@ $check( 'mad4b.etg-dfsb-read-adapter.v1' === (string) $status['contract'], 'Unex
 $check( ! empty( $status['version_compatible'] ), 'ETG version compatibility was not proven.' );
 $check( 'read_only_non_authorizing' === (string) $status['authority_mode'], 'ETG authority mode drifted.' );
 $check( empty( $status['mutation_exposed'] ) && empty( $status['profile_mutation_exposed'] ) && empty( $status['seo_publication_mutation_exposed'] ) && empty( $status['ajax_proxy_exposed'] ), 'ETG adapter opened a mutation or side-channel surface.' );
+
+$identity = wp_get_ability( 'etg-dfsb/build-identity' )->execute();
+$check( ! is_wp_error( $identity ), 'ETG exact build identity ability failed.' );
+$check( ! empty( $identity['valid'] ) && ! empty( $identity['embedded'] ), 'ETG exact build identity is not valid/embedded.' );
+$check( ! empty( $identity['read_only'] ) && empty( $identity['authorizing'] ) && empty( $identity['mutation_exposed'] ), 'ETG build identity authority boundary drifted.' );
+$check( 'etg.dfsb.embedded-build-identity.v1' === (string) $identity['contract'], 'Unexpected ETG build identity contract.' );
+$check( '48936c4ff65f957599b6f18c892bf1ccb239efca' === (string) $identity['git_sha'], 'ETG build identity git SHA drifted.' );
+$check( '7fea3c221a88d4b80bb6fcbd993bf39d126ae4ab' === (string) $identity['tree_sha'], 'ETG build identity tree SHA drifted.' );
+$check( '0.4.0-alpha.13' === (string) $identity['plugin_version'], 'ETG build identity plugin version drifted.' );
 
 $config = wp_get_ability( 'etg-dfsb/configuration' )->execute();
 $check( ! is_wp_error( $config ) && ! empty( $config['read_only'] ) && empty( $config['authorizing'] ), 'ETG configuration read contract failed.' );
