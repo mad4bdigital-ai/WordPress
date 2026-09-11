@@ -19,6 +19,8 @@ function current_user_can( $capability ) { return 'manage_options' === $capabili
 function wp_get_environment_type() { return 'staging'; }
 function home_url() { return 'https://staging.egypttourgates.com/'; }
 function wp_parse_url( $url ) { return parse_url( $url ); }
+function wp_unslash( $value ) { return $value; }
+function is_admin() { return true; }
 
 $GLOBALS['mad4b_prime_calls'] = 0;
 $GLOBALS['mad4b_prime_fail'] = false;
@@ -106,6 +108,7 @@ class MAD4B_SCP_Servers {
 }
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-approval-decision-admin.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-plugin.php';
 
 function mad4b_lifecycle_assert( $condition, $message ) {
 	if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); }
@@ -159,5 +162,26 @@ $decisions_before = MAD4B_SCP_Approval_Tickets::$decisions;
 $result = MAD4B_SCP_Approval_Decision_Admin::decide( $request );
 mad4b_lifecycle_assert( mad4b_lifecycle_error( $result, 'mad4b_approval_decision_write_authority_not_ready' ), 'Blocked authority after reconciliation must fail closed.' );
 mad4b_lifecycle_assert( $decisions_before === MAD4B_SCP_Approval_Tickets::$decisions, 'Blocked authority must not decide the ticket.' );
+MAD4B_SCP_Staging_Write_Authority::$force_block = false;
 
-echo "mad4b.approval-decision.admin-post-lifecycle.v1: PASS\n";
+// The human decision page itself must be a recognized authority admin surface.
+$_GET['page'] = 'mad4b-approval-decisions';
+mad4b_lifecycle_assert( MAD4B_SCP_Plugin::is_authority_admin_surface(), 'Approval Decisions page must be recognized as an authority admin surface.' );
+$prime_before = $GLOBALS['mad4b_prime_calls'];
+$reconcile_before = MAD4B_SCP_Staging_Write_Authority::$reconcile_calls;
+MAD4B_SCP_Plugin::prime_admin_mcp_runtime();
+MAD4B_SCP_Plugin::reconcile_authority_on_mad4b_admin();
+mad4b_lifecycle_assert( $prime_before + 1 === $GLOBALS['mad4b_prime_calls'], 'Approval Decisions page must prime the admin MCP runtime.' );
+mad4b_lifecycle_assert( $reconcile_before + 1 === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Approval Decisions page must reconcile authority.' );
+
+// Unrelated wp-admin requests must remain outside this lifecycle.
+$_GET['page'] = 'plugins';
+mad4b_lifecycle_assert( ! MAD4B_SCP_Plugin::is_authority_admin_surface(), 'Unrelated wp-admin pages must not be authority surfaces.' );
+$prime_before = $GLOBALS['mad4b_prime_calls'];
+$reconcile_before = MAD4B_SCP_Staging_Write_Authority::$reconcile_calls;
+MAD4B_SCP_Plugin::prime_admin_mcp_runtime();
+MAD4B_SCP_Plugin::reconcile_authority_on_mad4b_admin();
+mad4b_lifecycle_assert( $prime_before === $GLOBALS['mad4b_prime_calls'], 'Unrelated wp-admin page must not prime MCP runtime.' );
+mad4b_lifecycle_assert( $reconcile_before === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Unrelated wp-admin page must not reconcile write authority.' );
+
+echo "mad4b.approval-decision.admin-post-lifecycle.v2: PASS\n";
