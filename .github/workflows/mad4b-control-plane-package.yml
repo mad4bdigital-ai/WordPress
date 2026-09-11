@@ -314,6 +314,15 @@ jobs:
         run: |
           set -euo pipefail
           stage='/tmp/mad4b-install-kit'
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          main="$plugin/mad4b-site-control-plane.php"
+          expected_version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          runtime_release="$(sed -nE 's/^release=(.+)$/\1/p' "$plugin/MAD4B-RUNTIME-BUILD.txt" | head -n1)"
+          test -n "$expected_version"
+          test -n "$runtime_release"
+          test "$expected_version" = "$runtime_release"
+          export MAD4B_EXPECTED_VERSION="$expected_version"
+
           control_zip="$(find "$stage" -maxdepth 1 -name 'mad4b-site-control-plane-*.zip' -print -quit)"
           test -n "$control_zip"
           unzip -tqq "$control_zip"
@@ -346,7 +355,7 @@ jobs:
           p = json.loads((stage / 'MAD4B-BUILD-PROVENANCE.json').read_text(encoding='utf-8'))
           if p.get('source_commit_sha') != os.environ['SOURCE_SHA']:
               raise SystemExit('provenance source SHA mismatch')
-          if p.get('control_plane_version') != '0.4.0-rc.21':
+          if p.get('control_plane_version') != os.environ['MAD4B_EXPECTED_VERSION']:
               raise SystemExit('provenance control-plane version mismatch')
           lines = []
           root = stage / 'package' / 'mad4b-site-control-plane'
