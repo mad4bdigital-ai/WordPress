@@ -158,11 +158,6 @@ final class MAD4B_SCP_Approval_Tickets {
 		return true;
 	}
 
-	/**
-	 * Pure/read-only exact-ticket validation. This method MUST NOT change ticket
-	 * state, consume budgets, persist audit records, or otherwise mutate durable
-	 * state because WordPress/MCP may call permission checks more than once.
-	 */
 	public static function validate_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
 		$ticket = self::get( $ticket_id );
 		if ( ! $ticket ) return new WP_Error( 'mad4b_approval_missing', 'Approval ticket is missing.' );
@@ -180,9 +175,6 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( is_wp_error( $hash ) ) return $hash;
 		if ( ! hash_equals( (string) $ticket['payload_sha256'], (string) $hash ) ) return new WP_Error( 'mad4b_approval_payload_mismatch', 'Approval ticket is not bound to this exact operation.' );
 
-		// Remote governed Staging tickets are additionally bound to the exact
-		// candidate SHA/build fingerprint. Permission checks only compare evidence;
-		// they never write or refresh the binding.
 		if ( 'mutation' === (string) $ticket_class && 'mad4b-write' === sanitize_key( (string) $server_id ) && self::exact_governed_staging() ) {
 			$saved = self::candidate_binding( $ticket_id );
 			if ( empty( $saved ) ) return new WP_Error( 'mad4b_approval_candidate_binding_missing', 'Remote Staging approval ticket is missing exact candidate binding evidence.' );
@@ -197,7 +189,6 @@ final class MAD4B_SCP_Approval_Tickets {
 		return array( 'ticket' => $ticket, 'payload_sha256' => $hash );
 	}
 
-	/** Atomically claim one approved ticket at the execution boundary. */
 	public static function claim_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
 		global $wpdb;
 		$validated = self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
@@ -216,7 +207,6 @@ final class MAD4B_SCP_Approval_Tickets {
 		return $ticket;
 	}
 
-	/** Finalize an executing ticket. Failed tickets are terminal and never retryable. */
 	public static function finalize_claim( $ticket_id, $terminal_status ) {
 		global $wpdb;
 		$terminal_status = sanitize_key( (string) $terminal_status );
@@ -234,7 +224,6 @@ final class MAD4B_SCP_Approval_Tickets {
 		return self::get( $ticket_id );
 	}
 
-	/** Compatibility helper for direct non-Ability callers and legacy tests. */
 	public static function consume_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
 		$claim = self::claim_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $claim ) ) return $claim;
@@ -260,7 +249,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Exact build provenance is unavailable for remote approval planning.' );
 		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		$sha = is_array( $provenance ) && isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
-		$fingerprint = is_array( $provenance ) && isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) : '';
+		$fingerprint = is_array( $provenance ) && isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
 		if ( ! is_array( $provenance ) || empty( $provenance['manifest_present'] ) || empty( $provenance['manifest_valid'] ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] )
 			|| ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Remote approval planning requires exact current Staging build provenance.' );
 		return array(
