@@ -56,6 +56,9 @@
       "repository_archive_version": "3.8.11.2",
       "repository_archive_matches_observed": false,
       "public_exact_archive_available": false,
+      "attestation_contract": "mad4b.site-control-plane.premium-provider-attestation.v1",
+      "attestation_required": true,
+      "attestation_state": "pending_exact_package",
       "mutation_policy": "fail_closed_until_attested_exact_package_manifest"
     },
     "jetsmartfilters": {
@@ -63,6 +66,9 @@
       "repository_archive_version": "3.8.3.1",
       "repository_archive_matches_observed": false,
       "public_exact_archive_available": false,
+      "attestation_contract": "mad4b.site-control-plane.premium-provider-attestation.v1",
+      "attestation_required": true,
+      "attestation_state": "pending_exact_package",
       "mutation_policy": "fail_closed_until_attested_exact_package_manifest"
     }
   }
