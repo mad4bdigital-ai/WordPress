@@ -3,19 +3,18 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Exact-candidate external snapshot finalization.
+ * Exact-candidate external snapshot finalization using an export-only secret.
  *
- * This layer deliberately does not expose the WordPress-local snapshot identity
- * or the expected package token through MCP. A client proves possession of the
- * exported portable package by presenting the candidate-bound external token
- * embedded in that package, from the same verified ChatGPT OAuth/MCP context
- * that produced the exact tool inventory attestation.
+ * The verifier never exposes the expected proof. A client can satisfy this gate
+ * only by presenting the fresh cryptographic nonce embedded in an authenticated
+ * wp-admin portable Plugin export, from the same verified ChatGPT OAuth/MCP
+ * finalizer context that produced the current exact tool inventory evidence.
  */
 final class MAD4B_SCP_External_Snapshot_Finalizer {
-	const CONTRACT = 'mad4b.external-snapshot-finalizer.v2';
-	const ATTESTATION_CONTRACT = 'mad4b.external-snapshot-attestation.v2';
-	const VERIFY_CONTRACT = 'mad4b.external-snapshot-verification.v2';
-	const OPTION = 'mad4b_scp_external_snapshot_attestation_v2';
+	const CONTRACT = 'mad4b.external-snapshot-finalizer.v3';
+	const ATTESTATION_CONTRACT = 'mad4b.external-snapshot-attestation.v3';
+	const VERIFY_CONTRACT = 'mad4b.external-snapshot-verification.v3';
+	const OPTION = 'mad4b_scp_external_snapshot_attestation_v3';
 	const TTL = 1800;
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const SERVER_ID = 'mad4b-chatgpt';
@@ -26,8 +25,8 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 	public static function boot_early() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		// Later than the legacy observer/finalizer/reconciler bindings. This is a
-		// strict replacement callback, not an additional ability or write surface.
+		// Later than legacy observer/finalizer/reconciler bindings. These are strict
+		// replacement callbacks, not additional write abilities or authority.
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_callbacks' ), 240, 2 );
 	}
 
@@ -46,10 +45,13 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		$input = is_array( $input ) ? $input : array();
 		$client = isset( $input['client_snapshot_token'] ) ? strtolower( trim( (string) $input['client_snapshot_token'] ) ) : '';
 		$candidate = self::current_candidate();
+		$portable_candidate = self::portable_candidate( $candidate );
+		$validation = class_exists( 'MAD4B_SCP_Portable_Snapshot_Attestation' )
+			? MAD4B_SCP_Portable_Snapshot_Attestation::validate_external_token( $client, $portable_candidate )
+			: array( 'valid' => false, 'reason' => 'portable_snapshot_attestation_unavailable' );
 		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status() : array();
 		$trusted = self::trusted_external_context( $external );
-		$expected = self::expected_external_token( $candidate );
-		$exact = '' !== $expected && 1 === preg_match( '/^sha256:[a-f0-9]{64}$/', $client ) && hash_equals( $expected, $client );
+		$exact = ! empty( $validation['valid'] );
 		$recorded = false;
 
 		if ( self::staging_allowed() && $trusted && ! empty( $candidate['ready'] ) && $exact ) {
@@ -58,7 +60,10 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 				'candidate_sha' => $candidate['source_commit_sha'],
 				'build_fingerprint' => $candidate['build_fingerprint'],
 				'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
-				'external_snapshot_token_digest' => hash( 'sha256', $client ),
+				'external_snapshot_token_digest' => isset( $validation['token_digest'] ) ? (string) $validation['token_digest'] : '',
+				'snapshot_identity_digest' => isset( $validation['snapshot_identity_digest'] ) ? (string) $validation['snapshot_identity_digest'] : '',
+				'export_issued_at' => isset( $validation['issued_at'] ) ? (string) $validation['issued_at'] : '',
+				'export_expires_at' => isset( $validation['expires_at'] ) ? (string) $validation['expires_at'] : '',
 				'client_id' => self::CHATGPT_CLIENT_ID,
 				'server_id' => self::SERVER_ID,
 				'finalizer_context_digest' => (string) $external['finalizer_context_digest'],
@@ -69,7 +74,13 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 				'observed_at' => gmdate( 'c' ),
 			);
 			update_option( self::OPTION, $attestation, false );
-			$recorded = true;
+			$stored = get_option( self::OPTION, array() );
+			$recorded = is_array( $stored )
+				&& self::ATTESTATION_CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' )
+				&& ! empty( $stored['external_snapshot_token_digest'] )
+				&& hash_equals( (string) $attestation['external_snapshot_token_digest'], (string) $stored['external_snapshot_token_digest'] )
+				&& ! empty( $stored['finalizer_context_digest'] )
+				&& hash_equals( (string) $attestation['finalizer_context_digest'], (string) $stored['finalizer_context_digest'] );
 		}
 
 		return array(
@@ -81,6 +92,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 			'candidate_sha' => ! empty( $candidate['ready'] ) ? (string) $candidate['source_commit_sha'] : '',
 			'build_fingerprint' => ! empty( $candidate['ready'] ) ? (string) $candidate['build_fingerprint'] : '',
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '',
+			'package_proof_state' => $exact ? 'recognized_export_secret' : ( isset( $validation['reason'] ) ? (string) $validation['reason'] : 'unrecognized_export_secret' ),
 			'expected_token_disclosed' => false,
 			'local_snapshot_identity_disclosed' => false,
 		);
@@ -91,7 +103,6 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		$stored = get_option( self::OPTION, array() );
 		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status() : array();
 		$trusted = self::trusted_external_context( $external );
-		$expected = self::expected_external_token( $candidate );
 		$blockers = array();
 
 		if ( ! self::staging_allowed() ) $blockers[] = 'wrong_target';
@@ -111,12 +122,15 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		$current_tools = isset( $external['external_tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $external['external_tool_inventory_fingerprint'] ) ) : '';
 		if ( ! self::valid_hash( $stored_tools ) || ! self::valid_hash( $current_tools ) || ! hash_equals( $stored_tools, $current_tools ) ) $blockers[] = 'external_inventory_changed';
 		$stored_write = isset( $stored['external_write_inventory_fingerprint'] ) ? strtolower( trim( (string) $stored['external_write_inventory_fingerprint'] ) ) : '';
-		$current_write = isset( $external['external_write_inventory_fingerprint'] ) ? strtolower( trim( (string) $external['external_write_inventory_fingerprint'] ) : '';
+		$current_write = isset( $external['external_write_inventory_fingerprint'] ) ? strtolower( trim( (string) $external['external_write_inventory_fingerprint'] ) ) : '';
 		if ( ! self::valid_hash( $stored_write ) || ! self::valid_hash( $current_write ) || ! hash_equals( $stored_write, $current_write ) ) $blockers[] = 'external_write_inventory_changed';
 
 		$stored_token_digest = isset( $stored['external_snapshot_token_digest'] ) ? strtolower( trim( (string) $stored['external_snapshot_token_digest'] ) ) : '';
-		$expected_digest = '' !== $expected ? hash( 'sha256', $expected ) : '';
-		if ( ! self::valid_hash( $stored_token_digest ) || ! self::valid_hash( $expected_digest ) || ! hash_equals( $expected_digest, $stored_token_digest ) ) $blockers[] = 'external_package_token_mismatch';
+		$export_status = class_exists( 'MAD4B_SCP_Portable_Snapshot_Attestation' )
+			? MAD4B_SCP_Portable_Snapshot_Attestation::validate_token_digest( $stored_token_digest, self::portable_candidate( $candidate ) )
+			: array( 'valid' => false, 'reason' => 'portable_snapshot_attestation_unavailable' );
+		if ( empty( $export_status['valid'] ) ) $blockers[] = isset( $export_status['reason'] ) ? (string) $export_status['reason'] : 'external_package_token_mismatch_or_expired';
+		if ( ! empty( $export_status['snapshot_identity_digest'] ) && ! empty( $stored['snapshot_identity_digest'] ) && ! hash_equals( (string) $export_status['snapshot_identity_digest'], (string) $stored['snapshot_identity_digest'] ) ) $blockers[] = 'snapshot_binding_changed';
 
 		$observed_at = isset( $stored['observed_at'] ) ? (string) $stored['observed_at'] : '';
 		$ts = '' !== $observed_at ? strtotime( $observed_at ) : false;
@@ -154,12 +168,12 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 		return $base;
 	}
 
-	private static function expected_external_token( array $candidate ) {
-		if ( empty( $candidate['ready'] ) || ! class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) || ! class_exists( 'MAD4B_SCP_Portable_Snapshot_Attestation' ) ) return '';
-		$live = MAD4B_SCP_Skill_Snapshot_Identity::build();
-		$snapshot = isset( $live['identity_token'] ) ? strtolower( trim( (string) $live['identity_token'] ) ) : '';
-		if ( 1 !== preg_match( '/^sha256:[a-f0-9]{64}$/', $snapshot ) ) return '';
-		return MAD4B_SCP_Portable_Snapshot_Attestation::external_token( $snapshot, $candidate['source_commit_sha'], $candidate['build_fingerprint'] );
+	private static function portable_candidate( array $candidate ) {
+		return array(
+			'ready' => ! empty( $candidate['ready'] ),
+			'candidate_sha' => isset( $candidate['source_commit_sha'] ) ? (string) $candidate['source_commit_sha'] : '',
+			'build_fingerprint' => isset( $candidate['build_fingerprint'] ) ? (string) $candidate['build_fingerprint'] : '',
+		);
 	}
 
 	private static function trusted_external_context( array $external ) {
@@ -182,7 +196,7 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 	private static function current_candidate() {
 		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
 		$sha = isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
-		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) : '';
+		$fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
 		$ready = ! empty( $provenance['runtime_manifest_match'] ) && 1 === preg_match( '/^[a-f0-9]{40}$/', $sha ) && self::valid_hash( $fingerprint );
 		return array( 'ready' => (bool) $ready, 'source_commit_sha' => $sha, 'build_fingerprint' => $fingerprint );
 	}
