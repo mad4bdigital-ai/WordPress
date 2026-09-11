@@ -55,14 +55,31 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 		return $out;
 	}
 
+	/**
+	 * Read the canonical normalized WPML response contract when available.
+	 *
+	 * The legacy observer predates WPML's standard success/data envelope and can
+	 * therefore report a false negative for the same successful external HTTP
+	 * response. It remains a compatibility fallback only when the normalized
+	 * response-contract class is not present at all.
+	 */
+	private static function authoritative_external_receipt() {
+		if ( class_exists( 'MAD4B_SCP_WPML_Response_Contract' ) ) {
+			$external = MAD4B_SCP_WPML_Response_Contract::receipt_status();
+			return is_array( $external ) ? $external : array();
+		}
+		if ( class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) {
+			$external = MAD4B_SCP_Live_Acceptance_Observer::external_wpml_receipt_status();
+			return is_array( $external ) ? $external : array();
+		}
+		return array();
+	}
+
 	public static function external_wpml_receipt_status() {
-		$external = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
-			? MAD4B_SCP_Live_Acceptance_Observer::external_wpml_receipt_status()
-			: array();
+		$external = self::authoritative_external_receipt();
 		$diagnostic = class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' )
 			? MAD4B_SCP_Live_Acceptance_Finalizer::external_wpml_receipt_status()
 			: array();
-		if ( ! is_array( $external ) ) $external = array();
 		if ( ! is_array( $diagnostic ) ) $diagnostic = array();
 		$out = self::finalize_status( $external, $diagnostic );
 		$out['authority_contract'] = self::CONTRACT;
@@ -85,7 +102,9 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 				'state' => 'verified_external_wpml',
 				'ready' => true,
 				'fresh' => empty( $wpml['stale'] ),
-				'source_contract' => class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' ) ? MAD4B_SCP_Live_Acceptance_Finalizer::WPML_DIAGNOSTIC_CONTRACT : 'mad4b.external-wpml-diagnostic.v2',
+				'source_contract' => isset( $wpml['contract'] ) && '' !== (string) $wpml['contract']
+					? (string) $wpml['contract']
+					: ( class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' ) ? MAD4B_SCP_Live_Acceptance_Finalizer::WPML_DIAGNOSTIC_CONTRACT : 'mad4b.external-wpml-diagnostic.v2' ),
 				'blockers' => array(),
 				'observed_at' => isset( $wpml['observed_at'] ) ? (string) $wpml['observed_at'] : gmdate( 'c' ),
 			);
