@@ -3,13 +3,14 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Adds a non-derivable external package proof to each portable Plugin export.
+ * Adds a non-derivable external package proof to each governed Staging export.
  *
  * The deterministic MAD4B-SNAPSHOT-ID.txt remains useful for local/admin
  * diagnostics, but it is deliberately NOT sufficient for external acceptance.
- * Each successful wp-admin export receives a fresh cryptographic nonce that is
- * embedded only in the exported package. WordPress stores only its SHA-256
- * digest, exact candidate/build binding, snapshot binding and expiry.
+ * Each successful exact-Staging wp-admin export receives a fresh cryptographic
+ * nonce embedded only in the exported package. WordPress stores only its digest,
+ * exact candidate/build binding, snapshot binding and expiry. Production keeps
+ * the legacy export path and never receives this persistent acceptance state.
  */
 final class MAD4B_SCP_Portable_Snapshot_Attestation {
 	const CONTRACT = 'mad4b.portable-external-snapshot.v3';
@@ -17,6 +18,7 @@ final class MAD4B_SCP_Portable_Snapshot_Attestation {
 	const TOKEN_LEDGER_OPTION = 'mad4b_scp_external_snapshot_export_tokens_v3';
 	const TOKEN_TTL = 21600; // Six hours from authenticated wp-admin export.
 	const MAX_TOKENS = 5;
+	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	private static $booted = false;
 
@@ -27,6 +29,7 @@ final class MAD4B_SCP_Portable_Snapshot_Attestation {
 	}
 
 	public static function intercept_export() {
+		if ( ! self::staging_allowed() ) return;
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
 		if ( empty( $_POST['mad4b_skill_action'] ) || 'export' !== sanitize_key( wp_unslash( $_POST['mad4b_skill_action'] ) ) ) return; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing only.
@@ -67,6 +70,7 @@ final class MAD4B_SCP_Portable_Snapshot_Attestation {
 	 * ZIP builder; persistent WordPress state receives its digest, never the nonce.
 	 */
 	public static function issue_external_token( $snapshot_token, array $candidate ) {
+		if ( ! self::staging_allowed() ) return new WP_Error( 'mad4b_external_snapshot_wrong_target', 'External snapshot proof issuance is restricted to exact governed Staging.' );
 		$snapshot_token = strtolower( trim( (string) $snapshot_token ) );
 		if ( 1 !== preg_match( '/^sha256:[a-f0-9]{64}$/', $snapshot_token ) ) return new WP_Error( 'mad4b_external_snapshot_identity_invalid', 'Snapshot identity is invalid.' );
 		if ( empty( $candidate['ready'] ) || 1 !== preg_match( '/^[a-f0-9]{40}$/', isset( $candidate['candidate_sha'] ) ? (string) $candidate['candidate_sha'] : '' ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', isset( $candidate['build_fingerprint'] ) ? (string) $candidate['build_fingerprint'] : '' ) ) {
@@ -94,12 +98,14 @@ final class MAD4B_SCP_Portable_Snapshot_Attestation {
 	}
 
 	public static function validate_external_token( $token, array $candidate ) {
+		if ( ! self::staging_allowed() ) return array( 'valid' => false, 'reason' => 'wrong_target' );
 		$token = strtolower( trim( (string) $token ) );
 		if ( 1 !== preg_match( '/^mad4bext_[a-f0-9]{64}$/', $token ) ) return array( 'valid' => false, 'reason' => 'external_package_token_invalid' );
 		return self::validate_token_digest( hash( 'sha256', $token ), $candidate );
 	}
 
 	public static function validate_token_digest( $digest, array $candidate ) {
+		if ( ! self::staging_allowed() ) return array( 'valid' => false, 'reason' => 'wrong_target' );
 		$digest = strtolower( trim( (string) $digest ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $digest ) || empty( $candidate['ready'] ) ) return array( 'valid' => false, 'reason' => 'external_package_token_invalid' );
 		$live = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array();
@@ -140,6 +146,7 @@ final class MAD4B_SCP_Portable_Snapshot_Attestation {
 	}
 
 	public static function enrich_zip( $path, $snapshot_token ) {
+		if ( ! self::staging_allowed() ) return new WP_Error( 'mad4b_external_snapshot_wrong_target', 'External snapshot proof enrichment is restricted to exact governed Staging.' );
 		if ( ! class_exists( 'ZipArchive' ) ) return new WP_Error( 'mad4b_external_snapshot_zip_unavailable', 'PHP ZipArchive is required to enrich portable snapshot metadata.' );
 		$candidate = self::current_candidate();
 		$issued = self::issue_external_token( $snapshot_token, $candidate );
@@ -194,6 +201,7 @@ final class MAD4B_SCP_Portable_Snapshot_Attestation {
 	}
 
 	private static function persist_record( array $record ) {
+		if ( ! self::staging_allowed() ) return new WP_Error( 'mad4b_external_snapshot_wrong_target', 'External snapshot proof persistence is restricted to exact governed Staging.' );
 		$ledger = get_option( self::TOKEN_LEDGER_OPTION, array() );
 		if ( ! is_array( $ledger ) ) $ledger = array();
 		$now = time();
@@ -209,6 +217,14 @@ final class MAD4B_SCP_Portable_Snapshot_Attestation {
 			return new WP_Error( 'mad4b_external_snapshot_token_persist_failed', 'External package proof digest could not be persisted; export is denied.' );
 		}
 		return true;
+	}
+
+	private static function staging_allowed() {
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '';
+		if ( 'staging' !== $environment ) return false;
+		$home_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
+		$site_host = function_exists( 'site_url' ) ? strtolower( (string) wp_parse_url( site_url( '/' ), PHP_URL_HOST ) ) : '';
+		return self::STAGING_HOST === $home_host && self::STAGING_HOST === $site_host;
 	}
 
 	private static function redirect_error( $code ) {
