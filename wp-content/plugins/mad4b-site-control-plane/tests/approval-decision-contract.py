@@ -30,13 +30,8 @@ if missing:
     raise SystemExit('Missing independent approval-decision invariant: ' + ' | '.join(missing))
 
 forbidden_admin = [
-    "wp_register_ability(",
-    "mad4b/approval-decision",
-    "MAD4B_SCP_Mutation_Manager",
-    "call_user_func(",
-    "execute_callback",
-    "mad4b/database-update",
-    "mad4b/filesystem-write",
+    "wp_register_ability(", "mad4b/approval-decision", "MAD4B_SCP_Mutation_Manager",
+    "call_user_func(", "execute_callback", "mad4b/database-update", "mad4b/filesystem-write",
 ]
 found = [marker for marker in forbidden_admin if marker in admin]
 if found:
@@ -50,8 +45,7 @@ required_ticket = [
     "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status()",
     "update_option( self::CANDIDATE_BINDINGS_OPTION, $bindings, false )",
     "public static function decide_pending",
-    "status = 'approved'",
-    "status = 'revoked'",
+    "status = 'approved'", "status = 'revoked'",
     "status = 'pending' AND payload_sha256 = %s AND expires_at >= %s",
     "MAD4B_SCP_Audit::record( 'mad4b/approval-decision'",
     "require_once __DIR__ . '/class-mad4b-scp-approval-decision-admin.php'",
@@ -61,8 +55,6 @@ missing = [marker for marker in required_ticket if marker not in tickets]
 if missing:
     raise SystemExit('Missing atomic approval-ticket decision invariant: ' + ' | '.join(missing))
 
-# Binding belongs to the governed remote approval-plan wrapper, not the generic
-# create_pending primitive used by local admin and disposable runtime tests.
 create_start = tickets.index('public static function create_pending')
 create_end = tickets.index('public static function bind_ticket_to_current_candidate', create_start)
 create_body = tickets[create_start:create_end]
@@ -70,7 +62,7 @@ if 'current_candidate_binding' in create_body or 'save_candidate_binding' in cre
     raise SystemExit('Generic create_pending unexpectedly requires live candidate provenance')
 
 for marker in [
-    "const CONTRACT = 'mad4b.staging-write-planning-guard.v3'",
+    "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "isset( $args['execute_callback'] ) && is_callable( $args['execute_callback'] )",
     "MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate",
     "'mad4b_candidate_bound_pending_ticket'",
@@ -79,23 +71,16 @@ for marker in [
     if marker not in planner:
         raise SystemExit('Remote approval planner is missing exact candidate-binding invariant: ' + marker)
 
-# A remote candidate binding failure must remove the newly-created unusable
-# pending ticket rather than leave an approval artifact that cannot be decided.
 if "$wpdb->delete( $t['approvals']" not in tickets or "mad4b_approval_candidate_binding_failed" not in tickets:
     raise SystemExit('Remote Staging planning does not fail closed when candidate binding persistence fails')
 
-# Preserve the original planner separation: plan creates pending only and never
-# auto-approves or executes a target.
 for marker in [
-    "'creates_pending_ticket_only' => true",
-    "'auto_approves' => false",
-    "'target_ticket_class' => 'mutation'",
-    "'breakglass_target_allowed' => false",
+    "'creates_pending_ticket_only' => true", "'auto_approves' => false",
+    "'target_ticket_class' => 'mutation'", "'breakglass_target_allowed' => false",
 ]:
     if marker not in planner:
         raise SystemExit('approval-plan separation regressed: ' + marker)
 
-# The human decision action must stay outside every MCP server/tool projection.
 if 'approval-decision' in servers:
     raise SystemExit('Human approval decision leaked into MCP server projection')
 
