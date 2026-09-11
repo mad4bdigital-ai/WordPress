@@ -5,6 +5,7 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identity-context.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-finalizer.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-ticket-replay-runtime.php'
       - '.github/workflows/mad4b-approval-replay-contract.yml'
@@ -43,6 +44,8 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-approval-tickets.php"
+          php -l "$root/includes/class-mad4b-scp-authorization.php"
+          php -l "$root/includes/class-mad4b-scp-identity-context.php"
           php -l "$root/tests/approval-ticket-replay-runtime.php"
           php "$root/tests/approval-ticket-replay-runtime.php"
 
@@ -53,8 +56,12 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane/includes'
           tickets="$root/class-mad4b-scp-approval-tickets.php"
           authz="$root/class-mad4b-scp-authorization.php"
+          identity="$root/class-mad4b-scp-identity-context.php"
           finalizer="$root/class-mad4b-scp-live-acceptance-finalizer.php"
           grep -Fq "if ( 'used' === \$ticket['status'] ) return new WP_Error( 'mad4b_approval_replay_denied'" "$tickets"
-          grep -Fq "return self::deny( \$approval->get_error_code(), \$approval->get_error_message(), \$ability_name, \$identity, \$agent )" "$authz"
+          grep -Fq "MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( \$approval_ticket_id )" "$authz"
+          grep -Fq "'approval_ticket_id' => isset( \$identity['approval_ticket_id'] )" "$authz"
+          grep -Fq 'private static $request_approval_ticket_id' "$identity"
+          grep -Fq 'public static function bind_approval_ticket_for_request' "$identity"
           grep -Fq "'mad4b_approval_replay_denied' === (string) \$summary['reason_code']" "$finalizer"
           grep -Fq "'mad4b/live-acceptance-replay-denied-observed'" "$finalizer"
