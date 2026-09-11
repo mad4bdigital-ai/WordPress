@@ -96,14 +96,38 @@ if re.search(r'\bwp_get_ability\s*\(', observer):
 if re.search(r'\bwp_get_abilities\s*\(', observer):
     raise SystemExit('Observer must not materialize the Ability registry.')
 
-# Current local REST contract must stay separated from external WPML acceptance.
+# Local REST isolation and external WPML acceptance are independent gates.
+# The aggregate intentionally reads rest.ready; therefore REST_Compatibility::status()
+# must define that field exclusively from MAD4B-controlled structural facts.
 for marker in [
+    "'local_rest_isolation_ready' => $local_ready",
+    "'local_rest_isolation' => array(",
+    "'mcp_recovery_scoped_to_mad4b_routes' => $mcp_recovery_scoped",
     "'wpml_internal_probe_role' => 'diagnostic_only'",
     "'wpml_internal_probe_blocks_local_certification' => false",
     "'external_wpml_acceptance_required' => true",
+    "'external_wpml_acceptance_verified' => false",
+    "'external_http_probe_performed' => false",
 ]:
     if marker not in rest:
         raise SystemExit('WPML local/external separation regressed: ' + marker)
+
+local_checks = re.search(
+    r"\$local_checks\s*=\s*array\((.*?)\);\s*\$local_blockers",
+    rest,
+    re.S,
+)
+if not local_checks:
+    raise SystemExit('Local REST structural check block is missing.')
+local_body = local_checks.group(1)
+if "$wpml['ready']" in local_body or "$wpml['query_parameters_preserved']" in local_body:
+    raise SystemExit('Local REST readiness must not depend on WPML internal route readiness.')
+if "$wpml['control_plane_block_detected']" not in local_body:
+    raise SystemExit('Local REST readiness must still fail if MAD4B is proven to block WPML REST.')
+if "'local_rest_isolation' => self::gate( ! empty( $rest['ready'] )" not in observer:
+    raise SystemExit('Aggregate local REST gate no longer consumes the dedicated REST readiness result.')
+if "'external_wpml' => self::gate( ! empty( $wpml['verified'] )" not in observer:
+    raise SystemExit('External WPML acceptance must remain a separate aggregate gate.')
 
 # Keep existing external handshake v2 compatibility; companion attestation only
 # hardens exact-set diff/freshness and never downgrades the canonical contract.
@@ -131,4 +155,4 @@ if 'const MAX_EVENTS = 32' not in observer or 'const TELEMETRY_TTL = 21600' not 
 if "update_option( self::TELEMETRY_OPTION, self::$telemetry, false )" not in observer:
     raise SystemExit('Telemetry option must explicitly disable autoload.')
 
-print('mad4b.live-acceptance-evidence.contract.v2: PASS')
+print('mad4b.live-acceptance-evidence.contract.v3: PASS')
