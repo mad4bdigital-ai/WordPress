@@ -139,4 +139,73 @@ $wpdb->ticket['status'] = 'pending';
 $pending = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_wp_error( $pending ) && 'mad4b_approval_not_approved' === $pending->get_error_code(), 'Pending tickets must remain distinct from replay denial.' );
 
-echo "mad4b.approval-ticket-replay.runtime.v4: PASS\n";
+// Regression for the live Staging undo-plan target mismatch. Operator reason is
+// audit metadata and must not alter the approval target or payload identity.
+class MAD4B_SCP_Staging_Write_Authority {
+	public static function eligible() { return true; }
+}
+class MAD4B_SCP_Mutation_Manager {
+	public static $records = array();
+	public static function get( $mutation_id ) {
+		return isset( self::$records[ $mutation_id ] ) ? self::$records[ $mutation_id ] : null;
+	}
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-planning-guard.php';
+
+$undo_id = '50ac11a9-82d3-44de-abee-9d24fcd3fecd';
+$undo_id_other = '60ac11a9-82d3-44de-abee-9d24fcd3fecd';
+MAD4B_SCP_Mutation_Manager::$records[ $undo_id ] = array(
+	'ability_name' => 'elementor/update-widget-settings',
+	'provider' => 'elementor',
+	'target_type' => 'elementor-widget-settings',
+	'target_id' => '37924:b417678',
+	'after_sha256' => 'd39fd9282368117a0030f8e9896c97c9990174360d507514f1dd26393b914850',
+	'rollback_payload_sha256' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+	'reversible' => 1,
+	'status' => 'verified',
+	'undo_expires_at' => gmdate( 'Y-m-d H:i:s', time() + 3600 ),
+);
+MAD4B_SCP_Mutation_Manager::$records[ $undo_id_other ] = array_merge(
+	MAD4B_SCP_Mutation_Manager::$records[ $undo_id ],
+	array(
+		'target_id' => '37924:b417679',
+		'after_sha256' => 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+	)
+);
+
+$plan_undo_input = array( 'mutation_id' => $undo_id, 'reason' => 'Reason reviewed during planning.' );
+$execute_undo_input = array( 'mutation_id' => $undo_id, 'reason' => 'Different operator wording at execution.' );
+$canonical_plan_undo = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_undo_authorization_input( $plan_undo_input );
+$canonical_execute_undo = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_undo_authorization_input( $execute_undo_input );
+mad4b_replay_assert( is_array( $canonical_plan_undo ) && is_array( $canonical_execute_undo ), 'Undo authorization inputs must canonicalize.' );
+mad4b_replay_assert( MAD4B_SCP_Staging_Write_Planning_Guard::UNDO_AUTHORIZATION_REASON === $canonical_plan_undo['reason'], 'Planning reason must be normalized out of authorization identity.' );
+mad4b_replay_assert( $canonical_plan_undo === $canonical_execute_undo, 'Plan and execution authorization inputs must match despite operator reason drift.' );
+
+$undo_target_plan = MAD4B_SCP_Staging_Write_Planning_Guard::undo_target_fingerprint( '', 'mad4b/mutation-undo', 'core', $canonical_plan_undo );
+$undo_target_execute = MAD4B_SCP_Staging_Write_Planning_Guard::undo_target_fingerprint( '', 'mad4b/mutation-undo', 'core', $canonical_execute_undo );
+mad4b_replay_assert( 1 === preg_match( '/^[a-f0-9]{64}$/', $undo_target_plan ), 'Undo target fingerprint must be a deterministic SHA-256.' );
+mad4b_replay_assert( hash_equals( $undo_target_plan, $undo_target_execute ), 'Undo planning and execution target fingerprints must match.' );
+
+$undo_payload_plan = MAD4B_SCP_Approval_Tickets::canonical_payload_hash( $agent['public_id'], 'mad4b-write', 'mad4b/mutation-undo', 'core', $undo_target_plan, $canonical_plan_undo, 'mutation' );
+$undo_payload_execute = MAD4B_SCP_Approval_Tickets::canonical_payload_hash( $agent['public_id'], 'mad4b-write', 'mad4b/mutation-undo', 'core', $undo_target_execute, $canonical_execute_undo, 'mutation' );
+mad4b_replay_assert( hash_equals( $undo_payload_plan, $undo_payload_execute ), 'Undo plan and execution payload hashes must match after canonicalization.' );
+
+$other_undo = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_undo_authorization_input( array( 'mutation_id' => $undo_id_other, 'reason' => 'Any reason.' ) );
+$other_target = MAD4B_SCP_Staging_Write_Planning_Guard::undo_target_fingerprint( '', 'mad4b/mutation-undo', 'core', $other_undo );
+mad4b_replay_assert( ! hash_equals( $undo_target_plan, $other_target ), 'Changing the mutation id/immutable target must change the undo target fingerprint.' );
+
+$original_target = $undo_target_plan;
+MAD4B_SCP_Mutation_Manager::$records[ $undo_id ]['after_sha256'] = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
+$drifted_target = MAD4B_SCP_Staging_Write_Planning_Guard::undo_target_fingerprint( '', 'mad4b/mutation-undo', 'core', $canonical_plan_undo );
+mad4b_replay_assert( ! hash_equals( $original_target, $drifted_target ), 'Changing immutable after-state evidence must change the undo target fingerprint.' );
+MAD4B_SCP_Mutation_Manager::$records[ $undo_id ]['after_sha256'] = 'd39fd9282368117a0030f8e9896c97c9990174360d507514f1dd26393b914850';
+
+MAD4B_SCP_Staging_Write_Planning_Guard::remember_undo_request_reason( $execute_undo_input );
+$restored_undo = MAD4B_SCP_Staging_Write_Planning_Guard::restore_undo_execution_input( $canonical_execute_undo );
+mad4b_replay_assert( 'Different operator wording at execution.' === $restored_undo['reason'], 'Actual undo callback must receive the operator reason for audit evidence.' );
+MAD4B_SCP_Staging_Write_Planning_Guard::clear_undo_request_reason();
+
+$non_undo = MAD4B_SCP_Staging_Write_Planning_Guard::undo_target_fingerprint( 'existing-fingerprint', 'elementor/update-widget-settings', 'elementor', array() );
+mad4b_replay_assert( 'existing-fingerprint' === $non_undo, 'Undo target override must not alter any other mutation ability.' );
+
+echo "mad4b.approval-ticket-replay.runtime.v5: PASS\n";
