@@ -59,3 +59,29 @@ add_action( 'plugins_loaded', static function () {
         ETG\DynamicFilterSEOBridge\Bootstrap::instance()->boot();
     } );
 }, 20 );
+
+// Register a bounded ETG evidence provider for a central MAD4B MCP / Control
+// Plane. ETG owns only the domain evidence projection; the central plugin owns
+// authentication, transport, pagination cursors, export and materialization.
+add_action( 'plugins_loaded', static function () {
+    $guard = 'ETG\\DynamicFilterSEOBridge\\Runtime\\BootGuard';
+    if ( $guard::shouldHold() ) { return; }
+
+    $config = new ETG\DynamicFilterSEOBridge\Config\Configuration();
+    $profiles = new ETG\DynamicFilterSEOBridge\Config\ProfileRegistry( $config );
+    $topology = new ETG\DynamicFilterSEOBridge\Runtime\RuntimeTopologyDiscoverer();
+    $inventory = new ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory(
+        null,
+        null,
+        static function () use ( $topology ): array { return $topology->discover( true ); }
+    );
+    $reconciler = new ETG\DynamicFilterSEOBridge\Diagnostics\InventoryReconciler();
+    $provider = new ETG\DynamicFilterSEOBridge\Diagnostics\EvidenceProvider(
+        static function () use ( $inventory ): array { return $inventory->collect(); },
+        static function ( array $snapshot, array $surfaceProfiles ) use ( $reconciler ): array {
+            return $reconciler->analyze( $snapshot, $surfaceProfiles );
+        },
+        static function () use ( $profiles ): array { return $profiles->all(); }
+    );
+    $provider->register();
+}, 21 );
