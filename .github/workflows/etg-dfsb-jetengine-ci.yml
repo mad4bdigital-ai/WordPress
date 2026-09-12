@@ -119,12 +119,12 @@ jobs:
           set -euo pipefail
           JE='wp-content/plugins/jet-engine.zip'
           JSF='wp-content/plugins/jet-smart-filters.zip'
-          test "$(git rev-parse HEAD:$JE)" = '2fc974c7fb02b549404122839cec988beb22a8f2'
-          test "$(stat -c%s "$JE")" = '6200994'
-          test "$(git rev-parse HEAD:$JSF)" = '5a56be5851e8efe09ee32bfce67c0f4ddf5bbc9a'
-          test "$(stat -c%s "$JSF")" = '1942255'
-          echo 'JetEngine blob: 2fc974c7fb02b549404122839cec988beb22a8f2 / 6200994 bytes'
-          echo 'JetSmartFilters blob: 5a56be5851e8efe09ee32bfce67c0f4ddf5bbc9a / 1942255 bytes'
+          test "$(git rev-parse HEAD:$JE)" = '6d86cdfa0907a013fe7ce4d90c1d830b27660924'
+          test "$(stat -c%s "$JE")" = '21765141'
+          test "$(git rev-parse HEAD:$JSF)" = '4499133a6acbdfec685178bbf3c54adf65fcccff'
+          test "$(stat -c%s "$JSF")" = '8151596'
+          echo 'JetEngine blob: 6d86cdfa0907a013fe7ce4d90c1d830b27660924 / 21765141 bytes'
+          echo 'JetSmartFilters blob: 4499133a6acbdfec685178bbf3c54adf65fcccff / 8151596 bytes'
       - name: Verify bundled JetEngine APIs used by ETG
         shell: bash
         run: |
