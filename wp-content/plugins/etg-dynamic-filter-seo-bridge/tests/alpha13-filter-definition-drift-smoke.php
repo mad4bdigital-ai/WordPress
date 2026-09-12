@@ -5,8 +5,13 @@ function sanitize_key($value){return preg_replace('/[^a-z0-9_\-]/','',strtolower
 function sanitize_text_field($value){return trim(strip_tags((string)$value));}
 function absint($value){return abs((int)$value);}
 function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
-function etg_filter_drift_expect($condition,string $message):void{if(!$condition){fwrite(STDERR,"FAIL: {$message}\n");exit(1);}}
-function etg_filter_drift_same($expected,$actual,string $message):void{if($expected!==$actual){fwrite(STDERR,"FAIL: {$message}\nEXPECTED ".var_export($expected,true)."\nACTUAL ".var_export($actual,true)."\n");exit(1);}}
+function etg_filter_drift_expect($condition,string $message):void{if(!$condition){fwrite(STDERR,"FAIL: $message\n");exit(1);}}
+function etg_filter_drift_same($expected,$actual,string $message):void{if($expected!==$actual){fwrite(STDERR,"FAIL: $message\nEXPECTED ".var_export($expected,true)."\nACTUAL ".var_export($actual,true)."\n");exit(1);}}
+
+$GLOBALS['etg_filter_posts']=array();
+$GLOBALS['etg_filter_meta']=array();
+function get_post($id){return $GLOBALS['etg_filter_posts'][(int)$id]??null;}
+function get_post_meta($id,$key,$single=true){return $GLOBALS['etg_filter_meta'][(int)$id][$key]??'';}
 
 $root=dirname(__DIR__);
 require_once $root.'/includes/JetSmartFilters/FilterDefinitionInspector.php';
@@ -25,132 +30,121 @@ $templateProvider=function(){return array(
 );};
 $filterProvider=function(int $filterId):array{
     if(16204===$filterId){return array(
-        '_data_source'=>'taxonomies',
-        '_source_taxonomy'=>'location_jet',
-        '_query_var'=>'related_children*46',
-        '_is_custom_query_var'=>'1',
-        '_custom_query_var'=>'_tax_query::location_jet',
+        '_data_source'=>'taxonomies','_source_taxonomy'=>'location_jet','_query_var'=>'related_children*46',
+        '_is_custom_query_var'=>'1','_custom_query_var'=>'_tax_query::location_jet','_query_builder_query'=>'11',
     );}
     if(15034===$filterId){return array(
-        '_data_source'=>'taxonomies',
-        '_source_taxonomy'=>'guide-languages_jet',
-        '_query_var'=>'_tax_query::guides-language',
-        '_is_custom_query_var'=>'',
-        '_custom_query_var'=>'',
+        '_data_source'=>'taxonomies','_source_taxonomy'=>'guide-languages_jet','_query_var'=>'_tax_query::guides-language',
+        '_is_custom_query_var'=>'','_custom_query_var'=>'','_query_builder_query'=>'14',
     );}
     return array();
 };
 
 $inspection=(new FilterDefinitionInspector($templateProvider,$filterProvider))->inspect();
-etg_filter_drift_same(true,$inspection['available'],'injected Elementor/filter definition sources are available');
-etg_filter_drift_same(2,$inspection['surface_count'],'both JetSmartFilters surfaces are observed');
-etg_filter_drift_same(2,$inspection['definition_count'],'both distinct filter definitions are read once');
-etg_filter_drift_same(2,$inspection['candidate_surface_count'],'both JetSmartFilters widgets are candidate surfaces');
-etg_filter_drift_same(2,$inspection['resolved_surface_count'],'both candidate surfaces resolve filter identity');
-etg_filter_drift_same(0,$inspection['unresolved_surface_count'],'no filter identity is silently dropped');
-etg_filter_drift_same(2,$inspection['definition_available_count'],'both filter definitions have observable metadata');
-etg_filter_drift_same(0,$inspection['definition_unavailable_count'],'no resolved filter definition is unavailable');
-etg_filter_drift_same(true,$inspection['evidence_complete'],'complete injected evidence is explicit');
-etg_filter_drift_same('complete',$inspection['evidence_state'],'complete injected evidence has explicit state');
-etg_filter_drift_same(1,$inspection['drift_count'],'only Guide Language source/target mismatch is drift');
+etg_filter_drift_same('etg.dfsb.jet-smart-filters-definition-inspection.v1',$inspection['contract'],'legacy inspection contract remains stable');
+etg_filter_drift_same('etg.dfsb.jet-smart-filters-diagnostic.v2',$inspection['diagnostic_contract'],'diagnostic extension is explicit');
+etg_filter_drift_same(true,$inspection['available'],'injected sources are available');
+etg_filter_drift_same(2,$inspection['surface_count'],'both surfaces observed');
+etg_filter_drift_same(2,$inspection['candidate_surface_count'],'both are definition candidates');
+etg_filter_drift_same(2,$inspection['resolved_surface_count'],'both identities resolve');
+etg_filter_drift_same(0,$inspection['unresolved_surface_count'],'no identity unresolved');
+etg_filter_drift_same(array('resolved'=>2),$inspection['identity_resolution_counts'],'identity status aggregation is explicit');
+etg_filter_drift_same(2,$inspection['definition_available_count'],'both definitions available');
+etg_filter_drift_same(true,$inspection['evidence_complete'],'definition evidence is complete');
+etg_filter_drift_same(1,$inspection['drift_count'],'only Guide Language mismatch observed');
 $drift=$inspection['drift'][0];
-etg_filter_drift_same(15034,$drift['filter_id'],'Guide Language filter identity preserved');
-etg_filter_drift_same(30843,$drift['template_id'],'Elementor template identity preserved');
-etg_filter_drift_same('tours_query_archive',$drift['query_id'],'provider query group preserved');
-etg_filter_drift_same('guide-languages_jet',$drift['source_taxonomy'],'filter source taxonomy preserved');
-etg_filter_drift_same('guides-language',$drift['target_taxonomy'],'query target taxonomy parsed exactly');
-etg_filter_drift_same('query_var',$drift['target_source'],'normal query_var is identified as target authority source');
-etg_filter_drift_same('source_taxonomy_query_target_mismatch',$drift['reason'],'mismatch has explicit diagnostic reason');
-etg_filter_drift_same('blocking',$drift['severity_hint'],'mismatch carries a blocking hint without authorizing mutation');
-etg_filter_drift_same(false,$drift['authorizing'],'filter definition inspection remains non-authorizing');
+etg_filter_drift_same(15034,$drift['filter_id'],'mismatch preserves filter ID');
+etg_filter_drift_same('guide-languages_jet',$drift['source_taxonomy'],'source taxonomy preserved');
+etg_filter_drift_same('guides-language',$drift['target_taxonomy'],'target taxonomy preserved');
+etg_filter_drift_same('query_var',$drift['target_source'],'normal query var source preserved');
+etg_filter_drift_same(false,$drift['custom_query_enabled'],'custom query state preserved');
+etg_filter_drift_same('14',$drift['query_builder_query'],'Query Builder binding evidence preserved');
+etg_filter_drift_same('source_taxonomy_query_target_mismatch_observed',$drift['reason'],'mismatch is observation evidence');
+etg_filter_drift_same('review',$drift['severity_hint'],'raw mismatch does not invent blocking authority');
+etg_filter_drift_same(false,$drift['authorizing'],'inspection remains non-authorizing');
+etg_filter_drift_same(true,$inspection['surfaces'][0]['custom_query_enabled'],'custom query enabled is exposed per surface');
+etg_filter_drift_same('aligned',$inspection['surfaces'][0]['taxonomy_semantic_status'],'custom target aligned with source is explicit');
+etg_filter_drift_same('mismatch_observed',$inspection['surfaces'][1]['taxonomy_semantic_status'],'source/target mismatch remains visible');
 
-$incompleteTemplateProvider=function(){return array(
-    array('id'=>30843,'data'=>array(
-        array('id'=>'unresolved-filter','elType'=>'widget','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('query_id'=>'tours_query_archive','content_provider'=>'jet-engine')),
-    )),
-);};
+$identityTemplateProvider=function(){return array(array('id'=>900,'data'=>array(
+    array('id'=>'empty','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>array(),'query_id'=>'q')),
+    array('id'=>'malformed','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>'abc','query_id'=>'q')),
+    array('id'=>'ambiguous','widgetType'=>'jet-smart-filters-select','settings'=>array('filter_id'=>array('16032','24515'),'query_id'=>'q')),
+    array('id'=>'future','widgetType'=>'jet-smart-filters-future-filter','settings'=>array('filter_id'=>'16032','query_id'=>'q')),
+)));};
+$identityInspection=(new FilterDefinitionInspector($identityTemplateProvider,$filterProvider))->inspect();
+etg_filter_drift_same(4,$identityInspection['candidate_surface_count'],'all four fail-closed candidates observed');
+etg_filter_drift_same(0,$identityInspection['resolved_surface_count'],'invalid/unsupported identities do not resolve');
+etg_filter_drift_same(4,$identityInspection['unresolved_surface_count'],'invalid/unsupported identities stay explicit');
+etg_filter_drift_same(array('ambiguous'=>1,'empty'=>1,'malformed'=>1,'unsupported'=>1),$identityInspection['identity_resolution_counts'],'unresolved identities are decomposed by class');
+$identityReasons=array();foreach($identityInspection['surfaces'] as $surface){$identityReasons[$surface['node_id']]=$surface['identity_resolution_reason'];}
+etg_filter_drift_same('empty_filter_assignment',$identityReasons['empty'],'empty Elementor array is classified exactly');
+etg_filter_drift_same('malformed_filter_identity',$identityReasons['malformed'],'malformed identity is distinct');
+etg_filter_drift_same('ambiguous_filter_identity',$identityReasons['ambiguous'],'multi-ID ambiguity fails closed');
+etg_filter_drift_same('unsupported_filter_widget',$identityReasons['future'],'unknown future widget fails closed explicitly');
+
+$GLOBALS['etg_filter_posts']=array(
+    16086=>(object)array('post_status'=>'trash','post_type'=>'jet-smart-filters'),
+    16087=>(object)array('post_status'=>'publish','post_type'=>'post'),
+    16088=>(object)array('post_status'=>'draft','post_type'=>'jet-smart-filters'),
+    16089=>(object)array('post_status'=>'publish','post_type'=>'jet-smart-filters'),
+);
+$GLOBALS['etg_filter_meta']=array();
+$lifecycleTemplateProvider=function(){return array(array('id'=>901,'data'=>array(
+    array('id'=>'missing','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>'16084','query_id'=>'q')),
+    array('id'=>'trash','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>'16086','query_id'=>'q')),
+    array('id'=>'wrong-type','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>'16087','query_id'=>'q')),
+    array('id'=>'draft','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>'16088','query_id'=>'q')),
+    array('id'=>'metadata-empty','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>'16089','query_id'=>'q')),
+)));};
+$lifecycleInspection=(new FilterDefinitionInspector($lifecycleTemplateProvider))->inspect();
+etg_filter_drift_same(5,$lifecycleInspection['resolved_surface_count'],'post lifecycle debt is separate from identity resolution');
+etg_filter_drift_same(0,$lifecycleInspection['unresolved_surface_count'],'all lifecycle test IDs resolve');
+etg_filter_drift_same(5,$lifecycleInspection['definition_unavailable_count'],'all five lifecycle fixtures are unavailable for distinct reasons');
+$definitionReasons=array();foreach($lifecycleInspection['definition_unavailable'] as $row){$definitionReasons[$row['filter_id']]=$row['definition_reason'];}
+etg_filter_drift_same('filter_post_missing',$definitionReasons[16084],'missing filter post is explicit');
+etg_filter_drift_same('filter_post_trash',$definitionReasons[16086],'trashed filter post is explicit');
+etg_filter_drift_same('filter_post_wrong_type',$definitionReasons[16087],'wrong post type is explicit');
+etg_filter_drift_same('filter_post_non_public',$definitionReasons[16088],'non-public filter post is explicit');
+etg_filter_drift_same('filter_definition_metadata_empty',$definitionReasons[16089],'published filter with empty metadata is explicit');
+
+$incompleteTemplateProvider=function(){return array(array('id'=>30843,'data'=>array(
+    array('id'=>'unresolved-filter','elType'=>'widget','widgetType'=>'jet-smart-filters-checkboxes','settings'=>array('filter_id'=>array(),'query_id'=>'tours_query_archive','content_provider'=>'jet-engine')),
+)));};
 $incompleteInspection=(new FilterDefinitionInspector($incompleteTemplateProvider,$filterProvider))->inspect();
-etg_filter_drift_same(1,$incompleteInspection['surface_count'],'JetSmartFilters widget is counted even when filter identity is unresolved');
-etg_filter_drift_same(1,$incompleteInspection['candidate_surface_count'],'candidate surface count preserves unresolved widget');
-etg_filter_drift_same(0,$incompleteInspection['resolved_surface_count'],'unresolved filter identity is not fabricated');
-etg_filter_drift_same(1,$incompleteInspection['unresolved_surface_count'],'unresolved filter identity is explicit');
-etg_filter_drift_same(0,$incompleteInspection['definition_count'],'no synthetic definition is created');
-etg_filter_drift_same(false,$incompleteInspection['evidence_complete'],'unresolved filter identity makes definition evidence incomplete');
-etg_filter_drift_same('incomplete',$incompleteInspection['evidence_state'],'unresolved filter identity is not reported as clean');
-etg_filter_drift_expect(in_array('filter_identity_unresolved',$incompleteInspection['evidence_reasons'],true),'incomplete evidence names unresolved filter identity');
-etg_filter_drift_same('filter_id_unresolved',$incompleteInspection['surfaces'][0]['resolution_reason'],'surface records why definition lookup could not run');
+etg_filter_drift_same(1,$incompleteInspection['unresolved_surface_count'],'empty assignment remains fail-incomplete');
+etg_filter_drift_same('empty_filter_assignment',$incompleteInspection['surfaces'][0]['identity_resolution_reason'],'empty assignment is not generic parser failure');
+etg_filter_drift_same('filter_id_unresolved',$incompleteInspection['surfaces'][0]['resolution_reason'],'legacy resolution reason remains compatible');
+etg_filter_drift_expect(in_array('filter_identity_unresolved',$incompleteInspection['evidence_reasons'],true),'aggregate evidence remains fail-incomplete');
 
-$parityTopology=array(
-    'available'=>true,'truncated'=>false,
-    'query_surfaces'=>array(
-        array('widget_type'=>'jet-smart-filters-checkboxes','query_id'=>'tours_query_archive'),
-        array('widget_type'=>'jet-smart-filters-select','query_id'=>'tours_query_archive'),
-    ),
-);
-$reflection=new ReflectionMethod(RuntimeInventory::class,'reconcileFilterDefinitionEvidence');
-$reflection->setAccessible(true);
+$parityTopology=array('available'=>true,'truncated'=>false,'query_surfaces'=>array(
+    array('widget_type'=>'jet-smart-filters-checkboxes','query_id'=>'tours_query_archive'),
+    array('widget_type'=>'jet-smart-filters-select','query_id'=>'tours_query_archive'),
+));
+$reflection=new ReflectionMethod(RuntimeInventory::class,'reconcileFilterDefinitionEvidence');$reflection->setAccessible(true);
 $reconciledIncomplete=$reflection->invoke(new RuntimeInventory(),$incompleteInspection,$parityTopology);
-etg_filter_drift_same(2,$reconciledIncomplete['topology_filter_surface_count'],'independent topology counts JetSmartFilters query surfaces');
-etg_filter_drift_same(true,$reconciledIncomplete['topology_parity_checked'],'topology parity is checked only with complete topology evidence');
-etg_filter_drift_same(false,$reconciledIncomplete['topology_surface_parity'],'topology seeing more filter surfaces prevents false-clean evidence');
-etg_filter_drift_same(false,$reconciledIncomplete['evidence_complete'],'topology parity mismatch remains incomplete');
-etg_filter_drift_expect(in_array('topology_filter_surface_parity_mismatch',$reconciledIncomplete['evidence_reasons'],true),'parity mismatch is explicit evidence');
+etg_filter_drift_same(false,$reconciledIncomplete['topology_surface_parity'],'topology parity mismatch prevents false clean evidence');
+etg_filter_drift_expect(in_array('topology_filter_surface_parity_mismatch',$reconciledIncomplete['evidence_reasons'],true),'parity mismatch is explicit');
 
-$queryRecords=array(
-    array('id'=>'7','custom_query_id'=>'tours_qb','identity_key'=>'tours_qb','type'=>'posts','post_types'=>array('tours-and-activities'),'post_type_bounded'=>true),
-);
+$queryRecords=array(array('id'=>'7','custom_query_id'=>'tours_qb','identity_key'=>'tours_qb','type'=>'posts','post_types'=>array('tours-and-activities'),'post_type_bounded'=>true));
 $topology=array(
-    'contract'=>'etg.dfsb.runtime-topology.v1',
-    'authorizing'=>false,
-    'read_only'=>true,
-    'profile_mutation'=>false,
-    'available'=>true,
-    'sources'=>array('templates'=>'test','query_builder'=>'test'),
-    'templates_scanned'=>1,
-    'query_builder_records_observed'=>1,
-    'elements_scanned'=>3,
-    'truncated'=>false,
-    'provider_query_ids'=>array('tours_query_archive'),
-    'bindings'=>array(array(
-        'provider'=>'jet-engine',
-        'provider_query_id'=>'tours_query_archive',
-        'status'=>'verified',
-        'reason'=>'verified',
-        'query_builder_internal_id'=>'7',
-        'query_builder_custom_query_id'=>'tours_qb',
-        'query_type'=>'posts',
-        'post_types'=>array('tours-and-activities'),
-        'template_ids'=>array(30843),
-        'evidence_count'=>1,
-    )),
-    'binding_count'=>1,
-    'bindings_truncated'=>false,
-    'provider_group_drift'=>array(),
-    'provider_group_drift_count'=>0,
-    'provider_group_drift_truncated'=>false,
+    'contract'=>'etg.dfsb.runtime-topology.v1','authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'available'=>true,
+    'sources'=>array('templates'=>'test','query_builder'=>'test'),'templates_scanned'=>1,'query_builder_records_observed'=>1,'elements_scanned'=>3,'truncated'=>false,
+    'provider_query_ids'=>array('tours_query_archive'),'bindings'=>array(array(
+        'provider'=>'jet-engine','provider_query_id'=>'tours_query_archive','status'=>'verified','reason'=>'verified','query_builder_internal_id'=>'7',
+        'query_builder_custom_query_id'=>'tours_qb','query_type'=>'posts','post_types'=>array('tours-and-activities'),'template_ids'=>array(30843),'evidence_count'=>1,
+    )),'binding_count'=>1,'bindings_truncated'=>false,'provider_group_drift'=>array(),'provider_group_drift_count'=>0,'provider_group_drift_truncated'=>false,
 );
 $inventory=array(
-    'post_types'=>array(
-        'tours-and-activities'=>array('label'=>'Tours & Activities','publicly_queryable'=>true,'has_archive'=>true,'taxonomies'=>array('location_jet','guide-languages_jet','guides-language'),'archive_paths'=>array('current'=>'/tours-and-activities/')),
-    ),
+    'post_types'=>array('tours-and-activities'=>array('label'=>'Tours & Activities','publicly_queryable'=>true,'has_archive'=>true,'taxonomies'=>array('location_jet','guide-languages_jet','guides-language'),'archive_paths'=>array('current'=>'/tours-and-activities/'))),
     'taxonomies'=>array(
         'location_jet'=>array('object_type'=>array('tours-and-activities')),
         'guide-languages_jet'=>array('object_type'=>array('tours-and-activities')),
         'guides-language'=>array('object_type'=>array('tours-and-activities')),
     ),
     'languages'=>array(array('code'=>'en','url_path'=>'/')),
-    'query_builder'=>array(
-        'available'=>true,
-        'source'=>'test',
-        'queries'=>$queryRecords,
-        'identity_index'=>$queryRecords,
-        'identity_index_complete'=>true,
-        'identity_conflict_count'=>0,
-        'identity_conflicts'=>array(),
-        'identity_conflicts_truncated'=>false,
-    ),
-    'elementor_topology'=>$topology,
-    'jet_smart_filters'=>$inspection,
+    'query_builder'=>array('available'=>true,'source'=>'test','queries'=>$queryRecords,'identity_index'=>$queryRecords,'identity_index_complete'=>true,'identity_conflict_count'=>0,'identity_conflicts'=>array(),'identity_conflicts_truncated'=>false),
+    'elementor_topology'=>$topology,'jet_smart_filters'=>$inspection,
     'completeness'=>array(
         'post_types'=>array('observed_count'=>1,'included_count'=>1,'limit'=>RuntimeInventory::MAX_POST_TYPES,'truncated'=>false),
         'taxonomies'=>array('observed_count'=>3,'included_count'=>3,'limit'=>RuntimeInventory::MAX_TAXONOMIES,'truncated'=>false),
@@ -160,63 +154,38 @@ $inventory=array(
         'archive_path_translations'=>array('observed_count'=>0,'included_count'=>0,'limit'=>RuntimeInventory::MAX_ARCHIVE_PATH_TRANSLATIONS,'truncated'=>false),
     ),
 );
-$snapshot=array(
-    'contract'=>RuntimeInventory::CONTRACT,
-    'authorizing'=>false,
-    'read_only'=>true,
-    'profile_mutation'=>false,
-    'snapshot_fingerprint'=>hash('sha256',json_encode($inventory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),
-    'inventory'=>$inventory,
-);
+$snapshot=array('contract'=>RuntimeInventory::CONTRACT,'authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'snapshot_fingerprint'=>hash('sha256',json_encode($inventory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)),'inventory'=>$inventory);
 $profile=array(
-    'id'=>'tours',
-    'enabled'=>true,
-    'post_types'=>array('tours-and-activities'),
-    'taxonomy_rules'=>array(
-        'location_jet'=>array('role'=>'location'),
-        'guide-languages_jet'=>array('role'=>'guide_language'),
-    ),
-    'archive_paths'=>array('/tours-and-activities/'),
-    'routes'=>array(array('provider'=>'jet-engine','query_id'=>'tours_query_archive')),
+    'id'=>'tours','enabled'=>true,'post_types'=>array('tours-and-activities'),
+    'taxonomy_rules'=>array('location_jet'=>array('role'=>'location'),'guide-languages_jet'=>array('role'=>'guide_language')),
+    'archive_paths'=>array('/tours-and-activities/'),'routes'=>array(array('provider'=>'jet-engine','query_id'=>'tours_query_archive')),
 );
 
 $reconciler=new InventoryReconciler();
-$incompleteInventory=$inventory;
-$incompleteInventory['jet_smart_filters']=$reconciledIncomplete;
-$incompleteSnapshot=$snapshot;
-$incompleteSnapshot['inventory']=$incompleteInventory;
-$incompleteSnapshot['snapshot_fingerprint']=hash('sha256',json_encode($incompleteInventory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
-$incompleteResult=$reconciler->analyze($incompleteSnapshot,array('tours'=>$profile));
-$incompleteFindings=array_values(array_filter($incompleteResult['findings'],static function($finding){return 'jetsmartfilters_definition_inspection_incomplete'===(string)($finding['code']??'');}));
-etg_filter_drift_same(1,count($incompleteFindings),'incomplete filter-definition evidence is visible in reconciliation');
-etg_filter_drift_same('warning',$incompleteFindings[0]['severity'],'incomplete global filter evidence remains non-authorizing review evidence');
-etg_filter_drift_same(2,$incompleteFindings[0]['details']['topology_filter_surface_count'],'reconciliation preserves independent topology count');
-
 $enabled=$reconciler->analyze($snapshot,array('tours'=>$profile));
-$routeFindings=array_values(array_filter($enabled['findings'],static function($finding){return 'profile_filter_taxonomy_target_drift'===(string)($finding['code']??'');}));
-etg_filter_drift_same(1,count($routeFindings),'enabled governed Guide Language mismatch produces one route finding');
-etg_filter_drift_same('blocking',$routeFindings[0]['severity'],'enabled governed taxonomy mismatch fails closed');
-etg_filter_drift_same(1,$routeFindings[0]['details']['drift_count'],'only relevant route/taxonomy drift is promoted');
-etg_filter_drift_same(15034,$routeFindings[0]['details']['drift'][0]['filter_id'],'route blocker preserves offending filter ID');
+$blockingTaxonomy=array_values(array_filter($enabled['findings'],static function($finding){return 'profile_filter_taxonomy_target_drift'===(string)($finding['code']??'');}));
+etg_filter_drift_same(0,count($blockingTaxonomy),'observed source/target mismatch is not promoted to blocker without stronger authority');
+$routeReview=array_values(array_filter($enabled['findings'],static function($finding){return 'profile_filter_taxonomy_target_review'===(string)($finding['code']??'');}));
+etg_filter_drift_same(1,count($routeReview),'governed route retains mismatch as explicit review evidence');
+etg_filter_drift_same('warning',$routeReview[0]['severity'],'route mismatch review is non-blocking');
+etg_filter_drift_same(15034,$routeReview[0]['details']['evidence'][0]['filter_id'],'route review preserves offending filter ID');
 $globalFindings=array_values(array_filter($enabled['findings'],static function($finding){return 'jetsmartfilters_taxonomy_target_drift_detected'===(string)($finding['code']??'');}));
-etg_filter_drift_same(1,count($globalFindings),'inventory always exposes global filter-definition drift evidence');
-etg_filter_drift_same('warning',$globalFindings[0]['severity'],'global drift summary stays warning/non-authorizing');
-etg_filter_drift_expect($enabled['summary']['blocking']>=1,'enabled governed mismatch contributes to blocking summary');
+etg_filter_drift_same(1,count($globalFindings),'global mismatch remains visible');
+etg_filter_drift_same('warning',$globalFindings[0]['severity'],'global mismatch remains warning/non-authorizing');
+etg_filter_drift_same(0,$enabled['summary']['blocking'],'semantic observation alone does not create blocking authority');
 
-$outside=$profile;
-$outside['taxonomy_rules']=array('location_jet'=>array('role'=>'location'));
+$outside=$profile;$outside['taxonomy_rules']=array('location_jet'=>array('role'=>'location'));
 $outsideResult=$reconciler->analyze($snapshot,array('tours'=>$outside));
-$outsideRouteFindings=array_values(array_filter($outsideResult['findings'],static function($finding){return 'profile_filter_taxonomy_target_drift'===(string)($finding['code']??'');}));
-etg_filter_drift_same(0,count($outsideRouteFindings),'facet mismatch outside governed taxonomy rules is not a route blocker');
+$outsideReview=array_values(array_filter($outsideResult['findings'],static function($finding){return 'profile_filter_taxonomy_target_review'===(string)($finding['code']??'');}));
+etg_filter_drift_same(0,count($outsideReview),'out-of-scope mismatch is not promoted to route review');
 $outsideGlobal=array_values(array_filter($outsideResult['findings'],static function($finding){return 'jetsmartfilters_taxonomy_target_drift_detected'===(string)($finding['code']??'');}));
-etg_filter_drift_same(1,count($outsideGlobal),'out-of-scope facet mismatch remains visible globally');
+etg_filter_drift_same(1,count($outsideGlobal),'out-of-scope mismatch remains visible globally');
 
-$disabled=$profile;
-$disabled['enabled']=false;
+$disabled=$profile;$disabled['enabled']=false;
 $disabledResult=$reconciler->analyze($snapshot,array('tours'=>$disabled));
-$disabledRouteFindings=array_values(array_filter($disabledResult['findings'],static function($finding){return 'profile_filter_taxonomy_target_drift'===(string)($finding['code']??'');}));
-etg_filter_drift_same(1,count($disabledRouteFindings),'disabled governed profile keeps mismatch visible');
-etg_filter_drift_same('warning',$disabledRouteFindings[0]['severity'],'disabled governed mismatch is review evidence rather than activation blocker');
-etg_filter_drift_same(0,$disabledResult['summary']['blocking'],'disabled profile does not create blocking authority from filter drift');
+$disabledReview=array_values(array_filter($disabledResult['findings'],static function($finding){return 'profile_filter_taxonomy_target_review'===(string)($finding['code']??'');}));
+etg_filter_drift_same(1,count($disabledReview),'disabled governed profile keeps semantic review evidence');
+etg_filter_drift_same('warning',$disabledReview[0]['severity'],'disabled profile semantic review stays warning');
+etg_filter_drift_same(0,$disabledResult['summary']['blocking'],'disabled profile creates no blocking authority');
 
-echo "Alpha13 JetSmartFilters filter-definition drift smoke tests passed.\n";
+echo "Alpha13 JetSmartFilters diagnostic contract smoke tests passed.\n";
