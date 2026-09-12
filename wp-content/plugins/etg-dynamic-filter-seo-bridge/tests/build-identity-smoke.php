@@ -109,4 +109,9 @@ etg_build_identity_expect( empty( $extra['valid'] ) && 'identity_fields_invalid'
 
 @unlink( $path );
 @rmdir( $root );
+
+$evidenceCommand = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/alpha13-evidence-provider-smoke.php' );
+passthru( $evidenceCommand, $evidenceExitCode );
+etg_build_identity_expect( 0 === $evidenceExitCode, 'bounded evidence provider smoke test passes under the canonical PHP contract job' );
+
 echo "BuildIdentity smoke passed.\n";
