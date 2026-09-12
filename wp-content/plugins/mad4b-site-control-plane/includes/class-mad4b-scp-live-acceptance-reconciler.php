@@ -147,8 +147,17 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			$undo_sequence = isset( $undo['sequence'] ) ? (int) $undo['sequence'] : 0;
 			$execution = self::find_execution_event( $events, $record, $mutation_id, $undo_sequence );
 			if ( empty( $execution ) ) continue;
-			$replay = self::find_replay_event( $events, $ticket_id, (int) $execution['sequence'], $undo_sequence );
+			$replay = self::find_replay_event(
+				$events,
+				$ticket_id,
+				isset( $record['ability_name'] ) ? (string) $record['ability_name'] : '',
+				isset( $record['wp_user_id'] ) ? (int) $record['wp_user_id'] : 0,
+				(int) $execution['sequence'],
+				$undo_sequence
+			);
 			if ( empty( $replay ) ) continue;
+			$replay_summary = isset( $replay['summary'] ) && is_array( $replay['summary'] ) ? $replay['summary'] : array();
+			$replay_ticket = isset( $replay_summary['approval_ticket_id'] ) ? strtolower( trim( (string) $replay_summary['approval_ticket_id'] ) ) : '';
 
 			return array(
 				'contract' => 'mad4b.mutation-acceptance-receipt.v1',
@@ -173,6 +182,7 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 				'execution_event_hash' => isset( $execution['entry_hash'] ) ? (string) $execution['entry_hash'] : '',
 				'execution_sequence' => (int) $execution['sequence'],
 				'replay_denied' => true,
+				'replay_binding' => '' !== $replay_ticket ? 'ticket_exact' : 'legacy_unique_sequence_ability_user',
 				'replay_event_hash' => isset( $replay['entry_hash'] ) ? (string) $replay['entry_hash'] : '',
 				'replay_sequence' => (int) $replay['sequence'],
 				'undo_verified' => true,
@@ -231,17 +241,38 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 		return $best;
 	}
 
-	private static function find_replay_event( array $events, $ticket_id, $after_sequence, $before_sequence ) {
+	private static function find_replay_event( array $events, $ticket_id, $expected_ability, $expected_user_id, $after_sequence, $before_sequence ) {
+		$ticket_id = strtolower( trim( (string) $ticket_id ) );
+		$expected_audit_ability = 'mad4b/authorization:' . (string) $expected_ability;
+		$legacy = array();
+
 		foreach ( $events as $event ) {
-			if ( ! is_array( $event ) ) continue;
+			if ( ! is_array( $event ) || 'denied' !== ( isset( $event['status'] ) ? (string) $event['status'] : '' ) ) continue;
 			$sequence = isset( $event['sequence'] ) ? (int) $event['sequence'] : 0;
 			if ( $sequence <= $after_sequence || $sequence >= $before_sequence ) continue;
+			if ( $expected_audit_ability !== ( isset( $event['ability'] ) ? (string) $event['ability'] : '' ) ) continue;
+			if ( $expected_user_id > 0 && isset( $event['user_id'] ) && (int) $event['user_id'] > 0 && (int) $event['user_id'] !== (int) $expected_user_id ) continue;
+
 			$summary = isset( $event['summary'] ) && is_array( $event['summary'] ) ? $event['summary'] : array();
 			if ( 'mad4b_approval_replay_denied' !== ( isset( $summary['reason_code'] ) ? (string) $summary['reason_code'] : '' ) ) continue;
-			if ( empty( $summary['approval_ticket_id'] ) || ! hash_equals( (string) $ticket_id, strtolower( (string) $summary['approval_ticket_id'] ) ) ) continue;
-			return $event;
+			$event_ticket = isset( $summary['approval_ticket_id'] ) ? strtolower( trim( (string) $summary['approval_ticket_id'] ) ) : '';
+
+			// Current evidence must bind directly to the exact ticket. A non-empty
+			// mismatching ticket is never eligible for legacy recovery.
+			if ( '' !== $event_ticket ) {
+				if ( hash_equals( $ticket_id, $event_ticket ) ) return $event;
+				continue;
+			}
+
+			// rc.27 wrote real replay-denial events before the governance-input
+			// ticket could be copied into Identity Context. Recover only a unique
+			// ticket-less replay denial bounded by the exact execution + undo, the
+			// original ability, and (when available) the WordPress subject. Multiple
+			// candidates remain ambiguous and fail closed.
+			$legacy[] = $event;
 		}
-		return array();
+
+		return 1 === count( $legacy ) ? $legacy[0] : array();
 	}
 
 	public static function snapshot_verify( $input = array() ) {
