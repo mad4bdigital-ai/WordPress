@@ -1,0 +1,70 @@
+name: ETG Alpha13 Evidence Hardening V3
+
+on:
+  push:
+    branches:
+      - feat/etg-dynamic-filter-seo-bridge
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "${{ github.event.head_commit.message == 'chore(etg): install evidence hardening runner v3' }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard certified source ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 48936c4ff65f957599b6f18c892bf1ccb239efca HEAD^
+          unexpected="$(git diff --name-only 48936c4ff65f957599b6f18c892bf1ccb239efca..HEAD^ | grep -Ev '^\.github/(workflows/etg-alpha13-evidence-hardening-one-shot\.yml|workflows/etg-alpha13-evidence-hardening-v2\.yml|workflows/etg-alpha13-evidence-debug\.yml|etg-alpha13-evidence-hardening\.py|etg-alpha13-evidence-fixture-fix\.py)$' || true)"
+          test -z "$unexpected"
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Apply bounded patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/etg-alpha13-evidence-hardening.py
+          python3 .github/etg-alpha13-evidence-fixture-fix.py
+
+      - name: Validate patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/JetSmartFilters/FilterDefinitionInspector.php
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/RuntimeInventory.php
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/InventoryReconcilerBindingTrait.php
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/InventoryProfilePlanner.php
+          php wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-filter-definition-drift-smoke.php
+          php wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha12-inventory-control-smoke.php
+
+      - name: Commit source patch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "MAD4B"
+          git config user.email "mad4b.digital@gmail.com"
+          git add \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/JetSmartFilters/FilterDefinitionInspector.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/RuntimeInventory.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/InventoryReconcilerBindingTrait.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Diagnostics/InventoryProfilePlanner.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-filter-definition-drift-smoke.php \
+            wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha12-inventory-control-smoke.php \
+            specs/001-etg-dynamic-filter-seo-operational/contracts/alpha11-runtime-topology-dynamic-content-contract.md \
+            specs/001-etg-dynamic-filter-seo-operational/contracts/alpha12-inventory-control-contract.md
+          test -n "$(git diff --cached --name-only)"
+          git diff --cached --check
+          git commit -m "fix(diagnostics): harden filter evidence and profile drift planning"
+          git push origin HEAD:feat/etg-dynamic-filter-seo-bridge
