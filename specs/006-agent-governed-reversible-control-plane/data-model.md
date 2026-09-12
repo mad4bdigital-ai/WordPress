@@ -2,11 +2,11 @@
 
 Status: Normative schema contract aligned with current implementation
 Storage scope: site-local WordPress database tables
-Schema version: `4`
+Schema version: `5`
 Encoding: UTF-8 / JSON text only where structured extension fields are required
 Secret policy: no plaintext bearer/OAuth credential persistence
 
-Schema v4 contains nine normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically.
+Schema v5 contains nine normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. Schema v5 also moves exact approval candidate/build binding into the approval row itself so the human-decision read model can remain bounded without per-row option lookups.
 
 ## Table 1 — `{prefix}mad4b_scp_agents`
 
@@ -73,7 +73,7 @@ Invariants:
 
 ## Table 4 — `{prefix}mad4b_scp_approval_tickets`
 
-Purpose: one exact, short-lived, single-use approval for high/exceptional impact.
+Purpose: one exact, short-lived, single-use approval for high/exceptional impact plus immutable exact-candidate binding for the governed human-decision flow.
 
 Key columns:
 - `ticket_id CHAR(36) UNIQUE`
@@ -84,15 +84,30 @@ Key columns:
 - `provider`
 - `target_fingerprint`
 - `payload_sha256`
-- `status pending|approved|used|expired|revoked`
+- stored lifecycle `status pending|approved|executing|used|failed|revoked`
 - `reason`
 - `approved_by`, `approved_at`, `expires_at`, `used_at`, `created_at`
+- `candidate_binding_contract`
+- `candidate_sha CHAR(40)`
+- `build_fingerprint CHAR(64)`
+- `binding_environment`
+- `binding_host`
+- `bound_at`
+
+Read-model indexes:
+- `decision_inbox (status, expires_at, id)`
+- `candidate_inbox (candidate_sha, build_fingerprint, status, expires_at)`
 
 Invariants:
 - hash covers the canonical approval envelope, not raw request text;
-- consumption is atomic `approved -> used` with exact NHI/server/ability/provider/target/payload/class match;
-- replay, expiry and class mismatch fail closed;
-- approval never bypasses provider, capability, stale-state, peer or budget gates.
+- an exact remote Staging mutation ticket is bound durably to the candidate SHA, build fingerprint, environment and host on the same ticket row;
+- successful execution claims atomically transition `approved -> executing`; successful completion finalizes `executing -> used`, while an execution failure finalizes `executing -> failed`;
+- replay of `executing`, `used` or `failed` tickets is denied;
+- expiry is enforced against `expires_at` at decision and execution boundaries;
+- `expired` and `stale` are derived read-model states for display/filtering and are not written merely because the console GET page was opened;
+- the normal decision inbox includes only fresh pending `mutation` tickets for `mad4b-write` whose candidate/build binding exactly matches the current governed Staging build;
+- replay, expiry, target/payload mismatch, candidate drift and class mismatch fail closed;
+- approval never bypasses provider, capability, stale-state, peer, physical-schema or budget gates.
 
 ## Table 5 — `{prefix}mad4b_scp_mutations`
 
@@ -234,10 +249,11 @@ Rules:
   "contract": "mad4b.approval.v1",
   "site": "site-origin-or-install-id",
   "agent_public_id": "...",
-  "server_id": "mad4b-admin",
-  "ability": "mad4b/database-update",
-  "provider": "core",
+  "server_id": "mad4b-write",
+  "ability": "elementor/update-widget-settings",
+  "provider": "elementor",
   "target": "...",
+  "ticket_class": "mutation",
   "input": {}
 }
 ```
@@ -258,7 +274,7 @@ Joined audit sink dispatch occurs only after explicit transaction commit. Explic
 
 ## Migration strategy
 
-Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `4`.
+Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `5`.
 
 Activation/boot rules:
 1. `dbDelta()` creates/updates only MAD4B-prefixed tables.
@@ -266,8 +282,10 @@ Activation/boot rules:
 3. Migration never auto-creates enabled NHI authority.
 4. Existing global mutation enablement never implies NHI authority.
 5. Missing/partial schema produces `governance_schema_unavailable` and governed mutation fails closed.
-6. Audit head/legacy anchor is initialized only after schema readiness.
-7. No legacy capability is widened during migration.
+6. A successful deep physical-integrity verification writes the bounded schema-integrity token used by normal read/hot paths; mutation/approval authority boundaries still use the memoized physical guard and fail closed on physical drift.
+7. Legacy option-based candidate bindings may be migrated into v5 ticket-row columns for compatibility, but new exact bindings are persisted on the approval row.
+8. Audit head/legacy anchor is initialized only after schema readiness.
+9. No legacy capability is widened during migration.
 
 ## Retention and evidence
 
