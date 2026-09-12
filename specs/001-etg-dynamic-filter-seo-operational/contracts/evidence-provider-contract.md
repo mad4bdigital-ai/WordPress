@@ -49,6 +49,8 @@ The provider does not reimplement diagnostic semantics. Its callbacks project th
 
 The provider may cache those results only within the current request/provider instance.
 
+For provider-group route attribution, the provider follows the same canonical rule as `InventoryReconcilerBindingTrait::routeProviderGroupDrift()`: a blocking drift belongs to a route when that route ID appears in the drift record's `expected_provider_query_ids`. The observed/misbound query ID by itself MUST NOT attach the drift to an unrelated Profile.
+
 ## Bounded query sections
 
 ### `summary`
@@ -73,6 +75,8 @@ Parameters:
 - `offset` optional
 - `limit` optional, maximum `50`
 
+Filter IDs are deduplicated before the 50-ID ceiling is evaluated. Duplicate IDs do not consume the unique-ID budget. More than 50 unique positive IDs MUST fail closed with `state=invalid_request` / `filter_ids_limit_exceeded`; the provider MUST NOT silently truncate the requested ID set. Non-positive values are not rewritten into positive IDs.
+
 Returns matching bounded surface records plus matching definition-lifecycle issues and semantic-drift records. This section is intended for targeted evidence such as `15032`, `15033`, `15034`, `16084`, and `16086`.
 
 ### `profile_reconciliation`
@@ -84,6 +88,8 @@ Parameters:
 - `limit` optional, maximum `50`
 
 Returns only reconciliation findings scoped to the requested profile, the bounded profile authority fields, matching runtime route bindings, and provider-group drift that actually belongs to that profile's configured route IDs.
+
+Provider-group drift attribution follows canonical expected-route semantics: only blocking drift whose `expected_provider_query_ids` intersects the Profile route IDs is returned in `route_provider_group_drift`. A wrong `observed_provider_query_id` remains visible in the returned evidence but is not itself used to assign the drift to a Profile.
 
 This section must not attach unrelated global drift to a profile merely because it exists in the same site inventory.
 
@@ -131,9 +137,13 @@ The central transport may translate `next_offset` into an opaque cursor, but mus
 ## Fail-closed rules
 
 - Unsupported section: `state=invalid_request` / `unsupported_section`.
-- Missing `filter_ids`: `state=invalid_request` / `filter_ids_required`.
+- Missing or wholly invalid/non-positive `filter_ids`: `state=invalid_request` / `filter_ids_required`.
+- More than 50 unique positive `filter_ids`: `state=invalid_request` / `filter_ids_limit_exceeded`.
 - Missing or unknown `profile_id`: `state=invalid_request` with the exact reason.
-- Runtime Inventory callback unavailable/error: `state=provider_unavailable`.
+- Runtime Inventory callback unavailable/error: `state=provider_unavailable` / `runtime_inventory_unavailable`.
+- ProfileRegistry callback unavailable/error: `state=provider_unavailable` / `profile_registry_unavailable`.
+- Inventory Reconciliation callback unavailable/error/empty result: `state=provider_unavailable` / `reconciliation_unavailable`.
+- Provider/source failures MUST NOT be represented as `invalid_request`.
 - No query response authorizes mutation or acceptance by itself.
 - Source truncation remains visible and must not be converted into evidence completeness.
 

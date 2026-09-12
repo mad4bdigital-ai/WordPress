@@ -1,6 +1,10 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge\Diagnostics;
 
+require_once dirname( __DIR__ ) . '/Identifiers/QueryId.php';
+
+use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
+
 /**
  * Bounded, non-authorizing evidence adapter for central diagnostic transports.
  *
@@ -22,6 +26,9 @@ final class EvidenceProvider {
     private $snapshotCache = null;
     private $reconciliationCache = null;
     private $profilesCache = null;
+    private $snapshotError = '';
+    private $reconciliationError = '';
+    private $profilesError = '';
 
     public function __construct( callable $snapshotProvider, callable $reconciliationProvider, callable $profilesProvider ) {
         $this->snapshotProvider = $snapshotProvider;
@@ -100,7 +107,8 @@ final class EvidenceProvider {
 
         $snapshot = $this->snapshot();
         if ( ! $snapshot ) {
-            return $this->envelope( $section, 'provider_unavailable', array(), array( 'runtime_inventory_unavailable' ) );
+            $reason = '' !== $this->snapshotError ? $this->snapshotError : 'runtime_inventory_unavailable';
+            return $this->envelope( $section, 'provider_unavailable', array(), array( $reason ) );
         }
 
         switch ( $section ) {
@@ -119,7 +127,8 @@ final class EvidenceProvider {
             case 'profile_reconciliation':
                 $payload = $this->profileReconciliationPayload( $snapshot, $request );
                 if ( isset( $payload['error'] ) ) {
-                    return $this->envelope( $section, 'invalid_request', $payload, array( (string) $payload['error'] ), $snapshot );
+                    $state = 'provider_unavailable' === (string) ( $payload['error_state'] ?? '' ) ? 'provider_unavailable' : 'invalid_request';
+                    return $this->envelope( $section, $state, $payload, array( (string) $payload['error'] ), $snapshot );
                 }
                 break;
             case 'provider_group_drift':
@@ -175,8 +184,17 @@ final class EvidenceProvider {
     }
 
     private function filtersPayload( array $snapshot, array $request ): array {
-        $ids = $this->filterIds( $request['filter_ids'] ?? ( $request['ids'] ?? array() ) );
-        if ( ! $ids ) { return array( 'error' => 'filter_ids_required' ); }
+        $selection = $this->filterIds( $request['filter_ids'] ?? ( $request['ids'] ?? array() ) );
+        if ( '' !== (string) ( $selection['error'] ?? '' ) ) {
+            return array(
+                'error' => (string) $selection['error'],
+                'max_filter_ids' => self::MAX_FILTER_IDS,
+                'requested_unique_filter_ids' => (int) ( $selection['unique_count'] ?? 0 ),
+            );
+        }
+        $ids = (array) ( $selection['ids'] ?? array() );
+        if ( ! $ids ) { return array( 'error' => 'filter_ids_required', 'max_filter_ids' => self::MAX_FILTER_IDS, 'requested_unique_filter_ids' => 0 ); }
+
         $lookup = array_fill_keys( $ids, true );
         $filters = (array) ( (array) ( $snapshot['inventory'] ?? array() )['jet_smart_filters'] ?? array() );
 
@@ -214,12 +232,19 @@ final class EvidenceProvider {
     private function profileReconciliationPayload( array $snapshot, array $request ): array {
         $profileId = $this->cleanKey( $request['profile_id'] ?? '' );
         if ( '' === $profileId ) { return array( 'error' => 'profile_id_required' ); }
+
         $profiles = $this->profiles();
+        if ( '' !== $this->profilesError ) {
+            return array( 'error' => $this->profilesError, 'error_state' => 'provider_unavailable', 'profile_id' => $profileId );
+        }
         $profile = isset( $profiles[ $profileId ] ) && is_array( $profiles[ $profileId ] ) ? $profiles[ $profileId ] : array();
         if ( ! $profile ) { return array( 'error' => 'profile_not_found', 'profile_id' => $profileId ); }
 
         $reconciliation = $this->reconciliation( $snapshot, $profiles );
-        if ( ! $reconciliation ) { return array( 'error' => 'reconciliation_unavailable', 'profile_id' => $profileId ); }
+        if ( '' !== $this->reconciliationError || ! $reconciliation ) {
+            $reason = '' !== $this->reconciliationError ? $this->reconciliationError : 'reconciliation_unavailable';
+            return array( 'error' => $reason, 'error_state' => 'provider_unavailable', 'profile_id' => $profileId );
+        }
 
         $scope = 'profile:' . $profileId;
         $findings = array();
@@ -232,22 +257,18 @@ final class EvidenceProvider {
         $routeIds = array();
         foreach ( (array) ( $profile['routes'] ?? array() ) as $route ) {
             if ( ! is_array( $route ) ) { continue; }
-            $id = trim( (string) ( $route['provider_query_id'] ?? ( $route['query_id'] ?? '' ) ) );
+            $id = QueryId::normalize( $route['provider_query_id'] ?? ( $route['query_id'] ?? '' ) );
             if ( '' !== $id ) { $routeIds[ $id ] = true; }
         }
         $topology = (array) ( (array) ( $snapshot['inventory'] ?? array() )['elementor_topology'] ?? array() );
         $bindings = array();
         foreach ( (array) ( $topology['bindings'] ?? array() ) as $binding ) {
             if ( ! is_array( $binding ) ) { continue; }
-            $id = trim( (string) ( $binding['provider_query_id'] ?? '' ) );
+            $id = QueryId::normalize( $binding['provider_query_id'] ?? '' );
             if ( '' !== $id && isset( $routeIds[ $id ] ) ) { $bindings[] = $binding; }
         }
-        $routeDrift = array();
-        foreach ( (array) ( $topology['provider_group_drift'] ?? array() ) as $drift ) {
-            if ( ! is_array( $drift ) ) { continue; }
-            $id = trim( (string) ( $drift['provider_query_id'] ?? ( $drift['observed_provider_query_id'] ?? '' ) ) );
-            if ( '' !== $id && isset( $routeIds[ $id ] ) ) { $routeDrift[] = $drift; }
-        }
+
+        $routeDrift = $this->routeProviderGroupDrift( $topology, $routeIds );
 
         $paged['profile_id'] = $profileId;
         $paged['profile'] = $this->pick( $profile, array(
@@ -263,6 +284,28 @@ final class EvidenceProvider {
         $paged['route_provider_group_drift'] = array_slice( $routeDrift, 0, self::MAX_PAGE_SIZE );
         $paged['route_provider_group_drift_truncated'] = count( $routeDrift ) > self::MAX_PAGE_SIZE;
         return $paged;
+    }
+
+    /**
+     * Mirror InventoryReconcilerBindingTrait::routeProviderGroupDrift semantics:
+     * a blocking provider-group drift belongs to a route when that route is one
+     * of the drift record's expected provider query IDs. The observed/misbound
+     * query ID alone must never assign the drift to an unrelated profile.
+     */
+    private function routeProviderGroupDrift( array $topology, array $routeIds ): array {
+        if ( ! $routeIds ) { return array(); }
+        $out = array();
+        foreach ( (array) ( $topology['provider_group_drift'] ?? array() ) as $drift ) {
+            if ( ! is_array( $drift ) || 'blocking' !== (string) ( $drift['severity_hint'] ?? 'warning' ) ) { continue; }
+            $belongs = false;
+            foreach ( (array) ( $drift['expected_provider_query_ids'] ?? array() ) as $candidate ) {
+                $candidate = QueryId::normalize( $candidate );
+                if ( '' !== $candidate && isset( $routeIds[ $candidate ] ) ) { $belongs = true; break; }
+            }
+            if ( ! $belongs ) { continue; }
+            $out[] = $drift;
+        }
+        return $out;
     }
 
     private function providerGroupDriftPayload( array $snapshot, array $request ): array {
@@ -302,10 +345,18 @@ final class EvidenceProvider {
 
     private function snapshot(): array {
         if ( null !== $this->snapshotCache ) { return $this->snapshotCache; }
+        $this->snapshotError = '';
         try {
             $value = call_user_func( $this->snapshotProvider );
-            $this->snapshotCache = is_array( $value ) ? $value : array();
+            if ( ! is_array( $value ) || ! $value ) {
+                $this->snapshotError = 'runtime_inventory_unavailable';
+                $this->snapshotCache = array();
+            } else {
+                $this->snapshotCache = $value;
+            }
         } catch ( \Throwable $error ) {
+            unset( $error );
+            $this->snapshotError = 'runtime_inventory_unavailable';
             $this->snapshotCache = array();
         }
         return $this->snapshotCache;
@@ -313,10 +364,16 @@ final class EvidenceProvider {
 
     private function profiles(): array {
         if ( null !== $this->profilesCache ) { return $this->profilesCache; }
+        $this->profilesError = '';
         try {
             $value = call_user_func( $this->profilesProvider );
-            $value = is_array( $value ) ? $value : array();
+            if ( ! is_array( $value ) ) {
+                $this->profilesError = 'profile_registry_unavailable';
+                $value = array();
+            }
         } catch ( \Throwable $error ) {
+            unset( $error );
+            $this->profilesError = 'profile_registry_unavailable';
             $value = array();
         }
         $out = array();
@@ -331,10 +388,18 @@ final class EvidenceProvider {
 
     private function reconciliation( array $snapshot, array $profiles ): array {
         if ( null !== $this->reconciliationCache ) { return $this->reconciliationCache; }
+        $this->reconciliationError = '';
         try {
             $value = call_user_func( $this->reconciliationProvider, $snapshot, $profiles );
-            $this->reconciliationCache = is_array( $value ) ? $value : array();
+            if ( ! is_array( $value ) || ! $value ) {
+                $this->reconciliationError = 'reconciliation_unavailable';
+                $this->reconciliationCache = array();
+            } else {
+                $this->reconciliationCache = $value;
+            }
         } catch ( \Throwable $error ) {
+            unset( $error );
+            $this->reconciliationError = 'reconciliation_unavailable';
             $this->reconciliationCache = array();
         }
         return $this->reconciliationCache;
@@ -359,15 +424,40 @@ final class EvidenceProvider {
         ) );
     }
 
+    /**
+     * Return deduplicated positive filter IDs. The 50-ID ceiling applies after
+     * deduplication; exceeding it fails closed instead of silently truncating.
+     */
     private function filterIds( $value ): array {
         if ( is_string( $value ) ) { $value = preg_split( '/[\s,]+/', $value, -1, PREG_SPLIT_NO_EMPTY ); }
-        if ( ! is_array( $value ) ) { return array(); }
+        if ( ! is_array( $value ) ) { return array( 'ids' => array(), 'unique_count' => 0, 'error' => 'filter_ids_required' ); }
+
         $ids = array();
-        foreach ( array_slice( $value, 0, self::MAX_FILTER_IDS ) as $raw ) {
-            $id = $this->positiveInt( $raw );
-            if ( $id > 0 ) { $ids[ $id ] = true; }
+        foreach ( $value as $raw ) {
+            $id = $this->strictPositiveInt( $raw );
+            if ( $id < 1 || isset( $ids[ $id ] ) ) { continue; }
+            $ids[ $id ] = true;
+            if ( count( $ids ) > self::MAX_FILTER_IDS ) {
+                return array( 'ids' => array(), 'unique_count' => count( $ids ), 'error' => 'filter_ids_limit_exceeded' );
+            }
         }
-        return array_map( 'intval', array_keys( $ids ) );
+
+        return array(
+            'ids' => array_map( 'intval', array_keys( $ids ) ),
+            'unique_count' => count( $ids ),
+            'error' => $ids ? '' : 'filter_ids_required',
+        );
+    }
+
+    private function strictPositiveInt( $value ): int {
+        if ( is_int( $value ) ) { return $value > 0 ? $value : 0; }
+        if ( is_string( $value ) ) {
+            $value = trim( $value );
+            if ( '' === $value || ! preg_match( '/\A[1-9][0-9]*\z/', $value ) ) { return 0; }
+            $int = (int) $value;
+            return $int > 0 ? $int : 0;
+        }
+        return 0;
     }
 
     private function surfaceRecord( array $surface ): array {

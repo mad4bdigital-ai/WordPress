@@ -79,14 +79,20 @@ $profiles=array(
         'taxonomy_rules'=>array('guide-languages_jet'=>array('role'=>'guide_language')),'allowed_taxonomy_sets'=>array(array('guide-languages_jet')),
         'publication'=>array('sitemap'=>false,'provider_observation_verified'=>false,'result_count_parity_verified'=>false),
     ),
+    'properties'=>array(
+        'id'=>'properties','enabled'=>false,'post_types'=>array('properties'),'require_post_type_binding'=>true,'post_type_authority'=>'query_builder',
+        'archive_paths'=>array('/properties/'),'routes'=>array(array('provider'=>'jet-engine','query_id'=>'property_query_archive')),
+        'taxonomy_rules'=>array(),'allowed_taxonomy_sets'=>array(),
+        'publication'=>array('sitemap'=>false,'provider_observation_verified'=>false,'result_count_parity_verified'=>false),
+    ),
 );
 
 $reconciliation=array(
     'contract'=>'etg.dfsb.inventory-reconciliation.v3','authorizing'=>false,'read_only'=>true,'profile_mutation'=>false,'requires_operator_review'=>true,
-    'state'=>'review_required','summary'=>array('blocking'=>0,'warnings'=>1,'info'=>1,'profiles'=>1),
+    'state'=>'review_required','summary'=>array('blocking'=>1,'warnings'=>1,'info'=>0,'profiles'=>2),
     'findings'=>array(
         array('severity'=>'warning','code'=>'profile_filter_taxonomy_target_review','scope'=>'profile:tours','details'=>array('provider_query_id'=>'tours_query_archive','profile_enabled'=>false,'authorizing'=>false,'requires_operator_review'=>true)),
-        array('severity'=>'info','code'=>'unprofiled_post_type_discovered','scope'=>'post_type:properties','details'=>array('post_type'=>'properties')),
+        array('severity'=>'blocking','code'=>'profile_provider_group_drift','scope'=>'profile:properties','details'=>array('provider_query_id'=>'property_query_archive','profile_enabled'=>false,'authorizing'=>false)),
     ),
 );
 
@@ -121,18 +127,70 @@ etg_evidence_same(2,$filters['payload']['total'],'only selected filter surfaces 
 etg_evidence_same('filter_post_missing',$filters['payload']['definition_issues'][0]['definition_reason'],'lifecycle issue is preserved');
 etg_evidence_same('review',$filters['payload']['semantic_drift'][0]['severity_hint'],'semantic mismatch stays review-only');
 
+$dedupeInput=array_fill(0,50,15034);$dedupeInput[]=16084;
+$deduped=$provider->query(array('section'=>'filters','filter_ids'=>$dedupeInput));
+etg_evidence_same('ok',$deduped['state'],'duplicates do not consume the unique-ID budget');
+etg_evidence_same(array(15034,16084),$deduped['payload']['requested_filter_ids'],'filter IDs are deduplicated before enforcing the ceiling');
+
+$tooMany=array();for($i=1;$i<=51;$i++){$tooMany[]=$i;}
+$overflow=$provider->query(array('section'=>'filters','filter_ids'=>$tooMany));
+etg_evidence_same('invalid_request',$overflow['state'],'more than 50 unique filter IDs fail closed');
+etg_evidence_expect(in_array('filter_ids_limit_exceeded',$overflow['errors'],true),'filter ID overflow reason is explicit');
+etg_evidence_same(51,$overflow['payload']['requested_unique_filter_ids'],'overflow reports the observed unique count without truncating silently');
+
+$negativeOnly=$provider->query(array('section'=>'filters','filter_ids'=>array(-15034,0)));
+etg_evidence_same('invalid_request',$negativeOnly['state'],'non-positive filter IDs are not rewritten into valid IDs');
+etg_evidence_expect(in_array('filter_ids_required',$negativeOnly['errors'],true),'non-positive IDs do not pass the positive-ID contract');
+
 $tours=$provider->query(array('section'=>'profile_reconciliation','profile_id'=>'tours'));
 etg_evidence_same('tours',$tours['payload']['profile_id'],'profile reconciliation is scoped');
 etg_evidence_same(false,$tours['payload']['profile']['enabled'],'disabled profile status is preserved');
 etg_evidence_same(1,$tours['payload']['total'],'unrelated reconciliation findings are excluded');
 etg_evidence_same('profile_filter_taxonomy_target_review',$tours['payload']['items'][0]['code'],'Tours review finding is returned');
 etg_evidence_same('tours_query_archive',$tours['payload']['route_bindings'][0]['provider_query_id'],'route binding evidence is returned');
-etg_evidence_same(0,count($tours['payload']['route_provider_group_drift']),'unrelated global drift is not attached to Tours');
+etg_evidence_same(0,count($tours['payload']['route_provider_group_drift']),'observed misbound query ID does not attach unrelated drift to Tours');
+
+$properties=$provider->query(array('section'=>'profile_reconciliation','profile_id'=>'properties'));
+etg_evidence_same('ok',$properties['state'],'expected-route provider drift remains queryable');
+etg_evidence_same(1,count($properties['payload']['route_provider_group_drift']),'drift is attached to the profile whose route appears in expected_provider_query_ids');
+etg_evidence_same('property_query_archive',$properties['payload']['route_provider_group_drift'][0]['expected_provider_query_ids'][0],'canonical expected route identity is preserved');
+etg_evidence_same('trans_query_archive',$properties['payload']['route_provider_group_drift'][0]['observed_provider_query_id'],'misbound observed route remains visible as evidence');
 
 $drift=$provider->query(array('section'=>'provider_group_drift','template_id'=>44320,'node_id'=>'b417678'));
 etg_evidence_same(1,$drift['payload']['total'],'targeted provider drift is returned');
 etg_evidence_same('provider_group_post_type_mismatch',$drift['payload']['items'][0]['reason'],'provider drift reason preserved');
 etg_evidence_same(false,$drift['payload']['items'][0]['authorizing'],'provider drift remains non-authorizing');
+
+$unknownProfile=$provider->query(array('section'=>'profile_reconciliation','profile_id'=>'missing-profile'));
+etg_evidence_same('invalid_request',$unknownProfile['state'],'unknown profile remains a client request error');
+etg_evidence_expect(in_array('profile_not_found',$unknownProfile['errors'],true),'unknown profile reason is explicit');
+
+$snapshotFailure=new EvidenceProvider(
+    static function():array{throw new RuntimeException('snapshot failure');},
+    static function(array $current,array $currentProfiles):array{unset($current,$currentProfiles);return array();},
+    static function():array{return array();}
+);
+$snapshotUnavailable=$snapshotFailure->query(array('section'=>'summary'));
+etg_evidence_same('provider_unavailable',$snapshotUnavailable['state'],'runtime inventory callback failure is provider_unavailable');
+etg_evidence_expect(in_array('runtime_inventory_unavailable',$snapshotUnavailable['errors'],true),'runtime inventory failure reason is explicit');
+
+$profileFailure=new EvidenceProvider(
+    static function()use($snapshot):array{return $snapshot;},
+    static function(array $current,array $currentProfiles)use($reconciliation):array{unset($current,$currentProfiles);return $reconciliation;},
+    static function():array{throw new RuntimeException('profile registry failure');}
+);
+$profilesUnavailable=$profileFailure->query(array('section'=>'profile_reconciliation','profile_id'=>'tours'));
+etg_evidence_same('provider_unavailable',$profilesUnavailable['state'],'ProfileRegistry callback failure is not misclassified as invalid_request');
+etg_evidence_expect(in_array('profile_registry_unavailable',$profilesUnavailable['errors'],true),'ProfileRegistry failure reason is explicit');
+
+$reconciliationFailure=new EvidenceProvider(
+    static function()use($snapshot):array{return $snapshot;},
+    static function(array $current,array $currentProfiles):array{unset($current,$currentProfiles);throw new RuntimeException('reconciliation failure');},
+    static function()use($profiles):array{return $profiles;}
+);
+$reconciliationUnavailable=$reconciliationFailure->query(array('section'=>'profile_reconciliation','profile_id'=>'tours'));
+etg_evidence_same('provider_unavailable',$reconciliationUnavailable['state'],'reconciliation callback failure is not misclassified as invalid_request');
+etg_evidence_expect(in_array('reconciliation_unavailable',$reconciliationUnavailable['errors'],true),'reconciliation failure reason is explicit');
 
 $invalid=$provider->query(array('section'=>'not-a-section'));
 etg_evidence_same('invalid_request',$invalid['state'],'unknown section fails closed before transport work');
