@@ -146,6 +146,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 		$original_execute = $args['execute_callback'];
 		$args['execute_callback'] = static function ( $input = null ) use ( $original_execute ) {
+			if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport() ) return call_user_func( $original_execute, $input );
 			$restored = MAD4B_SCP_Staging_Write_Planning_Guard::restore_undo_execution_input( $input );
 			return call_user_func( $original_execute, $restored );
 		};
@@ -162,6 +163,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		if ( isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) ) {
 			$original_permission = $args['permission_callback'];
 			$args['permission_callback'] = static function ( $input = null ) use ( $original_permission ) {
+				if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport() ) return call_user_func( $original_permission, $input );
 				MAD4B_SCP_Staging_Write_Planning_Guard::remember_undo_request_reason( $input );
 				$canonical = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_undo_authorization_input( $input );
 				if ( is_wp_error( $canonical ) ) return $canonical;
@@ -172,6 +174,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		if ( isset( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
 			$original_execute = $args['execute_callback'];
 			$args['execute_callback'] = static function ( $input = null ) use ( $original_execute ) {
+				if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport() ) return call_user_func( $original_execute, $input );
 				MAD4B_SCP_Staging_Write_Planning_Guard::remember_undo_request_reason( $input );
 				$canonical = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_undo_authorization_input( $input );
 				if ( is_wp_error( $canonical ) ) return $canonical;
