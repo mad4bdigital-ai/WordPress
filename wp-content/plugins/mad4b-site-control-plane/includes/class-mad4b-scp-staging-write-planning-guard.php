@@ -56,14 +56,14 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
 			if ( ! MAD4B_SCP_Staging_Write_Planning_Guard::is_remote_write_transport() ) return true;
 
-			$canonical = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
-			if ( is_wp_error( $canonical ) ) return $canonical;
-			$target_guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $canonical );
+			$input = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_remote_plan_input( $input );
+			if ( is_wp_error( $input ) ) return $input;
+			$target_guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $input );
 			if ( is_wp_error( $target_guard ) ) return $target_guard;
 			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Governed Staging mutation authority is required to create an approval plan.' );
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 
-			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $canonical );
+			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input );
 			return is_wp_error( $decision ) ? $decision : true;
 		};
 
