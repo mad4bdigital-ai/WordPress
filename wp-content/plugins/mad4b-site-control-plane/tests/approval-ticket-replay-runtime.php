@@ -23,6 +23,7 @@ function get_option( $name, $default = false ) { return $default; }
 
 class MAD4B_SCP_Schema {
 	public static function tables() { return array( 'approvals' => 'wp_mad4b_approvals' ); }
+	public static function critical_ready() { return true; }
 }
 class MAD4B_SCP_Audit {
 	public static function record( $ability, $summary, $status = 'ok' ) { return true; }
