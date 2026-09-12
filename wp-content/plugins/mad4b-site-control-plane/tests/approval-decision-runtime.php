@@ -11,6 +11,7 @@ class WP_Error {
 	public function get_error_message() { return $this->message; }
 }
 class MAD4B_SCP_Staging_Write_Authority { const AGENT_SLUG = 'chatgpt-staging-write'; }
+class MAD4B_SCP_Approval_Tickets { const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v1'; }
 
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function add_action() {}
