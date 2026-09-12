@@ -7,10 +7,12 @@ use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
 
 final class FilterDefinitionInspector {
     const CONTRACT = 'etg.dfsb.jet-smart-filters-definition-inspection.v1';
+    const DIAGNOSTIC_CONTRACT = 'etg.dfsb.jet-smart-filters-diagnostic.v2';
     const MAX_TEMPLATES = 500;
     const MAX_ELEMENTS = 10000;
     const MAX_SURFACES = 1000;
     const MAX_DRIFT = 200;
+    const MAX_DEFINITION_ISSUES = 200;
 
     private $templateProvider;
     private $filterProvider;
@@ -58,9 +60,10 @@ final class FilterDefinitionInspector {
             $target = sanitize_key( (string) ( $surface['target_taxonomy'] ?? '' ) );
             if ( '' === $source || '' === $target || $source === $target ) { continue; }
             $drift[] = array(
-                'status' => 'drift',
-                'reason' => 'source_taxonomy_query_target_mismatch',
-                'severity_hint' => 'blocking',
+                'status' => 'mismatch_observed',
+                'reason' => 'source_taxonomy_query_target_mismatch_observed',
+                'severity_hint' => 'review',
+                'semantic_status' => 'mismatch_observed',
                 'template_id' => absint( $surface['template_id'] ?? 0 ),
                 'node_id' => sanitize_text_field( (string) ( $surface['node_id'] ?? '' ) ),
                 'widget_type' => sanitize_key( (string) ( $surface['widget_type'] ?? '' ) ),
@@ -70,6 +73,8 @@ final class FilterDefinitionInspector {
                 'source_taxonomy' => $source,
                 'target_taxonomy' => $target,
                 'target_source' => sanitize_key( (string) ( $surface['target_source'] ?? '' ) ),
+                'custom_query_enabled' => ! empty( $surface['custom_query_enabled'] ),
+                'query_builder_query' => sanitize_text_field( (string) ( $surface['query_builder_query'] ?? '' ) ),
                 'authorizing' => false,
             );
         }
@@ -81,8 +86,38 @@ final class FilterDefinitionInspector {
 
         $available = ! empty( $templates['available'] ) && $definitionSourceAvailable;
         $definitionAvailableCount = 0;
-        foreach ( $definitions as $definition ) { if ( is_array( $definition ) && ! empty( $definition['available'] ) ) { $definitionAvailableCount++; } }
+        $definitionIssues = array();
+        $definitionReasonCounts = array();
+        foreach ( $definitions as $filterId => $definition ) {
+            if ( ! is_array( $definition ) ) { continue; }
+            $reason = sanitize_key( (string) ( $definition['definition_reason'] ?? ( ! empty( $definition['available'] ) ? 'resolved' : 'definition_unavailable' ) ) );
+            if ( '' === $reason ) { $reason = 'definition_unavailable'; }
+            $definitionReasonCounts[ $reason ] = isset( $definitionReasonCounts[ $reason ] ) ? $definitionReasonCounts[ $reason ] + 1 : 1;
+            if ( ! empty( $definition['available'] ) ) { $definitionAvailableCount++; continue; }
+            if ( count( $definitionIssues ) < self::MAX_DEFINITION_ISSUES ) {
+                $definitionIssues[] = array(
+                    'filter_id' => absint( $filterId ),
+                    'definition_lifecycle_status' => sanitize_key( (string) ( $definition['definition_lifecycle_status'] ?? 'unknown' ) ),
+                    'definition_reason' => $reason,
+                    'post_exists' => array_key_exists( 'post_exists', $definition ) ? $definition['post_exists'] : null,
+                    'post_status' => sanitize_key( (string) ( $definition['post_status'] ?? '' ) ),
+                    'post_type' => sanitize_key( (string) ( $definition['post_type'] ?? '' ) ),
+                    'authorizing' => false,
+                );
+            }
+        }
+        ksort( $definitionReasonCounts, SORT_STRING );
         $definitionUnavailableCount = max( 0, count( $definitions ) - $definitionAvailableCount );
+
+        $identityResolutionCounts = array();
+        foreach ( $surfaces as $surface ) {
+            if ( ! is_array( $surface ) || empty( $surface['filter_identity_expected'] ) ) { continue; }
+            $status = sanitize_key( (string) ( $surface['identity_resolution_status'] ?? 'unknown' ) );
+            if ( '' === $status ) { $status = 'unknown'; }
+            $identityResolutionCounts[ $status ] = isset( $identityResolutionCounts[ $status ] ) ? $identityResolutionCounts[ $status ] + 1 : 1;
+        }
+        ksort( $identityResolutionCounts, SORT_STRING );
+
         $evidenceReasons = array();
         if ( ! $available ) { $evidenceReasons[] = 'definition_sources_unavailable'; }
         if ( $unresolvedSurfaceCount > 0 ) { $evidenceReasons[] = 'filter_identity_unresolved'; }
@@ -93,6 +128,7 @@ final class FilterDefinitionInspector {
         $evidenceState = ! $available ? 'unavailable' : ( $evidenceComplete ? 'complete' : 'incomplete' );
         $result = array(
             'contract' => self::CONTRACT,
+            'diagnostic_contract' => self::DIAGNOSTIC_CONTRACT,
             'authorizing' => false,
             'read_only' => true,
             'profile_mutation' => false,
@@ -110,11 +146,16 @@ final class FilterDefinitionInspector {
             'control_surface_count' => $controlSurfaceCount,
             'resolved_surface_count' => $resolvedSurfaceCount,
             'unresolved_surface_count' => $unresolvedSurfaceCount,
+            'identity_resolution_counts' => $identityResolutionCounts,
+            'identity_resolution_counts_truncated' => $surfaceCount > self::MAX_SURFACES,
             'surfaces' => array_slice( $surfaces, 0, self::MAX_SURFACES ),
             'surfaces_truncated' => $surfaceCount > self::MAX_SURFACES,
             'definition_count' => count( $definitions ),
             'definition_available_count' => $definitionAvailableCount,
             'definition_unavailable_count' => $definitionUnavailableCount,
+            'definition_reason_counts' => $definitionReasonCounts,
+            'definition_unavailable' => array_slice( $definitionIssues, 0, self::MAX_DEFINITION_ISSUES ),
+            'definition_unavailable_truncated' => $definitionUnavailableCount > self::MAX_DEFINITION_ISSUES,
             'evidence_complete' => $evidenceComplete,
             'evidence_state' => $evidenceState,
             'evidence_reasons' => $evidenceReasons,
@@ -179,14 +220,16 @@ final class FilterDefinitionInspector {
             if ( 0 === strpos( $widgetType, 'jet-smart-filters-' ) ) {
                 $surfaceCount++;
                 $identityExpected = $this->filterIdentityExpected( $widgetType );
-                $filterId = 0;
+                $identity = array( 'id'=>0, 'status'=>'not_applicable', 'reason'=>'filter_identity_not_applicable', 'source'=>'' );
                 $definition = array();
                 $resolutionReason = 'filter_identity_not_applicable';
+                $filterId = 0;
                 if ( $identityExpected ) {
                     $candidateSurfaceCount++;
-                    $filterId = $this->filterId( $settings );
+                    $identity = $this->filterIdentity( $settings, $widgetType );
+                    $filterId = (int) ( $identity['id'] ?? 0 );
                     $resolutionReason = 'filter_id_unresolved';
-                    if ( $filterId > 0 ) {
+                    if ( 'resolved' === (string) ( $identity['status'] ?? '' ) && $filterId > 0 ) {
                         $resolvedSurfaceCount++;
                         if ( ! array_key_exists( $filterId, $definitions ) ) { $definitions[ $filterId ] = $this->definition( $filterId ); }
                         $definition = is_array( $definitions[ $filterId ] ) ? $definitions[ $filterId ] : array();
@@ -197,6 +240,12 @@ final class FilterDefinitionInspector {
                 } else {
                     $controlSurfaceCount++;
                 }
+                $sourceTaxonomy = sanitize_key( (string) ( $definition['source_taxonomy'] ?? '' ) );
+                $targetTaxonomy = sanitize_key( (string) ( $definition['target_taxonomy'] ?? '' ) );
+                $taxonomySemanticStatus = 'not_evaluable';
+                if ( 'taxonomies' === sanitize_key( (string) ( $definition['data_source'] ?? '' ) ) && '' !== $sourceTaxonomy && '' !== $targetTaxonomy ) {
+                    $taxonomySemanticStatus = $sourceTaxonomy === $targetTaxonomy ? 'aligned' : 'mismatch_observed';
+                }
                 if ( count( $surfaces ) < self::MAX_SURFACES ) {
                     $surfaces[] = array(
                         'template_id'=>$templateId,
@@ -205,17 +254,28 @@ final class FilterDefinitionInspector {
                         'surface_role'=>$identityExpected ? 'definition_candidate' : 'control',
                         'filter_identity_expected'=>$identityExpected,
                         'filter_id'=>$filterId,
-                        'filter_identity_resolved'=>$identityExpected && $filterId > 0,
+                        'filter_identity_resolved'=>$identityExpected && 'resolved' === (string) ( $identity['status'] ?? '' ) && $filterId > 0,
+                        'identity_resolution_status'=>sanitize_key( (string) ( $identity['status'] ?? 'unknown' ) ),
+                        'identity_resolution_reason'=>sanitize_key( (string) ( $identity['reason'] ?? 'unknown' ) ),
+                        'identity_source'=>sanitize_key( (string) ( $identity['source'] ?? '' ) ),
                         'resolution_reason'=>$resolutionReason,
                         'query_id'=>QueryId::normalize( $settings['query_id'] ?? '' ),
                         'content_provider'=>sanitize_key( (string) ( $settings['content_provider'] ?? '' ) ),
                         'definition_available'=>! empty( $definition['available'] ),
+                        'definition_lifecycle_status'=>sanitize_key( (string) ( $definition['definition_lifecycle_status'] ?? ( $identityExpected ? 'unknown' : 'not_applicable' ) ) ),
+                        'definition_reason'=>sanitize_key( (string) ( $definition['definition_reason'] ?? ( ! empty( $definition['available'] ) ? 'resolved' : '' ) ) ),
+                        'definition_post_exists'=>array_key_exists( 'post_exists', $definition ) ? $definition['post_exists'] : null,
+                        'definition_post_status'=>sanitize_key( (string) ( $definition['post_status'] ?? '' ) ),
+                        'definition_post_type'=>sanitize_key( (string) ( $definition['post_type'] ?? '' ) ),
                         'data_source'=>sanitize_key( (string) ( $definition['data_source'] ?? '' ) ),
-                        'source_taxonomy'=>sanitize_key( (string) ( $definition['source_taxonomy'] ?? '' ) ),
-                        'target_taxonomy'=>sanitize_key( (string) ( $definition['target_taxonomy'] ?? '' ) ),
+                        'source_taxonomy'=>$sourceTaxonomy,
+                        'target_taxonomy'=>$targetTaxonomy,
                         'target_source'=>sanitize_key( (string) ( $definition['target_source'] ?? '' ) ),
+                        'taxonomy_semantic_status'=>$taxonomySemanticStatus,
                         'query_var'=>sanitize_text_field( (string) ( $definition['query_var'] ?? '' ) ),
                         'custom_query_var'=>sanitize_text_field( (string) ( $definition['custom_query_var'] ?? '' ) ),
+                        'custom_query_enabled'=>! empty( $definition['custom_query_enabled'] ),
+                        'query_builder_query'=>sanitize_text_field( (string) ( $definition['query_builder_query'] ?? '' ) ),
                     );
                 }
             }
@@ -242,37 +302,103 @@ final class FilterDefinitionInspector {
         return ! in_array( $widgetType, $controls, true );
     }
 
-    private function filterId( array $settings ): int {
+    private function filterWidgetSupported( string $widgetType ): bool {
+        return in_array( $widgetType, array(
+            'jet-smart-filters-alphabet',
+            'jet-smart-filters-checkboxes',
+            'jet-smart-filters-date-period',
+            'jet-smart-filters-date-range',
+            'jet-smart-filters-radio',
+            'jet-smart-filters-range',
+            'jet-smart-filters-rating',
+            'jet-smart-filters-search',
+            'jet-smart-filters-select',
+            'jet-smart-filters-time-range',
+            'jet-smart-filters-visual',
+        ), true );
+    }
+
+    private function filterIdentity( array $settings, string $widgetType ): array {
+        if ( ! $this->filterWidgetSupported( $widgetType ) ) {
+            return array( 'id'=>0, 'status'=>'unsupported', 'reason'=>'unsupported_filter_widget', 'source'=>'' );
+        }
         $ids = array();
+        $present = false;
+        $nonEmpty = false;
+        $malformed = false;
+        $source = '';
         foreach ( array( 'filter_id', 'filter' ) as $key ) {
             if ( ! array_key_exists( $key, $settings ) ) { continue; }
+            $present = true;
+            if ( '' === $source ) { $source = $key; }
             $value = $settings[ $key ];
-            if ( is_array( $value ) ) {
-                if ( array_key_exists( 'id', $value ) ) { $value = array( $value['id'] ); }
-                foreach ( $value as $candidate ) {
-                    if ( is_scalar( $candidate ) && is_numeric( $candidate ) ) {
-                        $id = absint( $candidate );
-                        if ( $id > 0 ) { $ids[ $id ] = true; }
-                    }
-                }
-            } elseif ( is_scalar( $value ) && is_numeric( $value ) ) {
-                $id = absint( $value );
+            if ( is_array( $value ) && array_key_exists( 'id', $value ) ) { $value = array( $value['id'] ); }
+            $values = is_array( $value ) ? array_values( $value ) : array( $value );
+            foreach ( $values as $candidate ) {
+                if ( null === $candidate || '' === trim( (string) $candidate ) ) { continue; }
+                $nonEmpty = true;
+                $id = $this->filterCandidateId( $candidate );
                 if ( $id > 0 ) { $ids[ $id ] = true; }
+                else { $malformed = true; }
             }
         }
         $keys = array_keys( $ids );
-        return 1 === count( $keys ) ? (int) $keys[0] : 0;
+        if ( count( $keys ) > 1 ) { return array( 'id'=>0, 'status'=>'ambiguous', 'reason'=>'ambiguous_filter_identity', 'source'=>$source ); }
+        if ( $malformed ) { return array( 'id'=>0, 'status'=>'malformed', 'reason'=>'malformed_filter_identity', 'source'=>$source ); }
+        if ( 1 === count( $keys ) ) { return array( 'id'=>(int) $keys[0], 'status'=>'resolved', 'reason'=>'resolved', 'source'=>$source ); }
+        if ( ! $present ) { return array( 'id'=>0, 'status'=>'missing', 'reason'=>'missing_filter_assignment', 'source'=>'' ); }
+        if ( ! $nonEmpty ) { return array( 'id'=>0, 'status'=>'empty', 'reason'=>'empty_filter_assignment', 'source'=>$source ); }
+        return array( 'id'=>0, 'status'=>'malformed', 'reason'=>'malformed_filter_identity', 'source'=>$source );
+    }
+
+    private function filterCandidateId( $candidate ): int {
+        if ( is_int( $candidate ) ) { return $candidate > 0 ? $candidate : 0; }
+        if ( is_string( $candidate ) ) {
+            $candidate = trim( $candidate );
+            if ( '' !== $candidate && preg_match( '/\A[0-9]+\z/', $candidate ) ) {
+                $id = absint( $candidate );
+                return $id > 0 ? $id : 0;
+            }
+        }
+        return 0;
     }
 
     private function definition( int $filterId ): array {
         if ( $this->filterProvider ) {
             try {
                 $value = call_user_func( $this->filterProvider, $filterId );
-                if ( is_array( $value ) ) { return $this->normalizeDefinition( $value ); }
-                return array( 'available'=>false );
-            } catch ( \Throwable $error ) { return array( 'available'=>false ); }
+                if ( ! is_array( $value ) ) { return $this->unavailableDefinition( 'provider_definition_unavailable', 'unknown' ); }
+                $normalized = $this->normalizeDefinition( $value );
+                $normalized['definition_lifecycle_status'] = sanitize_key( (string) ( $value['definition_lifecycle_status'] ?? $value['_definition_lifecycle_status'] ?? ( ! empty( $normalized['available'] ) ? 'provider_observed' : 'unknown' ) ) );
+                $normalized['definition_reason'] = sanitize_key( (string) ( $value['definition_reason'] ?? $value['_definition_reason'] ?? ( ! empty( $normalized['available'] ) ? 'resolved' : 'provider_definition_unavailable' ) ) );
+                if ( array_key_exists( 'post_exists', $value ) ) { $normalized['post_exists'] = (bool) $value['post_exists']; }
+                $normalized['post_status'] = sanitize_key( (string) ( $value['post_status'] ?? '' ) );
+                $normalized['post_type'] = sanitize_key( (string) ( $value['post_type'] ?? '' ) );
+                return $normalized;
+            } catch ( \Throwable $error ) {
+                $message = strtolower( $error->getMessage() );
+                $reason = preg_match( '/permission|forbidden|denied/', $message ) ? 'provider_read_denied' : 'provider_read_error';
+                return $this->unavailableDefinition( $reason, 'unknown' );
+            }
         }
-        if ( ! function_exists( 'get_post_meta' ) ) { return array( 'available'=>false ); }
+        if ( ! function_exists( 'get_post_meta' ) ) { return $this->unavailableDefinition( 'definition_source_unavailable', 'unknown' ); }
+        $postExists = null;
+        $postStatus = '';
+        $postType = '';
+        if ( function_exists( 'get_post' ) ) {
+            try {
+                $post = get_post( $filterId );
+                if ( ! $post ) { return $this->unavailableDefinition( 'filter_post_missing', 'missing', false ); }
+                $postExists = true;
+                $postStatus = sanitize_key( (string) ( $post->post_status ?? '' ) );
+                $postType = sanitize_key( (string) ( $post->post_type ?? '' ) );
+                if ( 'jet-smart-filters' !== $postType ) { return $this->unavailableDefinition( 'filter_post_wrong_type', 'wrong_type', true, $postStatus, $postType ); }
+                if ( 'trash' === $postStatus ) { return $this->unavailableDefinition( 'filter_post_trash', 'trash', true, $postStatus, $postType ); }
+                if ( 'publish' !== $postStatus ) { return $this->unavailableDefinition( 'filter_post_non_public', 'non_public', true, $postStatus, $postType ); }
+            } catch ( \Throwable $error ) {
+                return $this->unavailableDefinition( 'filter_post_read_error', 'unknown' );
+            }
+        }
         try {
             $raw = array(
                 '_data_source'=>get_post_meta( $filterId, '_data_source', true ),
@@ -282,8 +408,35 @@ final class FilterDefinitionInspector {
                 '_custom_query_var'=>get_post_meta( $filterId, '_custom_query_var', true ),
                 '_query_builder_query'=>get_post_meta( $filterId, '_query_builder_query', true ),
             );
-            return $this->normalizeDefinition( $raw );
-        } catch ( \Throwable $error ) { return array( 'available'=>false ); }
+            $normalized = $this->normalizeDefinition( $raw );
+            $normalized['post_exists'] = $postExists;
+            $normalized['post_status'] = $postStatus;
+            $normalized['post_type'] = $postType;
+            $normalized['definition_lifecycle_status'] = true === $postExists ? 'active' : 'unknown';
+            $normalized['definition_reason'] = ! empty( $normalized['available'] ) ? 'resolved' : 'filter_definition_metadata_empty';
+            return $normalized;
+        } catch ( \Throwable $error ) {
+            return $this->unavailableDefinition( 'definition_metadata_read_error', 'unknown', $postExists, $postStatus, $postType );
+        }
+    }
+
+    private function unavailableDefinition( string $reason, string $lifecycle, $postExists = null, string $postStatus = '', string $postType = '' ): array {
+        return array(
+            'available'=>false,
+            'definition_lifecycle_status'=>sanitize_key( $lifecycle ),
+            'definition_reason'=>sanitize_key( $reason ),
+            'post_exists'=>$postExists,
+            'post_status'=>sanitize_key( $postStatus ),
+            'post_type'=>sanitize_key( $postType ),
+            'data_source'=>'',
+            'source_taxonomy'=>'',
+            'query_var'=>'',
+            'custom_query_var'=>'',
+            'custom_query_enabled'=>false,
+            'query_builder_query'=>'',
+            'target_taxonomy'=>'',
+            'target_source'=>'',
+        );
     }
 
     private function normalizeDefinition( array $raw ): array {
