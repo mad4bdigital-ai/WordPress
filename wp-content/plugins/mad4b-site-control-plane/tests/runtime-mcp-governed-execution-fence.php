@@ -229,7 +229,9 @@ $check( 1 === $provider_invocations, 'independent replay reached provider' );
 // an unrelated stale Media tools/call under the new undo approval identity.
 remove_filter( 'update_post_metadata', $provider_probe, 10 );
 
-// Independent undo approval restores the exact original state.
+// Independent undo approval restores the exact original state. The ticket must
+// be planned from the same canonical authorization input used by the remote
+// execution boundary; the human reason remains audit metadata on the call.
 $reflection = new ReflectionClass( 'MAD4B_SCP_Identity_Context' );
 $property = $reflection->getProperty( 'request_approval_ticket_id' );
 $property->setAccessible( true );
@@ -237,8 +239,10 @@ $property->setValue( null, '' );
 $approval_ticket_id = '';
 $request_id = 'ci-mcp-fence-undo-request';
 $undo_input = array( 'mutation_id' => $mutation['mutation_id'], 'reason' => 'CI restores real MCP execution fence fixture' );
-$undo_target = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_input );
-$undo_ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-write', 'mad4b/mutation-undo', 'core', $undo_target, $undo_input, 'mutation', 'CI real MCP fence undo', 600 );
+$undo_authorization_input = MAD4B_SCP_Staging_Write_Planning_Guard::canonicalize_undo_authorization_input( $undo_input );
+$check( is_array( $undo_authorization_input ), 'unable to canonicalize undo authorization input' );
+$undo_target = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_authorization_input );
+$undo_ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-write', 'mad4b/mutation-undo', 'core', $undo_target, $undo_authorization_input, 'mutation', 'CI real MCP fence undo', 600 );
 $check( is_array( $undo_ticket ) && 'pending' === $undo_ticket['status'], 'unable to create undo ticket' );
 $undo_binding = MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate( $undo_ticket['ticket_id'] );
 $check(
