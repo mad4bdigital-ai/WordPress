@@ -35,3 +35,4 @@ expect_same( array( 'tour-types_jet' => 'day-tours' ), $queryStringFilter['unsup
 $staleSingularStyle = $parser->parse( '/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/tour-style_jet:archaeology-tours/' );
 expect_same( array( 'tour-style_jet' => 'archaeology-tours' ), $staleSingularStyle['unknown_filters'], 'stale singular Production taxonomy slug remains unprofiled' );
 fwrite( STDOUT, "FilterUrlParser smoke tests passed.\n" );
+require_once __DIR__ . '/alpha13-live-evidence-hardening-smoke.php';
