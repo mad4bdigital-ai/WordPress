@@ -74,6 +74,16 @@ final class MAD4B_SCP_Approval_Repository {
 		);
 	}
 
+	/**
+	 * Stable read-model evaluator for integrations that need the effective
+	 * lifecycle state without duplicating expiry/candidate-binding semantics.
+	 * This method is pure and never persists the derived state.
+	 */
+	public static function effective_status( array $row, array $candidate, $now = null ) {
+		$normalized = self::normalize( $row, $candidate, null === $now ? time() : (int) $now );
+		return isset( $normalized['effective_status'] ) ? (string) $normalized['effective_status'] : '';
+	}
+
 	/** @internal Pure evaluator used by CI/runtime tests. */
 	public static function normalize_for_test( array $row, array $candidate, $now ) {
 		return self::normalize( $row, $candidate, (int) $now );
