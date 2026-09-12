@@ -5,29 +5,41 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Explicit deny-only isolation for provider-native MCP/AI surfaces.
  *
- * This is deliberately OFF by default. When enabled it suppresses only bounded,
- * reviewed provider MCP registrations and REST/control routes. It never grants
- * MAD4B authority, changes provider settings, creates credentials, disables the
- * provider plugin, or auto-enables mutation. Unknown routes and unknown server
- * callbacks remain untouched and therefore remain visible to fail-closed peer
- * governance.
+ * Runtime suppression is fail-closed everywhere. On the exact governed Staging
+ * origin only, the existing isolation intent and runtime-suppression gates are
+ * auto-configured unless either was explicitly set false by an operator. This
+ * preserves zero-touch Staging while keeping every other origin fail-closed.
+ *
+ * When both gates are enabled it suppresses only bounded, reviewed provider MCP
+ * registrations and REST/control routes. It never grants MAD4B authority,
+ * changes provider settings, creates credentials, disables the provider plugin,
+ * or auto-enables mutation. Unknown routes and unknown server callbacks remain
+ * untouched and therefore remain visible to fail-closed peer governance.
  */
 final class MAD4B_SCP_MCP_Provider_Isolation {
-	const CONTRACT = 'mad4b.mcp-provider-isolation.v2';
-	const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v1';
+	const CONTRACT = 'mad4b.mcp-provider-isolation.v3';
+	const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v2';
+	const LEGACY_CONTRACT = 'mad4b.mcp-provider-isolation.v1';
 	const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED';
+	const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED';
 	const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED';
+	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	private static $early_booted = false;
 	private static $booted = false;
 	private static $removed_routes = array();
 	private static $suppression_attempted = false;
 	private static $suppressed_server_callbacks = array();
+	private static $staging_autoconfig_evaluated = false;
+	private static $staging_autoconfig_applied = false;
+	private static $staging_autoconfig_blocker = '';
 
 	/** Register provider-owned kill switches before plugins_loaded callbacks run. */
 	public static function boot_early() {
 		if ( self::$early_booted ) return;
 		self::$early_booted = true;
+
+		self::bootstrap_governed_staging();
 
 		// wp-media/mcp-oauth owns an independent Adapter server named
 		// mcp-oauth-server. When MAD4B isolation is effective, disable that
@@ -48,8 +60,44 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		add_filter( 'rest_endpoints', array( __CLASS__, 'filter_rest_endpoints' ), PHP_INT_MAX );
 	}
 
+	private static function bootstrap_governed_staging() {
+		if ( self::$staging_autoconfig_evaluated ) return;
+		self::$staging_autoconfig_evaluated = true;
+
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$host = '';
+		if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
+			$value = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+			$host = is_string( $value ) ? strtolower( rtrim( trim( $value ), '.' ) ) : '';
+		}
+
+		if ( 'staging' !== $environment || self::STAGING_HOST !== $host ) {
+			self::$staging_autoconfig_blocker = 'origin_not_governed_staging';
+			return;
+		}
+
+		if ( defined( self::ENABLE_FLAG ) && true !== constant( self::ENABLE_FLAG ) ) {
+			self::$staging_autoconfig_blocker = 'explicit_isolation_disabled';
+			return;
+		}
+		if ( ! defined( self::ENABLE_FLAG ) ) define( self::ENABLE_FLAG, true );
+
+		if ( defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG ) && true !== constant( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG ) ) {
+			self::$staging_autoconfig_blocker = 'explicit_runtime_suppression_disabled';
+			return;
+		}
+		if ( ! defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG ) ) define( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG, true );
+
+		self::$staging_autoconfig_applied = true;
+		self::$staging_autoconfig_blocker = '';
+	}
+
 	public static function configured() {
 		return defined( self::ENABLE_FLAG ) && true === constant( self::ENABLE_FLAG );
+	}
+
+	public static function runtime_suppression_approved() {
+		return defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG ) && true === constant( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG );
 	}
 
 	public static function production_approved() {
@@ -57,7 +105,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	}
 
 	public static function effective() {
-		if ( ! self::configured() ) return false;
+		if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 		if ( 'production' === $environment && ! self::production_approved() ) return false;
 		return in_array( $environment, array( 'staging', 'development', 'local', 'production' ), true );
@@ -164,9 +212,17 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => self::configured(),
+			'runtime_suppression_approved' => self::runtime_suppression_approved(),
 			'effective' => self::effective(),
 			'environment' => $environment,
 			'production_approved' => self::production_approved(),
+			'legacy_enable_flag_alone_is_non_mutating' => true,
+			'staging_zero_touch_autoconfig_evaluated' => self::$staging_autoconfig_evaluated,
+			'staging_zero_touch_autoconfig_applied' => self::$staging_autoconfig_applied,
+			'staging_zero_touch_autoconfig_blocker' => self::$staging_autoconfig_blocker,
+			'staging_zero_touch_host' => self::STAGING_HOST,
+			'production_auto_configured' => false,
+			'runtime_suppression_requires_second_gate' => true,
 			'default_server_suppressed' => self::effective(),
 			'wpmedia_oauth_server_suppressed' => self::effective(),
 			'server_registration_suppression_attempted' => (bool) self::$suppression_attempted,

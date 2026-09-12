@@ -91,26 +91,46 @@ require(abilities, "MAD4B_SCP_Authorization::authorize_mutation( $ability_name, 
 require(abilities, 'mad4b/runtime-authority-status', 'authority-status-ability')
 require(servers, 'mad4b/runtime-authority-status', 'authority-status-server-mount')
 
-# Central authorization intersects exact grant/token scopes/resource constraints, budget and approval.
+# Central permission authorization is observational. Ticket/budget side effects
+# happen only once after WP/MCP permission checks, at the execute boundary.
 require(authz, 'MAD4B_SCP_Agent_Registry::exact_grant', 'exact-grant-intersection')
 require(authz, "'ability:' . $ability_name", 'exact-scope-intersection')
 require(authz, 'mad4b_scp_require_token_scopes', 'scope-policy')
 require(authz, 'mad4b_nhi_resource_constraints_unresolved', 'constraint-fail-closed')
 require(authz, 'MAD4B_SCP_Impact_Policy::requires_approval', 'impact-approval-gate')
-require(authz, 'MAD4B_SCP_Budgets::reserve', 'budget-reservation-before-approval')
-require(authz, 'MAD4B_SCP_Budgets::rollback', 'budget-rollback-on-approval-denial')
-require(authz, 'MAD4B_SCP_Budgets::commit', 'budget-commit-after-approval')
-require(authz, 'MAD4B_SCP_Approval_Tickets::consume_exact', 'approval-consume-gate')
-if authz.index('MAD4B_SCP_Budgets::reserve') > authz.index('MAD4B_SCP_Approval_Tickets::consume_exact'):
-    raise SystemExit('FAIL budget-before-approval: budget reservation must occur before approval consumption')
+require(authz, 'const EXECUTION_BOUNDARY_CONTRACT', 'execution-boundary-contract')
+require(authz, 'MAD4B_SCP_Approval_Tickets::validate_exact', 'approval-readonly-preflight')
+require(authz, 'public static function claim_mutation', 'execution-claim-entry')
+require(authz, 'MAD4B_SCP_Budgets::reserve', 'budget-reservation-at-execution')
+require(authz, 'MAD4B_SCP_Budgets::rollback', 'budget-rollback-on-claim-denial')
+require(authz, 'MAD4B_SCP_Approval_Tickets::claim_exact', 'approval-execution-claim')
+require(authz, 'MAD4B_SCP_Budgets::commit', 'budget-commit-after-claim')
+require(authz, 'MAD4B_SCP_Approval_Tickets::finalize_claim', 'approval-terminal-finalizer')
+require(authz, 'public static function wrap_execution_boundary', 'ability-execution-wrapper')
 require(authz, 'mad4b_approval_required', 'missing-approval-denial')
 require(authz, 'public static function target_fingerprint', 'target-fingerprint-single-source')
 require(authz, 'self::target_fingerprint', 'authorization-target-resolver-use')
-require(authz, "'budget' => array(", 'budget-decision-evidence')
+require(authz, "'budget_costs' => $costs", 'budget-preflight-evidence')
+require(authz, "$decision['budget'] = array(", 'budget-execution-evidence')
 require(authz, 'budget_service_ready', 'budget-authority-status')
 require(authz, 'mutation_global_enabled', 'configured-mutation-status')
 require(authz, 'mutation_effective_for_request', 'effective-mutation-status')
 require(authz, 'mad4b/authorization:', 'authorization-audit')
+
+preflight = authz[authz.index('public static function authorize_mutation'):authz.index('public static function claim_mutation')]
+for forbidden_side_effect in (
+    'MAD4B_SCP_Budgets::reserve',
+    'MAD4B_SCP_Budgets::commit',
+    'MAD4B_SCP_Approval_Tickets::claim_exact',
+    'MAD4B_SCP_Approval_Tickets::consume_exact',
+    'MAD4B_SCP_Approval_Tickets::finalize_claim',
+):
+    forbid(preflight, forbidden_side_effect, 'permission-preflight-must-be-readonly')
+claim = authz[authz.index('public static function claim_mutation'):authz.index('public static function wrap_execution_boundary')]
+if claim.index('MAD4B_SCP_Budgets::reserve') > claim.index('MAD4B_SCP_Approval_Tickets::claim_exact'):
+    raise SystemExit('FAIL budget-before-claim: budget reservation must precede the atomic ticket claim')
+if claim.index('MAD4B_SCP_Approval_Tickets::claim_exact') > claim.index('MAD4B_SCP_Budgets::commit'):
+    raise SystemExit('FAIL claim-before-budget-commit: ticket must be claimed before committing its mutation budget')
 
 # Transactional budgets use bounded types/windows/costs and no option-based counters.
 for budget_type in ("'requests'", "'mutations'", "'affected_objects'", "'external_actions'"):
@@ -167,15 +187,20 @@ require(impact, "'mad4b/mutation-undo'", 'undo-high-impact')
 require(impact, "'core' !== $provider && 'media' !== $provider", 'adapter-high-default')
 require(impact, "array( 'high', 'exceptional' )", 'approval-required-high')
 
-# Approval tickets bind one exact canonical operation, expire, and are single-use/replay resistant.
+# Approval tickets bind one exact canonical operation, expire, and are terminal after execution claim.
 require(approvals, "'contract' => 'mad4b.approval.v1'", 'approval-contract-version')
 for field in ("'site'", "'agent_public_id'", "'server_id'", "'ability'", "'provider'", "'target'", "'ticket_class'", "'input'"):
     require(approvals, field, 'approval-envelope-field')
 require(approvals, 'MAX_CANONICAL_BYTES = 65536', 'approval-size-bound')
 require(approvals, 'MAX_DEPTH = 8', 'approval-depth-bound')
 require(approvals, 'MAX_TTL = 3600', 'approval-ttl-bound')
-require(approvals, "status = 'approved'", 'approval-atomic-use-precondition')
-require(approvals, "SET status = 'used'", 'approval-single-use-transition')
+require(approvals, 'public static function validate_exact', 'approval-readonly-validator')
+require(approvals, 'public static function claim_exact', 'approval-claim-transition')
+require(approvals, "SET status = 'executing'", 'approval-executing-transition')
+require(approvals, 'public static function finalize_claim', 'approval-finalize-transition')
+require(approvals, "array( 'used', 'failed' )", 'approval-terminal-statuses')
+require(approvals, "SET status = 'used'", 'approval-success-terminal-transition')
+require(approvals, "SET status = 'failed'", 'approval-failure-terminal-transition')
 require(approvals, 'hash_equals', 'approval-hash-compare')
 require(approvals, 'mad4b_approval_replay_denied', 'approval-replay-denial')
 require(approvals, 'mad4b_approval_payload_mismatch', 'approval-payload-denial')
@@ -255,4 +280,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v6: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v7: PASS')

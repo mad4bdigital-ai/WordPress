@@ -1,0 +1,132 @@
+name: MAD4B MCP Adapter Metadata Bridge
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-mcp-adapter-metadata-bridge.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-mcp-adapter-metadata-bridge-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  metadata-bridge:
+    name: Metadata bridge (${{ matrix.wordpress }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        wordpress: ['6.9', 'latest']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring
+          coverage: none
+
+      - name: Lint bridge and runtime test
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-adapter-metadata-bridge.php
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision exact governed Staging fixture
+        shell: bash
+        env:
+          WP_VERSION: ${{ matrix.wordpress }}
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-metadata-wordpress
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B Metadata Bridge' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove exact MCP Adapter metadata lookup is local
+        shell: bash
+        env:
+          MAD4B_TEST_WP_PATH: /tmp/mad4b-metadata-wordpress
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-adapter-metadata-bridge.php
+
+      - name: Prove bridge remains narrowly scoped
+        shell: python
+        run: |
+          from pathlib import Path
+
+          bridge = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php').read_text(encoding='utf-8')
+          required = [
+              "const CONTRACT = 'mad4b.mcp-adapter-metadata-bridge.v1'",
+              "const STAGING_HOST = 'staging.egypttourgates.com'",
+              "const SLUG = 'mcp-adapter'",
+              "const VERSION = '0.6.1'",
+              "'plugin_information' !== (string) $action",
+              "false !== $result",
+              "'production_changed' => false",
+              "'other_plugin_api_requests_changed' => false",
+              "'outbound_http_changed' => false",
+              "'credentials_changed' => false",
+              "'installation_or_update_state_changed' => false",
+          ]
+          missing = [item for item in required if item not in bridge]
+          if missing:
+              raise SystemExit('Missing metadata bridge invariant: ' + ' | '.join(missing))
+
+          forbidden = [
+              "add_filter( 'pre_http_request'",
+              "add_filter( 'plugins_api_args'",
+              "add_filter( 'plugins_api_result'",
+              "set_site_transient( 'update_plugins'",
+              "update_site_option(",
+          ]
+          found = [item for item in forbidden if item in bridge]
+          if found:
+              raise SystemExit('Metadata bridge contains forbidden broad mutation: ' + ' | '.join(found))
+
+          print('mad4b-mcp-adapter-metadata-bridge.v1: PASS')

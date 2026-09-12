@@ -1,0 +1,113 @@
+{
+  "contract": "mad4b.skill-provider-catalog.v1",
+  "packs": {
+    "elementor": [
+      {
+        "level": "provider",
+        "target": "elementor",
+        "name": "elementor-dynamic-content",
+        "description": "Inspect Elementor templates, widgets, Dynamic Tags, conditions, and provider-backed dynamic-content bindings through MAD4B.",
+        "body": "1. Identify the exact Elementor document or template in scope.\n2. Inspect widget structure, Dynamic Tags, provider-backed fields, and display conditions.\n3. Prefer native Dynamic Tags over shortcode fallbacks when a provider source exists.\n4. Separate template assignment, query context, and provider data issues.\n5. Return broken bindings, available dynamic sources, evidence, and safe remediation.\n6. Do not perform mutation from this workflow."
+      }
+    ],
+    "jetengine": [
+      {
+        "level": "provider",
+        "target": "jet-engine",
+        "name": "jetengine-content-modeling",
+        "description": "Analyze JetEngine CPTs, meta fields, relations, listings, queries, and Dynamic Tags through MAD4B.",
+        "body": "1. Map CPT, taxonomy, meta-field, relation, listing, and query ownership.\n2. Inspect exact field keys and provider dependencies.\n3. Prefer JetEngine Dynamic Tags and provider-native relations over hard-coded shortcodes.\n4. Detect model drift, missing relations, stale query bindings, and rendering gaps.\n5. Return the canonical content model, evidence, and required changes without applying mutation."
+      }
+    ],
+    "jetsmartfilters": [
+      {
+        "level": "provider",
+        "target": "jet-smart-filters",
+        "name": "jetsmartfilters-query-audit",
+        "description": "Audit JetSmartFilters providers, filter-to-query bindings, AJAX context, indexer behavior, and listing integration through MAD4B.",
+        "body": "1. Identify the filter provider and target listing or query.\n2. Inspect filter type, query variable, provider ID, AJAX behavior, and indexer state.\n3. Verify the filter is bound to the intended archive, listing, or query context.\n4. Separate UI configuration from data-source and provider-runtime failures.\n5. Return mismatches, evidence, and provider-native remediation."
+      }
+    ],
+    "woocommerce": [
+      {
+        "level": "provider",
+        "target": "woocommerce",
+        "name": "woocommerce-catalog-diagnostics",
+        "description": "Inspect WooCommerce product catalog structure, product metadata, taxonomy, visibility, and MAD4B product read coverage without touching orders or payments.",
+        "body": "1. Identify the product, archive, taxonomy, or catalog surface in scope.\n2. Inspect product status, type, taxonomy, visibility, price/meta sources, and template dependencies using read tools.\n3. Keep orders, payments, refunds, and customer-sensitive operations outside this workflow.\n4. Separate WooCommerce data issues from Elementor or JetEngine rendering issues.\n5. Return current state, root cause, evidence, and safe remediation."
+      }
+    ],
+    "polylang": [
+      {
+        "level": "provider",
+        "target": "polylang",
+        "name": "polylang-content-audit",
+        "description": "Audit Polylang language assignments, translation relationships, language-aware content routing, and multilingual rendering through MAD4B.",
+        "body": "1. Identify the content object and expected language.\n2. Inspect language assignment and translation relationships.\n3. Verify template, taxonomy, archive, and dynamic-content context remain language-aware.\n4. Separate missing translations from routing or provider-rendering defects.\n5. Return evidence, missing bindings, and safe remediation."
+      }
+    ],
+    "rank-math": [
+      {
+        "level": "provider",
+        "target": "rank-math",
+        "name": "rankmath-seo-audit",
+        "description": "Audit Rank Math SEO metadata, indexability signals, canonical context, and provider-owned SEO fields through MAD4B.",
+        "body": "1. Identify the exact post, term, archive, or template context.\n2. Inspect provider-owned SEO metadata and indexability signals exposed by MAD4B.\n3. Check canonical and dynamic-template context before attributing an SEO defect to content.\n4. Separate missing metadata, stale metadata, and rendering/context problems.\n5. Return evidence and bounded remediation without applying mutation."
+      }
+    ],
+    "litespeed": [
+      {
+        "level": "adapter",
+        "target": "litespeed",
+        "name": "litespeed-cache-diagnostics",
+        "description": "Diagnose LiteSpeed Cache state, cache-related rendering drift, and safe cache verification paths through the MAD4B LiteSpeed adapter.",
+        "body": "1. Inspect LiteSpeed status and relevant cache state.\n2. Determine whether the observed symptom is compatible with cache drift or originates upstream.\n3. Avoid treating cache purge as a root-cause fix without evidence.\n4. Return cache evidence, likely layer, and the minimum safe verification step."
+      }
+    ],
+    "media-optimization": [
+      {
+        "level": "adapter",
+        "target": "media",
+        "name": "wordpress-media-delivery-audit",
+        "description": "Audit WordPress media attachment health, optimized-file availability, metadata, and delivery consistency through MAD4B media tooling.",
+        "body": "1. Identify the attachment IDs and rendered media surfaces in scope.\n2. Verify WordPress records against actual usable media evidence exposed by MAD4B.\n3. Distinguish orphaned records, missing files, stale derivatives, and template-level rendering defects.\n4. Return healthy replacements or remediation guidance without emitting broken URLs."
+      }
+    ],
+    "etg-dfsb": [
+      {
+        "level": "adapter",
+        "target": "etg-dfsb",
+        "name": "etg-dynamic-filter-seo-audit",
+        "description": "Audit Egypt Tour Gates Dynamic Filter SEO Bridge profiles, runtime inventory, dynamic-content catalog, and read-only SEO/filter integration through MAD4B.",
+        "body": "1. Read ETG DFSB status, profile inventory, and dynamic-content catalog.\n2. Verify profile intent against archive/filter/runtime context.\n3. Treat profile blueprint and inventory operations as plan-only unless separately authorized.\n4. Return gaps, evidence, and the minimum safe remediation."
+      }
+    ],
+    "bitflows": [
+      {
+        "level": "provider",
+        "target": "bitflows",
+        "name": "bitflows-automation-diagnostics",
+        "description": "Inspect BitFlows automation definitions, flow state, trigger/action coverage, and governed execution readiness through MAD4B.",
+        "body": "1. Identify the flow and expected trigger/action path.\n2. Inspect flow configuration and runtime-read evidence exposed by MAD4B.\n3. Separate configuration defects from execution-authority or provider-runtime blockers.\n4. Do not execute a flow unless separately authorized.\n5. Return current state, blocker, evidence, and next safe action."
+      }
+    ],
+    "fluentforms": [
+      {
+        "level": "provider",
+        "target": "fluentforms",
+        "name": "fluentforms-workflow-diagnostics",
+        "description": "Inspect Fluent Forms plugin status and form-workflow integration context through MAD4B read surfaces.",
+        "body": "1. Identify the form and integration context.\n2. Inspect provider/plugin status and available MAD4B read evidence.\n3. Separate form configuration, submission routing, automation, and rendering layers.\n4. Return confirmed gaps and remediation without submitting forms or changing provider state."
+      }
+    ],
+    "wpml": [
+      {
+        "level": "provider",
+        "target": "wpml",
+        "name": "wpml-translation-audit",
+        "description": "Inspect WPML translation plugin state, language inventory, and multilingual content dependencies through MAD4B read surfaces.",
+        "body": "1. Identify the content and language context.\n2. Inspect WPML plugin family status and available language inventory.\n3. Separate translation availability from template, taxonomy, and routing issues.\n4. Return confirmed gaps and safe remediation without changing translation state."
+      }
+    ]
+  }
+}

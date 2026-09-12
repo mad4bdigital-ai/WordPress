@@ -26,6 +26,7 @@ require("protected function mutation_requires_certification() { return false; }"
 
 for ability in (
     'etg-dfsb/status',
+    'etg-dfsb/build-identity',
     'etg-dfsb/configuration',
     'etg-dfsb/runtime-inventory',
     'etg-dfsb/profiles',
@@ -40,6 +41,7 @@ for service in (
     'ETG\\\\DynamicFilterSEOBridge\\\\Config\\\\Configuration',
     'ETG\\\\DynamicFilterSEOBridge\\\\Config\\\\ProfileRegistry',
     'ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\RuntimeInventory',
+    'ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\BuildIdentity',
     'ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\InventoryProfilePlanner',
     'ETG\\\\DynamicFilterSEOBridge\\\\Presentation\\\\InventoryContentCatalog',
 ):
@@ -74,7 +76,7 @@ require(etg.get('strategy') == 'registered_adapter', 'ETG coverage strategy must
 require(etg.get('mutation_scope') == 'none_read_only_non_authorizing', 'ETG mutation scope must remain none')
 required_contracts = set(etg.get('requested_contracts', []))
 for contract in (
-    'status_read', 'configuration_read', 'runtime_inventory_read', 'profile_read',
+    'status_read', 'build_identity_read', 'configuration_read', 'runtime_inventory_read', 'profile_read',
     'profile_blueprint_plan_only', 'profile_inventory_plan_only', 'dynamic_content_catalog_read',
 ):
     require(contract in required_contracts, 'ETG requested contract missing: ' + contract)

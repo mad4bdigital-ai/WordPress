@@ -105,6 +105,9 @@ jobs:
           servers="$root/includes/class-mad4b-scp-servers.php"
           transport_context="$root/includes/class-mad4b-scp-transport-context.php"
           authorization="$root/includes/class-mad4b-scp-authorization.php"
+          write_authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
+          write_cert="$root/includes/class-mad4b-scp-write-runtime-certification.php"
+          rest_compat="$root/includes/class-mad4b-scp-rest-compatibility.php"
           for file in \
             mad4b-site-control-plane.php \
             config/certified-providers.json \
@@ -116,6 +119,9 @@ jobs:
             includes/class-mad4b-scp-audit.php \
             includes/class-mad4b-scp-provider-contracts.php \
             includes/class-mad4b-scp-adapter-registry.php \
+            includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-write-runtime-certification.php \
+            includes/class-mad4b-scp-rest-compatibility.php \
             includes/adapters/class-mad4b-scp-adapter-base.php \
             includes/adapters/class-mad4b-scp-elementor-adapter.php \
             includes/adapters/class-mad4b-scp-jetengine-adapter.php \
@@ -130,7 +136,13 @@ jobs:
             test -f "$root/$file"
           done
 
-          grep -Fq "Version: 0.3.0" "$root/mad4b-site-control-plane.php"
+          plugin_file="$root/mad4b-site-control-plane.php"
+          header_version="$(sed -nE 's/^ \* Version: ([^[:space:]]+).*/\1/p' "$plugin_file" | head -n1)"
+          constant_version="$(sed -nE "s/^define\( 'MAD4B_SCP_VERSION', '([^']+)' \);/\1/p" "$plugin_file" | head -n1)"
+          test -n "$header_version"
+          test -n "$constant_version"
+          test "$header_version" = "$constant_version"
+          [[ "$header_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
           grep -Fq "mad4b.site-control-plane.packaged-provider-contracts.v1" "$scanner"
           grep -Fq "static_zip_inspection_only" "$scanner"
           grep -Fq "Unsafe ZIP entry" "$scanner"
@@ -182,14 +194,40 @@ jobs:
           grep -Fq "entry_hash" "$audit"
           grep -Fq "verify_chain" "$audit"
 
-          grep -Fq "mad4b.mcp-transport-context.v1" "$transport_context"
+          grep -Fq "mad4b.mcp-transport-context.v2" "$transport_context"
           grep -Fq "resolve_server_for_ability" "$transport_context"
           grep -Fq "mad4b_transport_route_mismatch" "$transport_context"
+          grep -Fq "mad4b_write_authority_mount_missing" "$transport_context"
           grep -Fq "MAD4B_SCP_Transport_Context::resolve_server_for_ability" "$authorization"
+          grep -Fq "const EXECUTION_BOUNDARY_CONTRACT" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::validate_exact" "$authorization"
+          grep -Fq "public static function claim_mutation" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::claim_exact" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::finalize_claim" "$authorization"
+          grep -Fq "public static function wrap_execution_boundary" "$authorization"
+          if sed -n '/public static function authorize_mutation/,/public static function claim_mutation/p' "$authorization" | grep -Fq "MAD4B_SCP_Approval_Tickets::consume_exact"; then
+            echo 'Permission preflight must never consume approval tickets.' >&2
+            exit 1
+          fi
           grep -Fq "'transport_bound'" "$authorization"
           grep -Fq "'mad4b-write'" "$servers"
           grep -Fq "public static function write_tools" "$servers"
           grep -Fq "'MAD4B Write MCP'" "$servers"
+          grep -Fq "array_merge( \$tools, self::write_tools() )" "$servers"
+
+          grep -Fq "staging.egypttourgates.com" "$write_authority"
+          grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
+          grep -Fq "production_auto_enable" "$write_authority"
+          grep -Fq "breakglass_auto_enable" "$write_authority"
+          grep -Fq "mad4b.write-runtime-certification.v2" "$write_cert"
+          grep -Fq "all_write_tools_exposed_on_same_plugin_transport" "$write_cert"
+          grep -Fq "mad4b.rest-compatibility.v2" "$rest_compat"
+          grep -Fq "'/wpml/v1/rest/status'" "$rest_compat"
+          grep -Fq "rest_do_request" "$rest_compat"
+          if grep -Fq "add_filter( 'rest_enabled'" "$rest_compat" || grep -Fq "add_filter( 'rest_authentication_errors'" "$rest_compat"; then
+            echo 'REST compatibility component must not globally change WordPress REST behavior.' >&2
+            exit 1
+          fi
 
       - name: Verify default-server isolation
         shell: bash
@@ -203,7 +241,7 @@ jobs:
           grep -Fq "default_server_exposure_leaks" "$registry"
           grep -Fq "custom_server_isolation" "$registry"
           if grep -RInF --include='*.php' "'mcp' => array( 'public' => true" "$root/includes" "$root/mad4b-site-control-plane.php"; then
-            echo 'MAD4B production abilities must be custom-server-only; default MCP exposure detected.' >&2
+            echo 'MAD4B abilities must remain custom-server-only; default MCP exposure detected.' >&2
             exit 1
           fi
 
@@ -224,11 +262,17 @@ jobs:
 
           grep -Fq "anyOf" "$base"
           grep -Fq "provider_certification" "$base"
+          grep -Fq "mutation_permission_callback" "$base"
+          grep -Fq "MAD4B_SCP_Authorization::authorize_mutation" "$base"
 
           grep -Fq "elementor/manage-elements" "$elementor"
           grep -Fq "expected_sha256" "$elementor"
-          grep -Fq "mad4b_elementor_legacy_write_denied" "$elementor"
-          grep -Fq "elementor_native_ability" "$elementor"
+          grep -Fq "mad4b.rollback.elementor-widget-settings.v1" "$elementor"
+          grep -Fq "remove_settings" "$elementor"
+          grep -Fq "mad4b_elementor_widget_not_unique" "$elementor"
+          grep -Fq "mad4b_elementor_setting_policy_denied" "$elementor"
+          grep -Fq "mad4b_elementor_readback_mismatch" "$elementor"
+          grep -Fq "replace_widget_settings" "$elementor"
 
           grep -Fq "mad4b_scp_allow_protected_meta_write" "$jetengine"
           grep -Fq "mad4b_scp_allow_protected_meta_read" "$jetengine"
@@ -276,7 +320,7 @@ jobs:
         run: |
           set -euo pipefail
           servers='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
-          for surface in mad4b-read mad4b-content mad4b-write mad4b-admin mad4b-breakglass; do
+          for surface in mad4b-read mad4b-chatgpt mad4b-content mad4b-write mad4b-admin mad4b-breakglass; do
             grep -Fq "'$surface'" "$servers"
           done
           grep -Fq "ability_names( 'read' )" "$servers"
@@ -284,3 +328,4 @@ jobs:
           grep -Fq "ability_names( 'admin' )" "$servers"
           grep -Fq "array_key_exists( 'readonly', \$annotations )" "$servers"
           grep -Fq "false !== \$annotations['readonly']" "$servers"
+          grep -Fq "'mad4b/database-raw-query' === \$ability_name" "$servers"

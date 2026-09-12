@@ -3,6 +3,13 @@
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
 $check = static function ( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); };
 
+$reset_request_ticket_overlay = static function () {
+	$reflection = new ReflectionClass( 'MAD4B_SCP_Identity_Context' );
+	$property = $reflection->getProperty( 'request_approval_ticket_id' );
+	$property->setAccessible( true );
+	$property->setValue( null, '' );
+};
+
 $check( class_exists( 'MAD4B_SCP_Reversible_Adapter_Mutations' ), 'Generic reversible adapter manager is unavailable.' );
 $check( wp_has_ability( 'media/get' ) && wp_has_ability( 'media/update-metadata' ) && wp_has_ability( 'mad4b/mutation-undo' ), 'Required reversible Media abilities are missing.' );
 $media_update = wp_get_ability( 'media/update-metadata' );
@@ -75,7 +82,9 @@ $check( 'MAD4B Media After One' === $after['media']['title'] && 'after alt one' 
 
 $undo_ability = wp_get_ability( 'mad4b/mutation-undo' );
 $undo_input = array( 'mutation_id' => $first['mutation_id'], 'reason' => 'CI restores reversible Media metadata' );
-$ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', '', $undo_input, 'mutation', 'CI Media undo approval', 600 );
+$undo_target = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_input );
+$check( is_string( $undo_target ) && preg_match( '/^[a-f0-9]{64}$/', $undo_target ), 'Unable to resolve Media undo target fingerprint.' );
+$ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $undo_target, $undo_input, 'mutation', 'CI Media undo approval', 600 );
 $check( is_array( $ticket ) && 'pending' === $ticket['status'], 'Unable to plan Media undo approval.' );
 $approved = MAD4B_SCP_Approval_Tickets::approve( $ticket['ticket_id'] );
 $check( is_array( $approved ) && 'approved' === $approved['status'], 'Unable to approve Media undo.' );
@@ -86,7 +95,10 @@ $restored = $media_get->execute( array( 'attachment_id' => $attachment_id ) );
 $check( 'MAD4B Media Before' === $restored['media']['title'], 'Media undo did not restore title.' );
 $check( 'before caption' === $restored['media']['caption'] && 'before description' === $restored['media']['description'] && 'before alt' === $restored['media']['alt'], 'Media undo did not restore exact metadata state.' );
 
-// Second mutation followed by human drift must be rejected without overwrite.
+// Second mutation/undo is a separate request in the live transport. Preserve all
+// durable mutation/audit/grant state while resetting only CI's request-local
+// approval overlay before assigning a distinct high-impact undo ticket.
+$reset_request_ticket_overlay();
 $approval_ticket_id = '';
 $current = $media_get->execute( array( 'attachment_id' => $attachment_id ) );
 $second = $media_update->execute( array(
@@ -98,15 +110,17 @@ $check( ! is_wp_error( $second ) && ! empty( $second['mutation_id'] ), 'Second M
 update_post_meta( $attachment_id, '_wp_attachment_image_alt', 'human alt after AI' );
 
 $undo_two_input = array( 'mutation_id' => $second['mutation_id'], 'reason' => 'CI expects adapter drift rejection' );
-$ticket_two = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', '', $undo_two_input, 'mutation', 'CI Media drift undo approval', 600 );
+$undo_two_target = MAD4B_SCP_Authorization::target_fingerprint( 'mad4b/mutation-undo', 'core', $undo_two_input );
+$check( is_string( $undo_two_target ) && preg_match( '/^[a-f0-9]{64}$/', $undo_two_target ), 'Unable to resolve Media drift undo target fingerprint.' );
+$ticket_two = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', $undo_two_target, $undo_two_input, 'mutation', 'CI Media drift undo approval', 600 );
 $check( is_array( $ticket_two ), 'Unable to create Media drift-test approval.' );
 $check( is_array( MAD4B_SCP_Approval_Tickets::approve( $ticket_two['ticket_id'] ) ), 'Unable to approve Media drift-test ticket.' );
 $approval_ticket_id = $ticket_two['ticket_id'];
 $drift = $undo_ability->execute( $undo_two_input );
 $check( is_wp_error( $drift ) && 'mad4b_undo_state_drift' === $drift->get_error_code(), 'Generic adapter undo did not fail closed on newer Media state.' );
 $check( 'human alt after AI' === get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ), 'Rejected adapter undo overwrote newer human Media state.' );
-$used = MAD4B_SCP_Approval_Tickets::get( $ticket_two['ticket_id'] );
-$check( is_array( $used ) && 'used' === $used['status'], 'Attempted high-impact adapter undo did not consume its single-use approval ticket.' );
+$failed_ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_two['ticket_id'] );
+$check( is_array( $failed_ticket ) && 'failed' === $failed_ticket['status'], 'Rejected high-impact adapter undo must terminalize the claimed single-use approval as failed.' );
 
 wp_delete_attachment( $attachment_id, true );
 echo "mad4b.site-control-plane.runtime-reversible-adapter.v1: PASS\n";

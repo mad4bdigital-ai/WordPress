@@ -88,6 +88,26 @@ foreach ( MAD4B_SCP_Servers::expected_server_ids() as $server_id ) {
 	$check( ! empty( $servers[ $server_id ]['registered'] ), 'Custom MCP server failed to register: ' . $server_id );
 }
 
+// Action refresh/tools-list can resolve the same write projection through
+// multiple server/provider paths. Keep that expensive provider-integrity work
+// request-local after Abilities registration, and filter mutation candidates
+// before provider status/hashing. Mutation-time certification remains separate.
+$server_reflection = new ReflectionClass( 'MAD4B_SCP_Servers' );
+$projection_cache = $server_reflection->getProperty( 'adapter_write_projection_cache' );
+$first_write_projection = MAD4B_SCP_Servers::write_tools();
+$cache_after_first = $projection_cache->getValue();
+MAD4B_SCP_Servers::blocked_write_tools();
+$cache_after_second = $projection_cache->getValue();
+$check( is_array( $first_write_projection ), 'Write projection is not available for refresh-cache proof.' );
+$check( is_array( $cache_after_first ), 'Write projection was not cached after the fully initialized Abilities lifecycle.' );
+$check( $cache_after_first === $cache_after_second, 'Repeated write projection lookup replaced the request-local cache.' );
+$servers_source = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php' );
+$candidate_filter_pos = strpos( $servers_source, '$mutation_candidates = array();' );
+$provider_status_pos = strpos( $servers_source, '$status = method_exists( $adapter, \'status\' )' );
+$check( false !== $candidate_filter_pos && false !== $provider_status_pos && $candidate_filter_pos < $provider_status_pos, 'Provider status/hashing occurs before mutation-candidate filtering.' );
+$adapter_base_source = file_get_contents( MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php' );
+$check( false !== strpos( $adapter_base_source, 'MAD4B_SCP_Provider_Contracts::mutation_guard' ), 'Mutation-time provider certification guard was removed while optimizing discovery.' );
+
 $mcp_status = MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', true );
 $check( ! empty( $mcp_status['runtime_contract_ok'] ), 'MCP Adapter runtime certification failed: ' . wp_json_encode( $mcp_status ) );
 
@@ -131,7 +151,7 @@ $blocked_write = $write_ability->execute(
 $check( is_wp_error( $blocked_write ) && 'ability_invalid_permissions' === $blocked_write->get_error_code(), 'Core mutation master switch did not fail closed through the WordPress Abilities permission contract.' );
 $check( ! file_exists( $blocked_path ), 'A blocked mutation produced a filesystem side effect.' );
 
-// Prove approval canonicalization, exact payload binding, single use, and replay resistance in the disposable DB.
+// Prove approval canonicalization, exact payload binding, single use, and explicit replay resistance in the disposable DB.
 $agent = MAD4B_SCP_Agent_Registry::create_agent(
 	array(
 		'slug' => 'ci-approval-agent',
@@ -156,7 +176,7 @@ $check( is_wp_error( $wrong ) && 'mad4b_approval_payload_mismatch' === $wrong->g
 $consumed = MAD4B_SCP_Approval_Tickets::consume_exact( $ticket['ticket_id'], $agent, 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_b, 'mutation' );
 $check( is_array( $consumed ), 'Exact approved payload could not consume its ticket.' );
 $replay = MAD4B_SCP_Approval_Tickets::consume_exact( $ticket['ticket_id'], $agent, 'mad4b-admin', 'mad4b/database-update', 'core', 'ci-target', $input_b, 'mutation' );
-$check( is_wp_error( $replay ) && 'mad4b_approval_not_approved' === $replay->get_error_code(), 'Approval replay was not rejected.' );
+$check( is_wp_error( $replay ) && 'mad4b_approval_replay_denied' === $replay->get_error_code(), 'Approval replay did not return the explicit replay-denied contract.' );
 
 // Prove nested audit evidence is preserved, bounded, redacted, and chain-verifiable.
 MAD4B_SCP_Audit::record(

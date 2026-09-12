@@ -1,0 +1,60 @@
+name: MAD4B Query Monitor Evidence Bridge
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-evidence-bridge-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/mad4b-query-monitor-evidence-bridge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  query-monitor-evidence-bridge:
+    name: QM collector attribution (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint and execute bridge regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-query-monitor-evidence-bridge.php"
+          php -l "$root/tests/query-monitor-evidence-bridge-runtime.php"
+          php "$root/tests/query-monitor-evidence-bridge-runtime.php"
+
+      - name: Verify runtime wiring and no authority widening
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          main="$root/mad4b-site-control-plane.php"
+          bridge="$root/includes/class-mad4b-scp-query-monitor-evidence-bridge.php"
+          grep -Fq "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-query-monitor-evidence-bridge.php'" "$main"
+          grep -Fq 'MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();' "$main"
+          grep -Fq "QM_Collectors::get( self::COLLECTOR_ID )" "$bridge"
+          grep -Fq "remove_action( 'shutdown', array( 'MAD4B_SCP_Live_Acceptance_Observer', 'flush_observation' ), PHP_INT_MAX )" "$bridge"
+          grep -Fq "add_action( 'shutdown', array( __CLASS__, 'capture_and_flush' ), 8 )" "$bridge"
+          grep -Fq "update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, \$telemetry, false )" "$bridge"
+          if grep -Eq 'grant_ability|authorize_mutation|wp_remote_(get|post|request)|rest_do_request|wp_insert_post|wp_update_post|database-raw-query' "$bridge"; then
+            echo 'Query Monitor bridge must remain evidence-only.' >&2
+            exit 1
+          fi

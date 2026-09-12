@@ -1,0 +1,288 @@
+name: MAD4B Dynamic Skills
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/mad4b-wordpress/**'
+      - '.agents/plugins/marketplace.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-surface-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php'
+      - '.github/workflows/mad4b-dynamic-skills.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-dynamic-skills-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Dynamic Skills contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+
+      - name: Reject package symlinks and secret-like files
+        shell: bash
+        run: |
+          set -euo pipefail
+          roots=(
+            plugins/mad4b-wordpress
+            wp-content/plugins/mad4b-site-control-plane/skill-seeds
+          )
+          symlink="$(find "${roots[@]}" -type l -print -quit)"
+          if [ -n "$symlink" ]; then
+            echo "Symlink is forbidden in portable Skill package inputs: $symlink" >&2
+            exit 1
+          fi
+          suspicious="$(find "${roots[@]}" -type f \( \
+            -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.p12' -o \
+            -name '*.pfx' -o -name '*.key' -o -name 'id_rsa' -o -name 'id_ed25519' \
+          \) -print -quit)"
+          if [ -n "$suspicious" ]; then
+            echo "Secret-like file is forbidden in portable Skill package inputs: $suspicious" >&2
+            exit 1
+          fi
+
+      - name: PHP lint Skill/write implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          for file in \
+            includes/class-mad4b-scp-skill-autoconfig.php \
+            includes/class-mad4b-scp-skill-registry.php \
+            includes/class-mad4b-scp-skill-seeder.php \
+            includes/class-mad4b-scp-skill-provider-discovery.php \
+            includes/class-mad4b-scp-skill-resource-reader.php \
+            includes/class-mad4b-scp-skill-resource-writer.php \
+            includes/class-mad4b-scp-skill-snapshot-identity.php \
+            includes/class-mad4b-scp-skill-exporter.php \
+            includes/class-mad4b-scp-skill-runtime-certification.php \
+            includes/class-mad4b-scp-skill-abilities.php \
+            includes/class-mad4b-scp-skills-admin-ui.php \
+            includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-staging-write-planning-guard.php \
+            includes/class-mad4b-scp-write-runtime-certification.php \
+            includes/class-mad4b-scp-rest-compatibility.php \
+            includes/class-mad4b-scp-authorization.php \
+            includes/class-mad4b-scp-transport-context.php \
+            includes/class-mad4b-scp-servers.php \
+            includes/adapters/class-mad4b-scp-skills-adapter.php \
+            tests/runtime-dynamic-skills-smoke.php \
+            tests/runtime-write-surface-smoke.php \
+            tests/runtime-dynamic-skills-production-smoke.php; do
+            php -l "$root/$file"
+          done
+
+      - name: Verify dynamic Skill and governed write contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py
+
+      - name: Deny Skill mutation and breakglass leakage
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          abilities="$root/includes/class-mad4b-scp-skill-abilities.php"
+          adapter="$root/includes/adapters/class-mad4b-scp-skills-adapter.php"
+          write="$root/includes/class-mad4b-scp-staging-write-authority.php"
+          grep -Fq "'readonly' => true" "$abilities"
+          grep -Fq "'content' => array()" "$adapter"
+          grep -Fq "'admin' => array()" "$adapter"
+          if grep -Eiq "mad4b/skill-(create|update|delete|write)" "$abilities" "$adapter"; then
+            echo 'Skill write ability leaked into MCP projection.' >&2
+            exit 1
+          fi
+          grep -Fq "array_diff( \$tools, array( 'mad4b/database-raw-query' ) )" "$write"
+
+      - name: Build portable Plugin snapshot artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          (
+            cd plugins
+            zip -qr ../dist/mad4b-wordpress-portable.zip mad4b-wordpress
+          )
+          unzip -tqq dist/mad4b-wordpress-portable.zip
+          sha256sum dist/mad4b-wordpress-portable.zip > dist/mad4b-wordpress-portable.zip.sha256
+          printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/SOURCE_HEAD.txt
+
+      - name: Upload portable Plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-wordpress-portable-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            dist/mad4b-wordpress-portable.zip
+            dist/mad4b-wordpress-portable.zip.sha256
+            dist/SOURCE_HEAD.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  runtime-staging:
+    name: Dynamic Skills + governed write Staging runtime
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl, zip
+          coverage: none
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+      - name: Provision disposable governed Staging WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-staging
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B Dynamic Skills' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          observed_host="$(php /tmp/wp-cli.phar eval 'echo wp_parse_url( home_url( "/" ), PHP_URL_HOST );' --path="$WP_PATH")"
+          test "$observed_host" = 'staging.egypttourgates.com'
+      - name: Install exact MCP Adapter and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-staging
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+      - name: Prove zero-touch Skills, governed writes, WPML REST pass-through and portable certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+      - name: Prove provider-uncertified mutations stay outside governed remote write projection
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-surface-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
+  runtime-production:
+    name: Dynamic Skills + write authority Production fail-closed runtime
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_production
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl
+          coverage: none
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+      - name: Provision disposable Production WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-production
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress_production --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-dynamic-skills-production.test' --title='MAD4B Dynamic Skills Production' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE production --type=constant --path="$WP_PATH"
+      - name: Install exact MCP Adapter and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-production
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+      - name: Prove Production receives no Staging Skill/App/write authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php" --path=/tmp/mad4b-dynamic-skills-production --user=mad4b-ci-admin

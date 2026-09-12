@@ -1,0 +1,71 @@
+name: MAD4B WPML Response Contract
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wpml-response-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-response-contract-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/mad4b-wpml-response-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-wpml-response-contract-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wpml-contract:
+    name: WPML envelope + diagnostics (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint and execute WPML response contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-wpml-response-contract.php"
+          php -l "$root/tests/wpml-response-contract-runtime.php"
+          php "$root/tests/wpml-response-contract-runtime.php"
+
+      - name: Verify governed wiring and safe persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          main="$root/mad4b-site-control-plane.php"
+          contract="$root/includes/class-mad4b-scp-wpml-response-contract.php"
+          grep -Fq "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php'" "$main"
+          grep -Fq 'MAD4B_SCP_WPML_Response_Contract::boot_early();' "$main"
+          grep -Fq "'wp_rest_success_envelope'" "$contract"
+          grep -Fq "'route_not_registered'" "$contract"
+          grep -Fq "'rest_no_route'" "$contract"
+          grep -Fq "'wp_error'" "$contract"
+          grep -Fq "'contract_mismatch'" "$contract"
+          grep -Fq "'non_json_response'" "$contract"
+          grep -Fq "'response_status'" "$contract"
+          grep -Fq "'response_content_type'" "$contract"
+          grep -Fq "'error_code'" "$contract"
+          grep -Fq "'safe_message'" "$contract"
+          grep -Fq 'update_option( self::OPTION, $receipt, false )' "$contract"
+          if grep -Eiq "['\"](?:raw_)?body['\"]\s*=>|response_body|raw_response" "$contract"; then
+            echo 'WPML receipt must not persist the raw response body.' >&2
+            exit 1
+          fi

@@ -1,0 +1,338 @@
+name: MAD4B Live Acceptance Evidence
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-live-acceptance-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence-and-artifact:
+    name: Live evidence contracts + exact artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ARTIFACT_NAME: mad4b-live-acceptance-exact-${{ github.event.pull_request.head.sha || github.sha }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl, zip
+          coverage: none
+
+      - name: Lint and execute Live Acceptance contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-live-acceptance-observer.php"
+          php -l "$root/tests/live-acceptance-observer-runtime.php"
+          python3 "$root/tests/live-acceptance-evidence-contract.py"
+          php "$root/tests/live-acceptance-observer-runtime.php"
+
+      - name: Build provenance-bound Control Plane candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          main="$plugin/mad4b-site-control-plane.php"
+          version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          runtime_release="$(sed -nE 's/^release=(.+)$/\1/p' "$plugin/MAD4B-RUNTIME-BUILD.txt" | head -n1)"
+          test -n "$version"
+          test -n "$runtime_release"
+          test "$version" = "$runtime_release"
+
+          stage='/tmp/mad4b-live-acceptance'
+          rm -rf "$stage"
+          mkdir -p "$stage/control/mad4b-site-control-plane" "$stage/out"
+          cp -a "$plugin"/. "$stage/control/mad4b-site-control-plane/"
+          rm -rf "$stage/control/mad4b-site-control-plane/tests"
+          cp wp-content/plugins/mcp-adapter.zip "$stage/out/mcp-adapter-0.6.1.zip"
+
+          export MAD4B_CONTROL_VERSION="$version"
+          export MAD4B_CONTROL_STAGE="$stage/control/mad4b-site-control-plane"
+          export MAD4B_ADAPTER_SHA="$(sha256sum "$stage/out/mcp-adapter-0.6.1.zip" | awk '{print $1}')"
+          test "$MAD4B_ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+
+          python3 <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          root = Path(os.environ['MAD4B_CONTROL_STAGE'])
+          entries = []
+          canonical = []
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name != 'MAD4B-BUILD-PROVENANCE.json'):
+              rel = path.relative_to(root).as_posix()
+              raw = path.read_bytes()
+              digest = hashlib.sha256(raw).hexdigest()
+              entries.append({'path': rel, 'bytes': len(raw), 'sha256': digest})
+              canonical.append(f'{rel}\0{len(raw)}\0{digest}\n'.encode())
+          manifest_digest = hashlib.sha256(b''.join(canonical)).hexdigest()
+          version = os.environ['MAD4B_CONTROL_VERSION']
+          source = os.environ['SOURCE_SHA']
+          adapter_sha = os.environ['MAD4B_ADAPTER_SHA']
+          build_payload = f'mad4b.build-fingerprint.v1\n{version}\n{source}\n{manifest_digest}\n0.6.1\n{adapter_sha}\n'.encode()
+          build_fingerprint = hashlib.sha256(build_payload).hexdigest()
+          data = {
+              'contract': 'mad4b.build-provenance.v1',
+              'control_plane_version': version,
+              'source_commit_sha': source,
+              'build_fingerprint': build_fingerprint,
+              'package_manifest_digest': manifest_digest,
+              'build_workflow': os.environ.get('GITHUB_WORKFLOW', ''),
+              'build_run_id': os.environ.get('GITHUB_RUN_ID', ''),
+              'artifact_identity': os.environ['ARTIFACT_NAME'],
+              'mcp_adapter_version': '0.6.1',
+              'mcp_adapter_sha256': adapter_sha,
+              'package_files': entries,
+              'manifest_excludes_self': True,
+              'generated_at_is_identity_neutral': True,
+          }
+          (root / 'MAD4B-BUILD-PROVENANCE.json').write_text(json.dumps(data, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          Path('/tmp/mad4b-live-acceptance/out/BUILD-FINGERPRINT.txt').write_text(build_fingerprint + '\n', encoding='utf-8')
+          Path('/tmp/mad4b-live-acceptance/out/PACKAGE-MANIFEST-DIGEST.txt').write_text(manifest_digest + '\n', encoding='utf-8')
+          PY
+
+          cp "$stage/control/mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json" "$stage/out/MAD4B-BUILD-PROVENANCE.json"
+          (
+            cd "$stage/control"
+            zip -qr "$stage/out/mad4b-site-control-plane-${version}.zip" mad4b-site-control-plane
+          )
+          unzip -tqq "$stage/out/mad4b-site-control-plane-${version}.zip"
+          unzip -l "$stage/out/mad4b-site-control-plane-${version}.zip" | grep -Fq 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'
+          if unzip -l "$stage/out/mad4b-site-control-plane-${version}.zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
+            echo 'Development tests must not ship in exact candidate.' >&2
+            exit 1
+          fi
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable exact-origin Staging WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-live-acceptance-wp
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B Live Acceptance' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          observed_host="$(php /tmp/wp-cli.phar eval 'echo wp_parse_url( home_url( "/" ), PHP_URL_HOST );' --path="$WP_PATH")"
+          test "$observed_host" = 'staging.egypttourgates.com'
+
+      - name: Install exact generated ZIP and verify runtime provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-live-acceptance/out'
+          WP_PATH=/tmp/mad4b-live-acceptance-wp
+          main='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+          version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          test -n "$version"
+          unzip -q "$stage/mcp-adapter-0.6.1.zip" -d "$WP_PATH/wp-content/plugins"
+          unzip -q "$stage/mad4b-site-control-plane-${version}.zip" -d "$WP_PATH/wp-content/plugins"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval '
+            $p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+            if ( empty( $p["manifest_valid"] ) || empty( $p["runtime_manifest_match"] ) || ! empty( $p["stale"] ) ) { fwrite( STDERR, wp_json_encode( $p ) ); exit( 1 ); }
+            if ( $p["source_commit_sha"] !== getenv( "SOURCE_SHA" ) ) { fwrite( STDERR, "source head mismatch" ); exit( 1 ); }
+            $required = array("mad4b/query-monitor-regression-status","mad4b/build-provenance-status","mad4b/external-handshake-attestation-status","mad4b/external-wpml-receipt-status","mad4b/snapshot-verify","mad4b/live-acceptance-status");
+            foreach ( $required as $name ) if ( ! wp_get_ability( $name ) ) { fwrite( STDERR, "missing ability: " . $name ); exit( 1 ); }
+            echo $p["build_fingerprint"];
+          ' --path="$WP_PATH" --user=mad4b-ci-admin > "$stage/RUNTIME-BUILD-FINGERPRINT.txt"
+          test "$(cat "$stage/RUNTIME-BUILD-FINGERPRINT.txt")" = "$(cat "$stage/BUILD-FINGERPRINT.txt")"
+
+      - name: Prove no false PASS before external evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-live-acceptance/out'
+          WP_PATH=/tmp/mad4b-live-acceptance-wp
+          php /tmp/wp-cli.phar eval '
+            $q = MAD4B_SCP_Live_Acceptance_Observer::query_monitor_status();
+            if ( ! empty( $q["ready"] ) ) { fwrite( STDERR, "Query Monitor gate falsely passed without active QM/current web evidence" ); exit( 1 ); }
+            $w = MAD4B_SCP_Live_Acceptance_Observer::external_wpml_receipt_status();
+            if ( ! empty( $w["verified"] ) || $w["state"] !== "pending_external_evidence" ) { fwrite( STDERR, "WPML self-certified" ); exit( 1 ); }
+            $e = MAD4B_SCP_Live_Acceptance_Observer::external_handshake_attestation_status();
+            if ( ! empty( $e["verified"] ) || $e["status"] !== "pending_external_evidence" ) { fwrite( STDERR, "External tools self-certified" ); exit( 1 ); }
+            $a = MAD4B_SCP_Live_Acceptance_Observer::live_acceptance_status();
+            foreach ( array("external_wpml","external_handshake","external_inventory_parity","snapshot_external","mutation_acceptance","production_unchanged") as $gate ) if ( ! empty( $a["gates"][$gate]["ready"] ) ) { fwrite( STDERR, "External gate falsely passed: " . $gate ); exit( 1 ); }
+            echo "false-pass protections: PASS\n";
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Build portable Plugin from exact enabled runtime snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-live-acceptance'
+          out="$stage/out"
+          WP_PATH=/tmp/mad4b-live-acceptance-wp
+          portable="$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip"
+          export PORTABLE_OUT="$portable"
+          export SNAPSHOT_ID_OUT="$out/MAD4B-SNAPSHOT-ID.txt"
+          export SNAPSHOT_JSON_OUT="$out/MAD4B-SNAPSHOT-IDENTITY.json"
+
+          php /tmp/wp-cli.phar eval '
+            $id = MAD4B_SCP_Skill_Snapshot_Identity::build();
+            if ( empty( $id["ready"] ) || empty( $id["identity_token"] ) || empty( $id["entries"] ) || (int) $id["skill_count"] !== count( $id["entries"] ) ) { fwrite( STDERR, wp_json_encode( $id ) ); exit( 1 ); }
+            if ( "plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2" !== (string) $id["app_id"] ) { fwrite( STDERR, "unexpected Staging App mapping" ); exit( 1 ); }
+            $names = array_map( static function ( $entry ) { return isset( $entry["name"] ) ? (string) $entry["name"] : ""; }, $id["entries"] );
+            foreach ( array("wordpress-site-diagnostics","wordpress-connection-diagnostics","wordpress-archive-audit","wordpress-change-safety") as $required ) {
+              if ( ! in_array( $required, $names, true ) ) { fwrite( STDERR, "missing always-enabled Skill: " . $required ); exit( 1 ); }
+            }
+            $export = MAD4B_SCP_Skill_Exporter::build_temp_zip();
+            if ( is_wp_error( $export ) ) { fwrite( STDERR, $export->get_error_code() . ": " . $export->get_error_message() ); exit( 1 ); }
+            if ( empty( $export["path"] ) || ! is_file( $export["path"] ) || (int) $export["skill_count"] !== (int) $id["skill_count"] || empty( $export["identity_token"] ) || ! hash_equals( (string) $id["identity_token"], (string) $export["identity_token"] ) ) { fwrite( STDERR, "canonical exporter/runtime identity mismatch" ); exit( 1 ); }
+            if ( ! copy( $export["path"], getenv( "PORTABLE_OUT" ) ) ) { fwrite( STDERR, "portable export copy failed" ); exit( 1 ); }
+            @unlink( $export["path"] );
+            if ( false === file_put_contents( getenv( "SNAPSHOT_ID_OUT" ), (string) $id["identity_token"] . "\n" ) ) { fwrite( STDERR, "snapshot token write failed" ); exit( 1 ); }
+            if ( false === file_put_contents( getenv( "SNAPSHOT_JSON_OUT" ), wp_json_encode( $id, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" ) ) { fwrite( STDERR, "snapshot identity write failed" ); exit( 1 ); }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
+          unzip -tqq "$portable"
+          python3 - "$portable" "$out/MAD4B-SNAPSHOT-IDENTITY.json" "$out/MAD4B-SNAPSHOT-ID.txt" <<'PY'
+          import json, sys, zipfile
+          from pathlib import Path
+
+          portable = Path(sys.argv[1])
+          identity = json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
+          token = Path(sys.argv[3]).read_text(encoding='utf-8').strip()
+          expected = sorted(entry['name'] for entry in identity['entries'])
+          if not expected or identity['skill_count'] != len(expected):
+              raise SystemExit('runtime snapshot identity is empty or internally inconsistent')
+          with zipfile.ZipFile(portable) as zf:
+              names = zf.namelist()
+              actual = sorted(name.split('/')[1] for name in names if name.startswith('skills/') and name.count('/') == 2 and name.endswith('/SKILL.md'))
+              package_token = zf.read('MAD4B-SNAPSHOT-ID.txt').decode('utf-8').strip()
+              package_meta = json.loads(zf.read('MAD4B-SNAPSHOT.json').decode('utf-8'))
+          if actual != expected:
+              raise SystemExit(f'portable Skill exact-set mismatch: expected={expected!r} actual={actual!r}')
+          if package_token != token or package_token != identity['identity_token']:
+              raise SystemExit('portable snapshot token mismatch')
+          if package_meta.get('identity_token') != token or package_meta.get('skill_count') != identity['skill_count']:
+              raise SystemExit('portable snapshot metadata mismatch')
+          print(f'portable enabled-snapshot parity: PASS ({len(expected)} skills)')
+          PY
+
+      - name: Emit exact artifact manifest and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          out='/tmp/mad4b-live-acceptance/out'
+          main='wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+          version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          test -n "$version"
+          control="$out/mad4b-site-control-plane-${version}.zip"
+          adapter="$out/mcp-adapter-0.6.1.zip"
+          portable="$out/mad4b-wordpress-portable-${SOURCE_SHA}.zip"
+          control_sha="$(sha256sum "$control" | awk '{print $1}')"
+          adapter_sha="$(sha256sum "$adapter" | awk '{print $1}')"
+          portable_sha="$(sha256sum "$portable" | awk '{print $1}')"
+          snapshot="$(tr -d '\r\n' < "$out/MAD4B-SNAPSHOT-ID.txt")"
+          build_fingerprint="$(tr -d '\r\n' < "$out/BUILD-FINGERPRINT.txt")"
+          package_digest="$(tr -d '\r\n' < "$out/PACKAGE-MANIFEST-DIGEST.txt")"
+          export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" PORTABLE_SHA="$portable_sha" SNAPSHOT_TOKEN="$snapshot" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest" CONTROL_VERSION="$version"
+          python3 <<'PY'
+          import json, os
+          from pathlib import Path
+          out = Path('/tmp/mad4b-live-acceptance/out')
+          version = os.environ['CONTROL_VERSION']
+          data = {
+              'contract': 'mad4b.live-acceptance-exact-artifact.v1',
+              'repository': os.environ.get('GITHUB_REPOSITORY', ''),
+              'exact_head_sha': os.environ['SOURCE_SHA'],
+              'release_candidate': version,
+              'workflow': os.environ.get('GITHUB_WORKFLOW', ''),
+              'workflow_run_id': os.environ.get('GITHUB_RUN_ID', ''),
+              'artifact_name': os.environ['ARTIFACT_NAME'],
+              'control_plane_archive': f'mad4b-site-control-plane-{version}.zip',
+              'control_plane_sha256': os.environ['CONTROL_SHA'],
+              'mcp_adapter_version': '0.6.1',
+              'mcp_adapter_sha256': os.environ['ADAPTER_SHA'],
+              'portable_plugin_archive': f"mad4b-wordpress-portable-{os.environ['SOURCE_SHA']}.zip",
+              'portable_plugin_sha256': os.environ['PORTABLE_SHA'],
+              'snapshot_token': os.environ['SNAPSHOT_TOKEN'],
+              'build_fingerprint': os.environ['BUILD_FINGERPRINT'],
+              'package_manifest_digest': os.environ['PACKAGE_DIGEST'],
+              'deployment_performed': False,
+              'merge_authorized': False,
+          }
+          (out / 'EXACT-ARTIFACT.json').write_text(json.dumps(data, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          (
+            cd "$out"
+            sha256sum \
+              "mad4b-site-control-plane-${version}.zip" \
+              mcp-adapter-0.6.1.zip \
+              "mad4b-wordpress-portable-${SOURCE_SHA}.zip" \
+              MAD4B-SNAPSHOT-ID.txt \
+              MAD4B-SNAPSHOT-IDENTITY.json \
+              MAD4B-BUILD-PROVENANCE.json \
+              EXACT-ARTIFACT.json > SHA256SUMS
+            sha256sum --check --strict SHA256SUMS
+          )
+
+      - name: Upload exact reviewed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: |
+            /tmp/mad4b-live-acceptance/out/mad4b-site-control-plane-*.zip
+            /tmp/mad4b-live-acceptance/out/mcp-adapter-0.6.1.zip
+            /tmp/mad4b-live-acceptance/out/mad4b-wordpress-portable-*.zip
+            /tmp/mad4b-live-acceptance/out/MAD4B-SNAPSHOT-ID.txt
+            /tmp/mad4b-live-acceptance/out/MAD4B-SNAPSHOT-IDENTITY.json
+            /tmp/mad4b-live-acceptance/out/MAD4B-BUILD-PROVENANCE.json
+            /tmp/mad4b-live-acceptance/out/BUILD-FINGERPRINT.txt
+            /tmp/mad4b-live-acceptance/out/PACKAGE-MANIFEST-DIGEST.txt
+            /tmp/mad4b-live-acceptance/out/RUNTIME-BUILD-FINGERPRINT.txt
+            /tmp/mad4b-live-acceptance/out/EXACT-ARTIFACT.json
+            /tmp/mad4b-live-acceptance/out/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30

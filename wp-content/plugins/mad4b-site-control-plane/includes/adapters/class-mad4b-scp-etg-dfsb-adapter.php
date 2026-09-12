@@ -24,6 +24,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Config\\Configuration' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Config\\ProfileRegistry' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\RuntimeInventory' )
+			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\BuildIdentity' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\InventoryProfilePlanner' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Presentation\\InventoryContentCatalog' );
 	}
@@ -32,6 +33,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 		return array(
 			'read' => array(
 				'etg-dfsb/status',
+				'etg-dfsb/build-identity',
 				'etg-dfsb/configuration',
 				'etg-dfsb/runtime-inventory',
 				'etg-dfsb/profiles',
@@ -88,6 +90,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function register_abilities() {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$this->add_ability( 'etg-dfsb/status', 'Get ETG DFSB MCP Integration Status', 'status', $read );
+		$this->add_ability( 'etg-dfsb/build-identity', 'Read ETG DFSB Exact Build Identity', 'build_identity', $read );
 		$this->add_ability( 'etg-dfsb/configuration', 'Read ETG DFSB Configuration', 'configuration', $read );
 		$this->add_ability( 'etg-dfsb/runtime-inventory', 'Read ETG DFSB Runtime Inventory', 'runtime_inventory', $read );
 		$this->add_ability( 'etg-dfsb/profiles', 'Read ETG DFSB Surface Profiles', 'profiles', $read );
@@ -108,6 +111,22 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->add_ability( 'etg-dfsb/profile-plan', 'Plan ETG DFSB Profiles from Runtime Inventory', 'profile_plan', $read );
 		$this->add_ability( 'etg-dfsb/content-catalog', 'Read ETG DFSB Dynamic Content Catalog', 'content_catalog', $read );
 	}
+
+    public function build_identity() {
+        $guard = $this->guard_runtime();
+        if ( is_wp_error( $guard ) ) return $guard;
+        try {
+  $identity = \ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
+  if ( ! is_array( $identity ) ) return $this->runtime_error( 'build_identity_unavailable' );
+  $identity['adapter_contract'] = self::CONTRACT;
+  $identity['authorizing'] = false;
+  $identity['read_only'] = true;
+  $identity['mutation_exposed'] = false;
+  return $identity;
+        } catch ( Throwable $error ) {
+  return $this->runtime_error( 'build_identity_unavailable' );
+        }
+    }
 
 	public function configuration() {
 		$guard = $this->guard_runtime();

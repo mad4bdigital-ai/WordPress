@@ -27,6 +27,13 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		$status['unknown_field_write_default'] = 'deny';
 		$status['sensitive_meta_default'] = 'deny_read_write';
 		$status['protected_meta_reversible_default'] = 'deny';
+		$status['listing_data_bounded_exception'] = array(
+			'field' => '_listing_data',
+			'existing_only' => true,
+			'allowed_change' => 'post_type_only',
+			'requires_exact_sha256' => true,
+			'reversible' => true,
+		);
 		$status['meta_create_mode'] = 'admin_plus_explicit_create_policy_plus_field_policy';
 		return $status;
 	}
@@ -85,8 +92,9 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
 		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0; $field = $this->validate_write_target( $id, $input );
 		if ( is_wp_error( $field ) ) return $field;
-		if ( 0 === strpos( $field, '_' ) ) return new WP_Error( 'mad4b_jetengine_protected_meta_not_reversible', 'Protected meta is excluded from the normal reversible JetEngine writer even when a read/write override exists.' );
+		if ( 0 === strpos( $field, '_' ) && '_listing_data' !== $field ) return new WP_Error( 'mad4b_jetengine_protected_meta_not_reversible', 'Protected meta is excluded from the normal reversible JetEngine writer except for the bounded _listing_data contract.' );
 		$exists = metadata_exists( 'post', $id, $field ); $current = get_post_meta( $id, $field, true );
+		if ( '_listing_data' === $field && ! $this->is_known_listing_data_target( $id, $current ) ) return new WP_Error( 'mad4b_jetengine_listing_data_target_invalid', 'The bounded _listing_data contract is limited to known JetEngine Listing posts.' );
 		return array( 'target_type' => 'jetengine-post-meta', 'target_id' => $id . ':' . $field, 'target' => array( 'post_id' => $id, 'field' => $field ), 'state' => array( 'exists' => $exists, 'value' => $current ) );
 	}
 	public function read_reversible_state( $ability_name, array $target ) {
@@ -94,33 +102,92 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		$id = isset( $target['post_id'] ) ? absint( $target['post_id'] ) : 0; $field = isset( $target['field'] ) ? $this->exact_field_name( $target['field'] ) : new WP_Error( 'mad4b_jetengine_invalid_field', 'Missing field.' );
 		if ( is_wp_error( $field ) ) return $field;
 		if ( ! $id || ! get_post( $id ) ) return new WP_Error( 'mad4b_post_missing', 'Post not found for JetEngine readback.' );
-		if ( $this->is_sensitive_meta_key( $field ) || 0 === strpos( $field, '_' ) ) return new WP_Error( 'mad4b_jetengine_reversible_meta_read_denied', 'Sensitive/protected meta cannot participate in normal reversible JetEngine readback.' );
-		return array( 'exists' => metadata_exists( 'post', $id, $field ), 'value' => get_post_meta( $id, $field, true ) );
+		if ( $this->is_sensitive_meta_key( $field ) ) return new WP_Error( 'mad4b_jetengine_reversible_meta_read_denied', 'Sensitive meta cannot participate in reversible JetEngine readback.' );
+		$current = get_post_meta( $id, $field, true );
+		if ( 0 === strpos( $field, '_' ) && ( '_listing_data' !== $field || ! $this->is_known_listing_data_target( $id, $current ) ) ) return new WP_Error( 'mad4b_jetengine_reversible_meta_read_denied', 'Protected meta is not eligible for reversible readback outside the bounded _listing_data contract.' );
+		return array( 'exists' => metadata_exists( 'post', $id, $field ), 'value' => $current );
 	}
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) {
 		if ( 'jetengine/update-post-meta' !== $ability_name ) return parent::restore_reversible_state( $ability_name, $target, $state, $record );
 		$id = isset( $target['post_id'] ) ? absint( $target['post_id'] ) : 0; $field = isset( $target['field'] ) ? $this->exact_field_name( $target['field'] ) : new WP_Error( 'mad4b_jetengine_invalid_field', 'Missing field.' );
 		if ( is_wp_error( $field ) ) return $field;
 		if ( ! $id || ! current_user_can( 'edit_post', $id ) ) return new WP_Error( 'mad4b_jetengine_restore_denied', 'Current user cannot restore this post meta.' );
-		if ( $this->is_sensitive_meta_key( $field ) || 0 === strpos( $field, '_' ) ) return new WP_Error( 'mad4b_jetengine_restore_field_denied', 'Sensitive/protected meta is not restorable through the normal JetEngine adapter contract.' );
+		if ( $this->is_sensitive_meta_key( $field ) ) return new WP_Error( 'mad4b_jetengine_restore_field_denied', 'Sensitive meta is not restorable through the JetEngine adapter contract.' );
 		if ( ! array_key_exists( 'exists', $state ) || ! array_key_exists( 'value', $state ) ) return new WP_Error( 'mad4b_jetengine_restore_payload_invalid', 'JetEngine rollback state is incomplete.' );
+		if ( 0 === strpos( $field, '_' ) ) {
+			if ( '_listing_data' !== $field || empty( $state['exists'] ) || ! $this->is_known_listing_data_target( $id, $state['value'] ) || ! $this->is_safe_listing_data_value( $state['value'] ) ) {
+				return new WP_Error( 'mad4b_jetengine_restore_field_denied', 'Protected meta restore is limited to a previously existing, bounded _listing_data state.' );
+			}
+		}
 		if ( $state['exists'] ) update_post_meta( $id, $field, $state['value'] ); else delete_post_meta( $id, $field );
 		return true;
 	}
 	private function validate_write_target( $id, array $input ) {
 		$field = isset( $input['field'] ) ? $this->exact_field_name( $input['field'] ) : new WP_Error( 'mad4b_jetengine_invalid_field', 'Meta field is required.' );
 		if ( is_wp_error( $field ) ) return $field;
-		if ( $this->is_sensitive_meta_key( $field ) && ! $this->can_write_sensitive_meta( $field, $id, isset( $input['value'] ) ? $input['value'] : null ) ) return new WP_Error( 'mad4b_jetengine_sensitive_meta_write', 'Secret/authentication-like meta mutation is denied by default and requires an explicit site policy override.' );
-		if ( 0 === strpos( $field, '_' ) && ! apply_filters( 'mad4b_scp_allow_protected_meta_write', false, 'jetengine', $field, $id ) ) return new WP_Error( 'mad4b_jetengine_protected_meta', 'Protected meta writes are denied by default.' );
-		$exists = metadata_exists( 'post', $id, $field ); $current = get_post_meta( $id, $field, true ); $hash = $this->hash_value( $current );
+		$post = get_post( $id );
+		if ( ! $post ) return new WP_Error( 'mad4b_post_missing', 'Post not found.' );
+		$value = array_key_exists( 'value', $input ) ? $input['value'] : null;
+		if ( $this->is_sensitive_meta_key( $field ) && ! $this->can_write_sensitive_meta( $field, $id, $value ) ) return new WP_Error( 'mad4b_jetengine_sensitive_meta_write', 'Secret/authentication-like meta mutation is denied by default and requires an explicit site policy override.' );
+
+		$exists = metadata_exists( 'post', $id, $field );
+		$current = get_post_meta( $id, $field, true );
+		$bounded_listing_data = false;
+		if ( '_listing_data' === $field ) {
+			$bounded_listing_data = $this->validate_listing_data_write( $id, $input, $exists, $current );
+			if ( is_wp_error( $bounded_listing_data ) ) return $bounded_listing_data;
+		}
+
+		if ( 0 === strpos( $field, '_' ) && true !== $bounded_listing_data && ! apply_filters( 'mad4b_scp_allow_protected_meta_write', false, 'jetengine', $field, $id ) ) return new WP_Error( 'mad4b_jetengine_protected_meta', 'Protected meta writes are denied by default.' );
+		$hash = $this->hash_value( $current );
 		if ( $exists ) {
 			$expected = isset( $input['expected_sha256'] ) ? strtolower( trim( (string) $input['expected_sha256'] ) ) : '';
-			if ( '' === $expected || ! hash_equals( $hash, $expected ) ) return new WP_Error( 'mad4b_jetengine_stale_meta', 'Current meta SHA-256 is required.', array( 'current_sha256' => $hash ) );
+			if ( '' === $expected || ! preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( $hash, $expected ) ) return new WP_Error( 'mad4b_jetengine_stale_meta', 'Current meta SHA-256 is required.', array( 'current_sha256' => $hash ) );
 		} else {
 			if ( empty( $input['allow_create'] ) ) return new WP_Error( 'mad4b_jetengine_create_denied', 'This ability does not create undeclared meta unless explicitly requested.' );
-			if ( ! current_user_can( 'manage_options' ) || ! apply_filters( 'mad4b_scp_allow_jetengine_meta_create', false, $field, $id, isset( $input['value'] ) ? $input['value'] : null, get_current_user_id() ) ) return new WP_Error( 'mad4b_jetengine_create_policy_denied', 'Creating a new JetEngine/meta field requires administrator permission and an explicit site policy filter.' );
+			if ( ! current_user_can( 'manage_options' ) || ! apply_filters( 'mad4b_scp_allow_jetengine_meta_create', false, $field, $id, $value, get_current_user_id() ) ) return new WP_Error( 'mad4b_jetengine_create_policy_denied', 'Creating a new JetEngine/meta field requires administrator permission and an explicit site policy filter.' );
 		}
-		if ( ! (bool) apply_filters( 'mad4b_scp_jetengine_field_write_allowed', false, $field, $id, $exists, isset( $input['value'] ) ? $input['value'] : null, get_current_user_id() ) ) return new WP_Error( 'mad4b_jetengine_field_policy_denied', 'JetEngine field mutation is denied unless the exact field is explicitly allowlisted by site policy.' );
+		if ( true !== $bounded_listing_data && ! (bool) apply_filters( 'mad4b_scp_jetengine_field_write_allowed', false, $field, $id, $exists, $value, get_current_user_id() ) ) return new WP_Error( 'mad4b_jetengine_field_policy_denied', 'JetEngine field mutation is denied unless the exact field is explicitly allowlisted by site policy.' );
 		return $field;
+	}
+
+	private function validate_listing_data_write( $id, array $input, $exists, $current ) {
+		if ( ! $exists || ! empty( $input['allow_create'] ) ) return new WP_Error( 'mad4b_jetengine_listing_data_existing_only', 'The bounded _listing_data contract may update an existing value only; create is forbidden.' );
+		if ( ! $this->is_known_listing_data_target( $id, $current ) ) return new WP_Error( 'mad4b_jetengine_listing_data_target_invalid', 'The bounded _listing_data contract is limited to known JetEngine Listing posts.' );
+		$proposed = isset( $input['value'] ) ? $input['value'] : null;
+		if ( ! is_array( $proposed ) || ! $this->is_safe_listing_data_value( $proposed ) ) return new WP_Error( 'mad4b_jetengine_listing_data_value_invalid', '_listing_data must remain a bounded, non-executable array.' );
+		if ( ! array_key_exists( 'post_type', $current ) || ! array_key_exists( 'post_type', $proposed ) ) return new WP_Error( 'mad4b_jetengine_listing_data_post_type_missing', 'The bounded _listing_data contract requires an existing post_type field.' );
+		$new_post_type = (string) $proposed['post_type'];
+		if ( '' === $new_post_type || strlen( $new_post_type ) > 20 || sanitize_key( $new_post_type ) !== $new_post_type || ! post_type_exists( $new_post_type ) ) return new WP_Error( 'mad4b_jetengine_listing_data_post_type_invalid', 'The requested listing post_type must be an already registered canonical post type.' );
+		$expected = $current;
+		$expected['post_type'] = $new_post_type;
+		if ( $expected != $proposed ) return new WP_Error( 'mad4b_jetengine_listing_data_scope_denied', 'The bounded _listing_data contract may change post_type only and must preserve every other field.' );
+		return true;
+	}
+
+	private function is_known_listing_data_target( $id, $value ) {
+		$post = get_post( absint( $id ) );
+		if ( ! $post || 'jet-engine' !== (string) $post->post_type ) return false;
+		if ( ! metadata_exists( 'post', absint( $id ), '_listing_data' ) || ! is_array( $value ) ) return false;
+		return array_key_exists( 'post_type', $value );
+	}
+
+	private function is_safe_listing_data_value( $value, $depth = 0, &$count = 0 ) {
+		if ( $depth > 8 || $count > 256 ) return false;
+		++$count;
+		if ( is_object( $value ) || is_resource( $value ) ) return false;
+		if ( is_string( $value ) ) {
+			if ( strlen( $value ) > 4096 ) return false;
+			if ( false !== stripos( $value, '<?php' ) || preg_match( '/(?:^|;)O:\\d+:"/i', $value ) ) return false;
+			return true;
+		}
+		if ( is_array( $value ) ) {
+			foreach ( $value as $key => $item ) {
+				if ( is_string( $key ) && strlen( $key ) > 191 ) return false;
+				if ( ! $this->is_safe_listing_data_value( $item, $depth + 1, $count ) ) return false;
+			}
+			return true;
+		}
+		return is_null( $value ) || is_bool( $value ) || is_int( $value ) || is_float( $value );
 	}
 }

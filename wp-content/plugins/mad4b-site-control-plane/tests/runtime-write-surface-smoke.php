@@ -18,6 +18,45 @@ $check( ! in_array( 'mad4b/content-get-post', $write_tools, true ), 'Read-only c
 $check( ! in_array( 'mad4b/audit-tail', $write_tools, true ), 'Read-only audit lookup leaked into mad4b-write.' );
 $check( ! in_array( 'mad4b/agent-list', $write_tools, true ), 'Read-only governance listing leaked into mad4b-write.' );
 
+$blocked_provider_writes = MAD4B_SCP_Servers::blocked_write_tools();
+$check( is_array( $blocked_provider_writes ), 'Provider-blocked write diagnostics are unavailable.' );
+$expected_blocked = array();
+if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+    $registry = MAD4B_SCP_Adapter_Registry::instance();
+    $registry->register_defaults();
+    foreach ( $registry->all() as $adapter ) {
+        $status = $adapter->status();
+        $certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
+        if ( empty( $status['mutation_requires_certification'] ) || ! empty( $certification['runtime_contract_ok'] ) ) continue;
+        $map = $adapter->ability_names();
+        foreach ( array( 'content', 'admin' ) as $surface ) {
+            $abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
+            foreach ( $abilities as $ability_name ) {
+                if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+                $ability = wp_get_ability( $ability_name );
+                if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
+                $meta = $ability->get_meta();
+                $annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+                if ( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'] ) $expected_blocked[] = (string) $ability_name;
+            }
+        }
+    }
+}
+$expected_blocked = array_values( array_unique( $expected_blocked ) );
+sort( $expected_blocked );
+$observed_blocked = array();
+foreach ( $blocked_provider_writes as $blocked ) {
+    $check( isset( $blocked['ability'], $blocked['provider'], $blocked['reason'] ), 'Blocked write diagnostic is incomplete.' );
+    $check( 'provider_runtime_contract_not_certified' === $blocked['reason'], 'Blocked write diagnostic has an unexpected reason.' );
+    $check( ! empty( $blocked['violations'] ) && is_array( $blocked['violations'] ), 'Blocked write diagnostic is missing provider violations.' );
+    $ability_name = (string) $blocked['ability'];
+    $observed_blocked[] = $ability_name;
+    $check( ! in_array( $ability_name, $write_tools, true ), 'Provider-uncertified mutation leaked into write_tools: ' . $ability_name );
+    $check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ), 'Provider-uncertified mutation mounted on mad4b-write: ' . $ability_name );
+}
+sort( $observed_blocked );
+$check( $expected_blocked === $observed_blocked, 'Provider-blocked write projection does not match runtime certification state.' );
+
 foreach ( $write_tools as $ability_name ) {
     $ability = wp_get_ability( $ability_name );
     $check( is_object( $ability ) && method_exists( $ability, 'get_meta' ), 'Projected write ability metadata is unavailable: ' . $ability_name );
@@ -96,4 +135,4 @@ $content_grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-con
 $check( is_array( $content_grant ) && (int) $content_grant['id'] !== (int) $write_grant['id'], 'Write and content grants collapsed into one authority record.' );
 
 MAD4B_SCP_Transport_Context::clear();
-echo "mad4b.site-control-plane.runtime-write-surface.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-write-surface.v2: PASS\n";

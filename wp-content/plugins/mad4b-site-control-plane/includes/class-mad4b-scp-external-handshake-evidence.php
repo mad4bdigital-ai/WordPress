@@ -10,14 +10,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * persisted. WP-CLI, cron and internal rest_do_request probes cannot certify.
  */
 final class MAD4B_SCP_External_Handshake_Evidence {
-	const CONTRACT = 'mad4b.external-handshake-evidence.v1';
+	const CONTRACT = 'mad4b.external-handshake-evidence.v2';
 	const OPTION = 'mad4b_scp_external_handshake_evidence';
+	const OBSERVER_ATTESTATION_OPTION = 'mad4b_scp_external_inventory_attestation_v1';
 	const PENDING_PREFIX = 'mad4b_ext_hs_';
 	const PENDING_TTL = 900;
 	const MAX_EVIDENCE_AGE = 2592000; // 30 days.
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const SERVER_ID = 'mad4b-chatgpt';
 	const REQUIRED_SCOPE = 'mad4b:read';
+	const FINALIZER_SESSION_SKEW = 5;
 
 	private static $booted = false;
 
@@ -25,6 +27,11 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_filter( 'rest_post_dispatch', array( __CLASS__, 'observe_rest_response' ), PHP_INT_MAX, 3 );
+		// The Live Acceptance observer stores its own exact-inventory attestation.
+		// During an authenticated remote finalizer request, expose that attestation
+		// only when it can be joined to this class's authoritative handshake from
+		// the same OAuth subject/authority and the same tools/list observation.
+		add_filter( 'option_' . self::OBSERVER_ATTESTATION_OPTION, array( __CLASS__, 'bind_observer_attestation_to_current_finalizer' ), PHP_INT_MAX, 1 );
 	}
 
 	public static function observe_rest_response( $response, $server, $request ) {
@@ -33,6 +40,66 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( 'initialize' === $method ) self::capture_initialize( $response, $request );
 		elseif ( 'tools/list' === $method ) self::capture_tools_list( $response, $request );
 		return $response;
+	}
+
+	public static function bind_observer_attestation_to_current_finalizer( $attestation ) {
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $attestation;
+		if ( ! is_array( $attestation ) || empty( $attestation ) ) return array();
+		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : null;
+		if ( is_wp_error( $identity ) || ! is_array( $identity ) ) return array();
+		$oauth = MAD4B_SCP_OAuth_Resource_Bridge::status();
+		$handshake = get_option( self::OPTION, array() );
+		$status = self::status();
+		if ( ! is_array( $handshake ) ) $handshake = array();
+		$handshake['verified'] = is_array( $status ) && ! empty( $status['verified'] );
+		if ( ! self::observer_attestation_matches_finalizer_context( $attestation, $handshake, $identity, is_array( $oauth ) ? $oauth : array() ) ) return array();
+		$attestation['finalizer_subject_binding_verified'] = true;
+		$attestation['finalizer_context_digest'] = self::finalizer_context_digest( $attestation, $handshake );
+		return $attestation;
+	}
+
+	/** @internal Pure finalizer-binding evaluator used by regression tests. */
+	public static function observer_attestation_matches_finalizer_context( array $attestation, array $handshake, array $identity, array $oauth ) {
+		if ( empty( $handshake['verified'] ) || empty( $attestation['real_external_session'] ) ) return false;
+		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return false;
+		$subject = isset( $identity['subject_fingerprint'] ) ? strtolower( trim( (string) $identity['subject_fingerprint'] ) ) : '';
+		$handshake_subject = isset( $handshake['subject_fingerprint'] ) ? strtolower( trim( (string) $handshake['subject_fingerprint'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $subject ) || ! preg_match( '/^[a-f0-9]{64}$/', $handshake_subject ) || ! hash_equals( $handshake_subject, $subject ) ) return false;
+		$identity_scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? array_values( array_unique( array_map( 'strval', $identity['token_scopes'] ) ) ) : array();
+		$handshake_scopes = isset( $handshake['scope_set'] ) && is_array( $handshake['scope_set'] ) ? array_values( array_unique( array_map( 'strval', $handshake['scope_set'] ) ) ) : array();
+		if ( ! in_array( self::REQUIRED_SCOPE, $identity_scopes, true ) || ! in_array( self::REQUIRED_SCOPE, $handshake_scopes, true ) ) return false;
+		if ( 'oauth2_bearer' !== ( isset( $handshake['auth_method'] ) ? (string) $handshake['auth_method'] : '' ) ) return false;
+		if ( empty( $identity['wp_user_id'] ) || empty( $handshake['wp_user_id'] ) || (int) $identity['wp_user_id'] !== (int) $handshake['wp_user_id'] ) return false;
+		if ( self::SERVER_ID !== ( isset( $handshake['server_id'] ) ? (string) $handshake['server_id'] : '' ) || self::SERVER_ID !== ( isset( $attestation['server_id'] ) ? (string) $attestation['server_id'] : '' ) ) return false;
+		if ( self::CHATGPT_CLIENT_ID !== ( isset( $handshake['client_id'] ) ? (string) $handshake['client_id'] : '' ) || self::CHATGPT_CLIENT_ID !== ( isset( $attestation['client_id'] ) ? (string) $attestation['client_id'] : '' ) ) return false;
+		$issuer = isset( $oauth['issuer'] ) ? rtrim( (string) $oauth['issuer'], '/' ) : '';
+		$resource = isset( $oauth['resource'] ) ? untrailingslashit( (string) $oauth['resource'] ) : '';
+		$handshake_issuer = isset( $handshake['issuer'] ) ? rtrim( (string) $handshake['issuer'], '/' ) : '';
+		$handshake_resource = isset( $handshake['resource'] ) ? untrailingslashit( (string) $handshake['resource'] ) : '';
+		if ( '' === $issuer || '' === $resource || '' === $handshake_issuer || '' === $handshake_resource ) return false;
+		if ( ! hash_equals( $issuer, $handshake_issuer ) || ! hash_equals( $resource, $handshake_resource ) ) return false;
+		$observer_inventory = isset( $attestation['external_tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $attestation['external_tool_inventory_fingerprint'] ) ) : '';
+		$handshake_inventory = isset( $handshake['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $handshake['tool_inventory_fingerprint'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $observer_inventory ) || ! preg_match( '/^[a-f0-9]{64}$/', $handshake_inventory ) || ! hash_equals( $handshake_inventory, $observer_inventory ) ) return false;
+		if ( ! isset( $attestation['external_tool_count'], $handshake['tool_count'] ) || (int) $attestation['external_tool_count'] !== (int) $handshake['tool_count'] ) return false;
+		if ( ! isset( $attestation['external_write_tool_count'], $handshake['write_tool_count'] ) || (int) $attestation['external_write_tool_count'] !== (int) $handshake['write_tool_count'] ) return false;
+		$observer_time = ! empty( $attestation['observed_at'] ) ? strtotime( (string) $attestation['observed_at'] . ' UTC' ) : false;
+		$handshake_time = ! empty( $handshake['verified_at'] ) ? strtotime( (string) $handshake['verified_at'] . ' UTC' ) : false;
+		if ( false === $observer_time || false === $handshake_time || abs( $observer_time - $handshake_time ) > self::FINALIZER_SESSION_SKEW ) return false;
+		return true;
+	}
+
+	private static function finalizer_context_digest( array $attestation, array $handshake ) {
+		$parts = array(
+			isset( $handshake['subject_fingerprint'] ) ? strtolower( (string) $handshake['subject_fingerprint'] ) : '',
+			isset( $handshake['issuer'] ) ? rtrim( (string) $handshake['issuer'], '/' ) : '',
+			isset( $handshake['resource'] ) ? untrailingslashit( (string) $handshake['resource'] ) : '',
+			isset( $handshake['client_id'] ) ? (string) $handshake['client_id'] : '',
+			isset( $handshake['mcp_session_fingerprint'] ) ? strtolower( (string) $handshake['mcp_session_fingerprint'] ) : '',
+			isset( $attestation['external_tool_inventory_fingerprint'] ) ? strtolower( (string) $attestation['external_tool_inventory_fingerprint'] ) : '',
+			isset( $attestation['observed_at'] ) ? (string) $attestation['observed_at'] : '',
+		);
+		return hash( 'sha256', implode( "\n", $parts ) );
 	}
 
 	public static function status() {
@@ -52,6 +119,12 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'scope_set' => array(),
 			'mcp_session_fingerprint_present' => false,
 			'tool_count' => 0,
+			'expected_tool_count' => 0,
+			'write_tool_count' => 0,
+			'expected_write_tool_count' => 0,
+			'tool_inventory_fingerprint' => '',
+			'expected_tool_inventory_fingerprint' => '',
+			'tool_inventory_match' => false,
 			'verified_at' => '',
 			'age_seconds' => 0,
 			'build_fingerprint_match' => false,
@@ -70,6 +143,13 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$session_fingerprint = isset( $evidence['mcp_session_fingerprint'] ) ? strtolower( trim( (string) $evidence['mcp_session_fingerprint'] ) ) : '';
 		$scope_set = isset( $evidence['scope_set'] ) && is_array( $evidence['scope_set'] ) ? array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $evidence['scope_set'] ) ) ) ) : array();
 		$tool_count = isset( $evidence['tool_count'] ) ? max( 0, (int) $evidence['tool_count'] ) : 0;
+		$stored_inventory_fingerprint = isset( $evidence['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $evidence['tool_inventory_fingerprint'] ) ) : '';
+		$expected_tool_names = self::expected_tool_names();
+		$expected_write_names = self::expected_write_tool_names();
+		$expected_inventory_fingerprint = self::inventory_fingerprint( $expected_tool_names );
+		$inventory_match = '' !== $expected_inventory_fingerprint
+			&& preg_match( '/^[a-f0-9]{64}$/', $stored_inventory_fingerprint )
+			&& hash_equals( $expected_inventory_fingerprint, $stored_inventory_fingerprint );
 		$verified_at = isset( $evidence['verified_at'] ) ? sanitize_text_field( (string) $evidence['verified_at'] ) : '';
 		$verified_ts = '' !== $verified_at ? strtotime( $verified_at . ' UTC' ) : false;
 		$age = false === $verified_ts ? PHP_INT_MAX : max( 0, time() - $verified_ts );
@@ -88,6 +168,12 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$base['scope_set'] = $scope_set;
 		$base['mcp_session_fingerprint_present'] = (bool) preg_match( '/^[a-f0-9]{64}$/', $session_fingerprint );
 		$base['tool_count'] = $tool_count;
+		$base['expected_tool_count'] = count( $expected_tool_names );
+		$base['write_tool_count'] = isset( $evidence['write_tool_count'] ) ? max( 0, (int) $evidence['write_tool_count'] ) : 0;
+		$base['expected_write_tool_count'] = count( $expected_write_names );
+		$base['tool_inventory_fingerprint'] = preg_match( '/^[a-f0-9]{64}$/', $stored_inventory_fingerprint ) ? $stored_inventory_fingerprint : '';
+		$base['expected_tool_inventory_fingerprint'] = $expected_inventory_fingerprint;
+		$base['tool_inventory_match'] = (bool) $inventory_match;
 		$base['verified_at'] = $verified_at;
 		$base['age_seconds'] = PHP_INT_MAX === $age ? 0 : $age;
 		$base['build_fingerprint_match'] = (bool) $build_match;
@@ -100,6 +186,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( 'oauth2_bearer' !== $auth_method || $wp_user_id < 1 || ! $base['subject_fingerprint_present'] || ! $base['mcp_session_fingerprint_present'] ) { $base['status'] = 'subject_or_session_invalid'; return $base; }
 		if ( ! in_array( self::REQUIRED_SCOPE, $scope_set, true ) || $tool_count < 1 || '' === $issuer ) { $base['status'] = 'handshake_incomplete'; return $base; }
 		if ( ! $build_match ) { $base['status'] = 'stale_build_evidence'; return $base; }
+		if ( ! $inventory_match ) { $base['status'] = 'stale_tool_inventory_evidence'; return $base; }
 		if ( $age > self::MAX_EVIDENCE_AGE ) { $base['status'] = 'stale_time_evidence'; return $base; }
 
 		$base['verified'] = true;
@@ -174,11 +261,28 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( empty( $tools ) ) return;
 		$names = array();
 		foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name'];
-		$names = array_values( array_unique( $names ) );
+		$names = self::normalize_tool_names( $names );
 		if ( empty( $names ) ) return;
-		foreach ( array( 'mad4b-filesystem-read', 'mad4b-database-select', 'mad4b-database-update', 'mad4b-content-update-post', 'mad4b-plugin-activate', 'mad4b-mutation-undo' ) as $forbidden ) {
-			if ( in_array( $forbidden, $names, true ) ) return;
-		}
+
+		// A successful external handshake must prove the exact currently governed
+		// ChatGPT projection. Historical read-only deny-lists are invalid once the
+		// exact-origin Staging write authority intentionally exposes certified core
+		// mutations. Exact equality also fails closed on raw SQL, Breakglass, blocked
+		// provider mutations, missing writes, and any foreign/unexpected tool.
+		$expected_names = self::expected_tool_names();
+		if ( empty( $expected_names ) ) return;
+		$actual_fingerprint = self::inventory_fingerprint( $names );
+		$expected_fingerprint = self::inventory_fingerprint( $expected_names );
+		if ( '' === $actual_fingerprint || '' === $expected_fingerprint || ! hash_equals( $expected_fingerprint, $actual_fingerprint ) ) return;
+
+		$write_names = self::expected_write_tool_names();
+		$observed_write_names = array_values( array_intersect( $names, $write_names ) );
+		if ( count( $observed_write_names ) !== count( $write_names ) ) return;
+
+		$blocked_names = self::blocked_write_tool_names();
+		if ( ! empty( array_intersect( $names, $blocked_names ) ) ) return;
+		$breakglass_names = self::breakglass_tool_names();
+		if ( ! empty( array_intersect( $names, $breakglass_names ) ) ) return;
 
 		$evidence = array(
 			'contract' => self::CONTRACT,
@@ -193,12 +297,74 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'scope_set' => $current['scope_set'],
 			'mcp_session_fingerprint' => $session_fingerprint,
 			'tool_count' => count( $names ),
+			'write_tool_count' => count( $observed_write_names ),
+			'tool_inventory_fingerprint' => $actual_fingerprint,
 			'initialized_at' => isset( $pending['initialized_at'] ) ? sanitize_text_field( (string) $pending['initialized_at'] ) : '',
 			'verified_at' => gmdate( 'Y-m-d H:i:s' ),
 			'build_fingerprint' => self::build_fingerprint(),
 		);
 		update_option( self::OPTION, $evidence, false );
 		delete_transient( self::pending_key( $session_fingerprint ) );
+	}
+
+	private static function normalize_tool_names( array $names ) {
+		$names = array_values( array_unique( array_filter( array_map( static function ( $name ) {
+			return is_string( $name ) ? trim( $name ) : '';
+		}, $names ) ) ) );
+		sort( $names, SORT_STRING );
+		return $names;
+	}
+
+	private static function ability_to_mcp_tool_name( $ability_name ) {
+		if ( ! class_exists( '\\WP\\MCP\\Domain\\Utils\\McpNameSanitizer' ) ) return '';
+		$name = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( (string) $ability_name );
+		if ( is_wp_error( $name ) || ! is_string( $name ) || '' === trim( $name ) ) return '';
+		return trim( $name );
+	}
+
+	private static function ability_names_to_mcp_tool_names( array $ability_names ) {
+		$names = array();
+		foreach ( $ability_names as $ability_name ) {
+			$name = self::ability_to_mcp_tool_name( $ability_name );
+			if ( '' === $name ) return array();
+			$names[] = $name;
+		}
+		return self::normalize_tool_names( $names );
+	}
+
+	private static function expected_tool_names() {
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) return array();
+		$abilities = MAD4B_SCP_Servers::chatgpt_tools();
+		return is_array( $abilities ) ? self::ability_names_to_mcp_tool_names( $abilities ) : array();
+	}
+
+	private static function expected_write_tool_names() {
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) return array();
+		$abilities = MAD4B_SCP_Servers::write_tools();
+		return is_array( $abilities ) ? self::ability_names_to_mcp_tool_names( $abilities ) : array();
+	}
+
+	private static function blocked_write_tool_names() {
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) return array();
+		$blocked = MAD4B_SCP_Servers::blocked_write_tools();
+		if ( ! is_array( $blocked ) ) return array();
+		$abilities = array();
+		foreach ( $blocked as $entry ) {
+			if ( is_array( $entry ) && isset( $entry['ability'] ) ) $abilities[] = (string) $entry['ability'];
+		}
+		return self::ability_names_to_mcp_tool_names( $abilities );
+	}
+
+	private static function breakglass_tool_names() {
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) return array();
+		$abilities = MAD4B_SCP_Servers::core_tools( 'mad4b-breakglass' );
+		return is_array( $abilities ) ? self::ability_names_to_mcp_tool_names( $abilities ) : array();
+	}
+
+	private static function inventory_fingerprint( array $names ) {
+		$names = self::normalize_tool_names( $names );
+		if ( empty( $names ) ) return '';
+		return hash( 'sha256', implode( "\n", $names ) );
 	}
 
 	private static function verified_request_context( $request ) {

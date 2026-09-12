@@ -166,20 +166,31 @@ require(impl['registry'], 'mad4b_wildcard_grant_denied', 'implementation-wildcar
 require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
 require(impl['authz'], 'MAD4B_SCP_Transport_Context::resolve_server_for_ability', 'implementation-effective-transport-binding')
 require(impl['authz'], 'MAD4B_SCP_Budgets::reserve', 'implementation-budget-before-effect')
-require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::consume_exact', 'implementation-exact-approval')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::validate_exact', 'implementation-exact-approval-preflight')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::claim_exact', 'implementation-exact-approval-claim')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::finalize_claim', 'implementation-exact-approval-finalize')
+require(impl['authz'], 'public static function wrap_execution_boundary', 'implementation-execution-boundary')
 if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Agent_Registry::exact_grant'):
     raise SystemExit('FAIL implementation-transport-before-grant')
-if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::consume_exact'):
-    raise SystemExit('FAIL implementation-transport-before-approval')
+if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::validate_exact'):
+    raise SystemExit('FAIL implementation-transport-before-approval-validation')
+if impl['authz'].index('MAD4B_SCP_Approval_Tickets::validate_exact') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::claim_exact'):
+    raise SystemExit('FAIL implementation-approval-validation-before-claim')
+preflight = impl['authz'][impl['authz'].index('public static function authorize_mutation'):impl['authz'].index('public static function claim_mutation')]
+for side_effect in ('MAD4B_SCP_Budgets::reserve', 'MAD4B_SCP_Budgets::commit', 'MAD4B_SCP_Approval_Tickets::claim_exact', 'MAD4B_SCP_Approval_Tickets::consume_exact', 'MAD4B_SCP_Approval_Tickets::finalize_claim'):
+    forbid(preflight, side_effect, 'implementation-permission-preflight-readonly')
 require(impl['peer'], 'mcp_write_side_channel_detected', 'implementation-side-channel-blocker')
 require(impl['peer'], 'foreign_transport_inventory', 'implementation-foreign-mcp-inventory')
 require(impl['peer'], 'mcp_foreign_transport_unreviewed', 'implementation-foreign-mcp-blocker')
 require(impl['peer'], 'HOSTINGER_BANNER_CONTROL_ROUTE', 'implementation-reviewed-hostinger-banner-control')
 require(impl['peer'], 'reviewed_non_transport_routes', 'implementation-reviewed-nontransport-inventory')
 for marker in (
-    'mad4b.mcp-provider-isolation.v2',
+    'mad4b.mcp-provider-isolation.v3',
     "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED'",
     "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'",
+    'public static function runtime_suppression_approved()',
+    'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;',
     "add_filter( 'wpmedia_mcp_oauth_server_enabled'",
     'filter_wpmedia_oauth_server_enabled',
     "add_filter( 'mcp_adapter_create_default_server'",
@@ -187,13 +198,18 @@ for marker in (
     "'unknown_routes_fail_closed' => true",
     "'changes_provider_settings' => false",
     "'creates_authority' => false",
+    "'legacy_enable_flag_alone_is_non_mutating' => true",
+    "'runtime_suppression_requires_second_gate' => true",
 ): require(impl['isolation'], marker, 'implementation-provider-isolation')
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post('):
     forbid(impl['isolation'], forbidden, 'implementation-provider-isolation-deny-only')
-require(impl['transport'], 'mad4b.mcp-transport-context.v1', 'implementation-transport-context')
+require(impl['transport'], 'mad4b.mcp-transport-context.v2', 'implementation-transport-context')
 require(impl['transport'], "'/mcp/' . $server_id", 'implementation-transport-exact-route')
 require(impl['transport'], 'mad4b_transport_route_mismatch', 'implementation-transport-route-mismatch')
 require(impl['transport'], 'MAD4B_SCP_Servers::ability_is_mounted', 'implementation-transport-mount-check')
+require(impl['transport'], 'MAD4B_SCP_Staging_Write_Authority::is_write_ability', 'implementation-chatgpt-write-delegation')
+require(impl['transport'], "return 'mad4b-write';", 'implementation-dedicated-write-authority')
+require(impl['transport'], 'mad4b_write_authority_mount_missing', 'implementation-write-authority-mount-denial')
 require(impl['connection'], 'mad4b.connection-readiness.v4', 'implementation-connection-readiness')
 forbid(impl['connection'], "'connection_certified' => false", 'implementation-no-permanent-false')
 require(impl['connection'], 'MAD4B_SCP_External_Handshake_Evidence::status()', 'implementation-external-evidence-readback')
@@ -201,13 +217,15 @@ require(impl['connection'], '$connection_certified = empty( $certification_block
 require(impl['connection'], "'external_handshake_unverified'", 'implementation-unverified-handshake-blocker')
 require(impl['connection'], "'external_handshake_stale'", 'implementation-stale-handshake-blocker')
 for marker in (
-    'mad4b.external-handshake-evidence.v1',
+    'mad4b.external-handshake-evidence.v2',
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
     'verified_bearer_active()', "'initialize'", "'tools/list'",
     "hash( 'sha256', $session_id )", "update_option( self::OPTION, $evidence, false )",
-    "'credential_material_stored' => false", "'stale_build_evidence'", 'build_fingerprint()',
+    "'credential_material_stored' => false", "'stale_build_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
+    "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
+    'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
 ): require(impl['external_evidence'], marker, 'implementation-external-handshake-evidence')
 for forbidden in ("'access_token' =>", "'refresh_token' =>", "'authorization_header' =>", "'raw_token' =>", 'wp_remote_get(', 'wp_remote_post('):
     forbid(impl['external_evidence'], forbidden, 'implementation-external-evidence-secret-free')
@@ -293,4 +311,4 @@ require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-run
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v6: PASS')
+print('mad4b.site-control-plane.spec-consistency.v7: PASS')

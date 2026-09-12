@@ -3,8 +3,13 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 4;
+	const VERSION = 5;
 	const OPTION  = 'mad4b_scp_schema_version';
+	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v5';
+	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
+
+	private static $critical_ready_cache = null;
+	private static $physical_status_cache = null;
 
 	public static function tables() {
 		global $wpdb;
@@ -96,11 +101,19 @@ final class MAD4B_SCP_Schema {
 			approved_at datetime NULL,
 			expires_at datetime NOT NULL,
 			used_at datetime NULL,
+			candidate_binding_contract varchar(64) NOT NULL DEFAULT '',
+			candidate_sha char(40) NOT NULL DEFAULT '',
+			build_fingerprint char(64) NOT NULL DEFAULT '',
+			binding_environment varchar(32) NOT NULL DEFAULT '',
+			binding_host varchar(191) NOT NULL DEFAULT '',
+			bound_at datetime NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY ticket_id (ticket_id),
 			KEY agent_status_expiry (agent_id,status,expires_at),
-			KEY payload_status (payload_sha256,status)
+			KEY payload_status (payload_sha256,status),
+			KEY decision_inbox (status,expires_at,id),
+			KEY candidate_inbox (candidate_sha,build_fingerprint,status,expires_at)
 		) $charset;";
 
 		$sql[] = "CREATE TABLE {$t['mutations']} (
@@ -203,26 +216,105 @@ final class MAD4B_SCP_Schema {
 		) $charset;";
 
 		foreach ( $sql as $statement ) dbDelta( $statement );
-		if ( ! self::is_ready() ) return new WP_Error( 'mad4b_governance_schema_unavailable', 'MAD4B governance schema is incomplete after migration.' );
+		self::migrate_legacy_candidate_bindings();
+		self::$physical_status_cache = null;
+		$physical = self::physical_integrity_status();
+		if ( empty( $physical['ready'] ) ) {
+			return new WP_Error( 'mad4b_governance_schema_unavailable', 'MAD4B governance schema is incomplete after migration.', $physical );
+		}
 		update_option( self::OPTION, self::VERSION, false );
+		update_option( self::INTEGRITY_OPTION, self::expected_integrity_token(), false );
+		self::$critical_ready_cache = true;
 		return true;
 	}
 
 	public static function is_ready() {
-		global $wpdb;
-		foreach ( self::tables() as $table ) {
-			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			if ( $found !== $table ) return false;
-		}
-		return true;
+		$version = (int) get_option( self::OPTION, 0 );
+		$token = (string) get_option( self::INTEGRITY_OPTION, '' );
+		return self::VERSION === $version && '' !== $token && hash_equals( self::expected_integrity_token(), $token );
 	}
 
-	public static function status() {
-		return array(
+	public static function critical_ready() {
+		if ( null !== self::$critical_ready_cache ) return (bool) self::$critical_ready_cache;
+		if ( ! self::is_ready() ) {
+			self::$critical_ready_cache = false;
+			return false;
+		}
+		$status = self::physical_integrity_status();
+		self::$critical_ready_cache = ! empty( $status['ready'] );
+		return (bool) self::$critical_ready_cache;
+	}
+
+	public static function physical_integrity_status() {
+		if ( null !== self::$physical_status_cache ) return self::$physical_status_cache;
+		global $wpdb;
+		$missing_tables = array();
+		foreach ( self::tables() as $key => $table ) {
+			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			if ( $found !== $table ) $missing_tables[] = $key;
+		}
+		$missing_columns = array();
+		if ( empty( $missing_tables ) ) {
+			$t = self::tables();
+			$columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$t['approvals']}`", 0 ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$columns = is_array( $columns ) ? array_map( 'strval', $columns ) : array();
+			foreach ( self::required_approval_binding_columns() as $column ) {
+				if ( ! in_array( $column, $columns, true ) ) $missing_columns[] = $column;
+			}
+		}
+		self::$physical_status_cache = array(
+			'contract' => 'mad4b.schema-integrity.v2',
+			'expected_version' => self::VERSION,
+			'missing_tables' => $missing_tables,
+			'missing_approval_columns' => $missing_columns,
+			'ready' => empty( $missing_tables ) && empty( $missing_columns ),
+		);
+		return self::$physical_status_cache;
+	}
+
+	public static function status( $deep = false ) {
+		$status = array(
 			'expected_version' => self::VERSION,
 			'installed_version' => (int) get_option( self::OPTION, 0 ),
 			'ready' => self::is_ready(),
+			'integrity_token_valid' => self::is_ready(),
 			'tables' => self::tables(),
 		);
+		if ( $deep ) $status['physical_integrity'] = self::physical_integrity_status();
+		return $status;
+	}
+
+	private static function expected_integrity_token() {
+		return hash( 'sha256', 'mad4b-schema-v5|' . implode( '|', self::required_approval_binding_columns() ) );
+	}
+
+	private static function required_approval_binding_columns() {
+		return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'bound_at' );
+	}
+
+	private static function migrate_legacy_candidate_bindings() {
+		global $wpdb;
+		$legacy = get_option( self::LEGACY_BINDINGS_OPTION, array() );
+		if ( ! is_array( $legacy ) || empty( $legacy ) ) return;
+		$t = self::tables();
+		foreach ( array_slice( $legacy, -100, 100, true ) as $ticket_id => $binding ) {
+			if ( ! is_array( $binding ) || ! preg_match( '/^[a-f0-9-]{36}$/', (string) $ticket_id ) ) continue;
+			$sha = isset( $binding['candidate_sha'] ) ? strtolower( trim( (string) $binding['candidate_sha'] ) ) : '';
+			$build = isset( $binding['build_fingerprint'] ) ? strtolower( trim( (string) $binding['build_fingerprint'] ) ) : '';
+			$payload = isset( $binding['payload_sha256'] ) ? strtolower( trim( (string) $binding['payload_sha256'] ) ) : '';
+			if ( ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $build ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload ) ) continue;
+			$bound_at = ! empty( $binding['bound_at'] ) ? strtotime( (string) $binding['bound_at'] ) : false;
+			$wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['approvals']} SET candidate_binding_contract=%s,candidate_sha=%s,build_fingerprint=%s,binding_environment=%s,binding_host=%s,bound_at=%s WHERE ticket_id=%s AND payload_sha256=%s AND candidate_binding_contract=''",
+				isset( $binding['contract'] ) ? (string) $binding['contract'] : 'mad4b.approval-candidate-binding.v1',
+				$sha,
+				$build,
+				isset( $binding['environment'] ) ? sanitize_key( (string) $binding['environment'] ) : '',
+				isset( $binding['host'] ) ? strtolower( rtrim( (string) $binding['host'], '.' ) ) : '',
+				false === $bound_at ? gmdate( 'Y-m-d H:i:s' ) : gmdate( 'Y-m-d H:i:s', $bound_at ),
+				(string) $ticket_id,
+				$payload
+			) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
+		}
 	}
 }

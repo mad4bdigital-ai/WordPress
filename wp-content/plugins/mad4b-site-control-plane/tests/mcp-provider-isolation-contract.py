@@ -6,7 +6,8 @@ isolation = (ROOT / 'includes/class-mad4b-scp-mcp-provider-isolation.php').read_
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
 
-PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v1'
+PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v4'
+LEGACY_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3'
 
 
 def require(text, needle, label):
@@ -19,10 +20,28 @@ def forbid(text, needle, label):
         raise SystemExit(f'FAIL {label}: forbidden {needle!r}')
 
 
-require(isolation, "const CONTRACT = 'mad4b.mcp-provider-isolation.v2'", 'v2-contract')
+require(isolation, "const CONTRACT = 'mad4b.mcp-provider-isolation.v3'", 'v3-contract')
+require(isolation, "const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v2'", 'previous-v2-contract')
 require(isolation, "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'", 'explicit-enable-flag')
-require(isolation, "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'", 'production-second-gate')
+require(isolation, "const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED'", 'runtime-suppression-second-gate')
+require(isolation, "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'", 'production-third-gate')
+require(isolation, "const STAGING_HOST = 'staging.egypttourgates.com'", 'exact-staging-origin')
+require(isolation, 'private static function bootstrap_governed_staging()', 'staging-zero-touch-bootstrap')
+require(isolation, 'self::bootstrap_governed_staging();', 'early-staging-zero-touch-bootstrap')
+require(isolation, "'staging' !== $environment || self::STAGING_HOST !== $host", 'exact-origin-auto-config-guard')
+require(isolation, "defined( self::ENABLE_FLAG ) && true !== constant( self::ENABLE_FLAG )", 'respect-explicit-isolation-disable')
+require(isolation, "defined( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG ) && true !== constant( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG )", 'respect-explicit-runtime-suppression-disable')
+require(isolation, "define( self::ENABLE_FLAG, true )", 'staging-auto-enable-isolation-intent')
+require(isolation, "define( self::RUNTIME_SUPPRESSION_APPROVAL_FLAG, true )", 'staging-auto-approve-runtime-suppression')
+require(isolation, 'public static function runtime_suppression_approved()', 'runtime-suppression-gate-method')
+require(isolation, 'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;', 'two-gate-effective-contract')
 require(isolation, "'production' === $environment && ! self::production_approved()", 'production-fail-closed')
+require(isolation, "'legacy_enable_flag_alone_is_non_mutating' => true", 'legacy-flag-status-evidence')
+require(isolation, "'staging_zero_touch_autoconfig_evaluated' => self::$staging_autoconfig_evaluated", 'staging-autoconfig-evaluated-evidence')
+require(isolation, "'staging_zero_touch_autoconfig_applied' => self::$staging_autoconfig_applied", 'staging-autoconfig-applied-evidence')
+require(isolation, "'staging_zero_touch_autoconfig_blocker' => self::$staging_autoconfig_blocker", 'staging-autoconfig-blocker-evidence')
+require(isolation, "'production_auto_configured' => false", 'production-never-auto-configured')
+require(isolation, "'runtime_suppression_requires_second_gate' => true", 'second-gate-status-evidence')
 require(isolation, 'public static function boot_early()', 'provider-early-boot')
 require(isolation, "add_filter( 'wpmedia_mcp_oauth_server_enabled'", 'wpmedia-official-kill-switch')
 require(isolation, 'filter_wpmedia_oauth_server_enabled', 'wpmedia-kill-switch-callback')
@@ -67,6 +86,7 @@ for forbidden in (
     'update_option(', 'add_option(', 'delete_option(', 'wp_install_plugin(',
     'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible(',
     'MAD4B_SCP_Agent_Registry::', 'MAD4B_SCP_Approval_Tickets::',
+    "define( self::PRODUCTION_APPROVAL_FLAG, true )",
 ):
     forbid(isolation, forbidden, 'isolation-no-mutation-or-outbound')
 
@@ -74,4 +94,4 @@ require(bootstrap, "class-mad4b-scp-mcp-provider-isolation.php", 'bootstrap-load
 require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'bootstrap-early-kill-switch')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'plugin-boot')
 
-print('mad4b.site-control-plane.mcp-provider-isolation-contract.v3: PASS')
+print('mad4b.site-control-plane.mcp-provider-isolation-contract.v5: PASS')

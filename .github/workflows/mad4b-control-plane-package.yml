@@ -24,8 +24,9 @@ concurrency:
 
 jobs:
   package:
-    name: Build staging installation kit
+    name: Build reviewed staging installation kit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -41,6 +42,56 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           echo "Packaging exact source: $SOURCE_SHA"
 
+      - name: Reject distributable symlinks and secret-like files
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          symlink="$(find "$plugin" -type l -print -quit)"
+          if [ -n "$symlink" ]; then
+            echo "Symlink is forbidden in the distributable Control Plane: $symlink" >&2
+            exit 1
+          fi
+          suspicious="$(find "$plugin" -type f \( \
+            -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.p12' -o \
+            -name '*.pfx' -o -name '*.key' -o -name 'id_rsa' -o -name 'id_ed25519' \
+          \) -print -quit)"
+          if [ -n "$suspicious" ]; then
+            echo "Secret-like file is forbidden in the distributable Control Plane: $suspicious" >&2
+            exit 1
+          fi
+          if grep -RIlE --exclude-dir=tests -- '-----BEGIN ([A-Z ]+ )?PRIVATE KEY-----' "$plugin" | grep -q .; then
+            echo 'Embedded private-key material is forbidden in the distributable Control Plane.' >&2
+            exit 1
+          fi
+
+      - name: PHP lint distributable plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0)
+
+      - name: Verify canonical Skill seed package
+        shell: bash
+        run: |
+          set -euo pipefail
+          seed='wp-content/plugins/mad4b-site-control-plane/skill-seeds'
+          expected=(
+            wordpress-site-diagnostics
+            wordpress-connection-diagnostics
+            elementor-dynamic-content
+            jetengine-content-modeling
+            wordpress-archive-audit
+            wordpress-change-safety
+          )
+          test -d "$seed"
+          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '6'
+          for name in "${expected[@]}"; do
+            cmp --silent "$seed/$name/SKILL.md" "plugins/mad4b-wordpress/skills/$name/SKILL.md"
+          done
+
       - name: Verify certified MCP Adapter asset
         shell: bash
         run: |
@@ -50,7 +101,47 @@ jobs:
           test "$(stat -c '%s' wp-content/plugins/mcp-adapter.zip)" = '455463'
           unzip -tqq wp-content/plugins/mcp-adapter.zip
 
-      - name: Build exact control-plane ZIP and manifest
+      - name: Verify governed Staging write package invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          write="$plugin/includes/class-mad4b-scp-staging-write-authority.php"
+          planning="$plugin/includes/class-mad4b-scp-staging-write-planning-guard.php"
+          cert="$plugin/includes/class-mad4b-scp-write-runtime-certification.php"
+          rest="$plugin/includes/class-mad4b-scp-rest-compatibility.php"
+          servers="$plugin/includes/class-mad4b-scp-servers.php"
+          test -f "$write" -a -f "$planning" -a -f "$cert" -a -f "$rest" -a -f "$servers"
+          grep -Fq "const STAGING_HOST = 'staging.egypttourgates.com'" "$write"
+          grep -Fq "'production_auto_enable' => false" "$write"
+          grep -Fq "'breakglass_auto_enable' => false" "$write"
+          grep -Fq "'all_remote_writes_require_exact_approval' => true" "$write"
+          grep -Fq "MAD4B_SCP_Agent_Registry::grant_ability" "$write"
+          grep -Fq "'mad4b/database-raw-query' === \$ability_name" "$servers"
+          grep -Fq "public static function blocked_write_tools" "$servers"
+          grep -Fq "provider_runtime_contract_not_certified" "$servers"
+          grep -Fq "mad4b.staging-write-planning-guard.v2" "$planning"
+          grep -Fq "remote_planner_requires_exact_mad4b_write_grant" "$planning"
+          grep -Fq "creates_pending_ticket_only" "$planning"
+          grep -Fq "mad4b.write-runtime-certification.v2" "$cert"
+          grep -Fq "approval_planner_bootstrap_exception" "$cert"
+          grep -Fq "provider_uncertified_write_tools_safely_unmounted" "$cert"
+          grep -Fq "mcp_recovery_scoped_to_mad4b_routes" "$cert"
+          grep -Fq "external_wpml_acceptance_required" "$cert"
+          grep -Fq "external_wpml_acceptance_verified" "$cert"
+          if grep -Fq "\$checks['wpml_query_parameters_preserved']" "$cert" || grep -Fq "\$checks['wpml_internal_probe_ready_or_not_active']" "$cert"; then
+            echo 'Local write certification must not depend on in-process WPML route availability.' >&2
+            exit 1
+          fi
+          grep -Fq "mad4b.rest-compatibility.v2" "$rest"
+          grep -Fq "hook_inventory( 'rest_enabled' )" "$rest"
+          grep -Fq "hook_inventory( 'rest_authentication_errors' )" "$rest"
+          if grep -Fq "add_filter( 'rest_enabled'" "$rest" || grep -Fq "add_filter( 'rest_authentication_errors'" "$rest"; then
+            echo 'Control Plane REST compatibility code must not globally modify REST access.' >&2
+            exit 1
+          fi
+
+      - name: Build provenance-bound control-plane ZIP and manifest
         shell: bash
         run: |
           set -euo pipefail
@@ -64,87 +155,256 @@ jobs:
           mkdir -p "$stage/package/mad4b-site-control-plane"
           cp -a "$plugin"/. "$stage/package/mad4b-site-control-plane/"
           rm -rf "$stage/package/mad4b-site-control-plane/tests"
+          cp wp-content/plugins/mcp-adapter.zip "$stage/mcp-adapter-0.6.1.zip"
+
+          export MAD4B_CONTROL_VERSION="$version"
+          export MAD4B_CONTROL_STAGE="$stage/package/mad4b-site-control-plane"
+          export MAD4B_ADAPTER_SHA="$(sha256sum "$stage/mcp-adapter-0.6.1.zip" | awk '{print $1}')"
+          test "$MAD4B_ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
+
+          python3 <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          root = Path(os.environ['MAD4B_CONTROL_STAGE'])
+          entries = []
+          canonical = []
+          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name != 'MAD4B-BUILD-PROVENANCE.json'):
+              rel = path.relative_to(root).as_posix()
+              raw = path.read_bytes()
+              digest = hashlib.sha256(raw).hexdigest()
+              entries.append({'path': rel, 'bytes': len(raw), 'sha256': digest})
+              canonical.append(f'{rel}\0{len(raw)}\0{digest}\n'.encode())
+
+          manifest_digest = hashlib.sha256(b''.join(canonical)).hexdigest()
+          version = os.environ['MAD4B_CONTROL_VERSION']
+          source = os.environ['SOURCE_SHA']
+          adapter_sha = os.environ['MAD4B_ADAPTER_SHA']
+          build_payload = f'mad4b.build-fingerprint.v1\n{version}\n{source}\n{manifest_digest}\n0.6.1\n{adapter_sha}\n'.encode()
+          build_fingerprint = hashlib.sha256(build_payload).hexdigest()
+          artifact_identity = f'mad4b-site-control-plane-staging-kit-{source}'
+          data = {
+              'contract': 'mad4b.build-provenance.v1',
+              'control_plane_version': version,
+              'source_commit_sha': source,
+              'build_fingerprint': build_fingerprint,
+              'package_manifest_digest': manifest_digest,
+              'build_workflow': os.environ.get('GITHUB_WORKFLOW', ''),
+              'build_run_id': os.environ.get('GITHUB_RUN_ID', ''),
+              'artifact_identity': artifact_identity,
+              'mcp_adapter_version': '0.6.1',
+              'mcp_adapter_sha256': adapter_sha,
+              'package_files': entries,
+              'manifest_excludes_self': True,
+              'generated_at_is_identity_neutral': True,
+          }
+          encoded = json.dumps(data, indent=2, sort_keys=True) + '\n'
+          (root / 'MAD4B-BUILD-PROVENANCE.json').write_text(encoded, encoding='utf-8')
+          stage = root.parent.parent
+          (stage / 'MAD4B-BUILD-PROVENANCE.json').write_text(encoded, encoding='utf-8')
+          (stage / 'BUILD-FINGERPRINT.txt').write_text(build_fingerprint + '\n', encoding='utf-8')
+          (stage / 'PACKAGE-MANIFEST-DIGEST.txt').write_text(manifest_digest + '\n', encoding='utf-8')
+          PY
 
           (
             cd "$stage/package"
             zip -qr "$stage/mad4b-site-control-plane-${version}.zip" mad4b-site-control-plane
           )
-          cp wp-content/plugins/mcp-adapter.zip "$stage/mcp-adapter-0.6.1.zip"
 
           control_sha="$(sha256sum "$stage/mad4b-site-control-plane-${version}.zip" | awk '{print $1}')"
-          adapter_sha="$(sha256sum "$stage/mcp-adapter-0.6.1.zip" | awk '{print $1}')"
+          adapter_sha="$MAD4B_ADAPTER_SHA"
+          build_fingerprint="$(tr -d '\r\n' < "$stage/BUILD-FINGERPRINT.txt")"
+          package_digest="$(tr -d '\r\n' < "$stage/PACKAGE-MANIFEST-DIGEST.txt")"
 
           printf '%s  %s\n' "$control_sha" "mad4b-site-control-plane-${version}.zip" > "$stage/SHA256SUMS"
           printf '%s  %s\n' "$adapter_sha" 'mcp-adapter-0.6.1.zip' >> "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$(sha256sum "$stage/MAD4B-BUILD-PROVENANCE.json" | awk '{print $1}')" 'MAD4B-BUILD-PROVENANCE.json' >> "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$(sha256sum "$stage/BUILD-FINGERPRINT.txt" | awk '{print $1}')" 'BUILD-FINGERPRINT.txt' >> "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$(sha256sum "$stage/PACKAGE-MANIFEST-DIGEST.txt" | awk '{print $1}')" 'PACKAGE-MANIFEST-DIGEST.txt' >> "$stage/SHA256SUMS"
 
-          python3 - "$stage" "$version" "$control_sha" "$adapter_sha" <<'PY'
+          export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest"
+          python3 - "$stage" "$version" <<'PY'
           import json, os, sys
           from pathlib import Path
           stage = Path(sys.argv[1])
-          version, control_sha, adapter_sha = sys.argv[2:]
+          version = sys.argv[2]
           data = {
-              'contract': 'mad4b.site-control-plane.staging-install-kit.v1',
+              'contract': 'mad4b.site-control-plane.staging-install-kit.v5',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
               'commit': os.environ.get('SOURCE_SHA'),
+              'release_class': 'staging-governed-write-release-candidate',
+              'governed_origin': 'staging.egypttourgates.com',
+              'build_fingerprint': os.environ['BUILD_FINGERPRINT'],
+              'package_manifest_digest': os.environ['PACKAGE_DIGEST'],
               'control_plane': {
                   'version': version,
                   'archive': f'mad4b-site-control-plane-{version}.zip',
-                  'sha256': control_sha,
+                  'sha256': os.environ['CONTROL_SHA'],
+                  'provenance_contract': 'mad4b.build-provenance.v1',
               },
               'mcp_adapter': {
                   'version': '0.6.1',
                   'archive': 'mcp-adapter-0.6.1.zip',
-                  'sha256': adapter_sha,
+                  'sha256': os.environ['ADAPTER_SHA'],
                   'official_release_sha256': '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676',
               },
               'install_order': ['mcp-adapter-0.6.1.zip', f'mad4b-site-control-plane-{version}.zip'],
-              'default_safety': {
-                  'mutation_enabled': False,
-                  'plugin_lifecycle_enabled': False,
-                  'breakglass_enabled': False,
-                  'bitflows_execution_enabled': False,
-                  'elementor_legacy_write_enabled': False,
+              'reviewed_invariants': {
+                  'exact_source_bound': True,
+                  'runtime_provenance_bound': True,
+                  'php_linted': True,
+                  'symlinks_denied': True,
+                  'secret_like_files_denied': True,
+                  'canonical_skill_seed_parity': True,
+                  'development_tests_excluded': True,
+                  'governed_staging_write_authority': True,
+                  'all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write': True,
+                  'provider_uncertified_write_actions_excluded_from_governed_write_surfaces': True,
+                  'remote_writes_require_exact_one_time_approval': True,
+                  'approval_plan_bootstrap_governed_by_nhi_grant_budget': True,
+                  'approval_plan_creates_pending_ticket_only': True,
+                  'approval_plan_breakglass_target_denied': True,
+                  'breakglass_excluded_from_write_surface': True,
+                  'production_auto_write_disabled': True,
+                  'local_rest_isolation_certified': True,
+                  'external_wpml_live_acceptance_required': True,
+                  'external_wpml_acceptance_not_claimed_by_local_runtime': True,
               },
-              'required_post_install_check': 'mad4b/runtime-self-test',
+              'environment_safety': {
+                  'staging_exact_origin_mutation_autoconfig': True,
+                  'production_mutation_auto_enabled': False,
+                  'breakglass_auto_enabled': False,
+                  'plugin_lifecycle_still_requires_policy_allowlist': True,
+                  'bitflows_execution_still_requires_provider_policy': True,
+                  'elementor_bounded_reversible_write_requires_exact_provider_certification': True,
+              },
+              'required_post_install_checks': [
+                  'mad4b/runtime-self-test',
+                  'mad4b/build-provenance-status',
+                  'mad4b/skills-runtime-certification',
+                  'mad4b/skills-export-status',
+                  'mad4b/write-authority-status',
+                  'mad4b/write-runtime-certification',
+                  'mad4b/rest-compatibility-status',
+                  'external GET /wp-json/wpml/v1/rest/status?test_get_parameter=1',
+              ],
           }
           (stage / 'install-manifest.json').write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
           PY
 
           cat > "$stage/INSTALL-STAGING.md" <<'EOF'
-          # MAD4B staging installation kit
+          # MAD4B governed Staging installation kit
 
           1. Install and activate the exact `mcp-adapter-0.6.1.zip` first.
-          2. Install and activate the MAD4B Site Control Plane ZIP.
-          3. Do not define any MAD4B mutation/Breakglass/lifecycle/Flow/Elementor legacy-write enable constants during discovery certification.
-          4. Authenticate a dedicated control identity and execute `mad4b/runtime-self-test`.
-          5. Verify provider versions/runtime critical-file hashes, custom-server isolation, and backup-root placement before any mutation gate is enabled.
+          2. Install and activate the provenance-bound MAD4B Site Control Plane ZIP on **staging.egypttourgates.com only**.
+          3. Read `mad4b/build-provenance-status` first and require `manifest_present=true`, `manifest_valid=true`, `runtime_manifest_match=true`, and `stale=false` before treating this build as the reviewed candidate.
+          4. Skills, the Staging App mapping and the governed mutation gate bootstrap automatically on that exact Staging origin; do not add manual enable constants for the normal path.
+          5. The plugin creates/binds a site-local NHI and exact `mad4b-write` grants for every runtime-eligible registered non-readonly content/admin ability. Provider mutations requiring certification are omitted when their exact runtime contract is not certified; Breakglass is excluded.
+          6. Remote OAuth is identity-only. Actual mutations require a short-lived exact one-time approval ticket. `mad4b/approval-plan` is the bounded bootstrap exception: it is itself NHI/grant/budget governed, may create only a pending mutation ticket for the same Staging agent + `mad4b-write`, and may never target breakglass/recovery or auto-approve.
+          7. Provider-specific mutations remain subject to exact provider certification, capability, stale-state, bounded payload and reversible-state gates even after projection.
+          8. Read `mad4b/write-authority-status` and `mad4b/write-runtime-certification` and require local `ready` before external write acceptance. Inspect `provider_blocked_write_tools` separately; blocked provider mutations must remain unmounted rather than appearing as dead client tools.
+          9. Read `mad4b/rest-compatibility-status` and require REST enabled, no MAD4B global `rest_enabled`/`rest_authentication_errors` interception, no control-plane WPML block, and MCP recovery scoped only to MAD4B MCP routes. The in-process WPML probe is diagnostic only. Separately call the real external `https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1` endpoint and require `status=valid` plus `get_parameters=valid` before GO.
+          10. Compare the portable ChatGPT package `MAD4B-SNAPSHOT-ID.txt` with `mad4b/skills-export-status` before external snapshot acceptance, then Refresh/Scan Tools in ChatGPT.
 
-          This package is suitable for controlled staging/read-only discovery. It does not authorize production mutation.
+          Production mutation and Breakglass are not authorized by this package. PR merge still requires exact-head live Staging acceptance.
           EOF
 
-      - name: Verify package excludes development tests and preserves runtime baseline
+      - name: Verify package boundaries, provenance and checksums
         shell: bash
         run: |
           set -euo pipefail
           stage='/tmp/mad4b-install-kit'
+          plugin='wp-content/plugins/mad4b-site-control-plane'
+          main="$plugin/mad4b-site-control-plane.php"
+          expected_version="$(sed -nE 's/^ \* Version: ([^ ]+).*/\1/p' "$main" | head -n1)"
+          runtime_release="$(sed -nE 's/^release=(.+)$/\1/p' "$plugin/MAD4B-RUNTIME-BUILD.txt" | head -n1)"
+          test -n "$expected_version"
+          test -n "$runtime_release"
+          test "$expected_version" = "$runtime_release"
+          export MAD4B_EXPECTED_VERSION="$expected_version"
+
           control_zip="$(find "$stage" -maxdepth 1 -name 'mad4b-site-control-plane-*.zip' -print -quit)"
           test -n "$control_zip"
+          unzip -tqq "$control_zip"
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/skill-seeds/wordpress-site-diagnostics/SKILL.md'
           if unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/tests/'; then
             echo 'Development tests must not ship in the staging plugin ZIP.' >&2
             exit 1
           fi
+          if zipinfo -1 "$control_zip" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+            echo 'Unsafe absolute/parent path found in distributable ZIP.' >&2
+            exit 1
+          fi
+
+          unzip -p "$control_zip" 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json' > "$stage/MAD4B-BUILD-PROVENANCE.from-zip.json"
+          cmp --silent "$stage/MAD4B-BUILD-PROVENANCE.json" "$stage/MAD4B-BUILD-PROVENANCE.from-zip.json"
+          grep -Fq "\"source_commit_sha\": \"$SOURCE_SHA\"" "$stage/MAD4B-BUILD-PROVENANCE.json"
+          grep -Fq '"contract": "mad4b.build-provenance.v1"' "$stage/MAD4B-BUILD-PROVENANCE.json"
+
+          python3 - "$stage" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          stage = Path(sys.argv[1])
+          p = json.loads((stage / 'MAD4B-BUILD-PROVENANCE.json').read_text(encoding='utf-8'))
+          if p.get('source_commit_sha') != os.environ['SOURCE_SHA']:
+              raise SystemExit('provenance source SHA mismatch')
+          if p.get('control_plane_version') != os.environ['MAD4B_EXPECTED_VERSION']:
+              raise SystemExit('provenance control-plane version mismatch')
+          lines = []
+          root = stage / 'package' / 'mad4b-site-control-plane'
+          for entry in p.get('package_files', []):
+              rel = entry['path']
+              path = root / rel
+              raw = path.read_bytes()
+              digest = hashlib.sha256(raw).hexdigest()
+              if len(raw) != int(entry['bytes']) or digest != entry['sha256']:
+                  raise SystemExit(f'provenance file mismatch: {rel}')
+              lines.append(f"{rel}\0{len(raw)}\0{digest}\n".encode())
+          digest = hashlib.sha256(b''.join(sorted(lines))).hexdigest()
+          if digest != p.get('package_manifest_digest'):
+              raise SystemExit('provenance package manifest digest mismatch')
+          adapter_sha = hashlib.sha256((stage / 'mcp-adapter-0.6.1.zip').read_bytes()).hexdigest()
+          payload = f"mad4b.build-fingerprint.v1\n{p['control_plane_version']}\n{p['source_commit_sha']}\n{digest}\n0.6.1\n{adapter_sha}\n".encode()
+          fingerprint = hashlib.sha256(payload).hexdigest()
+          if fingerprint != p.get('build_fingerprint'):
+              raise SystemExit('provenance build fingerprint mismatch')
+          if (stage / 'BUILD-FINGERPRINT.txt').read_text().strip() != fingerprint:
+              raise SystemExit('outer build fingerprint mismatch')
+          print('provenance-bound staging kit: PASS')
+          PY
+
           grep -Fq "\"commit\": \"$SOURCE_SHA\"" "$stage/install-manifest.json"
+          grep -Fq '"contract": "mad4b.site-control-plane.staging-install-kit.v5"' "$stage/install-manifest.json"
+          grep -Fq '"release_class": "staging-governed-write-release-candidate"' "$stage/install-manifest.json"
+          grep -Fq '"runtime_provenance_bound": true' "$stage/install-manifest.json"
+          grep -Fq '"governed_staging_write_authority": true' "$stage/install-manifest.json"
+          grep -Fq '"all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write": true' "$stage/install-manifest.json"
+          grep -Fq '"provider_uncertified_write_actions_excluded_from_governed_write_surfaces": true' "$stage/install-manifest.json"
+          grep -Fq '"approval_plan_bootstrap_governed_by_nhi_grant_budget": true' "$stage/install-manifest.json"
+          grep -Fq '"local_rest_isolation_certified": true' "$stage/install-manifest.json"
+          grep -Fq '"external_wpml_live_acceptance_required": true' "$stage/install-manifest.json"
+          grep -Fq '"external_wpml_acceptance_not_claimed_by_local_runtime": true' "$stage/install-manifest.json"
+          grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
+          grep -Fq '"elementor_bounded_reversible_write_requires_exact_provider_certification": true' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
-      - name: Upload staging installation kit
+      - name: Upload reviewed staging installation kit
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-site-control-plane-staging-kit-${{ env.SOURCE_SHA }}
           path: |
             /tmp/mad4b-install-kit/mad4b-site-control-plane-*.zip
             /tmp/mad4b-install-kit/mcp-adapter-0.6.1.zip
+            /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
+            /tmp/mad4b-install-kit/BUILD-FINGERPRINT.txt
+            /tmp/mad4b-install-kit/PACKAGE-MANIFEST-DIGEST.txt
             /tmp/mad4b-install-kit/SHA256SUMS
             /tmp/mad4b-install-kit/install-manifest.json
             /tmp/mad4b-install-kit/INSTALL-STAGING.md

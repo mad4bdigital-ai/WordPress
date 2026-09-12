@@ -42,7 +42,7 @@ add_filter(
 if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) ) define( 'MAD4B_MCP_MUTATION_ENABLED', true );
 while ( microtime( true ) < $barrier ) usleep( 10000 );
 
-$result = MAD4B_SCP_Authorization::authorize_mutation(
+$result = MAD4B_SCP_Authorization::claim_mutation(
 	'mad4b/mutation-undo',
 	'mad4b-admin',
 	'core',
@@ -52,6 +52,10 @@ $result = MAD4B_SCP_Authorization::authorize_mutation(
 if ( is_wp_error( $result ) ) {
 	$out = array( 'worker' => $worker, 'status' => 'denied', 'reason_code' => $result->get_error_code() );
 } else {
+	$finalized = MAD4B_SCP_Authorization::finalize_execution_claim( $result, array( 'verified' => true ) );
+	if ( is_wp_error( $finalized ) ) {
+		throw new RuntimeException( 'Winning contention claim could not finalize its approval ticket: ' . $finalized->get_error_code() );
+	}
 	$out = array( 'worker' => $worker, 'status' => 'allowed', 'reason_code' => 'allowed' );
 }
 echo 'MAD4B_BUDGET_WORKER_RESULT=' . wp_json_encode( $out, JSON_UNESCAPED_SLASHES ) . "\n";

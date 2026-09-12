@@ -51,8 +51,8 @@ require(authz, "'mcp_write_side_channel_detected'", 'authority-side-channel-bloc
 require(authz, "'mcp_peer_governance'", 'authority-peer-status')
 if authz.index('MAD4B_SCP_MCP_Peer_Governance::mutation_guard()') > authz.index('MAD4B_SCP_Budgets::reserve'):
     raise SystemExit('FAIL side-channel-before-budget: peer blocker must run before budget reservation')
-if authz.index('MAD4B_SCP_MCP_Peer_Governance::mutation_guard()') > authz.index('MAD4B_SCP_Approval_Tickets::consume_exact'):
-    raise SystemExit('FAIL side-channel-before-approval: peer blocker must run before approval consumption')
+if authz.index('MAD4B_SCP_MCP_Peer_Governance::mutation_guard()') > authz.index('MAD4B_SCP_Approval_Tickets::validate_exact'):
+    raise SystemExit('FAIL side-channel-before-approval: peer blocker must run before approval validation')
 
 # Runtime self-test must incorporate the same source of truth.
 require(adapter_registry, 'MAD4B_SCP_MCP_Peer_Governance::status()', 'self-test-peer-status')

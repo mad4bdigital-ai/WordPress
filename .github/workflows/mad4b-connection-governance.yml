@@ -37,6 +37,10 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-transport-context.php"
           php -l "$root/includes/class-mad4b-scp-authorization.php"
           php -l "$root/includes/class-mad4b-scp-servers.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-runtime-conflict-guard.php"
+          php -l "$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-registration-bridge.php"
+          php -l "$root/includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php"
           php -l "$root/includes/class-mad4b-scp-connection-status.php"
           php -l "$root/includes/class-mad4b-scp-external-handshake-evidence.php"
           php -l "$root/includes/class-mad4b-scp-connection-ability.php"
@@ -47,10 +51,15 @@ jobs:
           php -l "$root/tests/runtime-write-surface-smoke.php"
           php -l "$root/tests/runtime-foreign-mcp-transport-blocker.php"
           php -l "$root/tests/runtime-mcp-namespace-index-hijack-blocker.php"
+          php -l "$root/tests/runtime-mcp-provider-isolation-legacy-flag-smoke.php"
           php -l "$root/tests/runtime-mcp-provider-isolation-smoke.php"
+          php -l "$root/tests/runtime-mcp-runtime-conflict-first-request.php"
+          php -l "$root/tests/runtime-mcp-runtime-conflict-recovered.php"
           python3 "$root/tests/connection-readiness-contract.py"
           python3 "$root/tests/mcp-side-channel-governance-contract.py"
           python3 "$root/tests/mcp-provider-isolation-contract.py"
+          python3 "$root/tests/mcp-registration-bridge-contract.py"
+          python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
 
   runtime:
     name: Connection runtime (${{ matrix.wordpress }})
@@ -139,11 +148,100 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-namespace-index-hijack-blocker.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
-      - name: Prove explicit provider MCP isolation remains deny-only
+      - name: Prove legacy provider isolation flag alone is non-mutating
         shell: bash
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_ENABLED true --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-legacy-flag-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Prove explicit provider MCP isolation remains deny-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED true --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Prove Hostinger pre-active-plugin Adapter collision self-heals on exact Staging origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          FIXTURE="$WP_PATH/wp-content/plugins/hostinger-ai-assistant"
+          MANAGED_MU="$WP_PATH/wp-content/mu-plugins/000-mad4b-mcp-adapter-bootstrap.php"
+          mkdir -p "$FIXTURE/vendor/wordpress/mcp-adapter/includes/Core"
+          cat > "$FIXTURE/hostinger-ai-assistant.php" <<'PHP'
+          <?php
+          /**
+           * Plugin Name: Hostinger AI Assistant Collision Fixture
+           * Version: 0.0.0-ci
+           */
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+          require_once __DIR__ . '/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php';
+          PHP
+          cat > "$FIXTURE/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php" <<'PHP'
+          <?php
+          namespace WP\MCP\Core;
+          if ( ! class_exists( __NAMESPACE__ . '\\McpAdapter', false ) ) {
+              final class McpAdapter {
+                  public const VERSION = '0.1.0';
+                  private static $instance;
+                  public static function instance(): self {
+                      if ( ! isset( self::$instance ) ) self::$instance = new self();
+                      return self::$instance;
+                  }
+                  public function get_server( $server_id ) { return null; }
+                  public function get_servers(): array { return array(); }
+              }
+          }
+          PHP
+
+          # Configure the collision while the origin is still non-Staging, so
+          # no governed repair can run before the intended first request.
+          php /tmp/wp-cli.phar plugin activate hostinger-ai-assistant --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval '
+          $active = get_option( "active_plugins", array() );
+          $rest = array();
+          foreach ( $active as $plugin ) {
+              if ( "mcp-adapter/mcp-adapter.php" === $plugin ) continue;
+              if ( 0 === strpos( $plugin, "hostinger-ai-assistant/" ) ) continue;
+              $rest[] = $plugin;
+          }
+          array_unshift( $rest, "hostinger-ai-assistant/hostinger-ai-assistant.php" );
+          array_unshift( $rest, "mcp-adapter/mcp-adapter.php" );
+          update_option( "active_plugins", array_values( $rest ) );
+          ' --path="$WP_PATH"
+
+          if [ -e "$MANAGED_MU" ]; then
+            echo "FAIL fixture contamination: managed MU bootstrap exists before Hostinger preloader" >&2
+            exit 1
+          fi
+
+          # Reproduce the Staging evidence: Hostinger claims McpAdapter before
+          # normal active plugins despite canonical active_plugins order.
+          mkdir -p "$WP_PATH/wp-content/mu-plugins"
+          cat > "$WP_PATH/wp-content/mu-plugins/900-hostinger-mcp-preload.php" <<'PHP'
+          <?php
+          if ( ! defined( 'ABSPATH' ) ) { exit; }
+          require_once WP_PLUGIN_DIR . '/hostinger-ai-assistant/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php';
+          PHP
+
+          # Move the disposable site onto the exact Staging origin without a
+          # WordPress bootstrap. This guarantees the next eval-file is the
+          # first governed Staging request after the preloader exists.
+          mysql --protocol=tcp -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress \
+            -e "UPDATE wp_options SET option_value='https://staging.egypttourgates.com' WHERE option_name IN ('home','siteurl');"
+          staging_count="$(mysql --protocol=tcp -N -B -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress -e "SELECT COUNT(*) FROM wp_options WHERE option_name IN ('home','siteurl') AND option_value='https://staging.egypttourgates.com';")"
+          test "$staging_count" = "2"
+
+          # Request 1 must detect provenance mismatch and install the managed
+          # 000-* MU bootstrap. It cannot replace the already-declared class.
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-first-request.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          # Request 2 loads 000-* before the simulated Hostinger preloader,
+          # making the canonical 0.6.1 runtime owner and registering all six
+          # MAD4B MCP servers through the normal mcp_adapter_init lifecycle.
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-runtime-conflict-recovered.php" --path="$WP_PATH" --user=mad4b-ci-admin
