@@ -66,3 +66,10 @@ Missing provider/query identity, profile mismatch, unknown taxonomy, malformed s
 ## Release boundary
 
 This contract does not authorize merge or Production activation. `merge_authorized=false` and `production_activation_authorized=false` remain in force.
+
+### Live inventory and Safe Boot evidence hardening
+
+- JetSmartFilters Elementor filters may persist `filter_id` as a one-item numeric array; exact filter identity discovery MUST normalize that shape without selecting among multiple distinct IDs.
+- Definition-bearing JetSmartFilters widgets and control/query widgets MUST be distinguished. Control widgets such as remove-filters, sorting, pagination, active filters, apply buttons, map sync, listings, item-count switching, and user-geolocation MUST remain observable surfaces without being misreported as unresolved Filter post identities. Unknown JetSmartFilters widget types remain fail-closed definition candidates unless explicitly classified as controls.
+- Filter-definition and topology root scans remain bounded but use a 500-template ceiling while the element budget remains independently bounded. Truncation MUST remain explicit evidence rather than a clean result.
+- Safe Boot MUST expose a read-only, non-authorizing status record containing registered/stored build identity matching, hold/fault state, effective hold, reason, and explicit `boot_ok`. Existing read adapters MAY surface this record through Bootstrap readiness; reading it MUST NOT retry boot or mutate state.

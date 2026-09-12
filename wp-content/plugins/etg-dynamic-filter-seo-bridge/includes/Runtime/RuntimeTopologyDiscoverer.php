@@ -7,7 +7,7 @@ use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
 
 final class RuntimeTopologyDiscoverer {
     const CONTRACT = 'etg.dfsb.runtime-topology.v1';
-    const MAX_TEMPLATES = 250;
+    const MAX_TEMPLATES = 500;
     const MAX_ELEMENTS = 10000;
     const MAX_BINDINGS = 500;
     const MAX_QUERY_SURFACES = 2000;

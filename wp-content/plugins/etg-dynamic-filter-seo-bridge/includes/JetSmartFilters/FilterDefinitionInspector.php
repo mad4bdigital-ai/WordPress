@@ -7,7 +7,7 @@ use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
 
 final class FilterDefinitionInspector {
     const CONTRACT = 'etg.dfsb.jet-smart-filters-definition-inspection.v1';
-    const MAX_TEMPLATES = 250;
+    const MAX_TEMPLATES = 500;
     const MAX_ELEMENTS = 10000;
     const MAX_SURFACES = 1000;
     const MAX_DRIFT = 200;
@@ -31,6 +31,8 @@ final class FilterDefinitionInspector {
         $definitions = array();
         $elementsScanned = 0;
         $surfaceCount = 0;
+        $candidateSurfaceCount = 0;
+        $controlSurfaceCount = 0;
         $resolvedSurfaceCount = 0;
         $unresolvedSurfaceCount = 0;
         $truncated = false;
@@ -44,7 +46,7 @@ final class FilterDefinitionInspector {
                 $data = is_array( $decoded ) ? $decoded : array();
             }
             if ( ! is_array( $data ) ) { continue; }
-            $this->walk( $data, $templateId, $surfaces, $definitions, $surfaceCount, $resolvedSurfaceCount, $unresolvedSurfaceCount, $elementsScanned, $truncated );
+            $this->walk( $data, $templateId, $surfaces, $definitions, $surfaceCount, $candidateSurfaceCount, $controlSurfaceCount, $resolvedSurfaceCount, $unresolvedSurfaceCount, $elementsScanned, $truncated );
             if ( $truncated ) { break; }
         }
 
@@ -104,7 +106,8 @@ final class FilterDefinitionInspector {
             'elements_scanned' => $elementsScanned,
             'truncated' => $truncated || ! empty( $templates['truncated'] ),
             'surface_count' => $surfaceCount,
-            'candidate_surface_count' => $surfaceCount,
+            'candidate_surface_count' => $candidateSurfaceCount,
+            'control_surface_count' => $controlSurfaceCount,
             'resolved_surface_count' => $resolvedSurfaceCount,
             'unresolved_surface_count' => $unresolvedSurfaceCount,
             'surfaces' => array_slice( $surfaces, 0, self::MAX_SURFACES ),
@@ -166,7 +169,7 @@ final class FilterDefinitionInspector {
         }
     }
 
-    private function walk( array $nodes, int $templateId, array &$surfaces, array &$definitions, int &$surfaceCount, int &$resolvedSurfaceCount, int &$unresolvedSurfaceCount, int &$elementsScanned, bool &$truncated ): void {
+    private function walk( array $nodes, int $templateId, array &$surfaces, array &$definitions, int &$surfaceCount, int &$candidateSurfaceCount, int &$controlSurfaceCount, int &$resolvedSurfaceCount, int &$unresolvedSurfaceCount, int &$elementsScanned, bool &$truncated ): void {
         foreach ( $nodes as $node ) {
             if ( $elementsScanned >= self::MAX_ELEMENTS ) { $truncated = true; return; }
             if ( ! is_array( $node ) ) { continue; }
@@ -175,24 +178,34 @@ final class FilterDefinitionInspector {
             $settings = isset( $node['settings'] ) && is_array( $node['settings'] ) ? $node['settings'] : array();
             if ( 0 === strpos( $widgetType, 'jet-smart-filters-' ) ) {
                 $surfaceCount++;
-                $filterId = $this->filterId( $settings );
+                $identityExpected = $this->filterIdentityExpected( $widgetType );
+                $filterId = 0;
                 $definition = array();
-                $resolutionReason = 'filter_id_unresolved';
-                if ( $filterId > 0 ) {
-                    $resolvedSurfaceCount++;
-                    if ( ! array_key_exists( $filterId, $definitions ) ) { $definitions[ $filterId ] = $this->definition( $filterId ); }
-                    $definition = is_array( $definitions[ $filterId ] ) ? $definitions[ $filterId ] : array();
-                    $resolutionReason = ! empty( $definition['available'] ) ? 'resolved' : 'filter_definition_unavailable';
+                $resolutionReason = 'filter_identity_not_applicable';
+                if ( $identityExpected ) {
+                    $candidateSurfaceCount++;
+                    $filterId = $this->filterId( $settings );
+                    $resolutionReason = 'filter_id_unresolved';
+                    if ( $filterId > 0 ) {
+                        $resolvedSurfaceCount++;
+                        if ( ! array_key_exists( $filterId, $definitions ) ) { $definitions[ $filterId ] = $this->definition( $filterId ); }
+                        $definition = is_array( $definitions[ $filterId ] ) ? $definitions[ $filterId ] : array();
+                        $resolutionReason = ! empty( $definition['available'] ) ? 'resolved' : 'filter_definition_unavailable';
+                    } else {
+                        $unresolvedSurfaceCount++;
+                    }
                 } else {
-                    $unresolvedSurfaceCount++;
+                    $controlSurfaceCount++;
                 }
                 if ( count( $surfaces ) < self::MAX_SURFACES ) {
                     $surfaces[] = array(
                         'template_id'=>$templateId,
                         'node_id'=>sanitize_text_field( (string) ( $node['id'] ?? '' ) ),
                         'widget_type'=>$widgetType,
+                        'surface_role'=>$identityExpected ? 'definition_candidate' : 'control',
+                        'filter_identity_expected'=>$identityExpected,
                         'filter_id'=>$filterId,
-                        'filter_identity_resolved'=>$filterId > 0,
+                        'filter_identity_resolved'=>$identityExpected && $filterId > 0,
                         'resolution_reason'=>$resolutionReason,
                         'query_id'=>QueryId::normalize( $settings['query_id'] ?? '' ),
                         'content_provider'=>sanitize_key( (string) ( $settings['content_provider'] ?? '' ) ),
@@ -207,23 +220,48 @@ final class FilterDefinitionInspector {
                 }
             }
             if ( isset( $node['elements'] ) && is_array( $node['elements'] ) ) {
-                $this->walk( $node['elements'], $templateId, $surfaces, $definitions, $surfaceCount, $resolvedSurfaceCount, $unresolvedSurfaceCount, $elementsScanned, $truncated );
+                $this->walk( $node['elements'], $templateId, $surfaces, $definitions, $surfaceCount, $candidateSurfaceCount, $controlSurfaceCount, $resolvedSurfaceCount, $unresolvedSurfaceCount, $elementsScanned, $truncated );
             }
             if ( $truncated ) { return; }
         }
     }
 
+    private function filterIdentityExpected( string $widgetType ): bool {
+        $controls = array(
+            'jet-smart-filters-active',
+            'jet-smart-filters-active-tags',
+            'jet-smart-filters-apply-button',
+            'jet-smart-filters-items-number-switcher',
+            'jet-smart-filters-listing',
+            'jet-smart-filters-map-sync',
+            'jet-smart-filters-pagination',
+            'jet-smart-filters-remove-filters',
+            'jet-smart-filters-sorting',
+            'jet-smart-filters-user-geolocation',
+        );
+        return ! in_array( $widgetType, $controls, true );
+    }
+
     private function filterId( array $settings ): int {
+        $ids = array();
         foreach ( array( 'filter_id', 'filter' ) as $key ) {
             if ( ! array_key_exists( $key, $settings ) ) { continue; }
             $value = $settings[ $key ];
-            if ( is_array( $value ) && isset( $value['id'] ) ) { $value = $value['id']; }
-            if ( is_scalar( $value ) && is_numeric( $value ) ) {
+            if ( is_array( $value ) ) {
+                if ( array_key_exists( 'id', $value ) ) { $value = array( $value['id'] ); }
+                foreach ( $value as $candidate ) {
+                    if ( is_scalar( $candidate ) && is_numeric( $candidate ) ) {
+                        $id = absint( $candidate );
+                        if ( $id > 0 ) { $ids[ $id ] = true; }
+                    }
+                }
+            } elseif ( is_scalar( $value ) && is_numeric( $value ) ) {
                 $id = absint( $value );
-                if ( $id > 0 ) { return $id; }
+                if ( $id > 0 ) { $ids[ $id ] = true; }
             }
         }
-        return 0;
+        $keys = array_keys( $ids );
+        return 1 === count( $keys ) ? (int) $keys[0] : 0;
     }
 
     private function definition( int $filterId ): array {

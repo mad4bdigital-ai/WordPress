@@ -139,6 +139,7 @@ final class RuntimeInventory {
             'definition_available_count'=>0,
             'definition_unavailable_count'=>0,
             'candidate_surface_count'=>0,
+            'control_surface_count'=>0,
             'resolved_surface_count'=>0,
             'unresolved_surface_count'=>0,
             'evidence_complete'=>false,
@@ -150,7 +151,7 @@ final class RuntimeInventory {
         );
     }
     private function reconcileFilterDefinitionEvidence( array $inspection, array $topology ): array {
-        $candidateCount = (int) ( $inspection['candidate_surface_count'] ?? $inspection['surface_count'] ?? 0 );
+        $observedSurfaceCount = (int) ( $inspection['surface_count'] ?? 0 );
         $topologyFilterSurfaceCount = 0;
         foreach ( (array) ( $topology['query_surfaces'] ?? array() ) as $surface ) {
             if ( ! is_array( $surface ) ) { continue; }
@@ -158,7 +159,7 @@ final class RuntimeInventory {
             if ( 0 === strpos( $widgetType, 'jet-smart-filters-' ) ) { $topologyFilterSurfaceCount++; }
         }
         $parityChecked = ! empty( $topology['available'] ) && empty( $topology['truncated'] );
-        $parity = ! $parityChecked ? null : $candidateCount >= $topologyFilterSurfaceCount;
+        $parity = ! $parityChecked ? null : $observedSurfaceCount >= $topologyFilterSurfaceCount;
         $reasons = array_values( array_filter( array_map( 'sanitize_key', (array) ( $inspection['evidence_reasons'] ?? array() ) ) ) );
         if ( $parityChecked && false === $parity ) { $reasons[] = 'topology_filter_surface_parity_mismatch'; }
         $reasons = array_values( array_unique( $reasons ) );

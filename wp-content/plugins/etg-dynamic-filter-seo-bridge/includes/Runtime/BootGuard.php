@@ -119,6 +119,35 @@ final class BootGuard {
         return is_array($state) ? $state : array();
     }
 
+    public static function status(): array {
+        $state = self::state();
+        $registeredBuild = trim( self::$build );
+        $stateBuild = trim( (string) ( $state['build'] ?? '' ) );
+        $buildMatches = '' !== $registeredBuild && '' !== $stateBuild && $registeredBuild === $stateBuild;
+        $stateHold = ! empty( $state['hold'] );
+        $faulted = ! empty( $state['faulted'] );
+        $forced = defined( 'ETG_DFSB_FORCE_FULL_BOOT' ) && ETG_DFSB_FORCE_FULL_BOOT;
+        $effectiveHold = $forced ? false : ( ! $buildMatches || $stateHold || $faulted );
+        $reason = sanitize_key( (string) ( $state['reason'] ?? '' ) );
+        return array(
+            'contract' => 'etg.dfsb.safe-boot-status.v1',
+            'authorizing' => false,
+            'read_only' => true,
+            'mutation_exposed' => false,
+            'registered_build' => $registeredBuild,
+            'state_build' => $stateBuild,
+            'build_matches' => $buildMatches,
+            'state_hold' => $stateHold,
+            'effective_hold' => $effectiveHold,
+            'faulted' => $faulted,
+            'force_full_boot' => $forced,
+            'monitoring' => self::$monitoring,
+            'reason' => $reason,
+            'boot_ok' => $buildMatches && ! $effectiveHold && ! $faulted && 'boot_ok' === $reason,
+            'updated_at' => (int) ( $state['updated_at'] ?? 0 ),
+        );
+    }
+
     private static function writeState(array $state): void {
         if (function_exists('update_option')) { update_option(self::OPTION_NAME, $state, false); }
     }
