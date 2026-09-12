@@ -14,13 +14,15 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 	const CONTRACT = 'mad4b.external-wpml-acceptance-finalizer.v1';
 
 	private static $booted = false;
+	private static $upstream_live_acceptance_callback = null;
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		// Later than the strict snapshot finalizer (240). This wrapper changes no
-		// write surface; it only resolves the authority of already-read evidence.
-		add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_callbacks' ), 260, 2 );
+		// Later than the strict snapshot finalizer (240) and the zero-touch Skills
+		// wrapper (260). Capture and compose the callback selected upstream instead
+		// of replacing it, so Snapshot + Mutation + WPML authorities all survive.
+		add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_callbacks' ), 280, 2 );
 	}
 
 	public static function bind_callbacks( $args, $name ) {
@@ -30,6 +32,7 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 			$args['execute_callback'] = array( __CLASS__, 'external_wpml_receipt_status' );
 		}
 		if ( 'mad4b/live-acceptance-status' === $name ) {
+			self::$upstream_live_acceptance_callback = isset( $args['execute_callback'] ) ? $args['execute_callback'] : null;
 			$args['execute_callback'] = array( __CLASS__, 'live_acceptance_status' );
 		}
 		return $args;
@@ -39,7 +42,11 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 	 * Pure authority merge used by runtime regression tests.
 	 */
 	public static function finalize_status( array $external, array $diagnostic ) {
-		if ( empty( $external['verified'] ) ) return $diagnostic;
+		$authoritative = ! empty( $external['verified'] )
+			&& empty( $external['stale'] )
+			&& 'valid' === ( isset( $external['status'] ) ? (string) $external['status'] : '' )
+			&& 'valid' === ( isset( $external['get_parameters'] ) ? (string) $external['get_parameters'] : '' );
+		if ( ! $authoritative ) return $diagnostic;
 
 		$out = array_merge( $diagnostic, $external );
 		$out['verified'] = true;
@@ -88,11 +95,16 @@ final class MAD4B_SCP_External_WPML_Acceptance_Finalizer {
 
 	public static function live_acceptance_status( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
-		$base = class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' )
-			? MAD4B_SCP_External_Snapshot_Finalizer::live_acceptance_status( $input )
-			: ( class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' )
-				? MAD4B_SCP_Live_Acceptance_Finalizer::live_acceptance_status( $input )
-				: array( 'contract' => 'mad4b.live-acceptance-status.v1', 'gates' => array() ) );
+		$upstream = self::$upstream_live_acceptance_callback;
+		if ( is_callable( $upstream ) && array( __CLASS__, 'live_acceptance_status' ) !== $upstream ) {
+			$base = call_user_func( $upstream, $input );
+		} else {
+			$base = class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' )
+				? MAD4B_SCP_External_Snapshot_Finalizer::live_acceptance_status( $input )
+				: ( class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' )
+					? MAD4B_SCP_Live_Acceptance_Finalizer::live_acceptance_status( $input )
+					: array( 'contract' => 'mad4b.live-acceptance-status.v1', 'gates' => array() ) );
+		}
 		if ( ! is_array( $base ) ) $base = array( 'contract' => 'mad4b.live-acceptance-status.v1', 'gates' => array() );
 		if ( ! isset( $base['gates'] ) || ! is_array( $base['gates'] ) ) $base['gates'] = array();
 
