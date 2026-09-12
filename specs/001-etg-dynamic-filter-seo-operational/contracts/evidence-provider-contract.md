@@ -151,3 +151,30 @@ The central MCP implementation may add:
 - audit logging.
 
 Those capabilities belong to the central transport and MUST NOT cause ETG to duplicate or fork Runtime Inventory / reconciliation logic.
+
+## Central MCP integration handshake
+
+The central transport should discover providers by applying `mad4b_mcp_evidence_providers` to an empty registry after WordPress `plugins_loaded` has completed. It should reject duplicate provider IDs or registry entries whose declared invariants are not read-only/non-authorizing.
+
+For `etg-dfsb`, discovery should first call `descriptor_callback` and require all of the following before exposing a public read surface:
+
+```text
+provider_id = etg-dfsb
+contract = etg.dfsb.evidence-provider.v1
+read_only = true
+authorizing = false
+profile_mutation = false
+transport_owned_by_provider = false
+```
+
+The central transport may then invoke `query_callback` with the documented request arrays. Recommended Live Acceptance calls are:
+
+```text
+{section: summary}
+{section: unresolved_surfaces, offset: 0, limit: 25}
+{section: filters, filter_ids: [15032,15033,15034,16084,16086], offset: 0, limit: 50}
+{section: profile_reconciliation, profile_id: tours, offset: 0, limit: 50}
+{section: provider_group_drift, template_id: 44320, node_id: b417678, offset: 0, limit: 25}
+```
+
+The MCP layer should bind every response to the exact environment/site identity it authenticated before invoking the provider and should preserve ETG `snapshot_fingerprint` and `collected_at_gmt` unchanged. It may wrap these fields with stronger transport provenance, but it must not synthesize missing ETG evidence or reinterpret review-only evidence as blocking authority.
