@@ -1,0 +1,7 @@
+.elementor-tag-settings-popup{max-height:min(520px,calc(100vh - 140px))!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable both-edges;scroll-padding-block:14px}
+.elementor-tag-settings-popup .elementor-control,.elementor-tag-settings-popup .elementor-control-field{min-width:0}
+.elementor-tag-settings-popup .elementor-control-field-description{font-size:11px;line-height:1.35;margin-top:5px;max-height:4.2em;overflow:auto;overscroll-behavior:contain;padding-inline-end:3px}
+.elementor-tag-settings-popup .elementor-panel-alert.etg-dfsb-tag-help{font-size:11px;line-height:1.35;max-height:7em;overflow:auto;overscroll-behavior:contain;margin:7px 10px 9px;padding:7px 9px}
+.elementor-tag-settings-popup input[type=text],.elementor-tag-settings-popup input[type=url],.elementor-tag-settings-popup select,.elementor-tag-settings-popup textarea{max-width:100%}
+@media(max-height:720px){.elementor-tag-settings-popup{max-height:calc(100vh - 100px)!important}.elementor-tag-settings-popup .elementor-control-field-description{max-height:3em}.elementor-tag-settings-popup .elementor-panel-alert.etg-dfsb-tag-help{max-height:5.5em}}
+@media(max-height:560px){.elementor-tag-settings-popup{max-height:calc(100vh - 72px)!important}}
