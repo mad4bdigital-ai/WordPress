@@ -56,8 +56,13 @@ final class InventoryReconciler {
                 if(empty($binding['resolved'])){$this->finding($findings,$severity,(string)$binding['code'],'profile:'.$id,array_merge(array('query_id'=>$providerQueryId,'profile_enabled'=>$enabled),(array)($binding['details']??array())));continue;}
                 $routeDrift=$this->routeProviderGroupDrift($providerQueryId,$topology);
                 if($routeDrift){$this->finding($findings,$severity,'profile_elementor_provider_group_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($routeDrift),'drift'=>array_slice($routeDrift,0,10),'authorizing'=>false));}
-                $filterTaxonomyDrift=$this->routeFilterTaxonomyDrift($providerQueryId,$taxonomyRules,$filterInspection);
-                if($filterTaxonomyDrift){$this->finding($findings,$severity,'profile_filter_taxonomy_target_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($filterTaxonomyDrift),'drift'=>array_slice($filterTaxonomyDrift,0,10),'authorizing'=>false));}
+                $filterTaxonomyEvidence=$this->routeFilterTaxonomyDrift($providerQueryId,$taxonomyRules,$filterInspection);
+                if($filterTaxonomyEvidence){
+                    $filterTaxonomyBlocking=array();$filterTaxonomyReview=array();
+                    foreach($filterTaxonomyEvidence as $item){if(!is_array($item)){continue;}if('blocking'===(string)($item['severity_hint']??'review')){$filterTaxonomyBlocking[]=$item;}else{$filterTaxonomyReview[]=$item;}}
+                    if($filterTaxonomyBlocking){$this->finding($findings,$severity,'profile_filter_taxonomy_target_drift','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'drift_count'=>count($filterTaxonomyBlocking),'drift'=>array_slice($filterTaxonomyBlocking,0,10),'authorizing'=>false));}
+                    if($filterTaxonomyReview){$this->finding($findings,'warning','profile_filter_taxonomy_target_review','profile:'.$id,array('provider_query_id'=>$providerQueryId,'profile_enabled'=>$enabled,'evidence_count'=>count($filterTaxonomyReview),'evidence'=>array_slice($filterTaxonomyReview,0,10),'authorizing'=>false,'requires_operator_review'=>true));}
+                }
                 $listingInspection=$listingInspector->inspectRoute($providerQueryId,$topology,$taxonomies);
                 $listingBlocking=array();$listingReview=array();
                 foreach((array)($listingInspection['drift']??array()) as $item){if(!is_array($item)){continue;}if('blocking'===(string)($item['severity_hint']??'warning')){$listingBlocking[]=$item;}else{$listingReview[]=$item;}}
