@@ -13,6 +13,11 @@ class WP_Error {
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function add_action() {}
+$GLOBALS['mad4b_removed_actions'] = array();
+function remove_action( $hook, $callback, $priority = 10 ) {
+	$GLOBALS['mad4b_removed_actions'][] = array( $hook, $callback, $priority );
+	return true;
+}
 function add_submenu_page() {}
 function __( $value ) { return $value; }
 function current_user_can( $capability ) { return 'manage_options' === $capability; }
@@ -21,6 +26,10 @@ function home_url() { return 'https://staging.egypttourgates.com/'; }
 function wp_parse_url( $url ) { return parse_url( $url ); }
 function wp_unslash( $value ) { return $value; }
 function is_admin() { return true; }
+
+class MAD4B_SCP_Schema {
+	public static function critical_ready() { return true; }
+}
 
 $GLOBALS['mad4b_prime_calls'] = 0;
 $GLOBALS['mad4b_prime_fail'] = false;
@@ -49,6 +58,7 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 }
 
 class MAD4B_SCP_Approval_Tickets {
+	const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v1';
 	public static $decisions = 0;
 	public static function get( $ticket_id ) {
 		return array(
@@ -61,19 +71,26 @@ class MAD4B_SCP_Approval_Tickets {
 			'provider' => 'elementor',
 			'payload_sha256' => str_repeat( 'a', 64 ),
 			'agent_id' => 9,
-		);
-	}
-	public static function candidate_binding( $ticket_id ) {
-		return array(
-			'contract' => 'mad4b.approval-candidate-binding.v1',
-			'ticket_id' => $ticket_id,
-			'payload_sha256' => str_repeat( 'a', 64 ),
+			'candidate_binding_contract' => self::CANDIDATE_BINDING_CONTRACT,
 			'candidate_sha' => str_repeat( 'b', 40 ),
 			'build_fingerprint' => str_repeat( 'c', 64 ),
-			'environment' => 'staging',
-			'host' => 'staging.egypttourgates.com',
+			'binding_environment' => 'staging',
+			'binding_host' => 'staging.egypttourgates.com',
+			'bound_at' => gmdate( 'Y-m-d H:i:s' ),
 		);
 	}
+	public static function candidate_binding_from_ticket( array $ticket ) {
+		return array(
+			'contract' => isset( $ticket['candidate_binding_contract'] ) ? $ticket['candidate_binding_contract'] : '',
+			'ticket_id' => isset( $ticket['ticket_id'] ) ? $ticket['ticket_id'] : '',
+			'payload_sha256' => isset( $ticket['payload_sha256'] ) ? $ticket['payload_sha256'] : '',
+			'candidate_sha' => isset( $ticket['candidate_sha'] ) ? $ticket['candidate_sha'] : '',
+			'build_fingerprint' => isset( $ticket['build_fingerprint'] ) ? $ticket['build_fingerprint'] : '',
+			'environment' => isset( $ticket['binding_environment'] ) ? $ticket['binding_environment'] : '',
+			'host' => isset( $ticket['binding_host'] ) ? $ticket['binding_host'] : '',
+		);
+	}
+	public static function candidate_binding( $ticket_id ) { return self::candidate_binding_from_ticket( self::get( $ticket_id ) ); }
 	public static function decide_pending( $ticket_id, $decision, $payload, $meta ) {
 		++self::$decisions;
 		return array( 'ticket_id' => $ticket_id, 'status' => 'approve' === $decision ? 'approved' : 'revoked', 'meta' => $meta );
@@ -124,7 +141,8 @@ $request = array(
 	'expected_build_fingerprint' => str_repeat( 'c', 64 ),
 );
 
-// Reproduce the live rc.23 failure precondition: request-local authority starts pending.
+// POST remains authoritative: exact validation first, then request-local runtime
+// preparation and reconciliation, then exactly one human ticket transition.
 MAD4B_SCP_Staging_Write_Authority::$ready = false;
 $result = MAD4B_SCP_Approval_Decision_Admin::decide( $request );
 mad4b_lifecycle_assert( is_array( $result ) && 'approved' === $result['status'], 'Validated admin-post decision must reconcile request-local authority and approve the exact ticket.' );
@@ -164,24 +182,26 @@ mad4b_lifecycle_assert( mad4b_lifecycle_error( $result, 'mad4b_approval_decision
 mad4b_lifecycle_assert( $decisions_before === MAD4B_SCP_Approval_Tickets::$decisions, 'Blocked authority must not decide the ticket.' );
 MAD4B_SCP_Staging_Write_Authority::$force_block = false;
 
-// The human decision page itself must be a recognized authority admin surface.
+// GET Approval Console v2 is a read-model surface. It remains recognizable as a
+// MAD4B admin surface, but removes runtime priming and authority reconciliation
+// hooks before they can execute on the page request.
+$_SERVER['REQUEST_METHOD'] = 'GET';
 $_GET['page'] = 'mad4b-approval-decisions';
-mad4b_lifecycle_assert( MAD4B_SCP_Plugin::is_authority_admin_surface(), 'Approval Decisions page must be recognized as an authority admin surface.' );
+mad4b_lifecycle_assert( MAD4B_SCP_Plugin::is_authority_admin_surface(), 'Approval Decisions page must remain a recognized MAD4B authority admin route.' );
 $prime_before = $GLOBALS['mad4b_prime_calls'];
 $reconcile_before = MAD4B_SCP_Staging_Write_Authority::$reconcile_calls;
-MAD4B_SCP_Plugin::prime_admin_mcp_runtime();
-MAD4B_SCP_Plugin::reconcile_authority_on_mad4b_admin();
-mad4b_lifecycle_assert( $prime_before + 1 === $GLOBALS['mad4b_prime_calls'], 'Approval Decisions page must prime the admin MCP runtime.' );
-mad4b_lifecycle_assert( $reconcile_before + 1 === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Approval Decisions page must reconcile authority.' );
+$GLOBALS['mad4b_removed_actions'] = array();
+MAD4B_SCP_Approval_Decision_Admin::protect_read_model_hot_path();
+mad4b_lifecycle_assert( $prime_before === $GLOBALS['mad4b_prime_calls'], 'Approval Decisions GET must not prime MCP runtime.' );
+mad4b_lifecycle_assert( $reconcile_before === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Approval Decisions GET must not reconcile write authority.' );
+mad4b_lifecycle_assert( in_array( array( 'admin_init', array( 'MAD4B_SCP_Plugin', 'prime_admin_mcp_runtime' ), 1 ), $GLOBALS['mad4b_removed_actions'], true ), 'Approval Decisions GET must remove the MCP runtime priming hook.' );
+mad4b_lifecycle_assert( in_array( array( 'admin_init', array( 'MAD4B_SCP_Plugin', 'reconcile_authority_on_mad4b_admin' ), 20 ), $GLOBALS['mad4b_removed_actions'], true ), 'Approval Decisions GET must remove the authority reconciliation hook.' );
 
-// Unrelated wp-admin requests must remain outside this lifecycle.
+// Unrelated wp-admin requests remain outside the bounded authority route.
 $_GET['page'] = 'plugins';
 mad4b_lifecycle_assert( ! MAD4B_SCP_Plugin::is_authority_admin_surface(), 'Unrelated wp-admin pages must not be authority surfaces.' );
-$prime_before = $GLOBALS['mad4b_prime_calls'];
-$reconcile_before = MAD4B_SCP_Staging_Write_Authority::$reconcile_calls;
-MAD4B_SCP_Plugin::prime_admin_mcp_runtime();
-MAD4B_SCP_Plugin::reconcile_authority_on_mad4b_admin();
-mad4b_lifecycle_assert( $prime_before === $GLOBALS['mad4b_prime_calls'], 'Unrelated wp-admin page must not prime MCP runtime.' );
-mad4b_lifecycle_assert( $reconcile_before === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Unrelated wp-admin page must not reconcile write authority.' );
+$GLOBALS['mad4b_removed_actions'] = array();
+MAD4B_SCP_Approval_Decision_Admin::protect_read_model_hot_path();
+mad4b_lifecycle_assert( empty( $GLOBALS['mad4b_removed_actions'] ), 'Unrelated wp-admin GET must not remove MAD4B authority lifecycle hooks.' );
 
-echo "mad4b.approval-decision.admin-post-lifecycle.v2: PASS\n";
+echo "mad4b.approval-decision.admin-post-lifecycle.v3: PASS\n";
