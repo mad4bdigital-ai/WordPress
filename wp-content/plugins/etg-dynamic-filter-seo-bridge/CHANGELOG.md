@@ -2,6 +2,9 @@
 
 ## 0.4.0-alpha.13 — Deep runtime audit hardening
 
+- Added bounded, versioned `etg.dfsb.evidence-provider.v1` projection over the canonical Runtime Inventory and Inventory Reconciliation so central diagnostic transports can retrieve targeted evidence without duplicating ETG domain semantics or returning one oversized inventory response.
+- The ETG evidence provider is read-only/non-authorizing (`authorizing=false`, `profile_mutation=false`) and exposes only provider discovery/query callbacks through `mad4b_mcp_evidence_providers`; authentication, transport, cursors, export and materialization remain owned by the central MAD4B MCP / Control Plane.
+- Added bounded evidence sections for summary, unresolved JetSmartFilters surfaces, selected filter IDs, profile-scoped reconciliation, and targeted provider-group drift, with request-local snapshot reuse and preserved inventory fingerprint/timestamp provenance.
 - Added native JetSmartFilters browser `currentQuery` parsing for keys such as `_tax_query_<taxonomy>`, closing a live-runtime gap where real active taxonomy filters could previously be reported as inactive even though synthetic WordPress-style `tax_query` tests passed.
 - Native taxonomy values now normalize Term IDs/slugs into governed slug clauses; only `IN` and `AND` operators are accepted. Native meta/date/search/alphabet states remain unsupported presentation states and fail closed.
 - Query depth, node, string and term-count limits no longer silently truncate state while reporting `filtered_query_complete=true`; each overflow now produces an explicit malformed reason and blocks presentation/count authority.
