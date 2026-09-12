@@ -40,11 +40,16 @@ final class InventoryProfilePlanner {
                     continue;
                 }
                 $resolved = $this->resolveRoute( $provider, $providerQueryId, $route, $identityIndex, $conflicts, $topology );
-                $routeEvidence[] = $resolved;
                 if ( empty( $resolved['resolved'] ) ) {
+                    $routeEvidence[] = $resolved;
                     $blocked[] = (string) ( $resolved['reason'] ?? 'route_unresolved' );
                     continue;
                 }
+                $routeDrift = $this->routeProviderGroupDrift( $providerQueryId, $topology );
+                $resolved['provider_group_drift_count'] = count( $routeDrift );
+                $resolved['provider_group_drift'] = $routeDrift;
+                $routeEvidence[] = $resolved;
+                if ( $routeDrift ) { $blocked[] = 'route_provider_group_drift'; }
                 $postTypeSet = $this->keys( (array) ( $resolved['post_types'] ?? array() ) );
                 if ( ! $postTypeSet ) {
                     $blocked[] = 'query_builder_post_type_unbounded';
@@ -155,6 +160,25 @@ final class InventoryProfilePlanner {
             'source'=>$source,
             'reason'=>$postTypes?'verified':'query_builder_post_type_unbounded',
         );
+    }
+
+
+    private function routeProviderGroupDrift( string $providerQueryId, array $topology ): array {
+        $providerQueryId = $this->key( $providerQueryId );
+        if ( '' === $providerQueryId ) { return array(); }
+        $out = array();
+        foreach ( (array) ( $topology['provider_group_drift'] ?? array() ) as $drift ) {
+            if ( ! is_array( $drift ) || 'blocking' !== (string) ( $drift['severity_hint'] ?? 'warning' ) ) { continue; }
+            $expected = array();
+            foreach ( (array) ( $drift['expected_provider_query_ids'] ?? array() ) as $candidate ) {
+                $candidate = $this->key( (string) $candidate );
+                if ( '' !== $candidate ) { $expected[$candidate] = true; }
+            }
+            if ( ! isset( $expected[$providerQueryId] ) ) { continue; }
+            $out[] = $drift;
+            if ( count( $out ) >= 20 ) { break; }
+        }
+        return $out;
     }
 
     private function identityIndex( array $queryBuilder ): array {

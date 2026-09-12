@@ -22,6 +22,7 @@ Alpha12 turns Runtime Inventory into a governed operator control plane without t
 12. Dynamic Content Slots continue to consume the profile/Inventory token catalog through Elementor Dynamic Tags, shortcodes, and PHP API. Inventory taxonomy opt-in expands presentation capability only after explicit operator selection.
 13. No planner or control action may enable sitemap publication, canonical authority, hreflang/schema publication, a profile, Global, or an exact indexing combination.
 14. All writes remain reversible through the authoritative Surface Profiles JSON and are followed by fresh Reconciliation before activation.
+15. Planner safety incorporates only proven blocking provider-group drift scoped to the exact profile route through `expected_provider_query_ids`; site-wide drift on unrelated routes remains visible evidence and must not create a false blocker for an aligned profile.
 
 ## Acceptance
 

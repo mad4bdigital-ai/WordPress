@@ -54,6 +54,9 @@ Alpha11 removes side-channel/manual identity discovery from the normal operator 
 7. For an enabled Profile, a governed route mismatch is fail-closed and blocking. For a disabled Profile it remains warning/review evidence.
 8. A mismatch whose source and target are both outside the Profile's governed taxonomy rules must not be promoted to a route blocker; it remains visible only through the inventory-level diagnostic finding.
 9. Filter-definition diagnostics must never mutate JetSmartFilters posts/meta, Elementor templates, Profiles, URLs, or SEO publication authority.
+10. JetSmartFilters definition inspection distinguishes source availability from observation completeness. Every observed JetSmartFilters widget is a candidate surface even when its filter identity cannot be resolved; unresolved identities and unavailable definitions remain explicit evidence rather than disappearing as zero-count clean state.
+11. Runtime Inventory may cross-check JetSmartFilters candidate surfaces against independent Elementor topology query-surface evidence. When complete topology observes more JetSmartFilters query surfaces than the definition inspector, the inspection is `incomplete` with `topology_filter_surface_parity_mismatch`; it is never treated as clean drift evidence.
+12. Incomplete JetSmartFilters definition evidence remains non-authorizing inventory warning evidence. It does not grant or revoke Profile, URL, canonical, sitemap or indexing authority by itself.
 
 ## Elementor Listing saved-configuration drift
 

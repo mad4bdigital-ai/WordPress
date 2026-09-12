@@ -40,6 +40,7 @@ final class RuntimeInventory {
         $queriesResult = $this->queries();
         $topology = $this->topology();
         $filterDefinitions = $this->filterDefinitions();
+        $filterDefinitions = $this->reconcileFilterDefinitionEvidence( $filterDefinitions, $topology );
         $availability = array(
             'post_types' => $postTypesResult['availability'],
             'taxonomies' => $taxonomiesResult['availability'],
@@ -135,9 +136,40 @@ final class RuntimeInventory {
             'surfaces'=>array(),
             'surfaces_truncated'=>false,
             'definition_count'=>0,
+            'definition_available_count'=>0,
+            'definition_unavailable_count'=>0,
+            'candidate_surface_count'=>0,
+            'resolved_surface_count'=>0,
+            'unresolved_surface_count'=>0,
+            'evidence_complete'=>false,
+            'evidence_state'=>'unavailable',
+            'evidence_reasons'=>array('definition_inspector_unavailable'),
             'drift_count'=>0,
             'drift'=>array(),
             'drift_truncated'=>false,
         );
     }
+    private function reconcileFilterDefinitionEvidence( array $inspection, array $topology ): array {
+        $candidateCount = (int) ( $inspection['candidate_surface_count'] ?? $inspection['surface_count'] ?? 0 );
+        $topologyFilterSurfaceCount = 0;
+        foreach ( (array) ( $topology['query_surfaces'] ?? array() ) as $surface ) {
+            if ( ! is_array( $surface ) ) { continue; }
+            $widgetType = sanitize_key( (string) ( $surface['widget_type'] ?? '' ) );
+            if ( 0 === strpos( $widgetType, 'jet-smart-filters-' ) ) { $topologyFilterSurfaceCount++; }
+        }
+        $parityChecked = ! empty( $topology['available'] ) && empty( $topology['truncated'] );
+        $parity = ! $parityChecked ? null : $candidateCount >= $topologyFilterSurfaceCount;
+        $reasons = array_values( array_filter( array_map( 'sanitize_key', (array) ( $inspection['evidence_reasons'] ?? array() ) ) ) );
+        if ( $parityChecked && false === $parity ) { $reasons[] = 'topology_filter_surface_parity_mismatch'; }
+        $reasons = array_values( array_unique( $reasons ) );
+        $baseComplete = ! empty( $inspection['evidence_complete'] );
+        $inspection['topology_filter_surface_count'] = $topologyFilterSurfaceCount;
+        $inspection['topology_parity_checked'] = $parityChecked;
+        $inspection['topology_surface_parity'] = $parity;
+        $inspection['evidence_reasons'] = $reasons;
+        $inspection['evidence_complete'] = $baseComplete && empty( $reasons );
+        $inspection['evidence_state'] = empty( $inspection['available'] ) ? 'unavailable' : ( $inspection['evidence_complete'] ? 'complete' : 'incomplete' );
+        return $inspection;
+    }
+
 }

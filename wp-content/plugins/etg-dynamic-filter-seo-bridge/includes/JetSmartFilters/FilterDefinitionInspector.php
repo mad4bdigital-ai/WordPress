@@ -31,6 +31,8 @@ final class FilterDefinitionInspector {
         $definitions = array();
         $elementsScanned = 0;
         $surfaceCount = 0;
+        $resolvedSurfaceCount = 0;
+        $unresolvedSurfaceCount = 0;
         $truncated = false;
 
         foreach ( $templates['items'] as $template ) {
@@ -42,7 +44,7 @@ final class FilterDefinitionInspector {
                 $data = is_array( $decoded ) ? $decoded : array();
             }
             if ( ! is_array( $data ) ) { continue; }
-            $this->walk( $data, $templateId, $surfaces, $definitions, $surfaceCount, $elementsScanned, $truncated );
+            $this->walk( $data, $templateId, $surfaces, $definitions, $surfaceCount, $resolvedSurfaceCount, $unresolvedSurfaceCount, $elementsScanned, $truncated );
             if ( $truncated ) { break; }
         }
 
@@ -76,6 +78,17 @@ final class FilterDefinitionInspector {
         } );
 
         $available = ! empty( $templates['available'] ) && $definitionSourceAvailable;
+        $definitionAvailableCount = 0;
+        foreach ( $definitions as $definition ) { if ( is_array( $definition ) && ! empty( $definition['available'] ) ) { $definitionAvailableCount++; } }
+        $definitionUnavailableCount = max( 0, count( $definitions ) - $definitionAvailableCount );
+        $evidenceReasons = array();
+        if ( ! $available ) { $evidenceReasons[] = 'definition_sources_unavailable'; }
+        if ( $unresolvedSurfaceCount > 0 ) { $evidenceReasons[] = 'filter_identity_unresolved'; }
+        if ( $definitionUnavailableCount > 0 ) { $evidenceReasons[] = 'filter_definition_unavailable'; }
+        if ( $truncated || ! empty( $templates['truncated'] ) || $surfaceCount > self::MAX_SURFACES ) { $evidenceReasons[] = 'filter_observation_truncated'; }
+        $evidenceReasons = array_values( array_unique( $evidenceReasons ) );
+        $evidenceComplete = $available && empty( $evidenceReasons );
+        $evidenceState = ! $available ? 'unavailable' : ( $evidenceComplete ? 'complete' : 'incomplete' );
         $result = array(
             'contract' => self::CONTRACT,
             'authorizing' => false,
@@ -91,9 +104,17 @@ final class FilterDefinitionInspector {
             'elements_scanned' => $elementsScanned,
             'truncated' => $truncated || ! empty( $templates['truncated'] ),
             'surface_count' => $surfaceCount,
+            'candidate_surface_count' => $surfaceCount,
+            'resolved_surface_count' => $resolvedSurfaceCount,
+            'unresolved_surface_count' => $unresolvedSurfaceCount,
             'surfaces' => array_slice( $surfaces, 0, self::MAX_SURFACES ),
             'surfaces_truncated' => $surfaceCount > self::MAX_SURFACES,
             'definition_count' => count( $definitions ),
+            'definition_available_count' => $definitionAvailableCount,
+            'definition_unavailable_count' => $definitionUnavailableCount,
+            'evidence_complete' => $evidenceComplete,
+            'evidence_state' => $evidenceState,
+            'evidence_reasons' => $evidenceReasons,
             'drift_count' => count( $drift ),
             'drift' => array_slice( $drift, 0, self::MAX_DRIFT ),
             'drift_truncated' => count( $drift ) > self::MAX_DRIFT,
@@ -145,7 +166,7 @@ final class FilterDefinitionInspector {
         }
     }
 
-    private function walk( array $nodes, int $templateId, array &$surfaces, array &$definitions, int &$surfaceCount, int &$elementsScanned, bool &$truncated ): void {
+    private function walk( array $nodes, int $templateId, array &$surfaces, array &$definitions, int &$surfaceCount, int &$resolvedSurfaceCount, int &$unresolvedSurfaceCount, int &$elementsScanned, bool &$truncated ): void {
         foreach ( $nodes as $node ) {
             if ( $elementsScanned >= self::MAX_ELEMENTS ) { $truncated = true; return; }
             if ( ! is_array( $node ) ) { continue; }
@@ -153,32 +174,40 @@ final class FilterDefinitionInspector {
             $widgetType = sanitize_key( (string) ( $node['widgetType'] ?? '' ) );
             $settings = isset( $node['settings'] ) && is_array( $node['settings'] ) ? $node['settings'] : array();
             if ( 0 === strpos( $widgetType, 'jet-smart-filters-' ) ) {
+                $surfaceCount++;
                 $filterId = $this->filterId( $settings );
+                $definition = array();
+                $resolutionReason = 'filter_id_unresolved';
                 if ( $filterId > 0 ) {
+                    $resolvedSurfaceCount++;
                     if ( ! array_key_exists( $filterId, $definitions ) ) { $definitions[ $filterId ] = $this->definition( $filterId ); }
                     $definition = is_array( $definitions[ $filterId ] ) ? $definitions[ $filterId ] : array();
-                    $surfaceCount++;
-                    if ( count( $surfaces ) < self::MAX_SURFACES ) {
-                        $surfaces[] = array(
-                            'template_id'=>$templateId,
-                            'node_id'=>sanitize_text_field( (string) ( $node['id'] ?? '' ) ),
-                            'widget_type'=>$widgetType,
-                            'filter_id'=>$filterId,
-                            'query_id'=>QueryId::normalize( $settings['query_id'] ?? '' ),
-                            'content_provider'=>sanitize_key( (string) ( $settings['content_provider'] ?? '' ) ),
-                            'definition_available'=>! empty( $definition['available'] ),
-                            'data_source'=>sanitize_key( (string) ( $definition['data_source'] ?? '' ) ),
-                            'source_taxonomy'=>sanitize_key( (string) ( $definition['source_taxonomy'] ?? '' ) ),
-                            'target_taxonomy'=>sanitize_key( (string) ( $definition['target_taxonomy'] ?? '' ) ),
-                            'target_source'=>sanitize_key( (string) ( $definition['target_source'] ?? '' ) ),
-                            'query_var'=>sanitize_text_field( (string) ( $definition['query_var'] ?? '' ) ),
-                            'custom_query_var'=>sanitize_text_field( (string) ( $definition['custom_query_var'] ?? '' ) ),
-                        );
-                    }
+                    $resolutionReason = ! empty( $definition['available'] ) ? 'resolved' : 'filter_definition_unavailable';
+                } else {
+                    $unresolvedSurfaceCount++;
+                }
+                if ( count( $surfaces ) < self::MAX_SURFACES ) {
+                    $surfaces[] = array(
+                        'template_id'=>$templateId,
+                        'node_id'=>sanitize_text_field( (string) ( $node['id'] ?? '' ) ),
+                        'widget_type'=>$widgetType,
+                        'filter_id'=>$filterId,
+                        'filter_identity_resolved'=>$filterId > 0,
+                        'resolution_reason'=>$resolutionReason,
+                        'query_id'=>QueryId::normalize( $settings['query_id'] ?? '' ),
+                        'content_provider'=>sanitize_key( (string) ( $settings['content_provider'] ?? '' ) ),
+                        'definition_available'=>! empty( $definition['available'] ),
+                        'data_source'=>sanitize_key( (string) ( $definition['data_source'] ?? '' ) ),
+                        'source_taxonomy'=>sanitize_key( (string) ( $definition['source_taxonomy'] ?? '' ) ),
+                        'target_taxonomy'=>sanitize_key( (string) ( $definition['target_taxonomy'] ?? '' ) ),
+                        'target_source'=>sanitize_key( (string) ( $definition['target_source'] ?? '' ) ),
+                        'query_var'=>sanitize_text_field( (string) ( $definition['query_var'] ?? '' ) ),
+                        'custom_query_var'=>sanitize_text_field( (string) ( $definition['custom_query_var'] ?? '' ) ),
+                    );
                 }
             }
             if ( isset( $node['elements'] ) && is_array( $node['elements'] ) ) {
-                $this->walk( $node['elements'], $templateId, $surfaces, $definitions, $surfaceCount, $elementsScanned, $truncated );
+                $this->walk( $node['elements'], $templateId, $surfaces, $definitions, $surfaceCount, $resolvedSurfaceCount, $unresolvedSurfaceCount, $elementsScanned, $truncated );
             }
             if ( $truncated ) { return; }
         }
@@ -235,14 +264,16 @@ final class FilterDefinitionInspector {
             $targetTaxonomy = $this->taxonomyFromQueryVar( $queryVar );
             if ( '' !== $targetTaxonomy ) { $targetSource = 'query_var'; }
         }
+        $queryBuilderQuery = sanitize_text_field( (string) ( $raw['query_builder_query'] ?? $raw['_query_builder_query'] ?? '' ) );
+        $definitionAvailable = '' !== $dataSource || '' !== $sourceTaxonomy || '' !== $queryVar || '' !== $customQueryVar || '' !== $queryBuilderQuery;
         return array(
-            'available'=>true,
+            'available'=>$definitionAvailable,
             'data_source'=>$dataSource,
             'source_taxonomy'=>$sourceTaxonomy,
             'query_var'=>$queryVar,
             'custom_query_var'=>$customQueryVar,
             'custom_query_enabled'=>$customEnabled,
-            'query_builder_query'=>sanitize_text_field( (string) ( $raw['query_builder_query'] ?? $raw['_query_builder_query'] ?? '' ) ),
+            'query_builder_query'=>$queryBuilderQuery,
             'target_taxonomy'=>$targetTaxonomy,
             'target_source'=>$targetSource,
         );
