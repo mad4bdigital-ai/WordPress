@@ -39,13 +39,22 @@ bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 4;', 'schema-version')
+require(schema, 'const VERSION = 5;', 'schema-version')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
     'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
 ):
     require(schema, table, 'schema-table')
+for approval_binding_field in (
+    'candidate_binding_contract', 'candidate_sha', 'build_fingerprint',
+    'binding_environment', 'binding_host', 'bound_at',
+):
+    require(schema, approval_binding_field, 'schema-approval-binding')
+require(schema, 'KEY decision_inbox (status,expires_at,id)', 'schema-decision-inbox-index')
+require(schema, 'KEY candidate_inbox (candidate_sha,build_fingerprint,status,expires_at)', 'schema-candidate-inbox-index')
+require(schema, 'public static function critical_ready()', 'schema-critical-physical-guard')
+require(schema, 'public static function physical_integrity_status()', 'schema-physical-integrity-status')
 for dangerous_seed in ("status = 'enabled'", 'grant_ability('):
     forbid(schema, dangerous_seed, 'no-default-authority-seed')
 require(plugin, 'MAD4B_SCP_Schema::install_or_upgrade()', 'schema-migration')
@@ -280,4 +289,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v7: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v8: PASS')
