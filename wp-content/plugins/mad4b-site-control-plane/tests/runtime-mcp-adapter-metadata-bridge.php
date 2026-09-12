@@ -24,6 +24,10 @@ if ( empty( $status['eligible'] ) || empty( $status['hook_registered'] ) || empt
 	fwrite( STDERR, 'Metadata bridge is not active on exact governed Staging admin: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
+if ( empty( $status['site_eligible'] ) || empty( $status['ability_meta_hook_registered'] ) ) {
+	fwrite( STDERR, 'Rank Math MCP metadata compatibility hook is not active on exact governed Staging: ' . wp_json_encode( $status ) . "\n" );
+	exit( 1 );
+}
 if ( ! isset( $status['fallback_priority'] ) || PHP_INT_MAX !== (int) $status['fallback_priority'] ) {
 	fwrite( STDERR, "Metadata bridge is not registered as the final fallback.\n" );
 	exit( 1 );
@@ -117,6 +121,64 @@ if ( $existing !== $preserved ) {
 	exit( 1 );
 }
 
+// Rank Math currently places MCP Adapter resource metadata at the top level.
+// Mirror only missing nested values on exact Staging so MCP Adapter 0.5+ does
+// not enter its deprecated fallback. Existing mcp.* values and legacy provider
+// keys must remain authoritative/preserved respectively.
+$rank_math_args = array(
+	'label' => 'Rank Math Test',
+	'meta' => array(
+		'show_in_rest' => true,
+		'uri' => 'rank-math://test-resource',
+		'annotations' => array(
+			'readonly' => true,
+			'destructive' => false,
+			'idempotent' => true,
+		),
+		'mcp' => array( 'public' => true ),
+	),
+);
+$normalized_rank_math = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::normalize_rank_math_mcp_meta( $rank_math_args, 'rank-math/test-resource' );
+if ( 'rank-math://test-resource' !== $normalized_rank_math['meta']['mcp']['uri'] ) {
+	fwrite( STDERR, "Rank Math legacy URI was not mirrored into mcp.uri.\n" );
+	exit( 1 );
+}
+if ( $rank_math_args['meta']['annotations'] !== $normalized_rank_math['meta']['mcp']['annotations'] ) {
+	fwrite( STDERR, "Rank Math legacy annotations were not mirrored into mcp.annotations.\n" );
+	exit( 1 );
+}
+if ( empty( $normalized_rank_math['meta']['mcp']['public'] ) ) {
+	fwrite( STDERR, "Rank Math existing mcp.public metadata was not preserved.\n" );
+	exit( 1 );
+}
+if ( $rank_math_args['meta']['uri'] !== $normalized_rank_math['meta']['uri'] || $rank_math_args['meta']['annotations'] !== $normalized_rank_math['meta']['annotations'] ) {
+	fwrite( STDERR, "Rank Math legacy metadata must remain untouched.\n" );
+	exit( 1 );
+}
+
+$existing_mcp_args = array(
+	'meta' => array(
+		'uri' => 'rank-math://legacy',
+		'annotations' => array( 'readonly' => false ),
+		'mcp' => array(
+			'uri' => 'rank-math://canonical',
+			'annotations' => array( 'readonly' => true ),
+		),
+	),
+);
+$preserved_mcp = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::normalize_rank_math_mcp_meta( $existing_mcp_args, 'rank-math/existing-resource' );
+if ( 'rank-math://canonical' !== $preserved_mcp['meta']['mcp']['uri'] || true !== $preserved_mcp['meta']['mcp']['annotations']['readonly'] ) {
+	fwrite( STDERR, "Existing Rank Math mcp.* metadata must win over legacy values.\n" );
+	exit( 1 );
+}
+
+$foreign_args = array( 'meta' => array( 'uri' => 'foreign://resource', 'annotations' => array( 'readonly' => true ) ) );
+$foreign_normalized = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::normalize_rank_math_mcp_meta( $foreign_args, 'foreign/test-resource' );
+if ( $foreign_args !== $foreign_normalized ) {
+	fwrite( STDERR, "Rank Math compatibility changed a foreign ability.\n" );
+	exit( 1 );
+}
+
 $status = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::status();
 foreach ( array( 'production_changed', 'other_plugin_api_requests_changed', 'outbound_http_changed', 'credentials_changed', 'installation_or_update_state_changed' ) as $key ) {
 	if ( ! array_key_exists( $key, $status ) || false !== $status[ $key ] ) {
@@ -126,6 +188,10 @@ foreach ( array( 'production_changed', 'other_plugin_api_requests_changed', 'out
 }
 if ( 1 !== (int) $status['short_circuit_count'] ) {
 	fwrite( STDERR, 'Bridge short-circuited outside the exact fallback path: ' . wp_json_encode( $status ) . "\n" );
+	exit( 1 );
+}
+if ( 2 !== (int) $status['rank_math_meta_mirror_count'] || empty( $status['rank_math_meta_staging_only'] ) || empty( $status['rank_math_meta_copy_if_missing'] ) || empty( $status['rank_math_legacy_keys_preserved'] ) ) {
+	fwrite( STDERR, 'Rank Math metadata compatibility evidence is not exact/fail-safe: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
 
