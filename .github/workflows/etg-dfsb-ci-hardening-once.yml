@@ -5,6 +5,7 @@ on:
     branches: [feat/etg-dynamic-filter-seo-bridge]
     paths:
       - '.github/workflows/etg-dfsb-ci-hardening-once.yml'
+      - '.github/etg-ci-hardening.py'
 
 permissions:
   contents: write
@@ -15,47 +16,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
-      - name: Guard exact parent
+          fetch-depth: 0
+      - name: Guard bounded orchestration ancestry
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = '5c36550a0903be74448786711a7e071fa1e7a3c9'
-          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/etg-dfsb-ci-hardening-once.yml'
+          BASE='5c36550a0903be74448786711a7e071fa1e7a3c9'
+          test "$(git merge-base "$BASE" HEAD)" = "$BASE"
+          ACTUAL=$(git diff --name-only "$BASE...HEAD" | LC_ALL=C sort)
+          EXPECTED=$(printf '%s\n' '.github/etg-ci-hardening.py' '.github/workflows/etg-dfsb-ci-hardening-once.yml' | LC_ALL=C sort)
+          test "$ACTUAL" = "$EXPECTED"
       - name: Patch permanent CI contracts
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          op=Path('.github/workflows/etg-dfsb-ci.yml')
-          text=op.read_text()
-          old="""            alpha13-ajax-state-smoke.php \\
-            alpha13-usage-guide-smoke.php \\
-"""
-          new="""            alpha13-ajax-state-smoke.php \\
-            alpha13-filter-definition-drift-smoke.php \\
-            alpha13-live-evidence-hardening-smoke.php \\
-            alpha13-usage-guide-smoke.php \\
-"""
-          if old not in text:
-              raise SystemExit('Operational test-list anchor missing or already changed')
-          op.write_text(text.replace(old,new,1))
-
-          jet=Path('.github/workflows/etg-dfsb-jetengine-ci.yml')
-          text=jet.read_text()
-          anchor="      - '.github/workflows/etg-dfsb-jetengine-ci.yml'"
-          if text.count(anchor)!=2:
-              raise SystemExit('JetEngine trigger anchor count changed')
-          if "      - '.github/workflows/etg-dfsb-ci.yml'" in text:
-              raise SystemExit('Operational workflow trigger already present')
-          text=text.replace(anchor,"      - '.github/workflows/etg-dfsb-ci.yml'\n"+anchor)
-          jet.write_text(text)
-          PY
+          python3 .github/etg-ci-hardening.py
           git diff --check
-          git diff --name-only | sort
-          test "$(git diff --name-only | wc -l)" -eq 2
+          ACTUAL=$(git diff --name-only | LC_ALL=C sort)
+          EXPECTED=$(printf '%s\n' '.github/workflows/etg-dfsb-ci.yml' '.github/workflows/etg-dfsb-jetengine-ci.yml' | LC_ALL=C sort)
+          test "$ACTUAL" = "$EXPECTED"
       - name: Commit permanent CI hardening
         shell: bash
         run: |
