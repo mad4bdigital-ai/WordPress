@@ -231,8 +231,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin "${{ github.base_ref }}" --depth=1
-          git diff --name-only "origin/${{ github.base_ref }}...HEAD" | while IFS= read -r path; do
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          test -n "$BASE_SHA"
+          git cat-file -e "$BASE_SHA^{commit}" || git fetch --no-tags origin "$BASE_SHA"
+          MERGE_BASE=$(git merge-base "$BASE_SHA" HEAD)
+          test -n "$MERGE_BASE"
+          git diff --name-only "$MERGE_BASE...HEAD" | while IFS= read -r path; do
             case "$path" in
               wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml) ;;
               *) echo "Unexpected path in ETG PR: $path"; exit 1 ;;
@@ -243,7 +247,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff --check "$(git merge-base origin/master HEAD)"...HEAD
+          if [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            git cat-file -e "$BASE_SHA^{commit}" || git fetch --no-tags origin "$BASE_SHA"
+            MERGE_BASE=$(git merge-base "$BASE_SHA" HEAD)
+          else
+            git fetch --no-tags origin master
+            MERGE_BASE=$(git merge-base origin/master HEAD)
+          fi
+          test -n "$MERGE_BASE"
+          git diff --check "$MERGE_BASE...HEAD"
           ! find .github -maxdepth 1 -type f \( -name 'etg-op-payload*' -o -name '*payload.part-*' -o -name '*materializer*' -o -name '*probe*' \) -print -quit | grep -q .
 
       - name: Build deterministic installable package and provenance v6
@@ -255,7 +268,7 @@ jobs:
           ACTUAL_SHA=$(git rev-parse HEAD); test "$ACTUAL_SHA" = "$SOURCE_SHA"
           TREE_SHA=$(git rev-parse HEAD^{tree})
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
-          VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\\s*([^\\r\\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
+          VERSION=$(php -r '$s=file_get_contents($argv[1]); preg_match("/Version:\s*([^\r\n]+)/",$s,$m); echo trim($m[1]);' "$PLUGIN/etg-dynamic-filter-seo-bridge.php")
           test "$VERSION" = '0.4.0-alpha.13'
 
           PHP_MATRIX='7.4,8.3'
