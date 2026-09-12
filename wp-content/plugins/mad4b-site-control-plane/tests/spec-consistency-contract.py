@@ -108,12 +108,20 @@ for marker in (
     'T103 real Staging remains a separate mandatory boundary',
 ): require(adapter_contract, marker, 'adapter-coverage-contract-invariant')
 
-require(data_model, 'Schema version: `4`', 'data-model-schema-v4')
+require(data_model, 'Schema version: `5`', 'data-model-schema-v5')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
     'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
 ): require(data_model, table, 'data-model-table')
+for marker in (
+    'candidate_binding_contract', 'candidate_sha CHAR(40)', 'build_fingerprint CHAR(64)',
+    'binding_environment', 'binding_host', 'bound_at',
+    'decision_inbox (status, expires_at, id)',
+    'candidate_inbox (candidate_sha, build_fingerprint, status, expires_at)',
+    'derived read-model states',
+    'approved -> executing',
+): require(data_model, marker, 'data-model-approval-v5')
 for stale in (
     'Initial migration target: `2`',
     'Initial implementation may use atomic transients/options for counters',
@@ -132,6 +140,7 @@ implementation_files = {
     'adapter_admin': PLUGIN / 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php',
     'authz': PLUGIN / 'includes/class-mad4b-scp-authorization.php',
     'approval': PLUGIN / 'includes/class-mad4b-scp-approval-tickets.php',
+    'approval_repository': PLUGIN / 'includes/class-mad4b-scp-approval-repository.php',
     'budgets': PLUGIN / 'includes/class-mad4b-scp-budgets.php',
     'peer': PLUGIN / 'includes/class-mad4b-scp-mcp-peer-governance.php',
     'isolation': PLUGIN / 'includes/class-mad4b-scp-mcp-provider-isolation.php',
@@ -157,10 +166,21 @@ for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
 
-require(impl['schema'], 'const VERSION = 4;', 'implementation-schema-v4')
+require(impl['schema'], 'const VERSION = 5;', 'implementation-schema-v5')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
+for marker in (
+    'candidate_binding_contract', 'candidate_sha char(40)', 'build_fingerprint char(64)',
+    'binding_environment', 'binding_host', 'bound_at datetime',
+    'KEY decision_inbox (status,expires_at,id)',
+    'KEY candidate_inbox (candidate_sha,build_fingerprint,status,expires_at)',
+    'public static function critical_ready()',
+    'public static function physical_integrity_status()',
+): require(impl['schema'], marker, 'implementation-schema-v5-approval-guard')
+require(impl['approval'], 'public static function candidate_binding_from_ticket', 'implementation-approval-row-binding')
+require(impl['approval'], 'private static function require_critical_schema()', 'implementation-approval-physical-schema-guard')
+require(impl['approval_repository'], 'public static function effective_status', 'implementation-approval-effective-status')
 require(impl['identity'], 'mad4b_scp_authenticated_subject_context', 'implementation-subject-bridge')
 require(impl['registry'], 'mad4b_wildcard_grant_denied', 'implementation-wildcard-denial')
 require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
@@ -311,4 +331,4 @@ require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-run
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v7: PASS')
+print('mad4b.site-control-plane.spec-consistency.v8: PASS')
