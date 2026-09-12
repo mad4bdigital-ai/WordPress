@@ -1,10 +1,11 @@
 <?php
 
 define( 'ABSPATH', __DIR__ );
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.27' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.28' );
 $GLOBALS['mad4b_options'] = array();
 $GLOBALS['mad4b_bearer'] = true;
 $GLOBALS['mad4b_live_token'] = 'sha256:' . str_repeat( 'a', 64 );
+$GLOBALS['mad4b_stale_candidate_binding'] = false;
 
 function add_filter() { return true; }
 function add_action() { return true; }
@@ -103,6 +104,9 @@ class MAD4B_SCP_Approval_Tickets {
 		return array( 'ticket_id' => $id, 'status' => 'used', 'ability_name' => $ability, 'approved_by' => 1, 'approved_at' => gmdate( 'Y-m-d H:i:s', time() - 60 ), 'used_at' => gmdate( 'Y-m-d H:i:s', time() - 30 ) );
 	}
 	public static function candidate_binding( $id ) {
+		if ( ! empty( $GLOBALS['mad4b_stale_candidate_binding'] ) ) {
+			return array( 'candidate_sha' => str_repeat( '9', 40 ), 'build_fingerprint' => str_repeat( '8', 64 ), 'environment' => 'staging', 'host' => 'staging.egypttourgates.com' );
+		}
 		return array( 'candidate_sha' => str_repeat( '1', 40 ), 'build_fingerprint' => str_repeat( '2', 64 ), 'environment' => 'staging', 'host' => 'staging.egypttourgates.com' );
 	}
 }
@@ -134,6 +138,37 @@ if ( '11111111-1111-4111-8111-111111111111' !== $mutation['mutation_id'] || 'bbb
 	fwrite( STDERR, "mutation/undo binding was not preserved\n" ); exit( 1 );
 }
 
+// Stale/mismatched historical approval evidence must remain rejected, but the
+// read-only status should explain the first authoritative reconstruction failure.
+$GLOBALS['mad4b_stale_candidate_binding'] = true;
+$stale = MAD4B_SCP_Live_Acceptance_Reconciler::mutation_acceptance_status();
+if ( ! empty( $stale['ready'] ) || 'durable_reconstruction_unavailable' !== ( isset( $stale['evidence_source'] ) ? (string) $stale['evidence_source'] : '' ) ) {
+	fwrite( STDERR, "stale candidate-bound evidence was not rejected fail-closed\n" ); exit( 1 );
+}
+if ( 'candidate_binding_missing_or_stale' !== ( isset( $stale['first_reconstruction_failure'] ) ? (string) $stale['first_reconstruction_failure'] : '' ) ) {
+	fwrite( STDERR, 'stale binding rejection was not diagnosed precisely: ' . wp_json_encode( $stale ) . "\n" ); exit( 1 );
+}
+$trace = isset( $stale['reconstruction'] ) && is_array( $stale['reconstruction'] ) ? $stale['reconstruction'] : array();
+foreach ( array( 'original_mutation_found', 'recovery_mutation_found', 'mutation_pair_valid', 'execution_ticket_found', 'undo_ticket_found', 'undo_event_found', 'audit_chain_valid' ) as $key ) {
+	if ( empty( $trace[ $key ] ) ) {
+		fwrite( STDERR, 'reconstruction trace lost known durable evidence: ' . $key . ' ' . wp_json_encode( $trace ) . "\n" ); exit( 1 );
+	}
+}
+if ( false !== ( isset( $trace['execution_ticket_candidate_binding_exact'] ) ? $trace['execution_ticket_candidate_binding_exact'] : null )
+	|| false !== ( isset( $trace['undo_ticket_candidate_binding_exact'] ) ? $trace['undo_ticket_candidate_binding_exact'] : null ) ) {
+	fwrite( STDERR, 'stale approval-ticket candidate binding was not reported fail-closed: ' . wp_json_encode( $trace ) . "\n" ); exit( 1 );
+}
+if ( str_repeat( '1', 40 ) !== ( isset( $trace['current_candidate_sha'] ) ? (string) $trace['current_candidate_sha'] : '' )
+	|| str_repeat( '2', 64 ) !== ( isset( $trace['current_build_fingerprint'] ) ? (string) $trace['current_build_fingerprint'] : '' ) ) {
+	fwrite( STDERR, 'reconstruction diagnostics are not bound to the current candidate: ' . wp_json_encode( $trace ) . "\n" ); exit( 1 );
+}
+foreach ( array( 'stored_candidate_sha', 'stored_build_fingerprint', 'candidate_binding_sha', 'candidate_binding_build_fingerprint' ) as $forbidden ) {
+	if ( array_key_exists( $forbidden, $trace ) ) {
+		fwrite( STDERR, 'reconstruction diagnostics leaked historical binding material: ' . $forbidden . "\n" ); exit( 1 );
+	}
+}
+$GLOBALS['mad4b_stale_candidate_binding'] = false;
+
 $snapshot = MAD4B_SCP_Live_Acceptance_Reconciler::snapshot_verify( array( 'client_snapshot_token' => $GLOBALS['mad4b_live_token'] ) );
 if ( empty( $snapshot['exact_match'] ) || empty( $snapshot['trusted_external_context'] ) || empty( $snapshot['attestation_recorded'] ) ) {
 	fwrite( STDERR, "trusted external snapshot attestation failed\n" ); exit( 1 );
@@ -147,4 +182,4 @@ if ( ! empty( $untrusted['attestation_recorded'] ) || ! empty( $untrusted['trust
 	fwrite( STDERR, "untrusted snapshot verification was allowed to self-certify\n" ); exit( 1 );
 }
 
-echo "mad4b.live-acceptance-reconciler-runtime.v1: PASS\n";
+echo "mad4b.live-acceptance-reconciler-runtime.v2: PASS\n";

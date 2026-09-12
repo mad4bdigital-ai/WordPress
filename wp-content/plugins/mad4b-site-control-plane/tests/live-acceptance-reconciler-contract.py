@@ -20,12 +20,22 @@ def forbid(text, marker, label):
 
 for marker in [
     "const CONTRACT = 'mad4b.live-acceptance-reconciler.v1'",
+    "const RECONSTRUCTION_DIAGNOSTICS_CONTRACT = 'mad4b.mutation-reconstruction-diagnostics.v1'",
     "MAD4B_SCP_Audit::tail( self::AUDIT_LIMIT )",
     "MAD4B_SCP_Audit::verify_chain()",
     "MAD4B_SCP_Approval_Tickets::candidate_binding( $ticket_id )",
+    "hash_equals( (string) $candidate['source_commit_sha'], (string) $binding['candidate_sha'] )",
+    "hash_equals( (string) $candidate['build_fingerprint'], (string) $binding['build_fingerprint'] )",
     "'mad4b_approval_replay_denied'",
     "'mad4b/mutation-undo'",
     "'durable_authoritative_reconstruction'",
+    "'durable_reconstruction_unavailable'",
+    "'first_reconstruction_failure'",
+    "'candidate_binding_missing_or_stale'",
+    "'execution_ticket_candidate_binding_exact'",
+    "'undo_ticket_candidate_binding_exact'",
+    "'current_candidate_sha'",
+    "'current_build_fingerprint'",
     "'mad4b/mutation-get'",
     "'read' => array( 'mad4b/mutation-get' )",
 ]:
@@ -105,6 +115,16 @@ for marker in [
 ]:
     forbid(portable.split('private static function persist_record', 1)[-1], marker, 'no-plaintext-persistence')
 
+# Diagnostics may identify the current candidate and rejection class, but must not
+# disclose the historical binding values that caused a stale mismatch.
+for marker in [
+    "'stored_candidate_sha' =>",
+    "'stored_build_fingerprint' =>",
+    "'candidate_binding_sha' =>",
+    "'candidate_binding_build_fingerprint' =>",
+]:
+    forbid(reconciler, marker, 'no-historical-binding-disclosure')
+
 # No acceptance helper may gain direct raw SQL / Breakglass / Production write authority.
 for text, label in [(reconciler, 'reconciler'), (portable, 'portable'), (external, 'external-finalizer')]:
     for forbidden in [
@@ -117,4 +137,4 @@ for text, label in [(reconciler, 'reconciler'), (portable, 'portable'), (externa
     ]:
         forbid(text, forbidden, f'{label}-fail-closed')
 
-print('mad4b.live-acceptance-reconciler-contract.v3: PASS')
+print('mad4b.live-acceptance-reconciler-contract.v4: PASS')

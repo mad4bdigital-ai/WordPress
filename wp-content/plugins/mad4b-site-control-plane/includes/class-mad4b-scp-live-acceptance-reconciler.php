@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Live_Acceptance_Reconciler {
 	const CONTRACT = 'mad4b.live-acceptance-reconciler.v1';
+	const RECONSTRUCTION_DIAGNOSTICS_CONTRACT = 'mad4b.mutation-reconstruction-diagnostics.v1';
 	const SNAPSHOT_CONTRACT = 'mad4b.external-snapshot-attestation.v1';
 	const SNAPSHOT_OPTION = 'mad4b_scp_external_snapshot_attestation_v1';
 	const SNAPSHOT_TTL = 1800;
@@ -97,10 +98,13 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 		$cached = class_exists( 'MAD4B_SCP_Live_Acceptance_Finalizer' ) ? MAD4B_SCP_Live_Acceptance_Finalizer::mutation_acceptance_status() : array();
 		if ( is_array( $cached ) && ! empty( $cached['ready'] ) ) return $cached;
 
-		$receipt = self::reconstruct_mutation_receipt( $candidate );
+		$diagnostics = array();
+		$receipt = self::reconstruct_mutation_receipt( $candidate, $diagnostics );
 		if ( empty( $receipt ) ) {
 			$gate = is_array( $cached ) && ! empty( $cached ) ? $cached : self::gate( false, 'pending_external_evidence', false, 'mad4b.mutation-acceptance-receipt.v1', array( 'complete_execute_replay_undo_receipt_required' ) );
 			$gate['evidence_source'] = 'durable_reconstruction_unavailable';
+			$gate['reconstruction'] = $diagnostics;
+			$gate['first_reconstruction_failure'] = isset( $diagnostics['first_reconstruction_failure'] ) ? (string) $diagnostics['first_reconstruction_failure'] : 'durable_reconstruction_unavailable';
 			return $gate;
 		}
 
@@ -115,11 +119,27 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 		return $result;
 	}
 
-	private static function reconstruct_mutation_receipt( array $candidate ) {
-		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! class_exists( 'MAD4B_SCP_Mutation_Manager' ) || ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return array();
-		if ( true !== MAD4B_SCP_Audit::verify_chain() ) return array();
+	private static function reconstruct_mutation_receipt( array $candidate, array &$diagnostics ) {
+		$diagnostics = self::reconstruction_diagnostics_base( $candidate );
+
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! class_exists( 'MAD4B_SCP_Mutation_Manager' ) || ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) {
+			self::remember_reconstruction_failure( $diagnostics, array(), 'reconstruction_dependencies_unavailable' );
+			return array();
+		}
+
+		$audit_valid = true === MAD4B_SCP_Audit::verify_chain();
+		$diagnostics['audit_chain_valid'] = $audit_valid;
+		if ( ! $audit_valid ) {
+			self::remember_reconstruction_failure( $diagnostics, array(), 'audit_chain_invalid' );
+			return array();
+		}
+
 		$events = MAD4B_SCP_Audit::tail( self::AUDIT_LIMIT );
-		if ( ! is_array( $events ) || empty( $events ) ) return array();
+		$diagnostics['audit_tail_event_available'] = is_array( $events ) && ! empty( $events );
+		if ( ! is_array( $events ) || empty( $events ) ) {
+			self::remember_reconstruction_failure( $diagnostics, array(), 'audit_tail_empty' );
+			return array();
+		}
 
 		$undos = array();
 		foreach ( $events as $event ) {
@@ -129,6 +149,11 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			$undos[] = $event;
 		}
 		$undos = array_reverse( $undos );
+		$diagnostics['undo_candidates_considered'] = count( $undos );
+		if ( empty( $undos ) ) {
+			self::remember_reconstruction_failure( $diagnostics, array(), 'undo_event_not_found_within_audit_tail' );
+			return array();
+		}
 
 		foreach ( $undos as $undo ) {
 			$summary = $undo['summary'];
@@ -136,17 +161,61 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			$recovery_id = strtolower( trim( (string) $summary['recovery_mutation_id'] ) );
 			$record = MAD4B_SCP_Mutation_Manager::get( $mutation_id );
 			$recovery = MAD4B_SCP_Mutation_Manager::get( $recovery_id );
-			if ( ! self::valid_mutation_pair( $record, $recovery, $mutation_id, $summary ) ) continue;
+			$attempt = array(
+				'mutation_id' => $mutation_id,
+				'recovery_mutation_id' => $recovery_id,
+				'original_mutation_found' => is_array( $record ),
+				'recovery_mutation_found' => is_array( $recovery ),
+				'mutation_pair_valid' => false,
+				'undo_event_found' => true,
+				'execution_ticket_found' => false,
+				'undo_ticket_found' => false,
+				'execution_ticket_candidate_binding_exact' => null,
+				'undo_ticket_candidate_binding_exact' => null,
+				'execution_event_found' => false,
+				'replay_denial_event_found' => false,
+			);
+
+			if ( ! is_array( $record ) || ! is_array( $recovery ) ) {
+				self::remember_reconstruction_failure( $diagnostics, $attempt, 'mutation_record_missing' );
+				continue;
+			}
+			if ( ! self::valid_mutation_pair( $record, $recovery, $mutation_id, $summary ) ) {
+				self::remember_reconstruction_failure( $diagnostics, $attempt, 'mutation_pair_invalid' );
+				continue;
+			}
+			$attempt['mutation_pair_valid'] = true;
 
 			$ticket_id = isset( $record['approval_ticket_id'] ) ? strtolower( trim( (string) $record['approval_ticket_id'] ) ) : '';
 			$undo_ticket_id = isset( $recovery['approval_ticket_id'] ) ? strtolower( trim( (string) $recovery['approval_ticket_id'] ) ) : '';
-			$ticket = self::validated_used_ticket( $ticket_id, $candidate, isset( $record['ability_name'] ) ? (string) $record['ability_name'] : '' );
-			$undo_ticket = self::validated_used_ticket( $undo_ticket_id, $candidate, 'mad4b/mutation-undo' );
-			if ( empty( $ticket ) || empty( $undo_ticket ) ) continue;
+			$ticket_diagnostics = array();
+			$undo_ticket_diagnostics = array();
+			$ticket = self::validated_used_ticket( $ticket_id, $candidate, isset( $record['ability_name'] ) ? (string) $record['ability_name'] : '', $ticket_diagnostics );
+			$undo_ticket = self::validated_used_ticket( $undo_ticket_id, $candidate, 'mad4b/mutation-undo', $undo_ticket_diagnostics );
+
+			$attempt['execution_ticket_found'] = ! empty( $ticket_diagnostics['ticket_found'] );
+			$attempt['undo_ticket_found'] = ! empty( $undo_ticket_diagnostics['ticket_found'] );
+			$attempt['execution_ticket_candidate_binding_exact'] = isset( $ticket_diagnostics['candidate_binding_exact'] ) ? (bool) $ticket_diagnostics['candidate_binding_exact'] : null;
+			$attempt['undo_ticket_candidate_binding_exact'] = isset( $undo_ticket_diagnostics['candidate_binding_exact'] ) ? (bool) $undo_ticket_diagnostics['candidate_binding_exact'] : null;
+
+			if ( empty( $ticket ) || empty( $undo_ticket ) ) {
+				$ticket_failure = isset( $ticket_diagnostics['failure'] ) ? (string) $ticket_diagnostics['failure'] : '';
+				$undo_ticket_failure = isset( $undo_ticket_diagnostics['failure'] ) ? (string) $undo_ticket_diagnostics['failure'] : '';
+				$failure = in_array( 'candidate_binding_missing_or_stale', array( $ticket_failure, $undo_ticket_failure ), true )
+					? 'candidate_binding_missing_or_stale'
+					: ( $ticket_failure ? $ticket_failure : ( $undo_ticket_failure ? $undo_ticket_failure : 'approval_ticket_validation_failed' ) );
+				self::remember_reconstruction_failure( $diagnostics, $attempt, $failure );
+				continue;
+			}
 
 			$undo_sequence = isset( $undo['sequence'] ) ? (int) $undo['sequence'] : 0;
 			$execution = self::find_execution_event( $events, $record, $mutation_id, $undo_sequence );
-			if ( empty( $execution ) ) continue;
+			if ( empty( $execution ) ) {
+				self::remember_reconstruction_failure( $diagnostics, $attempt, 'execution_event_not_found' );
+				continue;
+			}
+			$attempt['execution_event_found'] = true;
+
 			$replay = self::find_replay_event(
 				$events,
 				$ticket_id,
@@ -155,7 +224,11 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 				(int) $execution['sequence'],
 				$undo_sequence
 			);
-			if ( empty( $replay ) ) continue;
+			if ( empty( $replay ) ) {
+				self::remember_reconstruction_failure( $diagnostics, $attempt, 'replay_denial_event_not_found' );
+				continue;
+			}
+			$attempt['replay_denial_event_found'] = true;
 			$replay_summary = isset( $replay['summary'] ) && is_array( $replay['summary'] ) ? $replay['summary'] : array();
 			$replay_ticket = isset( $replay_summary['approval_ticket_id'] ) ? strtolower( trim( (string) $replay_summary['approval_ticket_id'] ) ) : '';
 
@@ -197,7 +270,30 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 				'observed_at' => isset( $undo['time'] ) ? (string) $undo['time'] : '',
 			);
 		}
+
+		if ( empty( $diagnostics['first_reconstruction_failure'] ) ) {
+			self::remember_reconstruction_failure( $diagnostics, array(), 'no_complete_execute_replay_undo_chain_found' );
+		}
 		return array();
+	}
+
+	private static function reconstruction_diagnostics_base( array $candidate ) {
+		return array(
+			'contract' => self::RECONSTRUCTION_DIAGNOSTICS_CONTRACT,
+			'first_reconstruction_failure' => '',
+			'current_candidate_sha' => isset( $candidate['source_commit_sha'] ) ? (string) $candidate['source_commit_sha'] : '',
+			'current_build_fingerprint' => isset( $candidate['build_fingerprint'] ) ? (string) $candidate['build_fingerprint'] : '',
+			'audit_limit' => self::AUDIT_LIMIT,
+			'audit_chain_valid' => null,
+			'audit_tail_event_available' => null,
+			'undo_candidates_considered' => 0,
+		);
+	}
+
+	private static function remember_reconstruction_failure( array &$diagnostics, array $attempt, $failure ) {
+		if ( ! empty( $diagnostics['first_reconstruction_failure'] ) ) return;
+		foreach ( $attempt as $key => $value ) $diagnostics[ $key ] = $value;
+		$diagnostics['first_reconstruction_failure'] = (string) $failure;
 	}
 
 	private static function valid_mutation_pair( $record, $recovery, $mutation_id, array $undo_summary ) {
@@ -212,15 +308,70 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			&& in_array( isset( $recovery['verification_code'] ) ? (string) $recovery['verification_code'] : '', array( 'restore_readback_match', 'adapter_restore_readback_match' ), true );
 	}
 
-	private static function validated_used_ticket( $ticket_id, array $candidate, $expected_ability ) {
-		if ( ! preg_match( '/^[a-f0-9-]{36}$/', (string) $ticket_id ) ) return array();
+	private static function validated_used_ticket( $ticket_id, array $candidate, $expected_ability, array &$diagnostics ) {
+		$diagnostics = array(
+			'ticket_found' => false,
+			'ticket_used' => false,
+			'ability_match' => false,
+			'candidate_binding_present' => false,
+			'candidate_binding_exact' => false,
+			'environment_binding_exact' => false,
+			'failure' => '',
+		);
+
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', (string) $ticket_id ) ) {
+			$diagnostics['failure'] = 'approval_ticket_id_invalid';
+			return array();
+		}
+
 		$ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_id );
 		$binding = MAD4B_SCP_Approval_Tickets::candidate_binding( $ticket_id );
-		if ( ! is_array( $ticket ) || 'used' !== ( isset( $ticket['status'] ) ? (string) $ticket['status'] : '' ) || empty( $ticket['approved_by'] ) || empty( $ticket['approved_at'] ) || empty( $ticket['used_at'] ) ) return array();
-		if ( $expected_ability && (string) $expected_ability !== ( isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '' ) ) return array();
-		if ( ! is_array( $binding ) || empty( $binding['candidate_sha'] ) || empty( $binding['build_fingerprint'] ) ) return array();
-		if ( ! hash_equals( (string) $candidate['source_commit_sha'], (string) $binding['candidate_sha'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $binding['build_fingerprint'] ) ) return array();
-		if ( 'staging' !== ( isset( $binding['environment'] ) ? (string) $binding['environment'] : '' ) || 'staging.egypttourgates.com' !== ( isset( $binding['host'] ) ? (string) $binding['host'] : '' ) ) return array();
+		$diagnostics['ticket_found'] = is_array( $ticket );
+		if ( ! is_array( $ticket ) ) {
+			$diagnostics['failure'] = 'approval_ticket_not_found';
+			return array();
+		}
+
+		$used = 'used' === ( isset( $ticket['status'] ) ? (string) $ticket['status'] : '' )
+			&& ! empty( $ticket['approved_by'] )
+			&& ! empty( $ticket['approved_at'] )
+			&& ! empty( $ticket['used_at'] );
+		$diagnostics['ticket_used'] = $used;
+		if ( ! $used ) {
+			$diagnostics['failure'] = 'approval_ticket_not_used_or_incomplete';
+			return array();
+		}
+
+		$ability_match = ! $expected_ability || (string) $expected_ability === ( isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '' );
+		$diagnostics['ability_match'] = $ability_match;
+		if ( ! $ability_match ) {
+			$diagnostics['failure'] = 'approval_ticket_ability_mismatch';
+			return array();
+		}
+
+		$binding_present = is_array( $binding ) && ! empty( $binding['candidate_sha'] ) && ! empty( $binding['build_fingerprint'] );
+		$diagnostics['candidate_binding_present'] = $binding_present;
+		if ( ! $binding_present ) {
+			$diagnostics['failure'] = 'candidate_binding_missing_or_stale';
+			return array();
+		}
+
+		$binding_exact = hash_equals( (string) $candidate['source_commit_sha'], (string) $binding['candidate_sha'] )
+			&& hash_equals( (string) $candidate['build_fingerprint'], (string) $binding['build_fingerprint'] );
+		$diagnostics['candidate_binding_exact'] = $binding_exact;
+		if ( ! $binding_exact ) {
+			$diagnostics['failure'] = 'candidate_binding_missing_or_stale';
+			return array();
+		}
+
+		$environment_exact = 'staging' === ( isset( $binding['environment'] ) ? (string) $binding['environment'] : '' )
+			&& 'staging.egypttourgates.com' === ( isset( $binding['host'] ) ? (string) $binding['host'] : '' );
+		$diagnostics['environment_binding_exact'] = $environment_exact;
+		if ( ! $environment_exact ) {
+			$diagnostics['failure'] = 'candidate_binding_environment_mismatch';
+			return array();
+		}
+
 		return $ticket;
 	}
 
