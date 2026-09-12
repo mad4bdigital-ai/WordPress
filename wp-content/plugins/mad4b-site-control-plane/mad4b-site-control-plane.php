@@ -43,6 +43,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canar
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-query-monitor-evidence-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-request-context-guard.php';
@@ -112,6 +113,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 // authorization, servers, providers or the Ability registry. Their only
 // persistent state is bounded/sanitized observability on the exact Staging host.
 MAD4B_SCP_Live_Acceptance_Observer::boot_early();
+MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();
 MAD4B_SCP_Live_Acceptance_Finalizer::boot_early();
 MAD4B_SCP_WPML_Response_Contract::boot_early();
 
