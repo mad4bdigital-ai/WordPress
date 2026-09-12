@@ -1,13 +1,18 @@
 <?php
 declare(strict_types=1);
 
-function sanitize_key($value){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$value));}
-function sanitize_text_field($value){return trim(strip_tags((string)$value));}
-function absint($value){return abs((int)$value);}
+if(!function_exists('sanitize_key')){function sanitize_key($value){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$value));}}
+if(!function_exists('sanitize_text_field')){function sanitize_text_field($value){return trim(strip_tags((string)$value));}}
+if(!function_exists('absint')){function absint($value){return abs((int)$value);}}
 if(!function_exists('add_action')){function add_action($hook,$callback,$priority=10,$acceptedArgs=1){return true;}}
 $GLOBALS['etg_live_evidence_options']=array();
 if(!function_exists('get_option')){function get_option($name,$default=false){return array_key_exists($name,$GLOBALS['etg_live_evidence_options'])?$GLOBALS['etg_live_evidence_options'][$name]:$default;}}
 if(!function_exists('update_option')){function update_option($name,$value,$autoload=null){$GLOBALS['etg_live_evidence_options'][$name]=$value;return true;}}
+function etg_live_reset_options():void{
+    foreach(array('etg_live_evidence_options','etg_options','etg_dfsb_boot_guard_test_options') as $key){
+        if(array_key_exists($key,$GLOBALS)){$GLOBALS[$key]=array();}
+    }
+}
 function etg_live_expect($condition,string $message):void{if(!$condition){fwrite(STDERR,"FAIL: {$message}\n");exit(1);}}
 function etg_live_same($expected,$actual,string $message):void{if($expected!==$actual){fwrite(STDERR,"FAIL: {$message}\nEXPECTED ".var_export($expected,true)."\nACTUAL ".var_export($actual,true)."\n");exit(1);}}
 
@@ -50,7 +55,7 @@ etg_live_same(500,FilterDefinitionInspector::MAX_TEMPLATES,'filter-definition ro
 $topologySource=file_get_contents($root.'/includes/Runtime/RuntimeTopologyDiscoverer.php');
 etg_live_expect(false!==strpos($topologySource,'const MAX_TEMPLATES = 500;'),'topology root scan uses the same bounded 500-template ceiling');
 
-$GLOBALS['etg_live_evidence_options']=array();
+etg_live_reset_options();
 BootGuard::register('identity:'.str_repeat('a',40).':'.str_repeat('b',40));
 BootGuard::holdOnFirstLoad('package_change');
 $held=BootGuard::status();
