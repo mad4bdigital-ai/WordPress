@@ -172,6 +172,20 @@ jobs:
           php /tmp/wp-cli.phar plugin activate jet-smart-filters --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate etg-dynamic-filter-seo-bridge --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+      - name: Complete ETG guarded full boot in disposable runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-etg-wordpress
+          php /tmp/wp-cli.phar eval '
+            $ok = \ETG\DynamicFilterSEOBridge\Runtime\BootGuard::run( static function () {
+                \ETG\DynamicFilterSEOBridge\Bootstrap::instance()->boot();
+            } );
+            if ( ! $ok ) throw new RuntimeException( "ETG guarded full boot failed." );
+            $status = \ETG\DynamicFilterSEOBridge\Runtime\BootGuard::status();
+            if ( empty( $status["boot_ok"] ) ) throw new RuntimeException( "ETG Safe Boot did not close to boot_ok: " . wp_json_encode( $status ) );
+            echo "etg-safe-boot=PASS\n";
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
       - name: Prove native ETG evidence is callable on governed read surfaces only
         shell: bash
         run: |
