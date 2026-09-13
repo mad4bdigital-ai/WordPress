@@ -45,6 +45,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-eviden
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-query-monitor-evidence-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-unchanged-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-provider-registry.php';
@@ -121,6 +122,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 MAD4B_SCP_Live_Acceptance_Observer::boot_early();
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();
 MAD4B_SCP_Live_Acceptance_Finalizer::boot_early();
+MAD4B_SCP_Production_Unchanged_Attestation::boot_early();
 MAD4B_SCP_WPML_Response_Contract::boot_early();
 
 // Fresh authority/certification truth must be wired before the one-shot Ability
