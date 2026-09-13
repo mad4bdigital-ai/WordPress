@@ -75,7 +75,13 @@ $check( 'mad4b.acceptance-result.v1' === (string) $canonical['contract'], 'Accep
 $check( 'etg-dfsb' === (string) $canonical['provider_id'], 'Canonical result omitted provider identity.' );
 $check( false === (bool) $canonical['verification']['browser_runtime_parity_verified'], 'Canonical result falsely claimed Browser Runtime verification.' );
 
-$status = wp_get_ability( 'mad4b/live-acceptance-status' )->execute();
+$status_ability = wp_get_ability( 'mad4b/live-acceptance-status' );
+$check( is_object( $status_ability ) && method_exists( $status_ability, 'execute' ) && method_exists( $status_ability, 'get_input_schema' ), 'Existing live-acceptance-status ability is missing.' );
+$status_schema = (array) $status_ability->get_input_schema();
+$check( 'object' === (string) ( $status_schema['type'] ?? '' ), 'Existing live-acceptance-status input contract changed type.' );
+$check( isset( $status_schema['properties']['client_snapshot_token'] ), 'Existing live-acceptance-status lost optional client snapshot input.' );
+$check( false === ( $status_schema['additionalProperties'] ?? null ), 'Existing live-acceptance-status input boundary changed.' );
+$status = $status_ability->execute( array() );
 $check( ! is_wp_error( $status ), 'Existing live-acceptance-status became unavailable.' );
 $check( 'mad4b.live-acceptance-status.v1' === (string) $status['contract'], 'Acceptance Core redefined the existing aggregate live-acceptance contract.' );
 
