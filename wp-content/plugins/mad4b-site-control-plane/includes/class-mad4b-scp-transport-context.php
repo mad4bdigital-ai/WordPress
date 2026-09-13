@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * mutation authorization. No credential/session material is stored here.
  */
 final class MAD4B_SCP_Transport_Context {
-	const CONTRACT = 'mad4b.mcp-transport-context.v2';
+	const CONTRACT = 'mad4b.mcp-transport-context.v3';
 
 	private static $server_id = '';
 	private static $route = '';
@@ -49,16 +49,19 @@ final class MAD4B_SCP_Transport_Context {
 			return new WP_Error( 'mad4b_transport_server_registry_unavailable', 'MAD4B server membership is unavailable.' );
 		}
 
-		// The same ChatGPT Plugin may expose certified Staging write tools while
-		// retaining /mcp/mad4b-chatgpt as the OAuth-protected transport resource.
-		// Authorization is deliberately rebound to the dedicated mad4b-write
-		// authority server so exact grants can never be confused with read grants.
+		// Staging ChatGPT exposes a stable registered write catalog so provider
+		// certification state changes do not require a client-side tool rescan.
+		// Discovery never grants execution: only the runtime-eligible mad4b-write
+		// projection may cross this boundary.
 		if ( 'mad4b-chatgpt' === $current
 			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			&& MAD4B_SCP_Staging_Write_Authority::effective()
-			&& MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) {
+			&& MAD4B_SCP_Servers::is_external_write_candidate( $ability_name ) ) {
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) {
 				return new WP_Error( 'mad4b_transport_ability_not_mounted', 'The requested write ability is not mounted on the active ChatGPT transport.' );
+			}
+			if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) {
+				return new WP_Error( 'mad4b_write_capability_not_eligible', 'The requested provider write is discoverable but is not currently certified for governed execution.' );
 			}
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) {
 				return new WP_Error( 'mad4b_write_authority_mount_missing', 'The requested write ability is not mounted on the governed mad4b-write authority server.' );
@@ -83,6 +86,7 @@ final class MAD4B_SCP_Transport_Context {
 			'server_id' => self::current_server_id(),
 			'route' => sanitize_text_field( (string) self::$route ),
 			'chatgpt_write_delegation_enabled' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective(),
+			'chatgpt_write_discovery_model' => 'stable_catalog_dynamic_execution',
 			'chatgpt_write_authority_server' => 'mad4b-write',
 			'credential_material_stored' => false,
 		);
