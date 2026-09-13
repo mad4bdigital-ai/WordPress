@@ -189,6 +189,19 @@ final class MAD4B_SCP_Authorization {
 			), 'failed' );
 			return $final;
 		}
+		if ( 'used' === $status && class_exists( 'MAD4B_SCP_Provider_Canary_Execution' ) && method_exists( 'MAD4B_SCP_Provider_Canary_Execution', 'persist_authorized_evidence' ) ) {
+			$evidence = MAD4B_SCP_Provider_Canary_Execution::persist_authorized_evidence( $claim, $result );
+			if ( is_wp_error( $evidence ) ) {
+				self::audit( isset( $claim['ability'] ) ? $claim['ability'] : '', array(
+					'allowed' => false,
+					'reason_code' => $evidence->get_error_code(),
+					'approval_ticket_id' => isset( $claim['approval_ticket_id'] ) ? $claim['approval_ticket_id'] : '',
+					'execution_result' => 'used',
+					'evidence_correlation' => 'failed_after_side_effect',
+				), 'failed' );
+				return $evidence;
+			}
+		}
 		return true;
 	}
 

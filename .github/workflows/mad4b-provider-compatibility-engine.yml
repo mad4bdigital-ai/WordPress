@@ -18,6 +18,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php'
       - '.github/workflows/mad4b-provider-compatibility-engine.yml'
   pull_request:
@@ -37,6 +38,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php'
       - '.github/workflows/mad4b-provider-compatibility-engine.yml'
 
@@ -101,6 +103,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php
       - name: Capability-first certification regression
         run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php
@@ -110,5 +113,7 @@ jobs:
         run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php
       - name: Canary write-authority binding regression
         run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php
+      - name: Canary authorization finalization regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php
       - name: Per-ability MCP write compiler regression
         run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php

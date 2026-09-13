@@ -9,6 +9,8 @@ $GLOBALS['mad4b_target_mounted'] = false;
 $GLOBALS['mad4b_adapter_opt_in'] = true;
 $GLOBALS['mad4b_adapter_calls'] = 0;
 $GLOBALS['mad4b_audit'] = array();
+$GLOBALS['mad4b_audit_sequence'] = 0;
+$GLOBALS['mad4b_audit_fail_status'] = '';
 
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
 function apply_filters( $hook, $value ) { return $value; }
@@ -57,7 +59,13 @@ final class FakeCanaryAdapter {
 	public function supports_canary_execution( $ability ) { return ! empty( $GLOBALS['mad4b_adapter_opt_in'] ) && 'bitflows/run-flow' === $ability; }
 	public function execute_canary( $ability, array $input ) {
 		++$GLOBALS['mad4b_adapter_calls'];
-		return array( 'flow_id' => isset( $input['flow_id'] ) ? (int) $input['flow_id'] : 0, 'queued' => true );
+		return array( 'flow_id' => isset( $input['flow_id'] ) ? (int) $input['flow_id'] : 0, 'queued' => true, 'secret_provider_detail' => 'must-not-leak' );
+	}
+	public function canary_result_summary( $ability, $result ) {
+		return array(
+			'flow_id' => is_array( $result ) && isset( $result['flow_id'] ) ? (int) $result['flow_id'] : 0,
+			'queued' => is_array( $result ) && ! empty( $result['queued'] ),
+		);
 	}
 }
 final class MAD4B_SCP_Adapter_Registry {
@@ -98,7 +106,21 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 	}
 }
 final class MAD4B_SCP_Audit {
-	public static function record( $ability, $summary, $status = 'ok' ) { $GLOBALS['mad4b_audit'][] = array( $ability, $summary, $status ); return true; }
+	public static function storage_status() { return array( 'ready' => true, 'backend' => 'test_append_only' ); }
+	public static function record( $ability, $summary, $status = 'ok' ) {
+		if ( '' !== $GLOBALS['mad4b_audit_fail_status'] && $GLOBALS['mad4b_audit_fail_status'] === (string) $status ) {
+			return new WP_Error( 'mad4b_test_audit_failure', 'Synthetic append-only audit failure.' );
+		}
+		++$GLOBALS['mad4b_audit_sequence'];
+		$sequence = (int) $GLOBALS['mad4b_audit_sequence'];
+		$entry = array(
+			'event_id' => 'audit-' . $sequence,
+			'sequence' => $sequence,
+			'entry_hash' => hash( 'sha256', (string) $ability . "\0" . (string) $status . "\0" . $sequence . "\0" . json_encode( $summary ) ),
+		);
+		$GLOBALS['mad4b_audit'][] = array( $ability, $summary, $status, $entry );
+		return $entry;
+	}
 }
 
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-provider-canary-execution.php';
@@ -175,6 +197,38 @@ expect_same( MAD4B_SCP_Provider_Canary_Execution::EVIDENCE_CONTRACT, $result['ca
 expect_same( false, $result['canary_execution_evidence']['authorizing'], 'execution evidence is non-authorizing' );
 expect_same( false, $result['canary_execution_evidence']['activation_granted'], 'execution evidence cannot activate provider capability' );
 expect_true( preg_match( '/^[a-f0-9]{64}$/', $result['canary_execution_evidence']['evidence_digest'] ) === 1, 'execution evidence has deterministic digest' );
+expect_same( true, $result['execution_audit']['persisted'], 'successful canary side effect must have durable immediate audit evidence' );
+expect_same( 'adapter_safe_summary_only', $result['target_result_disclosure'], 'raw provider result disclosure must stay closed' );
+expect_true( ! isset( $result['target_result'] ), 'raw provider result must never be returned by the generic wrapper' );
+expect_same( array( 'flow_id' => 41, 'queued' => true ), $result['target_result_summary'], 'only adapter-declared safe summary may be returned' );
 expect_true( count( $GLOBALS['mad4b_audit'] ) >= 2, 'canary execution emits attempt and success audit evidence' );
+
+$claim = array(
+	'approval_required' => true,
+	'approval_ticket_id' => '11111111-1111-4111-8111-111111111111',
+	'request_id' => 'req-canary-1',
+	'agent_public_id' => 'agent-canary-1',
+	'grant_id' => 77,
+	'server_id' => 'mad4b-write',
+	'provider' => 'core',
+	'impact' => 'high',
+);
+$authorized = MAD4B_SCP_Provider_Canary_Execution::persist_authorized_evidence( $claim, $result );
+expect_true( is_array( $authorized ), 'authorization-bound canary evidence should persist after approval finalization' );
+expect_same( MAD4B_SCP_Provider_Canary_Execution::AUTHORIZED_EVIDENCE_CONTRACT, $authorized['contract'], 'authorized evidence uses canonical contract' );
+expect_same( true, $authorized['durable'], 'authorized evidence is durable append-only evidence' );
+expect_same( $result['canary_execution_evidence']['evidence_digest'], $authorized['execution_evidence_digest'], 'authorized evidence binds exact execution digest' );
+expect_same( $claim['approval_ticket_id'], $authorized['approval_ticket_id'], 'authorized evidence binds exact approval ticket' );
+expect_same( false, $authorized['promotion_granted'], 'authorized evidence cannot grant promotion' );
+
+$GLOBALS['mad4b_audit_fail_status'] = 'authorized_evidence';
+$persist_failure = MAD4B_SCP_Provider_Canary_Execution::persist_authorized_evidence( $claim, $result );
+expect_error( $persist_failure, 'mad4b_provider_canary_authorized_evidence_persist_failed', 'post-side-effect authorization evidence failure must be explicit and terminal' );
+$GLOBALS['mad4b_audit_fail_status'] = 'attempt';
+$before_calls = $GLOBALS['mad4b_adapter_calls'];
+$preflight_failure = MAD4B_SCP_Provider_Canary_Execution::execute( $valid );
+expect_error( $preflight_failure, 'mad4b_provider_canary_audit_preflight_failed', 'audit append failure before side effect must fail closed' );
+expect_same( $before_calls, $GLOBALS['mad4b_adapter_calls'], 'audit preflight failure must prevent provider side effect' );
+$GLOBALS['mad4b_audit_fail_status'] = '';
 
 echo "MAD4B governed provider canary execution contract passed.\n";
