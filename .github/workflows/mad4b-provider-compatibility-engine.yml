@@ -56,6 +56,14 @@ jobs:
           php-version: ${{ matrix.php }}
       - name: Validate capability catalog JSON
         run: php -r '$d=json_decode(file_get_contents("wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json"),true); if(!is_array($d)||($d["contract"]??"")!=="mad4b.provider-capability-contracts.v1") exit(1);'
+      - name: Validate provider compatibility documentation contract
+        run: |
+          DOC=wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md
+          grep -Fq 'Behavioral evidence contract: `mad4b.provider-behavioral-evidence.v1`' "$DOC"
+          grep -Fq 'capability_certification_mode = per_ability_separate_from_artifact_truth' "$DOC"
+          grep -Fq 'behavioral evidence can advance `shadow -> canary` only' "$DOC"
+          ! grep -Fq 'The existing server compiler still consumes one provider-level runtime boolean' "$DOC"
+          ! grep -Fq 'governed by a future evidence authority' "$DOC"
       - name: Lint compatibility engine and MCP compiler
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php
