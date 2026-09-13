@@ -223,7 +223,7 @@ for marker in (
 ): require(impl['isolation'], marker, 'implementation-provider-isolation')
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post('):
     forbid(impl['isolation'], forbidden, 'implementation-provider-isolation-deny-only')
-require(impl['transport'], 'mad4b.mcp-transport-context.v2', 'implementation-transport-context')
+require(impl['transport'], 'mad4b.mcp-transport-context.v3', 'implementation-transport-context')
 require(impl['transport'], "'/mcp/' . $server_id", 'implementation-transport-exact-route')
 require(impl['transport'], 'mad4b_transport_route_mismatch', 'implementation-transport-route-mismatch')
 require(impl['transport'], 'MAD4B_SCP_Servers::ability_is_mounted', 'implementation-transport-mount-check')
