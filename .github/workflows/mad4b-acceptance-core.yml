@@ -41,8 +41,8 @@ concurrency:
 
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-  ETG_ACCEPTANCE_HEAD: b8b442577e2c6b467b5b8afa0dc52f43d27b4fa7
-  ETG_ACCEPTANCE_TREE: 072043be93a27998e197c3e80409ae77a9f5e1e4
+  ETG_ACCEPTANCE_HEAD: 734e67796e6ce0ee80054cc3917c04146021240e
+  ETG_ACCEPTANCE_TREE: 87dbc94bd764aec4f82b82c2144313da93cb3246
 
 jobs:
   contract:
