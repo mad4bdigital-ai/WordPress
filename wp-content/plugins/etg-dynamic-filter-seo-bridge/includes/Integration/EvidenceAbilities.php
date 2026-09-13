@@ -30,7 +30,7 @@ final class EvidenceAbilities {
 
     public function registerCategory(): void {
         if ( ! function_exists( 'wp_register_ability_category' ) ) { return; }
-        if ( function_exists( 'wp_get_ability_category' ) && wp_get_ability_category( self::CATEGORY ) ) { return; }
+        if ( function_exists( 'wp_has_ability_category' ) && wp_has_ability_category( self::CATEGORY ) ) { return; }
 
         wp_register_ability_category(
             self::CATEGORY,
@@ -44,7 +44,7 @@ final class EvidenceAbilities {
     public function registerAbilities(): void {
         if ( ! function_exists( 'wp_register_ability' ) ) { return; }
 
-        if ( ! function_exists( 'wp_get_ability' ) || ! wp_get_ability( self::DESCRIPTOR_ABILITY ) ) {
+        if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::DESCRIPTOR_ABILITY ) ) {
             wp_register_ability(
                 self::DESCRIPTOR_ABILITY,
                 array(
@@ -59,7 +59,7 @@ final class EvidenceAbilities {
             );
         }
 
-        if ( ! function_exists( 'wp_get_ability' ) || ! wp_get_ability( self::QUERY_ABILITY ) ) {
+        if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::QUERY_ABILITY ) ) {
             wp_register_ability(
                 self::QUERY_ABILITY,
                 array(
