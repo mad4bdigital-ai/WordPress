@@ -27,7 +27,10 @@ final class MAD4B_SCP_Provider_Canary_Adapter extends MAD4B_SCP_Adapter_Base {
 		return array(
 			'read' => array(),
 			'content' => array(),
-			'admin' => array( MAD4B_SCP_Provider_Canary_Execution::ABILITY ),
+			'admin' => array(),
+			// Write-only is intentionally distinct from admin. The canonical write
+			// compiler consumes this surface, while mad4b-admin does not.
+			'write' => array( MAD4B_SCP_Provider_Canary_Execution::ABILITY ),
 		);
 	}
 	public function register_abilities() { MAD4B_SCP_Provider_Canary_Execution::register_ability(); }
