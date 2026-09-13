@@ -81,7 +81,7 @@ jobs:
           require_literal 'terminal-claim-caller' 'MAD4B_SCP_Approval_Tickets::claim_exact' "$authz"
           require_literal 'target-fingerprint-binding' 'self::target_fingerprint' "$authz"
           require_literal 'ticket-class-binding' 'MAD4B_SCP_Impact_Policy::ticket_class_for' "$authz"
-          require_literal 'execution-side-effects-marked' "'execution_side_effects' => true" "$authz"
+          require_literal 'execution-side-effects-marked' "\$decision['execution_side_effects'] = true;" "$authz"
           require_literal 'execution-boundary-meta' "'mad4b_execution_boundary'" "$authz"
           require_literal 'authorization-boot' "if ( function_exists( 'add_filter' ) ) MAD4B_SCP_Authorization::boot();" "$authz"
 
