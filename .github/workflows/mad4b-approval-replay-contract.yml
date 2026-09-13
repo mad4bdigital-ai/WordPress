@@ -58,26 +58,37 @@ jobs:
           authz="$root/class-mad4b-scp-authorization.php"
           finalizer="$root/class-mad4b-scp-live-acceptance-finalizer.php"
 
-          grep -Fq 'public static function validate_exact' "$tickets"
-          grep -Fq "array( 'used', 'executing', 'failed' )" "$tickets"
-          grep -Fq "SET status = 'executing'" "$tickets"
-          grep -Fq 'public static function finalize_claim' "$tickets"
-          grep -Fq "array( 'used', 'failed' )" "$tickets"
+          require_literal() {
+            local label="$1"
+            local needle="$2"
+            local file="$3"
+            if ! grep -Fq -- "$needle" "$file"; then
+              echo "Missing approval lifecycle invariant: $label :: $needle :: $file" >&2
+              exit 1
+            fi
+          }
 
-          grep -Fq "const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.authorization-execution-boundary.v1'" "$authz"
-          grep -Fq 'MAD4B_SCP_Approval_Tickets::authorize_exact' "$authz"
-          grep -Fq 'public static function claim_mutation' "$authz"
-          grep -Fq 'MAD4B_SCP_Approval_Tickets::claim_exact' "$authz"
-          grep -Fq 'self::target_fingerprint' "$authz"
-          grep -Fq 'MAD4B_SCP_Impact_Policy::ticket_class_for' "$authz"
-          grep -Fq "'execution_side_effects' => true" "$authz"
-          grep -Fq "'mad4b_execution_boundary'" "$authz"
-          grep -Fq "if ( function_exists( 'add_filter' ) ) MAD4B_SCP_Authorization::boot();" "$authz"
+          require_literal 'validate-exact-present' 'public static function validate_exact' "$tickets"
+          require_literal 'authorize-exact-present' 'public static function authorize_exact' "$tickets"
+          require_literal 'terminal-statuses-replay-denied' "array( 'used', 'executing', 'failed' )" "$tickets"
+          require_literal 'claim-approved-to-executing' "SET status = 'executing'" "$tickets"
+          require_literal 'finalize-claim-present' 'public static function finalize_claim' "$tickets"
+          require_literal 'final-terminal-statuses' "array( 'used', 'failed' )" "$tickets"
+
+          require_literal 'execution-boundary-contract' "const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.authorization-execution-boundary.v1'" "$authz"
+          require_literal 'readonly-preflight-caller' 'MAD4B_SCP_Approval_Tickets::authorize_exact' "$authz"
+          require_literal 'claim-mutation-present' 'public static function claim_mutation' "$authz"
+          require_literal 'terminal-claim-caller' 'MAD4B_SCP_Approval_Tickets::claim_exact' "$authz"
+          require_literal 'target-fingerprint-binding' 'self::target_fingerprint' "$authz"
+          require_literal 'ticket-class-binding' 'MAD4B_SCP_Impact_Policy::ticket_class_for' "$authz"
+          require_literal 'execution-side-effects-marked' "'execution_side_effects' => true" "$authz"
+          require_literal 'execution-boundary-meta' "'mad4b_execution_boundary'" "$authz"
+          require_literal 'authorization-boot' "if ( function_exists( 'add_filter' ) ) MAD4B_SCP_Authorization::boot();" "$authz"
 
           if grep -Fq 'consume_exact(' "$authz"; then
             echo 'Authorization permission/execution contract must not use legacy consume_exact().' >&2
             exit 1
           fi
 
-          grep -Fq "'mad4b_approval_replay_denied' === (string) \$summary['reason_code']" "$finalizer"
-          grep -Fq "'mad4b/live-acceptance-replay-denied-observed'" "$finalizer"
+          require_literal 'replay-denial-observer' "'mad4b_approval_replay_denied' === (string) \$summary['reason_code']" "$finalizer"
+          require_literal 'replay-denial-acceptance-event' "'mad4b/live-acceptance-replay-denied-observed'" "$finalizer"
