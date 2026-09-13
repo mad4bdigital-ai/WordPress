@@ -131,7 +131,7 @@ final class MAD4B_SCP_Execution_Fence {
 		$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
-		if ( in_array( $surface, array( 'content', 'admin', 'breakglass' ), true ) ) return 'mad4b-' . $surface;
+		if ( in_array( $surface, array( 'content', 'write', 'admin', 'breakglass' ), true ) ) return 'mad4b-' . $surface;
 		$category = isset( $args['category'] ) ? sanitize_key( (string) $args['category'] ) : '';
 		if ( in_array( $category, array( 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' ), true ) ) return $category;
 		return 'mad4b-write';

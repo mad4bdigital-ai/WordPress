@@ -3,124 +3,193 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Authorization {
+	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
 	const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.authorization-execution-boundary.v1';
 	const PERMISSION_DENIAL_AUDIT_CONTRACT = 'mad4b.authorization-permission-denial-audit.v1';
-	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
+	const MAX_TARGET_CANONICAL_BYTES = 65536;
+	const MAX_TARGET_DEPTH = 8;
+
 	private static $booted = false;
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_filter' ) ) return;
 		self::$booted = true;
-		add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 90, 2 );
+		add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 190, 2 );
+	}
+
+	public static function target_fingerprint( $ability_name, $provider, $input, array $agent = array(), array $identity = array() ) {
+		$provider = sanitize_key( (string) $provider );
+		if ( '' === $provider ) $provider = 'core';
+		$filtered = apply_filters( 'mad4b_scp_authorization_target_fingerprint', '', (string) $ability_name, $provider, $input, $agent, $identity );
+		if ( is_string( $filtered ) && '' !== trim( $filtered ) ) return substr( trim( $filtered ), 0, 191 );
+
+		$normalized = self::canonicalize_target_value( $input, 0 );
+		if ( is_wp_error( $normalized ) ) return '';
+		$payload = array(
+			'contract' => self::TARGET_FINGERPRINT_CONTRACT,
+			'ability' => (string) $ability_name,
+			'provider' => $provider,
+			'input' => $normalized,
+		);
+		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( false === $json || strlen( $json ) > self::MAX_TARGET_CANONICAL_BYTES ) return '';
+		return hash( 'sha256', $json );
+	}
+
+	private static function canonicalize_target_value( $value, $depth ) {
+		if ( $depth > self::MAX_TARGET_DEPTH ) return new WP_Error( 'mad4b_target_fingerprint_too_deep', 'Mutation target input exceeds the maximum canonical nesting depth.' );
+		if ( is_array( $value ) ) {
+			$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
+			if ( $is_list ) {
+				$out = array();
+				foreach ( $value as $item ) {
+					$normalized = self::canonicalize_target_value( $item, $depth + 1 );
+					if ( is_wp_error( $normalized ) ) return $normalized;
+					$out[] = $normalized;
+				}
+				return $out;
+			}
+			$keys = array_keys( $value );
+			sort( $keys, SORT_STRING );
+			$out = array();
+			foreach ( $keys as $key ) {
+				if ( ! is_string( $key ) && ! is_int( $key ) ) return new WP_Error( 'mad4b_target_fingerprint_invalid_key', 'Mutation target input contains an unsupported object key.' );
+				$normalized = self::canonicalize_target_value( $value[ $key ], $depth + 1 );
+				if ( is_wp_error( $normalized ) ) return $normalized;
+				$out[ (string) $key ] = $normalized;
+			}
+			return $out;
+		}
+		if ( is_string( $value ) || is_int( $value ) || is_bool( $value ) || null === $value ) return $value;
+		if ( is_float( $value ) && is_finite( $value ) ) return $value;
+		return new WP_Error( 'mad4b_target_fingerprint_invalid_value', 'Mutation target input contains an unsupported value type.' );
 	}
 
 	public static function authorize_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
-		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array( 'authenticated' => false );
-		if ( empty( $identity['authenticated'] ) ) return self::deny( 'mad4b_identity_required', 'Governed mutation requires an authenticated identity.', $ability_name );
-		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return self::deny( 'mad4b_agent_registry_unavailable', 'MAD4B agent governance is unavailable.', $ability_name );
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return self::error( 'mad4b_governance_schema_unavailable', 'Governance schema is unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ) return self::error( 'mcp_peer_inventory_unavailable', 'MCP peer governance is unavailable.' );
+		$peer_guard = MAD4B_SCP_MCP_Peer_Governance::mutation_guard();
+		if ( is_wp_error( $peer_guard ) ) return $peer_guard;
+
+		$declared_server_id = sanitize_key( (string) $server_id );
+		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return self::error( 'mad4b_transport_context_unavailable', 'MCP transport context is unavailable; governed mutation fails closed.' );
+		$resolved_server_id = MAD4B_SCP_Transport_Context::resolve_server_for_ability( $declared_server_id, $ability_name );
+		if ( is_wp_error( $resolved_server_id ) ) return $resolved_server_id;
+		$server_id = sanitize_key( (string) $resolved_server_id );
+		if ( '' === $server_id ) return self::error( 'mad4b_transport_server_unresolved', 'The effective MCP mutation server could not be resolved.' );
+
+		$identity = MAD4B_SCP_Identity_Context::current();
+		if ( is_wp_error( $identity ) ) return $identity;
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
-		if ( is_wp_error( $agent ) ) return self::deny( $agent->get_error_code(), $agent->get_error_message(), $ability_name );
-		if ( 'enabled' !== $agent['status'] ) return self::deny( 'mad4b_agent_disabled', 'Resolved agent is disabled.', $ability_name );
+		if ( is_wp_error( $agent ) ) return $agent;
+		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() ) return self::error( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.' );
+		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::error( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.' );
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
-		if ( ! in_array( $agent['environment'], array( 'all', 'unknown', $environment ), true ) ) return self::deny( 'mad4b_agent_environment_denied', 'Agent is not allowed in this environment.', $ability_name );
+		$provider = sanitize_key( (string) $provider );
+		if ( '' === $provider ) $provider = 'core';
+		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability_name, $provider );
+		if ( is_wp_error( $grant ) ) return $grant;
 
-		if ( ! MAD4B_SCP_Policy::can_mutate() ) return self::deny( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.', $ability_name );
-		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::deny( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.', $ability_name );
+		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
+		$identity_ticket = isset( $identity['approval_ticket_id'] ) ? strtolower( trim( (string) $identity['approval_ticket_id'] ) ) : '';
+		$input_ticket = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input ) : '';
+		if ( '' !== $identity_ticket && '' !== $input_ticket && $identity_ticket !== $input_ticket ) return self::error( 'mad4b_approval_request_binding_conflict', 'Identity and governance input reference different approval tickets.' );
+		$approval_ticket_id = '' !== $identity_ticket ? $identity_ticket : $input_ticket;
+		$approval_ticket_source = '' !== $identity_ticket ? 'identity' : ( '' !== $input_ticket ? 'governance_input' : 'none' );
+		if ( '' !== $approval_ticket_id && ! preg_match( '/^[a-f0-9-]{36}$/', $approval_ticket_id ) ) return self::error( 'mad4b_approval_id_invalid', 'Approval ticket identifier is malformed.' );
 
-		$grant = MAD4B_SCP_Agent_Registry::authorize( $agent, $server_id, $ability_name, $provider, $input );
-		if ( is_wp_error( $grant ) ) return self::deny( $grant->get_error_code(), $grant->get_error_message(), $ability_name );
-
-		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $input ) : 'high';
-		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $input ) : true;
-		$decision = array(
-			'allowed' => true,
-			'ability' => $ability_name,
-			'server_id' => $server_id,
-			'provider' => $provider,
-			'impact' => $impact,
-			'approval_required' => $approval_required,
-			'agent_public_id' => $agent['public_id'],
-			'grant_id' => (int) $grant['id'],
-			'request_id' => is_array( $identity ) && isset( $identity['request_id'] ) ? (string) $identity['request_id'] : '',
-		);
-
-		if ( $approval_required ) {
-			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return self::deny( 'mad4b_approval_unavailable', 'Approval service is unavailable.', $ability_name );
-			$ticket_id = is_array( $identity ) && isset( $identity['approval_ticket_id'] ) ? trim( (string) $identity['approval_ticket_id'] ) : '';
-			if ( '' === $ticket_id && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) $ticket_id = MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input );
-			if ( '' === $ticket_id ) return self::deny( 'mad4b_approval_required', 'Mutation requires a one-time exact approval ticket.', $ability_name );
-			$clean_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
-			$target = self::target_fingerprint( $ability_name, $provider, $clean_input, $agent, $identity );
-			$ticket_class = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $clean_input ) : 'mutation';
-			$approved = MAD4B_SCP_Approval_Tickets::authorize_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target, $clean_input, $ticket_class );
-			if ( is_wp_error( $approved ) ) return self::deny( $approved->get_error_code(), $approved->get_error_message(), $ability_name );
-			$decision['approval_ticket_id'] = $ticket_id;
-			$decision['target_fingerprint'] = $target;
-			$decision['ticket_class'] = $ticket_class;
+		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
+		$require_scopes = (bool) apply_filters( 'mad4b_scp_require_token_scopes', false, $identity, $agent, $ability_name );
+		if ( $require_scopes && empty( $scopes ) ) return self::error( 'mad4b_nhi_scope_required', 'Authenticated subject did not provide required token scopes.' );
+		if ( $scopes ) {
+			$scope_allowed = in_array( 'ability:' . $ability_name, $scopes, true ) || in_array( 'server:' . $server_id, $scopes, true );
+			if ( ! $scope_allowed && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) $scope_allowed = MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $identity, $server_id, $ability_name, $input );
+			if ( ! $scope_allowed ) return self::error( 'mad4b_nhi_scope_denied', 'Token scope does not include this exact ability/server and no certified one-time Staging write delegation applies.' );
 		}
 
-		self::audit( $ability_name, $decision, 'allowed' );
-		return $decision;
+		$constraints = array();
+		if ( ! empty( $grant['resource_constraints'] ) ) {
+			$decoded = json_decode( $grant['resource_constraints'], true );
+			if ( ! is_array( $decoded ) ) return self::error( 'mad4b_nhi_constraints_invalid', 'Stored resource constraints are invalid.' );
+			$constraints = $decoded;
+		}
+		if ( $constraints && ! apply_filters( 'mad4b_scp_resource_constraints_allowed', false, $constraints, $ability_name, $authorization_input, $agent, $identity ) ) return self::error( 'mad4b_nhi_resource_constraints_unresolved', 'Resource constraints are present but no certified evaluator authorized this target.' );
+
+		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $authorization_input ) : 'high';
+		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $authorization_input ) : true;
+		$target_fingerprint = self::target_fingerprint( $ability_name, $provider, $authorization_input, $agent, $identity );
+		if ( '' === $target_fingerprint ) return self::error( 'mad4b_approval_target_unresolved', 'A deterministic mutation target fingerprint could not be resolved.' );
+
+		$ticket_class = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $authorization_input ) : 'mutation';
+		if ( $approval_required ) {
+			if ( '' === $approval_ticket_id ) return self::error( 'mad4b_approval_required', 'This governed mutation requires an exact short-lived one-time approval ticket.' );
+			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) return self::error( 'mad4b_approval_service_unavailable', 'Approval service is unavailable.' );
+			$approval = MAD4B_SCP_Approval_Tickets::authorize_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class );
+			if ( is_wp_error( $approval ) ) return $approval;
+		}
+
+		if ( ! class_exists( 'MAD4B_SCP_Budgets' ) ) return self::error( 'mad4b_budget_service_unavailable', 'NHI budget service is unavailable.' );
+		$costs = MAD4B_SCP_Budgets::costs_for( $ability_name, $provider, $authorization_input );
+		if ( is_wp_error( $costs ) ) return $costs;
+
+		return array(
+			'allowed' => true,
+			'reason_code' => 'preflight_allowed',
+			'agent_id' => (int) $agent['id'],
+			'agent_public_id' => (string) $agent['public_id'],
+			'subject_type' => isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '',
+			'subject_fingerprint' => isset( $identity['subject_fingerprint'] ) ? (string) $identity['subject_fingerprint'] : '',
+			'request_id' => isset( $identity['request_id'] ) ? (string) $identity['request_id'] : '',
+			'server_id' => $server_id,
+			'declared_server_id' => $declared_server_id,
+			'transport_bound' => $server_id !== $declared_server_id,
+			'ability' => (string) $ability_name,
+			'provider' => $provider,
+			'grant_id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
+			'scopes_present' => ! empty( $scopes ),
+			'constraints' => $constraints,
+			'impact' => $impact,
+			'approval_required' => $approval_required,
+			'approval_ticket_id' => $approval_required ? $approval_ticket_id : '',
+			'approval_ticket_source' => $approval_required ? $approval_ticket_source : 'not_required',
+			'ticket_class' => $ticket_class,
+			'target_fingerprint' => $target_fingerprint,
+			'budget_costs' => $costs,
+			'execution_side_effects' => false,
+		);
 	}
 
 	public static function claim_mutation( $ability_name, $server_id, $provider = 'core', $input = null ) {
-		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array( 'authenticated' => false );
-		if ( empty( $identity['authenticated'] ) ) return self::deny( 'mad4b_identity_required', 'Governed mutation requires an authenticated identity.', $ability_name );
-		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return self::deny( 'mad4b_agent_registry_unavailable', 'MAD4B agent governance is unavailable.', $ability_name );
-		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
-		if ( is_wp_error( $agent ) ) return self::deny( $agent->get_error_code(), $agent->get_error_message(), $ability_name );
-		if ( 'enabled' !== $agent['status'] ) return self::deny( 'mad4b_agent_disabled', 'Resolved agent is disabled.', $ability_name );
+		$decision = self::authorize_mutation( $ability_name, $server_id, $provider, $input );
+		if ( is_wp_error( $decision ) ) {
+			self::audit_execution_denial( $ability_name, $decision, $input );
+			return $decision;
+		}
+		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $decision['agent_public_id'] );
+		if ( ! $agent ) return self::deny( 'mad4b_nhi_agent_missing', 'Resolved authorization agent is no longer available.', $ability_name );
+		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
-		if ( ! in_array( $agent['environment'], array( 'all', 'unknown', $environment ), true ) ) return self::deny( 'mad4b_agent_environment_denied', 'Agent is not allowed in this environment.', $ability_name );
-		if ( ! MAD4B_SCP_Policy::can_mutate() ) return self::deny( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.', $ability_name );
-		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::deny( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.', $ability_name );
+		if ( ! empty( $decision['approval_required'] ) ) {
+			$ticket_id = (string) $decision['approval_ticket_id'];
+			if ( ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( $ticket_id ) ) return self::deny( 'mad4b_approval_request_binding_conflict', 'A different approval ticket is already bound to this execution request.', $ability_name );
+		}
 
-		$grant = MAD4B_SCP_Agent_Registry::authorize( $agent, $server_id, $ability_name, $provider, $input );
-		if ( is_wp_error( $grant ) ) return self::deny( $grant->get_error_code(), $grant->get_error_message(), $ability_name );
-
-		$impact = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::impact_for( $ability_name, $provider, $input ) : 'high';
-		$approval_required = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::requires_approval( $ability_name, $provider, $input ) : true;
-		$decision = array(
-			'allowed' => true,
-			'ability' => $ability_name,
-			'server_id' => $server_id,
-			'provider' => $provider,
-			'impact' => $impact,
-			'approval_required' => $approval_required,
-			'agent_public_id' => $agent['public_id'],
-			'grant_id' => (int) $grant['id'],
-			'approval_ticket_id' => '',
-			'request_id' => is_array( $identity ) && isset( $identity['request_id'] ) ? (string) $identity['request_id'] : '',
-		);
-
-		$clean_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
-		$budget_reservation = class_exists( 'MAD4B_SCP_Budgets' ) ? MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $provider, $clean_input ) : array( 'active' => false, 'costs' => array(), 'reservations' => array() );
+		$budget_reservation = MAD4B_SCP_Budgets::reserve( $agent, $ability_name, $decision['provider'], $authorization_input, ! empty( $decision['approval_required'] ) );
 		if ( is_wp_error( $budget_reservation ) ) return self::deny( $budget_reservation->get_error_code(), $budget_reservation->get_error_message(), $ability_name );
 
-		if ( $approval_required ) {
-			if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) ) { if ( class_exists( 'MAD4B_SCP_Budgets' ) ) MAD4B_SCP_Budgets::rollback( $budget_reservation ); return self::deny( 'mad4b_approval_unavailable', 'Approval service is unavailable.', $ability_name ); }
-			$ticket_id = is_array( $identity ) && isset( $identity['approval_ticket_id'] ) ? trim( (string) $identity['approval_ticket_id'] ) : '';
-			if ( '' === $ticket_id && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) $ticket_id = MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input );
-			if ( '' === $ticket_id ) { if ( class_exists( 'MAD4B_SCP_Budgets' ) ) MAD4B_SCP_Budgets::rollback( $budget_reservation ); return self::deny( 'mad4b_approval_required', 'Mutation requires a one-time exact approval ticket.', $ability_name ); }
-			$target = self::target_fingerprint( $ability_name, $provider, $clean_input, $agent, $identity );
-			$ticket_class = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $clean_input ) : 'mutation';
-			$claim = MAD4B_SCP_Approval_Tickets::claim_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target, $clean_input, $ticket_class );
+		if ( ! empty( $decision['approval_required'] ) ) {
+			$claim = MAD4B_SCP_Approval_Tickets::claim_exact( $decision['approval_ticket_id'], $agent, $decision['server_id'], $ability_name, $decision['provider'], $decision['target_fingerprint'], $authorization_input, $decision['ticket_class'] );
 			if ( is_wp_error( $claim ) ) {
-				if ( class_exists( 'MAD4B_SCP_Budgets' ) ) MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				MAD4B_SCP_Budgets::rollback( $budget_reservation );
 				if ( 'mad4b_approval_replay_denied' === (string) $claim->get_error_code() ) {
 					self::audit_execution_denial( $ability_name, $claim, $input );
 					return $claim;
 				}
 				return self::deny( $claim->get_error_code(), $claim->get_error_message(), $ability_name );
 			}
-			$decision['approval_ticket_id'] = $ticket_id;
-			$decision['target_fingerprint'] = $target;
-			$decision['ticket_class'] = $ticket_class;
 		}
 
-		$budget_commit = class_exists( 'MAD4B_SCP_Budgets' ) ? MAD4B_SCP_Budgets::commit( $budget_reservation ) : true;
+		$budget_commit = MAD4B_SCP_Budgets::commit( $budget_reservation );
 		if ( is_wp_error( $budget_commit ) ) return self::deny( $budget_commit->get_error_code(), $budget_commit->get_error_message(), $ability_name );
 
 		$decision['reason_code'] = 'execution_claimed';
@@ -211,7 +280,7 @@ final class MAD4B_SCP_Authorization {
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
 		if ( in_array( $surface, array( 'content', 'write', 'admin', 'breakglass' ), true ) ) return 'mad4b-' . $surface;
 		$category = isset( $args['category'] ) ? sanitize_key( (string) $args['category'] ) : '';
-		if ( in_array( $category, array( 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' ), true ) ) return $category;
+		if ( in_array( $category, array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ), true ) ) return $category;
 		return 'mad4b-write';
 	}
 
@@ -223,34 +292,6 @@ final class MAD4B_SCP_Authorization {
 		if ( null === $provider && 0 === strpos( (string) $ability_name, 'mad4b/' ) ) $provider = 'core';
 		$provider = sanitize_key( (string) $provider );
 		return '' !== $provider ? $provider : self::error( 'mad4b_execution_provider_unresolved', 'Governed execution provider could not be resolved for this ability.' );
-	}
-
-	public static function target_fingerprint( $ability_name, $provider, $input, $agent = array(), $identity = array() ) {
-		$target = array(
-			'contract' => self::TARGET_FINGERPRINT_CONTRACT,
-			'ability' => (string) $ability_name,
-			'provider' => sanitize_key( (string) $provider ),
-			'input' => self::canonical_target_value( is_array( $input ) ? $input : array() ),
-		);
-		$json = function_exists( 'wp_json_encode' ) ? wp_json_encode( $target, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) : json_encode( $target );
-		$fallback = hash( 'sha256', is_string( $json ) ? $json : serialize( $target ) );
-		$filtered = function_exists( 'apply_filters' ) ? apply_filters( 'mad4b_scp_authorization_target_fingerprint', $fallback, $ability_name, $provider, $input, $agent, $identity ) : $fallback;
-		$filtered = strtolower( trim( (string) $filtered ) );
-		return 1 === preg_match( '/^[a-f0-9]{64}$/', $filtered ) ? $filtered : $fallback;
-	}
-
-	private static function canonical_target_value( $value ) {
-		if ( ! is_array( $value ) ) return $value;
-		$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
-		$out = array();
-		if ( $is_list ) {
-			foreach ( $value as $item ) $out[] = self::canonical_target_value( $item );
-			return $out;
-		}
-		$keys = array_keys( $value );
-		sort( $keys, SORT_STRING );
-		foreach ( $keys as $key ) $out[ (string) $key ] = self::canonical_target_value( $value[ $key ] );
-		return $out;
 	}
 
 	public static function authority_status() {
@@ -301,6 +342,7 @@ final class MAD4B_SCP_Authorization {
 		$ticket_id = is_array( $identity ) && isset( $identity['approval_ticket_id'] ) && preg_match( '/^[a-f0-9-]{36}$/', (string) $identity['approval_ticket_id'] )
 			? strtolower( (string) $identity['approval_ticket_id'] )
 			: '';
+
 		if ( '' === $ticket_id
 			&& 'mad4b_approval_replay_denied' === (string) $error->get_error_code()
 			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
