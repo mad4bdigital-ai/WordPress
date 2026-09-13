@@ -4,10 +4,13 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php'
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/jet-smart-filters.zip'
@@ -17,10 +20,13 @@ on:
     branches: [master]
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php'
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/jet-smart-filters.zip'
@@ -55,6 +61,8 @@ jobs:
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php
 
@@ -75,8 +83,10 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
-      - name: Lint adapter
-        run: php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
+      - name: Lint adapter and diagnostic registry
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
 
   exact-alpha13-runtime:
     name: Exact ETG Alpha13 MCP runtime
@@ -133,6 +143,9 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=6.9 --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE development --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_ENABLED true --raw --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED true --raw --path="$WP_PATH"
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-etg.test' --title='MAD4B ETG MCP Runtime' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
       - name: Normalize exact premium provider packages
         shell: bash
@@ -192,6 +205,13 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php" \
+            --path=/tmp/mad4b-etg-wordpress --user=mad4b-ci-admin
+      - name: Prove runtime self-test honors effective provider isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php" \
             --path=/tmp/mad4b-etg-wordpress --user=mad4b-ci-admin
       - name: Upload premium package normalization evidence
         if: always()
