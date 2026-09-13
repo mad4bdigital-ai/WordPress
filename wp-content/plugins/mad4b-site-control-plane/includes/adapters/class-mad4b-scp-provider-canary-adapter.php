@@ -38,3 +38,10 @@ final class MAD4B_SCP_Provider_Canary_Adapter extends MAD4B_SCP_Adapter_Base {
 	protected function provider_certification( $available ) { return null; }
 	protected function mutation_requires_certification() { return false; }
 }
+
+// Behavioral recertification is a separate bounded-write lifecycle. It is
+// loaded here because this internal adapter file is already loaded by the base
+// adapter after MAD4B_SCP_Adapter_Base exists, avoiding a second bootstrap path.
+require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-behavioral-recertification.php';
+MAD4B_SCP_Provider_Behavioral_Recertification::boot_early();
+MAD4B_SCP_Provider_Behavioral_Recertification_Adapter::boot();
