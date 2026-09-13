@@ -65,9 +65,9 @@ $check( empty( $acceptance['first_reconstruction_failure'] ), 'ready durable rec
 // Prove the permission-time denial bridge is exactly-once inside one logical
 // request. Reset only the request-local approval overlay left by the undo, then
 // issue the same already-used execution ticket twice under one new request_id.
-// The first call must emit the canonical replay event; the fence must cache that
-// terminal permission result so the second permission evaluation cannot append
-// another event.
+// The MCP transport intentionally serializes permission errors generically, so
+// transport assertions prove denial while the append-only audit below proves the
+// canonical replay reason, exact ticket/request binding, and exactly-once count.
 $reflection = new ReflectionClass( 'MAD4B_SCP_Identity_Context' );
 $property = $reflection->getProperty( 'request_approval_ticket_id' );
 $property->setAccessible( true );
@@ -84,7 +84,7 @@ $replay_once_a = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 7, 'method' => 't
 $replay_once_b = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 8, 'method' => 'tools/call', 'params' => array( 'name' => 'media-update-metadata', 'arguments' => $call_input ) ), $session_id );
 foreach ( array( $replay_once_a, $replay_once_b ) as $replay_once_response ) {
 	$replay_once_json = wp_json_encode( $replay_once_response->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-	$check( false !== strpos( $replay_once_json, 'replay' ) || false !== strpos( $replay_once_json, 'terminal or already claimed' ), 'request-local repeated replay did not preserve canonical denial: ' . $replay_once_json );
+	$check( false !== strpos( $replay_once_json, '"isError":true' ), 'request-local repeated replay was not denied by MCP transport: ' . $replay_once_json );
 }
 
 $exactly_once_events = array();
