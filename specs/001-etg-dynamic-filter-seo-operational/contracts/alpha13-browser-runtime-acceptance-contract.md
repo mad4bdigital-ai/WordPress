@@ -87,6 +87,40 @@ The deterministic browser `plan_digest` is HMAC-bound with the existing WordPres
 
 This is a WordPress plan-origin/integrity signature. External-agent authentication remains the responsibility of the authenticated MAD4B Control Plane transport; the ETG provider does not create a parallel authentication system.
 
+## Freshness challenge
+
+A ready browser plan also carries a separate, stateless, server-signed freshness challenge:
+
+`etg.dfsb.browser-acceptance-challenge.v1`
+
+The challenge contains:
+
+- 128-bit random nonce encoded as 32 hexadecimal characters
+- `issued_at`
+- `expires_at`
+- HMAC signature
+
+The canonical maximum lifetime is `900` seconds. The HMAC binds the challenge to:
+
+- provider `etg-dfsb`
+- governed profile ID
+- browser `plan_digest`
+- nonce
+- issue time
+- expiry time
+
+The freshness challenge is:
+
+- non-authorizing
+- stateless
+- non-persistent
+- not a mutation ticket
+- not a browser authentication credential
+
+Observed browser evidence MUST echo the exact challenge and every governed case snapshot MUST echo the same `challenge_nonce`. Missing, malformed, expired, not-yet-valid, signature-invalid or nonce-mismatched challenges fail closed as `TEST_INFRASTRUCTURE_FAILURE` before browser parity can be certified.
+
+This contract provides **bounded freshness / replay-window resistance**, not one-time replay denial. Because the challenge is deliberately stateless, an identical valid evidence envelope can theoretically be replayed during the unexpired challenge window. That is acceptable for this non-authorizing observational receipt. Any future requirement for strict one-time replay denial would require a separate consumed-challenge store or equivalent stateful authority and is outside this contract.
+
 ## Browser observer
 
 The exact plugin package includes:
@@ -107,7 +141,7 @@ The observer is passive. It MUST NOT:
 - activate profiles
 - mutate WordPress data
 
-The external browser engine arms the observer with one already-governed plan case, then performs the real UI interaction.
+The external browser engine arms the observer with one already-governed plan case **and the signed freshness challenge**, then performs the real UI interaction. The observer validates only the bounded nonce shape; cryptographic signature and expiry validation remain server-side.
 
 The observer can record:
 
@@ -125,8 +159,9 @@ The observer can record:
 - hreflang
 - document title + description as the rendered Rank Math head projection
 - reset-to-neutral observation
+- the armed `challenge_nonce`
 
-The observer exposes bounded `arm()`, `snapshot()` and `disarm()` methods only. The external browser engine remains responsible for actual UI actions and multi-page DOM walking when a semantic case spans multiple browser pages.
+The observer exposes bounded `arm(planCase, challenge)`, `snapshot()` and `disarm()` methods only. The external browser engine remains responsible for actual UI actions and multi-page DOM walking when a semantic case spans multiple browser pages.
 
 ## Required live-browser dimensions
 
@@ -173,9 +208,11 @@ The envelope MUST echo:
 - exact build `git_sha`
 - exact build `tree_sha`
 - observer identity and real browser-engine identity
+- exact signed freshness `challenge`
 - one evidence entry for every governed case and no unplanned extra case
+- the same signed challenge nonce as `challenge_nonce` on every case snapshot
 
-Stale plan, wrong origin, wrong build, missing case, invalid observer identity or invalid plan signature is classified as `TEST_INFRASTRUCTURE_FAILURE` and must fail closed.
+Stale plan, wrong origin, wrong build, missing case, invalid observer identity, invalid plan signature, missing/invalid/expired challenge or challenge nonce mismatch is classified as `TEST_INFRASTRUCTURE_FAILURE` and must fail closed.
 
 ## Defect versus infrastructure classification
 
@@ -192,6 +229,8 @@ Before a trusted envelope exists:
 
 - missing browser evidence -> `INCOMPLETE_EVIDENCE / browser_runtime_not_observed`
 - stale plan/build/origin -> `BLOCKED / TEST_INFRASTRUCTURE_FAILURE`
+- missing/invalid/expired freshness challenge -> `BLOCKED / TEST_INFRASTRUCTURE_FAILURE`
+- challenge nonce mismatch -> `BLOCKED / TEST_INFRASTRUCTURE_FAILURE`
 - missing event stream -> `BLOCKED / TEST_INFRASTRUCTURE_FAILURE`
 - missing/invalid presentation round trip -> `BLOCKED / TEST_INFRASTRUCTURE_FAILURE`
 
@@ -205,7 +244,7 @@ After reduction, WordPress computes a canonical evidence digest and HMAC-signs a
 - evidence digest
 - final verdict
 
-The receipt is explicitly `receipt_authorizing=false`. It is evidence integrity/provenance, not an approval, publication or Production activation capability.
+The evidence digest includes the accepted evidence envelope, including the freshness challenge and per-case challenge nonces. The receipt is explicitly `receipt_authorizing=false`. It is evidence integrity/provenance, not an approval, publication or Production activation capability, and it does not claim one-time replay consumption.
 
 ## Closure condition
 
@@ -227,4 +266,4 @@ browser_seo_non_authority = PASS
 browser_reset_behavior = PASS
 ```
 
-A provider/observer implementation alone does not satisfy this closure condition. A real external browser engine must still execute the exact signed plan on the exact live build and return complete evidence.
+A provider/observer implementation alone does not satisfy this closure condition. A real external browser engine must still execute the exact signed plan on the exact live build and return complete, unexpired freshness-bound evidence.
