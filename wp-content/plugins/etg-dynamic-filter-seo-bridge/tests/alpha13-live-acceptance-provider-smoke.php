@@ -56,6 +56,48 @@ final class ETGAcceptanceHugeQueryStub {
     public function get_items(){return array_map(static function($id){return(object)array('ID'=>$id);},range((($this->page-1)*10)+1,min($this->page*10,101)));}
 }
 
+final class ETGAcceptanceStickyQueryStub {
+    public $final_query=array('page'=>1);
+    public $current_query=null;
+    private $filtered=array();
+    public function __construct(){
+        $this->current_query=array_map(static function($id){return(object)array('ID'=>$id);},range(101,110));
+    }
+    public function reset_query(){}
+    public function setup_query(){if(null===$this->final_query)$this->final_query=array('page'=>1);}
+    public function set_filtered_prop($prop,$value){if('_page'===$prop){$this->final_query['page']=max(1,(int)$value);return;}$this->filtered[$prop]=$value;}
+    public function get_items_total_count(){return 17;}
+    public function get_items_per_page(){return 10;}
+    public function get_current_items_page(){return (int)($this->final_query['page']??1);}
+    public function get_items(){
+        if(null!==$this->current_query)return $this->current_query;
+        $page=(int)($this->final_query['page']??1);$offset=($page-1)*10;
+        $this->current_query=array_map(static function($id){return(object)array('ID'=>$id);},array_slice(range(101,117),$offset,10));
+        return $this->current_query;
+    }
+}
+
+final class ETGAcceptanceBrokenPagingQueryStub {
+    private $filtered=array();
+    public function setup_query(){}
+    public function set_filtered_prop($prop,$value){if('_page'===$prop)return;$this->filtered[$prop]=$value;}
+    private function slug():string{
+        $tax=(array)($this->filtered['tax_query']??array());
+        foreach($tax as $clause){if(is_array($clause)&&isset($clause['terms'][0]))return (string)$clause['terms'][0];}
+        return '';
+    }
+    private function allIds():array{
+        if('cairo'===$this->slug())return array(11,12,13);
+        if('luxor'===$this->slug())return array(21,22);
+        if('private-tour'===$this->slug())return range(101,117);
+        return array();
+    }
+    public function get_items_total_count(){return count($this->allIds());}
+    public function get_items_per_page(){return 'private-tour'===$this->slug()?10:2;}
+    public function get_current_items_page(){return 1;}
+    public function get_items(){return array_map(static function($id){return(object)array('ID'=>$id);},array_slice($this->allIds(),0,$this->get_items_per_page()));}
+}
+
 $profiles=array(
     'tours'=>array(
         'id'=>'tours','enabled'=>false,'archive_paths'=>array('/tours-and-activities/'),
@@ -143,6 +185,9 @@ etg_acceptance_same(true,$result['cases'][2]['direct_dataset']['ids_complete'],'
 etg_acceptance_same('paged_query_items',$result['cases'][2]['direct_dataset']['collection_mode'],'multi-page dataset uses bounded canonical page walk');
 etg_acceptance_same(2,$result['cases'][2]['direct_dataset']['page_fetches'],'17 results at page size 10 require exactly two page fetches');
 etg_acceptance_same(range(101,117),$result['cases'][2]['direct_dataset']['ids'],'multi-page ID order is preserved');
+etg_acceptance_same(17,$result['cases'][2]['direct_dataset']['raw_id_count'],'raw page collection count matches provider total');
+etg_acceptance_same(17,$result['cases'][2]['direct_dataset']['unique_id_count'],'ordered unique ID collection is complete');
+etg_acceptance_same(false,$result['cases'][2]['direct_dataset']['infrastructure_failure'],'healthy pagination is not mislabeled as infrastructure failure');
 
 $hugeEvaluator=new SemanticQueryEvaluator(null,static function():array{return array('resolved'=>true,'reason'=>'verified','query'=>new ETGAcceptanceHugeQueryStub(),'provider_query_id'=>'tours_query_archive','query_builder_custom_query_id'=>'tours_query_archive','query_builder_internal_id'=>'5','source'=>'test_fixture','identity_source'=>'custom_query_id');});
 $huge=$hugeEvaluator->evaluate(array('provider'=>'jet-engine','query_id'=>'tours_query_archive'),$profiles['tours'],array('tax_query'=>array('relation'=>'AND')));
@@ -151,6 +196,24 @@ etg_acceptance_same('total_exceeds_id_ceiling',$huge['ids_reason'],'ID ceiling i
 etg_acceptance_expect($huge['page_fetches']<=1,'oversized datasets do not trigger unbounded page walking');
 etg_acceptance_same(100,$huge['max_ids'],'ID resource ceiling remains bounded');
 etg_acceptance_same(20,$huge['max_page_fetches'],'page-walk resource ceiling remains bounded');
+
+$stickyEvaluator=new SemanticQueryEvaluator(null,static function():array{return array('resolved'=>true,'reason'=>'verified','query'=>new ETGAcceptanceStickyQueryStub(),'provider_query_id'=>'tours_query_archive','query_builder_custom_query_id'=>'tours_query_archive','query_builder_internal_id'=>'5','source'=>'test_fixture','identity_source'=>'custom_query_id');});
+$sticky=$stickyEvaluator->evaluate(array('provider'=>'jet-engine','query_id'=>'tours_query_archive'),$profiles['tours'],array('tax_query'=>array('relation'=>'AND')));
+etg_acceptance_same(true,$sticky['ids_complete'],'pre-evaluated JetEngine runtime state is reset before each semantic page fetch');
+etg_acceptance_same(range(101,117),$sticky['ids'],'fresh page state advances instead of cloning stale page-one runtime results');
+etg_acceptance_same(17,$sticky['raw_id_count'],'fresh-page collector does not over-collect duplicate page IDs');
+etg_acceptance_same(false,$sticky['infrastructure_failure'],'successful runtime-state reset does not trigger infrastructure failure');
+
+$brokenEvaluator=new SemanticQueryEvaluator(null,static function(string $provider,string $queryId,array $profile):array{unset($profile);return array('resolved'=>'jet-engine'===$provider&&'tours_query_archive'===$queryId,'reason'=>'verified','query'=>new ETGAcceptanceBrokenPagingQueryStub(),'provider_query_id'=>$queryId,'query_builder_custom_query_id'=>$queryId,'query_builder_internal_id'=>'5','source'=>'test_fixture','identity_source'=>'custom_query_id');});
+$brokenProvider=new LiveAcceptanceProvider(static function()use($profiles):array{return $profiles;},$directEvaluator,$ajaxEvaluator,$brokenEvaluator,$selector,$normalizer);
+$broken=$brokenProvider->run(array('profile_id'=>'tours','suite'=>'semantic'));
+etg_acceptance_same('BLOCKED',$broken['verdict'],'pagination collector failure blocks semantic certification without blaming Tours product parity');
+etg_acceptance_same('TEST_INFRASTRUCTURE_FAILURE',$broken['classification'],'pagination no-advance is classified as test infrastructure failure');
+etg_acceptance_same('PASS',$broken['tests']['result_count_parity'],'authoritative counts remain independently verified');
+etg_acceptance_same('BLOCKED',$broken['tests']['dataset_id_parity'],'dataset ID parity is blocked when the collector cannot advance pages');
+etg_acceptance_same('paged_query_items_do_not_advance',$broken['cases'][2]['direct_dataset']['pagination_failure'],'page-state no-advance guard is explicit');
+etg_acceptance_same(true,$broken['cases'][2]['direct_dataset']['infrastructure_failure'],'dataset evidence exposes infrastructure failure explicitly');
+etg_acceptance_same(array(),$broken['defect_reasons'],'collector failure does not manufacture a product defect');
 
 $blocked=$provider->run(array('profile_id'=>'missing','suite'=>'semantic'));
 etg_acceptance_same('BLOCKED',$blocked['verdict'],'missing governed profile blocks rather than pretending to fail product parity');
@@ -175,4 +238,4 @@ $mismatch=$mismatchProvider->run(array('profile_id'=>'tours'));
 etg_acceptance_same('FAIL',$mismatch['verdict'],'real semantic divergence is classified as product failure');
 etg_acceptance_same('PRODUCT_DEFECT',$mismatch['classification'],'semantic mismatch is not mislabeled as missing evidence');
 
-fwrite(STDOUT,"PASS: alpha13 live acceptance provider bounded full-dataset collection\n");
+fwrite(STDOUT,"PASS: alpha13 live acceptance provider bounded full-dataset collection and pagination reinitialization\n");
