@@ -12,12 +12,7 @@ function wp_register_ability( $name, $args ) { return true; }
 function wp_has_ability( $name ) { return false; }
 function jet_engine() { return true; }
 class Jet_Engine {}
-class MAD4B_CI_JetEngine_Query_Builder_Manager {}
-class MAD4B_CI_BitApps_Pi_Model_Flow {}
-class MAD4B_CI_BitApps_Pi_FlowExecutor {}
-class_alias( 'MAD4B_CI_JetEngine_Query_Builder_Manager', 'Jet_Engine\\Query_Builder\\Manager' );
-class_alias( 'MAD4B_CI_BitApps_Pi_Model_Flow', 'BitApps\\Pi\\Model\\Flow' );
-class_alias( 'MAD4B_CI_BitApps_Pi_FlowExecutor', 'BitApps\\Pi\\src\\Flow\\FlowExecutor' );
+require_once __DIR__ . '/fixtures/provider-compatibility-symbols.php';
 class WP_Error { public $code; public $message; public $data; public function __construct( $code, $message, $data = array() ) { $this->code=$code; $this->message=$message; $this->data=$data; } }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 
