@@ -237,7 +237,7 @@ require(impl['connection'], '$connection_certified = empty( $certification_block
 require(impl['connection'], "'external_handshake_unverified'", 'implementation-unverified-handshake-blocker')
 require(impl['connection'], "'external_handshake_stale'", 'implementation-stale-handshake-blocker')
 for marker in (
-    'mad4b.external-handshake-evidence.v2',
+    'mad4b.external-handshake-evidence.v3',
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
