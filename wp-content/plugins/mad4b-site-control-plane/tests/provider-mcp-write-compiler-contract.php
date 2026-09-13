@@ -4,6 +4,7 @@ define( 'ABSPATH', __DIR__ . '/' );
 function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $value ) ); }
 function did_action( $hook ) { return 0; }
 function doing_action( $hook ) { return false; }
+function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
 function wp_has_ability( $name ) { return in_array( $name, array( 'multi/write-a', 'multi/write-b', 'legacy/write', 'mad4b/provider-canary-execute', 'bitflows/run-flow' ), true ); }
 final class FakeAbility { public function get_meta() { return array( 'annotations' => array( 'readonly' => false ) ); } }
 function wp_get_ability( $name ) { return wp_has_ability( $name ) ? new FakeAbility() : null; }
