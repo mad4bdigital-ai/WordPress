@@ -11,6 +11,7 @@ $check( class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ), 'MAD4B Browser Acce
 $check( class_exists( 'MAD4B_SCP_Browser_Acceptance_Provider_Registry' ), 'MAD4B Browser Acceptance Provider Registry is unavailable.' );
 $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Acceptance\\BrowserAcceptanceProvider' ), 'Exact ETG Browser Acceptance Provider class is unavailable.' );
 $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Acceptance\\BrowserObserverAsset' ), 'Exact ETG Browser Observer Asset descriptor is unavailable.' );
+$check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Acceptance\\BrowserAcceptanceFreshnessGuard' ), 'Exact ETG Browser Acceptance freshness guard is unavailable.' );
 $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\BuildIdentity' ), 'ETG exact build identity source is unavailable.' );
 
 $ability_names = array(
@@ -74,6 +75,14 @@ $check( (int) ( $asset['bytes'] ?? 0 ) > 0, 'ETG observer asset size is unavaila
 $check( false !== strpos( (string) ( $asset['url'] ?? '' ), '/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js' ), 'ETG observer asset URL is not package-owned.' );
 $check( empty( $asset['blocking_reasons'] ), 'ETG observer asset discovery is blocked: ' . wp_json_encode( $asset['blocking_reasons'] ?? array() ) );
 
+$freshness = (array) ( $provider_capabilities['freshness_challenge'] ?? array() );
+$check( 'etg.dfsb.browser-acceptance-challenge.v1' === (string) ( $freshness['contract'] ?? '' ), 'ETG freshness challenge contract is missing.' );
+$check( ! empty( $freshness['required_for_observed_evidence'] ), 'Observed ETG browser evidence does not require freshness challenge.' );
+$check( ! empty( $freshness['stateless'] ) && ! empty( $freshness['server_signed'] ), 'ETG freshness challenge lost stateless/server-signed semantics.' );
+$check( 900 === (int) ( $freshness['ttl_seconds'] ?? 0 ), 'ETG freshness challenge TTL drifted.' );
+$check( 16 === (int) ( $freshness['nonce_bytes'] ?? 0 ), 'ETG freshness challenge nonce width drifted.' );
+$check( empty( $freshness['authorizing'] ) && empty( $freshness['persistent_mutation'] ), 'ETG freshness challenge opened authority or persistence.' );
+
 $identity = \ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
 $check( ! empty( $identity['valid'] ), 'Exact ETG embedded build identity is invalid.' );
 $expected_head = getenv( 'ETG_BROWSER_ACCEPTANCE_HEAD' );
@@ -112,6 +121,13 @@ if ( 'ready' === (string) $plan['state'] ) {
 	$check( preg_match( '/^[a-f0-9]{64}$/', (string) $plan['plan_signature'] ), 'Ready Browser Acceptance plan lacks server signature.' );
 	$check( $expected_head === (string) ( $plan['build_identity']['git_sha'] ?? '' ), 'Ready Browser Acceptance plan is not exact-HEAD bound.' );
 	$check( $expected_tree === (string) ( $plan['build_identity']['tree_sha'] ?? '' ), 'Ready Browser Acceptance plan is not exact-tree bound.' );
+	$challenge = (array) ( $plan['challenge'] ?? array() );
+	$check( 'etg.dfsb.browser-acceptance-challenge.v1' === (string) ( $challenge['contract'] ?? '' ), 'Ready Browser Acceptance plan lacks freshness challenge.' );
+	$check( preg_match( '/^[a-f0-9]{32}$/', (string) ( $challenge['nonce'] ?? '' ) ), 'Ready Browser Acceptance challenge lacks 128-bit nonce.' );
+	$check( preg_match( '/^[a-f0-9]{64}$/', (string) ( $challenge['signature'] ?? '' ) ), 'Ready Browser Acceptance challenge lacks server HMAC.' );
+	$issued_at = (int) ( $challenge['issued_at'] ?? 0 );
+	$expires_at = (int) ( $challenge['expires_at'] ?? 0 );
+	$check( $issued_at > 0 && $expires_at > $issued_at && ( $expires_at - $issued_at ) <= 900, 'Ready Browser Acceptance challenge freshness window is invalid.' );
 
 	$missing = wp_get_ability( 'mad4b/browser-acceptance-result' )->execute( array(
 		'provider_id' => 'etg-dfsb',
