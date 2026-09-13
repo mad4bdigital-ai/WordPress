@@ -20,9 +20,11 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
-      - name: Lint and contract
+      - name: Lint, contract and runtime rollback harness
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
