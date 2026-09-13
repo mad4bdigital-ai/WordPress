@@ -4,8 +4,9 @@ namespace ETG\DynamicFilterSEOBridge\Acceptance;
 use ETG\DynamicFilterSEOBridge\Runtime\RuntimeQueryBindingResolver;
 
 final class SemanticQueryEvaluator {
-    const CONTRACT = 'etg.dfsb.semantic-query-evaluation.v1';
+    const CONTRACT = 'etg.dfsb.semantic-query-evaluation.v2';
     const MAX_IDS = 100;
+    const MAX_PAGE_FETCHES = 20;
 
     private $bindingResolver;
     private $bindingProvider;
@@ -48,24 +49,8 @@ final class SemanticQueryEvaluator {
             $total = $query->get_items_total_count();
             if ( ! is_numeric( $total ) ) return $this->blocked( 'non_numeric_total', $provider, $queryId, $binding );
             $total = max( 0, (int) $total );
-            $ids = array();
-            $idsComplete = false;
-            $idsReason = 'query_items_method_unavailable';
-            if ( method_exists( $query, 'get_items' ) ) {
-                $items = $query->get_items();
-                if ( $items instanceof \Traversable ) $items = iterator_to_array( $items, false );
-                if ( is_array( $items ) ) {
-                    $unknown = false;
-                    foreach ( array_slice( array_values( $items ), 0, self::MAX_IDS ) as $item ) {
-                        $id = $this->itemId( $item );
-                        if ( null === $id ) { $unknown = true; continue; }
-                        $ids[] = $id;
-                    }
-                    $ids = array_values( $ids );
-                    $idsComplete = ! $unknown && $total <= self::MAX_IDS && count( $ids ) === $total;
-                    $idsReason = $idsComplete ? 'complete' : ( $total > self::MAX_IDS ? 'total_exceeds_id_ceiling' : 'query_items_not_complete' );
-                }
-            }
+            $collection = $this->collectIds( $query, $total );
+
             return array(
                 'contract' => self::CONTRACT,
                 'state' => 'ok',
@@ -74,17 +59,118 @@ final class SemanticQueryEvaluator {
                 'provider' => $provider,
                 'query_id' => $queryId,
                 'total' => $total,
-                'ids' => $ids,
-                'ids_complete' => $idsComplete,
-                'ids_scope' => $idsComplete ? 'full_result_set' : 'bounded_query_items',
-                'ids_reason' => $idsReason,
+                'ids' => $collection['ids'],
+                'ids_complete' => $collection['complete'],
+                'ids_scope' => $collection['complete'] ? 'full_result_set' : 'bounded_query_items',
+                'ids_reason' => $collection['reason'],
+                'collection_mode' => $collection['mode'],
+                'items_per_page' => $collection['items_per_page'],
+                'page_fetches' => $collection['page_fetches'],
                 'max_ids' => self::MAX_IDS,
+                'max_page_fetches' => self::MAX_PAGE_FETCHES,
                 'binding' => $this->bindingEvidence( $binding ),
                 'blocking_reasons' => array(),
             );
         } catch ( \Throwable $e ) {
             return $this->blocked( 'query_evaluation_exception', $provider, $queryId, $binding );
         }
+    }
+
+    private function collectIds( $query, int $total ): array {
+        $result = array(
+            'ids' => array(),
+            'complete' => false,
+            'reason' => 'query_items_method_unavailable',
+            'mode' => 'unavailable',
+            'items_per_page' => null,
+            'page_fetches' => 0,
+        );
+        if ( 0 === $total ) {
+            $result['complete'] = true;
+            $result['reason'] = 'complete';
+            $result['mode'] = 'empty_result_set';
+            return $result;
+        }
+        if ( ! method_exists( $query, 'get_items' ) ) return $result;
+
+        $perPage = 0;
+        if ( method_exists( $query, 'get_items_per_page' ) ) {
+            $value = $query->get_items_per_page();
+            if ( is_numeric( $value ) ) $perPage = max( 0, (int) $value );
+        }
+        $result['items_per_page'] = $perPage ?: null;
+
+        if ( $total > self::MAX_IDS ) {
+            $page = $this->readPageIds( clone $query, self::MAX_IDS );
+            $result['ids'] = $page['ids'];
+            $result['page_fetches'] = 1;
+            $result['mode'] = 'bounded_sample';
+            $result['reason'] = 'total_exceeds_id_ceiling';
+            return $result;
+        }
+
+        if ( $perPage <= 0 || $perPage >= $total ) {
+            $page = $this->readPageIds( clone $query, self::MAX_IDS );
+            $result['ids'] = $page['ids'];
+            $result['page_fetches'] = 1;
+            $result['mode'] = 'single_query_items';
+            if ( $page['unknown'] ) $result['reason'] = 'query_item_identity_unavailable';
+            elseif ( $page['truncated'] ) $result['reason'] = 'query_items_exceed_id_ceiling';
+            elseif ( count( $page['ids'] ) === $total ) { $result['complete'] = true; $result['reason'] = 'complete'; }
+            else $result['reason'] = 'query_items_not_complete';
+            return $result;
+        }
+
+        $pages = (int) ceil( $total / $perPage );
+        if ( $pages > self::MAX_PAGE_FETCHES ) {
+            $page = $this->readPageIds( clone $query, self::MAX_IDS );
+            $result['ids'] = $page['ids'];
+            $result['page_fetches'] = 1;
+            $result['mode'] = 'bounded_sample';
+            $result['reason'] = 'page_fetch_ceiling_exceeded';
+            return $result;
+        }
+
+        $result['mode'] = 'paged_query_items';
+        $unknown = false;
+        for ( $pageNumber = 1; $pageNumber <= $pages; $pageNumber++ ) {
+            $pageQuery = clone $query;
+            if ( $pageNumber > 1 ) $pageQuery->set_filtered_prop( '_page', $pageNumber );
+            $remaining = self::MAX_IDS - count( $result['ids'] );
+            if ( $remaining <= 0 ) { $result['reason'] = 'id_ceiling_reached_before_total'; break; }
+            $page = $this->readPageIds( $pageQuery, $remaining );
+            $result['page_fetches']++;
+            $unknown = $unknown || $page['unknown'];
+            foreach ( $page['ids'] as $id ) $result['ids'][] = $id;
+            if ( $page['truncated'] ) { $result['reason'] = 'query_items_exceed_id_ceiling'; break; }
+            if ( count( $result['ids'] ) === $total ) {
+                $result['complete'] = ! $unknown;
+                $result['reason'] = $unknown ? 'query_item_identity_unavailable' : 'complete';
+                break;
+            }
+            if ( count( $result['ids'] ) > $total ) { $result['reason'] = 'query_items_exceed_total'; break; }
+            if ( ! $page['ids'] && $pageNumber < $pages ) { $result['reason'] = 'query_page_empty_before_total'; break; }
+        }
+        if ( ! $result['complete'] && 'query_items_method_unavailable' === $result['reason'] ) {
+            $result['reason'] = $unknown ? 'query_item_identity_unavailable' : 'query_items_not_complete';
+        }
+        return $result;
+    }
+
+    private function readPageIds( $query, int $limit ): array {
+        $items = $query->get_items();
+        if ( $items instanceof \Traversable ) $items = iterator_to_array( $items, false );
+        if ( ! is_array( $items ) ) return array( 'ids'=>array(), 'unknown'=>true, 'truncated'=>false );
+        $values = array_values( $items );
+        $truncated = count( $values ) > $limit;
+        $ids = array();
+        $unknown = false;
+        foreach ( array_slice( $values, 0, max( 0, $limit ) ) as $item ) {
+            $id = $this->itemId( $item );
+            if ( null === $id ) { $unknown = true; continue; }
+            $ids[] = $id;
+        }
+        return array( 'ids'=>array_values( $ids ), 'unknown'=>$unknown, 'truncated'=>$truncated );
     }
 
     private function blocked( string $reason, string $provider, string $queryId, array $binding = array() ): array {
@@ -100,7 +186,11 @@ final class SemanticQueryEvaluator {
             'ids_complete' => false,
             'ids_scope' => 'unavailable',
             'ids_reason' => $reason,
+            'collection_mode' => 'unavailable',
+            'items_per_page' => null,
+            'page_fetches' => 0,
             'max_ids' => self::MAX_IDS,
+            'max_page_fetches' => self::MAX_PAGE_FETCHES,
             'binding' => $this->bindingEvidence( $binding ),
             'blocking_reasons' => array( $reason ),
         );

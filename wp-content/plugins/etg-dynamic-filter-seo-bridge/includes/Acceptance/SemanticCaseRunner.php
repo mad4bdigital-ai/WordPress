@@ -95,8 +95,10 @@ final class SemanticCaseRunner {
 
     private function datasetEvidence( array $dataset ): array {
         return array(
-            'state'=>(string)($dataset['state']??''), 'total'=>$dataset['total']??null, 'ids'=>array_values((array)($dataset['ids']??array())),
+            'contract'=>(string)($dataset['contract']??''), 'state'=>(string)($dataset['state']??''), 'total'=>$dataset['total']??null, 'ids'=>array_values((array)($dataset['ids']??array())),
             'ids_complete'=>!empty($dataset['ids_complete']), 'ids_scope'=>(string)($dataset['ids_scope']??''), 'ids_reason'=>(string)($dataset['ids_reason']??''),
+            'collection_mode'=>(string)($dataset['collection_mode']??''), 'items_per_page'=>$dataset['items_per_page']??null, 'page_fetches'=>(int)($dataset['page_fetches']??0),
+            'max_ids'=>(int)($dataset['max_ids']??0), 'max_page_fetches'=>(int)($dataset['max_page_fetches']??0),
             'binding'=>(array)($dataset['binding']??array()), 'blocking_reasons'=>array_values((array)($dataset['blocking_reasons']??array())),
         );
     }

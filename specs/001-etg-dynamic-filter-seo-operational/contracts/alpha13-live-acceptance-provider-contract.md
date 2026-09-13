@@ -73,7 +73,8 @@ Limits in v1:
 - maximum cases: 8;
 - maximum taxonomies considered: 8;
 - maximum candidate terms per taxonomy: 5;
-- maximum returned dataset IDs: 100.
+- maximum complete dataset IDs: 100;
+- maximum Query Builder page fetches per semantic dataset: 20.
 
 The plan emits a deterministic `plan_digest` over the governed profile/case selection.
 
@@ -91,19 +92,34 @@ Transport-only authority differences are preserved but excluded from semantic-st
 
 ## Query evaluation
 
-For JetEngine routes the semantic evaluator resolves the canonical Query Builder binding through `RuntimeQueryBindingResolver`, clones the resolved query object, applies bounded filtered properties, and reads:
+For JetEngine routes the semantic evaluator resolves the canonical Query Builder binding through `RuntimeQueryBindingResolver`, clones the resolved query object, applies the governed filtered properties, and reads the authoritative total count.
 
-- authoritative total count;
-- bounded result item identities when the provider runtime exposes `get_items()`.
+The internal evaluator contract is `etg.dfsb.semantic-query-evaluation.v2`.
 
-The evaluator never writes Query Builder configuration and never persists filtered state.
+When the total is at or below the 100-ID ceiling and Query Builder exposes its canonical pagination contract, the evaluator walks the result pages using `get_items_per_page()` plus `set_filtered_prop('_page', n)`. It never opens `final_query`, never writes Query Builder configuration, never forces an unbounded `posts_per_page=-1`, and never persists filtered state.
+
+The page walk is resource bounded:
+
+- no more than 100 result IDs may be accepted as a complete dataset;
+- no more than 20 Query Builder pages may be fetched for one semantic dataset;
+- results above either ceiling stay `INCOMPLETE_EVIDENCE` with an explicit reason such as `total_exceeds_id_ceiling` or `page_fetch_ceiling_exceeded`.
+
+A complete bounded page walk reports:
+
+```text
+ids_complete=true
+ids_scope=full_result_set
+ids_reason=complete
+collection_mode=paged_query_items|single_query_items
+page_fetches=<bounded integer>
+```
 
 Dataset identity and ordering are separate dimensions:
 
 - `ids_parity` compares result-set identity independent of order;
 - `order_parity` compares provider order.
 
-If the total result set exceeds the bounded ID ceiling, or the provider does not expose a complete item identity set, ID parity is `INCOMPLETE_EVIDENCE`; it must not be silently promoted to PASS.
+If the provider runtime cannot expose the complete bounded item identity set, ID/order parity is `INCOMPLETE_EVIDENCE`; it must not be silently promoted to PASS.
 
 ## Verdict taxonomy
 
@@ -132,7 +148,7 @@ The provider registers callbacks rather than a permanent ETG public MCP Ability:
 - `plan_callback`;
 - `run_callback`.
 
-A later MAD4B Acceptance Core may project those callbacks through canonical abilities such as `mad4b/acceptance-plan` and `mad4b/acceptance-run`. ETG must not create a competing transport or approval surface.
+MAD4B Acceptance Core may project those callbacks through canonical abilities such as `mad4b/acceptance-plan` and `mad4b/acceptance-run`. ETG must not create a competing transport or approval surface.
 
 `mad4b/live-acceptance-status` remains an aggregate/finalization surface and must not be redefined as the semantic runner.
 

@@ -25,19 +25,35 @@ use ETG\DynamicFilterSEOBridge\Acceptance\LiveAcceptanceProvider;
 
 final class ETGAcceptanceQueryStub {
     private $filtered=array();
+    private $page=1;
     public function setup_query(){}
-    public function set_filtered_prop($prop,$value){$this->filtered[$prop]=$value;}
+    public function set_filtered_prop($prop,$value){if('_page'===$prop){$this->page=max(1,(int)$value);return;}$this->filtered[$prop]=$value;}
     private function slug():string{
         $tax=(array)($this->filtered['tax_query']??array());
         foreach($tax as $clause){if(is_array($clause)&&isset($clause['terms'][0]))return (string)$clause['terms'][0];}
         return '';
     }
-    public function get_items_total_count(){return 'cairo'===$this->slug()?3:('luxor'===$this->slug()?2:0);}
-    public function get_items(){
-        if('cairo'===$this->slug())return array((object)array('ID'=>11),(object)array('ID'=>12),(object)array('ID'=>13));
-        if('luxor'===$this->slug())return array((object)array('ID'=>21),(object)array('ID'=>22));
+    private function allIds():array{
+        if('cairo'===$this->slug())return array(11,12,13);
+        if('luxor'===$this->slug())return array(21,22);
+        if('private-tour'===$this->slug())return range(101,117);
         return array();
     }
+    public function get_items_total_count(){return count($this->allIds());}
+    public function get_items_per_page(){return 'private-tour'===$this->slug()?10:2;}
+    public function get_items(){
+        $per=$this->get_items_per_page();$offset=($this->page-1)*$per;
+        return array_map(static function($id){return(object)array('ID'=>$id);},array_slice($this->allIds(),$offset,$per));
+    }
+}
+
+final class ETGAcceptanceHugeQueryStub {
+    private $page=1;
+    public function setup_query(){}
+    public function set_filtered_prop($prop,$value){if('_page'===$prop)$this->page=max(1,(int)$value);}
+    public function get_items_total_count(){return 101;}
+    public function get_items_per_page(){return 10;}
+    public function get_items(){return array_map(static function($id){return(object)array('ID'=>$id);},range((($this->page-1)*10)+1,min($this->page*10,101)));}
 }
 
 $profiles=array(
@@ -112,7 +128,7 @@ etg_acceptance_same('cairo',$plan['cases'][0]['term_slug'],'stable term ordering
 etg_acceptance_expect(64===strlen($plan['plan_digest']),'plan carries deterministic digest');
 
 $result=$provider->run(array('profile_id'=>'tours','suite'=>'semantic'));
-etg_acceptance_same('PASS',$result['verdict'],'semantic parity passes when direct and AJAX normalize to same state and dataset');
+etg_acceptance_same('PASS',$result['verdict'],'semantic parity passes when direct and AJAX normalize to same state and full bounded datasets');
 etg_acceptance_same(true,$result['verification']['semantic_parity_verified'],'semantic verification is explicit');
 etg_acceptance_same(false,$result['verification']['browser_runtime_parity_verified'],'browser runtime is never self-certified by PHP');
 etg_acceptance_same('INCOMPLETE_EVIDENCE',$result['browser_runtime'],'browser evidence remains independent');
@@ -122,6 +138,19 @@ etg_acceptance_same(false,$result['effects']['business_state_mutation'],'accepta
 etg_acceptance_same(true,$result['cases'][0]['ids_parity'],'full dataset IDs are compared when complete');
 etg_acceptance_same(true,$result['cases'][0]['result_count_parity'],'result count parity is checked');
 etg_acceptance_same(true,$result['cases'][0]['seo_non_authority'],'AJAX SEO non-authority is checked');
+etg_acceptance_same(17,$result['cases'][2]['direct_total'],'multi-page semantic case keeps authoritative total');
+etg_acceptance_same(true,$result['cases'][2]['direct_dataset']['ids_complete'],'multi-page dataset is collected completely');
+etg_acceptance_same('paged_query_items',$result['cases'][2]['direct_dataset']['collection_mode'],'multi-page dataset uses bounded canonical page walk');
+etg_acceptance_same(2,$result['cases'][2]['direct_dataset']['page_fetches'],'17 results at page size 10 require exactly two page fetches');
+etg_acceptance_same(range(101,117),$result['cases'][2]['direct_dataset']['ids'],'multi-page ID order is preserved');
+
+$hugeEvaluator=new SemanticQueryEvaluator(null,static function():array{return array('resolved'=>true,'reason'=>'verified','query'=>new ETGAcceptanceHugeQueryStub(),'provider_query_id'=>'tours_query_archive','query_builder_custom_query_id'=>'tours_query_archive','query_builder_internal_id'=>'5','source'=>'test_fixture','identity_source'=>'custom_query_id');});
+$huge=$hugeEvaluator->evaluate(array('provider'=>'jet-engine','query_id'=>'tours_query_archive'),$profiles['tours'],array('tax_query'=>array('relation'=>'AND')));
+etg_acceptance_same(false,$huge['ids_complete'],'datasets above the ID ceiling remain incomplete');
+etg_acceptance_same('total_exceeds_id_ceiling',$huge['ids_reason'],'ID ceiling is explicit');
+etg_acceptance_expect($huge['page_fetches']<=1,'oversized datasets do not trigger unbounded page walking');
+etg_acceptance_same(100,$huge['max_ids'],'ID resource ceiling remains bounded');
+etg_acceptance_same(20,$huge['max_page_fetches'],'page-walk resource ceiling remains bounded');
 
 $blocked=$provider->run(array('profile_id'=>'missing','suite'=>'semantic'));
 etg_acceptance_same('BLOCKED',$blocked['verdict'],'missing governed profile blocks rather than pretending to fail product parity');
@@ -146,4 +175,4 @@ $mismatch=$mismatchProvider->run(array('profile_id'=>'tours'));
 etg_acceptance_same('FAIL',$mismatch['verdict'],'real semantic divergence is classified as product failure');
 etg_acceptance_same('PRODUCT_DEFECT',$mismatch['classification'],'semantic mismatch is not mislabeled as missing evidence');
 
-fwrite(STDOUT,"PASS: alpha13 live acceptance provider semantic foundation\n");
+fwrite(STDOUT,"PASS: alpha13 live acceptance provider bounded full-dataset collection\n");
