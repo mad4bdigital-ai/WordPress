@@ -177,6 +177,10 @@ final class MAD4B_SCP_Authorization {
 			$claim = MAD4B_SCP_Approval_Tickets::claim_exact( $decision['approval_ticket_id'], $agent, $decision['server_id'], $ability_name, $decision['provider'], $decision['target_fingerprint'], $authorization_input, $decision['ticket_class'] );
 			if ( is_wp_error( $claim ) ) {
 				MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				if ( 'mad4b_approval_replay_denied' === (string) $claim->get_error_code() ) {
+					self::audit_execution_denial( $ability_name, $claim, $input );
+					return $claim;
+				}
 				return self::deny( $claim->get_error_code(), $claim->get_error_message(), $ability_name );
 			}
 		}
