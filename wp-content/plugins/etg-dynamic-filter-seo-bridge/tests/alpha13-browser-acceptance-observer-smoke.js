@@ -15,9 +15,12 @@ function node(attrs={},text=''){return{attrs:Object.assign({},attrs),textContent
   vm.runInNewContext(source,context,{filename:'browser-acceptance-observer.js'});
   const observer=window.ETGDFSBBrowserAcceptanceObserver;
   assert(observer,'observer must expose a bounded API');assert.strictEqual(observer.contract,'etg.dfsb.browser-acceptance-observer.v1');assert.strictEqual(observer.passive,true);assert.strictEqual(observer.authorizing,false);
-  assert.strictEqual(observer.arm({case_id:'x',provider:'bad/provider',query_id:'q',taxonomy:'t',term_slug:'s'}).ok,false,'arbitrary provider input must fail closed');
+  assert.strictEqual(observer.arm({case_id:'x',provider:'bad/provider',query_id:'q',taxonomy:'t',term_slug:'s'},{nonce:'0123456789abcdef0123456789abcdef'}).ok,false,'arbitrary provider input must fail closed');
   const planCase={case_id:'case-luxor',provider:'jet-engine',query_id:'tours_query_archive',taxonomy:'location_jet',term_slug:'luxor'};
-  const armed=observer.arm(planCase);assert.strictEqual(armed.ok,true);assert.strictEqual(armed.authorizing,false);
+  assert.strictEqual(observer.arm(planCase).ok,false,'missing freshness challenge must fail closed');
+  assert.strictEqual(observer.arm(planCase,{nonce:'bad'}).ok,false,'malformed freshness nonce must fail closed');
+  const challenge={nonce:'0123456789abcdef0123456789abcdef'};
+  const armed=observer.arm(planCase,challenge);assert.strictEqual(armed.ok,true);assert.strictEqual(armed.authorizing,false);assert.strictEqual(armed.challenge_nonce,challenge.nonce);
   await sleep(5);assert(subs['ajaxFilters/updated'],'observer must subscribe to the real JetSmartFilters event');
   for(let i=0;i<40;i+=1){window.history.pushState({},'', '/noop-'+i);document.dispatchEvent({type:'etg-dfsb/ajax-presentation-blocked',detail:{reason:'r'.repeat(200),group:'jet-engine/tours_query_archive',blocking_reasons:Array.from({length:40},(_,j)=>'reason-'+j),unknown:'must-drop'}});}
   ids=[31,32,33];count=3;window.location.href='https://staging.egypttourgates.com/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:luxor/';window.location.pathname='/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:luxor/';
@@ -27,7 +30,7 @@ function node(attrs={},text=''){return{attrs:Object.assign({},attrs),textContent
   ids=[1,2];count=2;window.location.href='https://staging.egypttourgates.com/tours-and-activities/';window.location.pathname='/tours-and-activities/';
   document.dispatchEvent({type:'etg-dfsb/ajax-presentation-reset',detail:{restored_initial:true}});await sleep(5);
   const evidence=observer.snapshot();
-  assert.strictEqual(evidence.contract,'etg.dfsb.browser-acceptance-observer.v1');assert.strictEqual(evidence.passive,true);assert.strictEqual(evidence.authorizing,false);
+  assert.strictEqual(evidence.contract,'etg.dfsb.browser-acceptance-observer.v1');assert.strictEqual(evidence.passive,true);assert.strictEqual(evidence.authorizing,false);assert.strictEqual(evidence.challenge_nonce,challenge.nonce,'snapshot must echo the armed freshness nonce');
   assert.strictEqual(evidence.runtime.javascript_runtime,true);assert.strictEqual(evidence.runtime.jet_smart_filters_observed,true);assert.strictEqual(evidence.runtime.filter_group,'jet-engine/tours_query_archive');
   assert.deepStrictEqual(Array.from(evidence.rendered.ids),[31,32,33]);assert.strictEqual(evidence.rendered.result_count,3,'filtered DOM snapshot must survive later reset');
   assert.strictEqual(evidence.events.ajax_filters_updated,true);assert.strictEqual(evidence.events.presentation_updated,true);assert.strictEqual(evidence.events.presentation_reset,true);
