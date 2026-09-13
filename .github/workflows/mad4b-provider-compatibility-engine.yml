@@ -70,10 +70,15 @@ jobs:
         run: |
           DOC=wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md
           grep -Fq 'Behavioral evidence contract: `mad4b.provider-behavioral-evidence.v1`' "$DOC"
+          grep -Fq 'Canary execution contract: `mad4b.provider-canary-execution.v1`' "$DOC"
+          grep -Fq 'Canary execution evidence contract: `mad4b.provider-canary-execution-evidence.v1`' "$DOC"
+          grep -Fq '`mad4b/provider-canary-execute`' "$DOC"
           grep -Fq 'capability_certification_mode = per_ability_separate_from_artifact_truth' "$DOC"
           grep -Fq 'behavioral evidence can advance `shadow -> canary` only' "$DOC"
+          grep -Fq '`promotion_granted=false`' "$DOC"
           ! grep -Fq 'The existing server compiler still consumes one provider-level runtime boolean' "$DOC"
           ! grep -Fq 'governed by a future evidence authority' "$DOC"
+          ! grep -Fq 'execution of high-risk canary mutations;' "$DOC"
       - name: Lint compatibility engine and MCP compiler
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php
