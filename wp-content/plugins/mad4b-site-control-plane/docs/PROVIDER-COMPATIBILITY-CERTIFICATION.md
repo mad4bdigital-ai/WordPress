@@ -6,7 +6,11 @@ Behavioral evidence contract: `mad4b.provider-behavioral-evidence.v1`
 
 Behavioral receipt contract: `mad4b.provider-behavioral-evidence-receipt.v1`
 
-The Control Plane treats provider version or file-hash drift as an assessment trigger, not as sufficient evidence of semantic incompatibility. Artifact/runtime truth, structural compatibility, behavioral evidence, activation stage, MCP projection and execution authorization are separate authorities and must not overwrite one another.
+Canary execution contract: `mad4b.provider-canary-execution.v1`
+
+Canary execution evidence contract: `mad4b.provider-canary-execution-evidence.v1`
+
+The Control Plane treats provider version or file-hash drift as an assessment trigger, not as sufficient evidence of semantic incompatibility. Artifact/runtime truth, structural compatibility, behavioral evidence, activation stage, MCP projection, execution authorization and promotion authority are separate authorities and must not overwrite one another.
 
 ## Authority separation
 
@@ -18,12 +22,13 @@ The engine keeps these facts independent:
 4. **Activation stage** — `shadow`, `canary` or `active`; behavioral evidence alone never promotes a high-risk write to `active`.
 5. **MCP mount eligibility** — computed per ability for cataloged providers.
 6. **Execution authorization** — environment policy, NHI grants, exact approval, budgets, stale-state guards, mutation fencing and central authorization remain mandatory even when an ability is mount-eligible.
+7. **Promotion authority** — successful canary execution is evidence only; it never grants `canary -> active` by itself.
 
 `provider_certification.runtime_contract_ok` is artifact/runtime truth. Capability certification never rewrites it.
 
 ## Pipeline
 
-`artifact discovery -> structural/capability discovery -> risk classification -> trusted behavioral evidence -> certification level -> activation stage -> per-ability MCP projection`
+`artifact discovery -> structural/capability discovery -> risk classification -> trusted behavioral evidence -> certification level -> activation stage -> per-ability MCP projection -> governed canary execution evidence -> separately governed promotion`
 
 The first cataloged providers are JetEngine, JetSmartFilters and Bit Flows. The catalog is capability-oriented and version-agnostic. It declares canonical capabilities, mapped MAD4B abilities, bounded risk class, structural probes, and reversible contracts where applicable.
 
@@ -67,10 +72,50 @@ The public evidence surface reports verifier provenance without exposing local f
 ## Activation stages
 
 - `shadow` — observed but not eligible for normal write mount/execution.
-- `canary` — behavioral evidence may make a high-risk capability eligible for a future owner-governed canary procedure, but it remains blocked from the normal write surface.
-- `active` — only capabilities whose current certification policy permits normal write eligibility may reach this stage.
+- `canary` — trusted behavioral evidence may make a high-risk capability eligible for one separately approved canary execution, while the provider target remains blocked from the normal write surface.
+- `active` — only capabilities whose separately governed promotion policy is satisfied may become normal write-eligible.
 
 For `high_risk_write`, behavioral evidence can advance `shadow -> canary` only. It does not grant owner promotion, mutation authority or normal MCP write eligibility. `bitflows/run-flow` therefore remains blocked from `mad4b-write` while its capability is canary-only.
+
+## Governed high-risk canary execution
+
+The Control Plane exposes one core wrapper mutation:
+
+- `mad4b/provider-canary-execute`
+
+The wrapper is not a bypass around provider certification. It is projected onto `mad4b-write` as `provider=core` through the canonical adapter compiler, while the high-risk provider target itself remains unmounted. The wrapper is hard-classified `high` impact and therefore requires the existing exact one-time approval path.
+
+A canary request is bound to all of the following current facts:
+
+- exact Staging origin and environment;
+- exact live candidate source SHA;
+- exact live build fingerprint;
+- provider id;
+- capability id;
+- exact target provider ability;
+- current runtime artifact fingerprint;
+- current capability contract digest;
+- current accepted trusted behavioral evidence digest;
+- bounded target input digest.
+
+Immediately before side effects the wrapper re-runs those read-only guards and requires:
+
+- capability risk = `high_risk_write`;
+- activation stage = `canary`;
+- `canary_eligible=true`;
+- `write_eligible=false`;
+- target provider ability is still absent from normal `mad4b-write`;
+- adapter has explicitly opted the exact target ability into canary execution.
+
+Adapters are fail-closed by default. Bit Flows is the first explicit opt-in and only for `bitflows/run-flow`. Its canary path delegates back through the existing Bit Flows runtime guards, including `MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED`, `can_run_flow`, exact flow fingerprint/stale check, per-flow allowlist policy and adapter audit.
+
+The wrapper itself is governed by the existing `mad4b-write` authority: exact NHI grant, target fingerprint, short-lived one-time approval, budget reservation, replay protection and execution fence remain required. The provider target does not receive a normal write grant merely because a canary execution is approved.
+
+Successful execution returns `mad4b.provider-canary-execution-evidence.v1` bound to the exact candidate, artifact, capability contract, behavioral receipt and target input/result digests. That evidence is explicitly non-authorizing:
+
+- `activation_granted=false`;
+- `promotion_granted=false`;
+- activation stage remains `canary` after the execution.
 
 ## Per-capability MCP compiler
 
@@ -87,6 +132,8 @@ The previous provider-wide bridge that rewrote `provider_certification.runtime_c
 
 Execution-time permission callbacks still re-run the ability-specific mutation guard. Providers not yet represented in the capability catalog retain the legacy exact provider-contract guard as a fail-closed fallback.
 
+The internal `Provider Canary` adapter is not an external provider certification shortcut. It exists only to project `mad4b/provider-canary-execute` through the same canonical write compiler. It has `provider=core`, no provider runtime certification requirement, and no arbitrary target execution interface.
+
 ## MCP surfaces
 
 Read-only, non-authorizing abilities:
@@ -96,6 +143,10 @@ Read-only, non-authorizing abilities:
 - `mad4b/provider-behavioral-evidence-status`
 - `mad4b/provider-recertification-plan`
 - `mad4b/provider-mcp-mount-plan`
+
+Governed mutation wrapper:
+
+- `mad4b/provider-canary-execute` — high-impact, non-idempotent, destructive, one-time approval required; produces canary evidence only.
 
 The mount plan is evidence, not execution authority. Every returned status remains non-authorizing.
 
@@ -127,18 +178,20 @@ The engine records artifact evidence separately from structural and behavioral e
 - `OWNER_REVIEW_REQUIRED`;
 - `QUARANTINED`.
 
-The plan may identify `owner_governed_canary_execution_required`, but the compatibility engine does not implement owner authorization and cannot self-promote a capability.
+The plan may identify `owner_governed_canary_execution_required`. That action now has a bounded governed execution path, but the compatibility engine still does not implement owner promotion and cannot self-promote a capability.
 
 ## Safety invariants
 
-The compatibility engine must remain fail closed:
+The compatibility/canary system must remain fail closed:
 
 - no caller-supplied `owner_approved` boolean;
 - no behavioral receipt may self-grant mutation or activation;
 - no stale/wrong-artifact receipt may restore write eligibility;
 - no external verifier callback may become trusted merely by setting metadata flags;
-- no high-risk capability may enter the normal write projection from exact artifact identity or behavioral evidence alone;
+- no high-risk provider target may enter the normal write projection from exact artifact identity, behavioral evidence or a canary approval alone;
+- no canary execution evidence may self-promote `canary -> active`;
 - no capability certification may rewrite provider artifact truth;
+- no nested MAD4B approval envelope may be forwarded to a canary target;
 - mount eligibility never bypasses central mutation authorization.
 
 ## Current non-goals / next governed stages
@@ -146,9 +199,9 @@ The compatibility engine must remain fail closed:
 The following are intentionally **not** implemented by this contract yet:
 
 - owner-promotion authority for `canary -> active`;
-- execution of high-risk canary mutations;
+- promotion-policy consumption of successful canary execution evidence;
 - persistent behavioral-certification cache;
-- cross-request durable promotion ledger;
+- cross-request durable promotion ledger/state;
 - automatic Production activation.
 
-Those stages must use separately governed, candidate-bound evidence/authorization contracts. They must not be represented as caller booleans and must preserve the existing approval, replay protection, rollback and Production fail-closed boundaries.
+Those stages must use separately governed, candidate-bound evidence/authorization contracts. They must not be represented as caller booleans and must preserve the existing approval, replay protection and Production fail-closed boundaries.
