@@ -29,6 +29,15 @@ on:
 permissions:
   contents: read
 
+# Keep only the newest candidate for this PR/branch. Every synchronize event
+# re-evaluates pull_request path filters against the full PR diff, so browser-only
+# commits can otherwise leave stale exact-head compatibility jobs consuming
+# runners. Cancellation changes scheduling only; the surviving run still checks
+# out and verifies the exact current head before executing the full matrix.
+concurrency:
+  group: mad4b-provider-compatibility-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   provider-compatibility-contract:
     strategy:
