@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * persisted. WP-CLI, cron and internal rest_do_request probes cannot certify.
  */
 final class MAD4B_SCP_External_Handshake_Evidence {
-	const CONTRACT = 'mad4b.external-handshake-evidence.v2';
+	const CONTRACT = 'mad4b.external-handshake-evidence.v3';
 	const OPTION = 'mad4b_scp_external_handshake_evidence';
 	const OBSERVER_ATTESTATION_OPTION = 'mad4b_scp_external_inventory_attestation_v1';
 	const PENDING_PREFIX = 'mad4b_ext_hs_';
@@ -122,6 +122,10 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'expected_tool_count' => 0,
 			'write_tool_count' => 0,
 			'expected_write_tool_count' => 0,
+			'eligible_write_tool_count' => 0,
+			'expected_eligible_write_tool_count' => 0,
+			'provider_gated_write_tool_count' => 0,
+			'provider_gated_write_tools' => array(),
 			'tool_inventory_fingerprint' => '',
 			'expected_tool_inventory_fingerprint' => '',
 			'tool_inventory_match' => false,
@@ -146,6 +150,8 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$stored_inventory_fingerprint = isset( $evidence['tool_inventory_fingerprint'] ) ? strtolower( trim( (string) $evidence['tool_inventory_fingerprint'] ) ) : '';
 		$expected_tool_names = self::expected_tool_names();
 		$expected_write_names = self::expected_write_tool_names();
+		$eligible_write_names = self::expected_eligible_write_tool_names();
+		$gated_write_names = array_values( array_diff( $expected_write_names, $eligible_write_names ) );
 		$expected_inventory_fingerprint = self::inventory_fingerprint( $expected_tool_names );
 		$inventory_match = '' !== $expected_inventory_fingerprint
 			&& preg_match( '/^[a-f0-9]{64}$/', $stored_inventory_fingerprint )
@@ -171,6 +177,10 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$base['expected_tool_count'] = count( $expected_tool_names );
 		$base['write_tool_count'] = isset( $evidence['write_tool_count'] ) ? max( 0, (int) $evidence['write_tool_count'] ) : 0;
 		$base['expected_write_tool_count'] = count( $expected_write_names );
+		$base['eligible_write_tool_count'] = isset( $evidence['eligible_write_tool_count'] ) ? max( 0, (int) $evidence['eligible_write_tool_count'] ) : 0;
+		$base['expected_eligible_write_tool_count'] = count( $eligible_write_names );
+		$base['provider_gated_write_tool_count'] = count( $gated_write_names );
+		$base['provider_gated_write_tools'] = $gated_write_names;
 		$base['tool_inventory_fingerprint'] = preg_match( '/^[a-f0-9]{64}$/', $stored_inventory_fingerprint ) ? $stored_inventory_fingerprint : '';
 		$base['expected_tool_inventory_fingerprint'] = $expected_inventory_fingerprint;
 		$base['tool_inventory_match'] = (bool) $inventory_match;
@@ -264,11 +274,9 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$names = self::normalize_tool_names( $names );
 		if ( empty( $names ) ) return;
 
-		// A successful external handshake must prove the exact currently governed
-		// ChatGPT projection. Historical read-only deny-lists are invalid once the
-		// exact-origin Staging write authority intentionally exposes certified core
-		// mutations. Exact equality also fails closed on raw SQL, Breakglass, blocked
-		// provider mutations, missing writes, and any foreign/unexpected tool.
+		// The external schema is a stable registered Staging catalog. Exact equality
+		// still rejects foreign, raw SQL and Breakglass tools. Provider-gated writes
+		// may be discoverable, but execution is independently fenced by mad4b-write.
 		$expected_names = self::expected_tool_names();
 		if ( empty( $expected_names ) ) return;
 		$actual_fingerprint = self::inventory_fingerprint( $names );
@@ -278,9 +286,10 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$write_names = self::expected_write_tool_names();
 		$observed_write_names = array_values( array_intersect( $names, $write_names ) );
 		if ( count( $observed_write_names ) !== count( $write_names ) ) return;
-
+		$eligible_names = self::expected_eligible_write_tool_names();
+		$observed_eligible_names = array_values( array_intersect( $names, $eligible_names ) );
 		$blocked_names = self::blocked_write_tool_names();
-		if ( ! empty( array_intersect( $names, $blocked_names ) ) ) return;
+		$gated_names = array_values( array_intersect( $names, $blocked_names ) );
 		$breakglass_names = self::breakglass_tool_names();
 		if ( ! empty( array_intersect( $names, $breakglass_names ) ) ) return;
 
@@ -298,6 +307,9 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'mcp_session_fingerprint' => $session_fingerprint,
 			'tool_count' => count( $names ),
 			'write_tool_count' => count( $observed_write_names ),
+			'eligible_write_tool_count' => count( $observed_eligible_names ),
+			'provider_gated_write_tool_count' => count( $gated_names ),
+			'provider_gated_write_tools' => $gated_names,
 			'tool_inventory_fingerprint' => $actual_fingerprint,
 			'initialized_at' => isset( $pending['initialized_at'] ) ? sanitize_text_field( (string) $pending['initialized_at'] ) : '',
 			'verified_at' => gmdate( 'Y-m-d H:i:s' ),
@@ -339,6 +351,12 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 	}
 
 	private static function expected_write_tool_names() {
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) return array();
+		$abilities = method_exists( 'MAD4B_SCP_Servers', 'external_write_tools' ) ? MAD4B_SCP_Servers::external_write_tools() : MAD4B_SCP_Servers::write_tools();
+		return is_array( $abilities ) ? self::ability_names_to_mcp_tool_names( $abilities ) : array();
+	}
+
+	private static function expected_eligible_write_tool_names() {
 		if ( ! class_exists( 'MAD4B_SCP_Servers' ) ) return array();
 		$abilities = MAD4B_SCP_Servers::write_tools();
 		return is_array( $abilities ) ? self::ability_names_to_mcp_tool_names( $abilities ) : array();
