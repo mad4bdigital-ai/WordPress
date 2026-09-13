@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Authorization {
 	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
 	const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.approval-execution-boundary.v1';
+	const PERMISSION_DENIAL_AUDIT_CONTRACT = 'mad4b.remote-permission-denial-audit.v1';
 	const MAX_TARGET_CANONICAL_BYTES = 65536;
 	const MAX_TARGET_DEPTH = 8;
 
@@ -208,6 +209,24 @@ final class MAD4B_SCP_Authorization {
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return $args;
 		if ( empty( $mcp['mad4b_governed_write_authority'] ) || ! empty( $mcp['mad4b_execution_boundary'] ) ) return $args;
 
+		// MCP Adapter performs the ability permission check before the execute
+		// callback. A replay can therefore be denied before claim_mutation() is ever
+		// entered. Bind that real remote denial to the exact ticket here, while
+		// keeping generic/local permission probes audit-free. If this permission
+		// check denies, execution stops; if it succeeds and a later race makes
+		// claim_exact() fail, the claim-time fallback below records that separate
+		// path. The two paths are mutually exclusive for one tools/call.
+		if ( isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) && empty( $mcp['mad4b_permission_denial_audit'] ) ) {
+			$permission = $args['permission_callback'];
+			$args['permission_callback'] = static function ( $input = null ) use ( $permission, $name ) {
+				$result = call_user_func( $permission, $input );
+				if ( is_wp_error( $result ) ) MAD4B_SCP_Authorization::audit_remote_permission_denial( $name, $result, $input );
+				return $result;
+			};
+			if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+			$args['meta']['mcp']['mad4b_permission_denial_audit'] = self::PERMISSION_DENIAL_AUDIT_CONTRACT;
+		}
+
 		$original = $args['execute_callback'];
 		$declared_server = self::declared_server_for_registration( $args );
 		$args['execute_callback'] = static function ( $input = null ) use ( $original, $name, $declared_server ) {
@@ -300,6 +319,14 @@ final class MAD4B_SCP_Authorization {
 		);
 	}
 
+	public static function audit_remote_permission_denial( $ability_name, $error, $input = null ) {
+		if ( ! is_wp_error( $error ) || 'mad4b_approval_replay_denied' !== (string) $error->get_error_code() ) return false;
+		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
+		if ( ! in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-write' ), true ) ) return false;
+		self::audit_execution_denial( $ability_name, $error, $input );
+		return true;
+	}
+
 	private static function audit_execution_denial( $ability_name, $error, $input = null ) {
 		if ( ! is_wp_error( $error ) ) return;
 		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
@@ -307,11 +334,11 @@ final class MAD4B_SCP_Authorization {
 			? strtolower( (string) $identity['approval_ticket_id'] )
 			: '';
 
-		// Replay is denied during authorize_mutation() before the request-local
-		// identity overlay can bind the governance-input ticket. Preserve that
-		// already-present ticket identifier in audit evidence so durable acceptance
-		// reconstruction can bind the denial to the exact one-time ticket. Do not
-		// trust governance input for other denial classes.
+		// Replay can be denied either by a real remote MCP permission check before
+		// claim_mutation(), or during authorize_mutation() / claim_exact() inside the
+		// execution boundary. Preserve the already-present governance-input ticket
+		// only for this replay denial class so durable acceptance reconstruction can
+		// bind the denial to the exact one-time ticket.
 		if ( '' === $ticket_id
 			&& 'mad4b_approval_replay_denied' === (string) $error->get_error_code()
 			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
