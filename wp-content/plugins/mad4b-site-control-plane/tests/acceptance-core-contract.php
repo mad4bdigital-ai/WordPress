@@ -14,6 +14,8 @@ function expect_true( $condition, $message ) { if ( ! $condition ) { fwrite( STD
 
 $core_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-acceptance-core.php' );
 expect_true( false !== strpos( $core_source, "self::add_read_ability( 'mad4b/acceptance-capabilities', 'Get Acceptance Capabilities', array( __CLASS__, 'capabilities' ), array() );" ), 'no-input capabilities ability must not declare an object input schema' );
+expect_true( false !== strpos( $core_source, "'maxProperties' => 8" ), 'selector transport envelope must bound property count' );
+expect_true( false !== strpos( $core_source, "'additionalProperties' => array( 'type' => 'string', 'maxLength' => 256 )" ), 'unsupported selector fields must be bounded strings so Planner can return structured fail-closed evidence' );
 
 function safe_descriptor( $id = 'fake' ) {
 	return array(

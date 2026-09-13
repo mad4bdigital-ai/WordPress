@@ -48,7 +48,8 @@ final class MAD4B_SCP_Acceptance_Core {
 				'suite' => array( 'type' => 'string', 'enum' => array( 'semantic', 'full_semantic' ) ),
 			),
 			'required' => array( 'profile_id' ),
-			'additionalProperties' => false,
+			'maxProperties' => 8,
+			'additionalProperties' => array( 'type' => 'string', 'maxLength' => 256 ),
 		);
 		self::add_read_ability( 'mad4b/acceptance-plan', 'Plan Governed Acceptance', array( __CLASS__, 'plan' ), $selector );
 		self::add_read_ability( 'mad4b/acceptance-run', 'Run Governed Acceptance', array( __CLASS__, 'run' ), $selector );
