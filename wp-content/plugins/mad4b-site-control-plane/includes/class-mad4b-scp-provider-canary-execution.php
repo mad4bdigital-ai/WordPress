@@ -15,10 +15,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Provider_Canary_Execution {
 	const CONTRACT = 'mad4b.provider-canary-execution.v1';
 	const EVIDENCE_CONTRACT = 'mad4b.provider-canary-execution-evidence.v1';
+	const AUTHORIZED_EVIDENCE_CONTRACT = 'mad4b.provider-canary-authorized-evidence.v1';
 	const ABILITY = 'mad4b/provider-canary-execute';
 	const STAGING_HOST = 'staging.egypttourgates.com';
 	const MAX_TARGET_INPUT_BYTES = 32768;
 	const MAX_RESULT_BYTES = 16384;
+	const MAX_SAFE_SUMMARY_BYTES = 4096;
 	const MAX_DEPTH = 8;
 
 	private static $booted = false;
@@ -104,6 +106,8 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
 			return new WP_Error( 'mad4b_provider_canary_staging_only', 'Provider canary execution is restricted to the exact governed Staging origin.' );
 		}
+		$audit_ready = self::audit_ready();
+		if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 		$candidate = self::current_candidate();
 		if ( is_wp_error( $candidate ) ) return $candidate;
 
@@ -180,11 +184,13 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 			'behavioral_evidence_digest' => $context['behavioral_evidence_digest'],
 			'target_input_digest' => $context['target_input_digest'],
 		);
-		self::audit( $audit_base, 'attempt' );
+		$attempt = self::audit( $audit_base, 'attempt' );
+		if ( is_wp_error( $attempt ) ) return new WP_Error( 'mad4b_provider_canary_audit_preflight_failed', 'Canary execution is denied because the append-only attempt evidence could not be persisted.', array( 'reason_code' => $attempt->get_error_code() ) );
+
 		try {
 			$result = $context['adapter']->execute_canary( $context['target_ability'], $context['target_input'] );
 		} catch ( Throwable $error ) {
-			$failure = new WP_Error( 'mad4b_provider_canary_adapter_exception', 'Provider canary adapter threw before a bounded result was available.' );
+			$failure = new WP_Error( 'mad4b_provider_canary_adapter_exception', 'Provider canary adapter threw before a verified result was available.' );
 			self::audit( array_merge( $audit_base, array( 'reason_code' => $failure->get_error_code(), 'error_type' => get_class( $error ) ) ), 'failure' );
 			return $failure;
 		}
@@ -193,31 +199,161 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 			return $result;
 		}
 
-		$encoded_result = self::bounded_json( $result, self::MAX_RESULT_BYTES );
-		if ( is_wp_error( $encoded_result ) ) {
-			self::audit( array_merge( $audit_base, array( 'reason_code' => $encoded_result->get_error_code() ) ), 'failure' );
-			return $encoded_result;
-		}
+		$observation = self::observe_result( $context['adapter'], $context['target_ability'], $result );
 		$evidence = array_merge(
 			$audit_base,
 			array(
 				'contract' => self::EVIDENCE_CONTRACT,
 				'executed' => true,
 				'executed_at' => time(),
-				'target_result_digest' => hash( 'sha256', $encoded_result ),
+				'target_result_digest' => $observation['digest'],
+				'target_result_bounded' => $observation['bounded'],
+				'target_result_observation_complete' => $observation['complete'],
+				'target_result_summary_digest' => $observation['summary_digest'],
 				'authorizing' => false,
 				'activation_granted' => false,
 				'promotion_granted' => false,
 			)
 		);
 		$evidence['evidence_digest'] = self::stable_digest( $evidence );
-		self::audit( array_merge( $audit_base, array( 'evidence_digest' => $evidence['evidence_digest'] ) ), 'success' );
+
+		$execution_audit = self::audit(
+			array_merge(
+				$audit_base,
+				array(
+					'evidence_contract' => self::EVIDENCE_CONTRACT,
+					'evidence_digest' => $evidence['evidence_digest'],
+					'target_result_digest' => $observation['digest'],
+					'target_result_bounded' => $observation['bounded'],
+					'target_result_observation_complete' => $observation['complete'],
+					'promotion_granted' => false,
+				)
+			),
+			'executed'
+		);
+		$audit_meta = self::audit_metadata( $execution_audit );
+
 		return array(
 			'contract' => self::CONTRACT,
 			'canary_execution_evidence' => $evidence,
-			'target_result' => $result,
+			'target_result_summary' => $observation['summary'],
+			'target_result_disclosure' => 'adapter_safe_summary_only',
+			'execution_audit' => $audit_meta,
 			'activation_stage_after_execution' => 'canary',
 			'promotion_granted' => false,
+		);
+	}
+
+	/**
+	 * Persist authorization correlation only after the one-time approval claim has
+	 * been finalized as used. The provider callback never receives ticket/grant
+	 * metadata; Authorization owns that control-plane truth and passes only the
+	 * completed result back here for append-only correlation.
+	 */
+	public static function persist_authorized_evidence( array $claim, $result ) {
+		if ( ! is_array( $result ) || self::CONTRACT !== ( isset( $result['contract'] ) ? (string) $result['contract'] : '' ) ) return true;
+		$execution = isset( $result['canary_execution_evidence'] ) && is_array( $result['canary_execution_evidence'] ) ? $result['canary_execution_evidence'] : array();
+		if ( self::EVIDENCE_CONTRACT !== ( isset( $execution['contract'] ) ? (string) $execution['contract'] : '' ) || empty( $execution['executed'] ) ) {
+			return new WP_Error( 'mad4b_provider_canary_execution_evidence_invalid', 'Canary execution result is missing the canonical execution evidence required for durable authorization correlation.' );
+		}
+		if ( empty( $result['execution_audit']['persisted'] ) ) {
+			return new WP_Error( 'mad4b_provider_canary_execution_evidence_not_durable', 'Canary side effect completed but its immediate append-only execution evidence was not persisted; promotion evidence is unavailable.' );
+		}
+		$ticket_id = isset( $claim['approval_ticket_id'] ) ? strtolower( trim( (string) $claim['approval_ticket_id'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return new WP_Error( 'mad4b_provider_canary_approval_correlation_missing', 'Canary execution requires the exact finalized approval ticket for durable evidence correlation.' );
+
+		$authorized = array(
+			'contract' => self::AUTHORIZED_EVIDENCE_CONTRACT,
+			'execution_evidence_digest' => isset( $execution['evidence_digest'] ) ? self::clean_digest( $execution['evidence_digest'] ) : '',
+			'execution_audit_event_id' => isset( $result['execution_audit']['event_id'] ) ? (string) $result['execution_audit']['event_id'] : '',
+			'request_id' => isset( $claim['request_id'] ) ? substr( (string) $claim['request_id'], 0, 100 ) : '',
+			'approval_ticket_id' => $ticket_id,
+			'agent_public_id' => isset( $claim['agent_public_id'] ) ? (string) $claim['agent_public_id'] : '',
+			'grant_id' => isset( $claim['grant_id'] ) ? (int) $claim['grant_id'] : 0,
+			'server_id' => isset( $claim['server_id'] ) ? sanitize_key( (string) $claim['server_id'] ) : '',
+			'authority_provider' => isset( $claim['provider'] ) ? sanitize_key( (string) $claim['provider'] ) : '',
+			'impact' => isset( $claim['impact'] ) ? sanitize_key( (string) $claim['impact'] ) : '',
+			'provider_id' => isset( $execution['provider_id'] ) ? (string) $execution['provider_id'] : '',
+			'capability_id' => isset( $execution['capability_id'] ) ? (string) $execution['capability_id'] : '',
+			'target_ability' => isset( $execution['target_ability'] ) ? (string) $execution['target_ability'] : '',
+			'candidate_sha' => isset( $execution['candidate_sha'] ) ? (string) $execution['candidate_sha'] : '',
+			'build_fingerprint' => isset( $execution['build_fingerprint'] ) ? (string) $execution['build_fingerprint'] : '',
+			'artifact_fingerprint' => isset( $execution['artifact_fingerprint'] ) ? (string) $execution['artifact_fingerprint'] : '',
+			'capability_contract_digest' => isset( $execution['capability_contract_digest'] ) ? (string) $execution['capability_contract_digest'] : '',
+			'behavioral_evidence_digest' => isset( $execution['behavioral_evidence_digest'] ) ? (string) $execution['behavioral_evidence_digest'] : '',
+			'target_input_digest' => isset( $execution['target_input_digest'] ) ? (string) $execution['target_input_digest'] : '',
+			'target_result_digest' => isset( $execution['target_result_digest'] ) ? (string) $execution['target_result_digest'] : '',
+			'target_result_observation_complete' => ! empty( $execution['target_result_observation_complete'] ),
+			'executed_at' => isset( $execution['executed_at'] ) ? (int) $execution['executed_at'] : 0,
+			'approval_finalized' => 'used',
+			'authorizing' => false,
+			'activation_granted' => false,
+			'promotion_granted' => false,
+		);
+		if ( '' === $authorized['execution_evidence_digest'] ) return new WP_Error( 'mad4b_provider_canary_execution_digest_missing', 'Canary execution evidence digest is unavailable for authorization correlation.' );
+		$authorized['authorization_binding_digest'] = self::stable_digest( $authorized );
+		$entry = self::audit( $authorized, 'authorized_evidence' );
+		if ( is_wp_error( $entry ) ) {
+			return new WP_Error(
+				'mad4b_provider_canary_authorized_evidence_persist_failed',
+				'Canary side effect completed and the one-time approval is consumed, but the durable authorization-bound evidence could not be appended. Do not retry this execution.',
+				array( 'approval_ticket_finalized' => 'used', 'execution_evidence_digest' => $authorized['execution_evidence_digest'], 'reason_code' => $entry->get_error_code(), 'promotion_granted' => false )
+			);
+		}
+		return array(
+			'contract' => self::AUTHORIZED_EVIDENCE_CONTRACT,
+			'durable' => true,
+			'execution_evidence_digest' => $authorized['execution_evidence_digest'],
+			'authorization_binding_digest' => $authorized['authorization_binding_digest'],
+			'approval_ticket_id' => $ticket_id,
+			'request_id' => $authorized['request_id'],
+			'audit_event_id' => isset( $entry['event_id'] ) ? (string) $entry['event_id'] : '',
+			'audit_sequence' => isset( $entry['sequence'] ) ? (int) $entry['sequence'] : 0,
+			'audit_entry_hash' => isset( $entry['entry_hash'] ) ? (string) $entry['entry_hash'] : '',
+			'authorizing' => false,
+			'activation_granted' => false,
+			'promotion_granted' => false,
+		);
+	}
+
+	private static function audit_ready() {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || ! method_exists( 'MAD4B_SCP_Audit', 'storage_status' ) ) return new WP_Error( 'mad4b_provider_canary_audit_unavailable', 'Append-only audit authority is unavailable for canary execution.' );
+		$status = MAD4B_SCP_Audit::storage_status();
+		if ( ! is_array( $status ) || empty( $status['ready'] ) ) return new WP_Error( 'mad4b_provider_canary_audit_unavailable', 'Append-only audit storage is not ready for canary execution.' );
+		return true;
+	}
+
+	private static function observe_result( $adapter, $ability_name, $result ) {
+		$encoded = function_exists( 'wp_json_encode' ) ? wp_json_encode( $result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) : json_encode( $result );
+		$valid_json = is_string( $encoded );
+		$digest = $valid_json ? hash( 'sha256', $encoded ) : '';
+		$bounded = $valid_json && strlen( $encoded ) <= self::MAX_RESULT_BYTES;
+		$complete = $bounded && ( ! is_array( $result ) || self::depth_ok( $result, 0 ) );
+		$summary = array();
+		if ( is_object( $adapter ) && method_exists( $adapter, 'canary_result_summary' ) ) {
+			try { $summary = $adapter->canary_result_summary( $ability_name, $result ); }
+			catch ( Throwable $error ) { $summary = array(); }
+		}
+		if ( ! is_array( $summary ) ) $summary = array();
+		$summary_json = self::bounded_json( $summary, self::MAX_SAFE_SUMMARY_BYTES );
+		if ( is_wp_error( $summary_json ) ) { $summary = array(); $summary_json = '{}'; }
+		return array(
+			'digest' => $digest,
+			'bounded' => $bounded,
+			'complete' => $complete,
+			'summary' => $summary,
+			'summary_digest' => hash( 'sha256', $summary_json ),
+		);
+	}
+
+	private static function audit_metadata( $entry ) {
+		if ( is_wp_error( $entry ) || ! is_array( $entry ) ) return array( 'persisted' => false, 'event_id' => '', 'sequence' => 0, 'entry_hash' => '', 'reason_code' => is_wp_error( $entry ) ? $entry->get_error_code() : 'audit_entry_invalid' );
+		return array(
+			'persisted' => true,
+			'event_id' => isset( $entry['event_id'] ) ? (string) $entry['event_id'] : '',
+			'sequence' => isset( $entry['sequence'] ) ? (int) $entry['sequence'] : 0,
+			'entry_hash' => isset( $entry['entry_hash'] ) ? (string) $entry['entry_hash'] : '',
+			'reason_code' => '',
 		);
 	}
 
@@ -287,6 +423,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 	}
 
 	private static function audit( array $summary, $status ) {
-		if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( self::ABILITY, $summary, (string) $status );
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_provider_canary_audit_unavailable', 'Append-only audit authority is unavailable.' );
+		return MAD4B_SCP_Audit::record( self::ABILITY, $summary, (string) $status );
 	}
 }
