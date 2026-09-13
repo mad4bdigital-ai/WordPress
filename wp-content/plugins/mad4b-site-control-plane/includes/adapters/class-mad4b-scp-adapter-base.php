@@ -142,3 +142,11 @@ abstract class MAD4B_SCP_Adapter_Base {
 	protected function hash_value( $value ) { return hash( 'sha256', wp_json_encode( $value ) ); }
 	protected function detect_plugin_version() { return ''; }
 }
+
+// The canary subsystem is part of adapter governance, not a provider-specific
+// side channel. Load it immediately after the base contract exists so its
+// extension hook is registered before the first deterministic registry build.
+require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-canary-execution.php';
+require_once __DIR__ . '/class-mad4b-scp-provider-canary-adapter.php';
+MAD4B_SCP_Provider_Canary_Execution::boot_early();
+MAD4B_SCP_Provider_Canary_Adapter::boot();
