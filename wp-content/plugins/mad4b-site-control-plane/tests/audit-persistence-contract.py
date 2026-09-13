@@ -41,6 +41,12 @@ require(audit, "$wpdb->insert(\n\t\t\t$t['audit_events']", 'append-event')
 require(audit, "UPDATE {$t['audit_heads']}", 'head-advance')
 require(audit, 'mad4b_audit_legacy_anchor_drift', 'legacy-anchor-drift')
 require(integrity, 'public static function verify_chain()', 'chain-verifier')
+require(integrity, 'private static function committed_snapshot(', 'single-statement-committed-snapshot')
+require(integrity, 'AS event_count', 'snapshot-event-count')
+require(integrity, 'AS last_sequence', 'snapshot-last-sequence')
+require(integrity, "$target_sequence = (int) $status['head_sequence'];", 'fixed-verification-head')
+require(integrity, 'AND sequence <= %d ORDER BY sequence ASC LIMIT %d', 'bounded-verification-prefix')
+forbid(integrity, "$head = $tables_ready ? $wpdb->get_row(", 'no-split-head-status-read')
 require(budgets, 'public static function transaction_is_open()', 'budget-transaction-state-service')
 require(budgets, 'MAD4B_SCP_Audit::transaction_committed()', 'explicit-post-commit-dispatch')
 require(budgets, 'MAD4B_SCP_Audit::transaction_rolled_back()', 'explicit-post-rollback-drop')
@@ -57,4 +63,4 @@ for forbidden_writer in (
 ):
     forbid(audit_all, forbidden_writer, 'append-only-event-storage')
 
-print('mad4b.site-control-plane.audit-persistence-contract.v3: PASS')
+print('mad4b.site-control-plane.audit-persistence-contract.v4: PASS')
