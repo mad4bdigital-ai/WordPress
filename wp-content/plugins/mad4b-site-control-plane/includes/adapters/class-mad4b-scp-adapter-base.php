@@ -2,6 +2,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+if ( ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-compatibility-certification.php';
+}
+
 abstract class MAD4B_SCP_Adapter_Base {
 	abstract public function id();
 	abstract public function label();
@@ -24,6 +28,19 @@ abstract class MAD4B_SCP_Adapter_Base {
 		);
 		if ( is_array( $certification ) ) $status['provider_certification'] = $certification;
 		$status['mutation_requires_certification'] = $this->mutation_requires_certification();
+		if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
+			$status['capability_certification'] = MAD4B_SCP_Provider_Compatibility_Certification::assess_provider( $this->provider_key(), $this );
+			$status['capability_mount_projection'] = MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection( $this->provider_key(), $this );
+			// The existing MCP compiler consumes one provider-level boolean. For cataloged
+			// adapters, compile that boolean from the ability-level evidence and require
+			// every mutation declared by the adapter to be eligible. This preserves a
+			// fail-closed bridge while the public evidence remains per-capability.
+			if ( $status['mutation_requires_certification'] && isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ) {
+				$status['provider_certification']['legacy_runtime_contract_ok'] = ! empty( $status['provider_certification']['runtime_contract_ok'] );
+				$status['provider_certification']['runtime_contract_ok'] = ! empty( $status['capability_mount_projection']['all_write_abilities_eligible'] );
+				$status['provider_certification']['certification_mode'] = 'capability_compiled_fail_closed';
+			}
+		}
 		return $status;
 	}
 
@@ -66,8 +83,12 @@ abstract class MAD4B_SCP_Adapter_Base {
 			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
 			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and a bound enabled NHI are both present.' );
 			if ( $this->mutation_requires_certification() ) {
-				if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_provider_contracts_unavailable', 'Provider mutation is denied because the certification authority is unavailable.' );
-				$provider_guard = MAD4B_SCP_Provider_Contracts::mutation_guard( $this->certified_provider_key(), (bool) $this->is_available() );
+				if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
+					$provider_guard = MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( $this->provider_key(), $ability_name, (bool) $this->is_available(), $this );
+				} else {
+					if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_provider_contracts_unavailable', 'Provider mutation is denied because the certification authority is unavailable.' );
+					$provider_guard = MAD4B_SCP_Provider_Contracts::mutation_guard( $this->certified_provider_key(), (bool) $this->is_available() );
+				}
 				if ( is_wp_error( $provider_guard ) || true !== $provider_guard ) return $provider_guard;
 			}
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
