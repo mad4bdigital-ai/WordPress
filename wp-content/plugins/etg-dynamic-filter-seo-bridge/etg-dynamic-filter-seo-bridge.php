@@ -94,7 +94,9 @@ add_action( 'plugins_loaded', static function () {
 // from the already-verified semantic provider and reduces externally observed
 // browser evidence. No browser engine, arbitrary JavaScript, new public REST
 // transport, profile mutation, SEO publication, or Production activation is
-// introduced here.
+// introduced here. The observer script is not auto-enqueued for normal visitors;
+// its exact same-origin URL/hash are projected through the provider capabilities
+// so an external browser agent can load only the package-owned bounded observer.
 add_action( 'plugins_loaded', static function () {
     $guard = 'ETG\\DynamicFilterSEOBridge\\Runtime\\BootGuard';
     if ( $guard::shouldHold() || ! function_exists( 'apply_filters' ) ) { return; }
@@ -105,4 +107,5 @@ add_action( 'plugins_loaded', static function () {
         static function (): array { return ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect(); }
     );
     $browser->register();
+    ETG\DynamicFilterSEOBridge\Acceptance\BrowserObserverAsset::register();
 }, 22 );
