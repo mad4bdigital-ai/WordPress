@@ -85,6 +85,8 @@ The Control Plane exposes one core wrapper mutation:
 
 The wrapper is not a bypass around provider certification. It is projected onto `mad4b-write` as `provider=core` through the canonical adapter compiler, while the high-risk provider target itself remains unmounted. The wrapper is hard-classified `high` impact and therefore requires the existing exact one-time approval path.
 
+The internal `Provider Canary` adapter declares the wrapper on the dedicated adapter surface `write` only. It must not declare or mount the wrapper on `admin`, `content` or `read`. The canonical `mad4b-write` compiler consumes that `write` surface, while `mad4b-admin` continues to consume only `admin`; this prevents the canary wrapper from acquiring a second administrative transport path.
+
 A canary request is bound to all of the following current facts:
 
 - exact Staging origin and environment;
@@ -132,7 +134,7 @@ The previous provider-wide bridge that rewrote `provider_certification.runtime_c
 
 Execution-time permission callbacks still re-run the ability-specific mutation guard. Providers not yet represented in the capability catalog retain the legacy exact provider-contract guard as a fail-closed fallback.
 
-The internal `Provider Canary` adapter is not an external provider certification shortcut. It exists only to project `mad4b/provider-canary-execute` through the same canonical write compiler. It has `provider=core`, no provider runtime certification requirement, and no arbitrary target execution interface.
+The internal `Provider Canary` adapter is not an external provider certification shortcut. It exists only to project `mad4b/provider-canary-execute` through the same canonical write compiler. It has `provider=core`, no provider runtime certification requirement, no arbitrary target execution interface, and a write-only adapter surface.
 
 ## MCP surfaces
 
@@ -146,7 +148,7 @@ Read-only, non-authorizing abilities:
 
 Governed mutation wrapper:
 
-- `mad4b/provider-canary-execute` — high-impact, non-idempotent, destructive, one-time approval required; produces canary evidence only.
+- `mad4b/provider-canary-execute` — high-impact, non-idempotent, destructive, one-time approval required; projected only through the dedicated `write` adapter surface and produces canary evidence only.
 
 The mount plan is evidence, not execution authority. Every returned status remains non-authorizing.
 
@@ -192,6 +194,7 @@ The compatibility/canary system must remain fail closed:
 - no canary execution evidence may self-promote `canary -> active`;
 - no capability certification may rewrite provider artifact truth;
 - no nested MAD4B approval envelope may be forwarded to a canary target;
+- no canary wrapper may be mounted on `mad4b-admin` or `mad4b-content`;
 - mount eligibility never bypasses central mutation authorization.
 
 ## Current non-goals / next governed stages
