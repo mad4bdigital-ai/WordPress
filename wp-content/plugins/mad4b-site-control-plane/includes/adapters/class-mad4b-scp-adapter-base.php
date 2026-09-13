@@ -76,9 +76,16 @@ abstract class MAD4B_SCP_Adapter_Base {
 		return new WP_Error( 'mad4b_provider_canary_execution_unsupported', 'This adapter does not implement governed canary execution for the requested ability.' );
 	}
 
+	/**
+	 * Public canary responses never expose the raw provider result. Adapters may
+	 * explicitly opt into a bounded, non-sensitive summary. Empty is the safe
+	 * default; the wrapper still records a digest of the complete provider result.
+	 */
+	public function canary_result_summary( $ability_name, $result ) { return array(); }
+
 	public function declared_server_for_ability( $ability_name ) {
 		$map = $this->ability_names();
-		foreach ( array( 'content', 'admin', 'read' ) as $surface ) {
+		foreach ( array( 'content', 'write', 'admin', 'read' ) as $surface ) {
 			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return 'mad4b-' . $surface;
 		}
 		return '';
