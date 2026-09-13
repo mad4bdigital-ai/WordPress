@@ -19,6 +19,9 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 	const LEVEL_REVERSIBLE_WRITE = 'REVERSIBLE_WRITE_CERTIFIED';
 	const LEVEL_FULL = 'FULLY_CERTIFIED';
 	const LEVEL_QUARANTINED = 'QUARANTINED';
+	const ACTIVATION_SHADOW = 'shadow';
+	const ACTIVATION_CANARY = 'canary';
+	const ACTIVATION_ACTIVE = 'active';
 
 	private static $catalog = null;
 	private static $assessment_cache = array();
@@ -159,17 +162,23 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		foreach ( (array) ( $assessment['capabilities'] ?? array() ) as $id => $capability ) {
 			$level = isset( $capability['certification_level'] ) ? (string) $capability['certification_level'] : self::LEVEL_UNKNOWN;
 			$risk = isset( $capability['risk'] ) ? (string) $capability['risk'] : 'unknown';
+			$activation_stage = isset( $capability['activation_stage'] ) ? (string) $capability['activation_stage'] : self::ACTIVATION_SHADOW;
 			if ( self::LEVEL_QUARANTINED === $level ) {
-				$steps[] = array( 'capability_id' => $id, 'action' => 'structural_reconciliation_required', 'risk' => $risk );
+				$steps[] = array( 'capability_id' => $id, 'action' => 'structural_reconciliation_required', 'risk' => $risk, 'activation_stage' => $activation_stage );
 				$quarantined = true;
 				continue;
 			}
 			if ( 'read' === $risk && self::LEVEL_READ === $level ) {
-				$steps[] = array( 'capability_id' => $id, 'action' => 'record_compatible_read_candidate', 'risk' => $risk );
+				$steps[] = array( 'capability_id' => $id, 'action' => 'record_compatible_read_candidate', 'risk' => $risk, 'activation_stage' => $activation_stage );
+				continue;
+			}
+			if ( 'high_risk_write' === $risk && self::ACTIVATION_ACTIVE !== $activation_stage ) {
+				$steps[] = array( 'capability_id' => $id, 'action' => 'run_behavioral_probe_then_owner_authorize_canary', 'risk' => $risk, 'activation_stage' => $activation_stage );
+				$owner_review = true;
 				continue;
 			}
 			if ( 'read' !== $risk && empty( $capability['write_eligible'] ) ) {
-				$steps[] = array( 'capability_id' => $id, 'action' => ! empty( $capability['reversible'] ) ? 'run_behavioral_and_rollback_probe' : 'run_behavioral_probe_and_owner_review', 'risk' => $risk );
+				$steps[] = array( 'capability_id' => $id, 'action' => ! empty( $capability['reversible'] ) ? 'run_behavioral_and_rollback_probe' : 'run_behavioral_probe_and_owner_review', 'risk' => $risk, 'activation_stage' => $activation_stage );
 				$owner_review = true;
 			}
 		}
@@ -201,6 +210,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 						'ability' => $ability,
 						'certification_level' => isset( $capability['certification_level'] ) ? $capability['certification_level'] : self::LEVEL_UNKNOWN,
 						'risk' => isset( $capability['risk'] ) ? $capability['risk'] : 'unknown',
+						'activation_stage' => isset( $capability['activation_stage'] ) ? $capability['activation_stage'] : self::ACTIVATION_SHADOW,
+						'activation_required' => ! empty( $capability['activation_required'] ),
 					);
 					if ( 'read' === $entry['risk'] ) {
 						$entry['surface'] = 'read';
@@ -221,7 +232,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'blocked' => $blocked,
 			'eligible_count' => count( $eligible ),
 			'blocked_count' => count( $blocked ),
-			'note' => 'Write eligibility is evidence only; execution still requires environment policy, exact NHI grants, approval, budgets, stale-state guards and authorization.',
+			'note' => 'Write eligibility is evidence only; high-risk writes remain shadow until trusted behavioral evidence and governed promotion exist. Execution still requires environment policy, exact NHI grants, approval, budgets, stale-state guards and authorization.',
 		);
 	}
 
@@ -269,19 +280,18 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$blocked = array();
 		foreach ( $write_abilities as $ability ) {
 			$status = self::ability_status( $provider, $ability, $adapter );
+			$entry = array(
+				'ability' => $ability,
+				'capability_id' => isset( $status['capability_id'] ) ? (string) $status['capability_id'] : '',
+				'certification_level' => isset( $status['certification_level'] ) ? (string) $status['certification_level'] : self::LEVEL_UNKNOWN,
+				'risk' => isset( $status['risk'] ) ? (string) $status['risk'] : 'unknown',
+				'activation_stage' => isset( $status['activation_stage'] ) ? (string) $status['activation_stage'] : self::ACTIVATION_SHADOW,
+			);
 			if ( ! empty( $status['write_eligible'] ) ) {
-				$eligible[ $ability ] = array(
-					'ability' => $ability,
-					'capability_id' => isset( $status['capability_id'] ) ? (string) $status['capability_id'] : '',
-					'certification_level' => isset( $status['certification_level'] ) ? (string) $status['certification_level'] : self::LEVEL_UNKNOWN,
-				);
+				$eligible[ $ability ] = $entry;
 			} else {
-				$blocked[ $ability ] = array(
-					'ability' => $ability,
-					'capability_id' => isset( $status['capability_id'] ) ? (string) $status['capability_id'] : '',
-					'certification_level' => isset( $status['certification_level'] ) ? (string) $status['certification_level'] : self::LEVEL_UNKNOWN,
-					'reason' => empty( $status ) ? 'ability_capability_not_cataloged' : 'capability_write_certification_required',
-				);
+				$entry['reason'] = empty( $status ) ? 'ability_capability_not_cataloged' : ( 'high_risk_write' === $entry['risk'] ? 'high_risk_activation_required' : 'capability_write_certification_required' );
+				$blocked[ $ability ] = $entry;
 			}
 		}
 		return array(
@@ -304,11 +314,12 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		else {
 			if ( empty( $status['structural_compatible'] ) ) $violations[] = 'structural_contract_not_satisfied';
 			if ( isset( $status['certification_level'] ) && in_array( $status['certification_level'], array( self::LEVEL_DISCOVERED, self::LEVEL_READ, self::LEVEL_UNKNOWN ), true ) ) $violations[] = 'write_behavioral_certification_required';
+			if ( 'high_risk_write' === (string) ( $status['risk'] ?? '' ) && self::ACTIVATION_ACTIVE !== (string) ( $status['activation_stage'] ?? self::ACTIVATION_SHADOW ) ) $violations[] = 'high_risk_activation_required';
 			if ( self::LEVEL_QUARANTINED === (string) ( $status['certification_level'] ?? '' ) ) $violations[] = 'capability_quarantined';
 		}
 		return new WP_Error(
 			'mad4b_provider_capability_mutation_not_certified',
-			'Provider mutation is denied until this exact ability reaches a governed write certification level.',
+			'Provider mutation is denied until this exact ability reaches a governed write certification and activation level.',
 			array( 'provider' => $provider, 'ability' => (string) $ability_name, 'violations' => array_values( array_unique( $violations ) ), 'capability_status' => $status )
 		);
 	}
@@ -333,6 +344,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			$risk = isset( $capability['risk'] ) ? sanitize_key( (string) $capability['risk'] ) : 'read';
 			$reversible = ! empty( $capability['reversible'] );
 			$level = self::level_for( $available, $structural, $exact_certified, $risk, $reversible );
+			$activation_stage = self::activation_stage_for( $risk, $level );
+			$write_level_eligible = in_array( $level, array( self::LEVEL_BOUNDED_WRITE, self::LEVEL_REVERSIBLE_WRITE, self::LEVEL_FULL ), true );
 			$capabilities[ $capability_id ] = array(
 				'capability_id' => $capability_id,
 				'risk' => $risk,
@@ -342,9 +355,11 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				'structural_compatible' => $structural,
 				'structural_probes' => $probes['probes'],
 				'certification_level' => $level,
+				'activation_stage' => $activation_stage,
+				'activation_required' => 'high_risk_write' === $risk,
 				'read_eligible' => 'read' === $risk && in_array( $level, array( self::LEVEL_READ, self::LEVEL_FULL ), true ),
-				'write_eligible' => 'read' !== $risk && in_array( $level, array( self::LEVEL_BOUNDED_WRITE, self::LEVEL_REVERSIBLE_WRITE, self::LEVEL_FULL ), true ),
-				'behavioral_probe_required' => 'read' !== $risk && ! $exact_certified,
+				'write_eligible' => 'read' !== $risk && $write_level_eligible && self::ACTIVATION_ACTIVE === $activation_stage,
+				'behavioral_probe_required' => 'read' !== $risk && ( ! $exact_certified || 'high_risk_write' === $risk ),
 				'rollback_probe_required' => 'read' !== $risk && $reversible && ! $exact_certified,
 			);
 		}
@@ -372,9 +387,16 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		if ( ! $available ) return self::LEVEL_UNKNOWN;
 		if ( ! $structural ) return self::LEVEL_QUARANTINED;
 		if ( 'read' === $risk ) return $exact_certified ? self::LEVEL_FULL : self::LEVEL_READ;
+		if ( 'high_risk_write' === $risk ) return self::LEVEL_DISCOVERED;
 		if ( ! $exact_certified ) return self::LEVEL_DISCOVERED;
 		if ( $reversible ) return self::LEVEL_REVERSIBLE_WRITE;
-		return 'bounded_write' === $risk ? self::LEVEL_BOUNDED_WRITE : self::LEVEL_FULL;
+		return 'bounded_write' === $risk ? self::LEVEL_BOUNDED_WRITE : self::LEVEL_DISCOVERED;
+	}
+
+	private static function activation_stage_for( $risk, $level ) {
+		if ( 'read' === $risk ) return self::ACTIVATION_ACTIVE;
+		if ( 'high_risk_write' === $risk ) return self::ACTIVATION_SHADOW;
+		return in_array( $level, array( self::LEVEL_BOUNDED_WRITE, self::LEVEL_REVERSIBLE_WRITE, self::LEVEL_FULL ), true ) ? self::ACTIVATION_ACTIVE : self::ACTIVATION_SHADOW;
 	}
 
 	private static function evaluate_probes( array $probes, $adapter ) {
