@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Servers {
 	private static $registrations = array();
 	private static $adapter_write_projection_cache = null;
+	private static $external_attestation_projection_active = false;
 
 	public static function expected_server_ids() {
 		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
@@ -111,6 +112,50 @@ final class MAD4B_SCP_Servers {
 			return strcmp( isset( $a['ability'] ) ? $a['ability'] : '', isset( $b['ability'] ) ? $b['ability'] : '' );
 		} );
 		return $blocked;
+	}
+
+	/**
+	 * Re-project dynamic provider eligibility over immutable external inventory
+	 * evidence at read time. A same-build certification transition therefore
+	 * updates gated/eligible semantics without rewriting the captured MCP receipt
+	 * or requiring a new tools/list scan.
+	 */
+	public static function filter_external_inventory_attestation_runtime( $stored ) {
+		if ( self::$external_attestation_projection_active || ! is_array( $stored ) || empty( $stored ) ) return $stored;
+		if ( ! class_exists( '\\WP\\MCP\\Domain\\Utils\\McpNameSanitizer' ) ) return $stored;
+
+		self::$external_attestation_projection_active = true;
+		$external_names = self::mcp_tool_names_from_abilities( self::external_write_tools() );
+		$eligible_names = self::mcp_tool_names_from_abilities( self::write_tools() );
+		$blocked_abilities = array();
+		foreach ( self::blocked_write_tools() as $entry ) {
+			if ( is_array( $entry ) && ! empty( $entry['ability'] ) ) $blocked_abilities[] = (string) $entry['ability'];
+		}
+		$blocked_names = self::mcp_tool_names_from_abilities( $blocked_abilities );
+		$provider_gated = array_values( array_intersect( $external_names, $blocked_names ) );
+		$execution_leaks = array_values( array_intersect( $eligible_names, $blocked_names ) );
+
+		$stored['eligible_write_tool_count'] = count( $eligible_names );
+		$stored['expected_eligible_write_tool_count'] = count( $eligible_names );
+		$stored['provider_gated_write_tool_count'] = count( $provider_gated );
+		$stored['provider_gated_write_tools'] = $provider_gated;
+		$stored['provider_execution_mount_leaks'] = $execution_leaks;
+		$stored['provider_blocked_tool_leaks'] = $execution_leaks;
+		$stored['runtime_projection_current'] = true;
+		self::$external_attestation_projection_active = false;
+		return $stored;
+	}
+
+	private static function mcp_tool_names_from_abilities( array $abilities ) {
+		$names = array();
+		foreach ( array_values( array_unique( array_map( 'strval', $abilities ) ) ) as $ability_name ) {
+			$name = \WP\MCP\Domain\Utils\McpNameSanitizer::sanitize_name( $ability_name );
+			if ( is_wp_error( $name ) || ! is_string( $name ) || '' === trim( $name ) ) continue;
+			$names[] = trim( $name );
+		}
+		$names = array_values( array_unique( $names ) );
+		sort( $names, SORT_STRING );
+		return $names;
 	}
 
 	private static function registered_mutation_ability( $ability_name ) {
@@ -336,3 +381,5 @@ final class MAD4B_SCP_Servers {
 		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '' );
 	}
 }
+
+add_filter( 'option_mad4b_scp_external_inventory_attestation_v1', array( 'MAD4B_SCP_Servers', 'filter_external_inventory_attestation_runtime' ), 120 );
