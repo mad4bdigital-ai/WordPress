@@ -24,7 +24,6 @@ if ( false === $root ) {
     $root = realpath( __DIR__ . '/..' );
 }
 if ( false === $root || ! is_file( $root . '/mad4b-site-control-plane.php' ) ) {
-    // Normal repository location: tests/<this file>.
     $root = realpath( dirname( __FILE__ ) . '/..' );
 }
 if ( false === $root || ! is_file( $root . '/mad4b-site-control-plane.php' ) ) {
@@ -166,7 +165,7 @@ $writes = array(
     'media/set-featured',
     'media/update-metadata',
 );
-$reads = array();
+$reads = array( 'etg-dfsb/evidence-provider', 'etg-dfsb/evidence-query' );
 for ( $i = 1; $i <= 78; $i++ ) $reads[] = sprintf( 'read/tool-%03d', $i );
 MAD4B_SCP_Servers::$write_tools = $writes;
 MAD4B_SCP_Servers::$chatgpt_tools = array_merge( $reads, $writes );
@@ -176,22 +175,32 @@ MAD4B_SCP_Servers::$blocked_write_tools = array(
     array( 'ability' => 'seo/update-meta' ),
 );
 $exact_external = mad4b_external_names( MAD4B_SCP_Servers::$chatgpt_tools );
-mad4b_assert( 88 === count( $exact_external ), 'fixture must represent the expected 88-tool external inventory' );
+$expected_tool_count = count( $exact_external );
+$expected_write_count = count( $writes );
+$expected_evidence_tools = array( mad4b_tool_name( 'etg-dfsb/evidence-provider' ), mad4b_tool_name( 'etg-dfsb/evidence-query' ) );
+foreach ( $expected_evidence_tools as $tool_name ) {
+    mad4b_assert( in_array( $tool_name, $exact_external, true ), 'ETG evidence tool absent from canonical expected external inventory: ' . $tool_name );
+}
 
-// 1. Fresh exact tools/list, including all 10 governed writes, must certify and persist.
+// 1. Fresh exact tools/list must certify against the dynamically derived projection.
 $evidence = mad4b_capture_scenario( 'session-exact', array_reverse( $exact_external ) );
 mad4b_assert( ! empty( $evidence ), 'exact governed inventory was not persisted' );
 mad4b_assert( 'mad4b.external-handshake-evidence.v2' === $evidence['contract'], 'v2 evidence contract missing' );
-mad4b_assert( 88 === (int) $evidence['tool_count'], 'exact external tool count must be 88' );
-mad4b_assert( 10 === (int) $evidence['write_tool_count'], 'all 10 governed writes must be attested' );
+mad4b_assert( $expected_tool_count === (int) $evidence['tool_count'], 'external tool count must equal the runtime-derived expected count' );
+mad4b_assert( $expected_write_count === (int) $evidence['write_tool_count'], 'external write count must equal the runtime-derived write count' );
 mad4b_assert( ! empty( $evidence['tool_inventory_fingerprint'] ) && 64 === strlen( $evidence['tool_inventory_fingerprint'] ), 'inventory fingerprint missing' );
 $status = MAD4B_SCP_External_Handshake_Evidence::status();
 mad4b_assert( ! empty( $status['verified'] ), 'fresh exact inventory should verify' );
 mad4b_assert( 'verified_external_chatgpt_session' === $status['status'], 'fresh exact inventory returned wrong status' );
 mad4b_assert( ! empty( $status['tool_inventory_match'] ), 'fresh exact inventory must match current runtime' );
-mad4b_assert( 88 === (int) $status['expected_tool_count'] && 10 === (int) $status['expected_write_tool_count'], 'expected counts mismatch' );
+mad4b_assert( $expected_tool_count === (int) $status['expected_tool_count'], 'expected tool count must be derived from chatgpt_tools()' );
+mad4b_assert( $expected_write_count === (int) $status['expected_write_tool_count'], 'expected write count must be derived from write_tools()' );
+mad4b_assert( hash_equals( (string) $evidence['tool_inventory_fingerprint'], (string) $status['expected_tool_inventory_fingerprint'] ), 'expected fingerprint must be derived from the same canonical projected inventory' );
 foreach ( array( 'mad4b/database-update', 'mad4b/content-update-post', 'mad4b/plugin-activate', 'mad4b/mutation-undo' ) as $allowed_write ) {
     mad4b_assert( in_array( mad4b_tool_name( $allowed_write ), $exact_external, true ), 'governed write absent from accepted fixture: ' . $allowed_write );
+}
+foreach ( $expected_evidence_tools as $tool_name ) {
+    mad4b_assert( ! in_array( $tool_name, mad4b_external_names( MAD4B_SCP_Servers::$write_tools ), true ), 'ETG evidence tool leaked into write inventory: ' . $tool_name );
 }
 
 // 2. Raw SQL/Breakglass and provider-blocked write names must fail closed.
@@ -202,26 +211,27 @@ $provider_blocked = $exact_external;
 $provider_blocked[] = mad4b_tool_name( 'elementor/update-widget-settings' );
 mad4b_assert( empty( mad4b_capture_scenario( 'session-provider-blocked', $provider_blocked ) ), 'provider-blocked tool must reject handshake evidence' );
 
-// 3. Missing governed/runtime tool or unexpected foreign tool must reject.
-$missing = $exact_external;
-array_pop( $missing );
-mad4b_assert( empty( mad4b_capture_scenario( 'session-missing', $missing ) ), 'missing expected tool must reject handshake evidence' );
+// 3. A missing expected ETG evidence tool or any unexpected foreign tool must reject.
+$missing = array_values( array_diff( $exact_external, array( mad4b_tool_name( 'etg-dfsb/evidence-query' ) ) ) );
+mad4b_assert( count( $missing ) === $expected_tool_count - 1, 'missing-tool fixture did not remove exactly one projected ETG evidence tool' );
+mad4b_assert( empty( mad4b_capture_scenario( 'session-missing-etg-evidence', $missing ) ), 'missing expected ETG evidence tool must reject handshake evidence' );
 $unexpected = $exact_external;
 $unexpected[] = 'foreign-unexpected-tool';
 mad4b_assert( empty( mad4b_capture_scenario( 'session-unexpected', $unexpected ) ), 'unexpected foreign tool must reject handshake evidence' );
 
-// 4. A later runtime projection change invalidates previously good evidence.
+// 4. Any later canonical projection change invalidates previously good evidence.
 $evidence = mad4b_capture_scenario( 'session-drift', $exact_external );
 mad4b_assert( ! empty( $evidence ), 'drift fixture failed to establish fresh evidence first' );
-MAD4B_SCP_Servers::$chatgpt_tools[] = 'read/tool-079';
+MAD4B_SCP_Servers::$chatgpt_tools[] = 'read/tool-projection-change';
 $status = MAD4B_SCP_External_Handshake_Evidence::status();
 mad4b_assert( empty( $status['verified'] ), 'inventory drift must invalidate prior evidence' );
 mad4b_assert( 'stale_tool_inventory_evidence' === $status['status'], 'inventory drift must report stale_tool_inventory_evidence' );
 mad4b_assert( empty( $status['tool_inventory_match'] ), 'drifted evidence must not report inventory match' );
+mad4b_assert( $expected_tool_count + 1 === (int) $status['expected_tool_count'], 'runtime projection change must update expected tool count dynamically' );
 
 $connection_source = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-status.php' );
 mad4b_assert( false !== strpos( $connection_source, "'stale_tool_inventory_evidence'" ), 'connection-status must recognize stale inventory evidence' );
 mad4b_assert( false !== strpos( $connection_source, "'external_handshake_stale'" ), 'connection-status must map stale evidence to external_handshake_stale' );
 
-echo "mad4b.external-handshake-inventory.v1: PASS\n";
+echo "mad4b.external-handshake-inventory.v2: PASS\n";
 }
