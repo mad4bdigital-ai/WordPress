@@ -37,8 +37,8 @@ concurrency:
 
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-  ETG_BROWSER_ACCEPTANCE_HEAD: 2a8b29afddd4a6ec6291d2f107894d528a748ee3
-  ETG_BROWSER_ACCEPTANCE_TREE: d9fa11aeafb8b9cae48c1ff0b6b513c6dffd0d40
+  ETG_BROWSER_ACCEPTANCE_HEAD: cfa61bb139fe5c4b345f070693adea90bccd9433
+  ETG_BROWSER_ACCEPTANCE_TREE: 2cf7a18c6e845cb5aff12f547f96d58eb9e08114
 
 jobs:
   contract:
@@ -110,6 +110,7 @@ jobs:
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/LiveAcceptanceProvider.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserObserverAsset.php
+          test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceFreshnessGuard.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js
           printf '%s\n' "{\"contract\":\"etg.dfsb.embedded-build-identity.v1\",\"git_sha\":\"$ETG_BROWSER_ACCEPTANCE_HEAD\",\"tree_sha\":\"$ETG_BROWSER_ACCEPTANCE_TREE\",\"plugin_version\":\"0.4.0-alpha.13\"}" > wp-content/plugins/etg-dynamic-filter-seo-bridge/build-identity.json
       - uses: shivammathur/setup-php@v2
