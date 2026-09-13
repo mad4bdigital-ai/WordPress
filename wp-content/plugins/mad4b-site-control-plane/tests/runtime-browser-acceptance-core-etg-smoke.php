@@ -10,6 +10,7 @@ $check( current_user_can( 'manage_options' ), 'Browser Acceptance runtime smoke 
 $check( class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ), 'MAD4B Browser Acceptance Core class is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Browser_Acceptance_Provider_Registry' ), 'MAD4B Browser Acceptance Provider Registry is unavailable.' );
 $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Acceptance\\BrowserAcceptanceProvider' ), 'Exact ETG Browser Acceptance Provider class is unavailable.' );
+$check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Acceptance\\BrowserObserverAsset' ), 'Exact ETG Browser Observer Asset descriptor is unavailable.' );
 $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\BuildIdentity' ), 'ETG exact build identity source is unavailable.' );
 
 $ability_names = array(
@@ -61,15 +62,29 @@ foreach ( array( 'arbitrary_url_input', 'arbitrary_javascript_input', 'business_
 	$check( array_key_exists( $key, $descriptor ) && false === $descriptor[ $key ], 'ETG Browser provider opened unsafe boundary: ' . $key );
 }
 
+$provider_capabilities = (array) ( $etg['capabilities'] ?? array() );
+$asset = (array) ( $provider_capabilities['observer_asset'] ?? array() );
+$check( 'etg.dfsb.browser-observer-asset.v1' === (string) ( $asset['contract'] ?? '' ), 'ETG observer asset contract is missing.' );
+$check( 'etg.dfsb.browser-acceptance-observer.v1' === (string) ( $asset['observer_contract'] ?? '' ), 'ETG observer runtime contract is not bound to asset metadata.' );
+$check( ! empty( $asset['available'] ) && ! empty( $asset['same_origin'] ), 'ETG observer asset must be available from the exact same origin.' );
+$check( empty( $asset['authorizing'] ) && empty( $asset['arbitrary_javascript'] ) && empty( $asset['auto_enqueued'] ), 'ETG observer asset delivery opened authority or visitor-side auto injection.' );
+$check( 'external_browser_agent_same_origin_asset' === (string) ( $asset['load_mode'] ?? '' ), 'ETG observer asset load mode drifted.' );
+$check( preg_match( '/^[a-f0-9]{64}$/', (string) ( $asset['sha256'] ?? '' ) ), 'ETG observer asset lacks exact SHA-256.' );
+$check( (int) ( $asset['bytes'] ?? 0 ) > 0, 'ETG observer asset size is unavailable.' );
+$check( false !== strpos( (string) ( $asset['url'] ?? '' ), '/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js' ), 'ETG observer asset URL is not package-owned.' );
+$check( empty( $asset['blocking_reasons'] ), 'ETG observer asset discovery is blocked: ' . wp_json_encode( $asset['blocking_reasons'] ?? array() ) );
+
 $identity = \ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
 $check( ! empty( $identity['valid'] ), 'Exact ETG embedded build identity is invalid.' );
 $expected_head = getenv( 'ETG_BROWSER_ACCEPTANCE_HEAD' );
 $expected_tree = getenv( 'ETG_BROWSER_ACCEPTANCE_TREE' );
 if ( is_string( $expected_head ) && '' !== $expected_head ) {
 	$check( $expected_head === (string) ( $identity['git_sha'] ?? '' ), 'ETG browser runtime exact HEAD identity drifted.' );
+	$check( $expected_head === (string) ( $asset['build_identity']['git_sha'] ?? '' ), 'ETG observer asset exact HEAD identity drifted.' );
 }
 if ( is_string( $expected_tree ) && '' !== $expected_tree ) {
 	$check( $expected_tree === (string) ( $identity['tree_sha'] ?? '' ), 'ETG browser runtime exact tree identity drifted.' );
+	$check( $expected_tree === (string) ( $asset['build_identity']['tree_sha'] ?? '' ), 'ETG observer asset exact tree identity drifted.' );
 }
 
 $blocked = wp_get_ability( 'mad4b/browser-acceptance-plan' )->execute( array(
