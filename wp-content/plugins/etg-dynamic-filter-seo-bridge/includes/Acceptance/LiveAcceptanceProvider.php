@@ -81,14 +81,16 @@ final class LiveAcceptanceProvider {
             'verification'=>array('semantic_parity_verified'=>'PASS'===$reduced['verdict'],'browser_runtime_parity_verified'=>false,'verified_through'=>'live_server_semantic'),
             'tests'=>$reduced['tests'],'cases'=>$results,'case_count'=>count($results),'authority'=>$this->authority(),'effects'=>$this->effects(),
             'blocking_reasons'=>$reduced['blocking_reasons'],'incomplete_evidence'=>array_values(array_unique(array_merge($reduced['incomplete_evidence'],array('browser_runtime_not_observed')))),
-            'defect_reasons'=>$reduced['defect_reasons'],'classification'=>$reduced['classification'],'verdict'=>$reduced['verdict'],'browser_runtime'=>'INCOMPLETE_EVIDENCE');
+            'defect_reasons'=>$reduced['defect_reasons'],'infrastructure_failures'=>array_values((array)($reduced['infrastructure_failures']??array())),
+            'classification'=>$reduced['classification'],'verdict'=>$reduced['verdict'],'browser_runtime'=>'INCOMPLETE_EVIDENCE');
     }
 
     private function runBlocked(array$request,array$plan):array{
         return array('contract'=>self::CONTRACT,'provider_id'=>self::PROVIDER_ID,'profile_id'=>$this->cleanKey($request['profile_id']??''),'suite'=>'semantic',
             'verification'=>array('semantic_parity_verified'=>false,'browser_runtime_parity_verified'=>false,'verified_through'=>'none'),'tests'=>array('profile_resolution'=>'BLOCKED'),'cases'=>array(),'case_count'=>0,
             'authority'=>$this->authority(),'effects'=>$this->effects(),'blocking_reasons'=>array_values(array_unique((array)($plan['blocking_reasons']??array('acceptance_plan_blocked')))),
-            'incomplete_evidence'=>array('browser_runtime_not_observed'),'defect_reasons'=>array(),'classification'=>'ENVIRONMENT_OR_PROVIDER_BLOCK','verdict'=>'BLOCKED','browser_runtime'=>'INCOMPLETE_EVIDENCE');
+            'incomplete_evidence'=>array('browser_runtime_not_observed'),'defect_reasons'=>array(),'infrastructure_failures'=>array(),
+            'classification'=>'ENVIRONMENT_OR_PROVIDER_BLOCK','verdict'=>'BLOCKED','browser_runtime'=>'INCOMPLETE_EVIDENCE');
     }
 
     private function routes(array$profile):array{
