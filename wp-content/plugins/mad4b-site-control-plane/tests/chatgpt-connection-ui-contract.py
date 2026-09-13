@@ -9,7 +9,7 @@ main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 
 required_ui = [
-    'mad4b.chatgpt-connection-ui.v2',
+    'mad4b.chatgpt-connection-ui.v3',
     'Connect to ChatGPT',
     'https://chatgpt.com/oauth/client.json',
     'https://chatgpt.com/connector_platform_oauth_redirect',
@@ -26,6 +26,18 @@ required_ui = [
     "'creates_chatgpt_connector' => false",
     "'stores_chatgpt_credentials' => false",
     "'external_connection_certified' => false",
+    "'production_readonly_profile_supported' => true",
+    "'production_readonly_write_enabled' => false",
+    "'production_readonly_breakglass_enabled' => false",
+    "'production_readonly_opt_in_required'",
+    "'staging_only_initially' => false",
+    'MAD4B_SCP_Staging_OAuth_Autoconfig::status()',
+    'mad4b_enable_production_readonly_oauth',
+    'mad4b_disable_production_readonly_oauth',
+    'mad4b_production_readonly_oauth',
+    'Enable Production read-only OAuth',
+    'Disable Production read-only OAuth',
+    'It does not enable mutation, Skills authoring, write authority or Breakglass.',
     'CIMD / ChatGPT managed',
     'Open ChatGPT Plugin Builder',
     'Run OAuth Canary',
@@ -81,4 +93,4 @@ if 'MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot()' not in plugin:
 if 'MAD4B_SCP_Local_OAuth_Consent_UI::boot()' not in main:
     raise SystemExit('main plugin does not initialize OAuth consent semantic UI')
 
-print('mad4b.site-control-plane.chatgpt-connection-ui.v3: PASS')
+print('mad4b.site-control-plane.chatgpt-connection-ui.v4: PASS')
