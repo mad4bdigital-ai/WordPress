@@ -82,7 +82,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( ! self::exact_governed_staging() ) return new WP_Error( 'mad4b_approval_candidate_staging_only', 'Candidate-bound remote approval planning is restricted to the exact governed Staging origin.' );
 		$ticket = self::get( $ticket_id );
 		if ( ! is_array( $ticket ) ) return new WP_Error( 'mad4b_approval_missing', 'Approval ticket is missing.' );
-		if ( 'pending' !== (string) $ticket['status'] || 'mutation' !== (string) $ticket['ticket_class'] || 'mad4b-write' !== sanitize_key( (string) $ticket['server_id'] ) ) return new WP_Error( 'mad4b_approval_candidate_ticket_ineligible', 'Only fresh pending mad4b-write mutation tickets may receive a live candidate binding.' );
+		if ( 'pending' !== (string) $ticket['status'] || 'mutation' !== (string) $ticket['ticket_class'] || 'mad4b-write' !== sanitize_key( (string) $ticket['server_id'] ) ) return new WP_Error( 'mad4b_approval_candidate_ticket_ineligible', 'Only fresh pending mad4b-write mutation tickets may receive a live candidate binding evidence.' );
 		$payload_hash = isset( $ticket['payload_sha256'] ) ? strtolower( trim( (string) $ticket['payload_sha256'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $payload_hash ) ) return new WP_Error( 'mad4b_approval_candidate_payload_invalid', 'Approval ticket payload digest is invalid.' );
 		$binding = self::current_candidate_binding( $ticket_id, $payload_hash );
@@ -189,6 +189,18 @@ final class MAD4B_SCP_Approval_Tickets {
 			}
 		}
 		return array( 'ticket' => $ticket, 'payload_sha256' => $hash );
+	}
+
+	/**
+	 * Read-only exact approval preflight used by permission checks.
+	 *
+	 * This intentionally aliases validate_exact(): it verifies the same canonical
+	 * agent/server/ability/provider/target/input binding without claiming the
+	 * ticket, changing its status, reserving budgets, or creating execution-side
+	 * effects. claim_exact() remains the sole approved -> executing transition.
+	 */
+	public static function authorize_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
+		return self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 	}
 
 	public static function claim_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
