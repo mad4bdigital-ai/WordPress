@@ -11,12 +11,17 @@ $GLOBALS['etg_ability_actions']=array();
 $GLOBALS['etg_registered_categories']=array();
 $GLOBALS['etg_registered_abilities']=array();
 $GLOBALS['etg_can_manage_options']=true;
+$GLOBALS['etg_category_register_calls']=0;
+$GLOBALS['etg_ability_register_calls']=0;
+$GLOBALS['etg_forbidden_get_lookup_calls']=0;
 
 function add_action($hook,$callback,$priority=10,$acceptedArgs=1){unset($priority,$acceptedArgs);$GLOBALS['etg_ability_actions'][$hook][]=$callback;return true;}
-function wp_get_ability_category($slug){return $GLOBALS['etg_registered_categories'][$slug]??null;}
-function wp_register_ability_category($slug,$args){$GLOBALS['etg_registered_categories'][$slug]=$args;return (object)$args;}
-function wp_get_ability($name){return $GLOBALS['etg_registered_abilities'][$name]??null;}
-function wp_register_ability($name,$args){$GLOBALS['etg_registered_abilities'][$name]=$args;return (object)$args;}
+function wp_has_ability_category($slug){return isset($GLOBALS['etg_registered_categories'][$slug]);}
+function wp_register_ability_category($slug,$args){$GLOBALS['etg_category_register_calls']++;$GLOBALS['etg_registered_categories'][$slug]=$args;return (object)$args;}
+function wp_has_ability($name){return isset($GLOBALS['etg_registered_abilities'][$name]);}
+function wp_register_ability($name,$args){$GLOBALS['etg_ability_register_calls']++;$GLOBALS['etg_registered_abilities'][$name]=$args;return (object)$args;}
+function wp_get_ability_category($slug){unset($slug);$GLOBALS['etg_forbidden_get_lookup_calls']++;throw new RuntimeException('wp_get_ability_category must not be used for existence checks');}
+function wp_get_ability($name){unset($name);$GLOBALS['etg_forbidden_get_lookup_calls']++;throw new RuntimeException('wp_get_ability must not be used for existence checks');}
 function current_user_can($cap){return 'manage_options'===$cap && !empty($GLOBALS['etg_can_manage_options']);}
 
 $root=dirname(__DIR__);
@@ -75,6 +80,15 @@ call_user_func($GLOBALS['etg_ability_actions']['wp_abilities_api_init'][0]);
 etg_ability_expect(isset($GLOBALS['etg_registered_categories']['etg-dfsb-diagnostics']),'ETG diagnostic category registered');
 etg_ability_expect(isset($GLOBALS['etg_registered_abilities']['etg-dfsb/evidence-provider']),'descriptor ability registered');
 etg_ability_expect(isset($GLOBALS['etg_registered_abilities']['etg-dfsb/evidence-query']),'bounded query ability registered');
+etg_ability_same(0,$GLOBALS['etg_forbidden_get_lookup_calls'],'registration never probes missing abilities/categories through warning-producing getters');
+etg_ability_same(1,$GLOBALS['etg_category_register_calls'],'diagnostic category registered exactly once');
+etg_ability_same(2,$GLOBALS['etg_ability_register_calls'],'both ETG evidence abilities registered exactly once');
+
+call_user_func($GLOBALS['etg_ability_actions']['wp_abilities_api_categories_init'][0]);
+call_user_func($GLOBALS['etg_ability_actions']['wp_abilities_api_init'][0]);
+etg_ability_same(1,$GLOBALS['etg_category_register_calls'],'category registration is idempotent through wp_has_ability_category');
+etg_ability_same(2,$GLOBALS['etg_ability_register_calls'],'ability registration is idempotent through wp_has_ability');
+etg_ability_same(0,$GLOBALS['etg_forbidden_get_lookup_calls'],'repeat registration still avoids warning-producing getters');
 
 $descriptorAbility=$GLOBALS['etg_registered_abilities']['etg-dfsb/evidence-provider'];
 $queryAbility=$GLOBALS['etg_registered_abilities']['etg-dfsb/evidence-query'];
