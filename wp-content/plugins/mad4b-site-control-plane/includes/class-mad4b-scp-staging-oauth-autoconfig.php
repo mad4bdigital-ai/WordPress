@@ -3,22 +3,30 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Zero-touch Staging bootstrap for the WordPress-local ChatGPT OAuth authority.
+ * Zero-touch Staging bootstrap plus explicit Production read-only OAuth profile.
+ *
+ * Staging remains zero-touch. Production is never auto-enabled: an administrator
+ * must explicitly opt in on the exact governed Production origin. The Production
+ * profile configures OAuth identity/read scope only; it never enables mutation,
+ * write authority, Skills authoring or Breakglass.
  *
  * The bootstrap stores only a bounded WordPress user id/configuration marker.
  * It never stores OAuth credentials or signing material. Explicit operator
- * constants always win, Production is never auto-enabled, and ambiguous
- * administrator selection fails closed.
+ * constants always win, and ambiguous/incompatible configuration fails closed.
  */
 final class MAD4B_SCP_Staging_OAuth_Autoconfig {
-	const CONTRACT = 'mad4b.staging-oauth-autoconfig.v1';
+	const CONTRACT = 'mad4b.staging-oauth-autoconfig.v2';
 	const OPTION = 'mad4b_scp_staging_oauth_autoconfig_v1';
+	const PRODUCTION_OPTION = 'mad4b_scp_production_readonly_oauth_v1';
+	const PRODUCTION_HOST = 'egypttourgates.com';
 	const VERSION = 1;
 
 	private static $bootstrapped = false;
+	private static $admin_actions_booted = false;
 	private static $status = array();
 
 	public static function bootstrap() {
+		self::boot_admin_actions();
 		if ( self::$bootstrapped ) return self::$status;
 		self::$bootstrapped = true;
 
@@ -34,7 +42,13 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			'stores_credentials' => false,
 			'stores_private_key' => false,
 			'production_auto_enable' => false,
+			'production_readonly_supported' => true,
+			'production_readonly_enabled' => false,
+			'write_authority_enabled' => false,
+			'breakglass_enabled' => false,
 		);
+
+		if ( 'production' === $environment ) return self::bootstrap_production_readonly();
 
 		if ( 'staging' !== $environment ) {
 			self::$status['blocker'] = 'environment_not_staging';
@@ -96,8 +110,148 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		return self::$status;
 	}
 
+	private static function bootstrap_production_readonly() {
+		if ( self::PRODUCTION_HOST !== self::home_host() ) {
+			self::$status['blocker'] = 'origin_not_governed_production';
+			return self::$status;
+		}
+		self::$status['eligible'] = true;
+
+		$record = get_option( self::PRODUCTION_OPTION, array() );
+		if ( ! is_array( $record ) || empty( $record['enabled'] ) ) {
+			self::$status['blocker'] = 'production_readonly_opt_in_required';
+			return self::$status;
+		}
+
+		$user_id = isset( $record['wp_user_id'] ) ? absint( $record['wp_user_id'] ) : 0;
+		if ( ! self::admin_capable( $user_id ) ) {
+			self::$status['blocker'] = 'production_readonly_user_invalid';
+			return self::$status;
+		}
+
+		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) && true !== constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) {
+			self::$status['blocker'] = 'explicit_local_oauth_disabled';
+			return self::$status;
+		}
+		if ( defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) && true !== constant( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) ) {
+			self::$status['blocker'] = 'explicit_local_oauth_production_disabled';
+			return self::$status;
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) && true !== constant( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) ) {
+			self::$status['blocker'] = 'explicit_resource_oauth_production_disabled';
+			return self::$status;
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_MODE' ) && 'local' !== sanitize_key( (string) constant( 'MAD4B_MCP_OAUTH_MODE' ) ) ) {
+			self::$status['blocker'] = 'explicit_non_local_oauth_mode';
+			return self::$status;
+		}
+
+		$issuer = self::local_issuer();
+		if ( '' === $issuer ) {
+			self::$status['blocker'] = 'local_issuer_unavailable';
+			return self::$status;
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_ISSUER' ) ) {
+			$configured_issuer = rtrim( trim( (string) constant( 'MAD4B_MCP_OAUTH_ISSUER' ) ), '/' );
+			if ( '' !== $configured_issuer && ! hash_equals( $issuer, $configured_issuer ) ) {
+				self::$status['blocker'] = 'explicit_external_oauth_issuer';
+				return self::$status;
+			}
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) && absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) !== $user_id ) {
+			self::$status['blocker'] = 'explicit_wp_user_conflict';
+			return self::$status;
+		}
+
+		$subject = 'user:' . $user_id;
+		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) && ! in_array( $subject, self::normalize_subjects( constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ), true ) ) {
+			self::$status['blocker'] = 'explicit_subject_policy_conflict';
+			return self::$status;
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ) && ! self::binding_allows( constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ), $issuer, $subject ) ) {
+			self::$status['blocker'] = 'explicit_subject_binding_conflict';
+			return self::$status;
+		}
+		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' ) && ! self::user_mapping_allows( constant( 'MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER' ), $issuer, $user_id ) ) {
+			self::$status['blocker'] = 'explicit_wp_user_mapping_conflict';
+			return self::$status;
+		}
+
+		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) define( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED', true );
+		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED' ) ) define( 'MAD4B_MCP_LOCAL_OAUTH_PRODUCTION_APPROVED', true );
+		if ( ! defined( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED' ) ) define( 'MAD4B_MCP_OAUTH_PRODUCTION_APPROVED', true );
+		if ( ! defined( 'MAD4B_MCP_OAUTH_MODE' ) ) define( 'MAD4B_MCP_OAUTH_MODE', 'local' );
+		if ( ! defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) define( 'MAD4B_MCP_OAUTH_WP_USER_ID', $user_id );
+		if ( ! defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ) define( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS', array( $subject ) );
+		if ( ! defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ) ) define( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS', array( $issuer => array( $subject ) ) );
+
+		self::$status['configured'] = true;
+		self::$status['wp_user_id'] = $user_id;
+		self::$status['configuration_source'] = 'production_readonly_opt_in';
+		self::$status['production_readonly_enabled'] = true;
+		self::$status['blocker'] = '';
+		return self::$status;
+	}
+
 	public static function status() {
 		return self::$bootstrapped ? self::$status : self::bootstrap();
+	}
+
+	public static function production_profile_enabled() {
+		$status = self::status();
+		return 'production' === $status['environment'] && ! empty( $status['production_readonly_enabled'] );
+	}
+
+	private static function boot_admin_actions() {
+		if ( self::$admin_actions_booted ) return;
+		self::$admin_actions_booted = true;
+		add_action( 'admin_post_mad4b_enable_production_readonly_oauth', array( __CLASS__, 'handle_enable_production_readonly' ) );
+		add_action( 'admin_post_mad4b_disable_production_readonly_oauth', array( __CLASS__, 'handle_disable_production_readonly' ) );
+	}
+
+	public static function handle_enable_production_readonly() {
+		self::assert_production_admin_action();
+		check_admin_referer( 'mad4b_production_readonly_oauth' );
+		$user_id = get_current_user_id();
+		if ( ! self::admin_capable( $user_id ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ) );
+		update_option(
+			self::PRODUCTION_OPTION,
+			array(
+				'version' => self::VERSION,
+				'enabled' => true,
+				'wp_user_id' => $user_id,
+				'updated_at' => gmdate( 'c' ),
+			),
+			false
+		);
+		self::redirect_connection_page( 'enabled' );
+	}
+
+	public static function handle_disable_production_readonly() {
+		self::assert_production_admin_action();
+		check_admin_referer( 'mad4b_production_readonly_oauth' );
+		delete_option( self::PRODUCTION_OPTION );
+		self::redirect_connection_page( 'disabled' );
+	}
+
+	private static function assert_production_admin_action() {
+		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ) );
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		if ( 'production' !== $environment || self::PRODUCTION_HOST !== self::home_host() ) {
+			wp_die( esc_html__( 'Production read-only OAuth can only be changed on the exact governed Production origin.', 'mad4b-site-control-plane' ) );
+		}
+	}
+
+	private static function redirect_connection_page( $state ) {
+		$url = add_query_arg(
+			array(
+				'page' => 'mad4b-control-plane-chatgpt',
+				'mad4b_production_readonly_oauth' => sanitize_key( (string) $state ),
+			),
+			admin_url( 'admin.php' )
+		);
+		wp_safe_redirect( $url );
+		exit;
 	}
 
 	private static function select_subject_user() {
@@ -144,5 +298,39 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
 		if ( 'https' !== strtolower( (string) $parts['scheme'] ) ) return '';
 		return $url;
+	}
+
+	private static function home_host() {
+		$parts = wp_parse_url( home_url( '/' ) );
+		return is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( rtrim( (string) $parts['host'], '.' ) ) : '';
+	}
+
+	private static function normalize_subjects( $value ) {
+		$items = is_array( $value ) ? $value : preg_split( '/[\s,]+/', (string) $value );
+		$subjects = array();
+		foreach ( is_array( $items ) ? array_slice( $items, 0, 500 ) : array() as $item ) {
+			if ( ! is_string( $item ) ) continue;
+			$item = trim( $item );
+			if ( '' !== $item ) $subjects[] = $item;
+		}
+		return array_values( array_unique( $subjects ) );
+	}
+
+	private static function binding_allows( $bindings, $issuer, $subject ) {
+		if ( ! is_array( $bindings ) ) return false;
+		foreach ( $bindings as $bound_issuer => $subjects ) {
+			if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+			return in_array( $subject, self::normalize_subjects( $subjects ), true );
+		}
+		return false;
+	}
+
+	private static function user_mapping_allows( $mapping, $issuer, $user_id ) {
+		if ( ! is_array( $mapping ) ) return false;
+		foreach ( $mapping as $bound_issuer => $mapped_user_id ) {
+			if ( ! is_string( $bound_issuer ) || ! hash_equals( $issuer, rtrim( trim( $bound_issuer ), '/' ) ) ) continue;
+			return absint( $mapped_user_id ) === absint( $user_id );
+		}
+		return false;
 	}
 }
