@@ -85,7 +85,9 @@ final class MAD4B_SCP_Servers {
 			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
 			$map = $adapter->ability_names();
 			$mutation_candidates = array();
-			foreach ( array( 'content', 'admin' ) as $surface ) {
+			// `write` is a dedicated adapter surface for mutations that must exist on
+			// mad4b-write but must not leak onto mad4b-content or mad4b-admin.
+			foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
 				$abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
 				foreach ( $abilities as $ability_name ) {
 					$ability_name = (string) $ability_name;
@@ -213,7 +215,7 @@ final class MAD4B_SCP_Servers {
 			$registry = MAD4B_SCP_Adapter_Registry::instance(); $registry->register_defaults();
 			foreach ( $registry->all() as $adapter ) {
 				$map = $adapter->ability_names();
-				foreach ( array( 'content', 'admin' ) as $surface ) if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
+				foreach ( array( 'content', 'admin', 'write' ) as $surface ) if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
 			}
 			return null;
 		}
@@ -265,7 +267,7 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; legacy providers retain exact runtime certification; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; legacy providers retain exact runtime certification; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', self::core_tools( 'mad4b-breakglass' ), array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability );
 	}
