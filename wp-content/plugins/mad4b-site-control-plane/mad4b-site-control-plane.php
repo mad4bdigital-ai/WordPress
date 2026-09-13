@@ -47,6 +47,11 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-query-monitor-evidence-br
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-wpml-acceptance-finalizer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-provider-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-planner.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-verdict-reducer.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-runner.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-acceptance-core.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-request-context-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-jwt-header-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-outbound-budget-guard.php';
@@ -122,6 +127,7 @@ MAD4B_SCP_WPML_Response_Contract::boot_early();
 // registry can materialize. Read callbacks stay observational; reconciliation
 // remains an init-time lifecycle concern after the full Control Plane boot.
 MAD4B_SCP_Live_Truth::boot_early();
+MAD4B_SCP_Acceptance_Core::boot_early();
 
 // Wire the complete Ability catalog before anything can materialize the
 // WordPress Abilities registry. Only registration-time callbacks/filters are
