@@ -64,6 +64,18 @@ abstract class MAD4B_SCP_Adapter_Base {
 	public function capture_reversible_state( $ability_name, array $input ) { return new WP_Error( 'mad4b_reversible_capture_unsupported', 'This adapter ability has no reversible capture implementation.' ); }
 	public function read_reversible_state( $ability_name, array $target ) { return new WP_Error( 'mad4b_reversible_readback_unsupported', 'This adapter ability has no reversible readback implementation.' ); }
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) { return new WP_Error( 'mad4b_reversible_restore_unsupported', 'This adapter ability has no reversible restore implementation.' ); }
+
+	/**
+	 * High-risk canary execution is opt-in per adapter and per exact ability.
+	 * The default is permanently fail-closed. The Control Plane wrapper owns NHI,
+	 * one-time approval, budgets and evidence binding; an adapter opt-in must still
+	 * re-run its native/runtime safety guards before producing any side effect.
+	 */
+	public function supports_canary_execution( $ability_name ) { return false; }
+	public function execute_canary( $ability_name, array $input ) {
+		return new WP_Error( 'mad4b_provider_canary_execution_unsupported', 'This adapter does not implement governed canary execution for the requested ability.' );
+	}
+
 	public function declared_server_for_ability( $ability_name ) {
 		$map = $this->ability_names();
 		foreach ( array( 'content', 'admin', 'read' ) as $surface ) {
