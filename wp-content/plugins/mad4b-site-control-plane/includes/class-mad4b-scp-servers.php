@@ -17,10 +17,6 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 			), $governed_status ),
-			// Purpose-built remote gateway for ChatGPT. Generic filesystem/database
-			// introspection remains excluded. On the exact governed Staging origin,
-			// certified write abilities are added separately by chatgpt_tools() and
-			// rebound to exact mad4b-write NHI authority at execution time.
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/list-post-types', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
@@ -36,15 +32,6 @@ final class MAD4B_SCP_Servers {
 		return isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
 	}
 
-	/**
-	 * Project only runtime-eligible registered content/admin mutations.
-	 *
-	 * Core mutations remain governed by the central authority. Adapter mutations
-	 * that require provider certification are mounted only when the exact runtime
-	 * contract is certified; drifted/unavailable providers stay discoverable on
-	 * their diagnostic/read surfaces but are never projected as dead write tools.
-	 * Breakglass is never a candidate.
-	 */
 	public static function write_tools() {
 		$candidates = array_merge(
 			array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
@@ -53,10 +40,8 @@ final class MAD4B_SCP_Servers {
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
 		);
-
 		$projection = self::adapter_write_projection();
 		$candidates = array_merge( $candidates, $projection['eligible'] );
-
 		$write = array();
 		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
 			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
@@ -65,11 +50,6 @@ final class MAD4B_SCP_Servers {
 		return array_values( array_unique( $write ) );
 	}
 
-	/**
-	 * Safe diagnostics for registered adapter mutations intentionally omitted from
-	 * the governed write surface because their runtime provider contract is not
-	 * certified. No absolute paths or provider internals are exposed.
-	 */
 	public static function blocked_write_tools() {
 		$projection = self::adapter_write_projection();
 		$blocked = array_values( $projection['blocked'] );
@@ -91,38 +71,18 @@ final class MAD4B_SCP_Servers {
 		return true;
 	}
 
-	/**
-	 * Build the adapter write projection once per fully-initialized Ability request.
-	 *
-	 * Action/tool refresh can ask for the same projection through chatgpt_tools(),
-	 * write_tools(), blocked_write_tools() and provider resolution in one request.
-	 * Provider status may include exact critical-file hashing, so recomputing that
-	 * projection for every lookup can turn tools/list into an avoidable timeout.
-	 *
-	 * The cache is deliberately request-local and is not populated while the
-	 * Abilities API is still registering. Mutation execution continues to run the
-	 * adapter permission callback and provider mutation_guard independently, so
-	 * this discovery optimization never converts cached discovery into authority.
-	 */
 	private static function adapter_write_projection() {
 		$result = array( 'eligible' => array(), 'blocked' => array() );
 		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
-
 		$cacheable = function_exists( 'did_action' )
 			&& did_action( 'wp_abilities_api_init' ) > 0
 			&& ( ! function_exists( 'doing_action' ) || ! doing_action( 'wp_abilities_api_init' ) );
-		if ( $cacheable && is_array( self::$adapter_write_projection_cache ) ) {
-			return self::$adapter_write_projection_cache;
-		}
+		if ( $cacheable && is_array( self::$adapter_write_projection_cache ) ) return self::$adapter_write_projection_cache;
 
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
 		$registry->register_defaults();
 		foreach ( $registry->all() as $adapter ) {
 			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
-
-			// Filter to registered non-readonly mutations before asking the provider
-			// for status. Read-only/family adapters cannot contribute to the write
-			// projection and therefore must not trigger provider integrity hashing.
 			$map = $adapter->ability_names();
 			$mutation_candidates = array();
 			foreach ( array( 'content', 'admin' ) as $surface ) {
@@ -138,15 +98,49 @@ final class MAD4B_SCP_Servers {
 			$status = method_exists( $adapter, 'status' ) ? $adapter->status() : array();
 			$requires_certification = ! empty( $status['mutation_requires_certification'] );
 			$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
-			$runtime_contract_ok = ! $requires_certification || ! empty( $certification['runtime_contract_ok'] );
 			$provider = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : sanitize_key( (string) $adapter->id() );
+			$capability_cataloged = $requires_certification
+				&& class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
+				&& MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $provider );
+			$capability_projection = $capability_cataloged
+				? MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection( $provider, $adapter )
+				: array();
+			$capability_eligible = array();
+			$capability_blocked = array();
+			if ( $capability_cataloged ) {
+				foreach ( (array) ( $capability_projection['eligible'] ?? array() ) as $entry ) if ( ! empty( $entry['ability'] ) ) $capability_eligible[ (string) $entry['ability'] ] = $entry;
+				foreach ( (array) ( $capability_projection['blocked'] ?? array() ) as $entry ) if ( ! empty( $entry['ability'] ) ) $capability_blocked[ (string) $entry['ability'] ] = $entry;
+			}
+			$legacy_runtime_contract_ok = ! $requires_certification || ! empty( $certification['legacy_runtime_contract_ok'] ) || ! empty( $certification['runtime_contract_ok'] );
 
 			foreach ( $mutation_candidates as $ability_name ) {
-				if ( $runtime_contract_ok ) {
+				if ( ! $requires_certification ) {
 					$result['eligible'][] = $ability_name;
 					continue;
 				}
-
+				if ( $capability_cataloged ) {
+					if ( isset( $capability_eligible[ $ability_name ] ) ) {
+						$result['eligible'][] = $ability_name;
+						continue;
+					}
+					$entry = isset( $capability_blocked[ $ability_name ] ) ? $capability_blocked[ $ability_name ] : array();
+					$result['blocked'][ $ability_name ] = array(
+						'ability' => $ability_name,
+						'provider' => $provider,
+						'reason' => 'provider_capability_not_write_eligible',
+						'capability_id' => isset( $entry['capability_id'] ) ? (string) $entry['capability_id'] : '',
+						'certification_level' => isset( $entry['certification_level'] ) ? (string) $entry['certification_level'] : 'UNKNOWN',
+						'runtime_status' => isset( $certification['status'] ) ? (string) $certification['status'] : 'unknown',
+						'installed_version' => isset( $certification['installed_version'] ) ? (string) $certification['installed_version'] : '',
+						'certified_version' => isset( $certification['certified_version'] ) ? (string) $certification['certified_version'] : '',
+						'violations' => array( 'capability_write_certification_required' ),
+					);
+					continue;
+				}
+				if ( $legacy_runtime_contract_ok ) {
+					$result['eligible'][] = $ability_name;
+					continue;
+				}
 				$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' )
 					? MAD4B_SCP_Provider_Contracts::violations_for_status( $certification )
 					: array( 'certification_authority_unavailable' );
@@ -161,18 +155,11 @@ final class MAD4B_SCP_Servers {
 				);
 			}
 		}
-
 		$result['eligible'] = array_values( array_unique( $result['eligible'] ) );
 		if ( $cacheable ) self::$adapter_write_projection_cache = $result;
 		return $result;
 	}
 
-	/**
-	 * The hard-coded ChatGPT read inventory remains an explicit governed allowlist.
-	 * On the exact Staging origin only, a ready MAD4B_SCP_Staging_Write_Authority
-	 * appends the complete non-readonly write inventory. Those tools remain bound
-	 * to mad4b-write exact grants and one-time approvals during execution.
-	 */
 	public static function chatgpt_tools() {
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$adapter_candidates = array();
@@ -181,7 +168,6 @@ final class MAD4B_SCP_Servers {
 			$registry->register_defaults();
 			$adapter_candidates = $registry->ability_names( 'read' );
 		}
-
 		$forbidden = array(
 			'mad4b/filesystem-list', 'mad4b/filesystem-read',
 			'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query',
@@ -197,7 +183,6 @@ final class MAD4B_SCP_Servers {
 			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
 			$tools[] = (string) $ability_name;
 		}
-
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) {
 			$tools = array_merge( $tools, self::write_tools() );
 		}
@@ -211,132 +196,83 @@ final class MAD4B_SCP_Servers {
 		return '';
 	}
 
-	public static function ability_is_mounted( $server_id, $ability_name ) {
-		return null !== self::provider_for_ability( $server_id, $ability_name );
-	}
+	public static function ability_is_mounted( $server_id, $ability_name ) { return null !== self::provider_for_ability( $server_id, $ability_name ); }
 
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
 		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return null;
-
 		if ( 'mad4b-write' === $server_id ) {
 			if ( ! in_array( $ability_name, self::write_tools(), true ) ) return null;
 			$core_candidates = array_merge(
 				array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
-				array(
-					'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
-					'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
-				)
+				array( 'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan' )
 			);
 			if ( in_array( $ability_name, $core_candidates, true ) ) return 'core';
 			if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
-			$registry = MAD4B_SCP_Adapter_Registry::instance();
-			$registry->register_defaults();
+			$registry = MAD4B_SCP_Adapter_Registry::instance(); $registry->register_defaults();
 			foreach ( $registry->all() as $adapter ) {
 				$map = $adapter->ability_names();
-				foreach ( array( 'content', 'admin' ) as $surface ) {
-					if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
-						return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
-					}
-				}
+				foreach ( array( 'content', 'admin' ) as $surface ) if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
 			}
 			return null;
 		}
-
 		if ( 'mad4b-chatgpt' === $server_id ) {
 			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return null;
-			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
-				&& MAD4B_SCP_Staging_Write_Authority::effective()
-				&& MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) {
-				return self::provider_for_ability( 'mad4b-write', $ability_name );
-			}
+			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() && MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) return self::provider_for_ability( 'mad4b-write', $ability_name );
 		}
 		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return 'core';
 		$surface = self::surface_for_server( $server_id );
 		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
-		$registry = MAD4B_SCP_Adapter_Registry::instance();
-		$registry->register_defaults();
+		$registry = MAD4B_SCP_Adapter_Registry::instance(); $registry->register_defaults();
 		foreach ( $registry->all() as $adapter ) {
 			$map = $adapter->ability_names();
-			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
-				return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
-			}
+			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
 		}
 		return null;
 	}
 
 	public static function registration_status() {
-		$status = array();
-		foreach ( self::expected_server_ids() as $id ) {
-			$status[ $id ] = isset( self::$registrations[ $id ] ) ? self::$registrations[ $id ] : array( 'registered' => false, 'error' => 'not_registered' );
-		}
-		return $status;
+		$status = array(); foreach ( self::expected_server_ids() as $id ) $status[ $id ] = isset( self::$registrations[ $id ] ) ? self::$registrations[ $id ] : array( 'registered' => false, 'error' => 'not_registered' ); return $status;
 	}
-
-	public static function can_read_transport( $request = null ) {
-		return self::transport_permission( 'mad4b-read', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) );
-	}
-	public static function can_chatgpt_transport( $request = null ) {
-		return self::transport_permission( 'mad4b-chatgpt', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) );
-	}
-	public static function can_content_transport( $request = null ) {
-		return self::transport_permission( 'mad4b-content', $request, array( 'MAD4B_SCP_Policy', 'can_content' ) );
-	}
-	public static function can_write_transport( $request = null ) {
-		return self::transport_permission( 'mad4b-write', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) );
-	}
-	public static function can_admin_transport( $request = null ) {
-		return self::transport_permission( 'mad4b-admin', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) );
-	}
-	public static function can_breakglass_transport( $request = null ) {
-		return self::transport_permission( 'mad4b-breakglass', $request, array( 'MAD4B_SCP_Policy', 'can_breakglass' ) );
-	}
+	public static function can_read_transport( $request = null ) { return self::transport_permission( 'mad4b-read', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) ); }
+	public static function can_chatgpt_transport( $request = null ) { return self::transport_permission( 'mad4b-chatgpt', $request, array( 'MAD4B_SCP_Policy', 'can_read' ) ); }
+	public static function can_content_transport( $request = null ) { return self::transport_permission( 'mad4b-content', $request, array( 'MAD4B_SCP_Policy', 'can_content' ) ); }
+	public static function can_write_transport( $request = null ) { return self::transport_permission( 'mad4b-write', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
+	public static function can_admin_transport( $request = null ) { return self::transport_permission( 'mad4b-admin', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
+	public static function can_breakglass_transport( $request = null ) { return self::transport_permission( 'mad4b-breakglass', $request, array( 'MAD4B_SCP_Policy', 'can_breakglass' ) ); }
 
 	private static function transport_permission( $server_id, $request, $policy_callback ) {
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return new WP_Error( 'mad4b_transport_context_unavailable', 'MAD4B transport context is unavailable.' );
-		$bound = MAD4B_SCP_Transport_Context::bind( $server_id, $request );
-		if ( is_wp_error( $bound ) ) return $bound;
+		$bound = MAD4B_SCP_Transport_Context::bind( $server_id, $request ); if ( is_wp_error( $bound ) ) return $bound;
 		if ( ! is_callable( $policy_callback ) ) return new WP_Error( 'mad4b_transport_policy_unavailable', 'MAD4B transport permission policy is unavailable.' );
 		return call_user_func( $policy_callback );
 	}
 
 	public function register_servers( $adapter ) {
-		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'create_server' ) ) {
-			foreach ( self::expected_server_ids() as $id ) self::$registrations[ $id ] = array( 'registered' => false, 'error' => 'adapter_contract_unavailable' );
-			return;
-		}
-
+		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'create_server' ) ) { foreach ( self::expected_server_ids() as $id ) self::$registrations[ $id ] = array( 'registered' => false, 'error' => 'adapter_contract_unavailable' ); return; }
 		$transport = '\\WP\\MCP\\Transport\\HttpTransport';
 		$error_handler = '\\WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler';
 		$observability = '\\WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler';
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
-
 		$read_tools = array_merge( self::core_tools( 'mad4b-read' ), $registry->ability_names( 'read' ) );
 		$chatgpt_tools = self::chatgpt_tools();
 		$content_tools = array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) );
 		$write_tools = self::write_tools();
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
-		$chatgpt_description = $chatgpt_write_ready
-			? 'ChatGPT Staging gateway with read diagnostics plus governed write tools delegated to exact mad4b-write NHI grants and one-time approvals. Generic filesystem/database introspection and breakglass remain excluded.'
-			: 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
-
+		$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT Staging gateway with read diagnostics plus governed write tools delegated to exact mad4b-write NHI grants and one-time approvals. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin mutation explicitly annotated non-readonly. Provider-certified adapters are projected only while their exact runtime contract is valid; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; legacy providers retain exact runtime certification; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', self::core_tools( 'mad4b-breakglass' ), array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability );
 	}
 
 	private function create( $adapter, $id, $name, $description, array $tools, $permission, $transport, $error_handler, $observability ) {
 		$result = $adapter->create_server( $id, 'mcp', $id, $name, $description, MAD4B_SCP_VERSION, array( $transport ), $error_handler, $observability, $tools, array(), array(), $permission );
-		if ( is_wp_error( $result ) ) {
-			self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code() );
-			error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			return;
-		}
+		if ( is_wp_error( $result ) ) { self::$registrations[ $id ] = array( 'registered' => false, 'error' => $result->get_error_code() ); error_log( '[MAD4B SCP] Failed creating ' . $id . ': ' . $result->get_error_message() ); return; }
 		self::$registrations[ $id ] = array( 'registered' => true, 'error' => '' );
 	}
 }
