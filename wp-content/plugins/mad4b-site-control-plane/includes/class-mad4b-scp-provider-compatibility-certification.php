@@ -2,12 +2,16 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+if ( ! class_exists( 'MAD4B_SCP_Provider_Behavioral_Evidence' ) ) {
+	require_once __DIR__ . '/class-mad4b-scp-provider-behavioral-evidence.php';
+}
+
 /**
  * Capability-first provider compatibility and certification truth.
  *
- * Version/artifact drift triggers assessment; it is not, by itself, authority.
- * Read compatibility may survive benign structural drift. Mutations remain
- * fail-closed until the specific ability reaches a governed write level.
+ * Artifact identity, structural compatibility, behavioral evidence and runtime
+ * activation are intentionally separate authorities. A version/hash match may
+ * prove the repository baseline, but it never self-activates high-risk writes.
  */
 final class MAD4B_SCP_Provider_Compatibility_Certification {
 	const CONTRACT = 'mad4b.provider-compatibility-certification.v1';
@@ -41,6 +45,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				return array( 'read' => array(
 					'mad4b/provider-compatibility-inventory',
 					'mad4b/provider-capability-certification',
+					'mad4b/provider-behavioral-evidence-status',
 					'mad4b/provider-recertification-plan',
 					'mad4b/provider-mcp-mount-plan',
 				), 'content' => array(), 'admin' => array() );
@@ -57,6 +62,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		self::register_read_ability( 'mad4b/provider-compatibility-inventory', 'Provider Compatibility Inventory', array( __CLASS__, 'inventory' ) );
 		self::register_read_ability( 'mad4b/provider-capability-certification', 'Provider Capability Certification', array( __CLASS__, 'capability_certification' ), self::selector_schema( false ) );
+		self::register_read_ability( 'mad4b/provider-behavioral-evidence-status', 'Provider Behavioral Evidence Status', array( __CLASS__, 'behavioral_evidence_status' ), self::selector_schema( true ) );
 		self::register_read_ability( 'mad4b/provider-recertification-plan', 'Provider Recertification Plan', array( __CLASS__, 'recertification_plan' ), self::selector_schema( true ) );
 		self::register_read_ability( 'mad4b/provider-mcp-mount-plan', 'Provider MCP Mount Plan', array( __CLASS__, 'mcp_mount_plan' ) );
 	}
@@ -65,7 +71,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
 		$args = array(
 			'label' => $label,
-			'description' => $label . ' from capability-first, fail-closed provider compatibility evidence. This ability never creates mutation authority.',
+			'description' => $label . ' from capability-first, fail-closed provider compatibility evidence. This ability never creates mutation or activation authority.',
 			'category' => 'mad4b-read',
 			'execute_callback' => $callback,
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
@@ -119,7 +125,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'read_only' => true,
 			'providers' => $items,
 			'provider_count' => count( $items ),
-			'principle' => 'artifact_discovery_to_capability_contract_to_behavioral_evidence_to_governed_mount',
+			'principle' => 'artifact_discovery_to_capability_contract_to_trusted_behavioral_evidence_to_governed_mount',
 		);
 	}
 
@@ -150,6 +156,33 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		);
 	}
 
+	public static function behavioral_evidence_status( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
+		if ( '' === $provider ) return self::blocked_selector( 'provider_id_required' );
+		if ( ! self::supports_provider( $provider ) ) return self::blocked_selector( 'provider_not_cataloged', $provider );
+		$assessment = self::assess_provider( $provider, self::adapter_for_provider( $provider ) );
+		$capability_selector = isset( $input['capability_id'] ) ? sanitize_key( str_replace( '.', '_', (string) $input['capability_id'] ) ) : '';
+		$ability = isset( $input['ability'] ) ? (string) $input['ability'] : '';
+		$items = array();
+		foreach ( (array) ( $assessment['capabilities'] ?? array() ) as $id => $capability ) {
+			if ( '' !== $capability_selector && $capability_selector !== sanitize_key( str_replace( '.', '_', (string) $id ) ) ) continue;
+			if ( '' !== $ability && ! in_array( $ability, (array) ( $capability['abilities'] ?? array() ), true ) ) continue;
+			$items[ $id ] = isset( $capability['behavioral_evidence'] ) ? $capability['behavioral_evidence'] : array();
+		}
+		return array(
+			'contract' => 'mad4b.provider-behavioral-evidence-status.v1',
+			'provider_id' => $provider,
+			'artifact_fingerprint' => isset( $assessment['artifact']['runtime_artifact_fingerprint'] ) ? $assessment['artifact']['runtime_artifact_fingerprint'] : '',
+			'capabilities' => $items,
+			'match_count' => count( $items ),
+			'authorizing' => false,
+			'activation_granted' => false,
+			'mutation_granted' => false,
+			'read_only' => true,
+		);
+	}
+
 	public static function recertification_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
@@ -159,6 +192,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$steps = array();
 		$owner_review = false;
 		$quarantined = false;
+		$behavioral_recertified = false;
 		foreach ( (array) ( $assessment['capabilities'] ?? array() ) as $id => $capability ) {
 			$level = isset( $capability['certification_level'] ) ? (string) $capability['certification_level'] : self::LEVEL_UNKNOWN;
 			$risk = isset( $capability['risk'] ) ? (string) $capability['risk'] : 'unknown';
@@ -172,8 +206,10 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				$steps[] = array( 'capability_id' => $id, 'action' => 'record_compatible_read_candidate', 'risk' => $risk, 'activation_stage' => $activation_stage );
 				continue;
 			}
+			if ( 'behavioral_receipt' === (string) ( $capability['certification_source'] ?? '' ) && ! empty( $capability['write_eligible'] ) ) $behavioral_recertified = true;
 			if ( 'high_risk_write' === $risk && self::ACTIVATION_ACTIVE !== $activation_stage ) {
-				$steps[] = array( 'capability_id' => $id, 'action' => 'run_behavioral_probe_then_owner_authorize_canary', 'risk' => $risk, 'activation_stage' => $activation_stage );
+				$action = self::ACTIVATION_CANARY === $activation_stage ? 'owner_governed_canary_execution_required' : 'run_behavioral_probe_then_owner_authorize_canary';
+				$steps[] = array( 'capability_id' => $id, 'action' => $action, 'risk' => $risk, 'activation_stage' => $activation_stage, 'canary_eligible' => ! empty( $capability['canary_eligible'] ) );
 				$owner_review = true;
 				continue;
 			}
@@ -182,7 +218,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				$owner_review = true;
 			}
 		}
-		$classification = $quarantined ? 'QUARANTINED' : ( $owner_review ? 'OWNER_REVIEW_REQUIRED' : ( 'certified' === (string) ( $assessment['compatibility_state'] ?? '' ) ? 'CERTIFIED' : 'AUTO_CERTIFIABLE_READ_COMPATIBILITY' ) );
+		$classification = $quarantined ? 'QUARANTINED' : ( $owner_review ? 'OWNER_REVIEW_REQUIRED' : ( $behavioral_recertified ? 'BEHAVIORALLY_RECERTIFIED' : ( 'certified' === (string) ( $assessment['compatibility_state'] ?? '' ) ? 'CERTIFIED' : 'AUTO_CERTIFIABLE_READ_COMPATIBILITY' ) ) );
 		return array(
 			'contract' => 'mad4b.provider-recertification-plan.v1',
 			'provider_id' => $provider,
@@ -209,9 +245,12 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 						'capability_id' => $capability_id,
 						'ability' => $ability,
 						'certification_level' => isset( $capability['certification_level'] ) ? $capability['certification_level'] : self::LEVEL_UNKNOWN,
+						'certification_source' => isset( $capability['certification_source'] ) ? $capability['certification_source'] : 'unknown',
 						'risk' => isset( $capability['risk'] ) ? $capability['risk'] : 'unknown',
 						'activation_stage' => isset( $capability['activation_stage'] ) ? $capability['activation_stage'] : self::ACTIVATION_SHADOW,
 						'activation_required' => ! empty( $capability['activation_required'] ),
+						'canary_eligible' => ! empty( $capability['canary_eligible'] ),
+						'behavioral_evidence_state' => isset( $capability['behavioral_evidence']['state'] ) ? $capability['behavioral_evidence']['state'] : 'not_applicable',
 					);
 					if ( 'read' === $entry['risk'] ) {
 						$entry['surface'] = 'read';
@@ -232,7 +271,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'blocked' => $blocked,
 			'eligible_count' => count( $eligible ),
 			'blocked_count' => count( $blocked ),
-			'note' => 'Write eligibility is evidence only; high-risk writes remain shadow until trusted behavioral evidence and governed promotion exist. Execution still requires environment policy, exact NHI grants, approval, budgets, stale-state guards and authorization.',
+			'note' => 'Behavioral recertification is per-capability and artifact-bound. High-risk writes never become active from behavioral evidence alone; canary/active promotion remains separately governed. Execution still requires environment policy, exact NHI grants, approval, budgets, stale-state guards and authorization.',
 		);
 	}
 
@@ -256,15 +295,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 	public static function adapter_mount_projection( $provider, $adapter = null ) {
 		$provider = sanitize_key( (string) $provider );
 		if ( ! self::supports_provider( $provider ) ) {
-			return array(
-				'provider_id' => $provider,
-				'cataloged' => false,
-				'write_abilities' => array(),
-				'eligible' => array(),
-				'blocked' => array(),
-				'all_write_abilities_eligible' => false,
-				'authorizing' => false,
-			);
+			return array( 'provider_id' => $provider, 'cataloged' => false, 'write_abilities' => array(), 'eligible' => array(), 'blocked' => array(), 'all_write_abilities_eligible' => false, 'authorizing' => false );
 		}
 		if ( ! is_object( $adapter ) ) $adapter = self::adapter_for_provider( $provider );
 		$map = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
@@ -284,12 +315,14 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				'ability' => $ability,
 				'capability_id' => isset( $status['capability_id'] ) ? (string) $status['capability_id'] : '',
 				'certification_level' => isset( $status['certification_level'] ) ? (string) $status['certification_level'] : self::LEVEL_UNKNOWN,
+				'certification_source' => isset( $status['certification_source'] ) ? (string) $status['certification_source'] : 'unknown',
 				'risk' => isset( $status['risk'] ) ? (string) $status['risk'] : 'unknown',
 				'activation_stage' => isset( $status['activation_stage'] ) ? (string) $status['activation_stage'] : self::ACTIVATION_SHADOW,
+				'canary_eligible' => ! empty( $status['canary_eligible'] ),
+				'behavioral_evidence_state' => isset( $status['behavioral_evidence']['state'] ) ? (string) $status['behavioral_evidence']['state'] : 'not_applicable',
 			);
-			if ( ! empty( $status['write_eligible'] ) ) {
-				$eligible[ $ability ] = $entry;
-			} else {
+			if ( ! empty( $status['write_eligible'] ) ) $eligible[ $ability ] = $entry;
+			else {
 				$entry['reason'] = empty( $status ) ? 'ability_capability_not_cataloged' : ( 'high_risk_write' === $entry['risk'] ? 'high_risk_activation_required' : 'capability_write_certification_required' );
 				$blocked[ $ability ] = $entry;
 			}
@@ -335,6 +368,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
 		$runtime = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::runtime_status( $provider, $available ) : array( 'status' => 'certification_authority_unavailable', 'runtime_contract_ok' => false );
 		$exact_certified = ! empty( $runtime['runtime_contract_ok'] );
+		$artifact = self::artifact_evidence( $provider, $runtime );
+		$artifact_fingerprint = isset( $artifact['runtime_artifact_fingerprint'] ) ? (string) $artifact['runtime_artifact_fingerprint'] : '';
 		$capabilities = array();
 		$all_structural = true;
 		foreach ( (array) ( $declaration['capabilities'] ?? array() ) as $capability_id => $capability ) {
@@ -343,11 +378,29 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			if ( ! $structural ) $all_structural = false;
 			$risk = isset( $capability['risk'] ) ? sanitize_key( (string) $capability['risk'] ) : 'read';
 			$reversible = ! empty( $capability['reversible'] );
-			$level = self::level_for( $available, $structural, $exact_certified, $risk, $reversible );
-			$activation_stage = self::activation_stage_for( $risk, $level );
+			$capability_contract_digest = self::stable_digest( $capability );
+			$behavioral = 'read' === $risk
+				? self::not_applicable_behavioral_evidence( $provider, $capability_id, $artifact_fingerprint, $capability_contract_digest )
+				: MAD4B_SCP_Provider_Behavioral_Evidence::status( array(
+					'provider_id' => $provider,
+					'capability_id' => $capability_id,
+					'artifact_fingerprint' => $artifact_fingerprint,
+					'capability_contract_digest' => $capability_contract_digest,
+					'risk' => $risk,
+					'reversible' => $reversible,
+				) );
+			$level = self::level_for( $available, $structural, $exact_certified, $risk, $reversible, $behavioral );
+			$activation_stage = self::activation_stage_for( $risk, $level, $behavioral );
 			$write_level_eligible = in_array( $level, array( self::LEVEL_BOUNDED_WRITE, self::LEVEL_REVERSIBLE_WRITE, self::LEVEL_FULL ), true );
+			$behavioral_verified = ! empty( $behavioral['behavioral_verified'] );
+			$rollback_verified = ! empty( $behavioral['rollback_verified'] );
+			$certification_source = 'structural_only';
+			if ( $exact_certified && 'high_risk_write' !== $risk ) $certification_source = 'repository_exact_baseline';
+			elseif ( 'read' !== $risk && $write_level_eligible && $behavioral_verified ) $certification_source = 'behavioral_receipt';
+			elseif ( 'read' === $risk ) $certification_source = $exact_certified ? 'repository_exact_baseline' : 'structural_compatibility';
 			$capabilities[ $capability_id ] = array(
 				'capability_id' => $capability_id,
+				'capability_contract_digest' => $capability_contract_digest,
 				'risk' => $risk,
 				'abilities' => array_values( array_unique( array_map( 'strval', (array) ( $capability['abilities'] ?? array() ) ) ) ),
 				'reversible' => $reversible,
@@ -355,16 +408,19 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				'structural_compatible' => $structural,
 				'structural_probes' => $probes['probes'],
 				'certification_level' => $level,
+				'certification_source' => $certification_source,
 				'activation_stage' => $activation_stage,
 				'activation_required' => 'high_risk_write' === $risk,
+				'canary_eligible' => 'high_risk_write' === $risk && $behavioral_verified,
+				'owner_promotion_required' => 'high_risk_write' === $risk,
 				'read_eligible' => 'read' === $risk && in_array( $level, array( self::LEVEL_READ, self::LEVEL_FULL ), true ),
 				'write_eligible' => 'read' !== $risk && $write_level_eligible && self::ACTIVATION_ACTIVE === $activation_stage,
-				'behavioral_probe_required' => 'read' !== $risk && ( ! $exact_certified || 'high_risk_write' === $risk ),
-				'rollback_probe_required' => 'read' !== $risk && $reversible && ! $exact_certified,
+				'behavioral_evidence' => $behavioral,
+				'behavioral_probe_required' => 'read' !== $risk && ! $behavioral_verified && ( ! $exact_certified || 'high_risk_write' === $risk ),
+				'rollback_probe_required' => 'read' !== $risk && $reversible && ! $exact_certified && ! $rollback_verified,
 			);
 		}
 		$compatibility_state = ! $available ? 'unavailable' : ( $exact_certified ? 'certified' : ( $all_structural ? 'compatible_unattested' : 'breaking_contract_change' ) );
-		$artifact = self::artifact_evidence( $provider, $runtime );
 		$structural_fingerprint = self::stable_digest( array_map( static function ( $item ) {
 			return array( 'structural_compatible' => ! empty( $item['structural_compatible'] ), 'probes' => isset( $item['structural_probes'] ) ? $item['structural_probes'] : array() );
 		}, $capabilities ) );
@@ -377,26 +433,44 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'artifact' => $artifact,
 			'structural_fingerprint' => $structural_fingerprint,
 			'capabilities' => $capabilities,
-			'authority' => array( 'authorizing' => false, 'mutation_granted' => false, 'production_activation' => false ),
+			'authority' => array( 'authorizing' => false, 'mutation_granted' => false, 'activation_granted' => false, 'production_activation' => false ),
 		);
 		self::$assessment_cache[ $cache_key ] = $result;
 		return $result;
 	}
 
-	private static function level_for( $available, $structural, $exact_certified, $risk, $reversible ) {
+	private static function level_for( $available, $structural, $exact_certified, $risk, $reversible, array $behavioral ) {
 		if ( ! $available ) return self::LEVEL_UNKNOWN;
 		if ( ! $structural ) return self::LEVEL_QUARANTINED;
 		if ( 'read' === $risk ) return $exact_certified ? self::LEVEL_FULL : self::LEVEL_READ;
 		if ( 'high_risk_write' === $risk ) return self::LEVEL_DISCOVERED;
-		if ( ! $exact_certified ) return self::LEVEL_DISCOVERED;
+		if ( $exact_certified ) return $reversible ? self::LEVEL_REVERSIBLE_WRITE : ( 'bounded_write' === $risk ? self::LEVEL_BOUNDED_WRITE : self::LEVEL_DISCOVERED );
+		if ( empty( $behavioral['behavioral_verified'] ) ) return self::LEVEL_DISCOVERED;
+		if ( $reversible && empty( $behavioral['rollback_verified'] ) ) return self::LEVEL_DISCOVERED;
 		if ( $reversible ) return self::LEVEL_REVERSIBLE_WRITE;
 		return 'bounded_write' === $risk ? self::LEVEL_BOUNDED_WRITE : self::LEVEL_DISCOVERED;
 	}
 
-	private static function activation_stage_for( $risk, $level ) {
+	private static function activation_stage_for( $risk, $level, array $behavioral ) {
 		if ( 'read' === $risk ) return self::ACTIVATION_ACTIVE;
-		if ( 'high_risk_write' === $risk ) return self::ACTIVATION_SHADOW;
+		if ( 'high_risk_write' === $risk ) return ! empty( $behavioral['behavioral_verified'] ) ? self::ACTIVATION_CANARY : self::ACTIVATION_SHADOW;
 		return in_array( $level, array( self::LEVEL_BOUNDED_WRITE, self::LEVEL_REVERSIBLE_WRITE, self::LEVEL_FULL ), true ) ? self::ACTIVATION_ACTIVE : self::ACTIVATION_SHADOW;
+	}
+
+	private static function not_applicable_behavioral_evidence( $provider, $capability_id, $artifact_fingerprint, $capability_contract_digest ) {
+		return array(
+			'contract' => MAD4B_SCP_Provider_Behavioral_Evidence::CONTRACT,
+			'provider_id' => (string) $provider,
+			'capability_id' => (string) $capability_id,
+			'artifact_fingerprint' => (string) $artifact_fingerprint,
+			'capability_contract_digest' => (string) $capability_contract_digest,
+			'state' => 'not_applicable',
+			'behavioral_verified' => false,
+			'rollback_verified' => false,
+			'authorizing' => false,
+			'activation_granted' => false,
+			'mutation_granted' => false,
+		);
 	}
 
 	private static function evaluate_probes( array $probes, $adapter ) {
