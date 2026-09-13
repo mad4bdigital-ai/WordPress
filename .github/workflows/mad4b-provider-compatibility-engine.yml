@@ -1,0 +1,46 @@
+name: MAD4B Provider Compatibility Engine
+
+on:
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php'
+      - '.github/workflows/mad4b-provider-compatibility-engine.yml'
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php'
+      - '.github/workflows/mad4b-provider-compatibility-engine.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  provider-compatibility-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact source checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Validate capability catalog JSON
+        run: php -r '$d=json_decode(file_get_contents("wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json"),true); if(!is_array($d)||($d["contract"]??"")!=="mad4b.provider-capability-contracts.v1") exit(1);'
+      - name: Lint engine and adapter base
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php
+      - name: Capability-first certification regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php
