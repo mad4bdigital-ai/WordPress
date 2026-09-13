@@ -5,11 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Read-only behavioral evidence verifier for provider capabilities.
  *
- * Receipts are discovered from locally registered sources and are never accepted
- * as caller booleans. Every accepted receipt is bound to the current provider,
- * capability contract and runtime artifact fingerprint, then verified by a
- * locally registered verifier callback. This class never grants mutation or
- * activation authority by itself.
+ * Receipts are discovered from bounded sources and are never accepted as caller
+ * booleans. Every accepted receipt is bound to the current provider, capability
+ * contract and runtime artifact fingerprint. The verifier callback must itself
+ * originate from the MAD4B Control Plane code root; third-party plugins cannot
+ * become trusted merely by attaching a filter and declaring trusted=true.
  */
 final class MAD4B_SCP_Provider_Behavioral_Evidence {
 	const CONTRACT = 'mad4b.provider-behavioral-evidence.v1';
@@ -32,9 +32,7 @@ final class MAD4B_SCP_Provider_Behavioral_Evidence {
 			if ( ! empty( $result['accepted'] ) ) $accepted[] = $result;
 			else $rejected[] = $result;
 		}
-		usort( $accepted, static function ( $a, $b ) {
-			return (int) $b['issued_at'] <=> (int) $a['issued_at'];
-		} );
+		usort( $accepted, static function ( $a, $b ) { return (int) $b['issued_at'] <=> (int) $a['issued_at']; } );
 		$winner = isset( $accepted[0] ) ? $accepted[0] : array();
 		$behavioral = ! empty( $winner['behavioral_verified'] );
 		$rollback = ! empty( $winner['rollback_verified'] );
@@ -51,6 +49,7 @@ final class MAD4B_SCP_Provider_Behavioral_Evidence {
 			'accepted_count' => count( $accepted ),
 			'rejected_count' => count( $rejected ),
 			'rejection_reasons' => self::rejection_reasons( $rejected ),
+			'verifier_provenance_required' => 'mad4b_control_plane_source',
 			'authorizing' => false,
 			'activation_granted' => false,
 			'mutation_granted' => false,
@@ -94,11 +93,13 @@ final class MAD4B_SCP_Provider_Behavioral_Evidence {
 			if ( '' === $id || '' === $issuer || ! is_callable( $callback ) || empty( $scopes ) || '' === $scheme || true !== ( isset( $candidate['trusted'] ) ? $candidate['trusted'] : false ) ) continue;
 			if ( true !== ( isset( $candidate['read_only_verifier'] ) ? $candidate['read_only_verifier'] : false ) ) continue;
 			if ( false !== ( isset( $candidate['authorizing'] ) ? $candidate['authorizing'] : null ) ) continue;
+			if ( ! self::callback_owned_by_control_plane( $callback ) ) continue;
 			$result[ $id ] = array(
 				'verifier_id' => $id,
 				'issuer_id' => $issuer,
 				'scopes' => $scopes,
 				'signature_scheme' => substr( $scheme, 0, 80 ),
+				'verifier_provenance' => 'mad4b_control_plane_source',
 				'verify_callback' => $callback,
 			);
 		}
@@ -177,9 +178,38 @@ final class MAD4B_SCP_Provider_Behavioral_Evidence {
 			'verifier_id' => $verifier_id,
 			'issuer_id' => $issuer_id,
 			'signature_scheme' => $verifier['signature_scheme'],
+			'verifier_provenance' => $verifier['verifier_provenance'],
 			'evidence_digest' => $evidence_digest,
 			'rejection_reasons' => $behavioral ? array() : array( 'behavioral_scope_or_observation_missing' ),
 		);
+	}
+
+	private static function callback_owned_by_control_plane( $callback ) {
+		try {
+			if ( $callback instanceof Closure ) {
+				$reflection = new ReflectionFunction( $callback );
+			} elseif ( is_array( $callback ) && 2 === count( $callback ) ) {
+				$reflection = new ReflectionMethod( $callback[0], $callback[1] );
+			} elseif ( is_string( $callback ) && false !== strpos( $callback, '::' ) ) {
+				list( $class, $method ) = explode( '::', $callback, 2 );
+				$reflection = new ReflectionMethod( $class, $method );
+			} elseif ( is_string( $callback ) ) {
+				$reflection = new ReflectionFunction( $callback );
+			} elseif ( is_object( $callback ) && method_exists( $callback, '__invoke' ) ) {
+				$reflection = new ReflectionMethod( $callback, '__invoke' );
+			} else {
+				return false;
+			}
+			$file = $reflection->getFileName();
+		} catch ( Throwable $error ) {
+			return false;
+		}
+		$root = defined( 'MAD4B_SCP_DIR' ) ? realpath( MAD4B_SCP_DIR ) : false;
+		$file = is_string( $file ) ? realpath( $file ) : false;
+		if ( false === $root || false === $file ) return false;
+		$root = rtrim( str_replace( '\\', '/', $root ), '/' );
+		$file = str_replace( '\\', '/', $file );
+		return $file === $root || 0 === strpos( $file, $root . '/' );
 	}
 
 	private static function rejected( array $reasons, $issued_at = 0, $verifier_id = '', $issuer_id = '' ) {
@@ -201,6 +231,7 @@ final class MAD4B_SCP_Provider_Behavioral_Evidence {
 			'verifier_id' => isset( $receipt['verifier_id'] ) ? (string) $receipt['verifier_id'] : '',
 			'issuer_id' => isset( $receipt['issuer_id'] ) ? (string) $receipt['issuer_id'] : '',
 			'signature_scheme' => isset( $receipt['signature_scheme'] ) ? (string) $receipt['signature_scheme'] : '',
+			'verifier_provenance' => isset( $receipt['verifier_provenance'] ) ? (string) $receipt['verifier_provenance'] : '',
 			'evidence_digest' => isset( $receipt['evidence_digest'] ) ? (string) $receipt['evidence_digest'] : '',
 			'behavioral_verified' => ! empty( $receipt['behavioral_verified'] ),
 			'rollback_verified' => ! empty( $receipt['rollback_verified'] ),
@@ -227,6 +258,7 @@ final class MAD4B_SCP_Provider_Behavioral_Evidence {
 			'accepted_count' => 0,
 			'rejected_count' => 0,
 			'rejection_reasons' => array_values( array_unique( $reasons ) ),
+			'verifier_provenance_required' => 'mad4b_control_plane_source',
 			'authorizing' => false,
 			'activation_granted' => false,
 			'mutation_granted' => false,
