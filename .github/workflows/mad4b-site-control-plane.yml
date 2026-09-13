@@ -200,7 +200,7 @@ jobs:
           grep -Fq "mad4b_write_authority_mount_missing" "$transport_context"
           grep -Fq "MAD4B_SCP_Transport_Context::resolve_server_for_ability" "$authorization"
           grep -Fq "const EXECUTION_BOUNDARY_CONTRACT" "$authorization"
-          grep -Fq "MAD4B_SCP_Approval_Tickets::validate_exact" "$authorization"
+          grep -Fq "MAD4B_SCP_Approval_Tickets::authorize_exact" "$authorization"
           grep -Fq "public static function claim_mutation" "$authorization"
           grep -Fq "MAD4B_SCP_Approval_Tickets::claim_exact" "$authorization"
           grep -Fq "MAD4B_SCP_Approval_Tickets::finalize_claim" "$authorization"
