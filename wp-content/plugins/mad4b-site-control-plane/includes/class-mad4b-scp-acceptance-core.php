@@ -2,6 +2,9 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+require_once __DIR__ . '/class-mad4b-scp-browser-acceptance-provider-registry.php';
+require_once __DIR__ . '/class-mad4b-scp-browser-acceptance-core.php';
+
 final class MAD4B_SCP_Acceptance_Core {
 	const CONTRACT = 'mad4b.acceptance-core.v1';
 	private static $booted = false;
@@ -15,6 +18,7 @@ final class MAD4B_SCP_Acceptance_Core {
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
 		add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_read_adapter' ), 21 );
+		MAD4B_SCP_Browser_Acceptance_Core::boot_early();
 	}
 
 	public static function register_read_adapter( $registry ) {
