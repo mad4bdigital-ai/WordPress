@@ -4,6 +4,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Browser_Acceptance_Core {
 	const CONTRACT = 'mad4b.browser-acceptance-core.v1';
+	const MAX_EVIDENCE_BYTES = 131072;
+	const MAX_EVIDENCE_DEPTH = 8;
+	const MAX_EVIDENCE_NODES = 1024;
+	const MAX_CASES = 8;
 	private static $booted = false;
 	private static $registry;
 
@@ -159,7 +163,15 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $plan_digest ) ) $reasons[] = 'plan_digest_invalid';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $plan_signature ) ) $reasons[] = 'plan_signature_invalid';
 		$evidence = array_key_exists( 'evidence', $input ) ? $input['evidence'] : null;
-		if ( null !== $evidence && ! is_array( $evidence ) ) $reasons[] = 'evidence_invalid';
+		if ( null !== $evidence && ! is_array( $evidence ) ) {
+			$reasons[] = 'evidence_invalid';
+		} elseif ( is_array( $evidence ) ) {
+			$encoded = function_exists( 'wp_json_encode' ) ? wp_json_encode( $evidence ) : json_encode( $evidence );
+			if ( ! is_string( $encoded ) || strlen( $encoded ) > self::MAX_EVIDENCE_BYTES ) $reasons[] = 'evidence_size_limit_exceeded';
+			$shape = self::evidence_shape( $evidence );
+			if ( $shape['max_depth'] > self::MAX_EVIDENCE_DEPTH ) $reasons[] = 'evidence_depth_limit_exceeded';
+			if ( $shape['nodes'] > self::MAX_EVIDENCE_NODES ) $reasons[] = 'evidence_node_limit_exceeded';
+		}
 		return array(
 			'provider_id' => $selector['provider_id'],
 			'profile_id' => $selector['profile_id'],
@@ -168,6 +180,30 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'evidence' => is_array( $evidence ) ? $evidence : null,
 			'blocking_reasons' => array_values( array_unique( $reasons ) ),
 		);
+	}
+
+	private static function evidence_shape( array $evidence ) {
+		$nodes = 1;
+		$max_depth = 1;
+		$stack = array( array( $evidence, 1 ) );
+		while ( $stack ) {
+			$current = array_pop( $stack );
+			$value = $current[0];
+			$depth = (int) $current[1];
+			if ( $depth > $max_depth ) $max_depth = $depth;
+			foreach ( $value as $item ) {
+				$nodes++;
+				if ( $nodes > self::MAX_EVIDENCE_NODES || $max_depth > self::MAX_EVIDENCE_DEPTH ) {
+					return array( 'nodes' => $nodes, 'max_depth' => $max_depth );
+				}
+				if ( is_array( $item ) ) {
+					$next_depth = $depth + 1;
+					if ( $next_depth > $max_depth ) $max_depth = $next_depth;
+					$stack[] = array( $item, $next_depth );
+				}
+			}
+		}
+		return array( 'nodes' => $nodes, 'max_depth' => $max_depth );
 	}
 
 	private static function resolve_provider( $provider_id ) {
@@ -222,19 +258,79 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 	}
 
 	private static function result_schema() {
-		$bounded_string = array( 'type' => 'string', 'maxLength' => 256 );
 		$case_schema = array(
 			'type' => 'object',
-			'maxProperties' => 10,
+			'maxProperties' => 8,
 			'properties' => array(
 				'case_id' => array( 'type' => 'string', 'maxLength' => 128 ),
-				'runtime' => array( 'type' => 'object', 'maxProperties' => 4, 'additionalProperties' => true ),
-				'events' => array( 'type' => 'object', 'maxProperties' => 6, 'additionalProperties' => array( 'type' => 'boolean' ) ),
-				'network' => array( 'type' => 'object', 'maxProperties' => 16, 'additionalProperties' => true ),
-				'rendered' => array( 'type' => 'object', 'maxProperties' => 4, 'properties' => array( 'result_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000000 ), 'ids' => array( 'type' => 'array', 'maxItems' => 100, 'items' => array( 'type' => 'integer', 'minimum' => 1 ) ) ), 'additionalProperties' => true ),
-				'url_state' => array( 'type' => 'object', 'maxProperties' => 8, 'additionalProperties' => true ),
-				'seo' => array( 'type' => 'object', 'maxProperties' => 8, 'additionalProperties' => true ),
-				'reset' => array( 'type' => 'object', 'maxProperties' => 6, 'additionalProperties' => true ),
+				'runtime' => array(
+					'type' => 'object', 'maxProperties' => 3,
+					'properties' => array(
+						'javascript_runtime' => array( 'type' => 'boolean' ),
+						'jet_smart_filters_observed' => array( 'type' => 'boolean' ),
+						'filter_group' => array( 'type' => 'string', 'maxLength' => 160 ),
+					),
+					'additionalProperties' => false,
+				),
+				'events' => array(
+					'type' => 'object', 'maxProperties' => 3,
+					'properties' => array(
+						'ajax_filters_updated' => array( 'type' => 'boolean' ),
+						'presentation_updated' => array( 'type' => 'boolean' ),
+						'presentation_reset' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
+				'network' => array(
+					'type' => 'object', 'maxProperties' => 10,
+					'properties' => array(
+						'method' => array( 'type' => 'string', 'maxLength' => 16 ),
+						'endpoint' => array( 'type' => 'string', 'maxLength' => 2048 ),
+						'http_status' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 599 ),
+						'contract' => array( 'type' => 'string', 'maxLength' => 160 ),
+						'status' => array( 'type' => 'string', 'maxLength' => 80 ),
+						'authorizing' => array( 'type' => 'boolean' ),
+						'url_authority' => array( 'type' => 'boolean' ),
+						'seo_mutation' => array( 'type' => 'boolean' ),
+						'provider' => array( 'type' => 'string', 'maxLength' => 80 ),
+						'query_id' => array( 'type' => 'string', 'maxLength' => 128 ),
+					),
+					'additionalProperties' => false,
+				),
+				'rendered' => array(
+					'type' => 'object', 'maxProperties' => 2,
+					'properties' => array(
+						'result_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000000 ),
+						'ids' => array( 'type' => 'array', 'maxItems' => 100, 'items' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+					),
+					'additionalProperties' => false,
+				),
+				'url_state' => array(
+					'type' => 'object', 'maxProperties' => 2,
+					'properties' => array(
+						'filter_state_observed' => array( 'type' => 'boolean' ),
+						'etg_history_mutation' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
+				'seo' => array(
+					'type' => 'object', 'maxProperties' => 4,
+					'properties' => array(
+						'canonical_unchanged' => array( 'type' => 'boolean' ),
+						'robots_unchanged' => array( 'type' => 'boolean' ),
+						'hreflang_unchanged' => array( 'type' => 'boolean' ),
+						'rank_math_unchanged' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
+				'reset' => array(
+					'type' => 'object', 'maxProperties' => 2,
+					'properties' => array(
+						'event_observed' => array( 'type' => 'boolean' ),
+						'neutral_state_restored' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
 			),
 			'required' => array( 'case_id' ),
 			'additionalProperties' => false,
@@ -255,9 +351,9 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
 						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
 						'origin' => array( 'type' => 'string', 'maxLength' => 2048 ),
-						'build_identity' => array( 'type' => 'object', 'maxProperties' => 4, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
-						'observer' => array( 'type' => 'object', 'maxProperties' => 6, 'properties' => array( 'contract' => array( 'type' => 'string', 'maxLength' => 160 ), 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => array( 'type' => 'string', 'maxLength' => 80 ) ), 'additionalProperties' => false ),
-						'cases' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $case_schema ),
+						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 3, 'properties' => array( 'contract' => array( 'type' => 'string', 'maxLength' => 160 ), 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => array( 'type' => 'string', 'maxLength' => 80 ) ), 'additionalProperties' => false ),
+						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
 					),
 					'additionalProperties' => false,
 				),
