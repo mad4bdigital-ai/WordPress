@@ -3,6 +3,7 @@
 
     var CONTRACT = 'etg.dfsb.browser-acceptance-observer.v1';
     var ENDPOINT = '/wp-json/etg-dfsb/v1/ajax-presentation';
+    var MAX_DIAGNOSTIC_EVENTS = 32;
     var originalFetch = null, originalPushState = null, originalReplaceState = null;
     var jsfSubscribed = false, armed = false, currentCase = null;
     var state = freshState();
@@ -25,6 +26,37 @@
 
     function clone(value) {
         try { return JSON.parse(JSON.stringify(value)); } catch (error) { return null; }
+    }
+
+    function boundedString(value, maxLength) {
+        return String(value == null ? '' : value).slice(0, Math.max(0, Number(maxLength) || 0));
+    }
+
+    function boundedStringList(value, maxItems, maxLength) {
+        if (!Array.isArray(value)) { return []; }
+        return value.slice(0, maxItems).map(function (item) { return boundedString(item, maxLength); });
+    }
+
+    function boundedPush(list, value) {
+        if (!Array.isArray(list)) { return; }
+        if (list.length >= MAX_DIAGNOSTIC_EVENTS) { list.shift(); }
+        list.push(value);
+    }
+
+    function boundedBlockedDetail(detail) {
+        detail = detail && typeof detail === 'object' ? detail : {};
+        var out = {};
+        if (Object.prototype.hasOwnProperty.call(detail, 'reason')) { out.reason = boundedString(detail.reason, 160); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'group')) { out.group = boundedString(detail.group, 160); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'jsf_version')) { out.jsf_version = boundedString(detail.jsf_version, 80); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'supported_jsf_versions')) { out.supported_jsf_versions = boundedStringList(detail.supported_jsf_versions, 32, 80); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'blocking_reasons')) { out.blocking_reasons = boundedStringList(detail.blocking_reasons, 32, 160); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'groups')) { out.groups = boundedStringList(detail.groups, 32, 160); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'path_group')) { out.path_group = boundedString(detail.path_group, 160); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'retry_attempts')) { out.retry_attempts = Math.max(0, Math.min(100, parseInt(detail.retry_attempts, 10) || 0)); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'http_status')) { out.http_status = Math.max(0, Math.min(599, parseInt(detail.http_status, 10) || 0)); }
+        if (Object.prototype.hasOwnProperty.call(detail, 'timeout_ms')) { out.timeout_ms = Math.max(0, Math.min(120000, parseInt(detail.timeout_ms, 10) || 0)); }
+        return out;
     }
 
     function normalizedPath(value) {
@@ -92,7 +124,7 @@
     }
 
     function snapshotState() {
-        return { url: String(window.location.href || ''), head: headState(), dom: domState() };
+        return { url: boundedString(window.location.href || '', 2048), head: headState(), dom: domState() };
     }
 
     function sameArray(a, b) {
@@ -115,7 +147,7 @@
             window.history.pushState = function () {
                 var stack = (new Error()).stack || '';
                 var etgSource = isEtgHistoryStack(stack);
-                state.historyCalls.push({ method: 'pushState', etg_source: etgSource });
+                boundedPush(state.historyCalls, { method: 'pushState', etg_source: etgSource });
                 if (etgSource) { state.etgHistoryMutation = true; }
                 return originalPushState.apply(window.history, arguments);
             };
@@ -124,7 +156,7 @@
             window.history.replaceState = function () {
                 var stack = (new Error()).stack || '';
                 var etgSource = isEtgHistoryStack(stack);
-                state.historyCalls.push({ method: 'replaceState', etg_source: etgSource });
+                boundedPush(state.historyCalls, { method: 'replaceState', etg_source: etgSource });
                 if (etgSource) { state.etgHistoryMutation = true; }
                 return originalReplaceState.apply(window.history, arguments);
             };
@@ -158,23 +190,23 @@
             var promise = originalFetch.apply(window, arguments);
             if (!endpointMatches(url)) { return promise; }
             promise.then(function (response) {
-                var record = { method: method, endpoint: url, http_status: Number(response.status || 0) };
+                var record = { method: boundedString(method, 16), endpoint: boundedString(url, 2048), http_status: Number(response.status || 0) };
                 try {
                     response.clone().text().then(function (body) {
                         var data = {};
                         try { data = body ? JSON.parse(body) : {}; } catch (error) { data = {}; }
-                        record.contract = String(data.contract || '');
-                        record.status = String(data.status || '');
+                        record.contract = boundedString(data.contract || '', 160);
+                        record.status = boundedString(data.status || '', 80);
                         record.authorizing = !!data.authorizing;
                         record.url_authority = !!data.url_authority;
                         record.seo_mutation = !!data.seo_mutation;
-                        record.provider = String(data.provider || '');
-                        record.query_id = String(data.query_id || '');
+                        record.provider = boundedString(data.provider || '', 80);
+                        record.query_id = boundedString(data.query_id || '', 128);
                         state.lastNetwork = record;
                     });
                 } catch (error) { state.lastNetwork = record; }
             }, function () {
-                state.lastNetwork = { method: method, endpoint: url, http_status: 0 };
+                state.lastNetwork = { method: boundedString(method, 16), endpoint: boundedString(url, 2048), http_status: 0 };
             });
             return promise;
         };
@@ -192,7 +224,7 @@
         jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
             if (!armed) { return; }
             state.ajaxFiltersUpdated = true;
-            state.filterGroup = String(provider || '') + '/' + String(queryId || '');
+            state.filterGroup = boundedString(provider || '', 80) + '/' + boundedString(queryId || '', 79);
         });
         jsfSubscribed = true;
     }
@@ -207,7 +239,7 @@
         if (!armed) { return; }
         state.presentationUpdated = true;
         var detail = event && event.detail ? event.detail : {};
-        if (detail.provider || detail.query_id) { state.filterGroup = String(detail.provider || '') + '/' + String(detail.query_id || ''); }
+        if (detail.provider || detail.query_id) { state.filterGroup = boundedString(detail.provider || '', 80) + '/' + boundedString(detail.query_id || '', 79); }
         window.setTimeout(function () { if (armed) { state.filteredSnapshot = snapshotState(); } }, 0);
     });
     document.addEventListener('etg-dfsb/ajax-presentation-reset', function () {
@@ -217,7 +249,7 @@
     });
     document.addEventListener('etg-dfsb/ajax-presentation-blocked', function (event) {
         if (!armed) { return; }
-        state.blocked.push(clone(event && event.detail ? event.detail : {}) || {});
+        boundedPush(state.blocked, boundedBlockedDetail(event && event.detail ? event.detail : {}));
     });
 
     function validateCase(planCase) {
@@ -255,13 +287,13 @@
             && sameArray(resetIds, baselineIds);
         return {
             contract: CONTRACT,
-            case_id: currentCase ? String(currentCase.case_id || '') : '',
+            case_id: currentCase ? boundedString(currentCase.case_id || '', 128) : '',
             passive: true,
             authorizing: false,
             runtime: {
                 javascript_runtime: true,
                 jet_smart_filters_observed: !!(window.JetSmartFilters && window.JetSmartFilters.filterGroups),
-                filter_group: state.filterGroup
+                filter_group: boundedString(state.filterGroup, 160)
             },
             events: {
                 ajax_filters_updated: state.ajaxFiltersUpdated,
@@ -273,8 +305,8 @@
             url_state: {
                 filter_state_observed: normalizedPath(filtered.url) !== normalizedPath(baseline.url) || state.ajaxFiltersUpdated,
                 etg_history_mutation: state.etgHistoryMutation,
-                filtered_url: String(filtered.url || ''),
-                reset_url: String(reset.url || '')
+                filtered_url: boundedString(filtered.url || '', 2048),
+                reset_url: boundedString(reset.url || '', 2048)
             },
             seo: {
                 canonical_unchanged: String(head.canonical || '') === String(baselineHead.canonical || ''),
