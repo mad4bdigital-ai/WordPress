@@ -179,8 +179,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		foreach ( $provider_blocked_write_tools as $blocked_tool ) {
 			$blocked_ability = isset( $blocked_tool['ability'] ) ? (string) $blocked_tool['ability'] : '';
 			if ( '' === $blocked_ability ) continue;
-			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $blocked_ability )
-				|| MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $blocked_ability ) ) {
+			// Stable ChatGPT discovery may expose a blocked provider contract. That is
+			// not executable authority; only an unexpected mad4b-write mount is a leak.
+			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $blocked_ability ) ) {
 				$provider_blocked_mount_leaks[] = $blocked_ability;
 			}
 		}
