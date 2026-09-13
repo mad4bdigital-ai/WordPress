@@ -186,16 +186,16 @@ require(impl['registry'], 'mad4b_wildcard_grant_denied', 'implementation-wildcar
 require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
 require(impl['authz'], 'MAD4B_SCP_Transport_Context::resolve_server_for_ability', 'implementation-effective-transport-binding')
 require(impl['authz'], 'MAD4B_SCP_Budgets::reserve', 'implementation-budget-before-effect')
-require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::validate_exact', 'implementation-exact-approval-preflight')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::authorize_exact', 'implementation-exact-approval-preflight')
 require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::claim_exact', 'implementation-exact-approval-claim')
 require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::finalize_claim', 'implementation-exact-approval-finalize')
 require(impl['authz'], 'public static function wrap_execution_boundary', 'implementation-execution-boundary')
 if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Agent_Registry::exact_grant'):
     raise SystemExit('FAIL implementation-transport-before-grant')
-if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::validate_exact'):
-    raise SystemExit('FAIL implementation-transport-before-approval-validation')
-if impl['authz'].index('MAD4B_SCP_Approval_Tickets::validate_exact') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::claim_exact'):
-    raise SystemExit('FAIL implementation-approval-validation-before-claim')
+if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::authorize_exact'):
+    raise SystemExit('FAIL implementation-transport-before-approval-authorization')
+if impl['authz'].index('MAD4B_SCP_Approval_Tickets::authorize_exact') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::claim_exact'):
+    raise SystemExit('FAIL implementation-approval-authorization-before-claim')
 preflight = impl['authz'][impl['authz'].index('public static function authorize_mutation'):impl['authz'].index('public static function claim_mutation')]
 for side_effect in ('MAD4B_SCP_Budgets::reserve', 'MAD4B_SCP_Budgets::commit', 'MAD4B_SCP_Approval_Tickets::claim_exact', 'MAD4B_SCP_Approval_Tickets::consume_exact', 'MAD4B_SCP_Approval_Tickets::finalize_claim'):
     forbid(preflight, side_effect, 'implementation-permission-preflight-readonly')
