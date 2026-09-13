@@ -92,17 +92,35 @@ Transport-only authority differences are preserved but excluded from semantic-st
 
 ## Query evaluation
 
-For JetEngine routes the semantic evaluator resolves the canonical Query Builder binding through `RuntimeQueryBindingResolver`, clones the resolved query object, applies the governed filtered properties, and reads the authoritative total count.
+For JetEngine routes the semantic evaluator resolves the canonical Query Builder binding through `RuntimeQueryBindingResolver`, derives each semantic page from a clone of the resolved query definition, clears clone-local evaluated runtime state, reapplies the governed filtered properties, and reads the authoritative total count/result IDs without mutating the registered Query Builder configuration.
 
 The internal evaluator contract is `etg.dfsb.semantic-query-evaluation.v2`.
 
-When the total is at or below the 100-ID ceiling and Query Builder exposes its canonical pagination contract, the evaluator walks the result pages using `get_items_per_page()` plus `set_filtered_prop('_page', n)`. It never opens `final_query`, never writes Query Builder configuration, never forces an unbounded `posts_per_page=-1`, and never persists filtered state.
+When the total is at or below the 100-ID ceiling and Query Builder exposes its canonical pagination contract, the evaluator walks the result pages using `get_items_per_page()` plus `set_filtered_prop('_page', n)`. Every page fetch is reinitialized independently so a manager-owned Query Builder object cannot leak a previously evaluated `final_query`/`current_query` page into semantic acceptance.
 
 The page walk is resource bounded:
 
 - no more than 100 result IDs may be accepted as a complete dataset;
 - no more than 20 Query Builder pages may be fetched for one semantic dataset;
 - results above either ceiling stay `INCOMPLETE_EVIDENCE` with an explicit reason such as `total_exceeds_id_ceiling` or `page_fetch_ceiling_exceeded`.
+
+The evaluator must not hide pagination defects with post-hoc deduplication. It records raw page evidence and applies these invariants before certifying IDs:
+
+```text
+requested page n > 1 must report/behave as page n when the provider exposes page state
+page_signature[n] must not equal page_signature[n-1] while unique_count < total
+raw_collected_id_count must not exceed provider_total
+new_unique_ids must be > 0 while unique_count < total
+collection stops successfully when unique_count == total
+IDs exposed for parity are ordered unique IDs, while raw_id_count remains separate evidence
+```
+
+A violation is a bounded acceptance-infrastructure failure, not a Tours/JetSmartFilters product mismatch. Canonical reasons include:
+
+- `paged_query_items_do_not_advance`;
+- `duplicate_page_signature`;
+- `raw_collected_id_count_exceeds_total`;
+- `pagination_no_progress`.
 
 A complete bounded page walk reports:
 
@@ -112,6 +130,9 @@ ids_scope=full_result_set
 ids_reason=complete
 collection_mode=paged_query_items|single_query_items
 page_fetches=<bounded integer>
+raw_id_count=<provider total>
+unique_id_count=<provider total>
+infrastructure_failure=false
 ```
 
 Dataset identity and ordering are separate dimensions:
@@ -119,7 +140,7 @@ Dataset identity and ordering are separate dimensions:
 - `ids_parity` compares result-set identity independent of order;
 - `order_parity` compares provider order.
 
-If the provider runtime cannot expose the complete bounded item identity set, ID/order parity is `INCOMPLETE_EVIDENCE`; it must not be silently promoted to PASS.
+If the provider runtime cannot expose the complete bounded item identity set, ID/order parity is `INCOMPLETE_EVIDENCE`; it must not be silently promoted to PASS. If the acceptance collector itself cannot advance pagination, ID/order parity is blocked by `TEST_INFRASTRUCTURE_FAILURE` while independently verified count parity remains valid.
 
 ## Verdict taxonomy
 
@@ -127,7 +148,7 @@ The provider uses these v1 verdict states:
 
 - `PASS`: all required semantic dimensions are verified;
 - `FAIL`: execution completed and semantic divergence was observed;
-- `BLOCKED`: a prerequisite such as profile, route, scope, runtime, or provider query binding is unavailable;
+- `BLOCKED`: a prerequisite or acceptance-infrastructure condition prevents certification;
 - `INCOMPLETE_EVIDENCE`: semantic execution is otherwise healthy but one required evidence dimension cannot be completely observed.
 
 Browser absence is always reported separately as `INCOMPLETE_EVIDENCE` and does not convert a semantic PASS into a semantic FAIL.
@@ -136,7 +157,8 @@ Classification examples:
 
 - semantic state/count/ID/order divergence -> `PRODUCT_DEFECT`;
 - missing profile/runtime/query binding -> `ENVIRONMENT_OR_PROVIDER_BLOCK`;
-- incomplete bounded dataset identities -> `OBSERVATION_GAP`;
+- semantic dataset pagination collector cannot advance safely -> `TEST_INFRASTRUCTURE_FAILURE`;
+- incomplete bounded dataset identities without collector failure -> `OBSERVATION_GAP`;
 - verified semantic parity -> `NO_CONFIRMED_DEFECT`.
 
 ## Central MAD4B integration
