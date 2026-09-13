@@ -194,7 +194,7 @@ jobs:
           grep -Fq "entry_hash" "$audit"
           grep -Fq "verify_chain" "$audit"
 
-          grep -Fq "mad4b.mcp-transport-context.v2" "$transport_context"
+          grep -Fq "mad4b.mcp-transport-context.v3" "$transport_context"
           grep -Fq "resolve_server_for_ability" "$transport_context"
           grep -Fq "mad4b_transport_route_mismatch" "$transport_context"
           grep -Fq "mad4b_write_authority_mount_missing" "$transport_context"
