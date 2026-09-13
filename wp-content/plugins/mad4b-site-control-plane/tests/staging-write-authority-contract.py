@@ -78,7 +78,7 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Authority::authorization_input( $input )",
     "MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input )",
     "MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed",
-    "MAD4B_SCP_Approval_Tickets::validate_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class )",
+    "MAD4B_SCP_Approval_Tickets::authorize_exact( $approval_ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $authorization_input, $ticket_class )",
     "public static function claim_mutation",
     "MAD4B_SCP_Budgets::reserve(",
     "MAD4B_SCP_Approval_Tickets::claim_exact",
