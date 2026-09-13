@@ -88,3 +88,21 @@ add_action( 'plugins_loaded', static function () {
     $provider->register();
     ( new ETG\DynamicFilterSEOBridge\Integration\EvidenceAbilities( $provider ) )->register();
 }, 21 );
+
+// Browser Runtime Acceptance remains an external-browser execution layer. ETG
+// exposes only a governed, non-authorizing provider: it derives a signed plan
+// from the already-verified semantic provider and reduces externally observed
+// browser evidence. No browser engine, arbitrary JavaScript, new public REST
+// transport, profile mutation, SEO publication, or Production activation is
+// introduced here.
+add_action( 'plugins_loaded', static function () {
+    $guard = 'ETG\\DynamicFilterSEOBridge\\Runtime\\BootGuard';
+    if ( $guard::shouldHold() || ! function_exists( 'apply_filters' ) ) { return; }
+    $semantic = apply_filters( 'etg_dfsb_live_acceptance_provider', null );
+    if ( ! $semantic instanceof ETG\DynamicFilterSEOBridge\Acceptance\LiveAcceptanceProvider ) { return; }
+    $browser = new ETG\DynamicFilterSEOBridge\Acceptance\BrowserAcceptanceProvider(
+        $semantic,
+        static function (): array { return ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect(); }
+    );
+    $browser->register();
+}, 22 );
