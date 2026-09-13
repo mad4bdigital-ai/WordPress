@@ -56,7 +56,7 @@ if status.index('$remote_preflight_blockers = array_merge') > status.index('$con
     raise SystemExit('FAIL preflight-before-certification: remote blockers must be assembled before final certification')
 
 for marker in (
-    "const CONTRACT = 'mad4b.external-handshake-evidence.v2'",
+    "const CONTRACT = 'mad4b.external-handshake-evidence.v3'",
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
@@ -65,7 +65,8 @@ for marker in (
     "update_option( self::OPTION, $evidence, false )", "'credential_material_stored' => false",
     "'stale_build_evidence'", "'stale_tool_inventory_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
     "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
-    'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
+    "'provider_gated_write_tools'", "'eligible_write_tool_count'", "'expected_eligible_write_tool_count'",
+    'expected_tool_names()', 'expected_write_tool_names()', 'expected_eligible_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
 ):
     require(evidence, marker, 'external-handshake-evidence')
 for forbidden in (
@@ -89,6 +90,8 @@ require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
 require(servers, "public static function write_tools()", 'write-tool-projection')
+require(servers, "public static function external_write_tools()", 'stable-external-write-catalog')
+require(servers, "public static function is_external_write_candidate", 'stable-external-write-membership')
 require(servers, "array_key_exists( 'readonly', $annotations )", 'write-explicit-annotation')
 require(servers, "false !== $annotations['readonly']", 'write-readonly-denial')
 require(servers, "MAD4B_SCP_Adapter_Registry::instance()", 'write-adapter-projection')
@@ -96,15 +99,18 @@ require(servers, "return 'core';", 'write-core-provider-binding')
 for generic in ('execute-any', 'generic-dispatch', 'call_user_func( $input', 'ability_name_from_request'):
     forbid(servers, generic, 'write-no-generic-dispatcher')
 
-require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v2'", 'transport-context-contract')
+require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v3'", 'transport-context-contract')
 require(transport_context, "'/mcp/' . $server_id", 'transport-exact-route')
 require(transport_context, "'mad4b_transport_route_mismatch'", 'transport-route-mismatch')
 require(transport_context, 'resolve_server_for_ability', 'transport-effective-server-resolver')
 require(transport_context, 'MAD4B_SCP_Servers::ability_is_mounted', 'transport-mount-verification')
 require(transport_context, "'mad4b_transport_ability_not_mounted'", 'transport-ability-mount-denial')
+require(transport_context, 'MAD4B_SCP_Servers::is_external_write_candidate', 'transport-stable-write-candidate-check')
 require(transport_context, 'MAD4B_SCP_Staging_Write_Authority::is_write_ability', 'transport-chatgpt-write-delegation')
+require(transport_context, "'mad4b_write_capability_not_eligible'", 'transport-provider-write-gate')
 require(transport_context, "return 'mad4b-write';", 'transport-dedicated-write-authority')
 require(transport_context, "'mad4b_write_authority_mount_missing'", 'transport-write-authority-mount-denial')
+require(transport_context, "'stable_catalog_dynamic_execution'", 'transport-stable-discovery-model')
 for bypass in ("apply_filters( 'mad4b_scp_transport", "$_REQUEST", "$_GET", "$_POST"):
     forbid(transport_context, bypass, 'transport-context-no-bypass-input')
 
@@ -218,4 +224,4 @@ for marker in (
 for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v9: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS')
