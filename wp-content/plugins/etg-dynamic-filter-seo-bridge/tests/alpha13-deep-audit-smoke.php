@@ -128,4 +128,9 @@ etg_has('Editor preview is synthetic',$preview,'Elementor warns that editor prev
 etg_expect(false===strpos($contextBuilder,'update_option(')&&false===strpos($presentation,'update_option(')&&false===strpos($endpoint,'update_option('),'dark presentation policy cannot mutate stored configuration');
 etg_expect(false===strpos($js,'history.pushState')&&false===strpos($js,'history.replaceState'),'ETG bridge still does not mutate browser history');
 
+$acceptanceSmoke=$root.'/tests/alpha13-live-acceptance-provider-smoke.php';
+$acceptanceCommand=escapeshellarg(PHP_BINARY).' '.escapeshellarg($acceptanceSmoke);
+passthru($acceptanceCommand,$acceptanceExitCode);
+etg_same(0,$acceptanceExitCode,'live acceptance pagination regression must pass in the governed PHP contract job');
+
 echo "Alpha13 deep-audit regression smoke tests passed.\n";
