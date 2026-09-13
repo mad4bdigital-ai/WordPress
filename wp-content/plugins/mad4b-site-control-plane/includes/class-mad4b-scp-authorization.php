@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Authorization {
 	const EXECUTION_BOUNDARY_CONTRACT = 'mad4b.authorization-execution-boundary.v1';
 	const PERMISSION_DENIAL_AUDIT_CONTRACT = 'mad4b.authorization-permission-denial-audit.v1';
+	const TARGET_FINGERPRINT_CONTRACT = 'mad4b.authorization-target.v1';
 	private static $booted = false;
 
 	public static function boot() {
@@ -41,6 +42,7 @@ final class MAD4B_SCP_Authorization {
 			'approval_required' => $approval_required,
 			'agent_public_id' => $agent['public_id'],
 			'grant_id' => (int) $grant['id'],
+			'request_id' => is_array( $identity ) && isset( $identity['request_id'] ) ? (string) $identity['request_id'] : '',
 		);
 
 		if ( $approval_required ) {
@@ -49,9 +51,13 @@ final class MAD4B_SCP_Authorization {
 			if ( '' === $ticket_id && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) $ticket_id = MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input );
 			if ( '' === $ticket_id ) return self::deny( 'mad4b_approval_required', 'Mutation requires a one-time exact approval ticket.', $ability_name );
 			$clean_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
-			$approved = MAD4B_SCP_Approval_Tickets::authorize_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $clean_input );
+			$target = self::target_fingerprint( $ability_name, $provider, $clean_input, $agent, $identity );
+			$ticket_class = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $clean_input ) : 'mutation';
+			$approved = MAD4B_SCP_Approval_Tickets::authorize_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target, $clean_input, $ticket_class );
 			if ( is_wp_error( $approved ) ) return self::deny( $approved->get_error_code(), $approved->get_error_message(), $ability_name );
 			$decision['approval_ticket_id'] = $ticket_id;
+			$decision['target_fingerprint'] = $target;
+			$decision['ticket_class'] = $ticket_class;
 		}
 
 		self::audit( $ability_name, $decision, 'allowed' );
@@ -86,6 +92,7 @@ final class MAD4B_SCP_Authorization {
 			'agent_public_id' => $agent['public_id'],
 			'grant_id' => (int) $grant['id'],
 			'approval_ticket_id' => '',
+			'request_id' => is_array( $identity ) && isset( $identity['request_id'] ) ? (string) $identity['request_id'] : '',
 		);
 
 		$clean_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
@@ -97,7 +104,9 @@ final class MAD4B_SCP_Authorization {
 			$ticket_id = is_array( $identity ) && isset( $identity['approval_ticket_id'] ) ? trim( (string) $identity['approval_ticket_id'] ) : '';
 			if ( '' === $ticket_id && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) $ticket_id = MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input );
 			if ( '' === $ticket_id ) { if ( class_exists( 'MAD4B_SCP_Budgets' ) ) MAD4B_SCP_Budgets::rollback( $budget_reservation ); return self::deny( 'mad4b_approval_required', 'Mutation requires a one-time exact approval ticket.', $ability_name ); }
-			$claim = MAD4B_SCP_Approval_Tickets::claim_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $clean_input );
+			$target = self::target_fingerprint( $ability_name, $provider, $clean_input, $agent, $identity );
+			$ticket_class = class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $clean_input ) : 'mutation';
+			$claim = MAD4B_SCP_Approval_Tickets::claim_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target, $clean_input, $ticket_class );
 			if ( is_wp_error( $claim ) ) {
 				if ( class_exists( 'MAD4B_SCP_Budgets' ) ) MAD4B_SCP_Budgets::rollback( $budget_reservation );
 				if ( 'mad4b_approval_replay_denied' === (string) $claim->get_error_code() ) {
@@ -107,6 +116,8 @@ final class MAD4B_SCP_Authorization {
 				return self::deny( $claim->get_error_code(), $claim->get_error_message(), $ability_name );
 			}
 			$decision['approval_ticket_id'] = $ticket_id;
+			$decision['target_fingerprint'] = $target;
+			$decision['ticket_class'] = $ticket_class;
 		}
 
 		$budget_commit = class_exists( 'MAD4B_SCP_Budgets' ) ? MAD4B_SCP_Budgets::commit( $budget_reservation ) : true;
@@ -132,13 +143,6 @@ final class MAD4B_SCP_Authorization {
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return $args;
 		if ( empty( $mcp['mad4b_governed_write_authority'] ) || ! empty( $mcp['mad4b_execution_boundary'] ) ) return $args;
 
-		// MCP Adapter performs the ability permission check before the execute
-		// callback. A replay can therefore be denied before claim_mutation() is ever
-		// entered. Bind that real remote denial to the exact ticket here, while
-		// keeping generic/local permission probes audit-free. If this permission
-		// check denies, execution stops; if it succeeds and a later race makes
-		// claim_exact() fail, the claim-time fallback below records that separate
-		// path. The two paths are mutually exclusive for one tools/call.
 		if ( isset( $args['permission_callback'] ) && is_callable( $args['permission_callback'] ) && empty( $mcp['mad4b_permission_denial_audit'] ) ) {
 			$permission = $args['permission_callback'];
 			$args['permission_callback'] = static function ( $input = null ) use ( $permission, $name ) {
@@ -192,9 +196,6 @@ final class MAD4B_SCP_Authorization {
 		$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
-		// `write` is a first-class authority surface. Without this explicit mapping
-		// a write-scoped core wrapper whose category is `mad4b-admin` would be
-		// incorrectly claimed against the admin authority instead of `mad4b-write`.
 		if ( in_array( $surface, array( 'content', 'write', 'admin', 'breakglass' ), true ) ) return 'mad4b-' . $surface;
 		$category = isset( $args['category'] ) ? sanitize_key( (string) $args['category'] ) : '';
 		if ( in_array( $category, array( 'mad4b-content', 'mad4b-admin', 'mad4b-breakglass' ), true ) ) return $category;
@@ -209,6 +210,34 @@ final class MAD4B_SCP_Authorization {
 		if ( null === $provider && 0 === strpos( (string) $ability_name, 'mad4b/' ) ) $provider = 'core';
 		$provider = sanitize_key( (string) $provider );
 		return '' !== $provider ? $provider : self::error( 'mad4b_execution_provider_unresolved', 'Governed execution provider could not be resolved for this ability.' );
+	}
+
+	public static function target_fingerprint( $ability_name, $provider, $input, $agent = array(), $identity = array() ) {
+		$target = array(
+			'contract' => self::TARGET_FINGERPRINT_CONTRACT,
+			'ability' => (string) $ability_name,
+			'provider' => sanitize_key( (string) $provider ),
+			'input' => self::canonical_target_value( is_array( $input ) ? $input : array() ),
+		);
+		$json = function_exists( 'wp_json_encode' ) ? wp_json_encode( $target, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) : json_encode( $target );
+		$fallback = hash( 'sha256', is_string( $json ) ? $json : serialize( $target ) );
+		$filtered = function_exists( 'apply_filters' ) ? apply_filters( 'mad4b_scp_authorization_target_fingerprint', $fallback, $ability_name, $provider, $input, $agent, $identity ) : $fallback;
+		$filtered = strtolower( trim( (string) $filtered ) );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/', $filtered ) ? $filtered : $fallback;
+	}
+
+	private static function canonical_target_value( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+		$out = array();
+		if ( $is_list ) {
+			foreach ( $value as $item ) $out[] = self::canonical_target_value( $item );
+			return $out;
+		}
+		$keys = array_keys( $value );
+		sort( $keys, SORT_STRING );
+		foreach ( $keys as $key ) $out[ (string) $key ] = self::canonical_target_value( $value[ $key ] );
+		return $out;
 	}
 
 	public static function authority_status() {
@@ -259,12 +288,6 @@ final class MAD4B_SCP_Authorization {
 		$ticket_id = is_array( $identity ) && isset( $identity['approval_ticket_id'] ) && preg_match( '/^[a-f0-9-]{36}$/', (string) $identity['approval_ticket_id'] )
 			? strtolower( (string) $identity['approval_ticket_id'] )
 			: '';
-
-		// Replay can be denied either by a real remote MCP permission check before
-		// claim_mutation(), or during authorize_mutation() / claim_exact() inside the
-		// execution boundary. Preserve the already-present governance-input ticket
-		// only for this replay denial class so durable acceptance reconstruction can
-		// bind the denial to the exact one-time ticket.
 		if ( '' === $ticket_id
 			&& 'mad4b_approval_replay_denied' === (string) $error->get_error_code()
 			&& class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) {
