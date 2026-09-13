@@ -174,13 +174,13 @@ jobs:
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-reversible-failure-evidence.php" \
             --path=/tmp/mad4b-execution-fence-wordpress --user=mad4b-ci-admin
 
-      - name: Prove real MCP tools/call same-request fencing and independent replay denial
+      - name: Prove real MCP execute replay undo and durable acceptance reconstruction
         shell: bash
         env:
           MAD4B_TEST_WP_PATH: /tmp/mad4b-execution-fence-wordpress
         run: |
           set -euo pipefail
-          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence-reconciler.php
 
       - name: Prove authority augmentation has one effective registration
         shell: bash
