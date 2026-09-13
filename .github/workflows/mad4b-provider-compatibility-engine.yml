@@ -5,24 +5,34 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
       - 'wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php'
       - '.github/workflows/mad4b-provider-compatibility-engine.yml'
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
       - 'wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php'
       - '.github/workflows/mad4b-provider-compatibility-engine.yml'
 
@@ -68,14 +78,21 @@ jobs:
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php
       - name: Capability-first certification regression
         run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php
       - name: Trusted behavioral recertification regression
         run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php
+      - name: Governed provider canary execution regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php
       - name: Per-ability MCP write compiler regression
         run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php
