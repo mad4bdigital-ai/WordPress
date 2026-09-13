@@ -16,7 +16,7 @@ authorization = (root / 'includes/class-mad4b-scp-authorization.php').read_text(
 required_observer = [
     "const QUERY_MONITOR_CONTRACT = 'mad4b.query-monitor-regression.v1'",
     "const PROVENANCE_CONTRACT = 'mad4b.build-provenance.v1'",
-    "const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v1'",
+    "const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v2'",
     "const WPML_RECEIPT_CONTRACT = 'mad4b.external-wpml-receipt.v1'",
     "const SNAPSHOT_VERIFY_CONTRACT = 'mad4b.snapshot-verify.v1'",
     "const AGGREGATE_CONTRACT = 'mad4b.live-acceptance-status.v1'",
@@ -38,6 +38,8 @@ required_observer = [
     "'production_capture_persistence_enabled' => false",
     "'pending_external_evidence'",
     "'external_facts_self_certified' => false",
+    "'provider_gated_write_tools'",
+    "'provider_execution_mount_leaks'",
     "'provider_blocked_tool_leaks'",
     "'missing_expected_tools'",
     "'unexpected_tools'",
@@ -231,10 +233,19 @@ for marker in [
     if marker not in runtime_test:
         raise SystemExit('Live Acceptance reachability regression is missing: ' + marker)
 
-# Keep existing external handshake v2 compatibility; companion attestation only
-# hardens exact-set diff/freshness and never downgrades the canonical contract.
-if "const CONTRACT = 'mad4b.external-handshake-evidence.v2'" not in external:
-    raise SystemExit('Canonical external-handshake v2 contract was downgraded.')
+# Canonical external handshake v3 certifies the stable external catalog while
+# current execution eligibility stays bound to mad4b-write separately.
+if "const CONTRACT = 'mad4b.external-handshake-evidence.v3'" not in external:
+    raise SystemExit('Canonical external-handshake v3 contract is missing.')
+for marker in [
+    'public static function external_write_tools',
+    'public static function is_external_write_candidate',
+    'stable registered Staging catalog',
+]:
+    if marker not in servers and marker not in external:
+        raise SystemExit('Stable external write-catalog contract missing: ' + marker)
+if "'mad4b_write_capability_not_eligible'" not in (root / 'includes/class-mad4b-scp-transport-context.php').read_text(encoding='utf-8'):
+    raise SystemExit('Discoverable-but-gated provider writes are not fail-closed at transport resolution.')
 
 # Governance invariants requested by the acceptance patch.
 for marker in [
@@ -263,4 +274,4 @@ if "update_option( self::LEDGER_OPTION, $ledger, false )" not in finalizer:
 if "update_option( self::WPML_DIAGNOSTIC_OPTION, $receipt, false )" not in finalizer:
     raise SystemExit('WPML diagnostics must explicitly disable autoload.')
 
-print('mad4b.live-acceptance-evidence.contract.v4: PASS')
+print('mad4b.live-acceptance-evidence.contract.v5: PASS')
