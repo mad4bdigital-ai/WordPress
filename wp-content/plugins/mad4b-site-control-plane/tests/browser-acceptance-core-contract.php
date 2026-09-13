@@ -162,6 +162,14 @@ foreach ( $expected_abilities as $name ) {
 }
 browser_expect( ! isset( $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-run'] ), 'WordPress must not expose a browser execution ability' );
 
+$result_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-result']['input_schema'];
+$evidence_schema = $result_schema['properties']['evidence'];
+$case_schema = $evidence_schema['properties']['cases']['items'];
+browser_expect( 8 === (int) $evidence_schema['properties']['cases']['maxItems'], 'browser evidence case limit must match provider MAX_CASES' );
+foreach ( array( 'runtime', 'events', 'network', 'rendered', 'url_state', 'seo', 'reset' ) as $section ) {
+	browser_expect( false === $case_schema['properties'][ $section ]['additionalProperties'], 'browser evidence section must reject arbitrary properties: ' . $section );
+}
+
 $capabilities = MAD4B_SCP_Browser_Acceptance_Core::capabilities();
 browser_expect( 'mad4b.browser-acceptance-capabilities.v1' === (string) $capabilities['contract'], 'unexpected browser capabilities contract' );
 browser_expect( 'external_browser_agent' === (string) $capabilities['execution_mode'], 'browser execution ownership drifted' );
@@ -218,6 +226,41 @@ $passed = MAD4B_SCP_Browser_Acceptance_Core::result( array(
 	'evidence' => array( 'force_divergence' => false ),
 ) );
 browser_expect( 'PASS' === (string) $passed['verdict'] && true === (bool) $passed['verification']['browser_runtime_parity_verified'], 'complete matching browser evidence must verify parity' );
+
+$oversized = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+	'provider_id' => 'fake-browser',
+	'profile_id' => 'tours',
+	'suite' => 'browser_runtime',
+	'plan_digest' => $plan['plan_digest'],
+	'plan_signature' => $plan['plan_signature'],
+	'evidence' => array( 'blob' => str_repeat( 'x', 131073 ) ),
+) );
+browser_expect( 'BLOCKED' === (string) $oversized['verdict'], 'oversized browser evidence must fail closed before provider execution' );
+browser_expect( in_array( 'evidence_size_limit_exceeded', (array) $oversized['blocking_reasons'], true ), 'oversized evidence rejection reason missing' );
+
+$deep_evidence = array( 'leaf' => true );
+for ( $depth = 0; $depth < 9; $depth++ ) $deep_evidence = array( 'nested' => $deep_evidence );
+$deep = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+	'provider_id' => 'fake-browser',
+	'profile_id' => 'tours',
+	'suite' => 'browser_runtime',
+	'plan_digest' => $plan['plan_digest'],
+	'plan_signature' => $plan['plan_signature'],
+	'evidence' => $deep_evidence,
+) );
+browser_expect( 'BLOCKED' === (string) $deep['verdict'], 'deep browser evidence must fail closed before provider execution' );
+browser_expect( in_array( 'evidence_depth_limit_exceeded', (array) $deep['blocking_reasons'], true ), 'evidence depth rejection reason missing' );
+
+$wide = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+	'provider_id' => 'fake-browser',
+	'profile_id' => 'tours',
+	'suite' => 'browser_runtime',
+	'plan_digest' => $plan['plan_digest'],
+	'plan_signature' => $plan['plan_signature'],
+	'evidence' => array( 'nodes' => array_fill( 0, 1100, 'x' ) ),
+) );
+browser_expect( 'BLOCKED' === (string) $wide['verdict'], 'wide browser evidence must fail closed before provider execution' );
+browser_expect( in_array( 'evidence_node_limit_exceeded', (array) $wide['blocking_reasons'], true ), 'evidence node rejection reason missing' );
 
 $unsafe = browser_safe_provider( 'unsafe-browser' );
 $unsafe['descriptor_callback'] = function () { $d = browser_safe_descriptor( 'unsafe-browser' ); $d['arbitrary_javascript_input'] = true; return $d; };
