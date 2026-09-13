@@ -19,6 +19,7 @@ function node(attrs={},text=''){return{attrs:Object.assign({},attrs),textContent
   const planCase={case_id:'case-luxor',provider:'jet-engine',query_id:'tours_query_archive',taxonomy:'location_jet',term_slug:'luxor'};
   const armed=observer.arm(planCase);assert.strictEqual(armed.ok,true);assert.strictEqual(armed.authorizing,false);
   await sleep(5);assert(subs['ajaxFilters/updated'],'observer must subscribe to the real JetSmartFilters event');
+  for(let i=0;i<40;i+=1){window.history.pushState({},'', '/noop-'+i);document.dispatchEvent({type:'etg-dfsb/ajax-presentation-blocked',detail:{reason:'r'.repeat(200),group:'jet-engine/tours_query_archive',blocking_reasons:Array.from({length:40},(_,j)=>'reason-'+j),unknown:'must-drop'}});}
   ids=[31,32,33];count=3;window.location.href='https://staging.egypttourgates.com/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:luxor/';window.location.pathname='/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:luxor/';
   subs['ajaxFilters/updated']('jet-engine','tours_query_archive');
   await window.fetch('https://staging.egypttourgates.com/wp-json/etg-dfsb/v1/ajax-presentation',{method:'POST'});await sleep(5);
@@ -26,13 +27,16 @@ function node(attrs={},text=''){return{attrs:Object.assign({},attrs),textContent
   ids=[1,2];count=2;window.location.href='https://staging.egypttourgates.com/tours-and-activities/';window.location.pathname='/tours-and-activities/';
   document.dispatchEvent({type:'etg-dfsb/ajax-presentation-reset',detail:{restored_initial:true}});await sleep(5);
   const evidence=observer.snapshot();
+  assert.strictEqual(evidence.contract,'etg.dfsb.browser-acceptance-observer.v1');assert.strictEqual(evidence.passive,true);assert.strictEqual(evidence.authorizing,false);
   assert.strictEqual(evidence.runtime.javascript_runtime,true);assert.strictEqual(evidence.runtime.jet_smart_filters_observed,true);assert.strictEqual(evidence.runtime.filter_group,'jet-engine/tours_query_archive');
   assert.deepStrictEqual(Array.from(evidence.rendered.ids),[31,32,33]);assert.strictEqual(evidence.rendered.result_count,3,'filtered DOM snapshot must survive later reset');
   assert.strictEqual(evidence.events.ajax_filters_updated,true);assert.strictEqual(evidence.events.presentation_updated,true);assert.strictEqual(evidence.events.presentation_reset,true);
   assert.strictEqual(evidence.network.method,'POST');assert.strictEqual(evidence.network.http_status,200);assert.strictEqual(evidence.network.contract,'etg.dfsb.ajax-presentation.v1');assert.strictEqual(evidence.network.authorizing,false);assert.strictEqual(evidence.network.url_authority,false);assert.strictEqual(evidence.network.seo_mutation,false);
-  assert.strictEqual(evidence.url_state.filter_state_observed,true);assert.strictEqual(evidence.url_state.etg_history_mutation,false);
+  assert.strictEqual(evidence.url_state.filter_state_observed,true);assert.strictEqual(evidence.url_state.etg_history_mutation,false);assert(evidence.url_state.filtered_url.length<=2048);assert(evidence.url_state.reset_url.length<=2048);
   assert.strictEqual(evidence.seo.canonical_unchanged,true);assert.strictEqual(evidence.seo.robots_unchanged,true);assert.strictEqual(evidence.seo.hreflang_unchanged,true);assert.strictEqual(evidence.seo.rank_math_unchanged,true);
   assert.strictEqual(evidence.reset.event_observed,true);assert.strictEqual(evidence.reset.neutral_state_restored,true);
+  assert.strictEqual(evidence.history_calls.length,32,'history diagnostics must be capped');assert(evidence.history_calls.every(item=>item.method==='pushState'&&item.etg_source===false),'history diagnostics must stay bounded and non-authorizing');
+  assert.strictEqual(evidence.blocked_events.length,32,'blocked diagnostics must be capped');assert(evidence.blocked_events.every(item=>item.reason.length===160),'blocked reason strings must be bounded');assert(evidence.blocked_events.every(item=>item.blocking_reasons.length===32),'blocked reason arrays must be bounded');assert(evidence.blocked_events.every(item=>!Object.prototype.hasOwnProperty.call(item,'unknown')),'blocked diagnostics must drop arbitrary fields');
   observer.disarm();assert.strictEqual(window.fetch,originalFetch,'observer restores fetch instrumentation on disarm');
   assert(!source.includes('.click('),'observer must not drive UI clicks');assert(!source.includes('location.href ='),'observer must not navigate the browser');assert(!source.includes('history.pushState('),'observer must not create history state');
   console.log('Alpha13 passive browser acceptance observer smoke tests passed.');
