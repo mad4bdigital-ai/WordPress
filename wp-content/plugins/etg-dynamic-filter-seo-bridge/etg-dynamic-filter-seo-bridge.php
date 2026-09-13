@@ -61,8 +61,10 @@ add_action( 'plugins_loaded', static function () {
 }, 20 );
 
 // Register a bounded ETG evidence provider for a central MAD4B MCP / Control
-// Plane. ETG owns only the domain evidence projection; the central plugin owns
-// authentication, transport, pagination cursors, export and materialization.
+// Plane. ETG owns only the domain evidence projection; WordPress/Core/MCP own
+// discovery, authentication, transport, pagination cursors, export and
+// materialization. The abilities bridge exports only read-only calls into this
+// same canonical provider instance.
 add_action( 'plugins_loaded', static function () {
     $guard = 'ETG\\DynamicFilterSEOBridge\\Runtime\\BootGuard';
     if ( $guard::shouldHold() ) { return; }
@@ -84,4 +86,5 @@ add_action( 'plugins_loaded', static function () {
         static function () use ( $profiles ): array { return $profiles->all(); }
     );
     $provider->register();
+    ( new ETG\DynamicFilterSEOBridge\Integration\EvidenceAbilities( $provider ) )->register();
 }, 21 );
