@@ -126,7 +126,8 @@ expect_same(false,$mount['authorizing'],'mount plan is evidence, not authority')
 
 $adapter_base_source=file_get_contents(dirname(__DIR__).'/includes/adapters/class-mad4b-scp-adapter-base.php');
 expect_true(false!==strpos($adapter_base_source,"capability_mount_projection"),'Adapter Base must expose capability mount projection to MCP compiler');
-expect_true(false!==strpos($adapter_base_source,"legacy_runtime_contract_ok"),'Adapter Base must preserve legacy provider truth while compiling capability eligibility');
-expect_true(false!==strpos($adapter_base_source,"capability_compiled_fail_closed"),'MCP compatibility bridge must be explicitly fail closed');
+expect_true(false!==strpos($adapter_base_source,"per_ability_separate_from_artifact_truth"),'Adapter Base must declare capability truth separate from artifact truth');
+expect_true(false===strpos($adapter_base_source,"legacy_runtime_contract_ok"),'Adapter Base must not rewrite artifact certification through a legacy capability bridge');
+expect_true(false===strpos($adapter_base_source,"capability_compiled_fail_closed"),'obsolete provider-wide capability bridge must be removed');
 
 echo "MAD4B provider compatibility engine contract passed.\n";
