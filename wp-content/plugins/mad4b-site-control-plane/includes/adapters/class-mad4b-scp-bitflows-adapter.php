@@ -38,6 +38,17 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) || true !== MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED ) return false;
 		return (bool) apply_filters( 'mad4b_scp_bitflows_run_permission', true, $input, get_current_user_id() );
 	}
+	public function supports_canary_execution( $ability_name ) {
+		return 'bitflows/run-flow' === (string) $ability_name;
+	}
+	public function execute_canary( $ability_name, array $input ) {
+		if ( ! $this->supports_canary_execution( $ability_name ) ) return parent::execute_canary( $ability_name, $input );
+		// Direct adapter invocation intentionally re-runs the native permission gate;
+		// the wrapper approval never substitutes for Bit Flows' explicit execution
+		// enablement or its provider-local policy controls.
+		if ( true !== $this->can_run_flow( $input ) ) return new WP_Error( 'mad4b_bitflows_canary_permission_denied', 'Bit Flows canary execution is disabled by the provider runtime permission policy.' );
+		return $this->run_flow( $input );
+	}
 	public function list_flows( $input ) {
 		if ( ! $this->is_available() ) return $this->unavailable_error();
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
