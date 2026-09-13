@@ -114,6 +114,10 @@ $evidenceCommand = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ 
 passthru( $evidenceCommand, $evidenceExitCode );
 etg_build_identity_expect( 0 === $evidenceExitCode, 'bounded evidence provider smoke test passes under the canonical PHP contract job' );
 
+$abilitiesCommand = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/alpha13-evidence-abilities-smoke.php' );
+passthru( $abilitiesCommand, $abilitiesExitCode );
+etg_build_identity_expect( 0 === $abilitiesExitCode, 'WordPress 6.9 ability registration lifecycle smoke passes under the canonical PHP contract job' );
+
 $acceptanceCommand = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/alpha13-live-acceptance-provider-smoke.php' );
 passthru( $acceptanceCommand, $acceptanceExitCode );
 etg_build_identity_expect( 0 === $acceptanceExitCode, 'semantic live acceptance provider smoke test passes under the canonical PHP contract job' );
