@@ -12,6 +12,9 @@ require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-acceptance-runner.p
 
 function expect_true( $condition, $message ) { if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); } }
 
+$core_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-acceptance-core.php' );
+expect_true( false !== strpos( $core_source, "self::add_read_ability( 'mad4b/acceptance-capabilities', 'Get Acceptance Capabilities', array( __CLASS__, 'capabilities' ), array() );" ), 'no-input capabilities ability must not declare an object input schema' );
+
 function safe_descriptor( $id = 'fake' ) {
 	return array(
 		'contract' => 'fake.acceptance.v1', 'provider_id' => $id, 'read_only' => true, 'authorizing' => false,

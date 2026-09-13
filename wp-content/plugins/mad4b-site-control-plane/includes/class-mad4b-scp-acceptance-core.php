@@ -39,7 +39,7 @@ final class MAD4B_SCP_Acceptance_Core {
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		self::add_read_ability( 'mad4b/acceptance-capabilities', 'Get Acceptance Capabilities', array( __CLASS__, 'capabilities' ), array( 'type' => 'object', 'additionalProperties' => false ) );
+		self::add_read_ability( 'mad4b/acceptance-capabilities', 'Get Acceptance Capabilities', array( __CLASS__, 'capabilities' ), array() );
 		$selector = array(
 			'type' => 'object',
 			'properties' => array(
