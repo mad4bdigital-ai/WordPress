@@ -22,6 +22,11 @@ function apply_filters( $hook, $value ) {
     $args = func_get_args();
     if ( 'mad4b_provider_behavioral_evidence_verifiers' === $hook ) {
         if ( 'none' === $GLOBALS['mad4b_behavior_mode'] ) return array();
+        $callback = 'external_verifier' === $GLOBALS['mad4b_behavior_mode']
+            ? 'strlen'
+            : static function ( $receipt, $context, $canonical ) {
+                return array( 'verified' => 'signed-fixture' === (string) $receipt['signature'], 'evidence_digest' => (string) $receipt['evidence_digest'] );
+            };
         return array(
             'fixture-verifier' => array(
                 'verifier_id' => 'fixture-verifier',
@@ -31,9 +36,7 @@ function apply_filters( $hook, $value ) {
                 'trusted' => true,
                 'read_only_verifier' => true,
                 'authorizing' => false,
-                'verify_callback' => static function ( $receipt, $context, $canonical ) {
-                    return array( 'verified' => 'signed-fixture' === (string) $receipt['signature'], 'evidence_digest' => (string) $receipt['evidence_digest'] );
-                },
+                'verify_callback' => $callback,
             ),
         );
     }
@@ -142,11 +145,20 @@ expect_same( 'active', $write['activation_stage'], 'bounded reversible capabilit
 expect_same( true, $write['write_eligible'], 'trusted current-artifact behavioral+rollback evidence can restore bounded write eligibility' );
 expect_same( true, $write['behavioral_evidence']['behavioral_verified'], 'behavioral observation is verified' );
 expect_same( true, $write['behavioral_evidence']['rollback_verified'], 'rollback observation is verified' );
+expect_same( 'mad4b_control_plane_source', $write['behavioral_evidence']['accepted_receipt']['verifier_provenance'], 'accepted verifier provenance is pinned to MAD4B source' );
 expect_same( false, $write['behavioral_evidence']['authorizing'], 'behavioral verifier is evidence, not authority' );
 expect_same( false, $write['behavioral_evidence']['mutation_granted'], 'behavioral verifier never grants mutation' );
 expect_same( true, MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( 'jetengine', 'jetengine/update-post-meta', true, $jetengine ), 'per-capability guard accepts a trusted recertified bounded write' );
 $plan = MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan( array( 'provider_id'=>'jetengine' ) );
 expect_same( 'BEHAVIORALLY_RECERTIFIED', $plan['classification'], 'plan distinguishes behavioral recertification from exact artifact certification' );
+
+$GLOBALS['mad4b_behavior_mode'] = 'external_verifier';
+MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
+$untrusted = MAD4B_SCP_Provider_Compatibility_Certification::assess_provider( 'jetengine', $jetengine );
+$untrusted_write = $untrusted['capabilities']['post_meta.bounded-write'];
+expect_same( 'DISCOVERED', $untrusted_write['certification_level'], 'external verifier implementation cannot recertify a capability' );
+expect_same( false, $untrusted_write['write_eligible'], 'external verifier implementation cannot open write' );
+expect_true( in_array( 'trusted_verifier_unavailable', $untrusted_write['behavioral_evidence']['rejection_reasons'], true ), 'external verifier is absent from trusted registry after provenance check' );
 
 $GLOBALS['mad4b_behavior_mode'] = 'wrong_artifact';
 MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
