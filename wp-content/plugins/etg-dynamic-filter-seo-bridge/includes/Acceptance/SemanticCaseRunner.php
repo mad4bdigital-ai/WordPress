@@ -56,7 +56,15 @@ final class SemanticCaseRunner {
         if ( ! $routeBinding ) $blocking[] = 'route_binding_mismatch';
         if ( ! $scopeReady ) $blocking[] = 'semantic_scope_not_ready';
         foreach ( array( $directDataset, $ajaxDataset ) as $dataset ) foreach ( (array) ( $dataset['blocking_reasons'] ?? array() ) as $reason ) $blocking[] = (string) $reason;
-        $incomplete = $datasetsReady && ! $idsComplete ? array( 'dataset_ids_incomplete' ) : array();
+
+        $infrastructureFailures = array();
+        foreach ( array( 'direct'=>$directDataset, 'ajax'=>$ajaxDataset ) as $side => $dataset ) {
+            if ( empty( $dataset['infrastructure_failure'] ) ) continue;
+            $reason = (string) ( $dataset['pagination_failure'] ?? 'dataset_pagination_infrastructure_failure' );
+            $infrastructureFailures[] = $side . ':' . ( $reason ?: 'dataset_pagination_infrastructure_failure' );
+        }
+
+        $incomplete = $datasetsReady && ! $idsComplete && ! $infrastructureFailures ? array( 'dataset_ids_incomplete' ) : array();
         $defects = array();
         if ( ! $stateParity ) $defects[] = 'semantic_state_divergence';
         if ( false === $countParity ) $defects[] = 'result_count_divergence';
@@ -65,6 +73,7 @@ final class SemanticCaseRunner {
         if ( ! $seoNonAuthority ) $defects[] = 'seo_non_authority_violation';
         if ( ! $routeBinding ) $defects[] = 'route_binding_mismatch';
         if ( $defects ) { $verdict='FAIL'; $classification='PRODUCT_DEFECT'; }
+        elseif ( $infrastructureFailures ) { $verdict='BLOCKED'; $classification='TEST_INFRASTRUCTURE_FAILURE'; }
         elseif ( $blocking ) { $verdict='BLOCKED'; $classification='ENVIRONMENT_OR_PROVIDER_BLOCK'; }
         elseif ( $incomplete ) { $verdict='INCOMPLETE_EVIDENCE'; $classification='OBSERVATION_GAP'; }
         else { $verdict='PASS'; $classification='NO_CONFIRMED_DEFECT'; }
@@ -79,6 +88,7 @@ final class SemanticCaseRunner {
             'semantic_direct_state_digest'=>(string)($directState['state_digest']??''), 'semantic_ajax_state_digest'=>(string)($ajaxState['state_digest']??''),
             'direct_dataset'=>$this->datasetEvidence($directDataset), 'ajax_dataset'=>$this->datasetEvidence($ajaxDataset),
             'blocking_reasons'=>array_values(array_unique($blocking)), 'incomplete_evidence'=>array_values(array_unique($incomplete)), 'defect_reasons'=>array_values(array_unique($defects)),
+            'infrastructure_failures'=>array_values(array_unique($infrastructureFailures)),
             'classification'=>$classification, 'verdict'=>$verdict,
         );
     }
@@ -89,7 +99,7 @@ final class SemanticCaseRunner {
             'provider'=>(string)($case['provider']??''), 'query_id'=>(string)($case['query_id']??''), 'selection_reason'=>(string)($case['selection_reason']??''),
             'direct_total'=>null, 'ajax_total'=>null, 'provider_total'=>null, 'ids_parity'=>null, 'order_parity'=>null, 'state_parity'=>null, 'result_count_parity'=>null,
             'provider_binding_parity'=>false, 'seo_non_authority'=>true, 'direct_dataset'=>array(), 'ajax_dataset'=>array(),
-            'blocking_reasons'=>array($reason), 'incomplete_evidence'=>array(), 'defect_reasons'=>array(), 'classification'=>'ENVIRONMENT_OR_PROVIDER_BLOCK', 'verdict'=>'BLOCKED',
+            'blocking_reasons'=>array($reason), 'incomplete_evidence'=>array(), 'defect_reasons'=>array(), 'infrastructure_failures'=>array(), 'classification'=>'ENVIRONMENT_OR_PROVIDER_BLOCK', 'verdict'=>'BLOCKED',
         );
     }
 
@@ -98,6 +108,8 @@ final class SemanticCaseRunner {
             'contract'=>(string)($dataset['contract']??''), 'state'=>(string)($dataset['state']??''), 'total'=>$dataset['total']??null, 'ids'=>array_values((array)($dataset['ids']??array())),
             'ids_complete'=>!empty($dataset['ids_complete']), 'ids_scope'=>(string)($dataset['ids_scope']??''), 'ids_reason'=>(string)($dataset['ids_reason']??''),
             'collection_mode'=>(string)($dataset['collection_mode']??''), 'items_per_page'=>$dataset['items_per_page']??null, 'page_fetches'=>(int)($dataset['page_fetches']??0),
+            'page_signatures'=>array_values((array)($dataset['page_signatures']??array())), 'raw_id_count'=>(int)($dataset['raw_id_count']??0), 'unique_id_count'=>(int)($dataset['unique_id_count']??0),
+            'pagination_failure'=>(string)($dataset['pagination_failure']??''), 'infrastructure_failure'=>!empty($dataset['infrastructure_failure']),
             'max_ids'=>(int)($dataset['max_ids']??0), 'max_page_fetches'=>(int)($dataset['max_page_fetches']??0),
             'binding'=>(array)($dataset['binding']??array()), 'blocking_reasons'=>array_values((array)($dataset['blocking_reasons']??array())),
         );
