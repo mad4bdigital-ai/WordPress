@@ -30,20 +30,45 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	public function ability_names() {
+		$read = array(
+			'etg-dfsb/status',
+			'etg-dfsb/build-identity',
+			'etg-dfsb/configuration',
+			'etg-dfsb/runtime-inventory',
+			'etg-dfsb/profiles',
+			'etg-dfsb/profile-blueprint',
+			'etg-dfsb/profile-plan',
+			'etg-dfsb/content-catalog',
+		);
+		$read = array_merge( $read, $this->native_evidence_read_abilities() );
 		return array(
-			'read' => array(
-				'etg-dfsb/status',
-				'etg-dfsb/build-identity',
-				'etg-dfsb/configuration',
-				'etg-dfsb/runtime-inventory',
-				'etg-dfsb/profiles',
-				'etg-dfsb/profile-blueprint',
-				'etg-dfsb/profile-plan',
-				'etg-dfsb/content-catalog',
-			),
+			'read' => array_values( array_unique( $read ) ),
 			'content' => array(),
 			'admin' => array(),
 		);
+	}
+
+	/**
+	 * ETG owns the canonical EvidenceProvider abilities. MAD4B only declares
+	 * projection ownership after proving the native abilities are present and
+	 * remain bounded read-only callables. Older/drifted ETG packages therefore do
+	 * not create dead MCP tools, and no duplicate ability implementation is added.
+	 */
+	private function native_evidence_read_abilities() {
+		$candidates = array( 'etg-dfsb/evidence-provider', 'etg-dfsb/evidence-query' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) ) return array();
+		$available = array();
+		foreach ( $candidates as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) continue;
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) continue;
+			$meta = $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+			if ( ! array_key_exists( 'destructive', $annotations ) || false !== $annotations['destructive'] ) continue;
+			$available[] = $ability_name;
+		}
+		return $available;
 	}
 
 	protected function detect_plugin_version() {
@@ -77,6 +102,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 		$status['seo_publication_mutation_exposed'] = false;
 		$status['ajax_proxy_exposed'] = false;
 		$status['elementor_document_mutation_delegated_to'] = 'elementor-adapter';
+		$status['native_evidence_projection'] = $this->native_evidence_read_abilities();
 		if ( $this->is_available() ) {
 			try {
 				$status['etg_readiness'] = \ETG\DynamicFilterSEOBridge\Bootstrap::instance()->readiness();
