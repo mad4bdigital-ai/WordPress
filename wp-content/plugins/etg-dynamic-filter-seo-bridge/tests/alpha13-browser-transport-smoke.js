@@ -238,6 +238,7 @@ async function main() {
     await testRuntimeContractFailClosed();
     execFileSync(process.execPath, [path.join(__dirname, 'alpha13-browser-background-smoke.js')], { stdio: 'inherit' });
     execFileSync(process.execPath, [path.join(__dirname, 'alpha13-browser-ajax-reset-smoke.js')], { stdio: 'inherit' });
+    execFileSync(process.execPath, [path.join(__dirname, 'alpha13-browser-acceptance-observer-smoke.js')], { stdio: 'inherit' });
     console.log('Alpha13 browser transport smoke tests passed.');
 }
 
