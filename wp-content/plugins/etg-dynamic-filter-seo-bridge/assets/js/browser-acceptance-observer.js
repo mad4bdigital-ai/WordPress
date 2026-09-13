@@ -5,7 +5,7 @@
     var ENDPOINT = '/wp-json/etg-dfsb/v1/ajax-presentation';
     var MAX_DIAGNOSTIC_EVENTS = 32;
     var originalFetch = null, originalPushState = null, originalReplaceState = null;
-    var jsfSubscribed = false, armed = false, currentCase = null;
+    var jsfSubscribed = false, armed = false, currentCase = null, currentChallengeNonce = '';
     var state = freshState();
 
     function freshState() {
@@ -261,17 +261,22 @@
         return String(planCase.case_id || '').length > 0 && String(planCase.case_id || '').length <= 128;
     }
 
-    function arm(planCase) {
+    function validateChallenge(challenge) {
+        return !!(challenge && typeof challenge === 'object' && /^[a-f0-9]{32}$/i.test(String(challenge.nonce || '')));
+    }
+
+    function arm(planCase, challenge) {
         if (!validateCase(planCase)) { return { ok: false, reason: 'invalid_governed_case' }; }
+        if (!validateChallenge(challenge)) { return { ok: false, reason: 'invalid_freshness_challenge' }; }
         disarm();
-        state = freshState(); currentCase = clone(planCase); armed = true;
+        state = freshState(); currentCase = clone(planCase); currentChallengeNonce = String(challenge.nonce).toLowerCase(); armed = true;
         state.baseline = snapshotState();
         patchHistory(); patchFetch(); boundedSubscribe(0);
-        return { ok: true, contract: CONTRACT, case_id: String(planCase.case_id), passive: true, authorizing: false };
+        return { ok: true, contract: CONTRACT, case_id: String(planCase.case_id), challenge_nonce: currentChallengeNonce, passive: true, authorizing: false };
     }
 
     function disarm() {
-        armed = false; currentCase = null; restoreFetch(); restoreHistory();
+        armed = false; currentCase = null; currentChallengeNonce = ''; restoreFetch(); restoreHistory();
     }
 
     function snapshot() {
@@ -288,6 +293,7 @@
         return {
             contract: CONTRACT,
             case_id: currentCase ? boundedString(currentCase.case_id || '', 128) : '',
+            challenge_nonce: boundedString(currentChallengeNonce, 32),
             passive: true,
             authorizing: false,
             runtime: {
