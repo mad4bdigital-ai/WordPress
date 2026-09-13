@@ -97,6 +97,9 @@ add_action( 'plugins_loaded', static function () {
 // introduced here. The observer script is not auto-enqueued for normal visitors;
 // its exact same-origin URL/hash are projected through the provider capabilities
 // so an external browser agent can load only the package-owned bounded observer.
+// A separate stateless freshness decorator adds a short-lived signed challenge
+// to ready browser plans and rejects stale/replayed observed evidence without
+// writing options, transients, DB rows, or any other persistent state.
 add_action( 'plugins_loaded', static function () {
     $guard = 'ETG\\DynamicFilterSEOBridge\\Runtime\\BootGuard';
     if ( $guard::shouldHold() || ! function_exists( 'apply_filters' ) ) { return; }
@@ -108,4 +111,5 @@ add_action( 'plugins_loaded', static function () {
     );
     $browser->register();
     ETG\DynamicFilterSEOBridge\Acceptance\BrowserObserverAsset::register();
+    ETG\DynamicFilterSEOBridge\Acceptance\BrowserAcceptanceFreshnessGuard::register();
 }, 22 );
