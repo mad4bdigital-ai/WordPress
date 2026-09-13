@@ -47,6 +47,11 @@ final class MAD4B_SCP_Servers {
 		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
 		$registry->register_defaults();
+		$surface_candidates = array_values( array_unique( array_merge(
+			$registry->ability_names( 'content' ),
+			$registry->ability_names( 'admin' ),
+			$registry->ability_names( 'write' )
+		) ) );
 		foreach ( $registry->all() as $adapter ) {
 			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
 			$map = $adapter->ability_names();
@@ -55,7 +60,7 @@ final class MAD4B_SCP_Servers {
 				$abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
 				foreach ( $abilities as $ability_name ) {
 					$ability_name = (string) $ability_name;
-					if ( self::registered_mutation_ability( $ability_name ) ) $result[ $ability_name ] = $provider;
+					if ( in_array( $ability_name, $surface_candidates, true ) && self::registered_mutation_ability( $ability_name ) ) $result[ $ability_name ] = $provider;
 				}
 			}
 		}
@@ -235,7 +240,9 @@ final class MAD4B_SCP_Servers {
 			$tools[] = (string) $ability_name;
 		}
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) {
-			$tools = array_merge( $tools, self::external_write_tools() );
+			$tools = array_merge( $tools, self::write_tools() );
+			$gated_write_tools = array_values( array_diff( self::external_write_tools(), self::write_tools() ) );
+			$tools = array_merge( $tools, $gated_write_tools );
 		}
 		return array_values( array_unique( $tools ) );
 	}
@@ -270,6 +277,7 @@ final class MAD4B_SCP_Servers {
 		if ( 'mad4b-chatgpt' === $server_id ) {
 			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return null;
 			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() && self::is_external_write_candidate( $ability_name ) ) {
+				if ( null !== self::provider_for_ability( 'mad4b-write', $ability_name ) ) return self::provider_for_ability( 'mad4b-write', $ability_name );
 				return self::provider_for_external_write_candidate( $ability_name );
 			}
 		}
