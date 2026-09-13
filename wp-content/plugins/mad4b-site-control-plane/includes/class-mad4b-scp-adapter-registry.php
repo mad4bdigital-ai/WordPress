@@ -86,6 +86,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		$unexpected_missing = array();
 		$registered_but_not_exposed = array();
 		$intentionally_unavailable = array();
+		$public_candidates = array();
 		$public_leaks = array();
 		$provider_contract_blockers = array();
 		$provider_version_drift = array();
@@ -105,9 +106,16 @@ final class MAD4B_SCP_Adapter_Registry {
 			$ability = $abilities[ $name ];
 			if ( method_exists( $ability, 'get_meta' ) ) {
 				$meta = $ability->get_meta();
-				if ( ! empty( $meta['public'] ) || ! empty( $meta['mcp']['public'] ) ) $public_leaks[] = $name;
+				if ( ! empty( $meta['public'] ) || ! empty( $meta['mcp']['public'] ) ) $public_candidates[] = $name;
 			}
 		}
+
+		$provider_isolation = class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' )
+			? MAD4B_SCP_MCP_Provider_Isolation::status()
+			: array( 'effective' => false, 'default_server_suppressed' => false );
+		$default_server_suppressed = ! empty( $provider_isolation['effective'] ) && ! empty( $provider_isolation['default_server_suppressed'] );
+		$public_candidates = array_values( array_unique( $public_candidates ) );
+		$public_leaks = $default_server_suppressed ? array() : $public_candidates;
 
 		$inventory = $this->inventory();
 		$available = 0;
@@ -203,7 +211,10 @@ final class MAD4B_SCP_Adapter_Registry {
 				'active_adapter_gap_reason_codes' => $active_gap_reasons,
 				'unknown_plugin_write_default' => 'deny',
 			),
-			'custom_server_isolation' => empty( $public_leaks ),
+			'custom_server_isolation' => empty( $public_leaks ) && $mcp_peer_governance_ok,
+			'default_server_public_candidates' => $public_candidates,
+			'default_server_suppressed' => $default_server_suppressed,
+			'provider_mcp_isolation' => $provider_isolation,
 			'custom_server_registration_ok' => $server_registration_ok,
 			'custom_servers' => $server_status,
 			'mcp_peer_governance_ok' => $mcp_peer_governance_ok,
