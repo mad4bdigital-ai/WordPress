@@ -133,4 +133,9 @@ $acceptanceCommand=escapeshellarg(PHP_BINARY).' '.escapeshellarg($acceptanceSmok
 passthru($acceptanceCommand,$acceptanceExitCode);
 etg_same(0,$acceptanceExitCode,'live acceptance pagination regression must pass in the governed PHP contract job');
 
+$browserAcceptanceSmoke=$root.'/tests/alpha13-browser-acceptance-provider-smoke.php';
+$browserAcceptanceCommand=escapeshellarg(PHP_BINARY).' '.escapeshellarg($browserAcceptanceSmoke);
+passthru($browserAcceptanceCommand,$browserAcceptanceExitCode);
+etg_same(0,$browserAcceptanceExitCode,'browser acceptance evidence reducer must pass in the governed PHP contract job');
+
 echo "Alpha13 deep-audit regression smoke tests passed.\n";
