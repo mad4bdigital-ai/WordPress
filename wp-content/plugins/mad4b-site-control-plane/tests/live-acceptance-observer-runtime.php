@@ -13,6 +13,11 @@ namespace {
 	$GLOBALS['mad4b_test_home'] = 'https://staging.egypttourgates.com';
 	$GLOBALS['mad4b_test_init'] = 0;
 
+	class WP_Error {
+		private $code;
+		public function __construct( $code = '' ) { $this->code = (string) $code; }
+		public function get_error_code() { return $this->code; }
+	}
 	function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 	function sanitize_text_field( $value ) { return trim( (string) $value ); }
 	function wp_normalize_path( $value ) { return str_replace( '\\', '/', (string) $value ); }
@@ -21,7 +26,7 @@ namespace {
 	function home_url( $path = '/' ) { return rtrim( $GLOBALS['mad4b_test_home'], '/' ) . '/' . ltrim( $path, '/' ); }
 	function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
 	function is_admin() { return false; }
-	function is_wp_error( $value ) { return false; }
+	function is_wp_error( $value ) { return $value instanceof WP_Error; }
 	function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 	function untrailingslashit( $value ) { return rtrim( (string) $value, '/' ); }
 	function absint( $value ) { return abs( (int) $value ); }
@@ -46,6 +51,7 @@ namespace {
 
 	require dirname( __DIR__ ) . '/includes/class-mad4b-scp-live-acceptance-observer.php';
 	require dirname( __DIR__ ) . '/includes/class-mad4b-scp-live-acceptance-finalizer.php';
+	require dirname( __DIR__ ) . '/includes/class-mad4b-scp-production-unchanged-attestation.php';
 
 	function mad4b_assert( $condition, $message ) { if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); } }
 	function mad4b_has_blocker( array $gate, $blocker ) { return in_array( $blocker, isset( $gate['blockers'] ) ? $gate['blockers'] : array(), true ); }
@@ -139,26 +145,48 @@ namespace {
 	$bad = $mutation; $bad['undo_verified'] = false; $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'undo_unverified' ), 'Missing undo proof must fail closed.' );
 	$bad = $mutation; $bad['restored_sha256'] = str_repeat( '6', 64 ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_mutation_receipt( $bad, $candidate, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'restored_state_mismatch' ), 'Undo state drift must fail closed.' );
 
-	$production = array(
-		'contract' => MAD4B_SCP_Live_Acceptance_Finalizer::PRODUCTION_CONTRACT,
-		'candidate_sha' => $candidate['source_commit_sha'], 'build_fingerprint' => $candidate['build_fingerprint'],
-		'target' => 'production', 'origin' => MAD4B_SCP_Live_Acceptance_Finalizer::PRODUCTION_ORIGIN, 'environment' => 'production',
-		'production_runtime_identity' => 'production:egypttourgates.com:stable',
-		'baseline_snapshot_digest' => str_repeat( '7', 64 ), 'observed_snapshot_digest' => str_repeat( '7', 64 ),
-		'baseline_plugin_snapshot_digest' => str_repeat( '8', 64 ), 'observed_plugin_snapshot_digest' => str_repeat( '8', 64 ),
-		'checked_at' => gmdate( 'c', $now - 30 ), 'issued_at' => gmdate( 'c', $now - 20 ),
-		'issuer' => MAD4B_SCP_Live_Acceptance_Finalizer::FINALIZER_ISSUER,
-		'provenance' => MAD4B_SCP_Live_Acceptance_Finalizer::FINALIZER_PROVENANCE,
+	$runtime = array(
+		'contract' => MAD4B_SCP_Production_Unchanged_Attestation::RUNTIME_CONTRACT,
+		'environment' => 'production', 'site_url' => MAD4B_SCP_Production_Unchanged_Attestation::PRODUCTION_ORIGIN,
+		'wordpress_version' => '7.1', 'php_version' => '8.3.33', 'db_server_info' => '11.8.9-MariaDB-log',
+		'active_theme_stylesheet' => 'astra-child', 'active_theme_version' => '1.0.0',
 	);
-	$production['evidence_digest'] = MAD4B_SCP_Live_Acceptance_Finalizer::production_receipt_digest( $production );
-	$production_gate = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_production_receipt( $production, $candidate, true, $now );
-	mad4b_assert( ! empty( $production_gate['ready'] ), 'Valid trusted Production receipt must become ready.' );
-	$bad = $production; $bad['candidate_sha'] = str_repeat( 'c', 40 ); $bad['evidence_digest'] = MAD4B_SCP_Live_Acceptance_Finalizer::production_receipt_digest( $bad ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_production_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'candidate_mismatch' ), 'Production wrong SHA must fail closed.' );
-	$bad = $production; $bad['build_fingerprint'] = str_repeat( 'd', 64 ); $bad['evidence_digest'] = MAD4B_SCP_Live_Acceptance_Finalizer::production_receipt_digest( $bad ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_production_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'build_fingerprint_mismatch' ), 'Production wrong fingerprint must fail closed.' );
-	$bad = $production; $bad['checked_at'] = gmdate( 'c', $now - MAD4B_SCP_Live_Acceptance_Finalizer::PRODUCTION_TTL - 1 ); $bad['issued_at'] = gmdate( 'c', $now - MAD4B_SCP_Live_Acceptance_Finalizer::PRODUCTION_TTL ); $bad['evidence_digest'] = MAD4B_SCP_Live_Acceptance_Finalizer::production_receipt_digest( $bad ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_production_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'stale_evidence' ), 'Stale Production receipt must fail closed.' );
-	$r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_production_receipt( $production, $candidate, false, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'untrusted_finalizer_context' ), 'Untrusted Production finalizer must fail closed.' );
-	$bad = $production; $bad['observed_snapshot_digest'] = str_repeat( '9', 64 ); $bad['evidence_digest'] = MAD4B_SCP_Live_Acceptance_Finalizer::production_receipt_digest( $bad ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_production_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'production_snapshot_changed' ), 'Production snapshot drift must fail closed.' );
-	$bad = $production; $bad['evidence_digest'] = str_repeat( '0', 64 ); $r = MAD4B_SCP_Live_Acceptance_Finalizer::evaluate_production_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'evidence_digest_mismatch' ), 'Tampered Production receipt must fail closed.' );
+	$plugins = array(
+		array( 'plugin_file' => 'mcp-adapter/mcp-adapter.php', 'version' => '0.6.1', 'active' => true ),
+		array( 'plugin_file' => 'mad4b-site-control-plane/mad4b-site-control-plane.php', 'version' => '0.4.0-rc.30', 'active' => true ),
+		array( 'plugin_file' => 'etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php', 'version' => '0.4.0-alpha.13', 'active' => true ),
+	);
+	$producer = array(
+		'contract' => MAD4B_SCP_Production_Unchanged_Attestation::PRODUCER_CONTRACT, 'read_only' => true,
+		'environment_ability' => MAD4B_SCP_Production_Unchanged_Attestation::ENVIRONMENT_ABILITY,
+		'site_ability' => MAD4B_SCP_Production_Unchanged_Attestation::SITE_ABILITY,
+		'plugin_inventory_ability' => MAD4B_SCP_Production_Unchanged_Attestation::PLUGIN_ABILITY,
+	);
+	$production = array(
+		'contract' => MAD4B_SCP_Production_Unchanged_Attestation::CONTRACT,
+		'candidate_sha' => $candidate['source_commit_sha'], 'build_fingerprint' => $candidate['build_fingerprint'],
+		'target' => 'production', 'origin' => MAD4B_SCP_Production_Unchanged_Attestation::PRODUCTION_ORIGIN, 'environment' => 'production',
+		'producer' => $producer,
+		'baseline' => array( 'observed_at' => gmdate( 'c', $now - 120 ), 'runtime' => $runtime, 'plugin_inventory_contract' => MAD4B_SCP_Production_Unchanged_Attestation::PLUGIN_CONTRACT, 'plugins' => $plugins ),
+		'observed' => array( 'observed_at' => gmdate( 'c', $now - 60 ), 'runtime' => $runtime, 'plugin_inventory_contract' => MAD4B_SCP_Production_Unchanged_Attestation::PLUGIN_CONTRACT, 'plugins' => array_reverse( $plugins ) ),
+		'issued_at' => gmdate( 'c', $now - 30 ), 'issuer' => MAD4B_SCP_Production_Unchanged_Attestation::FINALIZER_ISSUER,
+		'provenance' => MAD4B_SCP_Production_Unchanged_Attestation::FINALIZER_PROVENANCE,
+	);
+	$production['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $production );
+	$production_gate = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $production, $candidate, true, $now );
+	mad4b_assert( ! empty( $production_gate['ready'] ), 'Valid reproducible Production v2 receipt must become ready.' );
+	mad4b_assert( 3 === $production_gate['plugin_count'], 'Production v2 must report normalized plugin count.' );
+	mad4b_assert( ! empty( $production_gate['producer_verified'] ), 'Production v2 producer must be verified.' );
+	mad4b_assert( MAD4B_SCP_Production_Unchanged_Attestation::plugin_digest( MAD4B_SCP_Production_Unchanged_Attestation::normalize_plugins( $plugins ) ) === MAD4B_SCP_Production_Unchanged_Attestation::plugin_digest( MAD4B_SCP_Production_Unchanged_Attestation::normalize_plugins( array_reverse( $plugins ) ) ), 'Plugin snapshot must be order-invariant after normalization.' );
+
+	$bad = $production; $bad['candidate_sha'] = str_repeat( 'c', 40 ); $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'candidate_mismatch' ), 'Production v2 wrong SHA must fail closed.' );
+	$bad = $production; $bad['producer']['read_only'] = false; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'untrusted_production_observation_producer' ), 'Writable Production producer must fail closed.' );
+	$bad = $production; $bad['observed']['runtime']['php_version'] = '8.4.0'; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'production_snapshot_changed' ), 'Production runtime drift must fail closed.' );
+	$bad = $production; $bad['observed']['plugins'][0]['version'] = '9.9.9'; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'production_plugin_snapshot_changed' ), 'Production plugin drift must fail closed.' );
+	$bad = $production; $bad['observed']['plugins'][] = $bad['observed']['plugins'][0]; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'production_observation_invalid' ), 'Duplicate Production plugin path must fail closed.' );
+	$bad = $production; $bad['baseline']['observed_at'] = gmdate( 'c', $now - MAD4B_SCP_Production_Unchanged_Attestation::TTL - 1 ); $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'stale_evidence' ), 'Stale Production v2 receipt must fail closed.' );
+	$bad = $production; $bad['contract'] = MAD4B_SCP_Live_Acceptance_Finalizer::PRODUCTION_CONTRACT; $bad['evidence_digest'] = MAD4B_SCP_Production_Unchanged_Attestation::receipt_digest( $bad ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'production_receipt_v2_required' ), 'Opaque Production v1 contract must not close the v2 gate.' );
+	$bad = $production; $bad['evidence_digest'] = str_repeat( '0', 64 ); $r = MAD4B_SCP_Production_Unchanged_Attestation::evaluate_receipt( $bad, $candidate, true, $now ); mad4b_assert( empty( $r['ready'] ) && mad4b_has_blocker( $r, 'evidence_digest_mismatch' ), 'Tampered Production v2 receipt must fail closed.' );
 
 	$reachability = array( 'external_wpml' => array( 'ready' => true ), 'external_handshake' => array( 'ready' => true ), 'skills_runtime' => array( 'ready' => true ), 'write_authority' => array( 'ready' => true ), 'write_runtime_certification' => array( 'ready' => true ), 'mutation_acceptance' => $mutation_gate, 'production_unchanged' => $production_gate );
 	mad4b_assert( MAD4B_SCP_Live_Acceptance_Finalizer::aggregate_ready( $reachability ), 'All valid mandatory gates must make ready=true reachable.' );
@@ -170,5 +198,5 @@ namespace {
 	$GLOBALS['mad4b_test_env'] = 'staging'; $GLOBALS['mad4b_test_home'] = 'https://other-staging.example';
 	mad4b_assert( false === MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed(), 'Non-exact Staging origin must remain fail-closed.' );
 
-	echo "mad4b.live-acceptance-observer.runtime.v3: PASS\n";
+	echo "mad4b.live-acceptance-observer.runtime.v4: PASS\n";
 }
