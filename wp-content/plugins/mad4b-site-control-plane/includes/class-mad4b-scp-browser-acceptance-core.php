@@ -252,8 +252,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
 			),
 			'required' => array( 'profile_id' ),
-			'maxProperties' => 3,
-			'additionalProperties' => false,
+			'maxProperties' => 8,
+			'additionalProperties' => array( 'type' => 'string', 'maxLength' => 256 ),
 		);
 	}
 
