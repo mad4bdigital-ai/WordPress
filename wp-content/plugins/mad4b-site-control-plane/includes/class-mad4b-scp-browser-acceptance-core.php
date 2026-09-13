@@ -258,17 +258,49 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 	}
 
 	private static function result_schema() {
+		$string80 = array( 'type' => 'string', 'maxLength' => 80 );
+		$string160 = array( 'type' => 'string', 'maxLength' => 160 );
+		$string2048 = array( 'type' => 'string', 'maxLength' => 2048 );
+		$blocked_event_schema = array(
+			'type' => 'object',
+			'maxProperties' => 10,
+			'properties' => array(
+				'reason' => $string160,
+				'group' => $string160,
+				'jsf_version' => $string80,
+				'supported_jsf_versions' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $string80 ),
+				'blocking_reasons' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $string160 ),
+				'groups' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $string160 ),
+				'path_group' => $string160,
+				'retry_attempts' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 100 ),
+				'http_status' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 599 ),
+				'timeout_ms' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 120000 ),
+			),
+			'additionalProperties' => false,
+		);
+		$history_call_schema = array(
+			'type' => 'object',
+			'maxProperties' => 2,
+			'properties' => array(
+				'method' => array( 'type' => 'string', 'enum' => array( 'pushState', 'replaceState' ) ),
+				'etg_source' => array( 'type' => 'boolean' ),
+			),
+			'additionalProperties' => false,
+		);
 		$case_schema = array(
 			'type' => 'object',
-			'maxProperties' => 8,
+			'maxProperties' => 13,
 			'properties' => array(
+				'contract' => $string160,
 				'case_id' => array( 'type' => 'string', 'maxLength' => 128 ),
+				'passive' => array( 'type' => 'boolean' ),
+				'authorizing' => array( 'type' => 'boolean' ),
 				'runtime' => array(
 					'type' => 'object', 'maxProperties' => 3,
 					'properties' => array(
 						'javascript_runtime' => array( 'type' => 'boolean' ),
 						'jet_smart_filters_observed' => array( 'type' => 'boolean' ),
-						'filter_group' => array( 'type' => 'string', 'maxLength' => 160 ),
+						'filter_group' => $string160,
 					),
 					'additionalProperties' => false,
 				),
@@ -285,14 +317,14 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'type' => 'object', 'maxProperties' => 10,
 					'properties' => array(
 						'method' => array( 'type' => 'string', 'maxLength' => 16 ),
-						'endpoint' => array( 'type' => 'string', 'maxLength' => 2048 ),
+						'endpoint' => $string2048,
 						'http_status' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 599 ),
-						'contract' => array( 'type' => 'string', 'maxLength' => 160 ),
-						'status' => array( 'type' => 'string', 'maxLength' => 80 ),
+						'contract' => $string160,
+						'status' => $string80,
 						'authorizing' => array( 'type' => 'boolean' ),
 						'url_authority' => array( 'type' => 'boolean' ),
 						'seo_mutation' => array( 'type' => 'boolean' ),
-						'provider' => array( 'type' => 'string', 'maxLength' => 80 ),
+						'provider' => $string80,
 						'query_id' => array( 'type' => 'string', 'maxLength' => 128 ),
 					),
 					'additionalProperties' => false,
@@ -306,10 +338,12 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'additionalProperties' => false,
 				),
 				'url_state' => array(
-					'type' => 'object', 'maxProperties' => 2,
+					'type' => 'object', 'maxProperties' => 4,
 					'properties' => array(
 						'filter_state_observed' => array( 'type' => 'boolean' ),
 						'etg_history_mutation' => array( 'type' => 'boolean' ),
+						'filtered_url' => $string2048,
+						'reset_url' => $string2048,
 					),
 					'additionalProperties' => false,
 				),
@@ -331,6 +365,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					),
 					'additionalProperties' => false,
 				),
+				'blocked_events' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $blocked_event_schema ),
+				'history_calls' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $history_call_schema ),
 			),
 			'required' => array( 'case_id' ),
 			'additionalProperties' => false,
@@ -347,12 +383,12 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'type' => 'object',
 					'maxProperties' => 8,
 					'properties' => array(
-						'contract' => array( 'type' => 'string', 'maxLength' => 160 ),
+						'contract' => $string160,
 						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
 						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
-						'origin' => array( 'type' => 'string', 'maxLength' => 2048 ),
+						'origin' => $string2048,
 						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
-						'observer' => array( 'type' => 'object', 'maxProperties' => 3, 'properties' => array( 'contract' => array( 'type' => 'string', 'maxLength' => 160 ), 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => array( 'type' => 'string', 'maxLength' => 80 ) ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 3, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80 ), 'additionalProperties' => false ),
 						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
 					),
 					'additionalProperties' => false,
