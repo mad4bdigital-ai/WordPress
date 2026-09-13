@@ -218,11 +218,29 @@ $check( false !== strpos( $completed_json, (string) $mutation['mutation_id'] ), 
 $check( 1 === $provider_invocations, 'completed same-request duplicate re-ran provider side effect' );
 
 // A genuinely independent logical request must hit canonical single-use replay denial.
+$audit_before_replay = MAD4B_SCP_Audit::tail( 100 );
+$replay_sequence_floor = 0;
+foreach ( $audit_before_replay as $audit_event ) {
+	if ( is_array( $audit_event ) && isset( $audit_event['sequence'] ) ) $replay_sequence_floor = max( $replay_sequence_floor, (int) $audit_event['sequence'] );
+}
 $request_id = 'ci-mcp-fence-request-2';
 $replay = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/call', 'params' => array( 'name' => 'media-update-metadata', 'arguments' => $call_input ) ), $session_id );
 $replay_json = wp_json_encode( $replay->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 $check( false !== strpos( $replay_json, 'replay' ) || false !== strpos( $replay_json, 'terminal or already claimed' ), 'independent tools/call did not hit replay denial: ' . $replay_json );
 $check( 1 === $provider_invocations, 'independent replay reached provider' );
+$replay_denials = array();
+foreach ( MAD4B_SCP_Audit::tail( 100 ) as $audit_event ) {
+	if ( ! is_array( $audit_event ) || ( isset( $audit_event['sequence'] ) ? (int) $audit_event['sequence'] : 0 ) <= $replay_sequence_floor ) continue;
+	if ( 'denied' !== ( isset( $audit_event['status'] ) ? (string) $audit_event['status'] : '' ) ) continue;
+	if ( 'mad4b/authorization:media/update-metadata' !== ( isset( $audit_event['ability'] ) ? (string) $audit_event['ability'] : '' ) ) continue;
+	$summary = isset( $audit_event['summary'] ) && is_array( $audit_event['summary'] ) ? $audit_event['summary'] : array();
+	if ( 'mad4b_approval_replay_denied' !== ( isset( $summary['reason_code'] ) ? (string) $summary['reason_code'] : '' ) ) continue;
+	$replay_denials[] = $audit_event;
+}
+$check( 1 === count( $replay_denials ), 'independent replay must emit exactly one replay-denial audit event: ' . wp_json_encode( $replay_denials ) );
+$replay_summary = $replay_denials[0]['summary'];
+$check( hash_equals( strtolower( (string) $ticket['ticket_id'] ), strtolower( (string) ( isset( $replay_summary['approval_ticket_id'] ) ? $replay_summary['approval_ticket_id'] : '' ) ) ), 'replay-denial audit event is not bound to the exact execution ticket: ' . wp_json_encode( $replay_summary ) );
+$check( $request_id === ( isset( $replay_summary['request_id'] ) ? (string) $replay_summary['request_id'] : '' ), 'replay-denial audit event is not bound to the independent replay request: ' . wp_json_encode( $replay_summary ) );
 
 // The nested Media probe exists only to prove same-request re-entry fencing.
 // Remove it before recovery so the restore write itself cannot recursively issue
