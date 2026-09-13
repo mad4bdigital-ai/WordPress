@@ -33,8 +33,25 @@ for ability in (
     'etg-dfsb/profile-blueprint',
     'etg-dfsb/profile-plan',
     'etg-dfsb/content-catalog',
+    'etg-dfsb/evidence-provider',
+    'etg-dfsb/evidence-query',
 ):
-    require(ability in adapter, 'missing MCP ability: ' + ability)
+    require(ability in adapter, 'missing MCP ability projection declaration: ' + ability)
+
+for native_ability in (
+    'etg-dfsb/evidence-provider',
+    'etg-dfsb/evidence-query',
+):
+    require(("$this->add_ability( '" + native_ability + "'") not in adapter, 'native ETG evidence ability must not be re-registered by MAD4B: ' + native_ability)
+
+for projection_guard in (
+    'native_evidence_read_abilities',
+    "wp_has_ability( $ability_name )",
+    "method_exists( $ability, 'execute' )",
+    "true !== $annotations['readonly']",
+    "false !== $annotations['destructive']",
+):
+    require(projection_guard in adapter, 'native ETG evidence fail-closed projection guard missing: ' + projection_guard)
 
 for service in (
     'ETG\\\\DynamicFilterSEOBridge\\\\Bootstrap',
