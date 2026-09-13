@@ -289,10 +289,11 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		);
 		$case_schema = array(
 			'type' => 'object',
-			'maxProperties' => 13,
+			'maxProperties' => 14,
 			'properties' => array(
 				'contract' => $string160,
 				'case_id' => array( 'type' => 'string', 'maxLength' => 128 ),
+				'challenge_nonce' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 32, 'pattern' => '^[A-Fa-f0-9]{32}$' ),
 				'passive' => array( 'type' => 'boolean' ),
 				'authorizing' => array( 'type' => 'boolean' ),
 				'runtime' => array(
@@ -371,6 +372,18 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'required' => array( 'case_id' ),
 			'additionalProperties' => false,
 		);
+		$challenge_schema = array(
+			'type' => 'object',
+			'maxProperties' => 5,
+			'properties' => array(
+				'contract' => $string160,
+				'nonce' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 32, 'pattern' => '^[A-Fa-f0-9]{32}$' ),
+				'issued_at' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'expires_at' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			),
+			'additionalProperties' => false,
+		);
 		return array(
 			'type' => 'object',
 			'properties' => array(
@@ -381,7 +394,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				'plan_signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 				'evidence' => array(
 					'type' => 'object',
-					'maxProperties' => 8,
+					'maxProperties' => 9,
 					'properties' => array(
 						'contract' => $string160,
 						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
@@ -389,6 +402,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 						'origin' => $string2048,
 						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
 						'observer' => array( 'type' => 'object', 'maxProperties' => 3, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80 ), 'additionalProperties' => false ),
+						'challenge' => $challenge_schema,
 						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
 					),
 					'additionalProperties' => false,
