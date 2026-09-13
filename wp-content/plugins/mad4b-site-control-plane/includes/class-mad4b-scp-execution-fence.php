@@ -43,8 +43,20 @@ final class MAD4B_SCP_Execution_Fence {
 						return new WP_Error( 'mad4b_execution_reentry_denied', 'The exact governed mutation is already executing in this request.' );
 					}
 					if ( 'completed' === $entry['state'] ) return true;
+					if ( 'permission_denied' === $entry['state'] && isset( $entry['result'] ) && is_wp_error( $entry['result'] ) ) return $entry['result'];
 				}
-				return call_user_func( $original_permission, $input );
+
+				$result = call_user_func( $original_permission, $input );
+				// The Authorization wrapper inside this fence records the canonical
+				// permission-time replay denial. Cache only that terminal replay result
+				// for this exact logical request/ticket/target so repeated permission
+				// evaluation cannot append a second audit event. Independent requests
+				// have a different request-local key and still hit canonical replay
+				// authorization and emit their own evidence.
+				if ( '' !== $key && is_wp_error( $result ) && 'mad4b_approval_replay_denied' === (string) $result->get_error_code() ) {
+					MAD4B_SCP_Execution_Fence::$entries[ $key ] = array( 'state' => 'permission_denied', 'result' => $result );
+				}
+				return $result;
 			};
 		}
 
@@ -58,6 +70,7 @@ final class MAD4B_SCP_Execution_Fence {
 					return new WP_Error( 'mad4b_execution_reentry_denied', 'The exact governed mutation is already executing in this request.' );
 				}
 				if ( 'completed' === $entry['state'] && array_key_exists( 'result', $entry ) ) return $entry['result'];
+				if ( 'permission_denied' === $entry['state'] && isset( $entry['result'] ) && is_wp_error( $entry['result'] ) ) return $entry['result'];
 			}
 
 			MAD4B_SCP_Execution_Fence::$entries[ $key ] = array( 'state' => 'in_progress' );
