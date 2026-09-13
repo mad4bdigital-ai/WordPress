@@ -29,17 +29,13 @@ abstract class MAD4B_SCP_Adapter_Base {
 		if ( is_array( $certification ) ) $status['provider_certification'] = $certification;
 		$status['mutation_requires_certification'] = $this->mutation_requires_certification();
 		if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
+			// Keep provider_certification as immutable artifact/runtime truth. Capability
+			// certification is a separate authority and must never rewrite
+			// runtime_contract_ok, especially when a drifted capability is restored by
+			// bounded behavioral evidence.
 			$status['capability_certification'] = MAD4B_SCP_Provider_Compatibility_Certification::assess_provider( $this->provider_key(), $this );
 			$status['capability_mount_projection'] = MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection( $this->provider_key(), $this );
-			// The existing MCP compiler consumes one provider-level boolean. For cataloged
-			// adapters, compile that boolean from the ability-level evidence and require
-			// every mutation declared by the adapter to be eligible. This preserves a
-			// fail-closed bridge while the public evidence remains per-capability.
-			if ( $status['mutation_requires_certification'] && isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ) {
-				$status['provider_certification']['legacy_runtime_contract_ok'] = ! empty( $status['provider_certification']['runtime_contract_ok'] );
-				$status['provider_certification']['runtime_contract_ok'] = ! empty( $status['capability_mount_projection']['all_write_abilities_eligible'] );
-				$status['provider_certification']['certification_mode'] = 'capability_compiled_fail_closed';
-			}
+			$status['capability_certification_mode'] = 'per_ability_separate_from_artifact_truth';
 		}
 		return $status;
 	}
