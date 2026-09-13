@@ -403,17 +403,41 @@ jobs:
             echo "wpml_string_translation_blob=$WPML_STRING_TRANSLATION_BLOB"
             echo "wpml_seo_blob=$WPML_SEO_BLOB"
           } > "$OUT/etg-dfsb-provenance.txt"
-          grep -qx 'contract=etg.dfsb.release-provenance.v6' "$OUT/etg-dfsb-provenance.txt"
-          grep -qx "git_sha=$SOURCE_SHA" "$OUT/etg-dfsb-provenance.txt"
-          grep -qx "tree_sha=$TREE_SHA" "$OUT/etg-dfsb-provenance.txt"
-          grep -qx "package_sha256=$DIGEST" "$OUT/etg-dfsb-provenance.txt"
-          grep -qx 'embedded_identity_contract=etg.dfsb.embedded-build-identity.v1' "$OUT/etg-dfsb-provenance.txt"
-          grep -qx "embedded_identity_sha256=$IDENTITY_SHA256" "$OUT/etg-dfsb-provenance.txt"
-          grep -Eq '^push_run_id=[0-9]+$' "$OUT/etg-dfsb-provenance.txt"
-          grep -Eq '^pr_run_id=[0-9]+$' "$OUT/etg-dfsb-provenance.txt"
-          grep -Eq '^test_manifest_sha256=[0-9a-f]{64}$' "$OUT/etg-dfsb-provenance.txt"
-          grep -Eq '^vendor_contract_sha256=[0-9a-f]{64}$' "$OUT/etg-dfsb-provenance.txt"
           cat "$OUT/etg-dfsb-provenance.txt"
+          python - "$OUT/etg-dfsb-provenance.txt" "$SOURCE_SHA" "$TREE_SHA" "$DIGEST" "$IDENTITY_SHA256" <<'PY'
+          import re,sys
+          path,source_sha,tree_sha,package_sha,identity_sha=sys.argv[1:]
+          values={}
+          for lineno,raw in enumerate(open(path,encoding='utf-8'),1):
+              line=raw.rstrip('\n')
+              if '=' not in line:
+                  raise SystemExit(f'provenance line {lineno} is not key=value: {line!r}')
+              key,value=line.split('=',1)
+              if key in values:
+                  raise SystemExit(f'duplicate provenance key: {key}')
+              values[key]=value
+          expected={
+              'contract':'etg.dfsb.release-provenance.v6',
+              'git_sha':source_sha,
+              'tree_sha':tree_sha,
+              'package_sha256':package_sha,
+              'embedded_identity_contract':'etg.dfsb.embedded-build-identity.v1',
+              'embedded_identity_sha256':identity_sha,
+          }
+          for key,want in expected.items():
+              got=values.get(key)
+              if got!=want:
+                  raise SystemExit(f'provenance mismatch {key}: expected={want!r} actual={got!r}')
+          for key in ('push_run_id','pr_run_id'):
+              got=values.get(key,'')
+              if not re.fullmatch(r'[0-9]+',got):
+                  raise SystemExit(f'provenance invalid {key}: {got!r}')
+          for key in ('test_manifest_sha256','vendor_contract_sha256'):
+              got=values.get(key,'')
+              if not re.fullmatch(r'[0-9a-f]{64}',got):
+                  raise SystemExit(f'provenance invalid {key}: {got!r}')
+          print('provenance-validation=PASS')
+          PY
 
       - uses: actions/upload-artifact@v4
         with:
