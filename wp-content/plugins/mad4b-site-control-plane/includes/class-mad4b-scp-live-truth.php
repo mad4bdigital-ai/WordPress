@@ -253,7 +253,9 @@ final class MAD4B_SCP_Live_Truth {
 		foreach ( $provider_blocked as $blocked ) {
 			$ability_name = isset( $blocked['ability'] ) ? (string) $blocked['ability'] : '';
 			if ( '' === $ability_name || ! class_exists( 'MAD4B_SCP_Servers' ) ) continue;
-			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) || MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $provider_blocked_mount_leaks[] = $ability_name;
+			// Stable ChatGPT discovery may expose the contract while provider state is
+			// gated. Only a blocked capability mounted on mad4b-write is executable leakage.
+			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $provider_blocked_mount_leaks[] = $ability_name;
 		}
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
 		$checks['all_write_tools_mounted_on_authority'] = empty( $missing_write_mounts );
