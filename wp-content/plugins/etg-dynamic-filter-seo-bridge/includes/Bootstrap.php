@@ -1,6 +1,10 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge;
 
+use ETG\DynamicFilterSEOBridge\Acceptance\CaseSelector;
+use ETG\DynamicFilterSEOBridge\Acceptance\CanonicalStateNormalizer;
+use ETG\DynamicFilterSEOBridge\Acceptance\LiveAcceptanceProvider;
+use ETG\DynamicFilterSEOBridge\Acceptance\SemanticQueryEvaluator;
 use ETG\DynamicFilterSEOBridge\Admin\AdminAssets;
 use ETG\DynamicFilterSEOBridge\Admin\AdminDiscoveryController;
 use ETG\DynamicFilterSEOBridge\Admin\OperationalPage;
@@ -71,6 +75,16 @@ final class Bootstrap {
         $parserTaxonomies=array_values(array_unique(array_merge($profiles->allowedTaxonomies(),(array)$this->config->get('allowed_taxonomies',array()))));$parser=new FilterUrlParser($parserTaxonomies,(array)$this->config->get('allowed_query_params',array()),(array)$this->config->get('tracking_query_params',array()));$ajaxParser=new AjaxFilterStateParser($parserTaxonomies);$combinations=new CombinationRegistry($this->config);
         $this->builder=new FilterContextBuilder($parser,$languages,new TermMetaReader($mediaRegistry),$content,$scope,$resultCounts,$this->readiness,$combinations,new ContentReadiness($this->config),new PostTypeObserver($queryBindingResolver),$ajaxParser);$this->policy=new IndexingPolicy($this->config);$canonical=new CanonicalBuilder($this->config);$publicationCache=new PublicationCache($this->config);$publication=new PublicationRegistry($this->config,$profiles,$this->builder,$this->policy,$content,$gallery,$languages,new PublicationResultCountProbe($queryBindingResolver),$canonical,$publicationCache);
         $runtimeInventory=new RuntimeInventory(null,null,function()use($topology){return$topology->discover(true);});$catalogInventory=new RuntimeInventory(null,null,function()use($topology){return$topology->discover(false);});$reconciler=new InventoryReconciler();$profilePlanner=new InventoryProfilePlanner();
+
+        $acceptanceProvider=new LiveAcceptanceProvider(
+            function()use($profiles):array{return$profiles->all();},
+            function(string$uri):array{return$this->builder?$this->builder->buildEvidence($uri):array();},
+            function(array$payload):array{return$this->builder?$this->builder->buildAjaxEvidence($payload):array();},
+            new SemanticQueryEvaluator($queryBindingResolver),
+            new CaseSelector(),
+            new CanonicalStateNormalizer()
+        );
+        $acceptanceProvider->register();
 
         $provider=array($this,'context');$evidenceProvider=function():array{return$this->builder?$this->builder->buildEvidence():array();};$slots=new ContentSlotRegistry();$catalog=new InventoryContentCatalog();
         $normalizer=new ValueNormalizer();$listingContext=new ListingContextResolver($normalizer);$queryRunner=new QueryRunner();$relationResolver=new RelationResolver();$fieldDiscovery=new FieldDiscovery($normalizer,$listingContext);$sourceResolver=new ContentSourceResolver($listingContext,$queryRunner,$relationResolver,$normalizer,$fieldDiscovery);$mediaInspector=new MediaInspector($mediaRegistry);
