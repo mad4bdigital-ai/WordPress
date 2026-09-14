@@ -329,14 +329,14 @@ final class MAD4B_SCP_Governance_Abilities {
 				&& ! empty( $capability['rollback_verified'] );
 		}
 
-		$certified = $provider_runtime_contract_ok || $exact_runtime_certified;
+		$certified = $capability_cataloged ? $exact_runtime_certified : $provider_runtime_contract_ok;
 		$ok = $available && $certified;
 		return array(
 			'state' => $ok ? ( $requires ? 'certified' : 'available' ) : 'blocked',
 			'runtime_contract_ok' => $certified,
 			'provider_runtime_contract_ok' => $provider_runtime_contract_ok,
 			'exact_runtime_certified' => $exact_runtime_certified,
-			'certification_scope' => $exact_runtime_certified ? 'ability' : ( $provider_runtime_contract_ok ? 'provider' : 'none' ),
+			'certification_scope' => $capability_cataloged ? ( $exact_runtime_certified ? 'ability' : 'none' ) : ( $provider_runtime_contract_ok ? 'provider' : 'none' ),
 			'available' => $available,
 			'version' => isset( $status['version'] ) ? (string) $status['version'] : '',
 			'provider' => $provider,
