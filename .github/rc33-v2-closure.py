@@ -45,8 +45,8 @@ replace(meta, "empty( $status['rank_math_meta_staging_only'] )", "empty( $status
 # 4) Dynamic Skills certification marker was renamed with Site Profile v2.
 replace(
     'wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py',
-    "'staging_app_mapping_mismatch'",
-    "'profile_app_mapping_mismatch'",
+    '    "staging_app_mapping_mismatch",',
+    '    "profile_app_mapping_mismatch",',
 )
 
 # 5) Live Acceptance reconciler standalone fixture models the enrolled acceptance target.
