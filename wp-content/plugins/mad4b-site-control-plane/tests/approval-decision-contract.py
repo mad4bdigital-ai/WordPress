@@ -10,16 +10,19 @@ servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='ut
 handoff = (root / 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php').read_text(encoding='utf-8')
 
 required_admin = [
-    "const CONTRACT = 'mad4b.approval-decision-admin.v1'",
+    "const CONTRACT = 'mad4b.approval-decision-admin.v2'",
     "add_action( 'admin_post_' . self::ACTION",
     "add_action( 'admin_init', array( __CLASS__, 'protect_read_model_hot_path' ), 0 )",
     "public static function protect_read_model_hot_path()",
     "remove_action( 'admin_init', array( 'MAD4B_SCP_Plugin', 'prime_admin_mcp_runtime' ), 1 )",
     "remove_action( 'admin_init', array( 'MAD4B_SCP_Plugin', 'reconcile_authority_on_mad4b_admin' ), 20 )",
-    "current_user_can( 'manage_options' )",
-    "check_admin_referer( $nonce_action )",
-    "const STAGING_HOST = 'staging.egypttourgates.com'",
-    "'staging' !== (string) $environment",
+    "MAD4B_SCP_Policy::can_approve_mutations()",
+    "check_admin_referer( self::nonce_action",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::write_enabled()",
+    "'site_uuid'",
+    "'site_profile_revision'",
+    "'site_profile_digest'",
     "'mutation' !==",
     "'mad4b-write' !==",
     "'mad4b/database-raw-query'",
@@ -38,7 +41,13 @@ required_admin = [
 ]
 missing = [marker for marker in required_admin if marker not in admin]
 if missing:
-    raise SystemExit('Missing Approval Console v2 invariant: ' + ' | '.join(missing))
+    raise SystemExit('Missing tenant-bound Approval Console invariant: ' + ' | '.join(missing))
+
+for forbidden in [
+    "const STAGING_HOST", 'staging.egypttourgates.com', 'egypttourgates.com'
+]:
+    if forbidden in admin:
+        raise SystemExit('Approval decision runtime retained ETG-specific authority: ' + forbidden)
 
 forbidden_admin = [
     "wp_register_ability(", "mad4b/approval-decision", "MAD4B_SCP_Mutation_Manager",
@@ -48,8 +57,7 @@ found = [marker for marker in forbidden_admin if marker in admin]
 if found:
     raise SystemExit('Human decision console gained target-execution or MCP authority: ' + ' | '.join(found))
 
-# The GET path must remove expensive runtime lifecycle hooks, while POST keeps the
-# strict nonce -> physical schema -> exact validation -> runtime -> decision order.
+# GET remains a read-model surface and removes expensive authority lifecycle hooks.
 protect_start = admin.index('public static function protect_read_model_hot_path')
 protect_end = admin.index('public static function register_page', protect_start)
 protect_body = admin[protect_start:protect_end]
@@ -68,7 +76,7 @@ for forbidden in ['rest_get_server(', '::reconcile()', 'decide_pending(', 'MAD4B
 handler_start = admin.index('public static function handle_admin_post')
 handler_end = admin.index('public static function render_page', handler_start)
 handler_body = admin[handler_start:handler_end]
-if handler_body.index('check_admin_referer( $nonce_action )') > handler_body.index('self::decide( $request )'):
+if handler_body.index('check_admin_referer( self::nonce_action') > handler_body.index('self::decide( $request )'):
     raise SystemExit('Approval admin-post can enter decision logic before nonce validation')
 
 decide_start = admin.index('public static function decide')
@@ -90,8 +98,6 @@ for forbidden in ['decide_pending(', 'wp_register_ability(', 'MAD4B_SCP_Mutation
     if forbidden in prepare_body:
         raise SystemExit('Authority runtime preparation gained decision or target-execution authority: ' + forbidden)
 
-# Plugin may continue to classify the route as a bounded MAD4B admin surface for
-# shared routing, but the Approval Console GET removes the heavy lifecycle hooks.
 for marker in [
     'public static function is_authority_admin_surface()',
     "'mad4b-approval-decisions' === $page",
@@ -101,10 +107,10 @@ for marker in [
     if marker not in plugin:
         raise SystemExit('Approval decision page is missing governed admin routing: ' + marker)
 
-# Schema v5 candidate binding is durable on the approval row. The legacy option
-# may remain for rollback/migration compatibility but cannot be the primary save path.
+# Candidate binding v2 is durable on the approval row and includes Site Profile
+# identity/revision/digest in addition to build provenance and payload.
 required_ticket = [
-    "const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v1'",
+    "const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v2'",
     "public static function bind_ticket_to_current_candidate",
     "public static function candidate_binding_from_ticket",
     "'candidate_binding_contract'",
@@ -112,8 +118,16 @@ required_ticket = [
     "'build_fingerprint'",
     "'binding_environment'",
     "'binding_host'",
+    "'site_uuid'",
+    "'site_profile_revision'",
+    "'site_profile_digest'",
     "'bound_at'",
     "private static function save_candidate_binding",
+    "private static function validate_ticket_candidate_binding",
+    "private static function profile_snapshot",
+    "private static function profile_bindings_equal",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::write_enabled()",
     "$wpdb->update(",
     "private static function require_critical_schema()",
     "MAD4B_SCP_Schema::critical_ready()",
@@ -128,13 +142,18 @@ required_ticket = [
 ]
 missing = [marker for marker in required_ticket if marker not in tickets]
 if missing:
-    raise SystemExit('Missing v5 approval-ticket invariant: ' + ' | '.join(missing))
+    raise SystemExit('Missing v2 tenant/build approval-ticket invariant: ' + ' | '.join(missing))
+
+for forbidden in ["const STAGING_HOST", 'staging.egypttourgates.com', 'egypttourgates.com']:
+    if forbidden in tickets:
+        raise SystemExit('Approval ticket authority retained ETG-specific binding: ' + forbidden)
 
 save_start = tickets.index('private static function save_candidate_binding')
-save_end = tickets.index('private static function legacy_candidate_binding', save_start)
+save_end = tickets.index('private static function validate_ticket_candidate_binding', save_start)
 save_body = tickets[save_start:save_end]
-if '$wpdb->update(' not in save_body:
-    raise SystemExit('Candidate binding is not persisted on the approval ticket row')
+for required in ["'site_uuid'", "'site_profile_revision'", "'site_profile_digest'", '$wpdb->update(']:
+    if required not in save_body:
+        raise SystemExit('Candidate binding persistence lost tenant field: ' + required)
 if 'update_option( self::CANDIDATE_BINDINGS_OPTION' in save_body:
     raise SystemExit('Candidate binding regressed to option-based primary persistence')
 
@@ -142,28 +161,39 @@ create_start = tickets.index('public static function create_pending')
 create_end = tickets.index('public static function bind_ticket_to_current_candidate', create_start)
 create_body = tickets[create_start:create_end]
 if 'current_candidate_binding' in create_body or 'save_candidate_binding' in create_body:
-    raise SystemExit('Generic create_pending unexpectedly requires live candidate provenance')
+    raise SystemExit('Generic create_pending unexpectedly requires live build provenance')
+if "profile_snapshot( true )" not in create_body:
+    raise SystemExit('Governed create_pending no longer pre-binds the exact Site Profile')
 
-# Read model is bounded, paginated, and derives effective status without writing.
+validate_start = tickets.index('public static function validate_exact')
+validate_end = tickets.index('public static function authorize_exact', validate_start)
+validate_body = tickets[validate_start:validate_end]
+for required in ['canonical_payload_hash(', 'validate_ticket_candidate_binding(', "'mad4b_approval_replay_denied'"]:
+    if required not in validate_body:
+        raise SystemExit('Exact approval validation lost fail-closed invariant: ' + required)
+
+# Read model is bounded, paginated, tenant/build exact and write-free.
 for marker in [
-    'final class MAD4B_SCP_Approval_Repository',
+    "const CONTRACT = 'mad4b.approval-read-model.v3'",
     'public static function actionable',
     'public static function history',
     'public static function effective_status',
-    "'expired'",
-    "'stale'",
+    "'site_uuid'", "'site_profile_revision'", "'site_profile_digest'",
+    "'expired'", "'stale'",
 ]:
     if marker not in repository:
         raise SystemExit('Approval read model invariant missing: ' + marker)
 for forbidden in [
     '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'update_option(',
     'MAD4B_SCP_Staging_Write_Authority::reconcile(', 'rest_get_server(',
+    'staging.egypttourgates.com', 'egypttourgates.com',
 ]:
     if forbidden in repository:
-        raise SystemExit('Approval read model gained a write/runtime side effect: ' + forbidden)
+        raise SystemExit('Approval read model gained a write/runtime/site-specific side effect: ' + forbidden)
 
+# Remote approval planning still creates only a pending ticket and then binds it;
+# it must not auto-approve, execute, or permit Breakglass.
 for marker in [
-    "const CONTRACT = 'mad4b.staging-write-planning-guard.v2'",
     "isset( $args['execute_callback'] ) && is_callable( $args['execute_callback'] )",
     "MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate",
     "'mad4b_candidate_bound_pending_ticket'",
@@ -177,12 +207,11 @@ for marker in [
         raise SystemExit('Remote approval planner invariant missing: ' + marker)
 
 if "$wpdb->delete( $t['approvals']" not in tickets or "mad4b_approval_candidate_binding_failed" not in tickets:
-    raise SystemExit('Remote Staging planning does not fail closed when candidate binding persistence fails')
+    raise SystemExit('Remote planning does not fail closed when candidate binding persistence fails')
 if 'approval-decision' in servers:
     raise SystemExit('Human approval decision leaked into MCP server projection')
 
-# Handoff remains read-only. It may call candidate_binding(), which now prefers the
-# v5 ticket-row binding and only falls back to legacy data during migration.
+# Handoff remains read-only and surfaces only the human action path.
 required_handoff = [
     "const CONTRACT = 'mad4b.approval-decision-handoff.v1'",
     "'mad4b/approval-decision-handoff'",
@@ -205,4 +234,4 @@ for forbidden_handoff in [
     if forbidden_handoff in handoff:
         raise SystemExit('Approval handoff gained decision or mutation authority: ' + forbidden_handoff)
 
-print('mad4b.approval-decision.contract.v5: PASS')
+print('mad4b.approval-decision.contract.v6: PASS')
