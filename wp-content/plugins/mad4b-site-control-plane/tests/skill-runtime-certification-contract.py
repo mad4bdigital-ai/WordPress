@@ -18,15 +18,30 @@ write_authority = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.ph
 write_cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 
 for marker in [
-    "const STAGING_OPENAI_APP_ID = 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2'",
-    "define( 'MAD4B_OPENAI_PLUGIN_APP_ID', self::STAGING_OPENAI_APP_ID )",
+    "const CONTRACT = 'mad4b.skill-autoconfig.v2'",
+    "MAD4B_SCP_Site_Profile::configured()",
+    "MAD4B_SCP_Site_Profile::site_host()",
+    "MAD4B_SCP_Site_Profile::chatgpt_app_id()",
+    "'site_profile_unconfigured'",
+    "'site_profile_skills_disabled'",
+    "'site_profile_app_mapping_missing'",
     "'app_mapping_source' => 'none'",
-    "'app_mapping_matches_staging' => false",
-    "explicit_app_mapping_invalid",
-    "staging_app_id",
+    "'app_mapping_matches_profile' => false",
+    "'profile_digest'",
+    "define( 'MAD4B_OPENAI_PLUGIN_APP_ID', $profile_app_id )",
+    "explicit_app_mapping_profile_mismatch",
 ]:
     if marker not in autoconfig:
-        raise SystemExit(f'missing zero-touch Staging App mapping guard: {marker}')
+        raise SystemExit(f'missing tenant-bound Staging App mapping guard: {marker}')
+
+for forbidden in [
+    "plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2",
+    "staging.egypttourgates.com",
+    "const STAGING_OPENAI_APP_ID",
+    "const STAGING_OPENAI_APP_HOST",
+]:
+    if forbidden in autoconfig:
+        raise SystemExit(f'generic Skill autoconfig must not embed deployment-specific identity: {forbidden}')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-snapshot-identity.v1'",
@@ -222,4 +237,4 @@ if "'execute_callback' => array( __CLASS__, 'status' )" not in write_cert:
 if "MAD4B_SCP_Live_Truth::boot_early();" not in main:
     raise SystemExit('live truth bridge must be armed before Ability materialization')
 
-print('mad4b.skill-runtime-certification.v4: PASS')
+print('mad4b.skill-runtime-certification.v5: PASS')
