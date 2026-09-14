@@ -87,6 +87,20 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		MAD4B_SCP_Audit::record( 'jetengine/update-post-meta', array( 'post_id' => $id, 'field' => $field, 'before_sha256' => $hash, 'after_sha256' => $new_hash, 'created' => ! $exists ) );
 		return array( 'post_id' => $id, 'field' => $field, 'updated' => true, 'value' => $new, 'sha256' => $new_hash );
 	}
+
+	/**
+	 * Internal exact-name bounded writer for behavioral recertification.
+	 *
+	 * The recertification wrapper resolves the method name from the target ability
+	 * slug (`jetengine/update-post-meta` -> `update_post_meta`) and calls the
+	 * adapter directly only after its own exact approval/candidate/capability
+	 * preflight. Keep the public Ability callback above bound to
+	 * update_post_meta_value so this method does not create a second MCP surface.
+	 */
+	public function update_post_meta( $input ) {
+		return $this->update_post_meta_value( $input );
+	}
+
 	public function capture_reversible_state( $ability_name, array $input ) {
 		if ( 'jetengine/update-post-meta' !== $ability_name ) return parent::capture_reversible_state( $ability_name, $input );
 		if ( ! $this->is_available() ) return $this->unavailable_error();
