@@ -170,8 +170,13 @@ $ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4
 $check( is_array( $ticket ) && 'pending' === $ticket['status'], 'unable to create execution approval' );
 $candidate_binding = MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate( $ticket['ticket_id'] );
 $check(
-	is_array( $candidate_binding ) && 'mad4b.approval-candidate-binding.v1' === $candidate_binding['contract'],
-	'unable to bind execution approval to exact candidate: ' . ( is_wp_error( $candidate_binding ) ? $candidate_binding->get_error_message() : wp_json_encode( $candidate_binding ) )
+	is_array( $candidate_binding )
+		&& 'mad4b.approval-candidate-binding.v2' === $candidate_binding['contract']
+		&& ! empty( $candidate_binding['site_uuid'] )
+		&& hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $candidate_binding['site_uuid'] )
+		&& (int) $candidate_binding['profile_revision'] === MAD4B_SCP_Site_Profile::revision()
+		&& hash_equals( MAD4B_SCP_Site_Profile::profile_digest(), (string) $candidate_binding['profile_digest'] ),
+	'unable to bind execution approval to exact candidate/profile: ' . ( is_wp_error( $candidate_binding ) ? $candidate_binding->get_error_message() : wp_json_encode( $candidate_binding ) )
 );
 $approved = MAD4B_SCP_Approval_Tickets::approve( $ticket['ticket_id'] );
 $check( is_array( $approved ) && 'approved' === $approved['status'], 'unable to approve execution ticket' );
@@ -272,8 +277,13 @@ $undo_ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 
 $check( is_array( $undo_ticket ) && 'pending' === $undo_ticket['status'], 'unable to create undo ticket' );
 $undo_binding = MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate( $undo_ticket['ticket_id'] );
 $check(
-	is_array( $undo_binding ) && 'mad4b.approval-candidate-binding.v1' === $undo_binding['contract'],
-	'unable to bind undo approval to exact candidate: ' . ( is_wp_error( $undo_binding ) ? $undo_binding->get_error_message() : wp_json_encode( $undo_binding ) )
+	is_array( $undo_binding )
+		&& 'mad4b.approval-candidate-binding.v2' === $undo_binding['contract']
+		&& ! empty( $undo_binding['site_uuid'] )
+		&& hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $undo_binding['site_uuid'] )
+		&& (int) $undo_binding['profile_revision'] === MAD4B_SCP_Site_Profile::revision()
+		&& hash_equals( MAD4B_SCP_Site_Profile::profile_digest(), (string) $undo_binding['profile_digest'] ),
+	'unable to bind undo approval to exact candidate/profile: ' . ( is_wp_error( $undo_binding ) ? $undo_binding->get_error_message() : wp_json_encode( $undo_binding ) )
 );
 $undo_approved = MAD4B_SCP_Approval_Tickets::approve( $undo_ticket['ticket_id'] );
 $check( is_array( $undo_approved ) && 'approved' === $undo_approved['status'], 'unable to approve undo ticket' );
