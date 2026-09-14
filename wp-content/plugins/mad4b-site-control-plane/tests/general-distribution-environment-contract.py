@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 root = Path(__file__).resolve().parents[1]
 read = lambda rel: (root / rel).read_text(encoding='utf-8')
 server = read('includes/class-mad4b-scp-local-oauth-server.php')
@@ -12,6 +13,8 @@ request_scope = read('includes/class-mad4b-scp-mcp-request-scope.php')
 metadata = read('includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php')
 transport = read('includes/class-mad4b-scp-transport-context.php')
 skills_ui = read('includes/class-mad4b-scp-skills-admin-ui.php')
+upgrade = read('includes/class-mad4b-scp-upgrade-continuity.php')
+main = read('mad4b-site-control-plane.php')
 for label, text in [('local OAuth server', server), ('OAuth resource bridge', bridge), ('external handshake', handshake), ('ChatGPT connection UI', connection_ui)]:
     for marker in ["MAD4B_SCP_Site_Profile::origin_enrolled()", "MAD4B_SCP_Site_Profile::oauth_enabled()"]:
         if marker not in text: raise SystemExit(f'{label} is not bound to Site Profile OAuth enrollment: {marker}')
@@ -32,7 +35,28 @@ for label, text in [('request scope', request_scope), ('metadata bridge', metada
         if forbidden in text: raise SystemExit(f'{label} retained generalized-runtime Staging wording: {forbidden}')
 if 'never affects\n * Production' in request_scope: raise SystemExit('request-scope documentation contradicts feature-bound Production behavior')
 if 'exported capability remains Read' in skills_ui: raise SystemExit('Skills export UI contradicts dynamic Read / Read + Write capability behavior')
-for text in [server, bridge, compat, handshake, connection_ui, acceptance, request_scope, metadata, transport, skills_ui]:
+for text in [server, bridge, compat, handshake, connection_ui, acceptance, request_scope, metadata, transport, skills_ui, upgrade]:
     for forbidden in ['staging.egypttourgates.com', 'egypttourgates.com', 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2']:
         if forbidden in text: raise SystemExit(f'generalized runtime leaked tenant identity: {forbidden}')
-print('mad4b.general-distribution.environment-contract.v1: PASS')
+
+# Upgrade/reconnect continuity must remain conservative and observable.
+required_upgrade = [
+    "const CONTRACT = 'mad4b.upgrade-continuity.v1'",
+    "const PRIOR_OAUTH_OPTION = 'mad4b_scp_staging_oauth_autoconfig_v1'",
+    "'nonproduction_only'",
+    "'migration_write_reenrollment_required'",
+    "'write_restored' => false",
+    "'production_authority_restored' => false",
+    "'/oauth/mcp/authorize'",
+    "'mad4b_mcp_reconnect_not_ready'",
+    "'mad4b/governance-bootstrap-status'",
+    "'mad4b/reconnect-readiness'",
+]
+for marker in required_upgrade:
+    if marker not in upgrade: raise SystemExit(f'upgrade continuity contract missing marker: {marker}')
+if "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';" not in main: raise SystemExit('main plugin does not load upgrade continuity')
+if 'MAD4B_SCP_Upgrade_Continuity::pre_boot();' not in main: raise SystemExit('main plugin does not execute pre-bootstrap continuity')
+if main.index('MAD4B_SCP_Upgrade_Continuity::pre_boot();') > main.index('MAD4B_SCP_Site_Profile::bootstrap();'): raise SystemExit('upgrade continuity must run before Site Profile cache/bootstrap')
+
+subprocess.run(['php', str(root / 'tests' / 'upgrade-continuity-runtime.php')], check=True)
+print('mad4b.general-distribution.environment-contract.v2: PASS')
