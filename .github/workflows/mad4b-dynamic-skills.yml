@@ -5,26 +5,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - '.agents/plugins/marketplace.json'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/skill-provider-catalog.json'
-      - 'wp-content/plugins/mad4b-site-control-plane/skill-seeds/**'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-*.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-skills-adapter.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-surface-smoke.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
       - '.github/workflows/mad4b-dynamic-skills.yml'
   workflow_dispatch:
 
@@ -78,6 +59,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           for file in \
+            includes/class-mad4b-scp-site-profile.php \
             includes/class-mad4b-scp-skill-autoconfig.php \
             includes/class-mad4b-scp-skill-registry.php \
             includes/class-mad4b-scp-skill-seeder.php \
@@ -153,7 +135,7 @@ jobs:
           retention-days: 14
 
   runtime-staging:
-    name: Dynamic Skills + governed write Staging runtime
+    name: Dynamic Skills + governed write generic Staging runtime
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -189,7 +171,7 @@ jobs:
           set -euo pipefail
           curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
           php /tmp/wp-cli.phar --info
-      - name: Provision disposable governed Staging WordPress
+      - name: Provision disposable generic Staging WordPress
         shell: bash
         run: |
           set -euo pipefail
@@ -198,11 +180,9 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
-          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B Dynamic Skills' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://dynamic-skills.test' --title='MAD4B Dynamic Skills' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
-          observed_host="$(php /tmp/wp-cli.phar eval 'echo wp_parse_url( home_url( "/" ), PHP_URL_HOST );' --path="$WP_PATH")"
-          test "$observed_host" = 'staging.egypttourgates.com'
-      - name: Install exact MCP Adapter and Control Plane
+      - name: Install exact MCP Adapter and Control Plane with zero authority
         shell: bash
         run: |
           set -euo pipefail
@@ -212,7 +192,38 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
-      - name: Prove zero-touch Skills, governed writes, WPML REST pass-through and portable certification
+          php /tmp/wp-cli.phar eval '
+          $profile = MAD4B_SCP_Site_Profile::status();
+          $skills = MAD4B_SCP_Skill_Autoconfig::status();
+          if ( ! empty( $profile["configured"] ) || ! empty( $skills["configured"] ) || MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+              throw new RuntimeException( "Fresh generic install unexpectedly acquired Skills or write authority." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+      - name: Explicitly enroll generic Skills and governed-write tenant
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-staging
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => 0,
+              "display_name" => "MAD4B Dynamic Skills CI",
+              "chatgpt_app_id" => "plugin_asdk_app_MAD4BCI",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => true,
+              "write_enabled" => true,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => true,
+              "managed_runtime_enabled" => true,
+              "acceptance_enabled" => true,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          if ( empty( $result["configured"] ) || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) || empty( $result["skills_enabled"] ) || empty( $result["write_enabled"] ) ) {
+              throw new RuntimeException( "Explicit generic Site Profile did not bind Skills + write authority." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+      - name: Prove tenant-bound Skills, governed writes, WPML REST pass-through and portable certification
         shell: bash
         run: |
           set -euo pipefail
@@ -281,7 +292,7 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
-      - name: Prove Production receives no Staging Skill/App/write authority
+      - name: Prove unconfigured Production receives no Skill/App/write authority
         shell: bash
         run: |
           set -euo pipefail
