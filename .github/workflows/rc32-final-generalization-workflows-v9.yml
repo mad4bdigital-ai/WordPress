@@ -1,0 +1,85 @@
+name: RC32 Canonical Workflow Cleanup v9
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - '.github/workflows/rc32-final-generalization-workflows-v9.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - name: Guard exact parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '6bf5ea037fa905af8c2bd051e7b52d65455fdedf'
+          mapfile -t changed < <(git diff --name-only HEAD^..HEAD)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/rc32-final-generalization-workflows-v9.yml'
+
+      - name: Build canonical workflow files
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(text, old, new, expected=1):
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'expected {expected} occurrence(s) of {old!r}, found {count}')
+              return text.replace(old, new)
+
+          package = Path('.github/workflows/mad4b-control-plane-package.yml')
+          text = package.read_text(encoding='utf-8')
+          text = replace(text, 'name: Build reviewed staging installation kit', 'name: Build reviewed General Distribution installation kit')
+          text = replace(text, '- name: Verify tenant-bound governed Staging kit invariants', '- name: Verify tenant-neutral General Distribution kit invariants')
+          anchor = "          grep -Fq '\"production_mutation_auto_enabled\": false' \"$stage/install-manifest.json\"\n"
+          extra = anchor + "          grep -Fq 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}' \"$stage/package/mad4b-site-control-plane/config/staging-deployment-handoff.json\"\n          grep -Fq \"Current plugin version: **${expected_version}**.\" \"$stage/package/mad4b-site-control-plane/README.md\"\n          grep -Fq 'six MAD4B custom servers' \"$stage/package/mad4b-site-control-plane/README.md\"\n          if grep -Fq 'Egypt Tour Gates' \"$stage/package/mad4b-site-control-plane/README.md\" || grep -Fq 'staging.egypttourgates.com' \"$stage/package/mad4b-site-control-plane/README.md\"; then\n            echo 'General Distribution README retained tenant-specific identity.' >&2\n            exit 1\n          fi\n"
+          text = replace(text, anchor, extra)
+          package.write_text(text, encoding='utf-8')
+
+          foundation = Path('.github/workflows/mad4b-general-distribution-foundation.yml')
+          text = foundation.read_text(encoding='utf-8')
+          path_anchor = "      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php'\n"
+          path_extra = path_anchor + "      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-compatibility.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py'\n"
+          text = replace(text, path_anchor, path_extra)
+          run_anchor = "      - name: Run tenant-bound multi-user OAuth runtime contract\n        shell: bash\n        run: |\n          set -euo pipefail\n          php wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php\n"
+          run_extra = run_anchor + "\n      - name: Run General Distribution environment contract\n        shell: bash\n        run: |\n          set -euo pipefail\n          python3 wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py\n"
+          text = replace(text, run_anchor, run_extra)
+          foundation.write_text(text, encoding='utf-8')
+
+          out = Path('/tmp/rc32-final-workflows/.github/workflows')
+          out.mkdir(parents=True, exist_ok=True)
+          for source in (package, foundation):
+              (out / source.name).write_bytes(source.read_bytes())
+
+      - name: Validate canonical workflow edits
+        shell: bash
+        run: |
+          set -euo pipefail
+          package=.github/workflows/mad4b-control-plane-package.yml
+          foundation=.github/workflows/mad4b-general-distribution-foundation.yml
+          grep -Fq 'Build reviewed General Distribution installation kit' "$package"
+          grep -Fq 'Verify tenant-neutral General Distribution kit invariants' "$package"
+          grep -Fq 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}' "$package"
+          grep -Fq 'general-distribution-environment-contract.py' "$foundation"
+          grep -Fq 'Run General Distribution environment contract' "$foundation"
+
+      - name: Upload exact canonical workflow files
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc32-final-canonical-workflows-${{ github.sha }}
+          path: /tmp/rc32-final-workflows
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
