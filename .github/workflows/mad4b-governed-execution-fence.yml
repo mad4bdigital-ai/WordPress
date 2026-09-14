@@ -62,7 +62,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
           php /tmp/wp-cli.phar --info
 
-      - name: Provision exact governed Staging fixture
+      - name: Provision generic governed Staging fixture
         shell: bash
         env:
           WP_VERSION: ${{ matrix.wordpress }}
@@ -75,7 +75,7 @@ jobs:
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar core install \
             --path="$WP_PATH" \
-            --url='https://staging.egypttourgates.com' \
+            --url='https://governed-write.test' \
             --title='MAD4B Governed Execution Fence' \
             --admin_user='mad4b-ci-admin' \
             --admin_password='ci-only-not-a-secret' \
@@ -154,10 +154,41 @@ jobs:
           cp -a "$PLUGIN_STAGE" "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+          php /tmp/wp-cli.phar eval '
+          $status = MAD4B_SCP_Site_Profile::status();
+          if ( ! empty( $status["configured"] ) || MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+              throw new RuntimeException( "Fresh generic install unexpectedly acquired governed write authority." );
+          }
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => 0,
+              "display_name" => "MAD4B Governed Execution Fence",
+              "chatgpt_app_id" => "",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => false,
+              "write_enabled" => true,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => false,
+              "acceptance_enabled" => true,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          if ( empty( $result["configured"] ) || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) ) {
+              throw new RuntimeException( "Explicit generic Site Profile enrollment did not bind the live tenant." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
           php /tmp/wp-cli.phar eval '
           $expected = (string) getenv( "MAD4B_EXPECTED_VERSION" );
           if ( "" === $expected || $expected !== MAD4B_SCP_VERSION ) {
               throw new RuntimeException( "Control Plane runtime/header version mismatch: expected=" . $expected . " actual=" . MAD4B_SCP_VERSION );
+          }
+          if ( ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+              throw new RuntimeException( "Explicitly enrolled generic site is not governed-write eligible." );
+          }
+          if ( ! defined( "MAD4B_MCP_MUTATION_ENABLED" ) || true !== MAD4B_MCP_MUTATION_ENABLED ) {
+              throw new RuntimeException( "Governed mutation gate was not configured after explicit enrollment." );
           }
           $p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
           if ( empty( $p["manifest_present"] ) || empty( $p["manifest_valid"] ) || empty( $p["runtime_manifest_match"] ) || ! empty( $p["stale"] ) ) {
@@ -197,5 +228,5 @@ jobs:
               }
           }
           if ( 1 !== $count ) throw new RuntimeException( "Expected one effective augment_write_ability registration, got " . $count );
-          echo "mad4b.staging-write-authority.filter-registration: PASS\n";
+          echo "mad4b.governed-write-authority.filter-registration: PASS\n";
           ' --path=/tmp/mad4b-execution-fence-wordpress --user=mad4b-ci-admin
