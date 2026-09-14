@@ -1,0 +1,111 @@
+name: RC32 Apply Tenant-Neutral Generalization
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - '.github/workflows/rc32-apply-generalization.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rc32-apply-generalization
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 2
+          persist-credentials: true
+
+      - name: Guard exact staged parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_parent='d37b18da6bd526f49bb56758f206bb5422622fc6'
+          actual_parent="$(git rev-parse HEAD^)"
+          test "$actual_parent" = "$expected_parent"
+          test -f .github/rc32-generalization.patch.gz.b64
+
+      - name: Decode and apply reviewed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .github/rc32-generalization.patch.gz.b64 | gzip --decompress > /tmp/rc32-generalization.patch
+          test -s /tmp/rc32-generalization.patch
+          grep -Fq '0.4.0-rc.32' /tmp/rc32-generalization.patch
+          grep -Fq 'class-mad4b-scp-site-profile.php' /tmp/rc32-generalization.patch
+          git apply --check /tmp/rc32-generalization.patch
+          git apply /tmp/rc32-generalization.patch
+          rm -f .github/rc32-generalization.patch.gz.b64
+          rm -f .github/workflows/rc32-apply-generalization.yml
+
+      - name: Lint changed PHP and validate changed JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            case "$file" in
+              *.php) if [ -f "$file" ]; then php -l "$file"; fi ;;
+              *.json) if [ -f "$file" ]; then php -r '$p=$argv[1]; $v=json_decode(file_get_contents($p), true); if (json_last_error() !== JSON_ERROR_NONE) { fwrite(STDERR, $p.": ".json_last_error_msg()."\n"); exit(1); }' "$file"; fi ;;
+            esac
+          done < <(git status --short | sed -E 's/^.. //' | sed -E 's/^.* -> //')
+
+      - name: Verify tenant-neutral release invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          main="$root/mad4b-site-control-plane.php"
+          grep -Fq 'Version: 0.4.0-rc.32' "$main"
+          grep -Fq "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.32' );" "$main"
+          grep -Fq "const CONTRACT = 'mad4b.site-profile.v2'" "$root/includes/class-mad4b-scp-site-profile.php"
+          grep -Fq 'site_profile_unconfigured' "$root/includes/class-mad4b-scp-site-profile.php"
+          grep -Fq 'PRODUCTION_WRITE_CONFIRMATION' "$root/includes/class-mad4b-scp-site-profile.php"
+          if grep -R -F -n 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' "$root/includes" "$root/mad4b-site-control-plane.php"; then
+            echo 'Customer-specific ChatGPT App ID remains in public runtime.' >&2
+            exit 1
+          fi
+          if grep -R -F -n 'staging.egypttourgates.com' "$root/includes" "$root/mad4b-site-control-plane.php"; then
+            echo 'ETG Staging origin remains in public runtime.' >&2
+            exit 1
+          fi
+          if grep -R -F -n 'https://egypttourgates.com' "$root/includes" "$root/mad4b-site-control-plane.php"; then
+            echo 'ETG Production origin remains in public runtime.' >&2
+            exit 1
+          fi
+          presets="$root/config/site-profile-presets.json"
+          if [ -f "$presets" ]; then
+            php -r '$p=json_decode(file_get_contents($argv[1]), true); if (!is_array($p) || !isset($p["profiles"]) || count($p["profiles"]) !== 0) { fwrite(STDERR, "bundled tenant presets must be empty\n"); exit(1); }' "$presets"
+          fi
+
+      - name: Run focused tenant-neutral runtime contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane/tests'
+          for test in \
+            site-profile-general-distribution-runtime.php \
+            oauth-multi-user-tenant-runtime.php; do
+            if [ -f "$root/$test" ]; then php "$root/$test"; fi
+          done
+
+      - name: Commit exact generalized source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          test -n "$(git status --porcelain)"
+          git config user.name 'MAD4B Automation'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add -A
+          git commit -m 'refactor(core): make control plane tenant-neutral'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
