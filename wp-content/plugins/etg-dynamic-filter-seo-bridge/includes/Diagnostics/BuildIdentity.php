@@ -11,7 +11,9 @@ final class BuildIdentity {
 		$root = defined( 'ETG_DFSB_DIR' ) ? (string) ETG_DFSB_DIR : dirname( __DIR__, 2 ) . DIRECTORY_SEPARATOR;
 		$version = defined( 'ETG_DFSB_VERSION' ) ? (string) ETG_DFSB_VERSION : '';
 		$identity = self::inspectFile( rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'build-identity.json', $version );
-		$provenance = self::inspectProvenanceFile( self::provenancePath(), $identity );
+		$provenancePath = self::provenancePath( $identity );
+		$provenance = self::inspectProvenanceFile( $provenancePath, $identity );
+		$provenance['package_provenance_source'] = self::provenanceSource( $provenancePath, $identity );
 		$identity = array_merge( $identity, $provenance );
 		$identity['provenance_complete'] = ! empty( $identity['valid'] ) && ! empty( $identity['package_provenance_valid'] );
 		return $identity;
@@ -204,17 +206,46 @@ final class BuildIdentity {
 		return $result;
 	}
 
-	private static function identityPath(): string {
-		$root = defined( 'ETG_DFSB_DIR' ) ? (string) ETG_DFSB_DIR : dirname( __DIR__, 2 ) . DIRECTORY_SEPARATOR;
-		return rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'build-identity.json';
-	}
-
-	private static function provenancePath(): string {
+	private static function provenancePath( array $identity = array() ): string {
 		if ( defined( 'ETG_DFSB_PACKAGE_PROVENANCE_PATH' ) ) {
 			return (string) ETG_DFSB_PACKAGE_PROVENANCE_PATH;
 		}
+
+		$persistent = self::persistentProvenancePath( $identity );
+		if ( '' !== $persistent && is_file( $persistent ) ) {
+			return $persistent;
+		}
+
 		$root = defined( 'ETG_DFSB_DIR' ) ? (string) ETG_DFSB_DIR : dirname( __DIR__, 2 ) . DIRECTORY_SEPARATOR;
 		return rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'etg-dfsb-provenance.txt';
+	}
+
+	private static function persistentProvenancePath( array $identity ): string {
+		if ( empty( $identity['valid'] ) || empty( $identity['git_sha'] ) || ! defined( 'WP_CONTENT_DIR' ) ) {
+			return '';
+		}
+		$contentRoot = trim( (string) WP_CONTENT_DIR );
+		$gitSha = strtolower( trim( (string) $identity['git_sha'] ) );
+		if ( '' === $contentRoot || 1 !== preg_match( '/^[0-9a-f]{40}$/', $gitSha ) ) {
+			return '';
+		}
+		return rtrim( $contentRoot, '/\\' )
+			. DIRECTORY_SEPARATOR . 'mad4b'
+			. DIRECTORY_SEPARATOR . 'provenance'
+			. DIRECTORY_SEPARATOR . 'etg-dfsb'
+			. DIRECTORY_SEPARATOR . $gitSha
+			. DIRECTORY_SEPARATOR . 'etg-dfsb-provenance.txt';
+	}
+
+	private static function provenanceSource( string $path, array $identity ): string {
+		if ( defined( 'ETG_DFSB_PACKAGE_PROVENANCE_PATH' ) ) {
+			return 'explicit_override';
+		}
+		$persistent = self::persistentProvenancePath( $identity );
+		if ( '' !== $persistent && $path === $persistent ) {
+			return 'persistent_sha_store';
+		}
+		return 'plugin_root_fallback';
 	}
 
 	private static function baseResult(): array {
@@ -239,6 +270,7 @@ final class BuildIdentity {
 			'package_provenance_reason' => 'package_provenance_file_missing',
 			'package_provenance_contract' => self::PROVENANCE_CONTRACT,
 			'package_sha256' => '',
+			'package_provenance_source' => '',
 		);
 	}
 }
