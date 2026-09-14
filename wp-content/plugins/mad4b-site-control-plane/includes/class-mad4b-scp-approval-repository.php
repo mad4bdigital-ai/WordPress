@@ -3,14 +3,10 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Read-optimized Approval Console repository.
- *
- * This class is intentionally read-only. It never grants authority and never
- * decides or consumes a ticket. POST/execution paths must revalidate against the
- * authoritative approval model before any state transition.
+ * Read-only Approval Console projection for the exact current tenant/build.
  */
 final class MAD4B_SCP_Approval_Repository {
-	const CONTRACT = 'mad4b.approval-read-model.v2';
+	const CONTRACT = 'mad4b.approval-read-model.v3';
 	const ACTIONABLE_LIMIT = 20;
 	const HISTORY_LIMIT = 25;
 	const MAX_HISTORY_PAGE = 1000;
@@ -18,7 +14,7 @@ final class MAD4B_SCP_Approval_Repository {
 	public static function actionable( array $candidate, $limit = self::ACTIONABLE_LIMIT ) {
 		global $wpdb;
 		if ( ! MAD4B_SCP_Schema::is_ready() ) return new WP_Error( 'mad4b_approval_read_model_schema_unavailable', 'Approval read model requires the current governance schema.' );
-		if ( ! self::candidate_ready( $candidate ) ) return new WP_Error( 'mad4b_approval_read_model_candidate_unavailable', 'Approval read model requires exact current build provenance.' );
+		if ( ! self::candidate_ready( $candidate ) ) return new WP_Error( 'mad4b_approval_read_model_candidate_unavailable', 'Approval read model requires exact current build and Site Profile provenance.' );
 		$limit = max( 1, min( 100, absint( $limit ) ) );
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
@@ -31,6 +27,9 @@ final class MAD4B_SCP_Approval_Repository {
 			   AND candidate_binding_contract=%s
 			   AND candidate_sha=%s
 			   AND build_fingerprint=%s
+			   AND site_uuid=%s
+			   AND site_profile_revision=%d
+			   AND site_profile_digest=%s
 			   AND binding_environment=%s
 			   AND binding_host=%s
 			 ORDER BY id DESC
@@ -39,8 +38,11 @@ final class MAD4B_SCP_Approval_Repository {
 			MAD4B_SCP_Approval_Tickets::CANDIDATE_BINDING_CONTRACT,
 			(string) $candidate['source_commit_sha'],
 			(string) $candidate['build_fingerprint'],
-			'staging',
-			MAD4B_SCP_Approval_Tickets::STAGING_HOST,
+			(string) $candidate['site_uuid'],
+			(int) $candidate['site_profile_revision'],
+			(string) $candidate['site_profile_digest'],
+			(string) $candidate['environment'],
+			(string) $candidate['host'],
 			$limit
 		);
 		$rows = $wpdb->get_results( $sql, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
@@ -51,7 +53,7 @@ final class MAD4B_SCP_Approval_Repository {
 	public static function history( array $candidate, $page = 1, $per_page = self::HISTORY_LIMIT ) {
 		global $wpdb;
 		if ( ! MAD4B_SCP_Schema::is_ready() ) return new WP_Error( 'mad4b_approval_read_model_schema_unavailable', 'Approval read model requires the current governance schema.' );
-		if ( ! self::candidate_ready( $candidate ) ) return new WP_Error( 'mad4b_approval_read_model_candidate_unavailable', 'Approval read model requires exact current build provenance.' );
+		if ( ! self::candidate_ready( $candidate ) ) return new WP_Error( 'mad4b_approval_read_model_candidate_unavailable', 'Approval read model requires exact current build and Site Profile provenance.' );
 		$page = max( 1, min( self::MAX_HISTORY_PAGE, absint( $page ) ) );
 		$per_page = max( 1, min( 100, absint( $per_page ) ) );
 		$offset = ( $page - 1 ) * $per_page;
@@ -74,11 +76,6 @@ final class MAD4B_SCP_Approval_Repository {
 		);
 	}
 
-	/**
-	 * Stable read-model evaluator for integrations that need the effective
-	 * lifecycle state without duplicating expiry/candidate-binding semantics.
-	 * This method is pure and never persists the derived state.
-	 */
 	public static function effective_status( array $row, array $candidate, $now = null ) {
 		$normalized = self::normalize( $row, $candidate, null === $now ? time() : (int) $now );
 		return isset( $normalized['effective_status'] ) ? (string) $normalized['effective_status'] : '';
@@ -94,11 +91,8 @@ final class MAD4B_SCP_Approval_Repository {
 		$binding_exact = self::binding_exact( $row, $candidate );
 		$status = isset( $row['status'] ) ? (string) $row['status'] : '';
 		$effective = $status;
-		if ( 'pending' === $status && ( false === $expires || $expires < $now ) ) {
-			$effective = 'expired';
-		} elseif ( 'pending' === $status && ! $binding_exact ) {
-			$effective = 'stale';
-		}
+		if ( 'pending' === $status && ( false === $expires || $expires < $now ) ) $effective = 'expired';
+		elseif ( 'pending' === $status && ! $binding_exact ) $effective = 'stale';
 		$row['binding_exact'] = $binding_exact;
 		$row['effective_status'] = $effective;
 		$row['actionable'] = 'pending' === $status
@@ -111,22 +105,38 @@ final class MAD4B_SCP_Approval_Repository {
 	}
 
 	private static function binding_exact( array $row, array $candidate ) {
-		return self::candidate_ready( $candidate )
-			&& isset( $row['candidate_binding_contract'] )
-			&& MAD4B_SCP_Approval_Tickets::CANDIDATE_BINDING_CONTRACT === (string) $row['candidate_binding_contract']
-			&& ! empty( $row['candidate_sha'] )
-			&& hash_equals( (string) $candidate['source_commit_sha'], (string) $row['candidate_sha'] )
-			&& ! empty( $row['build_fingerprint'] )
-			&& hash_equals( (string) $candidate['build_fingerprint'], (string) $row['build_fingerprint'] )
-			&& 'staging' === ( isset( $row['binding_environment'] ) ? sanitize_key( (string) $row['binding_environment'] ) : '' )
-			&& MAD4B_SCP_Approval_Tickets::STAGING_HOST === strtolower( rtrim( isset( $row['binding_host'] ) ? (string) $row['binding_host'] : '', '.' ) );
+		if ( ! self::candidate_ready( $candidate ) ) return false;
+		$expected = array(
+			'candidate_binding_contract' => MAD4B_SCP_Approval_Tickets::CANDIDATE_BINDING_CONTRACT,
+			'candidate_sha' => (string) $candidate['source_commit_sha'],
+			'build_fingerprint' => (string) $candidate['build_fingerprint'],
+			'site_uuid' => (string) $candidate['site_uuid'],
+			'site_profile_revision' => (string) (int) $candidate['site_profile_revision'],
+			'site_profile_digest' => (string) $candidate['site_profile_digest'],
+			'binding_environment' => (string) $candidate['environment'],
+			'binding_host' => (string) $candidate['host'],
+		);
+		foreach ( $expected as $key => $value ) {
+			$actual = isset( $row[ $key ] ) ? (string) $row[ $key ] : '';
+			if ( 'binding_host' === $key ) $actual = strtolower( rtrim( $actual, '.' ) );
+			if ( ! hash_equals( (string) $value, $actual ) ) return false;
+		}
+		return true;
 	}
 
 	private static function candidate_ready( array $candidate ) {
 		return ! empty( $candidate['ready'] )
 			&& ! empty( $candidate['source_commit_sha'] )
 			&& ! empty( $candidate['build_fingerprint'] )
+			&& ! empty( $candidate['site_uuid'] )
+			&& ! empty( $candidate['site_profile_revision'] )
+			&& ! empty( $candidate['site_profile_digest'] )
+			&& ! empty( $candidate['environment'] )
+			&& ! empty( $candidate['host'] )
 			&& 1 === preg_match( '/^[a-f0-9]{40}$/', (string) $candidate['source_commit_sha'] )
-			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate['build_fingerprint'] );
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate['build_fingerprint'] )
+			&& 1 === preg_match( '/^[a-f0-9-]{36}$/', (string) $candidate['site_uuid'] )
+			&& (int) $candidate['site_profile_revision'] > 0
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $candidate['site_profile_digest'] );
 	}
 }
