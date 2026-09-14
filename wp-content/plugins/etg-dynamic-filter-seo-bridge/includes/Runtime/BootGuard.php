@@ -36,6 +36,7 @@ final class BootGuard {
         self::$monitoring = true;
         try {
             $boot();
+            self::$monitoring = false;
             self::writeState(array(
                 'build' => self::$build,
                 'hold' => false,
@@ -45,6 +46,7 @@ final class BootGuard {
             ));
             return true;
         } catch (\Throwable $e) {
+            self::$monitoring = false;
             self::recordThrowable('bootstrap', $e);
             return false;
         }

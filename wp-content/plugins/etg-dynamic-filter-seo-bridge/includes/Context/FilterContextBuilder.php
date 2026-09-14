@@ -14,12 +14,12 @@ use ETG\DynamicFilterSEOBridge\SEO\CombinationRegistry;
 use ETG\DynamicFilterSEOBridge\SEO\ContentReadiness;
 use ETG\DynamicFilterSEOBridge\SEO\ResultCountResolver;
 use ETG\DynamicFilterSEOBridge\Terms\TermMetaReader;
-use ETG\DynamicFilterSEOBridge\WPML\LanguageResolver;
+use ETG\DynamicFilterSEOBridge\Language\LanguageResolverInterface;
 use WP_Term;
 
 final class FilterContextBuilder {
     private $parser; private $ajaxParser; private $languages; private $meta; private $content; private $scope; private $resultCounts; private $readiness; private $combinations; private $contentReadiness; private $postTypes;
-    public function __construct( FilterUrlParser $parser, LanguageResolver $languages, TermMetaReader $meta, ContentComposer $content, RequestScope $scope, ResultCountResolver $resultCounts, Readiness $readiness, CombinationRegistry $combinations, ContentReadiness $contentReadiness, PostTypeObserver $postTypes, AjaxFilterStateParser $ajaxParser = null ) {
+    public function __construct( FilterUrlParser $parser, LanguageResolverInterface $languages, TermMetaReader $meta, ContentComposer $content, RequestScope $scope, ResultCountResolver $resultCounts, Readiness $readiness, CombinationRegistry $combinations, ContentReadiness $contentReadiness, PostTypeObserver $postTypes, AjaxFilterStateParser $ajaxParser = null ) {
         $this->parser=$parser;$this->languages=$languages;$this->meta=$meta;$this->content=$content;$this->scope=$scope;$this->resultCounts=$resultCounts;$this->readiness=$readiness;$this->combinations=$combinations;$this->contentReadiness=$contentReadiness;$this->postTypes=$postTypes;$this->ajaxParser=$ajaxParser ?: new AjaxFilterStateParser();
     }
     public function build( ?string $uri = null ): array { return $this->buildInternal( $uri, false, null, 'authorizing_request' ); }
@@ -84,7 +84,7 @@ final class FilterContextBuilder {
         return $context;
     }
     private function evidenceRuntimeReady(array $readiness):bool{if(!empty($readiness['missing_dependencies'])||!empty($readiness['missing_capabilities'])||!empty($readiness['configuration_errors'])||!empty($readiness['runtime_checks_pending'])||!empty($readiness['failed_runtime_checks'])){return false;}return true;}
-    private function roleForTaxonomy(string $taxonomy,array $profile):string{$rules=(array)($profile['taxonomy_rules']??array());if(isset($rules[$taxonomy]['role'])){return sanitize_key((string)$rules[$taxonomy]['role']);}$map=function_exists('apply_filters')?apply_filters('etg_filter_seo_taxonomy_role_map',array('location_jet'=>'location','tour-types_jet'=>'tour_type','tour-styles_jet'=>'style'),$profile):array();return isset($map[$taxonomy])?sanitize_key((string)$map[$taxonomy]):sanitize_key($taxonomy);}
+    private function roleForTaxonomy(string $taxonomy,array $profile):string{$rules=(array)($profile['taxonomy_rules']??array());if(isset($rules[$taxonomy]['role'])){return sanitize_key((string)$rules[$taxonomy]['role']);}$legacy='travel'===(string)($profile['composition_mode']??'generic')?array('location_jet'=>'location','tour-types_jet'=>'tour_type','tour-styles_jet'=>'style'):array();$map=function_exists('apply_filters')?apply_filters('etg_filter_seo_taxonomy_role_map',$legacy,$profile):$legacy;return isset($map[$taxonomy])?sanitize_key((string)$map[$taxonomy]):sanitize_key($taxonomy);}
     private function profileMeta(WP_Term $term,string $taxonomy,array $profile):array{$rule=(array)($profile['taxonomy_rules'][$taxonomy]??array());$key=sanitize_key((string)($rule['required_meta_key']??''));if(''===$key){return array();}$value=function_exists('get_term_meta')?get_term_meta($term->term_id,$key,true):'';if($this->emptyValue($value)&&function_exists('get_field')){$value=get_field($key,$term->taxonomy.'_'.$term->term_id);}if(is_scalar($value)){return array($key=>trim((string)$value));}return array($key=>$value);}
     private function currentProvider():array{$out=array('observed'=>false,'provider'=>'','query_id'=>'','source'=>'runtime');if(!function_exists('jet_smart_filters')){return $out;}$instance=jet_smart_filters();if(!is_object($instance)||!isset($instance->query)||!is_object($instance->query)||!method_exists($instance->query,'get_current_provider')){return $out;}$provider=$instance->query->get_current_provider('provider');$queryId=$instance->query->get_current_provider('query_id');if(false===$provider&&false===$queryId){return $out;}$provider=sanitize_key((string)$provider);$queryId=QueryId::normalize($queryId);if(''===$provider||''===$queryId){return $out;}return array('observed'=>true,'provider'=>$provider,'query_id'=>$queryId,'source'=>'runtime');}
     private function emptyValue($value):bool{return null===$value||false===$value||''===$value||array()===$value;}

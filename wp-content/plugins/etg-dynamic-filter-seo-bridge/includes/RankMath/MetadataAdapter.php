@@ -39,13 +39,12 @@ final class MetadataAdapter {
 		add_filter( 'rank_math/opengraph/twitter/image', array( $this, 'socialImage' ), 20 );
 		add_filter( 'rank_math/opengraph/twitter/card_type', array( $this, 'twitterCardType' ), 20 );
 		add_filter( 'rank_math/json_ld', array( $this, 'schema' ), 99, 2 );
-		add_filter( 'wpml_hreflangs', array( $this, 'hreflangs' ), 99 );
 	}
 
-	public function title( $original ) { $context=$this->context(); if(!$this->hasResolvedContext($context)){return $original;} $title=$this->content->metaTitle($context); return ''!==$title?$title:$original; }
-	public function description( $original ) { $context=$this->context(); if(!$this->hasResolvedContext($context)){return $original;} $description=$this->content->metaDescription($context); return ''!==$description?$description:$original; }
-	public function canonical( $original ) { $context=$this->context(); if(!$this->hasResolvedContext($context)){return $original;} return $this->canonical->build($context,$original); }
-	public function robots( $robots ) { $decision=$this->indexing->decide($this->context()); if(!array_key_exists('index',$decision)||null===$decision['index']||!is_array($robots)){return $robots;} $robots['index']=$decision['index']?'index':'noindex'; $robots['follow']='follow'; return $robots; }
+	public function title( $original ) { $context=$this->context(); if(!$this->metadataAllowed($context)){return $original;} $title=$this->content->metaTitle($context); return ''!==$title?$title:$original; }
+	public function description( $original ) { $context=$this->context(); if(!$this->metadataAllowed($context)){return $original;} $description=$this->content->metaDescription($context); return ''!==$description?$description:$original; }
+	public function canonical( $original ) { $context=$this->context(); if(!$this->metadataAllowed($context)){return $original;} return $this->canonical->build($context,$original); }
+	public function robots( $robots ) { $context=$this->context(); if(!$this->metadataAllowed($context)){return $robots;} $decision=$this->indexing->decide($context); if(!array_key_exists('index',$decision)||null===$decision['index']||!is_array($robots)){return $robots;} $robots['index']=$decision['index']?'index':'noindex'; $robots['follow']='follow'; return $robots; }
 	public function openGraphType( $original ) { $context=$this->context(); return $this->socialAllowed($context)?'website':$original; }
 	public function openGraphUrl( $original ) { $context=$this->context(); if(!$this->socialAllowed($context)){return $original;} $url=$this->canonical->build($context,(string)$original); return $url?:$original; }
 	public function socialTitle( $original ) { $context=$this->context(); if(!$this->socialAllowed($context)){return $original;} $title=$this->content->metaTitle($context); return ''!==$title?$title:$original; }
@@ -53,8 +52,8 @@ final class MetadataAdapter {
 	public function socialImage( $original ) { $context=$this->context(); if(!$this->socialAllowed($context)){return $original;} $ids=$this->gallery->ids($context,'priority'); if(!$ids){return $original;} $url=wp_get_attachment_image_url((int)reset($ids),'full'); return $url?$url:$original; }
 	public function twitterCardType( $original ) { $context=$this->context(); if(!$this->socialAllowed($context)){return $original;} $ids=$this->gallery->ids($context,'priority'); return $ids?'summary_large_image':$original; }
 	public function schema( $data, $jsonld = null ) { if(!is_array($data)||!$this->publication){return $data;} $context=$this->context(); if(!$this->hasResolvedContext($context)){return $data;} $decision=$this->indexing->decide($context); if(true!==($decision['index']??null)){return $data;} $schema=$this->publication->schemaForContext($context); if($schema){$data['ETGFilteredCollection']=$schema;} return $data; }
-	public function hreflangs( $items ) { if(!$this->publication){return $items;} $context=$this->context(); if(!$this->hasResolvedContext($context)){return $items;} $alternates=$this->publication->alternatesForContext($context); return $alternates?:$items; }
 	private function context(): array { $context=call_user_func($this->contextProvider); return is_array($context)?$context:array(); }
+	private function metadataAllowed( array $context ): bool { if(!$this->hasResolvedContext($context)){return false;} $profile=(array)($context['profile']??array()); return !empty($profile['publication']['metadata']); }
 	private function socialAllowed( array $context ): bool { if(!$this->hasResolvedContext($context)){return false;} $profile=(array)($context['profile']??array()); return !isset($profile['publication']['social'])||!empty($profile['publication']['social']); }
 	private function hasResolvedContext( array $context ): bool {
 		if('ajax'===(string)($context['state_transport']??'')||!empty($context['ajax_only'])){return false;}

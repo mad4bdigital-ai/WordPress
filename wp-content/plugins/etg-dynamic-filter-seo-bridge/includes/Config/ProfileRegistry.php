@@ -10,6 +10,7 @@ final class ProfileRegistry {
 	private const MAX_ROUTES = 20;
 	private const MAX_TAXONOMY_RULES = 50;
 	private const MAX_COMBINATIONS = 500;
+	private const MAX_REQUIRED_CAPABILITIES = 32;
 
 	private $config;
 	private $profiles;

@@ -11,7 +11,7 @@ final class FilterUrlParser {
 	private $trackingQueryParams;
 
 	public function __construct( array $allowedTaxonomies = array(), array $allowedQueryParams = array(), array $trackingQueryParams = array() ) {
-		$this->allowedTaxonomies = $allowedTaxonomies ?: array( 'location_jet', 'tour-types_jet', 'tour-styles_jet' );
+		$this->allowedTaxonomies = array_values( array_unique( array_filter( array_map( 'sanitize_key', $allowedTaxonomies ) ) ) );
 		$this->allowedQueryParams = array_values( array_filter( array_map( 'sanitize_key', $allowedQueryParams ) ) );
 		$this->trackingQueryParams = $trackingQueryParams ?: array( 'gclid', 'fbclid', 'msclkid' );
 	}

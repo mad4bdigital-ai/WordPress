@@ -3,18 +3,24 @@ namespace ETG\DynamicFilterSEOBridge\SEO;
 
 require_once dirname( __DIR__ ) . '/Runtime/RuntimeQueryBindingResolver.php';
 require_once dirname( __DIR__ ) . '/Identifiers/QueryId.php';
+require_once dirname( __DIR__ ) . '/Language/LanguageResolverInterface.php';
+require_once dirname( __DIR__ ) . '/Language/LocaleLanguageResolver.php';
 
 use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
 use ETG\DynamicFilterSEOBridge\JetEngine\QueryIdentityResolver;
 use ETG\DynamicFilterSEOBridge\Runtime\RuntimeQueryBindingResolver;
+use ETG\DynamicFilterSEOBridge\Language\LanguageResolverInterface;
+use ETG\DynamicFilterSEOBridge\Language\LocaleLanguageResolver;
 
 final class PublicationResultCountProbe {
     private $bindingResolver;
+    private $languages;
 
-    public function __construct( $resolver = null ) {
+    public function __construct( $resolver = null, LanguageResolverInterface $languages = null ) {
         if ( $resolver instanceof RuntimeQueryBindingResolver ) { $this->bindingResolver = $resolver; }
         elseif ( $resolver instanceof QueryIdentityResolver ) { $this->bindingResolver = new RuntimeQueryBindingResolver( null, $resolver ); }
         else { $this->bindingResolver = new RuntimeQueryBindingResolver(); }
+        $this->languages = $languages ?: new LocaleLanguageResolver();
     }
 
     public function resolve( array $context ): array {
@@ -35,24 +41,12 @@ final class PublicationResultCountProbe {
         }
         $query = $binding['query'];
 
-        $switched = false;
-        $previousLanguage = '';
-        $sitepressObject = null;
+        $publication = (array) ( $context['profile']['publication'] ?? array() );
+        $requiresLanguageContext = ! empty( $publication['multilingual'] ) || ! empty( $publication['hreflang'] );
+        $languageExecution = array( 'available'=>true, 'switched'=>false, 'reason'=>'', 'result'=>null );
 
         try {
-            $wpmlCurrentAvailable = function_exists( 'has_filter' ) && false !== has_filter( 'wpml_current_language' ) && function_exists( 'apply_filters' );
-            if ( $language && ! $wpmlCurrentAvailable ) { return $this->unavailable( 'wpml_language_context_unavailable', $language, $providerQueryId, $customId, $internalId ); }
-            if ( $wpmlCurrentAvailable ) {
-                $previousLanguage = sanitize_key( (string) apply_filters( 'wpml_current_language', null ) );
-                if ( $language && $previousLanguage !== $language ) {
-                    global $sitepress;
-                    if ( ! is_object( $sitepress ) || ! method_exists( $sitepress, 'switch_lang' ) ) { return $this->unavailable( 'wpml_language_switch_unavailable', $language, $providerQueryId, $customId, $internalId ); }
-                    $sitepressObject = $sitepress;
-                    $sitepressObject->switch_lang( $language, true );
-                    $switched = true;
-                }
-            }
-
+            $work = function () use ( $query, $filters, $language, $providerQueryId, $customId, $internalId, $binding, $context, $requiresLanguageContext ) {
             $type = method_exists( $query, 'get_query_type' ) ? sanitize_key( (string) $query->get_query_type() ) : '';
             if ( 'posts' !== $type ) { return $this->unavailable( '' === $type ? 'query_type_unobserved' : 'query_type_not_posts', $language, $providerQueryId, $customId, $internalId ); }
             if ( ! method_exists( $query, 'get_query_args' ) ) { return $this->unavailable( 'query_args_unavailable', $language, $providerQueryId, $customId, $internalId ); }
@@ -82,17 +76,27 @@ final class PublicationResultCountProbe {
             $result = array(
                 'count'=>max(0,(int)$count), 'source'=>'jet_engine_query_builder_background_tax_query', 'authoritative'=>true,
                 'detail'=>'query_builder_base_args_plus_exact_taxonomy_filters_with_language_context', 'post_types'=>$postTypes,
-                'language'=>$language, 'wpml_language_context'=>$switched?'switched':'already_current',
+                'language'=>$language, 'wpml_language_context'=>$requiresLanguageContext?'adapter_managed':'not_required',
+                'language_context'=>$requiresLanguageContext?'adapter_managed':'not_required',
                 'provider_query_id'=>$providerQueryId, 'custom_query_id'=>$customId, 'query_builder_custom_query_id'=>$customId,
                 'internal_query_id'=>$internalId, 'binding_source'=>(string)($binding['source']??'unavailable'), 'query_identity_source'=>(string)($binding['identity_source']??'unavailable')
             );
             return function_exists('apply_filters') ? (array) apply_filters('etg_filter_seo_publication_result_count',$result,$context,$args) : $result;
+            };
+
+            if ( $requiresLanguageContext && '' !== $language ) {
+                $languageExecution = $this->languages->executeInLanguage( $language, $work );
+                if ( empty( $languageExecution['available'] ) ) { return $this->unavailable( (string) ( $languageExecution['reason'] ?? 'language_context_unavailable' ), $language, $providerQueryId, $customId, $internalId ); }
+                $result = is_array( $languageExecution['result'] ?? null ) ? $languageExecution['result'] : $this->unavailable( 'language_context_result_invalid', $language, $providerQueryId, $customId, $internalId );
+                if ( is_array( $result ) ) {
+                    $result['wpml_language_context'] = ! empty( $languageExecution['switched'] ) ? 'switched' : 'already_current';
+                    $result['language_context'] = $result['wpml_language_context'];
+                }
+                return $result;
+            }
+            return $work();
         } catch ( \Throwable $error ) {
             return $this->unavailable( 'publication_count_exception', $language, $providerQueryId, $customId, $internalId );
-        } finally {
-            if ( $switched && is_object($sitepressObject) && method_exists($sitepressObject,'switch_lang') && $previousLanguage ) {
-                try { $sitepressObject->switch_lang($previousLanguage,true); } catch ( \Throwable $ignored ) {}
-            }
         }
     }
 
@@ -105,7 +109,7 @@ final class PublicationResultCountProbe {
 
     private function unavailable( string $detail, string $language='', string $providerQueryId='', string $customQueryId='', string $internalQueryId='' ): array {
         return array(
-            'count'=>null,'source'=>'unavailable','authoritative'=>false,'detail'=>$detail,'post_types'=>array(),'language'=>$language,'wpml_language_context'=>'unavailable',
+            'count'=>null,'source'=>'unavailable','authoritative'=>false,'detail'=>$detail,'post_types'=>array(),'language'=>$language,'wpml_language_context'=>'unavailable','language_context'=>'unavailable',
             'provider_query_id'=>$providerQueryId,'custom_query_id'=>$customQueryId,'query_builder_custom_query_id'=>$customQueryId,'internal_query_id'=>$internalQueryId
         );
     }
