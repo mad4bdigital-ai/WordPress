@@ -17,7 +17,7 @@ if ( ! is_file( $wp_path . '/wp-load.php' ) ) {
 	exit( 1 );
 }
 
-$_SERVER['HTTP_HOST'] = 'staging.egypttourgates.com';
+$_SERVER['HTTP_HOST'] = 'governed-write.test';
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
 $_SERVER['REQUEST_METHOD'] = 'POST';
@@ -35,7 +35,15 @@ $check = static function ( $condition, $message ) use ( $fail ) { if ( ! $condit
 $check( class_exists( 'MAD4B_SCP_Execution_Fence' ), 'execution fence class unavailable' );
 $check( MAD4B_SCP_Execution_Fence::CONTRACT === 'mad4b.same-request-execution-fence.v1', 'unexpected execution fence contract' );
 $check( function_exists( 'wp_get_environment_type' ) && 'staging' === wp_get_environment_type(), 'fixture is not staging' );
-$check( 'staging.egypttourgates.com' === wp_parse_url( home_url( '/' ), PHP_URL_HOST ), 'fixture is not the governed Staging origin' );
+$check( 'governed-write.test' === wp_parse_url( home_url( '/' ), PHP_URL_HOST ), 'fixture is not the generic governed Staging origin' );
+$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+$check(
+	! empty( $profile['configured'] )
+		&& ! empty( $profile['origin_match'] )
+		&& ! empty( $profile['environment_match'] )
+		&& ! empty( $profile['write_enabled'] ),
+	'fixture is not explicitly Site Profile enrolled for governed write: ' . wp_json_encode( $profile )
+);
 $check( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === MAD4B_MCP_MUTATION_ENABLED, 'Staging mutation gate not configured' );
 $provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 $check(
@@ -281,4 +289,4 @@ $undo_used = MAD4B_SCP_Approval_Tickets::get( $approval_ticket_id );
 $check( is_array( $undo_used ) && 'used' === $undo_used['status'], 'undo ticket did not terminalize as used: ' . wp_json_encode( $undo_used ) );
 
 wp_delete_attachment( $attachment_id, true );
-echo "mad4b.site-control-plane.mcp-governed-execution-fence.v1: PASS\n";
+echo "mad4b.site-control-plane.mcp-governed-execution-fence.v2: PASS\n";
