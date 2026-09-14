@@ -215,7 +215,7 @@ $brokenProvider=new LiveAcceptanceProvider(static function()use($profiles):array
 $broken=$brokenProvider->run(array('profile_id'=>'tours','suite'=>'semantic'));
 etg_acceptance_same('BLOCKED',$broken['verdict'],'pagination collector failure blocks semantic certification without blaming Tours product parity');
 etg_acceptance_same('TEST_INFRASTRUCTURE_FAILURE',$broken['classification'],'pagination no-advance is classified as test infrastructure failure');
-etg_acceptance_same('PASS',$broken['tests']['result_count_parity'],'authoritative counts remain independently verified');
+etg_acceptance_same('BLOCKED',$broken['tests']['result_count_parity'],'result-count parity is blocked when dataset collection infrastructure fails');
 etg_acceptance_same('BLOCKED',$broken['tests']['dataset_id_parity'],'dataset ID parity is blocked when the collector cannot advance pages');
 etg_acceptance_same('paged_query_items_do_not_advance',$broken['cases'][2]['direct_dataset']['pagination_failure'],'page-state no-advance guard is explicit');
 etg_acceptance_same(true,$broken['cases'][2]['direct_dataset']['infrastructure_failure'],'dataset evidence exposes infrastructure failure explicitly');
