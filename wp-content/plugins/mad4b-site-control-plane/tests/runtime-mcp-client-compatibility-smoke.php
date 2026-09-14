@@ -10,6 +10,31 @@ function mad4b_client_compat_fail( $message, $data = null ) {
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
 
+// General Distribution installs are deliberately zero-authority. The disposable
+// compatibility fixture must explicitly enroll only the OAuth feature before
+// expecting protected-resource discovery to become effective.
+if ( MAD4B_SCP_Site_Profile::configured() ) mad4b_client_compat_fail( 'Fresh compatibility fixture unexpectedly arrived pre-enrolled.', MAD4B_SCP_Site_Profile::status() );
+$enrollment = MAD4B_SCP_Site_Profile::save_current_site( array(
+	'expected_revision' => 0,
+	'display_name' => 'MAD4B Client Compatibility',
+	'chatgpt_app_id' => '',
+	'oauth_user_ids' => array( get_current_user_id() ),
+	'oauth_enabled' => true,
+	'skills_enabled' => false,
+	'write_enabled' => false,
+	'production_write_confirmed' => false,
+	'provider_isolation_enabled' => false,
+	'managed_runtime_enabled' => false,
+	'acceptance_enabled' => false,
+) );
+if ( is_wp_error( $enrollment ) ) mad4b_client_compat_fail( 'Explicit OAuth-only Site Profile enrollment failed.', $enrollment->get_error_code() );
+if ( empty( $enrollment['configured'] ) || empty( $enrollment['origin_match'] ) || empty( $enrollment['environment_match'] ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) {
+	mad4b_client_compat_fail( 'Explicit OAuth-only Site Profile enrollment did not bind the disposable fixture.', $enrollment );
+}
+if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+	mad4b_client_compat_fail( 'OAuth-only compatibility enrollment unexpectedly enabled governed write authority.', MAD4B_SCP_Staging_Write_Authority::status() );
+}
+
 add_filter( 'mad4b_scp_mcp_client_profiles', function ( $profiles ) {
 	$profiles[] = array(
 		'id' => 'future-agent',
@@ -30,7 +55,7 @@ if ( 'streamable_http' !== $status['transport'] ) mad4b_client_compat_fail( 'Exp
 if ( ! empty( $status['client_profiles_create_authority'] ) ) mad4b_client_compat_fail( 'Client profiles must not create authority.', $status );
 if ( ! empty( $status['client_vendor_required_for_authorization'] ) ) mad4b_client_compat_fail( 'Authorization must not depend on client vendor name.', $status );
 if ( empty( $status['unknown_clients_supported'] ) ) mad4b_client_compat_fail( 'Unknown standards-compliant clients must use generic fallback.', $status );
-if ( empty( $status['oauth_discovery_ready'] ) ) mad4b_client_compat_fail( 'OAuth discovery should be policy-ready in the disposable Staging fixture.', $status );
+if ( empty( $status['oauth_discovery_ready'] ) ) mad4b_client_compat_fail( 'OAuth discovery should be policy-ready after explicit OAuth-only Site Profile enrollment.', $status );
 if ( 'external' !== $status['oauth_authority_mode'] || 1 !== (int) $status['authorization_server_count'] ) mad4b_client_compat_fail( 'Fixture must truthfully report one external authority.', $status );
 if ( empty( $status['authorization_server_external'] ) || ! empty( $status['authorization_server_local'] ) || ! empty( $status['authorization_server_hybrid'] ) ) mad4b_client_compat_fail( 'Authority type booleans are inconsistent.', $status );
 if ( 'MAD4B WordPress Staging ChatGPT Read MCP' !== $status['resource_name'] ) mad4b_client_compat_fail( 'Resource name must derive Staging environment and ChatGPT gateway rather than be hardcoded.', $status );
