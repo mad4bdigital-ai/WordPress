@@ -57,6 +57,11 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 }
 
+class MAD4B_SCP_Site_Profile {
+	public static function site_urls_match_enrollment() { return 'staging' === $GLOBALS['mad4b_environment']; }
+	public static function skills_enabled() { return 'staging' === $GLOBALS['mad4b_environment']; }
+}
+
 class MAD4B_SCP_Skill_Snapshot_Identity {
 	public static function build() { return array( 'identity_token' => $GLOBALS['mad4b_snapshot_identity'] ); }
 }

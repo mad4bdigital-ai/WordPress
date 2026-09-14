@@ -21,12 +21,13 @@ def forbid(text, needle, label):
 
 for marker in (
     "const CONTRACT = 'mad4b.mcp-runtime-conflict-guard.v2'",
-    "const STAGING_HOST = 'staging.egypttourgates.com'",
     "const OFFICIAL_PLUGIN = 'mcp-adapter/mcp-adapter.php'",
     "const HOSTINGER_PREFIX = 'hostinger-ai-assistant/'",
     "const MU_BOOTSTRAP_BASENAME = '000-mad4b-mcp-adapter-bootstrap.php'",
     "const MU_BOOTSTRAP_SOURCE = 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php'",
-    "'staging' === $environment && self::STAGING_HOST === $host",
+    "MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
     "get_option( 'active_plugins'",
     'runtime_provenance()',
     "'runtime_from_hostinger_bundle'",
@@ -51,8 +52,10 @@ for forbidden in (
 
 for marker in (
     "'contract' => 'mad4b.mcp-adapter-mu-bootstrap.v3'",
-    "'staging' === $mad4b_mcp_mu_status['environment']",
-    "'staging.egypttourgates.com' === $mad4b_mcp_mu_status['host']",
+    "get_option( 'mad4b_scp_site_profile_v2', array() )",
+    "'mad4b.site-profile.v2' === (string) $mad4b_mcp_mu_profile['contract']",
+    "! empty( $mad4b_mcp_mu_features['managed_runtime'] )",
+    "in_array( $mad4b_mcp_mu_status['environment'], array( 'local', 'development', 'staging' ), true )",
     "in_array( 'mcp-adapter/mcp-adapter.php'",
     "in_array( 'mad4b-site-control-plane/mad4b-site-control-plane.php'",
     "'WP\\\\MCP\\\\Autoloader'",
@@ -90,7 +93,9 @@ for forbidden in (
 # Compatibility is semantic; PHP quote style is not part of the contract.
 for marker in (
     "const CONTRACT = 'mad4b.mcp-mu-bootstrap-refresh.v1'",
-    "const STAGING_HOST = 'staging.egypttourgates.com'",
+    "MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
     'mad4b.mcp-adapter-mu-bootstrap.v2',
     'mad4b.mcp-adapter-mu-bootstrap.v3',
     "'unmanaged_mu_bootstrap_path_conflict'",

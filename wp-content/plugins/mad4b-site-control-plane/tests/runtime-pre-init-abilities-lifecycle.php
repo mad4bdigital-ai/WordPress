@@ -205,8 +205,9 @@ $stale_cert = array(
 );
 update_option( MAD4B_SCP_Write_Runtime_Certification::OPTION, $stale_cert, false );
 $legacy_readback = MAD4B_SCP_Write_Runtime_Certification::status();
-if ( ! is_array( $legacy_readback ) || empty( $legacy_readback['stale'] ) || ! isset( $legacy_readback['state'] ) || 'stale' !== $legacy_readback['state'] || ! empty( $legacy_readback['ready'] ) ) {
-	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: stale persisted certification was exposed as current: ' . json_encode( $legacy_readback, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
+$legacy_blockers = isset( $legacy_readback['blockers'] ) && is_array( $legacy_readback['blockers'] ) ? $legacy_readback['blockers'] : array();
+if ( ! is_array( $legacy_readback ) || ! empty( $legacy_readback['ready'] ) || 'ineligible' !== ( isset( $legacy_readback['state'] ) ? $legacy_readback['state'] : '' ) || 'not_applicable' !== ( isset( $legacy_readback['persistence'] ) ? $legacy_readback['persistence'] : '' ) || ! in_array( 'site_profile_write_disabled', $legacy_blockers, true ) ) {
+	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: stale persisted certification was not hidden by fail-closed ineligible truth: ' . json_encode( $legacy_readback, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
 	exit( 1 );
 }
 
@@ -240,12 +241,20 @@ if ( ! isset( $rest_truth['wpml_internal_probe_role'] ) || 'diagnostic_only' !==
 	exit( 1 );
 }
 
-// The explicit observer may persist current evidence; freshness metadata must
-// then make the normal status() readback current again rather than stale.
+// A write-disabled Site Profile is intentionally ineligible. Observing certification
+// must stay non-mutating and continue to hide any historical ready certificate.
+$storage_before_observe = get_option( MAD4B_SCP_Write_Runtime_Certification::OPTION, array() );
 MAD4B_SCP_Write_Runtime_Certification::observe();
-$fresh_readback = MAD4B_SCP_Write_Runtime_Certification::status();
-if ( ! is_array( $fresh_readback ) || ! empty( $fresh_readback['stale'] ) || ! isset( $fresh_readback['write_tool_count'] ) || (int) $fresh_readback['write_tool_count'] !== $live_write_count ) {
-	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: persisted certification did not refresh to current inventory: ' . json_encode( $fresh_readback, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
+$ineligible_after_observe = MAD4B_SCP_Write_Runtime_Certification::status();
+$storage_after_observe = get_option( MAD4B_SCP_Write_Runtime_Certification::OPTION, array() );
+$after_blockers = isset( $ineligible_after_observe['blockers'] ) && is_array( $ineligible_after_observe['blockers'] ) ? $ineligible_after_observe['blockers'] : array();
+if ( ! is_array( $ineligible_after_observe ) || ! empty( $ineligible_after_observe['ready'] ) || 'ineligible' !== ( isset( $ineligible_after_observe['state'] ) ? $ineligible_after_observe['state'] : '' ) || 'not_applicable' !== ( isset( $ineligible_after_observe['persistence'] ) ? $ineligible_after_observe['persistence'] : '' ) || ! in_array( 'site_profile_write_disabled', $after_blockers, true ) ) {
+	fwrite( STDERR, 'FAIL pre-init-abilities-lifecycle: write-disabled observer escaped fail-closed state: ' . json_encode( $ineligible_after_observe, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
+	exit( 1 );
+}
+if ( wp_json_encode( $storage_before_observe ) !== wp_json_encode( $storage_after_observe ) ) {
+	fwrite( STDERR, "FAIL pre-init-abilities-lifecycle: ineligible observer mutated persisted certification state
+" );
 	exit( 1 );
 }
 
