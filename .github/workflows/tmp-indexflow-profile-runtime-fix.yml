@@ -1,0 +1,46 @@
+name: Temporary IndexFlow Profile Runtime Fix
+
+on:
+  push:
+    branches: [tmp-indexflow-profile-runtime-fix-20260914]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-indexflow-profile-runtime-fix-20260914
+          fetch-depth: 0
+      - name: Align language-code test harness with Foundation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/profile-runtime-smoke.php')
+          text = p.read_text()
+          old = "function apply_filters($hook,$value){if('wpml_active_languages'===$hook){return array('en'=>array(),'it'=>array(),'ar'=>array());}return $value;}"
+          new = "function apply_filters($hook,$value){if('etg_filter_seo_language_codes'===$hook){return array('en','it','ar');}return $value;}"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one legacy language mock, got {text.count(old)}')
+          p.write_text(text.replace(old,new,1))
+          PY
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/profile-runtime-smoke.php
+          php wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/profile-runtime-smoke.php
+          git diff --check
+      - name: Commit clean test-only fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/tmp-indexflow-profile-runtime-fix.yml
+          git config user.name 'MAD4B CI Repair'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          changed="$(git diff --cached --name-only)"
+          test "$changed" = 'wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/profile-runtime-smoke.php'
+          git commit -m 'test(indexflow): align language mock with foundation contract'
+          git push origin HEAD:tmp-indexflow-profile-runtime-fix-20260914
