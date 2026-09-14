@@ -3,50 +3,38 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Tenant-neutral site identity and authority profile.
+ * Tenant-neutral site identity and governance enrollment.
  *
- * The profile is deliberately local to one WordPress site. Installing the
- * Control Plane does not enroll the site and does not grant mutation authority.
- * A privileged operator must explicitly bind the current canonical origin and
- * environment before generic-site authority may be enabled.
+ * Installation never creates mutation authority for an unknown site. A site is
+ * governed only after an explicit local profile exists or a reviewed legacy
+ * preset matches the exact current origin. Profile identity is intentionally
+ * separate from the Plugin build so the same binary can be deployed safely to
+ * many independent WordPress sites.
  */
 final class MAD4B_SCP_Site_Profile {
 	const CONTRACT = 'mad4b.site-profile.v1';
+	const PRESET_CONTRACT = 'mad4b.site-profile-presets.v1';
 	const OPTION = 'mad4b_scp_site_profile_v1';
-	const PAGE_SLUG = 'mad4b-site-profile';
-	const SAVE_ACTION = 'mad4b_site_profile_save';
 	const VERSION = 1;
+	const PRESET_FILE = 'config/site-profile-presets.json';
 	const PRODUCTION_WRITE_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE';
 
-	private static $booted = false;
+	private static $profile = null;
+	private static $status = null;
+	private static $bootstrapping = false;
 
 	public static function boot() {
-		if ( self::$booted ) return;
-		self::$booted = true;
-		add_action( 'admin_menu', array( __CLASS__, 'register_page' ), 85 );
-		add_action( 'admin_post_' . self::SAVE_ACTION, array( __CLASS__, 'handle_save' ) );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_status_ability' ), 28 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 8 );
 	}
 
-	public static function register_page() {
-		add_submenu_page(
-			'mad4b-control-plane',
-			__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ),
-			__( 'Site Profile', 'mad4b-site-control-plane' ),
-			'manage_options',
-			self::PAGE_SLUG,
-			array( __CLASS__, 'render_page' )
-		);
-	}
-
-	public static function register_status_ability() {
+	public static function register_ability() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		wp_register_ability( 'mad4b/site-profile-status', array(
 			'label' => 'MAD4B Site Profile Status',
-			'description' => 'Read the tenant-neutral site enrollment, origin, environment and authority policy state.',
-			'category' => 'mad4b-admin',
+			'description' => 'Read the tenant-neutral site enrollment, origin binding and authority feature state.',
+			'category' => 'mad4b-governance',
 			'execute_callback' => array( __CLASS__, 'status' ),
-			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_read' ) : '__return_false',
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
 				'public' => false,
@@ -57,52 +45,48 @@ final class MAD4B_SCP_Site_Profile {
 		) );
 	}
 
-	public static function load() {
-		$profile = get_option( self::OPTION, array() );
-		return self::normalize_profile( is_array( $profile ) ? $profile : array() );
+	public static function bootstrap() {
+		if ( null !== self::$status || self::$bootstrapping ) return self::status_without_bootstrap();
+		self::$bootstrapping = true;
+
+		$record = get_option( self::OPTION, array() );
+		$source = 'stored';
+		if ( ! self::valid_record( $record ) ) {
+			$record = self::matching_preset();
+			$source = ! empty( $record ) ? 'legacy_preset' : 'none';
+			if ( ! empty( $record ) && self::valid_record( $record ) ) {
+				update_option( self::OPTION, $record, false );
+				$source = 'legacy_preset_migrated';
+			}
+		}
+
+		self::$profile = self::valid_record( $record ) ? self::normalize_record( $record ) : array();
+		self::$status = self::build_status( self::$profile, $source );
+		self::$bootstrapping = false;
+		return self::$status;
 	}
 
-	public static function enrolled() {
-		$profile = self::load();
-		return ! empty( $profile['site_uuid'] ) && ! empty( $profile['canonical_origin'] ) && ! empty( $profile['environment'] );
+	public static function status() {
+		return null === self::$status ? self::bootstrap() : self::$status;
 	}
 
-	public static function site_uuid() {
-		$profile = self::load();
-		return isset( $profile['site_uuid'] ) ? (string) $profile['site_uuid'] : '';
+	private static function status_without_bootstrap() {
+		return is_array( self::$status ) ? self::$status : self::build_status( array(), 'none' );
 	}
 
-	public static function revision() {
-		$profile = self::load();
-		return isset( $profile['revision'] ) ? absint( $profile['revision'] ) : 0;
+	public static function profile() {
+		self::status();
+		return is_array( self::$profile ) ? self::$profile : array();
 	}
 
-	public static function openai_app_id() {
-		$profile = self::load();
-		return isset( $profile['openai_app_id'] ) ? (string) $profile['openai_app_id'] : '';
+	public static function reset_cache() {
+		self::$profile = null;
+		self::$status = null;
 	}
 
-	public static function subject_user_id() {
-		$profile = self::load();
-		return isset( $profile['subject_user_id'] ) ? absint( $profile['subject_user_id'] ) : 0;
-	}
-
-	public static function profile_digest( $profile = null ) {
-		if ( null === $profile ) $profile = self::load();
-		$profile = self::normalize_profile( is_array( $profile ) ? $profile : array() );
-		$identity = array(
-			'contract' => self::CONTRACT,
-			'site_uuid' => (string) $profile['site_uuid'],
-			'revision' => (int) $profile['revision'],
-			'canonical_origin' => (string) $profile['canonical_origin'],
-			'environment' => (string) $profile['environment'],
-			'subject_user_id' => (int) $profile['subject_user_id'],
-			'openai_app_id' => (string) $profile['openai_app_id'],
-			'write_enabled' => (bool) $profile['write_enabled'],
-			'production_write_confirmed' => (bool) $profile['production_write_confirmed'],
-			'breakglass_enabled' => (bool) $profile['breakglass_enabled'],
-		);
-		return hash( 'sha256', self::canonical_json( $identity ) );
+	public static function configured() {
+		$status = self::status();
+		return ! empty( $status['configured'] );
 	}
 
 	public static function current_environment() {
@@ -110,235 +94,358 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	public static function current_origin() {
-		return self::canonicalize_origin( function_exists( 'home_url' ) ? home_url( '/' ) : '', self::current_environment() );
+		if ( ! function_exists( 'home_url' ) ) return '';
+		return self::normalize_origin( home_url( '/' ) );
 	}
 
-	public static function status() {
-		$profile = self::load();
-		$enrolled = self::enrolled();
-		$observed_environment = self::current_environment();
-		$observed_origin = self::current_origin();
-		$origin_match = $enrolled && is_string( $observed_origin ) && '' !== $observed_origin && hash_equals( (string) $profile['canonical_origin'], $observed_origin );
-		$environment_match = $enrolled && hash_equals( (string) $profile['environment'], (string) $observed_environment );
-		$subject_valid = $enrolled ? self::subject_user_is_valid( (int) $profile['subject_user_id'] ) : false;
-		$blockers = array();
-		if ( ! $enrolled ) $blockers[] = 'site_not_enrolled';
-		if ( $enrolled && ! $origin_match ) $blockers[] = 'origin_drift';
-		if ( $enrolled && ! $environment_match ) $blockers[] = 'environment_drift';
-		if ( $enrolled && ! $subject_valid ) $blockers[] = 'subject_user_invalid';
-		if ( $enrolled && ! empty( $profile['write_enabled'] ) && 'production' === $profile['environment'] && empty( $profile['production_write_confirmed'] ) ) $blockers[] = 'production_write_confirmation_missing';
-
-		$ready = $enrolled && $origin_match && $environment_match && $subject_valid;
-		$write_allowed = $ready && ! empty( $profile['write_enabled'] ) && ( 'production' !== $profile['environment'] || ! empty( $profile['production_write_confirmed'] ) );
-		$breakglass_allowed = $write_allowed && ! empty( $profile['breakglass_enabled'] );
-
-		return array(
-			'contract' => self::CONTRACT,
-			'version' => self::VERSION,
-			'enrolled' => $enrolled,
-			'ready' => $ready,
-			'site_uuid' => (string) $profile['site_uuid'],
-			'profile_revision' => (int) $profile['revision'],
-			'profile_digest' => self::profile_digest( $profile ),
-			'canonical_origin' => (string) $profile['canonical_origin'],
-			'observed_origin' => is_string( $observed_origin ) ? $observed_origin : '',
-			'origin_match' => $origin_match,
-			'environment' => (string) $profile['environment'],
-			'observed_environment' => $observed_environment,
-			'environment_match' => $environment_match,
-			'subject_user_id' => (int) $profile['subject_user_id'],
-			'subject_user_valid' => $subject_valid,
-			'openai_app_id_configured' => '' !== (string) $profile['openai_app_id'],
-			'write_enabled' => (bool) $profile['write_enabled'],
-			'production_write_confirmed' => (bool) $profile['production_write_confirmed'],
-			'write_allowed' => $write_allowed,
-			'breakglass_enabled' => (bool) $profile['breakglass_enabled'],
-			'breakglass_allowed' => $breakglass_allowed,
-			'blockers' => array_values( array_unique( $blockers ) ),
-		);
+	public static function current_host() {
+		$origin = self::current_origin();
+		$parts = '' !== $origin && function_exists( 'wp_parse_url' ) ? wp_parse_url( $origin ) : parse_url( $origin );
+		return is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( rtrim( (string) $parts['host'], '.' ) ) : '';
 	}
 
-	public static function mutation_allowed() {
+	public static function site_origin() {
+		$profile = self::profile();
+		return isset( $profile['canonical_origin'] ) ? (string) $profile['canonical_origin'] : '';
+	}
+
+	public static function site_host() {
+		$origin = self::site_origin();
+		$parts = '' !== $origin && function_exists( 'wp_parse_url' ) ? wp_parse_url( $origin ) : parse_url( $origin );
+		return is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( rtrim( (string) $parts['host'], '.' ) ) : '';
+	}
+
+	public static function site_uuid() {
+		$profile = self::profile();
+		return isset( $profile['site_uuid'] ) ? strtolower( (string) $profile['site_uuid'] ) : '';
+	}
+
+	public static function revision() {
+		$profile = self::profile();
+		return isset( $profile['revision'] ) ? max( 0, absint( $profile['revision'] ) ) : 0;
+	}
+
+	public static function profile_digest() {
+		$profile = self::profile();
+		if ( empty( $profile ) ) return '';
+		$canonical = self::canonicalize( $profile );
+		$json = wp_json_encode( $canonical, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $json ) && '' !== $json ? hash( 'sha256', $json ) : '';
+	}
+
+	public static function origin_enrolled() {
 		$status = self::status();
-		return ! empty( $status['write_allowed'] );
+		return ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] );
 	}
 
-	public static function breakglass_allowed() {
-		$status = self::status();
-		return ! empty( $status['breakglass_allowed'] );
+	public static function feature_enabled( $feature ) {
+		$profile = self::profile();
+		$feature = sanitize_key( (string) $feature );
+		if ( ! self::origin_enrolled() || empty( $profile['features'] ) || ! is_array( $profile['features'] ) ) return false;
+		if ( empty( $profile['features'][ $feature ] ) ) return false;
+		if ( 'write' === $feature && 'production' === self::current_environment() && empty( $profile['features']['production_write_confirmed'] ) ) return false;
+		return true;
 	}
 
-	public static function save_profile( array $input ) {
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll or change a site profile.' );
-		$existing = self::load();
-		$expected_revision = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : 0;
-		if ( (int) $existing['revision'] !== $expected_revision ) return new WP_Error( 'mad4b_site_profile_revision_conflict', 'Site profile changed since this form was loaded. Refresh before retrying.' );
+	public static function oauth_enabled() { return self::feature_enabled( 'oauth' ); }
+	public static function skills_enabled() { return self::feature_enabled( 'skills' ); }
+	public static function write_enabled() { return self::feature_enabled( 'write' ); }
+	public static function acceptance_enabled() { return self::feature_enabled( 'acceptance' ); }
+	public static function provider_isolation_enabled() { return self::feature_enabled( 'provider_isolation' ); }
+	public static function managed_runtime_enabled() { return self::feature_enabled( 'managed_runtime' ); }
 
-		$environment = isset( $input['environment'] ) ? sanitize_key( (string) $input['environment'] ) : self::current_environment();
-		$observed_environment = self::current_environment();
-		if ( '' === $environment || ! hash_equals( $observed_environment, $environment ) ) return new WP_Error( 'mad4b_site_profile_environment_mismatch', 'Enrollment environment must match the current WordPress environment exactly.' );
+	public static function display_name() {
+		$profile = self::profile();
+		if ( ! empty( $profile['display_name'] ) ) return (string) $profile['display_name'];
+		if ( function_exists( 'get_bloginfo' ) ) {
+			$name = trim( (string) get_bloginfo( 'name' ) );
+			if ( '' !== $name ) return $name;
+		}
+		return self::current_host();
+	}
 
-		$origin_input = isset( $input['canonical_origin'] ) ? (string) $input['canonical_origin'] : '';
-		$canonical_origin = self::canonicalize_origin( $origin_input, $environment );
-		if ( is_wp_error( $canonical_origin ) ) return $canonical_origin;
-		$observed_origin = self::current_origin();
-		if ( is_wp_error( $observed_origin ) || ! hash_equals( (string) $observed_origin, (string) $canonical_origin ) ) return new WP_Error( 'mad4b_site_profile_origin_mismatch', 'Enrollment origin must match the current canonical WordPress home origin exactly.' );
+	public static function chatgpt_app_id() {
+		$profile = self::profile();
+		$value = isset( $profile['chatgpt_app_id'] ) ? trim( (string) $profile['chatgpt_app_id'] ) : '';
+		return preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $value ) ? $value : '';
+	}
 
-		$subject_user_id = isset( $input['subject_user_id'] ) ? absint( $input['subject_user_id'] ) : get_current_user_id();
-		if ( ! self::subject_user_is_valid( $subject_user_id ) ) return new WP_Error( 'mad4b_site_profile_subject_invalid', 'Selected WordPress subject does not satisfy the configured MAD4B connection capability.' );
+	public static function oauth_user_ids() {
+		$profile = self::profile();
+		$users = isset( $profile['oauth_user_ids'] ) && is_array( $profile['oauth_user_ids'] ) ? $profile['oauth_user_ids'] : array();
+		return array_values( array_unique( array_filter( array_map( 'absint', $users ) ) ) );
+	}
 
-		$app_id = isset( $input['openai_app_id'] ) ? trim( (string) $input['openai_app_id'] ) : '';
-		if ( '' !== $app_id && 1 !== preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'OpenAI Plugin App ID is invalid.' );
+	public static function user_is_enrolled( $user_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 ) return false;
+		$users = self::oauth_user_ids();
+		if ( in_array( $user_id, $users, true ) ) return true;
+		$profile = self::profile();
+		return empty( $users ) && ! empty( $profile['legacy_zero_touch'] ) && ( $user = get_userdata( $user_id ) ) && user_can( $user, 'manage_options' );
+	}
 
-		$write_enabled = ! empty( $input['write_enabled'] );
-		$production_write_confirmed = false;
-		if ( $write_enabled && 'production' === $environment ) {
-			$confirmation = isset( $input['production_write_confirmation'] ) ? trim( (string) $input['production_write_confirmation'] ) : '';
-			if ( ! hash_equals( self::PRODUCTION_WRITE_CONFIRMATION, $confirmation ) ) return new WP_Error( 'mad4b_site_profile_production_confirmation_required', 'Production governed write requires the exact confirmation phrase.' );
-			$production_write_confirmed = true;
+	public static function related_origin( $environment ) {
+		$profile = self::profile();
+		$environment = sanitize_key( (string) $environment );
+		if ( self::current_environment() === $environment && self::origin_enrolled() ) return self::current_origin();
+		$related = isset( $profile['related_origins'] ) && is_array( $profile['related_origins'] ) ? $profile['related_origins'] : array();
+		return isset( $related[ $environment ] ) ? self::normalize_origin( $related[ $environment ] ) : '';
+	}
+
+	public static function governed_runtime_ready() {
+		return self::origin_enrolled() && self::oauth_enabled();
+	}
+
+	public static function governed_write_ready() {
+		return self::origin_enrolled() && self::write_enabled();
+	}
+
+	public static function agent_slug() {
+		$profile = self::profile();
+		if ( ! empty( $profile['legacy_agent_slug'] ) ) return sanitize_key( (string) $profile['legacy_agent_slug'] );
+		return 'chatgpt-governed-write';
+	}
+
+	public static function save_current_site( array $input ) {
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
+		$environment = self::current_environment();
+		$origin = self::current_origin();
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_site_profile_environment_invalid', 'WordPress environment type is not supported for site enrollment.' );
+		if ( '' === $origin ) return new WP_Error( 'mad4b_site_profile_origin_invalid', 'A canonical WordPress home origin is required for site enrollment.' );
+		if ( 'local' !== $environment && 'https' !== strtolower( (string) wp_parse_url( $origin, PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_https_required', 'Non-local governed sites require HTTPS.' );
+
+		$existing = get_option( self::OPTION, array() );
+		$current_revision = is_array( $existing ) && self::valid_record( $existing ) && isset( $existing['revision'] ) ? absint( $existing['revision'] ) : 0;
+		$expected_revision = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : $current_revision;
+		if ( $expected_revision !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before saving.' );
+		$site_uuid = is_array( $existing ) && ! empty( $existing['site_uuid'] ) && self::valid_uuid( $existing['site_uuid'] ) ? strtolower( (string) $existing['site_uuid'] ) : wp_generate_uuid4();
+		$revision = $current_revision + 1;
+		$app_id = isset( $input['chatgpt_app_id'] ) ? trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) ) : '';
+		if ( '' !== $app_id && ! preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'ChatGPT App ID is invalid.' );
+
+		$user_ids = isset( $input['oauth_user_ids'] ) ? self::normalize_user_ids( $input['oauth_user_ids'] ) : array();
+		if ( empty( $user_ids ) ) $user_ids = array( get_current_user_id() );
+		foreach ( $user_ids as $user_id ) if ( ! get_userdata( $user_id ) ) return new WP_Error( 'mad4b_site_profile_user_invalid', 'Every enrolled OAuth user must exist on this WordPress site.' );
+
+		$write = ! empty( $input['write_enabled'] );
+		$production_confirmed = ! empty( $input['production_write_confirmed'] );
+		$production_confirmation = isset( $input['production_write_confirmation'] ) ? trim( sanitize_text_field( (string) $input['production_write_confirmation'] ) ) : '';
+		if ( 'production' === $environment && $write ) {
+			if ( ! $production_confirmed || ! hash_equals( self::PRODUCTION_WRITE_CONFIRMATION, $production_confirmation ) ) {
+				return new WP_Error( 'mad4b_site_profile_production_write_confirmation_required', 'Production governed write requires the exact typed confirmation phrase.' );
+			}
+		}
+		if ( $write && ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) ) {
+			return new WP_Error( 'mad4b_site_profile_audit_required', 'Governed write enrollment requires ready append-only audit storage.' );
 		}
 
-		$site_uuid = ! empty( $existing['site_uuid'] ) ? (string) $existing['site_uuid'] : wp_generate_uuid4();
-		$profile = array(
+		$related = array();
+		foreach ( array( 'development', 'staging', 'production' ) as $key ) {
+			$raw = isset( $input[ $key . '_origin' ] ) ? self::normalize_origin( $input[ $key . '_origin' ] ) : '';
+			if ( '' !== $raw ) $related[ $key ] = $raw;
+		}
+		$related[ $environment ] = $origin;
+
+		$record = array(
 			'contract' => self::CONTRACT,
 			'version' => self::VERSION,
 			'site_uuid' => $site_uuid,
-			'revision' => (int) $existing['revision'] + 1,
-			'canonical_origin' => $canonical_origin,
+			'revision' => $revision,
 			'environment' => $environment,
-			'subject_user_id' => $subject_user_id,
-			'openai_app_id' => $app_id,
-			'write_enabled' => $write_enabled,
-			'production_write_confirmed' => $production_write_confirmed,
-			'breakglass_enabled' => false,
+			'canonical_origin' => $origin,
+			'display_name' => isset( $input['display_name'] ) ? substr( sanitize_text_field( (string) $input['display_name'] ), 0, 191 ) : self::display_name(),
+			'chatgpt_app_id' => $app_id,
+			'oauth_user_ids' => $user_ids,
+			'related_origins' => $related,
+			'features' => array(
+				'oauth' => ! empty( $input['oauth_enabled'] ),
+				'skills' => ! empty( $input['skills_enabled'] ),
+				'write' => $write,
+				'production_write_confirmed' => $production_confirmed,
+				'provider_isolation' => ! empty( $input['provider_isolation_enabled'] ),
+				'managed_runtime' => ! empty( $input['managed_runtime_enabled'] ),
+				'acceptance' => ! empty( $input['acceptance_enabled'] ),
+			),
+			'legacy_agent_slug' => '',
+			'legacy_zero_touch' => false,
+			'created_at' => is_array( $existing ) && ! empty( $existing['created_at'] ) ? (string) $existing['created_at'] : gmdate( 'c' ),
 			'updated_at' => gmdate( 'c' ),
-			'updated_by' => get_current_user_id(),
 		);
-		$profile['profile_digest'] = self::profile_digest( $profile );
-		$ok = update_option( self::OPTION, $profile, false );
-		if ( false === $ok && self::normalize_profile( get_option( self::OPTION, array() ) ) !== self::normalize_profile( $profile ) ) return new WP_Error( 'mad4b_site_profile_persist_failed', 'Site profile could not be persisted.' );
-		do_action( 'mad4b_scp_site_profile_changed', self::normalize_profile( $existing ), self::normalize_profile( $profile ) );
-		return self::normalize_profile( $profile );
-	}
-
-	public static function handle_save() {
-		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required to change the MAD4B Site Profile.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
-		check_admin_referer( self::SAVE_ACTION );
-		$input = array(
-			'expected_revision' => isset( $_POST['expected_revision'] ) ? absint( $_POST['expected_revision'] ) : 0,
-			'canonical_origin' => isset( $_POST['canonical_origin'] ) ? esc_url_raw( wp_unslash( $_POST['canonical_origin'] ) ) : '',
-			'environment' => isset( $_POST['environment'] ) ? sanitize_key( wp_unslash( $_POST['environment'] ) ) : '',
-			'subject_user_id' => isset( $_POST['subject_user_id'] ) ? absint( $_POST['subject_user_id'] ) : 0,
-			'openai_app_id' => isset( $_POST['openai_app_id'] ) ? sanitize_text_field( wp_unslash( $_POST['openai_app_id'] ) ) : '',
-			'write_enabled' => ! empty( $_POST['write_enabled'] ),
-			'production_write_confirmation' => isset( $_POST['production_write_confirmation'] ) ? sanitize_text_field( wp_unslash( $_POST['production_write_confirmation'] ) ) : '',
-		);
-		$result = self::save_profile( $input );
-		$state = is_wp_error( $result ) ? $result->get_error_code() : 'saved';
-		$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'mad4b_site_profile' => sanitize_key( $state ) ), admin_url( 'admin.php' ) );
-		wp_safe_redirect( $url );
-		exit;
-	}
-
-	public static function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) return;
-		$profile = self::load();
-		$status = self::status();
-		$current_origin = self::current_origin();
-		if ( is_wp_error( $current_origin ) ) $current_origin = '';
-		?>
-		<div class="wrap">
-			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
-			<p><?php echo esc_html__( 'Enrollment binds this WordPress site to its exact canonical origin and environment. Installation alone grants no generic-site mutation authority.', 'mad4b-site-control-plane' ); ?></p>
-			<p><strong><?php echo esc_html__( 'Status:', 'mad4b-site-control-plane' ); ?></strong> <?php echo esc_html( ! empty( $status['ready'] ) ? 'ready' : 'not ready' ); ?></p>
-			<?php if ( ! empty( $status['blockers'] ) ) : ?><p><strong><?php echo esc_html__( 'Blockers:', 'mad4b-site-control-plane' ); ?></strong> <?php echo esc_html( implode( ', ', $status['blockers'] ) ); ?></p><?php endif; ?>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<?php wp_nonce_field( self::SAVE_ACTION ); ?>
-				<input type="hidden" name="action" value="<?php echo esc_attr( self::SAVE_ACTION ); ?>" />
-				<input type="hidden" name="expected_revision" value="<?php echo esc_attr( (string) $profile['revision'] ); ?>" />
-				<table class="form-table" role="presentation">
-					<tr><th scope="row"><label for="mad4b-canonical-origin"><?php echo esc_html__( 'Canonical origin', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text code" id="mad4b-canonical-origin" name="canonical_origin" value="<?php echo esc_attr( $profile['canonical_origin'] ? $profile['canonical_origin'] : $current_origin ); ?>" /></td></tr>
-					<tr><th scope="row"><label for="mad4b-environment"><?php echo esc_html__( 'Environment', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-environment" name="environment" value="<?php echo esc_attr( $profile['environment'] ? $profile['environment'] : self::current_environment() ); ?>" /></td></tr>
-					<tr><th scope="row"><label for="mad4b-subject-user"><?php echo esc_html__( 'WordPress subject user ID', 'mad4b-site-control-plane' ); ?></label></th><td><input type="number" min="1" id="mad4b-subject-user" name="subject_user_id" value="<?php echo esc_attr( (string) ( $profile['subject_user_id'] ? $profile['subject_user_id'] : get_current_user_id() ) ); ?>" /></td></tr>
-					<tr><th scope="row"><label for="mad4b-openai-app-id"><?php echo esc_html__( 'OpenAI Plugin App ID', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text code" id="mad4b-openai-app-id" name="openai_app_id" value="<?php echo esc_attr( $profile['openai_app_id'] ); ?>" /></td></tr>
-					<tr><th scope="row"><?php echo esc_html__( 'Governed write', 'mad4b-site-control-plane' ); ?></th><td><label><input type="checkbox" name="write_enabled" value="1" <?php checked( ! empty( $profile['write_enabled'] ) ); ?> /> <?php echo esc_html__( 'Enable site-level governed write policy after all existing NHI, grant, provider, budget and approval gates.', 'mad4b-site-control-plane' ); ?></label></td></tr>
-					<?php if ( 'production' === ( $profile['environment'] ? $profile['environment'] : self::current_environment() ) ) : ?>
-					<tr><th scope="row"><label for="mad4b-production-write-confirmation"><?php echo esc_html__( 'Production confirmation', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text code" id="mad4b-production-write-confirmation" name="production_write_confirmation" value="" autocomplete="off" /><p class="description"><?php echo esc_html( self::PRODUCTION_WRITE_CONFIRMATION ); ?></p></td></tr>
-					<?php endif; ?>
-				</table>
-				<?php submit_button( __( 'Save Site Profile', 'mad4b-site-control-plane' ) ); ?>
-			</form>
-		</div>
-		<?php
-	}
-
-	public static function canonicalize_origin( $url, $environment = '' ) {
-		$url = trim( (string) $url );
-		if ( '' === $url ) return new WP_Error( 'mad4b_site_profile_origin_missing', 'Canonical origin is required.' );
-		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
-		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return new WP_Error( 'mad4b_site_profile_origin_invalid', 'Canonical origin must be an absolute URL.' );
-		if ( isset( $parts['user'] ) || isset( $parts['pass'] ) || isset( $parts['query'] ) || isset( $parts['fragment'] ) ) return new WP_Error( 'mad4b_site_profile_origin_ambiguous', 'Canonical origin cannot contain credentials, query parameters or fragments.' );
-		$scheme = strtolower( (string) $parts['scheme'] );
-		$environment = sanitize_key( (string) $environment );
-		if ( 'https' !== $scheme && ! in_array( $environment, array( 'local', 'development' ), true ) ) return new WP_Error( 'mad4b_site_profile_https_required', 'HTTPS is required outside local/development environments.' );
-		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) return new WP_Error( 'mad4b_site_profile_origin_scheme_invalid', 'Only HTTP(S) origins are supported.' );
-		$host = strtolower( rtrim( (string) $parts['host'], '.' ) );
-		if ( '' === $host || 1 !== preg_match( '/^[a-z0-9.-]+$/', $host ) ) return new WP_Error( 'mad4b_site_profile_origin_host_invalid', 'Canonical origin host is invalid.' );
-		$port = isset( $parts['port'] ) ? ':' . absint( $parts['port'] ) : '';
-		$path = isset( $parts['path'] ) ? '/' . ltrim( (string) $parts['path'], '/' ) : '';
-		$path = rtrim( $path, '/' );
-		return $scheme . '://' . $host . $port . $path;
-	}
-
-	public static function transition_for_test( array $existing, array $input, $observed_origin, $observed_environment, $is_admin ) {
-		$existing = self::normalize_profile( $existing );
-		if ( ! $is_admin ) return array( 'ok' => false, 'error' => 'mad4b_site_profile_admin_required' );
-		$expected_revision = isset( $input['expected_revision'] ) ? (int) $input['expected_revision'] : 0;
-		if ( (int) $existing['revision'] !== $expected_revision ) return array( 'ok' => false, 'error' => 'mad4b_site_profile_revision_conflict' );
-		$environment = isset( $input['environment'] ) ? sanitize_key( (string) $input['environment'] ) : '';
-		if ( ! hash_equals( sanitize_key( (string) $observed_environment ), $environment ) ) return array( 'ok' => false, 'error' => 'mad4b_site_profile_environment_mismatch' );
-		$canonical = self::canonicalize_origin( isset( $input['canonical_origin'] ) ? $input['canonical_origin'] : '', $environment );
-		if ( is_wp_error( $canonical ) ) return array( 'ok' => false, 'error' => $canonical->get_error_code() );
-		$observed = self::canonicalize_origin( $observed_origin, $environment );
-		if ( is_wp_error( $observed ) || ! hash_equals( (string) $observed, (string) $canonical ) ) return array( 'ok' => false, 'error' => 'mad4b_site_profile_origin_mismatch' );
-		$write_enabled = ! empty( $input['write_enabled'] );
-		if ( $write_enabled && 'production' === $environment ) {
-			$confirmation = isset( $input['production_write_confirmation'] ) ? (string) $input['production_write_confirmation'] : '';
-			if ( ! hash_equals( self::PRODUCTION_WRITE_CONFIRMATION, $confirmation ) ) return array( 'ok' => false, 'error' => 'mad4b_site_profile_production_confirmation_required' );
+		$before_digest = is_array( $existing ) && self::valid_record( $existing ) ? self::digest_record( self::normalize_record( $existing ) ) : '';
+		if ( false === update_option( self::OPTION, $record, false ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile could not be persisted.' );
+		self::reset_cache();
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-updated', array(
+				'site_uuid' => $site_uuid,
+				'previous_revision' => $current_revision,
+				'revision' => $revision,
+				'previous_profile_digest' => $before_digest,
+				'profile_digest' => self::profile_digest(),
+				'environment' => $environment,
+				'canonical_origin' => $origin,
+				'write_enabled' => self::write_enabled(),
+				'oauth_user_count' => count( $user_ids ),
+			), 'ok' );
+			if ( is_wp_error( $audit ) ) {
+				if ( $current_revision > 0 && is_array( $existing ) ) update_option( self::OPTION, $existing, false );
+				else delete_option( self::OPTION );
+				self::reset_cache();
+				return new WP_Error( 'mad4b_site_profile_audit_failed', 'Site profile change was rolled back because append-only audit evidence could not be recorded.', array( 'audit_error' => $audit->get_error_code() ) );
+			}
 		}
-		return array( 'ok' => true, 'canonical_origin' => $canonical, 'environment' => $environment, 'write_enabled' => $write_enabled );
+		return self::status();
 	}
 
-	private static function subject_user_is_valid( $user_id ) {
-		$user_id = absint( $user_id );
-		if ( $user_id < 1 ) return false;
-		$user = get_userdata( $user_id );
-		if ( ! $user ) return false;
-		$capability = apply_filters( 'mad4b_scp_connection_subject_capability', 'manage_options', $user_id );
-		return is_string( $capability ) && '' !== $capability && user_can( $user, $capability );
+	public static function disable_authority( $expected_revision = null ) {
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to change site authority.' );
+		$profile = self::profile();
+		if ( empty( $profile ) ) return self::status();
+		$current_revision = self::revision();
+		if ( null !== $expected_revision && absint( $expected_revision ) !== $current_revision ) return new WP_Error( 'mad4b_site_profile_stale', 'Site profile changed since this form was loaded. Reload before disabling authority.' );
+		$profile['revision'] = $current_revision + 1;
+		if ( ! isset( $profile['features'] ) || ! is_array( $profile['features'] ) ) $profile['features'] = array();
+		$profile['features']['write'] = false;
+		$profile['features']['production_write_confirmed'] = false;
+		$profile['updated_at'] = gmdate( 'c' );
+		if ( false === update_option( self::OPTION, $profile, false ) ) return new WP_Error( 'mad4b_site_profile_save_failed', 'Site profile authority state could not be persisted.' );
+		self::reset_cache();
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/site-profile-write-disabled', array(
+				'site_uuid' => self::site_uuid(),
+				'previous_revision' => $current_revision,
+				'revision' => self::revision(),
+				'profile_digest' => self::profile_digest(),
+			), 'ok' );
+		}
+		return self::status();
 	}
 
-	private static function normalize_profile( array $profile ) {
+	public static function validate_record_for_test( array $record, $environment, $origin ) {
+		$record = self::normalize_record( $record );
+		if ( ! self::valid_record( $record ) ) return false;
+		return sanitize_key( (string) $environment ) === (string) $record['environment']
+			&& self::normalize_origin( $origin ) === (string) $record['canonical_origin'];
+	}
+
+	private static function build_status( array $profile, $source ) {
+		$environment = self::current_environment();
+		$origin = self::current_origin();
+		$configured = self::valid_record( $profile );
+		$environment_match = $configured && hash_equals( (string) $profile['environment'], $environment );
+		$origin_match = $configured && '' !== $origin && hash_equals( (string) $profile['canonical_origin'], $origin );
+		$blockers = array();
+		if ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
+		if ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
+		if ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
 		return array(
-			'contract' => isset( $profile['contract'] ) ? (string) $profile['contract'] : self::CONTRACT,
-			'version' => isset( $profile['version'] ) ? absint( $profile['version'] ) : self::VERSION,
-			'site_uuid' => isset( $profile['site_uuid'] ) ? strtolower( trim( (string) $profile['site_uuid'] ) ) : '',
-			'revision' => isset( $profile['revision'] ) ? absint( $profile['revision'] ) : 0,
-			'canonical_origin' => isset( $profile['canonical_origin'] ) ? rtrim( trim( (string) $profile['canonical_origin'] ), '/' ) : '',
-			'environment' => isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : '',
-			'subject_user_id' => isset( $profile['subject_user_id'] ) ? absint( $profile['subject_user_id'] ) : 0,
-			'openai_app_id' => isset( $profile['openai_app_id'] ) ? trim( (string) $profile['openai_app_id'] ) : '',
-			'write_enabled' => ! empty( $profile['write_enabled'] ),
-			'production_write_confirmed' => ! empty( $profile['production_write_confirmed'] ),
-			'breakglass_enabled' => ! empty( $profile['breakglass_enabled'] ),
-			'profile_digest' => isset( $profile['profile_digest'] ) ? strtolower( trim( (string) $profile['profile_digest'] ) ) : '',
-			'updated_at' => isset( $profile['updated_at'] ) ? (string) $profile['updated_at'] : '',
-			'updated_by' => isset( $profile['updated_by'] ) ? absint( $profile['updated_by'] ) : 0,
+			'contract' => self::CONTRACT,
+			'configured' => $configured,
+			'source' => sanitize_key( (string) $source ),
+			'site_uuid' => $configured ? (string) $profile['site_uuid'] : '',
+			'revision' => $configured ? absint( $profile['revision'] ) : 0,
+			'profile_digest' => $configured ? self::digest_record( $profile ) : '',
+			'environment' => $environment,
+			'configured_environment' => $configured ? (string) $profile['environment'] : '',
+			'current_origin' => $origin,
+			'canonical_origin' => $configured ? (string) $profile['canonical_origin'] : '',
+			'environment_match' => $environment_match,
+			'origin_match' => $origin_match,
+			'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
+			'oauth_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'oauth', $environment ),
+			'skills_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'skills', $environment ),
+			'blockers' => $blockers,
 		);
 	}
 
-	private static function canonical_json( array $value ) {
-		ksort( $value );
-		return function_exists( 'wp_json_encode' ) ? wp_json_encode( $value, JSON_UNESCAPED_SLASHES ) : json_encode( $value, JSON_UNESCAPED_SLASHES );
+	private static function digest_record( array $record ) {
+		$json = wp_json_encode( self::canonicalize( $record ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $json ) && '' !== $json ? hash( 'sha256', $json ) : '';
+	}
+
+	private static function record_feature_enabled( array $profile, $feature, $environment ) {
+		if ( empty( $profile['features'] ) || ! is_array( $profile['features'] ) || empty( $profile['features'][ $feature ] ) ) return false;
+		if ( 'write' === $feature && 'production' === $environment && empty( $profile['features']['production_write_confirmed'] ) ) return false;
+		return true;
+	}
+
+	private static function matching_preset() {
+		$path = defined( 'MAD4B_SCP_DIR' ) ? trailingslashit( MAD4B_SCP_DIR ) . self::PRESET_FILE : '';
+		if ( '' === $path || ! is_readable( $path ) ) return array();
+		$decoded = json_decode( (string) file_get_contents( $path ), true );
+		if ( ! is_array( $decoded ) || self::PRESET_CONTRACT !== ( isset( $decoded['contract'] ) ? (string) $decoded['contract'] : '' ) || empty( $decoded['profiles'] ) || ! is_array( $decoded['profiles'] ) ) return array();
+		$environment = self::current_environment();
+		$origin = self::current_origin();
+		foreach ( $decoded['profiles'] as $preset ) {
+			if ( ! is_array( $preset ) ) continue;
+			$preset = self::normalize_record( $preset );
+			if ( ! self::valid_record( $preset ) ) continue;
+			if ( ! hash_equals( (string) $preset['environment'], $environment ) || ! hash_equals( (string) $preset['canonical_origin'], $origin ) ) continue;
+			return $preset;
+		}
+		return array();
+	}
+
+	private static function valid_record( $record ) {
+		if ( ! is_array( $record ) ) return false;
+		if ( self::CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) return false;
+		if ( self::VERSION !== absint( isset( $record['version'] ) ? $record['version'] : 0 ) ) return false;
+		if ( ! self::valid_uuid( isset( $record['site_uuid'] ) ? $record['site_uuid'] : '' ) ) return false;
+		if ( absint( isset( $record['revision'] ) ? $record['revision'] : 0 ) < 1 ) return false;
+		$environment = sanitize_key( isset( $record['environment'] ) ? (string) $record['environment'] : '' );
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return false;
+		return '' !== self::normalize_origin( isset( $record['canonical_origin'] ) ? $record['canonical_origin'] : '' );
+	}
+
+	private static function normalize_record( array $record ) {
+		$record['contract'] = isset( $record['contract'] ) ? (string) $record['contract'] : '';
+		$record['version'] = absint( isset( $record['version'] ) ? $record['version'] : 0 );
+		$record['site_uuid'] = strtolower( trim( isset( $record['site_uuid'] ) ? (string) $record['site_uuid'] : '' ) );
+		$record['revision'] = max( 1, absint( isset( $record['revision'] ) ? $record['revision'] : 1 ) );
+		$record['environment'] = sanitize_key( isset( $record['environment'] ) ? (string) $record['environment'] : '' );
+		$record['canonical_origin'] = self::normalize_origin( isset( $record['canonical_origin'] ) ? $record['canonical_origin'] : '' );
+		$record['display_name'] = isset( $record['display_name'] ) ? substr( sanitize_text_field( (string) $record['display_name'] ), 0, 191 ) : '';
+		$record['chatgpt_app_id'] = isset( $record['chatgpt_app_id'] ) ? trim( (string) $record['chatgpt_app_id'] ) : '';
+		$record['oauth_user_ids'] = self::normalize_user_ids( isset( $record['oauth_user_ids'] ) ? $record['oauth_user_ids'] : array() );
+		$record['related_origins'] = isset( $record['related_origins'] ) && is_array( $record['related_origins'] ) ? array_filter( array_map( array( __CLASS__, 'normalize_origin' ), $record['related_origins'] ) ) : array();
+		$record['features'] = isset( $record['features'] ) && is_array( $record['features'] ) ? array_map( 'boolval', $record['features'] ) : array();
+		$record['legacy_agent_slug'] = isset( $record['legacy_agent_slug'] ) ? sanitize_key( (string) $record['legacy_agent_slug'] ) : '';
+		$record['legacy_zero_touch'] = ! empty( $record['legacy_zero_touch'] );
+		return $record;
+	}
+
+	private static function normalize_user_ids( $value ) {
+		if ( is_string( $value ) ) $value = preg_split( '/[\s,]+/', $value );
+		return array_values( array_unique( array_filter( array_map( 'absint', is_array( $value ) ? $value : array() ) ) ) );
+	}
+
+	private static function normalize_origin( $url ) {
+		$url = trim( (string) $url );
+		if ( '' === $url ) return '';
+		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
+		$scheme = strtolower( (string) $parts['scheme'] );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ) return '';
+		$host = strtolower( rtrim( (string) $parts['host'], '.' ) );
+		if ( '' === $host ) return '';
+		$origin = $scheme . '://' . $host;
+		if ( isset( $parts['port'] ) ) $origin .= ':' . absint( $parts['port'] );
+		$path = isset( $parts['path'] ) ? '/' . ltrim( (string) $parts['path'], '/' ) : '';
+		$path = '/' === $path ? '' : rtrim( $path, '/' );
+		if ( '' !== $path ) $origin .= $path;
+		return $origin;
+	}
+
+	private static function valid_uuid( $value ) {
+		return 1 === preg_match( '/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i', trim( (string) $value ) );
+	}
+
+	private static function canonicalize( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+		if ( $is_list ) return array_map( array( __CLASS__, 'canonicalize' ), $value );
+		ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) $value[ $key ] = self::canonicalize( $item );
+		return $value;
 	}
 }
