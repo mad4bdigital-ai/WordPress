@@ -2,28 +2,55 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+/**
+ * One-time approval tickets with exact payload and tenant/build bindings.
+ *
+ * Normal remote governed-write approvals are bound to four independent axes:
+ * operation payload, enabled NHI, exact deployed build, and exact Site Profile
+ * identity/revision/digest. A clone, environment/origin drift, profile policy
+ * edit, deployment change, expiry, claim, or replay therefore fails closed.
+ * Breakglass remains a separate authority and is not made dependent on normal
+ * Site Profile write enrollment by this class.
+ */
 final class MAD4B_SCP_Approval_Tickets {
 	const MAX_CANONICAL_BYTES = 65536;
 	const MAX_DEPTH = 8;
 	const DEFAULT_TTL = 600;
 	const MAX_TTL = 3600;
-	const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v1';
+	const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v2';
+	const LEGACY_CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v1';
 	const CANDIDATE_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 	const MAX_CANDIDATE_BINDINGS = 100;
-	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	public static function canonical_payload_hash( $agent_public_id, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class = 'mutation' ) {
+		$server_id = sanitize_key( (string) $server_id );
+		$ticket_class = sanitize_key( (string) $ticket_class );
+		$site = function_exists( 'site_url' ) ? site_url() : '';
+		$profile_binding = array();
+		if ( self::is_governed_remote_mutation( $ticket_class, $server_id ) ) {
+			$profile_binding = self::profile_snapshot( false );
+			if ( ! empty( $profile_binding['origin'] ) ) $site = $profile_binding['origin'];
+		}
 		$envelope = array(
 			'contract' => 'mad4b.approval.v1',
-			'site' => site_url(),
+			'site' => $site,
 			'agent_public_id' => (string) $agent_public_id,
-			'server_id' => sanitize_key( (string) $server_id ),
+			'server_id' => $server_id,
 			'ability' => (string) $ability_name,
 			'provider' => sanitize_key( (string) $provider ),
 			'target' => (string) $target_fingerprint,
-			'ticket_class' => sanitize_key( (string) $ticket_class ),
+			'ticket_class' => $ticket_class,
 			'input' => $input,
 		);
+		if ( ! empty( $profile_binding ) ) {
+			$envelope['site_profile_binding'] = array(
+				'site_uuid' => $profile_binding['site_uuid'],
+				'profile_revision' => $profile_binding['profile_revision'],
+				'profile_digest' => $profile_binding['profile_digest'],
+				'environment' => $profile_binding['environment'],
+				'origin' => $profile_binding['origin'],
+			);
+		}
 		$canonical = self::canonical_json( $envelope );
 		if ( is_wp_error( $canonical ) ) return $canonical;
 		return hash( 'sha256', $canonical );
@@ -33,24 +60,34 @@ final class MAD4B_SCP_Approval_Tickets {
 		global $wpdb;
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_approval_admin_required', 'Administrator capability is required to create an approval plan.' );
+
+		$server_id = sanitize_key( (string) $server_id );
+		$ticket_class = sanitize_key( (string) $ticket_class );
+		if ( ! self::can_plan_ticket( $ticket_class, $server_id ) ) return new WP_Error( 'mad4b_approval_planner_required', 'Current WordPress user is not allowed to create this approval plan.' );
 		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent_public_id );
-		if ( ! $agent || 'enabled' !== $agent['status'] ) return new WP_Error( 'mad4b_approval_agent_invalid', 'Approval requires an enabled MAD4B agent.' );
-		$ticket_class = sanitize_key( $ticket_class );
+		if ( ! $agent || 'enabled' !== (string) $agent['status'] ) return new WP_Error( 'mad4b_approval_agent_invalid', 'Approval requires an enabled MAD4B agent.' );
 		if ( ! in_array( $ticket_class, array( 'mutation', 'breakglass', 'recovery' ), true ) ) return new WP_Error( 'mad4b_approval_class_invalid', 'Unknown approval ticket class.' );
+
+		$profile_binding = array();
+		if ( self::is_governed_remote_mutation( $ticket_class, $server_id ) ) {
+			$profile_binding = self::profile_snapshot( true );
+			if ( is_wp_error( $profile_binding ) ) return $profile_binding;
+		}
+
 		$reason = trim( sanitize_text_field( $reason ) );
 		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return new WP_Error( 'mad4b_approval_reason_invalid', 'Approval reason must be between 3 and 500 characters.' );
 		$ttl = max( 60, min( self::MAX_TTL, absint( $ttl ) ) );
 		$payload_hash = self::canonical_payload_hash( $agent_public_id, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $payload_hash ) ) return $payload_hash;
+
 		$t = MAD4B_SCP_Schema::tables();
 		$now = time();
 		$ticket_id = wp_generate_uuid4();
-		$ok = $wpdb->insert( $t['approvals'], array(
+		$data = array(
 			'ticket_id' => $ticket_id,
 			'ticket_class' => $ticket_class,
 			'agent_id' => (int) $agent['id'],
-			'server_id' => sanitize_key( $server_id ),
+			'server_id' => $server_id,
 			'ability_name' => (string) $ability_name,
 			'provider' => sanitize_key( $provider ) ?: 'core',
 			'target_fingerprint' => substr( (string) $target_fingerprint, 0, 191 ),
@@ -64,11 +101,16 @@ final class MAD4B_SCP_Approval_Tickets {
 			'candidate_binding_contract' => '',
 			'candidate_sha' => '',
 			'build_fingerprint' => '',
-			'binding_environment' => '',
-			'binding_host' => '',
+			'binding_environment' => ! empty( $profile_binding['environment'] ) ? $profile_binding['environment'] : '',
+			'binding_host' => ! empty( $profile_binding['host'] ) ? $profile_binding['host'] : '',
+			'site_uuid' => ! empty( $profile_binding['site_uuid'] ) ? $profile_binding['site_uuid'] : '',
+			'site_profile_revision' => ! empty( $profile_binding['profile_revision'] ) ? (int) $profile_binding['profile_revision'] : 0,
+			'site_profile_digest' => ! empty( $profile_binding['profile_digest'] ) ? $profile_binding['profile_digest'] : '',
 			'bound_at' => null,
 			'created_at' => gmdate( 'Y-m-d H:i:s', $now ),
-		), array( '%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s' ) );
+		);
+		$formats = array( '%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s' );
+		$ok = $wpdb->insert( $t['approvals'], $data, $formats );
 		if ( false === $ok ) return new WP_Error( 'mad4b_approval_create_failed', 'Approval ticket could not be created.', array( 'db_error' => $wpdb->last_error ) );
 		return self::get( $ticket_id );
 	}
@@ -79,17 +121,26 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( is_wp_error( $schema ) ) return $schema;
 		$ticket_id = strtolower( trim( (string) $ticket_id ) );
 		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return new WP_Error( 'mad4b_approval_candidate_ticket_invalid', 'Candidate binding requires an exact approval ticket id.' );
-		if ( ! self::exact_governed_staging() ) return new WP_Error( 'mad4b_approval_candidate_staging_only', 'Candidate-bound remote approval planning is restricted to the exact governed Staging origin.' );
+		$profile = self::profile_snapshot( true );
+		if ( is_wp_error( $profile ) ) return $profile;
 		$ticket = self::get( $ticket_id );
 		if ( ! is_array( $ticket ) ) return new WP_Error( 'mad4b_approval_missing', 'Approval ticket is missing.' );
-		if ( 'pending' !== (string) $ticket['status'] || 'mutation' !== (string) $ticket['ticket_class'] || 'mad4b-write' !== sanitize_key( (string) $ticket['server_id'] ) ) return new WP_Error( 'mad4b_approval_candidate_ticket_ineligible', 'Only fresh pending mad4b-write mutation tickets may receive a live candidate binding evidence.' );
+		if ( 'pending' !== (string) $ticket['status'] || 'mutation' !== (string) $ticket['ticket_class'] || 'mad4b-write' !== sanitize_key( (string) $ticket['server_id'] ) ) return new WP_Error( 'mad4b_approval_candidate_ticket_ineligible', 'Only fresh pending mad4b-write mutation tickets may receive live candidate binding evidence.' );
 		$payload_hash = isset( $ticket['payload_sha256'] ) ? strtolower( trim( (string) $ticket['payload_sha256'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $payload_hash ) ) return new WP_Error( 'mad4b_approval_candidate_payload_invalid', 'Approval ticket payload digest is invalid.' );
+
+		$prebound = self::profile_binding_from_ticket( $ticket );
+		if ( empty( $prebound ) || ! self::profile_bindings_equal( $prebound, $profile ) ) {
+			$t = MAD4B_SCP_Schema::tables();
+			$wpdb->delete( $t['approvals'], array( 'ticket_id' => $ticket_id, 'status' => 'pending' ), array( '%s', '%s' ) );
+			return new WP_Error( 'mad4b_approval_site_profile_mismatch', 'Pending ticket Site Profile changed before candidate binding; the ticket was discarded.' );
+		}
+
 		$binding = self::current_candidate_binding( $ticket_id, $payload_hash );
 		if ( is_wp_error( $binding ) || ! self::save_candidate_binding( $binding ) ) {
 			$t = MAD4B_SCP_Schema::tables();
 			$wpdb->delete( $t['approvals'], array( 'ticket_id' => $ticket_id, 'status' => 'pending' ), array( '%s', '%s' ) );
-			return is_wp_error( $binding ) ? $binding : new WP_Error( 'mad4b_approval_candidate_binding_failed', 'Pending remote approval ticket could not be bound durably to the exact Staging candidate.' );
+			return is_wp_error( $binding ) ? $binding : new WP_Error( 'mad4b_approval_candidate_binding_failed', 'Pending remote approval ticket could not be bound durably to the exact site/build candidate.' );
 		}
 		return $binding;
 	}
@@ -98,7 +149,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		global $wpdb;
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_approval_admin_required', 'Administrator capability is required to decide a ticket.' );
+		if ( ! self::can_approve() ) return new WP_Error( 'mad4b_approval_admin_required', 'Approval capability is required to decide a ticket.' );
 		$ticket_id = strtolower( trim( (string) $ticket_id ) );
 		$decision = sanitize_key( (string) $decision );
 		$expected_payload_sha256 = strtolower( trim( (string) $expected_payload_sha256 ) );
@@ -110,6 +161,11 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( 'pending' !== (string) $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is no longer pending.' );
 		if ( strtotime( $ticket['expires_at'] . ' UTC' ) < time() ) return new WP_Error( 'mad4b_approval_expired', 'Approval ticket has expired.' );
 		if ( empty( $ticket['payload_sha256'] ) || ! hash_equals( strtolower( (string) $ticket['payload_sha256'] ), $expected_payload_sha256 ) ) return new WP_Error( 'mad4b_approval_payload_mismatch', 'Approval ticket payload changed or does not match the reviewed operation.' );
+		if ( 'approve' === $decision && self::is_governed_remote_mutation( $ticket['ticket_class'], $ticket['server_id'] ) ) {
+			$fresh = self::validate_ticket_candidate_binding( $ticket, $expected_payload_sha256 );
+			if ( is_wp_error( $fresh ) ) return $fresh;
+		}
+
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		if ( 'approve' === $decision ) {
@@ -128,8 +184,11 @@ final class MAD4B_SCP_Approval_Tickets {
 			'ability' => isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '',
 			'provider' => isset( $ticket['provider'] ) ? (string) $ticket['provider'] : '',
 			'approver_user_id' => get_current_user_id(),
-			'candidate_sha' => isset( $context['candidate_sha'] ) ? strtolower( (string) $context['candidate_sha'] ) : '',
-			'build_fingerprint' => isset( $context['build_fingerprint'] ) ? strtolower( (string) $context['build_fingerprint'] ) : '',
+			'candidate_sha' => isset( $ticket['candidate_sha'] ) ? strtolower( (string) $ticket['candidate_sha'] ) : '',
+			'build_fingerprint' => isset( $ticket['build_fingerprint'] ) ? strtolower( (string) $ticket['build_fingerprint'] ) : '',
+			'site_uuid' => isset( $ticket['site_uuid'] ) ? strtolower( (string) $ticket['site_uuid'] ) : '',
+			'site_profile_revision' => isset( $ticket['site_profile_revision'] ) ? (int) $ticket['site_profile_revision'] : 0,
+			'site_profile_digest' => isset( $ticket['site_profile_digest'] ) ? strtolower( (string) $ticket['site_profile_digest'] ) : '',
 			'decision_contract' => isset( $context['contract'] ) ? (string) $context['contract'] : '',
 		);
 		MAD4B_SCP_Audit::record( 'mad4b/approval-decision', $summary, 'ok' );
@@ -140,11 +199,17 @@ final class MAD4B_SCP_Approval_Tickets {
 		global $wpdb;
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_approval_admin_required', 'Administrator capability is required to approve a ticket.' );
+		if ( ! self::can_approve() ) return new WP_Error( 'mad4b_approval_admin_required', 'Approval capability is required to approve a ticket.' );
+		$ticket = self::get( $ticket_id );
+		if ( ! $ticket || 'pending' !== (string) $ticket['status'] ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
+		if ( self::is_governed_remote_mutation( $ticket['ticket_class'], $ticket['server_id'] ) ) {
+			$fresh = self::validate_ticket_candidate_binding( $ticket, (string) $ticket['payload_sha256'] );
+			if ( is_wp_error( $fresh ) ) return $fresh;
+		}
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'approved', approved_by = %d, approved_at = %s WHERE ticket_id = %s AND status = 'pending' AND expires_at >= %s", get_current_user_id(), $now, (string) $ticket_id, $now ) );
-		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, or no longer pending.' );
+		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_not_approvable', 'Approval ticket is missing, expired, stale, or no longer pending.' );
 		MAD4B_SCP_Audit::record( 'mad4b/approval-approved', array( 'ticket_id' => $ticket_id ), 'ok' );
 		return self::get( $ticket_id );
 	}
@@ -153,7 +218,7 @@ final class MAD4B_SCP_Approval_Tickets {
 		global $wpdb;
 		$schema = self::require_critical_schema();
 		if ( is_wp_error( $schema ) ) return $schema;
-		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_approval_admin_required', 'Administrator capability is required to revoke a ticket.' );
+		if ( ! self::can_approve() ) return new WP_Error( 'mad4b_approval_admin_required', 'Approval capability is required to revoke a ticket.' );
 		$t = MAD4B_SCP_Schema::tables();
 		$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['approvals']} SET status = 'revoked' WHERE ticket_id = %s AND status IN ('pending','approved')", (string) $ticket_id ) );
 		if ( 1 !== (int) $updated ) return new WP_Error( 'mad4b_approval_not_revokable', 'Approval ticket is missing or cannot be revoked.' );
@@ -178,27 +243,14 @@ final class MAD4B_SCP_Approval_Tickets {
 		if ( (string) $ticket['ticket_class'] !== (string) $ticket_class ) return new WP_Error( 'mad4b_approval_class_mismatch', 'Approval ticket class does not match this operation.' );
 		$hash = self::canonical_payload_hash( $agent['public_id'], $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 		if ( is_wp_error( $hash ) ) return $hash;
-		if ( ! hash_equals( (string) $ticket['payload_sha256'], (string) $hash ) ) return new WP_Error( 'mad4b_approval_payload_mismatch', 'Approval ticket is not bound to this exact operation.' );
-		if ( 'mutation' === (string) $ticket_class && 'mad4b-write' === sanitize_key( (string) $server_id ) && self::exact_governed_staging() ) {
-			$saved = self::candidate_binding_from_ticket( $ticket );
-			if ( empty( $saved ) ) return new WP_Error( 'mad4b_approval_candidate_binding_missing', 'Remote Staging approval ticket is missing exact candidate binding evidence.' );
-			$current = self::current_candidate_binding( $ticket_id, $hash );
-			if ( is_wp_error( $current ) ) return $current;
-			foreach ( array( 'ticket_id', 'payload_sha256', 'candidate_sha', 'build_fingerprint', 'environment', 'host' ) as $key ) {
-				if ( ! isset( $saved[ $key ], $current[ $key ] ) || ! hash_equals( (string) $saved[ $key ], (string) $current[ $key ] ) ) return new WP_Error( 'mad4b_approval_candidate_mismatch', 'Approval ticket candidate binding no longer matches the exact live Staging build.' );
-			}
+		if ( ! hash_equals( (string) $ticket['payload_sha256'], (string) $hash ) ) return new WP_Error( 'mad4b_approval_payload_mismatch', 'Approval ticket is not bound to this exact operation/Site Profile.' );
+		if ( self::is_governed_remote_mutation( $ticket_class, $server_id ) ) {
+			$fresh = self::validate_ticket_candidate_binding( $ticket, $hash );
+			if ( is_wp_error( $fresh ) ) return $fresh;
 		}
 		return array( 'ticket' => $ticket, 'payload_sha256' => $hash );
 	}
 
-	/**
-	 * Read-only exact approval preflight used by permission checks.
-	 *
-	 * This intentionally aliases validate_exact(): it verifies the same canonical
-	 * agent/server/ability/provider/target/input binding without claiming the
-	 * ticket, changing its status, reserving budgets, or creating execution-side
-	 * effects. claim_exact() remains the sole approved -> executing transition.
-	 */
 	public static function authorize_exact( $ticket_id, array $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class ) {
 		return self::validate_exact( $ticket_id, $agent, $server_id, $ability_name, $provider, $target_fingerprint, $input, $ticket_class );
 	}
@@ -265,7 +317,12 @@ final class MAD4B_SCP_Approval_Tickets {
 		$sha = isset( $ticket['candidate_sha'] ) ? strtolower( trim( (string) $ticket['candidate_sha'] ) ) : '';
 		$build = isset( $ticket['build_fingerprint'] ) ? strtolower( trim( (string) $ticket['build_fingerprint'] ) ) : '';
 		$contract = isset( $ticket['candidate_binding_contract'] ) ? (string) $ticket['candidate_binding_contract'] : '';
-		if ( self::CANDIDATE_BINDING_CONTRACT !== $contract || ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload ) || ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $build ) ) return array();
+		$site_uuid = isset( $ticket['site_uuid'] ) ? strtolower( trim( (string) $ticket['site_uuid'] ) ) : '';
+		$profile_revision = isset( $ticket['site_profile_revision'] ) ? absint( $ticket['site_profile_revision'] ) : 0;
+		$profile_digest = isset( $ticket['site_profile_digest'] ) ? strtolower( trim( (string) $ticket['site_profile_digest'] ) ) : '';
+		$environment = isset( $ticket['binding_environment'] ) ? sanitize_key( (string) $ticket['binding_environment'] ) : '';
+		$host = isset( $ticket['binding_host'] ) ? strtolower( rtrim( (string) $ticket['binding_host'], '.' ) ) : '';
+		if ( self::CANDIDATE_BINDING_CONTRACT !== $contract || ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload ) || ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $build ) || ! preg_match( '/^[a-f0-9-]{36}$/', $site_uuid ) || $profile_revision < 1 || ! preg_match( '/^[a-f0-9]{64}$/', $profile_digest ) || '' === $environment || '' === $host ) return array();
 		$bound_at = ! empty( $ticket['bound_at'] ) ? strtotime( (string) $ticket['bound_at'] . ' UTC' ) : false;
 		return array(
 			'contract' => $contract,
@@ -273,26 +330,35 @@ final class MAD4B_SCP_Approval_Tickets {
 			'payload_sha256' => $payload,
 			'candidate_sha' => $sha,
 			'build_fingerprint' => $build,
-			'environment' => isset( $ticket['binding_environment'] ) ? sanitize_key( (string) $ticket['binding_environment'] ) : '',
-			'host' => isset( $ticket['binding_host'] ) ? strtolower( rtrim( (string) $ticket['binding_host'], '.' ) ) : '',
+			'site_uuid' => $site_uuid,
+			'profile_revision' => $profile_revision,
+			'profile_digest' => $profile_digest,
+			'environment' => $environment,
+			'host' => $host,
 			'bound_at' => false === $bound_at ? '' : gmdate( 'c', $bound_at ),
 		);
 	}
 
 	private static function current_candidate_binding( $ticket_id, $payload_hash ) {
+		$profile = self::profile_snapshot( true );
+		if ( is_wp_error( $profile ) ) return $profile;
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Exact build provenance is unavailable for remote approval planning.' );
 		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		$sha = is_array( $provenance ) && isset( $provenance['source_commit_sha'] ) ? strtolower( trim( (string) $provenance['source_commit_sha'] ) ) : '';
 		$fingerprint = is_array( $provenance ) && isset( $provenance['build_fingerprint'] ) ? strtolower( trim( (string) $provenance['build_fingerprint'] ) ) : '';
-		if ( ! is_array( $provenance ) || empty( $provenance['manifest_present'] ) || empty( $provenance['manifest_valid'] ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) || ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Remote approval planning requires exact current Staging build provenance.' );
+		if ( ! is_array( $provenance ) || empty( $provenance['manifest_present'] ) || empty( $provenance['manifest_valid'] ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) || ! preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_approval_candidate_unavailable', 'Remote approval planning requires exact current build provenance.' );
 		return array(
 			'contract' => self::CANDIDATE_BINDING_CONTRACT,
 			'ticket_id' => strtolower( (string) $ticket_id ),
 			'payload_sha256' => strtolower( (string) $payload_hash ),
 			'candidate_sha' => $sha,
 			'build_fingerprint' => $fingerprint,
-			'environment' => 'staging',
-			'host' => self::STAGING_HOST,
+			'site_uuid' => $profile['site_uuid'],
+			'profile_revision' => $profile['profile_revision'],
+			'profile_digest' => $profile['profile_digest'],
+			'environment' => $profile['environment'],
+			'host' => $profile['host'],
+			'origin' => $profile['origin'],
 			'bound_at' => gmdate( 'c' ),
 		);
 	}
@@ -305,18 +371,79 @@ final class MAD4B_SCP_Approval_Tickets {
 		$updated = $wpdb->update(
 			$t['approvals'],
 			array(
-				'candidate_binding_contract' => isset( $binding['contract'] ) ? (string) $binding['contract'] : self::CANDIDATE_BINDING_CONTRACT,
+				'candidate_binding_contract' => self::CANDIDATE_BINDING_CONTRACT,
 				'candidate_sha' => isset( $binding['candidate_sha'] ) ? strtolower( (string) $binding['candidate_sha'] ) : '',
 				'build_fingerprint' => isset( $binding['build_fingerprint'] ) ? strtolower( (string) $binding['build_fingerprint'] ) : '',
 				'binding_environment' => isset( $binding['environment'] ) ? sanitize_key( (string) $binding['environment'] ) : '',
 				'binding_host' => isset( $binding['host'] ) ? strtolower( rtrim( (string) $binding['host'], '.' ) ) : '',
+				'site_uuid' => isset( $binding['site_uuid'] ) ? strtolower( (string) $binding['site_uuid'] ) : '',
+				'site_profile_revision' => isset( $binding['profile_revision'] ) ? absint( $binding['profile_revision'] ) : 0,
+				'site_profile_digest' => isset( $binding['profile_digest'] ) ? strtolower( (string) $binding['profile_digest'] ) : '',
 				'bound_at' => false === $bound_at ? gmdate( 'Y-m-d H:i:s' ) : gmdate( 'Y-m-d H:i:s', $bound_at ),
 			),
 			array( 'ticket_id' => (string) $binding['ticket_id'], 'status' => 'pending' ),
-			array( '%s','%s','%s','%s','%s','%s' ),
+			array( '%s','%s','%s','%s','%s','%s','%d','%s','%s' ),
 			array( '%s','%s' )
 		);
 		return 1 === (int) $updated;
+	}
+
+	private static function validate_ticket_candidate_binding( array $ticket, $payload_hash ) {
+		$saved = self::candidate_binding_from_ticket( $ticket );
+		if ( empty( $saved ) ) return new WP_Error( 'mad4b_approval_candidate_binding_missing', 'Remote governed-write ticket is missing v2 Site Profile/build binding evidence.' );
+		$current = self::current_candidate_binding( $ticket['ticket_id'], $payload_hash );
+		if ( is_wp_error( $current ) ) return $current;
+		foreach ( array( 'ticket_id', 'payload_sha256', 'candidate_sha', 'build_fingerprint', 'site_uuid', 'profile_revision', 'profile_digest', 'environment', 'host' ) as $key ) {
+			if ( ! isset( $saved[ $key ], $current[ $key ] ) || ! hash_equals( (string) $saved[ $key ], (string) $current[ $key ] ) ) return new WP_Error( 'mad4b_approval_candidate_mismatch', 'Approval ticket no longer matches the exact live site/profile/build candidate.' );
+		}
+		return true;
+	}
+
+	private static function profile_binding_from_ticket( array $ticket ) {
+		$binding = array(
+			'site_uuid' => isset( $ticket['site_uuid'] ) ? strtolower( trim( (string) $ticket['site_uuid'] ) ) : '',
+			'profile_revision' => isset( $ticket['site_profile_revision'] ) ? absint( $ticket['site_profile_revision'] ) : 0,
+			'profile_digest' => isset( $ticket['site_profile_digest'] ) ? strtolower( trim( (string) $ticket['site_profile_digest'] ) ) : '',
+			'environment' => isset( $ticket['binding_environment'] ) ? sanitize_key( (string) $ticket['binding_environment'] ) : '',
+			'host' => isset( $ticket['binding_host'] ) ? strtolower( rtrim( (string) $ticket['binding_host'], '.' ) ) : '',
+		);
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $binding['site_uuid'] ) || $binding['profile_revision'] < 1 || ! preg_match( '/^[a-f0-9]{64}$/', $binding['profile_digest'] ) || '' === $binding['environment'] || '' === $binding['host'] ) return array();
+		return $binding;
+	}
+
+	private static function profile_snapshot( $require_write ) {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return $require_write ? new WP_Error( 'mad4b_approval_site_profile_unconfigured', 'Governed remote approval requires an enrolled Site Profile.' ) : array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return $require_write ? new WP_Error( 'mad4b_approval_site_profile_drift', 'Governed remote approval requires the exact enrolled origin/environment.' ) : array();
+		if ( $require_write && ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_approval_site_profile_write_disabled', 'Governed remote approval requires Site Profile write authority.' );
+		$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
+		$revision = absint( MAD4B_SCP_Site_Profile::revision() );
+		$digest = strtolower( trim( (string) MAD4B_SCP_Site_Profile::profile_digest() ) );
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		$origin = (string) MAD4B_SCP_Site_Profile::current_origin();
+		$host = strtolower( rtrim( (string) MAD4B_SCP_Site_Profile::current_host(), '.' ) );
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $site_uuid ) || $revision < 1 || ! preg_match( '/^[a-f0-9]{64}$/', $digest ) || '' === $environment || '' === $origin || '' === $host ) return $require_write ? new WP_Error( 'mad4b_approval_site_profile_invalid', 'Site Profile identity is incomplete or invalid.' ) : array();
+		return array( 'site_uuid' => $site_uuid, 'profile_revision' => $revision, 'profile_digest' => $digest, 'environment' => $environment, 'origin' => $origin, 'host' => $host );
+	}
+
+	private static function profile_bindings_equal( array $a, array $b ) {
+		foreach ( array( 'site_uuid', 'profile_revision', 'profile_digest', 'environment', 'host' ) as $key ) {
+			if ( ! isset( $a[ $key ], $b[ $key ] ) || ! hash_equals( (string) $a[ $key ], (string) $b[ $key ] ) ) return false;
+		}
+		return true;
+	}
+
+	private static function is_governed_remote_mutation( $ticket_class, $server_id ) {
+		return 'mutation' === sanitize_key( (string) $ticket_class ) && 'mad4b-write' === sanitize_key( (string) $server_id );
+	}
+
+	private static function can_plan_ticket( $ticket_class, $server_id ) {
+		if ( self::is_governed_remote_mutation( $ticket_class, $server_id ) && class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_plan_mutations' ) ) return (bool) MAD4B_SCP_Policy::can_plan_mutations();
+		return current_user_can( 'manage_options' );
+	}
+
+	private static function can_approve() {
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_approve_mutations' ) ) return (bool) MAD4B_SCP_Policy::can_approve_mutations();
+		return current_user_can( 'manage_options' );
 	}
 
 	private static function legacy_candidate_binding( $ticket_id ) {
@@ -327,14 +454,6 @@ final class MAD4B_SCP_Approval_Tickets {
 
 	private static function require_critical_schema() {
 		return MAD4B_SCP_Schema::critical_ready() ? true : new WP_Error( 'mad4b_governance_schema_unavailable', 'MAD4B governance schema physical integrity is unavailable; approval and mutation authority remain fail-closed.' );
-	}
-
-	private static function exact_governed_staging() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$url = function_exists( 'home_url' ) ? home_url( '/' ) : '';
-		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
-		$host = is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( rtrim( (string) $parts['host'], '.' ) ) : '';
-		return 'staging' === $environment && self::STAGING_HOST === $host;
 	}
 
 	private static function canonical_json( $value ) {
@@ -349,7 +468,7 @@ final class MAD4B_SCP_Approval_Tickets {
 	private static function canonicalize( $value, $depth ) {
 		if ( $depth > self::MAX_DEPTH ) return new WP_Error( 'mad4b_approval_payload_too_deep', 'Approval payload exceeds the maximum nesting depth.' );
 		if ( is_array( $value ) ) {
-			$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+			$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
 			if ( $is_list ) {
 				$out = array();
 				foreach ( $value as $item ) {
