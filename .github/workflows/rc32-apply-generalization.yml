@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_parent='2de8ee683b488cb63ea7687fee5058e4970553d3'
+          expected_parent='f23387f034808c94ceb77863c7fad4b9821758db'
           actual_parent="$(git rev-parse HEAD^)"
           test "$actual_parent" = "$expected_parent"
           for n in 01 02 03 04 05; do
@@ -53,6 +53,9 @@ jobs:
             '/tmp/rc32-generalization.patch.gz.b64' | sha256sum -c -
           base64 --decode /tmp/rc32-generalization.patch.gz.b64 | gzip --decompress > /tmp/rc32-generalization.patch
           test -s /tmp/rc32-generalization.patch
+          printf '%s  %s\n' \
+            '96231817165faf1f7e39047b16df295e1563563cd23eaad97afdcff1092c5622' \
+            '/tmp/rc32-generalization.patch' | sha256sum -c -
           grep -Fq '0.4.0-rc.32' /tmp/rc32-generalization.patch
           grep -Fq 'class-mad4b-scp-site-profile.php' /tmp/rc32-generalization.patch
           git apply --check /tmp/rc32-generalization.patch
@@ -63,6 +66,11 @@ jobs:
           rm -f .github/rc32-generalization.patch.gz.b64.part03
           rm -f .github/rc32-generalization.patch.gz.b64.part04
           rm -f .github/rc32-generalization.patch.gz.b64.part05
+          rm -f .github/rc32.part01
+          rm -f .github/rc32.part02
+          rm -f .github/rc32.part03
+          rm -f .github/rc32.part04
+          rm -f .github/rc32.part05
           rm -f .github/workflows/rc32-apply-generalization.yml
 
       - name: Lint changed PHP and validate changed JSON
