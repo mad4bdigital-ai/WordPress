@@ -3,11 +3,15 @@ name: MAD4B General Distribution Foundation
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php'
       - '.github/workflows/mad4b-general-distribution-foundation.yml'
   workflow_dispatch:
 
@@ -43,19 +47,29 @@ jobs:
         run: |
           set -euo pipefail
           for file in \
+            wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php \
-            wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php; do
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php; do
             php -l "$file"
           done
 
-      - name: Run tenant-neutral runtime contract
+      - name: Run tenant-neutral Site Profile runtime contract
         shell: bash
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php
+
+      - name: Run tenant-bound multi-user OAuth runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php
 
       - name: Reject authority-by-install defaults
         shell: bash
@@ -65,6 +79,9 @@ jobs:
           profile="$root/includes/class-mad4b-scp-site-profile.php"
           authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
           dependency="$root/includes/class-mad4b-scp-dependency-manager.php"
+          oauth="$root/includes/class-mad4b-scp-staging-oauth-autoconfig.php"
+          subject_bridge="$root/includes/class-mad4b-scp-oauth-subject-user-bridge.php"
+          main="$root/mad4b-site-control-plane.php"
 
           grep -Fq "site_not_enrolled" "$profile"
           grep -Fq "origin_drift" "$profile"
@@ -76,6 +93,11 @@ jobs:
           grep -Fq "'breakglass_auto_enable' => false" "$authority"
           grep -Fq "'all_remote_writes_require_exact_approval' => true" "$authority"
           grep -Fq "auto_downloads_remote_code' => false" "$dependency"
+          grep -Fq "site_profile_admin_owner_required" "$oauth"
+          grep -Fq "oauth_user_ids" "$oauth"
+          grep -Fq "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()" "$subject_bridge"
+          grep -Fq "MAD4B_SCP_Site_Profile::user_is_enrolled" "$subject_bridge"
+          grep -Fq "MAD4B_SCP_OAuth_Subject_User_Bridge::boot();" "$main"
 
           # Breakglass is intentionally not a Site Profile feature. It remains
           # an independent exceptional authority and cannot be enabled by normal
@@ -85,14 +107,14 @@ jobs:
             exit 1
           fi
 
-          for file in "$profile" "$authority" "$dependency"; do
+          for file in "$profile" "$authority" "$dependency" "$oauth" "$subject_bridge"; do
             if grep -Fq 'staging.egypttourgates.com' "$file" || grep -Fq 'egypttourgates.com' "$file"; then
               echo "Tenant-neutral runtime authority hardcodes an ETG origin: $file" >&2
               exit 1
             fi
           done
 
-          if grep -Fq 'Requires Plugins: mcp-adapter' "$root/mad4b-site-control-plane.php"; then
+          if grep -Fq 'Requires Plugins: mcp-adapter' "$main"; then
             echo 'General distribution must boot diagnostics/onboarding without an installed Adapter.' >&2
             exit 1
           fi
