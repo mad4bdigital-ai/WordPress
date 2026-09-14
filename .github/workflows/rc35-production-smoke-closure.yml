@@ -1,0 +1,109 @@
+name: RC35 Production Smoke Closure
+
+on:
+  push:
+    paths:
+      - '.github/rc35-production-smoke-closure.py'
+      - '.github/workflows/rc35-production-smoke-closure.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-and-certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_production
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout exact migration head
+        uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 0
+
+      - name: Guard staging delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='3cfb49564c85cf4f4b7ad45dd7fa33052eb2ebc0'
+          git merge-base --is-ancestor "$base" HEAD
+          changed="$(git diff --name-only "$base"..HEAD)"
+          printf '%s\n' "$changed"
+          bad="$(printf '%s\n' "$changed" | grep -Ev '^(\.github/rc35-production-smoke-closure\.py|\.github/workflows/rc35-production-smoke-closure\.yml)$' || true)"
+          test -z "$bad"
+
+      - name: Apply Production smoke closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/rc35-production-smoke-closure.py
+          git diff --check
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, openssl
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+
+      - name: Provision disposable Production WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-rc35-production
+          rm -rf "$WP_PATH"
+          mkdir -p "$WP_PATH"
+          php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
+          php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress_production --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-dynamic-skills-production.test' --title='MAD4B Dynamic Skills Production' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE production --type=constant --path="$WP_PATH"
+
+      - name: Install exact MCP Adapter and Control Plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-rc35-production
+          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove unconfigured Production remains fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php" --path=/tmp/mad4b-rc35-production --user=mad4b-ci-admin
+
+      - name: Push validated test-only patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B Automation'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-production-smoke.php
+          test -n "$(git diff --cached --name-only)"
+          git commit -m 'fix(ci): align Production smoke with Site Profile v2'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
