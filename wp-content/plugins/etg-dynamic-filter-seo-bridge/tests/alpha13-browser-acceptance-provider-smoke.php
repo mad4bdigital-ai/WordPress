@@ -17,6 +17,7 @@ namespace {
     function add_filter($hook,$callback,$priority=10,$acceptedArgs=1){unset($priority,$acceptedArgs);$GLOBALS['etg_browser_acceptance_filters'][$hook][]=$callback;return true;}
     function etg_browser_expect($condition,string $message):void{if(!$condition){fwrite(STDERR,"FAIL: $message\n");exit(1);}}
     function etg_browser_same($expected,$actual,string $message):void{if($expected!==$actual){fwrite(STDERR,"FAIL: $message\nEXPECTED ".var_export($expected,true)."\nACTUAL ".var_export($actual,true)."\n");exit(1);}}
+    function etg_browser_digest(array $ids):string{return hash('sha256',json_encode(array_values($ids),JSON_UNESCAPED_SLASHES));}
     function etg_browser_challenge_signature(string $profileId,string $planDigest,array $challenge):string{
         $message=implode('|',array(
             'browser_challenge',
@@ -39,12 +40,13 @@ namespace {
         array('case_id'=>'case-day-tours','archive_path'=>'/tours-and-activities/','provider'=>'jet-engine','query_id'=>'tours_query_archive','taxonomy'=>'tour-types_jet','term_id'=>192,'term_slug'=>'day-tours'),
     );
     $semanticPlan=array('contract'=>'etg.dfsb.live-acceptance-plan.v1','state'=>'ready','profile_id'=>'tours','suite'=>'semantic','cases'=>$planCases,'case_count'=>2,'plan_digest'=>str_repeat('a',64),'blocking_reasons'=>array());
+    $luxorIds=array(31,32,33);$dayTourIds=array(41,42);
     $semanticRun=array(
         'contract'=>'etg.dfsb.live-acceptance-provider.v1','provider_id'=>'etg-dfsb','profile_id'=>'tours','suite'=>'semantic','plan_digest'=>str_repeat('a',64),
         'verification'=>array('semantic_parity_verified'=>true,'browser_runtime_parity_verified'=>false,'verified_through'=>'live_server_semantic'),
         'cases'=>array(
-            array('contract'=>'etg.dfsb.semantic-acceptance-case.v1','case_id'=>'case-luxor','taxonomy'=>'location_jet','term_id'=>125,'term_slug'=>'luxor','provider'=>'jet-engine','query_id'=>'tours_query_archive','provider_total'=>3,'direct_dataset'=>array('ids'=>array(31,32,33),'ids_complete'=>true),'verdict'=>'PASS'),
-            array('contract'=>'etg.dfsb.semantic-acceptance-case.v1','case_id'=>'case-day-tours','taxonomy'=>'tour-types_jet','term_id'=>192,'term_slug'=>'day-tours','provider'=>'jet-engine','query_id'=>'tours_query_archive','provider_total'=>2,'direct_dataset'=>array('ids'=>array(41,42),'ids_complete'=>true),'verdict'=>'PASS'),
+            array('contract'=>'etg.dfsb.semantic-acceptance-case.v1','case_id'=>'case-luxor','taxonomy'=>'location_jet','term_id'=>125,'term_slug'=>'luxor','provider'=>'jet-engine','query_id'=>'tours_query_archive','provider_total'=>3,'direct_dataset'=>array('ids'=>$luxorIds,'ids_complete'=>true,'proof_complete'=>true,'proof_mode'=>'full_ids','proof_item_count'=>3,'total'=>3,'identity_digest'=>etg_browser_digest($luxorIds),'order_digest'=>etg_browser_digest($luxorIds)),'verdict'=>'PASS'),
+            array('contract'=>'etg.dfsb.semantic-acceptance-case.v1','case_id'=>'case-day-tours','taxonomy'=>'tour-types_jet','term_id'=>192,'term_slug'=>'day-tours','provider'=>'jet-engine','query_id'=>'tours_query_archive','provider_total'=>2,'direct_dataset'=>array('ids'=>$dayTourIds,'ids_complete'=>true,'proof_complete'=>true,'proof_mode'=>'full_ids','proof_item_count'=>2,'total'=>2,'identity_digest'=>etg_browser_digest($dayTourIds),'order_digest'=>etg_browser_digest($dayTourIds)),'verdict'=>'PASS'),
         ),
         'blocking_reasons'=>array(),'defect_reasons'=>array(),'infrastructure_failures'=>array(),'classification'=>'NO_CONFIRMED_DEFECT','verdict'=>'PASS',
     );
@@ -57,7 +59,7 @@ namespace {
     etg_browser_expect(isset($GLOBALS['etg_browser_acceptance_filters']['etg_dfsb_browser_acceptance_provider']),'native browser acceptance provider hook registered');
 
     $descriptor=$provider->descriptor();
-    etg_browser_same('etg.dfsb.browser-acceptance-provider.v1',$descriptor['contract'],'provider contract is versioned');
+    etg_browser_same('etg.dfsb.browser-acceptance-provider.v2',$descriptor['contract'],'provider contract is versioned');
     etg_browser_same(false,$descriptor['authorizing'],'browser acceptance remains non-authorizing');
     etg_browser_same(true,$descriptor['external_browser_agent_required'],'provider cannot self-certify a browser runtime');
     etg_browser_same(false,$descriptor['arbitrary_javascript_input'],'arbitrary JavaScript remains denied');
@@ -69,7 +71,7 @@ namespace {
 
     $capabilities=call_user_func($guarded['capabilities_callback']);
     etg_browser_same('mad4b.browser-acceptance-capabilities.v1',$capabilities['contract'],'central capability contract is exposed');
-    foreach(array('browser.ajax_round_trip','browser.event_stream','browser.dom_result_count','browser.dataset_id_parity','browser.order_parity','browser.url_state','browser.seo_non_authority','browser.reset_behavior')as$capability){
+    foreach(array('browser.ajax_round_trip','browser.event_stream','browser.dom_result_count','browser.dataset_id_parity','browser.dataset_digest_parity','browser.order_parity','browser.url_state','browser.seo_non_authority','browser.reset_behavior')as$capability){
         etg_browser_expect(in_array($capability,$capabilities['capabilities'],true),'capability missing: '.$capability);
     }
     etg_browser_same('etg.dfsb.browser-acceptance-challenge.v1',$capabilities['freshness_challenge']['contract'],'freshness challenge contract is advertised');
@@ -109,7 +111,7 @@ namespace {
         'plan_signature'=>$plan['plan_signature'],
         'origin'=>'https://staging.egypttourgates.com/',
         'build_identity'=>$plan['build_identity'],
-        'observer'=>array('contract'=>'etg.dfsb.browser-acceptance-observer.v1','javascript_runtime'=>true,'browser_engine'=>'chromium'),
+        'observer'=>array('contract'=>'etg.dfsb.browser-acceptance-observer.v1','javascript_runtime'=>true,'browser_engine'=>'chromium','execution_mode'=>'external_browser_agent'),
         'challenge'=>$plan['challenge'],
         'cases'=>array(),
     );
@@ -120,7 +122,7 @@ namespace {
             'runtime'=>array('javascript_runtime'=>true,'jet_smart_filters_observed'=>true,'filter_group'=>$case['provider'].'/'.$case['query_id']),
             'events'=>array('ajax_filters_updated'=>true,'presentation_updated'=>true,'presentation_reset'=>true),
             'network'=>array('method'=>'POST','endpoint'=>'https://staging.egypttourgates.com/wp-json/etg-dfsb/v1/ajax-presentation','http_status'=>200,'contract'=>'etg.dfsb.ajax-presentation.v1','status'=>'ready','authorizing'=>false,'url_authority'=>false,'seo_mutation'=>false,'provider'=>$case['provider'],'query_id'=>$case['query_id']),
-            'rendered'=>array('result_count'=>$case['expected']['result_total'],'ids'=>$case['expected']['ids']),
+            'rendered'=>array('result_count'=>$case['expected']['result_total'],'result_count_authoritative'=>true,'result_count_source'=>'jet_smart_filters_results_count','ids'=>$case['expected']['ids'],'ids_complete'=>true),
             'url_state'=>array('filter_state_observed'=>true,'etg_history_mutation'=>false),
             'seo'=>array('canonical_unchanged'=>true,'robots_unchanged'=>true,'hreflang_unchanged'=>true,'rank_math_unchanged'=>true),
             'reset'=>array('event_observed'=>true,'neutral_state_restored'=>true),
