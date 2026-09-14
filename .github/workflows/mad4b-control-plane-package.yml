@@ -101,7 +101,7 @@ jobs:
           test "$(stat -c '%s' wp-content/plugins/mcp-adapter.zip)" = '455463'
           unzip -tqq wp-content/plugins/mcp-adapter.zip
 
-      - name: Verify governed Staging write package invariants
+      - name: Verify tenant-bound governed Staging kit invariants
         shell: bash
         run: |
           set -euo pipefail
@@ -111,8 +111,14 @@ jobs:
           cert="$plugin/includes/class-mad4b-scp-write-runtime-certification.php"
           rest="$plugin/includes/class-mad4b-scp-rest-compatibility.php"
           servers="$plugin/includes/class-mad4b-scp-servers.php"
-          test -f "$write" -a -f "$planning" -a -f "$cert" -a -f "$rest" -a -f "$servers"
-          grep -Fq "const STAGING_HOST = 'staging.egypttourgates.com'" "$write"
+          profile="$plugin/includes/class-mad4b-scp-site-profile.php"
+          presets="$plugin/config/site-profile-presets.json"
+          test -f "$write" -a -f "$planning" -a -f "$cert" -a -f "$rest" -a -f "$servers" -a -f "$profile" -a -f "$presets"
+          grep -Fq "const CONTRACT = 'mad4b.governed-write-authority.v2'" "$write"
+          grep -Fq "MAD4B_SCP_Site_Profile::origin_enrolled()" "$write"
+          grep -Fq "MAD4B_SCP_Site_Profile::write_enabled()" "$write"
+          grep -Fq "site_profile_unconfigured" "$write"
+          grep -Fq "site_profile_write_disabled" "$write"
           grep -Fq "'production_auto_enable' => false" "$write"
           grep -Fq "'breakglass_auto_enable' => false" "$write"
           grep -Fq "'all_remote_writes_require_exact_approval' => true" "$write"
@@ -140,6 +146,32 @@ jobs:
             echo 'Control Plane REST compatibility code must not globally modify REST access.' >&2
             exit 1
           fi
+
+          # The distributable binary is tenant-neutral. This ETG deployment kit is
+          # selected by an explicit reviewed Site Profile preset, not by a hardcoded
+          # runtime-host authority check inside the write authority implementation.
+          if grep -Fq 'staging.egypttourgates.com' "$write" || grep -Fq 'egypttourgates.com' "$write"; then
+            echo 'Governed write authority must remain tenant-neutral.' >&2
+            exit 1
+          fi
+          python3 - "$presets" <<'PY'
+          import json, sys
+          p = json.load(open(sys.argv[1], encoding='utf-8'))
+          if p.get('contract') != 'mad4b.site-profile-presets.v1':
+              raise SystemExit('site profile preset contract mismatch')
+          rows = [x for x in p.get('profiles', []) if x.get('environment') == 'staging' and x.get('canonical_origin') == 'https://staging.egypttourgates.com']
+          if len(rows) != 1:
+              raise SystemExit('exact ETG staging Site Profile preset missing or ambiguous')
+          row = rows[0]
+          if not row.get('features', {}).get('write'):
+              raise SystemExit('reviewed ETG staging preset does not enable governed write')
+          if row.get('features', {}).get('production_write_confirmed'):
+              raise SystemExit('staging preset must never carry production write confirmation')
+          prod = [x for x in p.get('profiles', []) if x.get('environment') == 'production' and x.get('canonical_origin') == 'https://egypttourgates.com']
+          if len(prod) != 1 or prod[0].get('features', {}).get('write'):
+              raise SystemExit('ETG production preset must remain write-disabled')
+          print('tenant-bound ETG deployment preset: PASS')
+          PY
 
       - name: Build provenance-bound control-plane ZIP and manifest
         shell: bash
@@ -234,6 +266,8 @@ jobs:
               'commit': os.environ.get('SOURCE_SHA'),
               'release_class': 'staging-governed-write-release-candidate',
               'governed_origin': 'staging.egypttourgates.com',
+              'tenant_binding_source': 'reviewed_site_profile_preset',
+              'runtime_authority_host_hardcoded': False,
               'build_fingerprint': os.environ['BUILD_FINGERPRINT'],
               'package_manifest_digest': os.environ['PACKAGE_DIGEST'],
               'control_plane': {
@@ -257,6 +291,7 @@ jobs:
                   'secret_like_files_denied': True,
                   'canonical_skill_seed_parity': True,
                   'development_tests_excluded': True,
+                  'tenant_neutral_runtime_authority': True,
                   'governed_staging_write_authority': True,
                   'all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write': True,
                   'provider_uncertified_write_actions_excluded_from_governed_write_surfaces': True,
@@ -296,11 +331,11 @@ jobs:
           # MAD4B governed Staging installation kit
 
           1. Install and activate the exact `mcp-adapter-0.6.1.zip` first.
-          2. Install and activate the provenance-bound MAD4B Site Control Plane ZIP on **staging.egypttourgates.com only**.
+          2. Install and activate the provenance-bound MAD4B Site Control Plane ZIP on **staging.egypttourgates.com only**. The plugin binary is tenant-neutral; this deployment kit relies on the reviewed exact-origin Site Profile preset packaged with the candidate.
           3. Read `mad4b/build-provenance-status` first and require `manifest_present=true`, `manifest_valid=true`, `runtime_manifest_match=true`, and `stale=false` before treating this build as the reviewed candidate.
-          4. Skills, the Staging App mapping and the governed mutation gate bootstrap automatically on that exact Staging origin; do not add manual enable constants for the normal path.
+          4. Skills, the Staging App mapping and governed mutation gate may bootstrap only after the exact Site Profile is enrolled/matched; do not add manual enable constants for the normal path.
           5. The plugin creates/binds a site-local NHI and exact `mad4b-write` grants for every runtime-eligible registered non-readonly content/admin ability. Provider mutations requiring certification are omitted when their exact runtime contract is not certified; Breakglass is excluded.
-          6. Remote OAuth is identity-only. Actual mutations require a short-lived exact one-time approval ticket. `mad4b/approval-plan` is the bounded bootstrap exception: it is itself NHI/grant/budget governed, may create only a pending mutation ticket for the same Staging agent + `mad4b-write`, and may never target breakglass/recovery or auto-approve.
+          6. Remote OAuth is identity-only. Actual mutations require a short-lived exact one-time approval ticket. `mad4b/approval-plan` is the bounded bootstrap exception: it is itself NHI/grant/budget governed, may create only a pending mutation ticket for the same governed agent + `mad4b-write`, and may never target breakglass/recovery or auto-approve.
           7. Provider-specific mutations remain subject to exact provider certification, capability, stale-state, bounded payload and reversible-state gates even after projection.
           8. Read `mad4b/write-authority-status` and `mad4b/write-runtime-certification` and require local `ready` before external write acceptance. Inspect `provider_blocked_write_tools` separately; blocked provider mutations must remain unmounted rather than appearing as dead client tools.
           9. Read `mad4b/rest-compatibility-status` and require REST enabled, no MAD4B global `rest_enabled`/`rest_authentication_errors` interception, no control-plane WPML block, and MCP recovery scoped only to MAD4B MCP routes. The in-process WPML probe is diagnostic only. Separately call the real external `https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1` endpoint and require `status=valid` plus `get_parameters=valid` before GO.
@@ -327,6 +362,7 @@ jobs:
           test -n "$control_zip"
           unzip -tqq "$control_zip"
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/site-profile-presets.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
@@ -383,7 +419,10 @@ jobs:
           grep -Fq "\"commit\": \"$SOURCE_SHA\"" "$stage/install-manifest.json"
           grep -Fq '"contract": "mad4b.site-control-plane.staging-install-kit.v5"' "$stage/install-manifest.json"
           grep -Fq '"release_class": "staging-governed-write-release-candidate"' "$stage/install-manifest.json"
+          grep -Fq '"tenant_binding_source": "reviewed_site_profile_preset"' "$stage/install-manifest.json"
+          grep -Fq '"runtime_authority_host_hardcoded": false' "$stage/install-manifest.json"
           grep -Fq '"runtime_provenance_bound": true' "$stage/install-manifest.json"
+          grep -Fq '"tenant_neutral_runtime_authority": true' "$stage/install-manifest.json"
           grep -Fq '"governed_staging_write_authority": true' "$stage/install-manifest.json"
           grep -Fq '"all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write": true' "$stage/install-manifest.json"
           grep -Fq '"provider_uncertified_write_actions_excluded_from_governed_write_surfaces": true' "$stage/install-manifest.json"
