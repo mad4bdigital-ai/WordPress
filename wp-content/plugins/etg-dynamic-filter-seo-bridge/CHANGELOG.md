@@ -2,6 +2,14 @@
 
 ## 0.4.0-alpha.13 — Deep runtime audit hardening
 
+- Added profile-governed semantic live acceptance through `etg.dfsb.live-acceptance-provider.v1`, deriving bounded cases from registered Surface Profiles, exact archive/provider/query authority, allowed taxonomies and real WordPress Terms while rejecting arbitrary URL/query/taxonomy/SQL/callback/browser-script inputs.
+- Added a separate passive Browser Acceptance evidence layer with profile-derived plans and freshness challenges. Browser evidence observes governed JetSmartFilters events, ETG AJAX presentation responses, DOM/result identity, reset/URL state and SEO stability without creating browser-history, Profile, SEO, business-state or authority mutations.
+- Browser freshness evidence now binds each observation to a bounded nonce/challenge so stale snapshots from a prior package/build cannot silently satisfy current exact-head acceptance.
+- Wired WordPress 6.9 evidence-ability registration lifecycle regression into the canonical PHP contract CI path, preserving read-only/non-authorizing semantics while proving registration at the supported lifecycle boundary.
+- Added explicit browser result-count observability for ETG `result_count` / `result_summary` live Dynamic Tags through the semantic marker `data-etg-dfsb-result-count=""`. The observer reads the tag's current live text so AJAX updates/reset cannot leave a stale numeric attribute.
+- Result-count observation deliberately avoids generic `.jet-listing-dynamic-field` number scraping, preventing unrelated prices/durations/content from being mistaken for total-result authority. Paginated visible item count remains only a bounded fallback when no explicit count surface exists.
+- Added `alpha13-result-count-observability-smoke.php` and executes it through `build-identity-smoke.php` on the governed PHP 7.4/8.3 Operational matrices.
+- Exact-head release governance independently builds push and pull-request Operational artifacts and requires the extracted installable ZIP to reproduce byte-for-byte; run-specific outer provenance archives may differ while the installable package must not.
 - Added bounded, versioned `etg.dfsb.evidence-provider.v1` projection over the canonical Runtime Inventory and Inventory Reconciliation so central diagnostic transports can retrieve targeted evidence without duplicating ETG domain semantics or returning one oversized inventory response.
 - The ETG evidence provider is read-only/non-authorizing (`authorizing=false`, `profile_mutation=false`) and exposes only provider discovery/query callbacks through `mad4b_mcp_evidence_providers`; authentication, transport, cursors, export and materialization remain owned by the central MAD4B MCP / Control Plane.
 - Added bounded evidence sections for summary, unresolved JetSmartFilters surfaces, selected filter IDs, profile-scoped reconciliation, and targeted provider-group drift, with request-local snapshot reuse and preserved inventory fingerprint/timestamp provenance.
@@ -15,7 +23,7 @@
 - Empty live Term Sections preserve Elementor fallback, start hidden when they have no content, and become visible only when resolved content arrives.
 - Dynamic Tag catalog discovery is memoized per request and presentation catalog topology uses the existing topology cache instead of forcing a full Elementor template rescan for every catalog access. Operator Runtime Inventory remains independently refreshable.
 - Added `alpha13-deep-audit-smoke.php` and exact-head CI guards for native JetSmartFilters transport, fail-closed limits, stale binding resets, catalog-driven types and cached topology discovery.
-- AJAX remains presentation-only: `authorizing=false`, `url_authority=false`, `seo_mutation=false`. Global stays OFF by default, Tours stays disabled, and this release does not authorize merge or Production activation.
+- AJAX remains presentation-only: `authorizing=false`, `url_authority=false`, `seo_mutation=false`. Global stays OFF by default, Tours stays disabled, and this release does not authorize Ready for Review, merge or Production activation.
 
 ## 0.4.0-alpha.10
 
