@@ -214,7 +214,6 @@ if "'external_wpml' => self::gate( ! empty( $wpml['verified'] )" not in observer
 # Positive reachability is a mandatory regression, not only false-pass checks.
 for marker in [
     'Valid authoritative mutation receipt must become ready.',
-    'Valid trusted Production receipt must become ready.',
     'Wrong mutation SHA must fail closed.',
     'Wrong mutation fingerprint must fail closed.',
     'Stale mutation receipt must fail closed.',
@@ -222,12 +221,18 @@ for marker in [
     'Replay not denied must fail closed.',
     'Missing undo proof must fail closed.',
     'Undo state drift must fail closed.',
-    'Production wrong SHA must fail closed.',
-    'Production wrong fingerprint must fail closed.',
-    'Stale Production receipt must fail closed.',
-    'Untrusted Production finalizer must fail closed.',
-    'Production snapshot drift must fail closed.',
-    'Tampered Production receipt must fail closed.',
+    'Valid reproducible Production v2 receipt must become ready.',
+    'Production v2 must report normalized plugin count.',
+    'Production v2 producer must be verified.',
+    'Plugin snapshot must be order-invariant after normalization.',
+    'Production v2 wrong SHA must fail closed.',
+    'Writable Production producer must fail closed.',
+    'Production runtime drift must fail closed.',
+    'Production plugin drift must fail closed.',
+    'Duplicate Production plugin path must fail closed.',
+    'Stale Production v2 receipt must fail closed.',
+    'Opaque Production v1 contract must not close the v2 gate.',
+    'Tampered Production v2 receipt must fail closed.',
     'All valid mandatory gates must make ready=true reachable.',
 ]:
     if marker not in runtime_test:
