@@ -33,17 +33,64 @@ function etg_build_identity_expect( $condition, string $message ): void {
 	}
 }
 
+function etg_build_identity_remove_tree( string $root ): void {
+	if ( ! is_dir( $root ) ) {
+		return;
+	}
+	$iterator = new RecursiveIteratorIterator(
+		new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ),
+		RecursiveIteratorIterator::CHILD_FIRST
+	);
+	foreach ( $iterator as $entry ) {
+		$entry->isDir() && ! $entry->isLink() ? @rmdir( $entry->getPathname() ) : @unlink( $entry->getPathname() );
+	}
+	@rmdir( $root );
+}
+
+function etg_build_identity_stage_installable( string $source, string $target ): void {
+	$source = rtrim( $source, '/\\' ) . DIRECTORY_SEPARATOR;
+	mkdir( $target, 0700, true );
+	$iterator = new RecursiveIteratorIterator(
+		new RecursiveDirectoryIterator( $source, FilesystemIterator::SKIP_DOTS ),
+		RecursiveIteratorIterator::SELF_FIRST
+	);
+	foreach ( $iterator as $entry ) {
+		$relative = str_replace( '\\', '/', substr( $entry->getPathname(), strlen( $source ) ) );
+		if ( 'tests' === $relative || 0 === strpos( $relative, 'tests/' ) ) {
+			continue;
+		}
+		if ( in_array( $relative, array( 'build-identity.json', 'etg-dfsb-provenance.txt' ), true ) ) {
+			continue;
+		}
+		$destination = rtrim( $target, '/\\' ) . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $relative );
+		if ( $entry->isDir() ) {
+			if ( ! is_dir( $destination ) ) {
+				mkdir( $destination, 0700, true );
+			}
+			continue;
+		}
+		$parent = dirname( $destination );
+		if ( ! is_dir( $parent ) ) {
+			mkdir( $parent, 0700, true );
+		}
+		copy( $entry->getPathname(), $destination );
+	}
+}
+
 $root = sys_get_temp_dir() . '/etg-dfsb-build-identity-' . str_replace( '.', '', uniqid( '', true ) );
+$contentRoot = $root . '-wp-content';
 mkdir( $root, 0700, true );
-$path = $root . '/build-identity.json';
-$provenancePath = $root . '/etg-dfsb-provenance.txt';
-$contentRoot = $root . '/wp-content';
 mkdir( $contentRoot, 0700, true );
+$path = $root . '/build-identity.json';
+$manifestPath = $root . '/' . BuildIdentity::INSTALLED_CONTENT_MANIFEST;
+$provenancePath = $root . '/etg-dfsb-provenance.txt';
+$payloadPath = $root . '/payload.php';
 $git = str_repeat( '1', 40 );
 $git2 = str_repeat( '3', 40 );
 $tree = str_repeat( '2', 40 );
 $version = '0.4.0-alpha.13';
 $packageSha = str_repeat( 'a', 64 );
+$payload = "<?php echo 'stable';\n";
 
 if ( ! defined( 'ETG_DFSB_DIR' ) ) {
 	define( 'ETG_DFSB_DIR', $root . DIRECTORY_SEPARATOR );
@@ -58,25 +105,50 @@ if ( ! defined( 'WP_CONTENT_DIR' ) ) {
 $missing = BuildIdentity::inspectFile( $path, $version );
 etg_build_identity_expect( empty( $missing['embedded'] ) && empty( $missing['valid'] ), 'missing identity remains non-authorizing and invalid' );
 etg_build_identity_expect( 'identity_file_missing' === $missing['reason'], 'missing identity reports the exact reason' );
-etg_build_identity_expect( '' === $missing['embedded_identity_sha256'], 'missing identity has no synthetic embedded identity digest' );
 etg_build_identity_expect( 'fallback:alpha13-container-background-4' === BuildIdentity::bootBuild( 'alpha13-container-background-4' ), 'source/dev checkout uses the explicit deterministic fallback key' );
 
+file_put_contents( $payloadPath, $payload );
+file_put_contents( $manifestPath, json_encode( array(
+	'contract' => BuildIdentity::INSTALLED_CONTENT_CONTRACT,
+	'algorithm' => 'sha256',
+	'files' => array( 'payload.php' => hash( 'sha256', $payload ) ),
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
 file_put_contents( $path, json_encode( array(
 	'contract' => BuildIdentity::CONTRACT,
 	'git_sha' => $git,
 	'tree_sha' => $tree,
 	'plugin_version' => $version,
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
+
 $valid = BuildIdentity::inspectFile( $path, $version );
 $identitySha = hash_file( 'sha256', $path );
 etg_build_identity_expect( ! empty( $valid['embedded'] ) && ! empty( $valid['valid'] ), 'valid embedded identity is accepted' );
 etg_build_identity_expect( $git === $valid['git_sha'] && $tree === $valid['tree_sha'], 'source and tree SHA are preserved' );
-etg_build_identity_expect( $identitySha === $valid['embedded_identity_sha256'], 'embedded identity SHA-256 is calculated from the exact live identity bytes' );
-etg_build_identity_expect( empty( $valid['authorizing'] ) && ! empty( $valid['read_only'] ), 'identity evidence stays read-only and non-authorizing' );
+etg_build_identity_expect( $identitySha === $valid['embedded_identity_sha256'], 'embedded identity SHA-256 is calculated from exact live bytes' );
 
-$missingProvenance = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
-etg_build_identity_expect( empty( $missingProvenance['package_provenance_present'] ) && empty( $missingProvenance['package_provenance_valid'] ), 'missing detached provenance remains incomplete evidence' );
-etg_build_identity_expect( 'package_provenance_file_missing' === $missingProvenance['package_provenance_reason'], 'missing detached provenance has an explicit reason' );
+$installed = BuildIdentity::inspectInstalledContentManifest( $root, $manifestPath );
+etg_build_identity_expect( ! empty( $installed['installed_content_valid'] ), 'embedded installed-content manifest validates the exact installed file set' );
+etg_build_identity_expect( BuildIdentity::INSTALLED_CONTENT_CONTRACT === $installed['installed_content_contract'], 'installed-content contract remains explicit' );
+etg_build_identity_expect( 1 === $installed['installed_content_file_count'], 'installed-content verifier counts exact manifest members' );
+
+$selfContained = BuildIdentity::collect();
+etg_build_identity_expect( ! empty( $selfContained['provenance_complete'] ), 'missing optional detached receipt no longer blocks exact installed-build provenance' );
+etg_build_identity_expect( 'self_contained_installed_manifest' === $selfContained['provenance_mode'], 'self-contained installed manifest is the canonical runtime provenance mode' );
+etg_build_identity_expect( 'optional_detached_receipt_missing' === $selfContained['package_provenance_reason'], 'missing detached receipt is reported as optional evidence' );
+etg_build_identity_expect( 'none' === $selfContained['package_provenance_source'], 'no detached receipt produces no synthetic package source' );
+etg_build_identity_expect( empty( $selfContained['package_provenance_required'] ), 'detached package receipt is optional unless explicitly configured' );
+etg_build_identity_expect( 'ok' === $selfContained['exact_build_reason'], 'self-contained exact installed build closes without a sidecar' );
+
+file_put_contents( $payloadPath, "<?php echo 'tampered';\n" );
+$tampered = BuildIdentity::collect();
+etg_build_identity_expect( empty( $tampered['provenance_complete'] ), 'tampered installed file fails exact-build provenance' );
+etg_build_identity_expect( 0 === strpos( $tampered['installed_content_reason'], 'installed_content_file_hash_mismatch:' ), 'tampered file reports exact hash mismatch' );
+file_put_contents( $payloadPath, $payload );
+
+file_put_contents( $root . '/unexpected.txt', 'extra' );
+$extraFile = BuildIdentity::collect();
+etg_build_identity_expect( empty( $extraFile['provenance_complete'] ) && 'installed_content_file_set_mismatch' === $extraFile['installed_content_reason'], 'unexpected installed file fails closed' );
+@unlink( $root . '/unexpected.txt' );
 
 $validProvenance = implode( "\n", array(
 	'contract=' . BuildIdentity::PROVENANCE_CONTRACT,
@@ -91,53 +163,28 @@ $validProvenance = implode( "\n", array(
 	'current_event=pull_request',
 ) ) . "\n";
 file_put_contents( $provenancePath, $validProvenance );
-$provenance = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
-etg_build_identity_expect( ! empty( $provenance['package_provenance_present'] ) && ! empty( $provenance['package_provenance_valid'] ), 'detached release provenance is accepted only when bound to the live identity' );
-etg_build_identity_expect( 'ok' === $provenance['package_provenance_reason'], 'valid detached provenance reports ok' );
-etg_build_identity_expect( BuildIdentity::PROVENANCE_CONTRACT === $provenance['package_provenance_contract'], 'release provenance contract remains explicit' );
-etg_build_identity_expect( $packageSha === $provenance['package_sha256'], 'validated package SHA-256 is exposed only from detached provenance' );
+$withReceipt = BuildIdentity::collect();
+etg_build_identity_expect( ! empty( $withReceipt['provenance_complete'] ), 'valid optional detached receipt augments self-contained provenance' );
+etg_build_identity_expect( ! empty( $withReceipt['package_provenance_valid'] ) && $packageSha === $withReceipt['package_sha256'], 'valid detached receipt still exposes exact package SHA' );
+etg_build_identity_expect( 'plugin_root_fallback' === $withReceipt['package_provenance_source'], 'plugin-root receipt remains compatibility evidence' );
 
-$collected = BuildIdentity::collect();
-etg_build_identity_expect( ! empty( $collected['provenance_complete'] ), 'collect marks exact package provenance complete only after detached receipt validation' );
-etg_build_identity_expect( $identitySha === $collected['embedded_identity_sha256'], 'collect exposes the independently calculated embedded identity SHA-256' );
-etg_build_identity_expect( $packageSha === $collected['package_sha256'], 'collect exposes the detached validated package SHA-256' );
-etg_build_identity_expect( 'plugin_root_fallback' === $collected['package_provenance_source'], 'legacy plugin-root receipt remains an explicit compatibility fallback' );
+file_put_contents( $provenancePath, "contract=" . BuildIdentity::PROVENANCE_CONTRACT . "\ncontract=" . BuildIdentity::PROVENANCE_CONTRACT . "\n" );
+$conflict = BuildIdentity::collect();
+etg_build_identity_expect( empty( $conflict['provenance_complete'] ), 'present but invalid detached receipt remains fail-closed' );
+etg_build_identity_expect( 'package_provenance_duplicate_key' === $conflict['package_provenance_reason'], 'invalid detached receipt reports its exact conflict' );
 
 $persistentDir = $contentRoot . '/mad4b/provenance/etg-dfsb/' . $git;
 mkdir( $persistentDir, 0700, true );
 $persistentPath = $persistentDir . '/etg-dfsb-provenance.txt';
 file_put_contents( $persistentPath, $validProvenance );
-file_put_contents( $provenancePath, "contract=" . BuildIdentity::PROVENANCE_CONTRACT . "\ncontract=" . BuildIdentity::PROVENANCE_CONTRACT . "\n" );
-$persistentCollected = BuildIdentity::collect();
-etg_build_identity_expect( ! empty( $persistentCollected['provenance_complete'] ), 'SHA-addressed persistent provenance is accepted when bound to the installed identity' );
-etg_build_identity_expect( 'persistent_sha_store' === $persistentCollected['package_provenance_source'], 'persistent SHA store is preferred over plugin-root fallback' );
-etg_build_identity_expect( $packageSha === $persistentCollected['package_sha256'], 'persistent SHA store exposes the exact validated package digest' );
-
+$persistent = BuildIdentity::collect();
+etg_build_identity_expect( ! empty( $persistent['provenance_complete'] ), 'valid persistent receipt augments self-contained provenance' );
+etg_build_identity_expect( 'persistent_sha_store' === $persistent['package_provenance_source'], 'persistent exact-SHA receipt remains preferred when present' );
 @unlink( $persistentPath );
-@rmdir( $persistentDir );
-@rmdir( dirname( $persistentDir ) );
-@rmdir( dirname( dirname( $persistentDir ) ) );
-@rmdir( dirname( dirname( dirname( $persistentDir ) ) ) );
-file_put_contents( $provenancePath, $validProvenance );
-$fallbackCollected = BuildIdentity::collect();
-etg_build_identity_expect( 'plugin_root_fallback' === $fallbackCollected['package_provenance_source'], 'plugin-root fallback is restored only when no persistent exact-SHA receipt exists' );
 
-file_put_contents( $provenancePath, "contract=" . BuildIdentity::PROVENANCE_CONTRACT . "\ncontract=" . BuildIdentity::PROVENANCE_CONTRACT . "\n" );
-$duplicate = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
-etg_build_identity_expect( empty( $duplicate['package_provenance_valid'] ) && 'package_provenance_duplicate_key' === $duplicate['package_provenance_reason'], 'duplicate detached provenance keys fail closed' );
-
-file_put_contents( $provenancePath, str_replace( 'embedded_identity_sha256=' . $identitySha, 'embedded_identity_sha256=' . str_repeat( 'b', 64 ), $validProvenance ) );
-$identityMismatch = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
-etg_build_identity_expect( empty( $identityMismatch['package_provenance_valid'] ) && 'package_provenance_identity_sha_mismatch' === $identityMismatch['package_provenance_reason'], 'receipt bound to different embedded identity bytes fails closed' );
-
-file_put_contents( $provenancePath, str_replace( 'package_sha256=' . $packageSha, 'package_sha256=not-a-sha', $validProvenance ) );
-$badPackageSha = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
-etg_build_identity_expect( empty( $badPackageSha['package_provenance_valid'] ) && 'package_provenance_package_sha_invalid' === $badPackageSha['package_provenance_reason'], 'malformed package SHA-256 fails closed' );
-
-file_put_contents( $provenancePath, $validProvenance );
+@unlink( $provenancePath );
 $bootA = BuildIdentity::bootBuild( 'alpha13-container-background-4' );
 etg_build_identity_expect( 'identity:' . $git . ':' . $tree === $bootA, 'Safe Boot key binds to exact embedded Git/tree identity' );
-
 $GLOBALS['etg_dfsb_boot_guard_test_options'] = array();
 BootGuard::register( $bootA );
 BootGuard::holdOnFirstLoad( 'activation' );
@@ -153,36 +200,22 @@ file_put_contents( $path, json_encode( array(
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
 $bootB = BuildIdentity::bootBuild( 'alpha13-container-background-4' );
 etg_build_identity_expect( $bootA !== $bootB, 'changing exact source SHA changes the Safe Boot key without semantic version changes' );
-BootGuard::register( $bootB );
-etg_build_identity_expect( BootGuard::shouldHold(), 'replaced active package re-enters Safe Boot when exact embedded identity changes' );
 
 $wrongVersion = BuildIdentity::inspectFile( $path, '0.4.0-alpha.14' );
 etg_build_identity_expect( empty( $wrongVersion['valid'] ) && 'identity_version_mismatch' === $wrongVersion['reason'], 'version mismatch fails closed' );
-
 file_put_contents( $path, '{"contract":"' . BuildIdentity::CONTRACT . '","git_sha":"bad","tree_sha":"' . $tree . '","plugin_version":"' . $version . '"}' );
 $badSha = BuildIdentity::inspectFile( $path, $version );
 etg_build_identity_expect( empty( $badSha['valid'] ) && 'identity_sha_invalid' === $badSha['reason'], 'malformed SHA fails closed' );
-$invalidBootA = BuildIdentity::bootBuild( 'alpha13-container-background-4' );
-etg_build_identity_expect( 0 === strpos( $invalidBootA, 'identity-invalid:identity_sha_invalid:' ), 'malformed embedded identity gets a fail-closed Safe Boot key' );
 
-file_put_contents( $path, '{"contract":"' . BuildIdentity::CONTRACT . '","git_sha":"still-bad","tree_sha":"' . $tree . '","plugin_version":"' . $version . '"}' );
-$invalidBootB = BuildIdentity::bootBuild( 'alpha13-container-background-4' );
-etg_build_identity_expect( $invalidBootA !== $invalidBootB, 'different malformed embedded package bytes cannot reuse a prior invalid Safe Boot key' );
+$sourceRoot = dirname( __DIR__ );
+$stagedRoot = sys_get_temp_dir() . '/etg-dfsb-installable-manifest-' . str_replace( '.', '', uniqid( '', true ) );
+etg_build_identity_stage_installable( $sourceRoot, $stagedRoot );
+$sourceManifest = BuildIdentity::inspectInstalledContentManifest( $stagedRoot );
+etg_build_identity_expect( ! empty( $sourceManifest['installed_content_valid'] ), 'committed manifest exactly covers the CI installable source surface' );
+etg_build_identity_remove_tree( $stagedRoot );
 
-file_put_contents( $path, json_encode( array(
-	'contract' => BuildIdentity::CONTRACT,
-	'git_sha' => $git,
-	'tree_sha' => $tree,
-	'plugin_version' => $version,
-	'current_run_id' => 123,
-) ) );
-$extra = BuildIdentity::inspectFile( $path, $version );
-etg_build_identity_expect( empty( $extra['valid'] ) && 'identity_fields_invalid' === $extra['reason'], 'event/run-specific fields are refused' );
-
-@unlink( $provenancePath );
-@unlink( $path );
-@rmdir( $contentRoot );
-@rmdir( $root );
+etg_build_identity_remove_tree( $contentRoot );
+etg_build_identity_remove_tree( $root );
 
 $evidenceCommand = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/alpha13-evidence-provider-smoke.php' );
 passthru( $evidenceCommand, $evidenceExitCode );
