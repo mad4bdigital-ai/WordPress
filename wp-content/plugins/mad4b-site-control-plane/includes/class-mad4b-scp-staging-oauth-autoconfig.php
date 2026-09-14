@@ -3,16 +3,12 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Zero-touch Staging bootstrap plus explicit Production read-only OAuth profile.
+ * Local OAuth bootstrap with tenant-neutral Site Profile support.
  *
- * Staging remains zero-touch. Production is never auto-enabled: an administrator
- * must explicitly opt in on the exact governed Production origin. The Production
- * profile configures OAuth identity/read scope only; it never enables mutation,
- * write authority, Skills authoring or Breakglass.
- *
- * The bootstrap stores only a bounded WordPress user id/configuration marker.
- * It never stores OAuth credentials or signing material. Explicit operator
- * constants always win, and ambiguous/incompatible configuration fails closed.
+ * Enrolled sites bind the OAuth WordPress subject to the explicit Site Profile.
+ * Production read-only OAuth still requires a separate administrator opt-in and
+ * never grants mutation authority by itself. Historical ETG Production remains
+ * a compatibility fallback only while no Site Profile exists.
  */
 final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 	const CONTRACT = 'mad4b.staging-oauth-autoconfig.v2';
@@ -31,6 +27,8 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		self::$bootstrapped = true;
 
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled();
+		$profile = $profile_enrolled ? MAD4B_SCP_Site_Profile::status() : array();
 		self::$status = array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment,
@@ -46,9 +44,18 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			'production_readonly_enabled' => false,
 			'write_authority_enabled' => false,
 			'breakglass_enabled' => false,
+			'profile_enrolled' => $profile_enrolled,
+			'profile_revision' => ! empty( $profile['profile_revision'] ) ? (int) $profile['profile_revision'] : 0,
+			'profile_digest' => ! empty( $profile['profile_digest'] ) ? (string) $profile['profile_digest'] : '',
+			'site_uuid' => ! empty( $profile['site_uuid'] ) ? (string) $profile['site_uuid'] : '',
 		);
 
-		if ( 'production' === $environment ) return self::bootstrap_production_readonly();
+		if ( $profile_enrolled && empty( $profile['ready'] ) ) {
+			self::$status['blocker'] = ! empty( $profile['blockers'] ) ? (string) reset( $profile['blockers'] ) : 'site_profile_not_ready';
+			return self::$status;
+		}
+
+		if ( 'production' === $environment ) return self::bootstrap_production_readonly( $profile );
 
 		if ( 'staging' !== $environment ) {
 			self::$status['blocker'] = 'environment_not_staging';
@@ -82,10 +89,10 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			}
 		}
 
-		$selection = self::select_subject_user();
+		$selection = self::select_subject_user( $profile );
 		$user_id = isset( $selection['user_id'] ) ? absint( $selection['user_id'] ) : 0;
 		if ( $user_id < 1 ) {
-			self::$status['blocker'] = isset( $selection['blocker'] ) ? sanitize_key( (string) $selection['blocker'] ) : 'staging_admin_subject_unavailable';
+			self::$status['blocker'] = isset( $selection['blocker'] ) ? sanitize_key( (string) $selection['blocker'] ) : 'staging_subject_unavailable';
 			return self::$status;
 		}
 
@@ -94,6 +101,8 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			'version' => self::VERSION,
 			'wp_user_id' => $user_id,
 			'issuer' => $issuer,
+			'profile_revision' => ! empty( $profile['profile_revision'] ) ? (int) $profile['profile_revision'] : 0,
+			'profile_digest' => ! empty( $profile['profile_digest'] ) ? (string) $profile['profile_digest'] : '',
 			'updated_at' => gmdate( 'c' ),
 		);
 		update_option( self::OPTION, $record, false );
@@ -110,8 +119,14 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		return self::$status;
 	}
 
-	private static function bootstrap_production_readonly() {
-		if ( self::PRODUCTION_HOST !== self::home_host() ) {
+	private static function bootstrap_production_readonly( array $profile = array() ) {
+		$profile_enrolled = ! empty( self::$status['profile_enrolled'] );
+		if ( $profile_enrolled ) {
+			if ( empty( $profile['ready'] ) || empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) || 'production' !== (string) $profile['environment'] ) {
+				self::$status['blocker'] = 'site_profile_production_origin_mismatch';
+				return self::$status;
+			}
+		} elseif ( self::PRODUCTION_HOST !== self::home_host() ) {
 			self::$status['blocker'] = 'origin_not_governed_production';
 			return self::$status;
 		}
@@ -123,8 +138,8 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			return self::$status;
 		}
 
-		$user_id = isset( $record['wp_user_id'] ) ? absint( $record['wp_user_id'] ) : 0;
-		if ( ! self::admin_capable( $user_id ) ) {
+		$user_id = $profile_enrolled && ! empty( $profile['subject_user_id'] ) ? absint( $profile['subject_user_id'] ) : ( isset( $record['wp_user_id'] ) ? absint( $record['wp_user_id'] ) : 0 );
+		if ( ! self::subject_capable( $user_id ) ) {
 			self::$status['blocker'] = 'production_readonly_user_invalid';
 			return self::$status;
 		}
@@ -187,7 +202,7 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 
 		self::$status['configured'] = true;
 		self::$status['wp_user_id'] = $user_id;
-		self::$status['configuration_source'] = 'production_readonly_opt_in';
+		self::$status['configuration_source'] = $profile_enrolled ? 'site_profile_production_readonly_opt_in' : 'production_readonly_opt_in';
 		self::$status['production_readonly_enabled'] = true;
 		self::$status['blocker'] = '';
 		return self::$status;
@@ -212,14 +227,15 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 	public static function handle_enable_production_readonly() {
 		self::assert_production_admin_action();
 		check_admin_referer( 'mad4b_production_readonly_oauth' );
-		$user_id = get_current_user_id();
-		if ( ! self::admin_capable( $user_id ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ) );
+		$user_id = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled() ? MAD4B_SCP_Site_Profile::subject_user_id() : get_current_user_id();
+		if ( ! self::subject_capable( $user_id ) ) wp_die( esc_html__( 'Configured connection subject capability is required.', 'mad4b-site-control-plane' ) );
 		update_option(
 			self::PRODUCTION_OPTION,
 			array(
 				'version' => self::VERSION,
 				'enabled' => true,
 				'wp_user_id' => $user_id,
+				'profile_revision' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::revision() : 0,
 				'updated_at' => gmdate( 'c' ),
 			),
 			false
@@ -237,6 +253,14 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 	private static function assert_production_admin_action() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ) );
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled();
+		if ( $profile_enrolled ) {
+			$profile = MAD4B_SCP_Site_Profile::status();
+			if ( 'production' !== $environment || empty( $profile['ready'] ) || empty( $profile['origin_match'] ) || 'production' !== (string) $profile['environment'] ) {
+				wp_die( esc_html__( 'Production read-only OAuth can only be changed on the exact enrolled Production origin.', 'mad4b-site-control-plane' ) );
+			}
+			return;
+		}
 		if ( 'production' !== $environment || self::PRODUCTION_HOST !== self::home_host() ) {
 			wp_die( esc_html__( 'Production read-only OAuth can only be changed on the exact governed Production origin.', 'mad4b-site-control-plane' ) );
 		}
@@ -254,20 +278,27 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		exit;
 	}
 
-	private static function select_subject_user() {
+	private static function select_subject_user( array $profile = array() ) {
 		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) {
 			$user_id = absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) );
-			return self::admin_capable( $user_id )
+			return self::subject_capable( $user_id )
 				? array( 'user_id' => $user_id, 'source' => 'explicit_wp_user' )
 				: array( 'user_id' => 0, 'blocker' => 'explicit_wp_user_invalid' );
 		}
 
+		if ( ! empty( $profile['subject_user_id'] ) ) {
+			$user_id = absint( $profile['subject_user_id'] );
+			return self::subject_capable( $user_id )
+				? array( 'user_id' => $user_id, 'source' => 'site_profile_subject' )
+				: array( 'user_id' => 0, 'blocker' => 'site_profile_subject_invalid' );
+		}
+
 		$record = get_option( self::OPTION, array() );
 		$stored_user_id = is_array( $record ) && isset( $record['wp_user_id'] ) ? absint( $record['wp_user_id'] ) : 0;
-		if ( self::admin_capable( $stored_user_id ) ) return array( 'user_id' => $stored_user_id, 'source' => 'persisted_staging_auto' );
+		if ( self::subject_capable( $stored_user_id ) ) return array( 'user_id' => $stored_user_id, 'source' => 'persisted_staging_auto' );
 
 		$current_user_id = get_current_user_id();
-		if ( self::admin_capable( $current_user_id ) ) return array( 'user_id' => $current_user_id, 'source' => 'current_staging_admin' );
+		if ( self::subject_capable( $current_user_id ) ) return array( 'user_id' => $current_user_id, 'source' => 'current_staging_subject' );
 
 		$administrators = get_users(
 			array(
@@ -279,17 +310,19 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			)
 		);
 		$administrators = array_values( array_filter( array_map( 'absint', is_array( $administrators ) ? $administrators : array() ) ) );
-		if ( 1 === count( $administrators ) && self::admin_capable( $administrators[0] ) ) {
+		if ( 1 === count( $administrators ) && self::subject_capable( $administrators[0] ) ) {
 			return array( 'user_id' => $administrators[0], 'source' => 'single_staging_admin' );
 		}
-		return array( 'user_id' => 0, 'blocker' => empty( $administrators ) ? 'staging_admin_subject_unavailable' : 'staging_admin_subject_ambiguous' );
+		return array( 'user_id' => 0, 'blocker' => empty( $administrators ) ? 'staging_subject_unavailable' : 'staging_subject_ambiguous' );
 	}
 
-	private static function admin_capable( $user_id ) {
+	private static function subject_capable( $user_id ) {
 		$user_id = absint( $user_id );
 		if ( $user_id < 1 ) return false;
 		$user = get_userdata( $user_id );
-		return $user && user_can( $user, 'manage_options' );
+		if ( ! $user ) return false;
+		$capability = apply_filters( 'mad4b_scp_connection_subject_capability', 'manage_options', $user_id );
+		return is_string( $capability ) && '' !== $capability && user_can( $user, $capability );
 	}
 
 	private static function local_issuer() {
