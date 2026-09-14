@@ -27,7 +27,15 @@ final class MAD4B_SCP_Skill_Snapshot_Identity {
 			);
 		}
 
-		return self::from_entries( $entries, MAD4B_SCP_Skill_Registry::openai_app_id() );
+		$result = self::from_entries( $entries, MAD4B_SCP_Skill_Registry::openai_app_id() );
+		if ( is_array( $result ) && ( empty( $result['app_id'] ) || empty( $result['skill_count'] ) ) ) {
+			// Keep diagnostic context outside the canonical snapshot payload/digest.
+			// This is intentionally read-only and secret-free; it lets exact-build CI
+			// distinguish Site Profile enrollment failures from seeding/registry
+			// failures without changing the portable identity semantics.
+			$result['runtime_context'] = self::runtime_context();
+		}
+		return $result;
 	}
 
 	/**
@@ -101,6 +109,51 @@ final class MAD4B_SCP_Skill_Snapshot_Identity {
 			'app_id' => $app_id,
 			'entries' => $canonical,
 			'comparison_semantics' => 'Exact token match proves the enabled Skill contents/resources and App mapping match this WordPress snapshot identity.',
+		);
+	}
+
+	private static function runtime_context() {
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$autoconfig = class_exists( 'MAD4B_SCP_Skill_Autoconfig' ) ? MAD4B_SCP_Skill_Autoconfig::status() : array();
+		$seed = class_exists( 'MAD4B_SCP_Skill_Seeder' ) ? MAD4B_SCP_Skill_Seeder::status() : array();
+		$registry = class_exists( 'MAD4B_SCP_Skill_Registry' ) ? MAD4B_SCP_Skill_Registry::status() : array();
+		return array(
+			'profile' => array(
+				'configured' => ! empty( $profile['configured'] ),
+				'source' => isset( $profile['source'] ) ? (string) $profile['source'] : '',
+				'environment' => isset( $profile['environment'] ) ? (string) $profile['environment'] : '',
+				'configured_environment' => isset( $profile['configured_environment'] ) ? (string) $profile['configured_environment'] : '',
+				'current_origin' => isset( $profile['current_origin'] ) ? (string) $profile['current_origin'] : '',
+				'canonical_origin' => isset( $profile['canonical_origin'] ) ? (string) $profile['canonical_origin'] : '',
+				'environment_match' => ! empty( $profile['environment_match'] ),
+				'origin_match' => ! empty( $profile['origin_match'] ),
+				'skills_enabled' => ! empty( $profile['skills_enabled'] ),
+				'site_uuid' => isset( $profile['site_uuid'] ) ? (string) $profile['site_uuid'] : '',
+				'revision' => isset( $profile['revision'] ) ? (int) $profile['revision'] : 0,
+				'profile_digest' => isset( $profile['profile_digest'] ) ? (string) $profile['profile_digest'] : '',
+				'blockers' => isset( $profile['blockers'] ) && is_array( $profile['blockers'] ) ? array_values( $profile['blockers'] ) : array(),
+			),
+			'autoconfig' => array(
+				'eligible' => ! empty( $autoconfig['eligible'] ),
+				'configured' => ! empty( $autoconfig['configured'] ),
+				'configuration_source' => isset( $autoconfig['configuration_source'] ) ? (string) $autoconfig['configuration_source'] : '',
+				'blocker' => isset( $autoconfig['blocker'] ) ? (string) $autoconfig['blocker'] : '',
+				'app_mapping_configured' => ! empty( $autoconfig['app_mapping_configured'] ),
+				'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? (string) $autoconfig['app_mapping_source'] : '',
+				'app_mapping_matches_profile' => ! empty( $autoconfig['app_mapping_matches_profile'] ),
+			),
+			'seeder' => array(
+				'state' => isset( $seed['state'] ) ? (string) $seed['state'] : '',
+				'current_request_observed' => ! empty( $seed['current_request_observed'] ),
+				'previous_persisted_ready' => ! empty( $seed['previous_persisted_ready'] ),
+			),
+			'registry' => array(
+				'editor_enabled' => ! empty( $registry['editor_enabled'] ),
+				'storage_initialized' => ! empty( $registry['storage_initialized'] ),
+				'storage_writable' => ! empty( $registry['storage_writable'] ),
+				'skill_count' => isset( $registry['skill_count'] ) ? (int) $registry['skill_count'] : 0,
+				'portable_app_id_configured' => ! empty( $registry['portable_app_id_configured'] ),
+			),
 		);
 	}
 
