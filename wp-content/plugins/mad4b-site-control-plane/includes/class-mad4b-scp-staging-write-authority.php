@@ -3,19 +3,20 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Site-profile-bound governed write authority for the existing ChatGPT Plugin.
+ * Tenant-bound governed write authority for ChatGPT/MCP.
  *
- * OAuth remains an authentication layer. Mutation authority is created only by
- * an enabled site-local NHI, exact mad4b-write grants, the global mutation gate,
- * provider/runtime checks, budgets and one-time exact approval tickets.
+ * Installation is never authority. The write plane becomes eligible only after
+ * an exact MAD4B Site Profile is enrolled for the live origin/environment and
+ * its governed-write feature is enabled. OAuth remains identity only; execution
+ * still requires an enabled NHI, exact provider/ability grant, runtime/provider
+ * certification, mutation budget, one-time exact human approval, and audit.
  *
- * Unknown sites and origin drift fail closed. Production writes require an
- * explicit profile confirmation. Breakglass is never included.
+ * Breakglass/raw SQL are never included in this authority.
  */
 final class MAD4B_SCP_Staging_Write_Authority {
 	const CONTRACT = 'mad4b.governed-write-authority.v2';
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
-	const VERSION = 1;
+	const VERSION = 2;
 	const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id';
 
 	private static $booted = false;
@@ -24,14 +25,21 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 	public static function bootstrap() {
 		$status = self::base_status();
-		if ( ! $status['eligible'] ) { self::$status = $status; return $status; }
-
-		if ( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) {
-			$status['blocker'] = 'explicit_mutation_disabled';
+		if ( empty( $status['eligible'] ) ) {
 			self::$status = $status;
 			return $status;
 		}
-		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) ) define( 'MAD4B_MCP_MUTATION_ENABLED', true );
+
+		if ( defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) {
+			$status['blocker'] = 'explicit_mutation_disabled';
+			$status['state'] = 'blocked';
+			self::$status = $status;
+			return $status;
+		}
+
+		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) ) {
+			define( 'MAD4B_MCP_MUTATION_ENABLED', true );
+		}
 		$status['mutation_gate_configured'] = true;
 		$status['configuration_source'] = 'site_profile';
 		self::$status = $status;
@@ -63,7 +71,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	public static function status() {
 		if ( ! empty( self::$status ) && isset( self::$status['contract'] ) ) return self::$status;
 		$stored = get_option( self::OPTION, array() );
-		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) return $stored;
+		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === (string) $stored['contract'] ) return $stored;
 		return self::base_status();
 	}
 
@@ -115,480 +123,409 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 		if ( isset( $args['input_schema'] ) && is_array( $args['input_schema'] ) ) {
 			if ( ! isset( $args['input_schema']['properties'] ) || ! is_array( $args['input_schema']['properties'] ) ) $args['input_schema']['properties'] = array();
-			$args['input_schema']['properties'][Ù[T“ÕSÒS”UÒÑVHHH\œ˜^J‚BBBIİ\IÈOˆ	Üİš[™ÉË‚BBBIÛZ[“[™İ	ÈOˆÍ‹‚BBBIÛX^[™İ	ÈOˆÍ‹‚BBBIÜ]\›‰ÈOˆ	×–ĞKQ˜KYŒNKW^ÌÍŸI	Ë‚BBBIÙ\ØÜš\[Û‰ÈOˆ	ÓÛ™K][YH^XİPQˆ\›İ˜[XÚÙ]™\]Z\™Y›Üˆ™[[İHÛİ™\›™YÜš]\ÈÛˆ\È[œ›ÛYÚ]K‰Ë‚BBJNÂ‚B_B‚‚BZYˆ
-\ÜÙ]
-	\™ÜÖÉÙ^Xİ]WØØ[˜XÚÉ×H
-H	‰ˆ\×ØØ[X›J	\™ÜÖÉÙ^Xİ]WØØ[˜XÚÉ×H
-H
-HÂ‚BBIÜšYÚ[˜[H	\™ÜÖÉÙ^Xİ]WØØ[˜XÚÉ×NÂ‚BBI\™ÜÖÉÙ^Xİ]WØØ[˜XÚÉ×HHİ]XÈ[˜İ[Ûˆ
-	[œ]H[
-H\ÙH
-	ÜšYÚ[˜[
-HÂ‚BBBIÛX[ˆHPQ—ÔĞÔÔİYÚ[™×ÕÜš]WĞ]]Üš]N˜]]Üš^˜][Û—Ú[œ]
-	[œ]
-NÂ‚BBB\™]\›ˆØ[İ\Ù\—Ù[˜Ê	ÜšYÚ[˜[	ÛX[ˆ
-NÂ‚BB_NÂ‚B_B‚BZYˆ
-H\ÜÙ]
-	\™ÜÖÉÛY]I×VÉÛXÜ	×H
-HH\×Ø\œ˜^J	\™ÜÖÉÛY]I×VÉÛXÜ	×H
-H
-H	\™ÜÖÉÛY]I×VÉÛXÜ	×HH\œ˜^J
-NÂ‚BI\™ÜÖÉÛY]I×VÉÛXÜ	×VÉÛXY—ÙÛİ™\›™YİÜš]WØ]]Üš]I×HHÙ[ÓÓ•PÕÂ‚BI\™ÜÖÉÛY]I×VÉÛXÜ	×VÉÛXY—Ü™[[İWİÜš]WØ\›İ˜[Ü™\]Z\™Y	×HHYNÂ‚B\™]\›ˆ	\™ÜÎÂ‚_B‚‚\X›XÈİ]XÈ[˜İ[Ûˆ™XÛÛ˜Ú[J
-HÂ‚BZYˆ
-Ù[‰™XÛÛ˜Ú[[™È
-H™]\›ˆÙ[œİ]\Ê
-NÂ‚B\Ù[‰™XÛÛ˜Ú[[™ÈHYNÂ‚BIİ]\ÈHÙ[˜˜\ÙWÜİ]\Ê
-NÂ‚BIİ]\ÖÉÛ]]][Û—ÙØ]WØÛÛ™šYİ\™Y	×HHYš[™Y
-	ÓPQ—ÓPÔÓUUUSÓ—ÑSP“Q	È
-H	‰ˆYHOOHÛÛœİ[
-	ÓPQ—ÓPÔÓUUUSÓ—ÑSP“Q	È
-NÂ‚BZYˆ
-H	İ]\ÖÉÙ[YÚX›I×HH	İ]\ÖÉÛ]]][Û—ÙØ]WØÛÛ™šYİ\™Y	×H
-HÂ‚BBIİ]\ÖÉØ›ØÚÙ\‰×HH	İ]\ÖÉÙ[YÚX›I×HÈ	Û]]][Û—ÙØ]WÙ\ØX›Y	Èˆ	İ]\ÖÉØ›ØÚÙ\‰×NÂ‚BBIXXİ]˜]YHÙ[™XXİ]˜]WÛX[˜YÙYØ]]Üš]J	İ]\ÖÉØ›ØÚÙ\‰×H
-NÂ‚BBZYˆ
-\×Ø\œ˜^J	XXİ]˜]Y
-H
-H	İ]\ÖÉÙXXİ]˜][Û‰×HH	XXİ]˜]YÂ‚BB\Ù[‰İ]\ÈH	İ]\ÎÂ‚BB\Ù[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÂ‚BB\™]\›ˆ	İ]\ÎÂ‚B_B‚BZYˆ
-HÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔØÚ[XIÈ
-HHPQ—ÔĞÔÔØÚ[XNš\×Ü™XYJ
-H
-HÂ‚BBIİ]\ÖÉØ›ØÚÙ\‰×HH	ÙÛİ™\›˜[˜ÙWÜØÚ[XWİ[˜]˜Z[X›IÎÂ‚BB\Ù[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÂ‚B_B‚BI]Y]HÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔĞ]Y]	È
-HÈPQ—ÔĞÔĞ]Y]œİÜ˜YÙWÜİ]\Ê
-Hˆ\œ˜^J	Ü™XYIÈOˆ˜[ÙH
-NÂ‚BZYˆ
-[\J	]Y]ÉÜ™XYI×H
-H
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	Ø]Y]İ[˜]˜Z[X›IÎÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚BZYˆ
-H[˜İ[Û—Ù^\İÊ	İÜÙÙ]ØXš[]IÈ
-HHÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÙ\™\œÉÈ
-H
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	ØXš[]Y\×Ü[[YWİ[˜]˜Z[X›IÎÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚‚BIØ]]HÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔİYÚ[™×ÓĞ]]Ğ]]ØÛÛ™šYÉÈ
-HÈPQ—ÔĞÔÔİYÚ[™×ÓĞ]]Ğ]]ØÛÛ™šYÎœİ]\Ê
-Hˆ\œ˜^J
-NÂ‚BI\Ù\—ÚYÈHÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÚ]WÔ›Ùš[IÈ
-HÈPQ—ÔĞÔÔÚ]WÔ›Ùš[N›Ø]]İ\Ù\—ÚYÊ
-Hˆ\œ˜^J
-NÂ‚BZYˆ
-[\J	\Ù\—ÚYÈ
-H	‰ˆH[\J	Ø]]ÛZ\ÜÚ[™×H
-H
-H	\Ù\—ÚYÈH\œ˜^J
-HXœÚ[
-	Ø]]ÛZ\ÜÚ[™×H
-H
-NÂ‚BI\Ù\—ÚYÈH\œ˜^Wİ˜[Y\Ê\œ˜^Wİ[š\]YJ\œ˜^WÙš[\Š\œ˜^WÛX\
-	ØXœÚ[	Ë	\Ù\—ÚYÈ
-H
-H
-H
-NÂ‚BI\Ù\—ÚYHH[\J	\Ù\—ÚYÈ
-HÈ
-[
-H	\Ù\—ÚYÖÌHˆÂ‚BI\ÜİY\ˆHÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÓØØ[ÓĞ]]ÔÙ\™\‰È
-HÈš[J
-İš[™ÊHPQ—ÔĞÔÓØØ[ÓĞ]]ÔÙ\™\š\ÜİY\Š
-K	ËÉÈ
-Hˆ	ÉÎÂ‚BZYˆ
-[\J	Ø]]ÉØÛÛ™šYİ\™Y	×H
-H	\Ù\—ÚYH	ÉÈOOH	\ÜİY\ˆ
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	ÛØ]]ÜİXš™Xİİ[˜]˜Z[X›IÎÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚BY›Ü™XXÚ
-	\Ù\—ÚYÈ\È	Ø[™Y]Wİ\Ù\—ÚY
-HÂ‚BBI\Ù\ˆHÙ]İ\Ù\™]J	Ø[™Y]Wİ\Ù\—ÚY
-NÂ‚BBIÛÛ›™XİØ[İÙYHÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÛXŞIÈ
-H	‰ˆY]ÙÙ^\İÊ	ÓPQ—ÔĞÔÔÛXŞIË	ØØ[—ØÛÛ›™Xİİ\Ù\‰È
-B‚BBBOÈPQ—ÔĞÔÔÛXŞN˜Ø[—ØÛÛ›™Xİİ\Ù\Š	Ø[™Y]Wİ\Ù\—ÚY
-B‚BBBNˆ
-	\Ù\ˆ	‰ˆ\Ù\—ØØ[Š	\Ù\‹	ÛX[˜YÙWÛÜ[ÛœÉÈ
-H
-NÂ‚BBZYˆ
-H	\Ù\ˆH	ÛÛ›™XİØ[İÙY
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	ÛØ]]İ\Ù\—Û›İØ]]Üš^™Y	ÎÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚B_B‚‚BI[š\›Û›Y[HÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÚ]WÔ›Ùš[IÈ
-HÈPQ—ÔĞÔÔÚ]WÔ›Ùš[N˜İ\œ™[Ù[š\›Û›Y[
+			$args['input_schema']['properties'][ self::APPROVAL_INPUT_KEY ] = array(
+				'type' => 'string',
+				'minLength' => 36,
+				'maxLength' => 36,
+				'pattern' => '^[A-Fa-f0-9-]{36}$',
+				'description' => 'One-time exact MAD4B approval ticket required for remote governed writes.',
+			);
+		}
 
-Hˆ	İ[šÛ›İÛ‰ÎÂ‚BIYÙ[HÙ[˜YÙ[ØWÜÛYÊ
-NÂ‚BZYˆ
-H	YÙ[
-HÂ‚BBIYÙ[HPQ—ÔĞÔĞYÙ[Ô™YÚ\İN˜Ü™X]WØYÙ[
-\œ˜^J‚BBBIÜÛYÉÈOˆÙ[˜YÙ[ÜÛYÊ
-K‚BBBIÛX™[	ÈOˆ	ĞÚ]ÔÛİ™\›™YÜš]H8 %	Èˆ
-Û\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÚ]WÔ›Ùš[IÈ
-HÈPQ—ÔĞÔÔÚ]WÔ›Ùš[N™\Ü^WÛ˜[YJ
-HˆÙ[šÛYWÚÜİ
+		if ( isset( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
+			$original = $args['execute_callback'];
+			$args['execute_callback'] = static function ( $input = null ) use ( $original ) {
+				$clean = MAD4B_SCP_Staging_Write_Authority::authorization_input( $input );
+				return call_user_func( $original, $clean );
+			};
+		}
+		if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
+		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
+		$args['meta']['mcp']['mad4b_governed_write_authority'] = self::CONTRACT;
+		$args['meta']['mcp']['mad4b_remote_write_approval_required'] = true;
+		return $args;
+	}
 
-H
-K‚BBBIÜİ]\ÉÈOˆ	Ù[˜X›Y	Ë‚BBBIİÜİ\Ù\—ÚY	ÈOˆ	\Ù\—ÚY‚BBBIÙ[š\›Û›Y[	ÈOˆ	[š\›Û›Y[‚BBJH
-NÂ‚BBZYˆ
-\×İÜÙ\œ›ÜŠ	YÙ[
-H
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	YÙ[O™Ù]Ù\œ›Ü—ØÛÙJ
-NÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚B_H[ÙHÂ‚BIÚ[™Ù\ÈH\œ˜^J
-NÂ‚BZYˆ
-	Ù[˜X›Y	ÈOOH	YÙ[ÉÜİ]\ÉÈ
-H	Ú[™Ù\ÖÉÜİ]\É×HH	Ù[˜X›Y	ÎÂ‚BZYˆ
-	[š\›Û›Y[OOH	YÙ[ÉÙ[š\›Û›Y[	×H
-H	Ú[™Ù\ÖÉÙ[š\›Û›Y[	×HH	[š\›Û›Y[Â‚BZYˆ
-
-[
-H	YÙ[ÉİÜİ\Ù\—ÚY	×HOOH	\Ù\—ÚY
-H	Ú[™Ù\ÖÉİÜİ\Ù\—ÚY	×HH	\Ù\—ÚYÂ‚BZYˆ
-	Ú[™Ù\È
-HÂ‚BBI\]YHPQ—ÔĞÔĞYÙ[Ô™YÚ\İN\]WØYÙ[
-	YÙ[ÉÜX›X×ÚY	×K	Ú[™Ù\Ë
-[
-H	YÙ[ÉÜ™]š\Ú[Û‰×H
-NÂ‚BBZYˆ
-\×İÜÙ\œ›ÜŠ	\]Y
-H
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	\]YO™Ù]Ù\œ›Ü—ØÛÙJ
-NÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚BBIYÙ[H	\]YÂ‚B_B‚_B‚‚BIš[™Ù\œš[ÈH\œ˜^J
-NÂ‚BY›Ü™XXÚ
-	\Ù\—ÚYÈ\È	İXš™Xİİ\Ù\—ÚY
-HÂ‚BBIš[™Ù\œš[H\Ú
-	ÜÚLM‰Ë	ÛØ]]	Èˆ—ˆˆ	\ÜİY\ˆˆ—ˆˆ	İ\Ù\‰Èˆ	İXš™Xİİ\Ù\—ÚY
-NÂ‚BBIš[™Ù\œš[Ö×HH	š[™Ù\œš[Â‚BBIY[]HH\œ˜^J	Ø]][XØ]Y	ÈOˆYK	ÜİXš™Xİİ\IÈOˆ	ÛØ]]	Ë	ÜİXš™XİÙš[™Ù\œš[	ÈOˆ	š[™Ù\œš[
-NÂ‚BBI›İ[™HPQ—ÔĞÔĞYÙ[Ô™YÚ\İNœ™\ÛÛ™WØYÙ[
-	Y[]H
-NÂ‚BBZYˆ
-\×İÜÙ\œ›ÜŠ	›İ[™
-H
-HÂ‚BBBZYˆ
-	ÛXY—ÛšWÜİXš™Xİİ[˜›İ[™	ÈOOH	›İ[™O™Ù]Ù\œ›Ü—ØÛÙJ
-H
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	›İ[™O™Ù]Ù\œ›Ü—ØÛÙJ
-NÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚BBBIš[™[™ÈHPQ—ÔĞÔĞYÙ[Ô™YÚ\İN˜š[™ÜİXš™Xİ
-	YÙ[ÉÜX›X×ÚY	×K	ÛØ]]	Ë	š[™Ù\œš[	ÓØØ[Ğ]]\Ù\‰Èˆ	İXš™Xİİ\Ù\—ÚYˆ	È	ÈˆÙ[›X™[ÛÜšYÚ[Š
-H
-NÂ‚BBBZYˆ
-\×İÜÙ\œ›ÜŠ	š[™[™È
-H
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	š[™[™ËO™Ù]Ù\œ›Ü—ØÛÙJ
-NÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚BB_H[ÙZYˆ
-
-[
-H	›İ[™ÉÚY	×HOOH
-[
-H	YÙ[ÉÚY	×H
-HÂ‚BBBIİ]\ÖÉØ›ØÚÙ\‰×HH	ÛØ]]ÜİXš™XİØ›İ[™İ×Ûİ\—ØYÙ[	ÎÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÂ‚BB_B‚B_B‚‚BIİ[WÜİXš™Xİ×Ù\ØX›YHÂ‚BY›Ü™XXÚ
-PQ—ÔĞÔĞYÙ[Ô™YÚ\İNœİXš™Xİ×Ù›Ü—ØYÙ[
-	YÙ[ÉÚY	×K	ÛØ]]	È
-H\È	İXš™XİÜ›İÈ
-HÂ‚BBZYˆ
-H[—Ø\œ˜^J
-İš[™ÊH	İXš™XİÜ›İÖÉÜİXš™XİÙš[™Ù\œš[	×K	š[™Ù\œš[ËYH
-H	‰ˆ	Ù[˜X›Y	ÈOOH
-İš[™ÊH	İXš™XİÜ›İÖÉÜİ]\É×H
-HÂ‚BBBI\ØX›YHPQ—ÔĞÔĞYÙ[Ô™YÚ\İNœÙ]ÜİXš™XİÜİ]\Ê	YÙ[ÉÜX›X×ÚY	×K	ÛØ]]	Ë
-İš[™ÊH	İXš™XİÜ›İÖÉÜİXš™XİÙš[™Ù\œš[	Ë	Ù\ØX›Y	È
-NÂ‚BBBZYˆ
-\İÜÙ\œ›ÜŠ	\ØX›Y
-H
-H	İ]\ÖÉØ›ØÚÙ\‰×HH	\ØX›YO™Ù]Ù\œ›Ü—ØÛÙJ
-NÂ‚BBBY[ÙH
-ÊÉİ[WÜİXš™Xİ×Ù\ØX›YÂ‚BB_B‚B_B‚‚BIÛÛÈHÙ[Üš]WİÛÛÊ
-NÂ‚BZYˆ
-[\J	ÛÛÈ
-H
-HÈ	İ]\ÖÉØ›ØÚÙ\‰×HH	İÜš]WİÛÛÚ[™[ÜWÙ[\IÎÈÙ[‰İ]\ÈH	İ]\ÎÈÙ[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÈ™]\›ˆ	İ]\ÎÈB‚BIÜ˜[YHÂ‚BI^\İ[™ÈHÂ‚BIÜ˜[Ø›ØÚÙ\œÈH\œ˜^J
-NÂ‚BI[™[ÜWÜ›İÜÈH\œ˜^J
-NÂ‚BI^XİYÙÜ˜[ÈH\œ˜^J
-NÂ‚BY›Ü™XXÚ
-	ÛÛÈ\È	Xš[]H
-HÂ‚BBZYˆ
-	ÛXY‹Ù]X˜\ÙK\˜]Ë\]Y\IÈOOH	Xš[]H
-HÈ	Ü˜[Ø›ØÚÙ\œÖ×HH	Øœ™XZÙÛ\Ü×ÛXZÉÎÈÛÛ[YNÈB‚BBI›İšY\ˆHPQ—ÔĞÔÔÙ\™\œÎœ›İšY\—Ù›Ü—ØXš[]J	ÛXY‹]Üš]IË	Xš[]H
-NÂ‚BBZYˆ
-[OOH	›İšY\ˆ
-HÈ	Ü˜[Ø›ØÚÙ\œÖ×HH	İ[›[İ[Y‰Èˆ	Xš[]NÈÛÛ[YNÈB‚BBI[™[ÜWÜ›İÜÖ×HH\œ˜^J	ØXš[]IÈOˆ
-İš[™ÊH	Xš[]K	Ü›İšY\‰ÈOˆ
-İš[™ÊH	›İšY\ˆ
-NÂ‚BBI^XİYÙÜ˜[ÖÈ
-İš[™ÊH	Xš[]Hˆ—ˆˆØ[š]^™WÚÙ^J
-İš[™ÊH	›İšY\ˆ
-HHH\œ˜^J	ØXš[]IÈOˆ
-İš[™ÊH	Xš[]K	Ü›İšY\‰ÈOˆØ[š]^™WÚÙ^J
-İš[™ÊH	›İšY\ˆ
-H
-NÂ‚B_B‚BIİ[WÙÜ˜[×Ü™]›ÚÙYHÂ‚BIÜ˜[ÜØÛÜWÛZYÜ˜][ÛœÈHÂ‚BY›Ü™XXÚ
-PQ—ÔĞÔĞYÙ[Ô™YÚ\İN™Ü˜[×Ù›Ü—ØYÙ[
-	YÙ[ÉÚY	×K	ÛXY‹]Üš]IÈ
-H\È	X[˜YÙYÙÜ˜[
-HÂ‚BBZYˆ
-	Ø[İÉÈOOH
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉÙY™™Xİ	×H
-HÛÛ[YNÂ‚BBIÙ^HH
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉØXš[]WÛ˜[YI×Hˆ—ˆˆØ[š]^™WÚÙ^J
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉÜ›İšY\‰×H
-NÂ‚BBZYˆ
-\ÜÙ]
-	^XİYÙÜ˜[ÖÈ	Ù^HH
-H
-HÂ‚BBBZYˆ
-	Ø[	ÈOOH
-Ø[š]^™WÚÙ^J
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉÙ[š\›Û›Y[	È
-H
-H
-H	ÉÈOOHš[J
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉÙ[š\›Û›Y[	È
-H
-H
-HÂ‚BBBBIÛÛœİ˜Z[ÈH\œ˜^J
-NÂ‚BBBBZYˆ
-H[\J	X[˜YÙYÙÜ˜[ÉÜ™\Ûİ\˜ÙWØÛÛœİ˜Z[É×H
-H
-HÂ‚BBBBBIXÛÙYHœÛÛ—ÙXÛÙJ
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉÜ™\Ûİ\˜ÙWØÛÛœİ˜Z[É×KYH
-NÂ‚BBBBBZYˆ
-\×Ø\œ˜^J	XÛÙY
-H
-H	ÛÛœİ˜Z[ÈH	XÛÙYÂ‚BBBB_B‚BBBBIÜ™X]YHPQ—ÔĞÔĞYÙ[Ô™YÚ\İN™Ü˜[ØXš[]J	YÙ[ÉÜX›X×ÚY	Ë	ÛXY‹]Üš]IË
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉØXš[]WÛ˜[YI×K
+	public static function reconcile() {
+		if ( self::$reconciling ) return self::status();
+		self::$reconciling = true;
+		$status = self::base_status();
+		$status['mutation_gate_configured'] = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === constant( 'MAD4B_MCP_MUTATION_ENABLED' );
 
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉÜ›İšY\‰×H
-K	ÛÛœİ˜Z[Ë	Ø[İÉË	[š\›Û›Y[
-NÂ‚BBBBZYˆ
-\×İÜÙ\œ›ÜŠ	Ü™X]Y
-H
-H	Ü˜[Ø›ØÚÙ\œÖ×HH	Ü™X]YO™Ù]Ù\œ›Ü—ØÛÙJ
-Hˆ	Î›ZYÜ˜]N‰Èˆ
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉØXš[]WÛ˜[YI×NÂ‚BBBBY[ÙHÂ‚BBBBBI™]›ÚÙYHPQ—ÔĞÔĞYÙ[Ô™YÚ\İNœ™]›ÚÙWØ[İ×ÙÜ˜[ØWÚY
-	YÙ[ÉÜX›X×ÚY	×K
-[
-H	X[˜YÙYÙÜ˜[ÉÚY	×K	ÛXY‹]Üš]IÈ
-NÂ‚BBBBBZYˆ
-\×İÜÙ\œ›ÜŠ	™]›ÚÙY
-H
-H	Ü˜[Ø›ØÚÙ\œÖ×HH	™]›ÚÙYO™Ù]Ù\œ›Ü—ØÛÙJ
-Hˆ	Î›ZYÜ˜]K\™]›ÚÙN‰Èˆ
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉØXš[]WÛ˜[YI×NÂ‚BBBBBY[ÙH
-ÊÉÜ˜[ÜØÛÜWÛZYÜ˜][ÛœÎÂ‚BBBB_B‚BBB_B‚BBBXÛÛ[YNÂ‚BB_B‚BBI™]›ÚÙYHPQ—ÔĞÔĞYÙ[Ô™YÚ\İNœ™]›ÚÙWØ[İ×ÙÜ˜[ØWÚY
-	YÙ[ÉÜX›X×ÚY	Ë
-[
-H	X[˜YÙYÙÜ˜[ÉÚY	×K	ÛXY‹]Üš]IÈ
-NÂ‚BBZYˆ
-\İÜÙ\œ›ÜŠ	™]›ÚÙY
-H
-H	Ü˜[Ø›ØÚÙ\œÖ×HH	™]›ÚÙYO™Ù]Ù\œ›Ü—ØÛÙJ
-Hˆ	Î‰Èˆ
-İš[™ÊH	X[˜YÙYÙÜ˜[ÉØXš[]WÛ˜[YI×NÂ‚BBY[ÙH
-ÊÉİ[WÙÜ˜[×Ü™]›ÚÙYÂ‚B_B‚‚Y›Ü™XXÚ
-	^XİYÙÜ˜[È\È	›İÈ
-HÂ‚BBIXš[]HH	›İÖÉØXš[]IÎÂ‚BBI›İšY\ˆH	›İÖÉÜ›İšY\‰×NÂ‚BBIÜ˜[HPQ—ÔĞÔĞYÙ[Ô™YÚ\İN™^XİÙÜ˜[
-	YÙ[ÉÚY	×K	ÛXY‹]Üš]IË	Xš[]K	›İšY\ˆ
-NÂ‚BBZYˆ
-H\×İÜÙ\œ›ÜŠ	Ü˜[
-H
-HÈ
-ÊÉ^\İ[™ÎÈÛÛ[YNÈB‚BBZYˆ
-	ÛXY—ÛšWÙÜ˜[ÛZ\ÜÚ[™ÉÈOOH	Ü˜[O™Ù]Ù\œ›Ü—ØÛÙJ
-H
-HÈ	Ü˜[Ø›ØÚÙ\œÖ×HH	Ü˜[O™Ù]Ù\œ›Ü—ØÛÙJ
-Hˆ	Î‰Èˆ	Xš[]NÈÛÛ[YNÈB‚BBIÜ™X]YHPQ—ÔĞÔĞYÙ[Ô™YÚ\İN™Ü˜[ØXš[]J	YÙ[ÉÜX›X×ÚY	Ë	ÛXY‹]Üš]IË	Xš[]K	›İšY\‹\œ˜^J
-K	Ø[İÉË	[š\›Û›Y[
-NÂ‚BBZYˆ
-\×İÜÙ\œ›ÜŠ	Ü™X]Y
-H
-H	Ü˜[Ø›ØÚÙ\œÖ×HH	Ü™X]YO™Ù]Ù\œ›Ü—ØÛÙJ
-Hˆ	Î‰Èˆ	Xš[]NÂ‚BBY[ÙH
-ÊÉÜ˜[YÂ‚B_B‚B]\ÛÜ
-	[™[ÜWÜ›İÜËİ]XÈ[˜İ[Ûˆ
-	K	ˆ
-HÈ™]\›ˆİ˜Û\
-	VÉØXš[]I×Hˆ—ˆˆ	VÉÜ›İšY\‰×K	–ÉØXš[]I×Hˆ—ˆˆ	–ÉÜ›İšY\‰×H
-NÈH
-NÂ‚‚BIİ]\ÖÉØYÙ[ÜX›X×ÚY	ÈOˆ
-İš[™ÊH	YÙ[ÉÜX›X×ÚY	×NÂ‚BIİ]\ÖÉÜİXš™XİÙš[™Ù\œš[Ü™Yš^	×HOˆH[\J	š[™Ù\œš[È
-HÈİXœİŠ	š[™Ù\œš[ÖÌKMˆ
-Hˆ	ÉÎÂ‚BIİ]\ÖÉÛØ]]ÜİXš™XİØÛİ[	×HOˆÛİ[
-	š[™Ù\œš[È
-NÂ‚BIİ]\ÖÉİÜš]WİÛÛØÛİ[	×HOˆÛİ[
-	ÛÛÈ
-NÂ‚BIİ]\ÖÉİÜš]WÚ[™[ÜWÙš[™Ù\œš[	×HOˆ\Ú
-	ÜÚLM‰ËÜÚœÛÛ—Ù[˜ÛÙJ	[™[ÜWÜ›İÜË”ÓÓ—ÕS‘TĞĞTQÔÓTÒTÈ”ÓÓ—ÕS‘TĞĞTQÕS’PÓÑH
-H
-NÂ‚BIİ]\ÖÉÙ^XİÙÜ˜[×Ù^\İ[™É×HOˆ	^\İ[™ÎÂ‚BIİ]\ÖÉÙ^XİÙÜ˜[×ØÜ™X]Y	×HOˆ	Ü˜[YÂ‚BIİ]\ÖÉÜİ[WÜİXš™Xİ×Ù\ØX›Y	ÈOˆ	İ[WÜİXš™Xİ×Ù\ØX›YÂ‚BIİ]\ÖÉÜİ[WÙÜ˜[×Ü™]›ÚÙY	×HOˆ	İ[WÙÜ˜[×Ü™]›ÚÙYÂ‚BIİ]\ÖÉÙÜ˜[ÜØÛÜWÛZYÜ˜][ÛœÉ×HOˆ	Ü˜[ÜØÛÜWÛZYÜ˜][ÛœÎÂ‚BIİ]\ÖÉÙÜ˜[Ø›ØÚÙ\œÉ×HOˆ\œ˜^Wİ˜[Y\Ê\œ˜^Wİ[š\]YJ	Ü˜[Ø›ØÚÙ\œÈ
-H
-NÂ‚BIİ]\ÖÉØ[Ü™[[İWİÜš]\×Ü™\]Z\™WÙ^XİØ\›İ˜[	×HOˆYNÂ‚BIİ]\ÖÉØœ™XZÙÛ\Ü×Ú[˜ÛYY	×HOˆ[—Ø\œ˜^J	ÛXY‹Ù]X˜\ÙK\˜]Ë\]Y\IË	ÛÛËYH
-NÂ‚BIİ]\ÖÉÜ™XYI×HOˆ[\J	Ü˜[Ø›ØÚÙ\œÈ
-H	‰ˆH	İ]\ÖÉØœ™XZÙÛ\Ü×Ú[˜ÛYY	ÎÂ‚BIİ]\ÖÉÜİ]I×HOˆ	İ]\ÖÉÜ™XYIÈÈ	Ü™XYIÈˆ	Ø›ØÚÙY	ÎÂ‚BIİ]\ÖÉØ›ØÚÙ\‰×HOˆ	İ]\ÖÉÜ™XYIÈÈ	ÉÈˆ
-H[\J	Ü˜[Ø›ØÚÙ\œÈ
-HÈ	ÙÜ˜[Ü™XÛÛ˜Ú[X][Û—Ú[˜ÛÛ\]IÈˆ	Øœ™XZÙÛ\Ü×ÛXZÉÈ
-NÂ‚BIİ]\ÖÉİ\]YØ]	×HOˆÛY]J	ØÉÈ
-NÂ‚BIİ]\ÖÉÜ™[[İWİ˜[œÜÜ	×HOˆ	ÛXY‹XÚ]Ü	ÎÂ‚BIİ]\ÖÉØ]]Üš]WÜÙ\™\‰×HOˆ	ÛXY‹]Üš]IÎÂ‚BIİ]\ÖÉÛØ]]Ü›ÛI×HOˆ	ÚY[]WÛÛ›IÎÂ‚BIİ]\ÖÉİÜš]WØ]]Üš]WØÛÛ\Û™[ÉÈOˆ\œ˜^J	Ù^XİÛÜšYÚ[‰Ë	ÛØ]]ÚY[]IË	ÛšWÜİXš™XİØš[™[™ÉË	Ù^XİÛXY—İÜš]WÙÜ˜[	Ë	Ü›İšY\—Ü[[YIË	ÙÛØ˜[Û]]][Û—ÙØ]IË	ØYÙ]Ü™\Ù\˜][Û‰Ë	ÛÛ™Wİ[YWÙ^XİØ\›İ˜[	Ë	Ø]Y]	È
-NÂ‚BZYˆ
-	İ]\ÖÉÜ™XYI×H
-HÂ‚BBIİÜ™YHÙ]ÛÜ[ÛŠÙ[“ÔSÓ‹\œ˜^J
-H
-NÂ‚BBIÚ[™ÙYHH\×Ø\œ˜^J	İÜ™Y
-H[\J	İÜ™YÉÜ™XYI×H
-HH[\J	İÜ™YÉØ›ØÚÙ\‰×H
-HH\ÜÙ]
-	İÜ™YÉØYÙ[ÜX›X×ÚY	×H
-HH\ÚÙ\]X[Ê
-İš[™ÊH	İ]\ÖÉØYÙ[ÜX›X×ÚY	×K
-İš[™ÊH	İÜ™YÉØYÙ[ÜX›X×ÚY	×H
-HH\ÜÙ]
-	İÜ™YÉİÜš]WİÛÛØÛİ[	×H
-H
-[
-H	İÜ™YÉİÜš]WİÛÛØÛİ[	×HOOH
-[
-H	İ]\ÖÉİÜš]WİÛÛØÛİ[	ÈH\ÜÙ]
-	İÜ™YÉİÜš]WÚ[™[ÜWÙš[™Ù\œš[	×H
-HH\ÚÙ\]X[Ê
-İš[™ÊH	İ]\ÖÉİÜš]WÚ[™[ÜWÙš[™Ù\œš[	×K
-İš[™ÊH	İÜ™YÉİÜš]WÚ[™[ÜWÙš[™Ù\œš[	×H
-HH[\J	İÜ™YÉØœ™XZÙÛ\Ü×Ú[˜ÛYY	×H
-NÂ‚BBZYˆ
-	Ú[™ÙY
-HÂ‚BBBSPQ—ÔĞÔĞ]Y]œ™XÛÜ™
-	ÛXY‹ÙÛİ™\›™Y]Üš]KX]]Üš]K\™XÛÛ˜Ú[Y	Ë\œ˜^J	ØYÙ[ÜX›X×ÚY	ÈOˆ	İ]\ÖÉØYÙ[ÜX›X×ÚY	×K	İÜš]WİÛÛØÛİ[	ÈOˆ	İ]\ÖÉİÜš]WİÛÛØÛİ[	×K	İÜš]WÚ[™[ÜWÙš[™Ù\œš[	ÈOˆ	İ]\ÖÉİÜš]WÚ[™[ÜWÙš[™Ù\œš[	Ë	Ù^XİÙÜ˜[×ØÜ™X]Y	ÈOˆ	Ü˜[Y	Ù^XİÙÜ˜[×Ù^\İ[™ÉÈOˆ	^\İ[™Ë	Üİ[WÜİXš™Xİ×Ù\ØX›Y	ÈOˆ	İ[WÜİXš™Xİ×Ù\ØX›Y	Üİ[WÙÜ˜[×Ü™]›ÚÙY	ÈOˆ	İ[WÙÜ˜[×Ü™]›ÚÙY	ÙÜ˜[ÜØÛÜWÛZYÜ˜][ÛœÉÈOˆ	Ü˜[ÜØÛÜWÛZYÜ˜][ÛœË	Ü™[[İWİ˜[œÜÜ	ÈOˆ	ÛXY‹XÚ]Ü	Ë	Ø]]Üš]WÜÙ\™\‰ÈOˆ	ÛXY‹]Üš]IË	Øœ™XZÙÛ\Ü×Ú[˜ÛYY	ÈOˆ˜[ÙH
-K	ÛÚÉÈ
-NÂ‚BBB]\]WÛÜ[ÛŠÙ[“ÔSÓ‹	İ]\Ë˜[ÙH
-NÂ‚BBBIİ]\ÖÉÜ\œÚ\İ[˜ÙI×HH	Ü™XÛÜ™Y	ÎÂ‚BB_H[ÙHÈ	İ]\ÖÉÜ\œÚ\İ[˜ÙI×HH	İ[˜Ú[™ÙY	ÎÈ	İ]\ÖÉÜ\œÚ\İYİ\]YØ]	×HH\ÜÙ]
-	İÜ™YÉİ\]YØ]	×H
-HÈ
-İš[™ÊH	İÜ™YÉİ\]YØ]	×Hˆ	ÉÎÈB‚B_B‚B\Ù[‰İ]\ÈH	İ]\ÎÂ‚B\Ù[‰™XÛÛ˜Ú[[™ÈH˜[ÙNÂ‚B\™]\›ˆ	İ]\ÎÂ‚_B‚‚\X›XÈİ]XÈ[˜İ[Ûˆ™YÚ\İ\—Üİ]\×ØXš[]J
-HÂ‚BZYˆ
-H[˜İ[Û—Ù^\İÊ	İÜÜ™YÚ\İ\—ØXš[]IÈ
-HÜÚ\×ØXš[]J	ÛXY‹İÜš]KX]]Üš]K\İ]\ÉÈ
-H
-H™]\›Â‚B]ÜÜ™YÚ\İ\—ØXš[]J	ÛXY‹İÜš]KX]]Üš]K\İ]\ÉË\œ˜^J	ÛX™[	ÈOˆ	ÑÙ]Ûİ™\›™YÜš]H]]Üš]Hİ]\ÉË	Ù\ØÜš\[Û‰ÈOˆ	Ô™XYH^Xİ[ÜšYÚ[ˆ’KÙÜ˜[Ø\›İ˜[İ]\È›ÜˆHÛİ™\›™YÜš]H]]Üš]HÛˆ\È[œ›ÛYÚ]K‰Ë	ØØ]YÛÜIÈOˆ	ÛXY‹\™XY	Ë	Ù^Xİ]WØØ[˜XÚÉÈOˆ\œ˜^J×ĞÓTÔ××Ë	Üİ]\ÉÈ
-K	Ü\›Z\ÜÚ[Û—ØØ[˜XÚÉÈOˆ\œ˜^J	ÓPQ—ÔĞÔÔÛXŞIË	ØØ[—Ü™XY	È
-K	Ûİ]]ÜØÚ[XIÈOˆ\œ˜^J	İ\IÈOˆ	ÛØš™Xİ	Ë	ØY][Û˜[›Ü\Y\ÉÈOˆYH
-K	ÛY]IÈOˆ\œ˜^J	ÜX›XÉÈOˆ˜[ÙK	ÜÚİ×Ú[—Ü™\İ	ÈOˆ˜[ÙK	ÛXÜ	ÈOˆ\œ˜^J	ÜX›XÉÈOˆ˜[ÙK	İ\IÈOˆ	İÛÛ	Ë	Üİ\™˜XÙIÈOˆ	Ü™XY	È
-K	Ø[››İ][ÛœÉÈOˆ\œ˜^J	Ü™XYÛ›IÈOˆYK	Ù\İXİ]™IÈOˆ˜[ÙK	ÚY[\İ[	ÈOˆYH
-H
-H
-H
-NÂ‚_B‚‚\š]˜]Hİ]XÈ[˜İ[ÛˆXXİ]˜]WÛX[˜YÙYØ]]Üš]J	™X\ÛÛˆ
-HÂ‚BI™\İ[H\œ˜^J	ØYÙ[Ù\ØX›Y	ÈOˆ˜[ÙK	ÜİXš™Xİ×Ù\ØX›Y	ÈOˆ	Ø[İ×ÙÜ˜[×Ü™]›ÚÙY	ÈOˆ	Ø›ØÚÙ\œÉÈOˆ\œ˜^J
-H
-NÂ‚BZYˆ
-HÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔØÚ[XIÈ
-HHPQ—ÔĞÔÔØÚ[XNš\×Ü™XYJ
-HHÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔĞYÙ[Ô™YÚ\İIÈ
-H
-H™]\›ˆ	™\İ[Â‚BIYÙ[HÙ[˜YÙ[ØWÜÛYÊ
-NÂ‚BZYˆ
-H\×Ø\œ˜^J	YÙ[
-H
-H™]\›ˆ	™\İ[Â‚BZYˆ
-	Ù[˜X›Y	ÈOOH
-İš[™ÊH	YÙ[ÉÜİ]\É×H
-HÂ‚BBI\ØX›YHPQ—ÔĞÔĞYÙ[Ô™YÚ\İN™\ØX›WØYÙ[
-	YÙ[ÉÜX›X×ÚY	×K
-[
-H	YÙ[ÉÜ™]š\Ú[Û‰×H
-NÂ‚BBZYˆ
-\×İÜÙ\œ›ÜŠ	\ØX›Y
-H
-H	™\İ[ÉØ›ØÚÙ\œÉ×V×HH	\ØX›YO™Ù]Ù\œ›Ü—ØÛÙJ
-NÂ‚BBY[ÙHÈ	YÙ[H	\ØX›YÈ	™\İ[ÉØYÙ[Ù\ØX›Y	×HHYNÈB‚B_B‚BY›Ü™XXÚ
-PQ—ÔĞÔĞYÙ[Ô™YÚ\İNœİXš™Xİ×Ù›Ü—ØYÙ[
-	YÙ[ÉÚY	×K	ÛØ]]	È
-H\È	İXš™Xİ
-HÂ‚BBZYˆ
-	Ù[˜X›Y	ÈOOH
-İš[™ÊH	İXš™XİÉÜİ]\É×H
-HÛÛ[YNÂ‚BBI\ØX›YHPQ—ÔĞÔĞYÙ[Ô™YÚ\İNœÙ]ÜİXš™XİÜİ]\Ê	YÙ[ÉÜX›X×ÚY	Ë	ÛØ]]	Ë
-İš[™ÊH	İXš™XİÉÜİXš™XİÙš[™Ù\œš[	×K	Ù\ØX›Y	È
-NÂ‚BBZYˆ
-\×İÜÙ\œ›ÜŠ	\ØX›Y
-H
-H	™\İ[ÉØ›ØÚÙ\œÉ×V×HH	\ØX›YO™Ù]Ù\œ›Ü—ØÛÙJ
-NÂ‚BBY[ÙH
-ÊÉ™\İ[ÉÜİXš™Xİ×Ù\ØX›Y	×NÂ‚B_B‚BY›Ü™XXÚ
-PQ—ÔĞÔĞYÙ[Ô™YÚ\İN™Ü˜[×Ù›Ü—ØYÙ[
-	YÙ[ÉÚY	×K	ÛXY‹]Üš]IÈ
-H\È	Ü˜[
-HÂ‚BBZYˆ
-	Ø[İÉÈOOH
-İš[™ÊH	Ü˜[ÉÙY™™Xİ	×H
-HÛÛ[YNÂ‚BBI™]›ÚÙYHPQ—ÔĞÔĞYÙ[Ô™YÚ\İNœ™]›ÚÙWØ[İ×ÙÜ˜[ØWÚY
-	YÙ[ÉÜX›X×ÚY	Ë
-[
-H	Ü˜[ÉÚY	×K	ÛXY‹]Üš]IÈ
-NÂ‚BBZYˆ
-\×İÜÙ\œ›ÜŠ	™]›ÚÙY
-H
-H	™\İ[ÉØ›ØÚÙ\œÉ×V×HH	™]›ÚÙYO™Ù]Ù\œ›Ü—ØÛÙJ
-NÂ‚BBY[ÙH
-ÊÉ™\İ[ÉØ[İ×ÙÜ˜[×Ü™]›ÚÙY	×NÂ‚B_B‚BI™\İ[ÉØ›ØÚÙ\œÉ×HH\œ˜^Wİ˜[Y\Ê\œ˜^Wİ[š\]YJ	™\İ[ÉØ›ØÚÙ\œÉ×H
-H
-NÂ‚BZYˆ
-
-	™\İ[ÉØYÙ[Ù\ØX›Y	×H	™\İ[ÉÜİXš™Xİ×Ù\ØX›Y	×H	™\İ[ÉØ[İ×ÙÜ˜[×Ü™]›ÚÙY	×H
-H	‰ˆÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔĞ]Y]	È
-H
-HÂ‚BBSPQ—ÔĞÔĞ]Y]œ™XÛÜ™
-	ÛXY‹ÙÛİ™\›™Y]Üš]KX]]Üš]KY\ØX›Y	Ë\œ˜^J	Ü™X\ÛÛ‰ÈOˆØ[š]^™WÚÙ^J
-İš[™ÊH	™X\ÛÛˆ
-K	ØYÙ[ÜX›X×ÚY	ÈOˆ
-İš[™ÊH	YÙ[ÉÜX›X×ÚY	×K	ÜİXš™Xİ×Ù\ØX›Y	ÈOˆ	™\İ[ÉÜİXš™Xİ×Ù\ØX›Y	×K	Ø[İ×ÙÜ˜[×Ü™]›ÚÙY	ÈOˆ	™\İ[ÉØ[İ×ÙÜ˜[×Ü™]›ÚÙY	È
-K[\J	™\İ[ÉØ›ØÚÙ\œÉ×H
-HÈ	ÛÚÉÈˆ	Ø›ØÚÙY	È
-NÂ‚B_B‚B\™]\›ˆ	™\İ[Â‚_B‚‚\š]˜]Hİ]XÈ[˜İ[ÛˆYÙ[ØWÜÛYÊ
-HÂ‚BYÛØ˜[	ÜÂ‚BZYˆ
-HÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔØÚ[XIÈ
-H
-H™]\›ˆ[Â‚BIHPQ—ÔĞÔÔØÚ[XNX›\Ê
-NÂ‚BI›İÈH	Ü‹O™Ù]Ü›İÊ	Ü‹Oœ™\\™J”ÑSPÕ
-ˆ”“ÓH	ÉÉØYÙ[É×_HÒT‘HÛYÈH	\ÈSRUH‹Ù[˜YÙ[ÜÛYÊ
-H
-KT”VWĞH
-NÈËÈÜÎšYÛ›Ü™HÛÜ™™\ÜË‘‹‘\™Xİ]X˜\ÙT]Y\K‘\™Xİ]Y\B‚B\™]\›ˆ	›İÈÈ	›İÈˆ[Â‚_B‚‚\X›XÈİ]XÈ[˜İ[ÛˆYÙ[ÜÛYÊ
-HÂ‚B\™]\›ˆÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÚ]WÔ›Ùš[IÈ
-HÈPQ—ÔĞÔÔÚ]WÔ›Ùš[N˜YÙ[ÜÛYÊ
-Hˆ	ØÚ]ÜYÛİ™\›™Y]Üš]IÎÂ‚_B‚‚\š]˜]Hİ]XÈ[˜İ[Ûˆ˜\ÙWÜİ]\Ê
-HÂ‚BI[š\›Û›Y[HÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÚ]WÔ›Ùš[IÈ
-HÈPQ—ÔĞÔÔÚ]WÔ›Ùš[N˜İ\œ™[Ù[š\›Û›Y[
+		if ( empty( $status['eligible'] ) || empty( $status['mutation_gate_configured'] ) ) {
+			if ( ! empty( $status['eligible'] ) && empty( $status['mutation_gate_configured'] ) ) {
+				$status['blocker'] = 'mutation_gate_disabled';
+				$status['state'] = 'blocked';
+			}
+			self::deprovision_managed_authority( $status );
+			self::$status = $status;
+			self::$reconciling = false;
+			return $status;
+		}
 
-Hˆ
-[˜İ[Û—Ù^\İÊ	İÜÙÙ]Ù[š\›Û›Y[İ\IÈ
-HÈØ[š]^™WÚÙ^J
-İš[™ÊHÜÙÙ]Ù[š\›Û›Y[İ\J
-H
-Hˆ	İ[šÛ›İÛ‰È
-NÂ‚BIÜİHÙ[šÛYWÚÜİ
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() ) {
+			$status['blocker'] = 'governance_schema_unavailable';
+			$status['state'] = 'blocked';
+			self::$status = $status;
+			self::$reconciling = false;
+			return $status;
+		}
 
-NÂ‚BI›Ùš[HHÛ\Ü×Ù^\İÊ	ÓPQ—ÔĞÔÔÚ]WÔ›Ùš[IÈ
-HÈPQ—ÔĞÔÔÚ]WÔ›Ùš[Nœİ]\Ê
-Hˆ\œ˜^J
-NÂ‚BI[YÚX›HHH[\J	›Ùš[VÉØÛÛ™šYİ\™Y	×H
-H	‰ˆH[\J	›Ùš[VÉÛÜšYÚ[—ÛX]Ú	×H
-H	‰ˆH[\J	›Ùš[VÉÙ[š\›Û›Y[ÛX]Ú	×H
-H	‰ˆH[\J	›Ùš[VÉİÜš]WÙ[˜X›Y	×H
-NÂ‚BI›ØÚÙ\ˆH	ÉÎÂ‚BZYˆ
-H	[YÚX›H
-HÂ‚BBZYˆ
-[\J	›Ùš[VÉØÛÛ™šYİ\™Y	×H
-H
-H	›ØÚÙ\ˆH	ÜÚ]WÜ›Ùš[Wİ[˜ÛÛ™šYİ\™Y	ÎÂ‚BBY[ÙZYˆ
-[\J	›Ùš[VÉÙ[š\›Û›Y[ÛX]Ú	×H
-H
-H	›ØÚÙ\ˆH	ÜÚ]WÜ›Ùš[WÙ[š\›Û›Y[ÙšY	ÎÂ‚BBY[ÙZYˆ
-[\J	›Ùš[VÉÛÜšYÚ[—ÛX]Ú	×H
-H
-H	›ØÚÙ\ˆH	ÜÚ]WÜ›Ùš[WÛÜšYÚ[—ÙšY	ÎÂ‚BBY[ÙH	›ØÚÙ\ˆH	ÙÛİ™\›™YİÜš]WÛ›İÙ[˜X›Y	ÎÂ‚B_B‚B\™]\›ˆ\œ˜^J‚BBIØÛÛ˜Xİ	ÈOˆÙ[ÓÓ•PÕ‚BBIİ™\œÚ[Û‰ÈOˆÙ[•‘T”ÒSÓ‹‚BBIÙ[š\›Û›Y[	ÈOˆ	[š\›Û›Y[‚BBIÚÜİ	ÈOˆ	Üİ‚BBIÜÚ]Wİ]ZY	ÈOˆ\ÜÙ]
-	›Ùš[VÉÜÚ]Wİ]ZY	×H
-HÈ
-İš[™ÊH	›Ùš[VÉÜÚ]Wİ]ZY	×Hˆ	ÉË‚BBIÜÚ]WÜ›Ùš[WÜ™]š\Ú[Û‰ÈOˆ\ÜÙ]
-	›Ùš[VÉÜ™]š\Ú[Û‰×H
-HÈXœÚ[
-	›Ùš[VÉÜ™]š\Ú[Û‰×H
-Hˆ‚BBIÜÚ]WÜ›Ùš[WÙYÙ\İ	ÈOˆ\ÜÙ]
-	›Ùš[VÉÜ›Ùš[WÙYÙ\İ	×H
-HÈ
-İš[™ÊH	›Ùš[VÉÜ›Ùš[WÙYÙ\İ	×Hˆ	ÉË‚BBIÙ[YÚX›IÈOˆ	[YÚX›K‚BBIÜ™XYIÈOˆ˜[ÙK‚BBIÜİ]IÈOˆ	[YÚX›HÈ	Ü[™[™ÉÈˆ	Ú[™[YÚX›IË‚BBIØ›ØÚÙ\‰ÈOˆ	›ØÚÙ\‹‚BBIÛ]]][Û—ÙØ]WØÛÛ™šYİ\™Y	ÈOˆ˜[ÙK‚BBIØÛÛ™šYİ\˜][Û—ÜÛİ\˜ÙIÈOˆ	Û›Û™IË‚BBIÜ›ÙXİ[Û—Ø]]×Ù[˜X›IÈOˆ˜[ÙK‚BBIØœ™XZÙÛ\Ü×Ø]]×Ù[˜X›IÈOˆ˜[ÙK‚BBIØœ™XZÙÛ\Ü×Ú[˜ÛYY	ÈOˆ˜[ÙK‚BBIØ[Ü™[[İWİÜš]\×Ü™\]Z\™WÙ^XİØ\›İ˜[	ÈOˆYK‚BBIÜ™[[İWİ˜[œÜÜ	ÈOˆ	ÛXY‹XÚ]Ü	Ë‚BBIØ]]Üš]WÜÙ\™\‰ÈOˆ	ÛXY‹]Üš]IË‚BBIÛØ]]Ü›ÛIÈOˆ	ÚY[]WÛÛ›IË‚BJNÂ‚_B‚‚\š]˜]Hİ]XÈ[˜İ[ÛˆÛYWÚÜİ
+		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+		if ( empty( $audit['ready'] ) ) {
+			$status['blocker'] = 'audit_unavailable';
+			$status['state'] = 'blocked';
+			self::$status = $status;
+			self::$reconciling = false;
+			return $status;
+		}
 
-HÂ‚BI\ÈHÜÜ\œÙWİ\›
-ÛYWİ\›
-	ËÉÈ
-H
-NÂ‚B\™]\›ˆ\×Ø\œ˜^J	\È
-H	‰ˆH[\J	\ÖÉÚÜİ	×H
-HÈİÛİÙ\Šš[J
-İš[™ÊH	\ÖÉÚÜİ	×K	Ë‰È
-H
-Hˆ	ÉÎÂ‚_BŸ
+		if ( ! function_exists( 'wp_get_ability' ) || ! class_exists( 'MAD4B_SCP_Servers' ) ) {
+			$status['blocker'] = 'abilities_runtime_unavailable';
+			$status['state'] = 'blocked';
+			self::$status = $status;
+			self::$reconciling = false;
+			return $status;
+		}
+
+		$issuer = self::oauth_issuer();
+		if ( '' === $issuer ) {
+			$status['blocker'] = 'oauth_issuer_unavailable';
+			$status['state'] = 'blocked';
+			self::$status = $status;
+			self::$reconciling = false;
+			return $status;
+		}
+
+		$user_ids = self::enrolled_user_ids();
+		if ( empty( $user_ids ) ) {
+			$status['blocker'] = 'oauth_subject_unavailable';
+			$status['state'] = 'blocked';
+			self::$status = $status;
+			self::$reconciling = false;
+			return $status;
+		}
+		foreach ( $user_ids as $user_id ) {
+			if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_connect_user( $user_id ) ) {
+				$status['blocker'] = 'oauth_subject_not_enrolled';
+				$status['state'] = 'blocked';
+				$status['invalid_user_id'] = absint( $user_id );
+				self::$status = $status;
+				self::$reconciling = false;
+				return $status;
+			}
+		}
+
+		$environment = self::current_environment();
+		$agent_slug = self::agent_slug();
+		$agent = self::agent_by_slug( $agent_slug );
+		$primary_user_id = (int) reset( $user_ids );
+		$label = 'ChatGPT Governed Write';
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+			$display = trim( (string) MAD4B_SCP_Site_Profile::display_name() );
+			if ( '' !== $display ) $label .= ' â€” ' . $display;
+		}
+		$label = substr( $label, 0, 191 );
+
+		if ( ! $agent ) {
+			$agent = MAD4B_SCP_Agent_Registry::create_agent( array(
+				'slug' => $agent_slug,
+				'label' => $label,
+				'status' => 'enabled',
+				'wp_user_id' => $primary_user_id,
+				'environment' => $environment,
+			) );
+			if ( is_wp_error( $agent ) ) return self::finish_blocked( $status, $agent->get_error_code() );
+		} else {
+			$changes = array();
+			if ( 'enabled' !== (string) $agent['status'] ) $changes['status'] = 'enabled';
+			if ( $environment !== (string) $agent['environment'] ) $changes['environment'] = $environment;
+			if ( (int) $agent['wp_user_id'] !== $primary_user_id ) $changes['wp_user_id'] = $primary_user_id;
+			if ( $label !== (string) $agent['label'] ) $changes['label'] = $label;
+			if ( ! empty( $changes ) ) {
+				$updated = MAD4B_SCP_Agent_Registry::update_agent( $agent['public_id'], $changes, (int) $agent['revision'] );
+				if ( is_wp_error( $updated ) ) return self::finish_blocked( $status, $updated->get_error_code() );
+				$agent = $updated;
+			}
+		}
+
+		$desired_subjects = array();
+		$subject_blockers = array();
+		foreach ( $user_ids as $user_id ) {
+			$fingerprint = self::subject_fingerprint( $issuer, $user_id );
+			$desired_subjects[ $fingerprint ] = true;
+			$identity = array( 'authenticated' => true, 'subject_type' => 'oauth', 'subject_fingerprint' => $fingerprint );
+			$bound = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+			if ( is_wp_error( $bound ) ) {
+				if ( 'mad4b_nhi_subject_unbound' !== $bound->get_error_code() ) {
+					$subject_blockers[] = $bound->get_error_code() . ':user:' . $user_id;
+					continue;
+				}
+				$binding = MAD4B_SCP_Agent_Registry::bind_subject( $agent['public_id'], 'oauth', $fingerprint, 'Local OAuth user:' . $user_id );
+				if ( is_wp_error( $binding ) ) $subject_blockers[] = $binding->get_error_code() . ':user:' . $user_id;
+			} elseif ( (int) $bound['id'] !== (int) $agent['id'] ) {
+				$subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
+			}
+		}
+
+		$subjects = MAD4B_SCP_Agent_Registry::subjects_for_agent( $agent['id'], 'oauth' );
+		$subjects_disabled = 0;
+		foreach ( $subjects as $subject ) {
+			$fingerprint = isset( $subject['subject_fingerprint'] ) ? strtolower( (string) $subject['subject_fingerprint'] ) : '';
+			if ( isset( $desired_subjects[ $fingerprint ] ) ) continue;
+			if ( 'enabled' !== (string) $subject['status'] ) continue;
+			$disabled = MAD4B_SCP_Agent_Registry::set_subject_status( $agent['public_id'], 'oauth', $fingerprint, 'disabled' );
+			if ( is_wp_error( $disabled ) ) $subject_blockers[] = $disabled->get_error_code() . ':stale_subject';
+			else ++$subjects_disabled;
+		}
+
+		$tools = self::write_tools();
+		if ( empty( $tools ) ) return self::finish_blocked( $status, 'write_tool_inventory_empty' );
+
+		$desired_grants = array();
+		$inventory_rows = array();
+		$grant_blockers = array();
+		foreach ( $tools as $ability ) {
+			if ( 'mad4b/database-raw-query' === $ability ) {
+				$grant_blockers[] = 'breakglass_leak';
+				continue;
+			}
+			$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability );
+			if ( null === $provider ) {
+				$grant_blockers[] = 'unmounted:' . $ability;
+				continue;
+			}
+			$key = (string) $ability . "\0" . (string) $provider;
+			$desired_grants[ $key ] = array( 'ability' => (string) $ability, 'provider' => (string) $provider );
+			$inventory_rows[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider );
+		}
+
+		$grants_revoked = 0;
+		$existing_grants = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
+		foreach ( $existing_grants as $grant ) {
+			if ( 'allow' !== (string) $grant['effect'] ) continue;
+			$key = (string) $grant['ability_name'] . "\0" . (string) $grant['provider'];
+			$stale = ! isset( $desired_grants[ $key ] ) || $environment !== (string) $grant['environment'];
+			if ( ! $stale ) continue;
+			$revoked = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $agent['public_id'], (int) $grant['id'], 'mad4b-write' );
+			if ( is_wp_error( $revoked ) ) $grant_blockers[] = $revoked->get_error_code() . ':stale_grant';
+			else ++$grants_revoked;
+		}
+
+		$granted = 0;
+		$existing = 0;
+		foreach ( $desired_grants as $desired ) {
+			$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-write', $desired['ability'], $desired['provider'] );
+			if ( ! is_wp_error( $grant ) ) {
+				if ( $environment === (string) $grant['environment'] ) ++$existing;
+				continue;
+			}
+			if ( 'mad4b_nhi_grant_denied' === $grant->get_error_code() ) {
+				$grant_blockers[] = 'explicit_deny:' . $desired['ability'];
+				continue;
+			}
+			if ( 'mad4b_nhi_grant_missing' !== $grant->get_error_code() ) {
+				$grant_blockers[] = $grant->get_error_code() . ':' . $desired['ability'];
+				continue;
+			}
+			$created = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-write', $desired['ability'], $desired['provider'], array(), 'allow', $environment );
+			if ( is_wp_error( $created ) ) $grant_blockers[] = $created->get_error_code() . ':' . $desired['ability'];
+			else ++$granted;
+		}
+
+		usort( $inventory_rows, static function ( $a, $b ) { return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] ); } );
+		$all_blockers = array_values( array_unique( array_merge( $subject_blockers, $grant_blockers ) ) );
+		$status['agent_public_id'] = (string) $agent['public_id'];
+		$status['agent_slug'] = $agent_slug;
+		$status['oauth_user_ids'] = array_values( array_map( 'absint', $user_ids ) );
+		$status['subject_count_expected'] = count( $desired_subjects );
+		$status['stale_subjects_disabled'] = $subjects_disabled;
+		$status['write_tool_count'] = count( $tools );
+		$status['write_inventory_fingerprint'] = hash( 'sha256', wp_json_encode( $inventory_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$status['exact_grants_existing'] = $existing;
+		$status['exact_grants_created'] = $granted;
+		$status['stale_allow_grants_revoked'] = $grants_revoked;
+		$status['grant_blockers'] = $all_blockers;
+		$status['all_remote_writes_require_exact_approval'] = true;
+		$status['breakglass_included'] = in_array( 'mad4b/database-raw-query', $tools, true );
+		$status['ready'] = empty( $all_blockers ) && ! $status['breakglass_included'];
+		$status['state'] = $status['ready'] ? 'ready' : 'blocked';
+		$status['blocker'] = $status['ready'] ? '' : ( ! empty( $all_blockers ) ? 'authority_reconciliation_incomplete' : 'breakglass_leak' );
+		$status['updated_at'] = gmdate( 'c' );
+		$status['remote_transport'] = 'mad4b-chatgpt';
+		$status['authority_server'] = 'mad4b-write';
+		$status['oauth_role'] = 'identity_only';
+		$status['write_authority_components'] = array( 'site_profile', 'exact_origin', 'oauth_identity', 'nhi_subject_binding', 'exact_mad4b_write_grant', 'provider_runtime', 'global_mutation_gate', 'budget_reservation', 'one_time_exact_approval', 'audit' );
+
+		if ( $status['ready'] ) self::persist_ready_status( $status, $granted, $existing, $grants_revoked, $subjects_disabled );
+		self::$status = $status;
+		self::$reconciling = false;
+		return $status;
+	}
+
+	public static function register_status_ability() {
+		if ( ! function_exists( 'wp_register_ability' ) || wp_has_ability( 'mad4b/write-authority-status' ) ) return;
+		wp_register_ability( 'mad4b/write-authority-status', array(
+			'label' => 'Get Governed Write Authority Status',
+			'description' => 'Read the site-profile-bound NHI/grant/approval status for governed writes.',
+			'category' => 'mad4b-read',
+			'execute_callback' => array( __CLASS__, 'status' ),
+			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false,
+				'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+	}
+
+	private static function persist_ready_status( array &$status, $granted, $existing, $revoked, $subjects_disabled ) {
+		$stored = get_option( self::OPTION, array() );
+		$keys = array( 'agent_public_id', 'write_tool_count', 'write_inventory_fingerprint', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'environment', 'origin' );
+		$changed = ! is_array( $stored ) || empty( $stored['ready'] ) || ! empty( $stored['blocker'] );
+		foreach ( $keys as $key ) {
+			if ( $changed ) break;
+			if ( ! array_key_exists( $key, $stored ) || ! array_key_exists( $key, $status ) || (string) $stored[ $key ] !== (string) $status[ $key ] ) $changed = true;
+		}
+		if ( $changed ) {
+			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+				MAD4B_SCP_Audit::record( 'mad4b/governed-write-authority-reconciled', array(
+					'agent_public_id' => $status['agent_public_id'],
+					'site_uuid' => $status['site_uuid'],
+					'site_profile_revision' => $status['site_profile_revision'],
+					'site_profile_digest' => $status['site_profile_digest'],
+					'write_tool_count' => $status['write_tool_count'],
+					'write_inventory_fingerprint' => $status['write_inventory_fingerprint'],
+					'exact_grants_created' => (int) $granted,
+					'exact_grants_existing' => (int) $existing,
+					'stale_allow_grants_revoked' => (int) $revoked,
+					'stale_subjects_disabled' => (int) $subjects_disabled,
+					'environment' => $status['environment'],
+					'origin' => $status['origin'],
+					'breakglass_included' => false,
+				), 'ok' );
+			}
+			update_option( self::OPTION, $status, false );
+			$status['persistence'] = 'recorded';
+		} else {
+			$status['persistence'] = 'unchanged';
+			$status['persisted_updated_at'] = isset( $stored['updated_at'] ) ? (string) $stored['updated_at'] : '';
+		}
+	}
+
+	private static function deprovision_managed_authority( array &$status ) {
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return;
+		$agent = self::agent_by_slug( self::agent_slug() );
+		if ( ! $agent ) return;
+		$changed = false;
+		$subjects = MAD4B_SCP_Agent_Registry::subjects_for_agent( $agent['id'], 'oauth' );
+		foreach ( $subjects as $subject ) {
+			if ( 'enabled' !== (string) $subject['status'] ) continue;
+			$result = MAD4B_SCP_Agent_Registry::set_subject_status( $agent['public_id'], 'oauth', $subject['subject_fingerprint'], 'disabled' );
+			if ( ! is_wp_error( $result ) ) $changed = true;
+		}
+		$grants = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
+		foreach ( $grants as $grant ) {
+			if ( 'allow' !== (string) $grant['effect'] ) continue;
+			$result = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $agent['public_id'], (int) $grant['id'], 'mad4b-write' );
+			if ( ! is_wp_error( $result ) ) $changed = true;
+		}
+		if ( 'enabled' === (string) $agent['status'] ) {
+			$result = MAD4B_SCP_Agent_Registry::disable_agent( $agent['public_id'], (int) $agent['revision'] );
+			if ( ! is_wp_error( $result ) ) $changed = true;
+		}
+		if ( $changed && class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/governed-write-authority-deprovisioned', array(
+				'agent_public_id' => (string) $agent['public_id'],
+				'site_uuid' => isset( $status['site_uuid'] ) ? (string) $status['site_uuid'] : '',
+				'environment' => isset( $status['environment'] ) ? (string) $status['environment'] : '',
+				'origin' => isset( $status['origin'] ) ? (string) $status['origin'] : '',
+				'blocker' => isset( $status['blocker'] ) ? (string) $status['blocker'] : '',
+			), 'ok' );
+		}
+	}
+
+	private static function finish_blocked( array $status, $blocker ) {
+		$status['blocker'] = sanitize_key( (string) $blocker );
+		$status['state'] = 'blocked';
+		$status['ready'] = false;
+		self::$status = $status;
+		self::$reconciling = false;
+		return $status;
+	}
+
+	private static function agent_by_slug( $slug ) {
+		global $wpdb;
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) ) return null;
+		$t = MAD4B_SCP_Schema::tables();
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['agents']} WHERE slug = %s LIMIT 1", sanitize_key( (string) $slug ) ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return $row ? $row : null;
+	}
+
+	private static function enrolled_user_ids() {
+		$users = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::oauth_user_ids() : array();
+		if ( ! empty( $users ) ) return $users;
+		$oauth = class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' ) ? MAD4B_SCP_Staging_OAuth_Autoconfig::status() : array();
+		$user_id = isset( $oauth['wp_user_id'] ) ? absint( $oauth['wp_user_id'] ) : 0;
+		return $user_id > 0 ? array( $user_id ) : array();
+	}
+
+	private static function oauth_issuer() {
+		return class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' ) : '';
+	}
+
+	private static function subject_fingerprint( $issuer, $user_id ) {
+		return hash( 'sha256', 'oauth' . "\0" . (string) $issuer . "\0" . 'user:' . absint( $user_id ) );
+	}
+
+	private static function agent_slug() {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) ) return sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() );
+		return 'chatgpt-governed-write';
+	}
+
+	private static function current_environment() {
+		return function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+	}
+
+	private static function base_status() {
+		$environment = self::current_environment();
+		$origin = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_origin() : '';
+		$profile_status = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$configured = ! empty( $profile_status['configured'] );
+		$origin_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$write_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
+		$eligible = $configured && $origin_enrolled && $write_enabled;
+		$blocker = '';
+		if ( ! $configured ) $blocker = 'site_profile_unconfigured';
+		elseif ( ! $origin_enrolled ) {
+			$profile_blockers = isset( $profile_status['blockers'] ) && is_array( $profile_status['blockers'] ) ? $profile_status['blockers'] : array();
+			$blocker = ! empty( $profile_blockers ) ? sanitize_key( (string) reset( $profile_blockers ) ) : 'site_profile_drift';
+		} elseif ( ! $write_enabled ) $blocker = 'site_profile_write_disabled';
+
+		return array(
+			'contract' => self::CONTRACT,
+			'version' => self::VERSION,
+			'environment' => $environment,
+			'origin' => $origin,
+			'host' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_host() : '',
+			'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
+			'site_profile_revision' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::revision() : 0,
+			'site_profile_digest' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::profile_digest() : '',
+			'eligible' => $eligible,
+			'ready' => false,
+			'state' => $eligible ? 'pending' : 'ineligible',
+			'blocker' => $blocker,
+			'mutation_gate_configured' => false,
+			'configuration_source' => 'none',
+			'production_auto_enable' => false,
+			'breakglass_auto_enable' => false,
+			'breakglass_included' => false,
+			'all_remote_writes_require_exact_approval' => true,
+			'remote_transport' => 'mad4b-chatgpt',
+			'authority_server' => 'mad4b-write',
+			'oauth_role' => 'identity_only',
+		);
+	}
+}
