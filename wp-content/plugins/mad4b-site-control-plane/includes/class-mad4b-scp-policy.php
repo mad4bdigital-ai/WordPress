@@ -4,6 +4,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/class-mad4b-scp-site-profile.php';
+MAD4B_SCP_Site_Profile::boot();
+
 final class MAD4B_SCP_Policy {
 
 	public static function can_read() {
@@ -12,14 +15,20 @@ final class MAD4B_SCP_Policy {
 	}
 
 	public static function can_content() {
-		return current_user_can( 'edit_posts' );
+		$capability = apply_filters( 'mad4b_scp_content_capability', 'edit_posts' );
+		return is_string( $capability ) && '' !== $capability && current_user_can( $capability );
 	}
 
 	public static function can_admin() {
-		return current_user_can( 'manage_options' );
+		$capability = apply_filters( 'mad4b_scp_admin_capability', 'manage_options' );
+		return is_string( $capability ) && '' !== $capability && current_user_can( $capability );
 	}
 
 	public static function can_mutate() {
+		// Once a tenant-neutral Site Profile exists it becomes an additional,
+		// fail-closed site-level authority boundary. Legacy exact-origin deployments
+		// remain compatible until they are explicitly enrolled/migrated.
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled() && ! MAD4B_SCP_Site_Profile::mutation_allowed() ) return false;
 		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== MAD4B_MCP_MUTATION_ENABLED ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
@@ -31,8 +40,10 @@ final class MAD4B_SCP_Policy {
 	}
 
 	public static function can_breakglass() {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled() && ! MAD4B_SCP_Site_Profile::breakglass_allowed() ) return false;
 		if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_ENABLED ) return false;
-		if ( ! current_user_can( 'manage_options' ) ) return false;
+		$capability = apply_filters( 'mad4b_scp_breakglass_capability', 'manage_options' );
+		if ( ! is_string( $capability ) || '' === $capability || ! current_user_can( $capability ) ) return false;
 		if ( ! self::can_mutate() ) return false;
 		// This is an independent approval gate. Enabling the constant alone is intentionally insufficient.
 		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', false, get_current_user_id() );
