@@ -6,18 +6,18 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Governs the approval-plan mutation used to bootstrap a one-time exact ticket.
  *
  * approval-plan is itself a database mutation (it creates a pending ticket), so
- * on the exact Staging Plugin it must require the same NHI + mad4b-write grant +
+ * on an exact enrolled governed site it must require the same NHI + mad4b-write grant +
  * budget path. It is the one intentional exception to "write requires an
  * already-approved ticket", because requiring a ticket to create the ticket
  * would deadlock the approval workflow. It can only create PENDING tickets for
- * the dedicated Staging agent and mad4b-write target operations; approval remains
+ * the dedicated governed agent and mad4b-write target operations; approval remains
  * a separate human-administrator action.
  *
- * The same class also owns the Staging-only canonical authorization identity for
+ * The same class also owns the governed canonical authorization identity for
  * mad4b/mutation-undo. Human reason text remains audit metadata; it is deliberately
  * excluded from approval identity so planning and execution cannot drift merely
  * because the operator wording changes. The target fingerprint is instead bound
- * to immutable mutation evidence plus the current exact Staging candidate.
+ * to immutable mutation evidence plus the current exact governed candidate.
  */
 final class MAD4B_SCP_Staging_Write_Planning_Guard {
 	const CONTRACT = 'mad4b.staging-write-planning-guard.v2';
@@ -60,7 +60,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			if ( is_wp_error( $input ) ) return $input;
 			$target_guard = MAD4B_SCP_Staging_Write_Planning_Guard::validate_remote_plan_input( $input );
 			if ( is_wp_error( $target_guard ) ) return $target_guard;
-			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Governed Staging mutation authority is required to create an approval plan.' );
+			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'Governed write authority is required to create an approval plan.' );
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 
 			$decision = MAD4B_SCP_Authorization::authorize_mutation( self::ABILITY, 'mad4b-admin', 'core', $input );
@@ -253,7 +253,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 
 	public static function validate_remote_plan_input( $input ) {
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_plan_input_invalid', 'Remote approval planning requires an object input.' );
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_remote_plan_authority_not_ready', 'Governed Staging write authority is not ready.' );
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_remote_plan_authority_not_ready', 'Governed write authority is not ready.' );
 
 		$status = MAD4B_SCP_Staging_Write_Authority::status();
 		$expected_agent = isset( $status['agent_public_id'] ) ? (string) $status['agent_public_id'] : '';
@@ -304,7 +304,7 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 			'remote_planner_budgeted' => true,
 			'remote_planner_requires_prior_ticket' => false,
 			'remote_planner_scope' => 'ability:' . self::ABILITY,
-			'target_agent' => 'dedicated_staging_write_agent_only',
+			'target_agent' => 'dedicated_governed_write_agent_only',
 			'target_server' => 'mad4b-write',
 			'target_ticket_class' => 'mutation',
 			'breakglass_target_allowed' => false,

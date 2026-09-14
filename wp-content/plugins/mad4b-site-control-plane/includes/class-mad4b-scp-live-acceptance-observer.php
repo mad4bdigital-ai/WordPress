@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * The early bootstrap only wires observers. It never materializes the Abilities
  * registry, grants authority, exposes a server, initializes a provider, or
  * performs an outbound request. Cross-request persistence is bounded to the
- * exact Egypt Tour Gates Staging origin and stores sanitized summaries only.
+ * explicitly enrolled governed non-production site and stores sanitized summaries only.
  */
 final class MAD4B_SCP_Live_Acceptance_Observer {
 	const CONTRACT = 'mad4b.live-acceptance-observer.v1';
@@ -22,7 +22,6 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	const EXTERNAL_OPTION = 'mad4b_scp_external_inventory_attestation_v1';
 	const WPML_OPTION = 'mad4b_scp_external_wpml_receipt_v1';
 	const PENDING_PREFIX = 'mad4b_lae_hs_';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 	const MAX_EVENTS = 32;
 	const TELEMETRY_TTL = 21600;
 	const EXTERNAL_TTL = 2592000;
@@ -261,5 +260,5 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 
 	private static function gate( $ready, $state, $fresh, $source_contract, array $blockers ) { return array( 'state' => (string) $state, 'ready' => (bool) $ready, 'fresh' => (bool) $fresh, 'source_contract' => (string) $source_contract, 'blockers' => array_values( $blockers ), 'observed_at' => gmdate( 'Y-m-d H:i:s' ) ); }
-	public static function staging_capture_allowed() { if ( defined( 'WP_CLI' ) && WP_CLI ) return false; if ( defined( 'DOING_CRON' ) && DOING_CRON ) return false; $environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown'; $host = function_exists( 'home_url' ) ? wp_parse_url( home_url( '/' ), PHP_URL_HOST ) : ''; return 'staging' === $environment && self::STAGING_HOST === strtolower( (string) $host ); }
+	public static function staging_capture_allowed() { if ( defined( 'WP_CLI' ) && WP_CLI ) return false; if ( defined( 'DOING_CRON' ) && DOING_CRON ) return false; return class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'acceptance' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment(); }
 }

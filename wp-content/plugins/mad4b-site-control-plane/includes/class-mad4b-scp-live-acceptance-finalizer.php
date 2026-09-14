@@ -19,8 +19,6 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 	const WPML_DIAGNOSTIC_CONTRACT = 'mad4b.external-wpml-diagnostic.v2';
 	const LEDGER_OPTION = 'mad4b_scp_live_acceptance_mutation_ledger_v1';
 	const WPML_DIAGNOSTIC_OPTION = 'mad4b_scp_external_wpml_diagnostic_v2';
-	const STAGING_ORIGIN = 'https://staging.egypttourgates.com';
-	const PRODUCTION_ORIGIN = 'https://egypttourgates.com';
 	const FINALIZER_ISSUER = 'chatgpt_external_read_only_finalizer';
 	const FINALIZER_PROVENANCE = 'verified_oauth_readonly_session';
 	const MUTATION_TTL = 21600;
@@ -67,7 +65,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 				'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
 				'build_fingerprint' => $hash,
 				'target' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
-				'origin' => array( 'type' => 'string', 'enum' => array( self::PRODUCTION_ORIGIN ) ),
+				'origin' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 2048 ),
 				'environment' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
 				'production_runtime_identity' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 240 ),
 				'baseline_snapshot_digest' => $hash,
@@ -291,7 +289,7 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 			'contract' => self::MUTATION_CONTRACT,
 			'candidate_sha' => isset( $item['candidate_sha'] ) ? (string) $item['candidate_sha'] : '',
 			'build_fingerprint' => isset( $item['build_fingerprint'] ) ? (string) $item['build_fingerprint'] : '',
-			'environment' => 'staging', 'origin' => self::STAGING_ORIGIN,
+			'environment' => self::acceptance_environment(), 'origin' => self::acceptance_origin(),
 			'mutation_id' => $mutation_id,
 			'approval_ticket_id' => is_array( $record ) && isset( $record['approval_ticket_id'] ) ? (string) $record['approval_ticket_id'] : '',
 			'ability' => is_array( $record ) && isset( $record['ability_name'] ) ? (string) $record['ability_name'] : '',
@@ -340,7 +338,9 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		if ( self::MUTATION_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) $blockers[] = 'invalid_evidence';
 		if ( empty( $candidate['source_commit_sha'] ) || empty( $receipt['candidate_sha'] ) || ! hash_equals( (string) $candidate['source_commit_sha'], (string) $receipt['candidate_sha'] ) ) { $blockers[] = 'candidate_mismatch'; $state = 'candidate_mismatch'; }
 		if ( empty( $candidate['build_fingerprint'] ) || empty( $receipt['build_fingerprint'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $receipt['build_fingerprint'] ) ) { $blockers[] = 'build_fingerprint_mismatch'; if ( 'candidate_mismatch' !== $state ) $state = 'build_fingerprint_mismatch'; }
-		if ( 'staging' !== ( isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || self::STAGING_ORIGIN !== ( isset( $receipt['origin'] ) ? rtrim( (string) $receipt['origin'], '/' ) : '' ) ) $blockers[] = 'wrong_target';
+		$expected_environment = self::acceptance_environment();
+		$expected_origin = self::acceptance_origin();
+		if ( ! self::acceptance_target_ready() || ! hash_equals( $expected_environment, isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || ! hash_equals( $expected_origin, isset( $receipt['origin'] ) ? rtrim( (string) $receipt['origin'], '/' ) : '' ) ) $blockers[] = 'wrong_target';
 		$observed = self::parse_time( isset( $receipt['observed_at'] ) ? $receipt['observed_at'] : '' );
 		$fresh = false !== $observed && $observed <= $now + 60 && ( $now - $observed ) <= self::MUTATION_TTL;
 		if ( ! $fresh ) { $blockers[] = 'stale_evidence'; $state = 'stale_evidence'; }
@@ -379,7 +379,8 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		if ( self::PRODUCTION_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) $blockers[] = 'invalid_evidence';
 		if ( empty( $candidate['source_commit_sha'] ) || empty( $receipt['candidate_sha'] ) || ! hash_equals( (string) $candidate['source_commit_sha'], (string) $receipt['candidate_sha'] ) ) { $blockers[] = 'candidate_mismatch'; $state = 'candidate_mismatch'; }
 		if ( empty( $candidate['build_fingerprint'] ) || empty( $receipt['build_fingerprint'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $receipt['build_fingerprint'] ) ) { $blockers[] = 'build_fingerprint_mismatch'; if ( 'candidate_mismatch' !== $state ) $state = 'build_fingerprint_mismatch'; }
-		if ( 'production' !== ( isset( $receipt['target'] ) ? (string) $receipt['target'] : '' ) || 'production' !== ( isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || self::PRODUCTION_ORIGIN !== ( isset( $receipt['origin'] ) ? rtrim( (string) $receipt['origin'], '/' ) : '' ) ) $blockers[] = 'wrong_production_identity';
+		$production_origin = self::production_origin();
+		if ( '' === $production_origin || 'production' !== ( isset( $receipt['target'] ) ? (string) $receipt['target'] : '' ) || 'production' !== ( isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || ! hash_equals( $production_origin, isset( $receipt['origin'] ) ? rtrim( (string) $receipt['origin'], '/' ) : '' ) ) $blockers[] = 'wrong_production_identity';
 		if ( self::FINALIZER_ISSUER !== ( isset( $receipt['issuer'] ) ? (string) $receipt['issuer'] : '' ) || self::FINALIZER_PROVENANCE !== ( isset( $receipt['provenance'] ) ? (string) $receipt['provenance'] : '' ) ) $blockers[] = 'untrusted_receipt_provenance';
 		if ( empty( $receipt['production_runtime_identity'] ) || strlen( (string) $receipt['production_runtime_identity'] ) < 8 ) $blockers[] = 'production_runtime_identity_missing';
 		$checked = self::parse_time( isset( $receipt['checked_at'] ) ? $receipt['checked_at'] : '' );
@@ -493,6 +494,27 @@ final class MAD4B_SCP_Live_Acceptance_Finalizer {
 		foreach ( array( 'response_status','response_content_type','error_code','body_classification','safe_message','observed_at' ) as $key ) if ( array_key_exists( $key, $diag ) ) $out[ $key ] = $diag[ $key ];
 		$out['route_registered'] = $route_registered;
 		return $out;
+	}
+
+
+	private static function acceptance_environment() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+	}
+
+	private static function acceptance_origin() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_origin() : '';
+	}
+
+	private static function acceptance_target_ready() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'acceptance' )
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& '' !== self::acceptance_origin();
+	}
+
+	private static function production_origin() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return '';
+		return rtrim( (string) MAD4B_SCP_Site_Profile::related_origin( 'production' ), '/' );
 	}
 
 	private static function current_candidate() {

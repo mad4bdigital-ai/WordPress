@@ -46,18 +46,18 @@ final class MAD4B_SCP_Skill_Exporter {
 
 		$openai = array(
 			'interface' => array(
-				'displayName' => 'MAD4B WordPress — Egypt Tour Gates',
-				'shortDescription' => $write_ready ? 'Governed WordPress diagnostics, workflows and Staging changes.' : 'Governed WordPress diagnostics and workflow skills.',
+				'displayName' => 'MAD4B WordPress — ' . ( class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::display_name() : ( function_exists( 'get_bloginfo' ) ? get_bloginfo( 'name' ) : 'WordPress' ) ),
+				'shortDescription' => $write_ready ? 'Governed WordPress diagnostics, workflows and approved changes.' : 'Governed WordPress diagnostics and workflow skills.',
 				'longDescription' => $write_ready
-					? 'WordPress diagnostics and governed Staging update/write/mutation workflows backed by exact mad4b-write NHI grants, one-time approvals and runtime certification.'
+					? 'WordPress diagnostics and governed update/write/mutation workflows backed by exact mad4b-write NHI grants, one-time approvals and runtime certification.'
 					: 'WordPress diagnostics, Elementor, JetEngine, archive and governed workflow guidance backed by the MAD4B MCP connection.',
 				'developerName' => 'MAD4B',
 				'category' => 'Productivity',
 				'capabilities' => $capabilities,
 				'defaultPrompt' => array(
 					'Diagnose my WordPress site.',
-					'Show the governed Staging write authority status.',
-					'Plan a safe approved Staging change.',
+					'Show the governed write authority status for this enrolled site.',
+					'Plan a safe approved change on this enrolled site.',
 					'Audit this Elementor template.',
 					'Analyze my JetEngine dynamic content setup.',
 				),
@@ -70,7 +70,7 @@ final class MAD4B_SCP_Skill_Exporter {
 			'name' => 'mad4b-wordpress',
 			'version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '0.1.0',
 			'description' => $write_ready
-				? 'Governed WordPress operations, diagnostics, reusable workflow skills and exact-approval Staging writes.'
+				? 'Governed WordPress operations, diagnostics, reusable workflow skills and exact-approval writes on the enrolled site.'
 				: 'Governed WordPress operations, diagnostics and reusable workflow skills.',
 			'author' => array( 'name' => 'MAD4B' ),
 			'repository' => 'https://github.com/mad4bdigital-ai/WordPress',

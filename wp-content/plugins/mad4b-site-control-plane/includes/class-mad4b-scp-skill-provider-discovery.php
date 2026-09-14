@@ -3,12 +3,12 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Zero-touch provider Skill discovery for Staging.
+ * Profile-bound provider Skill discovery.
  *
  * Installed/active provider discovery is read-only. This class only manages
  * Skill files that MAD4B itself provisioned and whose bytes still match their
  * recorded digest. Administrator/external edits are treated as user-owned and
- * never overwritten or toggled automatically. Production remains fail-closed.
+ * never overwritten or toggled automatically. Enrollment and feature policy remain fail-closed.
  */
 final class MAD4B_SCP_Skill_Provider_Discovery {
 	const CONTRACT = 'mad4b.skill-provider-discovery.v1';
@@ -25,8 +25,8 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		if ( 'staging' !== $environment ) return self::set_status( 'environment_not_staging' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return self::set_status( 'site_profile_not_enrolled' );
+		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) return self::set_status( 'site_profile_skills_disabled' );
 		if ( ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::set_status( 'skill_editor_disabled' );
 		if ( ! class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ) return self::set_status( 'plugin_discovery_unavailable' );
 

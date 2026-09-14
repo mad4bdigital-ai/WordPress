@@ -17,7 +17,6 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 	const EVIDENCE_CONTRACT = 'mad4b.provider-canary-execution-evidence.v1';
 	const AUTHORIZED_EVIDENCE_CONTRACT = 'mad4b.provider-canary-authorized-evidence.v1';
 	const ABILITY = 'mad4b/provider-canary-execute';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 	const MAX_TARGET_INPUT_BYTES = 32768;
 	const MAX_RESULT_BYTES = 16384;
 	const MAX_SAFE_SUMMARY_BYTES = 4096;
@@ -103,8 +102,8 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 	 * adapter call. No approval, activation or provider state is mutated here.
 	 */
 	public static function validate_context( array $input ) {
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
-			return new WP_Error( 'mad4b_provider_canary_staging_only', 'Provider canary execution is restricted to the exact governed Staging origin.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'write' ) || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+			return new WP_Error( 'mad4b_provider_canary_nonproduction_only', 'Provider canary execution requires an explicitly enrolled governed non-production site with write authority.' );
 		}
 		$audit_ready = self::audit_ready();
 		if ( is_wp_error( $audit_ready ) ) return $audit_ready;
@@ -121,8 +120,8 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 
 		$expected_candidate = self::clean_sha40( isset( $input['expected_candidate_sha'] ) ? $input['expected_candidate_sha'] : '' );
 		$expected_build = self::clean_digest( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' );
-		if ( '' === $expected_candidate || ! hash_equals( $candidate['source_commit_sha'], $expected_candidate ) ) return new WP_Error( 'mad4b_provider_canary_candidate_mismatch', 'Expected candidate SHA does not match the exact live Staging build.' );
-		if ( '' === $expected_build || ! hash_equals( $candidate['build_fingerprint'], $expected_build ) ) return new WP_Error( 'mad4b_provider_canary_build_mismatch', 'Expected build fingerprint does not match the exact live Staging build.' );
+		if ( '' === $expected_candidate || ! hash_equals( $candidate['source_commit_sha'], $expected_candidate ) ) return new WP_Error( 'mad4b_provider_canary_candidate_mismatch', 'Expected candidate SHA does not match the exact live governed build.' );
+		if ( '' === $expected_build || ! hash_equals( $candidate['build_fingerprint'], $expected_build ) ) return new WP_Error( 'mad4b_provider_canary_build_mismatch', 'Expected build fingerprint does not match the exact live governed build.' );
 
 		$adapter = self::resolve_adapter( $provider );
 		if ( is_wp_error( $adapter ) ) return $adapter;
@@ -358,14 +357,9 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 	}
 
 	private static function current_candidate() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$host = '';
-		$url = function_exists( 'home_url' ) ? home_url( '/' ) : ( function_exists( 'site_url' ) ? site_url( '/' ) : '' );
-		if ( is_string( $url ) && '' !== $url ) {
-			$parsed = wp_parse_url( $url );
-			$host = is_array( $parsed ) && isset( $parsed['host'] ) ? strtolower( rtrim( (string) $parsed['host'], '.' ) ) : '';
-		}
-		if ( 'staging' !== $environment || self::STAGING_HOST !== $host ) return new WP_Error( 'mad4b_provider_canary_staging_only', 'Provider canary execution is restricted to the exact governed Staging origin.' );
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+		$host = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_host() : '';
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'write' ) ) return new WP_Error( 'mad4b_provider_canary_nonproduction_only', 'Provider canary execution requires an explicitly enrolled governed non-production site with write authority.' );
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_provider_canary_candidate_unavailable', 'Exact build provenance is unavailable.' );
 		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		$sha = is_array( $provenance ) && isset( $provenance['source_commit_sha'] ) ? self::clean_sha40( $provenance['source_commit_sha'] ) : '';
@@ -377,7 +371,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 			&& empty( $provenance['stale'] )
 			&& '' !== $sha
 			&& '' !== $build;
-		if ( ! $ready ) return new WP_Error( 'mad4b_provider_canary_candidate_unavailable', 'Exact current Staging build provenance is not ready.' );
+		if ( ! $ready ) return new WP_Error( 'mad4b_provider_canary_candidate_unavailable', 'Exact current governed build provenance is not ready.' );
 		return array( 'source_commit_sha' => $sha, 'build_fingerprint' => $build, 'environment' => $environment, 'host' => $host );
 	}
 

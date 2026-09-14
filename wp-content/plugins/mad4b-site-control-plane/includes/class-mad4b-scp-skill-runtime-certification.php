@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Automatic local runtime certification for the Staging Skill lifecycle.
+ * Automatic local runtime certification for the enrolled Skill lifecycle.
  *
  * This certifies only facts WordPress can prove locally. It deliberately does
  * not claim that a remote ChatGPT client has installed/refreshed a portable
@@ -105,8 +105,10 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		$blockers = array();
 		$checks = array();
 
-		$checks['environment_staging'] = 'staging' === $environment;
-		if ( ! $checks['environment_staging'] ) $blockers[] = 'environment_not_staging';
+		$checks['site_profile_enrolled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$checks['skills_feature_enabled'] = $checks['site_profile_enrolled'] && MAD4B_SCP_Site_Profile::skills_enabled();
+		if ( ! $checks['site_profile_enrolled'] ) $blockers[] = 'site_profile_not_enrolled';
+		if ( $checks['site_profile_enrolled'] && ! $checks['skills_feature_enabled'] ) $blockers[] = 'site_profile_skills_disabled';
 
 		$autoconfig = class_exists( 'MAD4B_SCP_Skill_Autoconfig' ) ? MAD4B_SCP_Skill_Autoconfig::status() : array();
 		$checks['editor_enabled'] = class_exists( 'MAD4B_SCP_Skill_Registry' ) && MAD4B_SCP_Skill_Registry::editor_enabled();
@@ -120,10 +122,10 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		if ( ! $checks['storage_initialized'] ) $blockers[] = 'skill_storage_uninitialized';
 		if ( ! $checks['storage_writable'] ) $blockers[] = 'skill_storage_not_writable';
 
-		$expected_app = class_exists( 'MAD4B_SCP_Skill_Autoconfig' ) ? MAD4B_SCP_Skill_Autoconfig::staging_app_id() : '';
+		$expected_app = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::chatgpt_app_id() : '';
 		$current_app = class_exists( 'MAD4B_SCP_Skill_Registry' ) ? MAD4B_SCP_Skill_Registry::openai_app_id() : '';
-		$checks['staging_app_mapping_bound'] = '' !== $expected_app && '' !== $current_app && hash_equals( $expected_app, $current_app );
-		if ( ! $checks['staging_app_mapping_bound'] ) $blockers[] = 'staging_app_mapping_mismatch';
+		$checks['profile_app_mapping_bound'] = '' !== $expected_app && '' !== $current_app && hash_equals( $expected_app, $current_app );
+		if ( ! $checks['profile_app_mapping_bound'] ) $blockers[] = 'profile_app_mapping_mismatch';
 
 		$seed = class_exists( 'MAD4B_SCP_Skill_Seeder' ) ? MAD4B_SCP_Skill_Seeder::status() : array();
 		$checks['seed_pack_ready'] = isset( $seed['state'] ) && 'ready' === $seed['state'];

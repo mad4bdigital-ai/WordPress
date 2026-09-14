@@ -2,7 +2,7 @@
 /**
  * MAD4B MCP Adapter Early Bootstrap.
  *
- * Staging-only early loader that ensures the canonical MCP Adapter owns the
+ * Enrolled non-production early loader that ensures the canonical MCP Adapter owns the
  * runtime before normal plugins load, but only for MAD4B-owned MCP requests,
  * explicit MAD4B Control Plane admin pages, and WP-CLI. Unrelated WordPress
  * requests must retain the provider/host baseline and therefore never load or
@@ -44,7 +44,20 @@ if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
 	$mad4b_mcp_mu_status['host'] = is_string( $mad4b_mcp_mu_host ) ? strtolower( rtrim( trim( $mad4b_mcp_mu_host ), '.' ) ) : '';
 }
 
-if ( 'staging' === $mad4b_mcp_mu_status['environment'] && 'staging.egypttourgates.com' === $mad4b_mcp_mu_status['host'] ) {
+$mad4b_mcp_mu_profile = function_exists( 'get_option' ) ? get_option( 'mad4b_scp_site_profile_v1', array() ) : array();
+$mad4b_mcp_mu_origin = function_exists( 'home_url' ) ? rtrim( (string) home_url( '/' ), '/' ) : '';
+$mad4b_mcp_mu_profile_origin = is_array( $mad4b_mcp_mu_profile ) && isset( $mad4b_mcp_mu_profile['canonical_origin'] ) ? rtrim( (string) $mad4b_mcp_mu_profile['canonical_origin'], '/' ) : '';
+$mad4b_mcp_mu_profile_environment = is_array( $mad4b_mcp_mu_profile ) && isset( $mad4b_mcp_mu_profile['environment'] ) ? sanitize_key( (string) $mad4b_mcp_mu_profile['environment'] ) : '';
+$mad4b_mcp_mu_features = is_array( $mad4b_mcp_mu_profile ) && isset( $mad4b_mcp_mu_profile['features'] ) && is_array( $mad4b_mcp_mu_profile['features'] ) ? $mad4b_mcp_mu_profile['features'] : array();
+$mad4b_mcp_mu_profile_enrolled = is_array( $mad4b_mcp_mu_profile )
+	&& isset( $mad4b_mcp_mu_profile['contract'] ) && 'mad4b.site-profile.v1' === (string) $mad4b_mcp_mu_profile['contract']
+	&& $mad4b_mcp_mu_profile_environment === $mad4b_mcp_mu_status['environment']
+	&& '' !== $mad4b_mcp_mu_origin && '' !== $mad4b_mcp_mu_profile_origin
+	&& hash_equals( $mad4b_mcp_mu_profile_origin, $mad4b_mcp_mu_origin )
+	&& ! empty( $mad4b_mcp_mu_features['managed_runtime'] )
+	&& in_array( $mad4b_mcp_mu_status['environment'], array( 'local', 'development', 'staging' ), true );
+
+if ( $mad4b_mcp_mu_profile_enrolled ) {
 	$mad4b_mcp_mu_active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
 	$mad4b_mcp_mu_active = is_array( $mad4b_mcp_mu_active ) ? array_values( array_map( 'strval', $mad4b_mcp_mu_active ) ) : array();
 	$mad4b_mcp_mu_status['official_plugin_active'] = in_array( 'mcp-adapter/mcp-adapter.php', $mad4b_mcp_mu_active, true );

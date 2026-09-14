@@ -3,18 +3,17 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Staging-only compatibility guard for plugins that bundle wordpress/mcp-adapter.
+ * Governed non-production compatibility guard for plugins that bundle wordpress/mcp-adapter.
  *
  * active_plugins order is not authoritative for runtime ownership: a hosting
  * bootstrap or MU loader may claim WP\MCP\Core\McpAdapter before normal plugins
  * are included. When the reviewed Hostinger bundle owns the class on the exact
- * Staging origin, install a fixed, integrity-checked MU bootstrap for the next
+ * enrolled non-production origin, install a fixed, integrity-checked MU bootstrap for the next
  * request. The bootstrap loads the canonical MCP Adapter before normal plugins.
  * No plugin is disabled and Production is never modified.
  */
 final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	const CONTRACT = 'mad4b.mcp-runtime-conflict-guard.v2';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 	const OFFICIAL_PLUGIN = 'mcp-adapter/mcp-adapter.php';
 	const HOSTINGER_PREFIX = 'hostinger-ai-assistant/';
 	const MU_BOOTSTRAP_BASENAME = '000-mad4b-mcp-adapter-bootstrap.php';
@@ -143,8 +142,8 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 			'mad4b/mcp-runtime-bootstrap-repair',
 			array(
 				'contract' => self::CONTRACT,
-				'environment' => 'staging',
-				'host' => self::STAGING_HOST,
+				'environment' => isset( $status['environment'] ) ? $status['environment'] : 'unknown',
+				'host' => isset( $status['host'] ) ? $status['host'] : '',
 				'official_plugin' => self::OFFICIAL_PLUGIN,
 				'reviewed_conflict_family' => 'hostinger-ai-assistant',
 				'runtime_source' => isset( $status['runtime_source'] ) ? sanitize_text_field( (string) $status['runtime_source'] ) : '',
@@ -307,16 +306,22 @@ final class MAD4B_SCP_MCP_Runtime_Conflict_Guard {
 	}
 
 	private static function base_status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
 		$host = self::home_host();
-		$eligible = 'staging' === $environment && self::STAGING_HOST === $host;
+		$eligible = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
+		$blocker = '';
+		if ( ! $eligible ) {
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) $blocker = 'site_profile_not_enrolled';
+			elseif ( ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blocker = 'site_profile_managed_runtime_disabled';
+			else $blocker = 'runtime_repair_nonproduction_only';
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment,
 			'host' => $host,
 			'eligible' => $eligible,
 			'state' => $eligible ? 'inspection_pending' : 'ineligible',
-			'blocker' => $eligible ? '' : ( 'staging' !== $environment ? 'environment_not_staging' : 'origin_not_governed_staging' ),
+			'blocker' => $blocker,
 			'official_plugin_active' => false,
 			'hostinger_bundle_active' => false,
 			'official_loads_before_hostinger' => false,

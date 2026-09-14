@@ -15,7 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_MCP_Registration_Bridge {
 	const CONTRACT = 'mad4b.mcp-registration-bridge.v2';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	private static $booted = false;
 	private static $abilities = null;
@@ -94,13 +93,9 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	}
 
 	private static function governed_staging() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$host = '';
-		if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
-			$value = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
-			$host = is_string( $value ) ? strtolower( rtrim( trim( $value ), '.' ) ) : '';
-		}
-		return 'staging' === $environment && self::STAGING_HOST === $host;
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::managed_runtime_enabled();
 	}
 
 	private static function official_runtime() {

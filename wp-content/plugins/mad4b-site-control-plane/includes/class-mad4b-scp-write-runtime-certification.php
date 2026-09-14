@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Local certification for the exact-origin governed Staging write plane.
+ * Local certification for the exact enrolled governed write plane.
  *
  * This proves WordPress-side authority, mounting, approval bootstrapping,
  * local REST isolation and non-leakage. External WPML HTTP acceptance and
@@ -28,7 +28,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		if ( ! function_exists( 'wp_register_ability' ) || wp_has_ability( 'mad4b/write-runtime-certification' ) ) return;
 		wp_register_ability( 'mad4b/write-runtime-certification', array(
 			'label' => 'Get Governed Write Runtime Certification',
-			'description' => 'Read exact-origin Staging write authority, NHI grants, approval bootstrap/enforcement, transport mounting and local REST isolation evidence.',
+			'description' => 'Read exact enrolled-site write authority, NHI grants, approval bootstrap/enforcement, transport mounting and local REST isolation evidence.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'status' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
@@ -44,8 +44,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 	public static function observe() {
 		if ( self::$observing ) return self::status();
-		// Certification is meaningful only on the exact governed Staging origin.
-		// Off-origin/Production processes must stay fail-closed without producing
+		// Certification is meaningful only on the exact enrolled governed-write origin.
+		// Off-origin or non-authorized processes must stay fail-closed without producing
 		// audit or option churn merely because WordPress booted.
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
 			return self::ineligible_status();
@@ -97,7 +97,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 	}
 
 	public static function status() {
-		// Never surface a previously persisted exact-Staging certification as current
+		// Never surface a previously persisted exact enrolled-site certification as current
 		// truth after this database/site is moved to another origin or environment.
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
 			return self::ineligible_status();
@@ -114,13 +114,13 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'external_wpml_acceptance_required' => true,
 			'external_wpml_acceptance_verified' => false,
 			'external_client_tools_verified' => false,
-			'external_client_action' => 'Run the external WPML HTTP acceptance and Refresh/Scan Tools for the same Plugin after this exact Staging build is deployed.',
+			'external_client_action' => 'Run any deployment-specific external acceptance and Refresh/Scan Tools for the same Plugin after this exact enrolled build is deployed.',
 		);
 	}
 
 	private static function ineligible_status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$blocker = 'staging' === $environment ? 'origin_not_governed_staging' : 'environment_not_staging';
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$blocker = empty( $profile['configured'] ) ? 'site_profile_unconfigured' : ( empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) ? 'site_profile_not_enrolled' : 'site_profile_write_disabled' );
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => false,
@@ -132,7 +132,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'external_wpml_acceptance_verified' => false,
 			'external_client_tools_verified' => false,
 			'persistence' => 'not_applicable',
-			'external_client_action' => 'Write runtime certification is evaluated only on the exact governed Staging origin.',
+			'external_client_action' => 'Write runtime certification is evaluated only on the exact enrolled origin with governed write enabled.',
 		);
 	}
 
@@ -140,7 +140,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$blockers = array();
 		$checks = array();
 		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconcile() : array();
-		$checks['exact_staging_origin'] = ! empty( $authority['eligible'] );
+		$checks['exact_enrolled_origin'] = ! empty( $authority['eligible'] );
 		$checks['authority_ready'] = ! empty( $authority['ready'] );
 		$checks['mutation_gate_enabled'] = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === constant( 'MAD4B_MCP_MUTATION_ENABLED' );
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
@@ -197,7 +197,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		// approval-plan is a mutation because it persists a pending ticket. It must
 		// itself use NHI + exact mad4b-write grant + budget, but it is the only remote
 		// write that cannot require a prior approval ticket. Its target is strictly
-		// the same Staging agent, mad4b-write, mutation class, never breakglass.
+		// the same governed agent, mad4b-write, mutation class, never breakglass.
 		$planner = class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ? MAD4B_SCP_Staging_Write_Planning_Guard::status() : array();
 		$planner_ability = function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) && wp_has_ability( 'mad4b/approval-plan' ) ? wp_get_ability( 'mad4b/approval-plan' ) : null;
 		$planner_meta = is_object( $planner_ability ) && method_exists( $planner_ability, 'get_meta' ) ? $planner_ability->get_meta() : array();
@@ -208,7 +208,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['approval_planner_exact_grant_required'] = ! empty( $planner['remote_planner_requires_exact_mad4b_write_grant'] );
 		$checks['approval_planner_budgeted'] = ! empty( $planner['remote_planner_budgeted'] );
 		$checks['approval_planner_no_prior_ticket'] = isset( $planner['remote_planner_requires_prior_ticket'] ) && false === $planner['remote_planner_requires_prior_ticket'];
-		$checks['approval_planner_self_agent_only'] = isset( $planner['target_agent'] ) && 'dedicated_staging_write_agent_only' === $planner['target_agent'];
+		$checks['approval_planner_self_agent_only'] = isset( $planner['target_agent'] ) && 'dedicated_governed_write_agent_only' === $planner['target_agent'];
 		$checks['approval_planner_write_server_only'] = isset( $planner['target_server'] ) && 'mad4b-write' === $planner['target_server'];
 		$checks['approval_planner_mutation_class_only'] = isset( $planner['target_ticket_class'] ) && 'mutation' === $planner['target_ticket_class'];
 		$checks['approval_planner_breakglass_denied'] = isset( $planner['breakglass_target_allowed'] ) && false === $planner['breakglass_target_allowed'];

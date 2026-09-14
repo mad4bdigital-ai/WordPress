@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Zero-touch Staging seed pack provisioner.
+ * Profile-bound Skill seed pack provisioner.
  *
  * Canonical seed documents ship with the Control Plane and are copied byte-for-
  * byte into the runtime registry. User-owned files always win. Seeder-owned
@@ -24,8 +24,7 @@ final class MAD4B_SCP_Skill_Seeder {
 		if ( self::$ran ) return self::status();
 		self::$ran = true;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		if ( 'staging' !== $environment || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::set_status( 'not_eligible' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::skills_enabled() || ! MAD4B_SCP_Skill_Registry::editor_enabled() ) return self::set_status( 'not_eligible' );
 
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit_status['ready'] ) ) return self::set_status( 'audit_unavailable' );

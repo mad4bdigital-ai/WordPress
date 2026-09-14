@@ -78,7 +78,7 @@
         "level": "adapter",
         "target": "etg-dfsb",
         "name": "etg-dynamic-filter-seo-audit",
-        "description": "Audit Egypt Tour Gates Dynamic Filter SEO Bridge profiles, runtime inventory, dynamic-content catalog, and read-only SEO/filter integration through MAD4B.",
+        "description": "Audit ETG Dynamic Filter SEO Bridge profiles, runtime inventory, dynamic-content catalog, and read-only SEO/filter integration through MAD4B.",
         "body": "1. Read ETG DFSB status, profile inventory, and dynamic-content catalog.\n2. Verify profile intent against archive/filter/runtime context.\n3. Treat profile blueprint and inventory operations as plan-only unless separately authorized.\n4. Return gaps, evidence, and the minimum safe remediation."
       }
     ],

@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * The provider write itself remains absent from mad4b-write until this wrapper
  * proves one exact, reversible, artifact-bound mutation and restores the exact
- * before-state. The wrapper is Staging-only and still runs behind the canonical
+ * before-state. The wrapper is governed non-production only and still runs behind the canonical
  * NHI, one-time approval, budget and execution fence. High-risk writes are not
  * accepted here; they remain owned by the separate Provider Canary lifecycle.
  */
@@ -18,7 +18,6 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 	const VERIFIER_ID = 'mad4b_behavioral_recertification_audit';
 	const ISSUER_ID = 'mad4b_control_plane';
 	const SIGNATURE_SCHEME = 'hmac-sha256-wp-auth-salt-v1';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 	const RECEIPT_TTL = 21600;
 	const MAX_RECEIPTS = 64;
 	const MAX_TARGET_INPUT_BYTES = 32768;
@@ -103,8 +102,8 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 
 	/** Pure/read-only preflight. */
 	public static function validate_context( array $input ) {
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
-			return new WP_Error( 'mad4b_provider_recertification_staging_only', 'Provider behavioral recertification is restricted to the exact governed Staging origin.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'write' ) || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+			return new WP_Error( 'mad4b_provider_recertification_nonproduction_only', 'Provider behavioral recertification requires an explicitly enrolled governed non-production site with write authority.' );
 		}
 		$audit = self::audit_ready();
 		if ( is_wp_error( $audit ) ) return $audit;
@@ -123,8 +122,8 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 
 		$expected_candidate = self::clean_sha40( isset( $input['expected_candidate_sha'] ) ? $input['expected_candidate_sha'] : '' );
 		$expected_build = self::clean_digest( isset( $input['expected_build_fingerprint'] ) ? $input['expected_build_fingerprint'] : '' );
-		if ( '' === $expected_candidate || ! hash_equals( $candidate['source_commit_sha'], $expected_candidate ) ) return new WP_Error( 'mad4b_provider_recertification_candidate_mismatch', 'Expected candidate SHA does not match the exact live Staging build.' );
-		if ( '' === $expected_build || ! hash_equals( $candidate['build_fingerprint'], $expected_build ) ) return new WP_Error( 'mad4b_provider_recertification_build_mismatch', 'Expected build fingerprint does not match the exact live Staging build.' );
+		if ( '' === $expected_candidate || ! hash_equals( $candidate['source_commit_sha'], $expected_candidate ) ) return new WP_Error( 'mad4b_provider_recertification_candidate_mismatch', 'Expected candidate SHA does not match the exact live governed build.' );
+		if ( '' === $expected_build || ! hash_equals( $candidate['build_fingerprint'], $expected_build ) ) return new WP_Error( 'mad4b_provider_recertification_build_mismatch', 'Expected build fingerprint does not match the exact live governed build.' );
 
 		$adapter = self::resolve_adapter( $provider );
 		if ( is_wp_error( $adapter ) ) return $adapter;
@@ -190,7 +189,7 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 
 		$binding = MAD4B_SCP_Approval_Tickets::candidate_binding( $ticket_id );
 		if ( empty( $binding ) || ! hash_equals( $context['candidate']['source_commit_sha'], (string) ( isset( $binding['candidate_sha'] ) ? $binding['candidate_sha'] : '' ) ) || ! hash_equals( $context['candidate']['build_fingerprint'], (string) ( isset( $binding['build_fingerprint'] ) ? $binding['build_fingerprint'] : '' ) ) ) {
-			return new WP_Error( 'mad4b_provider_recertification_ticket_candidate_mismatch', 'Claimed approval ticket is not bound to the current exact Staging candidate.' );
+			return new WP_Error( 'mad4b_provider_recertification_ticket_candidate_mismatch', 'Claimed approval ticket is not bound to the current exact enrolled site candidate.' );
 		}
 
 		$audit_base = self::audit_summary_base( $context, $ticket_id );
@@ -479,7 +478,7 @@ final class MAD4B_SCP_Provider_Behavioral_Recertification {
 		$status = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 		$sha = is_array( $status ) && isset( $status['source_commit_sha'] ) ? self::clean_sha40( $status['source_commit_sha'] ) : '';
 		$build = is_array( $status ) && isset( $status['build_fingerprint'] ) ? self::clean_digest( $status['build_fingerprint'] ) : '';
-		if ( '' === $sha || '' === $build || empty( $status['manifest_present'] ) || empty( $status['manifest_valid'] ) || empty( $status['runtime_manifest_match'] ) || ! empty( $status['stale'] ) ) return new WP_Error( 'mad4b_provider_recertification_candidate_unavailable', 'Behavioral recertification requires an exact non-stale Staging build provenance.' );
+		if ( '' === $sha || '' === $build || empty( $status['manifest_present'] ) || empty( $status['manifest_valid'] ) || empty( $status['runtime_manifest_match'] ) || ! empty( $status['stale'] ) ) return new WP_Error( 'mad4b_provider_recertification_candidate_unavailable', 'Behavioral recertification requires an exact non-stale governed build provenance.' );
 		return array( 'source_commit_sha' => $sha, 'build_fingerprint' => $build );
 	}
 

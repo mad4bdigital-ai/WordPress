@@ -16,7 +16,6 @@ final class MAD4B_SCP_WPML_Response_Contract {
 	const CONTRACT = 'mad4b.external-wpml-response-contract.v1';
 	const OPTION = 'mad4b_scp_external_wpml_response_contract_v1';
 	const ROUTE = '/wpml/v1/rest/status';
-	const STAGING_ORIGIN = 'https://staging.egypttourgates.com';
 	const TTL = 21600;
 
 	private static $booted = false;

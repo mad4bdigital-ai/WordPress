@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Fresh-path exact-Staging MCP registration rescue.
+ * Fresh-path exact-enrolled-site MCP registration rescue.
  *
  * This class is intentionally loaded from a new filename. It is independent of
  * cached bridge bytecode and of the mutable rest_api_init callback list. It only
@@ -12,7 +12,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_MCP_Registration_Rescue {
 	const CONTRACT = 'mad4b.mcp-registration-rescue.v1';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	private static $booted = false;
 	private static $rest_tail_bound_initial = false;
@@ -28,7 +27,7 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
-		// Do not even bind global REST hooks outside the exact governed Staging
+		// Do not even bind global REST hooks outside the exact governed site
 		// origin. Production and every other origin remain completely untouched.
 		if ( ! self::governed_staging() ) {
 			self::$state = 'ineligible_origin';
@@ -69,13 +68,9 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 	}
 
 	private static function governed_staging() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$host = '';
-		if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
-			$value = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
-			$host = is_string( $value ) ? strtolower( rtrim( trim( $value ), '.' ) ) : '';
-		}
-		return 'staging' === $environment && self::STAGING_HOST === $host;
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::managed_runtime_enabled();
 	}
 
 	private static function official_runtime() {

@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Supplies local metadata for the certified MCP Adapter dependency on the exact
- * governed Staging admin boundary and normalizes known third-party MCP metadata
+ * governed site admin boundary and normalizes known third-party MCP metadata
  * deprecations without changing provider execution semantics.
  *
  * WordPress core asks WordPress.org for plugin_information even when a required
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * WordPress GitHub repository rather than the WordPress.org plugin directory,
  * so that lookup returns 404. This bridge short-circuits only that one metadata
  * request. It also mirrors deprecated Rank Math top-level MCP resource metadata
- * into the MCP Adapter 0.5+ namespace on exact Staging only. Existing mcp.*
+ * into the MCP Adapter 0.5+ namespace on exact enrolled site only. Existing mcp.*
  * values always win and legacy provider metadata remains untouched.
  *
  * The bridge never changes installation/update state, outbound HTTP globally,
@@ -21,7 +21,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 	const CONTRACT = 'mad4b.mcp-adapter-metadata-bridge.v1';
 	const RANK_MATH_META_CONTRACT = 'mad4b.rank-math-mcp-meta-compat.v1';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 	const SLUG = 'mcp-adapter';
 	const VERSION = '0.6.1';
 
@@ -38,7 +37,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 		// Rank Math currently supplies legacy top-level resource metadata that MCP
 		// Adapter 0.5+ still accepts only through a deprecated fallback. Mirror the
 		// exact known keys into meta.mcp before an ability is materialized. This is
-		// intentionally exact-Staging-only and copy-if-missing: provider values,
+		// intentionally exact-enrolled-site-only and copy-if-missing: provider values,
 		// callbacks, schemas, permissions, and the original legacy keys are preserved.
 		if ( self::site_eligible() ) {
 			add_filter( 'wp_register_ability_args', array( __CLASS__, 'normalize_rank_math_mcp_meta' ), 40, 2 );
@@ -130,7 +129,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 			'version' => self::VERSION,
 			'short_circuit_count' => self::$short_circuit_count,
 			'rank_math_meta_contract' => self::RANK_MATH_META_CONTRACT,
-			'rank_math_meta_staging_only' => true,
+			'rank_math_meta_governed_nonproduction_only' => true,
 			'rank_math_meta_copy_if_missing' => true,
 			'rank_math_legacy_keys_preserved' => true,
 			'rank_math_meta_mirror_count' => self::$rank_math_meta_mirror_count,
@@ -147,10 +146,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 	}
 
 	private static function site_eligible() {
-		if ( ! function_exists( 'wp_get_environment_type' ) || 'staging' !== wp_get_environment_type() ) return false;
-		if ( ! function_exists( 'home_url' ) || ! function_exists( 'wp_parse_url' ) ) return false;
-
-		$host = strtolower( rtrim( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ), '.' ) );
-		return self::STAGING_HOST === $host;
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
 	}
 }

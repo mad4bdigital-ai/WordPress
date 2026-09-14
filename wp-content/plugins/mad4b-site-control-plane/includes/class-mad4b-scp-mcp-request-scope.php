@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Exact-Staging request scope for the official MCP Adapter runtime.
  *
  * MAD4B only needs the official runtime for its own six MCP transports and for
- * explicit Control Plane diagnostics. On the governed Staging origin, unrelated
+ * explicit Control Plane diagnostics. On the governed site origin, unrelated
  * REST requests (WPML, Core/Site Health, WooCommerce, Elementor, etc.) must not
  * enter a MAD4B-owned MCP lifecycle. A provider-owned/bundled Adapter runtime is
  * left untouched so the request retains the same host/provider baseline it has
@@ -18,7 +18,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_MCP_Request_Scope {
 	const CONTRACT = 'mad4b.mcp-request-scope.v1';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	private static $booted = false;
 	private static $eligible = false;
@@ -154,13 +153,9 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	}
 
 	private static function governed_staging() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$host = '';
-		if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
-			$value = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
-			$host = is_string( $value ) ? strtolower( rtrim( trim( $value ), '.' ) ) : '';
-		}
-		return 'staging' === $environment && self::STAGING_HOST === $host;
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::managed_runtime_enabled();
 	}
 
 	public static function status() {

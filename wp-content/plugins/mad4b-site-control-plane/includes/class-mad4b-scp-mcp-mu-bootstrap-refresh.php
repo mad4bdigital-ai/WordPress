@@ -7,13 +7,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * A previously installed managed MU file executes before regular plugins, so a
  * new Control Plane source cannot change the already-running request. On the
- * exact governed Staging origin only, this reconciler atomically replaces a
+ * explicitly enrolled governed non-production site only, this reconciler atomically replaces a
  * recognized MAD4B v2/v3 MU bootstrap with the current source and records the
  * change in the append-only audit. The next request then executes the new file.
  */
 final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	const CONTRACT = 'mad4b.mcp-mu-bootstrap-refresh.v1';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 	const SOURCE = 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php';
 	const DESTINATION = '000-mad4b-mcp-adapter-bootstrap.php';
 
@@ -111,8 +110,8 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'mad4b/mcp-mu-bootstrap-refreshed',
 			array(
 				'contract' => self::CONTRACT,
-				'environment' => 'staging',
-				'host' => self::STAGING_HOST,
+				'environment' => isset( $status['environment'] ) ? $status['environment'] : 'unknown',
+				'host' => isset( $status['host'] ) ? $status['host'] : '',
 				'previous_sha256' => $status['destination_sha256_before'],
 				'current_sha256' => $status['source_sha256'],
 				'next_request_required' => true,
@@ -149,13 +148,15 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	}
 
 	private static function base_status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$host = '';
-		if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
-			$value = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
-			$host = is_string( $value ) ? strtolower( rtrim( trim( $value ), '.' ) ) : '';
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+		$host = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_host() : '';
+		$eligible = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
+		$blocker = '';
+		if ( ! $eligible ) {
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) $blocker = 'site_profile_not_enrolled';
+			elseif ( ! MAD4B_SCP_Site_Profile::managed_runtime_enabled() ) $blocker = 'site_profile_managed_runtime_disabled';
+			else $blocker = 'managed_runtime_repair_nonproduction_only';
 		}
-		$eligible = 'staging' === $environment && self::STAGING_HOST === $host;
 		return array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment,
@@ -167,7 +168,7 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'refresh_applied' => false,
 			'next_request_required' => false,
 			'state' => $eligible ? 'inspection_pending' : 'ineligible',
-			'blocker' => $eligible ? '' : ( 'staging' !== $environment ? 'environment_not_staging' : 'origin_not_governed_staging' ),
+			'blocker' => $blocker,
 			'source_sha256' => '',
 			'destination_sha256_before' => '',
 			'destination_sha256_after' => '',

@@ -6,16 +6,20 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Tenant-neutral site identity and governance enrollment.
  *
  * Installation never creates mutation authority for an unknown site. A site is
- * governed only after an explicit local profile exists or a reviewed legacy
- * preset matches the exact current origin. Profile identity is intentionally
+ * governed only after an explicit local profile exists. Optional legacy preset
+ * migration is disabled by default and must be explicitly enabled by the host.
+ * Profile identity is intentionally
  * separate from the Plugin build so the same binary can be deployed safely to
  * many independent WordPress sites.
  */
 final class MAD4B_SCP_Site_Profile {
-	const CONTRACT = 'mad4b.site-profile.v1';
-	const PRESET_CONTRACT = 'mad4b.site-profile-presets.v1';
-	const OPTION = 'mad4b_scp_site_profile_v1';
-	const VERSION = 1;
+	const CONTRACT = 'mad4b.site-profile.v2';
+	const LEGACY_CONTRACT = 'mad4b.site-profile.v1';
+	const PRESET_CONTRACT = 'mad4b.site-profile-presets.v2';
+	const OPTION = 'mad4b_scp_site_profile_v2';
+	const LEGACY_OPTION = 'mad4b_scp_site_profile_v1';
+	const VERSION = 2;
+	const LEGACY_VERSION = 1;
 	const PRESET_FILE = 'config/site-profile-presets.json';
 	const PRODUCTION_WRITE_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE';
 
@@ -48,18 +52,26 @@ final class MAD4B_SCP_Site_Profile {
 	public static function bootstrap() {
 		if ( null !== self::$status || self::$bootstrapping ) return self::status_without_bootstrap();
 		self::$bootstrapping = true;
-
-		$record = get_option( self::OPTION, array() );
+		$record = get_option( self::OPTION, null );
 		$source = 'stored';
+		$has_current_record = null !== $record && false !== $record;
 		if ( ! self::valid_record( $record ) ) {
-			$record = self::matching_preset();
-			$source = ! empty( $record ) ? 'legacy_preset' : 'none';
-			if ( ! empty( $record ) && self::valid_record( $record ) ) {
-				update_option( self::OPTION, $record, false );
-				$source = 'legacy_preset_migrated';
+			if ( $has_current_record ) {
+				$record = array();
+				$source = 'stored_invalid';
+			} else {
+				$legacy = get_option( self::LEGACY_OPTION, array() );
+				$migrated = self::migrate_legacy_record( $legacy );
+				if ( ! empty( $migrated ) && self::valid_record( $migrated ) && false !== update_option( self::OPTION, $migrated, false ) ) {
+					$record = $migrated;
+					$source = 'legacy_v1_migrated';
+				} else {
+					$record = self::matching_preset();
+					$source = ! empty( $record ) ? 'preset' : 'none';
+					if ( ! empty( $record ) && self::valid_record( $record ) && false !== update_option( self::OPTION, $record, false ) ) $source = 'preset_migrated';
+				}
 			}
 		}
-
 		self::$profile = self::valid_record( $record ) ? self::normalize_record( $record ) : array();
 		self::$status = self::build_status( self::$profile, $source );
 		self::$bootstrapping = false;
@@ -87,6 +99,15 @@ final class MAD4B_SCP_Site_Profile {
 	public static function configured() {
 		$status = self::status();
 		return ! empty( $status['configured'] );
+	}
+
+	public static function legacy_preset_migration_enabled() {
+		$enabled = defined( 'MAD4B_SCP_ENABLE_LEGACY_SITE_PROFILE_PRESETS' )
+			? (bool) constant( 'MAD4B_SCP_ENABLE_LEGACY_SITE_PROFILE_PRESETS' )
+			: false;
+		return function_exists( 'apply_filters' )
+			? (bool) apply_filters( 'mad4b_scp_enable_legacy_site_profile_presets', $enabled )
+			: $enabled;
 	}
 
 	public static function current_environment() {
@@ -136,6 +157,27 @@ final class MAD4B_SCP_Site_Profile {
 	public static function origin_enrolled() {
 		$status = self::status();
 		return ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] );
+	}
+
+	public static function site_urls_match_enrollment() {
+		if ( ! self::origin_enrolled() ) return false;
+		$expected = self::site_origin();
+		if ( '' === $expected ) return false;
+		$home = function_exists( 'home_url' ) ? self::normalize_origin( home_url( '/' ) ) : '';
+		$site = function_exists( 'site_url' ) ? self::normalize_origin( site_url( '/' ) ) : $home;
+		return '' !== $home && '' !== $site && hash_equals( $expected, $home ) && hash_equals( $expected, $site );
+	}
+
+	public static function environment_allowed( array $environments, $feature = '' ) {
+		if ( ! self::origin_enrolled() ) return false;
+		$allowed = array_values( array_unique( array_filter( array_map( 'sanitize_key', $environments ) ) ) );
+		if ( ! in_array( self::current_environment(), $allowed, true ) ) return false;
+		$feature = sanitize_key( (string) $feature );
+		return '' === $feature ? true : self::feature_enabled( $feature );
+	}
+
+	public static function nonproduction_governed( $feature = '' ) {
+		return self::environment_allowed( array( 'local', 'development', 'staging' ), $feature );
 	}
 
 	public static function feature_enabled( $feature ) {
@@ -209,6 +251,7 @@ final class MAD4B_SCP_Site_Profile {
 
 	public static function save_current_site( array $input ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
+		self::bootstrap();
 		$environment = self::current_environment();
 		$origin = self::current_origin();
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_site_profile_environment_invalid', 'WordPress environment type is not supported for site enrollment.' );
@@ -328,6 +371,46 @@ final class MAD4B_SCP_Site_Profile {
 			&& self::normalize_origin( $origin ) === (string) $record['canonical_origin'];
 	}
 
+
+	private static function valid_legacy_record( $record ) {
+		if ( ! is_array( $record ) ) return false;
+		if ( self::LEGACY_CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) return false;
+		if ( self::LEGACY_VERSION !== absint( isset( $record['version'] ) ? $record['version'] : 0 ) ) return false;
+		if ( ! self::valid_uuid( isset( $record['site_uuid'] ) ? $record['site_uuid'] : '' ) ) return false;
+		if ( absint( isset( $record['revision'] ) ? $record['revision'] : 0 ) < 1 ) return false;
+		$environment = sanitize_key( isset( $record['environment'] ) ? (string) $record['environment'] : '' );
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return false;
+		return '' !== self::normalize_origin( isset( $record['canonical_origin'] ) ? $record['canonical_origin'] : '' );
+	}
+
+	private static function migrate_legacy_record( $record ) {
+		if ( ! self::valid_legacy_record( $record ) ) return array();
+		$legacy = self::normalize_record( $record );
+		$environment = self::current_environment();
+		$origin = self::current_origin();
+		if ( ! hash_equals( (string) $legacy['environment'], $environment ) ) return array();
+		if ( '' === $origin || ! hash_equals( (string) $legacy['canonical_origin'], $origin ) ) return array();
+		return array(
+			'contract' => self::CONTRACT,
+			'version' => self::VERSION,
+			'site_uuid' => (string) $legacy['site_uuid'],
+			'revision' => max( 1, absint( $legacy['revision'] ) + 1 ),
+			'environment' => (string) $legacy['environment'],
+			'canonical_origin' => (string) $legacy['canonical_origin'],
+			'display_name' => isset( $legacy['display_name'] ) ? (string) $legacy['display_name'] : '',
+			'chatgpt_app_id' => '',
+			'oauth_user_ids' => array(),
+			'related_origins' => isset( $legacy['related_origins'] ) && is_array( $legacy['related_origins'] ) ? $legacy['related_origins'] : array(),
+			'features' => array( 'oauth' => false, 'skills' => false, 'write' => false, 'production_write_confirmed' => false, 'provider_isolation' => false, 'managed_runtime' => false, 'acceptance' => false ),
+			'legacy_agent_slug' => '',
+			'legacy_zero_touch' => false,
+			'migrated_from_contract' => self::LEGACY_CONTRACT,
+			'migration_requires_reenrollment' => true,
+			'created_at' => ! empty( $legacy['created_at'] ) ? (string) $legacy['created_at'] : gmdate( 'c' ),
+			'updated_at' => gmdate( 'c' ),
+		);
+	}
+
 	private static function build_status( array $profile, $source ) {
 		$environment = self::current_environment();
 		$origin = self::current_origin();
@@ -335,13 +418,16 @@ final class MAD4B_SCP_Site_Profile {
 		$environment_match = $configured && hash_equals( (string) $profile['environment'], $environment );
 		$origin_match = $configured && '' !== $origin && hash_equals( (string) $profile['canonical_origin'], $origin );
 		$blockers = array();
+		$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );
 		if ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
 		if ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
 		if ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
+		if ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => $configured,
 			'source' => sanitize_key( (string) $source ),
+			'legacy_preset_migration_enabled' => self::legacy_preset_migration_enabled(),
 			'site_uuid' => $configured ? (string) $profile['site_uuid'] : '',
 			'revision' => $configured ? absint( $profile['revision'] ) : 0,
 			'profile_digest' => $configured ? self::digest_record( $profile ) : '',
@@ -351,6 +437,7 @@ final class MAD4B_SCP_Site_Profile {
 			'canonical_origin' => $configured ? (string) $profile['canonical_origin'] : '',
 			'environment_match' => $environment_match,
 			'origin_match' => $origin_match,
+			'reenrollment_required' => $reenrollment_required,
 			'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
 			'oauth_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'oauth', $environment ),
 			'skills_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'skills', $environment ),
@@ -370,7 +457,10 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	private static function matching_preset() {
-		$path = defined( 'MAD4B_SCP_DIR' ) ? trailingslashit( MAD4B_SCP_DIR ) . self::PRESET_FILE : '';
+		$path = defined( 'MAD4B_SCP_LEGACY_SITE_PROFILE_PRESET_FILE' )
+			? trim( (string) constant( 'MAD4B_SCP_LEGACY_SITE_PROFILE_PRESET_FILE' ) )
+			: ( defined( 'MAD4B_SCP_DIR' ) ? trailingslashit( MAD4B_SCP_DIR ) . self::PRESET_FILE : '' );
+		if ( function_exists( 'apply_filters' ) ) $path = (string) apply_filters( 'mad4b_scp_legacy_site_profile_preset_file', $path );
 		if ( '' === $path || ! is_readable( $path ) ) return array();
 		$decoded = json_decode( (string) file_get_contents( $path ), true );
 		if ( ! is_array( $decoded ) || self::PRESET_CONTRACT !== ( isset( $decoded['contract'] ) ? (string) $decoded['contract'] : '' ) || empty( $decoded['profiles'] ) || ! is_array( $decoded['profiles'] ) ) return array();

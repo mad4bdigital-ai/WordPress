@@ -5,10 +5,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Explicit deny-only isolation for provider-native MCP/AI surfaces.
  *
- * Runtime suppression is fail-closed everywhere. On the exact governed Staging
+ * Runtime suppression is fail-closed everywhere. On the exact governed site
  * origin only, the existing isolation intent and runtime-suppression gates are
  * auto-configured unless either was explicitly set false by an operator. This
- * preserves zero-touch Staging while keeping every other origin fail-closed.
+ * preserves profile-driven runtime isolation while keeping every other origin fail-closed.
  *
  * When both gates are enabled it suppresses only bounded, reviewed provider MCP
  * registrations and REST/control routes. It never grants MAD4B authority,
@@ -23,7 +23,6 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED';
 	const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED';
 	const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	private static $early_booted = false;
 	private static $booted = false;
@@ -64,15 +63,17 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		if ( self::$staging_autoconfig_evaluated ) return;
 		self::$staging_autoconfig_evaluated = true;
 
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$host = '';
-		if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
-			$value = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
-			$host = is_string( $value ) ? strtolower( rtrim( trim( $value ), '.' ) ) : '';
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) {
+			self::$staging_autoconfig_blocker = 'site_profile_not_enrolled';
+			return;
 		}
-
-		if ( 'staging' !== $environment || self::STAGING_HOST !== $host ) {
-			self::$staging_autoconfig_blocker = 'origin_not_governed_staging';
+		if ( ! MAD4B_SCP_Site_Profile::provider_isolation_enabled() ) {
+			self::$staging_autoconfig_blocker = 'site_profile_provider_isolation_disabled';
+			return;
+		}
+		$environment = MAD4B_SCP_Site_Profile::current_environment();
+		if ( 'production' === $environment && ! self::production_approved() ) {
+			self::$staging_autoconfig_blocker = 'production_isolation_approval_required';
 			return;
 		}
 
@@ -220,7 +221,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'staging_zero_touch_autoconfig_evaluated' => self::$staging_autoconfig_evaluated,
 			'staging_zero_touch_autoconfig_applied' => self::$staging_autoconfig_applied,
 			'staging_zero_touch_autoconfig_blocker' => self::$staging_autoconfig_blocker,
-			'staging_zero_touch_host' => self::STAGING_HOST,
+			'governed_profile_origin' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_origin() : '',
 			'production_auto_configured' => false,
 			'runtime_suppression_requires_second_gate' => true,
 			'default_server_suppressed' => self::effective(),

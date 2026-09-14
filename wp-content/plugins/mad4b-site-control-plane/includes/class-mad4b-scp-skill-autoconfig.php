@@ -5,8 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Tenant-neutral Skill editor and ChatGPT App bootstrap.
  *
- * Installation is not configuration. Automatic Staging setup is available only
- * after an exact Site Profile is enrolled for the current origin/environment,
+ * Installation is not configuration. Automatic setup is available only after an
+ * exact Site Profile is enrolled for the current origin/environment,
  * the Skills feature is enabled, and the profile carries a valid ChatGPT App
  * ID. Legacy deployments continue to work through the Site Profile preset
  * migration layer rather than product-specific constants in this runtime.
@@ -53,8 +53,8 @@ final class MAD4B_SCP_Skill_Autoconfig {
 			'expected_staging_host' => $expected_host,
 		);
 
-		if ( 'staging' !== $environment ) {
-			self::$status['blocker'] = 'environment_not_staging';
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) {
+			self::$status['blocker'] = 'environment_not_supported';
 			return self::$status;
 		}
 		if ( ! $profile_configured ) {

@@ -53,11 +53,16 @@ final class MAD4B_SCP_Connection_Status {
 		}
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
 		$connection_certified = empty( $certification_blockers );
+		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$environment_key = sanitize_key( (string) $environment );
+		$environment_supported = $profile_enrolled && in_array( $environment_key, array( 'local', 'development', 'staging', 'production' ), true );
 
 		return array(
 			'contract' => self::CONTRACT,
-			'environment' => sanitize_key( (string) $environment ),
-			'environment_is_staging' => 'staging' === sanitize_key( (string) $environment ),
+			'environment' => $environment_key,
+			'environment_supported' => $environment_supported,
+			'site_profile_enrolled' => $profile_enrolled,
+			'environment_is_staging' => 'staging' === $environment_key,
 			'site_url' => esc_url_raw( site_url() ),
 			'home_url' => esc_url_raw( home_url() ),
 			'rest_url' => esc_url_raw( rest_url() ),
@@ -102,7 +107,8 @@ final class MAD4B_SCP_Connection_Status {
 		elseif ( empty( $oauth['wp_user_capable'] ) ) $blockers[] = 'oauth_wp_subject_invalid';
 		if ( empty( $oauth['https'] ) ) $blockers[] = 'oauth_https_required';
 		$env = isset( $oauth['environment'] ) ? sanitize_key( (string) $oauth['environment'] ) : '';
-		$environment_allowed = 'staging' === $env || ( 'production' === $env && ! empty( $oauth['production_approved'] ) );
+		$profile_ok = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		$environment_allowed = $profile_ok && ( in_array( $env, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $env && ! empty( $oauth['production_approved'] ) ) );
 		if ( ! $environment_allowed ) $blockers[] = 'oauth_environment_not_allowed';
 		if ( empty( $oauth['effective'] ) && ! $blockers ) $blockers[] = 'oauth_resource_bridge_not_effective';
 		return array_values( array_unique( $blockers ) );
@@ -168,7 +174,7 @@ final class MAD4B_SCP_Connection_Status {
 			'verified_at' => isset( $handshake['verified_at'] ) ? sanitize_text_field( (string) $handshake['verified_at'] ) : '',
 			'build_fingerprint_match' => ! empty( $handshake['build_fingerprint_match'] ),
 			'credential_material_stored' => false,
-			'note' => $verified ? 'Verified from a real Staging REST OAuth bearer session that completed MCP initialize and tools/list on the same hashed session identity. No bearer or raw MCP session id is persisted.' : 'Local readiness never self-certifies the external connection; a real ChatGPT OAuth/MCP session must complete initialize and tools/list.',
+			'note' => $verified ? 'Verified from a real enrolled-site REST OAuth bearer session that completed MCP initialize and tools/list on the same hashed session identity. No bearer or raw MCP session id is persisted.' : 'Local readiness never self-certifies the external connection; a real ChatGPT OAuth/MCP session must complete initialize and tools/list.',
 		);
 	}
 

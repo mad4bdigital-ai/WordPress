@@ -20,7 +20,6 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 	const AUDIT_LIMIT = 200;
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const SERVER_ID = 'mad4b-chatgpt';
-	const STAGING_ORIGIN = 'https://staging.egypttourgates.com';
 
 	private static $booted = false;
 
@@ -236,7 +235,7 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 				'contract' => 'mad4b.mutation-acceptance-receipt.v1',
 				'candidate_sha' => $candidate['source_commit_sha'],
 				'build_fingerprint' => $candidate['build_fingerprint'],
-				'environment' => 'staging', 'origin' => self::STAGING_ORIGIN,
+				'environment' => self::acceptance_environment(), 'origin' => self::acceptance_origin(),
 				'mutation_id' => $mutation_id,
 				'approval_ticket_id' => $ticket_id,
 				'undo_approval_ticket_id' => $undo_ticket_id,
@@ -364,8 +363,9 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 			return array();
 		}
 
-		$environment_exact = 'staging' === ( isset( $binding['environment'] ) ? (string) $binding['environment'] : '' )
-			&& 'staging.egypttourgates.com' === ( isset( $binding['host'] ) ? (string) $binding['host'] : '' );
+		$environment_exact = self::acceptance_target_ready()
+			&& hash_equals( self::acceptance_environment(), isset( $binding['environment'] ) ? (string) $binding['environment'] : '' )
+			&& hash_equals( self::acceptance_host(), isset( $binding['host'] ) ? strtolower( (string) $binding['host'] ) : '' );
 		$diagnostics['environment_binding_exact'] = $environment_exact;
 		if ( ! $environment_exact ) {
 			$diagnostics['failure'] = 'candidate_binding_environment_mismatch';
@@ -475,6 +475,26 @@ final class MAD4B_SCP_Live_Acceptance_Reconciler {
 		if ( ! $fresh ) $blockers[] = 'stale_external_snapshot_attestation';
 		$blockers = array_values( array_unique( $blockers ) );
 		return self::gate( empty( $blockers ), empty( $blockers ) ? 'ready' : 'pending_external_evidence', $fresh && empty( $blockers ), self::SNAPSHOT_CONTRACT, $blockers, $observed_at );
+	}
+
+
+	private static function acceptance_environment() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+	}
+
+	private static function acceptance_origin() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_origin() : '';
+	}
+
+	private static function acceptance_host() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_host() : '';
+	}
+
+	private static function acceptance_target_ready() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'acceptance' )
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& '' !== self::acceptance_origin();
 	}
 
 	private static function trusted_external_context( array $external ) {

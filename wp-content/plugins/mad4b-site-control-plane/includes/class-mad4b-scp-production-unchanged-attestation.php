@@ -16,7 +16,6 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 	const PRODUCER_CONTRACT = 'mad4b.external-production-readonly-observer.v1';
 	const RUNTIME_CONTRACT = 'mad4b.production-runtime-observation.v1';
 	const PLUGIN_CONTRACT = 'mad4b.production-plugin-inventory.v1';
-	const PRODUCTION_ORIGIN = 'https://egypttourgates.com';
 	const FINALIZER_ISSUER = 'chatgpt_external_read_only_finalizer';
 	const FINALIZER_PROVENANCE = 'verified_external_readonly_connector';
 	const ENVIRONMENT_ABILITY = 'core__get-environment-info';
@@ -81,7 +80,7 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 			'properties' => array(
 				'contract' => array( 'type' => 'string', 'enum' => array( self::RUNTIME_CONTRACT ) ),
 				'environment' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
-				'site_url' => array( 'type' => 'string', 'enum' => array( self::PRODUCTION_ORIGIN ) ),
+				'site_url' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 2048 ),
 				'wordpress_version' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 40 ),
 				'php_version' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 80 ),
 				'db_server_info' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 160 ),
@@ -109,7 +108,7 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 				'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
 				'build_fingerprint' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'target' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
-				'origin' => array( 'type' => 'string', 'enum' => array( self::PRODUCTION_ORIGIN ) ),
+				'origin' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 2048 ),
 				'environment' => array( 'type' => 'string', 'enum' => array( 'production' ) ),
 				'producer' => array(
 					'type' => 'object',
@@ -144,7 +143,8 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 		if ( self::CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) $blockers[] = 'production_receipt_v2_required';
 		if ( empty( $candidate['source_commit_sha'] ) || empty( $receipt['candidate_sha'] ) || ! hash_equals( (string) $candidate['source_commit_sha'], (string) $receipt['candidate_sha'] ) ) { $blockers[] = 'candidate_mismatch'; $state = 'candidate_mismatch'; }
 		if ( empty( $candidate['build_fingerprint'] ) || empty( $receipt['build_fingerprint'] ) || ! hash_equals( (string) $candidate['build_fingerprint'], (string) $receipt['build_fingerprint'] ) ) { $blockers[] = 'build_fingerprint_mismatch'; if ( 'candidate_mismatch' !== $state ) $state = 'build_fingerprint_mismatch'; }
-		if ( 'production' !== ( isset( $receipt['target'] ) ? (string) $receipt['target'] : '' ) || 'production' !== ( isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || self::PRODUCTION_ORIGIN !== rtrim( isset( $receipt['origin'] ) ? (string) $receipt['origin'] : '', '/' ) ) $blockers[] = 'wrong_production_identity';
+		$production_origin = self::production_origin();
+		if ( '' === $production_origin || 'production' !== ( isset( $receipt['target'] ) ? (string) $receipt['target'] : '' ) || 'production' !== ( isset( $receipt['environment'] ) ? (string) $receipt['environment'] : '' ) || ! hash_equals( $production_origin, rtrim( isset( $receipt['origin'] ) ? (string) $receipt['origin'] : '', '/' ) ) ) $blockers[] = 'wrong_production_identity';
 		if ( self::FINALIZER_ISSUER !== ( isset( $receipt['issuer'] ) ? (string) $receipt['issuer'] : '' ) || self::FINALIZER_PROVENANCE !== ( isset( $receipt['provenance'] ) ? (string) $receipt['provenance'] : '' ) ) $blockers[] = 'untrusted_receipt_provenance';
 		if ( ! self::producer_valid( isset( $receipt['producer'] ) && is_array( $receipt['producer'] ) ? $receipt['producer'] : array() ) ) $blockers[] = 'untrusted_production_observation_producer';
 
@@ -215,7 +215,8 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 			'active_theme_stylesheet' => isset( $runtime['active_theme_stylesheet'] ) ? strtolower( trim( (string) $runtime['active_theme_stylesheet'] ) ) : '',
 			'active_theme_version' => isset( $runtime['active_theme_version'] ) ? trim( (string) $runtime['active_theme_version'] ) : '',
 		);
-		if ( 'production' !== $out['environment'] || self::PRODUCTION_ORIGIN !== $out['site_url'] ) return new WP_Error( 'mad4b_production_runtime_identity_invalid' );
+		$production_origin = self::production_origin();
+		if ( '' === $production_origin || 'production' !== $out['environment'] || ! hash_equals( $production_origin, $out['site_url'] ) ) return new WP_Error( 'mad4b_production_runtime_identity_invalid' );
 		foreach ( array( 'wordpress_version','php_version','db_server_info','active_theme_stylesheet' ) as $key ) if ( '' === $out[ $key ] ) return new WP_Error( 'mad4b_production_runtime_incomplete' );
 		return $out;
 	}
@@ -237,6 +238,12 @@ final class MAD4B_SCP_Production_Unchanged_Attestation {
 
 	public static function runtime_digest( array $runtime ) { return hash( 'sha256', self::canonical_json( $runtime ) ); }
 	public static function plugin_digest( array $plugins ) { return hash( 'sha256', self::canonical_json( $plugins ) ); }
+
+
+	private static function production_origin() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return '';
+		return rtrim( (string) MAD4B_SCP_Site_Profile::related_origin( 'production' ), '/' );
+	}
 
 	private static function producer_valid( array $producer ) {
 		return self::PRODUCER_CONTRACT === ( isset( $producer['contract'] ) ? (string) $producer['contract'] : '' )

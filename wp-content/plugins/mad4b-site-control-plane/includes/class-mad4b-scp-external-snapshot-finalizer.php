@@ -19,7 +19,6 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 	const HANDSHAKE_TTL = 900;
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const SERVER_ID = 'mad4b-chatgpt';
-	const STAGING_HOST = 'staging.egypttourgates.com';
 
 	private static $booted = false;
 
@@ -215,11 +214,9 @@ final class MAD4B_SCP_External_Snapshot_Finalizer {
 	}
 
 	private static function staging_allowed() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : '';
-		if ( 'staging' !== $environment ) return false;
-		$home_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
-		$site_host = function_exists( 'site_url' ) ? strtolower( (string) wp_parse_url( site_url( '/' ), PHP_URL_HOST ) ) : '';
-		return self::STAGING_HOST === $home_host && self::STAGING_HOST === $site_host;
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& MAD4B_SCP_Site_Profile::skills_enabled();
 	}
 
 	private static function parse_time( $value ) {
