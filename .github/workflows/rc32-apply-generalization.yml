@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_parent='81ac1b9b33c66dff92b2e4d6015f94ecc65b34c2'
+          expected_parent='cc51c61c5d6fdff1957f8e6d2e052a1c622f8164'
           actual_parent="$(git rev-parse HEAD^)"
           test "$actual_parent" = "$expected_parent"
           for n in 01 02 03 04 05; do
@@ -58,6 +58,32 @@ jobs:
             '/tmp/rc32-generalization.patch' | sha256sum -c -
           grep -Fq '0.4.0-rc.32' /tmp/rc32-generalization.patch
           grep -Fq 'class-mad4b-scp-site-profile.php' /tmp/rc32-generalization.patch
+
+          awk '
+            $1 == "---" { old = $2 }
+            $1 == "+++" {
+              new = $2
+              if (old == "/dev/null") {
+                sub(/^b\//, "", new)
+                sub(/^patch-new\//, "", new)
+                print new
+              }
+            }
+          ' /tmp/rc32-generalization.patch | while IFS= read -r target; do
+            case "$target" in
+              wp-content/plugins/mad4b-site-control-plane/*)
+                if [ -e "$target" ]; then
+                  echo "Replacing patch-owned additive target: $target"
+                  rm -f -- "$target"
+                fi
+                ;;
+              *)
+                echo "Refusing unexpected additive target from staged patch: $target" >&2
+                exit 1
+                ;;
+            esac
+          done
+
           git apply -p2 --check /tmp/rc32-generalization.patch
           git apply -p2 /tmp/rc32-generalization.patch
           rm -f .github/rc32-generalization.patch.gz.b64
