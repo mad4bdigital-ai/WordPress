@@ -5,7 +5,7 @@ function get_option($key,$default=false){return array_key_exists($key,$GLOBALS['
 function sanitize_key($key){return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$key));}
 function sanitize_title($title){$title=preg_replace('/[^a-z0-9_\-]+/','-',strtolower(trim((string)$title)));return trim($title,'-');}
 function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
-function apply_filters($hook,$value){if('wpml_active_languages'===$hook){return array('en'=>array(),'it'=>array(),'ar'=>array());}return $value;}
+function apply_filters($hook,$value){if('etg_filter_seo_language_codes'===$hook){return array('en','it','ar');}return $value;}
 function expect_same($expected,$actual,string $message):void{if($expected!==$actual){fwrite(STDERR,"FAILED: {$message}\nExpected: ".var_export($expected,true)."\nActual: ".var_export($actual,true)."\n");exit(1);}}
 
 $base=dirname(__DIR__);
