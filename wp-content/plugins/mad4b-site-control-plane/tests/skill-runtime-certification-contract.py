@@ -48,7 +48,8 @@ for marker in [
     "MAD4B_SCP_Skill_Registry::list_skills( array( 'enabled' => true ) )",
     "MAD4B_SCP_Skill_Registry::openai_app_id()",
     "public static function from_entries( array $entries, $app_id = '' )",
-    "return self::from_entries( $entries, MAD4B_SCP_Skill_Registry::openai_app_id() )",
+    "$result = self::from_entries( $entries, MAD4B_SCP_Skill_Registry::openai_app_id() )",
+    "$result['runtime_context'] = self::runtime_context();",
     "entry_collision",
     "resource_collision",
     "snapshot_digest",
@@ -60,6 +61,13 @@ for marker in [
 ]:
     if marker not in identity:
         raise SystemExit(f'missing deterministic snapshot identity invariant: {marker}')
+
+payload_start = identity.find("$payload = array(")
+payload_end = identity.find("$json = wp_json_encode( $payload", payload_start)
+if payload_start < 0 or payload_end < 0 or payload_start >= payload_end:
+    raise SystemExit('canonical snapshot payload boundary is missing')
+if 'runtime_context' in identity[payload_start:payload_end]:
+    raise SystemExit('diagnostic runtime_context must remain outside the canonical snapshot payload/digest')
 
 for marker in [
     "MAD4B_SCP_Skill_Snapshot_Identity::build()",
