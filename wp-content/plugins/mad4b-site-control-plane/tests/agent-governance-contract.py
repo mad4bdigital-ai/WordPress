@@ -39,7 +39,7 @@ bootstrap = read('mad4b-site-control-plane.php')
 plugin = read('includes/class-mad4b-scp-plugin.php')
 
 # Schema authority must be normalized and migration must not seed authority.
-require(schema, 'const VERSION = 5;', 'schema-version')
+require(schema, 'const VERSION = 6;', 'schema-version')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
@@ -48,11 +48,13 @@ for table in (
     require(schema, table, 'schema-table')
 for approval_binding_field in (
     'candidate_binding_contract', 'candidate_sha', 'build_fingerprint',
-    'binding_environment', 'binding_host', 'bound_at',
+    'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision',
+    'site_profile_digest', 'bound_at',
 ):
     require(schema, approval_binding_field, 'schema-approval-binding')
 require(schema, 'KEY decision_inbox (status,expires_at,id)', 'schema-decision-inbox-index')
 require(schema, 'KEY candidate_inbox (candidate_sha,build_fingerprint,status,expires_at)', 'schema-candidate-inbox-index')
+require(schema, 'KEY site_profile_inbox (site_uuid,site_profile_revision,status,expires_at)', 'schema-site-profile-inbox-index')
 require(schema, 'public static function critical_ready()', 'schema-critical-physical-guard')
 require(schema, 'public static function physical_integrity_status()', 'schema-physical-integrity-status')
 for dangerous_seed in ("status = 'enabled'", 'grant_ability('):
@@ -196,10 +198,18 @@ require(impact, "'mad4b/mutation-undo'", 'undo-high-impact')
 require(impact, "'core' !== $provider && 'media' !== $provider", 'adapter-high-default')
 require(impact, "array( 'high', 'exceptional' )", 'approval-required-high')
 
-# Approval tickets bind one exact canonical operation, expire, and are terminal after execution claim.
+# Approval tickets bind one exact canonical operation, tenant profile and deployed build,
+# expire, and become terminal after execution claim.
 require(approvals, "'contract' => 'mad4b.approval.v1'", 'approval-contract-version')
+require(approvals, "const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v2'", 'approval-tenant-build-binding-version')
 for field in ("'site'", "'agent_public_id'", "'server_id'", "'ability'", "'provider'", "'target'", "'ticket_class'", "'input'"):
     require(approvals, field, 'approval-envelope-field')
+for binding_field in ("'site_uuid'", "'profile_revision'", "'profile_digest'", "'environment'", "'origin'"):
+    require(approvals, binding_field, 'approval-site-profile-envelope-field')
+require(approvals, 'private static function profile_snapshot', 'approval-site-profile-snapshot')
+require(approvals, 'private static function profile_bindings_equal', 'approval-site-profile-drift-guard')
+require(approvals, 'MAD4B_SCP_Site_Profile::origin_enrolled()', 'approval-origin-enrollment-guard')
+require(approvals, 'MAD4B_SCP_Site_Profile::write_enabled()', 'approval-site-write-guard')
 require(approvals, 'MAX_CANONICAL_BYTES = 65536', 'approval-size-bound')
 require(approvals, 'MAX_DEPTH = 8', 'approval-depth-bound')
 require(approvals, 'MAX_TTL = 3600', 'approval-ttl-bound')
@@ -214,6 +224,7 @@ require(approvals, "SET status = 'failed'", 'approval-failure-terminal-transitio
 require(approvals, 'hash_equals', 'approval-hash-compare')
 require(approvals, 'mad4b_approval_replay_denied', 'approval-replay-denial')
 require(approvals, 'mad4b_approval_payload_mismatch', 'approval-payload-denial')
+require(approvals, 'mad4b_approval_candidate_mismatch', 'approval-build-or-profile-drift-denial')
 require(approvals, "array( 'mutation', 'breakglass', 'recovery' )", 'approval-class-separation')
 for forbidden in ('serialize(', 'unserialize('):
     forbid(approvals, forbidden, 'approval-no-php-serialization')
@@ -290,4 +301,4 @@ pos = [bootstrap.index(x) for x in order]
 if pos != sorted(pos):
     raise SystemExit('FAIL bootstrap-order: governance dependencies are loaded out of order')
 
-print('mad4b.site-control-plane.agent-governance-contract.v8: PASS')
+print('mad4b.site-control-plane.agent-governance-contract.v9: PASS')
