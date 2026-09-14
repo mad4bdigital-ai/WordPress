@@ -7,12 +7,10 @@ use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
 
 trait ProfileRegistryHelperTrait {
 	private function canonicalArchiveAuthority( string $path ): string {
-		$path = $this->normalizeArchivePath( $path ); if ( '' === $path ) { return ''; }
-		foreach ( $this->activeLanguageCodes() as $language ) {
-			$prefix = '/' . $language . '/';
-			if ( 0 === strpos( $path, $prefix ) ) { $path = $this->normalizeArchivePath( '/' . ltrim( substr( $path, strlen( $prefix ) ), '/' ) ); break; }
-		}
-		return $path;
+		$path = $this->normalizeArchivePath( $path );
+		if ( '' === $path ) { return ''; }
+		$without = $this->withoutLanguagePrefix( $path );
+		return '' !== $without ? $without : $path;
 	}
 
 	private function archiveMatches( array $profile, string $archive, string $archivePath ): bool {
@@ -25,26 +23,36 @@ trait ProfileRegistryHelperTrait {
 
 	private function archivePathEqualsAuthority( string $archivePath, string $authority ): bool {
 		$archivePath = $this->normalizeArchivePath( $archivePath );
+		$authority = $this->normalizeArchivePath( $authority );
 		if ( '' === $archivePath || '' === $authority ) { return false; }
 		if ( $archivePath === $authority ) { return true; }
-		foreach ( $this->activeLanguageCodes() as $language ) {
-			$prefix = '/' . $language . '/';
-			if ( 0 === strpos( $archivePath, $prefix ) ) {
-				$without = '/' . ltrim( substr( $archivePath, strlen( $prefix ) ), '/' );
-				$without = $this->normalizeArchivePath( $without );
-				if ( $without === $authority ) { return true; }
-			}
-		}
-		return false;
+		// A language-specific authority is already exact. Never allow another
+		// language prefix to wrap it (for example /en/it/archive/).
+		if ( '' !== $this->withoutLanguagePrefix( $authority ) ) { return false; }
+		$without = $this->withoutLanguagePrefix( $archivePath );
+		return '' !== $without && $without === $authority;
 	}
 
-	private function activeLanguageCodes(): array {
-		if ( ! function_exists( 'apply_filters' ) ) { return array(); }
-		$languages = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0 ) );
-		if ( ! is_array( $languages ) ) { return array(); }
-		$out = array();
-		foreach ( array_keys( $languages ) as $code ) { $code = sanitize_key( (string) $code ); if ( '' !== $code ) { $out[] = $code; } }
-		return array_values( array_unique( $out ) );
+	private function withoutLanguagePrefix( string $path ): string {
+		$path = $this->normalizeArchivePath( $path );
+		$bits = array_values( array_filter( explode( '/', trim( $path, '/' ) ), 'strlen' ) );
+		if ( count( $bits ) < 2 ) { return ''; }
+		$first = strtolower( (string) $bits[0] );
+		if ( ! $this->isLanguagePrefix( $first ) ) { return ''; }
+		array_shift( $bits );
+		return $this->normalizeArchivePath( '/' . implode( '/', $bits ) . '/' );
+	}
+
+	private function isLanguagePrefix( string $segment ): bool {
+		$segment = strtolower( trim( $segment ) );
+		if ( ! preg_match( '/^[a-z0-9_-]{2,24}$/', $segment ) ) { return false; }
+		$codes = array();
+		if ( function_exists( 'apply_filters' ) ) { $codes = (array) apply_filters( 'etg_filter_seo_language_codes', array(), $this->config ); }
+		foreach ( $codes as $code ) {
+			$code = strtolower( trim( (string) $code ) );
+			if ( '' !== $code && $segment === $code && preg_match( '/^[a-z0-9_-]{2,24}$/', $code ) ) { return true; }
+		}
+		return false;
 	}
 
 	private function profileSupportsProvider( array $profile, string $provider ): bool {
@@ -128,6 +136,18 @@ trait ProfileRegistryHelperTrait {
 	private function boundedInt( $value, int $min, int $max ): int { $value = is_numeric( $value ) ? (int) $value : $min; return max( $min, min( $max, $value ) ); }
 
 	private function listValue( $value, string $sanitizer ): array { if ( is_string( $value ) ) { $value = preg_split( '/[\r\n,]+/', $value ); } $out=array(); foreach ( (array) $value as $item ) { $item=call_user_func($sanitizer,(string)$item); if(''!==$item){$out[]=$item;} } return array_values(array_unique($out)); }
+
+	private function capabilityListValue( $value ): array {
+		if ( is_string( $value ) ) { $value = preg_split( '/[\r\n,]+/', $value ); }
+		$out = array();
+		foreach ( array_slice( (array) $value, 0, self::MAX_REQUIRED_CAPABILITIES ) as $capability ) {
+			$capability = strtolower( trim( (string) $capability ) );
+			if ( strlen( $capability ) > 80 ) { $capability = substr( $capability, 0, 80 ); }
+			$capability = preg_replace( '/[^a-z0-9._-]/', '', $capability );
+			if ( is_string( $capability ) && '' !== $capability ) { $out[] = $capability; }
+		}
+		return array_values( array_unique( $out ) );
+	}
 
 	private function lineList( $value ): array { if ( is_string( $value ) ) { $value=preg_split('/[\r\n]+/',$value); } $out=array(); foreach((array)$value as $line){$line=strtolower(trim((string)$line)); if(''!==$line){$out[]=$line;}} return array_values(array_unique($out)); }
 

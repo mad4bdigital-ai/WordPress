@@ -48,7 +48,7 @@ final class OperationalPage {
     }
 
     public function settings(): void {
-        register_setting('etg_dfsb', Configuration::OPTION_NAME, array('sanitize_callback' => array($this->config, 'sanitize')));
+        register_setting('etg_dfsb', Configuration::OPTION_NAME, array('sanitize_callback' => array($this->config, 'sanitizeForStorage')));
     }
 
     public function menu(): void {
@@ -252,6 +252,27 @@ final class OperationalPage {
         ?>
         <form method="post" action="options.php" class="etg-settings-form">
             <?php settings_fields('etg_dfsb'); ?>
+
+            <div class="etg-card">
+                <h2>Configuration lifecycle</h2>
+                <?php $migration = $this->config->migrationStatus(); ?>
+                <p><strong>Schema:</strong> <code><?php echo esc_html((string) $migration['schema_version']); ?></code> / supported <code><?php echo esc_html((string) $migration['supported_schema_version']); ?></code></p>
+                <p><strong>Migration state:</strong> <code><?php echo esc_html((string) $migration['state']); ?></code></p>
+                <p><strong>Compatibility profile:</strong> <code><?php echo esc_html((string) ($migration['compatibility_profile'] ?: 'none')); ?></code></p>
+                <table class="form-table" role="presentation">
+                    <?php $this->selectRow('Data retention', 'data_retention', $config, array('preserve'=>'Preserve on uninstall', 'delete_on_uninstall'=>'Delete on uninstall'), 'Preserve is the default. Destructive cleanup is honored only on the current safe schema and never on Multisite.'); ?>
+                    <?php if (!empty($migration['requires_resolution'])): ?>
+                        <tr>
+                            <th scope="row"><label for="etg_dfsb_migration_resolution">Legacy migration resolution</label></th>
+                            <td><select id="etg_dfsb_migration_resolution" name="<?php echo esc_attr(Configuration::OPTION_NAME); ?>[migration_resolution]">
+                                <option value="">Keep blocked for review</option>
+                                <option value="preserve_generic">Preserve as generic IndexFlow configuration</option>
+                                <option value="use_alpha13">Treat as ETG Alpha13 compatibility configuration</option>
+                            </select><p class="description">An ambiguous legacy installation stays Global OFF until an administrator makes an explicit choice. The choice itself does not enable the bridge.</p></td>
+                        </tr>
+                    <?php endif; ?>
+                </table>
+            </div>
 
             <div class="etg-card etg-card-critical">
                 <h2>Master safety</h2>

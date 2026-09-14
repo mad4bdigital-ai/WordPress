@@ -22,6 +22,12 @@ define( 'ETG_DFSB_RUNTIME_REVISION', 'archive-hero-render-5' );
 // the deterministic build-identity.json embedded by the governed package builder.
 add_action( 'wp_head', static function () {
     if ( ! function_exists( 'esc_attr' ) ) { return; }
+    // Preserve the Alpha13 public provenance ABI only for installations that
+    // were positively classified as legacy ETG. Fresh/generic IndexFlow
+    // installations must not inherit an ETG fingerprint merely by activating
+    // the package.
+    $config = new ETG\DynamicFilterSEOBridge\Config\Configuration();
+    if ( 'alpha13' !== (string) $config->get( 'compatibility_profile', '' ) ) { return; }
     echo '<meta name="etg-dfsb-runtime-build" content="' . esc_attr( ETG_DFSB_RUNTIME_REVISION ) . '" />' . "\n";
     $identity = ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
     if ( ! empty( $identity['valid'] ) ) {
@@ -75,7 +81,7 @@ add_action( 'plugins_loaded', static function () {
     $inventory = new ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory(
         null,
         null,
-        static function () use ( $topology ): array { return $topology->discover( true ); }
+        static function () use ( $topology ): array { return $topology->discover( true, false ); }
     );
     $reconciler = new ETG\DynamicFilterSEOBridge\Diagnostics\InventoryReconciler();
     $provider = new ETG\DynamicFilterSEOBridge\Diagnostics\EvidenceProvider(

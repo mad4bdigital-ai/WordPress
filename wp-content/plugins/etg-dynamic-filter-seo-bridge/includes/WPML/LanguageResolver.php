@@ -1,9 +1,12 @@
 <?php
 namespace ETG\DynamicFilterSEOBridge\WPML;
 
+require_once dirname( __DIR__ ) . '/Language/LanguageResolverInterface.php';
+
+use ETG\DynamicFilterSEOBridge\Language\LanguageResolverInterface;
 use WP_Term;
 
-final class LanguageResolver {
+final class LanguageResolver implements LanguageResolverInterface {
 	public function currentLanguage(): string {
 		$language = has_filter( 'wpml_current_language' ) ? (string) apply_filters( 'wpml_current_language', null ) : '';
 		if ( '' === $language ) {
@@ -38,6 +41,50 @@ final class LanguageResolver {
 			if ( $code ) { $out[ $code ] = is_array( $data ) ? $data : array(); }
 		}
 		return $out;
+	}
+
+	public function defaultLanguage(): string {
+		if ( function_exists( 'has_filter' ) && has_filter( 'wpml_default_language' ) ) {
+			$default = sanitize_key( (string) apply_filters( 'wpml_default_language', null ) );
+			if ( '' !== $default ) { return $default; }
+		}
+		return $this->currentLanguage();
+	}
+
+	public function localizeUrl( string $url, string $language ): array {
+		$language = sanitize_key( $language );
+		if ( '' === $language || $language === $this->defaultLanguage() ) { return array( 'available'=>true, 'url'=>$url, 'reason'=>'' ); }
+		if ( ! function_exists( 'has_filter' ) || ! has_filter( 'wpml_permalink' ) ) { return array( 'available'=>false, 'url'=>'', 'reason'=>'language_permalink_unavailable' ); }
+		try {
+			$candidate = apply_filters( 'wpml_permalink', $url, $language, true );
+			if ( is_string( $candidate ) && '' !== trim( $candidate ) ) { return array( 'available'=>true, 'url'=>$candidate, 'reason'=>'' ); }
+			return array( 'available'=>false, 'url'=>'', 'reason'=>'language_permalink_invalid' );
+		} catch ( \Throwable $e ) {
+			return array( 'available'=>false, 'url'=>'', 'reason'=>'language_permalink_exception' );
+		}
+	}
+
+	public function executeInLanguage( string $language, callable $callback ): array {
+		$language = sanitize_key( $language );
+		$currentAvailable = function_exists( 'has_filter' ) && false !== has_filter( 'wpml_current_language' ) && function_exists( 'apply_filters' );
+		if ( ! $currentAvailable ) { return array( 'available'=>false, 'switched'=>false, 'reason'=>'wpml_language_context_unavailable', 'result'=>null ); }
+		$previous = sanitize_key( (string) apply_filters( 'wpml_current_language', null ) );
+		$switched = false;
+		$sitepressObject = null;
+		try {
+			if ( '' !== $language && $previous !== $language ) {
+				global $sitepress;
+				if ( ! is_object( $sitepress ) || ! method_exists( $sitepress, 'switch_lang' ) ) { return array( 'available'=>false, 'switched'=>false, 'reason'=>'wpml_language_switch_unavailable', 'result'=>null ); }
+				$sitepressObject = $sitepress;
+				$sitepressObject->switch_lang( $language, true );
+				$switched = true;
+			}
+			return array( 'available'=>true, 'switched'=>$switched, 'reason'=>'', 'result'=>$callback() );
+		} finally {
+			if ( $switched && is_object( $sitepressObject ) && method_exists( $sitepressObject, 'switch_lang' ) && '' !== $previous ) {
+				try { $sitepressObject->switch_lang( $previous, true ); } catch ( \Throwable $ignored ) {}
+			}
+		}
 	}
 
 	public function resolve( WP_Term $term, string $taxonomy, ?string $language = null ): array {

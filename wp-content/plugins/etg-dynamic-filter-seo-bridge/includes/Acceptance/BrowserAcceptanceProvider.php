@@ -2,15 +2,18 @@
 namespace ETG\DynamicFilterSEOBridge\Acceptance;
 
 final class BrowserAcceptanceProvider {
-    const CONTRACT = 'etg.dfsb.browser-acceptance-provider.v1';
+    const CONTRACT = 'etg.dfsb.browser-acceptance-provider.v2';
     const PROVIDER_ID = 'etg-dfsb';
     const CAPABILITIES_CONTRACT = 'mad4b.browser-acceptance-capabilities.v1';
     const PLAN_CONTRACT = 'mad4b.browser-acceptance-plan.v1';
     const RESULT_CONTRACT = 'mad4b.browser-acceptance-result.v1';
     const EVIDENCE_CONTRACT = 'etg.dfsb.browser-acceptance-evidence.v1';
     const OBSERVER_CONTRACT = 'etg.dfsb.browser-acceptance-observer.v1';
+    const CASE_CONTRACT = 'etg.dfsb.browser-acceptance-case.v2';
     const MAX_CASES = 8;
     const MAX_IDS = 100;
+    const MAX_DIGEST_IDS = 5000;
+    const MAX_EVIDENCE_BYTES = 2097152;
 
     private $semanticProvider;
     private $buildIdentityProvider;
@@ -52,6 +55,7 @@ final class BrowserAcceptanceProvider {
             'read_only'=>true,
             'authorizing'=>false,
             'execution_mode'=>'external_browser_agent',
+            'supported_execution_modes'=>$this->supportedExecutionModes(),
             'transport_owned_by_provider'=>false,
             'browser_engine_owned_by_provider'=>false,
             'external_browser_agent_required'=>true,
@@ -63,6 +67,8 @@ final class BrowserAcceptanceProvider {
             'production_activation'=>false,
             'max_cases'=>self::MAX_CASES,
             'max_ids'=>self::MAX_IDS,
+            'max_digest_ids'=>self::MAX_DIGEST_IDS,
+            'max_evidence_bytes'=>self::MAX_EVIDENCE_BYTES,
         );
     }
 
@@ -74,6 +80,7 @@ final class BrowserAcceptanceProvider {
             'authorizing'=>false,
             'read_only'=>true,
             'execution_mode'=>'external_browser_agent',
+            'supported_execution_modes'=>$this->supportedExecutionModes(),
             'external_browser_agent_required'=>true,
             'transport_authentication_required'=>true,
             'plan_signature'=>'wordpress_auth_salt_hmac_sha256',
@@ -83,6 +90,7 @@ final class BrowserAcceptanceProvider {
                 'browser.event_stream',
                 'browser.dom_result_count',
                 'browser.dataset_id_parity',
+                'browser.dataset_digest_parity',
                 'browser.order_parity',
                 'browser.url_state',
                 'browser.seo_non_authority',
@@ -117,10 +125,18 @@ final class BrowserAcceptanceProvider {
             if (count($cases) >= self::MAX_CASES) break;
             if ('PASS' !== (string)($case['verdict'] ?? '')) continue;
             $dataset = (array)($case['direct_dataset'] ?? array());
-            if (empty($dataset['ids_complete'])) return $this->blockedPlan($profileId, array('semantic_dataset_ids_incomplete'));
-            $ids = $this->normalizeIds((array)($dataset['ids'] ?? array()));
+            if (empty($dataset['proof_complete'])) return $this->blockedPlan($profileId, array('semantic_dataset_proof_incomplete'));
+            $proofMode = (string)($dataset['proof_mode'] ?? '');
+            if (!in_array($proofMode, array('full_ids','full_digest'), true)) return $this->blockedPlan($profileId, array('semantic_dataset_proof_mode_invalid'));
             $total = isset($case['provider_total']) ? (int)$case['provider_total'] : (int)($dataset['total'] ?? 0);
-            if ($total !== count($ids)) return $this->blockedPlan($profileId, array('semantic_dataset_total_mismatch'));
+            $proofCount = (int)($dataset['proof_item_count'] ?? 0);
+            if ($total < 0 || $total > self::MAX_DIGEST_IDS || $total !== $proofCount) return $this->blockedPlan($profileId, array('semantic_dataset_total_mismatch'));
+            $identityDigest = strtolower((string)($dataset['identity_digest'] ?? ''));
+            $orderDigest = strtolower((string)($dataset['order_digest'] ?? ''));
+            if (!$this->validDigest($identityDigest) || !$this->validDigest($orderDigest)) return $this->blockedPlan($profileId, array('semantic_dataset_digest_invalid'));
+            $ids = 'full_ids' === $proofMode ? $this->normalizeIds((array)($dataset['ids'] ?? array()), self::MAX_IDS) : array();
+            if ('full_ids' === $proofMode && $total !== count($ids)) return $this->blockedPlan($profileId, array('semantic_dataset_ids_incomplete'));
+
             $cases[] = array(
                 'case_id'=>(string)($case['case_id'] ?? ''),
                 'archive_path'=>$this->caseArchivePath($semanticPlan, $case),
@@ -131,8 +147,11 @@ final class BrowserAcceptanceProvider {
                 'term_slug'=>(string)($case['term_slug'] ?? ''),
                 'expected'=>array(
                     'result_total'=>$total,
+                    'proof_mode'=>$proofMode,
+                    'proof_item_count'=>$proofCount,
                     'ids'=>$ids,
-                    'ids_digest'=>hash('sha256', json_encode($ids)),
+                    'identity_digest'=>$identityDigest,
+                    'order_digest'=>$orderDigest,
                     'order_sensitive'=>true,
                 ),
             );
@@ -151,11 +170,13 @@ final class BrowserAcceptanceProvider {
             'authority'=>$this->authority(),
             'execution'=>array(
                 'mode'=>'external_browser_agent',
+                'supported_modes'=>$this->supportedExecutionModes(),
                 'arbitrary_url_input'=>false,
                 'arbitrary_javascript_input'=>false,
                 'observer_contract'=>self::OBSERVER_CONTRACT,
                 'evidence_contract'=>self::EVIDENCE_CONTRACT,
                 'ajax_endpoint_path'=>'/wp-json/etg-dfsb/v1/ajax-presentation',
+                'max_evidence_bytes'=>self::MAX_EVIDENCE_BYTES,
             ),
         );
         $digest = hash('sha256', $this->canonicalJson($core));
@@ -187,6 +208,8 @@ final class BrowserAcceptanceProvider {
 
         $evidence = $request['evidence'] ?? null;
         if (!is_array($evidence) || !$evidence) return $this->resultIncomplete($profileId, $plan, array('browser_runtime_not_observed'));
+        $encodedEvidence = $this->canonicalJson($evidence);
+        if (strlen($encodedEvidence) > self::MAX_EVIDENCE_BYTES) return $this->resultInfrastructure($profileId, $plan, array('browser_evidence_size_limit_exceeded'));
         $envelopeReasons = $this->validateEvidenceEnvelope($evidence, $plan);
         if ($envelopeReasons) return $this->resultInfrastructure($profileId, $plan, $envelopeReasons);
 
@@ -196,25 +219,29 @@ final class BrowserAcceptanceProvider {
             $caseId = (string)($case['case_id'] ?? '');
             if ('' !== $caseId) $evidenceCases[$caseId] = $case;
         }
-        $caseResults = array(); $infra = array(); $defects = array();
+        $caseResults = array(); $infra = array(); $defects = array(); $incomplete = array();
         foreach ((array)$plan['cases'] as $expected) {
             $caseId = (string)$expected['case_id'];
             if (!isset($evidenceCases[$caseId])) {
-                $infra[] = $caseId.':browser_case_evidence_missing';
-                $caseResults[] = $this->caseBlocked($expected, array('browser_case_evidence_missing'));
+                $incomplete[] = $caseId.':browser_case_evidence_missing';
+                $caseResults[] = $this->caseIncomplete($expected, array('browser_case_evidence_missing'));
                 continue;
             }
             $evaluated = $this->evaluateCase($expected, $evidenceCases[$caseId]);
             $caseResults[] = $evaluated;
             foreach ((array)$evaluated['infrastructure_failures'] as $reason) $infra[] = $caseId.':'.$reason;
             foreach ((array)$evaluated['defect_reasons'] as $reason) $defects[] = $caseId.':'.$reason;
+            foreach ((array)$evaluated['incomplete_evidence'] as $reason) $incomplete[] = $caseId.':'.$reason;
         }
-        if (count($evidenceCases) !== count((array)$plan['cases'])) $infra[] = 'browser_case_set_mismatch';
-        $infra = array_values(array_unique($infra)); $defects = array_values(array_unique($defects));
+        if (count($evidenceCases) > count((array)$plan['cases'])) $infra[] = 'browser_case_set_mismatch';
+        $infra = array_values(array_unique($infra));
+        $defects = array_values(array_unique($defects));
+        $incomplete = array_values(array_unique($incomplete));
         $tests = $this->reduceTests($caseResults);
 
         if ($infra) { $verdict='BLOCKED'; $classification='TEST_INFRASTRUCTURE_FAILURE'; }
         elseif ($defects) { $verdict='FAIL'; $classification='PRODUCT_DEFECT'; }
+        elseif ($incomplete) { $verdict='INCOMPLETE_EVIDENCE'; $classification='OBSERVATION_GAP'; }
         else { $verdict='PASS'; $classification='NO_CONFIRMED_DEFECT'; }
 
         $evidenceDigest = hash('sha256', $this->canonicalJson($this->canonicalEvidence($evidence)));
@@ -239,17 +266,17 @@ final class BrowserAcceptanceProvider {
             'case_count'=>count($caseResults),
             'authority'=>$this->authority(),
             'blocking_reasons'=>array(),
-            'incomplete_evidence'=>array(),
+            'incomplete_evidence'=>$incomplete,
             'defect_reasons'=>$defects,
             'infrastructure_failures'=>$infra,
             'classification'=>$classification,
             'verdict'=>$verdict,
-            'browser_runtime'=>'PASS'===$verdict?'PASS':('FAIL'===$verdict?'FAIL':'BLOCKED'),
+            'browser_runtime'=>'PASS'===$verdict?'PASS':('FAIL'===$verdict?'FAIL':('INCOMPLETE_EVIDENCE'===$verdict?'INCOMPLETE_EVIDENCE':'BLOCKED')),
         );
     }
 
     private function evaluateCase(array $expected, array $evidence): array {
-        $infra=array(); $defects=array(); $tests=array();
+        $infra=array(); $defects=array(); $incomplete=array(); $tests=array();
         if ((string)($evidence['case_id'] ?? '') !== (string)$expected['case_id']) $infra[]='case_id_mismatch';
         $runtime=(array)($evidence['runtime'] ?? array());
         $group=(string)($runtime['filter_group'] ?? '');
@@ -274,17 +301,55 @@ final class BrowserAcceptanceProvider {
         if(!$networkPass)$infra[]='browser_ajax_round_trip_invalid';
 
         $rendered=(array)($evidence['rendered'] ?? array());
-        $actualIds=$this->normalizeIds((array)($rendered['ids']??array()));
-        $expectedIds=$this->normalizeIds((array)$expected['expected']['ids']);
-        $countPass=(int)($rendered['result_count']??-1)===(int)$expected['expected']['result_total'];
-        $identityActual=$actualIds;$identityExpected=$expectedIds;sort($identityActual,SORT_NUMERIC);sort($identityExpected,SORT_NUMERIC);
-        $idsPass=$identityActual===$identityExpected;$orderPass=$actualIds===$expectedIds;
-        $tests['browser_dom_result_count']=$countPass?'PASS':'FAIL';
-        $tests['browser_dataset_id_parity']=$idsPass?'PASS':'FAIL';
-        $tests['browser_order_parity']=$orderPass?'PASS':'FAIL';
-        if(!$countPass)$defects[]='browser_result_count_divergence';
-        if(!$idsPass)$defects[]='browser_dataset_identity_divergence';
-        if(!$orderPass)$defects[]='browser_dataset_order_divergence';
+        $expectedProof=(array)$expected['expected'];
+        $expectedTotal=(int)($expectedProof['result_total']??0);
+        $proofMode=(string)($expectedProof['proof_mode']??'full_ids');
+        $actualTotal=isset($rendered['result_count'])&&is_numeric($rendered['result_count'])?(int)$rendered['result_count']:-1;
+        $countAuthoritative=!empty($rendered['result_count_authoritative']);
+        if(!$countAuthoritative){
+            $tests['browser_dom_result_count']='INCOMPLETE_EVIDENCE';
+            $incomplete[]='browser_result_count_not_authoritative';
+        } elseif($actualTotal!==$expectedTotal){
+            $tests['browser_dom_result_count']='FAIL';
+            $defects[]='browser_result_count_divergence';
+        } else $tests['browser_dom_result_count']='PASS';
+
+        $actualIds=$this->normalizeIds((array)($rendered['ids']??array()), self::MAX_IDS);
+        $expectedIds=$this->normalizeIds((array)($expectedProof['ids']??array()), self::MAX_IDS);
+        if('full_ids'===$proofMode){
+            $idsComplete=!empty($rendered['ids_complete']) || ($countAuthoritative && $actualTotal>=0 && $actualTotal<=self::MAX_IDS && count($actualIds)===$actualTotal);
+            if(!$idsComplete){
+                $tests['browser_dataset_id_parity']='INCOMPLETE_EVIDENCE';
+                $tests['browser_order_parity']='INCOMPLETE_EVIDENCE';
+                $incomplete[]='browser_dataset_ids_partial';
+            } else {
+                $identityActual=$actualIds; $identityExpected=$expectedIds;
+                sort($identityActual,SORT_NUMERIC); sort($identityExpected,SORT_NUMERIC);
+                $idsPass=$identityActual===$identityExpected;
+                $orderPass=$actualIds===$expectedIds;
+                $tests['browser_dataset_id_parity']=$idsPass?'PASS':'FAIL';
+                $tests['browser_order_parity']=$orderPass?'PASS':'FAIL';
+                if(!$idsPass)$defects[]='browser_dataset_identity_divergence';
+                if(!$orderPass)$defects[]='browser_dataset_order_divergence';
+            }
+        } else {
+            $digestAuthoritative=!empty($rendered['digest_authoritative']);
+            $actualProofCount=isset($rendered['proof_item_count'])&&is_numeric($rendered['proof_item_count'])?(int)$rendered['proof_item_count']:-1;
+            $actualIdentity=strtolower((string)($rendered['identity_digest']??''));
+            $actualOrder=strtolower((string)($rendered['order_digest']??''));
+            if(!$digestAuthoritative || $actualProofCount!==$expectedTotal || !$this->validDigest($actualIdentity) || !$this->validDigest($actualOrder)){
+                $tests['browser_dataset_id_parity']='INCOMPLETE_EVIDENCE';
+                $tests['browser_order_parity']='INCOMPLETE_EVIDENCE';
+                $incomplete[]='browser_dataset_digest_not_authoritative';
+            } else {
+                $idsPass=hash_equals((string)$expectedProof['identity_digest'],$actualIdentity);
+                $orderPass=hash_equals((string)$expectedProof['order_digest'],$actualOrder);
+                $tests['browser_dataset_id_parity']=$idsPass?'PASS':'FAIL';
+                $tests['browser_order_parity']=$orderPass?'PASS':'FAIL';
+                if(!$idsPass)$defects[]='browser_dataset_identity_divergence';
+                if(!$orderPass)$defects[]='browser_dataset_order_divergence';
+            }
+        }
 
         $url=(array)($evidence['url_state']??array());
         $urlPass=!empty($url['filter_state_observed'])&&empty($url['etg_history_mutation']);
@@ -301,25 +366,31 @@ final class BrowserAcceptanceProvider {
         $tests['browser_reset_behavior']=$resetPass?'PASS':'FAIL';
         if(!$resetPass)$defects[]='browser_reset_behavior_divergence';
 
-        $infra=array_values(array_unique($infra));$defects=array_values(array_unique($defects));
+        $infra=array_values(array_unique($infra)); $defects=array_values(array_unique($defects)); $incomplete=array_values(array_unique($incomplete));
         if($infra){$verdict='BLOCKED';$classification='TEST_INFRASTRUCTURE_FAILURE';}
         elseif($defects){$verdict='FAIL';$classification='PRODUCT_DEFECT';}
+        elseif($incomplete){$verdict='INCOMPLETE_EVIDENCE';$classification='OBSERVATION_GAP';}
         else{$verdict='PASS';$classification='NO_CONFIRMED_DEFECT';}
         return array(
-            'contract'=>'etg.dfsb.browser-acceptance-case.v1',
+            'contract'=>self::CASE_CONTRACT,
             'case_id'=>(string)$expected['case_id'],
             'provider'=>(string)$expected['provider'],
             'query_id'=>(string)$expected['query_id'],
             'taxonomy'=>(string)$expected['taxonomy'],
             'term_id'=>(int)$expected['term_id'],
             'term_slug'=>(string)$expected['term_slug'],
-            'expected_total'=>(int)$expected['expected']['result_total'],
+            'expected_total'=>$expectedTotal,
+            'expected_proof_mode'=>$proofMode,
             'expected_ids'=>$expectedIds,
-            'observed_total'=>(int)($rendered['result_count']??-1),
+            'expected_identity_digest'=>(string)($expectedProof['identity_digest']??''),
+            'expected_order_digest'=>(string)($expectedProof['order_digest']??''),
+            'observed_total'=>$actualTotal,
+            'result_count_authoritative'=>$countAuthoritative,
+            'result_count_source'=>(string)($rendered['result_count_source']??''),
             'observed_ids'=>$actualIds,
             'tests'=>$tests,
             'blocking_reasons'=>array(),
-            'incomplete_evidence'=>array(),
+            'incomplete_evidence'=>$incomplete,
             'defect_reasons'=>$defects,
             'infrastructure_failures'=>$infra,
             'classification'=>$classification,
@@ -329,6 +400,8 @@ final class BrowserAcceptanceProvider {
 
     private function validateEvidenceEnvelope(array $evidence,array $plan):array{
         $reasons=array();
+        $allowed=array('contract','plan_digest','plan_signature','origin','build_identity','observer','cases','receipt_signature');
+        if(array_diff(array_keys($evidence),$allowed))$reasons[]='browser_evidence_unknown_fields';
         if(self::EVIDENCE_CONTRACT!==(string)($evidence['contract']??''))$reasons[]='browser_evidence_contract_invalid';
         if((string)$plan['plan_digest']!==(string)($evidence['plan_digest']??''))$reasons[]='browser_evidence_plan_digest_mismatch';
         if((string)$plan['plan_signature']!==(string)($evidence['plan_signature']??''))$reasons[]='browser_evidence_plan_signature_mismatch';
@@ -336,7 +409,9 @@ final class BrowserAcceptanceProvider {
         $identity=(array)($evidence['build_identity']??array());$expected=(array)$plan['build_identity'];
         if((string)($expected['git_sha']??'')!==(string)($identity['git_sha']??'')||(string)($expected['tree_sha']??'')!==(string)($identity['tree_sha']??''))$reasons[]='browser_evidence_build_identity_mismatch';
         $observer=(array)($evidence['observer']??array());
+        $mode=(string)($observer['execution_mode']??'external_browser_agent');
         if(self::OBSERVER_CONTRACT!==(string)($observer['contract']??'')||empty($observer['javascript_runtime'])||''===trim((string)($observer['browser_engine']??'')))$reasons[]='browser_observer_identity_invalid';
+        if(!in_array($mode,$this->supportedExecutionModes(),true))$reasons[]='browser_observer_execution_mode_invalid';
         $cases=(array)($evidence['cases']??array());if(count($cases)>self::MAX_CASES)$reasons[]='browser_evidence_case_limit_exceeded';
         return array_values(array_unique($reasons));
     }
@@ -360,25 +435,27 @@ final class BrowserAcceptanceProvider {
     private function resultIncomplete(string $profileId,array $plan,array $reasons):array{
         return array('contract'=>self::RESULT_CONTRACT,'provider_contract'=>self::CONTRACT,'provider_id'=>self::PROVIDER_ID,'profile_id'=>$profileId,'suite'=>'browser_runtime','plan_digest'=>(string)$plan['plan_digest'],'verification'=>array('semantic_parity_verified'=>true,'browser_runtime_parity_verified'=>false,'verified_through'=>'live_server_semantic'),'tests'=>array(),'cases'=>array(),'case_count'=>0,'authority'=>$this->authority(),'blocking_reasons'=>array(),'incomplete_evidence'=>array_values(array_unique($reasons)),'defect_reasons'=>array(),'infrastructure_failures'=>array(),'classification'=>'OBSERVATION_GAP','verdict'=>'INCOMPLETE_EVIDENCE','browser_runtime'=>'INCOMPLETE_EVIDENCE');
     }
-    private function caseBlocked(array $expected,array $reasons):array{
-        return array('contract'=>'etg.dfsb.browser-acceptance-case.v1','case_id'=>(string)$expected['case_id'],'provider'=>(string)$expected['provider'],'query_id'=>(string)$expected['query_id'],'taxonomy'=>(string)$expected['taxonomy'],'term_id'=>(int)$expected['term_id'],'term_slug'=>(string)$expected['term_slug'],'tests'=>array(),'blocking_reasons'=>array(),'incomplete_evidence'=>array(),'defect_reasons'=>array(),'infrastructure_failures'=>array_values(array_unique($reasons)),'classification'=>'TEST_INFRASTRUCTURE_FAILURE','verdict'=>'BLOCKED');
+    private function caseIncomplete(array $expected,array $reasons):array{
+        return array('contract'=>self::CASE_CONTRACT,'case_id'=>(string)$expected['case_id'],'provider'=>(string)$expected['provider'],'query_id'=>(string)$expected['query_id'],'taxonomy'=>(string)$expected['taxonomy'],'term_id'=>(int)$expected['term_id'],'term_slug'=>(string)$expected['term_slug'],'tests'=>array(),'blocking_reasons'=>array(),'incomplete_evidence'=>array_values(array_unique($reasons)),'defect_reasons'=>array(),'infrastructure_failures'=>array(),'classification'=>'OBSERVATION_GAP','verdict'=>'INCOMPLETE_EVIDENCE');
     }
 
     private function reduceTests(array $cases):array{
         $keys=array('browser_ajax_round_trip','browser_event_stream','browser_dom_result_count','browser_dataset_id_parity','browser_order_parity','browser_url_state','browser_seo_non_authority','browser_reset_behavior');$out=array();
-        foreach($keys as$key){$status='PASS';foreach($cases as$case){$caseStatus=(string)($case['tests'][$key]??'BLOCKED');if('BLOCKED'===$caseStatus){$status='BLOCKED';break;}if('FAIL'===$caseStatus)$status='FAIL';}$out[$key]=$status;}return$out;
+        foreach($keys as$key){$status='PASS';foreach($cases as$case){$caseStatus=(string)($case['tests'][$key]??'INCOMPLETE_EVIDENCE');if('BLOCKED'===$caseStatus){$status='BLOCKED';break;}if('FAIL'===$caseStatus){$status='FAIL';continue;}if('INCOMPLETE_EVIDENCE'===$caseStatus&&'PASS'===$status)$status='INCOMPLETE_EVIDENCE';}$out[$key]=$status;}return$out;
     }
     private function buildIdentity():array{try{$identity=call_user_func($this->buildIdentityProvider);}catch(\Throwable$e){return array('valid'=>false);}return is_array($identity)?$identity:array('valid'=>false);}
     private function origin():string{return function_exists('home_url')?$this->normalizeOrigin((string)home_url('/')):'';}
     private function normalizeOrigin(string $origin):string{$origin=trim($origin);if(''===$origin)return'';return rtrim($origin,'/').'/';}
     private function caseArchivePath(array $semanticPlan,array $case):string{if(isset($case['archive_path']))return(string)$case['archive_path'];foreach((array)($semanticPlan['cases']??array())as$candidate){if((string)($candidate['case_id']??'')===(string)($case['case_id']??'')&&isset($candidate['archive_path']))return(string)$candidate['archive_path'];}return'/';}
-    private function normalizeIds(array $ids):array{$out=array();foreach(array_slice($ids,0,self::MAX_IDS)as$id){$id=(int)$id;if($id>0&&!in_array($id,$out,true))$out[]=$id;}return$out;}
+    private function normalizeIds(array $ids,int $limit):array{$out=array();foreach(array_slice($ids,0,$limit)as$id){$id=(int)$id;if($id>0&&!in_array($id,$out,true))$out[]=$id;}return$out;}
     private function endpointMatches(string $endpoint):bool{$endpoint=trim($endpoint);if(''===$endpoint)return false;$path=parse_url($endpoint,PHP_URL_PATH);if(!is_string($path)||''===$path)$path=$endpoint;return'/wp-json/etg-dfsb/v1/ajax-presentation'===rtrim($path,'/');}
     private function authority():array{return array('authorizing'=>false,'persistent_mutation'=>false,'profile_mutation'=>false,'seo_publication'=>false,'production_activation'=>false,'browser_state_transient_only'=>true);}
+    private function supportedExecutionModes():array{return array('external_browser_agent','local_interactive_browser','self_hosted_browser_agent','managed_browser_agent');}
+    private function validDigest(string $digest):bool{return 1===preg_match('/^[a-f0-9]{64}$/',$digest);}
     private function sign(string $message):string{if(!function_exists('wp_salt'))return'';$secret=(string)wp_salt('auth');if(''===$secret)return'';return hash_hmac('sha256',$message,$secret);}
     private function verifySignature(string $message,string $signature):bool{$expected=$this->sign($message);return''!==$expected&&''!==$signature&&hash_equals($expected,$signature);}
-    private function canonicalEvidence(array $evidence):array{$copy=$evidence;unset($copy['receipt_signature']);return$copy;}
-    private function canonicalJson($value):string{return json_encode($this->canonicalize($value),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);}
+    private function canonicalEvidence(array $evidence):array{$allowed=array('contract','plan_digest','plan_signature','origin','build_identity','observer','cases');$copy=array();foreach($allowed as$key){if(array_key_exists($key,$evidence))$copy[$key]=$evidence[$key];}return$copy;}
+    private function canonicalJson($value):string{$encoded=json_encode($this->canonicalize($value),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);return is_string($encoded)?$encoded:'';}
     private function canonicalize($value){if(!is_array($value))return$value;if($this->isList($value))return array_map(array($this,'canonicalize'),$value);ksort($value,SORT_STRING);foreach($value as$key=>$item)$value[$key]=$this->canonicalize($item);return$value;}
     private function isList(array $value):bool{$index=0;foreach($value as$key=>$unused){if($key!==$index++)return false;}return true;}
     private function cleanKey($value):string{if(function_exists('sanitize_key'))return sanitize_key((string)$value);return preg_replace('/[^a-z0-9_\-]/','',strtolower((string)$value))?:'';}

@@ -7,6 +7,11 @@ final class ContentSlotRegistry {
     const MAX_SLOTS=100;
     const MAX_SOURCES=24;
 
+    private $legacyCompatibility=false;
+
+    public function __construct(bool $legacyCompatibility=false){$this->legacyCompatibility=$legacyCompatibility;}
+    public function legacyCompatibility():bool{return$this->legacyCompatibility;}
+
     public static function mediaModes():array{return array(
         'combined'=>'Combined media from all active Terms',
         'all_terms'=>'All active Terms',
@@ -30,11 +35,13 @@ final class ContentSlotRegistry {
             'hero_intro'=>array('id'=>'hero_intro','label'=>'Hero Intro','enabled'=>true,'type'=>'html','template'=>'{{intro}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>2000),
             'hero_image'=>array('id'=>'hero_image','label'=>'Hero Image','enabled'=>true,'type'=>'image','template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>'priority'),
             'hero_gallery'=>array('id'=>'hero_gallery','label'=>'Hero Gallery','enabled'=>true,'type'=>'gallery','template'=>'{{resolved}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>0,'media_mode'=>'combined'),
-            'location_section'=>array('id'=>'location_section','label'=>'Location Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--location"><h2>{{term:location:name}}</h2><div>{{term:location:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000),
-            'tour_type_section'=>array('id'=>'tour_type_section','label'=>'Tour Type Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--tour-type"><h2>{{term:tour_type:name}}</h2><div>{{term:tour_type:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000),
-            'style_section'=>array('id'=>'style_section','label'=>'Style Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--style"><h2>{{term:style:name}}</h2><div>{{term:style:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000),
             'results_summary'=>array('id'=>'results_summary','label'=>'Results Summary','enabled'=>true,'type'=>'text','template'=>'{{result_summary}}','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>300),
         );
+        if($this->legacyCompatibility){
+            $definitions['location_section']=array('id'=>'location_section','label'=>'Location Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--location"><h2>{{term:location:name}}</h2><div>{{term:location:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
+            $definitions['tour_type_section']=array('id'=>'tour_type_section','label'=>'Tour Type Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--tour-type"><h2>{{term:tour_type:name}}</h2><div>{{term:tour_type:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
+            $definitions['style_section']=array('id'=>'style_section','label'=>'Style Section','enabled'=>true,'type'=>'html','template'=>'<section class="etg-filter-term-section etg-filter-term-section--style"><h2>{{term:style:name}}</h2><div>{{term:style:description}}</div></section>','fallback'=>'','prefix'=>'','suffix'=>'','max_length'=>8000);
+        }
         $out=array();foreach($definitions as$id=>$slot){$n=$this->normalize($slot,$id);$n['origin']='built_in';$out[$id]=$n;}return$out;
     }
 

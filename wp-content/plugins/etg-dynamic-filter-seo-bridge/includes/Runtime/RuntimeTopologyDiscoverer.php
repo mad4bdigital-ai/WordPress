@@ -40,9 +40,9 @@ final class RuntimeTopologyDiscoverer {
         if ( function_exists( 'delete_transient' ) ) { delete_transient( 'etg_dfsb_runtime_topology_v1' ); }
     }
 
-    public function discover( bool $refresh = false ): array {
+    public function discover( bool $refresh = false, bool $persistCache = true ): array {
         if ( ! $refresh && null !== self::$memoryCache && array_key_exists( 'template_reference_count', self::$memoryCache ) ) { return self::$memoryCache; }
-        if ( ! $refresh && function_exists( 'get_transient' ) ) {
+        if ( $persistCache && ! $refresh && function_exists( 'get_transient' ) ) {
             $cached = get_transient( 'etg_dfsb_runtime_topology_v1' );
             if ( is_array( $cached ) && self::CONTRACT === (string) ( $cached['contract'] ?? '' ) && array_key_exists( 'template_reference_count', $cached ) ) {
                 self::$memoryCache = $cached;
@@ -205,7 +205,7 @@ final class RuntimeTopologyDiscoverer {
             'provider_group_drift_truncated' => count( $drift ) > self::MAX_PROVIDER_GROUP_DRIFT,
         );
         self::$memoryCache = $result;
-        if ( function_exists( 'set_transient' ) ) { set_transient( 'etg_dfsb_runtime_topology_v1', $result, self::CACHE_TTL ); }
+        if ( $persistCache && function_exists( 'set_transient' ) ) { set_transient( 'etg_dfsb_runtime_topology_v1', $result, self::CACHE_TTL ); }
         return $result;
     }
 

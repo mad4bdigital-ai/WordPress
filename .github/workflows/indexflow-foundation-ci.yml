@@ -1,0 +1,84 @@
+name: IndexFlow Foundation CI
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'specs/001-etg-dynamic-filter-seo-operational/contracts/indexflow-foundation-*.md'
+      - '.github/workflows/indexflow-foundation-ci.yml'
+  push:
+    branches: [feat/etg-dynamic-filter-seo-bridge]
+    paths:
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
+      - 'specs/001-etg-dynamic-filter-seo-operational/contracts/indexflow-foundation-*.md'
+      - '.github/workflows/indexflow-foundation-ci.yml'
+
+concurrency:
+  group: indexflow-foundation-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  core-contract:
+    name: Core contract / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint plugin PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          find "$PLUGIN" -type f -name '*.php' -print0 | LC_ALL=C sort -z | xargs -0 -n1 php -l
+      - name: Run Foundation contract smokes
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          for test_file in \
+            indexflow-configuration-smoke.php \
+            indexflow-legacy-profile-compat-smoke.php \
+            indexflow-semantic-acceptance-smoke.php \
+            indexflow-browser-acceptance-smoke.php \
+            indexflow-foundation-architecture-smoke.php; do
+              php "$PLUGIN/tests/$test_file"
+          done
+
+  browser-core-contract:
+    name: Browser/Core JS contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run observer regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
+          node --check "$PLUGIN/assets/js/browser-acceptance-observer.js"
+          node "$PLUGIN/tests/indexflow-browser-observer-smoke.js"

@@ -84,10 +84,13 @@ trait ProfileRegistryCoreTrait {
 	public function validationErrors(): array {
 		$profiles = $this->all();
 		$errors = (array) $this->normalizationErrors;
-		if ( ! $profiles ) { $errors[] = 'profiles_empty_or_invalid'; return array_values( array_unique( $errors ) ); }
+		$globalEnabled = method_exists( $this->config, 'enabled' ) ? (bool) $this->config->enabled() : (bool) $this->config->get( 'enabled', false );
+		if ( ! $profiles ) {
+			if ( $globalEnabled ) { $errors[] = 'profiles_empty_or_invalid'; }
+			return array_values( array_unique( $errors ) );
+		}
 		$seenKeys = array();
 		$enabledCount = 0;
-		$globalEnabled = method_exists( $this->config, 'enabled' ) ? (bool) $this->config->enabled() : (bool) $this->config->get( 'enabled', false );
 		foreach ( $profiles as $id => $profile ) {
 			$publication = (array) ( $profile['publication'] ?? array() );
 			if ( ! empty( $publication['elementor_content_verified'] ) && empty( $publication['elementor_verification_evidence_id'] ) ) { $errors[] = 'profile:' . $id . ':elementor_verification_evidence_required'; }
@@ -159,11 +162,11 @@ trait ProfileRegistryCoreTrait {
 			$accepted[] = $taxonomy; $priority += 10;
 		}
 		$profile = array(
-			'id'=>$profileId,'enabled'=>false,'inherit_global_defaults'=>false,'post_types'=>$postType?array($postType):array(),'require_post_type_binding'=>true,'post_type_authority'=>'query_builder','require_provider_observation_for_index'=>true,
+			'id'=>$profileId,'enabled'=>false,'inherit_global_defaults'=>false,'post_types'=>$postType?array($postType):array(),'require_post_type_binding'=>true,'post_type_authority'=>'query_builder','require_provider_observation_for_index'=>true,'required_capabilities'=>array(),
 			'archive_slugs'=>array(),'archive_paths'=>array(),'providers'=>array(),'query_ids'=>array(),'routes'=>array(),'max_filters'=>min(10,max(1,count($accepted))),'composition_mode'=>'generic','canonical_mode'=>'filtered','require_exact_combination_approval'=>true,'require_exact_for_single'=>false,
 			'allowed_taxonomy_sets'=>array(),'min_results_by_depth'=>array('1'=>3,'2'=>3,'3'=>3),'taxonomy_rules'=>$rules,'indexable_combinations'=>array(),
 			'content'=>array('required'=>true,'require_meta_description'=>true,'min_chars'=>250,'min_chars_by_depth'=>array('1'=>250,'2'=>400,'3'=>500),'min_unique_segments_by_depth'=>array('1'=>1,'2'=>2,'3'=>2)),
-			'publication'=>array('sitemap'=>false,'hreflang'=>true,'schema'=>true,'social'=>true,'include_images_in_sitemap'=>true,'require_elementor_content'=>true,'elementor_render_when_global_off'=>false,'elementor_content_verified'=>false,'elementor_verification_evidence_id'=>'','provider_observation_verified'=>false,'provider_observation_evidence_id'=>'','require_result_count_parity_for_publication'=>true,'result_count_parity_verified'=>false,'result_count_parity_evidence_id'=>'','max_preview_urls'=>50,'max_publication_urls'=>100),
+			'publication'=>array('metadata'=>false,'sitemap'=>false,'multilingual'=>false,'hreflang'=>false,'schema'=>false,'social'=>false,'include_images_in_sitemap'=>false,'require_elementor_content'=>false,'elementor_render_when_global_off'=>false,'elementor_content_verified'=>false,'elementor_verification_evidence_id'=>'','provider_observation_verified'=>false,'provider_observation_evidence_id'=>'','require_result_count_parity_for_publication'=>false,'result_count_parity_verified'=>false,'result_count_parity_evidence_id'=>'','max_preview_urls'=>50,'max_publication_urls'=>100),
 		);
 		return array( 'contract'=>'etg.dfsb.profile-blueprint.v2','synthetic'=>true,'authorizing'=>false,'warnings'=>array_values(array_unique($warnings)),'profile'=>$profile );
 	}
