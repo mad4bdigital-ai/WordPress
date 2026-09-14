@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify connection, write-ingress and MCP peer contracts
         shell: bash
         run: |
@@ -87,6 +89,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -111,7 +115,7 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
-          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-connection.test' --title='MAD4B Connection Governance' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-connection.test' --title='MAD4B Connection Governance' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
 
       - name: Install exact MCP Adapter and control plane
         shell: bash
@@ -165,7 +169,7 @@ jobs:
           php /tmp/wp-cli.phar config set MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED true --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-provider-isolation-smoke.php" --path="$WP_PATH" --user=mad4b-ci-admin
 
-      - name: Prove Hostinger pre-active-plugin Adapter collision self-heals on exact Staging origin
+      - name: Prove Hostinger pre-active-plugin Adapter collision self-heals on enrolled generic staging origin
         shell: bash
         run: |
           set -euo pipefail
@@ -229,13 +233,18 @@ jobs:
           require_once WP_PLUGIN_DIR . '/hostinger-ai-assistant/vendor/wordpress/mcp-adapter/includes/Core/McpAdapter.php';
           PHP
 
-          # Move the disposable site onto the exact Staging origin without a
-          # WordPress bootstrap. This guarantees the next eval-file is the
-          # first governed Staging request after the preloader exists.
-          mysql --protocol=tcp -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress \
-            -e "UPDATE wp_options SET option_value='https://staging.egypttourgates.com' WHERE option_name IN ('home','siteurl');"
-          staging_count="$(mysql --protocol=tcp -N -B -h127.0.0.1 -P3306 -uwordpress -pwordpress wordpress -e "SELECT COUNT(*) FROM wp_options WHERE option_name IN ('home','siteurl') AND option_value='https://staging.egypttourgates.com';")"
-          test "$staging_count" = "2"
+          # Explicitly enroll the generic HTTPS fixture after the foreign preloader exists.
+          # The next request remains the first governed repair opportunity.
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => 0, "display_name" => "MAD4B Connection Governance",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => false, "skills_enabled" => false, "write_enabled" => false,
+              "production_write_confirmed" => false, "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => true, "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
 
           # Request 1 must detect provenance mismatch and install the managed
           # 000-* MU bootstrap. It cannot replace the already-declared class.

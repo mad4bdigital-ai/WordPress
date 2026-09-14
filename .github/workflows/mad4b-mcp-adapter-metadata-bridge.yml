@@ -67,7 +67,7 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
           php /tmp/wp-cli.phar --info
 
-      - name: Provision exact governed Staging fixture
+      - name: Provision explicitly enrolled generic staging fixture
         shell: bash
         env:
           WP_VERSION: ${{ matrix.wordpress }}
@@ -79,13 +79,23 @@ jobs:
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version="$WP_VERSION" --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
-          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B Metadata Bridge' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://mad4b-metadata.test' --title='MAD4B Metadata Bridge' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
 
           unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => 0, "display_name" => "MAD4B Metadata Bridge",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => false, "skills_enabled" => false, "write_enabled" => false,
+              "production_write_confirmed" => false, "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => true, "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
 
       - name: Prove exact MCP Adapter metadata lookup is local
         shell: bash
@@ -103,7 +113,7 @@ jobs:
           bridge = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php').read_text(encoding='utf-8')
           required = [
               "const CONTRACT = 'mad4b.mcp-adapter-metadata-bridge.v1'",
-              "const STAGING_HOST = 'staging.egypttourgates.com'",
+              "MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )",
               "const SLUG = 'mcp-adapter'",
               "const VERSION = '0.6.1'",
               "'plugin_information' !== (string) $action",
