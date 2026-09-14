@@ -8,6 +8,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-repository.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-console-v2-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/docs/APPROVAL-CONSOLE-V2.md'
       - '.github/workflows/mad4b-approval-console-v2.yml'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-repository.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-console-v2-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/docs/APPROVAL-CONSOLE-V2.md'
       - '.github/workflows/mad4b-approval-console-v2.yml'
 
@@ -35,5 +37,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-repository.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php
+      - name: Guard dbDelta installed-site upgrade visibility
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
       - name: Guard read model, schema hot path and authority boundary
-        run: python wp-content/plugins/mad4b-site-control-plane/tests/approval-console-v2-contract.py
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/approval-console-v2-contract.py
