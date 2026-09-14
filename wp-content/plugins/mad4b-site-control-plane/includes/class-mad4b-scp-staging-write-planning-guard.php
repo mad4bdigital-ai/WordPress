@@ -258,14 +258,14 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		$status = MAD4B_SCP_Staging_Write_Authority::status();
 		$expected_agent = isset( $status['agent_public_id'] ) ? (string) $status['agent_public_id'] : '';
 		$requested_agent = isset( $input['agent_public_id'] ) ? (string) $input['agent_public_id'] : '';
-		if ( '' === $expected_agent || ! hash_equals( $expected_agent, $requested_agent ) ) return new WP_Error( 'mad4b_remote_plan_agent_mismatch', 'Remote approval planning is restricted to the dedicated Staging write agent.' );
+		if ( '' === $expected_agent || ! hash_equals( $expected_agent, $requested_agent ) ) return new WP_Error( 'mad4b_remote_plan_agent_mismatch', 'Remote approval planning is restricted to the dedicated governed write agent.' );
 
 		$server_id = isset( $input['server_id'] ) ? sanitize_key( (string) $input['server_id'] ) : '';
 		if ( 'mad4b-write' !== $server_id ) return new WP_Error( 'mad4b_remote_plan_server_denied', 'Remote approval planning may target only mad4b-write.' );
 
 		$target_ability = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
 		if ( '' === $target_ability || self::ABILITY === $target_ability || 'mad4b/database-raw-query' === $target_ability ) return new WP_Error( 'mad4b_remote_plan_target_denied', 'Remote approval planning cannot target itself or breakglass.' );
-		if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $target_ability ) ) return new WP_Error( 'mad4b_remote_plan_target_not_write', 'Remote approval planning target is not in the certified Staging write inventory.' );
+		if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $target_ability ) ) return new WP_Error( 'mad4b_remote_plan_target_not_write', 'Remote approval planning target is not in the certified governed write inventory.' );
 
 		$expected_provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability );
 		if ( null === $expected_provider ) return new WP_Error( 'mad4b_remote_plan_target_unmounted', 'Remote approval target is not mounted on mad4b-write.' );

@@ -104,7 +104,7 @@ final class MAD4B_SCP_Authorization {
 		if ( $scopes ) {
 			$scope_allowed = in_array( 'ability:' . $ability_name, $scopes, true ) || in_array( 'server:' . $server_id, $scopes, true );
 			if ( ! $scope_allowed && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ) $scope_allowed = MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed( $identity, $server_id, $ability_name, $input );
-			if ( ! $scope_allowed ) return self::error( 'mad4b_nhi_scope_denied', 'Token scope does not include this exact ability/server and no certified one-time Staging write delegation applies.' );
+			if ( ! $scope_allowed ) return self::error( 'mad4b_nhi_scope_denied', 'Token scope does not include this exact ability/server and no certified one-time governed write delegation applies.' );
 		}
 
 		$constraints = array();

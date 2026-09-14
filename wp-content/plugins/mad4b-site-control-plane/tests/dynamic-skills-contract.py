@@ -244,9 +244,9 @@ for marker in [
         raise SystemExit(f'missing bounded certification-gated exporter guard: {marker}')
 
 for marker in [
-    'automatically enables the local Skill editor',
-    'No `wp-config.php` edit is required',
-    'Production is never auto-enabled',
+    'Fresh installation is zero-authority',
+    'explicit Site Profile v2 enrollment',
+    'Production never receives write authority by installation',
     'Portable Plugin capability: `Read + Write`',
     'mad4b-write',
     'approval-plan',
@@ -254,7 +254,7 @@ for marker in [
     'WPML',
 ]:
     if marker not in readme:
-        raise SystemExit(f'missing governed Staging documentation marker: {marker}')
+        raise SystemExit(f'missing tenant-neutral governed documentation marker: {marker}')
 
 manifest = json.loads((portable / 'plugin.json').read_text(encoding='utf-8'))
 compat = json.loads((portable / '.codex-plugin' / 'plugin.json').read_text(encoding='utf-8'))
@@ -274,6 +274,11 @@ if compat.get('interface', {}).get('capabilities') != ['Read', 'Write']:
     raise SystemExit('Codex compatibility manifest must match governed Read + Write capability')
 if compat.get('version') != manifest.get('version'):
     raise SystemExit('portable and Codex compatibility manifest versions must match')
+
+for label, payload in [('portable README', readme), ('portable manifest', json.dumps(manifest)), ('Codex manifest', json.dumps(compat))]:
+    for forbidden in ['staging.egypttourgates.com', 'Egypt Tour Gates']:
+        if forbidden in payload:
+            raise SystemExit(f'{label} retained deployment-specific identity: {forbidden}')
 
 app_id = app.get('apps', {}).get('mad4b-wordpress', {}).get('id', '')
 if not re.fullmatch(r'plugin_asdk_app_[A-Za-z0-9]+', app_id):

@@ -119,7 +119,7 @@ final class MAD4B_SCP_Skill_Registry {
 
 	public static function save_skill( array $input ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_skill_capability_denied', 'Administrator capability is required to author skills.' );
-		if ( ! self::editor_enabled() ) return new WP_Error( 'mad4b_skill_editor_disabled', 'Skill authoring is disabled. Staging is normally auto-configured; Production requires both explicit editor gates.' );
+		if ( ! self::editor_enabled() ) return new WP_Error( 'mad4b_skill_editor_disabled', 'Skill authoring is disabled. Enrolled non-production sites may enable it through Site Profile automation; Production requires both explicit editor gates.' );
 
 		$level = self::sanitize_level( isset( $input['level'] ) ? $input['level'] : '' );
 		if ( is_wp_error( $level ) ) return $level;

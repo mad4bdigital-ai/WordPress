@@ -1,13 +1,13 @@
 # MAD4B WordPress Plugin + Skills
 
-This package wraps the existing MAD4B WordPress MCP App with reusable workflow Skills and an exact-origin governed Staging write plane. Live WordPress data, OAuth authentication, NHI authorization, approvals, audit and tool execution stay in the MAD4B MCP control plane.
+This package wraps the MAD4B WordPress MCP App with reusable workflow Skills and a tenant-neutral governed write plane. Live WordPress data, Site Profile identity, OAuth authentication, NHI authorization, approvals, audit and tool execution stay in the MAD4B MCP control plane.
 
 ## Current safety boundary
 
 - Portable Plugin capability: `Read + Write`.
 - The existing ChatGPT transport remains `mad4b-chatgpt`.
-- On **`staging.egypttourgates.com` only**, supported non-readonly MAD4B/core and certified-adapter actions are exposed through the same Plugin and rebound to the dedicated `mad4b-write` authority server.
-- Production never receives this automatic write authority.
+- On an explicitly enrolled Site Profile with governed write enabled, supported non-readonly MAD4B/core and certified-adapter actions are exposed through the same Plugin and rebound to the dedicated `mad4b-write` authority server.
+- Production never receives write authority by installation; Production write requires explicit Site Profile enrollment plus the separate Production-write confirmation.
 - Breakglass and `mad4b/database-raw-query` are never part of the normal write surface.
 - OAuth remains identity/authentication only; a `mad4b:read` bearer is not write authority.
 - Actual remote mutations require a dedicated enabled NHI, an exact `mad4b-write` grant, provider/runtime policy, budgets, audit and a short-lived one-time exact approval ticket.
@@ -16,16 +16,16 @@ This package wraps the existing MAD4B WordPress MCP App with reusable workflow S
 - ChatGPT Skill management remains read-only: `skills-list`, `skill-get`, `skills-export-status`, `skills-runtime-certification`.
 - No Skill create/update/delete/write MCP tool is exposed.
 
-## Zero-touch Staging lifecycle
+## Explicit tenant enrollment lifecycle
 
-On the exact governed Staging origin the Control Plane performs the normal setup without administrator intervention. It **automatically enables the local Skill editor**, binds the governed Staging OpenAI App mapping and configures the governed mutation gate unless an explicit operator disable is already present.
+Fresh installation is zero-authority. After an administrator completes explicit Site Profile v2 enrollment, the Control Plane reconciles only the features enabled for that tenant. On an enrolled non-production site, Skill editor/App mapping/write automation remains bound to the current Site Profile rather than to a bundled tenant preset.
 
 ```text
 Plugin boots
    ↓
-Exact environment + staging.egypttourgates.com origin check
+Exact environment + enrolled Site Profile origin check
    ↓
-Skill editor + Staging App mapping
+Skill editor + Site Profile App mapping
    ↓
 Governance schema + append-only audit
    ↓
@@ -35,7 +35,7 @@ Provider discovery + MAD4B adapter registry
    ↓
 Provider Skill reconciliation
    ↓
-Dedicated Staging write NHI + exact mad4b-write grants
+Dedicated governed write NHI + exact mad4b-write grants
    ↓
 Deterministic Skill snapshot identity
    ↓
@@ -44,9 +44,9 @@ Skill runtime certification
 Write runtime certification
 ```
 
-No `wp-config.php` edit is required on Staging for the normal governed path. No administrator form submission is required for the automatic bootstrap.
+No `wp-config.php` edit is required for normal Site Profile enrollment. Administrator enrollment is explicit, and fresh installation does not auto-bind a tenant, App ID, OAuth user or write authority.
 
-Production is never auto-enabled for Staging Skill authoring, Staging App binding or the governed mutation gate. Supporting Skill `scripts/` authoring also remains separately gated.
+Production is never auto-enabled for Skill authoring, App binding or governed mutation. Production write requires the separate confirmation, and supporting Skill `scripts/` authoring remains separately gated.
 
 ## Governed write inventory
 
@@ -74,7 +74,7 @@ Every actual remote write requires an exact one-time approval ticket. The first 
 ```text
 verified OAuth identity
        ↓
-dedicated Staging NHI
+dedicated governed write NHI
        ↓
 exact grant: mad4b-write + mad4b/approval-plan
        ↓
@@ -112,16 +112,16 @@ The internal probe proves WordPress/PHP/plugin behavior. CDN, WAF, Apache/Nginx 
 
 ### Skill runtime
 
-`mad4b/skills-runtime-certification` verifies the local Skill registry, seed pack, provider reconciliation, exact Staging App mapping, deterministic snapshot identity and absence of Skill mutation abilities.
+`mad4b/skills-runtime-certification` verifies the local Skill registry, seed pack, provider reconciliation, exact Site Profile App mapping, deterministic snapshot identity and absence of Skill mutation abilities.
 
 ### Write runtime
 
 `mad4b/write-runtime-certification` verifies locally provable write facts including:
 
-- exact Staging environment and origin;
+- exact enrolled Site Profile environment and origin;
 - governed mutation gate;
 - OAuth identity boundary;
-- dedicated Staging NHI and exact grants;
+- dedicated governed write NHI and exact grants;
 - complete non-readonly write mounting on `mad4b-write` and the same ChatGPT Plugin transport;
 - approval-plan bootstrap governance;
 - one-time approval requirement for actual writes;
@@ -188,7 +188,7 @@ A token match proves snapshot byte/App-mapping parity. It does not prove that an
 
 ## Portable export
 
-The WordPress Skills page can export the certified Staging Plugin snapshot containing:
+The WordPress Skills page can export the certified tenant-bound Plugin snapshot containing:
 
 ```text
 plugin.json
@@ -208,10 +208,10 @@ After a Skill or tool surface changes, publish/refresh the Plugin snapshot and r
 
 ## CI runtime proof
 
-`MAD4B Dynamic Skills` provisions disposable Staging and Production WordPress runtimes. Staging proves zero-touch Skills, governed write inventory, approval bootstrap boundaries, WPML-compatible REST query pass-through, deterministic export and Read + Write certification. Production proves the Staging App/Skill/write authority and write tools remain absent.
+`MAD4B Dynamic Skills` provisions disposable generic Staging and Production WordPress runtimes. The Staging fixture proves explicit Site Profile enrollment, governed write inventory, approval bootstrap boundaries, WPML-compatible REST query pass-through, deterministic export and Read + Write certification. Production proves an unconfigured installation receives no tenant App/Skill/write authority or write tools.
 
 ## Local marketplace
 
-The repository marketplace entry is `.agents/plugins/marketplace.json`. This branch remains wired to the already registered **Staging** App for controlled acceptance.
+The repository marketplace entry is `.agents/plugins/marketplace.json`. The portable `.app.json` identifies the ChatGPT Plugin package; each WordPress deployment independently binds its tenant App mapping through Site Profile v2.
 
 Do not put passwords, OAuth credentials, access/refresh tokens, private keys or other secret material in Skill files.

@@ -55,7 +55,7 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 		if ( false === strpos( $html, '</head>' ) ) return $html;
 
 		$legacy_request = 'is requesting read access to this WordPress MCP resource.';
-		$governed_request = 'is requesting OAuth access to this WordPress MCP resource. This consent authenticates the client and grants the narrow read resource scope shown below; it does not grant write authority. Governed write actions, when available, require separate Staging write authority and a one-time approval.';
+		$governed_request = 'is requesting OAuth access to this WordPress MCP resource. This consent authenticates the client and grants the narrow read resource scope shown below; it does not grant write authority. Governed write actions, when available, require separate governed write authority and a one-time approval.';
 		$html = str_replace( $legacy_request, $governed_request, $html );
 
 		$css = '<style id="' . self::STYLE_ID . '">'

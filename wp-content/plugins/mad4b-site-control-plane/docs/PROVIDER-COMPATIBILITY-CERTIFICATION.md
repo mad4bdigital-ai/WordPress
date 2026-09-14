@@ -89,7 +89,7 @@ The internal `Provider Canary` adapter declares the wrapper on the dedicated ada
 
 A canary request is bound to all of the following current facts:
 
-- exact Staging origin and environment;
+- exact enrolled governed non-production Site Profile origin and environment;
 - exact live candidate source SHA;
 - exact live build fingerprint;
 - provider id;

@@ -88,7 +88,7 @@ final class MAD4B_SCP_Servers {
 	}
 
 	/**
-	 * Stable Staging ChatGPT write catalog. Discovery is deliberately independent
+	 * Stable governed ChatGPT write catalog. Discovery is deliberately independent
 	 * of provider activation state; execution still requires the ability to be in
 	 * write_tools(), an exact NHI grant, and a one-time approval ticket.
 	 */
@@ -368,7 +368,7 @@ final class MAD4B_SCP_Servers {
 		$write_tools = self::write_tools();
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
-		$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT Staging gateway with read diagnostics plus a stable governed write catalog. Provider writes may be discoverable before activation but remain fail-closed until mounted on mad4b-write, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
+		$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with read diagnostics plus a stable governed write catalog. Provider writes may be discoverable before activation but remain fail-closed until mounted on mad4b-write, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );

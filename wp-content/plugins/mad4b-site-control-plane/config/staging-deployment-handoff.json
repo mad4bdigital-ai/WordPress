@@ -3,7 +3,7 @@
   "producer": {
     "repository": "mad4bdigital-ai/WordPress",
     "workflow": ".github/workflows/mad4b-control-plane-package.yml",
-    "artifact_name_template": "mad4b-site-control-plane-kit-{exact_head_sha}",
+    "artifact_name_template": "mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}",
     "install_manifest": "install-manifest.json",
     "source_binding": "exact_head_sha"
   },

@@ -27,8 +27,9 @@ final class MAD4B_SCP_MCP_Registration_Rescue {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
-		// Do not even bind global REST hooks outside the exact governed site
-		// origin. Production and every other origin remain completely untouched.
+		// Do not bind global REST hooks outside an explicitly enrolled Site Profile
+		// with managed runtime enabled. Unenrolled sites remain untouched; Production
+		// is eligible only after explicit Site Profile enrollment and feature enablement.
 		if ( ! self::governed_staging() ) {
 			self::$state = 'ineligible_origin';
 			return;
