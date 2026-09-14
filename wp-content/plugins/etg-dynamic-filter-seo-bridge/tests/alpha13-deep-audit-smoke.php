@@ -91,7 +91,7 @@ etg_has('QueryId::normalize( $queryIdRaw )',file_get_contents($root.'/includes/J
 etg_has('QueryId::normalize($queryId)',$contextBuilder,'runtime provider observation uses case-preserving Query ID normalizer');
 etg_has("\$out['query_ids'] = \$this->queryIdList",$configSource,'legacy configuration routes query_ids through case-preserving normalizer');
 etg_expect(false===strpos($configSource,"\$out['query_ids'] = \$this->keyList"),'legacy query_ids must never use sanitize_key/keyList');
-etg_has('QueryId::normalize( $item )',$configSource,'legacy query_ids use shared QueryId contract');
+etg_has('QueryId::normalize($item)',$configSource,'legacy query_ids use shared QueryId contract');
 etg_has('MAX_LENGTH = 80',$queryIdSource,'Query ID normalizer remains bounded');
 etg_has("'/\\A[A-Za-z0-9_-]+\\z/'",$queryIdSource,'Query ID normalizer rejects unsafe characters instead of rewriting identity');
 etg_has('tokenKey',$queryIdSource,'Query ID token representation is collision-safe for case-sensitive identities');
