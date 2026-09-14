@@ -99,13 +99,31 @@ jobs:
           php -l "$root/tests/runtime-local-oauth-browser-canary-production-smoke.php"
           git diff --check
 
-      - name: Commit migrated contracts
+      - name: Stage validated non-workflow changes and workflow bytes
         shell: bash
         run: |
           set -euo pipefail
+          stage='.github/rc32-workflow-staging'
+          mkdir -p "$stage"
+          for name in \
+            mad4b-control-plane-package.yml \
+            mad4b-admin-performance.yml \
+            mad4b-web-mcp-lifecycle.yml \
+            mad4b-mcp-adapter-metadata-bridge.yml \
+            mad4b-connection-governance.yml \
+            mad4b-governed-execution-fence.yml
+          do
+            cp ".github/workflows/$name" "$stage/$name"
+          done
+
+          # The Actions token may not mutate workflow paths. Restore every workflow
+          # and the temporary migration script before the push; the validated workflow
+          # bytes are preserved above for an exact Git data commit through the owner-authorized connector.
+          git restore --source=HEAD -- .github/workflows .github/rc32-ci-contract-migration.py
+
           git config user.name 'MAD4B Automation'
           git config user.email 'mad4b.digital@gmail.com'
           git add -A
           test -n "$(git status --porcelain)"
-          git commit -m 'test(rc32): align CI with tenant-neutral contracts'
+          git commit -m 'test(rc32): stage validated tenant-neutral contract migration'
           git push origin HEAD:feat/dynamic-wordpress-skills-20260909
