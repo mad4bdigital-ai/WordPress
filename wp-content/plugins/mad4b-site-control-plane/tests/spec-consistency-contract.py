@@ -108,7 +108,10 @@ for marker in (
     'T103 real Staging remains a separate mandatory boundary',
 ): require(adapter_contract, marker, 'adapter-coverage-contract-invariant')
 
-require(data_model, 'Schema version: `5`', 'data-model-schema-v5')
+# Normative documentation must move with the physical schema. Schema v6 keeps the
+# same nine-table topology but extends exact approval authority with Site Profile
+# identity/revision/digest so clone/profile/build drift cannot inherit authority.
+require(data_model, 'Schema version: `6`', 'data-model-schema-v6')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
@@ -116,13 +119,18 @@ for table in (
 ): require(data_model, table, 'data-model-table')
 for marker in (
     'candidate_binding_contract', 'candidate_sha CHAR(40)', 'build_fingerprint CHAR(64)',
-    'binding_environment', 'binding_host', 'bound_at',
+    'binding_environment', 'binding_host', 'site_uuid CHAR(36)',
+    'site_profile_revision BIGINT UNSIGNED', 'site_profile_digest CHAR(64)', 'bound_at',
     'decision_inbox (status, expires_at, id)',
     'candidate_inbox (candidate_sha, build_fingerprint, status, expires_at)',
-    'derived read-model states',
-    'approved -> executing',
-): require(data_model, marker, 'data-model-approval-v5')
+    'site_profile_inbox (site_uuid, site_profile_revision, status, expires_at)',
+    'mad4b.approval-candidate-binding.v2', 'site_profile_binding',
+    'derived read-model states', 'approved -> executing',
+    'clone', 'Site Profile drift', 'current expected version is `6`',
+): require(data_model, marker, 'data-model-approval-v6')
 for stale in (
+    'Schema version: `5`',
+    'current expected version is `5`',
     'Initial migration target: `2`',
     'Initial implementation may use atomic transients/options for counters',
     'audit chain: current option model retained in first implementation',
@@ -132,6 +140,7 @@ for stale in (
 
 implementation_files = {
     'schema': PLUGIN / 'includes/class-mad4b-scp-schema.php',
+    'site_profile': PLUGIN / 'includes/class-mad4b-scp-site-profile.php',
     'identity': PLUGIN / 'includes/class-mad4b-scp-identity-context.php',
     'registry': PLUGIN / 'includes/class-mad4b-scp-agent-registry.php',
     'adapter_registry': PLUGIN / 'includes/class-mad4b-scp-adapter-registry.php',
@@ -166,21 +175,38 @@ for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
 
-require(impl['schema'], 'const VERSION = 5;', 'implementation-schema-v5')
+require(impl['schema'], 'const VERSION = 6;', 'implementation-schema-v6')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
 for marker in (
     'candidate_binding_contract', 'candidate_sha char(40)', 'build_fingerprint char(64)',
-    'binding_environment', 'binding_host', 'bound_at datetime',
+    'binding_environment', 'binding_host', 'site_uuid char(36)',
+    'site_profile_revision bigint(20) unsigned', 'site_profile_digest char(64)', 'bound_at datetime',
     'KEY decision_inbox (status,expires_at,id)',
     'KEY candidate_inbox (candidate_sha,build_fingerprint,status,expires_at)',
+    'KEY site_profile_inbox (site_uuid,site_profile_revision,status,expires_at)',
     'public static function critical_ready()',
     'public static function physical_integrity_status()',
-): require(impl['schema'], marker, 'implementation-schema-v5-approval-guard')
-require(impl['approval'], 'public static function candidate_binding_from_ticket', 'implementation-approval-row-binding')
+): require(impl['schema'], marker, 'implementation-schema-v6-approval-guard')
+for marker in (
+    'const CONTRACT = \'mad4b.site-profile.v1\'',
+    'public static function origin_enrolled()', 'public static function site_uuid()',
+    'public static function revision()', 'public static function profile_digest()',
+    'public static function write_enabled()',
+): require(impl['site_profile'], marker, 'implementation-site-profile-authority')
+for marker in (
+    "const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v2'",
+    'public static function candidate_binding_from_ticket',
+    'private static function profile_snapshot', 'private static function profile_bindings_equal',
+    "'site_profile_binding'", "'site_uuid'", "'profile_revision'", "'profile_digest'",
+    'MAD4B_SCP_Site_Profile::origin_enrolled()', 'MAD4B_SCP_Site_Profile::write_enabled()',
+): require(impl['approval'], marker, 'implementation-approval-tenant-build-binding')
 require(impl['approval'], 'private static function require_critical_schema()', 'implementation-approval-physical-schema-guard')
+require(impl['approval_repository'], "const CONTRACT = 'mad4b.approval-read-model.v3'", 'implementation-approval-read-model-v3')
 require(impl['approval_repository'], 'public static function effective_status', 'implementation-approval-effective-status')
+for marker in ("'site_uuid'", "'site_profile_revision'", "'site_profile_digest'"):
+    require(impl['approval_repository'], marker, 'implementation-approval-read-model-profile-binding')
 require(impl['identity'], 'mad4b_scp_authenticated_subject_context', 'implementation-subject-bridge')
 require(impl['registry'], 'mad4b_wildcard_grant_denied', 'implementation-wildcard-denial')
 require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
@@ -331,4 +357,4 @@ require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-run
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v8: PASS')
+print('mad4b.site-control-plane.spec-consistency.v9: PASS')
