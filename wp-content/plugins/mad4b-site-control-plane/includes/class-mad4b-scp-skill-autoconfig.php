@@ -23,7 +23,7 @@ final class MAD4B_SCP_Skill_Autoconfig {
 
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 		$host = self::current_host();
-		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled();
+		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured();
 		$profile = $profile_enrolled ? MAD4B_SCP_Site_Profile::status() : array();
 		self::$status = array(
 			'contract' => self::CONTRACT,
@@ -39,7 +39,7 @@ final class MAD4B_SCP_Skill_Autoconfig {
 			'app_mapping_matches_staging' => false,
 			'app_mapping_origin_bound' => false,
 			'profile_enrolled' => $profile_enrolled,
-			'profile_revision' => ! empty( $profile['profile_revision'] ) ? (int) $profile['profile_revision'] : 0,
+			'profile_revision' => ! empty( $profile['revision'] ) ? (int) $profile['revision'] : 0,
 			'profile_digest' => ! empty( $profile['profile_digest'] ) ? (string) $profile['profile_digest'] : '',
 			'expected_staging_host' => self::STAGING_OPENAI_APP_HOST,
 			'observed_host' => $host,
@@ -49,7 +49,7 @@ final class MAD4B_SCP_Skill_Autoconfig {
 			self::$status['blocker'] = 'environment_not_staging';
 			return self::$status;
 		}
-		if ( $profile_enrolled && ( empty( $profile['ready'] ) || empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) ) ) {
+		if ( $profile_enrolled && ( empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) ) ) {
 			self::$status['blocker'] = ! empty( $profile['blockers'] ) ? (string) reset( $profile['blockers'] ) : 'site_profile_not_ready';
 			return self::$status;
 		}
@@ -65,6 +65,11 @@ final class MAD4B_SCP_Skill_Autoconfig {
 			self::$status['configured'] = true;
 			self::$status['configuration_source'] = 'explicit_enable';
 		} else {
+			if ( $profile_enrolled && empty( $profile['skills_enabled'] ) ) {
+				self::$status['blocker'] = 'site_profile_skills_disabled';
+				self::$status['configuration_source'] = 'site_profile_disable';
+				return self::$status;
+			}
 			define( 'MAD4B_SKILLS_EDITOR_ENABLED', true );
 			self::$status['configured'] = true;
 			self::$status['configuration_source'] = $profile_enrolled ? 'site_profile_staging_auto' : 'staging_auto';
@@ -79,15 +84,15 @@ final class MAD4B_SCP_Skill_Autoconfig {
 	}
 
 	public static function staging_app_id() {
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled() ) {
-			$app_id = MAD4B_SCP_Site_Profile::openai_app_id();
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
+			$app_id = MAD4B_SCP_Site_Profile::chatgpt_app_id();
 			if ( '' !== $app_id ) return $app_id;
 		}
 		return self::STAGING_OPENAI_APP_ID;
 	}
 
 	public static function staging_app_host() {
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled() ) {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
 			$profile = MAD4B_SCP_Site_Profile::status();
 			if ( ! empty( $profile['canonical_origin'] ) ) {
 				$parts = wp_parse_url( $profile['canonical_origin'] );
@@ -99,7 +104,7 @@ final class MAD4B_SCP_Skill_Autoconfig {
 
 	private static function configure_app_mapping( array $profile = array() ) {
 		$profile_enrolled = ! empty( self::$status['profile_enrolled'] );
-		$profile_app_id = $profile_enrolled && ! empty( $profile['openai_app_id_configured'] ) && class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::openai_app_id() : '';
+		$profile_app_id = $profile_enrolled && class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::chatgpt_app_id() : '';
 		$profile_origin_bound = $profile_enrolled && ! empty( $profile['origin_match'] ) && ! empty( $profile['environment_match'] );
 		$legacy_host_matches = '' !== self::$status['observed_host'] && hash_equals( self::STAGING_OPENAI_APP_HOST, self::$status['observed_host'] );
 		self::$status['app_mapping_origin_bound'] = $profile_enrolled ? $profile_origin_bound : $legacy_host_matches;
@@ -108,7 +113,7 @@ final class MAD4B_SCP_Skill_Autoconfig {
 			$value = trim( (string) constant( 'MAD4B_OPENAI_PLUGIN_APP_ID' ) );
 			self::$status['app_mapping_source'] = 'explicit';
 			self::$status['app_mapping_configured'] = (bool) preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $value );
-			self::$status['app_mapping_matches_staging'] = self::$status['app_mapping_configured'] && ( $profile_enrolled ? hash_equals( $profile_app_id, $value ) : hash_equals( self::STAGING_OPENAI_APP_ID, $value ) );
+			self::$status['app_mapping_matches_staging'] = self::$status['app_mapping_configured'] && ( $profile_enrolled ? ( '' !== $profile_app_id && hash_equals( $profile_app_id, $value ) ) : hash_equals( self::STAGING_OPENAI_APP_ID, $value ) );
 			if ( ! self::$status['app_mapping_configured'] && '' === self::$status['blocker'] ) self::$status['blocker'] = 'explicit_app_mapping_invalid';
 			return;
 		}
