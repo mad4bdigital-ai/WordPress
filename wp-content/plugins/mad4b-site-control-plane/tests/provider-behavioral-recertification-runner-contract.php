@@ -3,8 +3,9 @@
 $root = dirname( __DIR__ );
 $runner = file_get_contents( $root . '/includes/class-mad4b-scp-provider-behavioral-recertification.php' );
 $adapter = file_get_contents( $root . '/includes/adapters/class-mad4b-scp-provider-canary-adapter.php' );
+$jetengine = file_get_contents( $root . '/includes/adapters/class-mad4b-scp-jetengine-adapter.php' );
 
-if ( ! is_string( $runner ) || ! is_string( $adapter ) ) {
+if ( ! is_string( $runner ) || ! is_string( $adapter ) || ! is_string( $jetengine ) ) {
 	fwrite( STDERR, "Unable to read behavioral recertification sources.\n" );
 	exit( 1 );
 }
@@ -52,6 +53,26 @@ foreach ( $forbidden as $needle ) {
 
 if ( false === strpos( $adapter, 'MAD4B_SCP_Provider_Behavioral_Recertification::boot_early();' ) || false === strpos( $adapter, 'MAD4B_SCP_Provider_Behavioral_Recertification_Adapter::boot();' ) ) {
 	fwrite( STDERR, "Behavioral recertification bootstrap is not bound to the internal adapter lifecycle.\n" );
+	exit( 1 );
+}
+
+$jetengine_required = array(
+	"'jetengine/update-post-meta', 'Update JetEngine Post Meta', 'update_post_meta_value'",
+	'public function update_post_meta( $input )',
+	'return $this->update_post_meta_value( $input );',
+	"'jetengine/update-post-meta' !== \$ability_name",
+	"'_listing_data' !== \$field",
+	"validate_listing_data_write",
+);
+foreach ( $jetengine_required as $needle ) {
+	if ( false === strpos( $jetengine, $needle ) ) {
+		fwrite( STDERR, "JetEngine behavioral recertification bridge is incomplete: {$needle}\n" );
+		exit( 1 );
+	}
+}
+
+if ( false !== strpos( $jetengine, "'jetengine/update-post-meta', 'Update JetEngine Post Meta', 'update_post_meta'," ) ) {
+	fwrite( STDERR, "JetEngine internal recertification writer must not replace the governed public Ability callback.\n" );
 	exit( 1 );
 }
 
