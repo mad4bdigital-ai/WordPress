@@ -4,10 +4,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once __DIR__ . '/class-mad4b-scp-site-profile.php';
-MAD4B_SCP_Site_Profile::boot();
-
 final class MAD4B_SCP_Policy {
+
+	public static function can_connect_user( $user_id ) {
+		$user_id = absint( $user_id );
+		if ( $user_id < 1 ) return false;
+		$user = get_userdata( $user_id );
+		if ( ! $user ) return false;
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() ) {
+			return MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id );
+		}
+		return user_can( $user, 'manage_options' );
+	}
+
+	public static function can_plan_mutations() {
+		$user_id = get_current_user_id();
+		if ( ! self::can_connect_user( $user_id ) ) return false;
+		return current_user_can( 'manage_options' ) || current_user_can( 'edit_posts' );
+	}
+
+	public static function can_approve_mutations() {
+		$user_id = get_current_user_id();
+		return self::can_connect_user( $user_id ) && current_user_can( 'manage_options' );
+	}
 
 	public static function can_read() {
 		$capability = apply_filters( 'mad4b_scp_read_capability', 'manage_options' );
@@ -15,21 +34,16 @@ final class MAD4B_SCP_Policy {
 	}
 
 	public static function can_content() {
-		$capability = apply_filters( 'mad4b_scp_content_capability', 'edit_posts' );
-		return is_string( $capability ) && '' !== $capability && current_user_can( $capability );
+		return current_user_can( 'edit_posts' );
 	}
 
 	public static function can_admin() {
-		$capability = apply_filters( 'mad4b_scp_admin_capability', 'manage_options' );
-		return is_string( $capability ) && '' !== $capability && current_user_can( $capability );
+		return current_user_can( 'manage_options' );
 	}
 
 	public static function can_mutate() {
-		// Once a tenant-neutral Site Profile exists it becomes an additional,
-		// fail-closed site-level authority boundary. Legacy exact-origin deployments
-		// remain compatible until they are explicitly enrolled/migrated.
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled() && ! MAD4B_SCP_Site_Profile::mutation_allowed() ) return false;
 		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== MAD4B_MCP_MUTATION_ENABLED ) return false;
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::governed_write_ready() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
 		$identity = MAD4B_SCP_Identity_Context::current();
@@ -40,12 +54,9 @@ final class MAD4B_SCP_Policy {
 	}
 
 	public static function can_breakglass() {
-		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::enrolled() && ! MAD4B_SCP_Site_Profile::breakglass_allowed() ) return false;
 		if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_ENABLED ) return false;
-		$capability = apply_filters( 'mad4b_scp_breakglass_capability', 'manage_options' );
-		if ( ! is_string( $capability ) || '' === $capability || ! current_user_can( $capability ) ) return false;
+		if ( ! current_user_can( 'manage_options' ) ) return false;
 		if ( ! self::can_mutate() ) return false;
-		// This is an independent approval gate. Enabling the constant alone is intentionally insufficient.
 		return (bool) apply_filters( 'mad4b_mcp_breakglass_permission', false, get_current_user_id() );
 	}
 
@@ -64,16 +75,13 @@ final class MAD4B_SCP_Policy {
 	public static function resolve_path( $root_key, $relative_path = '', $must_exist = true ) {
 		$roots = self::roots();
 		if ( ! isset( $roots[ $root_key ] ) ) return new WP_Error( 'mad4b_invalid_root', 'Unknown filesystem root.' );
-
 		$relative_path = str_replace( '\\', '/', (string) $relative_path );
 		if ( false !== strpos( $relative_path, "\0" ) ) return new WP_Error( 'mad4b_invalid_path', 'NUL bytes are not allowed in paths.' );
 		$relative_path = ltrim( $relative_path, '/' );
 		foreach ( explode( '/', $relative_path ) as $segment ) if ( '..' === $segment ) return new WP_Error( 'mad4b_path_escape', 'Parent directory traversal is not allowed.' );
-
 		$root = realpath( $roots[ $root_key ] );
 		if ( false === $root ) return new WP_Error( 'mad4b_root_missing', 'Configured filesystem root does not exist.' );
 		$candidate = $root . ( '' === $relative_path ? '' : DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $relative_path ) );
-
 		if ( $must_exist ) {
 			$resolved = realpath( $candidate );
 			if ( false === $resolved ) return new WP_Error( 'mad4b_path_missing', 'Requested path does not exist.' );
@@ -84,11 +92,9 @@ final class MAD4B_SCP_Policy {
 			if ( false === $parent ) return new WP_Error( 'mad4b_parent_missing', 'Parent directory does not exist.' );
 			$resolved = $parent . DIRECTORY_SEPARATOR . basename( $candidate );
 		}
-
 		$normalized_root = rtrim( str_replace( '\\', '/', $root ), '/' );
 		$normalized_path = str_replace( '\\', '/', $resolved );
 		if ( $normalized_path !== $normalized_root && 0 !== strpos( $normalized_path, $normalized_root . '/' ) ) return new WP_Error( 'mad4b_path_escape', 'Resolved path escapes the allowed root.' );
-
 		if ( self::is_sensitive_path( $normalized_path ) && ! apply_filters( 'mad4b_scp_allow_sensitive_file_access', false, $root_key, $normalized_path, get_current_user_id() ) ) {
 			return new WP_Error( 'mad4b_sensitive_path_denied', 'Sensitive credential/configuration files are denied by default.' );
 		}
@@ -99,13 +105,11 @@ final class MAD4B_SCP_Policy {
 		$normalized = strtolower( str_replace( '\\', '/', (string) $path ) );
 		$basename = strtolower( basename( $normalized ) );
 		$sensitive = false;
-
 		if ( preg_match( '/^wp-config(?:\.php)?(?:[._~\-].*)?$/i', $basename ) ) $sensitive = true;
 		if ( preg_match( '/^\.env(?:[._~\-].*)?$/i', $basename ) ) $sensitive = true;
 		if ( false !== strpos( $normalized, '/.ssh/' ) || '/.ssh' === substr( $normalized, -5 ) ) $sensitive = true;
 		if ( in_array( $basename, array( '.htpasswd', 'id_rsa', 'id_ed25519', 'credentials.json', 'service-account.json', 'auth.json', 'secrets.json' ), true ) ) $sensitive = true;
 		if ( preg_match( '/\.(?:pem|key|p12|pfx|jks|keystore)$/i', $basename ) ) $sensitive = true;
-
 		return (bool) apply_filters( 'mad4b_scp_sensitive_path', $sensitive, $normalized );
 	}
 
@@ -120,10 +124,8 @@ final class MAD4B_SCP_Policy {
 		$normalized = str_replace( '\\', '/', (string) $resolved_path );
 		if ( self::is_code_or_server_config_path( $normalized ) ) return new WP_Error( 'mad4b_executable_file_mutation_denied', 'Executable code, browser-executable content, and server configuration cannot be mutated through the WordPress MCP control plane.' );
 		if ( self::is_sensitive_path( $normalized ) ) return new WP_Error( 'mad4b_sensitive_file_mutation_denied', 'Sensitive credential/configuration files cannot be mutated through the normal WordPress MCP control plane.' );
-
 		$allowed_roots = apply_filters( 'mad4b_scp_mutable_data_roots', array( 'uploads' ) );
 		if ( ! is_array( $allowed_roots ) || ! in_array( $root_key, $allowed_roots, true ) ) return new WP_Error( 'mad4b_filesystem_mutation_root_denied', 'Filesystem mutation is limited to explicitly allowlisted non-code data roots. Source-code changes must use the governed repository/deployment path.' );
-
 		$extension = strtolower( pathinfo( $normalized, PATHINFO_EXTENSION ) );
 		$allowed_extensions = apply_filters( 'mad4b_scp_mutable_data_extensions', array( 'txt', 'csv', 'json', 'xml', 'md', 'markdown', 'yaml', 'yml', 'po', 'pot' ) );
 		if ( '' === $extension || ! is_array( $allowed_extensions ) || ! in_array( $extension, $allowed_extensions, true ) ) return new WP_Error( 'mad4b_filesystem_mutation_type_denied', 'Filesystem mutation is limited to explicitly allowlisted non-executable data file types.' );
@@ -153,7 +155,6 @@ final class MAD4B_SCP_Policy {
 		if ( ! file_exists( $root ) && ! wp_mkdir_p( $root ) ) return new WP_Error( 'mad4b_backup_root_create_failed', 'Unable to create the protected backup directory.' );
 		$resolved = realpath( $root );
 		if ( false === $resolved || ! is_dir( $resolved ) || ! is_writable( $resolved ) ) return new WP_Error( 'mad4b_backup_root_unusable', 'Protected backup directory is not writable.' );
-
 		$web_roots = array( ABSPATH, WP_CONTENT_DIR );
 		foreach ( $web_roots as $web_root ) {
 			$web = realpath( $web_root );
