@@ -1,0 +1,61 @@
+{
+  "contract": "mad4b.site-profile-presets.v1",
+  "profiles": [
+    {
+      "contract": "mad4b.site-profile.v1",
+      "version": 1,
+      "site_uuid": "5ab73d30-b26f-4ea7-a9fa-3dc839187ab6",
+      "revision": 1,
+      "environment": "staging",
+      "canonical_origin": "https://staging.egypttourgates.com",
+      "display_name": "Egypt Tour Gates",
+      "chatgpt_app_id": "plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2",
+      "oauth_user_ids": [],
+      "related_origins": {
+        "staging": "https://staging.egypttourgates.com",
+        "production": "https://egypttourgates.com"
+      },
+      "features": {
+        "oauth": true,
+        "skills": true,
+        "write": true,
+        "production_write_confirmed": false,
+        "provider_isolation": true,
+        "managed_runtime": true,
+        "acceptance": true
+      },
+      "legacy_agent_slug": "chatgpt-staging-write",
+      "created_at": "2026-09-14T00:00:00Z",
+      "updated_at": "2026-09-14T00:00:00Z",
+      "legacy_zero_touch": true
+    },
+    {
+      "contract": "mad4b.site-profile.v1",
+      "version": 1,
+      "site_uuid": "7680d0eb-b41b-48d5-bd63-5981f8082b52",
+      "revision": 1,
+      "environment": "production",
+      "canonical_origin": "https://egypttourgates.com",
+      "display_name": "Egypt Tour Gates",
+      "chatgpt_app_id": "",
+      "oauth_user_ids": [],
+      "related_origins": {
+        "staging": "https://staging.egypttourgates.com",
+        "production": "https://egypttourgates.com"
+      },
+      "features": {
+        "oauth": false,
+        "skills": false,
+        "write": false,
+        "production_write_confirmed": false,
+        "provider_isolation": false,
+        "managed_runtime": false,
+        "acceptance": true
+      },
+      "legacy_agent_slug": "",
+      "created_at": "2026-09-14T00:00:00Z",
+      "updated_at": "2026-09-14T00:00:00Z",
+      "legacy_zero_touch": true
+    }
+  ]
+}
