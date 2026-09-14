@@ -30,22 +30,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_parent='d37b18da6bd526f49bb56758f206bb5422622fc6'
+          expected_parent='2de8ee683b488cb63ea7687fee5058e4970553d3'
           actual_parent="$(git rev-parse HEAD^)"
           test "$actual_parent" = "$expected_parent"
-          test -f .github/rc32-generalization.patch.gz.b64
+          for n in 01 02 03 04 05; do
+            test -f ".github/rc32-generalization.patch.gz.b64.part${n}"
+          done
 
-      - name: Decode and apply reviewed patch
+      - name: Reassemble verify and apply reviewed patch
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode .github/rc32-generalization.patch.gz.b64 | gzip --decompress > /tmp/rc32-generalization.patch
+          cat \
+            .github/rc32-generalization.patch.gz.b64.part01 \
+            .github/rc32-generalization.patch.gz.b64.part02 \
+            .github/rc32-generalization.patch.gz.b64.part03 \
+            .github/rc32-generalization.patch.gz.b64.part04 \
+            .github/rc32-generalization.patch.gz.b64.part05 \
+            > /tmp/rc32-generalization.patch.gz.b64
+          printf '%s  %s\n' \
+            'ff62089a02086907a62211fa2979198c7c21e7046b459d81c89d78cbdb9a9fbd' \
+            '/tmp/rc32-generalization.patch.gz.b64' | sha256sum -c -
+          base64 --decode /tmp/rc32-generalization.patch.gz.b64 | gzip --decompress > /tmp/rc32-generalization.patch
           test -s /tmp/rc32-generalization.patch
           grep -Fq '0.4.0-rc.32' /tmp/rc32-generalization.patch
           grep -Fq 'class-mad4b-scp-site-profile.php' /tmp/rc32-generalization.patch
           git apply --check /tmp/rc32-generalization.patch
           git apply /tmp/rc32-generalization.patch
           rm -f .github/rc32-generalization.patch.gz.b64
+          rm -f .github/rc32-generalization.patch.gz.b64.part01
+          rm -f .github/rc32-generalization.patch.gz.b64.part02
+          rm -f .github/rc32-generalization.patch.gz.b64.part03
+          rm -f .github/rc32-generalization.patch.gz.b64.part04
+          rm -f .github/rc32-generalization.patch.gz.b64.part05
           rm -f .github/workflows/rc32-apply-generalization.yml
 
       - name: Lint changed PHP and validate changed JSON
