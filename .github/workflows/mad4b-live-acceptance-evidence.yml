@@ -24,6 +24,7 @@ jobs:
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       ARTIFACT_NAME: mad4b-live-acceptance-exact-${{ github.event.pull_request.head.sha || github.sha }}
+      TARGET_ORIGIN: https://staging.egypttourgates.com
     services:
       mysql:
         image: mysql:8.0
@@ -160,10 +161,12 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
-          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='https://staging.egypttourgates.com' --title='MAD4B Live Acceptance' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url="$TARGET_ORIGIN" --title='MAD4B Live Acceptance' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
-          observed_host="$(php /tmp/wp-cli.phar eval 'echo wp_parse_url( home_url( "/" ), PHP_URL_HOST );' --path="$WP_PATH")"
-          test "$observed_host" = 'staging.egypttourgates.com'
+          php /tmp/wp-cli.phar option update home "$TARGET_ORIGIN" --path="$WP_PATH" --url="$TARGET_ORIGIN"
+          php /tmp/wp-cli.phar option update siteurl "$TARGET_ORIGIN" --path="$WP_PATH" --url="$TARGET_ORIGIN"
+          observed_origin="$(php /tmp/wp-cli.phar eval 'echo untrailingslashit( home_url( "/" ) );' --path="$WP_PATH" --url="$TARGET_ORIGIN")"
+          test "$observed_origin" = "$TARGET_ORIGIN"
 
       - name: Install exact generated ZIP and verify runtime provenance
         shell: bash
@@ -176,16 +179,18 @@ jobs:
           test -n "$version"
           unzip -q "$stage/mcp-adapter-0.6.1.zip" -d "$WP_PATH/wp-content/plugins"
           unzip -q "$stage/mad4b-site-control-plane-${version}.zip" -d "$WP_PATH/wp-content/plugins"
-          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
-          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH" --url="$TARGET_ORIGIN"
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH" --url="$TARGET_ORIGIN"
           php /tmp/wp-cli.phar eval '
+            $profile = MAD4B_SCP_Site_Profile::status();
+            if ( empty( $profile["configured"] ) || empty( $profile["origin_match"] ) || empty( $profile["environment_match"] ) || empty( $profile["skills_enabled"] ) || ! hash_equals( getenv( "TARGET_ORIGIN" ), (string) $profile["canonical_origin"] ) ) { fwrite( STDERR, "site profile fixture mismatch: " . wp_json_encode( $profile ) ); exit( 1 ); }
             $p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
             if ( empty( $p["manifest_valid"] ) || empty( $p["runtime_manifest_match"] ) || ! empty( $p["stale"] ) ) { fwrite( STDERR, wp_json_encode( $p ) ); exit( 1 ); }
             if ( $p["source_commit_sha"] !== getenv( "SOURCE_SHA" ) ) { fwrite( STDERR, "source head mismatch" ); exit( 1 ); }
             $required = array("mad4b/query-monitor-regression-status","mad4b/build-provenance-status","mad4b/external-handshake-attestation-status","mad4b/external-wpml-receipt-status","mad4b/snapshot-verify","mad4b/live-acceptance-status");
             foreach ( $required as $name ) if ( ! wp_get_ability( $name ) ) { fwrite( STDERR, "missing ability: " . $name ); exit( 1 ); }
             echo $p["build_fingerprint"];
-          ' --path="$WP_PATH" --user=mad4b-ci-admin > "$stage/RUNTIME-BUILD-FINGERPRINT.txt"
+          ' --path="$WP_PATH" --url="$TARGET_ORIGIN" --user=mad4b-ci-admin > "$stage/RUNTIME-BUILD-FINGERPRINT.txt"
           test "$(cat "$stage/RUNTIME-BUILD-FINGERPRINT.txt")" = "$(cat "$stage/BUILD-FINGERPRINT.txt")"
 
       - name: Prove no false PASS before external evidence
@@ -204,7 +209,7 @@ jobs:
             $a = MAD4B_SCP_Live_Acceptance_Observer::live_acceptance_status();
             foreach ( array("external_wpml","external_handshake","external_inventory_parity","snapshot_external","mutation_acceptance","production_unchanged") as $gate ) if ( ! empty( $a["gates"][$gate]["ready"] ) ) { fwrite( STDERR, "External gate falsely passed: " . $gate ); exit( 1 ); }
             echo "false-pass protections: PASS\n";
-          ' --path="$WP_PATH" --user=mad4b-ci-admin
+          ' --path="$WP_PATH" --url="$TARGET_ORIGIN" --user=mad4b-ci-admin
 
       - name: Build portable Plugin from exact enabled runtime snapshot
         shell: bash
@@ -233,7 +238,7 @@ jobs:
             @unlink( $export["path"] );
             if ( false === file_put_contents( getenv( "SNAPSHOT_ID_OUT" ), (string) $id["identity_token"] . "\n" ) ) { fwrite( STDERR, "snapshot token write failed" ); exit( 1 ); }
             if ( false === file_put_contents( getenv( "SNAPSHOT_JSON_OUT" ), wp_json_encode( $id, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" ) ) { fwrite( STDERR, "snapshot identity write failed" ); exit( 1 ); }
-          ' --path="$WP_PATH" --user=mad4b-ci-admin
+          ' --path="$WP_PATH" --url="$TARGET_ORIGIN" --user=mad4b-ci-admin
 
           unzip -tqq "$portable"
           python3 - "$portable" "$out/MAD4B-SNAPSHOT-IDENTITY.json" "$out/MAD4B-SNAPSHOT-ID.txt" <<'PY'
