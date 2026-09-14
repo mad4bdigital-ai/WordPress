@@ -8,6 +8,7 @@ $files = array(
     'registry' => file_get_contents($root . '/includes/SEO/PublicationRegistry.php'),
     'count' => file_get_contents($root . '/includes/SEO/PublicationResultCountProbe.php'),
     'metadata' => file_get_contents($root . '/includes/RankMath/MetadataAdapter.php'),
+    'hreflang' => file_get_contents($root . '/includes/WPML/HreflangAdapter.php'),
     'sitemap' => file_get_contents($root . '/includes/RankMath/PublicationSitemapProvider.php'),
     'registrar' => file_get_contents($root . '/includes/RankMath/PublicationSitemapRegistrar.php'),
     'shortcodes' => file_get_contents($root . '/includes/Elementor/Shortcodes.php'),
@@ -46,9 +47,10 @@ $assert(false !== strpos($files['registrar'], 'rank_math/sitemap/providers'), 'R
 $assert(false !== strpos($files['registrar'], 'updated_term_meta'), 'term-meta sitemap freshness invalidation missing');
 $assert(false !== strpos($files['registrar'], 'invalidate_storage'), 'sitemap freshness invalidation missing');
 
-foreach (array('rank_math/opengraph/facebook/og_title','rank_math/opengraph/facebook/og_description','rank_math/opengraph/twitter/twitter_title','rank_math/opengraph/twitter/twitter_description','rank_math/opengraph/twitter/image','rank_math/json_ld','wpml_hreflangs') as $hook) {
+foreach (array('rank_math/opengraph/facebook/og_title','rank_math/opengraph/facebook/og_description','rank_math/opengraph/twitter/twitter_title','rank_math/opengraph/twitter/twitter_description','rank_math/opengraph/twitter/image','rank_math/json_ld') as $hook) {
     $assert(false !== strpos($files['metadata'], $hook), 'missing metadata hook:' . $hook);
 }
+$assert(false !== strpos($files['hreflang'], 'wpml_hreflangs'), 'missing hreflang hook:wpml_hreflangs');
 foreach (array('etg_filter_term', 'etg_filter_term_section', 'etg_filter_sections') as $shortcode) { $assert(false !== strpos($files['shortcodes'], $shortcode), 'missing Elementor shortcode:' . $shortcode); }
 
 $assert(false !== strpos($files['admin'], 'Elementor Theme Builder support'), 'Elementor publication admin guidance missing');
