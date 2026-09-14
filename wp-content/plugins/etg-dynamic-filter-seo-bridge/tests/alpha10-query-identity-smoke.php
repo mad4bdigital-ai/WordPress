@@ -120,6 +120,6 @@ expect_true(false!==strpos($bootstrap,'$queryIdentityResolver=new QueryIdentityR
 expect_true(false!==strpos($bootstrap,'$queryBindingResolver=new RuntimeQueryBindingResolver($topology,$queryIdentityResolver)'),'Bootstrap layers one shared runtime binding resolver over Alpha10 identity authority');
 expect_true(false!==strpos($bootstrap,'new JetEngineResultCountAdapter($queryBindingResolver)'),'request-time result count receives shared binding resolver');
 expect_true(false!==strpos($bootstrap,'new PostTypeObserver($queryBindingResolver)'),'Post Type observer receives shared binding resolver');
-expect_true(false!==strpos($bootstrap,'new PublicationResultCountProbe($queryBindingResolver)'),'publication probe receives shared binding resolver');
+expect_true(false!==strpos($bootstrap,'new PublicationResultCountProbe($queryBindingResolver,$languages)'),'publication probe receives shared binding resolver and language authority');
 
 fwrite(STDOUT,"Alpha10 Query Builder custom-ID guarantees and explicit profile bindings retained under Alpha11 topology.\n");
