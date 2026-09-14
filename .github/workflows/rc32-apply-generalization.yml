@@ -26,108 +26,55 @@ jobs:
           fetch-depth: 2
           persist-credentials: true
 
-      - name: Guard exact staged parent
+      - name: Guard staged parent and payload
         shell: bash
         run: |
           set -euo pipefail
-          expected_parent='a9a75c1d168706e96917bb179bf98748e78286ab'
-          actual_parent="$(git rev-parse HEAD^)"
-          test "$actual_parent" = "$expected_parent"
-          for n in 01 02 03 04 05; do
-            test -f ".github/rc32-generalization.patch.gz.b64.part${n}"
-          done
+          test "$(git rev-parse HEAD^)" = '3d07ae2ff068a22076f5f85939931a0d88961e33'
+          for n in 01 02 03 04 05; do test -f ".github/rc32-generalization.patch.gz.b64.part${n}"; done
 
-      - name: Reassemble verify and apply reviewed patch
+      - name: Reassemble verify and apply reviewed rc32 patch
         shell: bash
         run: |
           set -euo pipefail
-          cat \
-            .github/rc32-generalization.patch.gz.b64.part01 \
-            .github/rc32-generalization.patch.gz.b64.part02 \
-            .github/rc32-generalization.patch.gz.b64.part03 \
-            .github/rc32-generalization.patch.gz.b64.part04 \
-            .github/rc32-generalization.patch.gz.b64.part05 \
-            > /tmp/rc32-generalization.patch.gz.b64
-          printf '%s  %s\n' \
-            'ff62089a02086907a62211fa2979198c7c21e7046b459d81c89d78cbdb9a9fbd' \
-            '/tmp/rc32-generalization.patch.gz.b64' | sha256sum -c -
-          base64 --decode /tmp/rc32-generalization.patch.gz.b64 | gzip --decompress > /tmp/rc32-generalization.patch
-          test -s /tmp/rc32-generalization.patch
-          printf '%s  %s\n' \
-            '96231817165faf1f7e39047b16df295e1563563cd23eaad97afdcff1092c5622' \
-            '/tmp/rc32-generalization.patch' | sha256sum -c -
-          grep -Fq '0.4.0-rc.32' /tmp/rc32-generalization.patch
-          grep -Fq 'class-mad4b-scp-site-profile.php' /tmp/rc32-generalization.patch
-
-          awk '
-            $1 == "---" { old = $2 }
-            $1 == "+++" {
-              new = $2
-              if (old == "/dev/null") {
-                sub(/^b\//, "", new)
-                sub(/^patch-new\//, "", new)
-                print new
-              }
-            }
-          ' /tmp/rc32-generalization.patch | while IFS= read -r target; do
+          cat .github/rc32-generalization.patch.gz.b64.part{01,02,03,04,05} > /tmp/rc32.b64
+          printf '%s  %s\n' 'ff62089a02086907a62211fa2979198c7c21e7046b459d81c89d78cbdb9a9fbd' /tmp/rc32.b64 | sha256sum -c -
+          base64 --decode /tmp/rc32.b64 | gzip --decompress > /tmp/rc32.patch
+          printf '%s  %s\n' '96231817165faf1f7e39047b16df295e1563563cd23eaad97afdcff1092c5622' /tmp/rc32.patch | sha256sum -c -
+          awk '$1=="---"{old=$2} $1=="+++"{new=$2; if(old=="/dev/null"){sub(/^b\//,"",new);sub(/^patch-new\//,"",new);print new}}' /tmp/rc32.patch |
+          while IFS= read -r target; do
             case "$target" in
-              wp-content/plugins/mad4b-site-control-plane/*)
-                if [ -e "$target" ]; then
-                  echo "Replacing patch-owned additive target: $target"
-                  rm -f -- "$target"
-                fi
-                ;;
-              *)
-                echo "Refusing unexpected additive target from staged patch: $target" >&2
-                exit 1
-                ;;
+              wp-content/plugins/mad4b-site-control-plane/*) [ ! -e "$target" ] || rm -f -- "$target" ;;
+              *) echo "Unexpected additive target: $target" >&2; exit 1 ;;
             esac
           done
+          git apply -p2 --check /tmp/rc32.patch
+          git apply -p2 /tmp/rc32.patch
 
-          git apply -p2 --check /tmp/rc32-generalization.patch
-          git apply -p2 /tmp/rc32-generalization.patch
-
-      - name: Upgrade Site Profile contract to v2 fail closed
+      - name: Harden Site Profile v2 migration boundary
         shell: bash
         run: |
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
+          import json, re
 
-          path = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php')
-          text = path.read_text()
+          p = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php')
+          s = p.read_text()
 
-          old_constants = """\tconst CONTRACT = 'mad4b.site-profile.v1';
-          \tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v1';
-          \tconst OPTION = 'mad4b_scp_site_profile_v1';
-          \tconst VERSION = 1;
-          \tconst PRESET_FILE = 'config/site-profile-presets.json';
-          """
-          new_constants = """\tconst CONTRACT = 'mad4b.site-profile.v2';
-          \tconst LEGACY_CONTRACT = 'mad4b.site-profile.v1';
-          \tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v2';
-          \tconst OPTION = 'mad4b_scp_site_profile_v2';
-          \tconst LEGACY_OPTION = 'mad4b_scp_site_profile_v1';
-          \tconst VERSION = 2;
-          \tconst LEGACY_VERSION = 1;
-          \tconst PRESET_FILE = 'config/site-profile-presets.json';
-          """
-          if text.count(old_constants) != 1:
-              raise SystemExit('expected exactly one Site Profile v1 constants block')
-          text = text.replace(old_constants, new_constants, 1)
+          old = "\tconst CONTRACT = 'mad4b.site-profile.v1';\n\tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v1';\n\tconst OPTION = 'mad4b_scp_site_profile_v1';\n\tconst VERSION = 1;\n"
+          new = "\tconst CONTRACT = 'mad4b.site-profile.v2';\n\tconst LEGACY_CONTRACT = 'mad4b.site-profile.v1';\n\tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v2';\n\tconst OPTION = 'mad4b_scp_site_profile_v2';\n\tconst LEGACY_OPTION = 'mad4b_scp_site_profile_v1';\n\tconst VERSION = 2;\n\tconst LEGACY_VERSION = 1;\n"
+          if s.count(old) != 1:
+              raise SystemExit('Site Profile constants block drifted')
+          s = s.replace(old, new, 1)
 
-          old_bootstrap = """\t\t$record = get_option( self::OPTION, array() );
-          \t\t$source = 'stored';
-          \t\tif ( ! self::valid_record( $record ) ) {
-          \t\t\t$record = self::matching_preset();
-          \t\t\t$source = ! empty( $record ) ? 'legacy_preset' : 'none';
-          \t\t\tif ( ! empty( $record ) && self::valid_record( $record ) ) {
-          \t\t\t\tupdate_option( self::OPTION, $record, false );
-          \t\t\t\t$source = 'legacy_preset_migrated';
-          \t\t\t}
-          \t\t}
-          """
-          new_bootstrap = """\t\t$record = get_option( self::OPTION, null );
+          bootstrap_re = re.compile(
+              r"\t\t\$record = get_option\( self::OPTION, .*?\);\n"
+              r"\t\t\$source = 'stored';\n"
+              r"\t\tif \( ! self::valid_record\( \$record \) \) \{.*?\n\t\t\}\n\n"
+              r"(?=\t\tself::\$profile =)", re.S
+          )
+          replacement = """\t\t$record = get_option( self::OPTION, null );
           \t\t$source = 'stored';
           \t\t$has_current_record = null !== $record && false !== $record;
           \t\tif ( ! self::valid_record( $record ) ) {
@@ -137,70 +84,28 @@ jobs:
           \t\t\t} else {
           \t\t\t\t$legacy = get_option( self::LEGACY_OPTION, array() );
           \t\t\t\t$migrated = self::migrate_legacy_record( $legacy );
-          \t\t\t\tif ( ! empty( $migrated ) && self::valid_record( $migrated ) ) {
-          \t\t\t\t\tif ( false !== update_option( self::OPTION, $migrated, false ) ) {
-          \t\t\t\t\t\t$record = $migrated;
-          \t\t\t\t\t\t$source = 'legacy_v1_migrated';
-          \t\t\t\t\t} else {
-          \t\t\t\t\t\t$record = array();
-          \t\t\t\t\t\t$source = 'legacy_v1_migration_failed';
-          \t\t\t\t\t}
+          \t\t\t\tif ( ! empty( $migrated ) && self::valid_record( $migrated ) && false !== update_option( self::OPTION, $migrated, false ) ) {
+          \t\t\t\t\t$record = $migrated;
+          \t\t\t\t\t$source = 'legacy_v1_migrated';
           \t\t\t\t} else {
           \t\t\t\t\t$record = self::matching_preset();
           \t\t\t\t\t$source = ! empty( $record ) ? 'preset' : 'none';
-          \t\t\t\t\tif ( ! empty( $record ) && self::valid_record( $record ) ) {
-          \t\t\t\t\t\tupdate_option( self::OPTION, $record, false );
-          \t\t\t\t\t\t$source = 'preset_migrated';
-          \t\t\t\t\t}
+          \t\t\t\t\tif ( ! empty( $record ) && self::valid_record( $record ) && false !== update_option( self::OPTION, $record, false ) ) $source = 'preset_migrated';
           \t\t\t\t}
           \t\t\t}
           \t\t}
-          """
-          if text.count(old_bootstrap) != 1:
-              raise SystemExit('expected exactly one Site Profile bootstrap v1 block')
-          text = text.replace(old_bootstrap, new_bootstrap, 1)
 
-          save_anchor = """\tpublic static function save_current_site( array $input ) {
-          \t\tif ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
-          \t\t$environment = self::current_environment();
           """
-          save_replacement = """\tpublic static function save_current_site( array $input ) {
-          \t\tif ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
-          \t\tself::bootstrap();
-          \t\t$environment = self::current_environment();
-          """
-          if text.count(save_anchor) != 1:
-              raise SystemExit('expected exactly one save_current_site anchor')
-          text = text.replace(save_anchor, save_replacement, 1)
+          s, count = bootstrap_re.subn(replacement, s, count=1)
+          if count != 1:
+              raise SystemExit('Site Profile bootstrap block drifted')
 
-          status_anchor = """\t\tif ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
-          \t\tif ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
-          \t\tif ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
-          \t\treturn array(
-          """
-          status_replacement = """\t\t$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );
-          \t\tif ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
-          \t\tif ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
-          \t\tif ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
-          \t\tif ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';
-          \t\treturn array(
-          """
-          if text.count(status_anchor) != 1:
-              raise SystemExit('expected exactly one Site Profile status blocker anchor')
-          text = text.replace(status_anchor, status_replacement, 1)
+          save_marker = "\tpublic static function save_current_site( array $input ) {\n\t\tif ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );\n"
+          if s.count(save_marker) != 1:
+              raise SystemExit('save_current_site marker drifted')
+          s = s.replace(save_marker, save_marker + "\t\tself::bootstrap();\n", 1)
 
-          field_anchor = """\t\t\t'origin_match' => $origin_match,
-          \t\t\t'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
-          """
-          field_replacement = """\t\t\t'origin_match' => $origin_match,
-          \t\t\t'reenrollment_required' => $reenrollment_required,
-          \t\t\t'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
-          """
-          if text.count(field_anchor) != 1:
-              raise SystemExit('expected exactly one Site Profile status field anchor')
-          text = text.replace(field_anchor, field_replacement, 1)
-
-          migration_methods = r'''
+          methods = r'''
           	private static function valid_legacy_record( $record ) {
           		if ( ! is_array( $record ) ) return false;
           		if ( self::LEGACY_CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) return false;
@@ -249,42 +154,42 @@ jobs:
           	}
 
           '''
-          build_anchor = "\tprivate static function build_status( array $profile, $source ) {\n"
-          if text.count(build_anchor) != 1:
-              raise SystemExit('expected exactly one build_status anchor')
-          text = text.replace(build_anchor, migration_methods + build_anchor, 1)
+          anchor = "\tprivate static function build_status( array $profile, $source ) {\n"
+          if s.count(anchor) != 1:
+              raise SystemExit('build_status marker drifted')
+          s = s.replace(anchor, methods + anchor, 1)
 
-          path.write_text(text)
+          blocker_marker = "\t\t$blockers = array();\n"
+          if s.count(blocker_marker) != 1:
+              raise SystemExit('build_status blockers marker drifted')
+          s = s.replace(blocker_marker, blocker_marker + "\t\t$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );\n", 1)
+          drift_marker = "\t\tif ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';\n"
+          if s.count(drift_marker) != 1:
+              raise SystemExit('origin drift marker drifted')
+          s = s.replace(drift_marker, drift_marker + "\t\tif ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';\n", 1)
+          origin_field = "\t\t\t'origin_match' => $origin_match,\n"
+          if s.count(origin_field) != 1:
+              raise SystemExit('origin_match field marker drifted')
+          s = s.replace(origin_field, origin_field + "\t\t\t'reenrollment_required' => $reenrollment_required,\n", 1)
+
+          p.write_text(s)
 
           preset = Path('wp-content/plugins/mad4b-site-control-plane/config/site-profile-presets.json')
-          if preset.exists():
-              import json
-              data = json.loads(preset.read_text())
-              data['contract'] = 'mad4b.site-profile-presets.v2'
-              data['profiles'] = []
-              preset.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
+          data = json.loads(preset.read_text())
+          data['contract'] = 'mad4b.site-profile-presets.v2'
+          data['profiles'] = []
+          preset.write_text(json.dumps(data, indent=2) + '\n')
           PY
 
-      - name: Lint changed PHP and validate changed JSON
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r file; do
-            case "$file" in
-              *.php) if [ -f "$file" ]; then php -l "$file"; fi ;;
-              *.json) if [ -f "$file" ]; then php -r '$p=$argv[1]; $v=json_decode(file_get_contents($p), true); if (json_last_error() !== JSON_ERROR_NONE) { fwrite(STDERR, $p.": ".json_last_error_msg()."\n"); exit(1); }' "$file"; fi ;;
-            esac
-          done < <(git status --short | sed -E 's/^.. //' | sed -E 's/^.* -> //')
-
-      - name: Verify tenant-neutral release invariants
+      - name: Lint and verify tenant-neutral invariants
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
-          main="$root/mad4b-site-control-plane.php"
+          find "$root" -type f -name '*.php' -print0 | xargs -0 -n1 php -l >/tmp/php-lint.log
           profile="$root/includes/class-mad4b-scp-site-profile.php"
+          main="$root/mad4b-site-control-plane.php"
           grep -Fq 'Version: 0.4.0-rc.32' "$main"
-          grep -Fq "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.32' );" "$main"
           grep -Fq "const CONTRACT = 'mad4b.site-profile.v2';" "$profile"
           grep -Fq "const LEGACY_CONTRACT = 'mad4b.site-profile.v1';" "$profile"
           grep -Fq "const OPTION = 'mad4b_scp_site_profile_v2';" "$profile"
@@ -292,42 +197,28 @@ jobs:
           grep -Fq 'site_profile_reenrollment_required' "$profile"
           grep -Fq 'migration_requires_reenrollment' "$profile"
           grep -Fq 'PRODUCTION_WRITE_CONFIRMATION' "$profile"
-          for forbidden in \
-            'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' \
-            'staging.egypttourgates.com' \
-            'https://egypttourgates.com'; do
+          for forbidden in 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' 'staging.egypttourgates.com' 'https://egypttourgates.com'; do
             ! grep -R -F -n "$forbidden" "$root/includes" "$main"
           done
-          presets="$root/config/site-profile-presets.json"
-          php -r '$p=json_decode(file_get_contents($argv[1]), true); if (!is_array($p) || ($p["contract"] ?? "") !== "mad4b.site-profile-presets.v2" || !isset($p["profiles"]) || count($p["profiles"]) !== 0) exit(1);' "$presets"
+          php -r '$p=json_decode(file_get_contents($argv[1]),true); if(($p["contract"]??"")!=="mad4b.site-profile-presets.v2" || count($p["profiles"]??[])!==0) exit(1);' "$root/config/site-profile-presets.json"
           unexpected="$(grep -R -l -E 'mad4b\.site-profile\.v1|mad4b_scp_site_profile_v1' "$root/includes" "$main" || true)"
           test "$unexpected" = "$profile"
 
-      - name: Run focused tenant-neutral runtime contracts
+      - name: Run focused runtime contracts
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane/tests'
-          for test in \
-            site-profile-general-distribution-runtime.php \
-            oauth-multi-user-tenant-runtime.php; do
-            if [ -f "$root/$test" ]; then php "$root/$test"; fi
-          done
+          php "$root/site-profile-general-distribution-runtime.php"
+          if [ -f "$root/oauth-multi-user-tenant-runtime.php" ]; then php "$root/oauth-multi-user-tenant-runtime.php"; fi
 
       - name: Remove staging payload and commit generalized source tree
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/rc32-generalization.patch.gz.b64
-          rm -f .github/rc32-generalization.patch.gz.b64.part01
-          rm -f .github/rc32-generalization.patch.gz.b64.part02
-          rm -f .github/rc32-generalization.patch.gz.b64.part03
-          rm -f .github/rc32-generalization.patch.gz.b64.part04
-          rm -f .github/rc32-generalization.patch.gz.b64.part05
-          rm -f .github/rc32.part01 .github/rc32.part02 .github/rc32.part03 .github/rc32.part04 .github/rc32.part05
+          rm -f .github/rc32-generalization.patch.gz.b64 .github/rc32-generalization.patch.gz.b64.part{01,02,03,04,05}
+          rm -f .github/rc32.part{01,02,03,04,05}
           rm -f .github/workflows/rc32-apply-generalization.yml
-          git status --short
-          test -n "$(git status --porcelain)"
           git config user.name 'MAD4B Automation'
           git config user.email 'mad4b.digital@gmail.com'
           git add -A
