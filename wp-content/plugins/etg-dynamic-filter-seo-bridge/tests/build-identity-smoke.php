@@ -37,6 +37,8 @@ $root = sys_get_temp_dir() . '/etg-dfsb-build-identity-' . str_replace( '.', '',
 mkdir( $root, 0700, true );
 $path = $root . '/build-identity.json';
 $provenancePath = $root . '/etg-dfsb-provenance.txt';
+$contentRoot = $root . '/wp-content';
+mkdir( $contentRoot, 0700, true );
 $git = str_repeat( '1', 40 );
 $git2 = str_repeat( '3', 40 );
 $tree = str_repeat( '2', 40 );
@@ -48,6 +50,9 @@ if ( ! defined( 'ETG_DFSB_DIR' ) ) {
 }
 if ( ! defined( 'ETG_DFSB_VERSION' ) ) {
 	define( 'ETG_DFSB_VERSION', $version );
+}
+if ( ! defined( 'WP_CONTENT_DIR' ) ) {
+	define( 'WP_CONTENT_DIR', $contentRoot );
 }
 
 $missing = BuildIdentity::inspectFile( $path, $version );
@@ -96,6 +101,26 @@ $collected = BuildIdentity::collect();
 etg_build_identity_expect( ! empty( $collected['provenance_complete'] ), 'collect marks exact package provenance complete only after detached receipt validation' );
 etg_build_identity_expect( $identitySha === $collected['embedded_identity_sha256'], 'collect exposes the independently calculated embedded identity SHA-256' );
 etg_build_identity_expect( $packageSha === $collected['package_sha256'], 'collect exposes the detached validated package SHA-256' );
+etg_build_identity_expect( 'plugin_root_fallback' === $collected['package_provenance_source'], 'legacy plugin-root receipt remains an explicit compatibility fallback' );
+
+$persistentDir = $contentRoot . '/mad4b/provenance/etg-dfsb/' . $git;
+mkdir( $persistentDir, 0700, true );
+$persistentPath = $persistentDir . '/etg-dfsb-provenance.txt';
+file_put_contents( $persistentPath, $validProvenance );
+file_put_contents( $provenancePath, "contract=" . BuildIdentity::PROVENANCE_CONTRACT . "\ncontract=" . BuildIdentity::PROVENANCE_CONTRACT . "\n" );
+$persistentCollected = BuildIdentity::collect();
+etg_build_identity_expect( ! empty( $persistentCollected['provenance_complete'] ), 'SHA-addressed persistent provenance is accepted when bound to the installed identity' );
+etg_build_identity_expect( 'persistent_sha_store' === $persistentCollected['package_provenance_source'], 'persistent SHA store is preferred over plugin-root fallback' );
+etg_build_identity_expect( $packageSha === $persistentCollected['package_sha256'], 'persistent SHA store exposes the exact validated package digest' );
+
+@unlink( $persistentPath );
+@rmdir( $persistentDir );
+@rmdir( dirname( $persistentDir ) );
+@rmdir( dirname( dirname( $persistentDir ) ) );
+@rmdir( dirname( dirname( dirname( $persistentDir ) ) ) );
+file_put_contents( $provenancePath, $validProvenance );
+$fallbackCollected = BuildIdentity::collect();
+etg_build_identity_expect( 'plugin_root_fallback' === $fallbackCollected['package_provenance_source'], 'plugin-root fallback is restored only when no persistent exact-SHA receipt exists' );
 
 file_put_contents( $provenancePath, "contract=" . BuildIdentity::PROVENANCE_CONTRACT . "\ncontract=" . BuildIdentity::PROVENANCE_CONTRACT . "\n" );
 $duplicate = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
@@ -156,6 +181,7 @@ etg_build_identity_expect( empty( $extra['valid'] ) && 'identity_fields_invalid'
 
 @unlink( $provenancePath );
 @unlink( $path );
+@rmdir( $contentRoot );
 @rmdir( $root );
 
 $evidenceCommand = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/alpha13-evidence-provider-smoke.php' );
