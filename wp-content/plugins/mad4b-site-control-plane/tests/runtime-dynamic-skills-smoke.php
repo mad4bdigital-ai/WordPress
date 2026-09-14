@@ -9,17 +9,23 @@ $fail = static function ( $message ) {
 
 if ( 'staging' !== wp_get_environment_type() ) $fail( 'WordPress environment is not staging.' );
 
+$profile = MAD4B_SCP_Site_Profile::status();
+if ( empty( $profile['configured'] ) || empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) ) $fail( 'Exact generic Site Profile is not enrolled.' );
+if ( empty( $profile['skills_enabled'] ) ) $fail( 'Site Profile did not enable Skills.' );
+if ( empty( $profile['write_enabled'] ) ) $fail( 'Site Profile did not enable governed writes.' );
+if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() ) $fail( 'Site Profile has no ChatGPT App ID.' );
+
 $autoconfig = MAD4B_SCP_Skill_Autoconfig::status();
-if ( empty( $autoconfig['configured'] ) ) $fail( 'Skill editor was not auto-configured.' );
-if ( empty( $autoconfig['app_mapping_configured'] ) ) $fail( 'Staging OpenAI App mapping was not auto-configured.' );
-if ( empty( $autoconfig['app_mapping_matches_staging'] ) ) $fail( 'Staging OpenAI App mapping does not match the governed Staging App.' );
-if ( empty( $autoconfig['app_mapping_origin_bound'] ) ) $fail( 'Staging OpenAI App mapping is not bound to the governed ETG origin.' );
-if ( ! isset( $autoconfig['expected_staging_host'], $autoconfig['observed_host'] ) || ! hash_equals( (string) $autoconfig['expected_staging_host'], (string) $autoconfig['observed_host'] ) ) $fail( 'Observed Staging host does not match the governed ETG Staging host.' );
-if ( ! hash_equals( MAD4B_SCP_Skill_Autoconfig::staging_app_host(), (string) $autoconfig['observed_host'] ) ) $fail( 'Autoconfig Staging host contract mismatch.' );
-if ( 'staging_auto' !== $autoconfig['app_mapping_source'] ) $fail( 'Expected automatic Staging App mapping source.' );
+if ( empty( $autoconfig['configured'] ) ) $fail( 'Skill editor was not auto-configured from the enrolled Site Profile.' );
+if ( empty( $autoconfig['app_mapping_configured'] ) ) $fail( 'Profile-bound OpenAI App mapping was not configured.' );
+if ( empty( $autoconfig['app_mapping_matches_profile'] ) ) $fail( 'OpenAI App mapping does not match the enrolled Site Profile.' );
+if ( empty( $autoconfig['app_mapping_origin_bound'] ) ) $fail( 'OpenAI App mapping is not bound to the enrolled origin.' );
+if ( ! isset( $autoconfig['expected_profile_host'], $autoconfig['observed_host'] ) || ! hash_equals( (string) $autoconfig['expected_profile_host'], (string) $autoconfig['observed_host'] ) ) $fail( 'Observed host does not match the enrolled Site Profile host.' );
+if ( 'site_profile' !== $autoconfig['app_mapping_source'] ) $fail( 'Expected Site Profile App mapping source.' );
+if ( ! hash_equals( MAD4B_SCP_Site_Profile::profile_digest(), (string) $autoconfig['profile_digest'] ) ) $fail( 'Skill autoconfig profile digest drifted.' );
 
 $registry = MAD4B_SCP_Skill_Registry::status();
-if ( empty( $registry['editor_enabled'] ) ) $fail( 'Skill editor is not enabled on Staging.' );
+if ( empty( $registry['editor_enabled'] ) ) $fail( 'Skill editor is not enabled on enrolled Staging.' );
 if ( ! empty( $registry['scripts_editor_enabled'] ) ) $fail( 'Scripts editor must remain disabled.' );
 if ( empty( $registry['storage_initialized'] ) || empty( $registry['storage_writable'] ) ) $fail( 'Skill storage is not initialized and writable.' );
 if ( empty( $registry['portable_app_id_configured'] ) ) $fail( 'Portable App mapping is unavailable through the registry.' );
@@ -100,11 +106,13 @@ if ( empty( $rest_compat['wpml']['route_registered'] ) || empty( $rest_compat['w
 if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST probe.' );
 
 $write_authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
-if ( empty( $write_authority['ready'] ) || 'ready' !== $write_authority['state'] ) $fail( 'Governed Staging write authority is not ready: ' . wp_json_encode( $write_authority ) );
-if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Staging mutation gate was not configured.' );
-if ( empty( $write_authority['all_remote_writes_require_exact_approval'] ) ) $fail( 'Remote Staging writes are not forced through exact approvals.' );
-if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into Staging write authority.' );
+if ( empty( $write_authority['ready'] ) || 'ready' !== $write_authority['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_authority ) );
+if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );
+if ( empty( $write_authority['all_remote_writes_require_exact_approval'] ) ) $fail( 'Remote governed writes are not forced through exact approvals.' );
+if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into governed write authority.' );
 if ( empty( $write_authority['write_tool_count'] ) ) $fail( 'Write authority inventory is empty.' );
+if ( empty( $write_authority['site_uuid'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $write_authority['site_uuid'] ) ) $fail( 'Write authority is not bound to the enrolled site UUID.' );
+if ( ! isset( $write_authority['profile_revision'] ) || MAD4B_SCP_Site_Profile::revision() !== (int) $write_authority['profile_revision'] ) $fail( 'Write authority profile revision mismatch.' );
 
 $expected_core_writes = array(
 	'mad4b/content-update-post',
@@ -193,7 +201,7 @@ if ( is_wp_error( $export ) ) $fail( 'Portable export failed: ' . $export->get_e
 if ( empty( $export['path'] ) || ! is_file( $export['path'] ) ) $fail( 'Portable export file is missing.' );
 if ( empty( $export['identity_token'] ) || ! hash_equals( (string) $snapshot_identity['identity_token'], (string) $export['identity_token'] ) ) $fail( 'Exporter result identity token mismatch.' );
 if ( empty( $export['governed_write_ready'] ) || empty( $export['write_certification_ready'] ) ) $fail( 'Portable export did not carry governed Write readiness.' );
-if ( ! isset( $export['plugin_capabilities'] ) || ! in_array( 'Write', $export['plugin_capabilities'], true ) ) $fail( 'Portable export did not declare Write capability on certified Staging.' );
+if ( ! isset( $export['plugin_capabilities'] ) || ! in_array( 'Write', $export['plugin_capabilities'], true ) ) $fail( 'Portable export did not declare Write capability on certified governed Staging.' );
 if ( ! isset( $export['skill_count'] ) || (int) $export['skill_count'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_SKILLS ) $fail( 'Exporter Skill count is outside the bounded limit.' );
 if ( ! isset( $export['resource_count'] ) || (int) $export['resource_count'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_RESOURCES ) $fail( 'Exporter resource count is outside the bounded limit.' );
 if ( ! isset( $export['uncompressed_payload_bytes'] ) || (int) $export['uncompressed_payload_bytes'] > MAD4B_SCP_Skill_Exporter::MAX_EXPORT_UNCOMPRESSED_BYTES ) $fail( 'Exporter payload bytes exceed the bounded limit.' );
@@ -215,9 +223,9 @@ if ( ! isset( $meta['resource_count'], $meta['uncompressed_payload_bytes'], $met
 if ( (int) $meta['resource_count'] !== (int) $export['resource_count'] || (int) $meta['uncompressed_payload_bytes'] !== (int) $export['uncompressed_payload_bytes'] ) $fail( 'Export result and embedded payload counters disagree.' );
 $app = json_decode( (string) $app_json, true );
 $zip_app_id = is_array( $app ) && isset( $app['apps']['mad4b-wordpress']['id'] ) ? (string) $app['apps']['mad4b-wordpress']['id'] : '';
-if ( '' === $zip_app_id || ! hash_equals( MAD4B_SCP_Skill_Autoconfig::staging_app_id(), $zip_app_id ) ) $fail( 'Portable .app.json does not bind the governed Staging App.' );
+if ( '' === $zip_app_id || ! hash_equals( MAD4B_SCP_Site_Profile::chatgpt_app_id(), $zip_app_id ) ) $fail( 'Portable .app.json does not bind the enrolled Site Profile App.' );
 $plugin = json_decode( (string) $plugin_json, true );
 $capabilities = is_array( $plugin ) && isset( $plugin['extensions']['com.openai']['interface']['capabilities'] ) && is_array( $plugin['extensions']['com.openai']['interface']['capabilities'] ) ? $plugin['extensions']['com.openai']['interface']['capabilities'] : array();
-if ( ! in_array( 'Read', $capabilities, true ) || ! in_array( 'Write', $capabilities, true ) ) $fail( 'Runtime portable plugin.json does not declare Read + Write on certified Staging.' );
+if ( ! in_array( 'Read', $capabilities, true ) || ! in_array( 'Write', $capabilities, true ) ) $fail( 'Runtime portable plugin.json does not declare Read + Write on certified governed Staging.' );
 
-echo 'mad4b.runtime-dynamic-skills.v4: PASS' . PHP_EOL;
+echo 'mad4b.runtime-dynamic-skills.v5: PASS' . PHP_EOL;
