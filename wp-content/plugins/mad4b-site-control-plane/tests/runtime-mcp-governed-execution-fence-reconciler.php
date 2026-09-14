@@ -4,6 +4,11 @@
  * Acceptance reconstruction. The base fixture performs the authoritative
  * execute -> independent replay denial -> undo sequence against the real MCP
  * Adapter route and leaves its evidence variables in this include scope.
+ *
+ * The execution-fence fixture is intentionally tenant-neutral. ETG Live
+ * Acceptance remains deployment-specific, so a generic enrolled Site Profile
+ * must prove the durable mutation sequence while being rejected as ETG
+ * acceptance evidence rather than being falsely attributed to ETG.
  */
 require __DIR__ . '/runtime-mcp-governed-execution-fence.php';
 
@@ -50,17 +55,30 @@ $check(
 	) )
 );
 
-// Remove the observer optimization so this assertion can only pass through the
-// Reconciler's authoritative reconstruction from append-only audit, mutation
+// Remove the observer optimization so the result can only come from the
+// Reconciler's authoritative reconstruction over append-only audit, mutation
 // records and exact candidate-bound used approval tickets.
 delete_option( MAD4B_SCP_Live_Acceptance_Finalizer::LEDGER_OPTION );
 $acceptance = MAD4B_SCP_Live_Acceptance_Reconciler::mutation_acceptance_status();
-$check( is_array( $acceptance ) && ! empty( $acceptance['ready'] ), 'real MCP cycle did not reconstruct mutation_acceptance.ready=true: ' . wp_json_encode( $acceptance ) );
-$check( 'durable_authoritative_reconstruction' === ( isset( $acceptance['evidence_source'] ) ? (string) $acceptance['evidence_source'] : '' ), 'real MCP acceptance did not use durable authoritative reconstruction: ' . wp_json_encode( $acceptance ) );
-$check( hash_equals( $mutation_id, strtolower( (string) ( isset( $acceptance['mutation_id'] ) ? $acceptance['mutation_id'] : '' ) ) ), 'reconstructed acceptance is not bound to the exact real MCP mutation' );
-$check( hash_equals( strtolower( (string) $ticket['ticket_id'] ), strtolower( (string) ( isset( $acceptance['approval_ticket_id'] ) ? $acceptance['approval_ticket_id'] : '' ) ) ), 'reconstructed acceptance is not bound to the exact execution ticket' );
-$check( hash_equals( strtolower( (string) $undo_ticket['ticket_id'] ), strtolower( (string) ( isset( $acceptance['undo_approval_ticket_id'] ) ? $acceptance['undo_approval_ticket_id'] : '' ) ) ), 'reconstructed acceptance is not bound to the exact undo ticket' );
-$check( empty( $acceptance['first_reconstruction_failure'] ), 'ready durable reconstruction retained a failure marker: ' . wp_json_encode( $acceptance ) );
+$current_origin = class_exists( 'MAD4B_SCP_Site_Profile' ) ? rtrim( (string) MAD4B_SCP_Site_Profile::site_origin(), '/' ) : '';
+$etg_origin = rtrim( (string) MAD4B_SCP_Live_Acceptance_Finalizer::STAGING_ORIGIN, '/' );
+
+if ( '' !== $current_origin && hash_equals( $etg_origin, $current_origin ) ) {
+	$check( is_array( $acceptance ) && ! empty( $acceptance['ready'] ), 'ETG real MCP cycle did not reconstruct mutation_acceptance.ready=true: ' . wp_json_encode( $acceptance ) );
+	$check( 'durable_authoritative_reconstruction' === ( isset( $acceptance['evidence_source'] ) ? (string) $acceptance['evidence_source'] : '' ), 'ETG real MCP acceptance did not use durable authoritative reconstruction: ' . wp_json_encode( $acceptance ) );
+	$check( hash_equals( $mutation_id, strtolower( (string) ( isset( $acceptance['mutation_id'] ) ? $acceptance['mutation_id'] : '' ) ) ), 'reconstructed acceptance is not bound to the exact real MCP mutation' );
+	$check( hash_equals( strtolower( (string) $ticket['ticket_id'] ), strtolower( (string) ( isset( $acceptance['approval_ticket_id'] ) ? $acceptance['approval_ticket_id'] : '' ) ) ), 'reconstructed acceptance is not bound to the exact execution ticket' );
+	$check( hash_equals( strtolower( (string) $undo_ticket['ticket_id'] ), strtolower( (string) ( isset( $acceptance['undo_approval_ticket_id'] ) ? $acceptance['undo_approval_ticket_id'] : '' ) ) ), 'reconstructed acceptance is not bound to the exact undo ticket' );
+	$check( empty( $acceptance['first_reconstruction_failure'] ), 'ready durable reconstruction retained a failure marker: ' . wp_json_encode( $acceptance ) );
+} else {
+	// Generic governed-write certification must not be silently converted into an
+	// ETG deployment acceptance receipt. The ETG-specific finalizer must fail
+	// closed at the exact environment/origin binding while the generic execution
+	// evidence above remains independently proven.
+	$check( is_array( $acceptance ) && empty( $acceptance['ready'] ), 'generic Site Profile was falsely accepted as ETG mutation acceptance: ' . wp_json_encode( $acceptance ) );
+	$check( 'durable_reconstruction_unavailable' === ( isset( $acceptance['evidence_source'] ) ? (string) $acceptance['evidence_source'] : '' ), 'generic Site Profile did not remain outside ETG acceptance reconstruction: ' . wp_json_encode( $acceptance ) );
+	$check( 'candidate_binding_environment_mismatch' === ( isset( $acceptance['first_reconstruction_failure'] ) ? (string) $acceptance['first_reconstruction_failure'] : '' ), 'generic Site Profile failed ETG acceptance for an unexpected reason: ' . wp_json_encode( $acceptance ) );
+}
 
 // The real MCP cycle above proves that an independent replay emits exactly one
 // canonical durable audit event. Separately prove the Execution Fence's
@@ -94,4 +112,4 @@ $check( is_wp_error( $permission_a ) && 'mad4b_approval_replay_denied' === $perm
 $check( is_wp_error( $permission_b ) && 'mad4b_approval_replay_denied' === $permission_b->get_error_code(), 'cached fenced permission denial lost canonical replay error' );
 $check( 1 === $permission_calls, 'same logical request evaluated replay permission more than once: ' . $permission_calls );
 
-echo "mad4b.site-control-plane.mcp-governed-execution-fence-reconciler.v1: PASS\n";
+echo "mad4b.site-control-plane.mcp-governed-execution-fence-reconciler.v2: PASS\n";
