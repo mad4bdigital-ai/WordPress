@@ -4,9 +4,10 @@ namespace ETG\DynamicFilterSEOBridge\Acceptance;
 use ETG\DynamicFilterSEOBridge\Runtime\RuntimeQueryBindingResolver;
 
 final class SemanticQueryEvaluator {
-    const CONTRACT = 'etg.dfsb.semantic-query-evaluation.v2';
+    const CONTRACT = 'etg.dfsb.semantic-query-evaluation.v3';
     const MAX_IDS = 100;
-    const MAX_PAGE_FETCHES = 20;
+    const MAX_DIGEST_IDS = 5000;
+    const MAX_PAGE_FETCHES = 100;
 
     private $bindingResolver;
     private $bindingProvider;
@@ -44,19 +45,29 @@ final class SemanticQueryEvaluator {
             $total = $countQuery->get_items_total_count();
             if ( ! is_numeric( $total ) ) return $this->blocked( 'non_numeric_total', $provider, $queryId, $binding );
             $total = max( 0, (int) $total );
+            if ( $total > self::MAX_DIGEST_IDS ) {
+                return $this->boundedFailure( 'dataset_exceeds_digest_ceiling', $provider, $queryId, $total, $binding );
+            }
+
             $collection = $this->collectIds( $queryPrototype, $filteredQuery, $total );
+            $proof = $this->proof( $collection['ids'], $total, $collection['complete'] );
 
             return array(
                 'contract' => self::CONTRACT,
-                'state' => 'ok',
+                'state' => $collection['infrastructure_failure'] ? 'blocked' : 'ok',
                 'authorizing' => false,
                 'read_only' => true,
                 'provider' => $provider,
                 'query_id' => $queryId,
                 'total' => $total,
-                'ids' => $collection['ids'],
-                'ids_complete' => $collection['complete'],
-                'ids_scope' => $collection['complete'] ? 'full_result_set' : 'bounded_query_items',
+                'proof_mode' => $proof['mode'],
+                'proof_complete' => $proof['complete'],
+                'proof_item_count' => $proof['item_count'],
+                'identity_digest' => $proof['identity_digest'],
+                'order_digest' => $proof['order_digest'],
+                'ids' => $proof['ids'],
+                'ids_complete' => 'full_ids' === $proof['mode'] && $proof['complete'],
+                'ids_scope' => 'full_ids' === $proof['mode'] ? ( $proof['complete'] ? 'full_result_set' : 'incomplete' ) : 'digest_only',
                 'ids_reason' => $collection['reason'],
                 'collection_mode' => $collection['mode'],
                 'items_per_page' => $collection['items_per_page'],
@@ -67,9 +78,10 @@ final class SemanticQueryEvaluator {
                 'pagination_failure' => $collection['pagination_failure'],
                 'infrastructure_failure' => $collection['infrastructure_failure'],
                 'max_ids' => self::MAX_IDS,
+                'max_digest_ids' => self::MAX_DIGEST_IDS,
                 'max_page_fetches' => self::MAX_PAGE_FETCHES,
                 'binding' => $this->bindingEvidence( $binding ),
-                'blocking_reasons' => array(),
+                'blocking_reasons' => $collection['infrastructure_failure'] ? array( $collection['pagination_failure'] ?: $collection['reason'] ) : array(),
             );
         } catch ( \Throwable $e ) {
             return $this->blocked( 'query_evaluation_exception', $provider, $queryId, $binding );
@@ -106,20 +118,8 @@ final class SemanticQueryEvaluator {
         }
         $result['items_per_page'] = $perPage ?: null;
 
-        if ( $total > self::MAX_IDS ) {
-            $page = $this->readPageIds( $pageOneQuery, self::MAX_IDS );
-            $result['ids'] = $this->orderedUnique( $page['ids'] );
-            $result['raw_id_count'] = count( $page['ids'] );
-            $result['unique_id_count'] = count( $result['ids'] );
-            $result['page_fetches'] = 1;
-            $result['page_signatures'][] = $this->pageSignature( $page['ids'] );
-            $result['mode'] = 'bounded_sample';
-            $result['reason'] = 'total_exceeds_id_ceiling';
-            return $result;
-        }
-
         if ( $perPage <= 0 || $perPage >= $total ) {
-            $page = $this->readPageIds( $pageOneQuery, self::MAX_IDS );
+            $page = $this->readPageIds( $pageOneQuery, max( 1, $total ) );
             $result['ids'] = $this->orderedUnique( $page['ids'] );
             $result['raw_id_count'] = count( $page['ids'] );
             $result['unique_id_count'] = count( $result['ids'] );
@@ -128,7 +128,7 @@ final class SemanticQueryEvaluator {
             $result['mode'] = 'single_query_items';
             if ( $result['raw_id_count'] > $total ) $this->markInfrastructureFailure( $result, 'raw_collected_id_count_exceeds_total' );
             elseif ( $page['unknown'] ) $result['reason'] = 'query_item_identity_unavailable';
-            elseif ( $page['truncated'] ) $result['reason'] = 'query_items_exceed_id_ceiling';
+            elseif ( $page['truncated'] ) $result['reason'] = 'query_items_exceed_digest_ceiling';
             elseif ( $result['unique_id_count'] === $total ) { $result['complete'] = true; $result['reason'] = 'complete'; }
             else $result['reason'] = 'query_items_not_complete';
             return $result;
@@ -136,14 +136,8 @@ final class SemanticQueryEvaluator {
 
         $pages = (int) ceil( $total / $perPage );
         if ( $pages > self::MAX_PAGE_FETCHES ) {
-            $page = $this->readPageIds( $pageOneQuery, self::MAX_IDS );
-            $result['ids'] = $this->orderedUnique( $page['ids'] );
-            $result['raw_id_count'] = count( $page['ids'] );
-            $result['unique_id_count'] = count( $result['ids'] );
-            $result['page_fetches'] = 1;
-            $result['page_signatures'][] = $this->pageSignature( $page['ids'] );
-            $result['mode'] = 'bounded_sample';
-            $result['reason'] = 'page_fetch_ceiling_exceeded';
+            $this->markInfrastructureFailure( $result, 'page_fetch_ceiling_exceeded' );
+            $result['mode'] = 'paged_query_items';
             return $result;
         }
 
@@ -160,8 +154,9 @@ final class SemanticQueryEvaluator {
                     break;
                 }
             }
-            $remaining = self::MAX_IDS - count( $result['ids'] );
-            if ( $remaining <= 0 ) { $result['reason'] = 'id_ceiling_reached_before_total'; break; }
+
+            $remaining = self::MAX_DIGEST_IDS - count( $result['ids'] );
+            if ( $remaining <= 0 ) { $this->markInfrastructureFailure( $result, 'digest_id_ceiling_reached_before_total' ); break; }
             $page = $this->readPageIds( $pageQuery, $remaining );
             $result['page_fetches']++;
             $unknown = $unknown || $page['unknown'];
@@ -191,13 +186,13 @@ final class SemanticQueryEvaluator {
                 $this->markInfrastructureFailure( $result, 'pagination_no_progress' );
                 break;
             }
-            if ( $page['truncated'] ) { $result['reason'] = 'query_items_exceed_id_ceiling'; break; }
+            if ( $page['truncated'] ) { $this->markInfrastructureFailure( $result, 'query_items_exceed_digest_ceiling' ); break; }
             if ( $result['unique_id_count'] === $total ) {
                 $result['complete'] = ! $unknown;
                 $result['reason'] = $unknown ? 'query_item_identity_unavailable' : 'complete';
                 break;
             }
-            if ( ! $page['ids'] && $pageNumber < $pages ) { $result['reason'] = 'query_page_empty_before_total'; break; }
+            if ( ! $page['ids'] && $pageNumber < $pages ) { $this->markInfrastructureFailure( $result, 'query_page_empty_before_total' ); break; }
             $previousSignature = $signature;
         }
         if ( ! $result['complete'] && ! $result['infrastructure_failure'] && 'query_items_method_unavailable' === $result['reason'] ) {
@@ -206,17 +201,31 @@ final class SemanticQueryEvaluator {
         return $result;
     }
 
+    private function proof( array $ids, int $total, bool $complete ): array {
+        $ids = array_values( $ids );
+        $mode = $total <= self::MAX_IDS ? 'full_ids' : 'full_digest';
+        $identity = $ids;
+        sort( $identity, SORT_NUMERIC );
+        return array(
+            'mode' => $mode,
+            'complete' => $complete && count( $ids ) === $total,
+            'item_count' => count( $ids ),
+            'ids' => 'full_ids' === $mode ? $ids : array(),
+            'identity_digest' => hash( 'sha256', $this->canonicalIdsJson( $identity ) ),
+            'order_digest' => hash( 'sha256', $this->canonicalIdsJson( $ids ) ),
+        );
+    }
+
+    private function canonicalIdsJson( array $ids ): string {
+        $encoded = json_encode( array_values( array_map( 'intval', $ids ) ), JSON_UNESCAPED_SLASHES );
+        return is_string( $encoded ) ? $encoded : '[]';
+    }
+
     private function freshQuery( $queryPrototype, array $filteredQuery, int $pageNumber ) {
         $query = clone $queryPrototype;
-
-        // JetEngine Query Builder instances can be reused by the manager and may
-        // already carry final_query/current_query state from an earlier page.
-        // A semantic acceptance page fetch must start from the immutable query
-        // definition, not from a previously evaluated runtime instance.
         if ( method_exists( $query, 'reset_query' ) ) $query->reset_query();
         if ( property_exists( $query, 'final_query' ) ) $query->final_query = null;
         if ( property_exists( $query, 'current_query' ) ) $query->current_query = null;
-
         $query->setup_query();
         foreach ( $filteredQuery as $prop => $value ) {
             $prop = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $prop );
@@ -265,6 +274,18 @@ final class SemanticQueryEvaluator {
         $result['infrastructure_failure'] = true;
     }
 
+    private function boundedFailure( string $reason, string $provider, string $queryId, int $total, array $binding = array() ): array {
+        $result = $this->blocked( $reason, $provider, $queryId, $binding );
+        $result['total'] = $total;
+        $result['proof_mode'] = 'unavailable';
+        $result['proof_complete'] = false;
+        $result['proof_item_count'] = 0;
+        $result['identity_digest'] = '';
+        $result['order_digest'] = '';
+        $result['max_digest_ids'] = self::MAX_DIGEST_IDS;
+        return $result;
+    }
+
     private function blocked( string $reason, string $provider, string $queryId, array $binding = array() ): array {
         return array(
             'contract' => self::CONTRACT,
@@ -274,6 +295,11 @@ final class SemanticQueryEvaluator {
             'provider' => $provider,
             'query_id' => $queryId,
             'total' => null,
+            'proof_mode' => 'unavailable',
+            'proof_complete' => false,
+            'proof_item_count' => 0,
+            'identity_digest' => '',
+            'order_digest' => '',
             'ids' => array(),
             'ids_complete' => false,
             'ids_scope' => 'unavailable',
@@ -287,6 +313,7 @@ final class SemanticQueryEvaluator {
             'pagination_failure' => '',
             'infrastructure_failure' => false,
             'max_ids' => self::MAX_IDS,
+            'max_digest_ids' => self::MAX_DIGEST_IDS,
             'max_page_fetches' => self::MAX_PAGE_FETCHES,
             'binding' => $this->bindingEvidence( $binding ),
             'blocking_reasons' => array( $reason ),

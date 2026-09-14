@@ -104,23 +104,33 @@
 
     function resultCount(ids) {
         var selectors = [
-            '.jet-smart-filters-results-count__value',
-            '.jet-smart-filters-results-count .jet-smart-filters-results-count__value',
-            '[data-etg-dfsb-result-count]'
+            { selector: '.jet-smart-filters-results-count__value', source: 'jet_smart_filters_results_count' },
+            { selector: '.jet-smart-filters-results-count .jet-smart-filters-results-count__value', source: 'jet_smart_filters_results_count' },
+            { selector: '[data-etg-dfsb-result-count]', source: 'etg_data_attribute' }
         ];
         for (var i = 0; i < selectors.length; i += 1) {
-            var node = document.querySelector(selectors[i]);
+            var node = document.querySelector(selectors[i].selector);
             if (!node) { continue; }
             var raw = node.getAttribute('data-etg-dfsb-result-count') || node.textContent || '';
             var match = String(raw).replace(/,/g, '').match(/\d+/);
-            if (match) { return parseInt(match[0], 10); }
+            if (match) {
+                return { count: parseInt(match[0], 10), authoritative: true, source: selectors[i].source };
+            }
         }
-        return ids.length;
+        return { count: ids.length, authoritative: false, source: 'dom_item_count_fallback' };
     }
 
     function domState() {
         var ids = domIds();
-        return { ids: ids, result_count: resultCount(ids) };
+        var count = resultCount(ids);
+        return {
+            ids: ids,
+            ids_complete: !!count.authoritative && count.count <= 100 && ids.length === count.count,
+            observed_id_count: ids.length,
+            result_count: count.count,
+            result_count_authoritative: !!count.authoritative,
+            result_count_source: count.source
+        };
     }
 
     function snapshotState() {

@@ -2,7 +2,7 @@
 namespace ETG\DynamicFilterSEOBridge\Acceptance;
 
 final class SemanticCaseRunner {
-    const CONTRACT = 'etg.dfsb.semantic-acceptance-case.v1';
+    const CONTRACT = 'etg.dfsb.semantic-acceptance-case.v2';
 
     private $directEvaluator;
     private $ajaxEvaluator;
@@ -41,15 +41,17 @@ final class SemanticCaseRunner {
         $seoNonAuthority = empty( $directState['authorizing'] ) && empty( $ajaxState['authorizing'] ) && empty( $ajaxState['url_authority'] );
         $datasetsReady = 'ok' === (string) ( $directDataset['state'] ?? '' ) && 'ok' === (string) ( $ajaxDataset['state'] ?? '' );
         $countParity = $datasetsReady ? ( (int) $directDataset['total'] === (int) $ajaxDataset['total'] ) : null;
-        $idsComplete = $datasetsReady && ! empty( $directDataset['ids_complete'] ) && ! empty( $ajaxDataset['ids_complete'] );
+        $proofComplete = $datasetsReady && ! empty( $directDataset['proof_complete'] ) && ! empty( $ajaxDataset['proof_complete'] );
         $idsParity = null; $orderParity = null;
-        if ( $idsComplete ) {
-            $directIds = array_values( (array) $directDataset['ids'] );
-            $ajaxIds = array_values( (array) $ajaxDataset['ids'] );
-            $directIdentity = $directIds; $ajaxIdentity = $ajaxIds;
-            sort( $directIdentity, SORT_REGULAR ); sort( $ajaxIdentity, SORT_REGULAR );
-            $idsParity = $directIdentity === $ajaxIdentity;
-            $orderParity = $directIds === $ajaxIds;
+        if ( $proofComplete ) {
+            $idsParity = hash_equals(
+                (string) ( $directDataset['identity_digest'] ?? '' ),
+                (string) ( $ajaxDataset['identity_digest'] ?? '' )
+            );
+            $orderParity = hash_equals(
+                (string) ( $directDataset['order_digest'] ?? '' ),
+                (string) ( $ajaxDataset['order_digest'] ?? '' )
+            );
         }
 
         $blocking = array();
@@ -64,7 +66,7 @@ final class SemanticCaseRunner {
             $infrastructureFailures[] = $side . ':' . ( $reason ?: 'dataset_pagination_infrastructure_failure' );
         }
 
-        $incomplete = $datasetsReady && ! $idsComplete && ! $infrastructureFailures ? array( 'dataset_ids_incomplete' ) : array();
+        $incomplete = $datasetsReady && ! $proofComplete && ! $infrastructureFailures ? array( 'dataset_proof_incomplete' ) : array();
         $defects = array();
         if ( ! $stateParity ) $defects[] = 'semantic_state_divergence';
         if ( false === $countParity ) $defects[] = 'result_count_divergence';
@@ -107,10 +109,12 @@ final class SemanticCaseRunner {
         return array(
             'contract'=>(string)($dataset['contract']??''), 'state'=>(string)($dataset['state']??''), 'total'=>$dataset['total']??null, 'ids'=>array_values((array)($dataset['ids']??array())),
             'ids_complete'=>!empty($dataset['ids_complete']), 'ids_scope'=>(string)($dataset['ids_scope']??''), 'ids_reason'=>(string)($dataset['ids_reason']??''),
+            'proof_mode'=>(string)($dataset['proof_mode']??''), 'proof_complete'=>!empty($dataset['proof_complete']), 'proof_item_count'=>(int)($dataset['proof_item_count']??0),
+            'identity_digest'=>(string)($dataset['identity_digest']??''), 'order_digest'=>(string)($dataset['order_digest']??''),
             'collection_mode'=>(string)($dataset['collection_mode']??''), 'items_per_page'=>$dataset['items_per_page']??null, 'page_fetches'=>(int)($dataset['page_fetches']??0),
             'page_signatures'=>array_values((array)($dataset['page_signatures']??array())), 'raw_id_count'=>(int)($dataset['raw_id_count']??0), 'unique_id_count'=>(int)($dataset['unique_id_count']??0),
             'pagination_failure'=>(string)($dataset['pagination_failure']??''), 'infrastructure_failure'=>!empty($dataset['infrastructure_failure']),
-            'max_ids'=>(int)($dataset['max_ids']??0), 'max_page_fetches'=>(int)($dataset['max_page_fetches']??0),
+            'max_ids'=>(int)($dataset['max_ids']??0), 'max_digest_ids'=>(int)($dataset['max_digest_ids']??0), 'max_page_fetches'=>(int)($dataset['max_page_fetches']??0),
             'binding'=>(array)($dataset['binding']??array()), 'blocking_reasons'=>array_values((array)($dataset['blocking_reasons']??array())),
         );
     }
