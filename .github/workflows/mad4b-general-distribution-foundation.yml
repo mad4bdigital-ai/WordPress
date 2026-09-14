@@ -5,6 +5,8 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php'
       - '.github/workflows/mad4b-general-distribution-foundation.yml'
   workflow_dispatch:
@@ -40,9 +42,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php
-          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php
-          php -l wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php
+          for file in \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php; do
+            php -l "$file"
+          done
 
       - name: Run tenant-neutral runtime contract
         shell: bash
@@ -50,21 +57,42 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php
 
-      - name: Reject authority-by-install defaults in generalized profile
+      - name: Reject authority-by-install defaults
         shell: bash
         run: |
           set -euo pipefail
-          profile='wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php'
+          root='wp-content/plugins/mad4b-site-control-plane'
+          profile="$root/includes/class-mad4b-scp-site-profile.php"
+          authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
+          dependency="$root/includes/class-mad4b-scp-dependency-manager.php"
+
           grep -Fq "site_not_enrolled" "$profile"
           grep -Fq "origin_drift" "$profile"
           grep -Fq "environment_drift" "$profile"
           grep -Fq "PRODUCTION_WRITE_CONFIRMATION" "$profile"
-          grep -Fq "breakglass_enabled' => false" "$profile"
-          if grep -Fq "staging.egypttourgates.com" "$profile"; then
-            echo 'Tenant-neutral profile must not hardcode the ETG Staging origin.' >&2
+          grep -Fq "site_profile_unconfigured" "$authority"
+          grep -Fq "site_profile_write_disabled" "$authority"
+          grep -Fq "'production_auto_enable' => false" "$authority"
+          grep -Fq "'breakglass_auto_enable' => false" "$authority"
+          grep -Fq "'all_remote_writes_require_exact_approval' => true" "$authority"
+          grep -Fq "auto_downloads_remote_code' => false" "$dependency"
+
+          # Breakglass is intentionally not a Site Profile feature. It remains
+          # an independent exceptional authority and cannot be enabled by normal
+          # tenant enrollment.
+          if grep -Fq "breakglass_enabled" "$profile"; then
+            echo 'Normal Site Profile must not carry a breakglass enable switch.' >&2
             exit 1
           fi
-          if grep -Fq "egypttourgates.com" "$profile"; then
-            echo 'Tenant-neutral profile must not hardcode the ETG Production origin.' >&2
+
+          for file in "$profile" "$authority" "$dependency"; do
+            if grep -Fq 'staging.egypttourgates.com' "$file" || grep -Fq 'egypttourgates.com' "$file"; then
+              echo "Tenant-neutral runtime authority hardcodes an ETG origin: $file" >&2
+              exit 1
+            fi
+          done
+
+          if grep -Fq 'Requires Plugins: mcp-adapter' "$root/mad4b-site-control-plane.php"; then
+            echo 'General distribution must boot diagnostics/onboarding without an installed Adapter.' >&2
             exit 1
           fi
