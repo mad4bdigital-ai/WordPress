@@ -20,7 +20,7 @@ def forbid(text, needle, label):
         raise SystemExit(f'FAIL {label}: forbidden {needle!r}')
 
 
-require(schema, 'const VERSION = 5;', 'schema-v5')
+require(schema, 'const VERSION = 6;', 'schema-v6')
 for table in ('mad4b_scp_audit_events', 'mad4b_scp_audit_heads'):
     require(schema, table, 'audit-schema-table')
 require(schema, 'UNIQUE KEY chain_sequence (chain_name,sequence)', 'audit-sequence-unique')
@@ -63,4 +63,4 @@ for forbidden_writer in (
 ):
     forbid(audit_all, forbidden_writer, 'append-only-event-storage')
 
-print('mad4b.site-control-plane.audit-persistence-contract.v4: PASS')
+print('mad4b.site-control-plane.audit-persistence-contract.v5: PASS')
