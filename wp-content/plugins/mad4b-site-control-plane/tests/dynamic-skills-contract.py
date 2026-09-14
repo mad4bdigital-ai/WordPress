@@ -29,8 +29,14 @@ plugin_boot = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encodin
 readme = (portable / 'README.md').read_text(encoding='utf-8')
 
 for marker in [
-    "const CONTRACT = 'mad4b.skill-autoconfig.v1'",
+    "const CONTRACT = 'mad4b.skill-autoconfig.v2'",
     "'staging' !== $environment",
+    "MAD4B_SCP_Site_Profile::configured()",
+    "MAD4B_SCP_Site_Profile::chatgpt_app_id()",
+    "MAD4B_SCP_Site_Profile::site_host()",
+    "'site_profile_unconfigured'",
+    "'site_profile_skills_disabled'",
+    "'site_profile_app_mapping_missing'",
     "defined( 'MAD4B_SKILLS_EDITOR_ENABLED' )",
     "true !== constant( 'MAD4B_SKILLS_EDITOR_ENABLED' )",
     "define( 'MAD4B_SKILLS_EDITOR_ENABLED', true )",
@@ -38,10 +44,21 @@ for marker in [
     "'production_auto_enable' => false",
     "'scripts_auto_enable' => false",
     "'explicit_editor_disabled'",
-    "'staging_auto'",
+    "'site_profile_staging_auto'",
+    "'app_mapping_matches_profile'",
+    "'app_mapping_source'] = 'site_profile'",
 ]:
     if marker not in autoconfig:
-        raise SystemExit(f'missing zero-touch Staging Skill autoconfig guard: {marker}')
+        raise SystemExit(f'missing tenant-bound Staging Skill autoconfig guard: {marker}')
+
+for forbidden in [
+    'staging.egypttourgates.com',
+    'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2',
+    'STAGING_OPENAI_APP_ID',
+    'STAGING_OPENAI_APP_HOST',
+]:
+    if forbidden in autoconfig:
+        raise SystemExit(f'deployment-specific Skill autoconfig literal leaked into generic runtime: {forbidden}')
 
 for marker in [
     "const ROOT_DIRNAME = 'mad4b-skills'",
@@ -180,7 +197,7 @@ for file_marker in [
     if file_marker not in main:
         raise SystemExit(f'main plugin is not loading {file_marker}')
 if 'MAD4B_SCP_Skill_Autoconfig::bootstrap()' not in main:
-    raise SystemExit('main plugin must bootstrap Staging Skills automatically')
+    raise SystemExit('main plugin must bootstrap enrolled Staging Skills automatically')
 
 for marker in [
     'admin_init',
@@ -306,4 +323,4 @@ if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpres
 if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
-print('mad4b.dynamic-skills.v4: PASS')
+print('mad4b.dynamic-skills.v5: PASS')
