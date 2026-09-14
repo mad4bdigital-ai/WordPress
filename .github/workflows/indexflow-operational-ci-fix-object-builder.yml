@@ -1,0 +1,80 @@
+name: IndexFlow Operational CI Fix Object Builder
+
+on:
+  push:
+    branches: [tmp-indexflow-operational-ci-fix-20260914]
+    paths:
+      - '.github/workflows/indexflow-operational-ci-fix-object-builder.yml'
+
+permissions:
+  contents: write
+
+env:
+  BASE_COMMIT: 4df48052a51d13a98b06dfeeecaff1f99c5104aa
+  BASE_TREE: 640d38c9508b2bebfe3abae73c864b64451e26a5
+
+jobs:
+  build-object:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_COMMIT }}
+          fetch-depth: 1
+      - name: Materialize exact bounded fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          parser = Path('wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/parser-smoke.php')
+          text = parser.read_text()
+          old = "new ETG\\DynamicFilterSEOBridge\\JetSmartFilters\\FilterUrlParser( array(), array(), array( 'gclid', 'fbclid' ) );"
+          new = "new ETG\\DynamicFilterSEOBridge\\JetSmartFilters\\FilterUrlParser( array( 'location_jet', 'tour-types_jet', 'tour-styles_jet' ), array(), array( 'gclid', 'fbclid' ) );"
+          assert text.count(old) == 1
+          parser.write_text(text.replace(old, new, 1))
+
+          workflow = Path('.github/workflows/etg-dfsb-ci.yml')
+          text = workflow.read_text()
+          trigger = "      - '.github/workflows/etg-dfsb-jetengine-ci.yml'\n"
+          addition = "      - '.github/workflows/indexflow-foundation-ci.yml'\n"
+          assert text.count(trigger) == 2
+          text = text.replace(trigger, trigger + addition)
+          boundary = ".github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml) ;;"
+          expanded = ".github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml) ;;"
+          assert text.count(boundary) == 1
+          workflow.write_text(text.replace(boundary, expanded, 1))
+          PY
+          git diff --check
+          test "$(git diff --name-only | wc -l)" -eq 2
+          git diff --name-only
+      - name: Create detached Git objects only
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/git"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28')
+          make_blob(){
+            local path="$1"
+            local payload
+            payload=$(python - "$path" <<'PY'
+          import base64,json,sys
+          b=open(sys.argv[1],'rb').read()
+          print(json.dumps({'content':base64.b64encode(b).decode(),'encoding':'base64'}))
+          PY
+          )
+            curl --fail --silent --show-error "${auth[@]}" -X POST "$api/blobs" -d "$payload" | jq -r .sha
+          }
+          workflow_blob=$(make_blob '.github/workflows/etg-dfsb-ci.yml')
+          parser_blob=$(make_blob 'wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/parser-smoke.php')
+          test "$workflow_blob" != null && test "$parser_blob" != null
+          tree_payload=$(jq -nc --arg base "$BASE_TREE" --arg w "$workflow_blob" --arg p "$parser_blob" '{base_tree:$base,tree:[{path:".github/workflows/etg-dfsb-ci.yml",mode:"100644",type:"blob",sha:$w},{path:"wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/parser-smoke.php",mode:"100644",type:"blob",sha:$p}]}')
+          tree_sha=$(curl --fail --silent --show-error "${auth[@]}" -X POST "$api/trees" -d "$tree_payload" | jq -r .sha)
+          test "$tree_sha" != null
+          commit_payload=$(jq -nc --arg msg 'test(indexflow): align operational CI with foundation' --arg tree "$tree_sha" --arg parent "$BASE_COMMIT" '{message:$msg,tree:$tree,parents:[$parent]}')
+          commit_sha=$(curl --fail --silent --show-error "${auth[@]}" -X POST "$api/commits" -d "$commit_payload" | jq -r .sha)
+          test "$commit_sha" != null
+          echo "DETACHED_TREE_SHA=$tree_sha"
+          echo "DETACHED_COMMIT_SHA=$commit_sha"
