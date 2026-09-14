@@ -118,12 +118,19 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
-MAD4B_SCP_Upgrade_Continuity::pre_boot();
 MAD4B_SCP_Site_Profile::bootstrap();
+$mad4b_upgrade_continuity = MAD4B_SCP_Upgrade_Continuity::pre_boot();
+if ( ! empty( $mad4b_upgrade_continuity['recovered'] ) ) {
+	MAD4B_SCP_Site_Profile::reset_cache();
+	MAD4B_SCP_Site_Profile::bootstrap();
+}
+unset( $mad4b_upgrade_continuity );
 MAD4B_SCP_Site_Profile::boot();
 MAD4B_SCP_Upgrade_Continuity::boot();
+MAD4B_SCP_Reconnect_Hardening::boot();
 MAD4B_SCP_Dependency_Manager::boot();
 MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
 

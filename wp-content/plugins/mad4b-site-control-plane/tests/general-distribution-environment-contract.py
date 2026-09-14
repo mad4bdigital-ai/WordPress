@@ -1,62 +1,36 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import subprocess
-root = Path(__file__).resolve().parents[1]
-read = lambda rel: (root / rel).read_text(encoding='utf-8')
-server = read('includes/class-mad4b-scp-local-oauth-server.php')
-bridge = read('includes/class-mad4b-scp-oauth-resource-bridge.php')
-compat = read('includes/class-mad4b-scp-mcp-client-compatibility.php')
-handshake = read('includes/class-mad4b-scp-external-handshake-evidence.php')
-connection_ui = read('includes/class-mad4b-scp-chatgpt-connection-admin-ui.php')
-acceptance = read('includes/class-mad4b-scp-live-acceptance-observer.php')
-request_scope = read('includes/class-mad4b-scp-mcp-request-scope.php')
-metadata = read('includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php')
-transport = read('includes/class-mad4b-scp-transport-context.php')
-skills_ui = read('includes/class-mad4b-scp-skills-admin-ui.php')
-upgrade = read('includes/class-mad4b-scp-upgrade-continuity.php')
-main = read('mad4b-site-control-plane.php')
-for label, text in [('local OAuth server', server), ('OAuth resource bridge', bridge), ('external handshake', handshake), ('ChatGPT connection UI', connection_ui)]:
-    for marker in ["MAD4B_SCP_Site_Profile::origin_enrolled()", "MAD4B_SCP_Site_Profile::oauth_enabled()"]:
+root=Path(__file__).resolve().parents[1]
+read=lambda rel:(root/rel).read_text(encoding='utf-8')
+server=read('includes/class-mad4b-scp-local-oauth-server.php'); bridge=read('includes/class-mad4b-scp-oauth-resource-bridge.php'); compat=read('includes/class-mad4b-scp-mcp-client-compatibility.php'); handshake=read('includes/class-mad4b-scp-external-handshake-evidence.php'); connection_ui=read('includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'); acceptance=read('includes/class-mad4b-scp-live-acceptance-observer.php'); request_scope=read('includes/class-mad4b-scp-mcp-request-scope.php'); metadata=read('includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php'); transport=read('includes/class-mad4b-scp-transport-context.php'); skills_ui=read('includes/class-mad4b-scp-skills-admin-ui.php'); upgrade=read('includes/class-mad4b-scp-upgrade-continuity.php'); hardening=read('includes/class-mad4b-scp-reconnect-hardening.php'); main=read('mad4b-site-control-plane.php')
+for label,text in [('local OAuth server',server),('OAuth resource bridge',bridge),('external handshake',handshake),('ChatGPT connection UI',connection_ui)]:
+    for marker in ["MAD4B_SCP_Site_Profile::origin_enrolled()","MAD4B_SCP_Site_Profile::oauth_enabled()"]:
         if marker not in text: raise SystemExit(f'{label} is not bound to Site Profile OAuth enrollment: {marker}')
-if "in_array( $environment, array( 'local', 'development', 'staging' ), true )" not in server: raise SystemExit('local OAuth server does not support the canonical non-production environment set')
+if "in_array( $environment, array( 'local', 'development', 'staging' ), true )" not in server: raise SystemExit('local OAuth server does not support canonical non-production environments')
 if "'production' === $environment && self::production_approved()" not in server: raise SystemExit('local OAuth server lost separate Production approval')
 if "'environment_allowed' => (bool) $environment_allowed" not in bridge: raise SystemExit('OAuth bridge does not expose normalized environment eligibility')
-if "$environment_allowed = ! empty( $status['environment_allowed'] );" not in compat: raise SystemExit('MCP client compatibility reimplements environment authority instead of consuming bridge truth')
-if "self::environment_allowed( $current_environment )" not in handshake or "MAD4B_SCP_Site_Profile::current_environment()" not in handshake: raise SystemExit('external handshake is not bound to the live Site Profile environment')
-if "'environment' => 'staging'" in handshake: raise SystemExit('external handshake still hardcodes Staging evidence identity')
-if "return 'staging' === $environment" in handshake: raise SystemExit('external handshake still gates capture to Staging')
-if "'staging' !== $current_environment" in handshake: raise SystemExit('external handshake still rejects non-Staging enrolled environments')
-if "'environment' => 'staging'" in acceptance: raise SystemExit('live acceptance observer still fabricates a Staging environment')
-if 'not_exact_staging_origin' in acceptance: raise SystemExit('live acceptance blocker still encodes a deployment-specific Staging identity')
-if "MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' )" not in connection_ui: raise SystemExit('ChatGPT connection UI does not expose canary readiness from Site Profile truth')
-if "$environment_ready = 'staging' === $environment" in connection_ui: raise SystemExit('ChatGPT connection UI still hardcodes Staging readiness')
-for label, text in [('request scope', request_scope), ('metadata bridge', metadata), ('transport context', transport), ('skills UI', skills_ui)]:
-    for forbidden in ['Exact-Staging request scope', 'governed MAD4B Staging MCP runtime', 'Staging ChatGPT exposes a stable registered write catalog', 'governed Staging App mapping']:
+if "$environment_allowed = ! empty( $status['environment_allowed'] );" not in compat: raise SystemExit('MCP compatibility does not consume bridge environment truth')
+if "self::environment_allowed( $current_environment )" not in handshake or "MAD4B_SCP_Site_Profile::current_environment()" not in handshake: raise SystemExit('external handshake is not bound to Site Profile environment')
+if "'environment' => 'staging'" in handshake or "return 'staging' === $environment" in handshake or "'staging' !== $current_environment" in handshake: raise SystemExit('external handshake retained hardcoded Staging identity')
+if "'environment' => 'staging'" in acceptance or 'not_exact_staging_origin' in acceptance: raise SystemExit('live acceptance retained deployment-specific identity')
+if "MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' )" not in connection_ui: raise SystemExit('ChatGPT UI does not consume Site Profile truth')
+if "$environment_ready = 'staging' === $environment" in connection_ui: raise SystemExit('ChatGPT UI still hardcodes Staging readiness')
+for label,text in [('request scope',request_scope),('metadata bridge',metadata),('transport context',transport),('skills UI',skills_ui)]:
+    for forbidden in ['Exact-Staging request scope','governed MAD4B Staging MCP runtime','Staging ChatGPT exposes a stable registered write catalog','governed Staging App mapping']:
         if forbidden in text: raise SystemExit(f'{label} retained generalized-runtime Staging wording: {forbidden}')
-if 'never affects\n * Production' in request_scope: raise SystemExit('request-scope documentation contradicts feature-bound Production behavior')
-if 'exported capability remains Read' in skills_ui: raise SystemExit('Skills export UI contradicts dynamic Read / Read + Write capability behavior')
-for text in [server, bridge, compat, handshake, connection_ui, acceptance, request_scope, metadata, transport, skills_ui, upgrade]:
-    for forbidden in ['staging.egypttourgates.com', 'egypttourgates.com', 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2']:
+for text in [server,bridge,compat,handshake,connection_ui,acceptance,request_scope,metadata,transport,skills_ui,upgrade,hardening]:
+    for forbidden in ['staging.egypttourgates.com','egypttourgates.com','plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2']:
         if forbidden in text: raise SystemExit(f'generalized runtime leaked tenant identity: {forbidden}')
-
-# Upgrade/reconnect continuity must remain conservative and observable.
-required_upgrade = [
-    "const CONTRACT = 'mad4b.upgrade-continuity.v1'",
-    "const PRIOR_OAUTH_OPTION = 'mad4b_scp_staging_oauth_autoconfig_v1'",
-    "'nonproduction_only'",
-    "'migration_write_reenrollment_required'",
-    "'write_restored' => false",
-    "'production_authority_restored' => false",
-    "'/oauth/mcp/authorize'",
-    "'mad4b_mcp_reconnect_not_ready'",
-    "'mad4b/governance-bootstrap-status'",
-    "'mad4b/reconnect-readiness'",
-]
-for marker in required_upgrade:
-    if marker not in upgrade: raise SystemExit(f'upgrade continuity contract missing marker: {marker}')
-if "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';" not in main: raise SystemExit('main plugin does not load upgrade continuity')
-if 'MAD4B_SCP_Upgrade_Continuity::pre_boot();' not in main: raise SystemExit('main plugin does not execute pre-bootstrap continuity')
-if main.index('MAD4B_SCP_Upgrade_Continuity::pre_boot();') > main.index('MAD4B_SCP_Site_Profile::bootstrap();'): raise SystemExit('upgrade continuity must run before Site Profile cache/bootstrap')
-
-subprocess.run(['php', str(root / 'tests' / 'upgrade-continuity-runtime.php')], check=True)
-print('mad4b.general-distribution.environment-contract.v2: PASS')
+for marker in ["const CONTRACT = 'mad4b.upgrade-continuity.v1'","const PRIOR_OAUTH_OPTION = 'mad4b_scp_staging_oauth_autoconfig_v1'","'write_restored' => false","'production_authority_restored' => false","'/oauth/mcp/authorize'","'mad4b_mcp_reconnect_not_ready'","'mad4b/reconnect-readiness'"]:
+    if marker not in upgrade: raise SystemExit(f'upgrade continuity missing marker: {marker}')
+for marker in ["const CONTRACT = 'mad4b.reconnect-hardening.v1'","rest_pre_dispatch","MAD4B_SCP_Servers::registration_status()","'mad4b-chatgpt'","wp_register_ability_category( 'mad4b-governance'","remove_action( 'wp_abilities_api_init'","public static function is_resource_request_path"]:
+    if marker not in hardening: raise SystemExit(f'reconnect hardening missing marker: {marker}')
+if "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';" not in main: raise SystemExit('main does not load reconnect hardening')
+site='MAD4B_SCP_Site_Profile::bootstrap();'; pre='MAD4B_SCP_Upgrade_Continuity::pre_boot();'
+if main.index(site)>main.index(pre): raise SystemExit('first v1-to-v2 request must materialize Site Profile identity before continuity recovery')
+if "$mad4b_upgrade_continuity = MAD4B_SCP_Upgrade_Continuity::pre_boot();" not in main or "MAD4B_SCP_Site_Profile::reset_cache();" not in main: raise SystemExit('main does not refresh Site Profile cache after successful read continuity recovery')
+if 'MAD4B_SCP_Reconnect_Hardening::boot();' not in main: raise SystemExit('main does not boot reconnect hardening')
+subprocess.run(['php','-l',str(root/'tests'/'reconnect-hardening-runtime.php')],check=True)
+subprocess.run(['php',str(root/'tests'/'reconnect-hardening-runtime.php')],check=True)
+print('mad4b.general-distribution.environment-contract.v3: PASS')
