@@ -2,7 +2,7 @@
 
 This document is the canonical operator/developer sequence for the governed Staging Mutation Acceptance cycle.
 
-Scope: `staging.egypttourgates.com` only. Production and Breakglass remain fail-closed.
+Scope: an explicitly enrolled governed Staging Site Profile. Production and Breakglass remain fail-closed for this acceptance cycle.
 
 ## Sequence map
 
