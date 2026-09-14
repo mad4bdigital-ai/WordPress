@@ -14,7 +14,7 @@ if ( ! empty( $autoconfig['eligible'] ) ) $fail( 'Production must not be eligibl
 if ( ! empty( $autoconfig['configured'] ) ) $fail( 'Production Skill editor was auto-configured.' );
 if ( ! empty( $autoconfig['app_mapping_configured'] ) ) $fail( 'Production was auto-bound to the Staging OpenAI App.' );
 if ( 'none' !== $autoconfig['app_mapping_source'] ) $fail( 'Production App mapping source must remain none.' );
-if ( 'environment_not_staging' !== $autoconfig['blocker'] ) $fail( 'Production autoconfig blocker is unexpected.' );
+if ( 'site_profile_unconfigured' !== $autoconfig['blocker'] ) $fail( 'Unconfigured Production autoconfig blocker is unexpected.' );
 
 if ( defined( 'MAD4B_SKILLS_EDITOR_ENABLED' ) ) $fail( 'Production autoconfig defined MAD4B_SKILLS_EDITOR_ENABLED.' );
 if ( defined( 'MAD4B_OPENAI_PLUGIN_APP_ID' ) ) $fail( 'Production autoconfig defined MAD4B_OPENAI_PLUGIN_APP_ID.' );
@@ -37,14 +37,14 @@ foreach ( array( 'mad4b/skill-create', 'mad4b/skill-update', 'mad4b/skill-delete
 
 $cert = MAD4B_SCP_Skill_Runtime_Certification::observe();
 if ( ! empty( $cert['ready'] ) ) $fail( 'Production must not receive Staging Skill runtime certification.' );
-if ( ! in_array( 'environment_not_staging', isset( $cert['blockers'] ) ? $cert['blockers'] : array(), true ) ) $fail( 'Production certification did not fail on environment boundary.' );
+if ( ! in_array( 'site_profile_not_enrolled', isset( $cert['blockers'] ) ? $cert['blockers'] : array(), true ) ) $fail( 'Unconfigured Production Skill certification did not fail on Site Profile enrollment.' );
 if ( empty( $cert['local_runtime_only'] ) ) $fail( 'Certification trust boundary is not declared local-runtime-only.' );
 if ( ! empty( $cert['external_client_snapshot_verified'] ) ) $fail( 'WordPress must not claim remote client snapshot verification.' );
 
 $write_cert = MAD4B_SCP_Write_Runtime_Certification::observe();
 if ( ! empty( $write_cert['ready'] ) ) $fail( 'Production must not receive governed Staging write certification.' );
 if ( ! isset( $write_cert['state'] ) || 'ineligible' !== $write_cert['state'] ) $fail( 'Production write certification did not remain ineligible.' );
-if ( ! in_array( 'environment_not_staging', isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array(), true ) ) $fail( 'Production write certification did not fail on the environment boundary.' );
+if ( ! in_array( 'site_profile_unconfigured', isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array(), true ) ) $fail( 'Unconfigured Production write certification did not fail on Site Profile authority.' );
 if ( ! empty( $write_cert['external_client_tools_verified'] ) ) $fail( 'Production certification claimed external client write-tool verification.' );
 
 $chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
