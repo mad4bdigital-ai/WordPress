@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_parent='a7dbc622ff6c0e7de63092ffd571d7e7480a64ea'
+          expected_parent='a9a75c1d168706e96917bb179bf98748e78286ab'
           actual_parent="$(git rev-parse HEAD^)"
           test "$actual_parent" = "$expected_parent"
           for n in 01 02 03 04 05; do
@@ -86,18 +86,184 @@ jobs:
 
           git apply -p2 --check /tmp/rc32-generalization.patch
           git apply -p2 /tmp/rc32-generalization.patch
-          rm -f .github/rc32-generalization.patch.gz.b64
-          rm -f .github/rc32-generalization.patch.gz.b64.part01
-          rm -f .github/rc32-generalization.patch.gz.b64.part02
-          rm -f .github/rc32-generalization.patch.gz.b64.part03
-          rm -f .github/rc32-generalization.patch.gz.b64.part04
-          rm -f .github/rc32-generalization.patch.gz.b64.part05
-          rm -f .github/rc32.part01
-          rm -f .github/rc32.part02
-          rm -f .github/rc32.part03
-          rm -f .github/rc32.part04
-          rm -f .github/rc32.part05
-          rm -f .github/workflows/rc32-apply-generalization.yml
+
+      - name: Upgrade Site Profile contract to v2 fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php')
+          text = path.read_text()
+
+          old_constants = """\tconst CONTRACT = 'mad4b.site-profile.v1';
+          \tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v1';
+          \tconst OPTION = 'mad4b_scp_site_profile_v1';
+          \tconst VERSION = 1;
+          \tconst PRESET_FILE = 'config/site-profile-presets.json';
+          """
+          new_constants = """\tconst CONTRACT = 'mad4b.site-profile.v2';
+          \tconst LEGACY_CONTRACT = 'mad4b.site-profile.v1';
+          \tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v2';
+          \tconst OPTION = 'mad4b_scp_site_profile_v2';
+          \tconst LEGACY_OPTION = 'mad4b_scp_site_profile_v1';
+          \tconst VERSION = 2;
+          \tconst LEGACY_VERSION = 1;
+          \tconst PRESET_FILE = 'config/site-profile-presets.json';
+          """
+          if text.count(old_constants) != 1:
+              raise SystemExit('expected exactly one Site Profile v1 constants block')
+          text = text.replace(old_constants, new_constants, 1)
+
+          old_bootstrap = """\t\t$record = get_option( self::OPTION, array() );
+          \t\t$source = 'stored';
+          \t\tif ( ! self::valid_record( $record ) ) {
+          \t\t\t$record = self::matching_preset();
+          \t\t\t$source = ! empty( $record ) ? 'legacy_preset' : 'none';
+          \t\t\tif ( ! empty( $record ) && self::valid_record( $record ) ) {
+          \t\t\t\tupdate_option( self::OPTION, $record, false );
+          \t\t\t\t$source = 'legacy_preset_migrated';
+          \t\t\t}
+          \t\t}
+          """
+          new_bootstrap = """\t\t$record = get_option( self::OPTION, null );
+          \t\t$source = 'stored';
+          \t\t$has_current_record = null !== $record && false !== $record;
+          \t\tif ( ! self::valid_record( $record ) ) {
+          \t\t\tif ( $has_current_record ) {
+          \t\t\t\t$record = array();
+          \t\t\t\t$source = 'stored_invalid';
+          \t\t\t} else {
+          \t\t\t\t$legacy = get_option( self::LEGACY_OPTION, array() );
+          \t\t\t\t$migrated = self::migrate_legacy_record( $legacy );
+          \t\t\t\tif ( ! empty( $migrated ) && self::valid_record( $migrated ) ) {
+          \t\t\t\t\tif ( false !== update_option( self::OPTION, $migrated, false ) ) {
+          \t\t\t\t\t\t$record = $migrated;
+          \t\t\t\t\t\t$source = 'legacy_v1_migrated';
+          \t\t\t\t\t} else {
+          \t\t\t\t\t\t$record = array();
+          \t\t\t\t\t\t$source = 'legacy_v1_migration_failed';
+          \t\t\t\t\t}
+          \t\t\t\t} else {
+          \t\t\t\t\t$record = self::matching_preset();
+          \t\t\t\t\t$source = ! empty( $record ) ? 'preset' : 'none';
+          \t\t\t\t\tif ( ! empty( $record ) && self::valid_record( $record ) ) {
+          \t\t\t\t\t\tupdate_option( self::OPTION, $record, false );
+          \t\t\t\t\t\t$source = 'preset_migrated';
+          \t\t\t\t\t}
+          \t\t\t\t}
+          \t\t\t}
+          \t\t}
+          """
+          if text.count(old_bootstrap) != 1:
+              raise SystemExit('expected exactly one Site Profile bootstrap v1 block')
+          text = text.replace(old_bootstrap, new_bootstrap, 1)
+
+          save_anchor = """\tpublic static function save_current_site( array $input ) {
+          \t\tif ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
+          \t\t$environment = self::current_environment();
+          """
+          save_replacement = """\tpublic static function save_current_site( array $input ) {
+          \t\tif ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
+          \t\tself::bootstrap();
+          \t\t$environment = self::current_environment();
+          """
+          if text.count(save_anchor) != 1:
+              raise SystemExit('expected exactly one save_current_site anchor')
+          text = text.replace(save_anchor, save_replacement, 1)
+
+          status_anchor = """\t\tif ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
+          \t\tif ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
+          \t\tif ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
+          \t\treturn array(
+          """
+          status_replacement = """\t\t$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );
+          \t\tif ( ! $configured ) $blockers[] = 'site_profile_unconfigured';
+          \t\tif ( $configured && ! $environment_match ) $blockers[] = 'site_profile_environment_drift';
+          \t\tif ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';
+          \t\tif ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';
+          \t\treturn array(
+          """
+          if text.count(status_anchor) != 1:
+              raise SystemExit('expected exactly one Site Profile status blocker anchor')
+          text = text.replace(status_anchor, status_replacement, 1)
+
+          field_anchor = """\t\t\t'origin_match' => $origin_match,
+          \t\t\t'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
+          """
+          field_replacement = """\t\t\t'origin_match' => $origin_match,
+          \t\t\t'reenrollment_required' => $reenrollment_required,
+          \t\t\t'write_enabled' => $configured && $environment_match && $origin_match && self::record_feature_enabled( $profile, 'write', $environment ),
+          """
+          if text.count(field_anchor) != 1:
+              raise SystemExit('expected exactly one Site Profile status field anchor')
+          text = text.replace(field_anchor, field_replacement, 1)
+
+          migration_methods = r'''
+          	private static function valid_legacy_record( $record ) {
+          		if ( ! is_array( $record ) ) return false;
+          		if ( self::LEGACY_CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) return false;
+          		if ( self::LEGACY_VERSION !== absint( isset( $record['version'] ) ? $record['version'] : 0 ) ) return false;
+          		if ( ! self::valid_uuid( isset( $record['site_uuid'] ) ? $record['site_uuid'] : '' ) ) return false;
+          		if ( absint( isset( $record['revision'] ) ? $record['revision'] : 0 ) < 1 ) return false;
+          		$environment = sanitize_key( isset( $record['environment'] ) ? (string) $record['environment'] : '' );
+          		if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) return false;
+          		return '' !== self::normalize_origin( isset( $record['canonical_origin'] ) ? $record['canonical_origin'] : '' );
+          	}
+
+          	private static function migrate_legacy_record( $record ) {
+          		if ( ! self::valid_legacy_record( $record ) ) return array();
+          		$legacy = self::normalize_record( $record );
+          		$environment = self::current_environment();
+          		$origin = self::current_origin();
+          		if ( ! hash_equals( (string) $legacy['environment'], $environment ) ) return array();
+          		if ( '' === $origin || ! hash_equals( (string) $legacy['canonical_origin'], $origin ) ) return array();
+          		return array(
+          			'contract' => self::CONTRACT,
+          			'version' => self::VERSION,
+          			'site_uuid' => (string) $legacy['site_uuid'],
+          			'revision' => max( 1, absint( $legacy['revision'] ) + 1 ),
+          			'environment' => (string) $legacy['environment'],
+          			'canonical_origin' => (string) $legacy['canonical_origin'],
+          			'display_name' => isset( $legacy['display_name'] ) ? (string) $legacy['display_name'] : '',
+          			'chatgpt_app_id' => isset( $legacy['chatgpt_app_id'] ) ? (string) $legacy['chatgpt_app_id'] : '',
+          			'oauth_user_ids' => isset( $legacy['oauth_user_ids'] ) && is_array( $legacy['oauth_user_ids'] ) ? $legacy['oauth_user_ids'] : array(),
+          			'related_origins' => isset( $legacy['related_origins'] ) && is_array( $legacy['related_origins'] ) ? $legacy['related_origins'] : array(),
+          			'features' => array(
+          				'oauth' => false,
+          				'skills' => false,
+          				'write' => false,
+          				'production_write_confirmed' => false,
+          				'provider_isolation' => false,
+          				'managed_runtime' => false,
+          				'acceptance' => false,
+          			),
+          			'legacy_agent_slug' => '',
+          			'legacy_zero_touch' => false,
+          			'migrated_from_contract' => self::LEGACY_CONTRACT,
+          			'migration_requires_reenrollment' => true,
+          			'created_at' => ! empty( $legacy['created_at'] ) ? (string) $legacy['created_at'] : gmdate( 'c' ),
+          			'updated_at' => gmdate( 'c' ),
+          		);
+          	}
+
+          '''
+          build_anchor = "\tprivate static function build_status( array $profile, $source ) {\n"
+          if text.count(build_anchor) != 1:
+              raise SystemExit('expected exactly one build_status anchor')
+          text = text.replace(build_anchor, migration_methods + build_anchor, 1)
+
+          path.write_text(text)
+
+          preset = Path('wp-content/plugins/mad4b-site-control-plane/config/site-profile-presets.json')
+          if preset.exists():
+              import json
+              data = json.loads(preset.read_text())
+              data['contract'] = 'mad4b.site-profile-presets.v2'
+              data['profiles'] = []
+              preset.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
+          PY
 
       - name: Lint changed PHP and validate changed JSON
         shell: bash
@@ -117,49 +283,25 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           main="$root/mad4b-site-control-plane.php"
           profile="$root/includes/class-mad4b-scp-site-profile.php"
-          failed=0
-
-          require_contains() {
-            local file="$1" needle="$2" label="$3"
-            if grep -Fq "$needle" "$file"; then
-              echo "PASS: $label"
-            else
-              echo "FAIL: $label" >&2
-              grep -n -E 'Version:|MAD4B_SCP_VERSION|CONTRACT|site_profile_unconfigured|PRODUCTION_WRITE_CONFIRMATION' "$file" | head -80 || true
-              failed=1
-            fi
-          }
-
-          require_contains "$main" 'Version: 0.4.0-rc.32' 'plugin header rc.32'
-          require_contains "$main" "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.32' );" 'runtime constant rc.32'
-          require_contains "$profile" "mad4b.site-profile.v2" 'site profile v2 contract'
-          require_contains "$profile" 'site_profile_unconfigured' 'unconfigured site fails closed'
-          require_contains "$profile" 'PRODUCTION_WRITE_CONFIRMATION' 'production write explicit confirmation'
-
+          grep -Fq 'Version: 0.4.0-rc.32' "$main"
+          grep -Fq "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.32' );" "$main"
+          grep -Fq "const CONTRACT = 'mad4b.site-profile.v2';" "$profile"
+          grep -Fq "const LEGACY_CONTRACT = 'mad4b.site-profile.v1';" "$profile"
+          grep -Fq "const OPTION = 'mad4b_scp_site_profile_v2';" "$profile"
+          grep -Fq "const LEGACY_OPTION = 'mad4b_scp_site_profile_v1';" "$profile"
+          grep -Fq 'site_profile_reenrollment_required' "$profile"
+          grep -Fq 'migration_requires_reenrollment' "$profile"
+          grep -Fq 'PRODUCTION_WRITE_CONFIRMATION' "$profile"
           for forbidden in \
             'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' \
             'staging.egypttourgates.com' \
             'https://egypttourgates.com'; do
-            if grep -R -F -n "$forbidden" "$root/includes" "$main"; then
-              echo "FAIL: customer-specific runtime leakage: $forbidden" >&2
-              failed=1
-            else
-              echo "PASS: runtime free of $forbidden"
-            fi
+            ! grep -R -F -n "$forbidden" "$root/includes" "$main"
           done
-
           presets="$root/config/site-profile-presets.json"
-          if [ -f "$presets" ]; then
-            if php -r '$p=json_decode(file_get_contents($argv[1]), true); exit((is_array($p) && isset($p["profiles"]) && count($p["profiles"]) === 0) ? 0 : 1);' "$presets"; then
-              echo 'PASS: bundled tenant presets empty'
-            else
-              echo 'FAIL: bundled tenant presets must be empty' >&2
-              cat "$presets" >&2
-              failed=1
-            fi
-          fi
-
-          test "$failed" -eq 0
+          php -r '$p=json_decode(file_get_contents($argv[1]), true); if (!is_array($p) || ($p["contract"] ?? "") !== "mad4b.site-profile-presets.v2" || !isset($p["profiles"]) || count($p["profiles"]) !== 0) exit(1);' "$presets"
+          unexpected="$(grep -R -l -E 'mad4b\.site-profile\.v1|mad4b_scp_site_profile_v1' "$root/includes" "$main" || true)"
+          test "$unexpected" = "$profile"
 
       - name: Run focused tenant-neutral runtime contracts
         shell: bash
@@ -172,10 +314,18 @@ jobs:
             if [ -f "$root/$test" ]; then php "$root/$test"; fi
           done
 
-      - name: Commit exact generalized source tree
+      - name: Remove staging payload and commit generalized source tree
         shell: bash
         run: |
           set -euo pipefail
+          rm -f .github/rc32-generalization.patch.gz.b64
+          rm -f .github/rc32-generalization.patch.gz.b64.part01
+          rm -f .github/rc32-generalization.patch.gz.b64.part02
+          rm -f .github/rc32-generalization.patch.gz.b64.part03
+          rm -f .github/rc32-generalization.patch.gz.b64.part04
+          rm -f .github/rc32-generalization.patch.gz.b64.part05
+          rm -f .github/rc32.part01 .github/rc32.part02 .github/rc32.part03 .github/rc32.part04 .github/rc32.part05
+          rm -f .github/workflows/rc32-apply-generalization.yml
           git status --short
           test -n "$(git status --porcelain)"
           git config user.name 'MAD4B Automation'
