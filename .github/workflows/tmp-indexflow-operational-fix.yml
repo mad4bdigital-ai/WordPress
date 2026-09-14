@@ -1,0 +1,53 @@
+name: Temporary IndexFlow Operational Fix
+
+on:
+  push:
+    branches: [tmp-indexflow-operational-fix-20260914]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-indexflow-operational-fix-20260914
+          fetch-depth: 0
+      - name: Align legacy operational smoke with Foundation fresh-install contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/operational-smoke.php')
+          text = p.read_text()
+          marker = "default migration profile exists"
+          if text.count(marker) != 1:
+              raise SystemExit(f'expected exactly one legacy assertion marker, got {text.count(marker)}')
+          pattern = re.compile(r"\$config=new Configuration\(\);expect_same\(false,\$config->enabled\(\),'safe global default is disabled'\);.*?\$migrationProfile=\$registry->get\('tours'\);", re.S)
+          replacement = r"""$config=new Configuration();expect_same(false,$config->enabled(),'safe global default is disabled');$registry=new ProfileRegistry($config);expect_same(false,(bool)$registry->get('tours'),'fresh install has no synthesized migration profile');expect_same(array(),$registry->all(),'fresh install has zero authority profiles');$sanitized=$config->sanitize(array('enabled'=>'0','profiles_json'=>'not-json','diagnostics_enabled'=>'0'));expect_same(false,$sanitized['enabled'],'unchecked enabled persists false');expect_same($config->get('profiles_json'),$sanitized['profiles_json'],'invalid profiles JSON preserves last safe/default authority snapshot');
+$GLOBALS['etg_options'][Configuration::OPTION_NAME]=array('enabled'=>false,'archive_slugs'=>array('tours-and-activities'),'providers'=>array('jet-engine'),'query_ids'=>array('tours_query_archive'),'allowed_taxonomies'=>array('location_jet','tour-types_jet','tour-styles_jet'));
+$config=new Configuration();$registry=new ProfileRegistry($config);$migrationProfile=$registry->get('tours');expect_same(true,(bool)$migrationProfile,'recognized ETG legacy signature restores migration profile');expect_same(false,$migrationProfile['enabled'],'recognized ETG migration profile is non-authorizing and disabled');expect_same('travel',$migrationProfile['composition_mode'],'ETG migration profile preserves travel composition');expect_same(250,$migrationProfile['content']['min_chars'],'ETG migration profile content floor is hardened');"""
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'expected one governed replacement, got {count}')
+          p.write_text(updated)
+          PY
+          php -l wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/operational-smoke.php
+          php wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/operational-smoke.php
+          git diff --check
+      - name: Commit clean test-only fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/tmp-indexflow-operational-fix.yml
+          git config user.name 'MAD4B CI Repair'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          changed="$(git diff --cached --name-only)"
+          test "$changed" = 'wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/operational-smoke.php'
+          git commit -m 'test(indexflow): align operational smoke with inert fresh install'
+          git push origin HEAD:tmp-indexflow-operational-fix-20260914
