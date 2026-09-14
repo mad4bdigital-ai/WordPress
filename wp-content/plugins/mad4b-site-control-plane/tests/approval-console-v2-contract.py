@@ -30,7 +30,10 @@ missing = [x for x in required_schema if x not in schema]
 if missing:
     raise SystemExit('approval-console tenant-bound schema contract missing: ' + ' | '.join(missing))
 
-is_ready = re.search(r'public static function is_ready\(\)\s*\{(.*?)\n\t\}', schema, re.S)
+# is_ready() intentionally has a flat body. Capture only that body regardless
+# of whether the implementation is formatted on one line or several lines so
+# this contract tests behavior rather than whitespace.
+is_ready = re.search(r'public static function is_ready\(\)\s*\{([^{}]*)\}', schema, re.S)
 if not is_ready:
     raise SystemExit('is_ready() not found')
 if 'SHOW TABLES' in is_ready.group(1) or 'SHOW COLUMNS' in is_ready.group(1):
