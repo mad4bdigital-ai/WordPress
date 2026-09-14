@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
+if ( ! defined( 'MAD4B_SCP_DIR' ) ) define( 'MAD4B_SCP_DIR', trailingslashit( dirname( __DIR__ ) ) );
 
 $GLOBALS['mad4b_test_options'] = array();
 $GLOBALS['mad4b_test_environment'] = 'staging';
@@ -66,14 +67,41 @@ function mad4b_reset_profile_state() {
 	MAD4B_SCP_Site_Profile::reset_cache();
 }
 
-// Installation on an unknown site must create no authority.
+// Installation on an unknown site must create no authority even though the same
+// binary contains reviewed legacy migration presets for known deployments.
 mad4b_reset_profile_state();
 $status = MAD4B_SCP_Site_Profile::status();
 mad4b_assert( empty( $status['configured'] ), 'unknown site is not auto-enrolled' );
 mad4b_assert( ! MAD4B_SCP_Site_Profile::origin_enrolled(), 'unknown site has no enrolled origin' );
 mad4b_assert( ! MAD4B_SCP_Site_Profile::write_enabled(), 'unknown site has zero write authority' );
 
+// The reviewed ETG legacy preset is a migration bridge, not product-wide
+// authority. It must match only the exact Staging origin/environment and must
+// persist the same Site Profile contract consumed by generic runtime code.
+mad4b_reset_profile_state();
+$GLOBALS['mad4b_test_environment'] = 'staging';
+$GLOBALS['mad4b_test_home'] = 'https://staging.egypttourgates.com/';
+$legacy = MAD4B_SCP_Site_Profile::status();
+mad4b_assert( ! empty( $legacy['configured'] ), 'exact ETG Staging legacy preset is discoverable' );
+mad4b_assert( 'legacy_preset_migrated' === $legacy['source'], 'ETG legacy preset is persisted through the migration bridge' );
+mad4b_assert( ! empty( $legacy['origin_match'] ) && ! empty( $legacy['environment_match'] ), 'ETG legacy preset is exact-origin/environment bound' );
+mad4b_assert( '5ab73d30-b26f-4ea7-a9fa-3dc839187ab6' === $legacy['site_uuid'], 'ETG legacy preset carries the reviewed site UUID' );
+mad4b_assert( ! empty( $legacy['skills_enabled'] ) && ! empty( $legacy['write_enabled'] ) && ! empty( $legacy['oauth_enabled'] ), 'ETG legacy preset restores only its reviewed Staging feature set' );
+mad4b_assert( 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' === MAD4B_SCP_Site_Profile::chatgpt_app_id(), 'ETG legacy preset restores the reviewed ChatGPT App mapping' );
+$persisted_legacy = get_option( MAD4B_SCP_Site_Profile::OPTION, array() );
+mad4b_assert( is_array( $persisted_legacy ) && 'https://staging.egypttourgates.com' === $persisted_legacy['canonical_origin'], 'ETG legacy preset persists canonical origin exactly' );
+
+// A near-match must not inherit ETG authority.
+mad4b_reset_profile_state();
+$GLOBALS['mad4b_test_home'] = 'https://staging.egypttourgates.com/subdir/';
+$legacy_near_match = MAD4B_SCP_Site_Profile::status();
+mad4b_assert( empty( $legacy_near_match['configured'] ), 'ETG legacy preset does not match a different WordPress path' );
+mad4b_assert( ! MAD4B_SCP_Site_Profile::write_enabled(), 'ETG legacy preset near-match remains zero-authority' );
+
 // Generic staging enrollment is exact-origin, path-aware, audited, and revisioned.
+mad4b_reset_profile_state();
+$GLOBALS['mad4b_test_environment'] = 'staging';
+$GLOBALS['mad4b_test_home'] = 'https://staging.client.test/subdir/';
 $input = array(
 	'expected_revision' => 0,
 	'display_name' => 'Client Test',
