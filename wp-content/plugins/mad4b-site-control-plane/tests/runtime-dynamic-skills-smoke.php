@@ -112,7 +112,8 @@ if ( empty( $write_authority['all_remote_writes_require_exact_approval'] ) ) $fa
 if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into governed write authority.' );
 if ( empty( $write_authority['write_tool_count'] ) ) $fail( 'Write authority inventory is empty.' );
 if ( empty( $write_authority['site_uuid'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $write_authority['site_uuid'] ) ) $fail( 'Write authority is not bound to the enrolled site UUID.' );
-if ( ! isset( $write_authority['profile_revision'] ) || MAD4B_SCP_Site_Profile::revision() !== (int) $write_authority['profile_revision'] ) $fail( 'Write authority profile revision mismatch.' );
+if ( ! isset( $write_authority['site_profile_revision'] ) || MAD4B_SCP_Site_Profile::revision() !== (int) $write_authority['site_profile_revision'] ) $fail( 'Write authority Site Profile revision mismatch.' );
+if ( empty( $write_authority['site_profile_digest'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::profile_digest(), (string) $write_authority['site_profile_digest'] ) ) $fail( 'Write authority Site Profile digest mismatch.' );
 
 $expected_core_writes = array(
 	'mad4b/content-update-post',
@@ -228,4 +229,4 @@ $plugin = json_decode( (string) $plugin_json, true );
 $capabilities = is_array( $plugin ) && isset( $plugin['extensions']['com.openai']['interface']['capabilities'] ) && is_array( $plugin['extensions']['com.openai']['interface']['capabilities'] ) ? $plugin['extensions']['com.openai']['interface']['capabilities'] : array();
 if ( ! in_array( 'Read', $capabilities, true ) || ! in_array( 'Write', $capabilities, true ) ) $fail( 'Runtime portable plugin.json does not declare Read + Write on certified governed Staging.' );
 
-echo 'mad4b.runtime-dynamic-skills.v5: PASS' . PHP_EOL;
+echo 'mad4b.runtime-dynamic-skills.v6: PASS' . PHP_EOL;
