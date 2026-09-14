@@ -1,0 +1,110 @@
+name: RC32 Bootstrap Diagnostic Fidelity
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - '.github/workflows/rc32-bootstrap-diagnostic-fidelity.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 0
+      - name: Guard exact parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/feat/dynamic-wordpress-skills-20260909)"
+          test "$(git rev-parse HEAD^)" = "1f0388be767003dbe042fae7237bfc75af8b3d65"
+      - name: Preserve exact governance bootstrap diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path('wp-content/plugins/mad4b-site-control-plane')
+
+          plugin_path = root / 'includes/class-mad4b-scp-plugin.php'
+          plugin = plugin_path.read_text(encoding='utf-8')
+          anchor = """\tpublic static function schema_notice() {\n\t\tif ( current_user_can( 'manage_options' ) && is_wp_error( self::$schema_error ) ) echo '<div class=\"notice notice-error\"><p>' . esc_html__( 'MAD4B Site Control Plane governance schema is unavailable. Mutation remains fail-closed until the schema is repaired.', 'mad4b-site-control-plane' ) . '</p></div>';\n\t}\n"""
+          replacement = """\tpublic static function governance_bootstrap_error_code() {\n\t\treturn is_wp_error( self::$schema_error ) ? sanitize_key( (string) self::$schema_error->get_error_code() ) : '';\n\t}\n\n""" + anchor
+          if plugin.count(anchor) != 1:
+              raise SystemExit('plugin bootstrap error accessor anchor drifted')
+          plugin = plugin.replace(anchor, replacement, 1)
+          plugin_path.write_text(plugin, encoding='utf-8')
+
+          continuity_path = root / 'includes/class-mad4b-scp-upgrade-continuity.php'
+          continuity = continuity_path.read_text(encoding='utf-8')
+          old = """\t\t$schema_ready = ! empty( $schema['ready'] ) && ( empty( $physical ) || ! empty( $physical['ready'] ) );\n\t\t$audit_ready = ! empty( $audit['ready'] );\n\t\t$kind = '';\n\t\t$code = '';\n\t\tif ( ! $schema_ready ) {\n\t\t\t$kind = 'schema';\n\t\t\t$code = 'mad4b_governance_schema_unavailable';\n\t\t} elseif ( ! $audit_ready ) {\n\t\t\t$kind = 'audit';\n\t\t\t$code = self::audit_blocker_code( $audit );\n\t\t}\n"""
+          new = """\t\t$schema_ready = ! empty( $schema['ready'] ) && ( empty( $physical ) || ! empty( $physical['ready'] ) );\n\t\t$audit_ready = ! empty( $audit['ready'] );\n\t\t$bootstrap_error = class_exists( 'MAD4B_SCP_Plugin' ) && method_exists( 'MAD4B_SCP_Plugin', 'governance_bootstrap_error_code' ) ? sanitize_key( (string) MAD4B_SCP_Plugin::governance_bootstrap_error_code() ) : '';\n\t\t$kind = '';\n\t\t$code = '';\n\t\tif ( ! $schema_ready ) {\n\t\t\t$kind = 'schema';\n\t\t\t$code = 0 === strpos( $bootstrap_error, 'mad4b_governance_schema_' ) ? $bootstrap_error : 'mad4b_governance_schema_unavailable';\n\t\t} elseif ( ! $audit_ready ) {\n\t\t\t$kind = 'audit';\n\t\t\t$code = 0 === strpos( $bootstrap_error, 'mad4b_audit_' ) ? $bootstrap_error : self::audit_blocker_code( $audit );\n\t\t}\n"""
+          if continuity.count(old) != 1:
+              raise SystemExit('governance bootstrap projection anchor drifted')
+          continuity = continuity.replace(old, new, 1)
+          continuity_path.write_text(continuity, encoding='utf-8')
+
+          test_path = root / 'tests/reconnect-hardening-runtime.php'
+          test = test_path.read_text(encoding='utf-8')
+          audit_stub = "final class MAD4B_SCP_Audit { public static function storage_status(){return array('ready'=>true);} public static function record(){return true;} }"
+          audit_new = """final class MAD4B_SCP_Audit {\n    public static $storage=array('ready'=>true);\n    public static function storage_status(){return self::$storage;}\n    public static function record(){return true;}\n}\nfinal class MAD4B_SCP_Schema {\n    public static $status=array('ready'=>true,'physical_integrity'=>array('ready'=>true));\n    public static function status($deep=false){return self::$status;}\n}"""
+          if test.count(audit_stub) != 1:
+              raise SystemExit('reconnect audit stub anchor drifted')
+          test = test.replace(audit_stub, audit_new, 1)
+
+          require_anchor = "require dirname(__DIR__).'/includes/class-mad4b-scp-reconnect-hardening.php';"
+          require_new = require_anchor + "\nrequire dirname(__DIR__).'/includes/class-mad4b-scp-plugin.php';"
+          if test.count(require_anchor) != 1:
+              raise SystemExit('reconnect plugin require anchor drifted')
+          test = test.replace(require_anchor, require_new, 1)
+
+          end_anchor = "fwrite(STDOUT,\"mad4b.reconnect-hardening.runtime.v1: PASS\\n\");"
+          diag = """// Preserve the exact bootstrap failure when runtime initialization knows more than a derived status snapshot.\nMAD4B_SCP_Audit::$storage=array('ready'=>false,'schema_ready'=>true,'schema_physical_ready'=>true,'tables_ready'=>true,'transactional'=>true,'legacy_chain_valid'=>true,'head_initialized'=>false,'head_consistent'=>false,'legacy_anchor_match'=>true);\n$bootstrap_error=new ReflectionProperty('MAD4B_SCP_Plugin','schema_error');\n$bootstrap_error->setAccessible(true);\n$bootstrap_error->setValue(null,new WP_Error('mad4b_audit_head_create_failed','fixture'));\n$g=MAD4B_SCP_Upgrade_Continuity::governance_status();\nok(empty($g['ready'])&&'audit'===$g['blocker_kind']&&'mad4b_audit_head_create_failed'===$g['blocker_code'],'exact audit bootstrap error code must be preserved');\n$bootstrap_error->setValue(null,null);\n$g=MAD4B_SCP_Upgrade_Continuity::governance_status();\nok('mad4b_audit_head_missing'===$g['blocker_code'],'derived audit blocker remains the fallback when no exact bootstrap error exists');\nMAD4B_SCP_Audit::$storage=array('ready'=>true);\n\n""" + end_anchor
+          if test.count(end_anchor) != 1:
+              raise SystemExit('reconnect diagnostic assertion anchor drifted')
+          test = test.replace(end_anchor, diag, 1)
+          test_path.write_text(test, encoding='utf-8')
+
+          wf_path = Path('.github/workflows/mad4b-connection-governance.yml')
+          wf = wf_path.read_text(encoding='utf-8')
+          lint_anchor = """          php -l \"$root/includes/class-mad4b-scp-connection-status.php\"\n          php -l \"$root/includes/class-mad4b-scp-external-handshake-evidence.php\"\n"""
+          lint_new = """          php -l \"$root/includes/class-mad4b-scp-connection-status.php\"\n          php -l \"$root/includes/class-mad4b-scp-upgrade-continuity.php\"\n          php -l \"$root/includes/class-mad4b-scp-reconnect-hardening.php\"\n          php -l \"$root/includes/class-mad4b-scp-plugin.php\"\n          php -l \"$root/tests/upgrade-continuity-runtime.php\"\n          php -l \"$root/tests/reconnect-hardening-runtime.php\"\n          php -l \"$root/includes/class-mad4b-scp-external-handshake-evidence.php\"\n"""
+          if wf.count(lint_anchor) != 1:
+              raise SystemExit('connection governance lint anchor drifted')
+          wf = wf.replace(lint_anchor, lint_new, 1)
+          run_anchor = "          python3 \"$root/tests/mcp-runtime-conflict-guard-contract.py\"\n"
+          run_new = run_anchor + "          php \"$root/tests/upgrade-continuity-runtime.php\"\n          php \"$root/tests/reconnect-hardening-runtime.php\"\n"
+          if wf.count(run_anchor) != 1:
+              raise SystemExit('connection governance runtime anchor drifted')
+          wf = wf.replace(run_anchor, run_new, 1)
+          wf_path.write_text(wf, encoding='utf-8')
+          PY
+      - name: Validate focused contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-plugin.php"
+          php -l "$root/includes/class-mad4b-scp-upgrade-continuity.php"
+          php -l "$root/tests/reconnect-hardening-runtime.php"
+          php "$root/tests/upgrade-continuity-runtime.php"
+          php "$root/tests/reconnect-hardening-runtime.php"
+      - name: Commit branch-only hardening and remove staging workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B'
+          git config user.email 'mad4b.digital@gmail.com'
+          git rm .github/workflows/rc32-bootstrap-diagnostic-fidelity.yml
+          git add .github/workflows/mad4b-connection-governance.yml \
+                  wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php \
+                  wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php \
+                  wp-content/plugins/mad4b-site-control-plane/tests/reconnect-hardening-runtime.php
+          git commit -m 'fix(rc32): preserve bootstrap failure diagnostics'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
