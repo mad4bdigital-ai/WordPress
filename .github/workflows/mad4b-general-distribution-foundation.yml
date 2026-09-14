@@ -83,9 +83,9 @@ jobs:
           subject_bridge="$root/includes/class-mad4b-scp-oauth-subject-user-bridge.php"
           main="$root/mad4b-site-control-plane.php"
 
-          grep -Fq "site_not_enrolled" "$profile"
-          grep -Fq "origin_drift" "$profile"
-          grep -Fq "environment_drift" "$profile"
+          grep -Fq "site_profile_unconfigured" "$profile"
+          grep -Fq "site_profile_origin_drift" "$profile"
+          grep -Fq "site_profile_environment_drift" "$profile"
           grep -Fq "PRODUCTION_WRITE_CONFIRMATION" "$profile"
           grep -Fq "site_profile_unconfigured" "$authority"
           grep -Fq "site_profile_write_disabled" "$authority"
