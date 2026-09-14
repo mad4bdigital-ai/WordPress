@@ -49,6 +49,16 @@ jobs:
           p.write_text(s[:a] + replacement + s[b:], encoding='utf-8')
           PY
           python3 .github/rc32-ci-contract-migration.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php')
+          s = p.read_text(encoding='utf-8')
+          old = "final class MAD4B_SCP_Site_Profile {\n\tpublic static function nonproduction_governed( $feature = '' ) { return 'write' === (string) $feature; }\n}"
+          new = "final class MAD4B_SCP_Site_Profile {\n\tpublic static function current_environment() { return 'staging'; }\n\tpublic static function current_host() { return 'provider-canary.test'; }\n\tpublic static function nonproduction_governed( $feature = '' ) { return 'write' === (string) $feature; }\n}"
+          if s.count(old) != 1:
+              raise SystemExit('provider canary Site Profile fixture shape changed')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
 
       - name: Validate migrated contracts
         shell: bash
