@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   package:
-    name: Build reviewed staging installation kit
+    name: Build reviewed General Distribution installation kit
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -101,7 +101,7 @@ jobs:
           test "$(stat -c '%s' wp-content/plugins/mcp-adapter.zip)" = '455463'
           unzip -tqq wp-content/plugins/mcp-adapter.zip
 
-      - name: Verify tenant-bound governed Staging kit invariants
+      - name: Verify tenant-neutral General Distribution kit invariants
         shell: bash
         run: |
           set -euo pipefail
@@ -427,6 +427,13 @@ jobs:
           grep -Fq '"external_wpml_live_acceptance_required": true' "$stage/install-manifest.json"
           grep -Fq '"external_wpml_acceptance_not_claimed_by_local_runtime": true' "$stage/install-manifest.json"
           grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
+          grep -Fq 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}' "$stage/package/mad4b-site-control-plane/config/staging-deployment-handoff.json"
+          grep -Fq "Current plugin version: **${expected_version}**." "$stage/package/mad4b-site-control-plane/README.md"
+          grep -Fq 'six MAD4B custom servers' "$stage/package/mad4b-site-control-plane/README.md"
+          if grep -Fq 'Egypt Tour Gates' "$stage/package/mad4b-site-control-plane/README.md" || grep -Fq 'staging.egypttourgates.com' "$stage/package/mad4b-site-control-plane/README.md"; then
+            echo 'General Distribution README retained tenant-specific identity.' >&2
+            exit 1
+          fi
           grep -Fq '"elementor_bounded_reversible_write_requires_exact_provider_certification": true' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
