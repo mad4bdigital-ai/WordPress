@@ -10,10 +10,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Profile with the OAuth feature enabled. Production additionally requires a
  * separate human opt-in bound to the exact Site Profile revision/digest.
  *
- * Multiple WordPress users may be enrolled. The legacy single-user constants
- * retain the first enrolled user only as a compatibility/default identity; the
- * allowed-subject policy contains every enrolled `user:<id>` subject and the
- * resource bridge resolves the verified subject to its exact WordPress user.
+ * Multiple WordPress users may be enrolled. One enrolled Administrator is
+ * selected as the compatibility/trust owner required by the existing OAuth
+ * resource bridge, while the allowlist contains every enrolled `user:<id>`
+ * subject. After cryptographic verification the subject-user bridge remaps the
+ * request to the exact delegated WordPress user, so the owner never becomes a
+ * blanket execution identity for other subjects.
  */
 final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 	const CONTRACT = 'mad4b.oauth-autoconfig.v3';
@@ -31,7 +33,6 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		self::$bootstrapped = true;
 
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
 		self::$status = array(
 			'contract' => self::CONTRACT,
@@ -40,6 +41,7 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			'eligible' => false,
 			'configured' => false,
 			'wp_user_id' => 0,
+			'primary_owner_user_id' => 0,
 			'oauth_user_ids' => array(),
 			'configuration_source' => 'none',
 			'blocker' => '',
@@ -85,7 +87,7 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			self::$status['blocker'] = $prepared->get_error_code();
 			return self::$status;
 		}
-		$configured = self::apply_local_oauth_configuration( $prepared['issuer'], $prepared['user_ids'] );
+		$configured = self::apply_local_oauth_configuration( $prepared['issuer'], $prepared['user_ids'], $prepared['owner_user_id'] );
 		if ( is_wp_error( $configured ) ) {
 			self::$status['blocker'] = $configured->get_error_code();
 			return self::$status;
@@ -98,7 +100,8 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
 			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
 			'environment' => MAD4B_SCP_Site_Profile::current_environment(),
-			'wp_user_id' => (int) $prepared['user_ids'][0],
+			'wp_user_id' => (int) $prepared['owner_user_id'],
+			'primary_owner_user_id' => (int) $prepared['owner_user_id'],
 			'oauth_user_ids' => array_values( array_map( 'absint', $prepared['user_ids'] ) ),
 			'issuer' => $prepared['issuer'],
 			'updated_at' => gmdate( 'c' ),
@@ -106,7 +109,8 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		update_option( self::OPTION, $record, false );
 
 		self::$status['configured'] = true;
-		self::$status['wp_user_id'] = (int) $prepared['user_ids'][0];
+		self::$status['wp_user_id'] = (int) $prepared['owner_user_id'];
+		self::$status['primary_owner_user_id'] = (int) $prepared['owner_user_id'];
 		self::$status['oauth_user_ids'] = $record['oauth_user_ids'];
 		self::$status['configuration_source'] = 'site_profile';
 		self::$status['blocker'] = '';
@@ -136,14 +140,15 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			self::$status['blocker'] = $prepared->get_error_code();
 			return self::$status;
 		}
-		$configured = self::apply_local_oauth_configuration( $prepared['issuer'], $prepared['user_ids'], true );
+		$configured = self::apply_local_oauth_configuration( $prepared['issuer'], $prepared['user_ids'], $prepared['owner_user_id'], true );
 		if ( is_wp_error( $configured ) ) {
 			self::$status['blocker'] = $configured->get_error_code();
 			return self::$status;
 		}
 
 		self::$status['configured'] = true;
-		self::$status['wp_user_id'] = (int) $prepared['user_ids'][0];
+		self::$status['wp_user_id'] = (int) $prepared['owner_user_id'];
+		self::$status['primary_owner_user_id'] = (int) $prepared['owner_user_id'];
 		self::$status['oauth_user_ids'] = array_values( array_map( 'absint', $prepared['user_ids'] ) );
 		self::$status['configuration_source'] = 'site_profile_production_readonly_opt_in';
 		self::$status['production_readonly_enabled'] = true;
@@ -166,12 +171,15 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		$user_ids = array_values( array_unique( array_filter( array_map( 'absint', $user_ids ) ) ) );
 		if ( empty( $user_ids ) ) return new WP_Error( 'site_profile_subject_unavailable', 'Site Profile has no OAuth users.' );
 		foreach ( $user_ids as $user_id ) if ( ! self::subject_capable( $user_id ) ) return new WP_Error( 'site_profile_subject_invalid', 'One or more Site Profile OAuth users are not connection-capable.' );
-		return array( 'issuer' => $issuer, 'user_ids' => $user_ids );
+		$owner_user_id = self::primary_owner_user_id( $user_ids );
+		if ( $owner_user_id < 1 ) return new WP_Error( 'site_profile_admin_owner_required', 'Local OAuth requires at least one enrolled Administrator as the compatibility trust owner.' );
+		return array( 'issuer' => $issuer, 'user_ids' => $user_ids, 'owner_user_id' => $owner_user_id );
 	}
 
-	private static function apply_local_oauth_configuration( $issuer, array $user_ids, $production = false ) {
+	private static function apply_local_oauth_configuration( $issuer, array $user_ids, $primary_user_id, $production = false ) {
 		$subjects = array_values( array_map( static function ( $user_id ) { return 'user:' . absint( $user_id ); }, $user_ids ) );
-		$primary_user_id = (int) reset( $user_ids );
+		$primary_user_id = absint( $primary_user_id );
+		if ( $primary_user_id < 1 || ! in_array( $primary_user_id, array_map( 'absint', $user_ids ), true ) ) return new WP_Error( 'site_profile_admin_owner_required', 'Primary OAuth owner must be one of the enrolled users.' );
 
 		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) ) {
 			$configured = self::normalize_subjects( constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECTS' ) );
@@ -180,7 +188,7 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		if ( defined( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ) ) {
 			foreach ( $subjects as $subject ) if ( ! self::binding_allows( constant( 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS' ), $issuer, $subject ) ) return new WP_Error( 'explicit_subject_binding_conflict', 'Explicit issuer/subject binding omits an enrolled Site Profile user.' );
 		}
-		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) && absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) !== $primary_user_id ) return new WP_Error( 'explicit_wp_user_conflict', 'Legacy primary OAuth user conflicts with the Site Profile primary user.' );
+		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) && absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) !== $primary_user_id ) return new WP_Error( 'explicit_wp_user_conflict', 'Legacy primary OAuth user conflicts with the Site Profile trust owner.' );
 
 		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) define( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED', true );
 		if ( ! defined( 'MAD4B_MCP_OAUTH_MODE' ) ) define( 'MAD4B_MCP_OAUTH_MODE', 'local' );
@@ -254,6 +262,16 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		if ( ! $user ) return false;
 		if ( class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_connect_user' ) ) return MAD4B_SCP_Policy::can_connect_user( $user_id );
 		return user_can( $user, 'manage_options' );
+	}
+
+	private static function primary_owner_user_id( array $user_ids ) {
+		foreach ( $user_ids as $user_id ) {
+			$user_id = absint( $user_id );
+			if ( $user_id < 1 ) continue;
+			$user = get_userdata( $user_id );
+			if ( $user && user_can( $user, 'manage_options' ) ) return $user_id;
+		}
+		return 0;
 	}
 
 	private static function local_issuer() {
