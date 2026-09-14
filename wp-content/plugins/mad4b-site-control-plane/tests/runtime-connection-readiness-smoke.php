@@ -44,7 +44,8 @@ $check(
     . ' servers=' . wp_json_encode( $status['servers'] )
 );
 $check( empty( $status['remote_endpoint_preflight_ready'] ), 'Unconfigured OAuth resource server must not claim remote endpoint preflight readiness.' );
-$check( in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTP CI target did not report HTTPS remote blocker.' );
+$is_https_target = 'https' === strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_SCHEME ) );
+$check( $is_https_target ? ! in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ) : in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTPS remote blocker did not match the disposable target scheme.' );
 $check( in_array( 'oauth_resource_bridge_not_configured', $status['remote_preflight_blockers'], true ), 'Unconfigured OAuth bridge did not block remote preflight.' );
 $check( in_array( 'oauth_issuer_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth issuer did not block remote preflight.' );
 $check( in_array( 'oauth_wp_subject_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth WordPress subject did not block remote preflight.' );

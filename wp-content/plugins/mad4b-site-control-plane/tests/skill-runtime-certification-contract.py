@@ -102,7 +102,7 @@ for marker in [
     "public static function persisted_status()",
     "return self::current_status();",
     "'persistence'] = 'read_only_live_inspection'",
-    "staging_app_mapping_mismatch",
+    "profile_app_mapping_mismatch",
     "seed_pack_not_ready",
     "provider_reconciliation_not_ready",
     "base_skills_missing_or_disabled",

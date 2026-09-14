@@ -44,13 +44,13 @@ if ( function_exists( 'home_url' ) && function_exists( 'wp_parse_url' ) ) {
 	$mad4b_mcp_mu_status['host'] = is_string( $mad4b_mcp_mu_host ) ? strtolower( rtrim( trim( $mad4b_mcp_mu_host ), '.' ) ) : '';
 }
 
-$mad4b_mcp_mu_profile = function_exists( 'get_option' ) ? get_option( 'mad4b_scp_site_profile_v1', array() ) : array();
+$mad4b_mcp_mu_profile = function_exists( 'get_option' ) ? get_option( 'mad4b_scp_site_profile_v2', array() ) : array();
 $mad4b_mcp_mu_origin = function_exists( 'home_url' ) ? rtrim( (string) home_url( '/' ), '/' ) : '';
 $mad4b_mcp_mu_profile_origin = is_array( $mad4b_mcp_mu_profile ) && isset( $mad4b_mcp_mu_profile['canonical_origin'] ) ? rtrim( (string) $mad4b_mcp_mu_profile['canonical_origin'], '/' ) : '';
 $mad4b_mcp_mu_profile_environment = is_array( $mad4b_mcp_mu_profile ) && isset( $mad4b_mcp_mu_profile['environment'] ) ? sanitize_key( (string) $mad4b_mcp_mu_profile['environment'] ) : '';
 $mad4b_mcp_mu_features = is_array( $mad4b_mcp_mu_profile ) && isset( $mad4b_mcp_mu_profile['features'] ) && is_array( $mad4b_mcp_mu_profile['features'] ) ? $mad4b_mcp_mu_profile['features'] : array();
 $mad4b_mcp_mu_profile_enrolled = is_array( $mad4b_mcp_mu_profile )
-	&& isset( $mad4b_mcp_mu_profile['contract'] ) && 'mad4b.site-profile.v1' === (string) $mad4b_mcp_mu_profile['contract']
+	&& isset( $mad4b_mcp_mu_profile['contract'] ) && 'mad4b.site-profile.v2' === (string) $mad4b_mcp_mu_profile['contract']
 	&& $mad4b_mcp_mu_profile_environment === $mad4b_mcp_mu_status['environment']
 	&& '' !== $mad4b_mcp_mu_origin && '' !== $mad4b_mcp_mu_profile_origin
 	&& hash_equals( $mad4b_mcp_mu_profile_origin, $mad4b_mcp_mu_origin )

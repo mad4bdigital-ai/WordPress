@@ -51,6 +51,14 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 }
 
+class MAD4B_SCP_Site_Profile {
+	public static function current_environment() { return 'staging'; }
+	public static function site_origin() { return 'https://reconciler.test'; }
+	public static function site_host() { return 'reconciler.test'; }
+	public static function nonproduction_governed( $feature = '' ) { return '' === (string) $feature || 'acceptance' === (string) $feature; }
+	public static function site_urls_match_enrollment() { return true; }
+}
+
 class MAD4B_SCP_Skill_Snapshot_Identity {
 	public static function build() { return array( 'identity_token' => $GLOBALS['mad4b_live_token'] ); }
 }
@@ -105,9 +113,9 @@ class MAD4B_SCP_Approval_Tickets {
 	}
 	public static function candidate_binding( $id ) {
 		if ( ! empty( $GLOBALS['mad4b_stale_candidate_binding'] ) ) {
-			return array( 'candidate_sha' => str_repeat( '9', 40 ), 'build_fingerprint' => str_repeat( '8', 64 ), 'environment' => 'staging', 'host' => 'staging.egypttourgates.com' );
+			return array( 'candidate_sha' => str_repeat( '9', 40 ), 'build_fingerprint' => str_repeat( '8', 64 ), 'environment' => 'staging', 'host' => 'reconciler.test' );
 		}
-		return array( 'candidate_sha' => str_repeat( '1', 40 ), 'build_fingerprint' => str_repeat( '2', 64 ), 'environment' => 'staging', 'host' => 'staging.egypttourgates.com' );
+		return array( 'candidate_sha' => str_repeat( '1', 40 ), 'build_fingerprint' => str_repeat( '2', 64 ), 'environment' => 'staging', 'host' => 'reconciler.test' );
 	}
 }
 

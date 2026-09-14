@@ -23,7 +23,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	exit( 1 );
 }
 
-$_SERVER['HTTP_HOST'] = 'staging.egypttourgates.com';
+$_SERVER['HTTP_HOST'] = 'mad4b-web.test';
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
 $_SERVER['REQUEST_METHOD'] = 'GET';

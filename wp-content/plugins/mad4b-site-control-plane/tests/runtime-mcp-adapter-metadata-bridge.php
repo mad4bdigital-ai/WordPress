@@ -7,7 +7,7 @@ if ( ! is_string( $path ) || '' === $path ) {
 }
 
 if ( ! defined( 'WP_ADMIN' ) ) define( 'WP_ADMIN', true );
-$_SERVER['HTTP_HOST'] = 'staging.egypttourgates.com';
+$_SERVER['HTTP_HOST'] = 'mad4b-metadata.test';
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['REQUEST_URI'] = '/wp-admin/plugins.php';
@@ -21,11 +21,11 @@ if ( ! class_exists( 'MAD4B_SCP_MCP_Adapter_Metadata_Bridge' ) ) {
 
 $status = MAD4B_SCP_MCP_Adapter_Metadata_Bridge::status();
 if ( empty( $status['eligible'] ) || empty( $status['hook_registered'] ) || empty( $status['admin_request_only'] ) ) {
-	fwrite( STDERR, 'Metadata bridge is not active on exact governed Staging admin: ' . wp_json_encode( $status ) . "\n" );
+	fwrite( STDERR, 'Metadata bridge is not active on governed non-production admin: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
 if ( empty( $status['site_eligible'] ) || empty( $status['ability_meta_hook_registered'] ) ) {
-	fwrite( STDERR, 'Rank Math MCP metadata compatibility hook is not active on exact governed Staging: ' . wp_json_encode( $status ) . "\n" );
+	fwrite( STDERR, 'Rank Math MCP metadata compatibility hook is not active on governed non-production site: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
 if ( ! isset( $status['fallback_priority'] ) || PHP_INT_MAX !== (int) $status['fallback_priority'] ) {
@@ -122,7 +122,7 @@ if ( $existing !== $preserved ) {
 }
 
 // Rank Math currently places MCP Adapter resource metadata at the top level.
-// Mirror only missing nested values on exact Staging so MCP Adapter 0.5+ does
+// Mirror only missing nested values on the governed non-production site so MCP Adapter 0.5+ does
 // not enter its deprecated fallback. Existing mcp.* values and legacy provider
 // keys must remain authoritative/preserved respectively.
 $rank_math_args = array(
@@ -190,7 +190,7 @@ if ( 1 !== (int) $status['short_circuit_count'] ) {
 	fwrite( STDERR, 'Bridge short-circuited outside the exact fallback path: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }
-if ( 2 !== (int) $status['rank_math_meta_mirror_count'] || empty( $status['rank_math_meta_staging_only'] ) || empty( $status['rank_math_meta_copy_if_missing'] ) || empty( $status['rank_math_legacy_keys_preserved'] ) ) {
+if ( 2 !== (int) $status['rank_math_meta_mirror_count'] || empty( $status['rank_math_meta_governed_nonproduction_only'] ) || empty( $status['rank_math_meta_copy_if_missing'] ) || empty( $status['rank_math_legacy_keys_preserved'] ) ) {
 	fwrite( STDERR, 'Rank Math metadata compatibility evidence is not exact/fail-safe: ' . wp_json_encode( $status ) . "\n" );
 	exit( 1 );
 }

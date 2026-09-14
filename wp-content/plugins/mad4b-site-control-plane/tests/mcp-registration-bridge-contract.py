@@ -23,7 +23,8 @@ def forbid(text, needle, label):
 
 for marker in (
     "const CONTRACT = 'mad4b.mcp-registration-bridge.v2'",
-    "const STAGING_HOST = 'staging.egypttourgates.com'",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::managed_runtime_enabled()",
     'public static function boot_early()',
     "did_action( 'mcp_adapter_init' ) > 0",
     "did_action( 'rest_api_init' ) > 0",
