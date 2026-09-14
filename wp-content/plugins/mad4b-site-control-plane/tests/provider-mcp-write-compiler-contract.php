@@ -22,6 +22,14 @@ final class FakeLegacyAdapter {
 	public function ability_names() { return array( 'read' => array(), 'content' => array(), 'admin' => array( 'legacy/write' ), 'write' => array() ); }
 	public function status() { return array( 'available' => true, 'version' => '1.0.0', 'mutation_requires_certification' => true, 'provider_certification' => array( 'status' => 'certified', 'runtime_contract_ok' => true, 'installed_version' => '1.0.0', 'certified_version' => '1.0.0' ) ); }
 }
+
+final class FakeCatalogedProviderOkAdapter {
+	public function id() { return 'catalog-ok'; }
+	public function provider_key() { return 'catalog_ok'; }
+	public function ability_names() { return array( 'read' => array(), 'content' => array(), 'admin' => array(), 'write' => array() ); }
+	public function status() { return array( 'available' => true, 'version' => '1.0.0', 'mutation_requires_certification' => true, 'provider_certification' => array( 'status' => 'certified', 'runtime_contract_ok' => true, 'installed_version' => '1.0.0', 'certified_version' => '1.0.0' ) ); }
+}
+
 final class FakeCanaryWrapperAdapter {
 	public function id() { return 'provider-canary'; }
 	public function provider_key() { return 'core'; }
@@ -38,7 +46,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	private static $instance;
 	public static function instance() { if ( ! self::$instance ) self::$instance = new self(); return self::$instance; }
 	public function register_defaults() {}
-	public function all() { return array( new FakeMultiAdapter(), new FakeLegacyAdapter(), new FakeCanaryWrapperAdapter(), new FakeBitFlowsAdapter() ); }
+	public function all() { return array( new FakeMultiAdapter(), new FakeLegacyAdapter(), new FakeCatalogedProviderOkAdapter(), new FakeCanaryWrapperAdapter(), new FakeBitFlowsAdapter() ); }
 	public function ability_names( $surface ) {
 		$names = array();
 		foreach ( $this->all() as $adapter ) {
@@ -52,9 +60,21 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 	const ACTIVATION_SHADOW = 'shadow';
 	const ACTIVATION_ACTIVE = 'active';
 
-	public static function supports_provider( $provider ) { return in_array( $provider, array( 'multi', 'bit_pi' ), true ); }
+	public static function supports_provider( $provider ) { return in_array( $provider, array( 'multi', 'bit_pi', 'catalog_ok' ), true ); }
 
 	public static function ability_status( $provider, $ability_name, $adapter = null ) {
+		if ( 'catalog_ok' === $provider && 'catalog/write-blocked' === $ability_name ) {
+			return array(
+				'provider' => 'catalog_ok',
+				'capability_id' => 'bounded.blocked',
+				'certification_level' => 'DISCOVERED',
+				'structural_compatible' => true,
+				'write_eligible' => false,
+				'activation_stage' => self::ACTIVATION_SHADOW,
+				'behavioral_verified' => false,
+				'rollback_verified' => false,
+			);
+		}
 		if ( 'multi' !== $provider ) return array();
 		if ( 'multi/write-a' === $ability_name ) {
 			return array(
@@ -150,6 +170,12 @@ $provider_wide = $runtime->invoke( null, 'multi', '' );
 expect_true( 'blocked' === $provider_wide['state'], 'provider version drift must remain blocked without an exact ability selector' );
 expect_true( false === $provider_wide['provider_runtime_contract_ok'], 'provider-wide runtime contract must remain false under version drift' );
 expect_true( false === $provider_wide['exact_runtime_certified'], 'capability evidence must never promote provider-wide certification' );
+
+$cataloged_provider_ok = $runtime->invoke( null, 'catalog_ok', 'catalog/write-blocked' );
+expect_true( 'blocked' === $cataloged_provider_ok['state'], 'cataloged ability must remain blocked when its exact capability is ineligible even if legacy provider runtime is certified' );
+expect_true( true === $cataloged_provider_ok['provider_runtime_contract_ok'], 'cataloged test fixture must retain provider-level certified truth' );
+expect_true( false === $cataloged_provider_ok['exact_runtime_certified'], 'cataloged ineligible ability must not synthesize exact certification from provider-level truth' );
+expect_true( 'none' === $cataloged_provider_ok['certification_scope'], 'cataloged provider-level truth must not bypass exact per-ability certification' );
 
 $legacy = $runtime->invoke( null, 'legacy', 'legacy/write' );
 expect_true( 'certified' === $legacy['state'], 'non-cataloged provider must retain legacy provider-level certification behavior' );
