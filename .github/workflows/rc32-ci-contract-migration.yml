@@ -59,6 +59,21 @@ jobs:
               raise SystemExit('provider canary Site Profile fixture shape changed')
           p.write_text(s.replace(old, new), encoding='utf-8')
           PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php')
+          s = p.read_text(encoding='utf-8')
+          old = "\tclass MAD4B_SCP_Site_Profile {\n\t\tpublic static function current_environment() { return $GLOBALS['mad4b_test_env']; }\n\t\tpublic static function site_origin() { return rtrim( $GLOBALS['mad4b_test_home'], '/' ); }\n\t\tpublic static function site_host() { return (string) parse_url( self::site_origin(), PHP_URL_HOST ); }\n\t\tpublic static function nonproduction_governed( $feature = '' ) { return in_array( self::current_environment(), array( 'local', 'development', 'staging' ), true ) && ( '' === $feature || 'acceptance' === $feature ); }\n\t\tpublic static function site_urls_match_enrollment() { return true; }\n\t}"
+          new = "\tclass MAD4B_SCP_Site_Profile {\n\t\tpublic static function current_environment() { return $GLOBALS['mad4b_test_env']; }\n\t\tpublic static function site_origin() { return rtrim( $GLOBALS['mad4b_test_home'], '/' ); }\n\t\tpublic static function site_host() { return (string) parse_url( self::site_origin(), PHP_URL_HOST ); }\n\t\tpublic static function related_origin( $environment ) { return 'production' === (string) $environment ? 'https://production.test' : self::site_origin(); }\n\t\tpublic static function nonproduction_governed( $feature = '' ) { return in_array( self::current_environment(), array( 'local', 'development', 'staging' ), true ) && ( '' === $feature || 'acceptance' === $feature ); }\n\t\tpublic static function site_urls_match_enrollment() { return true; }\n\t}"
+          if s.count(old) != 1:
+              raise SystemExit('live acceptance Site Profile fixture shape changed')
+          s = s.replace(old, new)
+          stale = 'MAD4B_SCP_Production_Unchanged_Attestation::PRODUCTION_ORIGIN'
+          if s.count(stale) != 2:
+              raise SystemExit('unexpected Production origin constant count')
+          s = s.replace(stale, "MAD4B_SCP_Site_Profile::related_origin( 'production' )")
+          p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Validate migrated contracts
         shell: bash
