@@ -191,11 +191,17 @@ etg_acceptance_same(false,$result['cases'][2]['direct_dataset']['infrastructure_
 
 $hugeEvaluator=new SemanticQueryEvaluator(null,static function():array{return array('resolved'=>true,'reason'=>'verified','query'=>new ETGAcceptanceHugeQueryStub(),'provider_query_id'=>'tours_query_archive','query_builder_custom_query_id'=>'tours_query_archive','query_builder_internal_id'=>'5','source'=>'test_fixture','identity_source'=>'custom_query_id');});
 $huge=$hugeEvaluator->evaluate(array('provider'=>'jet-engine','query_id'=>'tours_query_archive'),$profiles['tours'],array('tax_query'=>array('relation'=>'AND')));
-etg_acceptance_same(false,$huge['ids_complete'],'datasets above the ID ceiling remain incomplete');
-etg_acceptance_same('total_exceeds_id_ceiling',$huge['ids_reason'],'ID ceiling is explicit');
-etg_acceptance_expect($huge['page_fetches']<=1,'oversized datasets do not trigger unbounded page walking');
-etg_acceptance_same(100,$huge['max_ids'],'ID resource ceiling remains bounded');
-etg_acceptance_same(20,$huge['max_page_fetches'],'page-walk resource ceiling remains bounded');
+etg_acceptance_same(false,$huge['ids_complete'],'datasets above the raw ID exposure ceiling do not expose a full ID array');
+etg_acceptance_same('digest_only',$huge['ids_scope'],'datasets above the raw ID exposure ceiling switch to digest-only proof');
+etg_acceptance_same('complete',$huge['ids_reason'],'bounded digest collection remains complete above the raw ID exposure ceiling');
+etg_acceptance_same('full_digest',$huge['proof_mode'],'datasets above the raw ID exposure ceiling use canonical digest proof');
+etg_acceptance_same(true,$huge['proof_complete'],'digest proof is complete for bounded datasets');
+etg_acceptance_same(101,$huge['proof_item_count'],'digest proof covers the full bounded dataset');
+etg_acceptance_same(array(),$huge['ids'],'raw IDs are not exposed above the raw ID ceiling');
+etg_acceptance_same(11,$huge['page_fetches'],'101 results at page size 10 require eleven bounded page fetches');
+etg_acceptance_same(100,$huge['max_ids'],'raw ID exposure ceiling remains bounded');
+etg_acceptance_same(5000,$huge['max_digest_ids'],'digest collection ceiling remains bounded');
+etg_acceptance_same(100,$huge['max_page_fetches'],'page-walk resource ceiling remains bounded');
 
 $stickyEvaluator=new SemanticQueryEvaluator(null,static function():array{return array('resolved'=>true,'reason'=>'verified','query'=>new ETGAcceptanceStickyQueryStub(),'provider_query_id'=>'tours_query_archive','query_builder_custom_query_id'=>'tours_query_archive','query_builder_internal_id'=>'5','source'=>'test_fixture','identity_source'=>'custom_query_id');});
 $sticky=$stickyEvaluator->evaluate(array('provider'=>'jet-engine','query_id'=>'tours_query_archive'),$profiles['tours'],array('tax_query'=>array('relation'=>'AND')));
