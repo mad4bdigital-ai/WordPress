@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_parent='cc51c61c5d6fdff1957f8e6d2e052a1c622f8164'
+          expected_parent='a7dbc622ff6c0e7de63092ffd571d7e7480a64ea'
           actual_parent="$(git rev-parse HEAD^)"
           test "$actual_parent" = "$expected_parent"
           for n in 01 02 03 04 05; do
@@ -116,27 +116,50 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           main="$root/mad4b-site-control-plane.php"
-          grep -Fq 'Version: 0.4.0-rc.32' "$main"
-          grep -Fq "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.32' );" "$main"
-          grep -Fq "const CONTRACT = 'mad4b.site-profile.v2'" "$root/includes/class-mad4b-scp-site-profile.php"
-          grep -Fq 'site_profile_unconfigured' "$root/includes/class-mad4b-scp-site-profile.php"
-          grep -Fq 'PRODUCTION_WRITE_CONFIRMATION' "$root/includes/class-mad4b-scp-site-profile.php"
-          if grep -R -F -n 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' "$root/includes" "$root/mad4b-site-control-plane.php"; then
-            echo 'Customer-specific ChatGPT App ID remains in public runtime.' >&2
-            exit 1
-          fi
-          if grep -R -F -n 'staging.egypttourgates.com' "$root/includes" "$root/mad4b-site-control-plane.php"; then
-            echo 'ETG Staging origin remains in public runtime.' >&2
-            exit 1
-          fi
-          if grep -R -F -n 'https://egypttourgates.com' "$root/includes" "$root/mad4b-site-control-plane.php"; then
-            echo 'ETG Production origin remains in public runtime.' >&2
-            exit 1
-          fi
+          profile="$root/includes/class-mad4b-scp-site-profile.php"
+          failed=0
+
+          require_contains() {
+            local file="$1" needle="$2" label="$3"
+            if grep -Fq "$needle" "$file"; then
+              echo "PASS: $label"
+            else
+              echo "FAIL: $label" >&2
+              grep -n -E 'Version:|MAD4B_SCP_VERSION|CONTRACT|site_profile_unconfigured|PRODUCTION_WRITE_CONFIRMATION' "$file" | head -80 || true
+              failed=1
+            fi
+          }
+
+          require_contains "$main" 'Version: 0.4.0-rc.32' 'plugin header rc.32'
+          require_contains "$main" "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.32' );" 'runtime constant rc.32'
+          require_contains "$profile" "mad4b.site-profile.v2" 'site profile v2 contract'
+          require_contains "$profile" 'site_profile_unconfigured' 'unconfigured site fails closed'
+          require_contains "$profile" 'PRODUCTION_WRITE_CONFIRMATION' 'production write explicit confirmation'
+
+          for forbidden in \
+            'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' \
+            'staging.egypttourgates.com' \
+            'https://egypttourgates.com'; do
+            if grep -R -F -n "$forbidden" "$root/includes" "$main"; then
+              echo "FAIL: customer-specific runtime leakage: $forbidden" >&2
+              failed=1
+            else
+              echo "PASS: runtime free of $forbidden"
+            fi
+          done
+
           presets="$root/config/site-profile-presets.json"
           if [ -f "$presets" ]; then
-            php -r '$p=json_decode(file_get_contents($argv[1]), true); if (!is_array($p) || !isset($p["profiles"]) || count($p["profiles"]) !== 0) { fwrite(STDERR, "bundled tenant presets must be empty\n"); exit(1); }' "$presets"
+            if php -r '$p=json_decode(file_get_contents($argv[1]), true); exit((is_array($p) && isset($p["profiles"]) && count($p["profiles"]) === 0) ? 0 : 1);' "$presets"; then
+              echo 'PASS: bundled tenant presets empty'
+            else
+              echo 'FAIL: bundled tenant presets must be empty' >&2
+              cat "$presets" >&2
+              failed=1
+            fi
           fi
+
+          test "$failed" -eq 0
 
       - name: Run focused tenant-neutral runtime contracts
         shell: bash
