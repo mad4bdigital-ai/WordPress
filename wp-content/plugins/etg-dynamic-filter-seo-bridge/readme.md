@@ -64,6 +64,85 @@ discover → Cartesian-generate every taxonomy combination → auto-index
 
 Global OFF means Rank Math metadata mutation, robots index authority, hreflang publication and the live ETG sitemap remain off. Read-only diagnostics, presentation resolution, evidence collection and publication preview remain non-authorizing.
 
+## Semantic Live Acceptance Provider
+
+Alpha13 exposes a profile-governed semantic acceptance provider through the existing ETG domain model instead of introducing a second transport or authority plane.
+
+Canonical provider contract:
+
+```text
+etg.dfsb.live-acceptance-provider.v1
+```
+
+The provider derives bounded plans from registered Surface Profiles and their exact archive paths, provider/query routes, allowed taxonomies and real WordPress Terms. Public requests select governed profile/suite inputs only; arbitrary URL, query, taxonomy, SQL, callback, HTTP request and browser-JavaScript execution inputs are rejected.
+
+Semantic acceptance evaluates independent dimensions including:
+
+- profile/provider/query binding
+- normalized filter state
+- Direct/AJAX semantic parity
+- authoritative result-count parity
+- complete bounded dataset-ID parity when observable
+- ordering parity
+- AJAX URL/SEO non-authority
+
+Verdicts remain explicit:
+
+```text
+PASS
+FAIL
+BLOCKED
+INCOMPLETE_EVIDENCE
+```
+
+A semantic `PASS` does not claim that a real browser executed JetSmartFilters, reconciled the DOM, performed an AJAX round trip or preserved browser navigation state. Browser truth is a separate evidence layer.
+
+## Browser Acceptance Provider and freshness
+
+Browser Acceptance is passive, bounded and non-authorizing. It observes the real frontend runtime without driving clicks, arbitrary navigation or generic script execution.
+
+The browser observer is armed only from a profile-derived acceptance case and a fresh bounded challenge. The freshness nonce is echoed in the returned evidence so stale browser snapshots cannot be silently reused as current exact-head proof.
+
+The browser layer observes only governed evidence such as:
+
+- JetSmartFilters update events
+- ETG presentation update/reset events
+- bounded AJAX presentation response metadata
+- current filtered/reset URL state
+- rendered result identity/count evidence
+- canonical/robots/hreflang/Rank Math stability
+
+The observer does not become indexing authority and does not mutate Profile state, SEO state, browser history or business data.
+
+Browser acceptance must be re-collected after the exact package/build changes. A prior challenge/receipt or snapshot from another Git SHA is historical evidence only.
+
+## Browser result-count observability
+
+A paginated archive can legitimately have a total result count larger than the number of Listing items currently rendered in the DOM. Therefore `visible_item_ids.length` is not authoritative total-count evidence when a real result-count surface exists.
+
+ETG live Dynamic Tags for `result_count` and `result_summary` emit the semantic marker:
+
+```html
+data-etg-dfsb-result-count=""
+```
+
+The marker is intentionally value-less. The browser observer reads the tag's **current live text**, so the same evidence surface stays correct after AJAX updates and reset instead of retaining a stale numeric attribute.
+
+The observer also recognizes the native JetSmartFilters Results Count surface. It deliberately does **not** scrape arbitrary `.jet-listing-dynamic-field` numbers because those fields can represent prices, durations or unrelated content.
+
+For Browser Acceptance, the archive should expose one of:
+
+- ETG Filter Result Count / ETG Filter Result Summary with AJAX Live Update enabled; or
+- native JetSmartFilters Results Count.
+
+Rendered dataset identity remains independent. Listing items must expose a supported post-ID surface such as `data-post-id` or an explicit governed ETG result-item marker before dataset parity can be considered browser-observable.
+
+## WordPress Abilities lifecycle
+
+Where ETG evidence abilities are projected through WordPress 6.9 Abilities, registration follows the WordPress lifecycle rather than ad-hoc early registration.
+
+The lifecycle regression is executed inside the canonical PHP contract CI path. This verifies registration timing and preserves the same read-only/non-authorizing evidence boundary; registering an ability does not grant mutation, approval or publication authority.
+
 ## Elementor Dynamic Tags
 
 Elementor Dynamic Tags are the primary authoring path. Shortcodes remain available as fallback helpers and for non-Elementor or special live-media cases.
@@ -268,6 +347,8 @@ frontend rendered count
 = background publication count
 ```
 
+Browser result-count evidence is a separate observation layer. It must come from an explicit ETG/native Results Count surface when total-count parity is being asserted; a paginated visible-item count alone cannot substitute for the authoritative total.
+
 ## Elementor server-rendered publication evidence
 
 Presentation working in the Elementor editor or after a browser-side AJAX update is not enough to grant indexing authority.
@@ -352,18 +433,23 @@ wp etg-dfsb reconcile --previous=runtime-inventory.previous.json > reconciliatio
 
 ## CI and runtime acceptance
 
-Static/exact-head CI verifies code contracts, bounded behavior, vendor capability surfaces, browser transport regressions and deterministic release provenance.
+Static/exact-head CI verifies code contracts, bounded behavior, vendor capability surfaces, browser transport regressions, WordPress Abilities lifecycle coverage and deterministic release provenance.
 
-CI green is not equivalent to Production readiness.
+The deterministic package is built independently in push and pull-request Operational workflows. Repository certification requires the extracted installable ZIPs to match byte-for-byte; run-specific outer artifact metadata is allowed to differ.
+
+CI green is not equivalent to Staging Browser Acceptance or Production readiness.
 
 Before Ready for Review or Production activation, collect real runtime evidence for at least:
 
-- exact certified package/build identity
+- exact certified package/build identity and Safe Boot state
 - Runtime Inventory completeness
 - exact custom Query IDs and Post Type bindings
 - provider/query observation
+- governed semantic acceptance on the exact deployed build
+- fresh Browser Acceptance challenge/receipt on the exact deployed build
 - direct server-rendered Elementor HTML on filtered URLs
 - live AJAX clear/reset/mixed-filter transitions
+- explicit browser result-count authority and rendered dataset IDs
 - Term Meta selector/value/AJAX path
 - Rank Math output in HTML source
 - WPML translated slugs and hreflang without fallback
@@ -375,9 +461,11 @@ Before Ready for Review or Production activation, collect real runtime evidence 
 
 ## Current authority boundary
 
-Alpha13 does **not** authorize merge or Production activation by release alone.
+Alpha13 does **not** authorize Ready for Review, merge or Production activation by release alone.
 
 It does not infer Production Query Builder/taxonomy authority from discovery, auto-approve taxonomy permutations, create synthetic WordPress Pages, treat sitemap discovery as indexing authority, or treat Elementor template/editor existence as automatic publication verification.
+
+`ready_for_review_authorized=false`
 
 `merge_authorized=false`
 
