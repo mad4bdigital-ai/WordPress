@@ -10,6 +10,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php'
       - '.github/workflows/mad4b-general-distribution-foundation.yml'
@@ -54,6 +55,7 @@ jobs:
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php \
             wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php \
             wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php; do
             php -l "$file"
@@ -81,6 +83,7 @@ jobs:
           dependency="$root/includes/class-mad4b-scp-dependency-manager.php"
           oauth="$root/includes/class-mad4b-scp-staging-oauth-autoconfig.php"
           subject_bridge="$root/includes/class-mad4b-scp-oauth-subject-user-bridge.php"
+          skills="$root/includes/class-mad4b-scp-skill-autoconfig.php"
           main="$root/mad4b-site-control-plane.php"
 
           grep -Fq "site_profile_unconfigured" "$profile"
@@ -97,7 +100,15 @@ jobs:
           grep -Fq "oauth_user_ids" "$oauth"
           grep -Fq "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()" "$subject_bridge"
           grep -Fq "MAD4B_SCP_Site_Profile::user_is_enrolled" "$subject_bridge"
+          grep -Fq "MAD4B_SCP_Site_Profile::configured()" "$skills"
+          grep -Fq "MAD4B_SCP_Site_Profile::chatgpt_app_id()" "$skills"
+          grep -Fq "site_profile_skills_disabled" "$skills"
           grep -Fq "MAD4B_SCP_OAuth_Subject_User_Bridge::boot();" "$main"
+
+          if grep -Fq "MAD4B_SCP_Site_Profile::enrolled()" "$skills" || grep -Fq "MAD4B_SCP_Site_Profile::openai_app_id()" "$skills"; then
+            echo 'Skills autoconfig references a removed Site Profile API.' >&2
+            exit 1
+          fi
 
           # Breakglass is intentionally not a Site Profile feature. It remains
           # an independent exceptional authority and cannot be enabled by normal
