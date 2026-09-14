@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_parent='f23387f034808c94ceb77863c7fad4b9821758db'
+          expected_parent='81ac1b9b33c66dff92b2e4d6015f94ecc65b34c2'
           actual_parent="$(git rev-parse HEAD^)"
           test "$actual_parent" = "$expected_parent"
           for n in 01 02 03 04 05; do
@@ -58,8 +58,8 @@ jobs:
             '/tmp/rc32-generalization.patch' | sha256sum -c -
           grep -Fq '0.4.0-rc.32' /tmp/rc32-generalization.patch
           grep -Fq 'class-mad4b-scp-site-profile.php' /tmp/rc32-generalization.patch
-          git apply --check /tmp/rc32-generalization.patch
-          git apply /tmp/rc32-generalization.patch
+          git apply -p2 --check /tmp/rc32-generalization.patch
+          git apply -p2 /tmp/rc32-generalization.patch
           rm -f .github/rc32-generalization.patch.gz.b64
           rm -f .github/rc32-generalization.patch.gz.b64.part01
           rm -f .github/rc32-generalization.patch.gz.b64.part02
