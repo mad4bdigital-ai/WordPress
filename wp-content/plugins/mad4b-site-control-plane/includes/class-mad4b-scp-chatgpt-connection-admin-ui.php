@@ -50,7 +50,9 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			&& hash_equals( self::CHATGPT_CLIENT_ID, $local['cimd_chatgpt_client_id'] );
 		$gateway_registered = class_exists( 'MAD4B_SCP_Servers' ) && in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );
 		$production_readonly_enabled = 'production' === $environment && ! empty( $profile['production_readonly_enabled'] );
-		$environment_ready = 'staging' === $environment || $production_readonly_enabled;
+		$profile_oauth_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		$environment_ready = $profile_oauth_ready && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || $production_readonly_enabled );
+		$oauth_canary_available = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
 		$ready = $environment_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_registered;
 
 		return array(
@@ -62,6 +64,9 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled,
 			'production_readonly_write_enabled' => false,
 			'production_readonly_breakglass_enabled' => false,
+			'profile_oauth_ready' => (bool) $profile_oauth_ready,
+			'environment_ready' => (bool) $environment_ready,
+			'oauth_canary_available' => (bool) $oauth_canary_available,
 			'server_url' => $server_url,
 			'authentication' => 'OAuth',
 			'client_registration' => 'client_id_metadata_document',
@@ -144,7 +149,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 
 			<p style="margin-top:18px">
 				<a class="button button-primary" href="<?php echo esc_url( self::CHATGPT_CREATE_URL ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open ChatGPT Plugin Builder', 'mad4b-site-control-plane' ); ?></a>
-				<?php if ( 'staging' === $status['environment'] ) : ?>
+				<?php if ( ! empty( $status['oauth_canary_available'] ) ) : ?>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . MAD4B_SCP_Local_OAuth_Browser_Canary::PAGE_SLUG ) ); ?>"><?php echo esc_html__( 'Run OAuth Canary', 'mad4b-site-control-plane' ); ?></a>
 				<?php endif; ?>
 			</p>
@@ -158,7 +163,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			</ol>
 
 			<h2><?php echo esc_html__( 'Gateway safety boundary', 'mad4b-site-control-plane' ); ?></h2>
-			<p><?php echo esc_html__( 'The ChatGPT gateway excludes generic filesystem/database inspection. Production read-only mode never mounts content mutation, mad4b-write, mad4b-admin or mad4b-breakglass; Staging governed writes remain a separate exact-origin authority.', 'mad4b-site-control-plane' ); ?></p>
+			<p><?php echo esc_html__( 'The ChatGPT gateway excludes generic filesystem/database inspection. Production read-only mode never mounts content mutation, mad4b-write, mad4b-admin or mad4b-breakglass; governed writes remain a separate exact Site Profile authority.', 'mad4b-site-control-plane' ); ?></p>
 
 			<h2><?php echo esc_html__( 'Current readiness', 'mad4b-site-control-plane' ); ?></h2>
 			<table class="widefat striped" style="max-width:900px">

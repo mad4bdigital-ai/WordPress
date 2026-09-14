@@ -128,7 +128,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 		if ( empty( $status['editor_enabled'] ) ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Authoring is fail-closed.', 'mad4b-site-control-plane' ) . '</strong> ';
-			echo esc_html__( 'On Staging the Control Plane enables the Skill editor automatically unless an explicit MAD4B_SKILLS_EDITOR_ENABLED=false kill-switch is present. Production is never auto-enabled and requires both MAD4B_SKILLS_EDITOR_ENABLED=true and MAD4B_SKILLS_PRODUCTION_EDITOR_ENABLED=true. These switches do not enable MCP mutation.', 'mad4b-site-control-plane' );
+			echo esc_html__( 'On an explicitly enrolled non-production Site Profile the Control Plane enables the Skill editor automatically unless an explicit MAD4B_SKILLS_EDITOR_ENABLED=false kill-switch is present. Production is never enabled by installation and requires both explicit editor gates. These switches do not enable MCP mutation.', 'mad4b-site-control-plane' );
 			echo '</p></div>';
 		}
 	}
@@ -230,7 +230,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 
 	private static function render_export( array $status ) {
 		echo '<h2>' . esc_html__( 'Portable Plugin snapshot', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Exports enabled runtime skills into a portable Agent Plugins ZIP with root plugin.json, snapshot identity files, and skills/. The governed Staging App mapping is included automatically and the exported capability remains Read.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'Exports enabled runtime skills into a portable Agent Plugins ZIP with root plugin.json, snapshot identity files, and skills/. The exact Site Profile App mapping is included, and exported capabilities reflect current governed certification: Read, or Read + Write when write authority is ready.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<form method="post">';
 		wp_nonce_field( 'mad4b_skill_export', 'mad4b_skill_export_nonce' );
 		echo '<input type="hidden" name="mad4b_skill_action" value="export">';

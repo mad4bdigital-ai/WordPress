@@ -71,7 +71,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$authorities = self::authority_registry();
 		$issuers = array_keys( $authorities );
 		$https = self::resource_is_https();
-		$environment_allowed = ( 'staging' === $environment ) || ( 'production' === $environment && $production_approved );
+		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		$environment_allowed = $profile_ready && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $environment && $production_approved ) );
 		$registry_valid = self::authority_registry_valid( $mode, $authorities );
 		$subject_policy_ready = $registry_valid && self::subject_policy_ready( $issuers );
 		$wp_users_ready = $registry_valid && self::authority_users_ready( $issuers );
@@ -98,6 +99,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'effective' => (bool) $effective,
 			'environment' => $environment,
 			'production_approved' => $production_approved,
+			'environment_allowed' => (bool) $environment_allowed,
 			'authority_mode' => $mode,
 			'authority_count' => count( $authorities ),
 			'authorities' => $authority_status,

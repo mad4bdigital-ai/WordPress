@@ -246,7 +246,7 @@ if "const CONTRACT = 'mad4b.external-handshake-evidence.v3'" not in external:
 for marker in [
     'public static function external_write_tools',
     'public static function is_external_write_candidate',
-    'stable registered Staging catalog',
+    'stable registered tenant-bound catalog',
 ]:
     if marker not in servers and marker not in external:
         raise SystemExit('Stable external write-catalog contract missing: ' + marker)

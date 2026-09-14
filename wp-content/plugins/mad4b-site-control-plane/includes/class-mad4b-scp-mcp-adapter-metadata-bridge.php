@@ -111,7 +111,7 @@ final class MAD4B_SCP_MCP_Adapter_Metadata_Bridge {
 			'short_description' => 'Official WordPress MCP Adapter for exposing authorized WordPress Abilities through the Model Context Protocol.',
 			'icons' => array(),
 			'sections' => array(
-				'description' => 'Official WordPress MCP Adapter used by the governed MAD4B Staging MCP runtime.',
+				'description' => 'Official WordPress MCP Adapter used by the governed MAD4B Site Profile runtime.',
 			),
 		);
 	}

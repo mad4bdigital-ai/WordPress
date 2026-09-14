@@ -49,7 +49,7 @@ final class MAD4B_SCP_Transport_Context {
 			return new WP_Error( 'mad4b_transport_server_registry_unavailable', 'MAD4B server membership is unavailable.' );
 		}
 
-		// Staging ChatGPT exposes a stable registered write catalog so provider
+		// The tenant-bound ChatGPT surface exposes a stable registered write catalog so provider
 		// certification state changes do not require a client-side tool rescan.
 		// Discovery never grants execution: only the runtime-eligible mad4b-write
 		// projection may cross this boundary.

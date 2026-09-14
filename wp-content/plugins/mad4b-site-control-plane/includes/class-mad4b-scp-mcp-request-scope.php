@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Exact-Staging request scope for the official MCP Adapter runtime.
+ * Site-Profile-governed request scope for the official MCP Adapter runtime.
  *
  * MAD4B only needs the official runtime for its own six MCP transports and for
  * explicit Control Plane diagnostics. On the governed site origin, unrelated
@@ -13,8 +13,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * when the MAD4B Control Plane is absent.
  *
  * This class is deny-only. It never registers a route, never changes provider
- * settings, never replaces a foreign Adapter runtime, and never affects
- * Production.
+ * settings, and never replaces a foreign Adapter runtime. Eligibility is bound
+ * to the exact enrolled Site Profile and its managed-runtime feature.
  */
 final class MAD4B_SCP_MCP_Request_Scope {
 	const CONTRACT = 'mad4b.mcp-request-scope.v1';

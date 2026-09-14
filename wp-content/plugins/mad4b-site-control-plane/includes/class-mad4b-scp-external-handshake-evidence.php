@@ -188,9 +188,9 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$base['age_seconds'] = PHP_INT_MAX === $age ? 0 : $age;
 		$base['build_fingerprint_match'] = (bool) $build_match;
 
-		$current_environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$current_environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$current_resource = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : '';
-		if ( 'staging' !== $current_environment || 'staging' !== $environment ) { $base['status'] = 'environment_mismatch'; return $base; }
+		if ( ! self::environment_allowed( $current_environment ) || '' === $environment || ! hash_equals( $current_environment, $environment ) ) { $base['status'] = 'environment_mismatch'; return $base; }
 		if ( self::SERVER_ID !== $server_id || ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ) { $base['status'] = 'client_or_server_mismatch'; return $base; }
 		if ( '' === $current_resource || ! hash_equals( $current_resource, $resource ) ) { $base['status'] = 'resource_mismatch'; return $base; }
 		if ( 'oauth2_bearer' !== $auth_method || $wp_user_id < 1 || ! $base['subject_fingerprint_present'] || ! $base['mcp_session_fingerprint_present'] ) { $base['status'] = 'subject_or_session_invalid'; return $base; }
@@ -233,8 +233,17 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( '/mcp/' . self::SERVER_ID !== $route ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return false;
 		if ( ! function_exists( 'wp_is_using_https' ) || ! wp_is_using_https() ) return false;
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		return 'staging' === $environment;
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		return self::environment_allowed( $environment );
+	}
+
+	private static function environment_allowed( $environment ) {
+		$environment = sanitize_key( (string) $environment );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) return false;
+		if ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return true;
+		if ( 'production' !== $environment || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return false;
+		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
+		return ! empty( $status['effective'] ) && ! empty( $status['production_approved'] );
 	}
 
 	private static function capture_initialize( $response, $request ) {
@@ -274,7 +283,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$names = self::normalize_tool_names( $names );
 		if ( empty( $names ) ) return;
 
-		// The external schema is a stable registered Staging catalog. Exact equality
+		// The external schema is a stable registered tenant-bound catalog. Exact equality
 		// still rejects foreign, raw SQL and Breakglass tools. Provider-gated writes
 		// may be discoverable, but execution is independently fenced by mad4b-write.
 		$expected_names = self::expected_tool_names();
@@ -403,7 +412,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		if ( ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ) return null;
 
 		return array(
-			'environment' => 'staging',
+			'environment' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' ),
 			'resource' => $resource,
 			'issuer' => $issuer,
 			'client_id' => $client_id,

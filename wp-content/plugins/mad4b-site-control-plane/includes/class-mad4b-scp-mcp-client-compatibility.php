@@ -170,8 +170,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 
 	private static function oauth_discovery_ready( $status ) {
 		if ( ! is_array( $status ) ) return false;
-		$environment = isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : '';
-		$environment_allowed = 'staging' === $environment || ( 'production' === $environment && ! empty( $status['production_approved'] ) );
+		$environment_allowed = ! empty( $status['environment_allowed'] );
 		return ! empty( $status['configured'] )
 			&& ! empty( $status['effective'] )
 			&& self::local_key_policy_ready( $status )

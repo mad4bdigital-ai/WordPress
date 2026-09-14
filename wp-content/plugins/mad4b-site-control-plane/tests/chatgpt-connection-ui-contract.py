@@ -60,7 +60,7 @@ required_consent_semantics = [
     'mad4b.local-oauth-consent-ui.v2',
     "add_action( 'admin_init', array( __CLASS__, 'start_buffer_for_connection_admin' ), -20 )",
     'This consent authenticates the client and grants the narrow read resource scope shown below; it does not grant write authority.',
-    'Governed write actions, when available, require separate Staging write authority and a one-time approval.',
+    'Governed write actions, when available, require separate governed write authority and a one-time approval.',
     'OAuth identity/read scope · write authority separate · PKCE S256',
     'Connection and certification workspace.',
     'This page is inspection-only:',

@@ -710,8 +710,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function environment_allowed() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		return 'staging' === $environment || ( 'production' === $environment && self::production_approved() );
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		if ( ! $profile_ready ) return false;
+		if ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return true;
+		return 'production' === $environment && self::production_approved();
 	}
 
 	private static function effective_for_protocol() {
