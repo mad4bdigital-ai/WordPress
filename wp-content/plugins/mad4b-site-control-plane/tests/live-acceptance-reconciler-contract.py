@@ -51,7 +51,8 @@ for marker in [
 for marker in [
     "const CONTRACT = 'mad4b.portable-external-snapshot.v3'",
     "const TOKEN_LEDGER_OPTION = 'mad4b_scp_external_snapshot_export_tokens_v3'",
-    "const STAGING_HOST = 'staging.egypttourgates.com'",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "MAD4B_SCP_Site_Profile::skills_enabled()",
     "if ( ! self::staging_allowed() ) return;",
     "mad4b_external_snapshot_wrong_target",
     "random_bytes( 32 )",

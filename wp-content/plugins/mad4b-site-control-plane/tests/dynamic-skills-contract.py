@@ -30,7 +30,7 @@ readme = (portable / 'README.md').read_text(encoding='utf-8')
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-autoconfig.v2'",
-    "'staging' !== $environment",
+    "! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true )",
     "MAD4B_SCP_Site_Profile::configured()",
     "MAD4B_SCP_Site_Profile::chatgpt_app_id()",
     "MAD4B_SCP_Site_Profile::site_host()",
@@ -80,7 +80,7 @@ for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
     "const SEED_VERSION = 2",
     "const SEED_DIR = 'skill-seeds'",
-    "'staging' !== $environment",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
     "MAD4B_SCP_Audit::storage_status()",
     "MAD4B_SCP_Audit::record",
@@ -111,7 +111,7 @@ for marker in [
 for marker in [
     "const CONTRACT = 'mad4b.skill-provider-discovery.v1'",
     "const CATALOG_CONTRACT = 'mad4b.skill-provider-catalog.v1'",
-    "'staging' !== $environment",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Plugin_Discovery::coverage()",
     "adapter_registered",
     "adapter_runtime_available",

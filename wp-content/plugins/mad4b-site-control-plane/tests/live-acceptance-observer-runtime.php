@@ -38,6 +38,14 @@ namespace {
 	function get_transient() { return false; }
 	function delete_transient() { return true; }
 
+	class MAD4B_SCP_Site_Profile {
+		public static function current_environment() { return $GLOBALS['mad4b_test_env']; }
+		public static function site_origin() { return rtrim( $GLOBALS['mad4b_test_home'], '/' ); }
+		public static function site_host() { return (string) parse_url( self::site_origin(), PHP_URL_HOST ); }
+		public static function related_origin( $environment ) { return 'production' === (string) $environment ? 'https://production.test' : self::site_origin(); }
+		public static function nonproduction_governed( $feature = '' ) { return in_array( self::current_environment(), array( 'local', 'development', 'staging' ), true ) && ( '' === $feature || 'acceptance' === $feature ); }
+		public static function site_urls_match_enrollment() { return ! isset( $GLOBALS['mad4b_test_urls_match'] ) || ! empty( $GLOBALS['mad4b_test_urls_match'] ); }
+	}
 	class MAD4B_SCP_Servers {
 		public static function chatgpt_tools() { return array( 'mad4b/site-info', 'mad4b/content-update-post', 'elementor/update-widget-settings' ); }
 		public static function external_write_tools() { return array( 'mad4b/content-update-post', 'elementor/update-widget-settings' ); }
@@ -122,7 +130,7 @@ namespace {
 	$mutation = array(
 		'contract' => MAD4B_SCP_Live_Acceptance_Finalizer::MUTATION_CONTRACT,
 		'candidate_sha' => $candidate['source_commit_sha'], 'build_fingerprint' => $candidate['build_fingerprint'],
-		'environment' => 'staging', 'origin' => MAD4B_SCP_Live_Acceptance_Finalizer::STAGING_ORIGIN,
+		'environment' => 'staging', 'origin' => MAD4B_SCP_Site_Profile::site_origin(),
 		'mutation_id' => '11111111-1111-4111-8111-111111111111', 'approval_ticket_id' => '22222222-2222-4222-8222-222222222222',
 		'ability' => 'mad4b/content-update-post', 'provider' => 'core', 'target_type' => 'post', 'target_id' => '123',
 		'before_sha256' => $before, 'after_sha256' => $after, 'mutation_status' => 'undone',
@@ -147,7 +155,7 @@ namespace {
 
 	$runtime = array(
 		'contract' => MAD4B_SCP_Production_Unchanged_Attestation::RUNTIME_CONTRACT,
-		'environment' => 'production', 'site_url' => MAD4B_SCP_Production_Unchanged_Attestation::PRODUCTION_ORIGIN,
+		'environment' => 'production', 'site_url' => MAD4B_SCP_Site_Profile::related_origin( 'production' ),
 		'wordpress_version' => '7.1', 'php_version' => '8.3.33', 'db_server_info' => '11.8.9-MariaDB-log',
 		'active_theme_stylesheet' => 'astra-child', 'active_theme_version' => '1.0.0',
 	);
@@ -165,7 +173,7 @@ namespace {
 	$production = array(
 		'contract' => MAD4B_SCP_Production_Unchanged_Attestation::CONTRACT,
 		'candidate_sha' => $candidate['source_commit_sha'], 'build_fingerprint' => $candidate['build_fingerprint'],
-		'target' => 'production', 'origin' => MAD4B_SCP_Production_Unchanged_Attestation::PRODUCTION_ORIGIN, 'environment' => 'production',
+		'target' => 'production', 'origin' => MAD4B_SCP_Site_Profile::related_origin( 'production' ), 'environment' => 'production',
 		'producer' => $producer,
 		'baseline' => array( 'observed_at' => gmdate( 'c', $now - 120 ), 'runtime' => $runtime, 'plugin_inventory_contract' => MAD4B_SCP_Production_Unchanged_Attestation::PLUGIN_CONTRACT, 'plugins' => $plugins ),
 		'observed' => array( 'observed_at' => gmdate( 'c', $now - 60 ), 'runtime' => $runtime, 'plugin_inventory_contract' => MAD4B_SCP_Production_Unchanged_Attestation::PLUGIN_CONTRACT, 'plugins' => array_reverse( $plugins ) ),
@@ -193,10 +201,10 @@ namespace {
 	$reachability['production_unchanged']['ready'] = false;
 	mad4b_assert( ! MAD4B_SCP_Live_Acceptance_Finalizer::aggregate_ready( $reachability ), 'A failed mandatory gate must keep ready=false.' );
 
-	$GLOBALS['mad4b_test_env'] = 'production'; $GLOBALS['mad4b_test_home'] = 'https://egypttourgates.com';
-	mad4b_assert( false === MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed(), 'Production must never enable Staging observation persistence.' );
-	$GLOBALS['mad4b_test_env'] = 'staging'; $GLOBALS['mad4b_test_home'] = 'https://other-staging.example';
-	mad4b_assert( false === MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed(), 'Non-exact Staging origin must remain fail-closed.' );
+	$GLOBALS['mad4b_test_env'] = 'production'; $GLOBALS['mad4b_test_home'] = 'https://production.test';
+	mad4b_assert( false === MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed(), 'Production must never enable governed non-production observation persistence.' );
+	$GLOBALS['mad4b_test_env'] = 'staging'; $GLOBALS['mad4b_test_home'] = 'https://other-staging.example'; $GLOBALS['mad4b_test_urls_match'] = false;
+	mad4b_assert( false === MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed(), 'Site Profile URL mismatch must remain fail-closed.' );
 
 	echo "mad4b.live-acceptance-observer.runtime.v4: PASS\n";
 }

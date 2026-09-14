@@ -190,7 +190,7 @@ for marker in (
     'public static function physical_integrity_status()',
 ): require(impl['schema'], marker, 'implementation-schema-v6-approval-guard')
 for marker in (
-    'const CONTRACT = \'mad4b.site-profile.v1\'',
+    'const CONTRACT = \'mad4b.site-profile.v2\'',
     'public static function origin_enrolled()', 'public static function site_uuid()',
     'public static function revision()', 'public static function profile_digest()',
     'public static function write_enabled()',

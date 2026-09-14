@@ -18,7 +18,7 @@ function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_\-]/', '', str
 function current_user_can( $capability ) { return true; }
 function get_current_user_id() { return 1; }
 function wp_get_environment_type() { return 'staging'; }
-function home_url( $path = '/' ) { return 'https://staging.egypttourgates.com' . $path; }
+function home_url( $path = '/' ) { return 'https://provider-canary.test' . $path; }
 function site_url( $path = '/' ) { return home_url( $path ); }
 function wp_parse_url( $url ) { return parse_url( $url ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
@@ -37,6 +37,11 @@ class WP_Error {
 
 final class MAD4B_SCP_Policy {
 	public static function can_mutate() { return ! empty( $GLOBALS['mad4b_policy_mutate'] ); }
+}
+final class MAD4B_SCP_Site_Profile {
+	public static function current_environment() { return 'staging'; }
+	public static function current_host() { return 'provider-canary.test'; }
+	public static function nonproduction_governed( $feature = '' ) { return 'write' === (string) $feature; }
 }
 final class MAD4B_SCP_Staging_Write_Authority {
 	const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id';

@@ -37,6 +37,7 @@ class WP_Error {
 
 class MAD4B_SCP_Adapter_Base {}
 class MAD4B_SCP_Policy { public static function can_mutate() { return true; } }
+class MAD4B_SCP_Site_Profile { public static function nonproduction_governed( $feature = '' ) { return 'write' === (string) $feature; } }
 class MAD4B_SCP_Staging_Write_Authority {
 	const APPROVAL_INPUT_KEY = '_mad4b_approval';
 	public static function eligible() { return true; }
