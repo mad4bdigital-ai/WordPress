@@ -89,6 +89,12 @@ final class BrowserAcceptanceFreshnessGuard {
             }
             if ($reasons) return self::infrastructureResult($profileId, $reasons, $planDigest);
 
+            // Freshness metadata is owned and consumed by this decorator. Do not
+            // leak it into the canonical provider evidence envelope after it has
+            // been verified, because the provider intentionally rejects unknown
+            // top-level fields and binds the per-case nonce in canonical evidence.
+            unset($request['evidence']['challenge']);
+
             try {
                 $result = call_user_func($resultCallback, $request);
             } catch (\Throwable $error) {
@@ -151,7 +157,7 @@ final class BrowserAcceptanceFreshnessGuard {
     private static function infrastructureResult(string $profileId, array $reasons, string $planDigest=''): array {
         return array(
             'contract'=>'mad4b.browser-acceptance-result.v1',
-            'provider_contract'=>'etg.dfsb.browser-acceptance-provider.v1',
+            'provider_contract'=>BrowserAcceptanceProvider::CONTRACT,
             'provider_id'=>self::PROVIDER_ID,
             'profile_id'=>$profileId,
             'suite'=>'browser_runtime',
@@ -174,7 +180,7 @@ final class BrowserAcceptanceFreshnessGuard {
     private static function blockedPlan(string $profileId, array $reasons): array {
         return array(
             'contract'=>'mad4b.browser-acceptance-plan.v1',
-            'provider_contract'=>'etg.dfsb.browser-acceptance-provider.v1',
+            'provider_contract'=>BrowserAcceptanceProvider::CONTRACT,
             'state'=>'blocked',
             'provider_id'=>self::PROVIDER_ID,
             'profile_id'=>$profileId,
