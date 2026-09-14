@@ -3,17 +3,16 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Fresh read-only truth for the governed Staging write plane.
+ * Fresh read-only truth for the tenant-bound governed write plane.
  *
- * Read abilities must never mutate state just to answer a status question.
- * This bridge therefore separates three concerns:
- *  - live inspection: current NHI/grants/write projection/REST isolation;
- *  - runtime reconciliation: zero-touch lifecycle work after full init boot;
- *  - persisted certification: durable evidence written only by the explicit
- *    certification observer, with build/inventory freshness metadata.
+ * Installation is not authority. Read abilities never mutate state merely to
+ * answer a status question. Runtime eligibility is derived from the exact
+ * enrolled Site Profile and the governed-write authority rather than a product-
+ * specific hostname. The legacy Staging class names remain compatibility names
+ * only; tenant identity is site_uuid + profile revision/digest + exact origin.
  */
 final class MAD4B_SCP_Live_Truth {
-	const CONTRACT = 'mad4b.live-truth.v1';
+	const CONTRACT = 'mad4b.live-truth.v2';
 	const FRESHNESS_OPTION = 'mad4b_scp_write_runtime_certification_freshness_v1';
 
 	private static $booted = false;
@@ -25,43 +24,24 @@ final class MAD4B_SCP_Live_Truth {
 		if ( self::$booted ) return;
 		self::$booted = true;
 
-		// Must exist before the one-shot Ability registry materializes. Priority 100
-		// intentionally wins over the legacy late certification callback rewrite.
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_live_read_callbacks' ), 100, 2 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'abilities_materialized' ), PHP_INT_MAX );
-
-		// Full Control Plane boot is wired at init -1000000. This callback runs one
-		// priority later and closes the case where another component legally created
-		// the Ability registry at init -1000001, before full boot could attach its
-		// reconciliation hook.
 		add_action( 'init', array( __CLASS__, 'after_full_boot' ), -999999 );
 
-		// Existing persisted certification records remain historical evidence. This
-		// filter prevents a record from being presented as current when its build or
-		// write/provider projection no longer matches this request.
 		if ( class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ) {
 			add_filter( 'option_' . MAD4B_SCP_Write_Runtime_Certification::OPTION, array( __CLASS__, 'filter_persisted_certification' ), 100 );
 		}
 		add_action( 'added_option', array( __CLASS__, 'record_added_certification_freshness' ), 100, 2 );
 		add_action( 'updated_option', array( __CLASS__, 'record_updated_certification_freshness' ), 100, 3 );
-
-		// Admin export/certification is an explicit persistence boundary. Refresh the
-		// durable record before the Skills exporter (admin_init priority 1) can read it.
 		add_action( 'admin_init', array( __CLASS__, 'refresh_admin_certification' ), 0 );
 	}
 
 	public static function bind_live_read_callbacks( $args, $name ) {
 		if ( ! is_array( $args ) ) return $args;
 		$name = (string) $name;
-		if ( 'mad4b/write-authority-status' === $name ) {
-			$args['execute_callback'] = array( __CLASS__, 'current_authority_status' );
-		}
-		if ( 'mad4b/write-runtime-certification' === $name ) {
-			$args['execute_callback'] = array( __CLASS__, 'current_write_certification' );
-		}
-		if ( 'mad4b/rest-compatibility-status' === $name ) {
-			$args['execute_callback'] = array( __CLASS__, 'current_rest_compatibility' );
-		}
+		if ( 'mad4b/write-authority-status' === $name ) $args['execute_callback'] = array( __CLASS__, 'current_authority_status' );
+		if ( 'mad4b/write-runtime-certification' === $name ) $args['execute_callback'] = array( __CLASS__, 'current_write_certification' );
+		if ( 'mad4b/rest-compatibility-status' === $name ) $args['execute_callback'] = array( __CLASS__, 'current_rest_compatibility' );
 		return $args;
 	}
 
@@ -72,9 +52,7 @@ final class MAD4B_SCP_Live_Truth {
 
 	public static function after_full_boot() {
 		self::$full_boot_seen = true;
-		if ( self::$abilities_materialized || did_action( 'wp_abilities_api_init' ) > 0 ) {
-			self::recover_runtime_authority();
-		}
+		if ( self::$abilities_materialized || did_action( 'wp_abilities_api_init' ) > 0 ) self::recover_runtime_authority();
 	}
 
 	private static function recover_runtime_authority() {
@@ -87,16 +65,30 @@ final class MAD4B_SCP_Live_Truth {
 	}
 
 	public static function current_authority_status() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		$parts = wp_parse_url( home_url( '/' ) );
+		$profile_available = class_exists( 'MAD4B_SCP_Site_Profile' );
+		$environment = $profile_available ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$origin = $profile_available ? MAD4B_SCP_Site_Profile::current_origin() : ( function_exists( 'home_url' ) ? untrailingslashit( (string) home_url( '/' ) ) : '' );
+		$parts = '' !== $origin && function_exists( 'wp_parse_url' ) ? wp_parse_url( $origin ) : parse_url( $origin );
 		$host = is_array( $parts ) && ! empty( $parts['host'] ) ? strtolower( rtrim( (string) $parts['host'], '.' ) ) : '';
-		$expected_host = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::STAGING_HOST : 'staging.egypttourgates.com';
-		$eligible = 'staging' === $environment && $expected_host === $host;
+
+		$profile_configured = $profile_available && MAD4B_SCP_Site_Profile::configured();
+		$profile_origin_enrolled = $profile_available && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$profile_write_enabled = $profile_available && MAD4B_SCP_Site_Profile::write_enabled();
+		$site_uuid = $profile_available ? MAD4B_SCP_Site_Profile::site_uuid() : '';
+		$profile_revision = $profile_available ? MAD4B_SCP_Site_Profile::revision() : 0;
+		$profile_digest = $profile_available ? MAD4B_SCP_Site_Profile::profile_digest() : '';
+		$eligible = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::eligible();
 		$inventory = self::inventory_identity();
 		$blockers = array();
 		$grant_blockers = array();
 
-		if ( ! $eligible ) $blockers[] = 'staging' !== $environment ? 'environment_not_staging' : 'origin_not_governed_staging';
+		if ( ! $eligible ) {
+			if ( ! $profile_configured ) $blockers[] = 'site_profile_unconfigured';
+			elseif ( ! $profile_origin_enrolled ) $blockers[] = 'site_profile_not_enrolled';
+			elseif ( ! $profile_write_enabled ) $blockers[] = 'site_profile_write_disabled';
+			else $blockers[] = 'governed_write_authority_ineligible';
+		}
+
 		$mutation_gate = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === constant( 'MAD4B_MCP_MUTATION_ENABLED' );
 		if ( $eligible && ! $mutation_gate ) $blockers[] = 'mutation_gate_disabled';
 		$schema_ready = class_exists( 'MAD4B_SCP_Schema' ) && MAD4B_SCP_Schema::is_ready();
@@ -105,38 +97,44 @@ final class MAD4B_SCP_Live_Truth {
 		if ( $eligible && empty( $audit['ready'] ) ) $blockers[] = 'audit_unavailable';
 
 		$oauth = class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' ) ? MAD4B_SCP_Staging_OAuth_Autoconfig::status() : array();
-		$user_id = isset( $oauth['wp_user_id'] ) ? absint( $oauth['wp_user_id'] ) : 0;
+		$user_ids = isset( $oauth['oauth_user_ids'] ) && is_array( $oauth['oauth_user_ids'] ) ? array_values( array_unique( array_filter( array_map( 'absint', $oauth['oauth_user_ids'] ) ) ) ) : array();
+		$owner_user_id = isset( $oauth['primary_owner_user_id'] ) ? absint( $oauth['primary_owner_user_id'] ) : ( isset( $oauth['wp_user_id'] ) ? absint( $oauth['wp_user_id'] ) : 0 );
+		if ( empty( $user_ids ) && $owner_user_id > 0 ) $user_ids = array( $owner_user_id );
 		$issuer = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' ) : '';
-		if ( $eligible && ( empty( $oauth['configured'] ) || $user_id < 1 || '' === $issuer ) ) $blockers[] = 'staging_oauth_subject_unavailable';
-		$user = $user_id > 0 ? get_userdata( $user_id ) : null;
-		if ( $eligible && $user_id > 0 && ( ! $user || ! user_can( $user, 'manage_options' ) ) ) $blockers[] = 'staging_oauth_user_not_admin';
+		if ( $eligible && ( empty( $oauth['configured'] ) || empty( $user_ids ) || '' === $issuer ) ) $blockers[] = 'oauth_subject_unavailable';
+		$owner = $owner_user_id > 0 ? get_userdata( $owner_user_id ) : null;
+		if ( $eligible && $owner_user_id > 0 && ( ! $owner || ! user_can( $owner, 'manage_options' ) ) ) $blockers[] = 'oauth_trust_owner_not_admin';
 
 		$agent = null;
+		$agent_slug = $profile_available ? MAD4B_SCP_Site_Profile::agent_slug() : 'chatgpt-governed-write';
 		if ( $eligible && $schema_ready ) {
 			global $wpdb;
 			$tables = MAD4B_SCP_Schema::tables();
-			$slug = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::AGENT_SLUG : 'chatgpt-staging-write';
-			$agent = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tables['agents']} WHERE slug = %s LIMIT 1", $slug ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			if ( ! $agent ) $blockers[] = 'staging_write_agent_missing';
+			$agent = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tables['agents']} WHERE slug = %s LIMIT 1", $agent_slug ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			if ( ! $agent ) $blockers[] = 'governed_write_agent_missing';
 		}
 		if ( is_array( $agent ) ) {
-			if ( 'enabled' !== (string) $agent['status'] ) $blockers[] = 'staging_write_agent_disabled';
-			if ( 'staging' !== (string) $agent['environment'] ) $blockers[] = 'staging_write_agent_environment_mismatch';
-			if ( $user_id > 0 && (int) $agent['wp_user_id'] !== $user_id ) $blockers[] = 'staging_write_agent_user_mismatch';
+			if ( 'enabled' !== (string) $agent['status'] ) $blockers[] = 'governed_write_agent_disabled';
+			if ( $environment !== (string) $agent['environment'] ) $blockers[] = 'governed_write_agent_environment_mismatch';
+			if ( $owner_user_id > 0 && (int) $agent['wp_user_id'] !== $owner_user_id ) $blockers[] = 'governed_write_agent_user_mismatch';
 		}
 
-		$fingerprint = '';
-		$bound = null;
-		if ( is_array( $agent ) && '' !== $issuer && $user_id > 0 && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
-			$fingerprint = hash( 'sha256', 'oauth' . "\0" . $issuer . "\0" . 'user:' . $user_id );
-			$bound = MAD4B_SCP_Agent_Registry::resolve_agent( array(
-				'authenticated' => true,
-				'subject_type' => 'oauth',
-				'subject_fingerprint' => $fingerprint,
-			) );
-			if ( is_wp_error( $bound ) ) $blockers[] = $bound->get_error_code();
-			elseif ( (int) $bound['id'] !== (int) $agent['id'] ) $blockers[] = 'oauth_subject_bound_to_other_agent';
+		$subject_fingerprints = array();
+		$subject_blockers = array();
+		if ( is_array( $agent ) && '' !== $issuer && ! empty( $user_ids ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			foreach ( $user_ids as $user_id ) {
+				$fingerprint = hash( 'sha256', 'oauth' . "\0" . $issuer . "\0" . 'user:' . $user_id );
+				$subject_fingerprints[] = $fingerprint;
+				$bound = MAD4B_SCP_Agent_Registry::resolve_agent( array(
+					'authenticated' => true,
+					'subject_type' => 'oauth',
+					'subject_fingerprint' => $fingerprint,
+				) );
+				if ( is_wp_error( $bound ) ) $subject_blockers[] = $bound->get_error_code() . ':user:' . $user_id;
+				elseif ( (int) $bound['id'] !== (int) $agent['id'] ) $subject_blockers[] = 'oauth_subject_bound_to_other_agent:user:' . $user_id;
+			}
 		}
+		if ( $eligible && ! empty( $subject_blockers ) ) $blockers[] = 'oauth_subject_binding_incomplete';
 
 		$tools = isset( $inventory['write_tools'] ) ? $inventory['write_tools'] : array();
 		if ( $eligible && empty( $tools ) ) $blockers[] = 'write_tool_inventory_empty';
@@ -150,7 +148,7 @@ final class MAD4B_SCP_Live_Truth {
 				else ++$existing;
 			}
 		}
-		if ( ! empty( $grant_blockers ) ) $blockers[] = 'grant_reconciliation_incomplete';
+		if ( $eligible && ! empty( $grant_blockers ) ) $blockers[] = 'grant_reconciliation_incomplete';
 
 		$counts = class_exists( 'MAD4B_SCP_Agent_Registry' ) && $schema_ready ? MAD4B_SCP_Agent_Registry::counts() : array();
 		$wildcards = isset( $counts['wildcard_grants'] ) ? (int) $counts['wildcard_grants'] : 0;
@@ -158,9 +156,6 @@ final class MAD4B_SCP_Live_Truth {
 		$breakglass = in_array( 'mad4b/database-raw-query', $tools, true );
 		if ( $breakglass ) $blockers[] = 'breakglass_leak';
 
-		// Current database truth is not enough to claim executable authority: the
-		// legacy runtime object must also have reconciled this exact projection so
-		// server exposure/authorization see the same state in this request.
 		$runtime = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
 		$runtime_reconciled = ! empty( $runtime['ready'] )
 			&& empty( $runtime['blocker'] )
@@ -171,19 +166,30 @@ final class MAD4B_SCP_Live_Truth {
 		$blockers = array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) );
 		$ready = $eligible && empty( $blockers );
 		return array(
-			'contract' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CONTRACT : 'mad4b.staging-write-authority.v1',
+			'contract' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CONTRACT : 'mad4b.governed-write-authority.v2',
 			'truth_contract' => self::CONTRACT,
 			'environment' => $environment,
+			'origin' => $origin,
 			'host' => $host,
+			'site_uuid' => $site_uuid,
+			'site_profile_revision' => $profile_revision,
+			'site_profile_digest' => $profile_digest,
+			'profile_configured' => $profile_configured,
+			'profile_origin_enrolled' => $profile_origin_enrolled,
+			'profile_write_enabled' => $profile_write_enabled,
 			'eligible' => $eligible,
 			'ready' => $ready,
 			'state' => $eligible ? ( $ready ? 'ready' : 'blocked' ) : 'ineligible',
 			'blocker' => empty( $blockers ) ? '' : $blockers[0],
 			'blockers' => $blockers,
 			'mutation_gate_configured' => $mutation_gate,
-			'configuration_source' => $eligible ? 'staging_exact_origin_auto' : 'none',
+			'configuration_source' => $eligible ? 'site_profile' : 'none',
+			'agent_slug' => $agent_slug,
 			'agent_public_id' => is_array( $agent ) && isset( $agent['public_id'] ) ? (string) $agent['public_id'] : '',
-			'subject_fingerprint_prefix' => '' !== $fingerprint ? substr( $fingerprint, 0, 16 ) : '',
+			'primary_owner_user_id' => $owner_user_id,
+			'oauth_user_ids' => $user_ids,
+			'subject_fingerprint_prefix' => ! empty( $subject_fingerprints ) ? substr( (string) $subject_fingerprints[0], 0, 16 ) : '',
+			'subject_binding_blockers' => $subject_blockers,
 			'write_tool_count' => count( $tools ),
 			'write_tools' => $tools,
 			'exact_grants_existing' => $existing,
@@ -218,14 +224,16 @@ final class MAD4B_SCP_Live_Truth {
 		$checks = array();
 		$blockers = array();
 
-		$checks['exact_staging_origin'] = ! empty( $authority['eligible'] );
+		$checks['site_profile_bound'] = ! empty( $authority['eligible'] );
+		// Compatibility alias retained while older evidence consumers migrate.
+		$checks['exact_staging_origin'] = $checks['site_profile_bound'];
 		$checks['authority_ready'] = ! empty( $authority['ready'] );
 		$checks['mutation_gate_enabled'] = ! empty( $authority['mutation_gate_configured'] );
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
 		$checks['remote_approval_required'] = ! empty( $authority['all_remote_writes_require_exact_approval'] );
-		foreach ( $checks as $key => $ok ) if ( ! $ok ) $blockers[] = $key;
+		foreach ( array( 'site_profile_bound', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'remote_approval_required' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
 		$checks['oauth_effective'] = ! empty( $oauth['effective'] );
@@ -253,8 +261,6 @@ final class MAD4B_SCP_Live_Truth {
 		foreach ( $provider_blocked as $blocked ) {
 			$ability_name = isset( $blocked['ability'] ) ? (string) $blocked['ability'] : '';
 			if ( '' === $ability_name || ! class_exists( 'MAD4B_SCP_Servers' ) ) continue;
-			// Stable ChatGPT discovery may expose the contract while provider state is
-			// gated. Only a blocked capability mounted on mad4b-write is executable leakage.
 			if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $provider_blocked_mount_leaks[] = $ability_name;
 		}
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
@@ -275,7 +281,7 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['approval_planner_exact_grant_required'] = ! empty( $planner['remote_planner_requires_exact_mad4b_write_grant'] );
 		$checks['approval_planner_budgeted'] = ! empty( $planner['remote_planner_budgeted'] );
 		$checks['approval_planner_no_prior_ticket'] = isset( $planner['remote_planner_requires_prior_ticket'] ) && false === $planner['remote_planner_requires_prior_ticket'];
-		$checks['approval_planner_self_agent_only'] = isset( $planner['target_agent'] ) && 'dedicated_staging_write_agent_only' === $planner['target_agent'];
+		$checks['approval_planner_self_agent_only'] = isset( $planner['target_agent'] ) && in_array( (string) $planner['target_agent'], array( 'dedicated_staging_write_agent_only', 'dedicated_governed_write_agent_only' ), true );
 		$checks['approval_planner_write_server_only'] = isset( $planner['target_server'] ) && 'mad4b-write' === $planner['target_server'];
 		$checks['approval_planner_mutation_class_only'] = isset( $planner['target_ticket_class'] ) && 'mutation' === $planner['target_ticket_class'];
 		$checks['approval_planner_breakglass_denied'] = isset( $planner['breakglass_target_allowed'] ) && false === $planner['breakglass_target_allowed'];
@@ -285,8 +291,6 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['no_wildcard_grants'] = empty( $counts['wildcard_grants'] );
 		if ( ! $checks['no_wildcard_grants'] ) $blockers[] = 'wildcard_grants_detected';
 
-		// Deliberately structural only. Do not require or even probe a lazy WPML
-		// provider route from inside the MCP request that is being certified.
 		$rest = self::local_rest_isolation();
 		$checks['rest_enabled'] = ! empty( $rest['rest_enabled'] );
 		$checks['control_plane_not_on_rest_enabled_hook'] = empty( $rest['control_plane_filters_rest_enabled'] );
@@ -353,7 +357,7 @@ final class MAD4B_SCP_Live_Truth {
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),
 			'persistence' => 'read_only_live_inspection',
-			'external_client_action' => 'Run the real external WPML endpoint acceptance, then Refresh/Scan Tools in the same Plugin and verify this exact write inventory externally before merge.',
+			'external_client_action' => 'Run deployment-specific external acceptance, then Refresh/Scan Tools in the same Plugin and verify this exact write inventory externally before merge.',
 		);
 	}
 
@@ -423,6 +427,9 @@ final class MAD4B_SCP_Live_Truth {
 			'provider_blocked_fingerprint' => isset( $identity['provider_blocked_fingerprint'] ) ? $identity['provider_blocked_fingerprint'] : '',
 			'evidence_digest' => isset( $value['evidence_digest'] ) ? (string) $value['evidence_digest'] : '',
 			'observed_at' => isset( $value['observed_at'] ) ? (string) $value['observed_at'] : gmdate( 'c' ),
+			'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
+			'site_profile_revision' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::revision() : 0,
+			'site_profile_digest' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::profile_digest() : '',
 		), false );
 	}
 
@@ -449,6 +456,14 @@ final class MAD4B_SCP_Live_Truth {
 		if ( ! isset( $freshness['provider_blocked_fingerprint'] ) || ! hash_equals( $current_blocked, (string) $freshness['provider_blocked_fingerprint'] ) ) $reasons[] = 'provider_blocked_projection_changed';
 		if ( ! isset( $value['write_tool_count'] ) || (int) $value['write_tool_count'] !== (int) $identity['write_tool_count'] ) $reasons[] = 'write_tool_count_changed';
 		if ( isset( $freshness['evidence_digest'], $value['evidence_digest'] ) && '' !== (string) $freshness['evidence_digest'] && ! hash_equals( (string) $freshness['evidence_digest'], (string) $value['evidence_digest'] ) ) $reasons[] = 'persisted_evidence_digest_changed';
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+			$site_uuid = MAD4B_SCP_Site_Profile::site_uuid();
+			$revision = MAD4B_SCP_Site_Profile::revision();
+			$digest = MAD4B_SCP_Site_Profile::profile_digest();
+			if ( ! isset( $freshness['site_uuid'] ) || '' === $site_uuid || ! hash_equals( $site_uuid, (string) $freshness['site_uuid'] ) ) $reasons[] = 'site_identity_changed';
+			if ( ! isset( $freshness['site_profile_revision'] ) || $revision !== (int) $freshness['site_profile_revision'] ) $reasons[] = 'site_profile_revision_changed';
+			if ( ! isset( $freshness['site_profile_digest'] ) || '' === $digest || ! hash_equals( $digest, (string) $freshness['site_profile_digest'] ) ) $reasons[] = 'site_profile_digest_changed';
+		}
 		return array_values( array_unique( $reasons ) );
 	}
 
