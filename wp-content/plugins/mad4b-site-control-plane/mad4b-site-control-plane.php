@@ -42,6 +42,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-init-lock.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canary.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-query-monitor-evidence-bridge.php';
@@ -121,6 +122,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 MAD4B_SCP_Site_Profile::bootstrap();
 MAD4B_SCP_Site_Profile::boot();
 MAD4B_SCP_Dependency_Manager::boot();
+MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
 
 MAD4B_SCP_Live_Acceptance_Observer::boot_early();
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();
