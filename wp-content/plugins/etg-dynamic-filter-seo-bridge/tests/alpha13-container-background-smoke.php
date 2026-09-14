@@ -32,7 +32,7 @@ use ETG\DynamicFilterSEOBridge\JetSmartFilters\AjaxFilterStateParser;
 
 $modes=ContentSlotRegistry::mediaModes();
 etg_bg_expect(count($modes)===7,'seven governed collection modes remain available');
-$registry=new ContentSlotRegistry();
+$registry=new ContentSlotRegistry(true);
 foreach(array_keys($modes)as$mode){
     $image=$registry->get(ContentSlotRegistry::backgroundSlotId('image',$mode));
     $gallery=$registry->get(ContentSlotRegistry::backgroundSlotId('gallery',$mode));
