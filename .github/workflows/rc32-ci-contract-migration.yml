@@ -38,6 +38,16 @@ jobs:
         run: |
           set -euo pipefail
           perl -0pi -e 's/if found != expected:/if found < expected:/' .github/rc32-ci-contract-migration.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/rc32-ci-contract-migration.py')
+          s = p.read_text(encoding='utf-8')
+          a = s.index('old_block = """')
+          marker = 'replace(conn, old_block, new_block)\n'
+          b = s.index(marker, a) + len(marker)
+          replacement = '''connection_replacement = """          # Explicitly enroll the generic HTTPS fixture after the foreign preloader exists.\n          # The next request remains the first governed repair opportunity.\n          php /tmp/wp-cli.phar eval '\n          $result = MAD4B_SCP_Site_Profile::save_current_site( array(\n              \\"expected_revision\\" => 0, \\"display_name\\" => \\"MAD4B Connection Governance\\",\n              \\"oauth_user_ids\\" => array( get_current_user_id() ),\n              \\"oauth_enabled\\" => false, \\"skills_enabled\\" => false, \\"write_enabled\\" => false,\n              \\"production_write_confirmed\\" => false, \\"provider_isolation_enabled\\" => false,\n              \\"managed_runtime_enabled\\" => true, \\"acceptance_enabled\\" => false,\n          ) );\n          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . \\":\\" . $result->get_error_message() );\n          ' --path=\\"$WP_PATH\\" --user=mad4b-ci-admin\n"""\nbetween(\n    conn,\n    "          # Move the disposable site onto the exact Staging origin without a\\n",\n    "\\n          # Request 1 must detect provenance mismatch and install the managed\\n",\n    connection_replacement,\n)\n'''
+          p.write_text(s[:a] + replacement + s[b:], encoding='utf-8')
+          PY
           python3 .github/rc32-ci-contract-migration.py
 
       - name: Validate migrated contracts
