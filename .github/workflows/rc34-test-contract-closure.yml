@@ -1,0 +1,65 @@
+name: RC34 Test Contract Closure
+
+on:
+  push:
+    paths:
+      - '.github/rc34-test-contract-closure.py'
+      - '.github/workflows/rc34-test-contract-closure.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact migration head
+        uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 0
+
+      - name: Guard staging delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='d5f8768ba7f2d95272afb5f93589d08172f45c41'
+          git merge-base --is-ancestor "$base" HEAD
+          changed="$(git diff --name-only "$base"..HEAD)"
+          printf '%s\n' "$changed"
+          bad="$(printf '%s\n' "$changed" | grep -Ev '^(\.github/rc34-test-contract-closure\.py|\.github/workflows/rc34-test-contract-closure\.yml)$' || true)"
+          test -z "$bad"
+
+      - name: Apply closure patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/rc34-test-contract-closure.py
+          git diff --check
+
+      - name: Validate targeted contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/tests/external-snapshot-finalizer-runtime.php"
+          php "$root/tests/external-snapshot-finalizer-runtime.php"
+          python3 "$root/tests/staging-write-authority-contract.py"
+          python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
+          php -l "$root/tests/runtime-pre-init-abilities-lifecycle.php"
+
+      - name: Push validated non-workflow patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B Automation'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add \
+            wp-content/plugins/mad4b-site-control-plane/tests/external-snapshot-finalizer-runtime.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py \
+            wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-conflict-guard-contract.py \
+            wp-content/plugins/mad4b-site-control-plane/tests/runtime-pre-init-abilities-lifecycle.php
+          test -n "$(git diff --cached --name-only)"
+          git commit -m 'fix(ci): align rc33 fixtures with Site Profile v2'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
