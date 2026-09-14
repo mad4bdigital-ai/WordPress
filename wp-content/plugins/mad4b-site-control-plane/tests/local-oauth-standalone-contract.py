@@ -60,6 +60,15 @@ required_server = [
     'outside the WordPress web root',
     'Refresh token replay detected; token family revoked.',
     'configured_issuer_validation',
+    'private static function site_base_url()',
+    'private static function protocol_path( $url_or_path )',
+    'private static function metadata_url_for_issuer( $issuer )',
+    "return self::site_base_url() . self::AUTHORIZE_PATH;",
+    "return self::site_base_url() . self::TOKEN_PATH;",
+    "return self::site_base_url() . self::JWKS_PATH;",
+    "return self::site_base_url() . self::REVOCATION_PATH;",
+    "self::protocol_path( self::authorize_url() )",
+    "self::protocol_path( self::metadata_url() )",
     'mad4b_local_oauth_issuer_cross_origin',
     'issuer_same_origin_required',
     'issuer_configuration_valid',
@@ -84,6 +93,10 @@ for forbidden in [
     "update_option( 'mad4b_mcp_local_oauth_private_key'",
     "add_option( 'mad4b_mcp_local_oauth_private_key'",
     'strlen( $client_id ) > 512',
+    'self::JWKS_PATH === $path',
+    'self::AUTHORIZE_PATH === $path',
+    'self::TOKEN_PATH === $path',
+    'self::REVOCATION_PATH === $path',
 ]:
     if forbidden in server:
         raise SystemExit(f'forbidden local OAuth server primitive: {forbidden}')

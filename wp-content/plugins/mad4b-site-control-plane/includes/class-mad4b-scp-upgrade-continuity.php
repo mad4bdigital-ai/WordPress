@@ -153,14 +153,19 @@ final class MAD4B_SCP_Upgrade_Continuity {
 
 	public static function is_known_oauth_protocol_path( $path ) {
 		$path = self::normalize_path( $path );
-		$known = array(
-			'/oauth/mcp/authorize',
-			'/oauth/mcp/token',
-			'/oauth/mcp/jwks',
-			'/oauth/mcp/revoke',
-			'/.well-known/oauth-authorization-server/oauth/mcp',
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) return false;
+		$urls = array(
+			MAD4B_SCP_Local_OAuth_Server::authorize_url(),
+			MAD4B_SCP_Local_OAuth_Server::token_url(),
+			MAD4B_SCP_Local_OAuth_Server::jwks_url(),
+			MAD4B_SCP_Local_OAuth_Server::revocation_url(),
+			MAD4B_SCP_Local_OAuth_Server::metadata_url(),
 		);
-		return in_array( $path, $known, true );
+		foreach ( $urls as $url ) {
+			$candidate = wp_parse_url( (string) $url, PHP_URL_PATH );
+			if ( is_string( $candidate ) && hash_equals( self::normalize_path( $candidate ), $path ) ) return true;
+		}
+		return false;
 	}
 
 	public static function reconnect_status() {

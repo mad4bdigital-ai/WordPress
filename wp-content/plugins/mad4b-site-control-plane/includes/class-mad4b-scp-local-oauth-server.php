@@ -150,19 +150,23 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	public static function issuer() {
 		$validated = self::configured_issuer_validation();
 		if ( is_string( $validated ) && '' !== $validated ) return $validated;
-		return self::origin() . self::ISSUER_PATH;
+		return self::site_base_url() . self::ISSUER_PATH;
 	}
 
 	public static function metadata_url() {
-		$parts = wp_parse_url( self::issuer() );
+		return self::metadata_url_for_issuer( self::issuer() );
+	}
+
+	public static function authorize_url() { return self::site_base_url() . self::AUTHORIZE_PATH; }
+	public static function token_url() { return self::site_base_url() . self::TOKEN_PATH; }
+	public static function jwks_url() { return self::site_base_url() . self::JWKS_PATH; }
+	public static function revocation_url() { return self::site_base_url() . self::REVOCATION_PATH; }
+
+	private static function metadata_url_for_issuer( $issuer ) {
+		$parts = wp_parse_url( (string) $issuer );
 		if ( ! is_array( $parts ) || empty( $parts['path'] ) ) return self::origin() . '/.well-known/oauth-authorization-server';
 		return self::origin() . '/.well-known/oauth-authorization-server/' . ltrim( rtrim( (string) $parts['path'], '/' ), '/' );
 	}
-
-	public static function authorize_url() { return self::origin() . self::AUTHORIZE_PATH; }
-	public static function token_url() { return self::origin() . self::TOKEN_PATH; }
-	public static function jwks_url() { return self::origin() . self::JWKS_PATH; }
-	public static function revocation_url() { return self::origin() . self::REVOCATION_PATH; }
 
 	public static function resource_identifier() {
 		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
@@ -186,19 +190,25 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$path = wp_parse_url( $uri, PHP_URL_PATH );
 		if ( ! is_string( $path ) ) return;
-		$path = rtrim( '/' . ltrim( $path, '/' ), '/' );
-		$metadata_path = (string) wp_parse_url( self::metadata_url(), PHP_URL_PATH );
-		$known = in_array( $path, array( rtrim( $metadata_path, '/' ), self::JWKS_PATH, self::AUTHORIZE_PATH, self::TOKEN_PATH, self::REVOCATION_PATH ), true );
+		$path = self::protocol_path( $path );
+		$paths = array(
+			'metadata' => self::protocol_path( self::metadata_url() ),
+			'jwks' => self::protocol_path( self::jwks_url() ),
+			'authorize' => self::protocol_path( self::authorize_url() ),
+			'token' => self::protocol_path( self::token_url() ),
+			'revocation' => self::protocol_path( self::revocation_url() ),
+		);
+		$known = in_array( $path, array_values( $paths ), true );
 		if ( $known && ! self::effective_for_protocol() ) self::send_oauth_error( 'temporarily_unavailable', 'Local OAuth authority is not effective.', 503 );
-		if ( rtrim( $metadata_path, '/' ) === $path ) self::send_json( self::metadata(), 200 );
-		if ( self::JWKS_PATH === $path ) {
+		if ( hash_equals( $paths['metadata'], $path ) ) self::send_json( self::metadata(), 200 );
+		if ( hash_equals( $paths['jwks'], $path ) ) {
 			$jwks = self::jwks_document();
 			if ( is_wp_error( $jwks ) ) self::send_oauth_error( 'server_error', 'Local signing key is unavailable.', 503 );
 			self::send_json( $jwks, 200 );
 		}
-		if ( self::AUTHORIZE_PATH === $path ) self::handle_authorize();
-		if ( self::TOKEN_PATH === $path ) self::handle_token();
-		if ( self::REVOCATION_PATH === $path ) self::handle_revocation();
+		if ( hash_equals( $paths['authorize'], $path ) ) self::handle_authorize();
+		if ( hash_equals( $paths['token'], $path ) ) self::handle_token();
+		if ( hash_equals( $paths['revocation'], $path ) ) self::handle_revocation();
 	}
 
 	private static function handle_authorize() {
@@ -797,7 +807,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function configured_issuer_validation() {
-		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::origin() . self::ISSUER_PATH;
+		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::site_base_url() . self::ISSUER_PATH;
 		$configured = rtrim( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ), '/' );
 		if ( strlen( $configured ) > self::MAX_URI_BYTES || ! self::valid_https_url( $configured ) ) return new WP_Error( 'mad4b_local_oauth_issuer_invalid', 'Configured local OAuth issuer must be a bounded HTTPS URL without credentials, query or fragment.' );
 		if ( ! self::same_origin( $configured, self::origin() ) ) return new WP_Error( 'mad4b_local_oauth_issuer_cross_origin', 'Configured local OAuth issuer must use the same origin as this WordPress site.' );
@@ -823,11 +833,29 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function origin() {
-		$parts = wp_parse_url( home_url( '/' ) );
+		$parts = wp_parse_url( self::site_base_url() );
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
 		$origin = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );
 		if ( isset( $parts['port'] ) ) $origin .= ':' . (int) $parts['port'];
 		return $origin;
+	}
+
+	private static function site_base_url() {
+		$parts = wp_parse_url( home_url( '/' ) );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
+		$base = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );
+		if ( isset( $parts['port'] ) ) $base .= ':' . (int) $parts['port'];
+		$path = isset( $parts['path'] ) ? '/' . ltrim( (string) $parts['path'], '/' ) : '';
+		$path = '/' === $path ? '' : rtrim( $path, '/' );
+		return $base . $path;
+	}
+
+	private static function protocol_path( $url_or_path ) {
+		$value = (string) $url_or_path;
+		$path = wp_parse_url( $value, PHP_URL_PATH );
+		if ( ! is_string( $path ) || '' === $path ) $path = $value;
+		$path = '/' . ltrim( (string) $path, '/' );
+		return '/' === $path ? '/' : rtrim( $path, '/' );
 	}
 
 	private static function request_param( array $params, $name, $max_bytes, $trim = true ) {

@@ -38,6 +38,18 @@ function wp_register_ability(){}
 function wp_has_ability(){return false;}
 final class MAD4B_SCP_Audit { public static function storage_status(){return array('ready'=>true);} public static function record(){return true;} }
 require dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
+final class MAD4B_SCP_Local_OAuth_Server {
+    private static function base(){return rtrim($GLOBALS['home'],'/');}
+    public static function authorize_url(){return self::base().'/oauth/mcp/authorize';}
+    public static function token_url(){return self::base().'/oauth/mcp/token';}
+    public static function jwks_url(){return self::base().'/oauth/mcp/jwks';}
+    public static function revocation_url(){return self::base().'/oauth/mcp/revoke';}
+    public static function metadata_url(){
+        $issuer=self::base().'/oauth/mcp';$parts=parse_url($issuer);
+        $origin=$parts['scheme'].'://'.$parts['host'].(isset($parts['port'])?':'.$parts['port']:'');
+        return $origin.'/.well-known/oauth-authorization-server/'.ltrim(rtrim($parts['path'],'/'),'/');
+    }
+}
 require dirname(__DIR__).'/includes/class-mad4b-scp-upgrade-continuity.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);}}
 function legacy($env='staging',$origin='https://staging.example.test'){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>4,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy','chatgpt_app_id'=>'plugin_asdk_app_legacy','oauth_user_ids'=>array(7,8),'related_origins'=>array(),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy','legacy_zero_touch'=>true);}
@@ -86,9 +98,15 @@ $GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=array('enviro
 $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
 ok(!$r['recovered']&&'nonproduction_only'===$r['blocker'],'Production auto recovery is prohibited');
 
-// Known OAuth paths are intercepted deterministically instead of theme 404s.
+// Known OAuth paths are derived from the live local authority instead of assuming domain-root WordPress.
 ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/oauth/mcp/authorize'),'authorize path recognized');
 ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/.well-known/oauth-authorization-server/oauth/mcp/'),'metadata path recognized');
 ok(!MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/unrelated'),'unrelated path ignored');
+$GLOBALS['home']='https://staging.example.test/wordpress';
+ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/wordpress/oauth/mcp/authorize'),'subdirectory authorize path recognized');
+ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/wordpress/oauth/mcp/token'),'subdirectory token path recognized');
+ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/.well-known/oauth-authorization-server/wordpress/oauth/mcp'),'subdirectory metadata path recognized');
+ok(!MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/oauth/mcp/authorize'),'domain-root OAuth path rejected for subdirectory site');
+$GLOBALS['home']='https://staging.example.test';
 
 fwrite(STDOUT,"mad4b.upgrade-continuity.runtime.v1: PASS\n");
