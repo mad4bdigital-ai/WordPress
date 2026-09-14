@@ -1,0 +1,112 @@
+name: RC32 Subdirectory OAuth Generalization
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - '.github/workflows/rc32-subdirectory-oauth-generalization.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 0
+
+      - name: Guard exact parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/feat/dynamic-wordpress-skills-20260909)"
+          test "$(git rev-parse HEAD^)" = "0ca51d12ebb16a5b80eece84e98ff5e77b3a28d1"
+
+      - name: Generalize OAuth protocol paths for subdirectory installs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('wp-content/plugins/mad4b-site-control-plane')
+          server_path = root / 'includes/class-mad4b-scp-local-oauth-server.php'
+          server = server_path.read_text(encoding='utf-8')
+
+          old_urls = """\tpublic static function issuer() {\n\t\t$validated = self::configured_issuer_validation();\n\t\tif ( is_string( $validated ) && '' !== $validated ) return $validated;\n\t\treturn self::origin() . self::ISSUER_PATH;\n\t}\n\n\tpublic static function metadata_url() {\n\t\t$parts = wp_parse_url( self::issuer() );\n\t\tif ( ! is_array( $parts ) || empty( $parts['path'] ) ) return self::origin() . '/.well-known/oauth-authorization-server';\n\t\treturn self::origin() . '/.well-known/oauth-authorization-server/' . ltrim( rtrim( (string) $parts['path'], '/' ), '/' );\n\t}\n\n\tpublic static function authorize_url() { return self::origin() . self::AUTHORIZE_PATH; }\n\tpublic static function token_url() { return self::origin() . self::TOKEN_PATH; }\n\tpublic static function jwks_url() { return self::origin() . self::JWKS_PATH; }\n\tpublic static function revocation_url() { return self::origin() . self::REVOCATION_PATH; }\n"""
+          new_urls = """\tpublic static function issuer() {\n\t\t$validated = self::configured_issuer_validation();\n\t\tif ( is_string( $validated ) && '' !== $validated ) return $validated;\n\t\treturn self::site_base_url() . self::ISSUER_PATH;\n\t}\n\n\tpublic static function metadata_url() {\n\t\treturn self::metadata_url_for_issuer( self::issuer() );\n\t}\n\n\tpublic static function authorize_url() { return self::site_base_url() . self::AUTHORIZE_PATH; }\n\tpublic static function token_url() { return self::site_base_url() . self::TOKEN_PATH; }\n\tpublic static function jwks_url() { return self::site_base_url() . self::JWKS_PATH; }\n\tpublic static function revocation_url() { return self::site_base_url() . self::REVOCATION_PATH; }\n\n\tprivate static function metadata_url_for_issuer( $issuer ) {\n\t\t$parts = wp_parse_url( (string) $issuer );\n\t\tif ( ! is_array( $parts ) || empty( $parts['path'] ) ) return self::origin() . '/.well-known/oauth-authorization-server';\n\t\treturn self::origin() . '/.well-known/oauth-authorization-server/' . ltrim( rtrim( (string) $parts['path'], '/' ), '/' );\n\t}\n"""
+          if server.count(old_urls) != 1:
+              raise SystemExit('URL authority anchor drifted')
+          server = server.replace(old_urls, new_urls, 1)
+
+          old_serve = """\tpublic static function serve_protocol_paths() {\n\t\tif ( ! self::enabled() ) return;\n\t\t$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';\n\t\t$path = wp_parse_url( $uri, PHP_URL_PATH );\n\t\tif ( ! is_string( $path ) ) return;\n\t\t$path = rtrim( '/' . ltrim( $path, '/' ), '/' );\n\t\t$metadata_path = (string) wp_parse_url( self::metadata_url(), PHP_URL_PATH );\n\t\t$known = in_array( $path, array( rtrim( $metadata_path, '/' ), self::JWKS_PATH, self::AUTHORIZE_PATH, self::TOKEN_PATH, self::REVOCATION_PATH ), true );\n\t\tif ( $known && ! self::effective_for_protocol() ) self::send_oauth_error( 'temporarily_unavailable', 'Local OAuth authority is not effective.', 503 );\n\t\tif ( rtrim( $metadata_path, '/' ) === $path ) self::send_json( self::metadata(), 200 );\n\t\tif ( self::JWKS_PATH === $path ) {\n\t\t\t$jwks = self::jwks_document();\n\t\t\tif ( is_wp_error( $jwks ) ) self::send_oauth_error( 'server_error', 'Local signing key is unavailable.', 503 );\n\t\t\tself::send_json( $jwks, 200 );\n\t\t}\n\t\tif ( self::AUTHORIZE_PATH === $path ) self::handle_authorize();\n\t\tif ( self::TOKEN_PATH === $path ) self::handle_token();\n\t\tif ( self::REVOCATION_PATH === $path ) self::handle_revocation();\n\t}\n"""
+          new_serve = """\tpublic static function serve_protocol_paths() {\n\t\tif ( ! self::enabled() ) return;\n\t\t$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';\n\t\t$path = wp_parse_url( $uri, PHP_URL_PATH );\n\t\tif ( ! is_string( $path ) ) return;\n\t\t$path = self::protocol_path( $path );\n\t\t$paths = array(\n\t\t\t'metadata' => self::protocol_path( self::metadata_url() ),\n\t\t\t'jwks' => self::protocol_path( self::jwks_url() ),\n\t\t\t'authorize' => self::protocol_path( self::authorize_url() ),\n\t\t\t'token' => self::protocol_path( self::token_url() ),\n\t\t\t'revocation' => self::protocol_path( self::revocation_url() ),\n\t\t);\n\t\t$known = in_array( $path, array_values( $paths ), true );\n\t\tif ( $known && ! self::effective_for_protocol() ) self::send_oauth_error( 'temporarily_unavailable', 'Local OAuth authority is not effective.', 503 );\n\t\tif ( hash_equals( $paths['metadata'], $path ) ) self::send_json( self::metadata(), 200 );\n\t\tif ( hash_equals( $paths['jwks'], $path ) ) {\n\t\t\t$jwks = self::jwks_document();\n\t\t\tif ( is_wp_error( $jwks ) ) self::send_oauth_error( 'server_error', 'Local signing key is unavailable.', 503 );\n\t\t\tself::send_json( $jwks, 200 );\n\t\t}\n\t\tif ( hash_equals( $paths['authorize'], $path ) ) self::handle_authorize();\n\t\tif ( hash_equals( $paths['token'], $path ) ) self::handle_token();\n\t\tif ( hash_equals( $paths['revocation'], $path ) ) self::handle_revocation();\n\t}\n"""
+          if server.count(old_serve) != 1:
+              raise SystemExit('protocol dispatch anchor drifted')
+          server = server.replace(old_serve, new_serve, 1)
+
+          old_default = "\t\tif ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::origin() . self::ISSUER_PATH;"
+          new_default = "\t\tif ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::site_base_url() . self::ISSUER_PATH;"
+          if server.count(old_default) != 1:
+              raise SystemExit('issuer default anchor drifted')
+          server = server.replace(old_default, new_default, 1)
+
+          old_origin = """\tprivate static function origin() {\n\t\t$parts = wp_parse_url( home_url( '/' ) );\n\t\tif ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';\n\t\t$origin = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );\n\t\tif ( isset( $parts['port'] ) ) $origin .= ':' . (int) $parts['port'];\n\t\treturn $origin;\n\t}\n"""
+          new_origin = """\tprivate static function origin() {\n\t\t$parts = wp_parse_url( self::site_base_url() );\n\t\tif ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';\n\t\t$origin = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );\n\t\tif ( isset( $parts['port'] ) ) $origin .= ':' . (int) $parts['port'];\n\t\treturn $origin;\n\t}\n\n\tprivate static function site_base_url() {\n\t\t$parts = wp_parse_url( home_url( '/' ) );\n\t\tif ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';\n\t\t$base = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );\n\t\tif ( isset( $parts['port'] ) ) $base .= ':' . (int) $parts['port'];\n\t\t$path = isset( $parts['path'] ) ? '/' . ltrim( (string) $parts['path'], '/' ) : '';\n\t\t$path = '/' === $path ? '' : rtrim( $path, '/' );\n\t\treturn $base . $path;\n\t}\n\n\tprivate static function protocol_path( $url_or_path ) {\n\t\t$value = (string) $url_or_path;\n\t\t$path = wp_parse_url( $value, PHP_URL_PATH );\n\t\tif ( ! is_string( $path ) || '' === $path ) $path = $value;\n\t\t$path = '/' . ltrim( (string) $path, '/' );\n\t\treturn '/' === $path ? '/' : rtrim( $path, '/' );\n\t}\n"""
+          if server.count(old_origin) != 1:
+              raise SystemExit('origin helper anchor drifted')
+          server = server.replace(old_origin, new_origin, 1)
+          server_path.write_text(server, encoding='utf-8')
+
+          contract_path = root / 'tests/local-oauth-standalone-contract.py'
+          contract = contract_path.read_text(encoding='utf-8')
+          marker = "    'configured_issuer_validation',\n    'mad4b_local_oauth_issuer_cross_origin',"
+          replacement = "    'configured_issuer_validation',\n    'private static function site_base_url()',\n    'private static function protocol_path( $url_or_path )',\n    'private static function metadata_url_for_issuer( $issuer )',\n    \"return self::site_base_url() . self::AUTHORIZE_PATH;\",\n    \"return self::site_base_url() . self::TOKEN_PATH;\",\n    \"return self::site_base_url() . self::JWKS_PATH;\",\n    \"return self::site_base_url() . self::REVOCATION_PATH;\",\n    \"self::protocol_path( self::authorize_url() )\",\n    \"self::protocol_path( self::metadata_url() )\",\n    'mad4b_local_oauth_issuer_cross_origin',"
+          if contract.count(marker) != 1:
+              raise SystemExit('static contract marker drifted')
+          contract = contract.replace(marker, replacement, 1)
+          forbidden_marker = "    'strlen( $client_id ) > 512',\n]"
+          forbidden_replacement = "    'strlen( $client_id ) > 512',\n    'self::JWKS_PATH === $path',\n    'self::AUTHORIZE_PATH === $path',\n    'self::TOKEN_PATH === $path',\n    'self::REVOCATION_PATH === $path',\n]"
+          if contract.count(forbidden_marker) != 1:
+              raise SystemExit('static forbidden marker drifted')
+          contract = contract.replace(forbidden_marker, forbidden_replacement, 1)
+          contract_path.write_text(contract, encoding='utf-8')
+
+          runtime_path = root / 'tests/runtime-local-oauth-standalone-smoke.php'
+          runtime = runtime_path.read_text(encoding='utf-8')
+          runtime_anchor = "if ( false === strpos( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), '/wp-json/mcp/mad4b-chatgpt' ) ) mad4b_local_oauth_fail( 'Local OAuth resource is not the ChatGPT gateway.', MAD4B_SCP_Local_OAuth_Server::resource_identifier() );\n"
+          runtime_block = runtime_anchor + """\n// General Distribution must preserve the WordPress home path. A root-only\n// endpoint builder works on ETG but breaks valid subdirectory installations.\n$original_home = get_option( 'home' );\n$original_siteurl = get_option( 'siteurl' );\nupdate_option( 'home', 'https://mad4b-local-oauth.test/wordpress' );\nupdate_option( 'siteurl', 'https://mad4b-local-oauth.test/wordpress' );\nMAD4B_SCP_Site_Profile::reset_cache();\n$site_base_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'site_base_url' );\n$site_base_method->setAccessible( true );\n$protocol_path_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'protocol_path' );\n$protocol_path_method->setAccessible( true );\n$metadata_for_issuer_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'metadata_url_for_issuer' );\n$metadata_for_issuer_method->setAccessible( true );\n$subdir_base = $site_base_method->invoke( null );\nif ( 'https://mad4b-local-oauth.test/wordpress' !== $subdir_base ) mad4b_local_oauth_fail( 'Subdirectory site base was not preserved.', $subdir_base );\n$subdir_endpoints = array(\n\t'authorize' => MAD4B_SCP_Local_OAuth_Server::authorize_url(),\n\t'token' => MAD4B_SCP_Local_OAuth_Server::token_url(),\n\t'jwks' => MAD4B_SCP_Local_OAuth_Server::jwks_url(),\n\t'revoke' => MAD4B_SCP_Local_OAuth_Server::revocation_url(),\n);\n$expected_subdir_endpoints = array(\n\t'authorize' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/authorize',\n\t'token' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/token',\n\t'jwks' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/jwks',\n\t'revoke' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/revoke',\n);\nif ( $expected_subdir_endpoints !== $subdir_endpoints ) mad4b_local_oauth_fail( 'Subdirectory OAuth endpoints drifted.', $subdir_endpoints );\nif ( '/wordpress/oauth/mcp/authorize' !== $protocol_path_method->invoke( null, $subdir_endpoints['authorize'] ) ) mad4b_local_oauth_fail( 'Subdirectory authorization dispatch path drifted.' );\n$subdir_metadata = $metadata_for_issuer_method->invoke( null, 'https://mad4b-local-oauth.test/wordpress/oauth/mcp' );\nif ( 'https://mad4b-local-oauth.test/.well-known/oauth-authorization-server/wordpress/oauth/mcp' !== $subdir_metadata ) mad4b_local_oauth_fail( 'RFC authorization-server metadata path drifted for subdirectory issuer.', $subdir_metadata );\nif ( '/.well-known/oauth-authorization-server/wordpress/oauth/mcp' !== $protocol_path_method->invoke( null, $subdir_metadata ) ) mad4b_local_oauth_fail( 'Subdirectory metadata dispatch path drifted.' );\nupdate_option( 'home', $original_home );\nupdate_option( 'siteurl', $original_siteurl );\nMAD4B_SCP_Site_Profile::reset_cache();\n"""
+          if runtime.count(runtime_anchor) != 1:
+              raise SystemExit('runtime subdirectory anchor drifted')
+          runtime = runtime.replace(runtime_anchor, runtime_block, 1)
+          runtime_path.write_text(runtime, encoding='utf-8')
+          PY
+
+      - name: Validate patch before push
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-local-oauth-server.php"
+          php -l "$root/tests/runtime-local-oauth-standalone-smoke.php"
+          python3 "$root/tests/local-oauth-standalone-contract.py"
+          grep -Fq "site_base_url" "$root/includes/class-mad4b-scp-local-oauth-server.php"
+          grep -Fq "Subdirectory OAuth endpoints drifted" "$root/tests/runtime-local-oauth-standalone-smoke.php"
+
+      - name: Commit exact branch patch and remove staging workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B'
+          git config user.email 'mad4b.digital@gmail.com'
+          git rm .github/workflows/rc32-subdirectory-oauth-generalization.yml
+          git add wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php \
+                  wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-standalone-contract.py \
+                  wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-standalone-smoke.php
+          test -n "$(git status --porcelain)"
+          git commit -m 'fix(rc32): preserve OAuth paths on subdirectory installs'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
