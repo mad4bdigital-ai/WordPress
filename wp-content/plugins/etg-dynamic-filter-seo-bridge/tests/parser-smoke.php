@@ -6,7 +6,7 @@ function sanitize_title( $title ) { $title = preg_replace( '/[^a-z0-9_\-]+/', '-
 function sanitize_text_field( $text ) { return trim( strip_tags( (string) $text ) ); }
 function expect_same( $expected, $actual, string $message ): void { if ( $expected !== $actual ) { fwrite( STDERR, "FAILED: {$message}\nExpected: " . var_export( $expected, true ) . "\nActual: " . var_export( $actual, true ) . "\n" ); exit( 1 ); } }
 require_once __DIR__ . '/../includes/JetSmartFilters/FilterUrlParser.php';
-$parser = new ETG\DynamicFilterSEOBridge\JetSmartFilters\FilterUrlParser( array(), array(), array( 'gclid', 'fbclid' ) );
+$parser = new ETG\DynamicFilterSEOBridge\JetSmartFilters\FilterUrlParser( array( 'location_jet', 'tour-types_jet', 'tour-styles_jet' ), array(), array( 'gclid', 'fbclid' ) );
 $result = $parser->parse( '/it/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:cairo;tour-types_jet:day-tours;tour-styles_jet:luxury/?utm_source=x&gclid=123' );
 expect_same( true, $result['active'], 'acceptance URL active' );
 expect_same( '/it/tours-and-activities/', $result['archive_path'], 'language-aware archive path' );
