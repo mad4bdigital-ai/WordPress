@@ -21,7 +21,7 @@ $sample = '<!doctype html><html><head><meta charset="utf-8"><title>Authorize MCP
 $enhanced = MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $sample );
 if ( false === strpos( $enhanced, 'id="mad4b-oauth-consent-ui"' ) ) $fail( 'Consent stylesheet marker was not injected.' );
 if ( false === strpos( $enhanced, 'This consent authenticates the client and grants the narrow read resource scope shown below; it does not grant write authority.' ) ) $fail( 'OAuth/read-scope separation statement is missing.' );
-if ( false === strpos( $enhanced, 'Governed write actions, when available, require separate Staging write authority and a one-time approval.' ) ) $fail( 'Governed write separation statement is missing.' );
+if ( false === strpos( $enhanced, 'Governed write actions, when available, require separate governed write authority and a one-time approval.' ) ) $fail( 'Governed write separation statement is missing.' );
 if ( false === strpos( $enhanced, 'OAuth identity/read scope · write authority separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
 if ( false !== strpos( $enhanced, 'Read-only access · OAuth 2.1 · PKCE S256' ) ) $fail( 'Legacy whole-plugin read-only claim remains visible.' );
 if ( false !== strpos( $enhanced, 'mad4b:write' ) ) $fail( 'Consent presentation must not advertise or create a write OAuth scope.' );
