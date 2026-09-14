@@ -105,12 +105,14 @@ jobs:
           servers="$root/includes/class-mad4b-scp-servers.php"
           transport_context="$root/includes/class-mad4b-scp-transport-context.php"
           authorization="$root/includes/class-mad4b-scp-authorization.php"
+          site_profile="$root/includes/class-mad4b-scp-site-profile.php"
           write_authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
           write_cert="$root/includes/class-mad4b-scp-write-runtime-certification.php"
           rest_compat="$root/includes/class-mad4b-scp-rest-compatibility.php"
           for file in \
             mad4b-site-control-plane.php \
             config/certified-providers.json \
+            includes/class-mad4b-scp-site-profile.php \
             includes/class-mad4b-scp-abilities.php \
             includes/class-mad4b-scp-policy.php \
             includes/class-mad4b-scp-servers.php \
@@ -215,10 +217,16 @@ jobs:
           grep -Fq "'MAD4B Write MCP'" "$servers"
           grep -Fq "array_merge( \$tools, self::write_tools() )" "$servers"
 
-          grep -Fq "staging.egypttourgates.com" "$write_authority"
+          grep -Fq "mad4b.site-profile.v1" "$site_profile"
+          grep -Fq "MAD4B_SCP_Site_Profile::origin_enrolled" "$write_authority"
+          grep -Fq "MAD4B_SCP_Site_Profile::write_enabled" "$write_authority"
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
+          if grep -Fq "staging.egypttourgates.com" "$write_authority"; then
+            echo 'Governed write authority must be tenant-neutral; ETG origin literal detected.' >&2
+            exit 1
+          fi
           grep -Fq "mad4b.write-runtime-certification.v2" "$write_cert"
           grep -Fq "all_write_tools_exposed_on_same_plugin_transport" "$write_cert"
           grep -Fq "mad4b.rest-compatibility.v2" "$rest_compat"
