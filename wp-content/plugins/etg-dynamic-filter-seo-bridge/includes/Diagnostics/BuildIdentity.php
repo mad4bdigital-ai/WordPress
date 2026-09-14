@@ -4,18 +4,36 @@ namespace ETG\DynamicFilterSEOBridge\Diagnostics;
 final class BuildIdentity {
 	const CONTRACT = 'etg.dfsb.embedded-build-identity.v1';
 	const PROVENANCE_CONTRACT = 'etg.dfsb.release-provenance.v6';
+	const INSTALLED_CONTENT_CONTRACT = 'etg.dfsb.installed-content-manifest.v1';
+	const INSTALLED_CONTENT_MANIFEST = 'installed-content-manifest.json';
 	const MAX_BYTES = 4096;
 	const MAX_PROVENANCE_BYTES = 16384;
+	const MAX_MANIFEST_BYTES = 262144;
 
 	public static function collect(): array {
 		$root = defined( 'ETG_DFSB_DIR' ) ? (string) ETG_DFSB_DIR : dirname( __DIR__, 2 ) . DIRECTORY_SEPARATOR;
+		$root = rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR;
 		$version = defined( 'ETG_DFSB_VERSION' ) ? (string) ETG_DFSB_VERSION : '';
-		$identity = self::inspectFile( rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'build-identity.json', $version );
+		$identity = self::inspectFile( $root . 'build-identity.json', $version );
+		$installed = self::inspectInstalledContentManifest( $root, $root . self::INSTALLED_CONTENT_MANIFEST );
+
 		$provenancePath = self::provenancePath( $identity );
 		$provenance = self::inspectProvenanceFile( $provenancePath, $identity );
 		$provenance['package_provenance_source'] = self::provenanceSource( $provenancePath, $identity );
-		$identity = array_merge( $identity, $provenance );
-		$identity['provenance_complete'] = ! empty( $identity['valid'] ) && ! empty( $identity['package_provenance_valid'] );
+		$provenance['package_provenance_required'] = defined( 'ETG_DFSB_PACKAGE_PROVENANCE_PATH' );
+		if ( empty( $provenance['package_provenance_present'] ) && empty( $provenance['package_provenance_required'] ) ) {
+			$provenance['package_provenance_reason'] = 'optional_detached_receipt_missing';
+		}
+
+		$identity = array_merge( $identity, $installed, $provenance );
+		$detachedOkay = empty( $identity['package_provenance_present'] )
+			? empty( $identity['package_provenance_required'] )
+			: ! empty( $identity['package_provenance_valid'] );
+		$identity['provenance_mode'] = 'self_contained_installed_manifest';
+		$identity['provenance_complete'] = ! empty( $identity['valid'] )
+			&& ! empty( $identity['installed_content_valid'] )
+			&& $detachedOkay;
+		$identity['exact_build_reason'] = self::exactBuildReason( $identity, $detachedOkay );
 		return $identity;
 	}
 
@@ -92,6 +110,106 @@ final class BuildIdentity {
 		$result['git_sha'] = $gitSha;
 		$result['tree_sha'] = $treeSha;
 		$result['plugin_version'] = $version;
+		return $result;
+	}
+
+	public static function inspectInstalledContentManifest( string $root, string $manifestPath = '' ): array {
+		$result = self::installedContentBaseResult();
+		$root = rtrim( trim( $root ), '/\\' );
+		if ( '' === $root || ! is_dir( $root ) ) {
+			$result['installed_content_reason'] = 'installed_content_root_missing';
+			return $result;
+		}
+		if ( '' === $manifestPath ) {
+			$manifestPath = $root . DIRECTORY_SEPARATOR . self::INSTALLED_CONTENT_MANIFEST;
+		}
+		if ( ! is_file( $manifestPath ) ) {
+			return $result;
+		}
+		$result['installed_content_present'] = true;
+		if ( ! is_readable( $manifestPath ) ) {
+			$result['installed_content_reason'] = 'installed_content_manifest_unreadable';
+			return $result;
+		}
+		$size = filesize( $manifestPath );
+		if ( false === $size || $size < 2 || $size > self::MAX_MANIFEST_BYTES ) {
+			$result['installed_content_reason'] = 'installed_content_manifest_size_invalid';
+			return $result;
+		}
+		$raw = file_get_contents( $manifestPath );
+		if ( ! is_string( $raw ) ) {
+			$result['installed_content_reason'] = 'installed_content_manifest_read_failed';
+			return $result;
+		}
+		$result['installed_content_manifest_sha256'] = hash( 'sha256', $raw );
+		$decoded = json_decode( $raw, true );
+		if ( ! is_array( $decoded ) || JSON_ERROR_NONE !== json_last_error() ) {
+			$result['installed_content_reason'] = 'installed_content_manifest_json_invalid';
+			return $result;
+		}
+		$allowed = array( 'contract', 'algorithm', 'files' );
+		if ( array_diff( array_keys( $decoded ), $allowed ) || array_diff( $allowed, array_keys( $decoded ) ) ) {
+			$result['installed_content_reason'] = 'installed_content_manifest_fields_invalid';
+			return $result;
+		}
+		if ( self::INSTALLED_CONTENT_CONTRACT !== (string) $decoded['contract'] || 'sha256' !== (string) $decoded['algorithm'] ) {
+			$result['installed_content_reason'] = 'installed_content_manifest_contract_mismatch';
+			return $result;
+		}
+		if ( ! is_array( $decoded['files'] ) || empty( $decoded['files'] ) ) {
+			$result['installed_content_reason'] = 'installed_content_manifest_files_invalid';
+			return $result;
+		}
+
+		$expected = array();
+		foreach ( $decoded['files'] as $relative => $digest ) {
+			$relative = (string) $relative;
+			$digest = strtolower( trim( (string) $digest ) );
+			if ( ! self::validRelativePath( $relative ) || self::isManifestExcludedPath( $relative ) ) {
+				$result['installed_content_reason'] = 'installed_content_manifest_path_invalid';
+				return $result;
+			}
+			if ( 1 !== preg_match( '/^[0-9a-f]{64}$/', $digest ) || array_key_exists( $relative, $expected ) ) {
+				$result['installed_content_reason'] = 'installed_content_manifest_digest_invalid';
+				return $result;
+			}
+			$expected[ $relative ] = $digest;
+		}
+		ksort( $expected, SORT_STRING );
+
+		$actual = self::installedFiles( $root );
+		if ( ! $actual['ok'] ) {
+			$result['installed_content_reason'] = $actual['reason'];
+			return $result;
+		}
+		$paths = $actual['files'];
+		if ( array_keys( $expected ) !== array_keys( $paths ) ) {
+			$result['installed_content_reason'] = 'installed_content_file_set_mismatch';
+			$result['installed_content_expected_file_count'] = count( $expected );
+			$result['installed_content_actual_file_count'] = count( $paths );
+			return $result;
+		}
+
+		$context = hash_init( 'sha256' );
+		foreach ( $expected as $relative => $wanted ) {
+			$got = hash_file( 'sha256', $paths[ $relative ] );
+			if ( false === $got ) {
+				$result['installed_content_reason'] = 'installed_content_file_hash_failed:' . $relative;
+				return $result;
+			}
+			$got = strtolower( $got );
+			if ( $got !== $wanted ) {
+				$result['installed_content_reason'] = 'installed_content_file_hash_mismatch:' . $relative;
+				return $result;
+			}
+			hash_update( $context, $relative . "\0" . $got . "\n" );
+		}
+
+		$result['installed_content_valid'] = true;
+		$result['installed_content_reason'] = 'ok';
+		$result['installed_content_contract'] = self::INSTALLED_CONTENT_CONTRACT;
+		$result['installed_content_file_count'] = count( $expected );
+		$result['installed_content_sha256'] = hash_final( $context );
 		return $result;
 	}
 
@@ -206,6 +324,61 @@ final class BuildIdentity {
 		return $result;
 	}
 
+	private static function installedFiles( string $root ): array {
+		$root = rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR;
+		$files = array();
+		try {
+			$iterator = new \RecursiveIteratorIterator(
+				new \RecursiveDirectoryIterator( $root, \FilesystemIterator::SKIP_DOTS ),
+				\RecursiveIteratorIterator::LEAVES_ONLY
+			);
+			foreach ( $iterator as $entry ) {
+				if ( $entry->isLink() ) {
+					return array( 'ok' => false, 'reason' => 'installed_content_symlink_refused', 'files' => array() );
+				}
+				if ( ! $entry->isFile() ) {
+					continue;
+				}
+				$path = $entry->getPathname();
+				$relative = substr( $path, strlen( $root ) );
+				$relative = str_replace( '\\', '/', (string) $relative );
+				if ( self::isManifestExcludedPath( $relative ) ) {
+					continue;
+				}
+				if ( ! self::validRelativePath( $relative ) || ! is_readable( $path ) ) {
+					return array( 'ok' => false, 'reason' => 'installed_content_file_unreadable', 'files' => array() );
+				}
+				$files[ $relative ] = $path;
+			}
+		} catch ( \UnexpectedValueException $e ) {
+			return array( 'ok' => false, 'reason' => 'installed_content_scan_failed', 'files' => array() );
+		}
+		ksort( $files, SORT_STRING );
+		return array( 'ok' => true, 'reason' => 'ok', 'files' => $files );
+	}
+
+	private static function validRelativePath( string $relative ): bool {
+		if ( '' === $relative || '/' === $relative[0] || '\\' === $relative[0] || false !== strpos( $relative, "\0" ) ) {
+			return false;
+		}
+		$parts = explode( '/', str_replace( '\\', '/', $relative ) );
+		foreach ( $parts as $part ) {
+			if ( '' === $part || '.' === $part || '..' === $part ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static function isManifestExcludedPath( string $relative ): bool {
+		$relative = str_replace( '\\', '/', $relative );
+		return in_array(
+			$relative,
+			array( 'build-identity.json', self::INSTALLED_CONTENT_MANIFEST, 'etg-dfsb-provenance.txt' ),
+			true
+		);
+	}
+
 	private static function provenancePath( array $identity = array() ): string {
 		if ( defined( 'ETG_DFSB_PACKAGE_PROVENANCE_PATH' ) ) {
 			return (string) ETG_DFSB_PACKAGE_PROVENANCE_PATH;
@@ -217,7 +390,8 @@ final class BuildIdentity {
 		}
 
 		$root = defined( 'ETG_DFSB_DIR' ) ? (string) ETG_DFSB_DIR : dirname( __DIR__, 2 ) . DIRECTORY_SEPARATOR;
-		return rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'etg-dfsb-provenance.txt';
+		$fallback = rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR . 'etg-dfsb-provenance.txt';
+		return is_file( $fallback ) ? $fallback : '';
 	}
 
 	private static function persistentProvenancePath( array $identity ): string {
@@ -241,11 +415,27 @@ final class BuildIdentity {
 		if ( defined( 'ETG_DFSB_PACKAGE_PROVENANCE_PATH' ) ) {
 			return 'explicit_override';
 		}
+		if ( '' === $path ) {
+			return 'none';
+		}
 		$persistent = self::persistentProvenancePath( $identity );
 		if ( '' !== $persistent && $path === $persistent ) {
 			return 'persistent_sha_store';
 		}
 		return 'plugin_root_fallback';
+	}
+
+	private static function exactBuildReason( array $identity, bool $detachedOkay ): string {
+		if ( empty( $identity['valid'] ) ) {
+			return 'embedded_identity_invalid';
+		}
+		if ( empty( $identity['installed_content_valid'] ) ) {
+			return (string) ( $identity['installed_content_reason'] ?? 'installed_content_invalid' );
+		}
+		if ( ! $detachedOkay ) {
+			return (string) ( $identity['package_provenance_reason'] ?? 'detached_provenance_conflict' );
+		}
+		return 'ok';
 	}
 
 	private static function baseResult(): array {
@@ -263,6 +453,20 @@ final class BuildIdentity {
 		);
 	}
 
+	private static function installedContentBaseResult(): array {
+		return array(
+			'installed_content_present' => false,
+			'installed_content_valid' => false,
+			'installed_content_reason' => 'installed_content_manifest_missing',
+			'installed_content_contract' => self::INSTALLED_CONTENT_CONTRACT,
+			'installed_content_manifest_sha256' => '',
+			'installed_content_sha256' => '',
+			'installed_content_file_count' => 0,
+			'installed_content_expected_file_count' => 0,
+			'installed_content_actual_file_count' => 0,
+		);
+	}
+
 	private static function provenanceBaseResult(): array {
 		return array(
 			'package_provenance_present' => false,
@@ -271,6 +475,7 @@ final class BuildIdentity {
 			'package_provenance_contract' => self::PROVENANCE_CONTRACT,
 			'package_sha256' => '',
 			'package_provenance_source' => '',
+			'package_provenance_required' => false,
 		);
 	}
 }
