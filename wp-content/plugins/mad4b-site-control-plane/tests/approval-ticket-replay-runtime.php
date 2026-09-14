@@ -14,7 +14,7 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( (string) $value ); }
 function absint( $value ) { return abs( (int) $value ); }
-function site_url() { return 'https://staging.egypttourgates.com'; }
+function site_url() { return 'https://staging.client.test'; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function get_current_user_id() { return 0; }
 function wp_generate_uuid4() { return 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; }
@@ -22,11 +22,42 @@ function apply_filters( $tag, $value ) { return $value; }
 function get_option( $name, $default = false ) { return $default; }
 
 class MAD4B_SCP_Schema {
+	const OPTION = 'mad4b_scp_schema_version';
+	const VERSION = 6;
 	public static function tables() { return array( 'approvals' => 'wp_mad4b_approvals' ); }
 	public static function critical_ready() { return true; }
 }
 class MAD4B_SCP_Audit {
 	public static function record( $ability, $summary, $status = 'ok' ) { return true; }
+}
+
+final class MAD4B_SCP_Site_Profile {
+	public static $revision = 4;
+	public static $origin = 'https://staging.client.test';
+	public static function configured() { return true; }
+	public static function origin_enrolled() { return 'https://staging.client.test' === self::$origin; }
+	public static function write_enabled() { return self::origin_enrolled(); }
+	public static function site_uuid() { return '33333333-3333-4333-8333-333333333333'; }
+	public static function revision() { return self::$revision; }
+	public static function profile_digest() { return str_repeat( 'd', 64 ); }
+	public static function current_environment() { return 'staging'; }
+	public static function current_origin() { return self::$origin; }
+	public static function current_host() { return (string) parse_url( self::$origin, PHP_URL_HOST ); }
+}
+
+final class MAD4B_SCP_Live_Acceptance_Observer {
+	public static $source_sha = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+	public static $build_fingerprint = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+	public static function build_provenance_status() {
+		return array(
+			'manifest_present' => true,
+			'manifest_valid' => true,
+			'runtime_manifest_match' => true,
+			'stale' => false,
+			'source_commit_sha' => self::$source_sha,
+			'build_fingerprint' => self::$build_fingerprint,
+		);
+	}
 }
 
 final class MAD4B_Test_WPDB {
@@ -74,7 +105,7 @@ $overlay = MAD4B_SCP_Identity_Context::current();
 mad4b_replay_assert( is_array( $overlay ) && $ticket_id === $overlay['approval_ticket_id'], 'Synchronous audit/finalizer reads must recover the bound ticket.' );
 mad4b_replay_assert( ! MAD4B_SCP_Identity_Context::bind_approval_ticket_for_request( '22222222-2222-4222-8222-222222222222' ), 'A second different ticket must not replace the request-local binding.' );
 
-$agent = array( 'id' => 7, 'public_id' => 'agent-staging-live-acceptance' );
+$agent = array( 'id' => 7, 'public_id' => 'agent-tenant-build-bound' );
 $server = 'mad4b-write';
 $ability = 'mad4b/content-update-post';
 $provider = 'core';
@@ -105,6 +136,15 @@ $wpdb->ticket = array(
 	'status' => 'approved',
 	'expires_at' => gmdate( 'Y-m-d H:i:s', time() + 600 ),
 	'used_at' => null,
+	'candidate_binding_contract' => MAD4B_SCP_Approval_Tickets::CANDIDATE_BINDING_CONTRACT,
+	'candidate_sha' => MAD4B_SCP_Live_Acceptance_Observer::$source_sha,
+	'build_fingerprint' => MAD4B_SCP_Live_Acceptance_Observer::$build_fingerprint,
+	'binding_environment' => 'staging',
+	'binding_host' => 'staging.client.test',
+	'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+	'site_profile_revision' => MAD4B_SCP_Site_Profile::revision(),
+	'site_profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
+	'bound_at' => gmdate( 'Y-m-d H:i:s' ),
 );
 
 // Models the MCP Adapter pre-check followed by WP_Ability::execute()'s own
@@ -116,6 +156,20 @@ $precheck_two = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, 
 mad4b_replay_assert( is_array( $precheck_two ), 'Second permission preflight must also pass.' );
 mad4b_replay_assert( 'approved' === $wpdb->ticket['status'], 'Second permission preflight must also be side-effect free.' );
 
+// Site Profile drift changes canonical approval identity and fails before claim.
+MAD4B_SCP_Site_Profile::$revision = 5;
+$profile_drift = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_wp_error( $profile_drift ) && 'mad4b_approval_payload_mismatch' === $profile_drift->get_error_code(), 'Site Profile revision drift must invalidate the exact approval payload.' );
+mad4b_replay_assert( 'approved' === $wpdb->ticket['status'], 'Profile drift denial must not claim the ticket.' );
+MAD4B_SCP_Site_Profile::$revision = 4;
+
+// Build drift preserves operation/profile identity but invalidates candidate binding.
+MAD4B_SCP_Live_Acceptance_Observer::$source_sha = 'abababababababababababababababababababab';
+$build_drift = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
+mad4b_replay_assert( is_wp_error( $build_drift ) && 'mad4b_approval_candidate_mismatch' === $build_drift->get_error_code(), 'Exact build drift must invalidate the candidate binding.' );
+mad4b_replay_assert( 'approved' === $wpdb->ticket['status'], 'Build drift denial must not claim the ticket.' );
+MAD4B_SCP_Live_Acceptance_Observer::$source_sha = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+
 $claim = MAD4B_SCP_Approval_Tickets::claim_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_array( $claim ), 'Execution-boundary claim must succeed once.' );
 mad4b_replay_assert( 'executing' === $wpdb->ticket['status'], 'Execution-boundary claim must transition approved to executing, not used.' );
@@ -126,7 +180,6 @@ mad4b_replay_assert( is_wp_error( $executing_replay ) && 'mad4b_approval_replay_
 $final = MAD4B_SCP_Approval_Tickets::finalize_claim( $ticket_id, 'used' );
 mad4b_replay_assert( is_array( $final ), 'Successful execution must finalize the claim.' );
 mad4b_replay_assert( 'used' === $wpdb->ticket['status'], 'Successful execution must transition executing to used.' );
-
 $used_replay = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_wp_error( $used_replay ) && 'mad4b_approval_replay_denied' === $used_replay->get_error_code(), 'Used ticket replay must be denied.' );
 
@@ -140,16 +193,14 @@ $wpdb->ticket['status'] = 'pending';
 $pending = MAD4B_SCP_Approval_Tickets::validate_exact( $ticket_id, $agent, $server, $ability, $provider, $target, $input, $ticket_class );
 mad4b_replay_assert( is_wp_error( $pending ) && 'mad4b_approval_not_approved' === $pending->get_error_code(), 'Pending tickets must remain distinct from replay denial.' );
 
-// Regression for the live Staging undo-plan target mismatch. Operator reason is
-// audit metadata and must not alter the approval target or payload identity.
+// Regression for undo-plan target identity. Operator reason is audit metadata and
+// must not alter the approval target or payload identity.
 class MAD4B_SCP_Staging_Write_Authority {
 	public static function eligible() { return true; }
 }
 class MAD4B_SCP_Mutation_Manager {
 	public static $records = array();
-	public static function get( $mutation_id ) {
-		return isset( self::$records[ $mutation_id ] ) ? self::$records[ $mutation_id ] : null;
-	}
+	public static function get( $mutation_id ) { return isset( self::$records[ $mutation_id ] ) ? self::$records[ $mutation_id ] : null; }
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-planning-guard.php';
 
@@ -168,10 +219,7 @@ MAD4B_SCP_Mutation_Manager::$records[ $undo_id ] = array(
 );
 MAD4B_SCP_Mutation_Manager::$records[ $undo_id_other ] = array_merge(
 	MAD4B_SCP_Mutation_Manager::$records[ $undo_id ],
-	array(
-		'target_id' => '37924:b417679',
-		'after_sha256' => 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-	)
+	array( 'target_id' => '37924:b417679', 'after_sha256' => 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' )
 );
 
 $plan_undo_input = array( 'mutation_id' => $undo_id, 'reason' => 'Reason reviewed during planning.' );
@@ -209,4 +257,4 @@ MAD4B_SCP_Staging_Write_Planning_Guard::clear_undo_request_reason();
 $non_undo = MAD4B_SCP_Staging_Write_Planning_Guard::undo_target_fingerprint( 'existing-fingerprint', 'elementor/update-widget-settings', 'elementor', array() );
 mad4b_replay_assert( 'existing-fingerprint' === $non_undo, 'Undo target override must not alter any other mutation ability.' );
 
-echo "mad4b.approval-ticket-replay.runtime.v5: PASS\n";
+echo "mad4b.approval-ticket-replay.runtime.v6: PASS\n";
