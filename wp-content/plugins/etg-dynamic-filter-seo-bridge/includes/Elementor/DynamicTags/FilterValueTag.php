@@ -47,12 +47,9 @@ abstract class FilterValueTag extends \Elementor\Core\DynamicTags\Tag {
 
         $attrs = $this->etgBindingAttributes('token', $token, (string) $this->get_settings('fallback'));
         if (in_array($token, array('result_count', 'result_summary'), true)) {
-            $count = 'result_count' === $token ? $value : '';
-            if ('result_summary' === $token) {
-                $resolver = DynamicTagRuntime::resolver();
-                if ($resolver) { $count = $resolver->value('result_count', $this->etgPreviewContext()); }
-            }
-            if (is_numeric($count)) { $attrs .= ' data-etg-dfsb-result-count="' . esc_attr((string) (int) $count) . '"'; }
+            // Semantic marker only: the observer reads the tag's current text so
+            // AJAX updates and reset cannot leave a stale count attribute behind.
+            $attrs .= ' data-etg-dfsb-result-count=""';
         }
         $open = '<span class="etg-dfsb-live-value"' . $attrs . '>';
         if ('intro' === $token) { echo $open . wp_kses_post($display) . '</span>'; }
