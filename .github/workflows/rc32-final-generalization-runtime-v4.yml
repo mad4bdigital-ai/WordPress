@@ -1,0 +1,135 @@
+name: RC32 Final Environment Generalization v4
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - '.github/workflows/rc32-final-generalization-runtime-v4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
+      - name: Guard exact parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '39e26ddcbb4f439656db0d80a510c590ad181bd2'
+          mapfile -t changed < <(git diff --name-only HEAD^..HEAD)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/rc32-final-generalization-runtime-v4.yml'
+
+      - name: Apply audited runtime generalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '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' | base64 -d | gzip -d > /tmp/rc32.patch
+          git apply --check /tmp/rc32.patch
+          git apply /tmp/rc32.patch
+          mkdir -p wp-content/plugins/mad4b-site-control-plane/tests
+          echo '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' | base64 -d | gzip -d > wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py
+          chmod +x wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py
+
+      - name: Align regression contracts
+        shell: python
+        run: |
+          from pathlib import Path
+          def replace(path, old, new, expected=1):
+              p=Path(path); text=p.read_text(encoding='utf-8'); count=text.count(old)
+              if count != expected: raise SystemExit(f'{path}: expected {expected} of {old!r}, got {count}')
+              p.write_text(text.replace(old,new), encoding='utf-8')
+          root='wp-content/plugins/mad4b-site-control-plane/tests/'
+          replace(root+'chatgpt-connection-ui-contract.py', 'Governed write actions, when available, require separate Staging write authority and a one-time approval.', 'Governed write actions, when available, require separate governed write authority and a one-time approval.')
+          replace(root+'live-acceptance-evidence-contract.py', 'stable registered Staging catalog', 'stable registered tenant-bound catalog')
+          replace(root+'dynamic-skills-contract.py', "'enables the Skill editor automatically'", "'may enable the Skill editor automatically'")
+          fixture=root+'external-handshake-inventory-runtime.php'
+          p=Path(fixture); text=p.read_text(encoding='utf-8')
+          anchor="final class MAD4B_SCP_Identity_Context { public static function current() { return array( 'authenticated' => true, 'auth_method' => 'oauth2_bearer', 'subject_fingerprint' => str_repeat( 'a', 64 ), 'token_scopes' => array( 'mad4b:read' ), 'wp_user_id' => 7 ); } }\n"
+          addition=anchor+"final class MAD4B_SCP_Site_Profile { public static function current_environment() { return 'staging'; } public static function origin_enrolled() { return true; } public static function oauth_enabled() { return true; } }\n"
+          if text.count(anchor)!=1: raise SystemExit('external handshake fixture anchor drifted')
+          p.write_text(text.replace(anchor,addition),encoding='utf-8')
+
+      - name: Prepare canonical workflow patches
+        shell: python
+        run: |
+          from pathlib import Path
+          def replace_text(text, old, new, expected=1):
+              count=text.count(old)
+              if count != expected: raise SystemExit(f'expected {expected} of {old!r}, got {count}')
+              return text.replace(old,new)
+          pkg=Path('.github/workflows/mad4b-control-plane-package.yml')
+          text=pkg.read_text(encoding='utf-8')
+          text=replace_text(text,'name: Build reviewed staging installation kit','name: Build reviewed General Distribution installation kit')
+          text=replace_text(text,'- name: Verify tenant-bound governed Staging kit invariants','- name: Verify tenant-neutral General Distribution kit invariants')
+          anchor="          grep -Fq '\"production_mutation_auto_enabled\": false' \"$stage/install-manifest.json\"\n"
+          extra=anchor+"          grep -Fq 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}' \"$stage/package/mad4b-site-control-plane/config/staging-deployment-handoff.json\"\n          grep -Fq \"Current plugin version: **${expected_version}**.\" \"$stage/package/mad4b-site-control-plane/README.md\"\n          grep -Fq 'six MAD4B custom servers' \"$stage/package/mad4b-site-control-plane/README.md\"\n          if grep -Fq 'Egypt Tour Gates' \"$stage/package/mad4b-site-control-plane/README.md\" || grep -Fq 'staging.egypttourgates.com' \"$stage/package/mad4b-site-control-plane/README.md\"; then\n            echo 'General Distribution README retained tenant-specific identity.' >&2\n            exit 1\n          fi\n"
+          text=replace_text(text,anchor,extra)
+          pkg.write_text(text,encoding='utf-8')
+
+          gd=Path('.github/workflows/mad4b-general-distribution-foundation.yml')
+          text=gd.read_text(encoding='utf-8')
+          path_anchor="      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php'\n"
+          extra_paths=path_anchor+"      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-compatibility.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'\n      - 'wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py'\n"
+          text=replace_text(text,path_anchor,extra_paths,2)
+          run_anchor="      - name: Run tenant-bound multi-user OAuth runtime contract\n        shell: bash\n        run: |\n          set -euo pipefail\n          php wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php\n"
+          run_extra=run_anchor+"\n      - name: Run General Distribution environment contract\n        shell: bash\n        run: |\n          set -euo pipefail\n          python3 wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py\n"
+          text=replace_text(text,run_anchor,run_extra)
+          gd.write_text(text,encoding='utf-8')
+
+          out=Path('/tmp/rc32-workflow-patches/.github/workflows'); out.mkdir(parents=True,exist_ok=True)
+          for src in [pkg,gd]: (out/src.name).write_bytes(src.read_bytes())
+
+      - name: Validate generalized runtime and contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          for file in \
+            includes/class-mad4b-scp-local-oauth-server.php \
+            includes/class-mad4b-scp-oauth-resource-bridge.php \
+            includes/class-mad4b-scp-mcp-client-compatibility.php \
+            includes/class-mad4b-scp-external-handshake-evidence.php \
+            includes/class-mad4b-scp-chatgpt-connection-admin-ui.php \
+            includes/class-mad4b-scp-live-acceptance-observer.php \
+            includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php \
+            includes/class-mad4b-scp-mcp-request-scope.php \
+            includes/class-mad4b-scp-transport-context.php \
+            includes/class-mad4b-scp-skills-admin-ui.php; do php -l "$root/$file" >/dev/null; done
+          python3 "$root/tests/general-distribution-environment-contract.py"
+          python3 "$root/tests/chatgpt-connection-ui-contract.py"
+          python3 "$root/tests/local-oauth-standalone-contract.py"
+          python3 "$root/tests/oauth-resource-bridge-contract.py"
+          python3 "$root/tests/mcp-client-compatibility-contract.py"
+          python3 "$root/tests/live-acceptance-evidence-contract.py"
+          python3 "$root/tests/dynamic-skills-contract.py"
+          php "$root/tests/external-handshake-inventory-runtime.php"
+
+      - name: Upload reviewed workflow patches
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc32-final-workflow-patches-${{ github.sha }}
+          path: /tmp/rc32-workflow-patches
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Commit runtime and regression changes only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout -- .github/workflows/mad4b-control-plane-package.yml .github/workflows/mad4b-general-distribution-foundation.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add wp-content/plugins/mad4b-site-control-plane
+          git diff --cached --quiet && { echo 'No runtime changes staged' >&2; exit 1; }
+          git commit -m 'fix(rc32): generalize enrolled environment gates'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
