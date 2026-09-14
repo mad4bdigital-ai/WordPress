@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = '3d07ae2ff068a22076f5f85939931a0d88961e33'
+          test "$(git rev-parse HEAD^)" = 'f81516455962237b9912fb3a0b3790a2b42fea77'
           for n in 01 02 03 04 05; do test -f ".github/rc32-generalization.patch.gz.b64.part${n}"; done
 
       - name: Reassemble verify and apply reviewed rc32 patch
@@ -41,7 +41,7 @@ jobs:
           printf '%s  %s\n' 'ff62089a02086907a62211fa2979198c7c21e7046b459d81c89d78cbdb9a9fbd' /tmp/rc32.b64 | sha256sum -c -
           base64 --decode /tmp/rc32.b64 | gzip --decompress > /tmp/rc32.patch
           printf '%s  %s\n' '96231817165faf1f7e39047b16df295e1563563cd23eaad97afdcff1092c5622' /tmp/rc32.patch | sha256sum -c -
-          awk '$1=="---"{old=$2} $1=="+++"{new=$2; if(old=="/dev/null"){sub(/^b\//,"",new);sub(/^patch-new\//,"",new);print new}}' /tmp/rc32.patch |
+          awk '$1=="---"{old=$2} $1=="+++"{new=$2;if(old=="/dev/null"){sub(/^b\//,"",new);sub(/^patch-new\//,"",new);print new}}' /tmp/rc32.patch |
           while IFS= read -r target; do
             case "$target" in
               wp-content/plugins/mad4b-site-control-plane/*) [ ! -e "$target" ] || rm -f -- "$target" ;;
@@ -57,10 +57,31 @@ jobs:
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-          import json, re
+          import json
 
           p = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php')
           s = p.read_text()
+
+          def replace_method(source, signature, replacement):
+              start = source.find(signature)
+              if start < 0:
+                  raise SystemExit(f'method signature not found: {signature}')
+              brace = source.find('{', start)
+              if brace < 0:
+                  raise SystemExit(f'opening brace not found: {signature}')
+              depth = 0
+              end = None
+              for i in range(brace, len(source)):
+                  c = source[i]
+                  if c == '{': depth += 1
+                  elif c == '}':
+                      depth -= 1
+                      if depth == 0:
+                          end = i + 1
+                          break
+              if end is None:
+                  raise SystemExit(f'unbalanced method: {signature}')
+              return source[:start] + replacement + source[end:]
 
           old = "\tconst CONTRACT = 'mad4b.site-profile.v1';\n\tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v1';\n\tconst OPTION = 'mad4b_scp_site_profile_v1';\n\tconst VERSION = 1;\n"
           new = "\tconst CONTRACT = 'mad4b.site-profile.v2';\n\tconst LEGACY_CONTRACT = 'mad4b.site-profile.v1';\n\tconst PRESET_CONTRACT = 'mad4b.site-profile-presets.v2';\n\tconst OPTION = 'mad4b_scp_site_profile_v2';\n\tconst LEGACY_OPTION = 'mad4b_scp_site_profile_v1';\n\tconst VERSION = 2;\n\tconst LEGACY_VERSION = 1;\n"
@@ -68,37 +89,37 @@ jobs:
               raise SystemExit('Site Profile constants block drifted')
           s = s.replace(old, new, 1)
 
-          bootstrap_re = re.compile(
-              r"\t\t\$record = get_option\( self::OPTION, .*?\);\n"
-              r"\t\t\$source = 'stored';\n"
-              r"\t\tif \( ! self::valid_record\( \$record \) \) \{.*?\n\t\t\}\n\n"
-              r"(?=\t\tself::\$profile =)", re.S
-          )
-          replacement = """\t\t$record = get_option( self::OPTION, null );
-          \t\t$source = 'stored';
-          \t\t$has_current_record = null !== $record && false !== $record;
-          \t\tif ( ! self::valid_record( $record ) ) {
-          \t\t\tif ( $has_current_record ) {
-          \t\t\t\t$record = array();
-          \t\t\t\t$source = 'stored_invalid';
-          \t\t\t} else {
-          \t\t\t\t$legacy = get_option( self::LEGACY_OPTION, array() );
-          \t\t\t\t$migrated = self::migrate_legacy_record( $legacy );
-          \t\t\t\tif ( ! empty( $migrated ) && self::valid_record( $migrated ) && false !== update_option( self::OPTION, $migrated, false ) ) {
-          \t\t\t\t\t$record = $migrated;
-          \t\t\t\t\t$source = 'legacy_v1_migrated';
-          \t\t\t\t} else {
-          \t\t\t\t\t$record = self::matching_preset();
-          \t\t\t\t\t$source = ! empty( $record ) ? 'preset' : 'none';
-          \t\t\t\t\tif ( ! empty( $record ) && self::valid_record( $record ) && false !== update_option( self::OPTION, $record, false ) ) $source = 'preset_migrated';
-          \t\t\t\t}
-          \t\t\t}
-          \t\t}
+          bootstrap = r'''	public static function bootstrap() {
+          		if ( null !== self::$status || self::$bootstrapping ) return self::status_without_bootstrap();
+          		self::$bootstrapping = true;
 
-          """
-          s, count = bootstrap_re.subn(replacement, s, count=1)
-          if count != 1:
-              raise SystemExit('Site Profile bootstrap block drifted')
+          		$record = get_option( self::OPTION, null );
+          		$source = 'stored';
+          		$has_current_record = null !== $record && false !== $record;
+          		if ( ! self::valid_record( $record ) ) {
+          			if ( $has_current_record ) {
+          				$record = array();
+          				$source = 'stored_invalid';
+          			} else {
+          				$legacy = get_option( self::LEGACY_OPTION, array() );
+          				$migrated = self::migrate_legacy_record( $legacy );
+          				if ( ! empty( $migrated ) && self::valid_record( $migrated ) && false !== update_option( self::OPTION, $migrated, false ) ) {
+          					$record = $migrated;
+          					$source = 'legacy_v1_migrated';
+          				} else {
+          					$record = self::matching_preset();
+          					$source = ! empty( $record ) ? 'preset' : 'none';
+          					if ( ! empty( $record ) && self::valid_record( $record ) && false !== update_option( self::OPTION, $record, false ) ) $source = 'preset_migrated';
+          				}
+          			}
+          		}
+
+          		self::$profile = self::valid_record( $record ) ? self::normalize_record( $record ) : array();
+          		self::$status = self::build_status( self::$profile, $source );
+          		self::$bootstrapping = false;
+          		return self::$status;
+          	}'''
+          s = replace_method(s, '\tpublic static function bootstrap()', bootstrap)
 
           save_marker = "\tpublic static function save_current_site( array $input ) {\n\t\tif ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );\n"
           if s.count(save_marker) != 1:
@@ -132,8 +153,8 @@ jobs:
           			'environment' => (string) $legacy['environment'],
           			'canonical_origin' => (string) $legacy['canonical_origin'],
           			'display_name' => isset( $legacy['display_name'] ) ? (string) $legacy['display_name'] : '',
-          			'chatgpt_app_id' => isset( $legacy['chatgpt_app_id'] ) ? (string) $legacy['chatgpt_app_id'] : '',
-          			'oauth_user_ids' => isset( $legacy['oauth_user_ids'] ) && is_array( $legacy['oauth_user_ids'] ) ? $legacy['oauth_user_ids'] : array(),
+          			'chatgpt_app_id' => '',
+          			'oauth_user_ids' => array(),
           			'related_origins' => isset( $legacy['related_origins'] ) && is_array( $legacy['related_origins'] ) ? $legacy['related_origins'] : array(),
           			'features' => array(
           				'oauth' => false,
@@ -159,19 +180,18 @@ jobs:
               raise SystemExit('build_status marker drifted')
           s = s.replace(anchor, methods + anchor, 1)
 
-          blocker_marker = "\t\t$blockers = array();\n"
-          if s.count(blocker_marker) != 1:
-              raise SystemExit('build_status blockers marker drifted')
-          s = s.replace(blocker_marker, blocker_marker + "\t\t$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );\n", 1)
-          drift_marker = "\t\tif ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';\n"
-          if s.count(drift_marker) != 1:
+          blocker = "\t\t$blockers = array();\n"
+          if s.count(blocker) != 1:
+              raise SystemExit('blockers marker drifted')
+          s = s.replace(blocker, blocker + "\t\t$reenrollment_required = $configured && ! empty( $profile['migration_requires_reenrollment'] );\n", 1)
+          drift = "\t\tif ( $configured && ! $origin_match ) $blockers[] = 'site_profile_origin_drift';\n"
+          if s.count(drift) != 1:
               raise SystemExit('origin drift marker drifted')
-          s = s.replace(drift_marker, drift_marker + "\t\tif ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';\n", 1)
-          origin_field = "\t\t\t'origin_match' => $origin_match,\n"
-          if s.count(origin_field) != 1:
+          s = s.replace(drift, drift + "\t\tif ( $reenrollment_required ) $blockers[] = 'site_profile_reenrollment_required';\n", 1)
+          field = "\t\t\t'origin_match' => $origin_match,\n"
+          if s.count(field) != 1:
               raise SystemExit('origin_match field marker drifted')
-          s = s.replace(origin_field, origin_field + "\t\t\t'reenrollment_required' => $reenrollment_required,\n", 1)
-
+          s = s.replace(field, field + "\t\t\t'reenrollment_required' => $reenrollment_required,\n", 1)
           p.write_text(s)
 
           preset = Path('wp-content/plugins/mad4b-site-control-plane/config/site-profile-presets.json')
@@ -196,7 +216,8 @@ jobs:
           grep -Fq "const LEGACY_OPTION = 'mad4b_scp_site_profile_v1';" "$profile"
           grep -Fq 'site_profile_reenrollment_required' "$profile"
           grep -Fq 'migration_requires_reenrollment' "$profile"
-          grep -Fq 'PRODUCTION_WRITE_CONFIRMATION' "$profile"
+          grep -Fq "'chatgpt_app_id' => ''," "$profile"
+          grep -Fq "'oauth_user_ids' => array()," "$profile"
           for forbidden in 'plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2' 'staging.egypttourgates.com' 'https://egypttourgates.com'; do
             ! grep -R -F -n "$forbidden" "$root/includes" "$main"
           done
