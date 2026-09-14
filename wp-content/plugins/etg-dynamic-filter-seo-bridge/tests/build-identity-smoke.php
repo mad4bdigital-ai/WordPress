@@ -36,10 +36,12 @@ function etg_build_identity_expect( $condition, string $message ): void {
 $root = sys_get_temp_dir() . '/etg-dfsb-build-identity-' . str_replace( '.', '', uniqid( '', true ) );
 mkdir( $root, 0700, true );
 $path = $root . '/build-identity.json';
+$provenancePath = $root . '/etg-dfsb-provenance.txt';
 $git = str_repeat( '1', 40 );
 $git2 = str_repeat( '3', 40 );
 $tree = str_repeat( '2', 40 );
 $version = '0.4.0-alpha.13';
+$packageSha = str_repeat( 'a', 64 );
 
 if ( ! defined( 'ETG_DFSB_DIR' ) ) {
 	define( 'ETG_DFSB_DIR', $root . DIRECTORY_SEPARATOR );
@@ -51,6 +53,7 @@ if ( ! defined( 'ETG_DFSB_VERSION' ) ) {
 $missing = BuildIdentity::inspectFile( $path, $version );
 etg_build_identity_expect( empty( $missing['embedded'] ) && empty( $missing['valid'] ), 'missing identity remains non-authorizing and invalid' );
 etg_build_identity_expect( 'identity_file_missing' === $missing['reason'], 'missing identity reports the exact reason' );
+etg_build_identity_expect( '' === $missing['embedded_identity_sha256'], 'missing identity has no synthetic embedded identity digest' );
 etg_build_identity_expect( 'fallback:alpha13-container-background-4' === BuildIdentity::bootBuild( 'alpha13-container-background-4' ), 'source/dev checkout uses the explicit deterministic fallback key' );
 
 file_put_contents( $path, json_encode( array(
@@ -60,9 +63,53 @@ file_put_contents( $path, json_encode( array(
 	'plugin_version' => $version,
 ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
 $valid = BuildIdentity::inspectFile( $path, $version );
+$identitySha = hash_file( 'sha256', $path );
 etg_build_identity_expect( ! empty( $valid['embedded'] ) && ! empty( $valid['valid'] ), 'valid embedded identity is accepted' );
 etg_build_identity_expect( $git === $valid['git_sha'] && $tree === $valid['tree_sha'], 'source and tree SHA are preserved' );
+etg_build_identity_expect( $identitySha === $valid['embedded_identity_sha256'], 'embedded identity SHA-256 is calculated from the exact live identity bytes' );
 etg_build_identity_expect( empty( $valid['authorizing'] ) && ! empty( $valid['read_only'] ), 'identity evidence stays read-only and non-authorizing' );
+
+$missingProvenance = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
+etg_build_identity_expect( empty( $missingProvenance['package_provenance_present'] ) && empty( $missingProvenance['package_provenance_valid'] ), 'missing detached provenance remains incomplete evidence' );
+etg_build_identity_expect( 'package_provenance_file_missing' === $missingProvenance['package_provenance_reason'], 'missing detached provenance has an explicit reason' );
+
+$validProvenance = implode( "\n", array(
+	'contract=' . BuildIdentity::PROVENANCE_CONTRACT,
+	'git_sha=' . $git,
+	'tree_sha=' . $tree,
+	'plugin_version=' . $version,
+	'package_sha256=' . $packageSha,
+	'embedded_identity_contract=' . BuildIdentity::CONTRACT,
+	'embedded_identity_sha256=' . $identitySha,
+	'push_run_id=123',
+	'pr_run_id=456',
+	'current_event=pull_request',
+) ) . "\n";
+file_put_contents( $provenancePath, $validProvenance );
+$provenance = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
+etg_build_identity_expect( ! empty( $provenance['package_provenance_present'] ) && ! empty( $provenance['package_provenance_valid'] ), 'detached release provenance is accepted only when bound to the live identity' );
+etg_build_identity_expect( 'ok' === $provenance['package_provenance_reason'], 'valid detached provenance reports ok' );
+etg_build_identity_expect( BuildIdentity::PROVENANCE_CONTRACT === $provenance['package_provenance_contract'], 'release provenance contract remains explicit' );
+etg_build_identity_expect( $packageSha === $provenance['package_sha256'], 'validated package SHA-256 is exposed only from detached provenance' );
+
+$collected = BuildIdentity::collect();
+etg_build_identity_expect( ! empty( $collected['provenance_complete'] ), 'collect marks exact package provenance complete only after detached receipt validation' );
+etg_build_identity_expect( $identitySha === $collected['embedded_identity_sha256'], 'collect exposes the independently calculated embedded identity SHA-256' );
+etg_build_identity_expect( $packageSha === $collected['package_sha256'], 'collect exposes the detached validated package SHA-256' );
+
+file_put_contents( $provenancePath, "contract=" . BuildIdentity::PROVENANCE_CONTRACT . "\ncontract=" . BuildIdentity::PROVENANCE_CONTRACT . "\n" );
+$duplicate = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
+etg_build_identity_expect( empty( $duplicate['package_provenance_valid'] ) && 'package_provenance_duplicate_key' === $duplicate['package_provenance_reason'], 'duplicate detached provenance keys fail closed' );
+
+file_put_contents( $provenancePath, str_replace( 'embedded_identity_sha256=' . $identitySha, 'embedded_identity_sha256=' . str_repeat( 'b', 64 ), $validProvenance ) );
+$identityMismatch = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
+etg_build_identity_expect( empty( $identityMismatch['package_provenance_valid'] ) && 'package_provenance_identity_sha_mismatch' === $identityMismatch['package_provenance_reason'], 'receipt bound to different embedded identity bytes fails closed' );
+
+file_put_contents( $provenancePath, str_replace( 'package_sha256=' . $packageSha, 'package_sha256=not-a-sha', $validProvenance ) );
+$badPackageSha = BuildIdentity::inspectProvenanceFile( $provenancePath, $valid );
+etg_build_identity_expect( empty( $badPackageSha['package_provenance_valid'] ) && 'package_provenance_package_sha_invalid' === $badPackageSha['package_provenance_reason'], 'malformed package SHA-256 fails closed' );
+
+file_put_contents( $provenancePath, $validProvenance );
 $bootA = BuildIdentity::bootBuild( 'alpha13-container-background-4' );
 etg_build_identity_expect( 'identity:' . $git . ':' . $tree === $bootA, 'Safe Boot key binds to exact embedded Git/tree identity' );
 
@@ -107,6 +154,7 @@ file_put_contents( $path, json_encode( array(
 $extra = BuildIdentity::inspectFile( $path, $version );
 etg_build_identity_expect( empty( $extra['valid'] ) && 'identity_fields_invalid' === $extra['reason'], 'event/run-specific fields are refused' );
 
+@unlink( $provenancePath );
 @unlink( $path );
 @rmdir( $root );
 
