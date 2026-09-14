@@ -194,7 +194,7 @@ if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
     raise SystemExit('Skills adapter must remain read-only')
 
 for marker in [
-    "const CONTRACT = 'mad4b.live-truth.v1'",
+    "const CONTRACT = 'mad4b.live-truth.v2'",
     "const FRESHNESS_OPTION = 'mad4b_scp_write_runtime_certification_freshness_v1'",
     "add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_live_read_callbacks' ), 100, 2 )",
     "'mad4b/write-authority-status'",
