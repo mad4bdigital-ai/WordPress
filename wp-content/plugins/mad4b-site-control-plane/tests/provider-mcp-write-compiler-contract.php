@@ -39,6 +39,14 @@ final class MAD4B_SCP_Adapter_Registry {
 	public static function instance() { if ( ! self::$instance ) self::$instance = new self(); return self::$instance; }
 	public function register_defaults() {}
 	public function all() { return array( new FakeMultiAdapter(), new FakeLegacyAdapter(), new FakeCanaryWrapperAdapter(), new FakeBitFlowsAdapter() ); }
+	public function ability_names( $surface ) {
+		$names = array();
+		foreach ( $this->all() as $adapter ) {
+			$map = $adapter->ability_names();
+			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $names = array_merge( $names, $map[ $surface ] );
+		}
+		return array_values( array_unique( $names ) );
+	}
 }
 final class MAD4B_SCP_Provider_Compatibility_Certification {
 	public static function supports_provider( $provider ) { return in_array( $provider, array( 'multi', 'bit_pi' ), true ); }
