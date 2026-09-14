@@ -18,24 +18,38 @@ exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(en
 portable = json.loads((repo / 'plugins' / 'mad4b-wordpress' / 'plugin.json').read_text(encoding='utf-8'))
 deployment = json.loads((wp / 'config' / 'staging-deployment-handoff.json').read_text(encoding='utf-8'))
 
+# Runtime write authority is tenant-neutral. ETG binding belongs to the reviewed
+# deployment Site Profile/handoff, never to a host constant inside the authority.
 for marker in [
-    "const STAGING_HOST = 'staging.egypttourgates.com'",
-    "const AGENT_SLUG = 'chatgpt-staging-write'",
+    "const CONTRACT = 'mad4b.governed-write-authority.v2'",
     "const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id'",
     "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::write_enabled()",
+    "MAD4B_SCP_Site_Profile::agent_slug()",
+    "site_profile_unconfigured",
+    "site_profile_write_disabled",
     "'production_auto_enable' => false",
     "'breakglass_auto_enable' => false",
     "'all_remote_writes_require_exact_approval' => true",
     "MAD4B_SCP_Agent_Registry::grant_ability",
     "'mad4b-write'",
-    "'staging'",
     "remote_scope_delegation_allowed",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "mad4b:read",
     "approval_ticket_from_input",
 ]:
     if marker not in write:
-        raise SystemExit(f'missing governed Staging write invariant: {marker}')
+        raise SystemExit(f'missing tenant-bound governed write invariant: {marker}')
+
+for forbidden in [
+    "const STAGING_HOST = 'staging.egypttourgates.com'",
+    "const AGENT_SLUG = 'chatgpt-staging-write'",
+    "staging.egypttourgates.com",
+    "egypttourgates.com",
+]:
+    if forbidden in write:
+        raise SystemExit(f'tenant-neutral write authority retained ETG/runtime host coupling: {forbidden}')
 
 if "'mad4b/database-raw-query'" not in write or "array_diff( $tools, array( 'mad4b/database-raw-query' ) )" not in write:
     raise SystemExit('write authority must explicitly remove breakglass raw-query')
@@ -332,4 +346,4 @@ for key in [
 if deployment.get('secrets_included') is not False:
     raise SystemExit('staging deployment handoff must never contain secrets')
 
-print('mad4b.staging-write-authority.v8: PASS')
+print('mad4b.staging-write-authority.tenant-profile.v9: PASS')
