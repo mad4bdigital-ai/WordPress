@@ -183,6 +183,23 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH" --url="$TARGET_ORIGIN"
           php /tmp/wp-cli.phar eval '
             $profile = MAD4B_SCP_Site_Profile::status();
+            if ( empty( $profile["configured"] ) ) {
+              $saved = MAD4B_SCP_Site_Profile::save_current_site( array(
+                "expected_revision" => 0,
+                "display_name" => "MAD4B ETG Live Acceptance",
+                "chatgpt_app_id" => "plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2",
+                "oauth_user_ids" => array( get_current_user_id() ),
+                "oauth_enabled" => false,
+                "skills_enabled" => true,
+                "write_enabled" => false,
+                "production_write_confirmed" => false,
+                "provider_isolation_enabled" => false,
+                "managed_runtime_enabled" => false,
+                "acceptance_enabled" => true,
+              ) );
+              if ( is_wp_error( $saved ) ) { fwrite( STDERR, $saved->get_error_code() . ": " . $saved->get_error_message() ); exit( 1 ); }
+              $profile = MAD4B_SCP_Site_Profile::status();
+            }
             if ( empty( $profile["configured"] ) || empty( $profile["origin_match"] ) || empty( $profile["environment_match"] ) || empty( $profile["skills_enabled"] ) || ! hash_equals( getenv( "TARGET_ORIGIN" ), (string) $profile["canonical_origin"] ) ) { fwrite( STDERR, "site profile fixture mismatch: " . wp_json_encode( $profile ) ); exit( 1 ); }
             $p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
             if ( empty( $p["manifest_valid"] ) || empty( $p["runtime_manifest_match"] ) || ! empty( $p["stale"] ) ) { fwrite( STDERR, wp_json_encode( $p ) ); exit( 1 ); }
