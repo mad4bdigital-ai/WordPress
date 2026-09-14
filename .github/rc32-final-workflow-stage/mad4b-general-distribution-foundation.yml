@@ -1,0 +1,144 @@
+name: MAD4B General Distribution Foundation
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-compatibility.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php'
+      - '.github/workflows/mad4b-general-distribution-foundation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-general-distribution-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  profile-runtime:
+    name: Tenant-neutral profile / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint generalized authority foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php; do
+            php -l "$file"
+          done
+
+      - name: Run tenant-neutral Site Profile runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php
+
+      - name: Run tenant-bound multi-user OAuth runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php
+
+      - name: Run General Distribution environment contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py
+
+      - name: Reject authority-by-install defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          profile="$root/includes/class-mad4b-scp-site-profile.php"
+          authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
+          dependency="$root/includes/class-mad4b-scp-dependency-manager.php"
+          oauth="$root/includes/class-mad4b-scp-staging-oauth-autoconfig.php"
+          subject_bridge="$root/includes/class-mad4b-scp-oauth-subject-user-bridge.php"
+          skills="$root/includes/class-mad4b-scp-skill-autoconfig.php"
+          main="$root/mad4b-site-control-plane.php"
+
+          grep -Fq "site_profile_unconfigured" "$profile"
+          grep -Fq "site_profile_origin_drift" "$profile"
+          grep -Fq "site_profile_environment_drift" "$profile"
+          grep -Fq "PRODUCTION_WRITE_CONFIRMATION" "$profile"
+          grep -Fq "site_profile_unconfigured" "$authority"
+          grep -Fq "site_profile_write_disabled" "$authority"
+          grep -Fq "'production_auto_enable' => false" "$authority"
+          grep -Fq "'breakglass_auto_enable' => false" "$authority"
+          grep -Fq "'all_remote_writes_require_exact_approval' => true" "$authority"
+          grep -Fq "auto_downloads_remote_code' => false" "$dependency"
+          grep -Fq "site_profile_admin_owner_required" "$oauth"
+          grep -Fq "oauth_user_ids" "$oauth"
+          grep -Fq "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()" "$subject_bridge"
+          grep -Fq "MAD4B_SCP_Site_Profile::user_is_enrolled" "$subject_bridge"
+          grep -Fq "MAD4B_SCP_Site_Profile::configured()" "$skills"
+          grep -Fq "MAD4B_SCP_Site_Profile::chatgpt_app_id()" "$skills"
+          grep -Fq "site_profile_skills_disabled" "$skills"
+          grep -Fq "MAD4B_SCP_OAuth_Subject_User_Bridge::boot();" "$main"
+
+          if grep -Fq "MAD4B_SCP_Site_Profile::enrolled()" "$skills" || grep -Fq "MAD4B_SCP_Site_Profile::openai_app_id()" "$skills"; then
+            echo 'Skills autoconfig references a removed Site Profile API.' >&2
+            exit 1
+          fi
+
+          # Breakglass is intentionally not a Site Profile feature. It remains
+          # an independent exceptional authority and cannot be enabled by normal
+          # tenant enrollment.
+          if grep -Fq "breakglass_enabled" "$profile"; then
+            echo 'Normal Site Profile must not carry a breakglass enable switch.' >&2
+            exit 1
+          fi
+
+          for file in "$profile" "$authority" "$dependency" "$oauth" "$subject_bridge"; do
+            if grep -Fq 'staging.egypttourgates.com' "$file" || grep -Fq 'egypttourgates.com' "$file"; then
+              echo "Tenant-neutral runtime authority hardcodes an ETG origin: $file" >&2
+              exit 1
+            fi
+          done
+
+          if grep -Fq 'Requires Plugins: mcp-adapter' "$main"; then
+            echo 'General distribution must boot diagnostics/onboarding without an installed Adapter.' >&2
+            exit 1
+          fi
