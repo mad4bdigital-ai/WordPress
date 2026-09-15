@@ -73,6 +73,8 @@ final class MAD4B_SCP_Live_Truth {
 
 		$profile_configured = $profile_available && MAD4B_SCP_Site_Profile::configured();
 		$profile_origin_enrolled = $profile_available && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$profile_site_urls_match = $profile_available && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$exact_profile_bound = $profile_origin_enrolled && $profile_site_urls_match;
 		$profile_write_enabled = $profile_available && MAD4B_SCP_Site_Profile::write_enabled();
 		$site_uuid = $profile_available ? MAD4B_SCP_Site_Profile::site_uuid() : '';
 		$profile_revision = $profile_available ? MAD4B_SCP_Site_Profile::revision() : 0;
@@ -176,6 +178,8 @@ final class MAD4B_SCP_Live_Truth {
 			'site_profile_digest' => $profile_digest,
 			'profile_configured' => $profile_configured,
 			'profile_origin_enrolled' => $profile_origin_enrolled,
+			'profile_site_urls_match' => $profile_site_urls_match,
+			'exact_profile_bound' => $exact_profile_bound,
 			'profile_write_enabled' => $profile_write_enabled,
 			'eligible' => $eligible,
 			'ready' => $ready,
@@ -224,7 +228,7 @@ final class MAD4B_SCP_Live_Truth {
 		$checks = array();
 		$blockers = array();
 
-		$checks['site_profile_bound'] = ! empty( $authority['profile_origin_enrolled'] );
+		$checks['site_profile_bound'] = ! empty( $authority['exact_profile_bound'] );
 		// Compatibility alias retained while older evidence consumers migrate.
 		$checks['exact_staging_origin'] = $checks['site_profile_bound'];
 		$checks['write_feature_enabled'] = ! empty( $authority['profile_write_enabled'] );

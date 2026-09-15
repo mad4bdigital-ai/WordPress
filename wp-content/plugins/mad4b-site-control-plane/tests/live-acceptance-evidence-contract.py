@@ -233,7 +233,7 @@ for marker in [
 if "$checks['site_profile_bound'] = ! empty( $authority['eligible'] );" in live_truth:
     raise SystemExit('Live write truth must not conflate profile binding with write eligibility.')
 for marker in [
-    "$checks['site_profile_bound'] = ! empty( $authority['profile_origin_enrolled'] );",
+    "$checks['site_profile_bound'] = ! empty( $authority['exact_profile_bound'] );",
     "$checks['write_feature_enabled'] = ! empty( $authority['profile_write_enabled'] );",
     "$checks['write_authority_eligible'] = ! empty( $authority['eligible'] );",
 ]:
@@ -250,6 +250,30 @@ for marker in [
 ]:
     if marker not in write_cert:
         raise SystemExit('Canonical write certification diagnostic separation missing: ' + marker)
+
+# Governed write eligibility requires the same exact site binding as the
+# environment guard: profile origin/environment plus both home_url and site_url.
+for marker in [
+    "$site_urls_match = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();",
+    "$exact_profile_bound = $origin_enrolled && $site_urls_match;",
+    "$eligible = $configured && $exact_profile_bound && $write_enabled;",
+    "'site_profile_site_urls_mismatch'",
+    "'profile_site_urls_match' => $site_urls_match",
+    "'exact_profile_bound' => $exact_profile_bound",
+]:
+    if marker not in write:
+        raise SystemExit('Exact governed-write site binding hardening missing: ' + marker)
+if "$eligible = $configured && $origin_enrolled && $write_enabled;" in write:
+    raise SystemExit('Governed write eligibility must not ignore site_url/home_url parity.')
+for marker in [
+    "$profile_site_urls_match = $profile_available && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();",
+    "$exact_profile_bound = $profile_origin_enrolled && $profile_site_urls_match;",
+    "'profile_site_urls_match' => $profile_site_urls_match",
+    "'exact_profile_bound' => $exact_profile_bound",
+    "$checks['site_profile_bound'] = ! empty( $authority['exact_profile_bound'] );",
+]:
+    if marker not in live_truth:
+        raise SystemExit('Live write truth exact binding diagnostic missing: ' + marker)
 
 # Positive reachability is a mandatory regression, not only false-pass checks.
 for marker in [

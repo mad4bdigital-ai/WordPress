@@ -495,14 +495,17 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$profile_status = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$configured = ! empty( $profile_status['configured'] );
 		$origin_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$site_urls_match = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$exact_profile_bound = $origin_enrolled && $site_urls_match;
 		$write_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
-		$eligible = $configured && $origin_enrolled && $write_enabled;
+		$eligible = $configured && $exact_profile_bound && $write_enabled;
 		$blocker = '';
 		if ( ! $configured ) $blocker = 'site_profile_unconfigured';
 		elseif ( ! $origin_enrolled ) {
 			$profile_blockers = isset( $profile_status['blockers'] ) && is_array( $profile_status['blockers'] ) ? $profile_status['blockers'] : array();
 			$blocker = ! empty( $profile_blockers ) ? sanitize_key( (string) reset( $profile_blockers ) ) : 'site_profile_drift';
-		} elseif ( ! $write_enabled ) $blocker = 'site_profile_write_disabled';
+		} elseif ( ! $site_urls_match ) $blocker = 'site_profile_site_urls_mismatch';
+		elseif ( ! $write_enabled ) $blocker = 'site_profile_write_disabled';
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -513,6 +516,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
 			'site_profile_revision' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::revision() : 0,
 			'site_profile_digest' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::profile_digest() : '',
+			'profile_origin_enrolled' => $origin_enrolled,
+			'profile_site_urls_match' => $site_urls_match,
+			'exact_profile_bound' => $exact_profile_bound,
+			'profile_write_enabled' => $write_enabled,
 			'eligible' => $eligible,
 			'ready' => false,
 			'state' => $eligible ? 'pending' : 'ineligible',
