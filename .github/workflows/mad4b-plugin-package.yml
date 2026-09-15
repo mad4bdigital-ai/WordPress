@@ -43,9 +43,6 @@ jobs:
           grep -Fq 'MAD4B_SCP_Dependency_Manager::boot();' "$main"
           grep -Fq "const BUNDLED_ARCHIVE = 'dependencies/mcp-adapter.zip';" "$root/includes/class-mad4b-scp-dependency-manager.php"
 
-          # General distribution must be able to activate in zero-authority
-          # diagnostic/onboarding mode even when the Adapter is not installed.
-          # Dependency installation is an explicit, digest-verified admin action.
           if grep -Fq 'Requires Plugins: mcp-adapter' "$main"; then
             echo 'General-distribution package must not hard-block activation through Requires Plugins; use the explicit Dependency Manager.' >&2
             exit 1
@@ -87,8 +84,6 @@ jobs:
           mkdir -p dist/stage/mad4b-site-control-plane/dependencies
           cp wp-content/plugins/mcp-adapter.zip dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip
 
-          # Prove the exact dependency embedded in the release package is the
-          # certified archive, not merely a same-named local file.
           expected_sha="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo strtolower((string)($j["providers"]["mcp_adapter"]["archive_sha256"]??""));' dist/stage/mad4b-site-control-plane/config/certified-providers.json)"
           embedded_sha="$(sha256sum dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip | awk '{print $1}')"
           test "$expected_sha" = "$embedded_sha"
@@ -101,12 +96,11 @@ jobs:
           printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/SOURCE_HEAD.txt
           printf '%s\n' "$embedded_sha" > dist/MCP_ADAPTER_SHA256.txt
 
-      - name: Upload installable package
+      - name: Upload packaging validation evidence only
         uses: actions/upload-artifact@v4
         with:
-          name: mad4b-site-control-plane-installable
+          name: mad4b-plugin-package-validation-evidence
           path: |
-            dist/mad4b-site-control-plane.zip
             dist/mad4b-site-control-plane.zip.sha256
             dist/SOURCE_HEAD.txt
             dist/MCP_ADAPTER_SHA256.txt
