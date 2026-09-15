@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = 'ffc16d5e0531128a6b46f5d8a0af4a225488934c'
+          test "$(git rev-parse HEAD^)" = 'a8c85e4517dcadf74f4329302ce4c77d681ca807'
 
       - name: Reconstruct and apply bounded enrollment patch
         shell: bash
@@ -68,15 +68,18 @@ jobs:
           php "$root/tests/site-profile-feature-reenrollment-runtime.php"
           git diff --check
 
-      - name: Commit source patch and remove temporary writer
+      - name: Commit source patch only
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/workflows/rc34-enrollment-control-surface-patch.yml
-          rm -f .github/scripts/rc34-enrollment-patch.py.part*
+          git checkout -- .github/workflows/mad4b-general-distribution-foundation.yml
           git config user.name 'MAD4B'
           git config user.email 'mad4b.digital@gmail.com'
-          git add -A
-          test -n "$(git status --porcelain)"
+          git add wp-content/plugins/mad4b-site-control-plane
+          test -n "$(git diff --cached --name-only)"
+          if git diff --cached --name-only | grep -q '^\.github/'; then
+            echo 'Writer must not push workflow files with the Actions token.' >&2
+            exit 1
+          fi
           git commit -m 'feat(governance): add bounded profile enrollment surface'
           git push origin HEAD:feat/dynamic-wordpress-skills-20260909
