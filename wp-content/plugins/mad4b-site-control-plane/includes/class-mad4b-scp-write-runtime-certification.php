@@ -236,6 +236,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$expected_rest_scope = array(
 			'/mcp/mad4b-read',
 			'/mcp/mad4b-chatgpt',
+			'/mcp/mad4b-enrollment',
 			'/mcp/mad4b-content',
 			'/mcp/mad4b-write',
 			'/mcp/mad4b-admin',
