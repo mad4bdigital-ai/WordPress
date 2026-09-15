@@ -5,8 +5,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Conservative upgrade continuity and reconnect diagnostics.
  *
- * Fresh installs remain zero-authority. A migrated v1 Site Profile can recover
- * only the previously proven read/OAuth connection on the exact same
+ * Fresh installs remain zero-authority. A migrated v1 Site Profile, or a
+ * previously verified local OAuth snapshot that survived an older build, can
+ * recover only the previously proven read/OAuth connection on the exact same
  * non-Production origin, site UUID and administrator subject. Write, Skills,
  * acceptance and Production authority are never restored by this migration.
  */
@@ -46,7 +47,11 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return self::recovery_result( 'site_profile_class_unavailable', false, 'site_profile_class_unavailable' );
 
 		$current = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
-		if ( ! self::valid_v2_migration_pending_record( $current ) ) return self::recovery_result( 'not_applicable', false, '' );
+		$has_current = null !== $current && false !== $current;
+		if ( ! self::valid_v2_migration_pending_record( $current ) ) {
+			if ( $has_current ) return self::recovery_result( 'not_applicable', false, '' );
+			return self::recover_snapshot_only_read_continuity();
+		}
 
 		$environment = self::current_environment();
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return self::recovery_result( 'blocked', false, 'nonproduction_only' );
@@ -87,15 +92,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$next = $current;
 		$next['revision'] = max( 1, absint( $current['revision'] ) + 1 );
 		$next['oauth_user_ids'] = array( $owner_user_id );
-		$next['features'] = array(
-			'oauth' => true,
-			'skills' => false,
-			'write' => false,
-			'production_write_confirmed' => false,
-			'provider_isolation' => true,
-			'managed_runtime' => true,
-			'acceptance' => false,
-		);
+		$next['features'] = self::read_only_features();
 		$next['chatgpt_app_id'] = '';
 		$next['legacy_agent_slug'] = '';
 		$next['legacy_zero_touch'] = false;
@@ -114,9 +111,94 @@ final class MAD4B_SCP_Upgrade_Continuity {
 			'owner_user_id' => $owner_user_id,
 			'previous_revision' => absint( $current['revision'] ),
 			'revision' => absint( $next['revision'] ),
+			'recovery_source' => 'legacy_site_profile_and_prior_oauth_snapshot',
 			'write_restored' => false,
 			'production_authority_restored' => false,
 		) );
+	}
+
+	/**
+	 * Older zero-touch builds could persist the exact local OAuth snapshot before
+	 * Site Profile v1/v2 existed. Recover that identity only when the snapshot is
+	 * still exact-bound to this non-Production origin and an Administrator.
+	 */
+	private static function recover_snapshot_only_read_continuity() {
+		$snapshot = get_option( self::PRIOR_OAUTH_OPTION, array() );
+		if ( ! is_array( $snapshot ) || empty( $snapshot ) ) return self::recovery_result( 'not_applicable', false, '' );
+
+		$environment = self::current_environment();
+		if ( ! in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return self::recovery_result( 'blocked', false, 'nonproduction_only' );
+		$origin = self::current_origin();
+		if ( '' === $origin ) return self::recovery_result( 'blocked', false, 'current_origin_unavailable' );
+
+		$snapshot_environment = isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '';
+		$snapshot_origin = isset( $snapshot['canonical_origin'] ) ? self::normalize_origin( $snapshot['canonical_origin'] ) : '';
+		$snapshot_uuid = isset( $snapshot['site_uuid'] ) ? strtolower( trim( (string) $snapshot['site_uuid'] ) ) : '';
+		$snapshot_issuer = isset( $snapshot['issuer'] ) ? untrailingslashit( trim( (string) $snapshot['issuer'] ) ) : '';
+		$expected_issuer = untrailingslashit( home_url( '/oauth/mcp' ) );
+		$owner_user_id = isset( $snapshot['primary_owner_user_id'] ) ? absint( $snapshot['primary_owner_user_id'] ) : ( isset( $snapshot['wp_user_id'] ) ? absint( $snapshot['wp_user_id'] ) : 0 );
+		$snapshot_revision = isset( $snapshot['profile_revision'] ) ? absint( $snapshot['profile_revision'] ) : 0;
+
+		if ( ! self::valid_uuid( $snapshot_uuid ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_site_uuid_invalid' );
+		if ( ! hash_equals( $environment, $snapshot_environment ) || ! hash_equals( $origin, $snapshot_origin ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_identity_mismatch' );
+		if ( '' === $snapshot_issuer || ! hash_equals( $expected_issuer, $snapshot_issuer ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_issuer_mismatch' );
+		if ( $owner_user_id < 1 ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_missing' );
+		$user = get_userdata( $owner_user_id );
+		if ( ! $user || ! user_can( $user, 'manage_options' ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_administrator' );
+		if ( isset( $snapshot['oauth_user_ids'] ) && is_array( $snapshot['oauth_user_ids'] ) && ! empty( $snapshot['oauth_user_ids'] ) ) {
+			$prior_users = array_values( array_unique( array_filter( array_map( 'absint', $snapshot['oauth_user_ids'] ) ) ) );
+			if ( ! in_array( $owner_user_id, $prior_users, true ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_in_snapshot' );
+		}
+
+		$now = gmdate( 'c' );
+		$next = array(
+			'contract' => MAD4B_SCP_Site_Profile::CONTRACT,
+			'version' => MAD4B_SCP_Site_Profile::VERSION,
+			'site_uuid' => $snapshot_uuid,
+			'revision' => max( 1, $snapshot_revision + 1 ),
+			'environment' => $environment,
+			'canonical_origin' => $origin,
+			'display_name' => function_exists( 'get_bloginfo' ) ? substr( sanitize_text_field( (string) get_bloginfo( 'name' ) ), 0, 191 ) : '',
+			'chatgpt_app_id' => '',
+			'oauth_user_ids' => array( $owner_user_id ),
+			'related_origins' => array( $environment => $origin ),
+			'features' => self::read_only_features(),
+			'legacy_agent_slug' => '',
+			'legacy_zero_touch' => false,
+			'migration_requires_reenrollment' => false,
+			'migration_read_continuity_recovered' => true,
+			'migration_read_continuity_source' => 'prior_oauth_snapshot',
+			'migration_write_reenrollment_required' => true,
+			'migration_read_continuity_contract' => self::CONTRACT,
+			'migration_read_continuity_evidence_sha256' => hash( 'sha256', implode( "\n", array( $environment, $origin, $snapshot_uuid, (string) $owner_user_id, $snapshot_issuer ) ) ),
+			'created_at' => $now,
+			'updated_at' => $now,
+		);
+		if ( false === update_option( MAD4B_SCP_Site_Profile::OPTION, $next, false ) ) return self::recovery_result( 'blocked', false, 'read_continuity_persist_failed' );
+
+		return self::recovery_result( 'recovered', true, '', array(
+			'site_uuid' => $snapshot_uuid,
+			'environment' => $environment,
+			'canonical_origin' => $origin,
+			'owner_user_id' => $owner_user_id,
+			'previous_revision' => $snapshot_revision,
+			'revision' => absint( $next['revision'] ),
+			'recovery_source' => 'prior_oauth_snapshot',
+			'write_restored' => false,
+			'production_authority_restored' => false,
+		) );
+	}
+
+	private static function read_only_features() {
+		return array(
+			'oauth' => true,
+			'skills' => false,
+			'write' => false,
+			'production_write_confirmed' => false,
+			'provider_isolation' => true,
+			'managed_runtime' => true,
+			'acceptance' => false,
+		);
 	}
 
 	public static function guard_reconnect_paths() {
