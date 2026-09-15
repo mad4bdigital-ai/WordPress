@@ -44,6 +44,11 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-mcp-registration-bridge.php"
           php -l "$root/includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php"
           php -l "$root/includes/class-mad4b-scp-connection-status.php"
+          php -l "$root/includes/class-mad4b-scp-upgrade-continuity.php"
+          php -l "$root/includes/class-mad4b-scp-reconnect-hardening.php"
+          php -l "$root/includes/class-mad4b-scp-plugin.php"
+          php -l "$root/tests/upgrade-continuity-runtime.php"
+          php -l "$root/tests/reconnect-hardening-runtime.php"
           php -l "$root/includes/class-mad4b-scp-external-handshake-evidence.php"
           php -l "$root/includes/class-mad4b-scp-connection-ability.php"
           php -l "$root/includes/class-mad4b-scp-connection-admin-ui.php"
@@ -62,6 +67,8 @@ jobs:
           python3 "$root/tests/mcp-provider-isolation-contract.py"
           python3 "$root/tests/mcp-registration-bridge-contract.py"
           python3 "$root/tests/mcp-runtime-conflict-guard-contract.py"
+          php "$root/tests/upgrade-continuity-runtime.php"
+          php "$root/tests/reconnect-hardening-runtime.php"
 
   runtime:
     name: Connection runtime (${{ matrix.wordpress }})
