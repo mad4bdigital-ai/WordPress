@@ -17,14 +17,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat/dynamic-wordpress-skills-20260909
-          fetch-depth: 5
+          fetch-depth: 6
 
       - name: Guard exact staging ancestry
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = 'ed8ef481ee007cbe2010ebcdf55457756e3f3f11'
-          test "$(git rev-parse HEAD^^^^)" = '62544e80a72e02bfa1711919dec588a26bea5df1'
+          test "$(git rev-parse HEAD^)" = '2af6e81da4eb5d531043ce7afaf5b2d40db784af'
+          test "$(git rev-parse HEAD^^^^^)" = '62544e80a72e02bfa1711919dec588a26bea5df1'
           mapfile -t changed < <(git diff --name-only 62544e80a72e02bfa1711919dec588a26bea5df1..HEAD | sort)
           test "${#changed[@]}" -eq 2
           test "${changed[0]}" = '.github/rc32-upgrade-continuity-hardening.py'
@@ -37,11 +37,11 @@ jobs:
           python3 .github/rc32-upgrade-continuity-hardening.py
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php')
           lines = []
           for line in p.read_text().splitlines(keepends=True):
-              while line.startswith('\\t'):
-                  line = '\t' + line[2:]
+              line = re.sub(r'^(?:\\t)+', lambda m: '\t' * (len(m.group(0)) // 2), line)
               lines.append(line)
           p.write_text(''.join(lines))
           PY
