@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/feat/dynamic-wordpress-skills-20260909)"
-          test "$(git rev-parse HEAD^)" = "b90eea40363ba43aef0788a525dc48fdfd7dcfe5"
+          test "$(git rev-parse HEAD^)" = "b10d5d57ff2df322cba368142e1f28a54a8097c6"
       - name: Preserve exact governance bootstrap diagnostics
         shell: bash
         run: |
