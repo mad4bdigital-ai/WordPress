@@ -1,0 +1,149 @@
+name: RC34 Candidate Binding Fix
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - .github/workflows/rc34-candidate-binding-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 3
+
+      - name: Guard exact parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = 'a5d933bf2705610d489b67f344ba7672b9588ee2'
+
+      - name: Promote source coherently to rc.34
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          main = Path('wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php')
+          runtime = Path('wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt')
+          readme = Path('wp-content/plugins/mad4b-site-control-plane/README.md')
+          workflow = Path('.github/workflows/mad4b-control-plane-package.yml')
+          test = Path('wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py')
+
+          def replace_exact(path, old, new, count=1):
+              text = path.read_text(encoding='utf-8')
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f'{path}: expected {count} occurrences of {old!r}, found {actual}')
+              path.write_text(text.replace(old, new), encoding='utf-8')
+
+          replace_exact(main, ' * Version: 0.4.0-rc.32', ' * Version: 0.4.0-rc.34')
+          replace_exact(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.32' );", "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.34' );")
+          replace_exact(runtime, 'release=0.4.0-rc.32', 'release=0.4.0-rc.34')
+          replace_exact(readme, 'Current plugin version: **0.4.0-rc.32**.', 'Current plugin version: **0.4.0-rc.34**.')
+
+          marker = '''      - name: Reject distributable symlinks and secret-like files\n'''
+          insertion = '''      - name: Verify release candidate identity coherence\n        shell: bash\n        run: |\n          set -euo pipefail\n          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py\n\n'''
+          text = workflow.read_text(encoding='utf-8')
+          if insertion not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit('package workflow insertion marker missing or ambiguous')
+              text = text.replace(marker, insertion + marker, 1)
+              workflow.write_text(text, encoding='utf-8')
+
+          test.write_text(r'''#!/usr/bin/env python3
+import json
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[4]
+PLUGIN = ROOT / 'wp-content/plugins/mad4b-site-control-plane'
+MAIN = PLUGIN / 'mad4b-site-control-plane.php'
+RUNTIME = PLUGIN / 'MAD4B-RUNTIME-BUILD.txt'
+README = PLUGIN / 'README.md'
+HANDOFF = PLUGIN / 'config/staging-deployment-handoff.json'
+PACKAGE_WORKFLOW = ROOT / '.github/workflows/mad4b-control-plane-package.yml'
+
+main = MAIN.read_text(encoding='utf-8')
+runtime = RUNTIME.read_text(encoding='utf-8')
+readme = README.read_text(encoding='utf-8')
+workflow = PACKAGE_WORKFLOW.read_text(encoding='utf-8')
+handoff = json.loads(HANDOFF.read_text(encoding='utf-8'))
+
+header = re.search(r'^ \* Version: ([^ ]+)$', main, re.MULTILINE)
+constant = re.search(r"define\( 'MAD4B_SCP_VERSION', '([^']+)' \);", main)
+runtime_release = re.search(r'^release=(.+)$', runtime, re.MULTILINE)
+readme_version = re.search(r'^Current plugin version: \*\*([^*]+)\*\*\.$', readme, re.MULTILINE)
+
+if not all((header, constant, runtime_release, readme_version)):
+    raise SystemExit('candidate version identity is incomplete')
+
+versions = {
+    'plugin_header': header.group(1),
+    'runtime_constant': constant.group(1),
+    'runtime_build': runtime_release.group(1),
+    'readme': readme_version.group(1),
+}
+if len(set(versions.values())) != 1:
+    raise SystemExit(f'candidate version drift: {versions}')
+
+version = next(iter(versions.values()))
+if not re.fullmatch(r'\d+\.\d+\.\d+-rc\.\d+', version):
+    raise SystemExit(f'invalid release candidate version: {version}')
+
+required_workflow_fragments = (
+    'SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}',
+    "source = os.environ['SOURCE_SHA']",
+    "'source_commit_sha': source",
+    "artifact_identity = f'mad4b-site-control-plane-general-distribution-kit-{source}'",
+    "'commit': os.environ.get('SOURCE_SHA')",
+)
+for fragment in required_workflow_fragments:
+    if fragment not in workflow:
+        raise SystemExit(f'package exact-head source binding missing: {fragment}')
+
+if handoff.get('producer', {}).get('source_binding') != 'exact_head_sha':
+    raise SystemExit('deployment handoff is not exact-head bound')
+if handoff.get('producer', {}).get('artifact_name_template') != 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}':
+    raise SystemExit('deployment artifact identity is not exact-head bound')
+
+if re.search(r'\b[0-9a-f]{40}\b', runtime, re.I):
+    raise SystemExit('runtime build marker must not hard-code a source commit SHA')
+
+print(f'release candidate identity coherence: PASS ({version})')
+''', encoding='utf-8')
+          PY
+
+      - name: Verify focused contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php >/dev/null
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py
+          grep -Fxq 'release=0.4.0-rc.34' wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt
+          grep -Fq "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.34' );" wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          git diff --check
+
+      - name: Commit rc.34 candidate binding fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'MAD4B'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add \
+            wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php \
+            wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt \
+            wp-content/plugins/mad4b-site-control-plane/README.md \
+            wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py \
+            .github/workflows/mad4b-control-plane-package.yml
+          test -n "$(git status --porcelain)"
+          git commit -m 'fix(rc34): bind release candidate identity to exact head'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
