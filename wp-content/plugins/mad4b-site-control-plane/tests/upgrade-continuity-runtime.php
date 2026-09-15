@@ -53,6 +53,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 require dirname(__DIR__).'/includes/class-mad4b-scp-upgrade-continuity.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);}}
 function legacy($env='staging',$origin='https://staging.example.test'){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>4,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy','chatgpt_app_id'=>'plugin_asdk_app_legacy','oauth_user_ids'=>array(7,8),'related_origins'=>array(),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy','legacy_zero_touch'=>true);}
+function snapshot($env='staging',$origin='https://staging.example.test'){return array('environment'=>$env,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'canonical_origin'=>$origin,'wp_user_id'=>7,'primary_owner_user_id'=>7,'oauth_user_ids'=>array(7),'issuer'=>rtrim($origin,'/').'/oauth/mcp');}
 function resetx(){ $GLOBALS['opts']=array();$GLOBALS['env']='staging';$GLOBALS['home']='https://staging.example.test';MAD4B_SCP_Site_Profile::reset_cache(); }
 
 // Fresh installs remain zero-authority.
@@ -61,6 +62,38 @@ $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
 ok(!$r['recovered']&&'not_applicable'===$r['state'],'fresh install must not recover authority');
 ok(!MAD4B_SCP_Site_Profile::oauth_enabled()&&!MAD4B_SCP_Site_Profile::write_enabled(),'fresh install remains zero-authority');
 
+// A surviving exact prior OAuth snapshot can rebuild only the minimal v2 read identity.
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot();
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!empty($r['recovered'])&&'prior_oauth_snapshot'===$r['recovery_source'],'snapshot-only evidence recovers read continuity');
+MAD4B_SCP_Site_Profile::reset_cache();
+$s=MAD4B_SCP_Site_Profile::status();
+ok(!empty($s['configured'])&&!empty($s['oauth_enabled']),'snapshot-only recovery configures OAuth Site Profile');
+ok(empty($s['write_enabled']),'snapshot-only recovery must not restore write authority');
+$v2=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok('123e4567-e89b-42d3-a456-426614174000'===$v2['site_uuid'],'snapshot-only recovery preserves exact site UUID');
+ok(5===$v2['revision'],'snapshot-only recovery advances prior profile revision');
+ok(!empty($v2['features']['oauth'])&&!empty($v2['features']['managed_runtime'])&&!empty($v2['features']['provider_isolation']),'snapshot-only recovery restores bounded read runtime');
+ok(empty($v2['features']['write'])&&empty($v2['features']['skills'])&&empty($v2['features']['acceptance'])&&empty($v2['features']['production_write_confirmed']),'snapshot-only recovery restores no unrelated authority');
+ok('prior_oauth_snapshot'===$v2['migration_read_continuity_source']&&!empty($v2['migration_write_reenrollment_required']),'snapshot-only recovery records source and requires write re-enrollment');
+ok(empty($r['write_restored'])&&empty($r['production_authority_restored'])&&empty($r['breakglass_restored']),'snapshot-only recovery never restores write, Production or Breakglass authority');
+
+// Snapshot-only origin drift fails closed and must not synthesize a Site Profile.
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot('staging','https://evil.example.test');
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'prior_oauth_identity_mismatch'===$r['blocker'],'snapshot-only origin drift must fail closed');
+ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'snapshot-only origin drift must not persist a Site Profile');
+
+// Snapshot-only continuity is never auto-restored on Production.
+resetx();
+$GLOBALS['env']='production';$GLOBALS['home']='https://prod.example.test';
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot('production','https://prod.example.test');
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'nonproduction_only'===$r['blocker'],'snapshot-only Production auto recovery is prohibited');
+ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'snapshot-only Production must not persist a Site Profile');
+
 // Legacy identity alone remains fail-closed.
 resetx();
 $GLOBALS['opts'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy();
@@ -68,7 +101,7 @@ $s=MAD4B_SCP_Site_Profile::status();
 ok(!empty($s['reenrollment_required'])&&empty($s['oauth_enabled']),'legacy identity alone remains fail-closed');
 
 // Exact prior OAuth evidence restores read/OAuth continuity only.
-$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=array('environment'=>'staging','site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'canonical_origin'=>'https://staging.example.test','wp_user_id'=>7,'primary_owner_user_id'=>7,'oauth_user_ids'=>array(7),'issuer'=>'https://staging.example.test/oauth/mcp');
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot();
 $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
 ok(!empty($r['recovered']),'exact prior OAuth evidence recovers read continuity');
 MAD4B_SCP_Site_Profile::reset_cache();
@@ -85,7 +118,7 @@ ok(empty($r['write_restored'])&&empty($r['production_authority_restored']),'reco
 resetx();
 $GLOBALS['opts'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy();
 MAD4B_SCP_Site_Profile::status();
-$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=array('environment'=>'staging','site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'canonical_origin'=>'https://evil.example.test','wp_user_id'=>7,'issuer'=>'https://evil.example.test/oauth/mcp');
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot('staging','https://evil.example.test');
 $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
 ok(!$r['recovered']&&'prior_oauth_identity_mismatch'===$r['blocker'],'origin drift must fail closed');
 
@@ -94,7 +127,7 @@ resetx();
 $GLOBALS['env']='production';$GLOBALS['home']='https://prod.example.test';
 $GLOBALS['opts'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy('production','https://prod.example.test');
 MAD4B_SCP_Site_Profile::status();
-$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=array('environment'=>'production','site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'canonical_origin'=>'https://prod.example.test','wp_user_id'=>7,'issuer'=>'https://prod.example.test/oauth/mcp');
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot('production','https://prod.example.test');
 $r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
 ok(!$r['recovered']&&'nonproduction_only'===$r['blocker'],'Production auto recovery is prohibited');
 
