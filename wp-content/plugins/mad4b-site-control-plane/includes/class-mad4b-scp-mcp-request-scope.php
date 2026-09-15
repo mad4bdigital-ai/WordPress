@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Site-Profile-governed request scope for the official MCP Adapter runtime.
  *
- * MAD4B only needs the official runtime for its own six MCP transports and for
+ * MAD4B only needs the official runtime for its own seven MCP transports and for
  * explicit Control Plane diagnostics. On the governed site origin, unrelated
  * REST requests (WPML, Core/Site Health, WooCommerce, Elementor, etc.) must not
  * enter a MAD4B-owned MCP lifecycle. A provider-owned/bundled Adapter runtime is
@@ -145,6 +145,7 @@ final class MAD4B_SCP_MCP_Request_Scope {
 		return in_array( $route, array(
 			'/mcp/mad4b-read',
 			'/mcp/mad4b-chatgpt',
+			'/mcp/mad4b-enrollment',
 			'/mcp/mad4b-content',
 			'/mcp/mad4b-write',
 			'/mcp/mad4b-admin',

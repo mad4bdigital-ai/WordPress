@@ -31,7 +31,7 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( '/mcp/mad4b-chatgpt' !== $route ) return $result;
+		if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment' ), true ) ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) {
 			return self::deny( 'mad4b_oauth_site_profile_not_enrolled', 'Verified OAuth identity is not bound to an exact enrolled Site Profile.' );

@@ -25,14 +25,19 @@ final class MAD4B_SCP_OAuth_Challenge_Alignment {
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $response;
 
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( '/mcp/mad4b-chatgpt' !== $route ) return $response;
+		if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment' ), true ) ) return $response;
 
 		$headers = $response->get_headers();
 		$challenge = isset( $headers['WWW-Authenticate'] ) ? (string) $headers['WWW-Authenticate'] : '';
 		if ( '' === $challenge || false === stripos( $challenge, 'resource_metadata=' ) ) return $response;
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ) return $response;
 
-		$metadata_url = MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url();
+		if ( '/mcp/mad4b-enrollment' === $route ) {
+			$resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-enrollment' );
+			$metadata_url = MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource );
+		} else {
+			$metadata_url = MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url();
+		}
 		if ( '' === $metadata_url || 'https' !== strtolower( (string) wp_parse_url( $metadata_url, PHP_URL_SCHEME ) ) ) return $response;
 
 		$response->header(

@@ -50,7 +50,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		);
 	}
 
-	public static function metadata_endpoint() {
+	public static function metadata_endpoint( $request = null ) {
 		$status = self::status();
 		if ( empty( $status['effective'] ) ) {
 			return new WP_REST_Response(
@@ -58,7 +58,15 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 				503
 			);
 		}
-		$response = new WP_REST_Response( self::protected_resource_metadata(), 200 );
+		$resource = self::resource_identifier();
+		if ( is_object( $request ) && method_exists( $request, 'get_param' ) ) {
+			$requested = untrailingslashit( trim( (string) $request->get_param( 'resource' ) ) );
+			if ( '' !== $requested ) {
+				if ( ! self::is_protected_resource( $requested ) ) return new WP_REST_Response( array( 'error' => 'mad4b_oauth_resource_unknown' ), 400 );
+				$resource = $requested;
+			}
+		}
+		$response = new WP_REST_Response( self::protected_resource_metadata( $resource ), 200 );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
 	}
@@ -70,7 +78,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$mode = self::authority_mode();
 		$authorities = self::authority_registry();
 		$issuers = array_keys( $authorities );
-		$https = self::resource_is_https();
+		$https = self::resources_are_https();
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$environment_allowed = $profile_ready && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $environment && $production_approved ) );
 		$registry_valid = self::authority_registry_valid( $mode, $authorities );
@@ -109,6 +117,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'issuers' => $issuers,
 			'issuer_configured' => ! empty( $issuers ),
 			'resource' => self::resource_identifier(),
+			'resources' => self::resource_identifiers(),
 			'metadata_url' => self::metadata_url(),
 			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
 			'scopes_supported' => array( self::READ_SCOPE ),
@@ -130,20 +139,54 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'outbound_discovery_on_admin' => false,
 			'write_surfaces_enabled' => false,
 			'protected_transport_server' => 'mad4b-chatgpt',
+			'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment' ),
 		);
 	}
 
-	public static function protected_resource_metadata() {
+	public static function protected_resource_metadata( $resource = '' ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( '' === $resource ) $resource = self::resource_identifier();
+		if ( ! self::is_protected_resource( $resource ) ) return array();
 		return array(
-			'resource' => self::resource_identifier(),
+			'resource' => $resource,
 			'authorization_servers' => self::trusted_issuers(),
 			'scopes_supported' => array( self::READ_SCOPE ),
 			'bearer_methods_supported' => array( 'header' ),
 		);
 	}
 
-	public static function resource_identifier() { return untrailingslashit( home_url( '/wp-json/mcp/mad4b-chatgpt' ) ); }
-	public static function metadata_url() { return untrailingslashit( rest_url( self::METADATA_NAMESPACE . self::METADATA_ROUTE ) ); }
+	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
+		$server_id = sanitize_key( (string) $server_id );
+		if ( 'mad4b-enrollment' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-enrollment' ) );
+		return untrailingslashit( home_url( '/wp-json/mcp/mad4b-chatgpt' ) );
+	}
+
+	public static function resource_identifiers() {
+		return array( self::resource_identifier( 'mad4b-chatgpt' ), self::resource_identifier( 'mad4b-enrollment' ) );
+	}
+
+	public static function is_protected_resource( $resource ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( '' === $resource ) return false;
+		foreach ( self::resource_identifiers() as $expected ) if ( hash_equals( $expected, $resource ) ) return true;
+		return false;
+	}
+
+	public static function resource_for_route( $route ) {
+		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
+		if ( '/mcp/mad4b-chatgpt' === $route ) return self::resource_identifier( 'mad4b-chatgpt' );
+		if ( '/mcp/mad4b-enrollment' === $route ) return self::resource_identifier( 'mad4b-enrollment' );
+		return '';
+	}
+
+	public static function metadata_url( $resource = '' ) {
+		$url = untrailingslashit( rest_url( self::METADATA_NAMESPACE . self::METADATA_ROUTE ) );
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( '' !== $resource && self::is_protected_resource( $resource ) && ! hash_equals( self::resource_identifier(), $resource ) ) {
+			$url = add_query_arg( 'resource', $resource, $url );
+		}
+		return $url;
+	}
 
 	public static function authority_mode() {
 		if ( defined( 'MAD4B_MCP_OAUTH_MODE' ) ) {
@@ -227,26 +270,27 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( '/mcp/mad4b-chatgpt' !== $route ) return $result;
+		$resource = self::resource_for_route( $route );
+		if ( '' === $resource ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
 
 		$status = self::status();
-		if ( empty( $status['effective'] ) ) return self::unauthorized_response( 'mad4b_oauth_resource_bridge_not_effective', 'OAuth resource bridge is not effective for this environment.', 503 );
+		if ( empty( $status['effective'] ) ) return self::unauthorized_response( 'mad4b_oauth_resource_bridge_not_effective', 'OAuth resource bridge is not effective for this environment.', 503, $resource );
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) {
 			self::reset_verified_bearer_context( false );
 			if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) return $result;
-			return self::unauthorized_response( 'mad4b_oauth_bearer_required', 'OAuth bearer token is required for the remote MAD4B ChatGPT transport.' );
+			return self::unauthorized_response( 'mad4b_oauth_bearer_required', 'OAuth bearer token is required for this remote MAD4B transport.', 401, $resource );
 		}
 		self::reset_verified_bearer_context( true );
 
 		$token = self::extract_bearer_token( $authorization );
-		if ( is_wp_error( $token ) ) return self::unauthorized_response( $token->get_error_code(), $token->get_error_message() );
-		$verified = self::verify_access_token( $token );
+		if ( is_wp_error( $token ) ) return self::unauthorized_response( $token->get_error_code(), $token->get_error_message(), 401, $resource );
+		$verified = self::verify_access_token( $token, $resource );
 		unset( $token );
 		if ( is_wp_error( $verified ) ) {
 			$status_code = 'mad4b_oauth_subject_not_approved' === $verified->get_error_code() ? 403 : 401;
-			return self::unauthorized_response( $verified->get_error_code(), $verified->get_error_message(), $status_code );
+			return self::unauthorized_response( $verified->get_error_code(), $verified->get_error_message(), $status_code, $resource );
 		}
 
 		$user_id = self::configured_user_id( $verified['issuer'] );
@@ -271,14 +315,18 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return array_merge( $context, self::$verified_context );
 	}
 
-	public static function challenge_header() {
-		$metadata = class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url() : self::metadata_url();
+	public static function challenge_header( $resource = '' ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( '' === $resource ) $resource = self::resource_identifier();
+		$metadata = hash_equals( self::resource_identifier(), $resource ) && class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' )
+			? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url()
+			: self::metadata_url( $resource );
 		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . self::READ_SCOPE . '"';
 	}
 
-	private static function unauthorized_response( $code, $message, $status = 401 ) {
+	private static function unauthorized_response( $code, $message, $status = 401, $resource = '' ) {
 		$response = new WP_REST_Response( array( 'error' => sanitize_key( (string) $code ), 'message' => sanitize_text_field( (string) $message ) ), (int) $status );
-		$response->header( 'WWW-Authenticate', self::challenge_header() );
+		$response->header( 'WWW-Authenticate', self::challenge_header( $resource ) );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
 	}
@@ -291,7 +339,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return $token;
 	}
 
-	private static function verify_access_token( $token ) {
+	private static function verify_access_token( $token, $resource ) {
 		$parts = explode( '.', (string) $token );
 		if ( 3 !== count( $parts ) ) return new WP_Error( 'mad4b_oauth_jwt_malformed', 'Access token must be a compact JWT.' );
 		$header = self::decode_json_segment( $parts[0] );
@@ -319,17 +367,18 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( is_wp_error( $public_key ) ) return $public_key;
 		$verified = openssl_verify( $parts[0] . '.' . $parts[1], $signature, $public_key, OPENSSL_ALGO_SHA256 );
 		if ( 1 !== $verified ) return new WP_Error( 'mad4b_oauth_jwt_signature_invalid', 'JWT signature verification failed.' );
-		$validated = self::validate_claims( $claims, $issuer );
+		$validated = self::validate_claims( $claims, $issuer, $resource );
 		if ( is_wp_error( $validated ) ) return $validated;
 		if ( ! self::subject_allowed( $issuer, $validated['subject'] ) ) return new WP_Error( 'mad4b_oauth_subject_not_approved', 'OAuth subject is not approved for this issuer and protected resource.' );
 		return $validated;
 	}
 
-	private static function validate_claims( array $claims, $issuer ) {
+	private static function validate_claims( array $claims, $issuer, $resource ) {
 		if ( ! isset( $claims['iss'] ) || ! is_string( $claims['iss'] ) || ! hash_equals( $issuer, $claims['iss'] ) ) return new WP_Error( 'mad4b_oauth_issuer_mismatch', 'Access token issuer does not match selected authority.' );
 		$subject = isset( $claims['sub'] ) && is_string( $claims['sub'] ) ? trim( $claims['sub'] ) : '';
 		if ( '' === $subject || strlen( $subject ) > self::MAX_SUBJECT_BYTES ) return new WP_Error( 'mad4b_oauth_subject_missing', 'Access token subject is missing.' );
-		$resource = self::resource_identifier();
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( ! self::is_protected_resource( $resource ) ) return new WP_Error( 'mad4b_oauth_resource_mismatch', 'Access token resource is not a protected MAD4B resource.' );
 		if ( ! self::audience_contains( isset( $claims['aud'] ) ? $claims['aud'] : null, $resource ) ) return new WP_Error( 'mad4b_oauth_audience_mismatch', 'Access token audience does not match the MAD4B ChatGPT resource.' );
 		if ( ! isset( $claims['resource'] ) || ! is_string( $claims['resource'] ) || ! hash_equals( $resource, untrailingslashit( trim( $claims['resource'] ) ) ) ) return new WP_Error( 'mad4b_oauth_resource_mismatch', 'Access token resource claim must exactly match the MAD4B ChatGPT resource.' );
 		$now = time();
@@ -589,7 +638,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return array_values( array_unique( $subjects ) );
 	}
 
-	private static function resource_is_https() { return 'https' === strtolower( (string) wp_parse_url( self::resource_identifier(), PHP_URL_SCHEME ) ); }
+	private static function resources_are_https() { foreach ( self::resource_identifiers() as $resource ) if ( 'https' !== strtolower( (string) wp_parse_url( $resource, PHP_URL_SCHEME ) ) ) return false; return true; }
 	private static function valid_https_url( $url ) {
 		if ( ! is_string( $url ) || '' === $url || strlen( $url ) > self::MAX_URI_BYTES ) return false;
 		$parts = wp_parse_url( $url );

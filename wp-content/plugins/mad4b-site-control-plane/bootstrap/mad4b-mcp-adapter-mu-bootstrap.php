@@ -68,6 +68,7 @@ if ( $mad4b_mcp_mu_profile_enrolled ) {
 		$mad4b_mcp_mu_allowed_routes = array(
 			'/mcp/mad4b-read',
 			'/mcp/mad4b-chatgpt',
+			'/mcp/mad4b-enrollment',
 			'/mcp/mad4b-content',
 			'/mcp/mad4b-write',
 			'/mcp/mad4b-admin',

@@ -100,7 +100,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'jwks_uri' => self::jwks_url(),
 			'revocation_endpoint' => self::revocation_url(),
 			'authorization_server_metadata' => self::metadata_url(),
-			'protected_resources' => array( self::resource_identifier() ),
+			'protected_resources' => self::resource_identifiers(),
 			'client_registration_mode' => 'cimd_or_pre_registered',
 			'client_id_metadata_document_supported' => true,
 			'dynamic_client_registration_supported' => false,
@@ -137,7 +137,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'code_challenge_methods_supported' => array( 'S256' ),
 			'scopes_supported' => array( 'mad4b:read', 'offline_access' ),
 			'authorization_response_iss_parameter_supported' => true,
-			'protected_resources' => array( self::resource_identifier() ),
+			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
 		);
 	}
@@ -171,6 +171,17 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	public static function resource_identifier() {
 		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
 		return untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
+	}
+
+	public static function resource_identifiers() {
+		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'resource_identifiers' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifiers();
+		return array( self::resource_identifier() );
+	}
+
+	private static function resource_allowed( $resource ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		foreach ( self::resource_identifiers() as $expected ) if ( hash_equals( $expected, $resource ) ) return true;
+		return false;
 	}
 
 	public static function intercept_local_discovery( $preempt, $args, $url ) {
@@ -279,7 +290,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$resource = self::request_param( $params, 'resource', self::MAX_URI_BYTES );
 		if ( is_wp_error( $resource ) ) return $resource;
 		$resource = untrailingslashit( $resource );
-		if ( ! hash_equals( self::resource_identifier(), $resource ) ) return new WP_Error( 'invalid_target', 'OAuth resource must exactly match the MCP protected resource.' );
+		if ( ! self::resource_allowed( $resource ) ) return new WP_Error( 'invalid_target', 'OAuth resource must exactly match a protected MAD4B MCP resource.' );
 		$challenge = self::request_param( $params, 'code_challenge', 128 );
 		if ( is_wp_error( $challenge ) ) return $challenge;
 		$method = self::request_param( $params, 'code_challenge_method', 16 );
@@ -396,7 +407,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! is_array( $row ) || ! empty( $row['used_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Authorization code is invalid or expired.', 400 );
 		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['redirect_uri'], $redirect_uri ) ) self::send_oauth_error( 'invalid_grant', 'Authorization code binding does not match.', 400 );
 		if ( ! self::redirect_uri_allowed( $client, $redirect_uri ) ) self::send_oauth_error( 'invalid_grant', 'Client metadata no longer authorizes this redirect URI.', 400 );
-		if ( '' === $resource || ! hash_equals( (string) $row['resource'], $resource ) || ! hash_equals( self::resource_identifier(), $resource ) ) self::send_oauth_error( 'invalid_target', 'Token request resource does not match.', 400 );
+		if ( '' === $resource || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_target', 'Token request resource does not match.', 400 );
 		$challenge = self::base64url_encode( hash( 'sha256', $verifier, true ) );
 		if ( ! hash_equals( (string) $row['code_challenge'], $challenge ) ) self::send_oauth_error( 'invalid_grant', 'PKCE verification failed.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
@@ -422,7 +433,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			self::send_oauth_error( 'invalid_grant', 'Refresh token replay detected; token family revoked.', 400 );
 		}
 		if ( ! empty( $row['revoked_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Refresh token is expired or revoked.', 400 );
-		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['resource'], $resource ) || ! hash_equals( self::resource_identifier(), $resource ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token binding does not match.', 400 );
+		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token binding does not match.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
 		$scopes = self::normalize_scopes( (string) $row['scope'] );
 		if ( is_wp_error( $scopes ) ) self::send_oauth_error( 'invalid_scope', 'Stored scope binding is invalid.', 500 );

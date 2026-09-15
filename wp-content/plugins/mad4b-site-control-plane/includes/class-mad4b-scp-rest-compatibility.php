@@ -90,6 +90,7 @@ final class MAD4B_SCP_REST_Compatibility {
 		$allowed = array(
 			'/mcp/mad4b-read',
 			'/mcp/mad4b-chatgpt',
+			'/mcp/mad4b-enrollment',
 			'/mcp/mad4b-content',
 			'/mcp/mad4b-write',
 			'/mcp/mad4b-admin',
@@ -124,7 +125,7 @@ final class MAD4B_SCP_REST_Compatibility {
 		$control_plane_on_rest_enabled = ! empty( $rest_enabled_hooks['control_plane_detected'] );
 		$control_plane_on_rest_auth = ! empty( $rest_auth_hooks['control_plane_detected'] );
 		$expected_rest_scope = array(
-			'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-content',
+			'/mcp/mad4b-read', '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment', '/mcp/mad4b-content',
 			'/mcp/mad4b-write', '/mcp/mad4b-admin', '/mcp/mad4b-breakglass',
 		);
 		$mcp_recovery_scoped = true;
