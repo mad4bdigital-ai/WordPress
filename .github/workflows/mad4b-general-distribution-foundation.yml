@@ -5,14 +5,23 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-request-context-guard.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-jwt-header-guard.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-gate.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php'
-      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-challenge-alignment.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-client-compatibility.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php'
@@ -20,6 +29,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-runtime.php'
       - '.github/workflows/mad4b-general-distribution-foundation.yml'
   workflow_dispatch:
 
@@ -57,14 +68,26 @@ jobs:
           for file in \
             wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-request-context-guard.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-jwt-header-guard.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-gate.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-server.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-challenge-alignment.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php \
             wp-content/plugins/mad4b-site-control-plane/tests/site-profile-general-distribution-runtime.php \
-            wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php; do
+            wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-runtime.php; do
             php -l "$file"
           done
 
@@ -80,6 +103,13 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php
 
+      - name: Run bounded Site Profile feature re-enrollment contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-runtime.php
+
       - name: Run General Distribution environment contract
         shell: bash
         run: |
@@ -92,6 +122,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           profile="$root/includes/class-mad4b-scp-site-profile.php"
+          enrollment="$root/includes/class-mad4b-scp-site-profile-enrollment.php"
           authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
           dependency="$root/includes/class-mad4b-scp-dependency-manager.php"
           oauth="$root/includes/class-mad4b-scp-staging-oauth-autoconfig.php"
@@ -108,6 +139,9 @@ jobs:
           grep -Fq "'production_auto_enable' => false" "$authority"
           grep -Fq "'breakglass_auto_enable' => false" "$authority"
           grep -Fq "'all_remote_writes_require_exact_approval' => true" "$authority"
+          grep -Fq "write_enabled" "$enrollment"
+          grep -Fq "mad4b/site-profile-feature-reenrolled" "$enrollment"
+          grep -Fq "site_profile_feature_reenroll_staging_only" "$enrollment"
           grep -Fq "auto_downloads_remote_code' => false" "$dependency"
           grep -Fq "site_profile_admin_owner_required" "$oauth"
           grep -Fq "oauth_user_ids" "$oauth"
@@ -131,7 +165,7 @@ jobs:
             exit 1
           fi
 
-          for file in "$profile" "$authority" "$dependency" "$oauth" "$subject_bridge"; do
+          for file in "$profile" "$enrollment" "$authority" "$dependency" "$oauth" "$subject_bridge"; do
             if grep -Fq 'staging.egypttourgates.com' "$file" || grep -Fq 'egypttourgates.com' "$file"; then
               echo "Tenant-neutral runtime authority hardcodes an ETG origin: $file" >&2
               exit 1
