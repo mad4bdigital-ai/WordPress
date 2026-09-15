@@ -24,13 +24,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = '98202cf9dcedff79833f17a33e56ba9037362188'
+          test "$(git rev-parse HEAD^)" = 'f997ee8d1edb97b25626009c172b62317c788771'
 
       - name: Reconstruct and apply bounded enrollment patch
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/scripts/rc34-enrollment-patch.py.part* > /tmp/rc34-enrollment-patch.py
+          cat .github/scripts/rc34-enrollment-patch.py.part* > /tmp/rc34-enrollment-patch.b64
+          base64 --decode /tmp/rc34-enrollment-patch.b64 > /tmp/rc34-enrollment-patch.py
           python3 -m py_compile /tmp/rc34-enrollment-patch.py
           python3 /tmp/rc34-enrollment-patch.py
 
