@@ -53,7 +53,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 require dirname(__DIR__).'/includes/class-mad4b-scp-upgrade-continuity.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);}}
 function legacy($env='staging',$origin='https://staging.example.test'){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>4,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy','chatgpt_app_id'=>'plugin_asdk_app_legacy','oauth_user_ids'=>array(7,8),'related_origins'=>array(),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy','legacy_zero_touch'=>true);}
-function snapshot($env='staging',$origin='https://staging.example.test'){return array('environment'=>$env,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'canonical_origin'=>$origin,'wp_user_id'=>7,'primary_owner_user_id'=>7,'oauth_user_ids'=>array(7),'issuer'=>rtrim($origin,'/').'/oauth/mcp');}
+function snapshot($env='staging',$origin='https://staging.example.test'){return array('version'=>3,'environment'=>$env,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'profile_digest'=>str_repeat('a',64),'canonical_origin'=>$origin,'wp_user_id'=>7,'primary_owner_user_id'=>7,'oauth_user_ids'=>array(7),'issuer'=>rtrim($origin,'/').'/oauth/mcp','updated_at'=>'2026-09-14T00:00:00Z');}
+function legacy_snapshot($origin='https://staging.example.test'){return array('version'=>1,'wp_user_id'=>7,'issuer'=>rtrim($origin,'/').'/oauth/mcp','updated_at'=>'2026-09-10T00:00:00Z');}
 function resetx(){ $GLOBALS['opts']=array();$GLOBALS['env']='staging';$GLOBALS['home']='https://staging.example.test';MAD4B_SCP_Site_Profile::reset_cache(); }
 
 // Fresh installs remain zero-authority.
@@ -78,6 +79,50 @@ ok(!empty($v2['features']['oauth'])&&!empty($v2['features']['managed_runtime'])&
 ok(empty($v2['features']['write'])&&empty($v2['features']['skills'])&&empty($v2['features']['acceptance'])&&empty($v2['features']['production_write_confirmed']),'snapshot-only recovery restores no unrelated authority');
 ok('prior_oauth_snapshot'===$v2['migration_read_continuity_source']&&!empty($v2['migration_write_reenrollment_required']),'snapshot-only recovery records source and requires write re-enrollment');
 ok(empty($r['write_restored'])&&empty($r['production_authority_restored'])&&empty($r['breakglass_restored']),'snapshot-only recovery never restores write, Production or Breakglass authority');
+ok('consumed'===get_option(MAD4B_SCP_Upgrade_Continuity::RECOVERY_MARKER_OPTION,array())['state'],'snapshot-only recovery records one-time consumption marker');
+delete_option(MAD4B_SCP_Site_Profile::OPTION);
+MAD4B_SCP_Site_Profile::reset_cache();
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'snapshot_recovery_already_consumed'===$r['blocker'],'consumed snapshot must not resurrect a deliberately absent profile');
+ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'consumed recovery marker keeps a removed profile absent');
+
+// The real pre-Site-Profile zero-touch snapshot shape can recover read continuity once.
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=legacy_snapshot();
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!empty($r['recovered'])&&'legacy_zero_touch_oauth_snapshot_v1'===$r['recovery_source'],'legacy zero-touch snapshot recovers bounded read continuity');
+MAD4B_SCP_Site_Profile::reset_cache();
+$legacy_v2=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok(!empty($legacy_v2['site_uuid'])&&preg_match('/^[a-f0-9-]{36}$/',$legacy_v2['site_uuid']),'legacy zero-touch recovery derives a stable site UUID');
+ok(!empty($legacy_v2['features']['oauth'])&&empty($legacy_v2['features']['write']),'legacy zero-touch recovery restores read OAuth only');
+$legacy_uuid=$legacy_v2['site_uuid'];
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=legacy_snapshot();
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+$legacy_v2_repeat=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok($legacy_uuid===$legacy_v2_repeat['site_uuid'],'legacy zero-touch site UUID derivation is deterministic');
+
+// Legacy zero-touch evidence remains exact-issuer bound.
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=legacy_snapshot('https://evil.example.test');
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'prior_oauth_issuer_mismatch'===$r['blocker'],'legacy zero-touch issuer drift fails closed');
+ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'legacy zero-touch issuer drift cannot synthesize a profile');
+
+// A stored-but-invalid v2 record is never replaced by snapshot recovery.
+resetx();
+$GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION]=array('contract'=>MAD4B_SCP_Site_Profile::CONTRACT,'version'=>2,'site_uuid'=>'broken');
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot();
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'current_site_profile_invalid'===$r['blocker'],'stored invalid v2 profile fails closed instead of being overwritten');
+ok('broken'===$GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION]['site_uuid'],'stored invalid v2 bytes remain untouched');
+
+// Profile-bound snapshots reject malformed profile digests.
+resetx();
+$bad=snapshot();$bad['profile_digest']='not-a-digest';
+$GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=$bad;
+$r=MAD4B_SCP_Upgrade_Continuity::recover_verified_read_continuity();
+ok(!$r['recovered']&&'prior_oauth_profile_digest_invalid'===$r['blocker'],'malformed profile-bound digest fails closed');
 
 // Snapshot-only origin drift fails closed and must not synthesize a Site Profile.
 resetx();

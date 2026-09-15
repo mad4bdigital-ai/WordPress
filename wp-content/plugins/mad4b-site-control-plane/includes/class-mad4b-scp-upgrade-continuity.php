@@ -14,6 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Upgrade_Continuity {
 	const CONTRACT = 'mad4b.upgrade-continuity.v1';
 	const PRIOR_OAUTH_OPTION = 'mad4b_scp_staging_oauth_autoconfig_v1';
+	const RECOVERY_MARKER_OPTION = 'mad4b_scp_upgrade_continuity_recovery_v1';
 
 	private static $pre_booted = false;
 	private static $booted = false;
@@ -49,7 +50,7 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$current = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$has_current = null !== $current && false !== $current;
 		if ( ! self::valid_v2_migration_pending_record( $current ) ) {
-			if ( $has_current ) return self::recovery_result( 'not_applicable', false, '' );
+			if ( $has_current ) return self::recovery_result( 'blocked', false, 'current_site_profile_invalid' );
 			return self::recover_snapshot_only_read_continuity();
 		}
 
@@ -126,30 +127,50 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$snapshot = get_option( self::PRIOR_OAUTH_OPTION, array() );
 		if ( ! is_array( $snapshot ) || empty( $snapshot ) ) return self::recovery_result( 'not_applicable', false, '' );
 
+		$marker = get_option( self::RECOVERY_MARKER_OPTION, array() );
+		if ( is_array( $marker ) && 'consumed' === ( isset( $marker['state'] ) ? sanitize_key( (string) $marker['state'] ) : '' ) ) {
+			return self::recovery_result( 'blocked', false, 'snapshot_recovery_already_consumed' );
+		}
+
 		$environment = self::current_environment();
 		if ( ! in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return self::recovery_result( 'blocked', false, 'nonproduction_only' );
 		$origin = self::current_origin();
 		if ( '' === $origin ) return self::recovery_result( 'blocked', false, 'current_origin_unavailable' );
 
-		$snapshot_environment = isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '';
-		$snapshot_origin = isset( $snapshot['canonical_origin'] ) ? self::normalize_origin( $snapshot['canonical_origin'] ) : '';
-		$snapshot_uuid = isset( $snapshot['site_uuid'] ) ? strtolower( trim( (string) $snapshot['site_uuid'] ) ) : '';
 		$snapshot_issuer = isset( $snapshot['issuer'] ) ? untrailingslashit( trim( (string) $snapshot['issuer'] ) ) : '';
 		$expected_issuer = untrailingslashit( home_url( '/oauth/mcp' ) );
 		$owner_user_id = isset( $snapshot['primary_owner_user_id'] ) ? absint( $snapshot['primary_owner_user_id'] ) : ( isset( $snapshot['wp_user_id'] ) ? absint( $snapshot['wp_user_id'] ) : 0 );
-		$snapshot_revision = isset( $snapshot['profile_revision'] ) ? absint( $snapshot['profile_revision'] ) : 0;
-
-		if ( ! self::valid_uuid( $snapshot_uuid ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_site_uuid_invalid' );
-		if ( ! hash_equals( $environment, $snapshot_environment ) || ! hash_equals( $origin, $snapshot_origin ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_identity_mismatch' );
-		if ( '' === $snapshot_issuer || ! hash_equals( $expected_issuer, $snapshot_issuer ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_issuer_mismatch' );
 		if ( $owner_user_id < 1 ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_missing' );
 		$user = get_userdata( $owner_user_id );
 		if ( ! $user || ! user_can( $user, 'manage_options' ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_administrator' );
-		if ( isset( $snapshot['oauth_user_ids'] ) && is_array( $snapshot['oauth_user_ids'] ) && ! empty( $snapshot['oauth_user_ids'] ) ) {
-			$prior_users = array_values( array_unique( array_filter( array_map( 'absint', $snapshot['oauth_user_ids'] ) ) ) );
-			if ( ! in_array( $owner_user_id, $prior_users, true ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_in_snapshot' );
+
+		$format = self::snapshot_format( $snapshot );
+		if ( 'unsupported' === $format ) return self::recovery_result( 'blocked', false, 'prior_oauth_snapshot_format_unsupported' );
+
+		$snapshot_revision = 0;
+		$snapshot_uuid = '';
+		if ( 'profile_bound' === $format ) {
+			$snapshot_environment = isset( $snapshot['environment'] ) ? sanitize_key( (string) $snapshot['environment'] ) : '';
+			$snapshot_origin = isset( $snapshot['canonical_origin'] ) ? self::normalize_origin( $snapshot['canonical_origin'] ) : '';
+			$snapshot_uuid = isset( $snapshot['site_uuid'] ) ? strtolower( trim( (string) $snapshot['site_uuid'] ) ) : '';
+			$snapshot_revision = isset( $snapshot['profile_revision'] ) ? absint( $snapshot['profile_revision'] ) : 0;
+			if ( ! self::valid_uuid( $snapshot_uuid ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_site_uuid_invalid' );
+			if ( ! hash_equals( $environment, $snapshot_environment ) || ! hash_equals( $origin, $snapshot_origin ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_identity_mismatch' );
+			if ( '' === $snapshot_issuer || ! hash_equals( $expected_issuer, $snapshot_issuer ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_issuer_mismatch' );
+			if ( isset( $snapshot['profile_digest'] ) && '' !== trim( (string) $snapshot['profile_digest'] ) && ! self::valid_sha256( $snapshot['profile_digest'] ) ) {
+				return self::recovery_result( 'blocked', false, 'prior_oauth_profile_digest_invalid' );
+			}
+			if ( isset( $snapshot['oauth_user_ids'] ) && is_array( $snapshot['oauth_user_ids'] ) && ! empty( $snapshot['oauth_user_ids'] ) ) {
+				$prior_users = array_values( array_unique( array_filter( array_map( 'absint', $snapshot['oauth_user_ids'] ) ) ) );
+				if ( ! in_array( $owner_user_id, $prior_users, true ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_in_snapshot' );
+			}
+		} else {
+			if ( '' === $snapshot_issuer || ! hash_equals( $expected_issuer, $snapshot_issuer ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_issuer_mismatch' );
+			$snapshot_uuid = self::legacy_snapshot_site_uuid( $origin, $owner_user_id, $snapshot_issuer );
+			if ( ! self::valid_uuid( $snapshot_uuid ) ) return self::recovery_result( 'blocked', false, 'legacy_snapshot_site_uuid_derivation_failed' );
 		}
 
+		$evidence_sha256 = hash( 'sha256', implode( "\n", array( self::CONTRACT, $format, $environment, $origin, $snapshot_uuid, (string) $owner_user_id, $snapshot_issuer ) ) );
 		$now = gmdate( 'c' );
 		$next = array(
 			'contract' => MAD4B_SCP_Site_Profile::CONTRACT,
@@ -167,14 +188,30 @@ final class MAD4B_SCP_Upgrade_Continuity {
 			'legacy_zero_touch' => false,
 			'migration_requires_reenrollment' => false,
 			'migration_read_continuity_recovered' => true,
-			'migration_read_continuity_source' => 'prior_oauth_snapshot',
+			'migration_read_continuity_source' => 'legacy_zero_touch' === $format ? 'legacy_zero_touch_oauth_snapshot_v1' : 'prior_oauth_snapshot',
+			'migration_snapshot_format' => $format,
 			'migration_write_reenrollment_required' => true,
 			'migration_read_continuity_contract' => self::CONTRACT,
-			'migration_read_continuity_evidence_sha256' => hash( 'sha256', implode( "\n", array( $environment, $origin, $snapshot_uuid, (string) $owner_user_id, $snapshot_issuer ) ) ),
+			'migration_read_continuity_evidence_sha256' => $evidence_sha256,
 			'created_at' => $now,
 			'updated_at' => $now,
 		);
 		if ( false === update_option( MAD4B_SCP_Site_Profile::OPTION, $next, false ) ) return self::recovery_result( 'blocked', false, 'read_continuity_persist_failed' );
+
+		$marker = array(
+			'contract' => self::CONTRACT,
+			'state' => 'consumed',
+			'source' => (string) $next['migration_read_continuity_source'],
+			'site_uuid' => $snapshot_uuid,
+			'environment' => $environment,
+			'canonical_origin' => $origin,
+			'evidence_sha256' => $evidence_sha256,
+			'consumed_at' => $now,
+		);
+		if ( false === update_option( self::RECOVERY_MARKER_OPTION, $marker, false ) ) {
+			delete_option( MAD4B_SCP_Site_Profile::OPTION );
+			return self::recovery_result( 'blocked', false, 'recovery_marker_persist_failed' );
+		}
 
 		return self::recovery_result( 'recovered', true, '', array(
 			'site_uuid' => $snapshot_uuid,
@@ -183,10 +220,35 @@ final class MAD4B_SCP_Upgrade_Continuity {
 			'owner_user_id' => $owner_user_id,
 			'previous_revision' => $snapshot_revision,
 			'revision' => absint( $next['revision'] ),
-			'recovery_source' => 'prior_oauth_snapshot',
+			'recovery_source' => (string) $next['migration_read_continuity_source'],
+			'snapshot_format' => $format,
 			'write_restored' => false,
 			'production_authority_restored' => false,
 		) );
+	}
+
+	private static function snapshot_format( array $snapshot ) {
+		$version = isset( $snapshot['version'] ) ? absint( $snapshot['version'] ) : 0;
+		$issuer = isset( $snapshot['issuer'] ) ? trim( (string) $snapshot['issuer'] ) : '';
+		$owner = isset( $snapshot['primary_owner_user_id'] ) ? absint( $snapshot['primary_owner_user_id'] ) : ( isset( $snapshot['wp_user_id'] ) ? absint( $snapshot['wp_user_id'] ) : 0 );
+		$has_profile_identity = ! empty( $snapshot['site_uuid'] ) || ! empty( $snapshot['canonical_origin'] ) || ! empty( $snapshot['environment'] ) || ! empty( $snapshot['profile_revision'] ) || ! empty( $snapshot['profile_digest'] );
+		if ( $has_profile_identity ) return 'profile_bound';
+		if ( 1 === $version && $owner > 0 && '' !== $issuer && ! empty( $snapshot['updated_at'] ) ) return 'legacy_zero_touch';
+		return 'unsupported';
+	}
+
+	private static function legacy_snapshot_site_uuid( $origin, $owner_user_id, $issuer ) {
+		$hex = hash( 'sha256', implode( "\n", array( self::CONTRACT, 'legacy-zero-touch-site', (string) $origin, (string) absint( $owner_user_id ), (string) $issuer ) ) );
+		if ( ! is_string( $hex ) || strlen( $hex ) < 32 ) return '';
+		$hex = substr( strtolower( $hex ), 0, 32 );
+		$hex[12] = '5';
+		$variant = hexdec( $hex[16] );
+		$hex[16] = dechex( ( $variant & 0x3 ) | 0x8 );
+		return substr( $hex, 0, 8 ) . '-' . substr( $hex, 8, 4 ) . '-' . substr( $hex, 12, 4 ) . '-' . substr( $hex, 16, 4 ) . '-' . substr( $hex, 20, 12 );
+	}
+
+	private static function valid_sha256( $value ) {
+		return 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) $value ) ) );
 	}
 
 	private static function read_only_features() {
