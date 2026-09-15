@@ -11,6 +11,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 
 	public static function boot() {
 		if ( self::$booted ) return;
+		if ( ! function_exists( 'add_filter' ) || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'filter_registration_args' ), 45, 2 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 9 );
