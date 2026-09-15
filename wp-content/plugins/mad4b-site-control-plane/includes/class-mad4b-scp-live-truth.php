@@ -224,16 +224,18 @@ final class MAD4B_SCP_Live_Truth {
 		$checks = array();
 		$blockers = array();
 
-		$checks['site_profile_bound'] = ! empty( $authority['eligible'] );
+		$checks['site_profile_bound'] = ! empty( $authority['profile_origin_enrolled'] );
 		// Compatibility alias retained while older evidence consumers migrate.
 		$checks['exact_staging_origin'] = $checks['site_profile_bound'];
+		$checks['write_feature_enabled'] = ! empty( $authority['profile_write_enabled'] );
+		$checks['write_authority_eligible'] = ! empty( $authority['eligible'] );
 		$checks['authority_ready'] = ! empty( $authority['ready'] );
 		$checks['mutation_gate_enabled'] = ! empty( $authority['mutation_gate_configured'] );
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
 		$checks['remote_approval_required'] = ! empty( $authority['all_remote_writes_require_exact_approval'] );
-		foreach ( array( 'site_profile_bound', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'remote_approval_required' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		foreach ( array( 'site_profile_bound', 'write_feature_enabled', 'write_authority_eligible', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'remote_approval_required' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
 		$checks['oauth_effective'] = ! empty( $oauth['effective'] );

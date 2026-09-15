@@ -120,11 +120,16 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 	private static function ineligible_status() {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-		$blocker = empty( $profile['configured'] ) ? 'site_profile_unconfigured' : ( empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) ? 'site_profile_not_enrolled' : 'site_profile_write_disabled' );
+		$profile_origin_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$profile_write_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
+		$blocker = empty( $profile['configured'] ) ? 'site_profile_unconfigured' : ( ! $profile_origin_enrolled ? 'site_profile_not_enrolled' : 'site_profile_write_disabled' );
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => false,
 			'state' => 'ineligible',
+			'profile_origin_enrolled' => $profile_origin_enrolled,
+			'profile_write_enabled' => $profile_write_enabled,
+			'write_authority_eligible' => false,
 			'blockers' => array( $blocker ),
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
@@ -140,7 +145,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$blockers = array();
 		$checks = array();
 		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconcile() : array();
-		$checks['exact_enrolled_origin'] = ! empty( $authority['eligible'] );
+		$checks['exact_enrolled_origin'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$checks['write_feature_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
+		$checks['write_authority_eligible'] = ! empty( $authority['eligible'] );
 		$checks['authority_ready'] = ! empty( $authority['ready'] );
 		$checks['mutation_gate_enabled'] = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === constant( 'MAD4B_MCP_MUTATION_ENABLED' );
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );

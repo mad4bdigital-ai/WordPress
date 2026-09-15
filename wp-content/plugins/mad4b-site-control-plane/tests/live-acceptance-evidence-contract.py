@@ -12,6 +12,8 @@ servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='ut
 rest = (root / 'includes/class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
 external = (root / 'includes/class-mad4b-scp-external-handshake-evidence.php').read_text(encoding='utf-8')
 authorization = (root / 'includes/class-mad4b-scp-authorization.php').read_text(encoding='utf-8')
+live_truth = (root / 'includes/class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
+write_cert = (root / 'includes/class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 
 required_observer = [
     "const QUERY_MONITOR_CONTRACT = 'mad4b.query-monitor-regression.v1'",
@@ -20,8 +22,11 @@ required_observer = [
     "const WPML_RECEIPT_CONTRACT = 'mad4b.external-wpml-receipt.v1'",
     "const SNAPSHOT_VERIFY_CONTRACT = 'mad4b.snapshot-verify.v1'",
     "const AGGREGATE_CONTRACT = 'mad4b.live-acceptance-status.v1'",
-    "MAD4B_SCP_Site_Profile::nonproduction_governed( 'acceptance' )",
+    "MAD4B_SCP_Site_Profile::nonproduction_governed()",
+    "MAD4B_SCP_Site_Profile::acceptance_enabled()",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "'acceptance_capture' => self::gate(",
+    "'site_profile_acceptance_disabled'",
     "add_action( 'doing_it_wrong_run'",
     "add_action( 'deprecated_function_run'",
     "add_action( 'deprecated_argument_run'",
@@ -211,6 +216,40 @@ if "'local_rest_isolation' => self::gate( ! empty( $rest['ready'] )" not in obse
     raise SystemExit('Aggregate local REST gate no longer consumes the dedicated REST readiness result.')
 if "'external_wpml' => self::gate( ! empty( $wpml['verified'] )" not in observer:
     raise SystemExit('External WPML acceptance must remain a separate observer gate before finalization.')
+
+# Environment/profile enrollment, acceptance capture and write eligibility are
+# separate governance facts. Disabled features must stay fail-closed without
+# being misreported as an origin-enrollment failure.
+if "'environment_guard' => self::gate( self::staging_capture_allowed()" in observer:
+    raise SystemExit('Environment Guard must not conflate acceptance capture with origin enrollment.')
+for marker in [
+    "'environment_guard' => self::gate( $environment_enrolled",
+    "'acceptance_capture' => self::gate( $acceptance_enabled",
+    "private static function nonproduction_profile_enrolled()",
+    "MAD4B_SCP_Site_Profile::acceptance_enabled()",
+]:
+    if marker not in observer:
+        raise SystemExit('Separated enrollment/acceptance diagnostic missing: ' + marker)
+if "$checks['site_profile_bound'] = ! empty( $authority['eligible'] );" in live_truth:
+    raise SystemExit('Live write truth must not conflate profile binding with write eligibility.')
+for marker in [
+    "$checks['site_profile_bound'] = ! empty( $authority['profile_origin_enrolled'] );",
+    "$checks['write_feature_enabled'] = ! empty( $authority['profile_write_enabled'] );",
+    "$checks['write_authority_eligible'] = ! empty( $authority['eligible'] );",
+]:
+    if marker not in live_truth:
+        raise SystemExit('Live write truth separation missing: ' + marker)
+if "$checks['exact_enrolled_origin'] = ! empty( $authority['eligible'] );" in write_cert:
+    raise SystemExit('Canonical write certification must not conflate enrollment with authority eligibility.')
+for marker in [
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "$checks['write_feature_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();",
+    "$checks['write_authority_eligible'] = ! empty( $authority['eligible'] );",
+    "'profile_origin_enrolled' => $profile_origin_enrolled",
+    "'profile_write_enabled' => $profile_write_enabled",
+]:
+    if marker not in write_cert:
+        raise SystemExit('Canonical write certification diagnostic separation missing: ' + marker)
 
 # Positive reachability is a mandatory regression, not only false-pass checks.
 for marker in [
