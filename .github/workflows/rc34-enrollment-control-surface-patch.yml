@@ -1,0 +1,75 @@
+name: RC34 Enrollment Control Surface Patch
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+    paths:
+      - .github/workflows/rc34-enrollment-control-surface-patch.yml
+      - .github/scripts/rc34-enrollment-patch.py.part*
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 3
+
+      - name: Guard exact source parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '98202cf9dcedff79833f17a33e56ba9037362188'
+
+      - name: Reconstruct and apply bounded enrollment patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/scripts/rc34-enrollment-patch.py.part* > /tmp/rc34-enrollment-patch.py
+          python3 -m py_compile /tmp/rc34-enrollment-patch.py
+          python3 /tmp/rc34-enrollment-patch.py
+
+      - name: Verify focused contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          for file in \
+            "$root/mad4b-site-control-plane.php" \
+            "$root/includes/class-mad4b-scp-site-profile-enrollment.php" \
+            "$root/includes/class-mad4b-scp-servers.php" \
+            "$root/includes/class-mad4b-scp-transport-context.php" \
+            "$root/includes/class-mad4b-scp-mcp-request-scope.php" \
+            "$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php" \
+            "$root/includes/class-mad4b-scp-rest-compatibility.php" \
+            "$root/includes/class-mad4b-scp-oauth-request-context-guard.php" \
+            "$root/includes/class-mad4b-scp-oauth-jwt-header-guard.php" \
+            "$root/includes/class-mad4b-scp-oauth-subject-user-bridge.php" \
+            "$root/includes/class-mad4b-scp-oauth-subject-gate.php" \
+            "$root/includes/class-mad4b-scp-oauth-resource-bridge.php" \
+            "$root/includes/class-mad4b-scp-local-oauth-server.php" \
+            "$root/includes/class-mad4b-scp-oauth-challenge-alignment.php" \
+            "$root/tests/site-profile-feature-reenrollment-runtime.php"; do
+            php -l "$file"
+          done
+          python3 "$root/tests/site-profile-feature-reenrollment-contract.py"
+          php "$root/tests/site-profile-feature-reenrollment-runtime.php"
+          git diff --check
+
+      - name: Commit source patch and remove temporary writer
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/rc34-enrollment-control-surface-patch.yml
+          rm -f .github/scripts/rc34-enrollment-patch.py.part*
+          git config user.name 'MAD4B'
+          git config user.email 'mad4b.digital@gmail.com'
+          git add -A
+          test -n "$(git status --porcelain)"
+          git commit -m 'feat(governance): add bounded profile enrollment surface'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
