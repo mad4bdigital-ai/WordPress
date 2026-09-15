@@ -25,6 +25,7 @@ jobs:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       ARTIFACT_NAME: mad4b-live-acceptance-exact-${{ github.event.pull_request.head.sha || github.sha }}
       TARGET_ORIGIN: https://staging.egypttourgates.com
+      CI_APP_ID: plugin_asdk_app_CIFixture00000000000000000000000000000000
     services:
       mysql:
         image: mysql:8.0
@@ -161,7 +162,7 @@ jobs:
           mkdir -p "$WP_PATH"
           php /tmp/wp-cli.phar core download --path="$WP_PATH" --version=latest --force
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
-          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url="$TARGET_ORIGIN" --title='MAD4B Live Acceptance' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
+          php /tmp/wp-cli.phar core install --path="$WP_PATH" --url="$TARGET_ORIGIN" --title='MAD4B Live Acceptance' --admin_user='mad4b-ci-admin' --admin_password="$(openssl rand -hex 24)" --admin_email='ci@example.invalid' --skip-email
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar option update home "$TARGET_ORIGIN" --path="$WP_PATH" --url="$TARGET_ORIGIN"
           php /tmp/wp-cli.phar option update siteurl "$TARGET_ORIGIN" --path="$WP_PATH" --url="$TARGET_ORIGIN"
@@ -187,7 +188,7 @@ jobs:
               $saved = MAD4B_SCP_Site_Profile::save_current_site( array(
                 "expected_revision" => 0,
                 "display_name" => "MAD4B ETG Live Acceptance",
-                "chatgpt_app_id" => "plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2",
+                "chatgpt_app_id" => getenv( "CI_APP_ID" ),
                 "oauth_user_ids" => array( get_current_user_id() ),
                 "oauth_enabled" => false,
                 "skills_enabled" => true,
@@ -243,7 +244,7 @@ jobs:
           php /tmp/wp-cli.phar eval '
             $id = MAD4B_SCP_Skill_Snapshot_Identity::build();
             if ( empty( $id["ready"] ) || empty( $id["identity_token"] ) || empty( $id["entries"] ) || (int) $id["skill_count"] !== count( $id["entries"] ) ) { fwrite( STDERR, wp_json_encode( $id ) ); exit( 1 ); }
-            if ( "plugin_asdk_app_6aa05fa2f97481919c24b99855fadba2" !== (string) $id["app_id"] ) { fwrite( STDERR, "unexpected Staging App mapping" ); exit( 1 ); }
+            if ( getenv( "CI_APP_ID" ) !== (string) $id["app_id"] ) { fwrite( STDERR, "unexpected Staging App mapping" ); exit( 1 ); }
             $names = array_map( static function ( $entry ) { return isset( $entry["name"] ) ? (string) $entry["name"] : ""; }, $id["entries"] );
             foreach ( array("wordpress-site-diagnostics","wordpress-connection-diagnostics","wordpress-archive-audit","wordpress-change-safety") as $required ) {
               if ( ! in_array( $required, $names, true ) ) { fwrite( STDERR, "missing always-enabled Skill: " . $required ); exit( 1 ); }
@@ -340,14 +341,11 @@ jobs:
             sha256sum --check --strict SHA256SUMS
           )
 
-      - name: Upload exact reviewed artifact
+      - name: Upload live acceptance evidence only
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: |
-            /tmp/mad4b-live-acceptance/out/mad4b-site-control-plane-*.zip
-            /tmp/mad4b-live-acceptance/out/mcp-adapter-0.6.1.zip
-            /tmp/mad4b-live-acceptance/out/mad4b-wordpress-portable-*.zip
             /tmp/mad4b-live-acceptance/out/MAD4B-SNAPSHOT-ID.txt
             /tmp/mad4b-live-acceptance/out/MAD4B-SNAPSHOT-IDENTITY.json
             /tmp/mad4b-live-acceptance/out/MAD4B-BUILD-PROVENANCE.json
@@ -355,6 +353,5 @@ jobs:
             /tmp/mad4b-live-acceptance/out/PACKAGE-MANIFEST-DIGEST.txt
             /tmp/mad4b-live-acceptance/out/RUNTIME-BUILD-FINGERPRINT.txt
             /tmp/mad4b-live-acceptance/out/EXACT-ARTIFACT.json
-            /tmp/mad4b-live-acceptance/out/SHA256SUMS
           if-no-files-found: error
           retention-days: 30
