@@ -42,6 +42,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           echo "Packaging exact source: $SOURCE_SHA"
 
+      - name: Verify release candidate identity coherence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py
+
       - name: Reject distributable symlinks and secret-like files
         shell: bash
         run: |
