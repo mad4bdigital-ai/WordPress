@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /** Staging-only administrative bootstrap for Site Profile Phase A. */
 final class MAD4B_SCP_Site_Profile_Enrollment {
 	const CONTRACT = 'mad4b.site-profile-feature-reenrollment.v1';
+	const APP_MAPPING_CONTRACT = 'mad4b.site-profile-app-mapping.v1';
 	const ABILITY = 'mad4b/site-profile-feature-reenroll';
 	const SERVER_ID = 'mad4b-enrollment';
 	private static $booted = false;
@@ -51,8 +52,8 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
 		try {
 			wp_register_ability( self::ABILITY, array(
-				'label' => 'Re-enroll Site Profile Phase A Features',
-				'description' => 'Enable Acceptance and Skills on one exact Staging Site Profile while governed write remains disabled.',
+				'label' => 'Re-enroll Site Profile Bootstrap State',
+				'description' => 'Bind one exact ChatGPT App ID or enable Acceptance and Skills on one exact Staging Site Profile while governed write remains disabled.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reenroll_features' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -63,10 +64,11 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 						'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 						'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+						'chatgpt_app_id' => array( 'type' => 'string', 'minLength' => 17, 'maxLength' => 191, 'pattern' => '^plugin_asdk_app_[A-Za-z0-9]+$' ),
 						'acceptance_enabled' => array( 'type' => 'boolean' ),
 						'skills_enabled' => array( 'type' => 'boolean' ),
 					),
-					'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'acceptance_enabled', 'skills_enabled' ),
+					'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint' ),
 					'additionalProperties' => false,
 				),
 				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -90,9 +92,9 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_profile_missing', 'An enrolled Site Profile is required.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_subject_not_enrolled', 'The authenticated WordPress administrator is not enrolled in this Site Profile.' );
-		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_staging_only', 'Remote feature re-enrollment is Staging-only.' );
+		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_staging_only', 'Remote Site Profile enrollment is Staging-only.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_profile_not_exact', 'The current origin, environment, home URL and site URL must exactly match the enrolled Site Profile.' );
-		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_https_required', 'Remote Site Profile re-enrollment requires HTTPS.' );
+		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_https_required', 'Remote Site Profile enrollment requires HTTPS.' );
 		return true;
 	}
 
@@ -100,7 +102,11 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$permission = self::can_execute( $input );
 		if ( is_wp_error( $permission ) || ! $permission ) return $permission;
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_input_invalid', 'Input must be an object.' );
-		if ( array_key_exists( 'write_enabled', $input ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_write_input_denied', 'Governed write cannot be requested through the Phase A enrollment surface.' );
+		if ( array_key_exists( 'write_enabled', $input ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_write_input_denied', 'Governed write cannot be requested through the enrollment surface.' );
+		$app_mapping_requested = array_key_exists( 'chatgpt_app_id', $input );
+		$phase_a_requested = array_key_exists( 'acceptance_enabled', $input ) || array_key_exists( 'skills_enabled', $input );
+		if ( $app_mapping_requested && $phase_a_requested ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_mixed_mode_denied', 'App mapping and Phase A feature activation must be separate exact mutations.' );
+		if ( $app_mapping_requested ) return self::bind_app_mapping( $input );
 		if ( ! isset( $input['expected_revision'], $input['expected_profile_digest'], $input['expected_source_commit_sha'], $input['expected_build_fingerprint'] ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_binding_required', 'Exact revision, profile digest and build binding are required.' );
 		if ( ! array_key_exists( 'acceptance_enabled', $input ) || true !== $input['acceptance_enabled'] || ! array_key_exists( 'skills_enabled', $input ) || true !== $input['skills_enabled'] ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_phase_a_only', 'Phase A requires enabling Acceptance and Skills together.' );
 
@@ -189,6 +195,99 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 			'exact_profile_bound' => MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment(),
 			'acceptance_enabled' => true,
 			'skills_enabled' => true,
+			'write_enabled' => false,
+			'source_commit_sha' => $current_sha,
+			'build_fingerprint' => $current_fingerprint,
+		);
+	}
+
+	private static function bind_app_mapping( $input ) {
+		if ( ! isset( $input['expected_revision'], $input['expected_profile_digest'], $input['expected_source_commit_sha'], $input['expected_build_fingerprint'], $input['chatgpt_app_id'] ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_binding_required', 'Exact revision, profile digest, build binding and ChatGPT App ID are required.' );
+		$app_id = trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) );
+		if ( ! preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_invalid', 'ChatGPT App ID is invalid.' );
+		if ( MAD4B_SCP_Site_Profile::acceptance_enabled() || MAD4B_SCP_Site_Profile::skills_enabled() || MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_site_profile_app_mapping_feature_state_invalid', 'App mapping bootstrap requires Acceptance, Skills and Write to remain disabled.' );
+		if ( '' !== MAD4B_SCP_Site_Profile::chatgpt_app_id() ) return new WP_Error( 'mad4b_site_profile_app_mapping_already_configured', 'ChatGPT App mapping is already configured; this bootstrap surface does not replace an existing mapping.' );
+
+		$current_revision = MAD4B_SCP_Site_Profile::revision();
+		$expected_revision = absint( $input['expected_revision'] );
+		if ( $expected_revision < 1 || $current_revision !== $expected_revision ) return new WP_Error( 'mad4b_site_profile_app_mapping_revision_stale', 'Site Profile revision changed before App mapping.' );
+		$current_digest = strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() );
+		$expected_digest = strtolower( trim( (string) $input['expected_profile_digest'] ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) || ! hash_equals( $current_digest, $expected_digest ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_digest_stale', 'Site Profile digest changed before App mapping.' );
+
+		$expected_sha = strtolower( trim( (string) $input['expected_source_commit_sha'] ) );
+		$expected_fingerprint = strtolower( trim( (string) $input['expected_build_fingerprint'] ) );
+		if ( ! preg_match( '/^[a-f0-9]{40}$/', $expected_sha ) || ! preg_match( '/^[a-f0-9]{64}$/', $expected_fingerprint ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_candidate_invalid', 'Expected build identity is invalid.' );
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_provenance_unavailable', 'Build provenance authority is unavailable.' );
+		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		if ( ! is_array( $provenance ) || empty( $provenance['manifest_present'] ) || empty( $provenance['manifest_valid'] ) || empty( $provenance['runtime_manifest_match'] ) || ! empty( $provenance['stale'] ) || ! empty( $provenance['provenance_mismatch'] ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_provenance_not_ready', 'Exact current build provenance is not ready.' );
+		$current_sha = isset( $provenance['source_commit_sha'] ) ? strtolower( (string) $provenance['source_commit_sha'] ) : '';
+		$current_fingerprint = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
+		if ( ! hash_equals( $expected_sha, $current_sha ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_candidate_mismatch', 'Source commit does not match the exact requested candidate.' );
+		if ( ! hash_equals( $expected_fingerprint, $current_fingerprint ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_fingerprint_mismatch', 'Build fingerprint does not match the exact requested candidate.' );
+
+		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+		if ( empty( $audit_status['ready'] ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_audit_required', 'Ready append-only audit storage is required.' );
+		$before = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
+		if ( ! is_array( $before ) || ! isset( $before['features'] ) || ! is_array( $before['features'] ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_profile_invalid', 'Stored Site Profile is invalid.' );
+		if ( ! empty( $before['features']['acceptance'] ) || ! empty( $before['features']['skills'] ) || ! empty( $before['features']['write'] ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_feature_state_invalid', 'Stored Acceptance, Skills and Write must remain disabled during App mapping.' );
+
+		$next = $before;
+		$next['revision'] = $current_revision + 1;
+		$next['chatgpt_app_id'] = $app_id;
+		$next['updated_at'] = gmdate( 'c' );
+		if ( false === update_option( MAD4B_SCP_Site_Profile::OPTION, $next, false ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_save_failed', 'ChatGPT App mapping could not be persisted.' );
+		MAD4B_SCP_Site_Profile::reset_cache();
+
+		$after = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
+		$status = MAD4B_SCP_Site_Profile::status();
+		$post_ok = is_array( $after )
+			&& isset( $after['revision'] ) && (int) $after['revision'] === $current_revision + 1
+			&& ! empty( $status['configured'] ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+			&& hash_equals( $app_id, MAD4B_SCP_Site_Profile::chatgpt_app_id() )
+			&& ! MAD4B_SCP_Site_Profile::acceptance_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled();
+		$expected_after = $before;
+		$expected_after['revision'] = $current_revision + 1;
+		$expected_after['chatgpt_app_id'] = $app_id;
+		unset( $expected_after['updated_at'], $after['updated_at'] );
+		$post_ok = $post_ok && $expected_after === $after;
+		if ( ! $post_ok ) {
+			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_rollback_failed', 'Postcondition failed and the previous Site Profile could not be restored.' );
+			return new WP_Error( 'mad4b_site_profile_app_mapping_postcondition_failed', 'App mapping postconditions failed; the previous Site Profile was restored.' );
+		}
+
+		$after_digest = MAD4B_SCP_Site_Profile::profile_digest();
+		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-app-mapping-bound', array(
+			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+			'previous_revision' => $current_revision,
+			'revision' => MAD4B_SCP_Site_Profile::revision(),
+			'previous_profile_digest' => $current_digest,
+			'profile_digest' => $after_digest,
+			'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
+			'chatgpt_app_id_configured' => true,
+			'acceptance_enabled' => false,
+			'skills_enabled' => false,
+			'write_enabled' => false,
+			'source_commit_sha' => $current_sha,
+			'build_fingerprint' => $current_fingerprint,
+		), 'ok' );
+		if ( is_wp_error( $audit ) ) {
+			if ( ! self::restore_profile( $before ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_rollback_failed', 'Audit commit failed and the previous Site Profile could not be restored.' );
+			return new WP_Error( 'mad4b_site_profile_app_mapping_audit_failed', 'App mapping was rolled back because append-only audit evidence could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
+		}
+
+		return array(
+			'contract' => self::APP_MAPPING_CONTRACT,
+			'state' => 'app_mapping_bound',
+			'previous_revision' => $current_revision,
+			'revision' => MAD4B_SCP_Site_Profile::revision(),
+			'previous_profile_digest' => $current_digest,
+			'profile_digest' => $after_digest,
+			'exact_profile_bound' => MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment(),
+			'chatgpt_app_id_configured' => true,
+			'acceptance_enabled' => false,
+			'skills_enabled' => false,
 			'write_enabled' => false,
 			'source_commit_sha' => $current_sha,
 			'build_fingerprint' => $current_fingerprint,
