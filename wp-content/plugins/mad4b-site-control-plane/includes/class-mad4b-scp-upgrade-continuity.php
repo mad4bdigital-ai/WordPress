@@ -205,14 +205,15 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$physical = isset( $schema['physical_integrity'] ) && is_array( $schema['physical_integrity'] ) ? $schema['physical_integrity'] : array();
 		$schema_ready = ! empty( $schema['ready'] ) && ( empty( $physical ) || ! empty( $physical['ready'] ) );
 		$audit_ready = ! empty( $audit['ready'] );
+		$bootstrap_error = class_exists( 'MAD4B_SCP_Plugin' ) && method_exists( 'MAD4B_SCP_Plugin', 'governance_bootstrap_error_code' ) ? sanitize_key( (string) MAD4B_SCP_Plugin::governance_bootstrap_error_code() ) : '';
 		$kind = '';
 		$code = '';
 		if ( ! $schema_ready ) {
 			$kind = 'schema';
-			$code = 'mad4b_governance_schema_unavailable';
+			$code = 0 === strpos( $bootstrap_error, 'mad4b_governance_schema_' ) ? $bootstrap_error : 'mad4b_governance_schema_unavailable';
 		} elseif ( ! $audit_ready ) {
 			$kind = 'audit';
-			$code = self::audit_blocker_code( $audit );
+			$code = 0 === strpos( $bootstrap_error, 'mad4b_audit_' ) ? $bootstrap_error : self::audit_blocker_code( $audit );
 		}
 		return array(
 			'contract' => 'mad4b.governance-bootstrap-status.v1',

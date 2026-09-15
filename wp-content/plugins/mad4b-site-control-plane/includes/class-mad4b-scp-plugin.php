@@ -234,6 +234,10 @@ final class MAD4B_SCP_Plugin {
 		}
 	}
 
+	public static function governance_bootstrap_error_code() {
+		return is_wp_error( self::$schema_error ) ? sanitize_key( (string) self::$schema_error->get_error_code() ) : '';
+	}
+
 	public static function schema_notice() {
 		if ( current_user_can( 'manage_options' ) && is_wp_error( self::$schema_error ) ) echo '<div class="notice notice-error"><p>' . esc_html__( 'MAD4B Site Control Plane governance schema is unavailable. Mutation remains fail-closed until the schema is repaired.', 'mad4b-site-control-plane' ) . '</p></div>';
 	}
