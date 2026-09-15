@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = 'a5d933bf2705610d489b67f344ba7672b9588ee2'
+          test "$(git rev-parse HEAD^)" = 'aa290bf121a48786ed75c7de8af08d20b0e781b2'
 
       - name: Promote source coherently to rc.34
         shell: bash
@@ -31,11 +31,12 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import base64
 
           main = Path('wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php')
           runtime = Path('wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt')
           readme = Path('wp-content/plugins/mad4b-site-control-plane/README.md')
-          workflow = Path('.github/workflows/mad4b-control-plane-package.yml')
+          package_workflow = Path('.github/workflows/mad4b-control-plane-package.yml')
           test = Path('wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py')
 
           def replace_exact(path, old, new, count=1):
@@ -50,76 +51,16 @@ jobs:
           replace_exact(runtime, 'release=0.4.0-rc.32', 'release=0.4.0-rc.34')
           replace_exact(readme, 'Current plugin version: **0.4.0-rc.32**.', 'Current plugin version: **0.4.0-rc.34**.')
 
-          marker = '''      - name: Reject distributable symlinks and secret-like files\n'''
-          insertion = '''      - name: Verify release candidate identity coherence\n        shell: bash\n        run: |\n          set -euo pipefail\n          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py\n\n'''
-          text = workflow.read_text(encoding='utf-8')
+          marker = "      - name: Reject distributable symlinks and secret-like files\n"
+          insertion = "      - name: Verify release candidate identity coherence\n        shell: bash\n        run: |\n          set -euo pipefail\n          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py\n\n"
+          text = package_workflow.read_text(encoding='utf-8')
           if insertion not in text:
               if text.count(marker) != 1:
                   raise SystemExit('package workflow insertion marker missing or ambiguous')
-              text = text.replace(marker, insertion + marker, 1)
-              workflow.write_text(text, encoding='utf-8')
+              package_workflow.write_text(text.replace(marker, insertion + marker, 1), encoding='utf-8')
 
-          test.write_text(r'''#!/usr/bin/env python3
-import json
-import re
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[4]
-PLUGIN = ROOT / 'wp-content/plugins/mad4b-site-control-plane'
-MAIN = PLUGIN / 'mad4b-site-control-plane.php'
-RUNTIME = PLUGIN / 'MAD4B-RUNTIME-BUILD.txt'
-README = PLUGIN / 'README.md'
-HANDOFF = PLUGIN / 'config/staging-deployment-handoff.json'
-PACKAGE_WORKFLOW = ROOT / '.github/workflows/mad4b-control-plane-package.yml'
-
-main = MAIN.read_text(encoding='utf-8')
-runtime = RUNTIME.read_text(encoding='utf-8')
-readme = README.read_text(encoding='utf-8')
-workflow = PACKAGE_WORKFLOW.read_text(encoding='utf-8')
-handoff = json.loads(HANDOFF.read_text(encoding='utf-8'))
-
-header = re.search(r'^ \* Version: ([^ ]+)$', main, re.MULTILINE)
-constant = re.search(r"define\( 'MAD4B_SCP_VERSION', '([^']+)' \);", main)
-runtime_release = re.search(r'^release=(.+)$', runtime, re.MULTILINE)
-readme_version = re.search(r'^Current plugin version: \*\*([^*]+)\*\*\.$', readme, re.MULTILINE)
-
-if not all((header, constant, runtime_release, readme_version)):
-    raise SystemExit('candidate version identity is incomplete')
-
-versions = {
-    'plugin_header': header.group(1),
-    'runtime_constant': constant.group(1),
-    'runtime_build': runtime_release.group(1),
-    'readme': readme_version.group(1),
-}
-if len(set(versions.values())) != 1:
-    raise SystemExit(f'candidate version drift: {versions}')
-
-version = next(iter(versions.values()))
-if not re.fullmatch(r'\d+\.\d+\.\d+-rc\.\d+', version):
-    raise SystemExit(f'invalid release candidate version: {version}')
-
-required_workflow_fragments = (
-    'SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}',
-    "source = os.environ['SOURCE_SHA']",
-    "'source_commit_sha': source",
-    "artifact_identity = f'mad4b-site-control-plane-general-distribution-kit-{source}'",
-    "'commit': os.environ.get('SOURCE_SHA')",
-)
-for fragment in required_workflow_fragments:
-    if fragment not in workflow:
-        raise SystemExit(f'package exact-head source binding missing: {fragment}')
-
-if handoff.get('producer', {}).get('source_binding') != 'exact_head_sha':
-    raise SystemExit('deployment handoff is not exact-head bound')
-if handoff.get('producer', {}).get('artifact_name_template') != 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}':
-    raise SystemExit('deployment artifact identity is not exact-head bound')
-
-if re.search(r'\b[0-9a-f]{40}\b', runtime, re.I):
-    raise SystemExit('runtime build marker must not hard-code a source commit SHA')
-
-print(f'release candidate identity coherence: PASS ({version})')
-''', encoding='utf-8')
+          encoded = 'IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwppbXBvcnQganNvbgppbXBvcnQgcmUKZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpST09UID0gUGF0aChfX2ZpbGVfXykucmVzb2x2ZSgpLnBhcmVudHNbNF0KUExVR0lOID0gUk9PVCAvICd3cC1jb250ZW50L3BsdWdpbnMvbWFkNGItc2l0ZS1jb250cm9sLXBsYW5lJwpNQUlOID0gUExVR0lOIC8gJ21hZDRiLXNpdGUtY29udHJvbC1wbGFuZS5waHAnClJVTlRJTUUgPSBQTFVHSU4gLyAnTUFENEItUlVOVElNRS1CVUlMRC50eHQnClJFQURNRSA9IFBMVUdJTiAvICdSRUFETUUubWQnCkhBTkRPRkYgPSBQTFVHSU4gLyAnY29uZmlnL3N0YWdpbmctZGVwbG95bWVudC1oYW5kb2ZmLmpzb24nClBBQ0tBR0VfV09SS0ZMT1cgPSBST09UIC8gJy5naXRodWIvd29ya2Zsb3dzL21hZDRiLWNvbnRyb2wtcGxhbmUtcGFja2FnZS55bWwnCgptYWluID0gTUFJTi5yZWFkX3RleHQoZW5jb2Rpbmc9J3V0Zi04JykKcnVudGltZSA9IFJVTlRJTUUucmVhZF90ZXh0KGVuY29kaW5nPSd1dGYtOCcpCnJlYWRtZSA9IFJFQURNRS5yZWFkX3RleHQoZW5jb2Rpbmc9J3V0Zi04JykKd29ya2Zsb3cgPSBQQUNLQUdFX1dPUktGTE9XLnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKQpoYW5kb2ZmID0ganNvbi5sb2FkcyhIQU5ET0ZGLnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKSkKCmhlYWRlciA9IHJlLnNlYXJjaChyJ14gXCogVmVyc2lvbjogKFteIF0rKSQnLCBtYWluLCByZS5NVUxUSUxJTkUpCmNvbnN0YW50ID0gcmUuc2VhcmNoKHIiZGVmaW5lXCggJ01BRDRCX1NDUF9WRVJTSU9OJywgJyhbXiddKyknIFwpOyIsIG1haW4pCnJ1bnRpbWVfcmVsZWFzZSA9IHJlLnNlYXJjaChyJ15yZWxlYXNlPSguKykkJywgcnVudGltZSwgcmUuTVVMVElMSU5FKQpyZWFkbWVfdmVyc2lvbiA9IHJlLnNlYXJjaChyJ15DdXJyZW50IHBsdWdpbiB2ZXJzaW9uOiBcKlwqKFteKl0rKVwqXCpcLiQnLCByZWFkbWUsIHJlLk1VTFRJTElORSkKCmlmIG5vdCBhbGwoKGhlYWRlciwgY29uc3RhbnQsIHJ1bnRpbWVfcmVsZWFzZSwgcmVhZG1lX3ZlcnNpb24pKToKICAgIHJhaXNlIFN5c3RlbUV4aXQoJ2NhbmRpZGF0ZSB2ZXJzaW9uIGlkZW50aXR5IGlzIGluY29tcGxldGUnKQoKdmVyc2lvbnMgPSB7CiAgICAncGx1Z2luX2hlYWRlcic6IGhlYWRlci5ncm91cCgxKSwKICAgICdydW50aW1lX2NvbnN0YW50JzogY29uc3RhbnQuZ3JvdXAoMSksCiAgICAncnVudGltZV9idWlsZCc6IHJ1bnRpbWVfcmVsZWFzZS5ncm91cCgxKSwKICAgICdyZWFkbWUnOiByZWFkbWVfdmVyc2lvbi5ncm91cCgxKSwKfQppZiBsZW4oc2V0KHZlcnNpb25zLnZhbHVlcygpKSkgIT0gMToKICAgIHJhaXNlIFN5c3RlbUV4aXQoZidjYW5kaWRhdGUgdmVyc2lvbiBkcmlmdDoge3ZlcnNpb25zfScpCgp2ZXJzaW9uID0gbmV4dChpdGVyKHZlcnNpb25zLnZhbHVlcygpKSkKaWYgbm90IHJlLmZ1bGxtYXRjaChyJ1xkK1wuXGQrXC5cZCstcmNcLlxkKycsIHZlcnNpb24pOgogICAgcmFpc2UgU3lzdGVtRXhpdChmJ2ludmFsaWQgcmVsZWFzZSBjYW5kaWRhdGUgdmVyc2lvbjoge3ZlcnNpb259JykKCnJlcXVpcmVkX3dvcmtmbG93X2ZyYWdtZW50cyA9ICgKICAgICdTT1VSQ0VfU0hBOiAke3sgZ2l0aHViLmV2ZW50LnB1bGxfcmVxdWVzdC5oZWFkLnNoYSB8fCBnaXRodWIuc2hhIH19JywKICAgICJzb3VyY2UgPSBvcy5lbnZpcm9uWydTT1VSQ0VfU0hBJ10iLAogICAgIidzb3VyY2VfY29tbWl0X3NoYSc6IHNvdXJjZSIsCiAgICAiYXJ0aWZhY3RfaWRlbnRpdHkgPSBmJ21hZDRiLXNpdGUtY29udHJvbC1wbGFuZS1nZW5lcmFsLWRpc3RyaWJ1dGlvbi1raXQte3NvdXJjZX0nIiwKICAgICInY29tbWl0Jzogb3MuZW52aXJvbi5nZXQoJ1NPVVJDRV9TSEEnKSIsCikKZm9yIGZyYWdtZW50IGluIHJlcXVpcmVkX3dvcmtmbG93X2ZyYWdtZW50czoKICAgIGlmIGZyYWdtZW50IG5vdCBpbiB3b3JrZmxvdzoKICAgICAgICByYWlzZSBTeXN0ZW1FeGl0KGYncGFja2FnZSBleGFjdC1oZWFkIHNvdXJjZSBiaW5kaW5nIG1pc3Npbmc6IHtmcmFnbWVudH0nKQoKaWYgaGFuZG9mZi5nZXQoJ3Byb2R1Y2VyJywge30pLmdldCgnc291cmNlX2JpbmRpbmcnKSAhPSAnZXhhY3RfaGVhZF9zaGEnOgogICAgcmFpc2UgU3lzdGVtRXhpdCgnZGVwbG95bWVudCBoYW5kb2ZmIGlzIG5vdCBleGFjdC1oZWFkIGJvdW5kJykKaWYgaGFuZG9mZi5nZXQoJ3Byb2R1Y2VyJywge30pLmdldCgnYXJ0aWZhY3RfbmFtZV90ZW1wbGF0ZScpICE9ICdtYWQ0Yi1zaXRlLWNvbnRyb2wtcGxhbmUtZ2VuZXJhbC1kaXN0cmlidXRpb24ta2l0LXtleGFjdF9oZWFkX3NoYX0nOgogICAgcmFpc2UgU3lzdGVtRXhpdCgnZGVwbG95bWVudCBhcnRpZmFjdCBpZGVudGl0eSBpcyBub3QgZXhhY3QtaGVhZCBib3VuZCcpCgppZiByZS5zZWFyY2gocidcYlswLTlhLWZdezQwfVxiJywgcnVudGltZSwgcmUuSSk6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCdydW50aW1lIGJ1aWxkIG1hcmtlciBtdXN0IG5vdCBoYXJkLWNvZGUgYSBzb3VyY2UgY29tbWl0IFNIQScpCgpwcmludChmJ3JlbGVhc2UgY2FuZGlkYXRlIGlkZW50aXR5IGNvaGVyZW5jZTogUEFTUyAoe3ZlcnNpb259KScpCg=='
+          test.write_bytes(base64.b64decode(encoded))
           PY
 
       - name: Verify focused contract
