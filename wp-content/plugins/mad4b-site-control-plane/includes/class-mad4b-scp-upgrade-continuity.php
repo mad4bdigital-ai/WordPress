@@ -83,8 +83,8 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		if ( '' === $snapshot_issuer || ! hash_equals( $expected_issuer, $snapshot_issuer ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_issuer_mismatch' );
 		if ( $snapshot_revision > 0 && $legacy_revision > 0 && $snapshot_revision !== $legacy_revision ) return self::recovery_result( 'blocked', false, 'prior_oauth_revision_mismatch' );
 		if ( $owner_user_id < 1 ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_missing' );
-		$user = get_userdata( $owner_user_id );
-		if ( ! $user || ! user_can( $user, 'manage_options' ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_administrator' );
+		$user = class_exists( 'WP_User' ) ? new WP_User( $owner_user_id ) : ( function_exists( 'get_userdata' ) ? get_userdata( $owner_user_id ) : false );
+		if ( ! $user || ! function_exists( 'user_can' ) || ! user_can( $user, 'manage_options' ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_administrator' );
 		if ( isset( $snapshot['oauth_user_ids'] ) && is_array( $snapshot['oauth_user_ids'] ) && ! empty( $snapshot['oauth_user_ids'] ) ) {
 			$prior_users = array_values( array_unique( array_filter( array_map( 'absint', $snapshot['oauth_user_ids'] ) ) ) );
 			if ( ! in_array( $owner_user_id, $prior_users, true ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_in_snapshot' );
@@ -141,8 +141,8 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$expected_issuer = untrailingslashit( home_url( '/oauth/mcp' ) );
 		$owner_user_id = isset( $snapshot['primary_owner_user_id'] ) ? absint( $snapshot['primary_owner_user_id'] ) : ( isset( $snapshot['wp_user_id'] ) ? absint( $snapshot['wp_user_id'] ) : 0 );
 		if ( $owner_user_id < 1 ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_missing' );
-		$user = get_userdata( $owner_user_id );
-		if ( ! $user || ! user_can( $user, 'manage_options' ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_administrator' );
+		$user = class_exists( 'WP_User' ) ? new WP_User( $owner_user_id ) : ( function_exists( 'get_userdata' ) ? get_userdata( $owner_user_id ) : false );
+		if ( ! $user || ! function_exists( 'user_can' ) || ! user_can( $user, 'manage_options' ) ) return self::recovery_result( 'blocked', false, 'prior_oauth_owner_not_administrator' );
 
 		$format = self::snapshot_format( $snapshot );
 		if ( 'unsupported' === $format ) return self::recovery_result( 'blocked', false, 'prior_oauth_snapshot_format_unsupported' );
