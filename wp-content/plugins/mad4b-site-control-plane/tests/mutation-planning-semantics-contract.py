@@ -6,13 +6,15 @@ adapters = root / "includes" / "adapters"
 base = adapters / "class-mad4b-scp-adapter-base.php"
 semantics = adapters / "class-mad4b-scp-mutation-semantics-adapter.php"
 translation = adapters / "class-mad4b-scp-translation-bridge-adapter.php"
+jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
 
-for path in (base, semantics, translation):
+for path in (base, semantics, translation, jetengine_client):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
 semantics_src = semantics.read_text(encoding="utf-8")
 translation_src = translation.read_text(encoding="utf-8")
+jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 
 # Mutation semantics must be loaded and booted from the canonical adapter bootstrap.
 assert "class-mad4b-scp-mutation-semantics-adapter.php" in base_src
@@ -47,6 +49,29 @@ for token in (
 ):
     assert token in semantics_src, f"approval planning validation missing: {token}"
 
+# When JetEngine's native MCP transport is present, approval planning must also
+# bind the nested provider payload to the exact live native tool contract.
+for token in (
+    "MAD4B_SCP_JetEngine_MCP_Client",
+    "MAD4B_SCP_JetEngine_MCP_Client::available()",
+    "MAD4B_SCP_JetEngine_MCP_Client::validate_tool_input",
+    "expected_native_ability",
+    "expected_schema_sha256",
+    "mad4b_approval_target_native_input_invalid",
+):
+    assert token in semantics_src, f"JetEngine approval planning binding missing: {token}"
+
+for token in (
+    "mad4b.jetengine-mcp-client.v2",
+    "validate_tool_input",
+    "rest_validate_value_from_schema",
+    "mad4b_jetengine_mcp_input_invalid",
+    "mad4b_jetengine_mcp_input_schema_unavailable",
+    "mad4b_jetengine_mcp_input_validation_unavailable",
+    "mad4b_jetengine_mcp_schema_drift",
+):
+    assert token in jetengine_client_src, f"JetEngine native input validation missing: {token}"
+
 # Translation reads may keep provider=auto, but write schemas must be rewritten
 # to require an exact provider and runtime validation must deny missing/auto.
 assert "array( 'auto', 'wpml', 'polylang' )" in translation_src
@@ -61,9 +86,13 @@ for token in (
 ):
     assert token in semantics_src, f"translation provider binding missing: {token}"
 
-# This governance layer is metadata/validation only and must not gain side channels.
-assert "$wpdb" not in semantics_src
-assert "database-raw-query" not in semantics_src
-assert "BREAKGLASS" not in semantics_src.upper()
+# These governance/validation layers must not gain direct data or breakglass side channels.
+for src, label in (
+    (semantics_src, "mutation-semantics"),
+    (jetengine_client_src, "jetengine-mcp-client"),
+):
+    assert "$wpdb" not in src, f"{label} must not use direct SQL"
+    assert "database-raw-query" not in src, f"{label} must not expose raw SQL"
+    assert "BREAKGLASS" not in src.upper(), f"{label} must not expose breakglass"
 
 print("MAD4B mutation planning semantics contract: PASS")
