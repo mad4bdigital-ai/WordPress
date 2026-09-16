@@ -3,19 +3,25 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Internal JetEngine MCP client.
+ * Internal JetEngine native-tool client.
  *
- * Uses WordPress REST dispatch inside the current request/user context so no
- * extra credential or external loopback secret is required. It is discovery-
- * first and fail-closed: endpoint, session, tool name, schema identity and
- * native input are all resolved before any tools/call request is attempted.
+ * JetEngine 3.8+ can expose the same provider-native feature set through two
+ * first-party transports: the MCP JSON-RPC endpoint and the WordPress REST
+ * mcp-tools registry/run endpoints. MAD4B prefers MCP when it is enabled, but
+ * may fall back to the native REST registry without creating credentials,
+ * enabling provider settings or touching provider storage directly.
+ *
+ * Both paths are discovery-first and fail-closed: route ownership, exact tool
+ * name, input-schema identity and native input are resolved before execution.
  */
 final class MAD4B_SCP_JetEngine_MCP_Client {
-	const CONTRACT = 'mad4b.jetengine-mcp-client.v3';
+	const CONTRACT = 'mad4b.jetengine-mcp-client.v4';
 	const PROTOCOL_VERSION = '2025-06-18';
 	const CLIENT_NAME = 'mad4b-site-control-plane';
 
 	private static $endpoint = null;
+	private static $registry_endpoint = null;
+	private static $run_route_available = null;
 	private static $tools = null;
 
 	/**
@@ -31,12 +37,17 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' ) ? $wp_rest_server : null;
 	}
 
+	private static function routes() {
+		$server = self::initialized_rest_server();
+		if ( ! $server ) return array();
+		$routes = $server->get_routes();
+		return is_array( $routes ) ? $routes : array();
+	}
+
 	public static function endpoint() {
 		if ( is_string( self::$endpoint ) && '' !== self::$endpoint ) return self::$endpoint;
-		$server = self::initialized_rest_server();
-		if ( ! $server ) return '';
-		$routes = $server->get_routes();
-		if ( ! is_array( $routes ) ) return '';
+		$routes = self::routes();
+		if ( empty( $routes ) ) return '';
 		$preferred = array( '/jet-engine/v1/mcp', '/jet-engine/v1/mcp/' );
 		foreach ( $preferred as $route ) {
 			if ( isset( $routes[ $route ] ) ) {
@@ -46,7 +57,7 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		}
 		foreach ( array_keys( $routes ) as $route ) {
 			$normalized = strtolower( (string) $route );
-			if ( false !== strpos( $normalized, 'jet-engine' ) && false !== strpos( $normalized, '/mcp' ) ) {
+			if ( false !== strpos( $normalized, 'jet-engine' ) && preg_match( '#/mcp/?$#', $normalized ) ) {
 				self::$endpoint = (string) $route;
 				return self::$endpoint;
 			}
@@ -56,13 +67,65 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return '';
 	}
 
+	public static function registry_endpoint() {
+		if ( is_string( self::$registry_endpoint ) && '' !== self::$registry_endpoint ) return self::$registry_endpoint;
+		$routes = self::routes();
+		if ( empty( $routes ) ) return '';
+		$preferred = array( '/jet-engine/v1/mcp-tools', '/jet-engine/v1/mcp-tools/' );
+		foreach ( $preferred as $route ) {
+			if ( isset( $routes[ $route ] ) ) {
+				self::$registry_endpoint = $route;
+				return self::$registry_endpoint;
+			}
+		}
+		foreach ( array_keys( $routes ) as $route ) {
+			$normalized = strtolower( (string) $route );
+			if ( false !== strpos( $normalized, 'jet-engine' ) && preg_match( '#/mcp-tools/?$#', $normalized ) ) {
+				self::$registry_endpoint = (string) $route;
+				return self::$registry_endpoint;
+			}
+		}
+		return '';
+	}
+
+	private static function rest_run_route_available() {
+		if ( true === self::$run_route_available ) return true;
+		$routes = self::routes();
+		foreach ( array_keys( $routes ) as $route ) {
+			$normalized = strtolower( (string) $route );
+			if ( false !== strpos( $normalized, 'jet-engine' ) && false !== strpos( $normalized, '/mcp-tools/run/' ) ) {
+				self::$run_route_available = true;
+				return true;
+			}
+		}
+		// Do not cache false; a later rest_api_init callback may still register it.
+		return false;
+	}
+
+	public static function transport_status() {
+		$mcp = self::endpoint();
+		$registry = self::registry_endpoint();
+		$run = self::rest_run_route_available();
+		return array(
+			'contract' => self::CONTRACT,
+			'mcp_jsonrpc_endpoint' => $mcp,
+			'mcp_jsonrpc_available' => '' !== $mcp,
+			'native_rest_registry_endpoint' => $registry,
+			'native_rest_registry_available' => '' !== $registry,
+			'native_rest_run_available' => (bool) $run,
+			'preferred_transport' => '' !== $mcp ? 'mcp-jsonrpc' : ( '' !== $registry && $run ? 'native-rest-tools' : 'unavailable' ),
+			'available' => '' !== $mcp || ( '' !== $registry && $run ),
+		);
+	}
+
 	public static function available() {
-		return '' !== self::endpoint();
+		$status = self::transport_status();
+		return ! empty( $status['available'] );
 	}
 
 	private static function rpc( $method, array $params = array(), $session_id = '', $notification = false ) {
 		$endpoint = self::endpoint();
-		if ( '' === $endpoint ) return new WP_Error( 'mad4b_jetengine_mcp_endpoint_unavailable', 'JetEngine MCP REST endpoint is not registered.' );
+		if ( '' === $endpoint ) return new WP_Error( 'mad4b_jetengine_mcp_endpoint_unavailable', 'JetEngine MCP JSON-RPC endpoint is not registered.' );
 		$request = new WP_REST_Request( 'POST', $endpoint );
 		$request->set_header( 'content-type', 'application/json' );
 		$request->set_header( 'accept', 'application/json, text/event-stream' );
@@ -111,74 +174,215 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return hash( 'sha256', wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 
-	private static function normalize_tool( array $tool ) {
-		$name = isset( $tool['name'] ) ? (string) $tool['name'] : '';
-		$schema = isset( $tool['inputSchema'] ) && is_array( $tool['inputSchema'] ) ? $tool['inputSchema'] : array();
+	private static function normalize_tool( array $tool, $channel = 'mcp-jsonrpc', $fallback_name = '' ) {
+		$name = '';
+		foreach ( array( 'name', 'slug', 'id', 'key', 'feature', 'tool' ) as $key ) {
+			if ( isset( $tool[ $key ] ) && is_scalar( $tool[ $key ] ) && '' !== trim( (string) $tool[ $key ] ) ) { $name = trim( (string) $tool[ $key ] ); break; }
+		}
+		if ( '' === $name && '' !== $fallback_name ) $name = (string) $fallback_name;
+
+		$raw_schema = array();
+		foreach ( array( 'inputSchema', 'input_schema', 'parameters', 'args', 'schema' ) as $key ) {
+			if ( isset( $tool[ $key ] ) && is_array( $tool[ $key ] ) ) { $raw_schema = $tool[ $key ]; break; }
+		}
+		$schema = self::normalize_input_schema( $raw_schema );
 		$annotations = isset( $tool['annotations'] ) && is_array( $tool['annotations'] ) ? $tool['annotations'] : array();
 		$readonly = null;
 		if ( array_key_exists( 'readOnlyHint', $annotations ) ) $readonly = (bool) $annotations['readOnlyHint'];
 		elseif ( array_key_exists( 'readonly', $annotations ) ) $readonly = (bool) $annotations['readonly'];
+		else {
+			foreach ( array( 'readonly', 'read_only', 'is_readonly', 'is_read_only' ) as $key ) {
+				if ( array_key_exists( $key, $tool ) ) { $readonly = (bool) $tool[ $key ]; break; }
+			}
+		}
+		$type = isset( $tool['type'] ) && is_scalar( $tool['type'] ) ? strtolower( (string) $tool['type'] ) : ( isset( $tool['kind'] ) && is_scalar( $tool['kind'] ) ? strtolower( (string) $tool['kind'] ) : '' );
+		if ( null === $readonly && 'resource' === $type ) $readonly = true;
+		if ( null === $readonly && 'tool' === $type ) $readonly = false;
+		if ( null === $readonly && 0 === strpos( strtolower( $name ), 'resource-' ) ) $readonly = true;
+
+		$label = $name;
+		foreach ( array( 'title', 'label', 'name' ) as $key ) {
+			if ( isset( $tool[ $key ] ) && is_scalar( $tool[ $key ] ) && '' !== trim( (string) $tool[ $key ] ) ) { $label = (string) $tool[ $key ]; break; }
+		}
+		$description = '';
+		foreach ( array( 'description', 'desc', 'help' ) as $key ) {
+			if ( isset( $tool[ $key ] ) && is_scalar( $tool[ $key ] ) ) { $description = (string) $tool[ $key ]; break; }
+		}
+
 		return array(
 			'name' => $name,
-			'label' => isset( $tool['title'] ) ? (string) $tool['title'] : $name,
-			'description' => isset( $tool['description'] ) ? (string) $tool['description'] : '',
+			'label' => $label,
+			'description' => $description,
 			'category' => 'jetengine-mcp',
 			'readonly' => $readonly,
-			'destructive' => array_key_exists( 'destructiveHint', $annotations ) ? (bool) $annotations['destructiveHint'] : null,
-			'idempotent' => array_key_exists( 'idempotentHint', $annotations ) ? (bool) $annotations['idempotentHint'] : null,
+			'destructive' => array_key_exists( 'destructiveHint', $annotations ) ? (bool) $annotations['destructiveHint'] : ( array_key_exists( 'destructive', $tool ) ? (bool) $tool['destructive'] : null ),
+			'idempotent' => array_key_exists( 'idempotentHint', $annotations ) ? (bool) $annotations['idempotentHint'] : ( array_key_exists( 'idempotent', $tool ) ? (bool) $tool['idempotent'] : null ),
 			'input_schema' => $schema,
-			'output_schema' => isset( $tool['outputSchema'] ) && is_array( $tool['outputSchema'] ) ? $tool['outputSchema'] : array(),
+			'output_schema' => isset( $tool['outputSchema'] ) && is_array( $tool['outputSchema'] ) ? $tool['outputSchema'] : ( isset( $tool['output_schema'] ) && is_array( $tool['output_schema'] ) ? $tool['output_schema'] : array() ),
 			'schema_sha256' => self::schema_hash( $schema ),
+			// Keep the bridge-facing transport stable; channel identifies which native
+			// JetEngine transport actually performs discovery/execution.
 			'provider_transport' => 'jetengine-mcp',
+			'provider_native_channel' => (string) $channel,
 		);
 	}
 
-	public static function tools() {
-		if ( null !== self::$tools ) return self::$tools;
+	private static function is_list_array( array $value ) {
+		$expected = 0;
+		foreach ( array_keys( $value ) as $key ) {
+			if ( $key !== $expected ) return false;
+			++$expected;
+		}
+		return true;
+	}
+
+	private static function normalize_input_schema( array $raw ) {
+		if ( empty( $raw ) ) return array();
+		if ( isset( $raw['type'] ) || isset( $raw['properties'] ) || isset( $raw['anyOf'] ) || isset( $raw['oneOf'] ) || isset( $raw['allOf'] ) ) return $raw;
+
+		$properties = array();
+		$required = array();
+		if ( self::is_list_array( $raw ) ) {
+			foreach ( $raw as $item ) {
+				if ( ! is_array( $item ) ) continue;
+				$name = isset( $item['name'] ) && is_scalar( $item['name'] ) ? (string) $item['name'] : ( isset( $item['key'] ) && is_scalar( $item['key'] ) ? (string) $item['key'] : '' );
+				if ( '' === $name ) continue;
+				$schema = $item;
+				unset( $schema['name'], $schema['key'] );
+				if ( ! empty( $schema['required'] ) ) $required[] = $name;
+				unset( $schema['required'] );
+				$properties[ $name ] = $schema;
+			}
+		} else {
+			foreach ( $raw as $name => $item ) {
+				if ( ! is_array( $item ) || ! is_string( $name ) || '' === $name ) continue;
+				$schema = $item;
+				if ( ! empty( $schema['required'] ) ) $required[] = $name;
+				unset( $schema['required'] );
+				$properties[ $name ] = $schema;
+			}
+		}
+		if ( empty( $properties ) ) return array();
+		$out = array( 'type' => 'object', 'properties' => $properties, 'additionalProperties' => false );
+		if ( ! empty( $required ) ) $out['required'] = array_values( array_unique( $required ) );
+		return $out;
+	}
+
+	private static function extract_rest_tool_entries( $data ) {
+		if ( ! is_array( $data ) ) return array();
+		foreach ( array( 'tools', 'items', 'features' ) as $key ) {
+			if ( isset( $data[ $key ] ) && is_array( $data[ $key ] ) ) return $data[ $key ];
+		}
+		foreach ( array( 'data', 'result' ) as $key ) {
+			if ( isset( $data[ $key ] ) && is_array( $data[ $key ] ) ) {
+				$nested = self::extract_rest_tool_entries( $data[ $key ] );
+				if ( ! empty( $nested ) ) return $nested;
+			}
+		}
+		return $data;
+	}
+
+	private static function mcp_tools() {
+		if ( '' === self::endpoint() ) return new WP_Error( 'mad4b_jetengine_mcp_endpoint_unavailable', 'JetEngine MCP JSON-RPC endpoint is not registered.' );
 		$init = self::initialize();
 		if ( is_wp_error( $init ) ) return $init;
 		$list = self::rpc( 'tools/list', array(), (string) $init['session_id'] );
 		if ( is_wp_error( $list ) ) return $list;
 		$data = isset( $list['data']['result'] ) && is_array( $list['data']['result'] ) ? $list['data']['result'] : array();
 		$tools = isset( $data['tools'] ) && is_array( $data['tools'] ) ? $data['tools'] : array();
-		$normalized_tools = array();
+		$normalized = array();
 		foreach ( $tools as $tool ) {
 			if ( ! is_array( $tool ) || empty( $tool['name'] ) ) continue;
-			$row = self::normalize_tool( $tool );
-			$normalized_tools[ $row['name'] ] = $row;
+			$row = self::normalize_tool( $tool, 'mcp-jsonrpc' );
+			if ( '' !== $row['name'] ) $normalized[ $row['name'] ] = $row;
 		}
-		ksort( $normalized_tools, SORT_STRING );
-		self::$tools = $normalized_tools;
-		return self::$tools;
+		ksort( $normalized, SORT_STRING );
+		return $normalized;
+	}
+
+	private static function rest_registry_tools() {
+		$endpoint = self::registry_endpoint();
+		if ( '' === $endpoint || ! self::rest_run_route_available() ) return new WP_Error( 'mad4b_jetengine_rest_tools_unavailable', 'JetEngine native REST tool registry/run routes are not both registered.' );
+		$request = new WP_REST_Request( 'GET', $endpoint );
+		$response = rest_do_request( $request );
+		if ( is_wp_error( $response ) ) return $response;
+		$status = (int) $response->get_status();
+		if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_jetengine_rest_tools_http_error', 'JetEngine native REST tool registry returned a non-success HTTP status.', array( 'status' => $status ) );
+		$entries = self::extract_rest_tool_entries( $response->get_data() );
+		if ( ! is_array( $entries ) ) return new WP_Error( 'mad4b_jetengine_rest_tools_response_invalid', 'JetEngine native REST tool registry did not return a tool collection.' );
+		$normalized = array();
+		foreach ( $entries as $key => $tool ) {
+			if ( ! is_array( $tool ) ) continue;
+			$fallback = is_string( $key ) ? $key : '';
+			$row = self::normalize_tool( $tool, 'native-rest-tools', $fallback );
+			if ( '' === $row['name'] ) continue;
+			$normalized[ $row['name'] ] = $row;
+		}
+		ksort( $normalized, SORT_STRING );
+		return $normalized;
+	}
+
+	public static function tools() {
+		if ( null !== self::$tools ) return self::$tools;
+		$errors = array();
+		if ( '' !== self::endpoint() ) {
+			$tools = self::mcp_tools();
+			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
+			if ( is_wp_error( $tools ) ) $errors['mcp_jsonrpc'] = $tools->get_error_code();
+		}
+		if ( '' !== self::registry_endpoint() && self::rest_run_route_available() ) {
+			$tools = self::rest_registry_tools();
+			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
+			if ( is_wp_error( $tools ) ) $errors['native_rest_tools'] = $tools->get_error_code();
+		}
+		return new WP_Error( 'mad4b_jetengine_native_tools_unavailable', 'JetEngine exposes no discoverable native tool collection through its MCP or native REST tool transports.', array( 'transport_status' => self::transport_status(), 'errors' => $errors ) );
 	}
 
 	public static function validate_tool_input( $tool_name, array $arguments, $expected_schema_sha256 ) {
 		$tools = self::tools();
 		if ( is_wp_error( $tools ) ) return $tools;
 		$tool_name = (string) $tool_name;
-		if ( ! isset( $tools[ $tool_name ] ) ) return new WP_Error( 'mad4b_jetengine_mcp_tool_missing', 'Planned JetEngine MCP tool is no longer available.', array( 'tool' => $tool_name ) );
+		if ( ! isset( $tools[ $tool_name ] ) ) return new WP_Error( 'mad4b_jetengine_mcp_tool_missing', 'Planned JetEngine native tool is no longer available.', array( 'tool' => $tool_name ) );
 		$current_hash = (string) $tools[ $tool_name ]['schema_sha256'];
 		$expected_hash = strtolower( trim( (string) $expected_schema_sha256 ) );
-		if ( '' === $expected_hash || ! hash_equals( $current_hash, $expected_hash ) ) return new WP_Error( 'mad4b_jetengine_mcp_schema_drift', 'JetEngine MCP tool schema changed since planning.', array( 'tool' => $tool_name, 'current_schema_sha256' => $current_hash ) );
+		if ( '' === $expected_hash || ! hash_equals( $current_hash, $expected_hash ) ) return new WP_Error( 'mad4b_jetengine_mcp_schema_drift', 'JetEngine native tool schema changed since planning.', array( 'tool' => $tool_name, 'current_schema_sha256' => $current_hash ) );
 		$schema = isset( $tools[ $tool_name ]['input_schema'] ) && is_array( $tools[ $tool_name ]['input_schema'] ) ? $tools[ $tool_name ]['input_schema'] : array();
 		if ( empty( $schema ) ) {
-			return empty( $arguments ) ? true : new WP_Error( 'mad4b_jetengine_mcp_input_schema_unavailable', 'JetEngine MCP tool did not publish an input schema for the requested arguments.', array( 'tool' => $tool_name ) );
+			return empty( $arguments ) ? true : new WP_Error( 'mad4b_jetengine_mcp_input_schema_unavailable', 'JetEngine native tool did not publish an input schema for the requested arguments.', array( 'tool' => $tool_name ) );
 		}
 		if ( ! function_exists( 'rest_validate_value_from_schema' ) ) return new WP_Error( 'mad4b_jetengine_mcp_input_validation_unavailable', 'WordPress REST schema validation is unavailable.' );
 		$valid = rest_validate_value_from_schema( $arguments, $schema, 'arguments' );
 		if ( is_wp_error( $valid ) ) {
 			return new WP_Error(
 				'mad4b_jetengine_mcp_input_invalid',
-				'JetEngine MCP tool input does not satisfy the exact discovered input schema.',
+				'JetEngine native tool input does not satisfy the exact discovered input schema.',
 				array( 'tool' => $tool_name, 'validation_error_code' => $valid->get_error_code(), 'validation_error_message' => $valid->get_error_message() )
 			);
 		}
 		return true;
 	}
 
+	private static function call_rest_tool( $tool_name, array $arguments ) {
+		if ( ! self::rest_run_route_available() ) return new WP_Error( 'mad4b_jetengine_rest_tool_run_unavailable', 'JetEngine native REST tool run route is unavailable.' );
+		if ( ! preg_match( '#^[a-zA-Z0-9\-/]+$#', (string) $tool_name ) ) return new WP_Error( 'mad4b_jetengine_rest_tool_name_invalid', 'JetEngine native REST tool name cannot be represented by the provider run route.' );
+		$route = '/jet-engine/v1/mcp-tools/run/' . ltrim( (string) $tool_name, '/' );
+		$request = new WP_REST_Request( 'POST', $route );
+		$request->set_header( 'content-type', 'application/json' );
+		$request->set_body_params( array( 'input' => $arguments ) );
+		$response = rest_do_request( $request );
+		if ( is_wp_error( $response ) ) return $response;
+		$status = (int) $response->get_status();
+		if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_jetengine_rest_tool_http_error', 'JetEngine native REST tool execution returned a non-success HTTP status.', array( 'status' => $status, 'tool' => $tool_name ) );
+		return $response->get_data();
+	}
+
 	public static function call_tool( $tool_name, array $arguments, $expected_schema_sha256 ) {
 		$valid = self::validate_tool_input( $tool_name, $arguments, $expected_schema_sha256 );
 		if ( is_wp_error( $valid ) ) return $valid;
+		$tools = self::tools();
+		if ( is_wp_error( $tools ) || ! isset( $tools[ $tool_name ] ) ) return is_wp_error( $tools ) ? $tools : new WP_Error( 'mad4b_jetengine_mcp_tool_missing', 'Planned JetEngine native tool is no longer available.' );
+		$channel = isset( $tools[ $tool_name ]['provider_native_channel'] ) ? (string) $tools[ $tool_name ]['provider_native_channel'] : 'mcp-jsonrpc';
+		if ( 'native-rest-tools' === $channel ) return self::call_rest_tool( $tool_name, $arguments );
 		$init = self::initialize();
 		if ( is_wp_error( $init ) ) return $init;
 		$call = self::rpc( 'tools/call', array( 'name' => (string) $tool_name, 'arguments' => $arguments ), (string) $init['session_id'] );
