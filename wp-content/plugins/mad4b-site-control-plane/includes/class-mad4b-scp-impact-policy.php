@@ -12,7 +12,10 @@ final class MAD4B_SCP_Impact_Policy {
 			'mad4b/provider-canary-execute',
 		);
 		if ( in_array( $ability_name, $high_core, true ) ) return 'high';
-		if ( 'mad4b/content-update-post' === $ability_name && is_array( $input ) && isset( $input['post_status'] ) && in_array( $input['post_status'], array( 'publish', 'private' ), true ) ) return 'high';
+		if ( in_array( $ability_name, array( 'mad4b/content-update-post', 'mad4b/content-create-post' ), true )
+			&& is_array( $input )
+			&& isset( $input['post_status'] )
+			&& in_array( $input['post_status'], array( 'publish', 'private' ), true ) ) return 'high';
 		if ( 'core' !== $provider && 'media' !== $provider ) return 'high';
 		$impact = 'low';
 		$filtered = apply_filters( 'mad4b_scp_mutation_impact', $impact, $ability_name, $provider, $input );
