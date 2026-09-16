@@ -62,7 +62,7 @@ for token in (
     assert token in semantics_src, f"JetEngine approval planning binding missing: {token}"
 
 for token in (
-    "mad4b.jetengine-mcp-client.v2",
+    "mad4b.jetengine-mcp-client.v3",
     "validate_tool_input",
     "rest_validate_value_from_schema",
     "mad4b_jetengine_mcp_input_invalid",
@@ -71,6 +71,20 @@ for token in (
     "mad4b_jetengine_mcp_schema_drift",
 ):
     assert token in jetengine_client_src, f"JetEngine native input validation missing: {token}"
+
+# Provider discovery must never instantiate the REST server. Doing so before the
+# MCP Adapter has attached its rest_api_init callbacks consumes the lifecycle and
+# leaves governed MCP server objects without their REST routes. Negative endpoint
+# and failed tools/list results must also remain retryable later in the request.
+for token in (
+    "initialized_rest_server",
+    "did_action( 'rest_api_init' )",
+    "global $wp_rest_server",
+    "self::$tools = $normalized_tools",
+):
+    assert token in jetengine_client_src, f"JetEngine REST lifecycle hardening missing: {token}"
+assert "rest_get_server()->" not in jetengine_client_src, "JetEngine discovery must not instantiate the WordPress REST server"
+assert "self::$tools = array();" not in jetengine_client_src, "JetEngine tools must not cache a failed/early empty discovery"
 
 # Translation reads may keep provider=auto, but write schemas must be rewritten
 # to require an exact provider and runtime validation must deny missing/auto.
