@@ -79,7 +79,7 @@ final class MAD4B_SCP_Servers {
 
 	/**
 	 * Runtime-eligible write tools mounted on the dedicated mad4b-write authority.
-	 * Provider certification remains a hard mount gate here.
+	 * Provider certification and adapter-native capability checks are hard mount gates.
 	 */
 	public static function write_tools() {
 		$candidates = self::core_write_candidates();
@@ -223,6 +223,20 @@ final class MAD4B_SCP_Servers {
 			$legacy_runtime_contract_ok = ! $requires_certification || ! empty( $certification['legacy_runtime_contract_ok'] ) || ! empty( $certification['runtime_contract_ok'] );
 
 			foreach ( $mutation_candidates as $ability_name ) {
+				if ( method_exists( $adapter, 'mutation_ability_runtime_eligibility' ) ) {
+					$runtime_eligibility = $adapter->mutation_ability_runtime_eligibility( $ability_name );
+					if ( true !== $runtime_eligibility ) {
+						$code = is_wp_error( $runtime_eligibility ) ? (string) $runtime_eligibility->get_error_code() : 'adapter_runtime_eligibility_unverified';
+						$result['blocked'][ $ability_name ] = array(
+							'ability' => $ability_name,
+							'provider' => $provider,
+							'reason' => 'adapter_runtime_capability_not_eligible',
+							'runtime_eligibility_code' => $code,
+							'violations' => array( $code ),
+						);
+						continue;
+					}
+				}
 				if ( ! $requires_certification ) {
 					$result['eligible'][] = $ability_name;
 					continue;
@@ -454,7 +468,7 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded Staging-only Site Profile feature/App/write bootstrap. Administrative bootstrap authority is separate from normal governed write authority.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; legacy providers retain exact runtime certification; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; adapter-native runtime capability checks are hard mount gates; legacy providers retain exact runtime certification; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', self::core_tools( 'mad4b-breakglass' ), array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability );
 	}
