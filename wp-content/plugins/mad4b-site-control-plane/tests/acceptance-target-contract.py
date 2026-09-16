@@ -65,7 +65,7 @@ for forbidden in ("post_id", "post_type", "post_status", "post_title", "post_con
 
 # The logical reversible snapshot intentionally excludes post_modified_gmt so a
 # content-update/undo cycle can restore fields and still permit fixture cleanup.
-state_block = re.search(r"private function state_for_binding\(.*?\n\t\t\t\t}\n\n\t\t\t\tprivate function fixed_title", source, re.S)
+state_block = re.search(r"private function state_for_binding\(.*?\n\s*}\n\n\s*private function fixed_title", source, re.S)
 if not state_block:
     raise AssertionError("target state function missing")
 if "post_modified_gmt" in state_block.group(0):
