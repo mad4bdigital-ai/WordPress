@@ -596,6 +596,7 @@ final class MAD4B_SCP_Core_Content_Modeling_Adapter extends MAD4B_SCP_Adapter_Ba
 			'post_excerpt' => (string) $post->post_excerpt,
 			'post_parent' => (int) $post->post_parent,
 			'post_author' => (int) $post->post_author,
+			'meta_sha256' => $this->post_meta_hash_state( (int) $post->ID ),
 			'terms' => $this->post_terms_state( (int) $post->ID, $post_type ),
 		);
 	}
@@ -627,8 +628,33 @@ final class MAD4B_SCP_Core_Content_Modeling_Adapter extends MAD4B_SCP_Adapter_Ba
 			'slug' => (string) $term->slug,
 			'description' => (string) $term->description,
 			'parent' => (int) $term->parent,
+			'meta_sha256' => $this->term_meta_hash_state( (int) $term->term_id ),
 			'count' => (int) $term->count,
 		);
+	}
+
+	private function metadata_hash_state( $object_type, $object_id ) {
+		$object_id = absint( $object_id );
+		$raw = 'term' === $object_type ? get_term_meta( $object_id ) : get_post_meta( $object_id );
+		$out = array();
+		foreach ( is_array( $raw ) ? $raw : array() as $key => $values ) {
+			$normalized = array();
+			foreach ( is_array( $values ) ? $values : array( $values ) as $value ) {
+				$normalized[] = $this->canonical_value( maybe_unserialize( $value ) );
+			}
+			$json = wp_json_encode( $normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$out[ (string) $key ] = hash( 'sha256', false === $json ? 'null' : $json );
+		}
+		ksort( $out, SORT_STRING );
+		return $out;
+	}
+
+	private function post_meta_hash_state( $post_id ) {
+		return $this->metadata_hash_state( 'post', $post_id );
+	}
+
+	private function term_meta_hash_state( $term_id ) {
+		return $this->metadata_hash_state( 'term', $term_id );
 	}
 
 	private function post_terms_state( $post_id, $post_type ) {
