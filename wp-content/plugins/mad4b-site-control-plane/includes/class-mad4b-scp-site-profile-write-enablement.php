@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Site_Profile_Write_Enablement {
 	const CONTRACT = 'mad4b.site-profile-write-enablement.v1';
 	const ABILITY = 'mad4b/site-profile-write-enable';
+	const CONFIRMATION = 'ENABLE GOVERNED STAGING WRITE';
 	private static $booted = false;
 
 	public static function boot() {
@@ -46,9 +47,9 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 						'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 						'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-						'write_enabled' => array( 'type' => 'boolean' ),
+						'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION ) ),
 					),
-					'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'write_enabled' ),
+					'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'confirmation' ),
 					'additionalProperties' => false,
 				),
 				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -80,8 +81,8 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		$permission = self::can_execute( $input );
 		if ( is_wp_error( $permission ) || ! $permission ) return $permission;
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_site_profile_write_enable_input_invalid', 'Input must be an object.' );
-		if ( ! isset( $input['expected_revision'], $input['expected_profile_digest'], $input['expected_source_commit_sha'], $input['expected_build_fingerprint'] ) || ! array_key_exists( 'write_enabled', $input ) ) return new WP_Error( 'mad4b_site_profile_write_enable_binding_required', 'Exact revision, profile digest, build binding and explicit write enablement are required.' );
-		if ( true !== $input['write_enabled'] ) return new WP_Error( 'mad4b_site_profile_write_enable_true_required', 'This bounded transition only accepts write_enabled=true.' );
+		if ( ! isset( $input['expected_revision'], $input['expected_profile_digest'], $input['expected_source_commit_sha'], $input['expected_build_fingerprint'], $input['confirmation'] ) ) return new WP_Error( 'mad4b_site_profile_write_enable_binding_required', 'Exact revision, profile digest, build binding and literal confirmation are required.' );
+		if ( self::CONFIRMATION !== (string) $input['confirmation'] ) return new WP_Error( 'mad4b_site_profile_write_enable_confirmation_required', 'Exact confirmation "ENABLE GOVERNED STAGING WRITE" is required.' );
 
 		$current_revision = MAD4B_SCP_Site_Profile::revision();
 		$expected_revision = absint( $input['expected_revision'] );
