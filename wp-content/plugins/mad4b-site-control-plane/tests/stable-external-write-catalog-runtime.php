@@ -37,7 +37,7 @@ final class MAD4B_SCP_Servers {
     public static $chatgpt = array();
     public static $write = array();
     public static $external = array();
-    public static function expected_server_ids() { return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ); }
+    public static function expected_server_ids() { return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ); }
     public static function is_external_write_candidate( $ability_name ) { return in_array( (string) $ability_name, self::$external, true ); }
     public static function ability_is_mounted( $server_id, $ability_name ) {
         if ( 'mad4b-chatgpt' === $server_id ) return in_array( (string) $ability_name, self::$chatgpt, true );
@@ -68,6 +68,15 @@ $request = new MAD4B_Test_Request( '/mcp/mad4b-chatgpt' );
 $bound = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', $request );
 mad4b_assert( true === $bound, 'ChatGPT transport should bind for exact route.' );
 
+// Unified discovery is intentionally available before mutation authority. A
+// visible write must fail before grant lookup/approval/mutation while authority
+// itself is not ready.
+MAD4B_SCP_Staging_Write_Authority::$effective = false;
+$result = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-chatgpt', $core );
+mad4b_assert( is_wp_error( $result ), 'Visible write must fail closed while Staging write authority is unavailable.' );
+mad4b_assert( 'mad4b_write_authority_not_ready' === $result->get_error_code(), 'Unavailable write authority returned the wrong error.' );
+MAD4B_SCP_Staging_Write_Authority::$effective = true;
+
 // A registered provider write may be externally discoverable while gated, but
 // it must fail before authority rebinding, approval claim, or mutation.
 $result = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-chatgpt', $provider );
@@ -94,7 +103,7 @@ mad4b_assert( 'mad4b_transport_ability_not_mounted' === $result->get_error_code(
 
 $status = MAD4B_SCP_Transport_Context::status();
 mad4b_assert( 'mad4b.mcp-transport-context.v3' === $status['contract'], 'Transport v3 contract missing.' );
-mad4b_assert( 'stable_catalog_dynamic_execution' === $status['chatgpt_write_discovery_model'], 'Stable discovery model status missing.' );
+mad4b_assert( 'stable_unified_catalog_fail_closed_execution' === $status['chatgpt_write_discovery_model'], 'Unified fail-closed discovery model status missing.' );
 mad4b_assert( empty( $status['credential_material_stored'] ), 'Transport status must never claim credential persistence.' );
 
-echo "mad4b.stable-external-write-catalog.runtime.v1: PASS\n";
+echo "mad4b.stable-external-write-catalog.runtime.v2: PASS\n";
