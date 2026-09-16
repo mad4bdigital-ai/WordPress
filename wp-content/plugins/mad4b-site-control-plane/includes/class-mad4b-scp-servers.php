@@ -4,8 +4,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
+require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
+MAD4B_SCP_Site_Profile_Write_Enablement::boot();
 
 final class MAD4B_SCP_Servers {
 	private static $registrations = array();
@@ -27,7 +29,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 			), $governed_status ),
-			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll' ),
+			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' ),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
@@ -325,10 +327,11 @@ final class MAD4B_SCP_Servers {
 
 		$tools = array();
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
+		$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' );
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
 			if ( '' === $ability_name || 'mad4b/database-raw-query' === $ability_name || in_array( $ability_name, $breakglass, true ) ) continue;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
-			if ( 'mad4b/site-profile-feature-reenroll' === $ability_name ) {
+			if ( in_array( $ability_name, $bounded_bootstrap, true ) ) {
 				$tools[] = $ability_name;
 				continue;
 			}
@@ -449,7 +452,7 @@ final class MAD4B_SCP_Servers {
 		}
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
-		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded Staging-only Site Profile feature re-enrollment. Administrative bootstrap authority is separate from normal governed write authority.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded Staging-only Site Profile feature/App/write bootstrap. Administrative bootstrap authority is separate from normal governed write authority.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; legacy providers retain exact runtime certification; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
