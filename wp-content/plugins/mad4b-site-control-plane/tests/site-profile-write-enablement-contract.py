@@ -9,9 +9,10 @@ servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='
 required = [
     "const CONTRACT = 'mad4b.site-profile-write-enablement.v1'",
     "const ABILITY = 'mad4b/site-profile-write-enable'",
+    "const CONFIRMATION = 'ENABLE GOVERNED STAGING WRITE'",
     "'additionalProperties' => false",
-    "'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'write_enabled' )",
-    "true !== $input['write_enabled']",
+    "'required' => array( 'expected_revision', 'expected_profile_digest', 'expected_source_commit_sha', 'expected_build_fingerprint', 'confirmation' )",
+    "self::CONFIRMATION !== (string) $input['confirmation']",
     "'staging' !== MAD4B_SCP_Site_Profile::current_environment()",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
@@ -35,7 +36,7 @@ for marker in required:
     if marker not in impl:
         raise SystemExit(f'missing bounded write-enablement invariant: {marker}')
 
-# Exactly five public inputs: four exact bindings plus explicit write_enabled=true.
+# Exactly five public inputs: four exact bindings plus the literal confirmation.
 props_start = impl.index("'properties' => array(")
 props_end = impl.index("),\n\t\t\t\t\t'required'", props_start)
 props = impl[props_start:props_end]
@@ -44,12 +45,12 @@ for name in [
     'expected_profile_digest',
     'expected_source_commit_sha',
     'expected_build_fingerprint',
-    'write_enabled',
+    'confirmation',
 ]:
     if props.count("'" + name + "'") != 1:
         raise SystemExit(f'bounded write-enablement input missing or duplicated: {name}')
 for forbidden in [
-    'chatgpt_app_id', 'acceptance_enabled', 'skills_enabled', 'production_write_confirmed',
+    'write_enabled', 'chatgpt_app_id', 'acceptance_enabled', 'skills_enabled', 'production_write_confirmed',
     'site_uuid', 'display_name', 'oauth_user_ids', 'canonical_origin', 'provider',
     'grants', 'nhi', 'mutation_gate', '_mad4b_approval_ticket_id',
 ]:
