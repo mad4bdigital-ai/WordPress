@@ -27,8 +27,6 @@ if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
     foreach ( $registry->all() as $adapter ) {
         $status = $adapter->status();
         $certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
-        if ( empty( $status['mutation_requires_certification'] ) ) continue;
-
         $provider = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : sanitize_key( (string) $adapter->id() );
         $map = $adapter->ability_names();
         $mutation_candidates = array();
@@ -44,6 +42,18 @@ if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
             }
         }
         $mutation_candidates = array_values( array_unique( $mutation_candidates ) );
+        $runtime_blocked = array();
+
+        if ( method_exists( $adapter, 'mutation_ability_runtime_eligibility' ) ) {
+            foreach ( $mutation_candidates as $ability_name ) {
+                $runtime_eligibility = $adapter->mutation_ability_runtime_eligibility( $ability_name );
+                if ( true === $runtime_eligibility ) continue;
+                $expected_blocked[ $ability_name ] = 'adapter_runtime_capability_not_eligible';
+                $runtime_blocked[ $ability_name ] = true;
+            }
+        }
+
+        if ( empty( $status['mutation_requires_certification'] ) ) continue;
 
         $capability_cataloged = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
             && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $provider );
@@ -51,14 +61,19 @@ if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
             $projection = MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection( $provider, $adapter );
             foreach ( (array) ( $projection['blocked'] ?? array() ) as $entry ) {
                 if ( empty( $entry['ability'] ) || ! in_array( (string) $entry['ability'], $mutation_candidates, true ) ) continue;
-                $expected_blocked[ (string) $entry['ability'] ] = 'provider_capability_not_write_eligible';
+                $ability_name = (string) $entry['ability'];
+                if ( isset( $runtime_blocked[ $ability_name ] ) ) continue;
+                $expected_blocked[ $ability_name ] = 'provider_capability_not_write_eligible';
             }
             continue;
         }
 
         $legacy_runtime_contract_ok = ! empty( $certification['legacy_runtime_contract_ok'] ) || ! empty( $certification['runtime_contract_ok'] );
         if ( $legacy_runtime_contract_ok ) continue;
-        foreach ( $mutation_candidates as $ability_name ) $expected_blocked[ $ability_name ] = 'provider_runtime_contract_not_certified';
+        foreach ( $mutation_candidates as $ability_name ) {
+            if ( isset( $runtime_blocked[ $ability_name ] ) ) continue;
+            $expected_blocked[ $ability_name ] = 'provider_runtime_contract_not_certified';
+        }
     }
 }
 ksort( $expected_blocked );
@@ -67,16 +82,20 @@ foreach ( $blocked_provider_writes as $blocked ) {
     $check( isset( $blocked['ability'], $blocked['provider'], $blocked['reason'] ), 'Blocked write diagnostic is incomplete.' );
     $ability_name = (string) $blocked['ability'];
     $reason = (string) $blocked['reason'];
-    $check( isset( $expected_blocked[ $ability_name ] ), 'Blocked write diagnostic contains an ability not blocked by canonical certification truth: ' . $ability_name );
-    $check( $expected_blocked[ $ability_name ] === $reason, 'Blocked write diagnostic reason disagrees with canonical certification truth for ' . $ability_name . ': ' . $reason );
+    $check( isset( $expected_blocked[ $ability_name ] ), 'Blocked write diagnostic contains an ability not blocked by canonical certification/runtime truth: ' . $ability_name );
+    $check( $expected_blocked[ $ability_name ] === $reason, 'Blocked write diagnostic reason disagrees with canonical certification/runtime truth for ' . $ability_name . ': ' . $reason );
     $check( ! empty( $blocked['violations'] ) && is_array( $blocked['violations'] ), 'Blocked write diagnostic is missing provider violations.' );
+    if ( 'adapter_runtime_capability_not_eligible' === $reason ) {
+        $check( ! empty( $blocked['runtime_eligibility_code'] ), 'Runtime-blocked write diagnostic is missing the adapter eligibility code.' );
+        $check( in_array( (string) $blocked['runtime_eligibility_code'], $blocked['violations'], true ), 'Runtime-blocked write diagnostic does not bind its adapter eligibility code into violations.' );
+    }
     if ( 'provider_capability_not_write_eligible' === $reason ) {
         $check( isset( $blocked['capability_id'], $blocked['certification_level'] ), 'Capability-blocked write diagnostic is missing capability evidence.' );
         $check( in_array( 'capability_write_certification_required', $blocked['violations'], true ), 'Capability-blocked write diagnostic is missing the canonical certification violation.' );
     }
     $observed_blocked[ $ability_name ] = $reason;
-    $check( ! in_array( $ability_name, $write_tools, true ), 'Provider-uncertified mutation leaked into write_tools: ' . $ability_name );
-    $check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ), 'Provider-uncertified mutation mounted on mad4b-write: ' . $ability_name );
+    $check( ! in_array( $ability_name, $write_tools, true ), 'Provider-uncertified/runtime-ineligible mutation leaked into write_tools: ' . $ability_name );
+    $check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ), 'Provider-uncertified/runtime-ineligible mutation mounted on mad4b-write: ' . $ability_name );
 }
 ksort( $observed_blocked );
 $check( $expected_blocked === $observed_blocked, 'Provider-blocked write projection does not match canonical capability/runtime certification state.' );
