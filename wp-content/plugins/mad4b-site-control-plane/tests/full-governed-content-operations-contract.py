@@ -7,15 +7,17 @@ base = adapters / "class-mad4b-scp-adapter-base.php"
 full = adapters / "class-mad4b-scp-full-content-operations-adapter.php"
 translation = adapters / "class-mad4b-scp-translation-bridge-adapter.php"
 provider = adapters / "class-mad4b-scp-native-provider-bridge-adapter.php"
+jetengine_client = adapters / "class-mad4b-scp-jetengine-mcp-client.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 
-for path in (base, full, translation, provider, servers):
+for path in (base, full, translation, provider, jetengine_client, servers):
     assert path.is_file(), f"missing required source: {path}"
 
 base_src = base.read_text(encoding="utf-8")
 full_src = full.read_text(encoding="utf-8")
 translation_src = translation.read_text(encoding="utf-8")
 provider_src = provider.read_text(encoding="utf-8")
+jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 
 for filename, class_name in (
@@ -138,8 +140,30 @@ assert "->execute( $provider_input )" in provider_src
 assert "provider_import_content" in provider_src and "provider_export_content" in provider_src
 assert "mcp-adapter/execute-ability" not in provider_src
 
+# JetEngine has its own MCP transport. The bridge must discover that endpoint
+# directly instead of pretending the provider tools live in wp_get_abilities().
+for token in (
+    "MAD4B_SCP_JetEngine_MCP_Client",
+    "class-mad4b-scp-jetengine-mcp-client.php",
+    "jetengine-mcp",
+    "call_tool(",
+    "mad4b_provider_import_reversibility_unverified",
+):
+    assert token in provider_src, f"JetEngine MCP bridge hardening missing: {token}"
+
+for token in (
+    "/jet-engine/v1/mcp",
+    "notifications/initialized",
+    "tools/list",
+    "tools/call",
+    "mcp-session-id",
+    "mad4b_jetengine_mcp_schema_drift",
+    "expected_schema_sha256",
+):
+    assert token in jetengine_client_src, f"JetEngine MCP client contract missing: {token}"
+
 # Provider bridge cannot self-wrap MAD4B adapters, cross provider ownership, or
-# execute native calls whose read/write annotation is missing or wrong.
+# execute native calls whose read/write mode is inconsistent with the fixed wrapper.
 for token in (
     "mad4b_owned_row",
     "0 === strpos( $category, 'mad4b-' )",
@@ -148,7 +172,7 @@ for token in (
     "mad4b_native_provider_write_mode_unverified",
     "mad4b_native_provider_read_mode_unverified",
     "mutation_ability_runtime_eligibility",
-    "mad4b_provider_import_runtime_unavailable",
+    "mad4b_provider_import_reversibility_unverified",
 ):
     assert token in provider_src, f"native-provider hardening missing: {token}"
 
@@ -173,7 +197,12 @@ for token in (
 ):
     assert token in servers_src, f"runtime projection separation missing: {token}"
 
-for src, label in ((full_src, "full-content"), (translation_src, "translation"), (provider_src, "provider-bridge")):
+for src, label in (
+    (full_src, "full-content"),
+    (translation_src, "translation"),
+    (provider_src, "provider-bridge"),
+    (jetengine_client_src, "jetengine-mcp-client"),
+):
     assert "$wpdb" not in src, f"{label} must not use direct SQL"
     assert "database-raw-query" not in src, f"{label} must not expose raw SQL"
     assert "BREAKGLASS" not in src.upper(), f"{label} must not expose breakglass"
