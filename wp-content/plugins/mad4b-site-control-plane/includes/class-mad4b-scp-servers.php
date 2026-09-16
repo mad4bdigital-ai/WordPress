@@ -267,6 +267,14 @@ final class MAD4B_SCP_Servers {
 		return $result;
 	}
 
+	private static function chatgpt_unified_catalog_enabled() {
+		return class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::configured()
+			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment()
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+	}
+
 	public static function chatgpt_tools() {
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$adapter_candidates = array();
@@ -275,27 +283,70 @@ final class MAD4B_SCP_Servers {
 			$registry->register_defaults();
 			$adapter_candidates = $registry->ability_names( 'read' );
 		}
-		$forbidden = array(
-			'mad4b/filesystem-list', 'mad4b/filesystem-read',
-			'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query',
+
+		if ( ! self::chatgpt_unified_catalog_enabled() ) {
+			$forbidden = array(
+				'mad4b/filesystem-list', 'mad4b/filesystem-read',
+				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query',
+			);
+			$tools = array_values( array_diff( $core, $forbidden ) );
+			foreach ( array_values( array_unique( $adapter_candidates ) ) as $ability_name ) {
+				if ( in_array( $ability_name, $forbidden, true ) ) continue;
+				if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+				$ability = wp_get_ability( $ability_name );
+				if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
+				$meta = $ability->get_meta();
+				$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+				if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+				$tools[] = (string) $ability_name;
+			}
+			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) {
+				$tools = array_merge( $tools, self::write_tools() );
+				$tools = array_merge( $tools, array_values( array_diff( self::external_write_tools(), self::write_tools() ) ) );
+			}
+			return array_values( array_unique( $tools ) );
+		}
+
+		$candidates = array_merge(
+			self::core_tools( 'mad4b-read' ),
+			self::core_tools( 'mad4b-chatgpt' ),
+			self::core_tools( 'mad4b-enrollment' ),
+			self::core_tools( 'mad4b-content' ),
+			self::core_tools( 'mad4b-admin' ),
+			self::external_write_tools()
 		);
-		$tools = array_values( array_diff( $core, $forbidden ) );
-		foreach ( array_values( array_unique( $adapter_candidates ) ) as $ability_name ) {
-			if ( in_array( $ability_name, $forbidden, true ) ) continue;
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			$registry->register_defaults();
+			foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface ) {
+				$candidates = array_merge( $candidates, $registry->ability_names( $surface ) );
+			}
+		}
+
+		$tools = array();
+		$breakglass = self::core_tools( 'mad4b-breakglass' );
+		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
+			if ( '' === $ability_name || 'mad4b/database-raw-query' === $ability_name || in_array( $ability_name, $breakglass, true ) ) continue;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+			if ( 'mad4b/site-profile-feature-reenroll' === $ability_name ) {
+				$tools[] = $ability_name;
+				continue;
+			}
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
 			$meta = $ability->get_meta();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
-			$tools[] = (string) $ability_name;
+			if ( array_key_exists( 'readonly', $annotations ) && true === $annotations['readonly'] ) {
+				$tools[] = $ability_name;
+				continue;
+			}
+			if ( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'] && self::is_external_write_candidate( $ability_name ) ) {
+				$tools[] = $ability_name;
+			}
 		}
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) {
-			$tools = array_merge( $tools, self::write_tools() );
-			$gated_write_tools = array_values( array_diff( self::external_write_tools(), self::write_tools() ) );
-			$tools = array_merge( $tools, $gated_write_tools );
-		}
-		return array_values( array_unique( $tools ) );
+		$tools = array_values( array_unique( $tools ) );
+		sort( $tools, SORT_STRING );
+		return $tools;
 	}
 
 	private static function surface_for_server( $server_id ) {
@@ -327,9 +378,26 @@ final class MAD4B_SCP_Servers {
 		}
 		if ( 'mad4b-chatgpt' === $server_id ) {
 			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return null;
-			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() && self::is_external_write_candidate( $ability_name ) ) {
+			if ( self::is_external_write_candidate( $ability_name ) ) {
 				if ( null !== self::provider_for_ability( 'mad4b-write', $ability_name ) ) return self::provider_for_ability( 'mad4b-write', $ability_name );
 				return self::provider_for_external_write_candidate( $ability_name );
+			}
+			if ( self::chatgpt_unified_catalog_enabled() ) {
+				foreach ( array( 'mad4b-read', 'mad4b-enrollment', 'mad4b-content', 'mad4b-admin' ) as $core_server ) {
+					if ( in_array( $ability_name, self::core_tools( $core_server ), true ) ) return 'core';
+				}
+				if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+					$registry = MAD4B_SCP_Adapter_Registry::instance();
+					$registry->register_defaults();
+					foreach ( $registry->all() as $adapter ) {
+						$map = $adapter->ability_names();
+						foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface ) {
+							if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
+								return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
+							}
+						}
+					}
+				}
 			}
 		}
 		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return 'core';
@@ -374,7 +442,11 @@ final class MAD4B_SCP_Servers {
 		$write_tools = self::write_tools();
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
-		$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with read diagnostics plus a stable governed write catalog. Provider writes may be discoverable before activation but remain fail-closed until mounted on mad4b-write, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
+		if ( self::chatgpt_unified_catalog_enabled() ) {
+			$chatgpt_description = 'Exact enrolled Staging unified governed gateway exposing all registered normal read capabilities, bounded Site Profile bootstrap, and the stable governed write catalog. Write visibility never grants authority: execution remains delegated to mad4b-write and requires runtime eligibility, exact grants and approval. Breakglass and Raw SQL remain excluded.';
+		} else {
+			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with read diagnostics plus a stable governed write catalog. Provider writes may be discoverable before activation but remain fail-closed until mounted on mad4b-write, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
+		}
 		$this->create( $adapter, 'mad4b-read', 'MAD4B Read MCP', 'Read-only discovery and diagnostics for WordPress, plugin adapters, files and database.', array_values( array_unique( $read_tools ) ), array( __CLASS__, 'can_read_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-chatgpt', 'MAD4B ChatGPT MCP', $chatgpt_description, $chatgpt_tools, array( __CLASS__, 'can_chatgpt_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-enrollment', 'MAD4B Enrollment MCP', 'Bounded Staging-only Site Profile feature re-enrollment. Administrative bootstrap authority is separate from normal governed write authority.', $enrollment_tools, array( __CLASS__, 'can_enrollment_transport' ), $transport, $error_handler, $observability );
