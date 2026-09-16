@@ -85,8 +85,8 @@ for marker in required_registry:
     assert marker in registry, f'missing profile registry marker: {marker}'
 
 # Exact enrolled Staging uses one ChatGPT resource for the complete normal governed
-# read/write catalog plus the bounded Phase A bootstrap. Production/non-exact sites
-# retain the historical narrow read surface.
+# read/write catalog plus the bounded bootstrap transitions. Production/non-exact
+# sites retain the historical narrow read surface.
 for marker in [
     'chatgpt_unified_catalog_enabled',
     "'staging' === MAD4B_SCP_Site_Profile::current_environment()",
@@ -94,7 +94,7 @@ for marker in [
     'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
     "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
     "self::core_tools( 'mad4b-enrollment' )",
-    "'mad4b/site-profile-feature-reenroll' === $ability_name",
+    "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' );",
     'self::external_write_tools()',
     "'mad4b/database-raw-query' === $ability_name",
     "self::core_tools( 'mad4b-breakglass' )",
@@ -152,4 +152,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v8: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v9: PASS')
