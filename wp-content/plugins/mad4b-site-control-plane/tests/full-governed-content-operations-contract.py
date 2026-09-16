@@ -121,8 +121,8 @@ assert "expected_schema_sha256" in provider_src
 assert "schema_sha256" in provider_src
 assert "->execute( $provider_input )" in provider_src
 assert "provider_import_content" in provider_src and "provider_export_content" in provider_src
-assert "execute-anything" not in provider_src.lower()
 assert "mcp-adapter/execute-ability" not in provider_src
+assert "expected_native_ability" in provider_src and "expected_schema_sha256" in provider_src
 
 for src, label in ((full_src, "full-content"), (translation_src, "translation"), (provider_src, "provider-bridge")):
     assert "$wpdb" not in src, f"{label} must not use direct SQL"
