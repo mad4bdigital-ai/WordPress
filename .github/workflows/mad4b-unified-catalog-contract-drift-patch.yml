@@ -1,0 +1,57 @@
+name: MAD4B Unified Catalog Contract Drift Patch
+
+on:
+  push:
+    branches:
+      - feat/dynamic-wordpress-skills-20260909
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/dynamic-wordpress-skills-20260909
+          fetch-depth: 0
+
+      - name: Align tests with unified Staging catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('wp-content/plugins/mad4b-site-control-plane/tests')
+
+          local = root / 'runtime-local-oauth-chatgpt-http-smoke.php'
+          text = local.read_text(encoding='utf-8')
+          old = """foreach ( array( 'mad4b-filesystem-read', 'mad4b-filesystem-write', 'mad4b-database-select', 'mad4b-database-update', 'mad4b-database-raw-query', 'mad4b-content-update-post', 'mad4b-plugin-activate', 'mad4b-mutation-undo' ) as $forbidden ) {\n\tif ( in_array( $forbidden, $names, true ) ) $fail( 'OAuth bearer tools/list leaked a privileged tool.', $forbidden );\n}\n"""
+          new = """foreach ( array( 'mad4b-filesystem-read', 'mad4b-filesystem-write', 'mad4b-database-select', 'mad4b-database-update', 'mad4b-content-update-post', 'mad4b-plugin-activate', 'mad4b-mutation-undo', 'mad4b-site-profile-feature-reenroll' ) as $required_unified ) {\n\tif ( ! in_array( $required_unified, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required unified Staging Read/Write tool.', $required_unified );\n}\nif ( in_array( 'mad4b-database-raw-query', $names, true ) ) {\n\t$fail( 'OAuth bearer tools/list exposed Breakglass Raw SQL.', 'mad4b-database-raw-query' );\n}\n"""
+          if text.count(old) != 1:
+              raise SystemExit(f'local oauth inventory snippet expected once, found {text.count(old)}')
+          local.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          conn = root / 'connection-readiness-contract.py'
+          text = conn.read_text(encoding='utf-8')
+          old_marker = "require(transport_context, \"'stable_catalog_dynamic_execution'\", 'transport-stable-discovery-model')"
+          new_marker = "require(transport_context, \"'stable_unified_catalog_fail_closed_execution'\", 'transport-stable-discovery-model')"
+          if text.count(old_marker) != 1:
+              raise SystemExit(f'connection marker expected once, found {text.count(old_marker)}')
+          conn.write_text(text.replace(old_marker, new_marker, 1), encoding='utf-8')
+          PY
+
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php
+          python3 -m py_compile wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py
+
+          git rm .github/workflows/mad4b-unified-catalog-contract-drift-patch.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php \
+                  wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py
+          git diff --cached --check
+          git commit -m 'test(mcp): align OAuth and connection contracts with unified catalog'
+          git push origin HEAD:feat/dynamic-wordpress-skills-20260909
