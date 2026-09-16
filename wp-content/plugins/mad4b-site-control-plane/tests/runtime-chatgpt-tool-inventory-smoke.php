@@ -111,6 +111,7 @@ $core_required = array(
 	'mad4b-agent-effective-access',
 	'mad4b-approval-plan',
 	'mad4b-site-profile-feature-reenroll',
+	'mad4b-site-profile-write-enable',
 );
 foreach ( $core_required as $tool_name ) {
 	if ( ! in_array( $tool_name, $actual_names, true ) ) {
