@@ -253,6 +253,39 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 			: new WP_Error( 'mad4b_native_provider_read_mode_unverified', 'Provider-native read execution requires an explicit readonly=true annotation.' );
 	}
 
+	/**
+	 * Optional per-ability runtime mount gate consumed by MAD4B_SCP_Servers.
+	 * Stable external discovery remains unchanged, but execution mount/grants are
+	 * withheld until the provider-native capability exists with an explicit write mode.
+	 */
+	public function mutation_ability_runtime_eligibility( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		$jetengine = array(
+			'jetengine/create-cpt' => 'create_cpt',
+			'jetengine/create-taxonomy' => 'create_taxonomy',
+			'jetengine/create-meta-box' => 'create_meta_box',
+			'jetengine/create-cct' => 'create_cct',
+			'jetengine/create-query' => 'create_query',
+			'jetengine/create-glossary' => 'create_glossary',
+			'jetengine/create-listing' => 'create_listing',
+			'jetengine/manage-modules' => 'manage_modules',
+			'jetengine/import-configuration' => 'import_configuration',
+		);
+		if ( isset( $jetengine[ $ability_name ] ) ) {
+			$resolved = $this->resolve_operation( $jetengine[ $ability_name ] );
+			if ( is_wp_error( $resolved ) ) return $resolved;
+			return $this->enforce_native_mode( $resolved['row'], true );
+		}
+		if ( 'mad4b/provider-import-content' === $ability_name ) {
+			foreach ( $this->native_rows() as $row ) {
+				if ( false !== $row['readonly'] ) continue;
+				if ( false !== strpos( $this->row_text( $row ), 'import' ) ) return true;
+			}
+			return new WP_Error( 'mad4b_provider_import_runtime_unavailable', 'No provider-native ability currently exposes an explicit write-mode import operation.' );
+		}
+		return true;
+	}
+
 	private function execute_resolved( $operation, array $input, $expect_write ) {
 		$resolved = $this->resolve_operation( $operation );
 		if ( is_wp_error( $resolved ) ) return $resolved;
