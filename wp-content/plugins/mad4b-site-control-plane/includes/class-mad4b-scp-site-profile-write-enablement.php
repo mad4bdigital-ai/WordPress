@@ -6,9 +6,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Exact Staging-only transition that enables governed write on an already
  * enrolled Site Profile without exposing the generic Site Profile save path.
  *
- * This bootstrap transition deliberately stops after the Site Profile change.
- * NHI/subject/grant reconciliation and mutation-gate activation happen on a
- * subsequent governed runtime bootstrap/request, never inside this invocation.
+ * The initial bootstrap transition deliberately stops after the Site Profile
+ * change. If write is already enabled but the canonical profile-owned authority
+ * is blocked only by a legacy OAuth subject binding, the same exact-bound
+ * bootstrap surface may perform one narrow atomic subject handoff after proving
+ * the target authority already has the complete current exact grant set.
  */
 final class MAD4B_SCP_Site_Profile_Write_Enablement {
 	const CONTRACT = 'mad4b.site-profile-write-enablement.v1';
@@ -27,16 +29,13 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) return;
 
-		// This is a bounded bootstrap transition, not a normal governed business
-		// mutation. Do not let the normal write-authority augmenter inject a prior
-		// approval-ticket input before the NHI/write authority exists.
 		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
 		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
 		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Enable Governed Write for Exact Site Profile',
-				'description' => 'Enable governed write on one exact Staging Site Profile after App Mapping, Acceptance and Skills are already enabled. Authority reconciliation is deferred to a later request.',
+				'description' => 'Enable governed write on one exact Staging Site Profile after App Mapping, Acceptance and Skills are enabled. If Write is already enabled, repair only an exact legacy OAuth subject binding into the canonical profile-owned authority when all current exact grants are already ready.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'enable_write' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -105,7 +104,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() ) return new WP_Error( 'mad4b_site_profile_write_enable_app_mapping_missing', 'A valid stored ChatGPT App ID is required before governed write can be enabled.' );
 		if ( ! MAD4B_SCP_Site_Profile::oauth_enabled() ) return new WP_Error( 'mad4b_site_profile_write_enable_oauth_required', 'OAuth must be enabled before governed write can be enabled.' );
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() || ! MAD4B_SCP_Site_Profile::skills_enabled() ) return new WP_Error( 'mad4b_site_profile_write_enable_phase_a_required', 'Acceptance and Skills must already be enabled before governed write can be enabled.' );
-		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_site_profile_write_enable_already_enabled', 'Governed write is already enabled.' );
+		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return self::repair_subject_handoff( $current_revision, $current_digest, $current_sha, $current_fingerprint );
 
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit_status['ready'] ) ) return new WP_Error( 'mad4b_site_profile_write_enable_audit_required', 'Ready append-only audit storage is required.' );
@@ -181,6 +180,137 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 			'same_invocation_nhi_created' => false,
 			'same_invocation_grants_created' => 0,
 			'same_invocation_mutation_gate_enabled' => false,
+		);
+	}
+
+	private static function repair_subject_handoff( $current_revision, $current_digest, $current_sha, $current_fingerprint ) {
+		global $wpdb;
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() ) return new WP_Error( 'mad4b_site_profile_write_repair_schema_unavailable', 'Governance schema must be ready before authority repair.' );
+		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! class_exists( 'MAD4B_SCP_Servers' ) ) return new WP_Error( 'mad4b_site_profile_write_repair_authority_unavailable', 'Governed write authority components are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ) return new WP_Error( 'mad4b_site_profile_write_repair_issuer_unavailable', 'Local OAuth issuer is unavailable.' );
+		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+		if ( empty( $audit_status['ready'] ) ) return new WP_Error( 'mad4b_site_profile_write_repair_audit_required', 'Ready append-only audit storage is required.' );
+
+		$user_id = get_current_user_id();
+		$environment = MAD4B_SCP_Site_Profile::current_environment();
+		$canonical_slug = sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() );
+		if ( 'staging' !== $environment || '' === $canonical_slug ) return new WP_Error( 'mad4b_site_profile_write_repair_scope_invalid', 'Authority repair is limited to the exact governed Staging profile.' );
+
+		$t = MAD4B_SCP_Schema::tables();
+		$target = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['agents']} WHERE slug=%s LIMIT 1", $canonical_slug ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! $target ) return new WP_Error( 'mad4b_site_profile_write_repair_target_missing', 'Canonical profile-owned write agent does not exist.' );
+		if ( 'enabled' !== (string) $target['status'] || (int) $target['wp_user_id'] !== $user_id || $environment !== (string) $target['environment'] ) return new WP_Error( 'mad4b_site_profile_write_repair_target_invalid', 'Canonical write agent does not exactly match the enrolled Staging administrator and environment.' );
+
+		$issuer = rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' );
+		if ( '' === $issuer ) return new WP_Error( 'mad4b_site_profile_write_repair_issuer_unavailable', 'Local OAuth issuer is unavailable.' );
+		$subject_fingerprint = hash( 'sha256', 'oauth' . "\0" . $issuer . "\0" . 'user:' . absint( $user_id ) );
+		$subjects = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['subjects']} WHERE subject_type=%s AND subject_fingerprint=%s ORDER BY id ASC", 'oauth', $subject_fingerprint ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( 1 !== count( $subjects ) ) return new WP_Error( 'mad4b_site_profile_write_repair_subject_cardinality_invalid', 'Exact OAuth subject must have one and only one governance binding.' );
+		$subject = reset( $subjects );
+		if ( 'enabled' !== (string) $subject['status'] ) return new WP_Error( 'mad4b_site_profile_write_repair_subject_disabled', 'Exact OAuth subject binding must be enabled before repair.' );
+		if ( (int) $subject['agent_id'] === (int) $target['id'] ) {
+			$reconciled = MAD4B_SCP_Staging_Write_Authority::reconcile();
+			if ( empty( $reconciled['ready'] ) ) return new WP_Error( 'mad4b_site_profile_write_repair_reconcile_incomplete', 'Subject is already canonical but write authority is still not ready.', array( 'status' => $reconciled ) );
+			return self::handoff_result( $current_revision, $current_digest, $current_sha, $current_fingerprint, $target, $target, $subject_fingerprint, $reconciled, false );
+		}
+
+		$source = MAD4B_SCP_Agent_Registry::get_agent_by_id( (int) $subject['agent_id'] );
+		if ( ! $source ) return new WP_Error( 'mad4b_site_profile_write_repair_source_missing', 'Current OAuth subject source agent does not exist.' );
+		if ( 'enabled' !== (string) $source['status'] || (int) $source['wp_user_id'] !== $user_id || $environment !== (string) $source['environment'] ) return new WP_Error( 'mad4b_site_profile_write_repair_source_invalid', 'Current OAuth subject source agent is not a same-user same-environment legacy authority.' );
+		if ( (string) $source['slug'] === $canonical_slug ) return new WP_Error( 'mad4b_site_profile_write_repair_source_ambiguous', 'Source agent collides with the canonical profile-owned authority slug.' );
+
+		$tools = MAD4B_SCP_Staging_Write_Authority::write_tools();
+		if ( empty( $tools ) ) return new WP_Error( 'mad4b_site_profile_write_repair_inventory_empty', 'Current governed write inventory is empty.' );
+		$target_grants = array();
+		foreach ( $tools as $ability ) {
+			$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability );
+			if ( null === $provider ) return new WP_Error( 'mad4b_site_profile_write_repair_unmounted_target', 'A current write ability is not mounted on mad4b-write.', array( 'ability' => $ability ) );
+			$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $target['id'], 'mad4b-write', $ability, $provider );
+			if ( is_wp_error( $grant ) || $environment !== (string) $grant['environment'] ) return new WP_Error( 'mad4b_site_profile_write_repair_target_grants_incomplete', 'Canonical target does not already hold the complete exact current write grant set.', array( 'ability' => $ability, 'provider' => $provider ) );
+			$target_grants[ (string) $ability . "\0" . (string) $provider ] = true;
+		}
+
+		$source_grants = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $source['id'], 'mad4b-write' );
+		foreach ( $source_grants as $grant ) {
+			if ( 'allow' !== (string) $grant['effect'] || ! in_array( (string) $grant['environment'], array( 'all', $environment ), true ) ) continue;
+			$ability = (string) $grant['ability_name'];
+			$provider = (string) $grant['provider'];
+			if ( ! in_array( $ability, $tools, true ) ) continue;
+			$mounted_provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability );
+			if ( null === $mounted_provider || $provider !== (string) $mounted_provider ) continue;
+			if ( ! isset( $target_grants[ $ability . "\0" . $provider ] ) ) return new WP_Error( 'mad4b_site_profile_write_repair_unique_effective_authority', 'Legacy source retains effective authority not already represented on the canonical target.', array( 'ability' => $ability, 'provider' => $provider ) );
+		}
+
+		$started = $wpdb->query( 'START TRANSACTION' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( false === $started ) return new WP_Error( 'mad4b_site_profile_write_repair_transaction_failed', 'Could not start the atomic OAuth subject handoff transaction.' );
+		$updated = $wpdb->update( $t['subjects'], array( 'agent_id' => (int) $target['id'], 'updated_at' => gmdate( 'Y-m-d H:i:s' ) ), array( 'id' => (int) $subject['id'], 'agent_id' => (int) $source['id'], 'status' => 'enabled' ), array( '%d', '%s' ), array( '%d', '%d', '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( 1 !== $updated ) {
+			$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			return new WP_Error( 'mad4b_site_profile_write_repair_subject_move_failed', 'Exact OAuth subject handoff became stale or could not be persisted.' );
+		}
+
+		$reconciled = MAD4B_SCP_Staging_Write_Authority::reconcile();
+		$reconcile_ok = is_array( $reconciled ) && ! empty( $reconciled['ready'] ) && isset( $reconciled['agent_public_id'] ) && hash_equals( strtolower( (string) $target['public_id'] ), strtolower( (string) $reconciled['agent_public_id'] ) ) && empty( $reconciled['breakglass_included'] ) && empty( $reconciled['grant_blockers'] );
+		if ( ! $reconcile_ok ) {
+			$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			MAD4B_SCP_Staging_Write_Authority::reconcile();
+			return new WP_Error( 'mad4b_site_profile_write_repair_reconcile_failed', 'OAuth subject handoff was rolled back because canonical write authority did not reconcile to ready.', array( 'status' => $reconciled ) );
+		}
+
+		$audit = MAD4B_SCP_Audit::record( 'mad4b/governed-write-subject-handoff', array(
+			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+			'site_profile_revision' => $current_revision,
+			'site_profile_digest' => $current_digest,
+			'environment' => $environment,
+			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
+			'wp_user_id' => $user_id,
+			'subject_type' => 'oauth',
+			'subject_fingerprint' => $subject_fingerprint,
+			'from_agent_public_id' => (string) $source['public_id'],
+			'to_agent_public_id' => (string) $target['public_id'],
+			'to_agent_slug' => (string) $target['slug'],
+			'write_tool_count' => count( $tools ),
+			'source_commit_sha' => $current_sha,
+			'build_fingerprint' => $current_fingerprint,
+			'legacy_agent_disabled' => false,
+			'legacy_grants_mutated' => false,
+			'atomic_subject_move' => true,
+		), 'ok' );
+		if ( is_wp_error( $audit ) ) {
+			$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			MAD4B_SCP_Staging_Write_Authority::reconcile();
+			return new WP_Error( 'mad4b_site_profile_write_repair_audit_failed', 'OAuth subject handoff was rolled back because append-only audit evidence could not be committed.', array( 'audit_error' => $audit->get_error_code() ) );
+		}
+
+		$committed = $wpdb->query( 'COMMIT' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( false === $committed ) {
+			$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			MAD4B_SCP_Staging_Write_Authority::reconcile();
+			return new WP_Error( 'mad4b_site_profile_write_repair_commit_failed', 'Atomic OAuth subject handoff could not be committed.' );
+		}
+
+		return self::handoff_result( $current_revision, $current_digest, $current_sha, $current_fingerprint, $source, $target, $subject_fingerprint, $reconciled, true );
+	}
+
+	private static function handoff_result( $current_revision, $current_digest, $current_sha, $current_fingerprint, array $source, array $target, $subject_fingerprint, array $reconciled, $moved ) {
+		return array(
+			'contract' => self::CONTRACT,
+			'state' => $moved ? 'authority_reconciled' : 'authority_already_reconciled',
+			'revision' => (int) $current_revision,
+			'profile_digest' => (string) $current_digest,
+			'source_commit_sha' => (string) $current_sha,
+			'build_fingerprint' => (string) $current_fingerprint,
+			'subject_type' => 'oauth',
+			'subject_fingerprint' => (string) $subject_fingerprint,
+			'from_agent_public_id' => (string) $source['public_id'],
+			'to_agent_public_id' => (string) $target['public_id'],
+			'atomic_subject_move' => (bool) $moved,
+			'legacy_agent_disabled' => false,
+			'legacy_grants_mutated' => false,
+			'write_authority_ready' => ! empty( $reconciled['ready'] ),
+			'runtime_reconciled' => ! empty( $reconciled['ready'] ),
+			'grant_blockers' => isset( $reconciled['grant_blockers'] ) ? $reconciled['grant_blockers'] : array(),
+			'breakglass_included' => ! empty( $reconciled['breakglass_included'] ),
 		);
 	}
 
