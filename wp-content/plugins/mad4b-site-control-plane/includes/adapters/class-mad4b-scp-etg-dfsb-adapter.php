@@ -24,24 +24,51 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Config\\Configuration' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Config\\ProfileRegistry' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\RuntimeInventory' )
+			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\BuildIdentity' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\InventoryProfilePlanner' )
 			&& class_exists( '\\ETG\\DynamicFilterSEOBridge\\Presentation\\InventoryContentCatalog' );
 	}
 
 	public function ability_names() {
+		$read = array(
+			'etg-dfsb/status',
+			'etg-dfsb/build-identity',
+			'etg-dfsb/configuration',
+			'etg-dfsb/runtime-inventory',
+			'etg-dfsb/profiles',
+			'etg-dfsb/profile-blueprint',
+			'etg-dfsb/profile-plan',
+			'etg-dfsb/content-catalog',
+		);
+		$read = array_merge( $read, $this->native_evidence_read_abilities() );
 		return array(
-			'read' => array(
-				'etg-dfsb/status',
-				'etg-dfsb/configuration',
-				'etg-dfsb/runtime-inventory',
-				'etg-dfsb/profiles',
-				'etg-dfsb/profile-blueprint',
-				'etg-dfsb/profile-plan',
-				'etg-dfsb/content-catalog',
-			),
+			'read' => array_values( array_unique( $read ) ),
 			'content' => array(),
 			'admin' => array(),
 		);
+	}
+
+	/**
+	 * ETG owns the canonical EvidenceProvider abilities. MAD4B only declares
+	 * projection ownership after proving the native abilities are present and
+	 * remain bounded read-only callables. Older/drifted ETG packages therefore do
+	 * not create dead MCP tools, and no duplicate ability implementation is added.
+	 */
+	private function native_evidence_read_abilities() {
+		$candidates = array( 'etg-dfsb/evidence-provider', 'etg-dfsb/evidence-query' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) ) return array();
+		$available = array();
+		foreach ( $candidates as $ability_name ) {
+			if ( ! wp_has_ability( $ability_name ) ) continue;
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) continue;
+			$meta = $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+			if ( ! array_key_exists( 'destructive', $annotations ) || false !== $annotations['destructive'] ) continue;
+			$available[] = $ability_name;
+		}
+		return $available;
 	}
 
 	protected function detect_plugin_version() {
@@ -75,6 +102,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 		$status['seo_publication_mutation_exposed'] = false;
 		$status['ajax_proxy_exposed'] = false;
 		$status['elementor_document_mutation_delegated_to'] = 'elementor-adapter';
+		$status['native_evidence_projection'] = $this->native_evidence_read_abilities();
 		if ( $this->is_available() ) {
 			try {
 				$status['etg_readiness'] = \ETG\DynamicFilterSEOBridge\Bootstrap::instance()->readiness();
@@ -88,6 +116,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function register_abilities() {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$this->add_ability( 'etg-dfsb/status', 'Get ETG DFSB MCP Integration Status', 'status', $read );
+		$this->add_ability( 'etg-dfsb/build-identity', 'Read ETG DFSB Exact Build Identity', 'build_identity', $read );
 		$this->add_ability( 'etg-dfsb/configuration', 'Read ETG DFSB Configuration', 'configuration', $read );
 		$this->add_ability( 'etg-dfsb/runtime-inventory', 'Read ETG DFSB Runtime Inventory', 'runtime_inventory', $read );
 		$this->add_ability( 'etg-dfsb/profiles', 'Read ETG DFSB Surface Profiles', 'profiles', $read );
@@ -108,6 +137,22 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->add_ability( 'etg-dfsb/profile-plan', 'Plan ETG DFSB Profiles from Runtime Inventory', 'profile_plan', $read );
 		$this->add_ability( 'etg-dfsb/content-catalog', 'Read ETG DFSB Dynamic Content Catalog', 'content_catalog', $read );
 	}
+
+    public function build_identity() {
+        $guard = $this->guard_runtime();
+        if ( is_wp_error( $guard ) ) return $guard;
+        try {
+  $identity = \ETG\DynamicFilterSEOBridge\Diagnostics\BuildIdentity::collect();
+  if ( ! is_array( $identity ) ) return $this->runtime_error( 'build_identity_unavailable' );
+  $identity['adapter_contract'] = self::CONTRACT;
+  $identity['authorizing'] = false;
+  $identity['read_only'] = true;
+  $identity['mutation_exposed'] = false;
+  return $identity;
+        } catch ( Throwable $error ) {
+  return $this->runtime_error( 'build_identity_unavailable' );
+        }
+    }
 
 	public function configuration() {
 		$guard = $this->guard_runtime();

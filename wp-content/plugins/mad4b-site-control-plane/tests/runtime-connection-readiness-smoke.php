@@ -37,9 +37,15 @@ $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-s
 
 $status = MAD4B_SCP_Connection_Status::status();
 $check( isset( $status['contract'] ) && 'mad4b.connection-readiness.v4' === $status['contract'], 'Unexpected connection readiness contract.' );
-$check( ! empty( $status['local_transport_ready'] ), 'Clean local transport should be ready: ' . wp_json_encode( $status['local_blockers'] ) );
+$check(
+    ! empty( $status['local_transport_ready'] ),
+    'Clean local transport should be ready: blockers=' . wp_json_encode( $status['local_blockers'] )
+    . ' registrations=' . wp_json_encode( MAD4B_SCP_Servers::registration_status() )
+    . ' servers=' . wp_json_encode( $status['servers'] )
+);
 $check( empty( $status['remote_endpoint_preflight_ready'] ), 'Unconfigured OAuth resource server must not claim remote endpoint preflight readiness.' );
-$check( in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTP CI target did not report HTTPS remote blocker.' );
+$is_https_target = 'https' === strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_SCHEME ) );
+$check( $is_https_target ? ! in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ) : in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTPS remote blocker did not match the disposable target scheme.' );
 $check( in_array( 'oauth_resource_bridge_not_configured', $status['remote_preflight_blockers'], true ), 'Unconfigured OAuth bridge did not block remote preflight.' );
 $check( in_array( 'oauth_issuer_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth issuer did not block remote preflight.' );
 $check( in_array( 'oauth_wp_subject_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth WordPress subject did not block remote preflight.' );

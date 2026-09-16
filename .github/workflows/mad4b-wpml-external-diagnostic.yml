@@ -1,0 +1,167 @@
+name: MAD4B WPML External Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-wpml-external-diagnostic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  external-read-only:
+    name: Raw Staging WPML HTTP evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      WPML_URL: https://staging.egypttourgates.com/wp-json/wpml/v1/rest/status?test_get_parameter=1
+      REST_INDEX_URL: https://staging.egypttourgates.com/wp-json/
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Prove WPML response contract compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-wpml-response-contract.php"
+          php -l "$root/tests/wpml-response-contract-runtime.php"
+          php "$root/tests/wpml-response-contract-runtime.php"
+
+      - name: Capture endpoint and REST index without writes
+        shell: bash
+        run: |
+          set -u
+          out=/tmp/mad4b-wpml-external
+          rm -rf "$out"
+          mkdir -p "$out"
+
+          capture() {
+            name="$1"
+            url="$2"
+            : > "$out/${name}.headers"
+            : > "$out/${name}.body"
+            set +e
+            http_code="$(curl --silent --show-error --max-time 30 --connect-timeout 10 \
+              --dump-header "$out/${name}.headers" \
+              --output "$out/${name}.body" \
+              --write-out '%{http_code}' \
+              "$url" 2>"$out/${name}.stderr")"
+            curl_exit=$?
+            set -e
+            printf '%s\n' "$http_code" > "$out/${name}.http-status"
+            printf '%s\n' "$curl_exit" > "$out/${name}.curl-exit"
+          }
+
+          capture wpml "$WPML_URL"
+          capture rest-index "$REST_INDEX_URL"
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/mad4b-wpml-external')
+          body_path = root / 'rest-index.body'
+          namespace_present = False
+          route_present = False
+          parse_error = ''
+          try:
+              data = json.loads(body_path.read_text(encoding='utf-8', errors='replace'))
+              namespaces = data.get('namespaces', []) if isinstance(data, dict) else []
+              routes = data.get('routes', {}) if isinstance(data, dict) else {}
+              namespace_present = 'wpml/v1' in namespaces
+              route_present = '/wpml/v1/rest/status' in routes
+          except Exception as exc:
+              parse_error = f'{type(exc).__name__}: {exc}'
+
+          wpml_parse_error = ''
+          wpml_status = ''
+          wpml_get_parameters = ''
+          wpml_success_envelope = False
+          try:
+              wpml = json.loads((root / 'wpml.body').read_text(encoding='utf-8', errors='replace'))
+              payload = wpml
+              if isinstance(wpml, dict) and wpml.get('success') is True and isinstance(wpml.get('data'), dict):
+                  payload = wpml['data']
+                  wpml_success_envelope = True
+              if isinstance(payload, dict):
+                  wpml_status = str(payload.get('status', ''))
+                  wpml_get_parameters = str(payload.get('get_parameters', ''))
+          except Exception as exc:
+              wpml_parse_error = f'{type(exc).__name__}: {exc}'
+
+          evidence = {
+              'contract': 'mad4b.wpml-external-http-diagnostic.v2',
+              'source_sha': '${{ env.SOURCE_SHA }}',
+              'target_url': '${{ env.WPML_URL }}',
+              'rest_index_url': '${{ env.REST_INDEX_URL }}',
+              'namespace_present': namespace_present,
+              'route_present': route_present,
+              'rest_index_parse_error': parse_error,
+              'wpml_parse_error': wpml_parse_error,
+              'wpml_success_envelope': wpml_success_envelope,
+              'wpml_status': wpml_status,
+              'wpml_get_parameters': wpml_get_parameters,
+              'wpml_contract_compatible': wpml_status == 'valid' and wpml_get_parameters == 'valid',
+              'mutation_performed': False,
+          }
+          (root / 'diagnostic.json').write_text(json.dumps(evidence, indent=2, sort_keys=True) + '\n')
+          PY
+
+          {
+            echo '## External WPML raw diagnostic (read-only)'
+            echo
+            echo "- source HEAD: \`$SOURCE_SHA\`"
+            echo "- target: \`$WPML_URL\`"
+            echo "- curl exit: \`$(cat "$out/wpml.curl-exit")\`"
+            echo "- HTTP status: \`$(cat "$out/wpml.http-status")\`"
+            content_type="$(awk 'BEGIN{IGNORECASE=1} /^Content-Type:/ {sub(/\r$/,""); print substr($0,index($0,":")+2)}' "$out/wpml.headers" | tail -n1)"
+            location="$(awk 'BEGIN{IGNORECASE=1} /^Location:/ {sub(/\r$/,""); print substr($0,index($0,":")+2)}' "$out/wpml.headers" | tail -n1)"
+            echo "- Content-Type: \`${content_type:-<absent>}\`"
+            echo "- Location: \`${location:-<absent>}\`"
+            echo "- namespace wpml/v1 present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["namespace_present"]).lower())')\`"
+            echo "- route /wpml/v1/rest/status present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["route_present"]).lower())')\`"
+            echo "- compatible WPML contract: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["wpml_contract_compatible"]).lower())')\`"
+            echo
+            echo '### Raw response headers'
+            echo '```text'
+            cat "$out/wpml.headers"
+            echo '```'
+            echo
+            echo '### Raw response body'
+            echo '```text'
+            cat "$out/wpml.body"
+            echo
+            echo '```'
+            if [ -s "$out/wpml.stderr" ]; then
+              echo
+              echo '### curl stderr'
+              echo '```text'
+              cat "$out/wpml.stderr"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload raw read-only HTTP evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-wpml-external-http-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-wpml-external/
+          if-no-files-found: error
+          retention-days: 14

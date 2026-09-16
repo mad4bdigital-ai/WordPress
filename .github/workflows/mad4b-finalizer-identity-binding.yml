@@ -1,0 +1,66 @@
+name: MAD4B Finalizer Identity Binding
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-finalizer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/finalizer-identity-binding-runtime.php'
+      - '.github/workflows/mad4b-finalizer-identity-binding.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-finalizer-identity-binding-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  finalizer-identity-binding:
+    name: Exact finalizer OAuth identity binding (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Prove exact finalizer identity binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-external-handshake-evidence.php"
+          php -l "$root/includes/class-mad4b-scp-live-acceptance-finalizer.php"
+          php -l "$root/tests/finalizer-identity-binding-runtime.php"
+          php "$root/tests/finalizer-identity-binding-runtime.php"
+
+      - name: Verify finalizer consumes subject-bound external evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane/includes'
+          external="$root/class-mad4b-scp-external-handshake-evidence.php"
+          finalizer="$root/class-mad4b-scp-live-acceptance-finalizer.php"
+          grep -Fq "const OBSERVER_ATTESTATION_OPTION = 'mad4b_scp_external_inventory_attestation_v1'" "$external"
+          grep -Fq "bind_observer_attestation_to_current_finalizer" "$external"
+          grep -Fq "observer_attestation_matches_finalizer_context" "$external"
+          grep -Fq "subject_fingerprint" "$external"
+          grep -Fq "self::CHATGPT_CLIENT_ID" "$external"
+          grep -Fq "handshake_issuer" "$external"
+          grep -Fq "handshake_resource" "$external"
+          grep -Fq "external_tool_inventory_fingerprint" "$external"
+          grep -Fq "FINALIZER_SESSION_SKEW" "$external"
+          grep -Fq "self::trusted_external_finalizer_context()" "$finalizer"
+          grep -Fq "external_handshake_attestation_status()" "$finalizer"

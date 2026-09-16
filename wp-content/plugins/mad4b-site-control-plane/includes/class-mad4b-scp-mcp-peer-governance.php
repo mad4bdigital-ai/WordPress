@@ -246,7 +246,13 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			if ( empty( $public_write_abilities ) ) return null;
 			return array( 'tool' => $tool_name, 'ability' => $ability_name, 'reason' => 'generic_execute_reaches_public_write', 'reachable_public_writes' => array_slice( array_values( $public_write_abilities ), 0, self::MAX_RISK_DETAILS ) );
 		}
-		$ability = function_exists( 'wp_get_ability' ) ? wp_get_ability( $ability_name ) : null;
+		// External MCP metadata can name an ability that is not present locally.
+		// Feature-detect before retrieval so inspection remains warning-free while
+		// still classifying missing semantics as unreviewed/fail-closed.
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) {
+			return array( 'tool' => $tool_name, 'ability' => $ability_name, 'reason' => 'ability_semantics_unavailable' );
+		}
+		$ability = wp_get_ability( $ability_name );
 		if ( ! $ability || ! method_exists( $ability, 'get_meta' ) ) return array( 'tool' => $tool_name, 'ability' => $ability_name, 'reason' => 'ability_semantics_unavailable' );
 		$meta = $ability->get_meta();
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();

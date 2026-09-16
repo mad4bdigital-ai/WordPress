@@ -66,7 +66,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	}
 
 	private static function connection_stages( array $status, array $oauth ) {
-		$environment_ready = ! empty( $status['environment_is_staging'] ) && ! empty( $status['https'] ) && ! empty( $status['mcp_adapter_certified'] );
+		$environment_ready = ! empty( $status['environment_supported'] ) && ! empty( $status['https'] ) && ! empty( $status['mcp_adapter_certified'] );
 		$local_ready = ! empty( $status['local_transport_ready'] );
 		$preflight_ready = ! empty( $status['remote_endpoint_preflight_ready'] );
 		$certified = ! empty( $status['connection_certified'] );
@@ -74,7 +74,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			array(
 				'label' => __( 'Environment', 'mad4b-site-control-plane' ),
 				'state' => $environment_ready ? 'complete' : 'attention',
-				'detail' => __( 'Staging, HTTPS and certified MCP Adapter.', 'mad4b-site-control-plane' ),
+				'detail' => __( 'Enrolled site, HTTPS and certified MCP Adapter.', 'mad4b-site-control-plane' ),
 				'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'readiness' ),
 			),
 			array(
@@ -101,7 +101,7 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	private static function render_readiness( array $status, array $oauth, array $local_oauth ) {
 		MAD4B_SCP_Admin_Experience::cards(
 			array(
-				array( 'label' => 'Environment', 'value' => isset( $status['environment'] ) ? $status['environment'] : 'unknown', 'state' => ! empty( $status['environment_is_staging'] ) ? 'complete' : 'attention', 'help' => 'Staging-first delivery boundary.' ),
+				array( 'label' => 'Environment', 'value' => isset( $status['environment'] ) ? $status['environment'] : 'unknown', 'state' => ! empty( $status['environment_supported'] ) ? 'complete' : 'attention', 'help' => 'Exact enrolled Site Profile boundary.' ),
 				array( 'label' => 'Local transport', 'value' => ! empty( $status['local_transport_ready'] ) ? 'Ready' : 'Blocked', 'state' => MAD4B_SCP_Admin_Experience::state_from_bool( ! empty( $status['local_transport_ready'] ), ! empty( $status['local_blockers'] ) ), 'help' => 'MCP routes and permission binding.' ),
 				array( 'label' => 'Remote preflight', 'value' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'Ready' : 'Pending', 'state' => ! empty( $status['remote_endpoint_preflight_ready'] ) ? 'complete' : 'attention', 'help' => 'HTTPS + OAuth resource binding.' ),
 				array( 'label' => 'Connection certification', 'value' => ! empty( $status['connection_certified'] ) ? 'Certified' : 'Not certified', 'state' => ! empty( $status['connection_certified'] ) ? 'complete' : 'pending', 'help' => 'Requires real external client evidence.' ),
@@ -111,7 +111,8 @@ final class MAD4B_SCP_Connection_Admin_UI {
 		echo '<h2>' . esc_html__( 'Connection truth', 'mad4b-site-control-plane' ) . '</h2>';
 		self::kv( array(
 			'Environment' => isset( $status['environment'] ) ? $status['environment'] : '',
-			'Environment is staging' => ! empty( $status['environment_is_staging'] ),
+			'Site Profile enrolled' => ! empty( $status['site_profile_enrolled'] ),
+			'Environment supported' => ! empty( $status['environment_supported'] ),
 			'Site URL' => isset( $status['site_url'] ) ? $status['site_url'] : '',
 			'HTTPS' => ! empty( $status['https'] ),
 			'MCP Adapter version' => isset( $status['mcp_adapter_version'] ) ? $status['mcp_adapter_version'] : '',
@@ -126,8 +127,8 @@ final class MAD4B_SCP_Connection_Admin_UI {
 	}
 
 	private static function render_next_step( array $status, array $oauth, array $local_oauth ) {
-		if ( empty( $status['environment_is_staging'] ) ) {
-			MAD4B_SCP_Admin_Experience::next_step( 'Next step', 'Confirm that this target is the intended Staging environment before treating readiness as deployment evidence.', 'attention' );
+		if ( empty( $status['environment_supported'] ) ) {
+			MAD4B_SCP_Admin_Experience::next_step( 'Next step', 'Enroll this exact WordPress origin/environment in the Site Profile before treating readiness as connection evidence.', 'attention' );
 			return;
 		}
 		if ( empty( $status['local_transport_ready'] ) ) {

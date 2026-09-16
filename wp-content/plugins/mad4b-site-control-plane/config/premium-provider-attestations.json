@@ -1,0 +1,32 @@
+{
+  "contract": "mad4b.site-control-plane.premium-provider-attestation.v1",
+  "policy": {
+    "purpose": "Bind premium provider profiles to exact package evidence produced independently from the live WordPress runtime without committing licensed package bytes.",
+    "required_providers": [
+      "jetengine",
+      "jetsmartfilters"
+    ],
+    "allowed_source_kinds": [
+      "owner_supplied_exact_package",
+      "vendor_exact_package"
+    ],
+    "forbidden_source_kinds": [
+      "live_runtime",
+      "staging_runtime",
+      "runtime_hash_capture"
+    ],
+    "semantic_review_required": true,
+    "independent_from_runtime_required": true,
+    "profile_fields_bound": [
+      "version",
+      "archive_sha256",
+      "archive_bytes",
+      "certification_authority",
+      "critical_files"
+    ]
+  },
+  "attestations": {
+    "jetengine": {},
+    "jetsmartfilters": {}
+  }
+}

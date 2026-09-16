@@ -1,0 +1,81 @@
+{
+  "contract": "mad4b.wordpress-deployment-handoff.v2",
+  "producer": {
+    "repository": "mad4bdigital-ai/WordPress",
+    "workflow": ".github/workflows/mad4b-control-plane-package.yml",
+    "artifact_name_template": "mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}",
+    "install_manifest": "install-manifest.json",
+    "source_binding": "exact_head_sha"
+  },
+  "target": {
+    "binding": "explicit_site_profile",
+    "environment_source": "site_profile.environment",
+    "origin_source": "site_profile.canonical_origin",
+    "site_uuid_source": "site_profile.site_uuid",
+    "supported_environments": [
+      "local",
+      "development",
+      "staging",
+      "production"
+    ],
+    "plugin_slug": "mad4b-site-control-plane",
+    "mcp_adapter": {
+      "slug": "mcp-adapter",
+      "required_version": "0.6.1",
+      "deployment_mode": "require_exact_preinstalled_or_verified_bundled"
+    }
+  },
+  "executor": {
+    "authority": "deployment_connector_selected_by_site_owner",
+    "operation": "wordpress_plugin_deploy",
+    "dry_run_default": true,
+    "human_approval_required_for_apply": true,
+    "exact_capability_envelope_required": true,
+    "exact_target_allowlist_required": true,
+    "caller_supplied_credentials_allowed": false
+  },
+  "preflight": {
+    "must_precede_first_write": true,
+    "required": [
+      "target_site_profile_is_configured",
+      "live_environment_matches_site_profile",
+      "live_home_url_matches_site_profile_canonical_origin",
+      "live_site_url_matches_site_profile_canonical_origin",
+      "artifact_run_completed_successfully",
+      "artifact_exact_head_sha_matches_request",
+      "install_manifest_contract_is_valid",
+      "install_manifest_commit_matches_exact_head_sha",
+      "control_plane_archive_sha256_matches_manifest",
+      "mcp_adapter_dependency_is_exact_or_verified"
+    ]
+  },
+  "apply": {
+    "source": "verified_control_plane_archive_from_exact_artifact",
+    "backup_before_replace": true,
+    "atomic_replace_required": true,
+    "activate_after_replace": true,
+    "same_cycle_readback_required": true,
+    "rollback_on_failed_readback": true,
+    "rollback_restores_previous_plugin_files": true,
+    "production_requires_separate_explicit_authority": true
+  },
+  "post_deploy": {
+    "required_live_acceptance": [
+      "exact_control_plane_version_and_build_readback",
+      "site_profile_identity_exact",
+      "enabled_feature_reconciliation",
+      "provider_blocked_write_tools_safely_unmounted",
+      "external_tool_inventory_match_when_mcp_enabled",
+      "one_time_approval_replay_denial_and_undo_when_write_enabled"
+    ]
+  },
+  "forbidden": {
+    "unenrolled_target": true,
+    "implicit_production_write": true,
+    "breakglass": true,
+    "raw_sql_side_channel": true,
+    "caller_supplied_credentials": true,
+    "merge_or_ready_before_required_acceptance": true
+  },
+  "secrets_included": false
+}

@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Reversible_Adapter_Mutations {
 	const ROLLBACK_CONTRACT = 'mad4b.rollback.adapter.v1';
+	const FAILURE_EVIDENCE_CONTRACT = 'mad4b.mutation-failure-evidence.v1';
 	const DEFAULT_UNDO_TTL = 259200;
 	const MAX_UNDO_TTL = 604800;
 	const MAX_ROLLBACK_BYTES = 262144;
@@ -96,23 +97,25 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		try {
 			$result = call_user_func( array( $adapter, $method ), $input );
 		} catch ( Throwable $e ) {
-			self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => 'provider_exception' ) );
-			MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-failed', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'error_type' => get_class( $e ) ), 'failure' );
-			return new WP_Error( 'mad4b_reversible_provider_exception', 'Adapter mutation failed before verification.' );
+			$error = new WP_Error( 'mad4b_reversible_provider_exception', 'Adapter mutation threw before successful verification.' );
+			$failure = self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $error, 'provider_exception' );
+			MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-failed', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'error_type' => get_class( $e ), 'mutation_status' => self::failure_status_from_error( $failure ) ), 'failure' );
+			return $failure;
 		}
 		if ( is_wp_error( $result ) ) {
-			self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => $result->get_error_code() ) );
-			return $result;
+			return self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $result, $result->get_error_code() );
 		}
 
 		$after_state = $adapter->read_reversible_state( $ability_name, $before['target'] );
 		if ( is_wp_error( $after_state ) ) {
 			self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) );
-			return new WP_Error( 'mad4b_reversible_readback_failed', 'Provider write completed but reversible readback failed.', array( 'mutation_id' => $mutation_id, 'provider_error' => $after_state->get_error_code() ) );
+			$error = new WP_Error( 'mad4b_reversible_readback_failed', 'Provider write completed but reversible readback failed.', array( 'provider_error' => $after_state->get_error_code() ) );
+			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		if ( ! is_array( $after_state ) ) {
 			self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => 'invalid_readback_state', 'verification_code' => 'readback_failed' ) );
-			return new WP_Error( 'mad4b_reversible_readback_invalid', 'Provider reversible readback did not return a bounded state object.' );
+			$error = new WP_Error( 'mad4b_reversible_readback_invalid', 'Provider reversible readback did not return a bounded state object.' );
+			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		$after_hash = self::state_hash( $after_state );
 		self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => 'provider_readback_recorded', 'error_code' => '' ) );
@@ -132,7 +135,11 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 	}
 
 	public static function can_undo_record( array $record ) {
-		if ( empty( $record['reversible'] ) || 'verified' !== $record['status'] ) return false;
+		if ( empty( $record['reversible'] ) ) return false;
+		$status = isset( $record['status'] ) ? (string) $record['status'] : '';
+		$verified = 'verified' === $status;
+		$recoverable_failure = 'verification_failed' === $status && ! empty( $record['after_sha256'] );
+		if ( ! $verified && ! $recoverable_failure ) return false;
 		$payload = self::decode_payload( $record );
 		return ! is_wp_error( $payload );
 	}
@@ -141,7 +148,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		global $wpdb;
 		$record = MAD4B_SCP_Mutation_Manager::get( $mutation_id );
 		if ( ! $record ) return new WP_Error( 'mad4b_mutation_missing', 'Mutation record was not found.' );
-		if ( empty( $record['reversible'] ) || 'verified' !== $record['status'] ) return new WP_Error( 'mad4b_undo_not_reversible', 'Mutation is not a verified reversible operation.' );
+		if ( ! self::can_undo_record( $record ) ) return new WP_Error( 'mad4b_undo_not_reversible', 'Mutation is not a verified or safely recoverable reversible operation.' );
 		if ( empty( $record['undo_expires_at'] ) || strtotime( $record['undo_expires_at'] . ' UTC' ) < time() ) return new WP_Error( 'mad4b_undo_expired', 'Undo window has expired.' );
 		$payload = self::decode_payload( $record );
 		if ( is_wp_error( $payload ) ) return $payload;
@@ -207,6 +214,73 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		self::update_record( $mutation_id, array( 'status' => 'undone' ) );
 		MAD4B_SCP_Audit::record( 'mad4b/mutation-undo', array( 'mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'provider' => $record['provider'], 'target_type' => $record['target_type'], 'target_id' => $record['target_id'], 'restored_sha256' => $restored_hash, 'approval_ticket_id' => $undo_approval_ticket_id ) );
 		return array( 'status' => 'undone', 'original_mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'restored_sha256' => $restored_hash, 'verified' => true, 'restore_contract' => $payload['restore_contract'] );
+	}
+
+	private static function finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, array $before, $before_hash, $error, $error_code ) {
+		$observed = $adapter->read_reversible_state( $ability_name, $before['target'] );
+		$after_hash = '';
+		$changed = false;
+		if ( is_array( $observed ) ) {
+			$after_hash = self::state_hash( $observed );
+			$changed = ! hash_equals( (string) $before_hash, (string) $after_hash );
+		}
+
+		if ( $changed ) {
+			$mutation_status = 'verification_failed';
+			self::update_record( $mutation_id, array(
+				'status' => $mutation_status,
+				'after_sha256' => $after_hash,
+				'error_code' => (string) $error_code,
+				'verification_code' => 'provider_error_after_side_effect',
+			) );
+			$restore_available = true;
+		} else {
+			$mutation_status = is_wp_error( $observed ) ? 'verification_failed' : 'failed';
+			self::update_record( $mutation_id, array(
+				'status' => $mutation_status,
+				'after_sha256' => $after_hash,
+				'error_code' => (string) $error_code,
+				'verification_code' => is_wp_error( $observed ) ? 'provider_error_readback_failed' : 'provider_error_no_observed_side_effect',
+			) );
+			$restore_available = false;
+		}
+
+		$evidence = self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, $after_hash, $mutation_status, $restore_available );
+		return self::attach_failure_evidence( $error, $evidence );
+	}
+
+	private static function failure_evidence( $mutation_id, $ability_name, $provider, array $before, $before_hash, $after_hash, $mutation_status, $restore_available ) {
+		return array(
+			'contract' => self::FAILURE_EVIDENCE_CONTRACT,
+			'mutation_id' => (string) $mutation_id,
+			'ability' => (string) $ability_name,
+			'provider' => sanitize_key( (string) $provider ),
+			'target' => array(
+				'type' => isset( $before['target_type'] ) ? (string) $before['target_type'] : '',
+				'id' => isset( $before['target_id'] ) ? (string) $before['target_id'] : '',
+			),
+			'before_sha256' => (string) $before_hash,
+			'observed_after_sha256' => (string) $after_hash,
+			'mutation_status' => (string) $mutation_status,
+			'restore_available' => (bool) $restore_available,
+		);
+	}
+
+	private static function attach_failure_evidence( $error, array $evidence ) {
+		if ( ! is_wp_error( $error ) ) $error = new WP_Error( 'mad4b_reversible_provider_failed', 'Adapter mutation failed.' );
+		$code = $error->get_error_code();
+		$data = $error->get_error_data( $code );
+		if ( ! is_array( $data ) ) $data = array();
+		$data['mad4b_mutation_evidence'] = $evidence;
+		$error->add_data( $data, $code );
+		return $error;
+	}
+
+	private static function failure_status_from_error( $error ) {
+		if ( ! is_wp_error( $error ) ) return 'failed';
+		$data = $error->get_error_data( $error->get_error_code() );
+		if ( is_array( $data ) && isset( $data['mad4b_mutation_evidence']['mutation_status'] ) ) return (string) $data['mad4b_mutation_evidence']['mutation_status'];
+		return 'failed';
 	}
 
 	private static function provider_restore_guard( $adapter, array $record ) {

@@ -100,7 +100,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'jwks_uri' => self::jwks_url(),
 			'revocation_endpoint' => self::revocation_url(),
 			'authorization_server_metadata' => self::metadata_url(),
-			'protected_resources' => array( self::resource_identifier() ),
+			'protected_resources' => self::resource_identifiers(),
 			'client_registration_mode' => 'cimd_or_pre_registered',
 			'client_id_metadata_document_supported' => true,
 			'dynamic_client_registration_supported' => false,
@@ -137,7 +137,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'code_challenge_methods_supported' => array( 'S256' ),
 			'scopes_supported' => array( 'mad4b:read', 'offline_access' ),
 			'authorization_response_iss_parameter_supported' => true,
-			'protected_resources' => array( self::resource_identifier() ),
+			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
 		);
 	}
@@ -150,23 +150,38 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	public static function issuer() {
 		$validated = self::configured_issuer_validation();
 		if ( is_string( $validated ) && '' !== $validated ) return $validated;
-		return self::origin() . self::ISSUER_PATH;
+		return self::site_base_url() . self::ISSUER_PATH;
 	}
 
 	public static function metadata_url() {
-		$parts = wp_parse_url( self::issuer() );
+		return self::metadata_url_for_issuer( self::issuer() );
+	}
+
+	public static function authorize_url() { return self::site_base_url() . self::AUTHORIZE_PATH; }
+	public static function token_url() { return self::site_base_url() . self::TOKEN_PATH; }
+	public static function jwks_url() { return self::site_base_url() . self::JWKS_PATH; }
+	public static function revocation_url() { return self::site_base_url() . self::REVOCATION_PATH; }
+
+	private static function metadata_url_for_issuer( $issuer ) {
+		$parts = wp_parse_url( (string) $issuer );
 		if ( ! is_array( $parts ) || empty( $parts['path'] ) ) return self::origin() . '/.well-known/oauth-authorization-server';
 		return self::origin() . '/.well-known/oauth-authorization-server/' . ltrim( rtrim( (string) $parts['path'], '/' ), '/' );
 	}
 
-	public static function authorize_url() { return self::origin() . self::AUTHORIZE_PATH; }
-	public static function token_url() { return self::origin() . self::TOKEN_PATH; }
-	public static function jwks_url() { return self::origin() . self::JWKS_PATH; }
-	public static function revocation_url() { return self::origin() . self::REVOCATION_PATH; }
-
 	public static function resource_identifier() {
 		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
 		return untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
+	}
+
+	public static function resource_identifiers() {
+		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'resource_identifiers' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifiers();
+		return array( self::resource_identifier() );
+	}
+
+	private static function resource_allowed( $resource ) {
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		foreach ( self::resource_identifiers() as $expected ) if ( hash_equals( $expected, $resource ) ) return true;
+		return false;
 	}
 
 	public static function intercept_local_discovery( $preempt, $args, $url ) {
@@ -186,19 +201,25 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$path = wp_parse_url( $uri, PHP_URL_PATH );
 		if ( ! is_string( $path ) ) return;
-		$path = rtrim( '/' . ltrim( $path, '/' ), '/' );
-		$metadata_path = (string) wp_parse_url( self::metadata_url(), PHP_URL_PATH );
-		$known = in_array( $path, array( rtrim( $metadata_path, '/' ), self::JWKS_PATH, self::AUTHORIZE_PATH, self::TOKEN_PATH, self::REVOCATION_PATH ), true );
+		$path = self::protocol_path( $path );
+		$paths = array(
+			'metadata' => self::protocol_path( self::metadata_url() ),
+			'jwks' => self::protocol_path( self::jwks_url() ),
+			'authorize' => self::protocol_path( self::authorize_url() ),
+			'token' => self::protocol_path( self::token_url() ),
+			'revocation' => self::protocol_path( self::revocation_url() ),
+		);
+		$known = in_array( $path, array_values( $paths ), true );
 		if ( $known && ! self::effective_for_protocol() ) self::send_oauth_error( 'temporarily_unavailable', 'Local OAuth authority is not effective.', 503 );
-		if ( rtrim( $metadata_path, '/' ) === $path ) self::send_json( self::metadata(), 200 );
-		if ( self::JWKS_PATH === $path ) {
+		if ( hash_equals( $paths['metadata'], $path ) ) self::send_json( self::metadata(), 200 );
+		if ( hash_equals( $paths['jwks'], $path ) ) {
 			$jwks = self::jwks_document();
 			if ( is_wp_error( $jwks ) ) self::send_oauth_error( 'server_error', 'Local signing key is unavailable.', 503 );
 			self::send_json( $jwks, 200 );
 		}
-		if ( self::AUTHORIZE_PATH === $path ) self::handle_authorize();
-		if ( self::TOKEN_PATH === $path ) self::handle_token();
-		if ( self::REVOCATION_PATH === $path ) self::handle_revocation();
+		if ( hash_equals( $paths['authorize'], $path ) ) self::handle_authorize();
+		if ( hash_equals( $paths['token'], $path ) ) self::handle_token();
+		if ( hash_equals( $paths['revocation'], $path ) ) self::handle_revocation();
 	}
 
 	private static function handle_authorize() {
@@ -269,7 +290,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$resource = self::request_param( $params, 'resource', self::MAX_URI_BYTES );
 		if ( is_wp_error( $resource ) ) return $resource;
 		$resource = untrailingslashit( $resource );
-		if ( ! hash_equals( self::resource_identifier(), $resource ) ) return new WP_Error( 'invalid_target', 'OAuth resource must exactly match the MCP protected resource.' );
+		if ( ! self::resource_allowed( $resource ) ) return new WP_Error( 'invalid_target', 'OAuth resource must exactly match a protected MAD4B MCP resource.' );
 		$challenge = self::request_param( $params, 'code_challenge', 128 );
 		if ( is_wp_error( $challenge ) ) return $challenge;
 		$method = self::request_param( $params, 'code_challenge_method', 16 );
@@ -386,7 +407,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! is_array( $row ) || ! empty( $row['used_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Authorization code is invalid or expired.', 400 );
 		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['redirect_uri'], $redirect_uri ) ) self::send_oauth_error( 'invalid_grant', 'Authorization code binding does not match.', 400 );
 		if ( ! self::redirect_uri_allowed( $client, $redirect_uri ) ) self::send_oauth_error( 'invalid_grant', 'Client metadata no longer authorizes this redirect URI.', 400 );
-		if ( '' === $resource || ! hash_equals( (string) $row['resource'], $resource ) || ! hash_equals( self::resource_identifier(), $resource ) ) self::send_oauth_error( 'invalid_target', 'Token request resource does not match.', 400 );
+		if ( '' === $resource || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_target', 'Token request resource does not match.', 400 );
 		$challenge = self::base64url_encode( hash( 'sha256', $verifier, true ) );
 		if ( ! hash_equals( (string) $row['code_challenge'], $challenge ) ) self::send_oauth_error( 'invalid_grant', 'PKCE verification failed.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
@@ -412,7 +433,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			self::send_oauth_error( 'invalid_grant', 'Refresh token replay detected; token family revoked.', 400 );
 		}
 		if ( ! empty( $row['revoked_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Refresh token is expired or revoked.', 400 );
-		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['resource'], $resource ) || ! hash_equals( self::resource_identifier(), $resource ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token binding does not match.', 400 );
+		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token binding does not match.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
 		$scopes = self::normalize_scopes( (string) $row['scope'] );
 		if ( is_wp_error( $scopes ) ) self::send_oauth_error( 'invalid_scope', 'Stored scope binding is invalid.', 500 );
@@ -710,8 +731,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function environment_allowed() {
-		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
-		return 'staging' === $environment || ( 'production' === $environment && self::production_approved() );
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		if ( ! $profile_ready ) return false;
+		if ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) ) return true;
+		return 'production' === $environment && self::production_approved();
 	}
 
 	private static function effective_for_protocol() {
@@ -794,7 +818,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function configured_issuer_validation() {
-		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::origin() . self::ISSUER_PATH;
+		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::site_base_url() . self::ISSUER_PATH;
 		$configured = rtrim( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ), '/' );
 		if ( strlen( $configured ) > self::MAX_URI_BYTES || ! self::valid_https_url( $configured ) ) return new WP_Error( 'mad4b_local_oauth_issuer_invalid', 'Configured local OAuth issuer must be a bounded HTTPS URL without credentials, query or fragment.' );
 		if ( ! self::same_origin( $configured, self::origin() ) ) return new WP_Error( 'mad4b_local_oauth_issuer_cross_origin', 'Configured local OAuth issuer must use the same origin as this WordPress site.' );
@@ -820,11 +844,29 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function origin() {
-		$parts = wp_parse_url( home_url( '/' ) );
+		$parts = wp_parse_url( self::site_base_url() );
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
 		$origin = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );
 		if ( isset( $parts['port'] ) ) $origin .= ':' . (int) $parts['port'];
 		return $origin;
+	}
+
+	private static function site_base_url() {
+		$parts = wp_parse_url( home_url( '/' ) );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
+		$base = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );
+		if ( isset( $parts['port'] ) ) $base .= ':' . (int) $parts['port'];
+		$path = isset( $parts['path'] ) ? '/' . ltrim( (string) $parts['path'], '/' ) : '';
+		$path = '/' === $path ? '' : rtrim( $path, '/' );
+		return $base . $path;
+	}
+
+	private static function protocol_path( $url_or_path ) {
+		$value = (string) $url_or_path;
+		$path = wp_parse_url( $value, PHP_URL_PATH );
+		if ( ! is_string( $path ) || '' === $path ) $path = $value;
+		$path = '/' . ltrim( (string) $path, '/' );
+		return '/' === $path ? '/' : rtrim( $path, '/' );
 	}
 
 	private static function request_param( array $params, $name, $max_bytes, $trim = true ) {

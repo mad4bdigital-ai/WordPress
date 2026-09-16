@@ -174,7 +174,7 @@ final class MAD4B_SCP_Governance_Abilities {
 			if ( null === $winning ) continue;
 
 			$scope_state = empty( $scopes ) ? 'not_simulated' : ( in_array( 'ability:' . $sample['ability_name'], $scopes, true ) ? 'allowed' : 'denied' );
-			$provider_state = self::provider_runtime_state( $sample['provider'] );
+			$provider_state = self::provider_runtime_state( $sample['provider'], $sample['ability_name'] );
 			$constraints = json_decode( (string) $winning['resource_constraints'], true );
 			$constraints_valid = is_array( $constraints );
 			if ( ! $constraints_valid ) $constraints = array( '_invalid' => true );
@@ -244,7 +244,7 @@ final class MAD4B_SCP_Governance_Abilities {
 		$required_class = MAD4B_SCP_Impact_Policy::ticket_class_for( $ability_name, $provider, $operation_input );
 		$ticket_class = isset( $input['ticket_class'] ) && '' !== trim( (string) $input['ticket_class'] ) ? sanitize_key( (string) $input['ticket_class'] ) : $required_class;
 		if ( $ticket_class !== $required_class ) return new WP_Error( 'mad4b_approval_class_policy_mismatch', 'Requested ticket class does not match the central impact policy.' );
-		$provider_state = self::provider_runtime_state( $provider );
+		$provider_state = self::provider_runtime_state( $provider, $ability_name );
 		if ( 'blocked' === $provider_state['state'] ) return new WP_Error( 'mad4b_approval_provider_not_certified', 'Provider runtime is not certified for the planned mutation.', $provider_state );
 
 		$target = MAD4B_SCP_Authorization::target_fingerprint( $ability_name, $provider, $operation_input, $agent, array( 'planning' => true ) );
@@ -271,29 +271,80 @@ final class MAD4B_SCP_Governance_Abilities {
 		);
 	}
 
-	private static function provider_runtime_state( $provider ) {
+	private static function provider_runtime_state( $provider, $ability_name = '' ) {
 		$provider = sanitize_key( (string) $provider );
-		if ( in_array( $provider, array( '', 'core' ), true ) ) return array( 'state' => 'n/a', 'runtime_contract_ok' => true, 'available' => true, 'provider' => 'core' );
+		$ability_name = (string) $ability_name;
+		if ( in_array( $provider, array( '', 'core' ), true ) ) {
+			return array(
+				'state' => 'n/a',
+				'runtime_contract_ok' => true,
+				'provider_runtime_contract_ok' => true,
+				'exact_runtime_certified' => true,
+				'certification_scope' => 'core',
+				'available' => true,
+				'provider' => 'core',
+				'ability' => $ability_name,
+			);
+		}
+
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
 		$registry->register_defaults();
 		$adapter = null;
 		foreach ( $registry->all() as $candidate ) {
 			if ( method_exists( $candidate, 'provider_key' ) && $candidate->provider_key() === $provider ) { $adapter = $candidate; break; }
 		}
-		if ( ! $adapter ) return array( 'state' => 'blocked', 'runtime_contract_ok' => false, 'available' => false, 'provider' => $provider, 'reason' => 'adapter_unknown' );
+		if ( ! $adapter ) {
+			return array(
+				'state' => 'blocked',
+				'runtime_contract_ok' => false,
+				'provider_runtime_contract_ok' => false,
+				'exact_runtime_certified' => false,
+				'certification_scope' => 'none',
+				'available' => false,
+				'provider' => $provider,
+				'ability' => $ability_name,
+				'reason' => 'adapter_unknown',
+			);
+		}
+
 		$status = $adapter->status();
 		$cert = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
 		$requires = ! empty( $status['mutation_requires_certification'] );
 		$available = ! empty( $status['available'] );
-		$certified = ! $requires || ! empty( $cert['runtime_contract_ok'] );
+		$provider_runtime_contract_ok = ! $requires || ! empty( $cert['runtime_contract_ok'] );
+		$exact_runtime_certified = false;
+		$capability = array();
+
+		$capability_cataloged = $requires
+			&& '' !== $ability_name
+			&& class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
+			&& MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $provider );
+		if ( $capability_cataloged ) {
+			$capability = MAD4B_SCP_Provider_Compatibility_Certification::ability_status( $provider, $ability_name, $adapter );
+			$exact_runtime_certified = ! empty( $capability )
+				&& ! empty( $capability['structural_compatible'] )
+				&& ! empty( $capability['write_eligible'] )
+				&& MAD4B_SCP_Provider_Compatibility_Certification::ACTIVATION_ACTIVE === ( isset( $capability['activation_stage'] ) ? (string) $capability['activation_stage'] : '' )
+				&& ! empty( $capability['behavioral_verified'] )
+				&& ! empty( $capability['rollback_verified'] );
+		}
+
+		$certified = $capability_cataloged ? $exact_runtime_certified : $provider_runtime_contract_ok;
 		$ok = $available && $certified;
 		return array(
 			'state' => $ok ? ( $requires ? 'certified' : 'available' ) : 'blocked',
 			'runtime_contract_ok' => $certified,
+			'provider_runtime_contract_ok' => $provider_runtime_contract_ok,
+			'exact_runtime_certified' => $exact_runtime_certified,
+			'certification_scope' => $capability_cataloged ? ( $exact_runtime_certified ? 'ability' : 'none' ) : ( $provider_runtime_contract_ok ? 'provider' : 'none' ),
 			'available' => $available,
 			'version' => isset( $status['version'] ) ? (string) $status['version'] : '',
 			'provider' => $provider,
 			'adapter' => isset( $status['id'] ) ? (string) $status['id'] : '',
+			'ability' => $ability_name,
+			'capability_id' => isset( $capability['capability_id'] ) ? (string) $capability['capability_id'] : '',
+			'certification_level' => isset( $capability['certification_level'] ) ? (string) $capability['certification_level'] : '',
+			'activation_stage' => isset( $capability['activation_stage'] ) ? (string) $capability['activation_stage'] : '',
 		);
 	}
 

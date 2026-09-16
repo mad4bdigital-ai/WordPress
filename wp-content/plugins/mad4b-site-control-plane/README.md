@@ -2,7 +2,7 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.3.0**.
+Current plugin version: **0.4.0-rc.34**.
 
 > Repository CI certification is not live-site certification. The PR remains Draft until the exact target WordPress deployment passes the target acceptance contract.
 
@@ -292,7 +292,7 @@ Repository CI currently covers:
 - exact packaged-provider version/archive certification;
 - runtime critical-file integrity manifests;
 - native MCP security invariants for JetEngine, Elementor and Bit Pi;
-- default-server isolation and five MAD4B custom servers;
+- default-server isolation and six MAD4B custom servers;
 - exact route/server transport binding before exact grant and approval consumption;
 - `mad4b-write` projection from explicit `readonly=false` Ability metadata;
 - specialist-server grant versus `mad4b-write` grant isolation;
@@ -313,7 +313,7 @@ Repository CI currently covers:
 - read-only Admin Governance/Connection Console contract/runtime behavior;
 - disposable WordPress/MySQL runtime activation and smoke testing on WordPress 6.9 and the current `latest` release.
 
-The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.3.0 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
+The isolated runtime CI activates MCP Adapter 0.6.1 and MAD4B Site Control Plane 0.4.0-rc.32 in disposable WordPress/MySQL. Repository success does **not** replace target-site certification.
 
 The core mutation-gate workflow is read-only. The MCP Adapter refresh workflow is manual-only (`workflow_dispatch`) and may write certification evidence only when an operator explicitly runs it on a selected branch.
 
@@ -323,12 +323,12 @@ Keep the PR Draft until the exact target site proves at least:
 
 1. the deployed provider versions and critical files match the certified baseline;
 2. MCP Adapter and the control plane activate without fatal/runtime warnings;
-3. all five MAD4B servers are registered and the intended endpoint is remotely reachable over HTTPS;
+3. all six MAD4B servers are registered and the intended endpoint is remotely reachable over HTTPS;
 4. the dedicated control identity authenticates correctly through real MCP transport/session handling;
 5. `mad4b/runtime-self-test` returns `passed`, with custom-server isolation and no required-provider/peer blockers;
 6. the official default MCP server cannot discover MAD4B abilities;
 7. `mad4b-write` discovers only the certified write projection when that ingress is used;
-8. the staging NHI uses exact minimal non-wildcard grants, including exact `mad4b-write` coordinates rather than specialist grants for write-ingress calls;
+8. the governed write NHI uses exact minimal non-wildcard grants, including exact `mad4b-write` coordinates rather than specialist grants for write-ingress calls;
 9. approved reversible content mutation succeeds with readback verification and undo succeeds;
 10. deliberate post-mutation human drift makes undo fail closed without overwriting newer work;
 11. budget exhaustion denies before approval consumption;
@@ -338,13 +338,13 @@ Keep the PR Draft until the exact target site proves at least:
 15. Breakglass is inaccessible under default configuration;
 16. peer/foreign MCP inventory has no write-side-channel blocker;
 17. success and rejection paths both leave a valid append-only audit chain;
-18. all mutation gates are returned to OFF after certification unless controlled staging is intentionally continuing.
+18. all mutation gates are returned to OFF after certification unless a controlled governed acceptance cycle is intentionally continuing.
 
 ## Remaining genuine gaps
 
 - exact live MCP authentication/session behavior on the target site;
-- real target `mad4b-write` tool discovery and exact transport-subject/grant evidence until Staging T103;
-- target provider versions/files and real provider side effects until staging certification;
+- real target `mad4b-write` tool discovery and exact transport-subject/grant evidence until target live acceptance;
+- target provider versions/files and real provider side effects until target-site certification;
 - reversible mutation contracts beyond the certified post-update pilot where provider-safe restore is required;
 - exhaustive commercial JetEngine field schema/type governance for fields that require it;
 - deeper JetSmartFilters mutation contracts;

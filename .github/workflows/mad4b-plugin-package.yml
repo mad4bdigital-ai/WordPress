@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/mad4b-plugin-package.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
   workflow_dispatch:
 
 permissions:
@@ -24,15 +25,53 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - name: Verify package contract
+      - name: Verify general-distribution package contract
         shell: bash
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
-          test -f "$root/mad4b-site-control-plane.php"
-          grep -Fq 'Plugin Name: MAD4B Site Control Plane' "$root/mad4b-site-control-plane.php"
-          grep -Fq 'Requires Plugins: mcp-adapter' "$root/mad4b-site-control-plane.php"
-          test -f 'wp-content/plugins/mcp-adapter.zip'
+          main="$root/mad4b-site-control-plane.php"
+          bootstrap="$root/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
+          certified="$root/config/certified-providers.json"
+          dependency_source='wp-content/plugins/mcp-adapter.zip'
+
+          test -f "$main"
+          test -f "$bootstrap"
+          test -f "$certified"
+          test -f "$dependency_source"
+          grep -Fq 'Plugin Name: MAD4B Site Control Plane' "$main"
+          grep -Fq 'MAD4B_SCP_Dependency_Manager::boot();' "$main"
+          grep -Fq "const BUNDLED_ARCHIVE = 'dependencies/mcp-adapter.zip';" "$root/includes/class-mad4b-scp-dependency-manager.php"
+
+          if grep -Fq 'Requires Plugins: mcp-adapter' "$main"; then
+            echo 'General-distribution package must not hard-block activation through Requires Plugins; use the explicit Dependency Manager.' >&2
+            exit 1
+          fi
+
+          if grep -Eq '^[[:space:]]*\*[[:space:]]*Plugin Name:' "$bootstrap"; then
+            echo 'MU bootstrap source must not expose a regular-plugin header inside the distributable plugin.' >&2
+            exit 1
+          fi
+
+          headers=()
+          while IFS= read -r -d '' file; do
+            if grep -Eq '^[[:space:]]*\*[[:space:]]*Plugin Name:' "$file"; then
+              headers+=("$file")
+            fi
+          done < <(find "$root" -mindepth 1 -maxdepth 2 -type f -name '*.php' -print0)
+          if [ "${#headers[@]}" -ne 1 ] || [ "${headers[0]:-}" != "$main" ]; then
+            printf 'Expected exactly one WordPress activation candidate (%s); found:\n' "$main" >&2
+            printf '  %s\n' "${headers[@]:-none}" >&2
+            exit 1
+          fi
+
+          expected_sha="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo strtolower((string)($j["providers"]["mcp_adapter"]["archive_sha256"]??""));' "$certified")"
+          observed_sha="$(sha256sum "$dependency_source" | awk '{print $1}')"
+          test -n "$expected_sha"
+          if [ "$expected_sha" != "$observed_sha" ]; then
+            printf 'Certified MCP Adapter archive digest mismatch. expected=%s observed=%s\n' "$expected_sha" "$observed_sha" >&2
+            exit 1
+          fi
 
       - name: Build WordPress installable ZIP
         shell: bash
@@ -42,20 +81,28 @@ jobs:
           mkdir -p dist/stage
           cp -R wp-content/plugins/mad4b-site-control-plane dist/stage/mad4b-site-control-plane
           rm -rf dist/stage/mad4b-site-control-plane/tests
+          mkdir -p dist/stage/mad4b-site-control-plane/dependencies
+          cp wp-content/plugins/mcp-adapter.zip dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip
+
+          expected_sha="$(php -r '$j=json_decode(file_get_contents($argv[1]),true); echo strtolower((string)($j["providers"]["mcp_adapter"]["archive_sha256"]??""));' dist/stage/mad4b-site-control-plane/config/certified-providers.json)"
+          embedded_sha="$(sha256sum dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip | awk '{print $1}')"
+          test "$expected_sha" = "$embedded_sha"
+
           (
             cd dist/stage
             zip -qr ../mad4b-site-control-plane.zip mad4b-site-control-plane
           )
           sha256sum dist/mad4b-site-control-plane.zip > dist/mad4b-site-control-plane.zip.sha256
           printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/SOURCE_HEAD.txt
+          printf '%s\n' "$embedded_sha" > dist/MCP_ADAPTER_SHA256.txt
 
-      - name: Upload installable package
+      - name: Upload packaging validation evidence only
         uses: actions/upload-artifact@v4
         with:
-          name: mad4b-site-control-plane-installable
+          name: mad4b-plugin-package-validation-evidence
           path: |
-            dist/mad4b-site-control-plane.zip
             dist/mad4b-site-control-plane.zip.sha256
             dist/SOURCE_HEAD.txt
+            dist/MCP_ADAPTER_SHA256.txt
           if-no-files-found: error
           retention-days: 14

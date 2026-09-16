@@ -1,0 +1,156 @@
+name: MAD4B Premium Provider Attestation
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'tools/normalize-premium-provider-package.py'
+      - 'tools/premium-provider-attestation.py'
+      - 'tests/premium-provider-attestation-contract.py'
+      - '.github/workflows/mad4b-premium-provider-attestation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-premium-provider-attestation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Exact premium package attestation contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity and policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json >/dev/null
+          python3 tests/premium-provider-attestation-contract.py
+
+      - name: Normalize owner-supplied exact packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-premium-provider-attestation
+          rm -rf "$out"
+          mkdir -p "$out"
+
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetengine \
+            --input wp-content/plugins/jet-engine.zip \
+            --output "$out/jet-engine.zip" \
+            --expected-version 3.8.15 \
+            --report "$out/jetengine-normalization.json"
+
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetsmartfilters \
+            --input wp-content/plugins/jet-smart-filters.zip \
+            --output "$out/jet-smart-filters.zip" \
+            --expected-version 3.8.5 \
+            --report "$out/jetsmartfilters-normalization.json"
+
+          unzip -tqq "$out/jet-engine.zip"
+          unzip -tqq "$out/jet-smart-filters.zip"
+
+      - name: Generate exact pending-review attestations
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-premium-provider-attestation
+
+          python3 tools/premium-provider-attestation.py \
+            --provider jetengine \
+            --package "$out/jet-engine.zip" \
+            --expected-version 3.8.15 \
+            --source-kind owner_supplied_exact_package \
+            --source-locator "repository:wp-content/plugins/jet-engine.zip@${SOURCE_SHA}" \
+            --attested-by "github-actions:${GITHUB_WORKFLOW}:${GITHUB_RUN_ID}" \
+            --output "$out/jetengine-attestation.json"
+
+          python3 tools/premium-provider-attestation.py \
+            --provider jetsmartfilters \
+            --package "$out/jet-smart-filters.zip" \
+            --expected-version 3.8.5 \
+            --source-kind owner_supplied_exact_package \
+            --source-locator "repository:wp-content/plugins/jet-smart-filters.zip@${SOURCE_SHA}" \
+            --attested-by "github-actions:${GITHUB_WORKFLOW}:${GITHUB_RUN_ID}" \
+            --output "$out/jetsmartfilters-attestation.json"
+
+      - name: Verify normalization and attestation binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/mad4b-premium-provider-attestation')
+          cases = {
+              'jetengine': ('3.8.15', 'jet-engine/jet-engine.php'),
+              'jetsmartfilters': ('3.8.5', 'jet-smart-filters/jet-smart-filters.php'),
+          }
+          for provider, (version, entry) in cases.items():
+              normalization = json.loads((root / f'{provider}-normalization.json').read_text())
+              attestation = json.loads((root / f'{provider}-attestation.json').read_text())
+              if normalization.get('observed_version') != version:
+                  raise SystemExit(f'{provider}: source version mismatch')
+              if normalization.get('normalized_archive_sha256') != attestation.get('archive_sha256'):
+                  raise SystemExit(f'{provider}: normalized archive is not bound to attestation')
+              if normalization.get('normalized_archive_bytes') != attestation.get('archive_bytes'):
+                  raise SystemExit(f'{provider}: normalized byte count is not bound to attestation')
+              if attestation.get('plugin_entry') != entry:
+                  raise SystemExit(f'{provider}: canonical plugin entry mismatch')
+              review = attestation.get('semantic_review', {})
+              if review.get('status') != 'pending' or review.get('approved') is not False:
+                  raise SystemExit(f'{provider}: CI must not self-approve semantic review')
+              if not attestation.get('critical_files'):
+                  raise SystemExit(f'{provider}: critical manifest is empty')
+          print('premium provider normalization/attestation binding: PASS')
+          PY
+
+      - name: Assert no runtime-self-attestation authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R --line-number -E '"source_kind"[[:space:]]*:[[:space:]]*"(live_runtime|staging_runtime|runtime_hash_capture)"' \
+            wp-content/plugins/mad4b-site-control-plane/config/premium-provider-attestations.json
+
+      - name: Publish contract summary
+        shell: bash
+        run: |
+          {
+            echo '## Premium provider attestation contract'
+            echo
+            echo "- exact source commit: ${SOURCE_SHA}"
+            echo '- owner-supplied package layout normalization: verified'
+            echo '- exact JetEngine 3.8.15 package: verified'
+            echo '- exact JetSmartFilters 3.8.5 package: verified'
+            echo '- normalized archive SHA256 + critical-file manifest: generated'
+            echo '- live/staging runtime as sole authority: forbidden'
+            echo '- semantic review: pending; CI cannot self-approve'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload exact package attestation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-premium-provider-attestation-${{ env.SOURCE_SHA }}
+          path: |
+            /tmp/mad4b-premium-provider-attestation/*-normalization.json
+            /tmp/mad4b-premium-provider-attestation/*-attestation.json
+          if-no-files-found: error
+          retention-days: 30

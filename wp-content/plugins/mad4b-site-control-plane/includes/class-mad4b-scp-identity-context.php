@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Identity_Context {
 	const MAX_SCOPES = 200;
+	private static $request_approval_ticket_id = '';
 
 	public static function current() {
 		$context = array(
@@ -18,7 +19,26 @@ final class MAD4B_SCP_Identity_Context {
 			'origin' => '',
 		);
 		$context = apply_filters( 'mad4b_scp_authenticated_subject_context', $context );
+		if ( is_array( $context ) && empty( $context['approval_ticket_id'] ) && '' !== self::$request_approval_ticket_id ) {
+			$context['approval_ticket_id'] = self::$request_approval_ticket_id;
+		}
 		return self::normalize( $context );
+	}
+
+	/**
+	 * Bind a validated governance-input ticket to this PHP request only.
+	 *
+	 * This does not grant authority. The ticket remains exact-payload bound and
+	 * one-time consumed by central authorization. The request overlay only keeps
+	 * the authoritative ticket identity observable by synchronous audit/finalizer
+	 * callbacks after the transport envelope has been stripped from provider input.
+	 */
+	public static function bind_approval_ticket_for_request( $ticket_id ) {
+		$ticket_id = strtolower( trim( (string) $ticket_id ) );
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $ticket_id ) ) return false;
+		if ( '' !== self::$request_approval_ticket_id && ! hash_equals( self::$request_approval_ticket_id, $ticket_id ) ) return false;
+		self::$request_approval_ticket_id = $ticket_id;
+		return true;
 	}
 
 	public static function normalize( $context ) {

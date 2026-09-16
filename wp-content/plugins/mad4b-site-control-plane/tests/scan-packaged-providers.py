@@ -4,8 +4,10 @@
 This scanner is intentionally read-only. It extracts packaged providers into a
 temporary directory, derives plugin header/version, inventories native MCP /
 Abilities implementation evidence, and optionally compares the exact package
-version and SHA-256 with the certified provider baseline. It never executes
-provider PHP.
+version and SHA-256 with the certified provider baseline. Premium packages that
+are exact owner-supplied candidates but still await semantic attestation remain
+explicitly pending and non-authoritative; they do not become certified merely
+because static package inspection succeeds. It never executes provider PHP.
 """
 
 from __future__ import annotations
@@ -292,18 +294,31 @@ def primary_version(result: dict) -> str:
     return str(headers[0].get("version") or "")
 
 
-def compare_baseline(report: dict, baseline_path: Path) -> list[dict]:
+def compare_baseline(report: dict, baseline_path: Path) -> tuple[list[dict], list[dict]]:
     if not baseline_path.is_file():
-        return [{"field": "baseline", "reason": "missing", "expected": str(baseline_path)}]
+        return ([{"field": "baseline", "reason": "missing", "expected": str(baseline_path)}], [])
     try:
         baseline = json.loads(baseline_path.read_text("utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        return [{"field": "baseline", "reason": "invalid", "detail": str(exc)}]
+        return ([{"field": "baseline", "reason": "invalid", "detail": str(exc)}], [])
 
     if baseline.get("contract") != "mad4b.site-control-plane.certified-providers.v1":
-        return [{"field": "baseline.contract", "reason": "unsupported", "actual": baseline.get("contract")}]
+        return ([{"field": "baseline.contract", "reason": "unsupported", "actual": baseline.get("contract")}], [])
 
+    profiles_doc = {}
+    profiles_path = baseline_path.with_name("certified-provider-profiles.json")
+    if profiles_path.is_file():
+        try:
+            profiles_doc = json.loads(profiles_path.read_text("utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return ([{"field": "profiles", "reason": "invalid", "detail": str(exc)}], [])
+        if profiles_doc.get("contract") != "mad4b.site-control-plane.certified-provider-profiles.v1":
+            return ([{"field": "profiles.contract", "reason": "unsupported", "actual": profiles_doc.get("contract")}], [])
+
+    version_profiles = profiles_doc.get("providers") or {}
+    premium_policy = profiles_doc.get("premium_provider_policy") or {}
     issues = []
+    pending = []
     expected_providers = baseline.get("providers") or {}
     actual_providers = report.get("providers") or {}
     for provider, expected in expected_providers.items():
@@ -322,10 +337,58 @@ def compare_baseline(report: dict, baseline_path: Path) -> list[dict]:
                 "expected": expected_archive,
                 "actual": actual_archive,
             })
+            continue
 
         expected_version = str(expected.get("version") or "")
         actual_version = primary_version(actual)
+        actual_sha = str(actual.get("archive_sha256") or "").lower()
+
         if expected_version and expected_version != actual_version:
+            profile = (version_profiles.get(provider) or {}).get(actual_version)
+            if isinstance(profile, dict) and profile.get("version") == actual_version and isinstance(profile.get("critical_files"), dict) and profile.get("critical_files"):
+                expected_source_sha = str(
+                    ((profile.get("evidence") or {}).get("source_archive_sha256"))
+                    or profile.get("source_archive_sha256")
+                    or profile.get("archive_sha256")
+                    or ""
+                ).lower()
+                if expected_source_sha and expected_source_sha != actual_sha:
+                    issues.append({
+                        "provider": provider,
+                        "field": "archive_sha256",
+                        "reason": "version_profile_source_drift",
+                        "expected": expected_source_sha,
+                        "actual": actual_sha,
+                    })
+                continue
+
+            policy = premium_policy.get(provider) if isinstance(premium_policy, dict) else None
+            if isinstance(policy, dict):
+                policy_version = str(policy.get("repository_archive_version") or "")
+                policy_sha = str(policy.get("repository_archive_sha256") or "").lower()
+                state = str(policy.get("attestation_state") or "")
+                pending_state = state.startswith("pending_")
+                fail_closed = policy.get("mutation_policy") == "fail_closed_until_attested_exact_package_manifest"
+                source_bound = (
+                    policy.get("attestation_required") is True
+                    and policy.get("repository_archive_matches_observed") is True
+                    and policy_version == actual_version
+                    and bool(policy_sha)
+                    and policy_sha == actual_sha
+                    and pending_state
+                    and fail_closed
+                )
+                if source_bound:
+                    pending.append({
+                        "provider": provider,
+                        "state": state,
+                        "version": actual_version,
+                        "archive_sha256": actual_sha,
+                        "mutation_policy": policy.get("mutation_policy"),
+                        "reason": "exact_source_package_pending_semantic_attestation",
+                    })
+                    continue
+
             issues.append({
                 "provider": provider,
                 "field": "version",
@@ -333,9 +396,9 @@ def compare_baseline(report: dict, baseline_path: Path) -> list[dict]:
                 "expected": expected_version,
                 "actual": actual_version,
             })
+            continue
 
         expected_sha = str(expected.get("archive_sha256") or "").lower()
-        actual_sha = str(actual.get("archive_sha256") or "").lower()
         if expected_sha and expected_sha != actual_sha:
             issues.append({
                 "provider": provider,
@@ -348,7 +411,7 @@ def compare_baseline(report: dict, baseline_path: Path) -> list[dict]:
     for provider in sorted(set(actual_providers) - set(expected_providers)):
         issues.append({"provider": provider, "field": "baseline", "reason": "uncertified_provider"})
 
-    return issues
+    return issues, pending
 
 
 def main() -> int:
@@ -376,15 +439,18 @@ def main() -> int:
                 failures.append(provider)
 
     baseline_issues = []
+    pending_attestations = []
     if args.baseline:
         baseline_path = Path(args.baseline).resolve()
-        baseline_issues = compare_baseline(report, baseline_path)
+        baseline_issues, pending_attestations = compare_baseline(report, baseline_path)
         report["certified_baseline"] = str(baseline_path)
         report["baseline_status"] = "passed" if not baseline_issues else "failed"
         report["baseline_issues"] = baseline_issues
+        report["baseline_pending_attestations"] = pending_attestations
     else:
         report["baseline_status"] = "not_checked"
         report["baseline_issues"] = []
+        report["baseline_pending_attestations"] = []
 
     report["status"] = "passed" if not failures and not baseline_issues else "failed"
     report["failed_providers"] = failures
