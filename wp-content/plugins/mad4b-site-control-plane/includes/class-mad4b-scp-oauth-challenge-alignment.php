@@ -32,12 +32,9 @@ final class MAD4B_SCP_OAuth_Challenge_Alignment {
 		if ( '' === $challenge || false === stripos( $challenge, 'resource_metadata=' ) ) return $response;
 		if ( ! class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' ) ) return $response;
 
-		if ( '/mcp/mad4b-enrollment' === $route ) {
-			$resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-enrollment' );
-			$metadata_url = MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource );
-		} else {
-			$metadata_url = MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url();
-		}
+		$metadata_url = '/mcp/mad4b-enrollment' === $route
+			? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( 'mad4b-enrollment' )
+			: MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url();
 		if ( '' === $metadata_url || 'https' !== strtolower( (string) wp_parse_url( $metadata_url, PHP_URL_SCHEME ) ) ) return $response;
 
 		$response->header(
