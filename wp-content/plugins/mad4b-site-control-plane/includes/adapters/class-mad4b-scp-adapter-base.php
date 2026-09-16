@@ -155,5 +155,6 @@ abstract class MAD4B_SCP_Adapter_Base {
 // extension hook is registered before the first deterministic registry build.
 require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-canary-execution.php';
 require_once __DIR__ . '/class-mad4b-scp-provider-canary-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-acceptance-target-adapter.php';
 MAD4B_SCP_Provider_Canary_Execution::boot_early();
 MAD4B_SCP_Provider_Canary_Adapter::boot();
