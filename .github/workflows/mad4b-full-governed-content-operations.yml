@@ -1,0 +1,42 @@
+name: MAD4B Full Governed Content Operations
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-full-content-operations-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py'
+      - '.github/workflows/mad4b-full-governed-content-operations.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Full governed content operations contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+      - name: Lint governed full-option sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-full-content-operations-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php
+      - name: Verify full governed content operations contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py

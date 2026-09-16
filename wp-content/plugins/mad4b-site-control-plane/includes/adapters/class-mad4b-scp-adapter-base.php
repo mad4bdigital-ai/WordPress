@@ -156,5 +156,11 @@ abstract class MAD4B_SCP_Adapter_Base {
 require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-canary-execution.php';
 require_once __DIR__ . '/class-mad4b-scp-provider-canary-adapter.php';
 require_once __DIR__ . '/class-mad4b-scp-acceptance-target-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-full-content-operations-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-translation-bridge-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-native-provider-bridge-adapter.php';
 MAD4B_SCP_Provider_Canary_Execution::boot_early();
 MAD4B_SCP_Provider_Canary_Adapter::boot();
+MAD4B_SCP_Full_Content_Operations_Adapter::boot();
+MAD4B_SCP_Translation_Bridge_Adapter::boot();
+MAD4B_SCP_Native_Provider_Bridge_Adapter::boot();
