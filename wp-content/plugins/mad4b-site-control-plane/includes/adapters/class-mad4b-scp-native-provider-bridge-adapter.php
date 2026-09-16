@@ -2,22 +2,29 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+if ( ! class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) ) {
+	require_once __DIR__ . '/class-mad4b-scp-jetengine-mcp-client.php';
+}
+
 /**
- * Bridges provider-native WordPress Abilities/MCP tools into MAD4B's governed
- * authority without exposing a generic executor.
- *
- * JetEngine development operations are fixed semantic wrappers. Every wrapper
- * is exact-bound to the discovered native ability name + input schema hash and
- * enforces the native ability's declared read/write mode before execution.
+ * Bridges provider-native WordPress Abilities and JetEngine's own MCP server
+ * into MAD4B governance without exposing a generic executor.
  */
 final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_Base {
-	const CONTRACT = 'mad4b.native-provider-bridge.v1';
+	const CONTRACT = 'mad4b.native-provider-bridge.v2';
 	private static $hooked = false;
 
 	public static function boot() {
 		if ( self::$hooked ) return;
 		self::$hooked = true;
 		add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_with_registry' ), 7, 1 );
+		add_filter( 'mad4b_scp_mutation_impact', array( __CLASS__, 'raise_impact' ), 30, 4 );
+	}
+
+	public static function raise_impact( $impact, $ability_name, $provider, $input ) {
+		$ability_name = (string) $ability_name;
+		if ( 0 === strpos( $ability_name, 'jetengine/' ) || 'mad4b/provider-import-content' === $ability_name ) return 'high';
+		return $impact;
 	}
 
 	public static function register_with_registry( $registry ) {
@@ -26,10 +33,27 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 
 	public function id() { return 'native-provider-bridge'; }
 	public function label() { return 'Native Provider Bridge'; }
-	public function is_available() { return function_exists( 'wp_get_abilities' ) && function_exists( 'wp_get_ability' ); }
+	public function is_available() {
+		return ( function_exists( 'wp_get_abilities' ) && function_exists( 'wp_get_ability' ) ) || ( class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) && MAD4B_SCP_JetEngine_MCP_Client::available() );
+	}
 	protected function certified_provider_key() { return 'native-provider'; }
 	protected function provider_certification( $available ) { return null; }
 	protected function mutation_requires_certification() { return false; }
+
+	public function irreversible_abilities() {
+		return array(
+			'jetengine/create-cpt' => 'provider_native_create_has_no_exact_identity_preserving_rollback',
+			'jetengine/create-taxonomy' => 'provider_native_create_has_no_exact_identity_preserving_rollback',
+			'jetengine/create-meta-box' => 'provider_native_create_has_no_exact_identity_preserving_rollback',
+			'jetengine/create-cct' => 'provider_native_create_has_no_exact_identity_preserving_rollback',
+			'jetengine/create-query' => 'provider_native_create_has_no_exact_identity_preserving_rollback',
+			'jetengine/create-glossary' => 'provider_native_create_has_no_exact_identity_preserving_rollback',
+			'jetengine/create-listing' => 'provider_native_create_has_no_exact_identity_preserving_rollback',
+			'jetengine/manage-modules' => 'provider_native_module_state_compensation_not_proven',
+			'jetengine/import-configuration' => 'provider_native_import_compensation_not_proven',
+			'mad4b/provider-import-content' => 'generic_provider_import_compensation_not_proven',
+		);
+	}
 
 	public function ability_names() {
 		return array(
@@ -62,7 +86,6 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 	public function register_abilities() {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$admin = array( 'MAD4B_SCP_Policy', 'can_admin' );
-
 		$this->add_ability( 'mad4b/provider-native-tools-inventory', 'Provider Native Tools Inventory', 'provider_inventory', $read, $this->schema( array(
 			'provider_hint' => array( 'type' => 'string', 'maxLength' => 100, 'default' => '' ),
 			'write_only' => array( 'type' => 'boolean', 'default' => false ),
@@ -86,17 +109,7 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 			'jetengine/import-configuration' => array( 'jetengine_import_configuration', 'import_configuration' ),
 		);
 		foreach ( $map as $ability => $pair ) {
-			$this->add_ability(
-				$ability,
-				ucwords( str_replace( array( 'jetengine/','-' ), array( 'JetEngine ',' ' ), $ability ) ),
-				$pair[0],
-				$admin,
-				$this->native_call_schema( true ),
-				'write',
-				false,
-				true,
-				false
-			);
+			$this->add_ability( $ability, ucwords( str_replace( array( 'jetengine/','-' ), array( 'JetEngine ',' ' ), $ability ) ), $pair[0], $admin, $this->native_call_schema( true ), 'write', false, true, false );
 		}
 		$this->add_ability( 'mad4b/provider-import-content', 'Provider Native Content Import', 'provider_import_content', $admin, $this->provider_call_schema(), 'write', false, true, false );
 	}
@@ -140,6 +153,7 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 			'input_schema' => $this->ability_input_schema( $ability ),
 			'output_schema' => $this->ability_output_schema( $ability ),
 			'schema_sha256' => $this->schema_hash( $ability ),
+			'provider_transport' => 'wordpress-ability',
 		);
 	}
 
@@ -151,6 +165,7 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 
 	private function native_rows() {
 		$rows = array();
+		if ( ! function_exists( 'wp_get_abilities' ) ) return $rows;
 		foreach ( wp_get_abilities() as $name => $ability ) {
 			$name = (string) $name;
 			$row = $this->ability_row( $name, $ability );
@@ -159,6 +174,17 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 			$rows[ $name ] = $row;
 		}
 		ksort( $rows, SORT_STRING );
+		return $rows;
+	}
+
+	private function jetengine_rows() {
+		if ( class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) && MAD4B_SCP_JetEngine_MCP_Client::available() ) {
+			$rows = MAD4B_SCP_JetEngine_MCP_Client::tools();
+			if ( is_wp_error( $rows ) ) return $rows;
+			return $rows;
+		}
+		$rows = array();
+		foreach ( $this->native_rows() as $name => $row ) if ( $this->jetengine_row( $row ) ) $rows[ $name ] = $row;
 		return $rows;
 	}
 
@@ -171,6 +197,7 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 	private function contains_all( $text, array $tokens ) { foreach ( $tokens as $token ) if ( false === strpos( $text, $token ) ) return false; return true; }
 	private function has_any( $text, array $tokens ) { foreach ( $tokens as $token ) if ( false !== strpos( $text, $token ) ) return true; return false; }
 	private function jetengine_row( array $row ) {
+		if ( isset( $row['provider_transport'] ) && 'jetengine-mcp' === $row['provider_transport'] ) return true;
 		$text = $this->row_text( $row );
 		return false !== strpos( $text, 'jetengine' ) || false !== strpos( $text, 'jet engine' ) || false !== strpos( $text, 'crocoblock' );
 	}
@@ -198,27 +225,36 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 	}
 
 	private function resolve_operation( $operation ) {
+		$rows = $this->jetengine_rows();
+		if ( is_wp_error( $rows ) ) return $rows;
 		$matches = array();
-		foreach ( $this->native_rows() as $name => $row ) if ( $this->operation_matches( $operation, $row ) ) $matches[ $name ] = $row;
+		foreach ( $rows as $name => $row ) if ( $this->operation_matches( $operation, $row ) ) $matches[ $name ] = $row;
 		if ( 1 !== count( $matches ) ) {
 			return new WP_Error(
 				0 === count( $matches ) ? 'mad4b_native_provider_operation_unavailable' : 'mad4b_native_provider_operation_ambiguous',
-				0 === count( $matches ) ? 'No unique JetEngine provider-native ability matches the requested semantic operation.' : 'Multiple JetEngine provider-native abilities match the requested semantic operation.',
+				0 === count( $matches ) ? 'No unique JetEngine provider-native tool matches the requested semantic operation.' : 'Multiple JetEngine provider-native tools match the requested semantic operation.',
 				array( 'operation' => $operation, 'matches' => array_values( $matches ) )
 			);
 		}
 		$name = key( $matches );
-		return array( 'name' => $name, 'row' => current( $matches ), 'ability' => wp_get_ability( $name ) );
+		$row = current( $matches );
+		$transport = isset( $row['provider_transport'] ) ? (string) $row['provider_transport'] : 'wordpress-ability';
+		return array( 'name' => $name, 'row' => $row, 'transport' => $transport, 'ability' => 'wordpress-ability' === $transport && function_exists( 'wp_get_ability' ) ? wp_get_ability( $name ) : null );
 	}
 
 	public function provider_inventory( $input = array() ) {
 		$hint = isset( $input['provider_hint'] ) ? $this->normalize_text( $input['provider_hint'] ) : '';
 		$write_only = ! empty( $input['write_only'] );
+		$rows = $this->native_rows();
+		if ( false !== strpos( $hint, 'jetengine' ) || false !== strpos( $hint, 'jet engine' ) || false !== strpos( $hint, 'crocoblock' ) ) {
+			$jet_rows = $this->jetengine_rows();
+			if ( ! is_wp_error( $jet_rows ) ) $rows = array_merge( $rows, $jet_rows );
+		}
 		$items = array();
-		foreach ( $this->native_rows() as $row ) {
+		foreach ( $rows as $row ) {
 			$text = $this->row_text( $row );
-			if ( '' !== $hint && false === strpos( $text, $hint ) ) continue;
-			if ( $write_only && false !== $row['readonly'] ) continue;
+			if ( '' !== $hint && false === strpos( $text, $hint ) && 'jetengine-mcp' !== ( isset( $row['provider_transport'] ) ? $row['provider_transport'] : '' ) ) continue;
+			if ( $write_only && true === $row['readonly'] ) continue;
 			$items[] = $row;
 			if ( count( $items ) >= 300 ) break;
 		}
@@ -232,32 +268,30 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 			$resolved = $this->resolve_operation( $op );
 			$items[] = is_wp_error( $resolved )
 				? array( 'operation' => $op, 'available' => false, 'error' => $resolved->get_error_code(), 'matches' => (array) $resolved->get_error_data() )
-				: array_merge( array( 'operation' => $op, 'available' => true ), $resolved['row'] );
+				: array_merge( array( 'operation' => $op, 'available' => true, 'transport' => $resolved['transport'] ), $resolved['row'] );
 		}
 		return array(
 			'contract' => self::CONTRACT,
-			'jetengine_available' => function_exists( 'jet_engine' ) || class_exists( 'Jet_Engine' ),
+			'jetengine_available' => function_exists( 'jet_engine' ) || class_exists( 'Jet_Engine' ) || ( class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) && MAD4B_SCP_JetEngine_MCP_Client::available() ),
+			'jetengine_mcp_endpoint' => class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) ? MAD4B_SCP_JetEngine_MCP_Client::endpoint() : '',
 			'operations' => $items,
 			'count' => count( $items ),
 		);
 	}
 
-	private function enforce_native_mode( array $row, $expect_write ) {
-		if ( $expect_write ) {
-			return false === $row['readonly']
-				? true
-				: new WP_Error( 'mad4b_native_provider_write_mode_unverified', 'Provider-native write execution requires an explicit readonly=false annotation.' );
+	private function enforce_native_mode( array $row, $expect_write, $operation = '' ) {
+		$readonly = array_key_exists( 'readonly', $row ) ? $row['readonly'] : null;
+		if ( true === $readonly ) return $expect_write ? new WP_Error( 'mad4b_native_provider_write_mode_unverified', 'Provider-native write execution requires a write-mode tool.' ) : true;
+		if ( false === $readonly ) return $expect_write ? true : new WP_Error( 'mad4b_native_provider_read_mode_unverified', 'Provider-native read execution requires a read-mode tool.' );
+		if ( isset( $row['provider_transport'] ) && 'jetengine-mcp' === $row['provider_transport'] ) {
+			$known_writes = array( 'create_cpt','create_taxonomy','create_meta_box','create_cct','create_query','create_glossary','create_listing','manage_modules','import_configuration' );
+			$known_reads = array( 'get_configuration','get_website_config','get_macros','export_configuration' );
+			if ( $expect_write && in_array( $operation, $known_writes, true ) ) return true;
+			if ( ! $expect_write && in_array( $operation, $known_reads, true ) ) return true;
 		}
-		return true === $row['readonly']
-			? true
-			: new WP_Error( 'mad4b_native_provider_read_mode_unverified', 'Provider-native read execution requires an explicit readonly=true annotation.' );
+		return new WP_Error( $expect_write ? 'mad4b_native_provider_write_mode_unverified' : 'mad4b_native_provider_read_mode_unverified', 'Provider-native read/write mode could not be proven for the requested operation.' );
 	}
 
-	/**
-	 * Optional per-ability runtime mount gate consumed by MAD4B_SCP_Servers.
-	 * Stable external discovery remains unchanged, but execution mount/grants are
-	 * withheld until the provider-native capability exists with an explicit write mode.
-	 */
 	public function mutation_ability_runtime_eligibility( $ability_name ) {
 		$ability_name = (string) $ability_name;
 		$jetengine = array(
@@ -274,14 +308,10 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 		if ( isset( $jetengine[ $ability_name ] ) ) {
 			$resolved = $this->resolve_operation( $jetengine[ $ability_name ] );
 			if ( is_wp_error( $resolved ) ) return $resolved;
-			return $this->enforce_native_mode( $resolved['row'], true );
+			return $this->enforce_native_mode( $resolved['row'], true, $jetengine[ $ability_name ] );
 		}
 		if ( 'mad4b/provider-import-content' === $ability_name ) {
-			foreach ( $this->native_rows() as $row ) {
-				if ( false !== $row['readonly'] ) continue;
-				if ( false !== strpos( $this->row_text( $row ), 'import' ) ) return true;
-			}
-			return new WP_Error( 'mad4b_provider_import_runtime_unavailable', 'No provider-native ability currently exposes an explicit write-mode import operation.' );
+			return new WP_Error( 'mad4b_provider_import_reversibility_unverified', 'Generic provider import remains fail-closed until the selected provider declares a bounded compensation or rollback contract.' );
 		}
 		return true;
 	}
@@ -292,11 +322,13 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 		$row = $resolved['row'];
 		$expected_name = isset( $input['expected_native_ability'] ) ? (string) $input['expected_native_ability'] : '';
 		$expected_hash = isset( $input['expected_schema_sha256'] ) ? strtolower( (string) $input['expected_schema_sha256'] ) : '';
-		if ( '' === $expected_name || ! hash_equals( $resolved['name'], $expected_name ) ) return new WP_Error( 'mad4b_native_provider_ability_drift', 'Resolved provider-native ability no longer matches the planned ability.', array( 'current_native_ability' => $resolved['name'] ) );
+		if ( '' === $expected_name || ! hash_equals( $resolved['name'], $expected_name ) ) return new WP_Error( 'mad4b_native_provider_ability_drift', 'Resolved provider-native tool no longer matches the planned tool.', array( 'current_native_ability' => $resolved['name'] ) );
 		if ( '' === $expected_hash || ! hash_equals( $row['schema_sha256'], $expected_hash ) ) return new WP_Error( 'mad4b_native_provider_schema_drift', 'Provider-native input schema changed since planning.', array( 'current_schema_sha256' => $row['schema_sha256'] ) );
-		$mode = $this->enforce_native_mode( $row, (bool) $expect_write );
+		$mode = $this->enforce_native_mode( $row, (bool) $expect_write, $operation );
 		if ( is_wp_error( $mode ) ) return $mode;
 		$provider_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		if ( 'jetengine-mcp' === $resolved['transport'] ) return MAD4B_SCP_JetEngine_MCP_Client::call_tool( $resolved['name'], $provider_input, $expected_hash );
+		if ( ! is_object( $resolved['ability'] ) || ! method_exists( $resolved['ability'], 'execute' ) ) return new WP_Error( 'mad4b_native_provider_executor_unavailable', 'Resolved WordPress Ability cannot be executed.' );
 		return $resolved['ability']->execute( $provider_input );
 	}
 
