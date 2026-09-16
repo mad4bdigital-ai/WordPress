@@ -2,6 +2,8 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+require_once __DIR__ . '/adapters/class-mad4b-scp-core-content-modeling-adapter.php';
+
 final class MAD4B_SCP_Adapter_Registry {
 	private static $instance;
 	private $adapters = array();
@@ -10,7 +12,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	public static function instance() { if ( ! self::$instance ) self::$instance = new self(); return self::$instance; }
 	public function register_defaults() {
 		if ( $this->defaults_registered ) return; $this->defaults_registered = true;
-		$classes = array( 'MAD4B_SCP_Elementor_Adapter', 'MAD4B_SCP_JetEngine_Adapter', 'MAD4B_SCP_JetSmartFilters_Adapter', 'MAD4B_SCP_BitFlows_Adapter', 'MAD4B_SCP_Media_Adapter', 'MAD4B_SCP_SEO_Adapter', 'MAD4B_SCP_WooCommerce_Adapter', 'MAD4B_SCP_Polylang_Adapter', 'MAD4B_SCP_LiteSpeed_Adapter' );
+		$classes = array( 'MAD4B_SCP_Core_Content_Modeling_Adapter', 'MAD4B_SCP_Elementor_Adapter', 'MAD4B_SCP_JetEngine_Adapter', 'MAD4B_SCP_JetSmartFilters_Adapter', 'MAD4B_SCP_BitFlows_Adapter', 'MAD4B_SCP_Media_Adapter', 'MAD4B_SCP_SEO_Adapter', 'MAD4B_SCP_WooCommerce_Adapter', 'MAD4B_SCP_Polylang_Adapter', 'MAD4B_SCP_LiteSpeed_Adapter' );
 		foreach ( $classes as $class ) if ( class_exists( $class ) ) $this->register( new $class() );
 		do_action( 'mad4b_scp_register_adapters', $this );
 	}
@@ -123,12 +125,12 @@ final class MAD4B_SCP_Adapter_Registry {
 		foreach ( $inventory['adapters'] as $adapter ) {
 			if ( ! empty( $adapter['available'] ) ) ++$available;
 			if ( isset( $adapter['provider_certification']['provider'] ) ) {
-				$key = (string) $adapter['provider_certification']['provider'];
+				$key = (string) $adapter["provider_certification"]["provider"];
 				$provider_runtime[ $key ] = $adapter['provider_certification'];
 			}
 			if ( ! empty( $adapter['mutation_requires_certification'] ) ) {
-				$cert = isset( $adapter['provider_certification'] ) && is_array( $adapter['provider_certification'] ) ? $adapter['provider_certification'] : array();
-				if ( empty( $cert['runtime_contract_ok'] ) ) $mutation_blocked_adapters[] = isset( $adapter['id'] ) ? $adapter['id'] : 'unknown';
+				$cert = isset( $adapter["provider_certification"] ) && is_array( $adapter["provider_certification"] ) ? $adapter["provider_certification"] : array();
+				if ( empty( $cert['runtime_contract_ok'] ) $mutation_blocked_adapters[] = isset( $adapter['id'] ) ? $adapter['id'] : 'unknown';
 			}
 		}
 
@@ -138,7 +140,7 @@ final class MAD4B_SCP_Adapter_Registry {
 
 		$required_providers = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::required_providers() : array( 'mcp_adapter' );
 		foreach ( $required_providers as $provider ) {
-			$status = isset( $provider_runtime[ $provider ] ) ? $provider_runtime[ $provider ] : MAD4B_SCP_Provider_Contracts::runtime_status( $provider, false );
+			$status = isset( $provider_runtime[ $provider ] ) ? $provider_runtime[ $provider ] : MAD4B_SCP_Provider_Contracts:: runtime_status( $provider, false );
 			$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::violations_for_status( $status ) : array( 'certification_authority_unavailable' );
 			if ( ! empty( $violations ) ) {
 				$provider_contract_blockers[ $provider ] = $violations;
@@ -150,7 +152,6 @@ final class MAD4B_SCP_Adapter_Registry {
 		$server_status = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
 		$server_registration_ok = ! empty( $server_status );
 		foreach ( $server_status as $server ) if ( empty( $server['registered'] ) ) $server_registration_ok = false;
-
 		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
 			$surface_servers = array( 'read' => 'mad4b-read', 'content' => 'mad4b-content', 'admin' => 'mad4b-admin' );
 			foreach ( $ability_names as $name ) {
@@ -167,11 +168,11 @@ final class MAD4B_SCP_Adapter_Registry {
 						if ( MAD4B_SCP_Servers::ability_is_mounted( $server_id, $name ) ) { $mounted = true; break; }
 					}
 				}
-				if ( ! $mounted ) $registered_but_not_exposed[] = $name;
-			}
+			if ( ! $mounted ) $registered_but_not_exposed[] = $name;
+		}
 		}
 
-		$mcp_peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
+		$mcp_peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array(('inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
 		$mcp_peer_governance_ok = ! empty( $mcp_peer_governance['inventory_ready'] ) && empty( $mcp_peer_governance['write_side_channel_detected'] );
 		$plugin_coverage = $this->plugin_coverage();
 		$support_requests = isset( $plugin_coverage['support_requests'] ) && is_array( $plugin_coverage['support_requests'] ) ? $plugin_coverage['support_requests'] : array();
@@ -210,7 +211,7 @@ final class MAD4B_SCP_Adapter_Registry {
 				'active_adapter_gap_request_ids' => array_values( array_unique( $active_adapter_gaps ) ),
 				'active_adapter_gap_reason_codes' => $active_gap_reasons,
 				'unknown_plugin_write_default' => 'deny',
-			),
+				),
 			'custom_server_isolation' => empty( $public_leaks ) && $mcp_peer_governance_ok,
 			'default_server_public_candidates' => $public_candidates,
 			'default_server_suppressed' => $default_server_suppressed,
