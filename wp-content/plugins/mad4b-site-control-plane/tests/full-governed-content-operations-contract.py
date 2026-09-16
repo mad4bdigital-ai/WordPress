@@ -95,6 +95,21 @@ for contract in (
 ):
     assert contract in translation_src, f"translation rollback contract missing: {contract}"
 
+# Translation mutation plans must be exact-bound to the current languages/groups.
+for token in (
+    "expected_group",
+    "expected_source_language",
+    "expected_target_language",
+    "expected_source_group",
+    "expected_target_group",
+    "allow_relink_existing_group",
+    "mad4b_translation_language_collision",
+    "mad4b_translation_existing_group_relink_denied",
+    "polylang_group_identity",
+    "mad4b_translation_unassigned_not_reversible",
+):
+    assert token in translation_src, f"translation hardening missing: {token}"
+
 for ability in (
     "mad4b/provider-native-tools-inventory",
     "jetengine/native-tools-inventory",
@@ -122,16 +137,48 @@ assert "schema_sha256" in provider_src
 assert "->execute( $provider_input )" in provider_src
 assert "provider_import_content" in provider_src and "provider_export_content" in provider_src
 assert "mcp-adapter/execute-ability" not in provider_src
-assert "expected_native_ability" in provider_src and "expected_schema_sha256" in provider_src
+
+# Provider bridge cannot self-wrap MAD4B adapters, cross provider ownership, or
+# execute native calls whose read/write annotation is missing or wrong.
+for token in (
+    "mad4b_owned_row",
+    "0 === strpos( $category, 'mad4b-' )",
+    "if ( ! $this->jetengine_row( $row ) ) return false;",
+    "enforce_native_mode",
+    "mad4b_native_provider_write_mode_unverified",
+    "mad4b_native_provider_read_mode_unverified",
+    "mutation_ability_runtime_eligibility",
+    "mad4b_provider_import_runtime_unavailable",
+):
+    assert token in provider_src, f"native-provider hardening missing: {token}"
+
+# Exports are reads; imports remain writes.
+read_section = provider_src.split("'read' => array(", 1)[1].split("'content' => array()", 1)[0]
+write_section = provider_src.split("'write' => array(", 1)[1].split("),", 1)[0]
+assert "jetengine/export-configuration" in read_section
+assert "mad4b/provider-export-content" in read_section
+assert "jetengine/export-configuration" not in write_section
+assert "mad4b/provider-export-content" not in write_section
+assert "jetengine/import-configuration" in write_section
+assert "mad4b/provider-import-content" in write_section
+
+# Runtime adapter eligibility is a hard mount gate in mad4b-write while the
+# stable external catalog remains driven by registered candidates.
+for token in (
+    "mutation_ability_runtime_eligibility",
+    "adapter_runtime_capability_not_eligible",
+    "runtime_eligibility_code",
+    "registered_adapter_write_candidates",
+    "array_keys( self::registered_adapter_write_candidates() )",
+):
+    assert token in servers_src, f"runtime projection separation missing: {token}"
 
 for src, label in ((full_src, "full-content"), (translation_src, "translation"), (provider_src, "provider-bridge")):
     assert "$wpdb" not in src, f"{label} must not use direct SQL"
     assert "database-raw-query" not in src, f"{label} must not expose raw SQL"
     assert "BREAKGLASS" not in src.upper(), f"{label} must not expose breakglass"
 
-assert "registered_adapter_write_candidates" in servers_src
 assert "array( 'content', 'admin', 'write' )" in servers_src
-assert "array_keys( self::registered_adapter_write_candidates() )" in servers_src
 assert "'mad4b/database-raw-query'" in servers_src
 
 print("MAD4B full governed content operations contract: PASS")
