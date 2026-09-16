@@ -83,6 +83,8 @@ if ( $actual_names !== $expected_names ) {
 
 $core_required = array(
 	'mad4b-site-info',
+	'mad4b-site-profile-status',
+	'mad4b-build-provenance-status',
 	'mad4b-list-post-types',
 	'mad4b-post-identity',
 	'mad4b-list-plugins',
@@ -90,10 +92,29 @@ $core_required = array(
 	'mad4b-diagnostics-health',
 	'mad4b-runtime-authority-status',
 	'mad4b-connection-status',
+	'mad4b-filesystem-list',
+	'mad4b-filesystem-read',
+	'mad4b-filesystem-write',
+	'mad4b-filesystem-patch',
+	'mad4b-database-list-tables',
+	'mad4b-database-describe-table',
+	'mad4b-database-select',
+	'mad4b-database-update',
+	'mad4b-content-get-post',
+	'mad4b-content-update-post',
+	'mad4b-plugin-activate',
+	'mad4b-plugin-deactivate',
+	'mad4b-audit-tail',
+	'mad4b-mutation-get',
+	'mad4b-mutation-undo',
+	'mad4b-agent-list',
+	'mad4b-agent-effective-access',
+	'mad4b-approval-plan',
+	'mad4b-site-profile-feature-reenroll',
 );
 foreach ( $core_required as $tool_name ) {
 	if ( ! in_array( $tool_name, $actual_names, true ) ) {
-		$fail( 'Required ChatGPT safe-read tool is missing.', $tool_name );
+		$fail( 'Required unified Staging ChatGPT Read/Write tool is missing.', $tool_name );
 	}
 }
 
@@ -157,30 +178,20 @@ if ( is_wp_error( $missing_identity ) || ! array_key_exists( 'exists', $missing_
 	$fail( 'Missing post identity must fail closed as exists=false without search/fallback.', $missing_identity );
 }
 
+// Breakglass remains a different server and Raw SQL must never appear in the
+// unified ChatGPT catalog, even though normal filesystem/database reads and
+// governed writes are intentionally exposed on exact enrolled Staging.
 $forbidden = array(
-	'mad4b-filesystem-list',
-	'mad4b-filesystem-read',
-	'mad4b-filesystem-write',
-	'mad4b-filesystem-patch',
-	'mad4b-database-list-tables',
-	'mad4b-database-describe-table',
-	'mad4b-database-select',
-	'mad4b-database-update',
 	'mad4b-database-raw-query',
-	'mad4b-content-get-post',
-	'mad4b-content-update-post',
-	'mad4b-plugin-activate',
-	'mad4b-plugin-deactivate',
-	'mad4b-mutation-undo',
 );
 foreach ( $forbidden as $tool_name ) {
 	if ( in_array( $tool_name, $actual_names, true ) ) {
-		$fail( 'Forbidden privileged tool leaked into mad4b-chatgpt.', $tool_name );
+		$fail( 'Breakglass/Raw SQL leaked into mad4b-chatgpt.', $tool_name );
 	}
 }
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-chatgpt-tool-inventory.v2: PASS ' .
+	'mad4b.site-control-plane.runtime-chatgpt-tool-inventory.v3: PASS ' .
 	wp_json_encode( array( 'tool_count' => count( $actual_names ), 'tools' => $actual_names ), JSON_UNESCAPED_SLASHES ) . PHP_EOL
 );
