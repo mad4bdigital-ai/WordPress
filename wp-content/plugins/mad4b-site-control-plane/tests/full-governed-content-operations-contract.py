@@ -58,7 +58,7 @@ for contract in (
     "mad4b.rollback.trashed-post.v1",
     "mad4b.rollback.post-meta.v1",
     "mad4b.rollback.updated-term.v1",
-    "mad4b.rollback.created-content-bundle.v1",
+    "mad4b.rollback.created-content-bundle.v2",
 ):
     assert contract in full_src, f"content rollback contract missing: {contract}"
 
