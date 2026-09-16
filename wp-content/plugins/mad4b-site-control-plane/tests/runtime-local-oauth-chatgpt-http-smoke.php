@@ -124,6 +124,8 @@ sort( $names );
 foreach ( array( 'mad4b-site-info', 'mad4b-list-post-types', 'mad4b-list-plugins', 'mad4b-abilities-inventory', 'mad4b-diagnostics-health', 'mad4b-runtime-authority-status', 'mad4b-connection-status' ) as $required ) {
 	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required safe-read tool.', $required );
 }
+// Exact enrolled Staging intentionally exposes the unified normal Read + Write
+// catalog on this resource; only Breakglass Raw SQL remains outside ChatGPT.
 foreach ( array( 'mad4b-filesystem-read', 'mad4b-filesystem-write', 'mad4b-database-select', 'mad4b-database-update', 'mad4b-content-update-post', 'mad4b-plugin-activate', 'mad4b-mutation-undo', 'mad4b-site-profile-feature-reenroll' ) as $required_unified ) {
 	if ( ! in_array( $required_unified, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required unified Staging Read/Write tool.', $required_unified );
 }
