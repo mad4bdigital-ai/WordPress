@@ -87,6 +87,29 @@ final class MAD4B_SCP_Approval_Plan_Target_Validation {
 				)
 			);
 		}
+
+		// When JetEngine's own MCP transport is present, the fixed MAD4B wrapper
+		// deliberately carries a generic nested `input` object. Bind the approval
+		// plan to the exact live native tool name + schema hash and validate that
+		// nested input against the discovered JetEngine inputSchema before any
+		// Pending Ticket can be created. This performs tools/list only; never call.
+		if ( 0 === strpos( $ability_name, 'jetengine/' ) && class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) && MAD4B_SCP_JetEngine_MCP_Client::available() ) {
+			$expected_name = isset( $operation_input['expected_native_ability'] ) ? (string) $operation_input['expected_native_ability'] : '';
+			$expected_hash = isset( $operation_input['expected_schema_sha256'] ) ? strtolower( trim( (string) $operation_input['expected_schema_sha256'] ) ) : '';
+			$native_input = isset( $operation_input['input'] ) && is_array( $operation_input['input'] ) ? $operation_input['input'] : array();
+			$native_valid = MAD4B_SCP_JetEngine_MCP_Client::validate_tool_input( $expected_name, $native_input, $expected_hash );
+			if ( is_wp_error( $native_valid ) ) {
+				return new WP_Error(
+					'mad4b_approval_target_native_input_invalid',
+					'Approval Plan JetEngine native input is not exact-bound to the current MCP tool contract.',
+					array(
+						'ability' => $ability_name,
+						'native_error_code' => $native_valid->get_error_code(),
+						'native_error_message' => $native_valid->get_error_message(),
+					)
+				);
+			}
+		}
 		return true;
 	}
 }
