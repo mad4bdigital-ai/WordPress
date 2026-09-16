@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * mutation authorization. No credential/session material is stored here.
  */
 final class MAD4B_SCP_Transport_Context {
-	const CONTRACT = 'mad4b.mcp-transport-context.v4';
+	const CONTRACT = 'mad4b.mcp-transport-context.v3';
 
 	private static $server_id = '';
 	private static $route = '';
