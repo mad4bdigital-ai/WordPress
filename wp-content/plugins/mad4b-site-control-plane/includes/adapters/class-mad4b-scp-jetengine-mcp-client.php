@@ -7,11 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * Uses WordPress REST dispatch inside the current request/user context so no
  * extra credential or external loopback secret is required. It is discovery-
- * first and fail-closed: endpoint, session, tool name and input schema are all
- * resolved before any tools/call request is attempted.
+ * first and fail-closed: endpoint, session, tool name, schema identity and
+ * native input are all resolved before any tools/call request is attempted.
  */
 final class MAD4B_SCP_JetEngine_MCP_Client {
-	const CONTRACT = 'mad4b.jetengine-mcp-client.v1';
+	const CONTRACT = 'mad4b.jetengine-mcp-client.v2';
 	const PROTOCOL_VERSION = '2025-06-18';
 	const CLIENT_NAME = 'mad4b-site-control-plane';
 
@@ -135,16 +135,36 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return self::$tools;
 	}
 
-	public static function call_tool( $tool_name, array $arguments, $expected_schema_sha256 ) {
+	public static function validate_tool_input( $tool_name, array $arguments, $expected_schema_sha256 ) {
 		$tools = self::tools();
 		if ( is_wp_error( $tools ) ) return $tools;
 		$tool_name = (string) $tool_name;
 		if ( ! isset( $tools[ $tool_name ] ) ) return new WP_Error( 'mad4b_jetengine_mcp_tool_missing', 'Planned JetEngine MCP tool is no longer available.', array( 'tool' => $tool_name ) );
 		$current_hash = (string) $tools[ $tool_name ]['schema_sha256'];
-		if ( ! hash_equals( $current_hash, strtolower( (string) $expected_schema_sha256 ) ) ) return new WP_Error( 'mad4b_jetengine_mcp_schema_drift', 'JetEngine MCP tool schema changed since planning.', array( 'tool' => $tool_name, 'current_schema_sha256' => $current_hash ) );
+		$expected_hash = strtolower( trim( (string) $expected_schema_sha256 ) );
+		if ( '' === $expected_hash || ! hash_equals( $current_hash, $expected_hash ) ) return new WP_Error( 'mad4b_jetengine_mcp_schema_drift', 'JetEngine MCP tool schema changed since planning.', array( 'tool' => $tool_name, 'current_schema_sha256' => $current_hash ) );
+		$schema = isset( $tools[ $tool_name ]['input_schema'] ) && is_array( $tools[ $tool_name ]['input_schema'] ) ? $tools[ $tool_name ]['input_schema'] : array();
+		if ( empty( $schema ) ) {
+			return empty( $arguments ) ? true : new WP_Error( 'mad4b_jetengine_mcp_input_schema_unavailable', 'JetEngine MCP tool did not publish an input schema for the requested arguments.', array( 'tool' => $tool_name ) );
+		}
+		if ( ! function_exists( 'rest_validate_value_from_schema' ) ) return new WP_Error( 'mad4b_jetengine_mcp_input_validation_unavailable', 'WordPress REST schema validation is unavailable.' );
+		$valid = rest_validate_value_from_schema( $arguments, $schema, 'arguments' );
+		if ( is_wp_error( $valid ) ) {
+			return new WP_Error(
+				'mad4b_jetengine_mcp_input_invalid',
+				'JetEngine MCP tool input does not satisfy the exact discovered input schema.',
+				array( 'tool' => $tool_name, 'validation_error_code' => $valid->get_error_code(), 'validation_error_message' => $valid->get_error_message() )
+			);
+		}
+		return true;
+	}
+
+	public static function call_tool( $tool_name, array $arguments, $expected_schema_sha256 ) {
+		$valid = self::validate_tool_input( $tool_name, $arguments, $expected_schema_sha256 );
+		if ( is_wp_error( $valid ) ) return $valid;
 		$init = self::initialize();
 		if ( is_wp_error( $init ) ) return $init;
-		$call = self::rpc( 'tools/call', array( 'name' => $tool_name, 'arguments' => $arguments ), (string) $init['session_id'] );
+		$call = self::rpc( 'tools/call', array( 'name' => (string) $tool_name, 'arguments' => $arguments ), (string) $init['session_id'] );
 		if ( is_wp_error( $call ) ) return $call;
 		return isset( $call['data']['result'] ) ? $call['data']['result'] : $call['data'];
 	}
