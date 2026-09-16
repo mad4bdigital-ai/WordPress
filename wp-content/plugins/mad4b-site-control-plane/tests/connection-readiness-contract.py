@@ -110,7 +110,7 @@ require(transport_context, 'MAD4B_SCP_Staging_Write_Authority::is_write_ability'
 require(transport_context, "'mad4b_write_capability_not_eligible'", 'transport-provider-write-gate')
 require(transport_context, "return 'mad4b-write';", 'transport-dedicated-write-authority')
 require(transport_context, "'mad4b_write_authority_mount_missing'", 'transport-write-authority-mount-denial')
-require(transport_context, "'stable_catalog_dynamic_execution'", 'transport-stable-discovery-model')
+require(transport_context, "'stable_unified_catalog_fail_closed_execution'", 'transport-stable-discovery-model')
 for bypass in ("apply_filters( 'mad4b_scp_transport", "$_REQUEST", "$_GET", "$_POST"):
     forbid(transport_context, bypass, 'transport-context-no-bypass-input')
 
