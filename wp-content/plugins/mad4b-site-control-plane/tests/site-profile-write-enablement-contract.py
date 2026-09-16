@@ -36,7 +36,6 @@ for marker in required:
     if marker not in impl:
         raise SystemExit(f'missing bounded write-enablement invariant: {marker}')
 
-# Exactly five public inputs: four exact bindings plus the literal confirmation.
 props_start = impl.index("'properties' => array(")
 props_end = impl.index("),\n\t\t\t\t\t'required'", props_start)
 props = impl[props_start:props_end]
@@ -53,21 +52,44 @@ for forbidden in [
     'write_enabled', 'chatgpt_app_id', 'acceptance_enabled', 'skills_enabled', 'production_write_confirmed',
     'site_uuid', 'display_name', 'oauth_user_ids', 'canonical_origin', 'provider',
     'grants', 'nhi', 'mutation_gate', '_mad4b_approval_ticket_id',
+    'from_agent_public_id', 'to_agent_public_id', 'subject_fingerprint', 'agent_public_id',
 ]:
     if ("'" + forbidden + "'") in props:
         raise SystemExit(f'forbidden generic authority/profile input leaked into bounded schema: {forbidden}')
 
-# The transition must not bootstrap/reconcile authority in the same invocation.
 for forbidden in [
-    'MAD4B_SCP_Staging_Write_Authority::reconcile(',
     'MAD4B_SCP_Staging_Write_Authority::bootstrap(',
     'MAD4B_SCP_Agent_Registry::create_agent(',
     'MAD4B_SCP_Agent_Registry::bind_subject(',
     'MAD4B_SCP_Agent_Registry::grant_ability(',
+    'MAD4B_SCP_Agent_Registry::disable_agent(',
     "define( 'MAD4B_MCP_MUTATION_ENABLED'",
 ]:
     if forbidden in impl:
-        raise SystemExit(f'same-invocation authority mutation leaked into bounded enablement: {forbidden}')
+        raise SystemExit(f'generic authority mutation leaked into bounded enablement/repair: {forbidden}')
+
+repair_required = [
+    "MAD4B_SCP_Site_Profile::write_enabled() ) return self::repair_subject_handoff(",
+    "MAD4B_SCP_Site_Profile::agent_slug()",
+    "MAD4B_SCP_Local_OAuth_Server::issuer()",
+    "hash( 'sha256', 'oauth' . \"\\0\" . $issuer . \"\\0\" . 'user:'",
+    "1 !== count( $subjects )",
+    "MAD4B_SCP_Staging_Write_Authority::write_tools()",
+    "MAD4B_SCP_Agent_Registry::exact_grant(",
+    "mad4b_site_profile_write_repair_target_grants_incomplete",
+    "mad4b_site_profile_write_repair_unique_effective_authority",
+    "$wpdb->query( 'START TRANSACTION' )",
+    "$wpdb->query( 'ROLLBACK' )",
+    "$wpdb->query( 'COMMIT' )",
+    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
+    "mad4b/governed-write-subject-handoff",
+    "'legacy_agent_disabled' => false",
+    "'legacy_grants_mutated' => false",
+    "'atomic_subject_move' => true",
+]
+for marker in repair_required:
+    if marker not in impl:
+        raise SystemExit(f'missing exact authority-repair invariant: {marker}')
 
 for marker in [
     "class-mad4b-scp-site-profile-write-enablement.php",
@@ -77,11 +99,10 @@ for marker in [
     if marker not in servers:
         raise SystemExit(f'bounded write-enable tool missing from server wiring: {marker}')
 
-# It is bootstrap authority, not a normal mad4b-write candidate.
 core_write = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
 if 'mad4b/site-profile-write-enable' in core_write:
     raise SystemExit('bounded Site Profile write enablement leaked into normal governed write candidates')
 if "array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' )" not in servers:
     raise SystemExit('unified ChatGPT catalog does not explicitly classify both bounded bootstrap mutations')
 
-print('mad4b.site-profile-write-enablement.contract.v1: PASS')
+print('mad4b.site-profile-write-enablement.contract.v2: PASS')
