@@ -4,6 +4,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
+challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
@@ -13,7 +14,9 @@ required_compat = [
     "mad4b.mcp-client-compatibility.v4",
     "WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource'",
     "RESOURCE_PATH = '/wp-json/mcp/mad4b-chatgpt'",
+    "ENROLLMENT_RESOURCE_PATH = '/wp-json/mcp/mad4b-enrollment'",
     "rest_url( 'mcp/mad4b-chatgpt' )",
+    "rest_url( 'mcp/mad4b-enrollment' )",
     "MANIFEST_ROUTE = '/client-compatibility'",
     "'client_agnostic' => true",
     "'client_profiles_create_authority' => false",
@@ -40,15 +43,27 @@ required_compat = [
     "authority_registry_valid",
     "subject_policy_ready",
     "authoritative_well_known_url",
+    "authoritative_well_known_url( 'mad4b-enrollment' )",
+    "enrollment_authoritative_well_known_url",
+    "enrollment_protected_resource_metadata",
     "compatibility_alias_url",
     "manifest_endpoint",
     "detected_profile",
     "authorization_depends_on_vendor",
+    "protected_resource_metadata( $resource )",
+    "self::authoritative_path( 'mad4b-enrollment' )",
     "status_header( 302 )",
     "header( 'Location: ' . esc_url_raw( self::authoritative_well_known_url() ) )",
 ]
 for marker in required_compat:
     assert marker in compat, f'missing compatibility marker: {marker}'
+
+for marker in [
+    "'/mcp/mad4b-enrollment' === $route",
+    "MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( 'mad4b-enrollment' )",
+]:
+    assert marker in challenge, f'missing enrollment challenge marker: {marker}'
+assert "MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource )" not in challenge, 'enrollment challenge must use canonical RFC9728 path-derived metadata'
 
 assert "'authorization_server_external' => true" not in compat, 'external authority truth must not be hardcoded'
 assert "MAD4B WordPress Staging Read MCP'" not in compat, 'resource name must not be hardcoded to Staging'
@@ -93,4 +108,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v6: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v7: PASS')
