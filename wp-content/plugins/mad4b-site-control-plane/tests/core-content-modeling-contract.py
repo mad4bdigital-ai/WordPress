@@ -37,6 +37,8 @@ for api in (
     "wp_delete_term(",
     "wp_set_object_terms(",
     "wp_get_object_terms(",
+    "get_post_meta(",
+    "get_term_meta(",
     "is_object_in_taxonomy(",
 ):
     assert api in src, f"WordPress API missing: {api}"
@@ -52,8 +54,18 @@ for guard in (
     "mad4b_term_create_undo_in_use",
     "POST_BINDING_META",
     "TERM_BINDING_META",
+    "meta_sha256",
+    "metadata_hash_state",
+    "post_meta_hash_state",
+    "term_meta_hash_state",
+    "maybe_unserialize",
 ):
     assert guard in src, f"safety guard missing: {guard}"
+
+assert "'meta_sha256' => $this->post_meta_hash_state" in src
+assert "'meta_sha256' => $this->term_meta_hash_state" in src
+assert "hash( 'sha256'" in src, "metadata evidence must store digests rather than raw values"
+assert "ksort( $out, SORT_STRING )" in src, "metadata state must be deterministic before hashing"
 
 assert "protected function certified_provider_key() { return 'core'; }" in src
 assert "protected function mutation_requires_certification() { return false; }" in src
