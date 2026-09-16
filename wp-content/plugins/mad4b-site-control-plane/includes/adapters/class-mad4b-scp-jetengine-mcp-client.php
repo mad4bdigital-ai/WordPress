@@ -11,18 +11,32 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * native input are all resolved before any tools/call request is attempted.
  */
 final class MAD4B_SCP_JetEngine_MCP_Client {
-	const CONTRACT = 'mad4b.jetengine-mcp-client.v2';
+	const CONTRACT = 'mad4b.jetengine-mcp-client.v3';
 	const PROTOCOL_VERSION = '2025-06-18';
 	const CLIENT_NAME = 'mad4b-site-control-plane';
 
 	private static $endpoint = null;
 	private static $tools = null;
 
+	/**
+	 * Return the already-created REST server only after WordPress has entered the
+	 * REST registration lifecycle. Provider discovery must never call
+	 * rest_get_server() itself: doing so before the MCP Adapter has attached its
+	 * rest_api_init callbacks consumes that lifecycle too early and leaves the
+	 * governed MCP servers registered without REST routes.
+	 */
+	private static function initialized_rest_server() {
+		if ( ! function_exists( 'did_action' ) || did_action( 'rest_api_init' ) < 1 ) return null;
+		global $wp_rest_server;
+		return is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' ) ? $wp_rest_server : null;
+	}
+
 	public static function endpoint() {
-		if ( null !== self::$endpoint ) return self::$endpoint;
-		self::$endpoint = '';
-		if ( ! function_exists( 'rest_get_server' ) ) return self::$endpoint;
-		$routes = rest_get_server()->get_routes();
+		if ( is_string( self::$endpoint ) && '' !== self::$endpoint ) return self::$endpoint;
+		$server = self::initialized_rest_server();
+		if ( ! $server ) return '';
+		$routes = $server->get_routes();
+		if ( ! is_array( $routes ) ) return '';
 		$preferred = array( '/jet-engine/v1/mcp', '/jet-engine/v1/mcp/' );
 		foreach ( $preferred as $route ) {
 			if ( isset( $routes[ $route ] ) ) {
@@ -37,7 +51,9 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 				return self::$endpoint;
 			}
 		}
-		return self::$endpoint;
+		// Do not cache a negative lookup. During rest_api_init another provider may
+		// still register its route at a later priority in the same lifecycle.
+		return '';
 	}
 
 	public static function available() {
@@ -119,19 +135,20 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 
 	public static function tools() {
 		if ( null !== self::$tools ) return self::$tools;
-		self::$tools = array();
 		$init = self::initialize();
 		if ( is_wp_error( $init ) ) return $init;
 		$list = self::rpc( 'tools/list', array(), (string) $init['session_id'] );
 		if ( is_wp_error( $list ) ) return $list;
 		$data = isset( $list['data']['result'] ) && is_array( $list['data']['result'] ) ? $list['data']['result'] : array();
 		$tools = isset( $data['tools'] ) && is_array( $data['tools'] ) ? $data['tools'] : array();
+		$normalized_tools = array();
 		foreach ( $tools as $tool ) {
 			if ( ! is_array( $tool ) || empty( $tool['name'] ) ) continue;
 			$row = self::normalize_tool( $tool );
-			self::$tools[ $row['name'] ] = $row;
+			$normalized_tools[ $row['name'] ] = $row;
 		}
-		ksort( self::$tools, SORT_STRING );
+		ksort( $normalized_tools, SORT_STRING );
+		self::$tools = $normalized_tools;
 		return self::$tools;
 	}
 
