@@ -49,7 +49,7 @@ for token in (
 ):
     assert token in semantics_src, f"approval planning validation missing: {token}"
 
-# When JetEngine's native MCP transport is present, approval planning must also
+# When JetEngine's native transport is present, approval planning must also
 # bind the nested provider payload to the exact live native tool contract.
 for token in (
     "MAD4B_SCP_JetEngine_MCP_Client",
@@ -62,7 +62,7 @@ for token in (
     assert token in semantics_src, f"JetEngine approval planning binding missing: {token}"
 
 for token in (
-    "mad4b.jetengine-mcp-client.v3",
+    "mad4b.jetengine-mcp-client.v4",
     "validate_tool_input",
     "rest_validate_value_from_schema",
     "mad4b_jetengine_mcp_input_invalid",
@@ -75,16 +75,38 @@ for token in (
 # Provider discovery must never instantiate the REST server. Doing so before the
 # MCP Adapter has attached its rest_api_init callbacks consumes the lifecycle and
 # leaves governed MCP server objects without their REST routes. Negative endpoint
-# and failed tools/list results must also remain retryable later in the request.
+# and failed tool discovery results must also remain retryable later in the request.
 for token in (
     "initialized_rest_server",
     "did_action( 'rest_api_init' )",
     "global $wp_rest_server",
-    "self::$tools = $normalized_tools",
+    "self::$tools = $tools",
 ):
     assert token in jetengine_client_src, f"JetEngine REST lifecycle hardening missing: {token}"
 assert "rest_get_server()->" not in jetengine_client_src, "JetEngine discovery must not instantiate the WordPress REST server"
 assert "self::$tools = array();" not in jetengine_client_src, "JetEngine tools must not cache a failed/early empty discovery"
+
+# JetEngine discovery must support both first-party transports without enabling
+# provider settings or creating credentials: JSON-RPC MCP when enabled and the
+# native mcp-tools registry/run endpoints as a bounded fallback.
+for token in (
+    "registry_endpoint",
+    "/jet-engine/v1/mcp-tools",
+    "/mcp-tools/run/",
+    "native-rest-tools",
+    "mcp-jsonrpc",
+    "transport_status",
+    "rest_registry_tools",
+    "call_rest_tool",
+    "provider_native_channel",
+):
+    assert token in jetengine_client_src, f"JetEngine dual native transport contract missing: {token}"
+
+# Both transports must preserve exact native schema binding before execution.
+assert "expected_schema_sha256" in semantics_src
+assert "schema_sha256" in jetengine_client_src
+assert "validate_tool_input( $tool_name, $arguments, $expected_schema_sha256 )" in jetengine_client_src
+assert "call_rest_tool( $tool_name, $arguments )" in jetengine_client_src
 
 # Translation reads may keep provider=auto, but write schemas must be rewritten
 # to require an exact provider and runtime validation must deny missing/auto.
@@ -103,7 +125,7 @@ for token in (
 # These governance/validation layers must not gain direct data or breakglass side channels.
 for src, label in (
     (semantics_src, "mutation-semantics"),
-    (jetengine_client_src, "jetengine-mcp-client"),
+    (jetengine_client_src, "jetengine-native-client"),
 ):
     assert "$wpdb" not in src, f"{label} must not use direct SQL"
     assert "database-raw-query" not in src, f"{label} must not expose raw SQL"
