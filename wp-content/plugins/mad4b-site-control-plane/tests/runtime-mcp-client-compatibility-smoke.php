@@ -62,15 +62,22 @@ if ( 'MAD4B WordPress Staging ChatGPT Read MCP' !== $status['resource_name'] ) m
 if ( $status['profile_count'] < 6 ) mad4b_client_compat_fail( 'Dynamic client profile extension was not loaded.', $status );
 
 $resource = 'https://mad4b-client.test/wp-json/mcp/mad4b-chatgpt';
+$enrollment_resource = 'https://mad4b-client.test/wp-json/mcp/mad4b-enrollment';
 if ( $resource !== MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() ) mad4b_client_compat_fail( 'Unexpected protected resource identifier.', MAD4B_SCP_MCP_Client_Compatibility::resource_identifier() );
+if ( $enrollment_resource !== MAD4B_SCP_MCP_Client_Compatibility::resource_identifier( 'mad4b-enrollment' ) ) mad4b_client_compat_fail( 'Unexpected Enrollment protected resource identifier.', MAD4B_SCP_MCP_Client_Compatibility::resource_identifier( 'mad4b-enrollment' ) );
 
 $path_specific = '/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-chatgpt';
+$enrollment_path_specific = '/.well-known/oauth-protected-resource/wp-json/mcp/mad4b-enrollment';
 $host_alias = '/.well-known/oauth-protected-resource';
 if ( ! MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $path_specific ) ) mad4b_client_compat_fail( 'Path-derived well-known location was not recognized.' );
+if ( ! MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $enrollment_path_specific ) ) mad4b_client_compat_fail( 'Enrollment path-derived well-known location was not recognized.' );
 if ( ! MAD4B_SCP_MCP_Client_Compatibility::is_well_known_path( $host_alias ) ) mad4b_client_compat_fail( 'Host compatibility alias was not recognized.' );
 
 $expected_well_known = 'https://mad4b-client.test' . $path_specific;
+$expected_enrollment_well_known = 'https://mad4b-client.test' . $enrollment_path_specific;
 if ( $expected_well_known !== $status['authoritative_well_known_url'] ) mad4b_client_compat_fail( 'Authoritative RFC 9728 URL mismatch.', $status );
+if ( $expected_enrollment_well_known !== $status['enrollment_authoritative_well_known_url'] ) mad4b_client_compat_fail( 'Enrollment RFC 9728 URL mismatch.', $status );
+if ( $enrollment_resource !== $status['enrollment_resource'] ) mad4b_client_compat_fail( 'Enrollment resource status mismatch.', $status );
 if ( 'https://mad4b-client.test' . $host_alias !== $status['compatibility_alias_url'] ) mad4b_client_compat_fail( 'Compatibility alias URL mismatch.', $status );
 
 $metadata = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( $path_specific );
@@ -81,6 +88,14 @@ if ( 'external' !== $metadata['mad4b_authority_mode'] ) mad4b_client_compat_fail
 if ( empty( $metadata['authorization_servers'][0] ) || 'https://auth.mad4b.test' !== $metadata['authorization_servers'][0] ) mad4b_client_compat_fail( 'Authorization server metadata mismatch.', $metadata );
 if ( empty( $metadata['scopes_supported'] ) || ! in_array( 'mad4b:read', $metadata['scopes_supported'], true ) ) mad4b_client_compat_fail( 'Read scope missing from metadata.', $metadata );
 if ( empty( $metadata['mad4b_client_compatibility'] ) ) mad4b_client_compat_fail( 'Compatibility manifest extension missing.', $metadata );
+
+$enrollment_metadata = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( $enrollment_path_specific );
+if ( is_wp_error( $enrollment_metadata ) ) mad4b_client_compat_fail( 'Enrollment path-derived well-known metadata unexpectedly unavailable.', $enrollment_metadata->get_error_code() );
+if ( $enrollment_resource !== $enrollment_metadata['resource'] ) mad4b_client_compat_fail( 'Enrollment metadata resource mismatch.', $enrollment_metadata );
+if ( 'MAD4B WordPress Staging Enrollment MCP' !== $enrollment_metadata['resource_name'] ) mad4b_client_compat_fail( 'Enrollment metadata resource name mismatch.', $enrollment_metadata );
+if ( 'external' !== $enrollment_metadata['mad4b_authority_mode'] ) mad4b_client_compat_fail( 'Enrollment metadata authority mode mismatch.', $enrollment_metadata );
+if ( empty( $enrollment_metadata['authorization_servers'][0] ) || 'https://auth.mad4b.test' !== $enrollment_metadata['authorization_servers'][0] ) mad4b_client_compat_fail( 'Enrollment authorization server metadata mismatch.', $enrollment_metadata );
+if ( empty( $enrollment_metadata['scopes_supported'] ) || ! in_array( 'mad4b:read', $enrollment_metadata['scopes_supported'], true ) ) mad4b_client_compat_fail( 'Enrollment read scope missing from metadata.', $enrollment_metadata );
 
 $alias_metadata = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( $host_alias );
 if ( ! is_wp_error( $alias_metadata ) || 'mad4b_oauth_resource_metadata_path_unknown' !== $alias_metadata->get_error_code() ) mad4b_client_compat_fail( 'Host alias must redirect at HTTP serving layer rather than emit mismatched resource metadata.', $alias_metadata );
@@ -95,6 +110,7 @@ if ( ! empty( $unknown_client['matched'] ) || 'generic-mcp' !== $unknown_client[
 $manifest = MAD4B_SCP_MCP_Client_Compatibility::manifest();
 if ( empty( $manifest['client_agnostic'] ) || ! empty( $manifest['authorization_depends_on_vendor'] ) ) mad4b_client_compat_fail( 'Compatibility manifest must remain vendor-neutral.', $manifest );
 if ( 'external' !== $manifest['authentication']['authority_mode'] || 1 !== count( $manifest['authentication']['authorization_servers'] ) ) mad4b_client_compat_fail( 'Compatibility manifest authority truth mismatch.', $manifest );
+if ( $expected_enrollment_well_known !== $manifest['authentication']['enrollment_protected_resource_metadata'] ) mad4b_client_compat_fail( 'Compatibility manifest Enrollment metadata URL mismatch.', $manifest );
 if ( 'deny_sensitive_generic_introspection' !== $manifest['remote_oauth_read_policy']['default'] ) mad4b_client_compat_fail( 'Remote OAuth read blast-radius policy missing from manifest.', $manifest );
 $manifest_ids = array();
 foreach ( isset( $manifest['profiles'] ) && is_array( $manifest['profiles'] ) ? $manifest['profiles'] : array() as $profile ) if ( isset( $profile['id'] ) ) $manifest_ids[] = $profile['id'];
@@ -103,4 +119,4 @@ foreach ( array( 'openai-chatgpt', 'anthropic-claude', 'google-gemini', 'manus',
 $unknown = MAD4B_SCP_MCP_Client_Compatibility::metadata_for_path( '/.well-known/oauth-protected-resource/not-mad4b' );
 if ( ! is_wp_error( $unknown ) || 'mad4b_oauth_resource_metadata_path_unknown' !== $unknown->get_error_code() ) mad4b_client_compat_fail( 'Unknown metadata path must fail closed.', $unknown );
 
-fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-client-compatibility.v4: PASS' . PHP_EOL );
+fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-client-compatibility.v5: PASS' . PHP_EOL );
