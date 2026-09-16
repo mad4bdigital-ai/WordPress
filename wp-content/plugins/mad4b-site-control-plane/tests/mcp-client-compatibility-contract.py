@@ -6,6 +6,8 @@ root = Path(__file__).resolve().parents[1]
 compat = (root / 'includes/class-mad4b-scp-mcp-client-compatibility.php').read_text(encoding='utf-8')
 challenge = (root / 'includes/class-mad4b-scp-oauth-challenge-alignment.php').read_text(encoding='utf-8')
 registry = (root / 'includes/class-mad4b-scp-mcp-client-profile-registry.php').read_text(encoding='utf-8')
+servers = (root / 'includes/class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+transport_context = (root / 'includes/class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
 main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 plugin = (root / 'includes/class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 catalog = json.loads((root / 'config/mcp-client-profiles.json').read_text(encoding='utf-8'))
@@ -73,7 +75,7 @@ required_registry = [
     'mad4b.mcp-client-profile-catalog.v1',
     'MAX_PROFILES = 50',
     'detect_request_profile',
-    'apply_filters( \'mad4b_scp_mcp_client_profiles\'',
+    "apply_filters( 'mad4b_scp_mcp_client_profiles'",
     "'profiles_create_authority' => false",
     "'detection_authoritative' => false",
     "'dynamic_extension_supported' => true",
@@ -81,6 +83,48 @@ required_registry = [
 ]
 for marker in required_registry:
     assert marker in registry, f'missing profile registry marker: {marker}'
+
+# Exact enrolled Staging uses one ChatGPT resource for the complete normal governed
+# read/write catalog plus the bounded Phase A bootstrap. Production/non-exact sites
+# retain the historical narrow read surface.
+for marker in [
+    'chatgpt_unified_catalog_enabled',
+    "'staging' === MAD4B_SCP_Site_Profile::current_environment()",
+    'MAD4B_SCP_Site_Profile::origin_enrolled()',
+    'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
+    "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
+    "self::core_tools( 'mad4b-enrollment' )",
+    "'mad4b/site-profile-feature-reenroll' === $ability_name",
+    'self::external_write_tools()',
+    "'mad4b/database-raw-query' === $ability_name",
+    "self::core_tools( 'mad4b-breakglass' )",
+]:
+    assert marker in servers, f'missing unified ChatGPT catalog marker: {marker}'
+
+# The legacy/narrow fallback remains explicit when exact Staging binding is absent.
+assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
+for marker in [
+    "'mad4b/filesystem-list', 'mad4b/filesystem-read'",
+    "'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query'",
+]:
+    assert marker in servers, f'missing non-Staging narrow fallback marker: {marker}'
+
+# Discovery never grants execution. Every normal mutation arriving through ChatGPT
+# is intercepted regardless of current write readiness and can only cross to
+# mad4b-write after authority, eligibility, and mount checks succeed.
+for marker in [
+    "'mad4b-chatgpt' === $current && MAD4B_SCP_Servers::is_external_write_candidate( $ability_name )",
+    "'mad4b_write_authority_not_ready'",
+    'MAD4B_SCP_Staging_Write_Authority::effective()',
+    'MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name )',
+    "MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name )",
+    "return 'mad4b-write';",
+    "'chatgpt_write_discovery_model' => 'stable_unified_catalog_fail_closed_execution'",
+]:
+    assert marker in transport_context, f'missing fail-closed ChatGPT write delegation marker: {marker}'
+
+assert "'mad4b/database-raw-query'" in servers, 'Raw SQL isolation must remain explicit'
+assert "array( 'mad4b/database-raw-query' )" in servers, 'Breakglass raw SQL surface must remain isolated'
 
 assert "class-mad4b-scp-mcp-client-profile-registry.php" in main
 assert "class-mad4b-scp-mcp-client-compatibility.php" in main
@@ -108,4 +152,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v7: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v8: PASS')
