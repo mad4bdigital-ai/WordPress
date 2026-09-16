@@ -11,21 +11,24 @@ for marker in (
     "'mad4b-enrollment'",
     "'mad4b/site-profile-status'",
     "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
     "can_enrollment_transport",
     "MAD4B Enrollment MCP",
 ):
     if marker not in servers:
         raise SystemExit('missing enrollment server contract: ' + marker)
 
-entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll' )"
+entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' )"
 if entry not in servers:
     raise SystemExit('enrollment inventory is not exact/bounded')
 for forbidden in ('mad4b/database-update', 'mad4b/database-raw-query', 'mad4b/filesystem-write', 'mad4b/plugin-activate', 'mad4b/approval-plan'):
     segment = servers[servers.index(entry):servers.index(entry)+len(entry)]
     if forbidden in segment:
         raise SystemExit('dangerous ability leaked into enrollment inventory: ' + forbidden)
-if "'mad4b/site-profile-feature-reenroll'" in servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]:
-    raise SystemExit('enrollment ability leaked into normal write candidates')
+write_candidates = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
+for bounded in ('mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable'):
+    if bounded in write_candidates:
+        raise SystemExit('bounded enrollment ability leaked into normal write candidates: ' + bounded)
 
 for marker in (
     "expected_revision",
@@ -54,7 +57,7 @@ for marker in (
 
 registration = enrollment[enrollment.index('public static function register_ability'):enrollment.index('public static function can_access_transport')]
 if "'write_enabled'" in registration:
-    raise SystemExit('write_enabled must not be accepted by enrollment input schema')
+    raise SystemExit('write_enabled must not be accepted by Phase A enrollment input schema')
 if "'chatgpt_app_id'" not in registration:
     raise SystemExit('bounded App ID bootstrap input is not registered')
 if "remove_filter( 'wp_register_ability_args', $augment" not in registration or "add_filter( 'wp_register_ability_args', $augment" not in registration:
