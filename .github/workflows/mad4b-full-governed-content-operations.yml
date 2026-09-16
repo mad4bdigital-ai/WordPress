@@ -11,6 +11,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-mutation-semantics-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mutation-planning-semantics-contract.py'
       - '.github/workflows/mad4b-full-governed-content-operations.yml'
   workflow_dispatch:
 
@@ -44,3 +45,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py
+      - name: Verify mutation planning semantics contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/mutation-planning-semantics-contract.py
