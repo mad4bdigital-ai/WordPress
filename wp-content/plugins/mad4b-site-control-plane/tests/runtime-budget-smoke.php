@@ -42,7 +42,8 @@ $check( true === $bound, 'Unable to bind disposable budget-test subject.' );
 $grant = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-admin', 'mad4b/mutation-undo', 'core', array(), 'allow', 'all' );
 $check( true === $grant, 'Unable to create exact undo grant for budget runtime proof.' );
 
-$budget = MAD4B_SCP_Budgets::set_budget( $agent['public_id'], 'requests', 60, 1, true );
+$budget_window_seconds = 60;
+$budget = MAD4B_SCP_Budgets::set_budget( $agent['public_id'], 'requests', $budget_window_seconds, 1, true );
 $check( is_array( $budget ) && 'requests' === $budget['budget_type'] && 1 === (int) $budget['max_count'], 'Unable to configure one-request runtime budget.' );
 
 $approval_ticket_id = '';
@@ -113,6 +114,14 @@ $check( 0 === count( $windows_after_preflight ), 'Permission preflight created o
 $ticket_one_preflight = MAD4B_SCP_Approval_Tickets::get( $ticket_one['ticket_id'] );
 $check( is_array( $ticket_one_preflight ) && 'approved' === $ticket_one_preflight['status'], 'Permission preflight consumed or claimed the exact approval ticket.' );
 
+// Keep the exhaustion proof inside one deterministic fixed window. The CI
+// matrix uses the floating WordPress "latest" release and can otherwise enter
+// this step on the final second of a 60-second bucket, making the second claim
+// correctly land in a fresh window and turning the test itself flaky.
+$seconds_into_budget_window = time() % $budget_window_seconds;
+$seconds_remaining_in_budget_window = $budget_window_seconds - $seconds_into_budget_window;
+if ( $seconds_remaining_in_budget_window < 10 ) sleep( $seconds_remaining_in_budget_window + 1 );
+
 $claim_one = MAD4B_SCP_Authorization::claim_mutation( 'mad4b/mutation-undo', 'mad4b-admin', 'core', $input );
 $check( is_array( $claim_one ) && ! empty( $claim_one['allowed'] ) && ! empty( $claim_one['execution_side_effects'] ), 'Execution claim did not authorize the budgeted request.' );
 $check( ! empty( $claim_one['budget']['configured'] ), 'Execution claim did not report configured budget evidence.' );
@@ -150,7 +159,7 @@ $check( 1 === count( $windows_after_exhausted ) && 1 === (int) $windows_after_ex
 // 4. Move the committed window into the immediately previous bucket and prove the same still-approved ticket can be claimed in a fresh current window.
 global $wpdb;
 $old_window_start = (int) $windows_after_exhausted[0]['window_start'];
-$previous_window_start = max( 0, $old_window_start - 60 );
+$previous_window_start = max( 0, $old_window_start - $budget_window_seconds );
 $moved = $wpdb->query(
 	$wpdb->prepare(
 		"UPDATE {$tables['budget_windows']} SET window_start = %d WHERE id = %d AND window_start = %d",
