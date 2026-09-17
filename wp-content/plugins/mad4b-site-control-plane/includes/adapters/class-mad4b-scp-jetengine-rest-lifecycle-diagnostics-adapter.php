@@ -198,7 +198,12 @@ final class MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter extends MAD4B
 	}
 
 	private function is_jetengine_callable( array $evidence ) {
-		$text = strtolower( (string) $evidence['label'] . ' ' . (string) $evidence['owner_class'] . ' ' . (string) $evidence['file'] );
+		// relative_file() only returns a non-empty path for source physically under
+		// the installed JetEngine plugin root. Treat that as authoritative provider
+		// ownership so anonymous closures/functions cannot be missed merely because
+		// their callable label does not contain a JetEngine namespace token.
+		if ( ! empty( $evidence['file'] ) ) return true;
+		$text = strtolower( (string) $evidence['label'] . ' ' . (string) $evidence['owner_class'] );
 		return false !== strpos( $text, 'jet_engine' ) || false !== strpos( $text, 'jet-engine' ) || false !== strpos( $text, 'jetengine' );
 	}
 
