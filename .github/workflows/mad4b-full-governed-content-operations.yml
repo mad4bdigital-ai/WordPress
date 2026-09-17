@@ -8,10 +8,12 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-mcp-client.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-diagnostics-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-mutation-semantics-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/full-governed-content-operations-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/mutation-planning-semantics-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/jetengine-native-diagnostics-contract.py'
       - '.github/workflows/mad4b-full-governed-content-operations.yml'
   workflow_dispatch:
 
@@ -39,6 +41,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-mcp-client.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-diagnostics-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-mutation-semantics-adapter.php
       - name: Verify full governed content operations contract
         shell: bash
@@ -50,3 +53,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/mutation-planning-semantics-contract.py
+      - name: Verify JetEngine native diagnostics contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/jetengine-native-diagnostics-contract.py
