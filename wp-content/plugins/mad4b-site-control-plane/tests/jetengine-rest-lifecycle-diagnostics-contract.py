@@ -23,6 +23,7 @@ required = [
     "rest_server_instantiated' => false",
     "settings_mutation' => false",
     "no_secrets_exposed' => true",
+    "if ( ! empty( $evidence['file'] ) ) return true;",
 ]
 for token in required:
     assert token in src, f"missing lifecycle diagnostics contract token: {token}"
@@ -48,5 +49,6 @@ for forbidden in [
 assert "register_rest_route\\s*\\(" in src, "source scanner must detect provider route registration calls"
 assert "register_rest_route(" not in src, "diagnostic must not register REST routes itself"
 assert "class-mad4b-scp-jetengine-rest-lifecycle-diagnostics-adapter.php" in loader, "lifecycle diagnostics must be loaded by the governed adapter bootstrap"
+assert "relative_file() only returns a non-empty path for source physically under" in src, "JetEngine-owned closure/function source must be recognized by provider-root ownership"
 
 print("JetEngine REST lifecycle diagnostics contract: PASS")
