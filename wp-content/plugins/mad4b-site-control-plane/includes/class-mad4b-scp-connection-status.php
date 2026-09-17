@@ -32,6 +32,7 @@ final class MAD4B_SCP_Connection_Status {
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array( 'available' => false );
 		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array( 'verified' => false, 'status' => 'evidence_component_unavailable' );
 		$oauth_blockers = self::oauth_preflight_blockers( $oauth );
+		$mcp_registration_lifecycle = self::bounded_mcp_registration_lifecycle();
 
 		$local_blockers = array();
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
@@ -72,6 +73,7 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_adapter_version' => $adapter_version,
 			'mcp_adapter_certification' => $provider,
 			'mcp_adapter_certified' => (bool) $provider_ok,
+			'mcp_registration_lifecycle' => $mcp_registration_lifecycle,
 			'local_transport_ready' => empty( $local_blockers ),
 			'local_blockers' => $local_blockers,
 			'remote_endpoint_preflight_ready' => empty( $remote_preflight_blockers ),
@@ -95,6 +97,22 @@ final class MAD4B_SCP_Connection_Status {
 				'configured_enabled' => defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ),
 				'effective_for_current_request' => class_exists( 'MAD4B_SCP_Policy' ) ? (bool) MAD4B_SCP_Policy::can_breakglass() : false,
 			),
+		);
+	}
+
+	private static function bounded_mcp_registration_lifecycle() {
+		$status = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
+		if ( ! is_array( $status ) ) $status = array();
+		return array(
+			'rest_init_seen_before_bridge_boot' => ! empty( $status['rest_init_seen_before_bridge_boot'] ),
+			'adapter_init_seen_before_bridge_boot' => ! empty( $status['adapter_init_seen_before_bridge_boot'] ),
+			'missed_rest_recovery_scheduled' => ! empty( $status['missed_rest_recovery_scheduled'] ),
+			'missed_rest_recovery_attempted' => ! empty( $status['missed_rest_recovery_attempted'] ),
+			'missed_rest_recovery_succeeded' => ! empty( $status['missed_rest_recovery_succeeded'] ),
+			'missed_rest_recovery_state' => isset( $status['missed_rest_recovery_state'] ) ? sanitize_key( (string) $status['missed_rest_recovery_state'] ) : '',
+			'missed_rest_recovery_blocker' => isset( $status['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $status['missed_rest_recovery_blocker'] ) : '',
+			'mcp_adapter_init_count' => isset( $status['mcp_adapter_init_count'] ) ? max( 0, (int) $status['mcp_adapter_init_count'] ) : 0,
+			'rest_api_init_count' => isset( $status['rest_api_init_count'] ) ? max( 0, (int) $status['rest_api_init_count'] ) : 0,
 		);
 	}
 

@@ -50,6 +50,38 @@ for marker in (
     require(status, marker, 'connection-status-truth')
 forbid(status, "'connection_certified' => false", 'connection-no-permanent-false')
 
+
+require(ability, "'output_schema' => array( 'type' => 'object', 'additionalProperties' => true )", 'connection-output-schema-open')
+for marker in (
+    "'mcp_registration_lifecycle'",
+    'MAD4B_SCP_MCP_Registration_Bridge::status()',
+    "'rest_init_seen_before_bridge_boot'",
+    "'adapter_init_seen_before_bridge_boot'",
+    "'missed_rest_recovery_scheduled'",
+    "'missed_rest_recovery_attempted'",
+    "'missed_rest_recovery_succeeded'",
+    "'missed_rest_recovery_state'",
+    "'missed_rest_recovery_blocker'",
+    "'mcp_adapter_init_count'",
+    "'rest_api_init_count'",
+):
+    require(status, marker, 'connection-mcp-registration-lifecycle')
+
+lifecycle_start = status.index('private static function bounded_mcp_registration_lifecycle()')
+lifecycle_end = status.index('private static function oauth_preflight_blockers', lifecycle_start)
+lifecycle = status[lifecycle_start:lifecycle_end]
+for forbidden in (
+    'rest_get_server(', 'rest_do_request(', 'register_routes(', 'register_rest_route(',
+    "do_action( 'rest_api_init'", 'Registry::register_features_api(',
+    'update_option(', 'add_option(', 'delete_option(', '$wpdb->',
+):
+    forbid(lifecycle, forbidden, 'lifecycle-diagnostic-observational-only')
+for secret_key in (
+    'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'raw_token',
+    'app_id', 'oauth_subject', 'nonce', 'password',
+):
+    forbid(lifecycle.lower(), secret_key, 'lifecycle-diagnostic-no-secret-or-authority')
+
 if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
     raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')
 if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = empty( $certification_blockers )'):
