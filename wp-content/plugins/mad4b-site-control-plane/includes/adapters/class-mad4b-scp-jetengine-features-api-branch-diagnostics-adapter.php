@@ -272,7 +272,7 @@ final class MAD4B_SCP_JetEngine_Features_API_Branch_Diagnostics_Adapter extends 
 		if ( 1 !== count( $tokens ) ) return null;
 		$token = $tokens[0];
 		$lower = strtolower( preg_replace( '/\s+/', '', (string) $condition ) );
-		$negated = false !== strpos( $lower, '!' . strtolower( $token ) ) || false !== strpos( $lower, '!(' );
+		if ( false !== strpos( $lower, '&&' ) || false !== strpos( $lower, '||' ) ) return null;
 		$value = null;
 
 		if ( isset( $settings[ $token ] ) ) {
@@ -289,7 +289,31 @@ final class MAD4B_SCP_JetEngine_Features_API_Branch_Diagnostics_Adapter extends 
 			$value = '' !== $cap && array_key_exists( $cap, $capabilities ) ? $capabilities[ $cap ] : null;
 		}
 		if ( ! is_bool( $value ) ) return null;
-		return $negated ? ! $value : $value;
+
+		$polarity = $this->simple_boolean_polarity( $lower, strtolower( $token ) );
+		if ( null === $polarity ) return null;
+		return $polarity < 0 ? ! $value : $value;
+	}
+
+	private function simple_boolean_polarity( $lower, $token ) {
+		$token_pos = strpos( $lower, $token );
+		if ( false === $token_pos ) return null;
+
+		$false_equal = false !== strpos( $lower, '===false' ) || false !== strpos( $lower, '==false' ) || false !== strpos( $lower, 'false===' ) || false !== strpos( $lower, 'false==' );
+		$true_equal = false !== strpos( $lower, '===true' ) || false !== strpos( $lower, '==true' ) || false !== strpos( $lower, 'true===' ) || false !== strpos( $lower, 'true==' );
+		$false_not_equal = false !== strpos( $lower, '!==false' ) || false !== strpos( $lower, '!=false' ) || false !== strpos( $lower, 'false!==' ) || false !== strpos( $lower, 'false!=' );
+		$true_not_equal = false !== strpos( $lower, '!==true' ) || false !== strpos( $lower, '!=true' ) || false !== strpos( $lower, 'true!==' ) || false !== strpos( $lower, 'true!=' );
+		if ( $false_equal ) return -1;
+		if ( $true_equal ) return 1;
+		if ( $false_not_equal ) return 1;
+		if ( $true_not_equal ) return -1;
+		if ( preg_match( '/={2,3}|!=|!==/', $lower ) ) return null;
+
+		$prefix = substr( $lower, 0, $token_pos );
+		$prefix_without_not_equal = str_replace( array( '!==', '!=' ), '', $prefix );
+		if ( false !== strrpos( $prefix_without_not_equal, 'empty(' ) ) return -1;
+		if ( false !== strrpos( $prefix_without_not_equal, '!' ) ) return -1;
+		return 1;
 	}
 }
 
