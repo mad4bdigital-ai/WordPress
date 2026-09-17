@@ -66,13 +66,13 @@ final class MAD4B_SCP_Approval_Plan_Target_Validation {
 
 	private static function validate_planned_target( array $plan ) {
 		$ability_name = isset( $plan['ability'] ) ? (string) $plan['ability'] : '';
-		if ( '' === $ability_name ) return true; // Approval Plan schema owns the missing-field error.
+		if ( '' === $ability_name ) return true;
 		if ( 'mad4b/approval-plan' === $ability_name ) {
 			return new WP_Error( 'mad4b_approval_plan_recursive_target_denied', 'Approval Plan cannot target itself.' );
 		}
 		if ( ! function_exists( 'wp_get_ability' ) ) return new WP_Error( 'mad4b_approval_target_validation_unavailable', 'Target ability validation is unavailable.' );
 		$ability = wp_get_ability( $ability_name );
-		if ( ! $ability ) return true; // Canonical approval callback owns the unknown-ability error.
+		if ( ! $ability ) return true;
 		if ( ! method_exists( $ability, 'validate_input' ) ) return new WP_Error( 'mad4b_approval_target_validation_unavailable', 'Target ability does not expose input validation.' );
 		$operation_input = isset( $plan['input'] ) && is_array( $plan['input'] ) ? $plan['input'] : array();
 		$valid = $ability->validate_input( $operation_input );
@@ -88,11 +88,6 @@ final class MAD4B_SCP_Approval_Plan_Target_Validation {
 			);
 		}
 
-		// When JetEngine's own MCP transport is present, the fixed MAD4B wrapper
-		// deliberately carries a generic nested `input` object. Bind the approval
-		// plan to the exact live native tool name + schema hash and validate that
-		// nested input against the discovered JetEngine inputSchema before any
-		// Pending Ticket can be created. This performs tools/list only; never call.
 		if ( 0 === strpos( $ability_name, 'jetengine/' ) && class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) && MAD4B_SCP_JetEngine_MCP_Client::available() ) {
 			$expected_name = isset( $operation_input['expected_native_ability'] ) ? (string) $operation_input['expected_native_ability'] : '';
 			$expected_hash = isset( $operation_input['expected_schema_sha256'] ) ? strtolower( trim( (string) $operation_input['expected_schema_sha256'] ) ) : '';
@@ -193,3 +188,5 @@ final class MAD4B_SCP_Mutation_Semantics_Adapter extends MAD4B_SCP_Adapter_Base 
 		return array( 'contract' => self::CONTRACT, 'count' => count( $map ), 'abilities' => $map );
 	}
 }
+
+require_once __DIR__ . '/class-mad4b-scp-jetengine-rest-lifecycle-diagnostics-adapter.php';
