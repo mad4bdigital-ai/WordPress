@@ -58,9 +58,9 @@ final class MAD4B_SCP_Live_Truth {
 	private static function recover_runtime_authority() {
 		if ( self::$recovering ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
-		if ( ! class_exists( 'MAD4B_SCP_Plugin' ) || ! method_exists( 'MAD4B_SCP_Plugin', 'reconcile_authority_if_needed' ) ) return;
 		self::$recovering = true;
-		MAD4B_SCP_Plugin::reconcile_authority_if_needed();
+		// Runtime recovery means refreshing truth, never reconciling grants/subjects.
+		self::current_authority_status();
 		self::$recovering = false;
 	}
 
