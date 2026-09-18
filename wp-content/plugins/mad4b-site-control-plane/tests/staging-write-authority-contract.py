@@ -280,6 +280,24 @@ if "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not freeze provider runtime eligibility before REST registration completes')
 if "MAD4B_SCP_Staging_Write_Authority::reconcile()" in cert:
     raise SystemExit('readonly write-runtime certification may not reconcile grants or subjects')
+bootstrap_body = write.split("public static function bootstrap()", 1)[1].split("public static function boot()", 1)[0]
+if "restore_persisted_ready_status( $status )" not in bootstrap_body:
+    raise SystemExit('write authority bootstrap must restore the exact persisted ready authority on a new request')
+if "MAD4B_SCP_Live_Truth" in bootstrap_body:
+    raise SystemExit('write authority bootstrap may not rebuild Live Truth while restoring persisted readiness')
+restore_body = write.split("private static function restore_persisted_ready_status", 1)[1].split("public static function boot()", 1)[0]
+for marker in [
+    "'site_uuid'",
+    "'site_profile_revision'",
+    "'site_profile_digest'",
+    "'environment'",
+    "'origin'",
+    "'write_inventory_fingerprint'",
+    "'restored_from_persisted_authority'",
+]:
+    if marker not in restore_body:
+        raise SystemExit(f'persisted authority restore missing exact binding guard: {marker}')
+
 if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile' )" in write:
     raise SystemExit('write authority may not reconcile automatically during Abilities bootstrap')
 if "add_action( 'admin_init', array( __CLASS__, 'reconcile' )" in write:
