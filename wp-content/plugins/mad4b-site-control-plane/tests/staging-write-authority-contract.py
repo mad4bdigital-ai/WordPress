@@ -9,6 +9,7 @@ write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_t
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
+live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
 rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
 servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
 transport = (wp / 'includes' / 'class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
@@ -23,7 +24,11 @@ deployment = json.loads((wp / 'config' / 'staging-deployment-handoff.json').read
 # deployment Site Profile/handoff, never to a host constant inside the authority.
 for marker in [
     "const CONTRACT = 'mad4b.governed-write-authority.v2'",
+    "const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v1'",
     "const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id'",
+    "public static function candidate_binding_status()",
+    "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint )",
+    "private static function current_candidate_identity()",
     "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Site_Profile::write_enabled()",
@@ -62,6 +67,8 @@ for marker in [
     "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id",
     "MAD4B_SCP_Staging_Write_Authority::write_tools()",
     "MAD4B_SCP_Staging_Write_Authority::reconcile()",
+    "MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint )",
+    "candidate_rebound_without_grant_changes",
     "expected_write_inventory_fingerprint",
     "expected_missing_abilities",
     "expected_agent_public_id",
@@ -281,6 +288,33 @@ if "MAD4B_SCP_Staging_Write_Authority::reconcile();" in plugin:
     raise SystemExit('plugin lifecycle/admin read paths may not call destructive authority reconciliation')
 if "MAD4B_SCP_Live_Truth::current_authority_status()" in write.split("public static function effective()", 1)[1].split("public static function status()", 1)[0]:
     raise SystemExit('authority effective() hot path may not recursively rebuild Live Truth/write inventory')
+
+expected_missing_schema = grant_reconcile.split("'expected_missing_abilities' => array(", 1)[1].split("'confirmation' => array(", 1)[0]
+if "'minItems' => 0" not in expected_missing_schema:
+    raise SystemExit('exact grant reconciliation must permit an empty missing set for same-inventory package candidate rebind')
+if 'mad4b_grant_reconcile_nothing_to_do' in grant_reconcile:
+    raise SystemExit('same-inventory package candidate rebind may not fail as nothing-to-do')
+if "'state' => empty( $created_abilities ) ? 'candidate_rebound' : 'reconciled'" not in grant_reconcile:
+    raise SystemExit('grant reconciliation must distinguish zero-grant candidate rebind from grant creation')
+if "'source_commit_sha' => $current_sha" not in grant_reconcile or "'build_fingerprint' => $current_fingerprint" not in grant_reconcile:
+    raise SystemExit('grant reconciliation completion evidence must remain exact-build bound')
+
+effective_body = write.split("public static function effective()", 1)[1].split("public static function status()", 1)[0]
+if "candidate_binding_status()" not in effective_body:
+    raise SystemExit('authority effective() must fail closed on an exact packaged candidate mismatch')
+if "current_authority_status()" in effective_body:
+    raise SystemExit('authority effective() may not recursively rebuild Live Truth/write inventory')
+
+for marker in [
+    "runtime_authority_candidate_not_reconciled",
+    "'candidate_binding_required'",
+    "'candidate_binding_match'",
+    "'candidate_source_commit_sha'",
+    "'candidate_build_fingerprint'",
+]:
+    if marker not in live_truth:
+        raise SystemExit(f'live authority truth missing exact package candidate invariant: {marker}')
+
 if "add_action( 'rest_api_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not run authority reconciliation on the REST/tools-list critical path')
 if cert.index("MAD4B_SCP_Staging_Write_Authority::eligible()") > cert.index("MAD4B_SCP_Audit::record"):
