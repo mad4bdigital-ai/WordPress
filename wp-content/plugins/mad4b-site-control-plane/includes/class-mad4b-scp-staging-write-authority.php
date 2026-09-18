@@ -15,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Staging_Write_Authority {
 	const CONTRACT = 'mad4b.governed-write-authority.v2';
+	const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v1';
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
 	const VERSION = 2;
 	const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id';
@@ -22,6 +23,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	private static $booted = false;
 	private static $reconciling = false;
 	private static $status = array();
+	private static $candidate_identity = null;
 
 	public static function bootstrap() {
 		$status = self::base_status();
@@ -68,10 +70,12 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	public static function effective() {
 		// Authorization hot paths must not recursively rebuild the provider/write
 		// inventory. Only an explicitly reconciled persisted authority may enable
-		// this predicate; current read/status truth is evaluated separately by
-		// MAD4B_SCP_Live_Truth and is bound to the exact inventory fingerprint.
+		// this predicate. Packaged runtimes additionally require the persisted
+		// authority to be bound to the exact current package candidate.
 		$status = self::status();
-		return ! empty( $status['ready'] );
+		if ( empty( $status['ready'] ) ) return false;
+		$binding = self::candidate_binding_status();
+		return empty( $binding['required'] ) || ! empty( $binding['match'] );
 	}
 
 	public static function status() {
@@ -79,6 +83,90 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$stored = get_option( self::OPTION, array() );
 		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === (string) $stored['contract'] ) return $stored;
 		return self::base_status();
+	}
+
+	public static function candidate_binding_status() {
+		$status = self::status();
+		$current = self::current_candidate_identity();
+		$stored_sha = isset( $status['source_commit_sha'] ) ? strtolower( trim( (string) $status['source_commit_sha'] ) ) : '';
+		$stored_build = isset( $status['build_fingerprint'] ) ? strtolower( trim( (string) $status['build_fingerprint'] ) ) : '';
+		$stored_bound = 1 === preg_match( '/^[a-f0-9]{40}$/', $stored_sha ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_build );
+		$required = ! empty( $current['available'] );
+		$match = $required
+			&& $stored_bound
+			&& hash_equals( (string) $current['source_commit_sha'], $stored_sha )
+			&& hash_equals( (string) $current['build_fingerprint'], $stored_build );
+		return array(
+			'contract' => self::CANDIDATE_BINDING_CONTRACT,
+			'required' => $required,
+			'stored_bound' => $stored_bound,
+			'match' => $match,
+			'stored_source_commit_sha' => $stored_sha,
+			'stored_build_fingerprint' => $stored_build,
+			'current_source_commit_sha' => isset( $current['source_commit_sha'] ) ? (string) $current['source_commit_sha'] : '',
+			'current_build_fingerprint' => isset( $current['build_fingerprint'] ) ? (string) $current['build_fingerprint'] : '',
+			'current_package_manifest_digest' => isset( $current['package_manifest_digest'] ) ? (string) $current['package_manifest_digest'] : '',
+			'current_artifact_identity' => isset( $current['artifact_identity'] ) ? (string) $current['artifact_identity'] : '',
+		);
+	}
+
+	public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint ) {
+		$source_commit_sha = strtolower( trim( (string) $source_commit_sha ) );
+		$build_fingerprint = strtolower( trim( (string) $build_fingerprint ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_commit_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $build_fingerprint ) ) {
+			return new WP_Error( 'mad4b_write_authority_candidate_invalid', 'Exact source commit and build fingerprint are required to bind write authority.' );
+		}
+		$current = self::current_candidate_identity();
+		if ( empty( $current['available'] )
+			|| ! hash_equals( (string) $current['source_commit_sha'], $source_commit_sha )
+			|| ! hash_equals( (string) $current['build_fingerprint'], $build_fingerprint ) ) {
+			return new WP_Error( 'mad4b_write_authority_candidate_mismatch', 'Current package candidate does not match the reviewed reconciliation candidate.' );
+		}
+		$status = self::status();
+		if ( empty( $status['ready'] ) || empty( $status['write_inventory_fingerprint'] ) || empty( $status['agent_public_id'] ) ) {
+			return new WP_Error( 'mad4b_write_authority_not_ready_for_candidate_binding', 'Write authority must be reconciled before binding the exact package candidate.' );
+		}
+		$status['candidate_binding_contract'] = self::CANDIDATE_BINDING_CONTRACT;
+		$status['source_commit_sha'] = $source_commit_sha;
+		$status['build_fingerprint'] = $build_fingerprint;
+		$status['package_manifest_digest'] = isset( $current['package_manifest_digest'] ) ? (string) $current['package_manifest_digest'] : '';
+		$status['artifact_identity'] = isset( $current['artifact_identity'] ) ? (string) $current['artifact_identity'] : '';
+		$status['candidate_bound_at'] = gmdate( 'c' );
+		update_option( self::OPTION, $status, false );
+		$stored = get_option( self::OPTION, array() );
+		if ( ! is_array( $stored )
+			|| ! isset( $stored['source_commit_sha'], $stored['build_fingerprint'] )
+			|| ! hash_equals( $source_commit_sha, (string) $stored['source_commit_sha'] )
+			|| ! hash_equals( $build_fingerprint, (string) $stored['build_fingerprint'] ) ) {
+			return new WP_Error( 'mad4b_write_authority_candidate_persist_failed', 'Exact package candidate binding could not be persisted.' );
+		}
+		self::$status = $stored;
+		return $stored;
+	}
+
+	private static function current_candidate_identity() {
+		if ( null !== self::$candidate_identity ) return self::$candidate_identity;
+		$base = array(
+			'available' => false,
+			'source_commit_sha' => '',
+			'build_fingerprint' => '',
+			'package_manifest_digest' => '',
+			'artifact_identity' => '',
+		);
+		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : '';
+		if ( '' === $path || ! is_readable( $path ) ) return self::$candidate_identity = $base;
+		$raw = file_get_contents( $path );
+		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		if ( ! is_array( $data ) ) return self::$candidate_identity = $base;
+		$sha = isset( $data['source_commit_sha'] ) ? strtolower( trim( (string) $data['source_commit_sha'] ) ) : '';
+		$build = isset( $data['build_fingerprint'] ) ? strtolower( trim( (string) $data['build_fingerprint'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $build ) ) return self::$candidate_identity = $base;
+		$base['available'] = true;
+		$base['source_commit_sha'] = $sha;
+		$base['build_fingerprint'] = $build;
+		$base['package_manifest_digest'] = isset( $data['package_manifest_digest'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $data['package_manifest_digest'] ) ? strtolower( (string) $data['package_manifest_digest'] ) : '';
+		$base['artifact_identity'] = isset( $data['artifact_identity'] ) ? sanitize_text_field( (string) $data['artifact_identity'] ) : '';
+		return self::$candidate_identity = $base;
 	}
 
 	public static function write_tools() {
