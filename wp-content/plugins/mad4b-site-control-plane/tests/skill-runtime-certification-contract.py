@@ -232,13 +232,20 @@ for marker in [
         raise SystemExit(f'missing no-churn authority reconciliation invariant: {marker}')
 
 for marker in [
-    "$runtime = MAD4B_SCP_Staging_Write_Authority::status();",
-    "$stored_stable",
-    "$runtime_stable",
-    "MAD4B_SCP_Staging_Write_Authority::reconcile();",
+    "public static function reconcile_authority_if_needed()",
+    "MAD4B_SCP_Live_Truth::current_authority_status()",
+    "Compatibility entry point retained for older callers. Inspection only.",
 ]:
     if marker not in plugin:
-        raise SystemExit(f'missing current-request authority recovery invariant: {marker}')
+        raise SystemExit(f'missing read-only authority inspection invariant: {marker}')
+
+for forbidden in [
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile_authority_if_needed' )",
+    "add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' )",
+    "MAD4B_SCP_Staging_Write_Authority::reconcile();",
+]:
+    if forbidden in plugin:
+        raise SystemExit(f'plugin lifecycle retained destructive authority reconciliation: {forbidden}')
 
 if "'execute_callback' => array( __CLASS__, 'status' )" not in write_cert:
     raise SystemExit('write certification persistence contract unexpectedly changed registration semantics')
