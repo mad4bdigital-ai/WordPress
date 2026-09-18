@@ -56,9 +56,13 @@ $lifecycle = $status['mcp_registration_lifecycle'];
 $lifecycle_boolean_fields = array(
     'rest_init_seen_before_bridge_boot', 'adapter_init_seen_before_bridge_boot',
     'missed_rest_recovery_scheduled', 'missed_rest_recovery_attempted', 'missed_rest_recovery_succeeded',
+    'first_rest_observed', 'doing_plugins_loaded_at_first_rest', 'doing_init_at_first_rest',
+    'jetengine_registry_class_loaded_at_first_rest', 'jetengine_registry_callback_present_at_first_rest',
+    'jetengine_rest_manager_class_loaded_at_first_rest', 'jetengine_rest_manager_callback_present_at_first_rest',
+    'mcp_adapter_callback_present_at_first_rest',
 );
-$lifecycle_integer_fields = array( 'mcp_adapter_init_count', 'rest_api_init_count' );
-$lifecycle_string_fields = array( 'missed_rest_recovery_state', 'missed_rest_recovery_blocker' );
+$lifecycle_integer_fields = array( 'mcp_adapter_init_count', 'rest_api_init_count', 'plugins_loaded_count_at_first_rest', 'init_count_at_first_rest', 'wp_loaded_count_at_first_rest' );
+$lifecycle_string_fields = array( 'missed_rest_recovery_state', 'missed_rest_recovery_blocker', 'first_rest_classification' );
 foreach ( $lifecycle_boolean_fields as $field ) {
     $check( array_key_exists( $field, $lifecycle ) && is_bool( $lifecycle[ $field ] ), 'Lifecycle boolean field missing or mistyped: ' . $field );
     $check( $lifecycle[ $field ] === ! empty( $bridge_status_after_connection_status[ $field ] ), 'Lifecycle boolean field did not project bridge status: ' . $field );
@@ -72,6 +76,16 @@ foreach ( $lifecycle_string_fields as $field ) {
     $expected_lifecycle_string = isset( $bridge_status_after_connection_status[ $field ] ) ? sanitize_key( (string) $bridge_status_after_connection_status[ $field ] ) : '';
     $check( $lifecycle[ $field ] === $expected_lifecycle_string, 'Lifecycle string field did not project bridge status: ' . $field );
 }
+$check( isset( $lifecycle['caller_trace'] ) && is_array( $lifecycle['caller_trace'] ), 'First REST caller trace missing or mistyped.' );
+$check( count( $lifecycle['caller_trace'] ) <= 16, 'First REST caller trace exceeded the bounded frame limit.' );
+foreach ( $lifecycle['caller_trace'] as $frame ) {
+    $check( is_array( $frame ), 'First REST caller trace frame is not an array.' );
+    $relative_file = isset( $frame['relative_file'] ) ? (string) $frame['relative_file'] : '';
+    $check( '' === $relative_file || ( '/' !== substr( $relative_file, 0, 1 ) && ! preg_match( '/^[A-Za-z]:[\\\\\/]/', $relative_file ) && false === strpos( $relative_file, '../' ) ), 'First REST caller trace exposed a non-relative path.' );
+}
+$check( ! empty( $lifecycle['first_rest_observed'] ), 'Connection status did not observe the first REST bootstrap.' );
+$check( in_array( $lifecycle['first_rest_classification'], array( 'rest_before_plugins_loaded', 'rest_during_plugins_loaded_before_jetengine_registration', 'jetengine_callbacks_present_at_first_rest', 'first_rest_phase_undetermined' ), true ), 'Unexpected first REST classification.' );
+
 $lifecycle_json = strtolower( (string) wp_json_encode( $lifecycle ) );
 foreach ( array( 'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'raw_token', 'app_id', 'oauth_subject', 'nonce', 'password' ) as $secret ) {
     $check( false === strpos( $lifecycle_json, $secret ), 'Lifecycle projection exposed forbidden material: ' . $secret );

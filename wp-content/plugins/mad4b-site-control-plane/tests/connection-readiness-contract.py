@@ -64,6 +64,19 @@ for marker in (
     "'missed_rest_recovery_blocker'",
     "'mcp_adapter_init_count'",
     "'rest_api_init_count'",
+    "'first_rest_observed'",
+    "'plugins_loaded_count_at_first_rest'",
+    "'init_count_at_first_rest'",
+    "'wp_loaded_count_at_first_rest'",
+    "'doing_plugins_loaded_at_first_rest'",
+    "'doing_init_at_first_rest'",
+    "'jetengine_registry_class_loaded_at_first_rest'",
+    "'jetengine_registry_callback_present_at_first_rest'",
+    "'jetengine_rest_manager_class_loaded_at_first_rest'",
+    "'jetengine_rest_manager_callback_present_at_first_rest'",
+    "'mcp_adapter_callback_present_at_first_rest'",
+    "'first_rest_classification'",
+    "'caller_trace'",
 ):
     require(status, marker, 'connection-mcp-registration-lifecycle')
 
@@ -81,6 +94,32 @@ for secret_key in (
     'app_id', 'oauth_subject', 'nonce', 'password',
 ):
     forbid(lifecycle.lower(), secret_key, 'lifecycle-diagnostic-no-secret-or-authority')
+
+
+for marker in (
+    "add_action( 'rest_api_init', array( __CLASS__, 'observe_first_rest_init' ), PHP_INT_MIN )",
+    "debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 16 )",
+    "class_exists( $registry_class, false )",
+    "get_declared_classes()",
+    "'rest_before_plugins_loaded'",
+    "'rest_during_plugins_loaded_before_jetengine_registration'",
+    "'jetengine_callbacks_present_at_first_rest'",
+    "'first_rest_phase_undetermined'",
+):
+    require(bridge, marker, 'first-rest-trace-contract')
+
+observer_start = bridge.index('public static function observe_first_rest_init()')
+observer_end = bridge.index('public static function verify_adapter_init_after_rest()', observer_start)
+observer = bridge[observer_start:observer_end]
+for forbidden in (
+    'rest_get_server(', 'rest_do_request(', "do_action( 'rest_api_init'", 'register_rest_route(',
+    'register_features_api()', '->register_features_api(', '->register_routes(', 'new Get_Controller',
+    'new MCP_Controller', 'new Run_Controller', 'update_option(', 'add_option(', 'delete_option(',
+    '$wpdb->', 'HTTP_AUTHORIZATION', 'access_token', 'refresh_token', 'client_secret',
+):
+    forbid(observer, forbidden, 'first-rest-observer-observational-only')
+require(observer, "DEBUG_BACKTRACE_IGNORE_ARGS", 'first-rest-trace-no-args')
+require(observer, "relative_wordpress_path", 'first-rest-trace-relative-paths')
 
 if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
     raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')

@@ -113,7 +113,37 @@ final class MAD4B_SCP_Connection_Status {
 			'missed_rest_recovery_blocker' => isset( $status['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $status['missed_rest_recovery_blocker'] ) : '',
 			'mcp_adapter_init_count' => isset( $status['mcp_adapter_init_count'] ) ? max( 0, (int) $status['mcp_adapter_init_count'] ) : 0,
 			'rest_api_init_count' => isset( $status['rest_api_init_count'] ) ? max( 0, (int) $status['rest_api_init_count'] ) : 0,
+			'first_rest_observed' => ! empty( $status['first_rest_observed'] ),
+			'plugins_loaded_count_at_first_rest' => isset( $status['plugins_loaded_count_at_first_rest'] ) ? max( 0, (int) $status['plugins_loaded_count_at_first_rest'] ) : 0,
+			'init_count_at_first_rest' => isset( $status['init_count_at_first_rest'] ) ? max( 0, (int) $status['init_count_at_first_rest'] ) : 0,
+			'wp_loaded_count_at_first_rest' => isset( $status['wp_loaded_count_at_first_rest'] ) ? max( 0, (int) $status['wp_loaded_count_at_first_rest'] ) : 0,
+			'doing_plugins_loaded_at_first_rest' => ! empty( $status['doing_plugins_loaded_at_first_rest'] ),
+			'doing_init_at_first_rest' => ! empty( $status['doing_init_at_first_rest'] ),
+			'jetengine_registry_class_loaded_at_first_rest' => ! empty( $status['jetengine_registry_class_loaded_at_first_rest'] ),
+			'jetengine_registry_callback_present_at_first_rest' => ! empty( $status['jetengine_registry_callback_present_at_first_rest'] ),
+			'jetengine_rest_manager_class_loaded_at_first_rest' => ! empty( $status['jetengine_rest_manager_class_loaded_at_first_rest'] ),
+			'jetengine_rest_manager_callback_present_at_first_rest' => ! empty( $status['jetengine_rest_manager_callback_present_at_first_rest'] ),
+			'mcp_adapter_callback_present_at_first_rest' => ! empty( $status['mcp_adapter_callback_present_at_first_rest'] ),
+			'first_rest_classification' => isset( $status['first_rest_classification'] ) ? sanitize_key( (string) $status['first_rest_classification'] ) : 'not_observed',
+			'caller_trace' => self::bounded_first_rest_caller_trace( isset( $status['caller_trace'] ) ? $status['caller_trace'] : array() ),
 		);
+	}
+
+	private static function bounded_first_rest_caller_trace( $trace ) {
+		$result = array();
+		foreach ( is_array( $trace ) ? $trace : array() as $frame ) {
+			if ( ! is_array( $frame ) ) continue;
+			$file = isset( $frame['relative_file'] ) ? str_replace( '\\', '/', sanitize_text_field( (string) $frame['relative_file'] ) ) : '';
+			if ( '' !== $file && ( '/' === substr( $file, 0, 1 ) || preg_match( '/^[A-Za-z]:\//', $file ) || false !== strpos( $file, '../' ) ) ) $file = '';
+			$result[] = array(
+				'class' => isset( $frame['class'] ) ? sanitize_text_field( (string) $frame['class'] ) : '',
+				'function' => isset( $frame['function'] ) ? sanitize_text_field( (string) $frame['function'] ) : '',
+				'relative_file' => $file,
+				'line' => isset( $frame['line'] ) ? max( 0, (int) $frame['line'] ) : 0,
+			);
+			if ( count( $result ) >= 16 ) break;
+		}
+		return $result;
 	}
 
 	private static function oauth_preflight_blockers( $oauth ) {

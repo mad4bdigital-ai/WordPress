@@ -30,6 +30,19 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	private static $missed_rest_recovery_blocker = '';
 	private static $rest_postcondition_watchdog_bound = false;
 	private static $rest_postcondition_recovery_triggered = false;
+	private static $first_rest_observed = false;
+	private static $plugins_loaded_count_at_first_rest = 0;
+	private static $init_count_at_first_rest = 0;
+	private static $wp_loaded_count_at_first_rest = 0;
+	private static $doing_plugins_loaded_at_first_rest = false;
+	private static $doing_init_at_first_rest = false;
+	private static $jetengine_registry_class_loaded_at_first_rest = false;
+	private static $jetengine_registry_callback_present_at_first_rest = false;
+	private static $jetengine_rest_manager_class_loaded_at_first_rest = false;
+	private static $jetengine_rest_manager_callback_present_at_first_rest = false;
+	private static $mcp_adapter_callback_present_at_first_rest = false;
+	private static $first_rest_classification = 'not_observed';
+	private static $first_rest_caller_trace = array();
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
@@ -50,6 +63,12 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 );
 		add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 );
 
+
+		// Observe the first REST bootstrap at the earliest practical hook priority.
+		// This is passive lifecycle evidence only: no callback/provider invocation,
+		// route registration, REST replay, server creation, or persistent mutation.
+		add_action( 'rest_api_init', array( __CLASS__, 'observe_first_rest_init' ), PHP_INT_MIN );
+
 		// Tail-check every REST bootstrap. The official Adapter normally initializes
 		// at priority 15. If a host/provider removes or bypasses that callback after
 		// the MU bootstrap armed it, recover only the missing Adapter/MAD4B lifecycle
@@ -67,6 +86,127 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 				add_action( 'init', array( __CLASS__, 'recover_missed_rest_lifecycle' ), 9999 );
 			}
 		}
+	}
+
+	public static function observe_first_rest_init() {
+		if ( self::$first_rest_observed ) return;
+		self::$first_rest_observed = true;
+
+		self::$plugins_loaded_count_at_first_rest = (int) did_action( 'plugins_loaded' );
+		self::$init_count_at_first_rest = (int) did_action( 'init' );
+		self::$wp_loaded_count_at_first_rest = (int) did_action( 'wp_loaded' );
+		self::$doing_plugins_loaded_at_first_rest = function_exists( 'doing_action' ) ? (bool) doing_action( 'plugins_loaded' ) : false;
+		self::$doing_init_at_first_rest = function_exists( 'doing_action' ) ? (bool) doing_action( 'init' ) : false;
+
+		$registry_class = 'Jet_Engine\\MCP_Tools\\Registry';
+		self::$jetengine_registry_class_loaded_at_first_rest = class_exists( $registry_class, false );
+		self::$jetengine_registry_callback_present_at_first_rest = self::rest_callback_present( $registry_class, 'register_features_api' );
+
+		$rest_manager_classes = self::loaded_jetengine_rest_manager_classes();
+		self::$jetengine_rest_manager_class_loaded_at_first_rest = ! empty( $rest_manager_classes );
+		self::$jetengine_rest_manager_callback_present_at_first_rest = self::rest_callback_present_for_classes( $rest_manager_classes );
+		self::$mcp_adapter_callback_present_at_first_rest = self::official_mcp_adapter_rest_callback_present();
+
+		if ( 0 === self::$plugins_loaded_count_at_first_rest ) {
+			self::$first_rest_classification = 'rest_before_plugins_loaded';
+		} elseif ( self::$doing_plugins_loaded_at_first_rest && ! self::$jetengine_registry_callback_present_at_first_rest ) {
+			self::$first_rest_classification = 'rest_during_plugins_loaded_before_jetengine_registration';
+		} elseif ( self::$jetengine_registry_callback_present_at_first_rest ) {
+			self::$first_rest_classification = 'jetengine_callbacks_present_at_first_rest';
+		} else {
+			self::$first_rest_classification = 'first_rest_phase_undetermined';
+		}
+
+		$trace = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 16 );
+		foreach ( is_array( $trace ) ? $trace : array() as $frame ) {
+			self::$first_rest_caller_trace[] = array(
+				'class' => isset( $frame['class'] ) ? self::bounded_trace_symbol( $frame['class'] ) : '',
+				'function' => isset( $frame['function'] ) ? self::bounded_trace_symbol( $frame['function'] ) : '',
+				'relative_file' => isset( $frame['file'] ) ? self::relative_wordpress_path( $frame['file'] ) : '',
+				'line' => isset( $frame['line'] ) ? max( 0, (int) $frame['line'] ) : 0,
+			);
+			if ( count( self::$first_rest_caller_trace ) >= 16 ) break;
+		}
+	}
+
+	private static function bounded_trace_symbol( $value ) {
+		$value = sanitize_text_field( (string) $value );
+		return strlen( $value ) > 191 ? substr( $value, 0, 191 ) : $value;
+	}
+
+	private static function relative_wordpress_path( $file ) {
+		if ( ! is_string( $file ) || '' === $file ) return '';
+		$file = wp_normalize_path( $file );
+		$roots = array();
+		if ( defined( 'WPMU_PLUGIN_DIR' ) ) $roots[] = array( wp_normalize_path( WPMU_PLUGIN_DIR ), 'wp-content/mu-plugins/' );
+		if ( defined( 'WP_PLUGIN_DIR' ) ) $roots[] = array( wp_normalize_path( WP_PLUGIN_DIR ), 'wp-content/plugins/' );
+		if ( defined( 'WP_CONTENT_DIR' ) ) $roots[] = array( wp_normalize_path( WP_CONTENT_DIR ), 'wp-content/' );
+		if ( defined( 'ABSPATH' ) ) $roots[] = array( wp_normalize_path( ABSPATH ), '' );
+
+		foreach ( $roots as $entry ) {
+			$root = rtrim( (string) $entry[0], '/' ) . '/';
+			if ( 0 !== strpos( $file, $root ) ) continue;
+			$relative = ltrim( substr( $file, strlen( $root ) ), '/' );
+			if ( '' === $relative || false !== strpos( $relative, '../' ) ) return '';
+			return sanitize_text_field( (string) $entry[1] . $relative );
+		}
+		return '';
+	}
+
+	private static function rest_callback_present( $owner_class, $method = '' ) {
+		global $wp_filter;
+		if ( ! isset( $wp_filter['rest_api_init'] ) || ! is_object( $wp_filter['rest_api_init'] ) || empty( $wp_filter['rest_api_init']->callbacks ) ) return false;
+		foreach ( $wp_filter['rest_api_init']->callbacks as $callbacks ) {
+			foreach ( (array) $callbacks as $callback ) {
+				$function = isset( $callback['function'] ) ? $callback['function'] : null;
+				if ( ! is_array( $function ) || 2 !== count( $function ) ) continue;
+				$owner = is_object( $function[0] ) ? get_class( $function[0] ) : (string) $function[0];
+				if ( (string) $owner_class !== $owner ) continue;
+				if ( '' !== $method && (string) $method !== (string) $function[1] ) continue;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static function rest_callback_present_for_classes( array $classes ) {
+		foreach ( $classes as $class ) if ( self::rest_callback_present( $class ) ) return true;
+		return false;
+	}
+
+	private static function loaded_jetengine_rest_manager_classes() {
+		$result = array();
+		foreach ( get_declared_classes() as $class ) {
+			$class = (string) $class;
+			if ( 0 !== strpos( $class, 'Jet_Engine\\MCP_Tools\\Rest_API\\' ) ) continue;
+			$short = strtolower( substr( $class, strrpos( $class, '\\' ) + 1 ) );
+			if ( false === strpos( $short, 'manager' ) && false === strpos( $short, 'registry' ) ) continue;
+			$result[] = $class;
+			if ( count( $result ) >= 8 ) break;
+		}
+		return array_values( array_unique( $result ) );
+	}
+
+	private static function official_mcp_adapter_rest_callback_present() {
+		global $wp_filter;
+		if ( ! isset( $wp_filter['rest_api_init'] ) || ! is_object( $wp_filter['rest_api_init'] ) || empty( $wp_filter['rest_api_init']->callbacks ) ) return false;
+		foreach ( $wp_filter['rest_api_init']->callbacks as $callbacks ) {
+			foreach ( (array) $callbacks as $callback ) {
+				$function = isset( $callback['function'] ) ? $callback['function'] : null;
+				if ( ! is_array( $function ) || 2 !== count( $function ) ) continue;
+				$owner = is_object( $function[0] ) ? get_class( $function[0] ) : (string) $function[0];
+				if ( 0 === strpos( $owner, 'WP\\MCP\\' ) ) return true;
+				if ( ! method_exists( $owner, (string) $function[1] ) ) continue;
+				try {
+					$reflection = new ReflectionMethod( $owner, (string) $function[1] );
+					$file = self::relative_wordpress_path( (string) $reflection->getFileName() );
+					if ( 0 === strpos( $file, 'wp-content/plugins/mcp-adapter/' ) ) return true;
+				} catch ( Throwable $ignored ) {
+					continue;
+				}
+			}
+		}
+		return false;
 	}
 
 	public static function verify_adapter_init_after_rest() {
@@ -333,6 +473,19 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			'rest_postcondition_recovery_triggered' => self::$rest_postcondition_recovery_triggered,
 			'mcp_adapter_init_count' => did_action( 'mcp_adapter_init' ),
 			'rest_api_init_count' => did_action( 'rest_api_init' ),
+			'first_rest_observed' => self::$first_rest_observed,
+			'plugins_loaded_count_at_first_rest' => self::$plugins_loaded_count_at_first_rest,
+			'init_count_at_first_rest' => self::$init_count_at_first_rest,
+			'wp_loaded_count_at_first_rest' => self::$wp_loaded_count_at_first_rest,
+			'doing_plugins_loaded_at_first_rest' => self::$doing_plugins_loaded_at_first_rest,
+			'doing_init_at_first_rest' => self::$doing_init_at_first_rest,
+			'jetengine_registry_class_loaded_at_first_rest' => self::$jetengine_registry_class_loaded_at_first_rest,
+			'jetengine_registry_callback_present_at_first_rest' => self::$jetengine_registry_callback_present_at_first_rest,
+			'jetengine_rest_manager_class_loaded_at_first_rest' => self::$jetengine_rest_manager_class_loaded_at_first_rest,
+			'jetengine_rest_manager_callback_present_at_first_rest' => self::$jetengine_rest_manager_callback_present_at_first_rest,
+			'mcp_adapter_callback_present_at_first_rest' => self::$mcp_adapter_callback_present_at_first_rest,
+			'first_rest_classification' => self::$first_rest_classification,
+			'caller_trace' => self::$first_rest_caller_trace,
 			'abilities_init_count' => did_action( 'wp_abilities_api_init' ),
 			'category_init_count' => did_action( 'wp_abilities_api_categories_init' ),
 			'server_hook_bound' => false !== has_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ) ),
