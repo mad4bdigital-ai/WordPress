@@ -233,6 +233,7 @@ for marker in [
     "add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 )",
     "'execute_callback' => array( __CLASS__, 'status' )",
     "doing_action( 'rest_api_init' )",
+    "MAD4B_SCP_Live_Truth::current_authority_status()",
     "MAD4B_SCP_Staging_Write_Authority::eligible()",
     "return self::ineligible_status()",
     "'persistence' => 'not_applicable'",
@@ -270,6 +271,14 @@ if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not inspect REST before MCP transports are constructed')
 if "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not freeze provider runtime eligibility before REST registration completes')
+if "MAD4B_SCP_Staging_Write_Authority::reconcile()" in cert:
+    raise SystemExit('readonly write-runtime certification may not reconcile grants or subjects')
+if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile' )" in write:
+    raise SystemExit('write authority may not reconcile automatically during Abilities bootstrap')
+if "add_action( 'admin_init', array( __CLASS__, 'reconcile' )" in write:
+    raise SystemExit('write authority may not reconcile automatically during admin_init')
+if "MAD4B_SCP_Staging_Write_Authority::reconcile();" in plugin:
+    raise SystemExit('plugin lifecycle/admin read paths may not call destructive authority reconciliation')
 if "add_action( 'rest_api_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not run authority reconciliation on the REST/tools-list critical path')
 if cert.index("MAD4B_SCP_Staging_Write_Authority::eligible()") > cert.index("MAD4B_SCP_Audit::record"):
