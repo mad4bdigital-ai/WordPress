@@ -85,6 +85,7 @@ jobs:
             tests/runtime-authority-concurrency-worker.php \
             tests/runtime-authority-concurrency-verify.php \
             tests/authority-candidate-binding-runtime.php \
+            tests/runtime-write-authority-persisted-readback.php \
             tests/runtime-write-surface-smoke.php \
             tests/runtime-dynamic-skills-production-smoke.php; do
             php -l "$root/$file"
@@ -235,6 +236,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+      - name: Prove persisted authority survives an independent request
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-authority-persisted-readback.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
       - name: Prove read and status surfaces preserve authority-bearing persistence
         shell: bash
         run: |
