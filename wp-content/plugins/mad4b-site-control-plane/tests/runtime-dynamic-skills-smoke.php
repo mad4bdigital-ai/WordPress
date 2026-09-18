@@ -115,6 +115,55 @@ if ( empty( $write_authority['site_uuid'] ) || ! hash_equals( MAD4B_SCP_Site_Pro
 if ( ! isset( $write_authority['site_profile_revision'] ) || MAD4B_SCP_Site_Profile::revision() !== (int) $write_authority['site_profile_revision'] ) $fail( 'Write authority Site Profile revision mismatch.' );
 if ( empty( $write_authority['site_profile_digest'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::profile_digest(), (string) $write_authority['site_profile_digest'] ) ) $fail( 'Write authority Site Profile digest mismatch.' );
 
+// Regression: once an explicit governed reconciliation has produced a ready
+// authority, every ordinary inspection/status path must be grant-write-free.
+// Capture the exact canonical grant set, execute the same read surfaces used by
+// ChatGPT/Live Truth, then require byte-stable grant identity afterwards.
+if ( false !== has_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ) ) ) {
+	$fail( 'Destructive authority reconciliation is still attached to wp_abilities_api_init.' );
+}
+if ( false !== has_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ) ) ) {
+	$fail( 'Destructive authority reconciliation is still attached to admin_init.' );
+}
+$authority_agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( (string) $write_authority['agent_public_id'] );
+if ( ! is_array( $authority_agent ) || empty( $authority_agent['id'] ) ) $fail( 'Canonical write authority agent is unavailable for read-only boundary proof.' );
+$grant_snapshot = static function () use ( $authority_agent ) {
+	$rows = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $authority_agent['id'], 'mad4b-write' );
+	$normalized = array();
+	foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+		$normalized[] = array(
+			'id' => isset( $row['id'] ) ? (int) $row['id'] : 0,
+			'effect' => isset( $row['effect'] ) ? (string) $row['effect'] : '',
+			'server_id' => isset( $row['server_id'] ) ? (string) $row['server_id'] : '',
+			'ability_name' => isset( $row['ability_name'] ) ? (string) $row['ability_name'] : '',
+			'provider' => isset( $row['provider'] ) ? (string) $row['provider'] : '',
+			'environment' => isset( $row['environment'] ) ? (string) $row['environment'] : '',
+		);
+	}
+	usort( $normalized, static function ( $a, $b ) {
+		return strcmp( wp_json_encode( $a ), wp_json_encode( $b ) );
+	} );
+	return array(
+		'rows' => $normalized,
+		'hash' => hash( 'sha256', wp_json_encode( $normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
+	);
+};
+$grants_before_reads = $grant_snapshot();
+
+$read_authority = MAD4B_SCP_Staging_Write_Authority::status();
+if ( ! is_array( $read_authority ) ) $fail( 'Read-only authority status did not return an array.' );
+$live_authority = MAD4B_SCP_Live_Truth::current_authority_status();
+if ( ! is_array( $live_authority ) ) $fail( 'Live Truth authority status did not return an array.' );
+$live_certification = MAD4B_SCP_Live_Truth::current_write_certification();
+if ( ! is_array( $live_certification ) ) $fail( 'Live Truth write certification did not return an array.' );
+$certification_status = MAD4B_SCP_Write_Runtime_Certification::status();
+if ( ! is_array( $certification_status ) ) $fail( 'Write runtime certification status did not return an array.' );
+
+$grants_after_reads = $grant_snapshot();
+if ( ! hash_equals( $grants_before_reads['hash'], $grants_after_reads['hash'] ) || $grants_before_reads['rows'] !== $grants_after_reads['rows'] ) {
+	$fail( 'Read/status authority paths created, revoked, or changed exact grants.' );
+}
+
 $expected_core_writes = array(
 	'mad4b/content-update-post',
 	'mad4b/plugin-activate',
