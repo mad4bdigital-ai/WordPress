@@ -141,7 +141,9 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 				return new WP_Error( 'mad4b_approval_decision_runtime_prime_failed', 'Governed runtime could not be primed for the approval decision.' );
 			}
 		}
-		$status = MAD4B_SCP_Staging_Write_Authority::reconcile();
+		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
+			? MAD4B_SCP_Live_Truth::current_authority_status()
+			: MAD4B_SCP_Staging_Write_Authority::status();
 		if ( ! is_array( $status ) || empty( $status['ready'] ) || ! MAD4B_SCP_Staging_Write_Authority::effective() ) return new WP_Error( 'mad4b_approval_decision_write_authority_not_ready', 'Governed write authority is not ready.' );
 		return $status;
 	}
