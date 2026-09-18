@@ -16,12 +16,10 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 37 );
-		// Provider-native runtime eligibility is not authoritative until REST
-		// registration has completed. Observe at terminal rest_api_init priority so
-		// JetEngine has registered its native routes and Provider Isolation can retain
-		// the reviewed internal handlers before the write projection is certified.
-		// The observer reuses the already-created REST server and never bootstraps it.
-		add_action( 'rest_api_init', array( __CLASS__, 'observe' ), PHP_INT_MAX );
+		// Never run certification/reconciliation on rest_api_init. Refreshing MCP
+		// actions/tools must remain a read-only low-latency catalog operation.
+		// Heavy reconciliation is performed explicitly by this certification ability
+		// (execute_callback = observe) or from normal wp-admin requests.
 		add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 );
 	}
 
@@ -31,7 +29,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'label' => 'Get Governed Write Runtime Certification',
 			'description' => 'Read exact enrolled-site write authority, NHI grants, approval bootstrap/enforcement, transport mounting and local REST isolation evidence.',
 			'category' => 'mad4b-read',
-			'execute_callback' => array( __CLASS__, 'status' ),
+			'execute_callback' => array( __CLASS__, 'observe' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
@@ -45,6 +43,10 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 	public static function observe() {
 		if ( self::$observing ) return self::status();
+		// Guard against accidental invocation while REST routes are still being
+		// registered. This path performs authority reconciliation, audit writes and
+		// persistence and must never sit on the MCP tools/list critical path.
+		if ( function_exists( 'doing_action' ) && doing_action( 'rest_api_init' ) ) return self::status();
 		// Certification is meaningful only on the exact enrolled governed-write origin.
 		// Off-origin or non-authorized processes must stay fail-closed without producing
 		// audit or option churn merely because WordPress booted.
