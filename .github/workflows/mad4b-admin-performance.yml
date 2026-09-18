@@ -2,6 +2,7 @@ name: MAD4B Admin Performance
 
 on:
   push:
+    branches: [master]
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - '.github/workflows/mad4b-admin-performance.yml'
