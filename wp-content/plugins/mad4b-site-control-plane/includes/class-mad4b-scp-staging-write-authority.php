@@ -42,8 +42,35 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		}
 		$status['mutation_gate_configured'] = true;
 		$status['configuration_source'] = 'site_profile';
+		$status = self::restore_persisted_ready_status( $status );
 		self::$status = $status;
 		return $status;
+	}
+
+	private static function restore_persisted_ready_status( array $current ) {
+		$stored = get_option( self::OPTION, array() );
+		if ( ! is_array( $stored )
+			|| ! isset( $stored['contract'] )
+			|| self::CONTRACT !== (string) $stored['contract']
+			|| empty( $stored['ready'] )
+			|| 'ready' !== ( isset( $stored['state'] ) ? (string) $stored['state'] : '' )
+			|| ! empty( $stored['blocker'] )
+			|| empty( $stored['agent_public_id'] )
+			|| ! preg_match( '/^[a-f0-9-]{36}$/i', (string) $stored['agent_public_id'] )
+			|| empty( $stored['write_tool_count'] )
+			|| empty( $stored['write_inventory_fingerprint'] )
+			|| ! preg_match( '/^[a-f0-9]{64}$/', (string) $stored['write_inventory_fingerprint'] ) ) {
+			return $current;
+		}
+
+		foreach ( array( 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'environment', 'origin' ) as $key ) {
+			if ( ! array_key_exists( $key, $stored ) || ! array_key_exists( $key, $current ) || (string) $stored[ $key ] !== (string) $current[ $key ] ) return $current;
+		}
+
+		$stored['mutation_gate_configured'] = true;
+		$stored['configuration_source'] = 'site_profile';
+		$stored['restored_from_persisted_authority'] = true;
+		return $stored;
 	}
 
 	public static function boot() {

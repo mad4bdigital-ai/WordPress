@@ -80,6 +80,7 @@ jobs:
             includes/class-mad4b-scp-servers.php \
             includes/adapters/class-mad4b-scp-skills-adapter.php \
             tests/runtime-dynamic-skills-smoke.php \
+            tests/runtime-write-authority-persisted-readback.php \
             tests/runtime-write-surface-smoke.php \
             tests/runtime-dynamic-skills-production-smoke.php; do
             php -l "$root/$file"
@@ -228,6 +229,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+      - name: Prove persisted authority survives an independent request
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-write-authority-persisted-readback.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
       - name: Prove provider-uncertified mutations stay outside governed remote write projection
         shell: bash
         run: |
