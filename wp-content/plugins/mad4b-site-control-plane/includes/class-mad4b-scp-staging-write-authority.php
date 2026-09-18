@@ -66,10 +66,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	public static function effective() {
-		// Authorization follows current live truth, never a stale persisted snapshot.
-		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
-			? MAD4B_SCP_Live_Truth::current_authority_status()
-			: self::status();
+		// Authorization hot paths must not recursively rebuild the provider/write
+		// inventory. Only an explicitly reconciled persisted authority may enable
+		// this predicate; current read/status truth is evaluated separately by
+		// MAD4B_SCP_Live_Truth and is bound to the exact inventory fingerprint.
+		$status = self::status();
 		return ! empty( $status['ready'] );
 	}
 
