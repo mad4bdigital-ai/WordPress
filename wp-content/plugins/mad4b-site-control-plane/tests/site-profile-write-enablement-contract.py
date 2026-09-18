@@ -102,7 +102,9 @@ for marker in [
 core_write = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
 if 'mad4b/site-profile-write-enable' in core_write:
     raise SystemExit('bounded Site Profile write enablement leaked into normal governed write candidates')
-if "array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' )" not in servers:
-    raise SystemExit('unified ChatGPT catalog does not explicitly classify both bounded bootstrap mutations')
+if "array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' )" not in servers:
+    raise SystemExit('unified ChatGPT catalog does not explicitly classify all bounded bootstrap mutations')
+if 'mad4b/staging-write-grant-reconcile' in core_write:
+    raise SystemExit('bounded exact grant reconciliation leaked into normal governed write candidates')
 
 print('mad4b.site-profile-write-enablement.contract.v2: PASS')

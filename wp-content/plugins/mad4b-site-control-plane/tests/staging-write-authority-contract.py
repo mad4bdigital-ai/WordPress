@@ -230,7 +230,9 @@ for forbidden in [
 
 for marker in [
     "const CONTRACT = 'mad4b.write-runtime-certification.v2'",
-    "add_action( 'rest_api_init', array( __CLASS__, 'observe' ), PHP_INT_MAX )",
+    "add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 )",
+    "'execute_callback' => array( __CLASS__, 'status' )",
+    "doing_action( 'rest_api_init' )",
     "MAD4B_SCP_Staging_Write_Authority::eligible()",
     "return self::ineligible_status()",
     "'persistence' => 'not_applicable'",
@@ -268,6 +270,8 @@ if "add_action( 'wp_abilities_api_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not inspect REST before MCP transports are constructed')
 if "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not freeze provider runtime eligibility before REST registration completes')
+if "add_action( 'rest_api_init', array( __CLASS__, 'observe' )" in cert:
+    raise SystemExit('write certification must not run authority reconciliation on the REST/tools-list critical path')
 if cert.index("MAD4B_SCP_Staging_Write_Authority::eligible()") > cert.index("MAD4B_SCP_Audit::record"):
     raise SystemExit('write certification eligibility must be checked before any audit persistence')
 if cert.index("MAD4B_SCP_Staging_Write_Authority::eligible()") > cert.index("update_option( self::OPTION"):
