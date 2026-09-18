@@ -76,14 +76,10 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Governed_Ability_Overrides::boot();
 		MAD4B_SCP_Staging_Write_Authority::boot();
 
-		// Reconciliation used to run twice on ordinary wp-admin requests and once
-		// on every Abilities bootstrap. Keep zero-touch reconciliation only when the
-		// persisted authority is absent/stale OR the current request was reset to a
-		// bootstrap pending state. Reconcile itself suppresses stable audit churn.
+		// Inspection and mutation are separate contracts. Never reconcile grants
+		// or subjects from Abilities bootstrap or ordinary wp-admin reads.
 		remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );
 		remove_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 95 );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile_authority_if_needed' ), 95 );
-		add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' ), 20 );
 
 		MAD4B_SCP_Staging_Write_Planning_Guard::boot();
 		MAD4B_SCP_REST_Compatibility::boot();
@@ -164,42 +160,17 @@ final class MAD4B_SCP_Plugin {
 
 	public static function make_write_certification_explicit( $args, $name ) {
 		if ( ! is_array( $args ) || 'mad4b/write-runtime-certification' !== (string) $name ) return $args;
-		$args['execute_callback'] = array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' );
+		// The MCP status ability is readonly: fresh inspection only.
+		$args['execute_callback'] = array( 'MAD4B_SCP_Live_Truth', 'current_write_certification' );
 		return $args;
 	}
 
 	public static function reconcile_authority_if_needed() {
-		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
-		$stored = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
-		$tools = MAD4B_SCP_Staging_Write_Authority::write_tools();
-		$runtime = MAD4B_SCP_Staging_Write_Authority::status();
-		$inventory_rows = array();
-		foreach ( $tools as $ability ) {
-			$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability );
-			$inventory_rows[] = array( 'ability' => (string) $ability, 'provider' => null === $provider ? '' : (string) $provider );
+		// Compatibility entry point retained for older callers. Inspection only.
+		if ( class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' ) ) {
+			return MAD4B_SCP_Live_Truth::current_authority_status();
 		}
-		usort( $inventory_rows, static function ( $a, $b ) { return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] ); } );
-		$inventory_fingerprint = hash( 'sha256', wp_json_encode( $inventory_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
-		$stored_stable = is_array( $stored )
-			&& isset( $stored['contract'] )
-			&& MAD4B_SCP_Staging_Write_Authority::CONTRACT === (string) $stored['contract']
-			&& ! empty( $stored['ready'] )
-			&& empty( $stored['blocker'] )
-			&& empty( $stored['grant_blockers'] )
-			&& empty( $stored['breakglass_included'] )
-			&& isset( $stored['write_tool_count'] )
-			&& (int) $stored['write_tool_count'] === count( $tools )
-			&& isset( $stored['write_inventory_fingerprint'] )
-			&& hash_equals( $inventory_fingerprint, (string) $stored['write_inventory_fingerprint'] );
-		$runtime_stable = is_array( $runtime )
-			&& ! empty( $runtime['ready'] )
-			&& empty( $runtime['blocker'] )
-			&& isset( $runtime['write_tool_count'] )
-			&& (int) $runtime['write_tool_count'] === count( $tools )
-			&& isset( $runtime['write_inventory_fingerprint'] )
-			&& hash_equals( $inventory_fingerprint, (string) $runtime['write_inventory_fingerprint'] );
-		if ( $stored_stable && $runtime_stable ) return;
-		MAD4B_SCP_Staging_Write_Authority::reconcile();
+		return class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
 	}
 
 	public static function is_authority_admin_surface() {
@@ -209,8 +180,9 @@ final class MAD4B_SCP_Plugin {
 	}
 
 	public static function reconcile_authority_on_mad4b_admin() {
-		if ( ! current_user_can( 'manage_options' ) || ! self::is_authority_admin_surface() ) return;
-		MAD4B_SCP_Staging_Write_Authority::reconcile();
+		// Compatibility entry point only. Admin reads must not mutate grants.
+		if ( ! current_user_can( 'manage_options' ) || ! self::is_authority_admin_surface() ) return array();
+		return self::reconcile_authority_if_needed();
 	}
 
 	public static function observe_write_certification_on_certification_page() {
