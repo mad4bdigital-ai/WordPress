@@ -279,6 +279,8 @@ if "add_action( 'admin_init', array( __CLASS__, 'reconcile' )" in write:
     raise SystemExit('write authority may not reconcile automatically during admin_init')
 if "MAD4B_SCP_Staging_Write_Authority::reconcile();" in plugin:
     raise SystemExit('plugin lifecycle/admin read paths may not call destructive authority reconciliation')
+if "MAD4B_SCP_Live_Truth::current_authority_status()" in write.split("public static function effective()", 1)[1].split("public static function status()", 1)[0]:
+    raise SystemExit('authority effective() hot path may not recursively rebuild Live Truth/write inventory')
 if "add_action( 'rest_api_init', array( __CLASS__, 'observe' )" in cert:
     raise SystemExit('write certification must not run authority reconciliation on the REST/tools-list critical path')
 if cert.index("MAD4B_SCP_Staging_Write_Authority::eligible()") > cert.index("MAD4B_SCP_Audit::record"):
