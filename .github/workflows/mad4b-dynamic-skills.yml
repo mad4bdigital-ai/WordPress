@@ -80,6 +80,8 @@ jobs:
             includes/class-mad4b-scp-servers.php \
             includes/adapters/class-mad4b-scp-skills-adapter.php \
             tests/runtime-dynamic-skills-smoke.php \
+            tests/runtime-governance-readonly-immutability.php \
+            tests/runtime-plugin-lifecycle-data-continuity.php \
             tests/runtime-write-surface-smoke.php \
             tests/runtime-dynamic-skills-production-smoke.php; do
             php -l "$root/$file"
@@ -92,6 +94,7 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py
 
       - name: Deny Skill mutation and breakglass leakage
         shell: bash
@@ -228,6 +231,31 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+      - name: Prove read and status surfaces preserve authority-bearing persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-governance-readonly-immutability.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
+      - name: Prove deactivate and reactivate preserve governance data
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-dynamic-skills-staging
+          SNAPSHOT=/tmp/mad4b-scp-plugin-lifecycle-snapshot.json
+          export MAD4B_LIFECYCLE_SNAPSHOT_FILE="$SNAPSHOT"
+
+          export MAD4B_LIFECYCLE_PHASE=capture
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          php /tmp/wp-cli.phar plugin deactivate mad4b-site-control-plane --path="$WP_PATH"
+          export MAD4B_LIFECYCLE_PHASE=verify
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
+          php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-lifecycle-data-continuity.php" --path="$WP_PATH" --user=mad4b-ci-admin
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-governance-readonly-immutability.php" --path="$WP_PATH" --user=mad4b-ci-admin
+
       - name: Prove provider-uncertified mutations stay outside governed remote write projection
         shell: bash
         run: |
