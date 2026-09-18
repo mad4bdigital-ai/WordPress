@@ -27,11 +27,15 @@ final class MAD4B_SCP_Skill_Exporter {
 		if ( count( $skills ) > self::MAX_EXPORT_SKILLS ) return new WP_Error( 'mad4b_skill_export_skill_limit_exceeded', 'Enabled Skill count exceeds the bounded portable export limit.' );
 		$app_id = isset( $identity['app_id'] ) ? (string) $identity['app_id'] : '';
 
-		// A manifest declaration is not authority. Export Write only after a fresh
-		// exact-origin authority reconciliation AND a fresh runtime certification.
-		// Stale stored certification therefore cannot keep Write in a new package.
-		$write_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconcile() : array();
-		$write_certification = class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::observe() : array();
+		// A manifest declaration is not authority. Export Write only from fresh
+		// read-only live truth. Export must never create/revoke grants or persist
+		// authority merely to answer capability state.
+		$write_authority = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
+			? MAD4B_SCP_Live_Truth::current_authority_status()
+			: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() );
+		$write_certification = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_write_certification' )
+			? MAD4B_SCP_Live_Truth::current_write_certification()
+			: ( class_exists( 'MAD4B_SCP_Write_Runtime_Certification' ) ? MAD4B_SCP_Write_Runtime_Certification::status() : array() );
 		$write_ready = ! empty( $write_authority['ready'] ) && ! empty( $write_certification['ready'] );
 		$capabilities = $write_ready ? array( 'Read', 'Write' ) : array( 'Read' );
 
