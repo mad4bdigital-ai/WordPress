@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 isolation = (ROOT / 'includes/class-mad4b-scp-mcp-provider-isolation.php').read_text('utf-8')
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
+client = (ROOT / 'includes/adapters/class-mad4b-scp-jetengine-mcp-client.php').read_text('utf-8')
 
 PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v4'
 LEGACY_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3'
@@ -60,6 +61,24 @@ require(isolation, "'changes_provider_settings' => false", 'no-provider-settings
 require(isolation, "'disables_provider_plugins' => false", 'no-plugin-disable')
 require(isolation, "'creates_authority' => false", 'no-authority-creation')
 require(isolation, "'wpmedia_oauth_server_suppressed' => self::effective()", 'wpmedia-status-evidence')
+
+require(isolation, "retain_internal_provider_route", 'jetengine-internal-route-retention')
+require(isolation, "internal_provider_transport_status", 'jetengine-internal-transport-status')
+require(isolation, "dispatch_internal_provider_request", 'jetengine-internal-dispatch')
+require(isolation, "'raw_routes_exposed' => false", 'jetengine-raw-routes-remain-hidden')
+require(isolation, "'mcp_execution_surface' === (string) $descriptor['class']", 'retain-execution-surfaces-only')
+require(client, "'isolated-native-rest-tools'", 'native-bridge-isolated-transport')
+require(client, "MAD4B_SCP_MCP_Provider_Isolation::dispatch_internal_provider_request( 'jetengine', $request )", 'native-bridge-governed-isolation-handoff')
+require(client, "'raw_provider_routes_exposed' => false", 'native-client-no-raw-route-exposure')
+
+for forbidden in (
+    "register_rest_route(",
+    "do_action( 'rest_api_init'",
+    'rest_get_server(',
+):
+    retained_start = isolation.index('public static function dispatch_internal_provider_request')
+    retained_end = isolation.index('public static function descriptors()', retained_start)
+    forbid(isolation[retained_start:retained_end], forbidden, 'internal-handoff-no-route-registration-or-rest-replay')
 
 for provider in ('hostinger_ai_assistant', 'fluent_forms', 'jetengine', 'uae_hfe', 'elementskit'):
     require(isolation, f"'provider' => '{provider}'", f'provider-{provider}')

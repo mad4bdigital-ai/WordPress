@@ -52,6 +52,35 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'hostinger-ai-assistant/v1', '/jwt/revoke', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'fluentform/v1', '/mcp/status', array( 'methods' => 'GET', 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'jet-engine/v1', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
+	register_rest_route( 'jet-engine/v1', '/mcp-tools', array(
+		'methods' => 'GET',
+		'callback' => function () {
+			return rest_ensure_response( array( 'tools' => array(
+				array(
+					'name' => 'jetengine/get-website-config',
+					'title' => 'Get JetEngine Website Config',
+					'description' => 'Get JetEngine website config through the isolated native provider bridge.',
+					'annotations' => array( 'readOnlyHint' => true ),
+					'inputSchema' => array(),
+				),
+			) ) );
+		},
+		'permission_callback' => $permission,
+	) );
+	register_rest_route( 'jet-engine/v1', '/mcp-tools/run/(?P<tool>[a-zA-Z0-9\-\/]+?)', array(
+		'methods' => 'POST',
+		'callback' => function ( $request ) {
+			return rest_ensure_response( array(
+				'ok' => true,
+				'tool' => (string) $request->get_param( 'tool' ),
+				'input' => (array) $request->get_param( 'input' ),
+			) );
+		},
+		'permission_callback' => $permission,
+		'args' => array(
+			'input' => array( 'type' => 'object', 'required' => false, 'default' => array() ),
+		),
+	) );
 	register_rest_route( 'hfe/v1', '/mcp-settings', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'elementskit/v1', '/mcp-proxy', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
@@ -73,6 +102,8 @@ foreach ( array(
 	'/hostinger-ai-assistant/v1/jwt/revoke',
 	'/fluentform/v1/mcp/status',
 	'/jet-engine/v1/mcp',
+	'/jet-engine/v1/mcp-tools',
+	'/jet-engine/v1/mcp-tools/run/(?P<tool>[a-zA-Z0-9\\-\\/]+?)',
 	'/hfe/v1/mcp-settings',
 	'/elementskit/mcp',
 	'/elementskit/v1/mcp-proxy',
@@ -84,6 +115,42 @@ if ( ! isset( $routes['/hostinger-easy-onboarding/v1/update-mcp-connector-banner
 }
 if ( ! isset( $routes['/unknown-provider/v1/mcp-unreviewed'] ) ) {
 	mad4b_isolation_fail( 'Unknown MCP route was hidden instead of remaining fail-closed.' );
+}
+
+$internal_transport = MAD4B_SCP_MCP_Provider_Isolation::internal_provider_transport_status( 'jetengine' );
+if ( empty( $internal_transport['registry_available'] ) || empty( $internal_transport['run_available'] ) || ! empty( $internal_transport['raw_routes_exposed'] ) ) {
+	mad4b_isolation_fail( 'JetEngine isolated provider handoff did not retain registry/run internally while keeping raw routes hidden.', $internal_transport );
+}
+if ( ! class_exists( 'MAD4B_SCP_JetEngine_MCP_Client' ) ) {
+	mad4b_isolation_fail( 'JetEngine native client is unavailable for isolation handoff proof.' );
+}
+$transport = MAD4B_SCP_JetEngine_MCP_Client::transport_status();
+if ( ! empty( $transport['native_rest_registry_available'] ) || ! empty( $transport['native_rest_run_available'] ) ) {
+	mad4b_isolation_fail( 'Raw JetEngine native REST transport remained externally visible.', $transport );
+}
+if ( empty( $transport['isolated_native_rest_registry_available'] ) || empty( $transport['isolated_native_rest_run_available'] ) || 'isolated-native-rest-tools' !== $transport['preferred_transport'] || empty( $transport['available'] ) ) {
+	mad4b_isolation_fail( 'JetEngine isolated native transport is not available to the internal bridge.', $transport );
+}
+
+$native_bridge = class_exists( 'MAD4B_SCP_Adapter_Registry' ) ? MAD4B_SCP_Adapter_Registry::instance()->get( 'native-provider-bridge' ) : null;
+if ( ! ( $native_bridge instanceof MAD4B_SCP_Native_Provider_Bridge_Adapter ) ) {
+	mad4b_isolation_fail( 'Native Provider Bridge adapter is unavailable.' );
+}
+$inventory = $native_bridge->jetengine_inventory();
+$website_row = null;
+foreach ( isset( $inventory['operations'] ) && is_array( $inventory['operations'] ) ? $inventory['operations'] : array() as $item ) {
+	if ( isset( $item['operation'] ) && 'get_website_config' === $item['operation'] ) { $website_row = $item; break; }
+}
+if ( ! is_array( $website_row ) || empty( $website_row['available'] ) || 'isolated-native-rest-tools' !== ( isset( $website_row['provider_native_channel'] ) ? $website_row['provider_native_channel'] : '' ) ) {
+	mad4b_isolation_fail( 'Native Provider Bridge did not discover the isolated JetEngine tool internally.', array( 'inventory' => $inventory, 'row' => $website_row ) );
+}
+$read_result = $native_bridge->jetengine_get_website_config( array(
+	'expected_native_ability' => (string) $website_row['name'],
+	'expected_schema_sha256' => (string) $website_row['schema_sha256'],
+	'input' => array(),
+) );
+if ( is_wp_error( $read_result ) || empty( $read_result['ok'] ) || 'jetengine/get-website-config' !== ( isset( $read_result['tool'] ) ? $read_result['tool'] : '' ) ) {
+	mad4b_isolation_fail( 'Governed Native Provider Bridge could not execute the retained read-only JetEngine handler.', $read_result );
 }
 
 $status = MAD4B_SCP_MCP_Provider_Isolation::status();

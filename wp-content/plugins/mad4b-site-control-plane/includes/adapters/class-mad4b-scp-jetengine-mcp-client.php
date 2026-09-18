@@ -44,6 +44,26 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return is_array( $routes ) ? $routes : array();
 	}
 
+	private static function isolated_transport_status() {
+		if ( ! class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) || ! method_exists( 'MAD4B_SCP_MCP_Provider_Isolation', 'internal_provider_transport_status' ) ) {
+			return array( 'registry_available' => false, 'run_available' => false, 'retained_route_count' => 0, 'raw_routes_exposed' => false );
+		}
+		$status = MAD4B_SCP_MCP_Provider_Isolation::internal_provider_transport_status( 'jetengine' );
+		return is_array( $status ) ? $status : array( 'registry_available' => false, 'run_available' => false, 'retained_route_count' => 0, 'raw_routes_exposed' => false );
+	}
+
+	private static function isolated_rest_tools_available() {
+		$status = self::isolated_transport_status();
+		return ! empty( $status['registry_available'] ) && ! empty( $status['run_available'] );
+	}
+
+	private static function dispatch_isolated_request( WP_REST_Request $request ) {
+		if ( ! class_exists( 'MAD4B_SCP_MCP_Provider_Isolation' ) || ! method_exists( 'MAD4B_SCP_MCP_Provider_Isolation', 'dispatch_internal_provider_request' ) ) {
+			return new WP_Error( 'mad4b_jetengine_isolated_transport_unavailable', 'JetEngine isolated provider handoff is unavailable.' );
+		}
+		return MAD4B_SCP_MCP_Provider_Isolation::dispatch_internal_provider_request( 'jetengine', $request );
+	}
+
 	public static function endpoint() {
 		if ( is_string( self::$endpoint ) && '' !== self::$endpoint ) return self::$endpoint;
 		$routes = self::routes();
@@ -106,6 +126,9 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		$mcp = self::endpoint();
 		$registry = self::registry_endpoint();
 		$run = self::rest_run_route_available();
+		$isolated = self::isolated_transport_status();
+		$isolated_registry = ! empty( $isolated['registry_available'] );
+		$isolated_run = ! empty( $isolated['run_available'] );
 		return array(
 			'contract' => self::CONTRACT,
 			'mcp_jsonrpc_endpoint' => $mcp,
@@ -113,8 +136,12 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 			'native_rest_registry_endpoint' => $registry,
 			'native_rest_registry_available' => '' !== $registry,
 			'native_rest_run_available' => (bool) $run,
-			'preferred_transport' => '' !== $mcp ? 'mcp-jsonrpc' : ( '' !== $registry && $run ? 'native-rest-tools' : 'unavailable' ),
-			'available' => '' !== $mcp || ( '' !== $registry && $run ),
+			'isolated_native_rest_registry_available' => $isolated_registry,
+			'isolated_native_rest_run_available' => $isolated_run,
+			'isolated_native_rest_retained_route_count' => isset( $isolated['retained_route_count'] ) ? (int) $isolated['retained_route_count'] : 0,
+			'raw_provider_routes_exposed' => false,
+			'preferred_transport' => '' !== $mcp ? 'mcp-jsonrpc' : ( '' !== $registry && $run ? 'native-rest-tools' : ( $isolated_registry && $isolated_run ? 'isolated-native-rest-tools' : 'unavailable' ) ),
+			'available' => '' !== $mcp || ( '' !== $registry && $run ) || ( $isolated_registry && $isolated_run ),
 		);
 	}
 
@@ -300,11 +327,15 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return $normalized;
 	}
 
-	private static function rest_registry_tools() {
-		$endpoint = self::registry_endpoint();
-		if ( '' === $endpoint || ! self::rest_run_route_available() ) return new WP_Error( 'mad4b_jetengine_rest_tools_unavailable', 'JetEngine native REST tool registry/run routes are not both registered.' );
+	private static function rest_registry_tools( $isolated = false ) {
+		$endpoint = $isolated ? '/jet-engine/v1/mcp-tools' : self::registry_endpoint();
+		if ( $isolated ) {
+			if ( ! self::isolated_rest_tools_available() ) return new WP_Error( 'mad4b_jetengine_isolated_rest_tools_unavailable', 'JetEngine isolated native REST registry/run handlers are not both retained.' );
+		} elseif ( '' === $endpoint || ! self::rest_run_route_available() ) {
+			return new WP_Error( 'mad4b_jetengine_rest_tools_unavailable', 'JetEngine native REST tool registry/run routes are not both registered.' );
+		}
 		$request = new WP_REST_Request( 'GET', $endpoint );
-		$response = rest_do_request( $request );
+		$response = $isolated ? self::dispatch_isolated_request( $request ) : rest_do_request( $request );
 		if ( is_wp_error( $response ) ) return $response;
 		$status = (int) $response->get_status();
 		if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_jetengine_rest_tools_http_error', 'JetEngine native REST tool registry returned a non-success HTTP status.', array( 'status' => $status ) );
@@ -314,7 +345,7 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		foreach ( $entries as $key => $tool ) {
 			if ( ! is_array( $tool ) ) continue;
 			$fallback = is_string( $key ) ? $key : '';
-			$row = self::normalize_tool( $tool, 'native-rest-tools', $fallback );
+			$row = self::normalize_tool( $tool, $isolated ? 'isolated-native-rest-tools' : 'native-rest-tools', $fallback );
 			if ( '' === $row['name'] ) continue;
 			$normalized[ $row['name'] ] = $row;
 		}
@@ -334,6 +365,11 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 			$tools = self::rest_registry_tools();
 			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
 			if ( is_wp_error( $tools ) ) $errors['native_rest_tools'] = $tools->get_error_code();
+		}
+		if ( self::isolated_rest_tools_available() ) {
+			$tools = self::rest_registry_tools( true );
+			if ( ! is_wp_error( $tools ) && ! empty( $tools ) ) { self::$tools = $tools; return self::$tools; }
+			if ( is_wp_error( $tools ) ) $errors['isolated_native_rest_tools'] = $tools->get_error_code();
 		}
 		return new WP_Error( 'mad4b_jetengine_native_tools_unavailable', 'JetEngine exposes no discoverable native tool collection through its MCP or native REST tool transports.', array( 'transport_status' => self::transport_status(), 'errors' => $errors ) );
 	}
@@ -362,14 +398,18 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return true;
 	}
 
-	private static function call_rest_tool( $tool_name, array $arguments ) {
-		if ( ! self::rest_run_route_available() ) return new WP_Error( 'mad4b_jetengine_rest_tool_run_unavailable', 'JetEngine native REST tool run route is unavailable.' );
+	private static function call_rest_tool( $tool_name, array $arguments, $isolated = false ) {
+		if ( $isolated ) {
+			if ( ! self::isolated_rest_tools_available() ) return new WP_Error( 'mad4b_jetengine_isolated_rest_tool_run_unavailable', 'JetEngine isolated native REST tool run handler is unavailable.' );
+		} elseif ( ! self::rest_run_route_available() ) {
+			return new WP_Error( 'mad4b_jetengine_rest_tool_run_unavailable', 'JetEngine native REST tool run route is unavailable.' );
+		}
 		if ( ! preg_match( '#^[a-zA-Z0-9\-/]+$#', (string) $tool_name ) ) return new WP_Error( 'mad4b_jetengine_rest_tool_name_invalid', 'JetEngine native REST tool name cannot be represented by the provider run route.' );
 		$route = '/jet-engine/v1/mcp-tools/run/' . ltrim( (string) $tool_name, '/' );
 		$request = new WP_REST_Request( 'POST', $route );
 		$request->set_header( 'content-type', 'application/json' );
 		$request->set_body_params( array( 'input' => $arguments ) );
-		$response = rest_do_request( $request );
+		$response = $isolated ? self::dispatch_isolated_request( $request ) : rest_do_request( $request );
 		if ( is_wp_error( $response ) ) return $response;
 		$status = (int) $response->get_status();
 		if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_jetengine_rest_tool_http_error', 'JetEngine native REST tool execution returned a non-success HTTP status.', array( 'status' => $status, 'tool' => $tool_name ) );
@@ -383,6 +423,7 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		if ( is_wp_error( $tools ) || ! isset( $tools[ $tool_name ] ) ) return is_wp_error( $tools ) ? $tools : new WP_Error( 'mad4b_jetengine_mcp_tool_missing', 'Planned JetEngine native tool is no longer available.' );
 		$channel = isset( $tools[ $tool_name ]['provider_native_channel'] ) ? (string) $tools[ $tool_name ]['provider_native_channel'] : 'mcp-jsonrpc';
 		if ( 'native-rest-tools' === $channel ) return self::call_rest_tool( $tool_name, $arguments );
+		if ( 'isolated-native-rest-tools' === $channel ) return self::call_rest_tool( $tool_name, $arguments, true );
 		$init = self::initialize();
 		if ( is_wp_error( $init ) ) return $init;
 		$call = self::rpc( 'tools/call', array( 'name' => (string) $tool_name, 'arguments' => $arguments ), (string) $init['session_id'] );

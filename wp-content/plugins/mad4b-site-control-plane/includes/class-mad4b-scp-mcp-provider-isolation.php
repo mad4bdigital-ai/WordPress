@@ -16,6 +16,36 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * or auto-enables mutation. Unknown routes and unknown server callbacks remain
  * untouched and therefore remain visible to fail-closed peer governance.
  */
+if ( class_exists( 'WP_REST_Server' ) && ! class_exists( 'MAD4B_SCP_Internal_Provider_REST_Dispatcher', false ) ) {
+	final class MAD4B_SCP_Internal_Provider_REST_Dispatcher extends WP_REST_Server {
+		public function dispatch_retained( WP_REST_Request $request, $route, array $handler, array $url_params = array() ) {
+			$request->set_url_params( $url_params );
+			$request->set_attributes( $handler );
+
+			$defaults = array();
+			foreach ( isset( $handler['args'] ) && is_array( $handler['args'] ) ? $handler['args'] : array() as $arg => $options ) {
+				if ( is_array( $options ) && isset( $options['default'] ) ) $defaults[ $arg ] = $options['default'];
+			}
+			$request->set_default_params( $defaults );
+
+			$error = null;
+			if ( empty( $handler['callback'] ) || ! is_callable( $handler['callback'] ) ) {
+				$error = new WP_Error( 'mad4b_internal_provider_handler_invalid', 'Retained provider route handler is not callable.', array( 'status' => 500 ) );
+			}
+			if ( ! is_wp_error( $error ) ) {
+				$valid = $request->has_valid_params();
+				if ( is_wp_error( $valid ) ) {
+					$error = $valid;
+				} else {
+					$sanitized = $request->sanitize_params();
+					if ( is_wp_error( $sanitized ) ) $error = $sanitized;
+				}
+			}
+			return $this->respond_to_request( $request, (string) $route, $handler, $error );
+		}
+	}
+}
+
 final class MAD4B_SCP_MCP_Provider_Isolation {
 	const CONTRACT = 'mad4b.mcp-provider-isolation.v3';
 	const PREVIOUS_CONTRACT = 'mad4b.mcp-provider-isolation.v2';
@@ -27,6 +57,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 	private static $early_booted = false;
 	private static $booted = false;
 	private static $removed_routes = array();
+	private static $internal_provider_routes = array();
 	private static $suppression_attempted = false;
 	private static $suppressed_server_callbacks = array();
 	private static $staging_autoconfig_evaluated = false;
@@ -152,11 +183,102 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 		foreach ( array_keys( $endpoints ) as $route ) {
 			$descriptor = self::descriptor_for_route( (string) $route );
 			if ( ! $descriptor ) continue;
+			if ( 'jetengine' === (string) $descriptor['provider'] && 'mcp_execution_surface' === (string) $descriptor['class'] ) {
+				self::retain_internal_provider_route( (string) $route, isset( $endpoints[ $route ] ) ? $endpoints[ $route ] : array() );
+			}
 			self::$removed_routes[] = substr( (string) $route, 0, 255 );
 			unset( $endpoints[ $route ] );
 		}
 		self::$removed_routes = array_values( array_unique( self::$removed_routes ) );
 		return $endpoints;
+	}
+
+	private static function retain_internal_provider_route( $route, $definition ) {
+		$route = (string) $route;
+		if ( ! is_array( $definition ) || count( self::$internal_provider_routes ) >= 8 ) return;
+		$descriptor = self::descriptor_for_route( $route );
+		if ( ! $descriptor || 'jetengine' !== (string) $descriptor['provider'] || 'mcp_execution_surface' !== (string) $descriptor['class'] ) return;
+		self::$internal_provider_routes[ $route ] = $definition;
+	}
+
+	public static function internal_provider_transport_status( $provider ) {
+		$provider = sanitize_key( (string) $provider );
+		$registry = false;
+		$run = false;
+		$count = 0;
+		if ( 'jetengine' === $provider ) {
+			foreach ( array_keys( self::$internal_provider_routes ) as $route ) {
+				++$count;
+				if ( preg_match( '#^/jet-engine/v1/mcp-tools/?$#', (string) $route ) ) $registry = true;
+				if ( 0 === strpos( (string) $route, '/jet-engine/v1/mcp-tools/run' ) ) $run = true;
+			}
+		}
+		return array(
+			'provider' => $provider,
+			'isolation_effective' => self::effective(),
+			'retained_route_count' => $count,
+			'registry_available' => $registry,
+			'run_available' => $run,
+			'raw_routes_exposed' => false,
+		);
+	}
+
+	private static function method_allowed( array $handler, $method ) {
+		$method = strtoupper( (string) $method );
+		$methods = isset( $handler['methods'] ) ? $handler['methods'] : array();
+		if ( is_string( $methods ) ) {
+			$methods = array_map( 'trim', explode( ',', strtoupper( $methods ) ) );
+			return in_array( $method, $methods, true ) || ( 'HEAD' === $method && in_array( 'GET', $methods, true ) );
+		}
+		if ( ! is_array( $methods ) ) return false;
+		if ( ! empty( $methods[ $method ] ) ) return true;
+		return 'HEAD' === $method && ! empty( $methods['GET'] );
+	}
+
+	private static function retained_route_match( $actual_route ) {
+		$actual_route = '/' . ltrim( (string) $actual_route, '/' );
+		foreach ( self::$internal_provider_routes as $route_pattern => $definition ) {
+			$descriptor = self::descriptor_for_route( (string) $route_pattern );
+			if ( ! $descriptor || 'jetengine' !== (string) $descriptor['provider'] || 'mcp_execution_surface' !== (string) $descriptor['class'] ) continue;
+			$regex = '#^' . str_replace( '#', '\\#', (string) $route_pattern ) . '$#';
+			$matches = array();
+			if ( 1 !== @preg_match( $regex, $actual_route, $matches ) ) continue;
+			$params = array();
+			foreach ( $matches as $key => $value ) if ( is_string( $key ) ) $params[ $key ] = $value;
+			return array( 'route' => (string) $route_pattern, 'definition' => $definition, 'params' => $params );
+		}
+		return null;
+	}
+
+	public static function dispatch_internal_provider_request( $provider, $request ) {
+		if ( ! self::effective() ) return new WP_Error( 'mad4b_internal_provider_isolation_inactive', 'Internal provider handoff requires effective provider isolation.' );
+		if ( 'jetengine' !== sanitize_key( (string) $provider ) ) return new WP_Error( 'mad4b_internal_provider_not_allowed', 'Internal provider handoff is not allowed for this provider.' );
+		if ( ! ( $request instanceof WP_REST_Request ) ) return new WP_Error( 'mad4b_internal_provider_request_invalid', 'Internal provider handoff requires a REST request object.' );
+		if ( ! class_exists( 'MAD4B_SCP_Internal_Provider_REST_Dispatcher', false ) ) return new WP_Error( 'mad4b_internal_provider_dispatcher_unavailable', 'Internal provider REST dispatcher is unavailable.' );
+
+		$actual_route = '/' . ltrim( (string) $request->get_route(), '/' );
+		$is_registry = preg_match( '#^/jet-engine/v1/mcp-tools/?$#', $actual_route );
+		$is_run = preg_match( '#^/jet-engine/v1/mcp-tools/run/[a-zA-Z0-9\-/]+$#', $actual_route );
+		if ( ( 'GET' !== strtoupper( $request->get_method() ) || ! $is_registry ) && ( 'POST' !== strtoupper( $request->get_method() ) || ! $is_run ) ) {
+			return new WP_Error( 'mad4b_internal_provider_route_not_allowed', 'Only the isolated JetEngine native registry and run routes may be dispatched internally.' );
+		}
+
+		$matched = self::retained_route_match( $actual_route );
+		if ( ! is_array( $matched ) ) return new WP_Error( 'mad4b_internal_provider_route_unavailable', 'The isolated JetEngine provider route was not retained for internal governed use.' );
+		$definition = isset( $matched['definition'] ) && is_array( $matched['definition'] ) ? $matched['definition'] : array();
+		$handlers = isset( $definition['callback'] ) ? array( $definition ) : $definition;
+		foreach ( $handlers as $key => $handler ) {
+			if ( ! is_int( $key ) && ! isset( $definition['callback'] ) ) continue;
+			if ( ! is_array( $handler ) || ! self::method_allowed( $handler, $request->get_method() ) ) continue;
+			$dispatcher = new MAD4B_SCP_Internal_Provider_REST_Dispatcher();
+			return $dispatcher->dispatch_retained(
+				$request,
+				isset( $matched['route'] ) ? (string) $matched['route'] : $actual_route,
+				$handler,
+				isset( $matched['params'] ) && is_array( $matched['params'] ) ? $matched['params'] : array()
+			);
+		}
+		return new WP_Error( 'mad4b_internal_provider_handler_unavailable', 'No retained JetEngine provider handler accepts the requested method.' );
 	}
 
 	public static function descriptors() {
@@ -232,6 +354,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'suppressed_server_callbacks' => array_slice( $suppressed, 0, 100 ),
 			'server_callback_descriptors' => $server_descriptors,
 			'removed_route_count' => count( self::$removed_routes ),
+			'internal_handoff' => self::internal_provider_transport_status( 'jetengine' ),
 			'removed_routes' => array_slice( self::$removed_routes, 0, 100 ),
 			'descriptors' => $route_descriptors,
 			'unknown_routes_fail_closed' => true,
