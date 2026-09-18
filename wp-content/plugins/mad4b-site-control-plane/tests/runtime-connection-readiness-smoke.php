@@ -48,6 +48,7 @@ $check( $mcp_init_count_before_bridge_status === did_action( 'mcp_adapter_init' 
 $check( $rest_init_count_before_bridge_status === did_action( 'rest_api_init' ), 'Reading MCP registration lifecycle replayed REST init.' );
 
 $status = MAD4B_SCP_Connection_Status::status();
+$bridge_status_after_connection_status = MAD4B_SCP_MCP_Registration_Bridge::status();
 $check( isset( $status['contract'] ) && 'mad4b.connection-readiness.v4' === $status['contract'], 'Unexpected connection readiness contract.' );
 
 $check( isset( $status['mcp_registration_lifecycle'] ) && is_array( $status['mcp_registration_lifecycle'] ), 'MCP registration lifecycle projection missing from connection status.' );
@@ -60,15 +61,15 @@ $lifecycle_integer_fields = array( 'mcp_adapter_init_count', 'rest_api_init_coun
 $lifecycle_string_fields = array( 'missed_rest_recovery_state', 'missed_rest_recovery_blocker' );
 foreach ( $lifecycle_boolean_fields as $field ) {
     $check( array_key_exists( $field, $lifecycle ) && is_bool( $lifecycle[ $field ] ), 'Lifecycle boolean field missing or mistyped: ' . $field );
-    $check( $lifecycle[ $field ] === ! empty( $bridge_status[ $field ] ), 'Lifecycle boolean field did not project bridge status: ' . $field );
+    $check( $lifecycle[ $field ] === ! empty( $bridge_status_after_connection_status[ $field ] ), 'Lifecycle boolean field did not project bridge status: ' . $field );
 }
 foreach ( $lifecycle_integer_fields as $field ) {
     $check( array_key_exists( $field, $lifecycle ) && is_int( $lifecycle[ $field ] ), 'Lifecycle integer field missing or mistyped: ' . $field );
-    $check( $lifecycle[ $field ] === max( 0, (int) $bridge_status[ $field ] ), 'Lifecycle integer field did not project bridge status: ' . $field );
+    $check( $lifecycle[ $field ] === max( 0, (int) $bridge_status_after_connection_status[ $field ] ), 'Lifecycle integer field did not project bridge status: ' . $field );
 }
 foreach ( $lifecycle_string_fields as $field ) {
     $check( array_key_exists( $field, $lifecycle ) && is_string( $lifecycle[ $field ] ), 'Lifecycle string field missing or mistyped: ' . $field );
-    $expected_lifecycle_string = isset( $bridge_status[ $field ] ) ? sanitize_key( (string) $bridge_status[ $field ] ) : '';
+    $expected_lifecycle_string = isset( $bridge_status_after_connection_status[ $field ] ) ? sanitize_key( (string) $bridge_status_after_connection_status[ $field ] ) : '';
     $check( $lifecycle[ $field ] === $expected_lifecycle_string, 'Lifecycle string field did not project bridge status: ' . $field );
 }
 $lifecycle_json = strtolower( (string) wp_json_encode( $lifecycle ) );
