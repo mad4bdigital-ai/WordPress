@@ -249,6 +249,8 @@ for forbidden in [
 
 if "'execute_callback' => array( __CLASS__, 'status' )" not in write_cert:
     raise SystemExit('write certification persistence contract unexpectedly changed registration semantics')
+if "hash_equals( (string) $inventory['write_inventory_fingerprint'], (string) $runtime['write_inventory_fingerprint'] )" not in live_truth:
+    raise SystemExit('runtime reconciliation must bind the exact live write inventory fingerprint')
 if "MAD4B_SCP_Live_Truth::boot_early();" not in main:
     raise SystemExit('live truth bridge must be armed before Ability materialization')
 
