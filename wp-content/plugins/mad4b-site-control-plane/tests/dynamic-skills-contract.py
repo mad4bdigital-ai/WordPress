@@ -232,8 +232,8 @@ for marker in [
     'mad4b_skill_export_size_limit_exceeded',
     'uncompressed_payload_bytes',
     'resource_count',
-    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
-    "MAD4B_SCP_Write_Runtime_Certification::observe()",
+    "MAD4B_SCP_Live_Truth::current_authority_status()",
+    "MAD4B_SCP_Live_Truth::current_write_certification()",
     "$write_ready = ! empty( $write_authority['ready'] ) && ! empty( $write_certification['ready'] )",
     "$capabilities = $write_ready ? array( 'Read', 'Write' ) : array( 'Read' )",
     "'capabilities' => $capabilities",
@@ -242,6 +242,8 @@ for marker in [
 ]:
     if marker not in exporter:
         raise SystemExit(f'missing bounded certification-gated exporter guard: {marker}')
+if "MAD4B_SCP_Staging_Write_Authority::reconcile()" in exporter or "MAD4B_SCP_Write_Runtime_Certification::observe()" in exporter:
+    raise SystemExit('Skill exporter may not mutate or reconcile governed write authority while exporting')
 
 for marker in [
     'Fresh installation is zero-authority',
