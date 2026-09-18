@@ -67,7 +67,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'expected_write_inventory_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_missing_abilities' => array(
 							'type' => 'array',
-							'minItems' => 1,
+							'minItems' => 0,
 							'maxItems' => 8,
 							'uniqueItems' => true,
 							'items' => array( 'type' => 'string', 'enum' => self::allowed_abilities() ),
@@ -246,8 +246,6 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			}
 			$expected_missing = self::normalized_expected_missing( $input );
 			if ( $missing !== $expected_missing ) return new WP_Error( 'mad4b_grant_reconcile_missing_set_mismatch', 'Live missing-grant set changed or does not match the explicit authorization input.', array( 'live_missing' => $missing, 'expected_missing' => $expected_missing ) );
-			if ( empty( $missing ) ) return new WP_Error( 'mad4b_grant_reconcile_nothing_to_do', 'No reviewed missing exact grants remain to reconcile.' );
-
 			$intent = MAD4B_SCP_Audit::record( 'mad4b/staging-write-grant-reconciliation-authorized', array(
 				'contract' => self::CONTRACT,
 				'agent_public_id' => (string) $agent['public_id'],
@@ -310,12 +308,24 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			$authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
 			if ( ! is_array( $authority ) || empty( $authority['ready'] ) || 'ready' !== ( isset( $authority['state'] ) ? (string) $authority['state'] : '' ) || ! empty( $authority['grant_blockers'] ) || (int) ( isset( $authority['write_tool_count'] ) ? $authority['write_tool_count'] : 0 ) !== (int) $inventory['count'] || ! isset( $authority['write_inventory_fingerprint'] ) || ! hash_equals( (string) $inventory['fingerprint'], (string) $authority['write_inventory_fingerprint'] ) ) {
 				$rollback = self::rollback_created( $agent, $created_ids );
-				return new WP_Error( 'mad4b_grant_reconcile_authority_not_ready', 'Authority did not converge after exact grant creation; newly-created grants were rolled back.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
+				return new WP_Error( 'mad4b_grant_reconcile_authority_not_ready', 'Authority did not converge after exact grant reconciliation; newly-created grants were rolled back.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
 			}
 			if ( ! empty( $authority['exact_grants_created'] ) || ! empty( $authority['stale_allow_grants_revoked'] ) ) {
 				$rollback = self::rollback_created( $agent, $created_ids );
 				return new WP_Error( 'mad4b_grant_reconcile_unexpected_authority_mutation', 'Authority reconciliation attempted mutations outside the explicitly created exact grant set.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
 			}
+
+			$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint );
+			if ( is_wp_error( $bound ) ) {
+				$rollback = self::rollback_created( $agent, $created_ids );
+				return new WP_Error( 'mad4b_grant_reconcile_candidate_binding_failed', 'Exact package candidate could not be bound after grant reconciliation; newly-created grants were rolled back.', array( 'code' => $bound->get_error_code(), 'rollback_errors' => $rollback ) );
+			}
+			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+			if ( empty( $binding['required'] ) || empty( $binding['match'] ) ) {
+				$rollback = self::rollback_created( $agent, $created_ids );
+				return new WP_Error( 'mad4b_grant_reconcile_candidate_not_effective', 'Exact package candidate binding is not effective after reconciliation.', array( 'binding' => $binding, 'rollback_errors' => $rollback ) );
+			}
+			$authority = $bound;
 
 			$completion = MAD4B_SCP_Audit::record( 'mad4b/staging-write-grant-reconciliation-complete', array(
 				'contract' => self::CONTRACT,
@@ -325,13 +335,16 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'write_tool_count' => (int) $authority['write_tool_count'],
 				'write_inventory_fingerprint' => (string) $authority['write_inventory_fingerprint'],
 				'exact_grants_existing' => isset( $authority['exact_grants_existing'] ) ? (int) $authority['exact_grants_existing'] : 0,
+				'source_commit_sha' => $current_sha,
+				'build_fingerprint' => $current_fingerprint,
+				'candidate_rebound_without_grant_changes' => empty( $created_abilities ),
 				'authority_ready' => true,
 				'production_mutation' => false,
 			), 'ok' );
 
 			return array(
 				'contract' => self::CONTRACT,
-				'state' => 'reconciled',
+				'state' => empty( $created_abilities ) ? 'candidate_rebound' : 'reconciled',
 				'agent_public_id' => (string) $agent['public_id'],
 				'created_count' => count( $created_abilities ),
 				'created_abilities' => $created_abilities,
@@ -339,6 +352,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'write_inventory_fingerprint' => (string) $authority['write_inventory_fingerprint'],
 				'exact_grants_existing' => isset( $authority['exact_grants_existing'] ) ? (int) $authority['exact_grants_existing'] : 0,
 				'exact_grants_created_by_authority_reconcile' => isset( $authority['exact_grants_created'] ) ? (int) $authority['exact_grants_created'] : 0,
+				'source_commit_sha' => $current_sha,
+				'build_fingerprint' => $current_fingerprint,
+				'candidate_binding_match' => ! empty( $binding['match'] ),
+				'candidate_rebound_without_grant_changes' => empty( $created_abilities ),
 				'runtime_reconciled' => true,
 				'authority_ready' => true,
 				'completion_audit_recorded' => ! is_wp_error( $completion ),
