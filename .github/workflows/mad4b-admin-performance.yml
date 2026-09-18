@@ -49,22 +49,28 @@ jobs:
           required = [
               "remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );",
               "remove_action( 'wp_abilities_api_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 95 );",
-              "add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile_authority_if_needed' ), 95 );",
-              "add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' ), 20 );",
-              "MAD4B_SCP_Staging_Write_Authority::OPTION",
-              "(int) $stored['write_tool_count'] === count( $tools )",
-              "remove_action( 'mcp_adapter_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );",
-              "remove_action( 'admin_init', array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' ), 110 );",
+              "public static function reconcile_authority_if_needed()",
+              "Compatibility entry point retained for older callers. Inspection only.",
+              "MAD4B_SCP_Live_Truth::current_authority_status()",
               "add_action( 'admin_init', array( __CLASS__, 'observe_write_certification_on_certification_page' ), 110 );",
               "add_filter( 'wp_register_ability_args', array( __CLASS__, 'make_write_certification_explicit' ), 90, 2 );",
               "'mad4b/write-runtime-certification' !== (string) $name",
-              "array( 'MAD4B_SCP_Write_Runtime_Certification', 'observe' )",
+              "array( 'MAD4B_SCP_Live_Truth', 'current_write_certification' )",
               "'mad4b-control-plane-connection' !== $page || 'certification' !== $tab",
               "MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_connection_prime' );",
           ]
           missing = [item for item in required if item not in plugin]
           if missing:
               raise SystemExit('Missing admin-performance contract: ' + ' | '.join(missing))
+
+          forbidden_authority_hooks = [
+              "add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile_authority_if_needed' ), 95 );",
+              "add_action( 'admin_init', array( __CLASS__, 'reconcile_authority_on_mad4b_admin' ), 20 );",
+              "MAD4B_SCP_Staging_Write_Authority::reconcile();",
+          ]
+          leaked = [item for item in forbidden_authority_hooks if item in plugin]
+          if leaked:
+              raise SystemExit('Admin/runtime read path retained destructive authority reconciliation: ' + ' | '.join(leaked))
 
           for marker_text in [
               "const CONTRACT = 'mad4b.mcp-request-scope.v1'",
