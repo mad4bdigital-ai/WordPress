@@ -162,7 +162,10 @@ final class MAD4B_SCP_Live_Truth {
 		$runtime_reconciled = ! empty( $runtime['ready'] )
 			&& empty( $runtime['blocker'] )
 			&& isset( $runtime['write_tool_count'] )
-			&& (int) $runtime['write_tool_count'] === count( $tools );
+			&& (int) $runtime['write_tool_count'] === count( $tools )
+			&& isset( $runtime['write_inventory_fingerprint'], $inventory['write_inventory_fingerprint'] )
+			&& '' !== (string) $inventory['write_inventory_fingerprint']
+			&& hash_equals( (string) $inventory['write_inventory_fingerprint'], (string) $runtime['write_inventory_fingerprint'] );
 		if ( $eligible && ! $runtime_reconciled ) $blockers[] = 'runtime_authority_not_reconciled';
 
 		$blockers = array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) );
