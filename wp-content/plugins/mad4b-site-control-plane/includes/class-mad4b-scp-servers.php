@@ -5,9 +5,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';
+require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation.php';
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
 MAD4B_SCP_Site_Profile_Write_Enablement::boot();
+MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
 
 final class MAD4B_SCP_Servers {
 	private static $registrations = array();
@@ -29,7 +31,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 			), $governed_status ),
-			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' ),
+			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' ),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
@@ -342,7 +344,7 @@ final class MAD4B_SCP_Servers {
 
 		$tools = array();
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
-		$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable' );
+		$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
 			if ( '' === $ability_name || 'mad4b/database-raw-query' === $ability_name || in_array( $ability_name, $breakglass, true ) ) continue;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;

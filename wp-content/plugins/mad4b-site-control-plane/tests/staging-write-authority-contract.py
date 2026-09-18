@@ -6,6 +6,7 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
+grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
@@ -41,6 +42,56 @@ for marker in [
 ]:
     if marker not in write:
         raise SystemExit(f'missing tenant-bound governed write invariant: {marker}')
+
+for marker in [
+    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v1'",
+    "const ABILITY = 'mad4b/staging-write-grant-reconcile'",
+    "const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE GRANTS'",
+    "'jetengine/create-cct'",
+    "'jetengine/create-cpt'",
+    "'jetengine/create-glossary'",
+    "'jetengine/create-listing'",
+    "'jetengine/create-meta-box'",
+    "'jetengine/create-query'",
+    "'jetengine/create-taxonomy'",
+    "'jetengine/manage-modules'",
+    "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
+    "MAD4B_SCP_Identity_Context::current()",
+    "MAD4B_SCP_Agent_Registry::resolve_agent",
+    "MAD4B_SCP_Agent_Registry::grant_ability",
+    "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id",
+    "MAD4B_SCP_Staging_Write_Authority::write_tools()",
+    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
+    "expected_write_inventory_fingerprint",
+    "expected_missing_abilities",
+    "expected_agent_public_id",
+    "Breakglass/raw SQL must never enter governed grant reconciliation",
+    "'native-provider'",
+    "'staging'",
+    "'production_mutation' => false",
+    "'breakglass_included' => false",
+    "mad4b/staging-write-grant-reconciliation-authorized",
+    "mad4b/exact-staging-write-grant-reconciled",
+]:
+    if marker not in grant_reconcile:
+        raise SystemExit(f'missing bounded exact grant-reconciliation invariant: {marker}')
+
+allowlist = grant_reconcile.split('public static function allowed_abilities()', 1)[1].split('public static function boot()', 1)[0]
+for forbidden_grant in [
+    "'jetengine/import-configuration'",
+    "'jetengine/export-configuration'",
+    "'mad4b/database-raw-query'",
+]:
+    if forbidden_grant in allowlist:
+        raise SystemExit(f'forbidden ability leaked into exact grant-reconciliation allowlist: {forbidden_grant}')
+
+if "'mad4b/staging-write-grant-reconcile'" not in servers:
+    raise SystemExit('bounded grant reconciliation is missing from enrollment server catalog')
+if "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );" not in servers:
+    raise SystemExit('bounded grant reconciliation is not projected into the unified ChatGPT catalog')
+core_write = servers[servers.index('private static function core_write_candidates()'):servers.index('private static function registered_adapter_write_candidates()')]
+if "'mad4b/staging-write-grant-reconcile'" in core_write:
+    raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
 
 for forbidden in [
     "const STAGING_HOST = 'staging.egypttourgates.com'",
