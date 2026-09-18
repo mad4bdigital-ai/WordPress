@@ -191,3 +191,4 @@ final class MAD4B_SCP_Mutation_Semantics_Adapter extends MAD4B_SCP_Adapter_Base 
 
 require_once __DIR__ . '/class-mad4b-scp-jetengine-rest-lifecycle-diagnostics-adapter.php';
 require_once __DIR__ . '/class-mad4b-scp-jetengine-features-api-branch-diagnostics-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-jetengine-features-registration-diagnostics-adapter.php';

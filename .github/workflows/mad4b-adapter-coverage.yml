@@ -52,6 +52,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/jetengine-features-registration-diagnostics-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/adapter-discovery-reversibility-contract.py \
             --output /tmp/mad4b-repository-plugin-adapter-coverage.json
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-plugin-artifact-coverage.py \

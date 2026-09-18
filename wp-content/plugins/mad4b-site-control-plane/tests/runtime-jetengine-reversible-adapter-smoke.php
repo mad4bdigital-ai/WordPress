@@ -22,6 +22,29 @@ $write_ability = wp_get_ability( 'jetengine/update-post-meta' );
 $meta = $write_ability->get_meta();
 $check( isset( $meta['mcp']['mad4b_reversible_contract'] ) && 'mad4b.rollback.jetengine-post-meta.v1' === $meta['mcp']['mad4b_reversible_contract'], 'JetEngine writer is not bound to exact reversible contract.' );
 
+
+$registration_diagnostics = MAD4B_SCP_Adapter_Registry::instance()->get( 'jetengine-features-registration-diagnostics' );
+$check( $registration_diagnostics instanceof MAD4B_SCP_JetEngine_Features_Registration_Diagnostics_Adapter, 'JetEngine Features registration diagnostics adapter is unavailable.' );
+$check( wp_has_ability( 'jetengine/features-registration-diagnostics' ), 'JetEngine Features registration diagnostics ability is missing.' );
+$rest_server_before_registration_diagnostics = isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] );
+$rest_count_before_registration_diagnostics = did_action( 'rest_api_init' );
+$registration_evidence = $registration_diagnostics->diagnostics();
+$rest_server_after_registration_diagnostics = isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] );
+$check( is_array( $registration_evidence ) && 'mad4b.jetengine-features-registration-diagnostics.v1' === $registration_evidence['contract'], 'JetEngine Features registration diagnostics contract drifted.' );
+$check( ! empty( $registration_evidence['read_only'] ), 'JetEngine Features registration diagnostics lost read-only semantics.' );
+$check( false === $registration_evidence['callback_execution_attempted'], 'Features registration diagnostics invoked the provider callback.' );
+$check( false === $registration_evidence['controller_instantiation_attempted'], 'Features registration diagnostics instantiated a provider controller.' );
+$check( false === $registration_evidence['route_registration_attempted'], 'Features registration diagnostics attempted route registration.' );
+$check( false === $registration_evidence['rest_api_init_replayed'], 'Features registration diagnostics replayed rest_api_init.' );
+$check( false === $registration_evidence['rest_server_instantiated'], 'Features registration diagnostics reported REST-server instantiation.' );
+$check( $rest_server_before_registration_diagnostics === $rest_server_after_registration_diagnostics, 'Features registration diagnostics changed REST-server presence.' );
+$check( $rest_count_before_registration_diagnostics === did_action( 'rest_api_init' ), 'Features registration diagnostics changed rest_api_init execution count.' );
+$check( isset( $registration_evidence['controllers'] ) && 3 === count( $registration_evidence['controllers'] ), 'Features registration diagnostics did not report the three bounded controllers.' );
+foreach ( $registration_evidence['controllers'] as $controller_evidence ) {
+	$check( ! empty( $controller_evidence['class_loaded'] ), 'Expected JetEngine REST controller class was not loaded.' );
+	$check( ! empty( $controller_evidence['register_routes']['available'] ), 'Expected JetEngine register_routes method is unavailable.' );
+}
+
 $peer = MAD4B_SCP_MCP_Peer_Governance::status();
 $check( ! empty( $peer['inventory_ready'] ), 'MCP peer inventory is unavailable with JetEngine active.' );
 $check( ! empty( $peer['foreign_mcp_detected'] ) && ! empty( $peer['write_side_channel_detected'] ), 'JetEngine native MCP plane was not detected as an unreviewed parallel authority.' );
