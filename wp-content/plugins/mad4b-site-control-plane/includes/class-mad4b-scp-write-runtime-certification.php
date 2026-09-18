@@ -16,11 +16,12 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 37 );
-		// Do not inspect REST while abilities are still registering. MCP Adapter's
-		// HTTP transports attach their rest_api_init callbacks only when servers are
-		// constructed. Observing here used to let rest_get_server() fire too early,
-		// leaving every /mcp/* route unregistered in WP-CLI/runtime processes.
-		add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' ), 110 );
+		// Provider-native runtime eligibility is not authoritative until REST
+		// registration has completed. Observe at terminal rest_api_init priority so
+		// JetEngine has registered its native routes and Provider Isolation can retain
+		// the reviewed internal handlers before the write projection is certified.
+		// The observer reuses the already-created REST server and never bootstraps it.
+		add_action( 'rest_api_init', array( __CLASS__, 'observe' ), PHP_INT_MAX );
 		add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 );
 	}
 

@@ -202,6 +202,14 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 		return false !== strpos( $text, 'jetengine' ) || false !== strpos( $text, 'jet engine' ) || false !== strpos( $text, 'crocoblock' );
 	}
 
+	private function exact_operation_native_name( $operation ) {
+		$map = array(
+			'get_configuration' => 'resource-get-configuration',
+			'create_query' => 'tool-add-query',
+		);
+		return isset( $map[ $operation ] ) ? (string) $map[ $operation ] : '';
+	}
+
 	private function operation_matches( $operation, array $row ) {
 		if ( ! $this->jetengine_row( $row ) ) return false;
 		$text = $this->row_text( $row );
@@ -227,6 +235,22 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 	private function resolve_operation( $operation ) {
 		$rows = $this->jetengine_rows();
 		if ( is_wp_error( $rows ) ) return $rows;
+
+		// Prefer reviewed first-party JetEngine native names for operations whose
+		// broader semantic matcher can legitimately collide with neighboring tools.
+		// If the exact upstream name is absent, retain the generic fail-closed
+		// resolver below so provider drift is visible instead of silently guessed.
+		$exact_name = $this->exact_operation_native_name( $operation );
+		if ( '' !== $exact_name ) {
+			foreach ( $rows as $name => $row ) {
+				$row_name = isset( $row['name'] ) ? (string) $row['name'] : (string) $name;
+				if ( $exact_name !== (string) $name && $exact_name !== $row_name ) continue;
+				if ( ! $this->jetengine_row( $row ) ) break;
+				$transport = isset( $row['provider_transport'] ) ? (string) $row['provider_transport'] : 'wordpress-ability';
+				return array( 'name' => (string) $name, 'row' => $row, 'transport' => $transport, 'ability' => 'wordpress-ability' === $transport && function_exists( 'wp_get_ability' ) ? wp_get_ability( $name ) : null );
+			}
+		}
+
 		$matches = array();
 		foreach ( $rows as $name => $row ) if ( $this->operation_matches( $operation, $row ) ) $matches[ $name ] = $row;
 		if ( 1 !== count( $matches ) ) {

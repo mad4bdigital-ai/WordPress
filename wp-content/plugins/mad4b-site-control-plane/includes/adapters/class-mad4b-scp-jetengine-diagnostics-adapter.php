@@ -442,7 +442,10 @@ final class MAD4B_SCP_JetEngine_Diagnostics_Adapter extends MAD4B_SCP_Adapter_Ba
 		if ( ! empty( $plugin['version'] ) && version_compare( $plugin['version'], '3.8.0', '<' ) ) $causes[] = 'jetengine_version_below_mcp_minimum';
 		if ( 'disabled' === $settings['mcp_server_enabled'] ) $causes[] = 'jetengine_mcp_server_disabled';
 		if ( 'disabled' === $settings['features_api_enabled'] ) $causes[] = 'jetengine_features_api_disabled';
-		if ( 'enabled' === $settings['mcp_server_enabled'] && 'enabled' === $settings['features_api_enabled'] && empty( $routes['mcp_related_count'] ) ) $causes[] = 'jetengine_routes_not_registered_despite_feature_enabled';
+		if ( 'enabled' === $settings['mcp_server_enabled'] && 'enabled' === $settings['features_api_enabled'] && empty( $routes['mcp_related_count'] ) ) {
+			$isolated_native = ! empty( $transport['isolated_native_rest_registry_available'] ) && ! empty( $transport['isolated_native_rest_run_available'] ) && ! empty( $transport['available'] );
+			$causes[] = $isolated_native ? 'raw_provider_routes_intentionally_isolated' : 'jetengine_routes_not_registered_despite_feature_enabled';
+		}
 		if ( ! empty( $routes['mcp_related_count'] ) && empty( $transport['available'] ) ) $causes[] = 'jetengine_uses_different_native_route_contract';
 		$mcp_loaded = $this->any_loaded_component( $loaded, array( 'mcp' ) );
 		if ( 'enabled' === $settings['mcp_server_enabled'] && ! $mcp_loaded && empty( $routes['mcp_related_count'] ) ) $causes[] = 'jetengine_mcp_component_not_loaded';

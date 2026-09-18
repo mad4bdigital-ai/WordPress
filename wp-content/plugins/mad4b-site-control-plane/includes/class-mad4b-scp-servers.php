@@ -183,7 +183,8 @@ final class MAD4B_SCP_Servers {
 		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
 		$cacheable = function_exists( 'did_action' )
 			&& did_action( 'wp_abilities_api_init' ) > 0
-			&& ( ! function_exists( 'doing_action' ) || ! doing_action( 'wp_abilities_api_init' ) );
+			&& did_action( 'rest_api_init' ) > 0
+			&& ( ! function_exists( 'doing_action' ) || ( ! doing_action( 'wp_abilities_api_init' ) && ! doing_action( 'rest_api_init' ) ) );
 		if ( $cacheable && is_array( self::$adapter_write_projection_cache ) ) return self::$adapter_write_projection_cache;
 
 		$registry = MAD4B_SCP_Adapter_Registry::instance();

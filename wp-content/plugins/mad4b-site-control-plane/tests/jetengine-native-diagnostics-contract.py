@@ -35,6 +35,9 @@ for token in (
     "no_secrets_exposed",
     "settings_mutation' => false",
     "tools_call_executed' => false",
+    "isolated_native_rest_registry_available",
+    "isolated_native_rest_run_available",
+    "raw_provider_routes_intentionally_isolated",
 ):
     assert token in src, f"JetEngine diagnostics contract missing: {token}"
 

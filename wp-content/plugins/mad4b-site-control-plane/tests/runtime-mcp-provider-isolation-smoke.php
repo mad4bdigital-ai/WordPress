@@ -57,11 +57,39 @@ add_action( 'rest_api_init', function () {
 		'callback' => function () {
 			return rest_ensure_response( array( 'tools' => array(
 				array(
-					'name' => 'jetengine/get-website-config',
+					'name' => 'resource-get-configuration',
+					'title' => 'Get JetEngine Configuration',
+					'description' => 'Retrieve the provider configuration.',
+					'annotations' => array( 'readOnlyHint' => true ),
+					'inputSchema' => array(),
+				),
+				array(
+					'name' => 'resource-get-website-config',
 					'title' => 'Get JetEngine Website Config',
 					'description' => 'Get JetEngine website config through the isolated native provider bridge.',
 					'annotations' => array( 'readOnlyHint' => true ),
 					'inputSchema' => array(),
+				),
+				array(
+					'name' => 'tool-add-meta-box',
+					'title' => 'Add Meta Box',
+					'description' => 'Create a meta box from configuration.',
+					'annotations' => array( 'readOnlyHint' => false ),
+					'inputSchema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				),
+				array(
+					'name' => 'tool-add-query',
+					'title' => 'Add Query',
+					'description' => 'Create a JetEngine query.',
+					'annotations' => array( 'readOnlyHint' => false ),
+					'inputSchema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				),
+				array(
+					'name' => 'tool-add-listing',
+					'title' => 'Add Listing',
+					'description' => 'Create a listing backed by a query.',
+					'annotations' => array( 'readOnlyHint' => false ),
+					'inputSchema' => array( 'type' => 'object', 'additionalProperties' => true ),
 				),
 			) ) );
 		},
@@ -92,6 +120,15 @@ add_action( 'rest_api_init', function () {
 	// Deliberately unknown MCP-looking route: isolation must NOT hide it.
 	register_rest_route( 'unknown-provider/v1', '/mcp-unreviewed', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 }, 1000 );
+
+$pre_rest_projection_primed = false;
+if ( function_exists( 'did_action' ) && 0 === did_action( 'rest_api_init' ) && class_exists( 'MAD4B_SCP_Servers' ) ) {
+	MAD4B_SCP_Servers::blocked_write_tools();
+	if ( 0 !== did_action( 'rest_api_init' ) ) {
+		mad4b_isolation_fail( 'Pre-REST write projection bootstrap consumed rest_api_init.' );
+	}
+	$pre_rest_projection_primed = true;
+}
 
 $rest = rest_get_server();
 $routes = $rest->get_routes();
@@ -137,6 +174,33 @@ if ( ! ( $native_bridge instanceof MAD4B_SCP_Native_Provider_Bridge_Adapter ) ) 
 	mad4b_isolation_fail( 'Native Provider Bridge adapter is unavailable.' );
 }
 $inventory = $native_bridge->jetengine_inventory();
+$operation_rows = array();
+foreach ( isset( $inventory['operations'] ) && is_array( $inventory['operations'] ) ? $inventory['operations'] : array() as $item ) {
+	if ( isset( $item['operation'] ) ) $operation_rows[ (string) $item['operation'] ] = $item;
+}
+foreach ( array(
+	'get_configuration' => 'resource-get-configuration',
+	'create_query' => 'tool-add-query',
+) as $operation => $expected_native_name ) {
+	$row = isset( $operation_rows[ $operation ] ) ? $operation_rows[ $operation ] : null;
+	if ( ! is_array( $row ) || empty( $row['available'] ) || $expected_native_name !== ( isset( $row['name'] ) ? (string) $row['name'] : '' ) || 'isolated-native-rest-tools' !== ( isset( $row['provider_native_channel'] ) ? (string) $row['provider_native_channel'] : '' ) ) {
+		mad4b_isolation_fail( 'Exact JetEngine native operation mapping did not win over ambiguous semantic matches.', array( 'operation' => $operation, 'row' => $row ) );
+	}
+}
+foreach ( array( 'import_configuration', 'export_configuration' ) as $operation ) {
+	$row = isset( $operation_rows[ $operation ] ) ? $operation_rows[ $operation ] : null;
+	if ( ! is_array( $row ) || ! empty( $row['available'] ) || 'mad4b_native_provider_operation_unavailable' !== ( isset( $row['error'] ) ? (string) $row['error'] : '' ) ) {
+		mad4b_isolation_fail( 'Unsupported JetEngine native operation must remain explicitly fail-closed.', array( 'operation' => $operation, 'row' => $row ) );
+	}
+}
+$query_eligibility = $native_bridge->mutation_ability_runtime_eligibility( 'jetengine/create-query' );
+if ( true !== $query_eligibility ) {
+	mad4b_isolation_fail( 'Resolved JetEngine create-query operation did not become runtime-eligible.', $query_eligibility );
+}
+if ( $pre_rest_projection_primed && class_exists( 'MAD4B_SCP_Servers' ) && ! in_array( 'jetengine/create-query', MAD4B_SCP_Servers::write_tools(), true ) ) {
+	mad4b_isolation_fail( 'Adapter write projection remained stale after isolated JetEngine discovery became available.' );
+}
+
 $website_row = null;
 foreach ( isset( $inventory['operations'] ) && is_array( $inventory['operations'] ) ? $inventory['operations'] : array() as $item ) {
 	if ( isset( $item['operation'] ) && 'get_website_config' === $item['operation'] ) { $website_row = $item; break; }
@@ -149,7 +213,7 @@ $read_result = $native_bridge->jetengine_get_website_config( array(
 	'expected_schema_sha256' => (string) $website_row['schema_sha256'],
 	'input' => array(),
 ) );
-if ( is_wp_error( $read_result ) || empty( $read_result['ok'] ) || 'jetengine/get-website-config' !== ( isset( $read_result['tool'] ) ? $read_result['tool'] : '' ) ) {
+if ( is_wp_error( $read_result ) || empty( $read_result['ok'] ) || 'resource-get-website-config' !== ( isset( $read_result['tool'] ) ? $read_result['tool'] : '' ) ) {
 	mad4b_isolation_fail( 'Governed Native Provider Bridge could not execute the retained read-only JetEngine handler.', $read_result );
 }
 

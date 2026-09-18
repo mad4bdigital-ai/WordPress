@@ -6,6 +6,9 @@ isolation = (ROOT / 'includes/class-mad4b-scp-mcp-provider-isolation.php').read_
 bootstrap = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 plugin = (ROOT / 'includes/class-mad4b-scp-plugin.php').read_text('utf-8')
 client = (ROOT / 'includes/adapters/class-mad4b-scp-jetengine-mcp-client.php').read_text('utf-8')
+bridge = (ROOT / 'includes/adapters/class-mad4b-scp-native-provider-bridge-adapter.php').read_text('utf-8')
+servers = (ROOT / 'includes/class-mad4b-scp-servers.php').read_text('utf-8')
+write_runtime = (ROOT / 'includes/class-mad4b-scp-write-runtime-certification.php').read_text('utf-8')
 
 PREVIOUS_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v4'
 LEGACY_MARKER = 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3'
@@ -70,6 +73,13 @@ require(isolation, "'mcp_execution_surface' === (string) $descriptor['class']", 
 require(client, "'isolated-native-rest-tools'", 'native-bridge-isolated-transport')
 require(client, "MAD4B_SCP_MCP_Provider_Isolation::dispatch_internal_provider_request( 'jetengine', $request )", 'native-bridge-governed-isolation-handoff')
 require(client, "'raw_provider_routes_exposed' => false", 'native-client-no-raw-route-exposure')
+require(bridge, "'get_configuration' => 'resource-get-configuration'", 'jetengine-get-configuration-exact-native-name')
+require(bridge, "'create_query' => 'tool-add-query'", 'jetengine-create-query-exact-native-name')
+require(bridge, 'exact_operation_native_name', 'jetengine-exact-operation-precedence')
+require(servers, "did_action( 'rest_api_init' ) > 0", 'adapter-write-projection-cache-after-rest')
+require(servers, "! doing_action( 'rest_api_init' )", 'adapter-write-projection-not-cached-during-rest-registration')
+require(write_runtime, "add_action( 'rest_api_init', array( __CLASS__, 'observe' ), PHP_INT_MAX )", 'write-runtime-observe-after-provider-rest-registration')
+forbid(write_runtime, "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' )", 'write-runtime-no-pre-rest-observation')
 
 for forbidden in (
     "register_rest_route(",
