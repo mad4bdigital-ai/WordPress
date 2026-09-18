@@ -37,7 +37,7 @@ required_admin = [
     "prepare_authority_runtime_after_validation",
     "rest_get_server()",
     "MAD4B_SCP_MCP_Registration_Rescue::reconcile( 'admin_approval_decision' )",
-    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
+    "MAD4B_SCP_Live_Truth::current_authority_status()",
 ]
 missing = [marker for marker in required_admin if marker not in admin]
 if missing:
@@ -94,6 +94,8 @@ for first, second, label in [
 prepare_start = admin.index('private static function prepare_authority_runtime_after_validation')
 prepare_end = admin.index('public static function decide', prepare_start)
 prepare_body = admin[prepare_start:prepare_end]
+if "MAD4B_SCP_Staging_Write_Authority::reconcile()" in prepare_body:
+    raise SystemExit('Approval decision readiness may not create/revoke authority grants')
 for forbidden in ['decide_pending(', 'wp_register_ability(', 'MAD4B_SCP_Mutation_Manager', 'call_user_func(']:
     if forbidden in prepare_body:
         raise SystemExit('Authority runtime preparation gained decision or target-execution authority: ' + forbidden)
