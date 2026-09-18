@@ -6,6 +6,8 @@ Current plugin version: **0.4.0-rc.35**.
 
 > Repository CI certification is not live-site certification. The PR remains Draft until the exact target WordPress deployment passes the target acceptance contract.
 
+Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
+
 ## MCP surfaces
 
 MAD4B now owns five governed custom MCP server IDs:
