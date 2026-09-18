@@ -54,8 +54,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'augment_write_ability' ), 70, 2 );
 		add_filter( 'mad4b_scp_low_impact_requires_approval', array( __CLASS__, 'force_remote_write_approval' ), 100, 4 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_status_ability' ), 35 );
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'reconcile' ), 95 );
-		add_action( 'admin_init', array( __CLASS__, 'reconcile' ), 20 );
+
+		// Grant/subject reconciliation is mutation authority and must never run
+		// automatically during Abilities bootstrap or ordinary wp-admin lifecycle.
+		// Explicit bounded bootstrap surfaces call reconcile() after exact validation.
 	}
 
 	public static function eligible() {
@@ -64,7 +66,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	public static function effective() {
-		$status = self::status();
+		// Authorization follows current live truth, never a stale persisted snapshot.
+		$status = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
+			? MAD4B_SCP_Live_Truth::current_authority_status()
+			: self::status();
 		return ! empty( $status['ready'] );
 	}
 
