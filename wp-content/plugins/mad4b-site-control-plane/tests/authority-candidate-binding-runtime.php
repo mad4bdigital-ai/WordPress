@@ -117,6 +117,13 @@ $binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 $ok( ! empty( $binding['match'] ), 'Rebound candidate does not match current package.' );
 $ok( MAD4B_SCP_Staging_Write_Authority::effective(), 'Authority did not become effective after exact candidate rebind.' );
 
+// Once a packaged authority is bound, removing provenance must fail closed.
+@unlink( $tmp . '/MAD4B-BUILD-PROVENANCE.json' );
+$reset_candidate_cache();
+$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+$ok( ! empty( $binding['required'] ) && ! empty( $binding['stored_bound'] ) && empty( $binding['match'] ), 'Missing provenance did not invalidate an already package-bound authority.' );
+$ok( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'Authority remained effective after bound provenance disappeared.' );
+
 @unlink( $tmp . '/MAD4B-BUILD-PROVENANCE.json' );
 @rmdir( $tmp );
 
