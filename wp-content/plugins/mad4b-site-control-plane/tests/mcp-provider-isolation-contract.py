@@ -80,7 +80,7 @@ require(servers, "did_action( 'rest_api_init' ) > 0", 'adapter-write-projection-
 require(servers, "! doing_action( 'rest_api_init' )", 'adapter-write-projection-not-cached-during-rest-registration')
 forbid(write_runtime, "add_action( 'rest_api_init', array( __CLASS__, 'observe' )", 'write-runtime-not-on-rest-critical-path')
 forbid(write_runtime, "add_action( 'mcp_adapter_init', array( __CLASS__, 'observe' )", 'write-runtime-no-pre-rest-observation')
-require(write_runtime, "'execute_callback' => array( __CLASS__, 'observe' )", 'write-runtime-explicit-on-demand-refresh')
+require(write_runtime, "'execute_callback' => array( __CLASS__, 'status' )", 'write-runtime-read-only-ability-callback')
 require(write_runtime, "doing_action( 'rest_api_init' )", 'write-runtime-rest-registration-guard')
 require(write_runtime, "add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 )", 'write-runtime-admin-refresh')
 

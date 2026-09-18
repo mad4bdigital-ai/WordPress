@@ -29,7 +29,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'label' => 'Get Governed Write Runtime Certification',
 			'description' => 'Read exact enrolled-site write authority, NHI grants, approval bootstrap/enforcement, transport mounting and local REST isolation evidence.',
 			'category' => 'mad4b-read',
-			'execute_callback' => array( __CLASS__, 'observe' ),
+			'execute_callback' => array( __CLASS__, 'status' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
