@@ -91,8 +91,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$stored_sha = isset( $status['source_commit_sha'] ) ? strtolower( trim( (string) $status['source_commit_sha'] ) ) : '';
 		$stored_build = isset( $status['build_fingerprint'] ) ? strtolower( trim( (string) $status['build_fingerprint'] ) ) : '';
 		$stored_bound = 1 === preg_match( '/^[a-f0-9]{40}$/', $stored_sha ) && 1 === preg_match( '/^[a-f0-9]{64}$/', $stored_build );
-		$required = ! empty( $current['available'] );
-		$match = $required
+		// Once authority has ever been package-bound, losing the current
+		// provenance manifest is itself a stale-candidate condition.
+		$required = ! empty( $current['available'] ) || $stored_bound;
+		$match = ! empty( $current['available'] )
 			&& $stored_bound
 			&& hash_equals( (string) $current['source_commit_sha'], $stored_sha )
 			&& hash_equals( (string) $current['build_fingerprint'], $stored_build );
