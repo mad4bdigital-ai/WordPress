@@ -52,6 +52,8 @@ if ( empty( $mu['adapter_init_hook_bound'] ) ) $fail( 'MCP Adapter rest_api_init
 
 $before = MAD4B_SCP_MCP_Registration_Bridge::status();
 if ( ! empty( $before['adapter_init_seen_before_bridge_boot'] ) ) $fail( 'adapter initialized before MAD4B bridge binding' );
+if ( ! empty( $before['first_rest_observed'] ) ) $fail( 'MAD4B boot instantiated REST before the explicit canonical REST bootstrap' );
+if ( did_action( 'wp_loaded' ) < 1 ) $fail( 'wp_loaded did not complete before the canonical REST bootstrap proof' );
 
 // Trigger WordPress' canonical lazy REST bootstrap. This must execute the MCP
 // Adapter callback at priority 15 and then route registration at priority 16.
@@ -61,6 +63,9 @@ if ( ! is_object( $rest_server ) ) $fail( 'REST server unavailable' );
 $after = MAD4B_SCP_MCP_Registration_Bridge::status();
 if ( (int) ( isset( $after['rest_api_init_count'] ) ? $after['rest_api_init_count'] : 0 ) < 1 ) $fail( 'rest_api_init did not fire' );
 if ( (int) ( isset( $after['mcp_adapter_init_count'] ) ? $after['mcp_adapter_init_count'] : 0 ) < 1 ) $fail( 'mcp_adapter_init did not fire on web lifecycle' );
+if ( empty( $after['first_rest_observed'] ) ) $fail( 'first REST observer did not capture canonical bootstrap' );
+if ( (int) ( isset( $after['wp_loaded_count_at_first_rest'] ) ? $after['wp_loaded_count_at_first_rest'] : 0 ) < 1 ) $fail( 'first REST bootstrap occurred before wp_loaded completed' );
+if ( ! empty( $after['doing_init_at_first_rest'] ) ) $fail( 'first REST bootstrap still occurred while init was running' );
 if ( empty( $after['adapter_runtime_from_official_plugin'] ) ) $fail( 'runtime is not owned by official MCP Adapter' );
 if ( '0.6.1' !== ( isset( $after['adapter_runtime_version'] ) ? (string) $after['adapter_runtime_version'] : '' ) ) $fail( 'unexpected MCP Adapter runtime version' );
 

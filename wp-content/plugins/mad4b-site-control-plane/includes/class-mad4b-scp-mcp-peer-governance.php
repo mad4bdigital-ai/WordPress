@@ -110,10 +110,9 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 		$known_routes = array_values( array_unique( $known_routes ) );
 		$known_namespaces = array_values( array_unique( $known_namespaces ) );
 
+		$rest_server = self::rest_server_for_foreign_inventory();
+		if ( is_wp_error( $rest_server ) ) return self::foreign_unavailable( $rest_server->get_error_code() );
 		try {
-			if ( ! function_exists( 'rest_get_server' ) ) return self::foreign_unavailable( 'rest_server_unavailable' );
-			$rest_server = rest_get_server();
-			if ( ! is_object( $rest_server ) || ! method_exists( $rest_server, 'get_routes' ) ) return self::foreign_unavailable( 'rest_route_inventory_unavailable' );
 			$routes = $rest_server->get_routes();
 		} catch ( Throwable $e ) {
 			return self::foreign_unavailable( 'rest_route_inventory_exception' );
@@ -154,6 +153,30 @@ final class MAD4B_SCP_MCP_Peer_Governance {
 			'foreign_plugin_count' => count( $foreign_plugins ),
 			'foreign_plugins' => $foreign_plugins,
 		);
+	}
+
+	private static function rest_server_for_foreign_inventory() {
+		global $wp_rest_server;
+
+		// Never make peer discovery the component that starts REST while WordPress
+		// is still booting. If another component has already created the server,
+		// observing it is side-effect free. Otherwise, fail closed until wp_loaded
+		// has fully completed; only then may canonical lazy REST creation occur.
+		if ( is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' ) ) return $wp_rest_server;
+		if ( did_action( 'wp_loaded' ) < 1 || ( function_exists( 'doing_action' ) && doing_action( 'wp_loaded' ) ) ) {
+			return new WP_Error( 'rest_bootstrap_incomplete', 'Foreign MCP route inventory is deferred until WordPress bootstrap is complete.' );
+		}
+		if ( ! function_exists( 'rest_get_server' ) ) return new WP_Error( 'rest_server_unavailable', 'WordPress REST server API is unavailable.' );
+
+		try {
+			$rest_server = rest_get_server();
+		} catch ( Throwable $e ) {
+			return new WP_Error( 'rest_route_inventory_exception', 'WordPress REST route inventory could not be initialized safely.' );
+		}
+		if ( ! is_object( $rest_server ) || ! method_exists( $rest_server, 'get_routes' ) ) {
+			return new WP_Error( 'rest_route_inventory_unavailable', 'WordPress REST route inventory is unavailable.' );
+		}
+		return $rest_server;
 	}
 
 	private static function is_reviewed_non_transport_route( $route ) {

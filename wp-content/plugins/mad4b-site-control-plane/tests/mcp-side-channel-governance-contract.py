@@ -36,6 +36,19 @@ require(peer, "'readonly_annotation_missing'", 'unknown-readonly-fail-closed')
 require(peer, "'mcp_tool_inventory_overflow'", 'bounded-peer-inventory')
 require(peer, "MAX_SERVERS = 100", 'bounded-server-inventory')
 require(peer, "MAX_TOOLS_PER_SERVER = 500", 'bounded-tool-inventory')
+require(peer, "rest_server_for_foreign_inventory()", 'foreign-route-safe-rest-resolver')
+require(peer, "global $wp_rest_server", 'foreign-route-observe-existing-rest-server')
+require(peer, "did_action( 'wp_loaded' ) < 1", 'foreign-route-defer-before-wp-loaded')
+require(peer, "doing_action( 'wp_loaded' )", 'foreign-route-defer-during-wp-loaded')
+require(peer, "'rest_bootstrap_incomplete'", 'foreign-route-bootstrap-incomplete-reason')
+
+rest_helper_start = peer.index('private static function rest_server_for_foreign_inventory()')
+rest_helper_end = peer.index('private static function is_reviewed_non_transport_route', rest_helper_start)
+rest_helper = peer[rest_helper_start:rest_helper_end]
+if rest_helper.index("did_action( 'wp_loaded' ) < 1") > rest_helper.index('rest_get_server()'):
+    raise SystemExit('FAIL foreign-route-rest-order: wp_loaded guard must precede REST server creation')
+for forbidden in ("do_action( 'rest_api_init'", 'rest_do_request(', 'register_rest_route(', '->register_routes('):
+    forbid(rest_helper, forbidden, 'foreign-route-no-rest-replay-or-registration')
 
 # No filter may weaken or replace the peer detector result.
 for bypass_hook in (
