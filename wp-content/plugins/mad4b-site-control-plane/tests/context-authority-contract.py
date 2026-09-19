@@ -39,6 +39,12 @@ require(authority, "$site = self::site_binding();", "Context reads bind to curre
 require(authority, "hash_equals( (string) $site['site_uuid']", "exact Site UUID read isolation")
 require(authority, "! isset( $sources[ $source_id ] )", "orphan asset source denial")
 require(authority, "hash_equals( $source_mode, $asset_mode )", "asset/source mode binding")
+require(authority, "raw_sources", "raw Context source storage view")
+require(authority, "raw_assets", "raw Context asset storage view")
+require(authority, "authorized_sources_from_records", "source-authorized read projection")
+require(authority, "authorized_assets_from_records", "asset-authorized read projection")
+require(authority, "self::raw_assets()", "mutation paths preserve raw asset siblings")
+require(authority, "self::raw_sources()", "mutation paths preserve raw source siblings")
 require(authority, "classification_confidence", "classification confidence")
 require(authority, "authority_class", "authority class")
 require(authority, "quality_score", "quality score")
@@ -282,4 +288,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v25: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v26: PASS")
