@@ -66,6 +66,10 @@ final class MAD4B_SCP_Context_Authority {
 		$out = array();
 		foreach ( array_slice( $records, -self::MAX_SOURCES, self::MAX_SOURCES, true ) as $key => $record ) {
 			if ( ! self::valid_source( $record ) ) continue;
+			$policy = isset( $record['write_policy'] ) ? sanitize_key( (string) $record['write_policy'] ) : 'read_only';
+			if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
+			if ( 'task_attachment' === ( isset( $record['mode'] ) ? (string) $record['mode'] : '' ) ) $policy = 'read_only';
+			$record['write_policy'] = $policy;
 			$out[ (string) $key ] = $record;
 		}
 		return $out;
@@ -117,6 +121,47 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+	public static function write_policies() {
+		return array(
+			'read_only' => array(
+				'label' => 'Read-only',
+				'operations' => array(),
+				'description' => 'Browse, scan, classify and score only.',
+			),
+			'repair_only' => array(
+				'label' => 'Repair existing assets',
+				'operations' => array( 'update', 'recreate' ),
+				'description' => 'Update existing text assets and recreate assets confirmed unavailable; cannot create unrelated new assets.',
+			),
+			'managed' => array(
+				'label' => 'Managed library',
+				'operations' => array( 'create', 'update', 'recreate' ),
+				'description' => 'Create, update and recreate governed assets inside this selected source folder.',
+			),
+		);
+	}
+
+	public static function source_write_policy( $source_id ) {
+		$source = self::source( $source_id );
+		return empty( $source ) ? 'read_only' : ( isset( $source['write_policy'] ) ? (string) $source['write_policy'] : 'read_only' );
+	}
+
+	public static function source_allows_write( $source_id, $operation ) {
+		$source = self::source( $source_id );
+		if ( empty( $source ) ) return false;
+		if ( 'task_attachment' === ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) ) return false;
+		$operation = sanitize_key( (string) $operation );
+		$policy = isset( $source['write_policy'] ) ? sanitize_key( (string) $source['write_policy'] ) : 'read_only';
+		$policies = self::write_policies();
+		return isset( $policies[ $policy ] ) && in_array( $operation, $policies[ $policy ]['operations'], true );
+	}
+
+	public static function writable_source_count( $operation ) {
+		$count = 0;
+		foreach ( self::sources() as $source_id => $source ) if ( self::source_allows_write( $source_id, $operation ) ) ++$count;
+		return $count;
+	}
+
 	public static function save_profile( $brand_name ) {
 		$site = self::site_binding();
 		if ( is_wp_error( $site ) ) return $site;
@@ -149,7 +194,7 @@ final class MAD4B_SCP_Context_Authority {
 
 		$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
 		$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
-		if ( 'google_drive' !== $provider ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Only the Google Drive read provider is supported in this foundation.' );
+		if ( 'google_drive' !== $provider ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Only the governed Google Drive context provider is supported in this foundation.' );
 		if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true ) ) return new WP_Error( 'mad4b_context_source_mode_invalid', 'Context source mode must be governed or task_attachment.' );
 
 		$external_root_id = self::bounded_external_id( isset( $input['external_root_id'] ) ? $input['external_root_id'] : '' );
@@ -162,6 +207,13 @@ final class MAD4B_SCP_Context_Authority {
 		$sources = self::sources();
 		$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
 		$current = isset( $sources[ $source_id ] ) ? $sources[ $source_id ] : array();
+		$write_policy = isset( $input['write_policy'] )
+			? sanitize_key( (string) $input['write_policy'] )
+			: ( isset( $current['write_policy'] ) ? sanitize_key( (string) $current['write_policy'] ) : ( 'governed' === $mode ? 'repair_only' : 'read_only' ) );
+		if ( ! isset( self::write_policies()[ $write_policy ] ) ) return new WP_Error( 'mad4b_context_source_write_policy_invalid', 'Context source write policy is invalid.' );
+		if ( 'task_attachment' === $mode && 'read_only' !== $write_policy ) return new WP_Error( 'mad4b_context_task_source_write_forbidden', 'Task-only Context sources are read-only in this release.' );
+
+
 		$record = array(
 			'contract' => self::SOURCE_CONTRACT,
 			'source_id' => $source_id,
@@ -172,6 +224,7 @@ final class MAD4B_SCP_Context_Authority {
 			'external_root_id' => $external_root_id,
 			'label' => $label,
 			'task_scope' => 'task_attachment' === $mode ? $task_scope : '',
+			'write_policy' => $write_policy,
 			'recursive' => ! isset( $input['recursive'] ) || ! empty( $input['recursive'] ),
 			'status' => 'selected',
 			'last_synced_at' => isset( $current['last_synced_at'] ) ? (string) $current['last_synced_at'] : '',
