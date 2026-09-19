@@ -298,6 +298,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				$basis = '' !== $text ? $text : ( isset( $child['md5Checksum'] ) && $child['md5Checksum'] ? (string) $child['md5Checksum'] : (string) $child['id'] . '|' . ( isset( $child['modifiedTime'] ) ? $child['modifiedTime'] : '' ) );
 				$assets[] = array(
 					'file_id' => isset( $child['id'] ) ? (string) $child['id'] : '',
+					'parent_folder_id' => ! empty( $child['parents'] ) && is_array( $child['parents'] ) ? (string) reset( $child['parents'] ) : '',
 					'title' => $name,
 					'path' => $path,
 					'mimeType' => $mime,
@@ -343,6 +344,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'source_id' => (string) $source['source_id'],
 			'asset_id' => (string) $registered['asset_id'],
 			'file_id' => (string) $registered['file_id'],
+			'target_folder_id' => $target_folder_id,
 			'content_sha256' => (string) $registered['content_hash'],
 			'mime_type' => (string) $registered['mime_type'],
 			'status' => 'created',
@@ -374,7 +376,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $updated ) ) return $updated;
 		$observed = self::provider_observed_text( $updated, $content );
 		if ( is_wp_error( $observed ) ) return $observed;
-		$payload = self::provider_asset_payload( $source, $updated, $observed );
+		$payload = self::provider_asset_payload( $source, $updated, $observed, $asset );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
 		if ( is_wp_error( $registered ) ) return $registered;
 		return array(
@@ -397,17 +399,19 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $source ) ) return $source;
 		$absence = self::assert_original_file_absent( isset( $asset['file_id'] ) ? $asset['file_id'] : '' );
 		if ( is_wp_error( $absence ) ) return $absence;
+		$target_folder_id = self::resolve_recreate_target_folder( $asset, $source );
+		if ( is_wp_error( $target_folder_id ) ) return $target_folder_id;
 		$content = (string) $content;
 		$content_guard = self::validate_write_content( $content );
 		if ( is_wp_error( $content_guard ) ) return $content_guard;
 		if ( strlen( $content ) > self::MAX_REVERSIBLE_TEXT_BYTES ) return new WP_Error( 'mad4b_google_drive_reversible_write_too_large', 'Governed Drive recreation exceeds the reversible snapshot limit.', array( 'max_bytes' => self::MAX_REVERSIBLE_TEXT_BYTES ) );
 		$title = isset( $asset['title'] ) ? (string) $asset['title'] : 'Recreated Context Asset';
 		$title = preg_replace( '/\s+\(recreated[^)]*\)$/i', '', $title );
-		$file = self::create_provider_file( (string) $source['external_root_id'], $title, $content, $format );
+		$file = self::create_provider_file( $target_folder_id, $title, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
 		$observed = self::provider_observed_text( $file, $content );
 		if ( is_wp_error( $observed ) ) return $observed;
-		$payload = self::provider_asset_payload( $source, $file, $observed );
+		$payload = self::provider_asset_payload( $source, $file, $observed, $asset );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
 		if ( is_wp_error( $registered ) ) return $registered;
 		MAD4B_SCP_Context_Authority::mark_asset_recreated( $asset_id, $registered );
@@ -469,6 +473,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'asset_id' => (string) $asset['asset_id'],
 			'source_id' => (string) $asset['source_id'],
 			'original_file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
+			'parent_folder_id' => isset( $asset['parent_folder_id'] ) ? (string) $asset['parent_folder_id'] : '',
 			'status' => $status,
 			'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
 			'replacement_asset_id' => $replacement_asset_id,
@@ -509,7 +514,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $restored ) ) return $restored;
 		$observed = self::provider_observed_text( $restored, (string) $before_state['content'] );
 		if ( is_wp_error( $observed ) ) return $observed;
-		$payload = self::provider_asset_payload( $source, $restored, $observed );
+		$payload = self::provider_asset_payload( $source, $restored, $observed, $asset );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
 		return is_wp_error( $registered ) ? $registered : true;
 	}
@@ -666,6 +671,56 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return true;
 	}
 
+	private static function recreate_parent_candidate( array $asset, array $source ) {
+		$root_id = self::bounded_drive_id( isset( $source['external_root_id'] ) ? $source['external_root_id'] : '' );
+		if ( '' === $root_id || 'root' === $root_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive source folder is required for recreation.' );
+		$parent_folder_id = self::bounded_drive_id( isset( $asset['parent_folder_id'] ) ? $asset['parent_folder_id'] : '' );
+		if ( '' === $parent_folder_id ) {
+			return new WP_Error(
+				'mad4b_google_drive_recreate_parent_unavailable',
+				'Original asset has no exact parent-folder lineage. Rescan the governed source before attempting recreation.'
+			);
+		}
+		return array(
+			'root_id' => $root_id,
+			'parent_folder_id' => $parent_folder_id,
+			'is_source_root' => hash_equals( $root_id, $parent_folder_id ),
+		);
+	}
+
+	private static function resolve_recreate_target_folder( array $asset, array $source ) {
+		$candidate = self::recreate_parent_candidate( $asset, $source );
+		if ( is_wp_error( $candidate ) ) return $candidate;
+		$parent_folder_id = (string) $candidate['parent_folder_id'];
+		if ( ! empty( $candidate['is_source_root'] ) ) return $parent_folder_id;
+
+		$metadata = self::get_file_metadata( $parent_folder_id );
+		if ( is_wp_error( $metadata ) ) {
+			$data = $metadata->get_error_data();
+			return new WP_Error(
+				'mad4b_google_drive_recreate_parent_unavailable',
+				'Original parent folder is not currently readable. Recreation will not fall back to the source root.',
+				array(
+					'parent_folder_id' => $parent_folder_id,
+					'provider_error_code' => $metadata->get_error_code(),
+					'http_status' => is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 0,
+				)
+			);
+		}
+		if ( 'application/vnd.google-apps.folder' !== ( isset( $metadata['mimeType'] ) ? (string) $metadata['mimeType'] : '' ) ) {
+			return new WP_Error( 'mad4b_google_drive_recreate_parent_not_folder', 'Stored parent lineage no longer points to a Google Drive folder.' );
+		}
+		$membership = self::assert_file_within_source( $parent_folder_id, $source );
+		if ( is_wp_error( $membership ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_recreate_parent_outside_source',
+				'Original parent folder is no longer inside the selected governed source.',
+				array( 'parent_folder_id' => $parent_folder_id, 'membership_error' => $membership->get_error_code() )
+			);
+		}
+		return $parent_folder_id;
+	}
+
 	private static function create_provider_file( $folder_id, $name, $content, $format ) {
 		$folder_id = self::bounded_drive_id( $folder_id );
 		if ( '' === $folder_id || 'root' === $folder_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for writes.' );
@@ -767,12 +822,20 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return new WP_Error( 'mad4b_google_drive_asset_outside_selected_source', 'Drive asset is outside the selected Context source folder.' );
 	}
 
-	private static function provider_asset_payload( array $source, array $file, $content ) {
+	private static function provider_asset_payload( array $source, array $file, $content, array $preserve = array() ) {
 		$name = isset( $file['name'] ) ? (string) $file['name'] : 'Untitled';
+		$parents = isset( $file['parents'] ) && is_array( $file['parents'] ) ? $file['parents'] : array();
+		$parent_folder_id = $parents ? self::bounded_drive_id( (string) reset( $parents ) ) : '';
+		$path = ( isset( $source['label'] ) ? (string) $source['label'] : 'Drive' ) . '/' . $name;
+		$preserved_parent = isset( $preserve['parent_folder_id'] ) ? self::bounded_drive_id( (string) $preserve['parent_folder_id'] ) : '';
+		if ( '' !== $parent_folder_id && '' !== $preserved_parent && hash_equals( $parent_folder_id, $preserved_parent ) && ! empty( $preserve['path'] ) ) {
+			$path = (string) $preserve['path'];
+		}
 		return array(
 			'file_id' => isset( $file['id'] ) ? (string) $file['id'] : '',
+			'parent_folder_id' => $parent_folder_id,
 			'title' => $name,
-			'path' => ( isset( $source['label'] ) ? (string) $source['label'] : 'Drive' ) . '/' . $name,
+			'path' => $path,
 			'mimeType' => isset( $file['mimeType'] ) ? (string) $file['mimeType'] : 'text/plain',
 			'modifiedTime' => isset( $file['modifiedTime'] ) ? (string) $file['modifiedTime'] : gmdate( 'c' ),
 			'webViewLink' => isset( $file['webViewLink'] ) ? esc_url_raw( (string) $file['webViewLink'] ) : '',

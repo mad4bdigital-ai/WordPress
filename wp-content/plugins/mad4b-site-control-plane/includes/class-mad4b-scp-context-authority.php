@@ -824,6 +824,7 @@ final class MAD4B_SCP_Context_Authority {
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
 				'version' => isset( $asset['version'] ) ? (string) $asset['version'] : '',
 				'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+				'parent_folder_id' => isset( $asset['parent_folder_id'] ) ? (string) $asset['parent_folder_id'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
 				'priority' => isset( $asset['priority'] ) ? (int) $asset['priority'] : 0,
 				'required' => ! empty( $asset['required'] ),
@@ -838,6 +839,10 @@ final class MAD4B_SCP_Context_Authority {
 	private static function normalize_asset( array $source, array $asset ) {
 		$file_id = self::bounded_external_id( isset( $asset['file_id'] ) ? $asset['file_id'] : '' );
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_context_asset_file_id_required', 'Asset requires a canonical external file ID.' );
+		$parent_folder_id = self::bounded_external_id( isset( $asset['parent_folder_id'] ) ? $asset['parent_folder_id'] : '' );
+		if ( '' === $parent_folder_id && ! empty( $asset['parents'] ) && is_array( $asset['parents'] ) ) {
+			$parent_folder_id = self::bounded_external_id( (string) reset( $asset['parents'] ) );
+		}
 		$title = trim( sanitize_text_field( isset( $asset['title'] ) ? $asset['title'] : '' ) );
 		if ( '' === $title ) $title = 'Untitled';
 		$content = isset( $asset['normalized_text'] ) ? (string) $asset['normalized_text'] : '';
@@ -862,6 +867,7 @@ final class MAD4B_SCP_Context_Authority {
 			'task_scope' => isset( $source['task_scope'] ) ? (string) $source['task_scope'] : '',
 			'provider' => (string) $source['provider'],
 			'file_id' => $file_id,
+			'parent_folder_id' => $parent_folder_id,
 			'title' => $title,
 			'path' => isset( $asset['path'] ) ? substr( sanitize_text_field( (string) $asset['path'] ), 0, 500 ) : '',
 			'mime_type' => isset( $asset['mimeType'] ) ? substr( sanitize_text_field( (string) $asset['mimeType'] ), 0, 191 ) : '',

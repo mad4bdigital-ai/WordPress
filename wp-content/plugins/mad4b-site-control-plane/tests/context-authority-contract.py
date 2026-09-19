@@ -80,6 +80,13 @@ require(drive, "mad4b_google_drive_recreate_requires_unavailable_asset", "recrea
 require(drive, "provider_absence_from_metadata_result", "provider absence classification")
 require(drive, "mad4b_google_drive_recreate_original_restored", "restored-original blocker")
 require(drive, "mad4b_google_drive_recreate_absence_unverified", "unverified-absence blocker")
+require(authority, "'parent_folder_id'", "asset parent-folder lineage")
+require(drive, "recreate_parent_candidate", "recreate parent candidate")
+require(drive, "resolve_recreate_target_folder", "exact recreate parent resolver")
+require(drive, "mad4b_google_drive_recreate_parent_unavailable", "missing parent fail-closed")
+require(drive, "mad4b_google_drive_recreate_parent_outside_source", "parent source-boundary fail-closed")
+require(drive, "create_provider_file( $target_folder_id", "recreate writes to exact parent folder")
+assert "create_provider_file( (string) $source['external_root_id'], $title" not in drive, "Recreate must never silently fall back to source root"
 assert drive.count("self::assert_original_file_absent(") >= 2, "Recreate capture and execution must independently prove provider absence"
 require(drive, "create_asset", "Drive asset create")
 require(drive, "update_asset", "Drive asset update")
@@ -150,4 +157,4 @@ require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v9: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v10: PASS")

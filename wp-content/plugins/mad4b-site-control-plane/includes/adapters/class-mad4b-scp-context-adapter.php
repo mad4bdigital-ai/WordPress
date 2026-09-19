@@ -176,6 +176,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'asset_id' => (string) $state['asset_id'],
 					'source_id' => (string) $state['source_id'],
 					'file_id' => (string) $state['original_file_id'],
+					'parent_folder_id' => isset( $state['parent_folder_id'] ) ? (string) $state['parent_folder_id'] : '',
 				),
 				'state' => $state,
 			);
@@ -231,6 +232,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
 				'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
 				'file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
+				'parent_folder_id' => isset( $asset['parent_folder_id'] ) ? (string) $asset['parent_folder_id'] : '',
 				'mime_type' => isset( $asset['mime_type'] ) ? (string) $asset['mime_type'] : '',
 				'last_synced_at' => isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '',
 				'write_capabilities' => MAD4B_SCP_Google_Drive_Context::asset_write_capabilities( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' ),
