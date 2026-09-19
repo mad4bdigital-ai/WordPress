@@ -1,6 +1,7 @@
 <?php
 
 define( 'ABSPATH', '/tmp/mad4b-context-write-mount/' );
+define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
 
 class WP_Error {
 	private $code;
@@ -28,13 +29,27 @@ abstract class MAD4B_SCP_Adapter_Base {
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) { return new WP_Error( 'unsupported' ); }
 }
 
-class MAD4B_SCP_Context_Authority {}
+class MAD4B_SCP_Context_Authority {
+	public static function source_allows_write() { return true; }
+	public static function registry_revision() { return 1; }
+	public static function context_fingerprint() { return str_repeat( 'a', 64 ); }
+	public static function authority_manifest_fingerprint() { return str_repeat( 'b', 64 ); }
+	public static function begin_recreated_asset_rollback() { return true; }
+	public static function rollback_recreated_asset() { return true; }
+}
 
 class MAD4B_SCP_Google_Drive_Context {
 	const MAX_WRITE_BYTES = 1048576;
 	const MAX_REVERSIBLE_TEXT_BYTES = 196608;
 	public static $status = array();
 	public static function write_capability_status() { return self::$status; }
+	public static function create_asset() { return array(); }
+	public static function update_asset() { return array(); }
+	public static function recreate_asset() { return array(); }
+	public static function reversible_update_state() { return array(); }
+	public static function restore_update_state() { return true; }
+	public static function reversible_recreate_state() { return array(); }
+	public static function restore_recreate_state() { return true; }
 }
 
 require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-context-adapter.php';
@@ -47,6 +62,9 @@ function mad4b_context_mount_assert( $condition, $message, $context = null ) {
 }
 
 $adapter = new MAD4B_SCP_Context_Adapter();
+$contract = $adapter->context_provider_contract_status();
+mad4b_context_mount_assert( ! empty( $contract['ready'] ), 'First-party Context provider contract must certify exact runtime surfaces.', $contract );
+mad4b_context_mount_assert( preg_match( '/^[a-f0-9]{64}$/', $contract['artifact_fingerprint'] ), 'Provider contract must expose exact critical-file artifact fingerprint.', $contract );
 
 MAD4B_SCP_Google_Drive_Context::$status = array(
 	'write_available' => false,
