@@ -180,6 +180,29 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+	private static function write_policy_rank( $policy ) {
+		$ranks = array( 'read_only' => 0, 'repair_only' => 1, 'managed' => 2 );
+		$policy = sanitize_key( (string) $policy );
+		return isset( $ranks[ $policy ] ) ? (int) $ranks[ $policy ] : 0;
+	}
+
+	private static function write_policy_escalation_requires_confirmation( $from, $to ) {
+		return self::write_policy_rank( $to ) > self::write_policy_rank( $from );
+	}
+
+	private static function assert_write_policy_transition( $from, $to, $confirmed ) {
+		if ( ! self::write_policy_escalation_requires_confirmation( $from, $to ) ) return true;
+		if ( $confirmed ) return true;
+		return new WP_Error(
+			'mad4b_context_source_write_policy_confirmation_required',
+			'Increasing Context source Drive write authority requires explicit confirmation.',
+			array(
+				'previous_write_policy' => sanitize_key( (string) $from ),
+				'requested_write_policy' => sanitize_key( (string) $to ),
+			)
+		);
+	}
+
 	public static function source_write_policy( $source_id ) {
 		$source = self::source( $source_id );
 		return empty( $source ) ? 'read_only' : ( isset( $source['write_policy'] ) ? (string) $source['write_policy'] : 'read_only' );
@@ -278,11 +301,14 @@ final class MAD4B_SCP_Context_Authority {
 						array( 'limit' => self::MAX_SOURCES, 'stored_source_count' => count( $sources ) )
 					);
 				}
+				$previous_write_policy = isset( $current['write_policy'] ) ? sanitize_key( (string) $current['write_policy'] ) : 'read_only';
 				$write_policy = isset( $input['write_policy'] )
 					? sanitize_key( (string) $input['write_policy'] )
-					: ( isset( $current['write_policy'] ) ? sanitize_key( (string) $current['write_policy'] ) : ( 'governed' === $mode ? 'repair_only' : 'read_only' ) );
+					: $previous_write_policy;
 				if ( ! isset( self::write_policies()[ $write_policy ] ) ) return new WP_Error( 'mad4b_context_source_write_policy_invalid', 'Context source write policy is invalid.' );
 				if ( 'task_attachment' === $mode && 'read_only' !== $write_policy ) return new WP_Error( 'mad4b_context_task_source_write_forbidden', 'Task-only Context sources are read-only in this release.' );
+				$transition = self::assert_write_policy_transition( $previous_write_policy, $write_policy, ! empty( $input['write_policy_confirmed'] ) );
+				if ( is_wp_error( $transition ) ) return $transition;
 
 				$record = array(
 					'contract' => self::SOURCE_CONTRACT,
@@ -316,7 +342,10 @@ final class MAD4B_SCP_Context_Authority {
 						'source_id' => $source_id,
 						'provider' => $provider,
 						'mode' => $mode,
+						'previous_write_policy' => $previous_write_policy,
 						'write_policy' => $write_policy,
+						'write_policy_escalated' => self::write_policy_escalation_requires_confirmation( $previous_write_policy, $write_policy ),
+						'write_policy_confirmed' => ! empty( $input['write_policy_confirmed'] ),
 						'recursive' => ! empty( $record['recursive'] ),
 						'created' => empty( $current ),
 					),
@@ -829,10 +858,10 @@ final class MAD4B_SCP_Context_Authority {
 			: new WP_Error( 'mad4b_context_profile_fingerprint_write_failed', 'Context Profile fingerprint could not be persisted.' );
 	}
 
-	public static function update_source_write_policy( $source_id, $write_policy ){
+	public static function update_source_write_policy( $source_id, $write_policy, $confirmed = false ){
 		return self::with_registry_lock(
 			'update_source_write_policy',
-			static function () use ( $source_id, $write_policy ) {	
+			static function () use ( $source_id, $write_policy, $confirmed ) {	
 			$audit_ready = self::audit_preflight();
 			if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 			$site = self::site_binding();
@@ -847,6 +876,8 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! isset( self::write_policies()[ $write_policy ] ) ) return new WP_Error( 'mad4b_context_source_write_policy_invalid', 'Context source write policy is invalid.' );
 			if ( 'task_attachment' === ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) && 'read_only' !== $write_policy ) return new WP_Error( 'mad4b_context_task_source_write_forbidden', 'Task-only Context sources are read-only in this release.' );
 			$previous = isset( $source['write_policy'] ) ? (string) $source['write_policy'] : 'read_only';
+			$transition = self::assert_write_policy_transition( $previous, $write_policy, (bool) $confirmed );
+			if ( is_wp_error( $transition ) ) return $transition;
 			$sources[ $source_id ]['write_policy'] = $write_policy;
 			$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
 			if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_policy_write_failed', 'Context source write policy could not be persisted.' );
@@ -859,6 +890,8 @@ final class MAD4B_SCP_Context_Authority {
 					'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
 					'previous_write_policy' => $previous,
 					'write_policy' => $write_policy,
+					'write_policy_escalated' => self::write_policy_escalation_requires_confirmation( $previous, $write_policy ),
+					'write_policy_confirmed' => (bool) $confirmed,
 				),
 				'ok'
 			);

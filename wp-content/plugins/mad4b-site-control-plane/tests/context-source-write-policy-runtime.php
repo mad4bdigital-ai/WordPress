@@ -45,6 +45,20 @@ class MAD4B_SCP_Site_Profile {
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
+	'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+	'site_uuid' => '11111111-1111-4111-8111-111111111111',
+	'brand_id' => 'brand-fixture',
+	'brand_name' => 'Fixture Brand',
+	'revision' => 1,
+	'status' => 'configured',
+	'context_policy' => 'site_bound_governed_plus_task_sources',
+	'context_fingerprint' => str_repeat( '0', 64 ),
+	'authority_manifest_fingerprint' => str_repeat( '0', 64 ),
+	'created_at' => gmdate( 'c' ),
+	'updated_at' => gmdate( 'c' ),
+);
+
 function mad4b_context_policy_assert( $condition, $message ) {
 	if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); }
 }
@@ -136,6 +150,49 @@ mad4b_context_policy_assert( 1 === MAD4B_SCP_Context_Authority::writable_source_
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'update' ), 'repair and managed sources should enable update' );
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ), 'repair and managed sources should enable recreate' );
 
+$new_source = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-new-default',
+		'label' => 'Least Privilege Source',
+		'recursive' => false,
+	)
+);
+mad4b_context_policy_assert( ! is_wp_error( $new_source ) && 'read_only' === $new_source['write_policy'], 'New governed sources must default to read-only server-side.' );
+
+$new_source_escalation_denied = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-new-default',
+		'label' => 'Least Privilege Source',
+		'write_policy' => 'repair_only',
+		'recursive' => false,
+	)
+);
+mad4b_context_policy_assert( is_wp_error( $new_source_escalation_denied ) && 'mad4b_context_source_write_policy_confirmation_required' === $new_source_escalation_denied->get_error_code(), 'New source write authority escalation must require explicit confirmation.' );
+
+$new_source_escalated = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-new-default',
+		'label' => 'Least Privilege Source',
+		'write_policy' => 'repair_only',
+		'write_policy_confirmed' => true,
+		'recursive' => false,
+	)
+);
+mad4b_context_policy_assert( ! is_wp_error( $new_source_escalated ) && 'repair_only' === $new_source_escalated['write_policy'], 'Explicit confirmation must allow bounded source write escalation.' );
+
+$managed_escalation_denied = MAD4B_SCP_Context_Authority::update_source_write_policy( $repair, 'managed' );
+mad4b_context_policy_assert( is_wp_error( $managed_escalation_denied ) && 'mad4b_context_source_write_policy_confirmation_required' === $managed_escalation_denied->get_error_code(), 'Repair-to-managed escalation must require explicit confirmation.' );
+$managed_escalation = MAD4B_SCP_Context_Authority::update_source_write_policy( $repair, 'managed', true );
+mad4b_context_policy_assert( ! is_wp_error( $managed_escalation ) && 'managed' === $managed_escalation['write_policy'], 'Confirmed repair-to-managed escalation must succeed.' );
+$downgrade = MAD4B_SCP_Context_Authority::update_source_write_policy( $repair, 'read_only' );
+mad4b_context_policy_assert( ! is_wp_error( $downgrade ) && 'read_only' === $downgrade['write_policy'], 'Write policy downgrade must remain frictionless and not require confirmation.' );
+
 $partial_refresh = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$managed,
 	array(),
@@ -168,4 +225,4 @@ $policy_scan_events = array_values( array_filter( MAD4B_SCP_Audit::$events, stat
 mad4b_context_policy_assert( 1 === count( $policy_scan_events ), 'Partial authorized source refresh must append one governance scan event.' );
 mad4b_context_policy_assert( 'partial' === $policy_scan_events[0]['status'], 'Partial authorized source refresh audit must remain explicitly partial.' );
 
-echo "mad4b.site-control-plane.context-source-write-policy.runtime.v5: PASS\n";
+echo "mad4b.site-control-plane.context-source-write-policy.runtime.v6: PASS\n";

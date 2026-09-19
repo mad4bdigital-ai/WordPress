@@ -94,12 +94,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$mode = isset( $_POST['source_mode'] ) ? sanitize_key( wp_unslash( $_POST['source_mode'] ) ) : 'governed';
 		$write_policy = 'task_attachment' === $mode
 			? 'read_only'
-			: ( isset( $_POST['write_policy'] ) ? sanitize_key( wp_unslash( $_POST['write_policy'] ) ) : 'repair_only' );
+			: ( isset( $_POST['write_policy'] ) ? sanitize_key( wp_unslash( $_POST['write_policy'] ) ) : 'read_only' );
 		$result = MAD4B_SCP_Context_Authority::upsert_source(
 			array(
 				'provider' => 'google_drive',
 				'mode' => $mode,
 				'write_policy' => $write_policy,
+				'write_policy_confirmed' => ! empty( $_POST['write_policy_confirmed'] ),
 				'external_root_id' => isset( $_POST['folder_id'] ) ? wp_unslash( $_POST['folder_id'] ) : '',
 				'label' => isset( $_POST['folder_name'] ) ? wp_unslash( $_POST['folder_name'] ) : '',
 				'task_scope' => isset( $_POST['task_scope'] ) ? wp_unslash( $_POST['task_scope'] ) : '',
@@ -113,7 +114,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 		self::require_admin( self::ACTION_UPDATE_SOURCE_POLICY );
 		$result = MAD4B_SCP_Context_Authority::update_source_write_policy(
 			isset( $_POST['source_id'] ) ? wp_unslash( $_POST['source_id'] ) : '',
-			isset( $_POST['write_policy'] ) ? wp_unslash( $_POST['write_policy'] ) : 'read_only'
+			isset( $_POST['write_policy'] ) ? wp_unslash( $_POST['write_policy'] ) : 'read_only',
+			! empty( $_POST['write_policy_confirmed'] )
 		);
 		self::redirect_result( $result, 'sources', 'source_policy_updated' );
 	}
@@ -419,10 +421,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<label><input type="radio" name="source_mode" value="task_attachment"> <strong>' . esc_html__( 'Task-only Source', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Temporary context; excluded from Brand Authority and always read-only in this release.', 'mad4b-site-control-plane' ) . '</span></label></div>';
 		echo '<h4>' . esc_html__( 'Write policy for Governed Library', 'mad4b-site-control-plane' ) . '</h4>';
 		echo '<div class="mad4b-context-source-mode">';
-		echo '<label><input type="radio" name="write_policy" value="read_only"> <strong>' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Scan and use context without Drive mutations.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label><input type="radio" name="write_policy" value="repair_only" checked> <strong>' . esc_html__( 'Repair existing assets', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Update existing assets and recreate ones confirmed unavailable. No unrelated new files.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="read_only" checked> <strong>' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Recommended default. Scan and use context without Drive mutations.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="repair_only"> <strong>' . esc_html__( 'Repair existing assets', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Update existing assets and recreate ones confirmed unavailable. No unrelated new files.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '<label><input type="radio" name="write_policy" value="managed"> <strong>' . esc_html__( 'Managed library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Managed policy reserves future create authority, but only update and recreate are currently certifiable. Every mounted write still needs governed approval.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '</div>';
+		echo '<p><label><input type="checkbox" name="write_policy_confirmed" value="1"> <strong>' . esc_html__( 'Confirm any increase in Drive write authority for this source', 'mad4b-site-control-plane' ) . '</strong></label><br><span class="description">' . esc_html__( 'Required only when selecting Repair or Managed. Read-only remains the default and needs no confirmation.', 'mad4b-site-control-plane' ) . '</span></p>';
 		echo '<p><label for="mad4b-task-scope"><strong>' . esc_html__( 'Task scope', 'mad4b-site-control-plane' ) . '</strong> <span class="description">' . esc_html__( '(required only for Task-only Source)', 'mad4b-site-control-plane' ) . '</span></label><br><input id="mad4b-task-scope" type="text" name="task_scope" class="regular-text" placeholder="e.g. luxor-family-blog-2026"></p>';
 		echo '<p><label><input type="checkbox" name="recursive" value="1" checked> ' . esc_html__( 'Include subfolders', 'mad4b-site-control-plane' ) . '</label></p>';
 		submit_button( __( 'Add Source Folder', 'mad4b-site-control-plane' ), 'primary' );
@@ -452,7 +455,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			} else {
 				echo '<select name="write_policy">';
 				foreach ( MAD4B_SCP_Context_Authority::write_policies() as $policy_key => $policy ) echo '<option value="' . esc_attr( $policy_key ) . '"' . selected( $source['write_policy'], $policy_key, false ) . '>' . esc_html( $policy['label'] ) . '</option>';
-				echo '</select> ';
+				echo '</select><br><label class="description"><input type="checkbox" name="write_policy_confirmed" value="1"> ' . esc_html__( 'Confirm if this change increases Drive write authority', 'mad4b-site-control-plane' ) . '</label> ';
 				submit_button( __( 'Save', 'mad4b-site-control-plane' ), 'secondary small', 'submit', false );
 			}
 			echo '</form></td><td>' . esc_html( $source['task_scope'] ? $source['task_scope'] : '—' ) . '</td>';
