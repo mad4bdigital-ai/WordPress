@@ -223,11 +223,16 @@ required_handoff = [
     "'nonce_exposed' => false", "'target_execution_exposed' => false",
     "MAD4B_SCP_Approval_Decision_Admin::current_candidate()",
     "MAD4B_SCP_Approval_Tickets::candidate_binding",
+    "MAD4B_SCP_Approval_Tickets::CANDIDATE_BINDING_CONTRACT",
+    "'site_uuid'", "'profile_revision'", "'profile_digest'", "'environment'", "'host'",
     "MAD4B_SCP_Approval_Decision_Admin::PAGE_SLUG",
 ]
 missing = [marker for marker in required_handoff if marker not in handoff]
 if missing:
     raise SystemExit('Missing read-only approval handoff invariant: ' + ' | '.join(missing))
+if "mad4b.approval-candidate-binding.v1" in handoff:
+    raise SystemExit('Approval handoff still accepts legacy v1 candidate binding')
+
 for forbidden_handoff in [
     'decide_pending(', 'wp_create_nonce(', 'wp_nonce_field(', 'admin_post_',
     'MAD4B_SCP_Mutation_Manager', 'execute_callback', 'mad4b/database-update',
@@ -236,4 +241,4 @@ for forbidden_handoff in [
     if forbidden_handoff in handoff:
         raise SystemExit('Approval handoff gained decision or mutation authority: ' + forbidden_handoff)
 
-print('mad4b.approval-decision.contract.v6: PASS')
+print('mad4b.approval-decision.contract.v7: PASS')

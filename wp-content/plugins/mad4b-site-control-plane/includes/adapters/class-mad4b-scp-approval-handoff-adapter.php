@@ -64,11 +64,16 @@ final class MAD4B_SCP_Approval_Handoff_Adapter extends MAD4B_SCP_Adapter_Base {
         if ( empty( $candidate['ready'] ) ) $blockers[] = 'current_candidate_not_ready';
 
         $binding_ok = is_array( $binding )
-  && 'mad4b.approval-candidate-binding.v1' === ( isset( $binding['contract'] ) ? (string) $binding['contract'] : '' )
+  && MAD4B_SCP_Approval_Tickets::CANDIDATE_BINDING_CONTRACT === ( isset( $binding['contract'] ) ? (string) $binding['contract'] : '' )
   && ! empty( $binding['ticket_id'] ) && hash_equals( $ticket_id, strtolower( (string) $binding['ticket_id'] ) )
   && ! empty( $binding['payload_sha256'] ) && '' !== $payload && hash_equals( $payload, strtolower( (string) $binding['payload_sha256'] ) )
-  && ! empty( $binding['candidate_sha'] ) && ! empty( $candidate['source_commit_sha'] ) && hash_equals( (string) $candidate['source_commit_sha'], (string) $binding['candidate_sha'] )
-  && ! empty( $binding['build_fingerprint'] ) && ! empty( $candidate['build_fingerprint'] ) && hash_equals( (string) $candidate['build_fingerprint'], (string) $binding['build_fingerprint'] );
+  && ! empty( $binding['candidate_sha'] ) && ! empty( $candidate['source_commit_sha'] ) && hash_equals( strtolower( (string) $candidate['source_commit_sha'] ), strtolower( (string) $binding['candidate_sha'] ) )
+  && ! empty( $binding['build_fingerprint'] ) && ! empty( $candidate['build_fingerprint'] ) && hash_equals( strtolower( (string) $candidate['build_fingerprint'] ), strtolower( (string) $binding['build_fingerprint'] ) )
+  && ! empty( $binding['site_uuid'] ) && ! empty( $candidate['site_uuid'] ) && hash_equals( strtolower( (string) $candidate['site_uuid'] ), strtolower( (string) $binding['site_uuid'] ) )
+  && ! empty( $binding['profile_revision'] ) && ! empty( $candidate['site_profile_revision'] ) && hash_equals( (string) (int) $candidate['site_profile_revision'], (string) (int) $binding['profile_revision'] )
+  && ! empty( $binding['profile_digest'] ) && ! empty( $candidate['site_profile_digest'] ) && hash_equals( strtolower( (string) $candidate['site_profile_digest'] ), strtolower( (string) $binding['profile_digest'] ) )
+  && ! empty( $binding['environment'] ) && ! empty( $candidate['environment'] ) && hash_equals( sanitize_key( (string) $candidate['environment'] ), sanitize_key( (string) $binding['environment'] ) )
+  && ! empty( $binding['host'] ) && ! empty( $candidate['host'] ) && hash_equals( strtolower( rtrim( (string) $candidate['host'], '.' ) ), strtolower( rtrim( (string) $binding['host'], '.' ) ) );
         if ( ! $binding_ok ) $blockers[] = 'candidate_binding_missing_or_stale';
 
         $ability = isset( $ticket['ability_name'] ) ? (string) $ticket['ability_name'] : '';

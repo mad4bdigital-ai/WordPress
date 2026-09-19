@@ -12,6 +12,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-admin-post-lifecycle-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-handoff-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-contract.py'
       - '.github/workflows/mad4b-approval-decision-contract.yml'
   workflow_dispatch:
@@ -53,6 +54,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-approval-handoff-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-admin-post-lifecycle-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/approval-handoff-runtime.php
 
       - name: Execute fail-closed human decision matrix
         shell: bash
@@ -65,6 +67,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-admin-post-lifecycle-runtime.php
+
+      - name: Execute exact candidate handoff regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/approval-handoff-runtime.php
 
       - name: Enforce independent approval architecture
         shell: bash
