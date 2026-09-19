@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-live-acceptance-reconciler-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   reconciler-contract:
     name: Live acceptance reconciler (${{ matrix.php }})

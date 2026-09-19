@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-governed-execution-fence-${{ github.event.pull_request.head.sha || github.sha }}
+  group: mad4b-governed-execution-fence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
