@@ -964,7 +964,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$bytes = strlen( (string) $content );
 		if ( $bytes < 1 ) return new WP_Error( 'mad4b_google_drive_empty_write_denied', 'Drive asset content cannot be empty.' );
 		if ( $bytes > self::MAX_WRITE_BYTES ) return new WP_Error( 'mad4b_google_drive_write_too_large', 'Drive asset content exceeds the governed write size limit.', array( 'max_bytes' => self::MAX_WRITE_BYTES ) );
-		if ( ! seems_utf8( (string) $content ) ) return new WP_Error( 'mad4b_google_drive_write_utf8_required', 'Drive asset content must be valid UTF-8 text.' );
+		if ( '' === wp_check_invalid_utf8( (string) $content ) ) return new WP_Error( 'mad4b_google_drive_write_utf8_required', 'Drive asset content must be valid UTF-8 text.' );
 		return true;
 	}
 
