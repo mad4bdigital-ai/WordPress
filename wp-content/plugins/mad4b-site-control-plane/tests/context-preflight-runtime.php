@@ -64,6 +64,30 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 }
 
+final class MAD4B_SCP_Skill_Registry {
+	public static $skill = array();
+	public static function get_skill( $level, $target, $name ) {
+		$skill = self::$skill;
+		$skill['context_policy_sha256'] = MAD4B_SCP_Context_Preflight::policy_digest( isset( $skill['context_policy'] ) ? $skill['context_policy'] : array() );
+		return $skill;
+	}
+}
+
+final class MAD4B_SCP_Staging_Write_Authority {
+	public static function context_receipt_from_input( $input ) {
+		return is_array( $input ) && isset( $input['_mad4b_context_receipt'] ) && is_array( $input['_mad4b_context_receipt'] ) ? $input['_mad4b_context_receipt'] : array();
+	}
+}
+
+final class MAD4B_SCP_Audit {
+	public static $events = array();
+	public static function storage_status() { return array( 'ready' => true ); }
+	public static function record( $ability, $payload = array(), $status = 'ok' ) {
+		self::$events[] = array( 'ability' => $ability, 'payload' => $payload, 'status' => $status );
+		return true;
+	}
+}
+
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-preflight.php';
 
 function mad4b_context_preflight_assert( $condition, $message, $context = null ) {
@@ -91,10 +115,11 @@ function mad4b_context_asset( $id, $category, $mode, $review, $task_scope = '', 
 }
 
 $skill = array(
-	'logical_id' => 'site/content/blog-writer',
+	'logical_id' => 'site:_site:blog-writer',
 	'sha256' => str_repeat( 'b', 64 ),
 	'context_policy' => array( 'preset' => 'brand_core' ),
 );
+MAD4B_SCP_Skill_Registry::$skill = $skill;
 
 MAD4B_SCP_Context_Authority::$assets = array(
 	'brand' => mad4b_context_asset( 'brand', 'brand_strategy', 'governed', 'unreviewed' ),
@@ -130,6 +155,48 @@ mad4b_context_preflight_assert( ! empty( $site_union['ready'] ), 'Site-mandatory
 mad4b_context_preflight_assert( in_array( 'terminology', $site_union['envelope']['effective_required_context_sets'], true ), 'Site mandatory terminology must be included in effective required sets.', $site_union['envelope'] );
 mad4b_context_preflight_assert( 12 === (int) $site_union['receipt']['registry_revision'], 'Receipt must bind the exact Context registry revision.', $site_union['receipt'] );
 mad4b_context_preflight_assert( str_repeat( 'd', 64 ) === $site_union['receipt']['authority_manifest_fingerprint'], 'Receipt must bind authority manifest fingerprint.', $site_union['receipt'] );
+
+$validation = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $site_union['receipt'] );
+mad4b_context_preflight_assert( is_array( $validation ) && ! empty( $validation['ready'] ), 'Fresh exact Context Receipt must validate against live Skill and Authority state.', $validation );
+
+$missing_receipt = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+	'mad4b/content-update-post',
+	array( 'post_id' => 12, 'post_content' => 'Generated content' )
+);
+mad4b_context_preflight_assert( is_wp_error( $missing_receipt ) && 'mad4b_content_context_receipt_required' === $missing_receipt->get_error_code(), 'Brand-bearing content mutation must require Context Receipt.', $missing_receipt );
+
+$guarded = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+	'mad4b/content-update-post',
+	array(
+		'post_id' => 12,
+		'post_content' => 'Generated content',
+		'_mad4b_context_receipt' => $site_union['receipt'],
+	)
+);
+mad4b_context_preflight_assert( is_array( $guarded ) && ! empty( $guarded['ready'] ), 'Exact receipt must authorize Context guard.', $guarded );
+
+$tampered = $site_union['receipt'];
+$tampered['registry_revision'] = 99;
+$tampered_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $tampered );
+mad4b_context_preflight_assert( is_wp_error( $tampered_result ) && 'mad4b_context_receipt_integrity_failed' === $tampered_result->get_error_code(), 'Tampered receipt must fail canonical digest integrity before use.', $tampered_result );
+
+$expired = $site_union['receipt'];
+$expired['observed_at'] = gmdate( 'c', time() - MAD4B_SCP_Context_Preflight::MAX_RECEIPT_AGE - 60 );
+$expired_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $expired );
+mad4b_context_preflight_assert( is_wp_error( $expired_result ) && 'mad4b_context_receipt_expired' === $expired_result->get_error_code(), 'Expired Context Receipt must fail closed.', $expired_result );
+
+$committed = MAD4B_SCP_Context_Preflight::commit_receipt_evidence(
+	$site_union['receipt'],
+	array(
+		'ability' => 'mad4b/content-update-post',
+		'provider' => 'core',
+		'target_fingerprint' => str_repeat( 'e', 64 ),
+		'approval_ticket_id' => '11111111-1111-4111-8111-111111111111',
+		'request_id' => 'request-fixture',
+	)
+);
+mad4b_context_preflight_assert( is_array( $committed ) && ! empty( $committed['ready'] ), 'Validated Context Receipt must commit durable append-only binding evidence.', $committed );
+mad4b_context_preflight_assert( ! empty( MAD4B_SCP_Audit::$events ) && 'mad4b/context-receipt-bound' === MAD4B_SCP_Audit::$events[0]['ability'], 'Context Receipt binding must be auditable before provider execution.', MAD4B_SCP_Audit::$events );
 
 $wrong_scope = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'another-task' );
 $wrong_ids = array();
