@@ -1,0 +1,133 @@
+<?php
+
+define( 'ABSPATH', '/srv/wordpress/' );
+
+class WP_Error {
+	private $code;
+	private $message;
+	private $data;
+	public function __construct( $code, $message = '', $data = null ) { $this->code = (string) $code; $this->message = (string) $message; $this->data = $data; }
+	public function get_error_code() { return $this->code; }
+	public function get_error_message() { return $this->message; }
+	public function get_error_data() { return $this->data; }
+}
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
+function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
+function sanitize_text_field( $value ) { return trim( preg_replace( '/[\r\n\t]+/', ' ', (string) $value ) ); }
+function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+
+final class MAD4B_SCP_Context_Authority {
+	public static $assets = array();
+	public static function categories() {
+		return array(
+			'brand_strategy' => 'Brand Strategy',
+			'tone_of_voice' => 'Tone of Voice',
+			'editorial_guidelines' => 'Editorial Guidelines',
+			'terminology' => 'Terminology',
+			'claim_policy' => 'Claim Policy',
+			'seo_strategy' => 'SEO Strategy',
+			'writer_reference' => 'Writer Reference',
+		);
+	}
+	public static function status() {
+		return array(
+			'site_uuid' => '11111111-1111-4111-8111-111111111111',
+			'brand_id' => 'brand-001',
+			'profile_revision' => 7,
+			'context_fingerprint' => str_repeat( 'a', 64 ),
+			'stale_asset_count' => 0,
+			'conflicting_asset_count' => 0,
+		);
+	}
+	public static function profile() { return array( 'brand_id' => 'brand-001', 'revision' => 7 ); }
+	public static function assets() { return self::$assets; }
+}
+
+final class MAD4B_SCP_Google_Drive_Context {
+	public static function read_context_asset( $asset_id ) {
+		foreach ( MAD4B_SCP_Context_Authority::$assets as $asset ) {
+			if ( (string) $asset['asset_id'] !== (string) $asset_id ) continue;
+			$content = 'content:' . $asset_id;
+			return array(
+				'content' => $content,
+				'bytes' => strlen( $content ),
+				'content_sha256' => hash( 'sha256', $content ),
+			);
+		}
+		return new WP_Error( 'missing', 'Asset missing.' );
+	}
+}
+
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-preflight.php';
+
+function mad4b_context_preflight_assert( $condition, $message, $context = null ) {
+	if ( $condition ) return;
+	fwrite( STDERR, "FAIL: {$message}\n" );
+	if ( null !== $context ) fwrite( STDERR, json_encode( $context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
+	exit( 1 );
+}
+
+function mad4b_context_asset( $id, $category, $mode, $review, $task_scope = '', $priority = 100, $quality = 90 ) {
+	return array(
+		'asset_id' => $id,
+		'source_id' => 'source-' . $mode,
+		'source_mode' => $mode,
+		'task_scope' => $task_scope,
+		'category' => $category,
+		'authority_class' => 'governed' === $mode ? 'brand_authority' : 'reference',
+		'title' => $category . ' asset',
+		'quality_score' => $quality,
+		'priority' => $priority,
+		'status' => 'ready',
+		'review_status' => $review,
+	);
+}
+
+$skill = array(
+	'logical_id' => 'site/content/blog-writer',
+	'sha256' => str_repeat( 'b', 64 ),
+	'context_policy' => array( 'preset' => 'brand_core' ),
+);
+
+MAD4B_SCP_Context_Authority::$assets = array(
+	'brand' => mad4b_context_asset( 'brand', 'brand_strategy', 'governed', 'unreviewed' ),
+	'tone' => mad4b_context_asset( 'tone', 'tone_of_voice', 'governed', 'approved' ),
+	'editorial' => mad4b_context_asset( 'editorial', 'editorial_guidelines', 'governed', 'approved' ),
+	'writer' => mad4b_context_asset( 'writer', 'writer_reference', 'task_attachment', 'unreviewed', 'campaign-x', 40, 95 ),
+);
+
+$blocked = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x' );
+mad4b_context_preflight_assert( is_array( $blocked ) && empty( $blocked['ready'] ), 'Unreviewed mandatory governed asset must fail closed.', $blocked );
+mad4b_context_preflight_assert( in_array( 'required_context_sets_missing', $blocked['blockers'], true ), 'Missing approved required category must be explicit.', $blocked );
+mad4b_context_preflight_assert( in_array( 'brand_strategy', $blocked['missing_context_sets'], true ), 'brand_strategy must be reported missing while its asset is unreviewed.', $blocked );
+
+MAD4B_SCP_Context_Authority::$assets['brand']['review_status'] = 'approved';
+$ready = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x' );
+mad4b_context_preflight_assert( ! empty( $ready['ready'] ) && 'ready' === $ready['state'], 'Approved mandatory context must become ready.', $ready );
+mad4b_context_preflight_assert( empty( $ready['blockers'] ), 'Ready preflight must not retain blockers.', $ready );
+mad4b_context_preflight_assert( 'mad4b.context-envelope.v1' === $ready['envelope']['contract'], 'Context envelope contract mismatch.', $ready );
+mad4b_context_preflight_assert( 'mad4b.content-context-receipt.v1' === $ready['receipt']['contract'], 'Context receipt contract mismatch.', $ready );
+mad4b_context_preflight_assert( preg_match( '/^[a-f0-9]{64}$/', $ready['receipt']['receipt_sha256'] ), 'Context receipt must carry deterministic SHA256.', $ready );
+
+$ids = array();
+foreach ( $ready['envelope']['assets'] as $asset ) $ids[] = (string) $asset['asset_id'];
+sort( $ids, SORT_STRING );
+mad4b_context_preflight_assert( in_array( 'brand', $ids, true ) && in_array( 'tone', $ids, true ) && in_array( 'editorial', $ids, true ), 'All approved mandatory Brand Core assets must load.', $ids );
+mad4b_context_preflight_assert( in_array( 'writer', $ids, true ), 'Exact task-scoped optional writer reference should load.', $ids );
+mad4b_context_preflight_assert( 'site_policy' === $ready['envelope']['precedence'][0] && 'brand_core' === $ready['envelope']['precedence'][1], 'Context precedence must keep Site Policy and Brand Core ahead of references.', $ready['envelope']['precedence'] );
+
+$wrong_scope = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'another-task' );
+$wrong_ids = array();
+foreach ( $wrong_scope['envelope']['assets'] as $asset ) $wrong_ids[] = (string) $asset['asset_id'];
+mad4b_context_preflight_assert( ! in_array( 'writer', $wrong_ids, true ), 'Task-only asset must not cross task scopes.', $wrong_ids );
+
+$none = MAD4B_SCP_Context_Preflight::preflight_entry(
+	array(
+		'logical_id' => 'site/utility/no-context',
+		'sha256' => str_repeat( 'c', 64 ),
+		'context_policy' => array( 'preset' => 'none' ),
+	)
+);
+mad4b_context_preflight_assert( ! empty( $none['ready'] ) && 'not_required' === $none['state'], 'Non-context Skill must remain usable without Brand Context.', $none );
+
+echo "mad4b.site-control-plane.context-preflight.runtime.v1: PASS\n";
