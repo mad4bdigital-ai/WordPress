@@ -108,8 +108,8 @@ MAD4B_SCP_Google_Drive_Context::$status = array(
 	'recreate_source_count' => 1,
 );
 $result = $adapter->mutation_ability_runtime_eligibility( 'context/create-drive-asset' );
-mad4b_context_mount_assert( is_wp_error( $result ), 'Repair-only source must not mount arbitrary create.' );
-mad4b_context_mount_assert( 'mad4b_context_source_policy_blocks_write' === $result->get_error_code(), 'Repair-only create must surface source-policy blocker.', $result->get_error_code() );
+mad4b_context_mount_assert( is_wp_error( $result ), 'Arbitrary create must remain unmounted until its exact rollback contract is certified, regardless of source policy.' );
+mad4b_context_mount_assert( 'mad4b_google_drive_create_rollback_not_certified' === $result->get_error_code(), 'Create must surface the global rollback-certification blocker before source-policy evaluation.', $result->get_error_code() );
 
 mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibility( 'context/update-drive-asset' ), 'Repair-only source must mount governed update when OAuth write is available.' );
 mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibility( 'context/recreate-drive-asset' ), 'Repair-only source must mount governed recreate when OAuth write is available.' );
