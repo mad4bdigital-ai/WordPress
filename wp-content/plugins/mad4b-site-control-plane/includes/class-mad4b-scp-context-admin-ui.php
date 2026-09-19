@@ -61,7 +61,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	public static function handle_connect_google() {
 		self::require_admin( self::ACTION_CONNECT_GOOGLE );
-		$url = MAD4B_SCP_Google_Drive_Context::authorization_url();
+		$access_mode = isset( $_POST['access_mode'] ) ? sanitize_key( wp_unslash( $_POST['access_mode'] ) ) : 'read_only';
+		$url = MAD4B_SCP_Google_Drive_Context::authorization_url( $access_mode );
 		if ( is_wp_error( $url ) ) self::redirect_result( $url, 'google-drive', '' );
 		wp_redirect( esc_url_raw( $url ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- validated Google OAuth endpoint.
 		exit;
@@ -149,7 +150,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
 		echo '<div class="wrap mad4b-scp-admin-page mad4b-context-page">';
 		echo '<h1>' . esc_html__( 'Context Authority', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p class="description">' . esc_html__( 'Connect brand knowledge to this Site Profile. Google Drive remains a read-only source; Context Authority decides which assets are governed, task-only, required, and ready for Skills.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Connect brand knowledge to this Site Profile. Google Drive can be read-only or explicitly upgraded to read + write; Context Authority still decides which assets are governed, task-only, required, and eligible for governed mutation.', 'mad4b-site-control-plane' ) . '</p>';
 		self::render_notice();
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 		if ( 'overview' === $tab ) self::render_overview();
@@ -168,7 +169,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$stages = array(
 			array( 'label' => 'Site Profile', 'detail' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'Enrolled to this origin' : 'Enroll this site first', 'state' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'complete' : 'blocked' ),
 			array( 'label' => 'Brand Profile', 'detail' => ! empty( $profile ) ? (string) $profile['brand_name'] : 'Name the brand context', 'state' => ! empty( $profile ) ? 'complete' : 'pending' ),
-			array( 'label' => 'Google Drive', 'detail' => ! empty( $google['connected'] ) ? ( $google['account_email'] ? $google['account_email'] : 'Connected read-only' ) : 'Connect a Google account', 'state' => ! empty( $google['connected'] ) ? 'complete' : 'pending', 'url' => self::tab_url( 'google-drive' ) ),
+			array( 'label' => 'Google Drive', 'detail' => ! empty( $google['connected'] ) ? ( ( $google['account_email'] ? $google['account_email'] . ' · ' : '' ) . ( ! empty( $google['write_available'] ) ? 'Read + Write' : 'Read-only' ) ) : 'Connect a Google account', 'state' => ! empty( $google['connected'] ) ? 'complete' : 'pending', 'url' => self::tab_url( 'google-drive' ) ),
 			array( 'label' => 'Source Folder', 'detail' => $status['governed_source_count'] ? $status['governed_source_count'] . ' governed source(s)' : 'Choose a governed folder', 'state' => $status['governed_source_count'] ? 'complete' : 'pending', 'url' => self::tab_url( 'sources' ) ),
 			array( 'label' => 'Context Ready', 'detail' => $status['ready'] ? 'Mandatory context is ready' : 'Scan and review assets', 'state' => $status['ready'] ? 'complete' : 'attention', 'url' => self::tab_url( 'assets' ) ),
 		);
@@ -206,7 +207,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$credentials = MAD4B_SCP_Google_Drive_Context::credentials_status();
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( '1. Google OAuth setup', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Create a Google OAuth Web application, enable Google Drive API, and add this exact redirect URI. The plugin requests Drive read-only access only.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'Create a Google OAuth Web application, enable Google Drive API, and add this exact redirect URI. Start read-only, or explicitly grant read + write when you want governed asset create/update/recreate.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p><label><strong>' . esc_html__( 'Authorized redirect URI', 'mad4b-site-control-plane' ) . '</strong></label><br><input type="text" readonly class="large-text code" value="' . esc_attr( $credentials['redirect_uri'] ) . '"></p>';
 		if ( ! empty( $credentials['configured_by_constants'] ) ) {
 			echo '<div class="notice notice-success inline"><p>' . esc_html__( 'OAuth client credentials are managed by wp-config constants. Secrets are not editable here.', 'mad4b-site-control-plane' ) . '</p></div>';
@@ -227,17 +228,36 @@ final class MAD4B_SCP_Context_Admin_UI {
 			return;
 		}
 		if ( empty( $connection['connected'] ) ) {
-			echo '<p>' . esc_html__( 'You will be sent to Google to choose an account and grant read-only Drive access.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p>' . esc_html__( 'Choose the minimum access you need. You can upgrade later without changing the Context sources.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<div class="mad4b-context-source-mode">';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
-			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '">';
-			submit_button( __( 'Connect Google Drive', 'mad4b-site-control-plane' ), 'primary' );
-			echo '</form></div>';
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '"><input type="hidden" name="access_mode" value="read_only">';
+			echo '<h3>' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'Browse, scan, classify and score Drive assets. No Drive content can be changed.', 'mad4b-site-control-plane' ) . '</p>';
+			submit_button( __( 'Connect Read-only', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+			echo '</form>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '"><input type="hidden" name="access_mode" value="read_write">';
+			echo '<h3>' . esc_html__( 'Read + Write', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'Adds Drive create/update/recreate capability. MAD4B still requires exact write authority and one-time approval for every mutation.', 'mad4b-site-control-plane' ) . '</p>';
+			submit_button( __( 'Connect Read + Write', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
+			echo '</form></div></div>';
 			return;
 		}
+		$access_label = ! empty( $connection['write_available'] ) ? __( 'Read + Write', 'mad4b-site-control-plane' ) : __( 'Read-only', 'mad4b-site-control-plane' );
 		echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'Connected', 'mad4b-site-control-plane' ) . '</strong>';
 		if ( $connection['account_email'] ) echo ' · ' . esc_html( $connection['account_email'] );
-		echo ' · ' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</p></div>';
+		echo ' · ' . esc_html( $access_label ) . '</p></div>';
+		if ( empty( $connection['write_available'] ) ) {
+			echo '<div class="mad4b-scp-next-step is-attention"><p><strong>' . esc_html__( 'Need to repair or recreate Drive assets?', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Upgrade OAuth to read + write. This grants provider capability only; mutations still require governed approval.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '"><input type="hidden" name="access_mode" value="read_write">';
+			submit_button( __( 'Upgrade to Read + Write', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
+			echo '</form></div>';
+		} else {
+			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Drive write capability is available.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Create, update and recreate remain mounted on mad4b-write and require exact NHI grant plus one-time approval. This page never executes those mutations directly.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 		echo '<p><a class="button button-primary" href="' . esc_url( self::tab_url( 'google-drive', array( 'folder' => 'root' ) ) ) . '">' . esc_html__( 'Choose Source Folder', 'mad4b-site-control-plane' ) . '</a></p>';
 		echo '<form class="mad4b-context-folder-jump" method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '"><input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '"><input type="hidden" name="tab" value="google-drive"><label><strong>' . esc_html__( 'Open a shared folder by ID', 'mad4b-site-control-plane' ) . '</strong><span class="description"> ' . esc_html__( 'Useful for Shared Drives or folders that do not appear under My Drive.', 'mad4b-site-control-plane' ) . '</span></label><div><input type="text" name="folder" class="regular-text code" placeholder="Google Drive folder ID"> ';
 		submit_button( __( 'Open Folder', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
