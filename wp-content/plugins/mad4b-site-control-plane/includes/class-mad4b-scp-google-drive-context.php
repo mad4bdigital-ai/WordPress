@@ -1039,10 +1039,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$scope = trim( (string) $scope );
 		if ( ! self::scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
 		$requested_mode = sanitize_key( (string) $requested_mode );
-		if ( 'read_write' === $requested_mode && ! self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_write_scope_missing', 'Google did not grant the required Drive read+write scope.' );
-		if ( 'read_only' === $requested_mode ) {
-			if ( ! self::scope_allows_read( $scope ) ) return new WP_Error( 'mad4b_google_drive_read_scope_missing', 'Google did not grant a Drive read scope.' );
-			if ( self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_readonly_scope_escalated', 'Google returned Drive write authority for a read-only connection. Revoke Google access and reconnect with Read-only to restore least privilege.' );
+		if ( ! self::scope_matches_requested_mode( $scope, $requested_mode ) ) {
+			if ( 'read_only' === $requested_mode && self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_readonly_scope_escalated', 'Google returned Drive write authority for a read-only connection. Revoke Google access and reconnect with Read-only to restore least privilege.' );
+			if ( 'read_write' === $requested_mode && ! self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_write_scope_missing', 'Google did not grant the required Drive read+write scope.' );
+			if ( 'read_only' === $requested_mode && ! self::scope_allows_read( $scope ) ) return new WP_Error( 'mad4b_google_drive_read_scope_missing', 'Google did not grant a Drive read scope.' );
+			return new WP_Error( 'mad4b_google_drive_scope_set_not_exact', 'Google returned a Drive scope set that does not exactly match the requested governed access mode.' );
 		}
 		$record = is_array( $existing ) ? $existing : array();
 		$record['contract'] = self::CONTRACT;
@@ -1101,6 +1102,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	private static function scope_allows_write( $scope ) {
 		return in_array( self::WRITE_SCOPE, self::scope_items( $scope ), true );
+	}
+
+	private static function scope_matches_requested_mode( $scope, $requested_mode ) {
+		$items = self::scope_items( $scope );
+		$requested_mode = sanitize_key( (string) $requested_mode );
+		if ( 'read_only' === $requested_mode ) return 1 === count( $items ) && in_array( self::READ_SCOPE, $items, true );
+		if ( 'read_write' === $requested_mode ) return 1 === count( $items ) && in_array( self::WRITE_SCOPE, $items, true );
+		return false;
 	}
 
 	public static function write_capability_status() {
