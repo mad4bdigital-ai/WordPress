@@ -245,6 +245,8 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function remove_source( $source_id ) {
+		$audit_ready = self::audit_preflight();
+		if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 		$site = self::site_binding();
 		if ( is_wp_error( $site ) ) return $site;
 		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
@@ -285,6 +287,8 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function review_asset( $asset_id, array $input ) {
+		$audit_ready = self::audit_preflight();
+		if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 		$site = self::site_binding();
 		if ( is_wp_error( $site ) ) return $site;
 		$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
@@ -564,6 +568,13 @@ final class MAD4B_SCP_Context_Authority {
 			'status' => 'ready',
 			'last_synced_at' => gmdate( 'c' ),
 		);
+	}
+
+	private static function audit_preflight() {
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_context_audit_unavailable', 'Append-only audit service is unavailable.' );
+		$status = MAD4B_SCP_Audit::storage_status();
+		if ( ! is_array( $status ) || empty( $status['ready'] ) ) return new WP_Error( 'mad4b_context_audit_not_ready', 'Append-only audit storage is not ready; Context governance mutation remains fail-closed.' );
+		return true;
 	}
 
 	private static function site_binding() {
