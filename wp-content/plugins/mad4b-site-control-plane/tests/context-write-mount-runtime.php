@@ -52,9 +52,27 @@ class MAD4B_SCP_Google_Drive_Context {
 	public static function create_asset() { return array(); }
 	public static function update_asset() { return array(); }
 	public static function recreate_asset() { return array(); }
-	public static function reversible_update_state() { return array(); }
+	public static function reversible_update_state( $asset_id = '', $expected = '' ) {
+		return array(
+			'asset_id' => $asset_id ? (string) $asset_id : str_repeat( 'd', 64 ),
+			'source_id' => str_repeat( 'e', 64 ),
+			'file_id' => 'drive-file-fixture',
+			'content' => 'before',
+			'content_sha256' => hash( 'sha256', 'before' ),
+		);
+	}
 	public static function restore_update_state() { return true; }
-	public static function reversible_recreate_state() { return array(); }
+	public static function reversible_recreate_state( $asset_id = '' ) {
+		return array(
+			'asset_id' => $asset_id ? (string) $asset_id : str_repeat( 'f', 64 ),
+			'source_id' => str_repeat( 'e', 64 ),
+			'original_file_id' => 'missing-drive-file',
+			'parent_folder_id' => 'folder-fixture',
+			'status' => 'unavailable',
+			'replacement_asset_id' => '',
+			'replacement_file_id' => '',
+		);
+	}
 	public static function restore_recreate_state() { return true; }
 }
 
@@ -77,6 +95,27 @@ mad4b_context_mount_assert( ! empty( $contract['ready'] ), 'First-party Context 
 mad4b_context_mount_assert( preg_match( '/^[a-f0-9]{64}$/', $contract['artifact_fingerprint'] ), 'Provider contract must expose exact critical-file artifact fingerprint.', $contract );
 mad4b_context_mount_assert( str_repeat( 'c', 64 ) === $contract['control_plane_build_fingerprint'], 'Provider contract must bind the exact Control Plane build fingerprint.', $contract );
 mad4b_context_mount_assert( 'runtime_structural_plus_build_bound_artifact_fingerprint' === $contract['certification_mode'], 'Provider certification mode must remain build-bound.', $contract );
+
+$rollback_asset_id = str_repeat( 'd', 64 );
+$snapshot = $adapter->capture_reversible_state(
+	'context/update-drive-asset',
+	array( 'asset_id' => $rollback_asset_id, 'expected_content_hash' => str_repeat( '1', 64 ) )
+);
+mad4b_context_mount_assert( ! is_wp_error( $snapshot ), 'Context update rollback snapshot must bind the exact provider contract.', $snapshot );
+$binding = isset( $snapshot['state']['_mad4b_provider_binding'] ) ? $snapshot['state']['_mad4b_provider_binding'] : array();
+mad4b_context_mount_assert( MAD4B_SCP_Context_Adapter::PROVIDER_CONTRACT === ( isset( $binding['contract'] ) ? $binding['contract'] : '' ), 'Rollback snapshot must identify the first-party provider contract.', $binding );
+mad4b_context_mount_assert( hash_equals( $contract['artifact_fingerprint'], (string) $binding['artifact_fingerprint'] ), 'Rollback snapshot must bind exact provider artifact fingerprint.', $binding );
+mad4b_context_mount_assert( hash_equals( $contract['control_plane_build_fingerprint'], (string) $binding['control_plane_build_fingerprint'] ), 'Rollback snapshot must bind exact Control Plane build fingerprint.', $binding );
+
+$read_state = $adapter->read_reversible_state( 'context/update-drive-asset', $snapshot['target'] );
+mad4b_context_mount_assert( ! is_wp_error( $read_state ) && isset( $read_state['_mad4b_provider_binding'] ), 'Reversible readback must carry the same build-bound provider binding.', $read_state );
+mad4b_context_mount_assert( hash_equals( (string) $binding['artifact_fingerprint'], (string) $read_state['_mad4b_provider_binding']['artifact_fingerprint'] ), 'Reversible readback provider artifact binding must be stable on the exact build.', $read_state );
+
+$tampered_state = $snapshot['state'];
+$tampered_state['_mad4b_provider_binding']['artifact_fingerprint'] = str_repeat( '9', 64 );
+$restore = $adapter->restore_reversible_state( 'context/update-drive-asset', $snapshot['target'], $tampered_state, array() );
+mad4b_context_mount_assert( is_wp_error( $restore ), 'Rollback with provider artifact drift must fail closed before provider restore.', $restore );
+mad4b_context_mount_assert( 'mad4b_context_undo_provider_contract_drift' === $restore->get_error_code(), 'Provider artifact drift must expose the exact rollback blocker.', $restore->get_error_code() );
 
 MAD4B_SCP_Google_Drive_Context::$status = array(
 	'write_available' => false,
@@ -156,4 +195,4 @@ mad4b_context_mount_assert( is_wp_error( $missing_scope ) && 'mad4b_context_task
 $task_only = $adapter->list_assets( array( 'mode' => 'task_attachment', 'task_scope' => 'task-b' ) );
 mad4b_context_mount_assert( ! is_wp_error( $task_only ) && 1 === $task_only['count'] && $task_b_id === $task_only['items'][0]['asset_id'], 'Exact task-only listing must return only the matching task attachment.', $task_only );
 
-echo "mad4b.site-control-plane.context-write-mount.runtime.v4: PASS\n";
+echo "mad4b.site-control-plane.context-write-mount.runtime.v5: PASS\n";
