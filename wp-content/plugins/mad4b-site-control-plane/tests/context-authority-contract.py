@@ -166,6 +166,14 @@ require(drive, "last_complete_scan_generation", "recreate requires complete scan
 require(drive, "absence_scan_generation", "recreate absence-generation binding")
 require(drive, "mad4b_google_drive_recreate_duplicate_title_detected", "duplicate-safe recreation")
 require(drive, "fetch_text_content_record", "explicit provider normalization completeness")
+require(drive, "runtime_readiness", "safe Context runtime readiness diagnostic")
+require(drive, "mad4b.google-drive-context-runtime-readiness.v1", "runtime readiness contract")
+require(drive, "gemini_api_key_present", "Gemini secret presence-only diagnostic")
+require(drive, "generic_extractor_token_present", "generic extractor secret presence-only diagnostic")
+require(drive, "'secrets_exposed' => false", "runtime readiness explicitly denies secret exposure")
+require(drive, "'pkce_s256' => true", "OAuth PKCE S256 readiness declaration")
+require(drive, "'code_challenge_method' => 'S256'", "OAuth authorization uses PKCE S256")
+require(drive, "'code_verifier' => $pkce_verifier", "OAuth token exchange binds PKCE verifier")
 require(drive, "normalization_capabilities", "normalization capability manifest")
 require(drive, "application/vnd.google-apps.presentation", "Google Slides plain-text normalization")
 require(drive, "normalize_pdf", "bounded local PDF text normalization")
@@ -223,12 +231,15 @@ assert "'refresh_token' =>" not in status_body, "connection status must not expo
 for sensitive in ("'scope' =>", "'account_email' =>", "'account_name' =>", "'permission_id' =>", "'access_token' =>", "'refresh_token' =>"):
     assert sensitive not in public_status_body, f"public Google Drive status leaked identity/credential field: {sensitive}"
 require(adapter, "MAD4B_SCP_Google_Drive_Context::public_connection_status()", "remote Google Drive status uses privacy-bounded projection")
+require(adapter, "MAD4B_SCP_Google_Drive_Context::runtime_readiness()", "remote readiness uses secret-safe provider projection")
+
 
 # Governed adapter surfaces.
 for ability in [
     "context/status",
     "context/assets",
     "context/google-drive-status",
+    "context/runtime-readiness",
     "context/create-drive-asset",
     "context/update-drive-asset",
     "context/recreate-drive-asset",
@@ -377,4 +388,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v48: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v49: PASS")
