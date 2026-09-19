@@ -14,6 +14,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php'
       - '.github/workflows/mad4b-context-authority.yml'
@@ -56,6 +57,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
 
@@ -70,6 +72,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+
+      - name: Execute Skill Context preflight runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
 
       - name: Execute source write-policy runtime
         shell: bash
