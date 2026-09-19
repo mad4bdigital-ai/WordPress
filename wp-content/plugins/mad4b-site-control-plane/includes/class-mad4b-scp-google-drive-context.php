@@ -553,6 +553,46 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return true;
 	}
 
+	public static function read_context_asset( $asset_id ) {
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
+		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+		if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) return new WP_Error( 'mad4b_context_asset_not_ready', 'Context asset is not ready for runtime loading.' );
+		$source = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' ) : array();
+		if ( empty( $source ) || 'google_drive' !== ( isset( $source['provider'] ) ? (string) $source['provider'] : '' ) ) return new WP_Error( 'mad4b_context_asset_source_invalid', 'Context asset is not bound to the governed Google Drive source provider.' );
+		$file_id = isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '';
+		$membership = self::assert_file_within_source( $file_id, $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$metadata = self::get_file_metadata( $file_id );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$content = self::fetch_text_content( $metadata );
+		if ( is_wp_error( $content ) ) return $content;
+		if ( '' === (string) $content ) return new WP_Error( 'mad4b_context_asset_text_unavailable', 'Context asset does not expose normalized text through the certified read provider.' );
+		$observed_hash = hash( 'sha256', (string) $content );
+		$registered_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $registered_hash ) || ! hash_equals( $registered_hash, $observed_hash ) ) {
+			return new WP_Error(
+				'mad4b_context_asset_remote_drift',
+				'Context asset changed in Google Drive after the last governed scan; refresh and review the asset before using it as runtime context.',
+				array(
+					'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+					'registered_content_hash' => $registered_hash,
+					'observed_content_hash' => $observed_hash,
+				)
+			);
+		}
+		return array(
+			'contract' => 'mad4b.context-asset-read.v1',
+			'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+			'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+			'file_id' => $file_id,
+			'content' => (string) $content,
+			'bytes' => strlen( (string) $content ),
+			'content_sha256' => $observed_hash,
+			'mime_type' => isset( $metadata['mimeType'] ) ? (string) $metadata['mimeType'] : '',
+			'observed_at' => gmdate( 'c' ),
+		);
+	}
+
 	public static function asset_write_capabilities( $asset_id ) {
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
 		if ( empty( $asset ) ) return array( 'update' => false, 'recreate' => false, 'blockers' => array( 'context_asset_not_found' ) );
