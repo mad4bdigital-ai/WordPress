@@ -82,14 +82,12 @@ final class MAD4B_SCP_Context_Authority {
 
 	private static function raw_sources() {
 		$records = get_option( self::SOURCES_OPTION, array() );
-		if ( ! is_array( $records ) ) return array();
-		return array_slice( $records, -self::MAX_SOURCES, self::MAX_SOURCES, true );
+		return is_array( $records ) ? $records : array();
 	}
 
 	private static function raw_assets() {
 		$records = get_option( self::ASSETS_OPTION, array() );
-		if ( ! is_array( $records ) ) return array();
-		return array_slice( $records, -self::MAX_ASSETS, self::MAX_ASSETS, true );
+		return is_array( $records ) ? $records : array();
 	}
 
 	private static function authorized_sources_from_records( array $records, array $site ) {
@@ -259,6 +257,13 @@ final class MAD4B_SCP_Context_Authority {
 				$sources = self::raw_sources();
 				$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
 				$current = isset( $authorized_sources[ $source_id ] ) ? $authorized_sources[ $source_id ] : array();
+				if ( ! isset( $sources[ $source_id ] ) && count( $sources ) >= self::MAX_SOURCES ) {
+					return new WP_Error(
+						'mad4b_context_source_registry_capacity_limit',
+						'Context source registry is at its certified storage limit. Remove or remediate an existing source before adding another.',
+						array( 'limit' => self::MAX_SOURCES, 'stored_source_count' => count( $sources ) )
+					);
+				}
 				$write_policy = isset( $input['write_policy'] )
 					? sanitize_key( (string) $input['write_policy'] )
 					: ( isset( $current['write_policy'] ) ? sanitize_key( (string) $current['write_policy'] ) : ( 'governed' === $mode ? 'repair_only' : 'read_only' ) );
@@ -289,7 +294,6 @@ final class MAD4B_SCP_Context_Authority {
 					'updated_at' => gmdate( 'c' ),
 				);
 				$sources[ $source_id ] = $record;
-				if ( count( $sources ) > self::MAX_SOURCES ) $sources = array_slice( $sources, -self::MAX_SOURCES, self::MAX_SOURCES, true );
 				if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_registry_write_failed', 'Context source registry could not be persisted.' );
 				return $record;
 			}
@@ -476,6 +480,13 @@ final class MAD4B_SCP_Context_Authority {
 				$normalized = self::normalize_asset( $source, $provider_asset );
 				if ( is_wp_error( $normalized ) ) return $normalized;
 				$records = self::raw_assets();
+				if ( ! isset( $records[ $normalized['asset_id'] ] ) && count( $records ) >= self::MAX_ASSETS ) {
+					return new WP_Error(
+						'mad4b_context_asset_registry_capacity_limit',
+						'Context asset registry is at its certified storage limit. New provider assets cannot be registered without explicit remediation.',
+						array( 'limit' => self::MAX_ASSETS, 'stored_asset_count' => count( $records ) )
+					);
+				}
 				$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
 				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
 					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
@@ -520,6 +531,13 @@ final class MAD4B_SCP_Context_Authority {
 				$normalized = self::normalize_asset( $source, $provider_asset );
 				if ( is_wp_error( $normalized ) ) return $normalized;
 				if ( $old_asset_id === (string) $normalized['asset_id'] ) return new WP_Error( 'mad4b_context_recreate_identity_collision', 'Recreated provider asset unexpectedly reused the unavailable asset identity.' );
+				if ( ! isset( $records[ $normalized['asset_id'] ] ) && count( $records ) >= self::MAX_ASSETS ) {
+					return new WP_Error(
+						'mad4b_context_asset_registry_capacity_limit',
+						'Context asset registry is full; recreated provider asset cannot be committed safely.',
+						array( 'limit' => self::MAX_ASSETS, 'stored_asset_count' => count( $records ) )
+					);
+				}
 				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
 					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
 					elseif ( array_key_exists( $field, $original ) ) $normalized[ $field ] = $original[ $field ];
@@ -561,7 +579,17 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['replacement_asset_id'] = isset( $new_asset['asset_id'] ) ? (string) $new_asset['asset_id'] : '';
 				$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
 			}
-			if ( ! empty( $new_asset['asset_id'] ) ) $records[ (string) $new_asset['asset_id'] ] = $new_asset;
+			if ( ! empty( $new_asset['asset_id'] ) ) {
+				$new_asset_id = (string) $new_asset['asset_id'];
+				if ( ! isset( $records[ $new_asset_id ] ) && count( $records ) >= self::MAX_ASSETS ) {
+					return new WP_Error(
+						'mad4b_context_asset_registry_capacity_limit',
+						'Context asset registry is full; recreated lineage cannot add a replacement record safely.',
+						array( 'limit' => self::MAX_ASSETS, 'stored_asset_count' => count( $records ) )
+					);
+				}
+				$records[ $new_asset_id ] = $new_asset;
+			}
 			$sources = self::raw_sources();
 			$profile = self::refreshed_profile_record( $records, $sources, true );
 			$changes = array( self::ASSETS_OPTION => $records );
@@ -900,6 +928,8 @@ final class MAD4B_SCP_Context_Authority {
 	public static function status() {
 		$site_status = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$profile = self::profile();
+		$raw_sources = self::raw_sources();
+		$raw_assets = self::raw_assets();
 		$sources = self::sources();
 		$assets = self::assets();
 		$governed_sources = array();
@@ -963,6 +993,8 @@ final class MAD4B_SCP_Context_Authority {
 		$warnings = array();
 		if ( empty( $site_status['configured'] ) || empty( $site_status['origin_match'] ) || empty( $site_status['environment_match'] ) ) $blockers[] = 'site_profile_not_enrolled';
 		if ( empty( $profile ) ) $blockers[] = 'brand_context_profile_unconfigured';
+		if ( count( $raw_sources ) > self::MAX_SOURCES ) $blockers[] = 'context_source_registry_capacity_exceeded';
+		if ( count( $raw_assets ) > self::MAX_ASSETS ) $blockers[] = 'context_asset_registry_capacity_exceeded';
 		if ( empty( $governed_sources ) ) $blockers[] = 'governed_context_source_missing';
 		if ( $partial_sources > 0 ) $blockers[] = 'governed_context_source_scan_incomplete';
 		if ( empty( $governed_assets ) ) $blockers[] = 'governed_context_assets_missing';
@@ -989,6 +1021,10 @@ final class MAD4B_SCP_Context_Authority {
 			'brand_name' => isset( $profile['brand_name'] ) ? (string) $profile['brand_name'] : '',
 			'profile_revision' => isset( $profile['revision'] ) ? absint( $profile['revision'] ) : 0,
 			'registry_revision' => self::registry_revision(),
+			'raw_source_count' => count( $raw_sources ),
+			'raw_asset_count' => count( $raw_assets ),
+			'source_registry_capacity_exceeded' => count( $raw_sources ) > self::MAX_SOURCES,
+			'asset_registry_capacity_exceeded' => count( $raw_assets ) > self::MAX_ASSETS,
 			'context_fingerprint' => self::context_fingerprint( $assets, $sources ),
 			'authority_manifest_fingerprint' => self::authority_manifest_fingerprint( $assets ),
 			'governed_source_count' => count( $governed_sources ),
