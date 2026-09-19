@@ -243,6 +243,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<p>' . esc_html__( 'Save OAuth configuration first.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
+		if ( ! empty( $connection['token_unreadable'] ) ) {
+			echo '<div class="notice notice-error inline"><p><strong>' . esc_html__( 'Stored Google credentials cannot be decrypted.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Drive access is disabled. Clear the unreadable local token, revoke MAD4B access from your Google Account security settings, then reconnect.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( self::ACTION_DISCONNECT_GOOGLE );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_DISCONNECT_GOOGLE ) . '">';
+			submit_button( __( 'Clear unreadable local token', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+			echo '</form></div>';
+			self::render_write_governance_readiness();
+			return;
+		}
 		if ( empty( $connection['connected'] ) ) {
 			echo '<p>' . esc_html__( 'Choose the minimum access you need. You can upgrade later without changing the Context sources.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<div class="mad4b-context-source-mode">';
