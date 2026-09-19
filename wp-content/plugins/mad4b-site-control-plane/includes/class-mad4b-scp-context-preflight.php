@@ -19,6 +19,7 @@ final class MAD4B_SCP_Context_Preflight {
 	const MAX_ASSETS_PER_SET = 3;
 	const MAX_CONTEXT_ASSETS = 24;
 	const MAX_CONTEXT_BYTES = 786432; // 768 KiB exact-provider text across one preflight.
+	const MAX_RECEIPT_AGE = 1800; // 30 minutes; approval is still one-time and separately short-lived.
 
 	public static function presets() {
 		return array(
@@ -443,6 +444,8 @@ final class MAD4B_SCP_Context_Preflight {
 		if ( ! is_array( $receipt ) || self::RECEIPT_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) return new WP_Error( 'mad4b_context_receipt_invalid', 'Context Receipt contract is missing or invalid.' );
 		if ( empty( $receipt['ready'] ) || ! empty( $receipt['blockers'] ) ) return new WP_Error( 'mad4b_context_receipt_not_ready', 'Context Receipt was not issued from a ready governed preflight.' );
 		$expected_digest = isset( $receipt['receipt_sha256'] ) ? strtolower( trim( (string) $receipt['receipt_sha256'] ) ) : '';
+		$observed_at = isset( $receipt['observed_at'] ) ? strtotime( (string) $receipt['observed_at'] ) : false;
+		if ( false === $observed_at || $observed_at > time() + 60 || ( time() - $observed_at ) > self::MAX_RECEIPT_AGE ) return new WP_Error( 'mad4b_context_receipt_expired', 'Context Receipt is outside the certified freshness window; rerun the Skill Context Preflight.' );
 		$observed_digest = self::canonical_receipt_digest( $receipt );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) || ! hash_equals( $expected_digest, $observed_digest ) ) return new WP_Error( 'mad4b_context_receipt_integrity_failed', 'Context Receipt digest does not match its canonical evidence.' );
 
