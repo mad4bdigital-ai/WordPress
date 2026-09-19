@@ -11,6 +11,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-snapshot-identity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-exporter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
@@ -22,6 +25,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-provider-absence-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-parent-lineage-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php'
       - '.github/workflows/mad4b-context-authority.yml'
   workflow_dispatch:
 
@@ -61,6 +67,10 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-snapshot-identity.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-exporter.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
@@ -70,6 +80,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-provider-absence-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-parent-lineage-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
 
       - name: Enforce Context Authority architecture
         shell: bash
@@ -130,3 +143,21 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
+
+      - name: Execute scan completeness runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php
+
+      - name: Execute provider content completeness runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php
+
+      - name: Execute Skill Context enforcement runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
