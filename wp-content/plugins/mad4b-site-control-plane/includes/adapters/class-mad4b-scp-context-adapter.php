@@ -55,6 +55,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$this->schema(
 				array(
 					'mode' => array( 'type' => 'string', 'enum' => array( '', 'governed', 'task_attachment' ), 'default' => '' ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160, 'default' => '' ),
 					'status' => array( 'type' => 'string', 'default' => '' ),
 					'category' => array( 'type' => 'string', 'default' => '' ),
 					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 200, 'default' => 100 ),
@@ -374,19 +375,33 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	public function list_assets( $input ) {
+		$input = is_array( $input ) ? $input : array();
 		$mode = sanitize_key( isset( $input['mode'] ) ? (string) $input['mode'] : '' );
+		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
 		$status = sanitize_key( isset( $input['status'] ) ? (string) $input['status'] : '' );
 		$category = sanitize_key( isset( $input['category'] ) ? (string) $input['category'] : '' );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 200, absint( $input['limit'] ) ) ) : 100;
+		if ( 'task_attachment' === $mode && '' === $task_scope ) {
+			return new WP_Error(
+				'mad4b_context_task_scope_required',
+				'Task-scoped Context asset metadata requires the exact task_scope.'
+			);
+		}
 		$items = array();
 		foreach ( MAD4B_SCP_Context_Authority::assets() as $asset ) {
-			if ( '' !== $mode && $mode !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) continue;
+			if ( ! is_array( $asset ) ) continue;
+			$asset_mode = isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '';
+			if ( 'task_attachment' === $asset_mode ) {
+				$asset_scope = isset( $asset['task_scope'] ) ? (string) $asset['task_scope'] : '';
+				if ( '' === $task_scope || '' === $asset_scope || ! hash_equals( $asset_scope, $task_scope ) ) continue;
+			}
+			if ( '' !== $mode && $mode !== $asset_mode ) continue;
 			if ( '' !== $status && $status !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
 			if ( '' !== $category && $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
 			$items[] = array(
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
 				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
-				'source_mode' => isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '',
+				'source_mode' => $asset_mode,
 				'source_write_policy' => class_exists( 'MAD4B_SCP_Context_Authority' ) && ! empty( $asset['source_id'] ) ? MAD4B_SCP_Context_Authority::source_write_policy( (string) $asset['source_id'] ) : 'read_only',
 				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
@@ -404,7 +419,12 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			);
 			if ( count( $items ) >= $limit ) break;
 		}
-		return array( 'items' => $items, 'count' => count( $items ) );
+		return array(
+			'contract' => 'mad4b.context-asset-list.v2',
+			'items' => $items,
+			'count' => count( $items ),
+			'task_scope_bound' => '' !== $task_scope,
+		);
 	}
 
 	public function context_conflicts( $input ) {

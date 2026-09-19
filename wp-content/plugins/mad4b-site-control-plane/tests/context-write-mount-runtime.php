@@ -14,6 +14,8 @@ class WP_Error {
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
+function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
+function absint( $value ) { return abs( (int) $value ); }
 
 abstract class MAD4B_SCP_Adapter_Base {
 	abstract public function id();
@@ -30,7 +32,10 @@ abstract class MAD4B_SCP_Adapter_Base {
 }
 
 class MAD4B_SCP_Context_Authority {
+	public static $assets = array();
 	public static function source_allows_write() { return true; }
+	public static function source_write_policy() { return 'read_only'; }
+	public static function assets() { return self::$assets; }
 	public static function registry_revision() { return 1; }
 	public static function context_fingerprint() { return str_repeat( 'a', 64 ); }
 	public static function authority_manifest_fingerprint() { return str_repeat( 'b', 64 ); }
@@ -43,6 +48,7 @@ class MAD4B_SCP_Google_Drive_Context {
 	const MAX_REVERSIBLE_TEXT_BYTES = 196608;
 	public static $status = array();
 	public static function write_capability_status() { return self::$status; }
+	public static function asset_write_capabilities() { return array( 'update' => false, 'recreate' => false, 'blockers' => array() ); }
 	public static function create_asset() { return array(); }
 	public static function update_asset() { return array(); }
 	public static function recreate_asset() { return array(); }
@@ -115,4 +121,39 @@ mad4b_context_mount_assert( 'mad4b_google_drive_create_rollback_not_certified' =
 
 mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibility( 'context/status' ), 'Read ability eligibility must remain unaffected by write gates.' );
 
-echo "mad4b.site-control-plane.context-write-mount.runtime.v3: PASS\n";
+$governed_id = str_repeat( '1', 64 );
+$task_a_id = str_repeat( '2', 64 );
+$task_b_id = str_repeat( '3', 64 );
+MAD4B_SCP_Context_Authority::$assets = array(
+	$governed_id => array(
+		'asset_id' => $governed_id, 'source_id' => str_repeat( 'a', 64 ), 'source_mode' => 'governed',
+		'title' => 'Governed Brand Core', 'category' => 'brand_strategy', 'status' => 'ready',
+	),
+	$task_a_id => array(
+		'asset_id' => $task_a_id, 'source_id' => str_repeat( 'b', 64 ), 'source_mode' => 'task_attachment',
+		'task_scope' => 'task-a', 'title' => 'Private Task A Brief', 'category' => 'campaign_strategy', 'status' => 'ready',
+	),
+	$task_b_id => array(
+		'asset_id' => $task_b_id, 'source_id' => str_repeat( 'c', 64 ), 'source_mode' => 'task_attachment',
+		'task_scope' => 'task-b', 'title' => 'Private Task B Brief', 'category' => 'campaign_strategy', 'status' => 'ready',
+	),
+);
+
+$default_assets = $adapter->list_assets( array() );
+mad4b_context_mount_assert( ! is_wp_error( $default_assets ), 'Default Context asset list must remain readable.', $default_assets );
+mad4b_context_mount_assert( 1 === $default_assets['count'] && $governed_id === $default_assets['items'][0]['asset_id'], 'Default asset list must exclude every task attachment metadata record.', $default_assets );
+
+$task_a_assets = $adapter->list_assets( array( 'task_scope' => 'task-a' ) );
+mad4b_context_mount_assert( ! is_wp_error( $task_a_assets ), 'Exact task-scoped asset list must remain readable.', $task_a_assets );
+$task_a_ids = array_map( static function ( $row ) { return $row['asset_id']; }, $task_a_assets['items'] );
+mad4b_context_mount_assert( in_array( $governed_id, $task_a_ids, true ), 'Governed Context must remain visible under task-scoped listing.', $task_a_assets );
+mad4b_context_mount_assert( in_array( $task_a_id, $task_a_ids, true ), 'Matching task attachment must be visible under exact task scope.', $task_a_assets );
+mad4b_context_mount_assert( ! in_array( $task_b_id, $task_a_ids, true ), 'Foreign task attachment metadata must not cross task-scope boundary.', $task_a_assets );
+
+$missing_scope = $adapter->list_assets( array( 'mode' => 'task_attachment' ) );
+mad4b_context_mount_assert( is_wp_error( $missing_scope ) && 'mad4b_context_task_scope_required' === $missing_scope->get_error_code(), 'Explicit task-attachment listing without exact task_scope must fail closed.', $missing_scope );
+
+$task_only = $adapter->list_assets( array( 'mode' => 'task_attachment', 'task_scope' => 'task-b' ) );
+mad4b_context_mount_assert( ! is_wp_error( $task_only ) && 1 === $task_only['count'] && $task_b_id === $task_only['items'][0]['asset_id'], 'Exact task-only listing must return only the matching task attachment.', $task_only );
+
+echo "mad4b.site-control-plane.context-write-mount.runtime.v4: PASS\n";

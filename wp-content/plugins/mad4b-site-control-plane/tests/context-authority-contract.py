@@ -186,6 +186,10 @@ for ability in [
     "context/recreate-drive-asset",
 ]:
     require(adapter, ability, f"Context adapter ability {ability}")
+require(adapter, "'contract' => 'mad4b.context-asset-list.v2'", "task-isolated Context asset list contract")
+require(adapter, "mad4b_context_task_scope_required", "explicit task-attachment listing requires exact task scope")
+require(adapter, "hash_equals( $asset_scope, $task_scope )", "task attachment metadata exact-scope isolation")
+require(adapter, "'task_scope' => array( 'type' => 'string', 'maxLength' => 160", "bounded task_scope asset-list input")
 require(adapter, "'write' => array(", "dedicated write surface")
 require(adapter, "mutation_ability_runtime_eligibility", "write runtime eligibility")
 require(adapter, "mad4b.rollback.google-drive-context-update.v1", "Drive update reversible contract")
@@ -308,4 +312,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v29: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v30: PASS")
