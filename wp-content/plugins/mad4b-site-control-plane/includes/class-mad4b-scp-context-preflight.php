@@ -458,7 +458,7 @@ final class MAD4B_SCP_Context_Preflight {
 		$input = is_array( $input ) ? $input : array();
 		$matched = array();
 
-		if ( 'mad4b/content-update-post' === $ability_name ) {
+		if ( in_array( $ability_name, array( 'mad4b/content-create-post', 'mad4b/content-update-post' ), true ) ) {
 			foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
 			return self::content_requirement_result( $matched, 'post_text_fields' );
 		}
@@ -474,7 +474,7 @@ final class MAD4B_SCP_Context_Preflight {
 			return self::content_requirement_result( $matched, 'content_bundle_text' );
 		}
 
-		if ( 'mad4b/taxonomy-update-term' === $ability_name ) {
+		if ( in_array( $ability_name, array( 'mad4b/taxonomy-create-term', 'mad4b/taxonomy-update-term' ), true ) ) {
 			foreach ( array( 'name', 'description' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
 			return self::content_requirement_result( $matched, 'taxonomy_text_fields' );
 		}
@@ -489,6 +489,11 @@ final class MAD4B_SCP_Context_Preflight {
 			$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
 			foreach ( array( 'name', 'description', 'short_description' ) as $field ) if ( array_key_exists( $field, $fields ) ) $matched[] = 'fields.' . $field;
 			return self::content_requirement_result( $matched, 'product_text_fields' );
+		}
+
+		if ( 'media/update-metadata' === $ability_name ) {
+			foreach ( array( 'title', 'caption', 'description', 'alt' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
+			return self::content_requirement_result( $matched, 'media_text_metadata' );
 		}
 
 		if ( 'mad4b/content-set-meta' === $ability_name ) {
