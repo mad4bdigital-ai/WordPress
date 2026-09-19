@@ -54,7 +54,13 @@ final class MAD4B_SCP_Skill_Abilities {
 				'properties' => array(
 					'level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Skill_Registry::levels() ),
 					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
-					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*
+					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*$' ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+				),
+				'required' => array( 'level', 'name' ),
+				'additionalProperties' => false,
+			),
+			array( __CLASS__, 'skill_get' )
 		);
 
 		self::add(
