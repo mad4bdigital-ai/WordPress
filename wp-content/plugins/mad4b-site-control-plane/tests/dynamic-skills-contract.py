@@ -99,6 +99,9 @@ for marker in [
     "jetengine-content-modeling",
     "wordpress-archive-audit",
     "wordpress-change-safety",
+    "wordpress-content-authoring",
+    "context_policy_sha256",
+    "allowed_mutation_abilities",
     "'enabled' => false",
     "class-mad4b-scp-skill-provider-discovery.php",
     "MAD4B_SCP_Skill_Provider_Discovery",
@@ -293,6 +296,7 @@ expected_skills = {
     'jetengine-content-modeling',
     'wordpress-archive-audit',
     'wordpress-change-safety',
+    'wordpress-content-authoring',
 }
 found = set()
 seed_root = wp / 'skill-seeds'
@@ -322,7 +326,7 @@ for skill_dir in (portable / 'skills').iterdir():
 if not expected_skills.issubset(found):
     raise SystemExit(f'missing portable seed skills: {sorted(expected_skills - found)}')
 if {p.parent.name for p in seed_root.glob('*/SKILL.md')} != expected_skills:
-    raise SystemExit('canonical Control Plane seed set must exactly match the six portable baseline Skills')
+    raise SystemExit('canonical Control Plane seed set must exactly match the seven portable baseline Skills')
 
 entry = next((x for x in marketplace.get('plugins', []) if x.get('name') == 'mad4b-wordpress'), None)
 if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpress':
@@ -330,4 +334,4 @@ if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpres
 if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
-print('mad4b.dynamic-skills.v5: PASS')
+print('mad4b.dynamic-skills.v6: PASS')
