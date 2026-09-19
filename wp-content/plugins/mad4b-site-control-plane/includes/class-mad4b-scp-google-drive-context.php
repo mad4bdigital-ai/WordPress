@@ -298,6 +298,17 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::api_get( self::DRIVE_API . '/about?fields=user(displayName,emailAddress,permissionId)' );
 	}
 
+	public static function normalization_capabilities() {
+		return array(
+			array( 'type' => 'Google Docs', 'mime' => 'application/vnd.google-apps.document', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded text/plain.' ),
+			array( 'type' => 'Google Sheets', 'mime' => 'application/vnd.google-apps.spreadsheet', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded CSV from the first sheet.' ),
+			array( 'type' => 'Google Slides', 'mime' => 'application/vnd.google-apps.presentation', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded text/plain.' ),
+			array( 'type' => 'Text / Markdown / CSV / JSON / XML', 'mime' => 'text/*', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Downloaded as bounded text.' ),
+			array( 'type' => 'PDF', 'mime' => 'application/pdf', 'mode' => 'metadata_only', 'status' => 'provisional', 'note' => 'Binary PDF text extraction is not certified in this foundation.' ),
+			array( 'type' => 'DOCX', 'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'mode' => 'metadata_only', 'status' => 'provisional', 'note' => 'DOCX text extraction is not certified in this foundation.' ),
+		);
+	}
+
 	public static function get_folder( $folder_id ) {
 		$folder_id = self::bounded_drive_id( $folder_id );
 		if ( '' === $folder_id ) return new WP_Error( 'mad4b_google_drive_folder_id_invalid', 'Google Drive folder ID is invalid.' );
@@ -1216,15 +1227,20 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/export?mimeType=' . rawurlencode( 'text/plain' );
 		} elseif ( 'application/vnd.google-apps.spreadsheet' === $mime ) {
 			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/export?mimeType=' . rawurlencode( 'text/csv' );
+		} elseif ( 'application/vnd.google-apps.presentation' === $mime ) {
+			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/export?mimeType=' . rawurlencode( 'text/plain' );
 		} elseif ( 0 === strpos( $mime, 'text/' ) || in_array( $mime, array( 'application/json', 'application/xml', 'application/csv' ), true ) ) {
 			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?alt=media&supportsAllDrives=true';
 		} else {
+			$reason = 'unsupported_mime_type';
+			if ( 'application/pdf' === $mime ) $reason = 'pdf_text_extractor_not_certified';
+			if ( 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' === $mime ) $reason = 'docx_text_extractor_not_certified';
 			return array(
 				'content' => '',
 				'complete' => false,
 				'bytes' => 0,
 				'normalization_status' => 'unsupported',
-				'normalization_reason' => 'unsupported_mime_type',
+				'normalization_reason' => $reason,
 			);
 		}
 		$token = self::access_token();

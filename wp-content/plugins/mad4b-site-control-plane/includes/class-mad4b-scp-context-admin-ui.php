@@ -509,7 +509,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( ! $all_assets ) { echo '<p>' . esc_html__( 'Scan a source folder to discover assets.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
 		if ( ! $assets ) { echo '<p>' . esc_html__( 'No assets match the current filters.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
 		$authorities = MAD4B_SCP_Context_Authority::authority_classes();
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Status</th><th>Actionability</th><th>Review</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Normalization</th><th>Status</th><th>Actionability</th><th>Review</th></tr></thead><tbody>';
 		foreach ( $assets as $asset ) {
 			$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
 			echo '<tr><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( $asset['path'] ) . '</span></td>';
@@ -523,6 +523,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( null !== $quality_confidence ) echo ' · ' . esc_html( number_format_i18n( $quality_confidence * 100, 0 ) . '% score confidence' );
 			echo '</span></td>';
 			echo '<td>' . esc_html( number_format_i18n( (float) $asset['classification_confidence'] * 100, 0 ) . '%' ) . '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['classification_source'] ) ? $asset['classification_source'] : '' ) . '</span></td>';
+			$normalization_status = isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : ( ! empty( $asset['content_complete'] ) ? 'ready' : 'unknown' );
+			$normalization_reason = isset( $asset['normalization_reason'] ) ? (string) $asset['normalization_reason'] : '';
+			echo '<td><strong>' . esc_html( $normalization_status ) . '</strong>';
+			if ( $normalization_reason ) echo '<br><span class="mad4b-scp-muted">' . esc_html( $normalization_reason ) . '</span>';
+			echo '</td>';
 			echo '<td><strong>' . esc_html( $asset['status'] ) . '</strong>';
 			if ( 'unavailable' === $asset['status'] ) {
 				$source_policy = MAD4B_SCP_Context_Authority::source_write_policy( $asset['source_id'] );
@@ -625,6 +630,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 		ksort( $groups );
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Content Quality', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Quality and authority are separate. A high-quality reference never outranks an authoritative Brand Core asset. Scores are transparent and show whether content or metadata was analyzed.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<h3>' . esc_html__( 'Normalization support', 'mad4b-site-control-plane' ) . '</h3><div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>File type</th><th>Mode</th><th>Status</th><th>Notes</th></tr></thead><tbody>';
+		foreach ( MAD4B_SCP_Google_Drive_Context::normalization_capabilities() as $capability ) {
+			echo '<tr><td><strong>' . esc_html( $capability['type'] ) . '</strong><br><code>' . esc_html( $capability['mime'] ) . '</code></td><td>' . esc_html( $capability['mode'] ) . '</td><td>' . esc_html( $capability['status'] ) . '</td><td>' . esc_html( $capability['note'] ) . '</td></tr>';
+		}
+		echo '</tbody></table></div>';
 		if ( ! $groups ) { echo '<p>' . esc_html__( 'No quality evidence yet.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
 		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Category</th><th>Quality profile</th><th>Assets</th><th>Average score</th><th>Score confidence</th><th>Metadata-only</th></tr></thead><tbody>';
 		foreach ( $groups as $category => $group ) {

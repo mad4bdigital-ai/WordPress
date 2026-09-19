@@ -36,11 +36,12 @@ $pdf = $record->invoke(
 mad4b_content_assert( is_array( $pdf ), 'Unsupported binary document must return bounded normalization metadata.' );
 mad4b_content_assert( empty( $pdf['complete'] ), 'Unsupported binary document must never be marked complete.' );
 mad4b_content_assert( 'unsupported' === $pdf['normalization_status'], 'Unsupported MIME must be explicit.', $pdf );
-mad4b_content_assert( 'unsupported_mime_type' === $pdf['normalization_reason'], 'Unsupported MIME reason must be deterministic.', $pdf );
+mad4b_content_assert( 'pdf_text_extractor_not_certified' === $pdf['normalization_reason'], 'PDF provisional normalization reason must be explicit and deterministic.', $pdf );
 
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-google-drive-context.php' );
+mad4b_content_assert( false !== strpos( $source, "'application/vnd.google-apps.presentation' === $mime" ), 'Google Slides must be normalized through the certified plain-text export path.' );
 mad4b_content_assert( false !== strpos( $source, "'limit_response_size' => self::MAX_TEXT_BYTES + 1" ), 'Provider text read must request one sentinel byte past the certified limit.' );
 mad4b_content_assert( false !== strpos( $source, "'content_complete' => false" ) || false !== strpos( $source, "'complete' => false" ), 'Incomplete normalization must remain explicit.' );
 mad4b_content_assert( false !== strpos( $source, 'mad4b_context_asset_content_incomplete' ), 'Incomplete provider content must fail closed for runtime Context.' );
 
-echo "mad4b.site-control-plane.context-content-completeness.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-content-completeness.runtime.v2: PASS\n";
