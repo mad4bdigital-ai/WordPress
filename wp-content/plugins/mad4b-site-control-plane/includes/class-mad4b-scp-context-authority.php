@@ -824,23 +824,46 @@ final class MAD4B_SCP_Context_Authority {
 				if ( 'partial_scan' === ( isset( $source['status'] ) ? (string) $source['status'] : '' ) || empty( $source['last_scan_complete'] ) ) ++$partial_sources;
 			} else $task_sources[] = $source;
 		}
+
 		$governed_assets = array();
 		$required = array();
 		$quality_values = array();
-		$stale = 0;
-		$conflicting = 0;
-		$unavailable = 0;
-		$incomplete = 0;
+		$issue_counts = array(
+			'stale' => 0,
+			'conflicting' => 0,
+			'unavailable' => 0,
+			'incomplete' => 0,
+			'required_stale' => 0,
+			'required_conflicting' => 0,
+			'required_unavailable' => 0,
+			'required_incomplete' => 0,
+			'optional_stale' => 0,
+			'optional_conflicting' => 0,
+			'optional_unavailable' => 0,
+			'optional_incomplete' => 0,
+		);
 		foreach ( $assets as $asset ) {
 			if ( 'governed' !== $asset['source_mode'] ) continue;
 			$governed_assets[] = $asset;
-			if ( ! empty( $asset['required'] ) ) $required[] = $asset;
+			$is_required = ! empty( $asset['required'] );
+			if ( $is_required ) $required[] = $asset;
 			if ( null !== $asset['quality_score'] ) $quality_values[] = (int) $asset['quality_score'];
-			if ( 'stale' === $asset['status'] ) ++$stale;
-			if ( 'conflicting' === $asset['status'] ) ++$conflicting;
-			if ( 'unavailable' === $asset['status'] ) ++$unavailable;
-			if ( 'incomplete' === $asset['status'] || ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) ) ++$incomplete;
+			$content_incomplete = 'incomplete' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' )
+				|| ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) );
+			foreach (
+				array(
+					'stale' => 'stale' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ),
+					'conflicting' => 'conflicting' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ),
+					'unavailable' => 'unavailable' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ),
+					'incomplete' => $content_incomplete,
+				) as $issue => $present
+			) {
+				if ( ! $present ) continue;
+				++$issue_counts[ $issue ];
+				++$issue_counts[ ( $is_required ? 'required_' : 'optional_' ) . $issue ];
+			}
 		}
+
 		$ready_required = 0;
 		$approved_required = 0;
 		foreach ( $required as $asset ) {
@@ -848,7 +871,9 @@ final class MAD4B_SCP_Context_Authority {
 			if ( 'ready' === $asset['status'] && $content_complete ) ++$ready_required;
 			if ( 'ready' === $asset['status'] && $content_complete && 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) ++$approved_required;
 		}
+
 		$blockers = array();
+		$warnings = array();
 		if ( empty( $site_status['configured'] ) || empty( $site_status['origin_match'] ) || empty( $site_status['environment_match'] ) ) $blockers[] = 'site_profile_not_enrolled';
 		if ( empty( $profile ) ) $blockers[] = 'brand_context_profile_unconfigured';
 		if ( empty( $governed_sources ) ) $blockers[] = 'governed_context_source_missing';
@@ -857,15 +882,21 @@ final class MAD4B_SCP_Context_Authority {
 		if ( ! empty( $governed_assets ) && empty( $required ) ) $blockers[] = 'mandatory_context_unclassified';
 		if ( count( $required ) !== $ready_required ) $blockers[] = 'mandatory_context_not_ready';
 		if ( count( $required ) !== $approved_required ) $blockers[] = 'mandatory_context_review_required';
-		if ( $stale > 0 ) $blockers[] = 'brand_context_contains_stale_assets';
-		if ( $unavailable > 0 ) $blockers[] = 'brand_context_contains_unavailable_assets';
-		if ( $conflicting > 0 ) $blockers[] = 'mandatory_context_conflict';
-		if ( $incomplete > 0 ) $blockers[] = 'brand_context_contains_incomplete_assets';
+		if ( $issue_counts['required_stale'] > 0 ) $blockers[] = 'mandatory_context_contains_stale_assets';
+		if ( $issue_counts['required_unavailable'] > 0 ) $blockers[] = 'mandatory_context_contains_unavailable_assets';
+		if ( $issue_counts['required_conflicting'] > 0 ) $blockers[] = 'mandatory_context_conflict';
+		if ( $issue_counts['required_incomplete'] > 0 ) $blockers[] = 'mandatory_context_contains_incomplete_assets';
+		if ( $issue_counts['optional_stale'] > 0 ) $warnings[] = 'optional_context_contains_stale_assets';
+		if ( $issue_counts['optional_unavailable'] > 0 ) $warnings[] = 'optional_context_contains_unavailable_assets';
+		if ( $issue_counts['optional_conflicting'] > 0 ) $warnings[] = 'optional_context_contains_conflicting_assets';
+		if ( $issue_counts['optional_incomplete'] > 0 ) $warnings[] = 'optional_context_contains_incomplete_assets';
 
+		$ready = empty( $blockers );
+		$state = $ready ? ( empty( $warnings ) ? 'ready' : 'ready_with_warnings' ) : ( empty( $profile ) ? 'unconfigured' : 'blocked' );
 		return array(
 			'contract' => 'mad4b.context-authority.v2',
-			'ready' => empty( $blockers ),
-			'state' => empty( $blockers ) ? 'ready' : ( empty( $profile ) ? 'unconfigured' : 'blocked' ),
+			'ready' => $ready,
+			'state' => $state,
 			'site_uuid' => isset( $site_status['site_uuid'] ) ? (string) $site_status['site_uuid'] : '',
 			'brand_id' => isset( $profile['brand_id'] ) ? (string) $profile['brand_id'] : '',
 			'brand_name' => isset( $profile['brand_name'] ) ? (string) $profile['brand_name'] : '',
@@ -881,16 +912,24 @@ final class MAD4B_SCP_Context_Authority {
 			'required_asset_count' => count( $required ),
 			'ready_required_asset_count' => $ready_required,
 			'approved_required_asset_count' => $approved_required,
-			'stale_asset_count' => $stale,
-			'unavailable_asset_count' => $unavailable,
-			'incomplete_asset_count' => $incomplete,
-			'conflicting_asset_count' => $conflicting,
+			'stale_asset_count' => $issue_counts['stale'],
+			'unavailable_asset_count' => $issue_counts['unavailable'],
+			'incomplete_asset_count' => $issue_counts['incomplete'],
+			'conflicting_asset_count' => $issue_counts['conflicting'],
+			'required_stale_asset_count' => $issue_counts['required_stale'],
+			'required_unavailable_asset_count' => $issue_counts['required_unavailable'],
+			'required_incomplete_asset_count' => $issue_counts['required_incomplete'],
+			'required_conflicting_asset_count' => $issue_counts['required_conflicting'],
+			'optional_stale_asset_count' => $issue_counts['optional_stale'],
+			'optional_unavailable_asset_count' => $issue_counts['optional_unavailable'],
+			'optional_incomplete_asset_count' => $issue_counts['optional_incomplete'],
+			'optional_conflicting_asset_count' => $issue_counts['optional_conflicting'],
 			'average_quality_score' => $quality_values ? (int) round( array_sum( $quality_values ) / count( $quality_values ) ) : null,
 			'quality_scored_asset_count' => count( $quality_values ),
 			'blockers' => array_values( array_unique( $blockers ) ),
+			'warnings' => array_values( array_unique( $warnings ) ),
 		);
 	}
-
 	public static function classify_asset( $name, $path = '', $content = '' ) {
 		$haystack = strtolower( trim( (string) $name . ' ' . (string) $path . ' ' . substr( (string) $content, 0, 6000 ) ) );
 		$rules = array(

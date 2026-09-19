@@ -115,11 +115,11 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 	),
 );
 
-function mad4b_review_asset_payload( $file_id, $content ) {
+function mad4b_review_asset_payload( $file_id, $content, $title = 'Voice Reference Notes' ) {
 	return array(
 		'file_id' => $file_id,
 		'parent_folder_id' => 'folder-brand-core',
-		'title' => 'Voice Reference Notes',
+		'title' => $title,
 		'path' => 'Brand Core/Voice Reference Notes.txt',
 		'mimeType' => 'text/plain',
 		'modifiedTime' => gmdate( 'c' ),
@@ -136,7 +136,10 @@ $initial_text = str_repeat(
 );
 $scan1 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
-	array( mad4b_review_asset_payload( $file_id, $initial_text ) ),
+	array(
+		mad4b_review_asset_payload( $file_id, $initial_text ),
+		mad4b_review_asset_payload( 'writer-file-optional', str_repeat( "Writer reference sample with narrative structure and sentence rhythm.\n\n", 10 ), 'Writer Reference Sample' ),
+	),
 	array(
 		'complete' => true,
 		'started_at' => '2026-09-19T18:00:00Z',
@@ -166,7 +169,10 @@ $review_fingerprint = MAD4B_SCP_Context_Authority::authority_manifest_fingerprin
 
 $scan2 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
-	array( mad4b_review_asset_payload( $file_id, $initial_text ) ),
+	array(
+		mad4b_review_asset_payload( $file_id, $initial_text ),
+		mad4b_review_asset_payload( 'writer-file-optional', str_repeat( "Writer reference sample with narrative structure and sentence rhythm.\n\n", 10 ), 'Writer Reference Sample' ),
+	),
 	array(
 		'complete' => true,
 		'started_at' => '2026-09-19T18:01:00Z',
@@ -224,11 +230,15 @@ mad4b_review_assert( (int) $automatic_review['quality_auto_score'] === (int) $au
 mad4b_review_assert( 'human_override' !== ( isset( $automatic_review['quality']['mode'] ) ? (string) $automatic_review['quality']['mode'] : '' ), 'Automatic-score review must restore automatic scoring semantics.', $automatic_review );
 
 $ready_status = MAD4B_SCP_Context_Authority::status();
+mad4b_review_assert( ! empty( $ready_status['ready'] ), 'Unavailable optional reference must not block mandatory Brand Context readiness.', $ready_status );
+mad4b_review_assert( 'ready_with_warnings' === $ready_status['state'], 'Optional unavailable context must produce ready_with_warnings, not blocked.', $ready_status );
 mad4b_review_assert( ! in_array( 'mandatory_context_review_required', $ready_status['blockers'], true ), 'Renewed review must clear the mandatory review blocker.', $ready_status['blockers'] );
+mad4b_review_assert( in_array( 'optional_context_contains_unavailable_assets', $ready_status['warnings'], true ), 'Missing optional writer reference must remain visible as a warning.', $ready_status['warnings'] );
+mad4b_review_assert( 1 === (int) $ready_status['optional_unavailable_asset_count'], 'Exactly one optional unavailable asset must be reported.', $ready_status );
 
 $review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
 mad4b_review_assert( 2 === count( $review_events ), 'Manual review and automatic-score reset must each emit one audit event.', $review_events );
 mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
 mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v3: PASS\n";
