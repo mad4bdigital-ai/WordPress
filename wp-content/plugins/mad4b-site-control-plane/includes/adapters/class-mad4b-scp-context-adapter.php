@@ -24,6 +24,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/status',
 				'context/assets',
 				'context/google-drive-status',
+				'context/conflicts',
+				'context/reference-profile',
+				'context/retrieve',
+				'context/compliance-check',
 			),
 			'content' => array(),
 			'write' => array(
@@ -63,6 +67,58 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'google_drive_status',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/conflicts',
+			'Context Conflict Report',
+			'context_conflicts',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'category' => array( 'type' => 'string', 'default' => '' ),
+					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 25 ),
+				)
+			)
+		);
+		$this->add_ability(
+			'context/reference-profile',
+			'Writer Reference Profile',
+			'context_reference_profile',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'asset_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				),
+				array( 'asset_id' )
+			)
+		);
+		$this->add_ability(
+			'context/retrieve',
+			'Rank Context Assets',
+			'context_retrieve',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'query' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Context_Intelligence::MAX_QUERY_BYTES ),
+					'task_scope' => array( 'type' => 'string', 'default' => '' ),
+					'category' => array( 'type' => 'string', 'default' => '' ),
+					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 25, 'default' => 10 ),
+				),
+				array( 'query' )
+			)
+		);
+		$this->add_ability(
+			'context/compliance-check',
+			'Brand Compliance Check',
+			'context_compliance_check',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'text' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Context_Intelligence::MAX_DRAFT_BYTES ),
+					'receipt' => array( 'type' => 'object', 'additionalProperties' => true ),
+				),
+				array( 'text', 'receipt' )
+			)
 		);
 
 		$write_permission = array( 'MAD4B_SCP_Policy', 'can_admin' );
@@ -342,6 +398,22 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( count( $items ) >= $limit ) break;
 		}
 		return array( 'items' => $items, 'count' => count( $items ) );
+	}
+
+	public function context_conflicts( $input ) {
+		return MAD4B_SCP_Context_Intelligence::conflict_report( is_array( $input ) ? $input : array() );
+	}
+
+	public function context_reference_profile( $input ) {
+		return MAD4B_SCP_Context_Intelligence::reference_profile( is_array( $input ) ? $input : array() );
+	}
+
+	public function context_retrieve( $input ) {
+		return MAD4B_SCP_Context_Intelligence::retrieve( is_array( $input ) ? $input : array() );
+	}
+
+	public function context_compliance_check( $input ) {
+		return MAD4B_SCP_Context_Intelligence::compliance_check( is_array( $input ) ? $input : array() );
 	}
 
 	public function create_drive_asset( $input ) {
