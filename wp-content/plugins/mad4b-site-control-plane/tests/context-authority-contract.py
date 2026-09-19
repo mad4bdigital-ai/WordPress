@@ -59,6 +59,7 @@ require(drive, "mad4b_google_drive_readonly_downgrade_requires_revoke", "least-p
 require(drive, "remote_revocation_confirmed", "disconnect revocation evidence")
 require(drive, "access_mode", "OAuth access mode binding")
 require(drive, "requested_scope", "OAuth requested-scope binding")
+require(drive, "'include_granted_scopes' => 'false'", "non-incremental OAuth scope contract")
 require(drive, "mad4b_google_drive_oauth_site_binding_changed", "OAuth Site Profile binding")
 require(drive, "mad4b_google_drive_oauth_redirect_binding_changed", "OAuth redirect binding")
 require(drive, "aes-256-gcm", "encrypted token storage")
@@ -160,4 +161,4 @@ require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v11: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v12: PASS")
