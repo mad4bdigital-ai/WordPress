@@ -18,6 +18,7 @@ function absint( $value ) { return abs( (int) $value ); }
 function get_option( $name, $default = false ) { return array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ? $GLOBALS['mad4b_context_options'][ $name ] : $default; }
 function add_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name ] = $value; return true; }
 function update_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name ] = $value; return true; }
+function delete_option( $name ) { unset( $GLOBALS['mad4b_context_options'][ $name ] ); return true; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 
 class MAD4B_SCP_Site_Profile {
@@ -126,4 +127,28 @@ mad4b_context_policy_assert( 1 === MAD4B_SCP_Context_Authority::writable_source_
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'update' ), 'repair and managed sources should enable update' );
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ), 'repair and managed sources should enable recreate' );
 
-echo "mad4b.site-control-plane.context-source-write-policy.runtime.v3: PASS\n";
+$partial_refresh = MAD4B_SCP_Context_Authority::replace_source_assets(
+	$managed,
+	array(),
+	array(
+		'complete' => false,
+		'scan_generation' => str_repeat( '9', 64 ),
+		'started_at' => gmdate( 'c' ),
+		'completed_at' => gmdate( 'c' ),
+		'truncation_reasons' => array( 'fixture_partial' ),
+	)
+);
+mad4b_context_policy_assert( ! is_wp_error( $partial_refresh ), 'Authorized source refresh must commit without rewriting the filtered view as raw storage.' );
+
+$raw_sources_after = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
+$raw_assets_after = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
+mad4b_context_policy_assert( isset( $raw_sources_after[ $root ] ), 'Hidden My Drive root source record must not be silently deleted by an unrelated source mutation.' );
+mad4b_context_policy_assert( isset( $raw_assets_after[ $root_asset ] ), 'Asset hidden by rejected root source must remain preserved in raw storage.' );
+mad4b_context_policy_assert( isset( $raw_assets_after[ $orphan_asset ] ), 'Orphan asset must remain preserved in raw storage until an explicit cleanup/removal action.' );
+mad4b_context_policy_assert( isset( $raw_assets_after[ $mode_mismatch_asset ] ), 'Mode-mismatch asset must remain preserved in raw storage until explicit remediation.' );
+
+$visible_after = MAD4B_SCP_Context_Authority::assets();
+mad4b_context_policy_assert( isset( $visible_after[ $valid_asset ] ), 'Authorized asset must remain visible after partial refresh.' );
+mad4b_context_policy_assert( ! isset( $visible_after[ $root_asset ], $visible_after[ $orphan_asset ], $visible_after[ $mode_mismatch_asset ] ), 'Raw hidden assets must remain excluded from the live Authority projection after mutation.' );
+
+echo "mad4b.site-control-plane.context-source-write-policy.runtime.v4: PASS\n";
