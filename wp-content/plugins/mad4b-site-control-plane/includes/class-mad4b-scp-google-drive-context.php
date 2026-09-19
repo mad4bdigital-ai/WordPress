@@ -338,10 +338,23 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$file = self::create_provider_file( $target_folder_id, $name, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
 		$observed = self::provider_observed_text( $file, $content );
-		if ( is_wp_error( $observed ) ) return $observed;
+		if ( is_wp_error( $observed ) ) return self::compensate_created_file_failure( $observed, $file, $source, 'create' );
 		$asset = self::provider_asset_payload( $source, $file, $observed );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $asset );
-		if ( is_wp_error( $registered ) ) return $registered;
+		if ( is_wp_error( $registered ) ) return self::compensate_created_file_failure( $registered, $file, $source, 'create' );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'context/create-drive-asset',
+				array(
+					'source_id' => (string) $source['source_id'],
+					'asset_id' => (string) $registered['asset_id'],
+					'file_id' => (string) $registered['file_id'],
+					'target_folder_id' => $target_folder_id,
+					'content_sha256' => (string) $registered['content_hash'],
+				),
+				'ok'
+			);
+		}
 		return array(
 			'contract' => 'mad4b.google-drive-asset-mutation.v1',
 			'operation' => 'create',
@@ -414,11 +427,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$file = self::create_provider_file( $target_folder_id, $title, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
 		$observed = self::provider_observed_text( $file, $content );
-		if ( is_wp_error( $observed ) ) return $observed;
+		if ( is_wp_error( $observed ) ) return self::compensate_created_file_failure( $observed, $file, $source, 'recreate' );
 		$payload = self::provider_asset_payload( $source, $file, $observed, $asset );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
-		if ( is_wp_error( $registered ) ) return $registered;
-		MAD4B_SCP_Context_Authority::mark_asset_recreated( $asset_id, $registered );
+		if ( is_wp_error( $registered ) ) return self::compensate_created_file_failure( $registered, $file, $source, 'recreate' );
+		$marked = MAD4B_SCP_Context_Authority::mark_asset_recreated( $asset_id, $registered );
+		if ( is_wp_error( $marked ) ) return self::compensate_created_file_failure( $marked, $file, $source, 'recreate' );
 		return array(
 			'contract' => 'mad4b.google-drive-asset-mutation.v1',
 			'operation' => 'recreate',
@@ -543,6 +557,42 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $observed ) ) return $observed;
 		if ( '' === (string) $observed && '' !== (string) $fallback ) return new WP_Error( 'mad4b_google_drive_write_readback_empty', 'Google Drive write completed but provider readback was unexpectedly empty.' );
 		return (string) $observed;
+	}
+
+	private static function compensate_created_file_failure( $provider_error, array $file, array $source, $operation ) {
+		$provider_error = is_wp_error( $provider_error ) ? $provider_error : new WP_Error( 'mad4b_google_drive_post_create_verification_failed', 'Google Drive file creation could not be verified.' );
+		$file_id = self::bounded_drive_id( isset( $file['id'] ) ? $file['id'] : '' );
+		$operation = sanitize_key( (string) $operation );
+		if ( '' === $file_id ) return $provider_error;
+
+		$cleanup = self::delete_provider_file_for_rollback( $file_id, $source );
+		$cleanup_ok = true === $cleanup;
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'mad4b/context-drive-post-create-compensation',
+				array(
+					'operation' => $operation,
+					'source_id' => isset( $source['source_id'] ) ? (string) $source['source_id'] : '',
+					'file_id' => $file_id,
+					'provider_error_code' => $provider_error->get_error_code(),
+					'cleanup_ok' => $cleanup_ok,
+					'cleanup_error_code' => is_wp_error( $cleanup ) ? $cleanup->get_error_code() : '',
+				),
+				$cleanup_ok ? 'ok' : 'failure'
+			);
+		}
+		if ( $cleanup_ok ) return $provider_error;
+		return new WP_Error(
+			'mad4b_google_drive_post_create_compensation_failed',
+			'Google Drive creation failed verification and the exact newly-created file could not be removed automatically.',
+			array(
+				'operation' => $operation,
+				'source_id' => isset( $source['source_id'] ) ? (string) $source['source_id'] : '',
+				'file_id' => $file_id,
+				'provider_error_code' => $provider_error->get_error_code(),
+				'cleanup_error_code' => is_wp_error( $cleanup ) ? $cleanup->get_error_code() : 'unknown',
+			)
+		);
 	}
 
 	private static function delete_provider_file_for_rollback( $file_id, array $source ) {
