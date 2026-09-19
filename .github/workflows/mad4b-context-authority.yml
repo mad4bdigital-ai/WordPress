@@ -31,6 +31,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php'
       - '.github/workflows/mad4b-context-authority.yml'
   workflow_dispatch:
 
@@ -89,6 +90,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
 
       - name: Enforce Context Authority architecture
         shell: bash
@@ -167,3 +169,9 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
+
+      - name: Execute Context registry atomicity runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
