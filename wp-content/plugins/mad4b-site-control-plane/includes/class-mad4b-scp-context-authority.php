@@ -70,13 +70,36 @@ final class MAD4B_SCP_Context_Authority {
 	public static function sources() {
 		$site = self::site_binding();
 		if ( is_wp_error( $site ) ) return array();
+		return self::authorized_sources_from_records( self::raw_sources(), $site );
+	}
+
+	public static function assets() {
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return array();
+		$sources = self::authorized_sources_from_records( self::raw_sources(), $site );
+		return self::authorized_assets_from_records( self::raw_assets(), $sources, $site );
+	}
+
+	private static function raw_sources() {
 		$records = get_option( self::SOURCES_OPTION, array() );
 		if ( ! is_array( $records ) ) return array();
+		return array_slice( $records, -self::MAX_SOURCES, self::MAX_SOURCES, true );
+	}
+
+	private static function raw_assets() {
+		$records = get_option( self::ASSETS_OPTION, array() );
+		if ( ! is_array( $records ) ) return array();
+		return array_slice( $records, -self::MAX_ASSETS, self::MAX_ASSETS, true );
+	}
+
+	private static function authorized_sources_from_records( array $records, array $site ) {
 		$out = array();
-		foreach ( array_slice( $records, -self::MAX_SOURCES, self::MAX_SOURCES, true ) as $key => $record ) {
+		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
+		if ( '' === $site_uuid ) return array();
+		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_source( $record ) ) continue;
 			$record_site_uuid = strtolower( trim( (string) $record['site_uuid'] ) );
-			if ( ! hash_equals( (string) $site['site_uuid'], $record_site_uuid ) ) continue;
+			if ( ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
 			$policy = isset( $record['write_policy'] ) ? sanitize_key( (string) $record['write_policy'] ) : 'read_only';
 			if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
 			if ( 'task_attachment' === ( isset( $record['mode'] ) ? (string) $record['mode'] : '' ) ) $policy = 'read_only';
@@ -86,17 +109,14 @@ final class MAD4B_SCP_Context_Authority {
 		return $out;
 	}
 
-	public static function assets() {
-		$site = self::site_binding();
-		if ( is_wp_error( $site ) ) return array();
-		$sources = self::sources();
-		$records = get_option( self::ASSETS_OPTION, array() );
-		if ( ! is_array( $records ) ) return array();
+	private static function authorized_assets_from_records( array $records, array $sources, array $site ) {
 		$out = array();
-		foreach ( array_slice( $records, -self::MAX_ASSETS, self::MAX_ASSETS, true ) as $key => $record ) {
+		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
+		if ( '' === $site_uuid ) return array();
+		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_asset( $record ) ) continue;
 			$record_site_uuid = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
-			if ( '' === $record_site_uuid || ! hash_equals( (string) $site['site_uuid'], $record_site_uuid ) ) continue;
+			if ( '' === $record_site_uuid || ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
 			$source_id = isset( $record['source_id'] ) ? (string) $record['source_id'] : '';
 			if ( '' === $source_id || ! isset( $sources[ $source_id ] ) ) continue;
 			$source_mode = isset( $sources[ $source_id ]['mode'] ) ? (string) $sources[ $source_id ]['mode'] : '';
@@ -235,9 +255,10 @@ final class MAD4B_SCP_Context_Authority {
 				$task_scope = trim( sanitize_text_field( isset( $input['task_scope'] ) ? $input['task_scope'] : '' ) );
 				if ( 'task_attachment' === $mode && '' === $task_scope ) return new WP_Error( 'mad4b_context_task_scope_required', 'Task-only sources require a task scope label.' );
 
-				$sources = self::sources();
+				$authorized_sources = self::sources();
+				$sources = self::raw_sources();
 				$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
-				$current = isset( $sources[ $source_id ] ) ? $sources[ $source_id ] : array();
+				$current = isset( $authorized_sources[ $source_id ] ) ? $authorized_sources[ $source_id ] : array();
 				$write_policy = isset( $input['write_policy'] )
 					? sanitize_key( (string) $input['write_policy'] )
 					: ( isset( $current['write_policy'] ) ? sanitize_key( (string) $current['write_policy'] ) : ( 'governed' === $mode ? 'repair_only' : 'read_only' ) );
@@ -280,10 +301,11 @@ final class MAD4B_SCP_Context_Authority {
 			'replace_source_assets',
 			static function () use ( $source_id, $assets, $scan ) {
 				$source_id = strtolower( trim( (string) $source_id ) );
-				$sources = self::sources();
-				if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
-				$source = $sources[ $source_id ];
-				$records = self::assets();
+				$authorized_sources = self::sources();
+				if ( ! isset( $authorized_sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+				$source = $authorized_sources[ $source_id ];
+				$sources = self::raw_sources();
+				$records = self::raw_assets();
 				$previous = array();
 				$scan_started_at = isset( $scan['started_at'] ) ? sanitize_text_field( (string) $scan['started_at'] ) : gmdate( 'c' );
 				$scan_completed_at = isset( $scan['completed_at'] ) ? sanitize_text_field( (string) $scan['completed_at'] ) : gmdate( 'c' );
@@ -403,7 +425,7 @@ final class MAD4B_SCP_Context_Authority {
 				if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
 				$normalized = self::normalize_asset( $source, $provider_asset );
 				if ( is_wp_error( $normalized ) ) return $normalized;
-				$records = self::assets();
+				$records = self::raw_assets();
 				$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
 				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
 					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
@@ -416,7 +438,7 @@ final class MAD4B_SCP_Context_Authority {
 				$normalized['availability_reason'] = '';
 				$normalized['last_seen_at'] = gmdate( 'c' );
 				$records[ $normalized['asset_id'] ] = $normalized;
-				$sources = self::sources();
+				$sources = self::raw_sources();
 				$profile = self::refreshed_profile_record( $records, $sources, true );
 				$changes = array( self::ASSETS_OPTION => $records );
 				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
@@ -439,7 +461,7 @@ final class MAD4B_SCP_Context_Authority {
 				$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
 				$source = self::source( $source_id );
 				if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found for recreation.' );
-				$records = self::assets();
+				$records = self::raw_assets();
 				if ( ! isset( $records[ $old_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_original_missing', 'Original Context asset is missing from the registry.' );
 				$original = $records[ $old_asset_id ];
 				if ( ! hash_equals( (string) $original['source_id'], $source_id ) ) return new WP_Error( 'mad4b_context_recreate_source_mismatch', 'Original Context asset is not bound to the requested source.' );
@@ -460,7 +482,7 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['replacement_asset_id'] = (string) $normalized['asset_id'];
 				$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
 				$records[ $normalized['asset_id'] ] = $normalized;
-				$sources = self::sources();
+				$sources = self::raw_sources();
 				$profile = self::refreshed_profile_record( $records, $sources, true );
 				$changes = array( self::ASSETS_OPTION => $records );
 				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
@@ -481,7 +503,8 @@ final class MAD4B_SCP_Context_Authority {
 			'mark_asset_recreated',
 			static function () use ( $old_asset_id, $new_asset ) {	
 			$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
-			$records = self::assets();
+			if ( empty( self::asset( $old_asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found in the live source-authorized registry view.' );
+			$records = self::raw_assets();
 			if ( isset( $records[ $old_asset_id ] ) ) {
 				$records[ $old_asset_id ]['status'] = 'recreated';
 				$records[ $old_asset_id ]['availability_reason'] = 'replacement_created';
@@ -489,7 +512,7 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
 			}
 			if ( ! empty( $new_asset['asset_id'] ) ) $records[ (string) $new_asset['asset_id'] ] = $new_asset;
-			$sources = self::sources();
+			$sources = self::raw_sources();
 			$profile = self::refreshed_profile_record( $records, $sources, true );
 			$changes = array( self::ASSETS_OPTION => $records );
 			if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
@@ -511,7 +534,8 @@ final class MAD4B_SCP_Context_Authority {
 			static function () use ( $old_asset_id, $replacement_asset_id ) {
 				$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
 				$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
-				$records = self::assets();
+				if ( empty( self::asset( $old_asset_id ) ) || empty( self::asset( $replacement_asset_id ) ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback requires live source-authorized original and replacement assets.' );
+				$records = self::raw_assets();
 				if ( ! isset( $records[ $old_asset_id ], $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback intent requires both original and replacement registry records.' );
 				$original = $records[ $old_asset_id ];
 				$replacement = $records[ $replacement_asset_id ];
@@ -524,7 +548,7 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['rollback_started_at'] = $started_at;
 				$records[ $replacement_asset_id ]['status'] = 'rollback_pending';
 				$records[ $replacement_asset_id ]['rollback_started_at'] = $started_at;
-				$sources = self::sources();
+				$sources = self::raw_sources();
 				$profile = self::refreshed_profile_record( $records, $sources, true );
 				$changes = array( self::ASSETS_OPTION => $records );
 				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
@@ -551,7 +575,8 @@ final class MAD4B_SCP_Context_Authority {
 			static function () use ( $old_asset_id, $replacement_asset_id, $reason ) {
 				$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
 				$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
-				$records = self::assets();
+				if ( empty( self::asset( $old_asset_id ) ) || empty( self::asset( $replacement_asset_id ) ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback requires live source-authorized original and replacement assets.' );
+				$records = self::raw_assets();
 				if ( ! isset( $records[ $old_asset_id ], $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_registry_missing', 'Rollback cancellation requires both original and replacement registry records.' );
 				if ( 'rollback_pending' !== ( isset( $records[ $old_asset_id ]['status'] ) ? (string) $records[ $old_asset_id ]['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_state_drift', 'Original Context asset is not in rollback_pending state.' );
 				if ( empty( $records[ $old_asset_id ]['replacement_asset_id'] ) || ! hash_equals( (string) $records[ $old_asset_id ]['replacement_asset_id'], $replacement_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_binding_drift', 'Rollback cancellation replacement binding drifted.' );
@@ -561,7 +586,7 @@ final class MAD4B_SCP_Context_Authority {
 				unset( $records[ $old_asset_id ]['rollback_started_at'] );
 				$records[ $replacement_asset_id ]['status'] = 'ready';
 				unset( $records[ $replacement_asset_id ]['rollback_started_at'] );
-				$sources = self::sources();
+				$sources = self::raw_sources();
 				$profile = self::refreshed_profile_record( $records, $sources, true );
 				$changes = array( self::ASSETS_OPTION => $records );
 				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
@@ -582,7 +607,8 @@ final class MAD4B_SCP_Context_Authority {
 			static function () use ( $old_asset_id, $replacement_asset_id, $before_state ) {
 				$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
 				$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
-				$records = self::assets();
+				if ( empty( self::asset( $old_asset_id ) ) || empty( self::asset( $replacement_asset_id ) ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback requires live source-authorized original and replacement assets.' );
+				$records = self::raw_assets();
 				if ( ! isset( $records[ $old_asset_id ] ) || ! isset( $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback requires both original and replacement registry records.' );
 				$current = $records[ $old_asset_id ];
 				if ( ! in_array( isset( $current['status'] ) ? (string) $current['status'] : '', array( 'recreated', 'rollback_pending' ), true ) ) return new WP_Error( 'mad4b_context_recreate_rollback_status_drift', 'Original Context asset is no longer in a rollback-compatible recreated state.' );
@@ -595,7 +621,7 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['availability_reason'] = isset( $before_state['availability_reason'] ) ? sanitize_key( (string) $before_state['availability_reason'] ) : 'not_seen_in_complete_scan';
 				if ( isset( $before_state['absence_scan_generation'] ) ) $records[ $old_asset_id ]['absence_scan_generation'] = (string) $before_state['absence_scan_generation'];
 				unset( $records[ $old_asset_id ]['replacement_asset_id'], $records[ $old_asset_id ]['recreated_at'], $records[ $old_asset_id ]['rollback_started_at'] );
-				$sources = self::sources();
+				$sources = self::raw_sources();
 				$profile = self::refreshed_profile_record( $records, $sources, true );
 				$changes = array( self::ASSETS_OPTION => $records );
 				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
@@ -629,9 +655,10 @@ final class MAD4B_SCP_Context_Authority {
 			if ( is_wp_error( $site ) ) return $site;
 			$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
 			$write_policy = sanitize_key( (string) $write_policy );
-			$sources = self::sources();
-			if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
-			$source = $sources[ $source_id ];
+			$authorized_sources = self::sources();
+			if ( ! isset( $authorized_sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+			$source = $authorized_sources[ $source_id ];
+			$sources = self::raw_sources();
 			if ( ! hash_equals( (string) $site['site_uuid'], (string) $source['site_uuid'] ) ) return new WP_Error( 'mad4b_context_source_site_mismatch', 'Context source is not bound to this Site Profile.' );
 			if ( ! isset( self::write_policies()[ $write_policy ] ) ) return new WP_Error( 'mad4b_context_source_write_policy_invalid', 'Context source write policy is invalid.' );
 			if ( 'task_attachment' === ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) && 'read_only' !== $write_policy ) return new WP_Error( 'mad4b_context_task_source_write_forbidden', 'Task-only Context sources are read-only in this release.' );
@@ -667,11 +694,12 @@ final class MAD4B_SCP_Context_Authority {
 			$site = self::site_binding();
 			if ( is_wp_error( $site ) ) return $site;
 			$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
-			$sources = self::sources();
-			if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
-			$source = $sources[ $source_id ];
+			$authorized_sources = self::sources();
+			if ( ! isset( $authorized_sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+			$source = $authorized_sources[ $source_id ];
+			$sources = self::raw_sources();
 			if ( ! hash_equals( (string) $site['site_uuid'], (string) $source['site_uuid'] ) ) return new WP_Error( 'mad4b_context_source_site_mismatch', 'Context source is not bound to this Site Profile.' );
-			$assets = self::assets();
+			$assets = self::raw_assets();
 			$removed_assets = 0;
 			foreach ( $assets as $asset_id => $asset ) {
 				if ( isset( $asset['source_id'] ) && hash_equals( $source_id, (string) $asset['source_id'] ) ) {
@@ -718,8 +746,10 @@ final class MAD4B_SCP_Context_Authority {
 			$site = self::site_binding();
 			if ( is_wp_error( $site ) ) return $site;
 			$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
-			$records = self::assets();
-			if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+			$visible_asset = self::asset( $asset_id );
+			if ( empty( $visible_asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found in the live source-authorized registry view.' );
+			$records = self::raw_assets();
+			if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset raw registry record was not found.' );
 			$asset = $records[ $asset_id ];
 			if ( ! hash_equals( (string) $site['site_uuid'], (string) $asset['site_uuid'] ) ) return new WP_Error( 'mad4b_context_asset_site_mismatch', 'Context asset is not bound to this Site Profile.' );
 	
@@ -786,7 +816,7 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['reviewed_at'] = gmdate( 'c' );
 			$asset['review_status'] = 'approved';
 			$records[ $asset_id ] = $asset;
-			$sources = self::sources();
+			$sources = self::raw_sources();
 			$profile = self::refreshed_profile_record( $records, $sources, true );
 			$changes = array( self::ASSETS_OPTION => $records );
 			if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
@@ -1133,10 +1163,14 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function context_fingerprint( $assets = null, $sources = null ) {
-		if ( null === $assets ) $assets = self::assets();
-		if ( null === $sources ) $sources = self::sources();
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return hash( 'sha256', '[]' );
+		$source_records = null === $sources ? self::raw_sources() : ( is_array( $sources ) ? $sources : array() );
+		$authorized_sources = self::authorized_sources_from_records( $source_records, $site );
+		$asset_records = null === $assets ? self::raw_assets() : ( is_array( $assets ) ? $assets : array() );
+		$assets = self::authorized_assets_from_records( $asset_records, $authorized_sources, $site );
 		$rows = array();
-		foreach ( is_array( $assets ) ? $assets : array() as $asset ) {
+		foreach ( $assets as $asset ) {
 			if ( ! is_array( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? $asset['source_mode'] : '' ) ) continue;
 			$rows[] = array(
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
@@ -1269,10 +1303,15 @@ final class MAD4B_SCP_Context_Authority {
 		return max( 0, (int) get_option( self::REGISTRY_REVISION_OPTION, 0 ) );
 	}
 
-	public static function authority_manifest_fingerprint( $assets = null ) {
-		if ( null === $assets ) $assets = self::assets();
+	public static function authority_manifest_fingerprint( $assets = null, $sources = null ) {
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return hash( 'sha256', '[]' );
+		$source_records = null === $sources ? self::raw_sources() : ( is_array( $sources ) ? $sources : array() );
+		$authorized_sources = self::authorized_sources_from_records( $source_records, $site );
+		$asset_records = null === $assets ? self::raw_assets() : ( is_array( $assets ) ? $assets : array() );
+		$assets = self::authorized_assets_from_records( $asset_records, $authorized_sources, $site );
 		$rows = array();
-		foreach ( is_array( $assets ) ? $assets : array() as $asset ) {
+		foreach ( $assets as $asset ) {
 			if ( ! is_array( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) continue;
 			$rows[] = array(
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
@@ -1440,7 +1479,7 @@ final class MAD4B_SCP_Context_Authority {
 		$profile = self::profile();
 		if ( empty( $profile ) ) return array();
 		$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
-		$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $assets );
+		$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $assets, $sources );
 		if ( $verified ) $profile['last_verified_at'] = gmdate( 'c' );
 		$profile['updated_at'] = gmdate( 'c' );
 		return $profile;
