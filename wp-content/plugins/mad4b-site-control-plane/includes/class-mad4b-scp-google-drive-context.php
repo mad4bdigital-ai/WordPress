@@ -30,6 +30,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const MAX_SCAN_FILES = 500;
 	const MAX_SCAN_FOLDERS = 120;
 	const MAX_TEXT_BYTES = 262144;
+	const MAX_BINARY_BYTES = 16777216;
 	const MAX_WRITE_BYTES = 1048576;
 	const MAX_REVERSIBLE_TEXT_BYTES = 196608;
 	const MAX_PARENT_DEPTH = 16;
@@ -322,13 +323,19 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function normalization_capabilities() {
+		$zip = class_exists( 'ZipArchive' );
 		return array(
-			array( 'type' => 'Google Docs', 'mime' => 'application/vnd.google-apps.document', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded text/plain.' ),
-			array( 'type' => 'Google Sheets', 'mime' => 'application/vnd.google-apps.spreadsheet', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded CSV from the first sheet.' ),
-			array( 'type' => 'Google Slides', 'mime' => 'application/vnd.google-apps.presentation', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded text/plain.' ),
-			array( 'type' => 'Text / Markdown / CSV / JSON / XML', 'mime' => 'text/*', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Downloaded as bounded text.' ),
-			array( 'type' => 'PDF', 'mime' => 'application/pdf', 'mode' => 'metadata_only', 'status' => 'provisional', 'note' => 'Binary PDF text extraction is not certified in this foundation.' ),
-			array( 'type' => 'DOCX', 'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'mode' => 'metadata_only', 'status' => 'provisional', 'note' => 'DOCX text extraction is not certified in this foundation.' ),
+			array( 'type' => 'Google Docs', 'mime' => 'application/vnd.google-apps.document', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded plain text.' ),
+			array( 'type' => 'Google Sheets', 'mime' => 'application/vnd.google-apps.spreadsheet', 'mode' => 'structured_text', 'status' => $zip ? 'ready' : 'runtime_dependency', 'note' => $zip ? 'Exported as XLSX and normalized across worksheets.' : 'ZipArchive is required for full workbook normalization.' ),
+			array( 'type' => 'Google Slides', 'mime' => 'application/vnd.google-apps.presentation', 'mode' => 'structured_text', 'status' => $zip ? 'ready' : 'runtime_dependency', 'note' => $zip ? 'Exported as PPTX and normalized across slides and notes.' : 'ZipArchive is required for presentation normalization.' ),
+			array( 'type' => 'Google Drawings', 'mime' => 'application/vnd.google-apps.drawing', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as SVG and normalized from visible text.' ),
+			array( 'type' => 'Google Apps Script', 'mime' => 'application/vnd.google-apps.script', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded JSON.' ),
+			array( 'type' => 'Text / Markdown / CSV / JSON / XML / HTML / SVG', 'mime' => 'text/*', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Downloaded and normalized as bounded text.' ),
+			array( 'type' => 'DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB', 'mime' => 'application/*+zip', 'mode' => 'structured_text', 'status' => $zip ? 'ready' : 'runtime_dependency', 'note' => $zip ? 'Normalized locally from the archive without mutating Drive.' : 'ZipArchive is required for archive document normalization.' ),
+			array( 'type' => 'RTF', 'mime' => 'application/rtf', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Normalized locally with bounded RTF decoding.' ),
+			array( 'type' => 'PDF', 'mime' => 'application/pdf', 'mode' => 'text_or_ocr', 'status' => 'ready_with_ocr_fallback', 'note' => 'Text PDFs are normalized locally; image-only/scanned PDFs route to the governed media extractor when configured.' ),
+			array( 'type' => 'Raster images', 'mime' => 'image/*', 'mode' => 'ocr', 'status' => self::external_extractor_configured() ? 'ready' : 'extractor_required', 'note' => 'SVG is local; raster OCR uses the governed external media extractor.' ),
+			array( 'type' => 'Audio / Video / Google Vids', 'mime' => 'audio/*,video/*', 'mode' => 'transcription', 'status' => self::external_extractor_configured() ? 'ready' : 'extractor_required', 'note' => 'Transcription uses the governed external media extractor; Drive OAuth scope is not widened.' ),
 		);
 	}
 
@@ -1138,7 +1145,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$file_id = self::bounded_drive_id( $file_id );
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
 		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?' . http_build_query(
-			array( 'fields' => 'id,name,mimeType,parents,modifiedTime,size,md5Checksum,driveId,webViewLink', 'supportsAllDrives' => 'true' ),
+			array( 'fields' => 'id,name,mimeType,parents,modifiedTime,size,md5Checksum,driveId,webViewLink,shortcutDetails(targetId,targetMimeType),capabilities(canDownload)', 'supportsAllDrives' => 'true' ),
 			'', '&', PHP_QUERY_RFC3986
 		);
 		return self::api_get( $url );
@@ -1224,7 +1231,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$params = array(
 				'q' => $q,
 				'pageSize' => 100,
-				'fields' => 'nextPageToken,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,description)',
+				'fields' => 'nextPageToken,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,description,shortcutDetails(targetId,targetMimeType),capabilities(canDownload))',
 				'spaces' => 'drive',
 				'supportsAllDrives' => 'true',
 				'includeItemsFromAllDrives' => 'true',
@@ -1260,63 +1267,339 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $detailed ? $result : $items;
 	}
 
-	private static function fetch_text_content_record( array $file ) {
-		$file_id = self::bounded_drive_id( isset( $file['id'] ) ? $file['id'] : '' );
-		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
-		$mime = isset( $file['mimeType'] ) ? strtolower( (string) $file['mimeType'] ) : '';
-		$url = '';
-		if ( 'application/vnd.google-apps.document' === $mime ) {
-			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/export?mimeType=' . rawurlencode( 'text/plain' );
-		} elseif ( 'application/vnd.google-apps.spreadsheet' === $mime ) {
-			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/export?mimeType=' . rawurlencode( 'text/csv' );
-		} elseif ( 'application/vnd.google-apps.presentation' === $mime ) {
-			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/export?mimeType=' . rawurlencode( 'text/plain' );
-		} elseif ( 0 === strpos( $mime, 'text/' ) || in_array( $mime, array( 'application/json', 'application/xml', 'application/csv' ), true ) ) {
-			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?alt=media&supportsAllDrives=true';
-		} else {
-			$reason = 'unsupported_mime_type';
-			if ( 'application/pdf' === $mime ) $reason = 'pdf_text_extractor_not_certified';
-			if ( 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' === $mime ) $reason = 'docx_text_extractor_not_certified';
+	private static function normalization_record( $content, $complete = true, $status = 'ready', $reason = '', $bytes = null ) {
+		$content = wp_check_invalid_utf8( (string) $content, true );
+		$observed = null === $bytes ? strlen( $content ) : (int) $bytes;
+		if ( strlen( $content ) > self::MAX_TEXT_BYTES ) {
 			return array(
-				'content' => '',
+				'content' => substr( $content, 0, self::MAX_TEXT_BYTES ),
 				'complete' => false,
-				'bytes' => 0,
-				'normalization_status' => 'unsupported',
-				'normalization_reason' => $reason,
-			);
-		}
-		$token = self::access_token();
-		if ( is_wp_error( $token ) ) return $token;
-		$response = wp_remote_get(
-			$url,
-			array(
-				'timeout' => 20,
-				'redirection' => 2,
-				'headers' => array( 'Authorization' => 'Bearer ' . $token ),
-				'limit_response_size' => self::MAX_TEXT_BYTES + 1,
-			)
-		);
-		if ( is_wp_error( $response ) ) return $response;
-		$status = (int) wp_remote_retrieve_response_code( $response );
-		if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_google_drive_content_fetch_failed', 'Google Drive content export returned a non-success status.', array( 'status' => $status ) );
-		$body = wp_check_invalid_utf8( (string) wp_remote_retrieve_body( $response ), true );
-		$bytes = strlen( $body );
-		if ( $bytes > self::MAX_TEXT_BYTES ) {
-			return array(
-				'content' => substr( $body, 0, self::MAX_TEXT_BYTES ),
-				'complete' => false,
-				'bytes' => $bytes,
+				'bytes' => $observed,
 				'normalization_status' => 'incomplete',
 				'normalization_reason' => 'max_text_bytes_exceeded',
 			);
 		}
 		return array(
-			'content' => $body,
-			'complete' => true,
-			'bytes' => $bytes,
-			'normalization_status' => 'ready',
-			'normalization_reason' => '',
+			'content' => $content,
+			'complete' => (bool) $complete,
+			'bytes' => $observed,
+			'normalization_status' => sanitize_key( (string) $status ),
+			'normalization_reason' => sanitize_key( (string) $reason ),
 		);
+	}
+
+	private static function fetch_bounded_bytes( $url, $max_bytes, $error_code ) {
+		$token = self::access_token();
+		if ( is_wp_error( $token ) ) return $token;
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 30,
+				'redirection' => 2,
+				'headers' => array( 'Authorization' => 'Bearer ' . $token ),
+				'limit_response_size' => (int) $max_bytes + 1,
+			)
+		);
+		if ( is_wp_error( $response ) ) return $response;
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( $status < 200 || $status >= 300 ) return new WP_Error( $error_code, 'Google Drive content download returned a non-success status.', array( 'status' => $status ) );
+		$body = (string) wp_remote_retrieve_body( $response );
+		if ( strlen( $body ) > (int) $max_bytes ) return new WP_Error( 'mad4b_google_drive_binary_too_large', 'Drive binary exceeds the certified normalization limit.', array( 'max_bytes' => (int) $max_bytes, 'bytes_observed' => strlen( $body ) ) );
+		return $body;
+	}
+
+	private static function download_blob_bytes( $file_id ) {
+		$file_id = self::bounded_drive_id( $file_id );
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
+		return self::fetch_bounded_bytes( self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?alt=media&supportsAllDrives=true', self::MAX_BINARY_BYTES, 'mad4b_google_drive_binary_fetch_failed' );
+	}
+
+	private static function export_workspace_bytes( $file_id, $mime_type ) {
+		$file_id = self::bounded_drive_id( $file_id );
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
+		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/export?mimeType=' . rawurlencode( (string) $mime_type );
+		return self::fetch_bounded_bytes( $url, self::MAX_BINARY_BYTES, 'mad4b_google_drive_export_failed' );
+	}
+
+	private static function zip_entries( $binary ) {
+		if ( ! class_exists( 'ZipArchive' ) ) return new WP_Error( 'mad4b_context_ziparchive_unavailable', 'ZipArchive is required to normalize this document type.' );
+		$tmp = tempnam( sys_get_temp_dir(), 'mad4b-context-' );
+		if ( false === $tmp ) return new WP_Error( 'mad4b_context_tempfile_unavailable', 'Unable to allocate a bounded normalization tempfile.' );
+		$written = @file_put_contents( $tmp, (string) $binary );
+		if ( false === $written || $written !== strlen( (string) $binary ) ) { @unlink( $tmp ); return new WP_Error( 'mad4b_context_tempfile_write_failed', 'Unable to write document normalization tempfile.' ); }
+		$zip = new ZipArchive();
+		$opened = $zip->open( $tmp );
+		if ( true !== $opened ) { @unlink( $tmp ); return new WP_Error( 'mad4b_context_archive_invalid', 'Document archive could not be opened.' ); }
+		$entries = array();
+		$total = 0;
+		for ( $i = 0; $i < $zip->numFiles; ++$i ) {
+			$stat = $zip->statIndex( $i );
+			if ( ! is_array( $stat ) || empty( $stat['name'] ) ) continue;
+			$name = (string) $stat['name'];
+			if ( substr( $name, -1 ) === '/' ) continue;
+			$size = isset( $stat['size'] ) ? (int) $stat['size'] : 0;
+			$total += max( 0, $size );
+			if ( $total > self::MAX_BINARY_BYTES * 4 ) { $zip->close(); @unlink( $tmp ); return new WP_Error( 'mad4b_context_archive_expanded_too_large', 'Expanded document archive exceeds the certified normalization limit.' ); }
+			$data = $zip->getFromIndex( $i );
+			if ( false !== $data ) $entries[ $name ] = (string) $data;
+		}
+		$zip->close();
+		@unlink( $tmp );
+		return $entries;
+	}
+
+	private static function xml_visible_text( $xml ) {
+		$xml = (string) $xml;
+		$xml = preg_replace( '/<\/(?:[A-Za-z0-9_\-]+:)?(?:p|row|tr|text:p|text:h)>/i', "\n", $xml );
+		$xml = preg_replace( '/<(?:[A-Za-z0-9_\-]+:)?(?:br|tab)[^>]*\/?\s*>/i', "\t", $xml );
+		$text = html_entity_decode( strip_tags( $xml ), ENT_QUOTES | ENT_XML1, 'UTF-8' );
+		$text = preg_replace( "/[ \t]+/u", ' ', $text );
+		$text = preg_replace( "/\r\n?|\n{3,}/u", "\n", $text );
+		return trim( (string) $text );
+	}
+
+	private static function html_visible_text( $html ) {
+		$html = preg_replace( '#<(script|style|noscript)[^>]*>.*?</\1>#is', ' ', (string) $html );
+		$html = preg_replace( '#</(?:p|div|li|tr|h[1-6]|section|article)>#i', "\n", $html );
+		$html = preg_replace( '#<(?:br|hr)[^>]*>#i', "\n", $html );
+		$text = html_entity_decode( strip_tags( $html ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+		$text = preg_replace( "/[ \t]+/u", ' ', $text );
+		$text = preg_replace( "/\r\n?|\n{3,}/u", "\n", $text );
+		return trim( (string) $text );
+	}
+
+	private static function normalize_docx( $binary ) {
+		$entries = self::zip_entries( $binary );
+		if ( is_wp_error( $entries ) ) return $entries;
+		$parts = array();
+		foreach ( $entries as $name => $xml ) {
+			if ( preg_match( '#^word/(document|header[0-9]*|footer[0-9]*|footnotes|endnotes|comments)\.xml$#i', $name ) ) {
+				$text = self::xml_visible_text( $xml );
+				if ( '' !== $text ) $parts[] = $text;
+			}
+		}
+		return self::normalization_record( implode( "\n\n", $parts ), true, 'ready', 'docx_local' );
+	}
+
+	private static function normalize_xlsx( $binary ) {
+		$entries = self::zip_entries( $binary );
+		if ( is_wp_error( $entries ) ) return $entries;
+		$shared = array();
+		if ( isset( $entries['xl/sharedStrings.xml'] ) && preg_match_all( '#<si\b[^>]*>(.*?)</si>#is', $entries['xl/sharedStrings.xml'], $matches ) ) {
+			foreach ( $matches[1] as $si ) $shared[] = self::xml_visible_text( $si );
+		}
+		$sheets = array();
+		foreach ( $entries as $name => $xml ) if ( preg_match( '#^xl/worksheets/sheet([0-9]+)\.xml$#i', $name, $m ) ) $sheets[ (int) $m[1] ] = $xml;
+		ksort( $sheets, SORT_NUMERIC );
+		$out = array();
+		foreach ( $sheets as $number => $xml ) {
+			$lines = array();
+			if ( preg_match_all( '#<row\b[^>]*>(.*?)</row>#is', $xml, $rows ) ) {
+				foreach ( $rows[1] as $row ) {
+					$cells = array();
+					if ( preg_match_all( '#<c\b([^>]*)>(.*?)</c>#is', $row, $cell_matches, PREG_SET_ORDER ) ) {
+						foreach ( $cell_matches as $cell ) {
+							$attrs = $cell[1];
+							$body = $cell[2];
+							$value = '';
+							if ( preg_match( '#<is\b[^>]*>(.*?)</is>#is', $body, $inline ) ) $value = self::xml_visible_text( $inline[1] );
+							elseif ( preg_match( '#<v\b[^>]*>(.*?)</v>#is', $body, $v ) ) {
+								$value = html_entity_decode( strip_tags( $v[1] ), ENT_QUOTES | ENT_XML1, 'UTF-8' );
+								if ( preg_match( '/\bt=["\']s["\']/i', $attrs ) ) { $idx = (int) $value; $value = isset( $shared[ $idx ] ) ? $shared[ $idx ] : $value; }
+							}
+							$cells[] = trim( (string) $value );
+						}
+					}
+					if ( $cells ) $lines[] = implode( "\t", $cells );
+				}
+			}
+			$out[] = '[Sheet ' . $number . "]\n" . implode( "\n", $lines );
+		}
+		return self::normalization_record( implode( "\n\n", $out ), true, 'ready', 'xlsx_local' );
+	}
+
+	private static function normalize_pptx( $binary ) {
+		$entries = self::zip_entries( $binary );
+		if ( is_wp_error( $entries ) ) return $entries;
+		$slides = array();
+		$notes = array();
+		foreach ( $entries as $name => $xml ) {
+			if ( preg_match( '#^ppt/slides/slide([0-9]+)\.xml$#i', $name, $m ) ) $slides[ (int) $m[1] ] = self::xml_visible_text( $xml );
+			elseif ( preg_match( '#^ppt/notesSlides/notesSlide([0-9]+)\.xml$#i', $name, $m ) ) $notes[ (int) $m[1] ] = self::xml_visible_text( $xml );
+		}
+		ksort( $slides, SORT_NUMERIC );
+		$out = array();
+		foreach ( $slides as $number => $text ) {
+			$chunk = '[Slide ' . $number . "]\n" . $text;
+			if ( isset( $notes[ $number ] ) && '' !== $notes[ $number ] ) $chunk .= "\n[Notes]\n" . $notes[ $number ];
+			$out[] = $chunk;
+		}
+		return self::normalization_record( implode( "\n\n", $out ), true, 'ready', 'pptx_local' );
+	}
+
+	private static function normalize_odf( $binary, $kind ) {
+		$entries = self::zip_entries( $binary );
+		if ( is_wp_error( $entries ) ) return $entries;
+		if ( empty( $entries['content.xml'] ) ) return new WP_Error( 'mad4b_context_odf_content_missing', 'OpenDocument archive has no content.xml.' );
+		return self::normalization_record( self::xml_visible_text( $entries['content.xml'] ), true, 'ready', sanitize_key( (string) $kind ) . '_local' );
+	}
+
+	private static function normalize_epub( $binary ) {
+		$entries = self::zip_entries( $binary );
+		if ( is_wp_error( $entries ) ) return $entries;
+		ksort( $entries, SORT_STRING );
+		$parts = array();
+		foreach ( $entries as $name => $content ) if ( preg_match( '/\.(xhtml|html|htm)$/i', $name ) ) {
+			$text = self::html_visible_text( $content );
+			if ( '' !== $text ) $parts[] = $text;
+		}
+		return self::normalization_record( implode( "\n\n", $parts ), true, 'ready', 'epub_local' );
+	}
+
+	private static function normalize_rtf( $rtf ) {
+		$text = (string) $rtf;
+		$text = preg_replace_callback( "/\\\\'([0-9a-fA-F]{2})/", static function ( $m ) { return chr( hexdec( $m[1] ) ); }, $text );
+		$text = preg_replace_callback( '/\\\\u(-?[0-9]+)\??/', static function ( $m ) {
+			$n = (int) $m[1]; if ( $n < 0 ) $n += 65536;
+			if ( function_exists( 'mb_convert_encoding' ) ) return mb_convert_encoding( '&#' . $n . ';', 'UTF-8', 'HTML-ENTITIES' );
+			return $n < 128 ? chr( $n ) : ' ';
+		}, $text );
+		$text = preg_replace( '/\\\\(par|line|tab)\b ?/i', "\n", $text );
+		$text = preg_replace( '/\\\\[a-zA-Z]+-?[0-9]* ?/', '', $text );
+		$text = str_replace( array( '\\{', '\\}', '\\\\' ), array( '{', '}', '\\' ), $text );
+		$text = str_replace( array( '{', '}' ), '', $text );
+		$text = preg_replace( "/[ \t]+/u", ' ', $text );
+		$text = preg_replace( "/\n{3,}/u", "\n\n", $text );
+		return self::normalization_record( trim( $text ), true, 'ready', 'rtf_local' );
+	}
+
+	private static function pdf_decode_literal( $value ) {
+		$value = preg_replace_callback( '/\\\\([0-7]{1,3})/', static function ( $m ) { return chr( octdec( $m[1] ) ); }, (string) $value );
+		return strtr( $value, array( '\\n' => "\n", '\\r' => "\r", '\\t' => "\t", '\\b' => "\b", '\\f' => "\f", '\\(' => '(', '\\)' => ')', '\\\\' => '\\' ) );
+	}
+
+	private static function pdf_stream_text( $stream ) {
+		$out = array();
+		if ( preg_match_all( '/BT(.*?)ET/s', (string) $stream, $blocks ) ) {
+			foreach ( $blocks[1] as $block ) {
+				if ( preg_match_all( '/\((?:\\\\.|[^\\)])*\)/s', $block, $strings ) ) {
+					foreach ( $strings[0] as $literal ) {
+						$value = self::pdf_decode_literal( substr( $literal, 1, -1 ) );
+						if ( '' !== trim( $value ) ) $out[] = $value;
+					}
+				}
+				if ( preg_match_all( '/<([0-9A-Fa-f]{4,})>\s*(?:Tj|TJ|\'|\")/', $block, $hexes ) ) {
+					foreach ( $hexes[1] as $hex ) {
+						if ( strlen( $hex ) % 2 ) $hex .= '0';
+						$bytes = @hex2bin( $hex );
+						if ( false === $bytes ) continue;
+						if ( 0 === strncmp( $bytes, "\xFE\xFF", 2 ) && function_exists( 'mb_convert_encoding' ) ) $bytes = mb_convert_encoding( substr( $bytes, 2 ), 'UTF-8', 'UTF-16BE' );
+						if ( '' !== trim( $bytes ) ) $out[] = $bytes;
+					}
+				}
+			}
+		}
+		return trim( implode( ' ', $out ) );
+	}
+
+	private static function normalize_pdf( $binary ) {
+		$binary = (string) $binary;
+		if ( 0 !== strpos( $binary, '%PDF-' ) ) return new WP_Error( 'mad4b_context_pdf_invalid', 'PDF signature is invalid.' );
+		$texts = array();
+		$unsupported_filter = false;
+		if ( preg_match_all( '/stream\r?\n(.*?)\r?\nendstream/s', $binary, $streams, PREG_OFFSET_CAPTURE ) ) {
+			foreach ( $streams[1] as $capture ) {
+				$data = (string) $capture[0];
+				$offset = (int) $capture[1];
+				$prefix = substr( $binary, max( 0, $offset - 512 ), min( 512, $offset ) );
+				if ( preg_match( '#/(DCTDecode|JPXDecode|LZWDecode|ASCII85Decode|CCITTFaxDecode)#', $prefix ) ) $unsupported_filter = true;
+				if ( false !== strpos( $prefix, '/FlateDecode' ) ) {
+					$decoded = @gzuncompress( $data );
+					if ( false === $decoded ) $decoded = @gzinflate( $data );
+					if ( false === $decoded ) { $unsupported_filter = true; continue; }
+					$data = $decoded;
+				}
+				$text = self::pdf_stream_text( $data );
+				if ( '' !== $text ) $texts[] = $text;
+			}
+		}
+		$text = trim( implode( "\n", $texts ) );
+		if ( '' === $text ) return self::normalization_record( '', false, 'extractor_required', 'pdf_ocr_required', strlen( $binary ) );
+		return self::normalization_record( $text, ! $unsupported_filter, $unsupported_filter ? 'incomplete' : 'ready', $unsupported_filter ? 'pdf_mixed_filters_not_fully_decoded' : 'pdf_local_text', strlen( $binary ) );
+	}
+
+	private static function external_extractor_configured() {
+		return defined( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) && defined( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' )
+			&& '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) )
+			&& '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) );
+	}
+
+	private static function normalize_binary_content( $mime, $binary, $name = '' ) {
+		$mime = strtolower( trim( (string) $mime ) );
+		if ( 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' === $mime ) return self::normalize_docx( $binary );
+		if ( 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' === $mime ) return self::normalize_xlsx( $binary );
+		if ( 'application/vnd.openxmlformats-officedocument.presentationml.presentation' === $mime ) return self::normalize_pptx( $binary );
+		if ( 'application/vnd.oasis.opendocument.text' === $mime ) return self::normalize_odf( $binary, 'odt' );
+		if ( 'application/vnd.oasis.opendocument.spreadsheet' === $mime ) return self::normalize_odf( $binary, 'ods' );
+		if ( 'application/vnd.oasis.opendocument.presentation' === $mime ) return self::normalize_odf( $binary, 'odp' );
+		if ( 'application/epub+zip' === $mime ) return self::normalize_epub( $binary );
+		if ( in_array( $mime, array( 'application/rtf', 'text/rtf' ), true ) ) return self::normalize_rtf( $binary );
+		if ( 'application/pdf' === $mime ) return self::normalize_pdf( $binary );
+		if ( 'text/html' === $mime || 'application/xhtml+xml' === $mime || 'image/svg+xml' === $mime ) return self::normalization_record( self::html_visible_text( $binary ), true, 'ready', 'markup_local' );
+		return self::normalization_record( '', false, 'extractor_required', 'external_extractor_required', strlen( (string) $binary ) );
+	}
+
+
+	private static function fetch_text_content_record( array $file, $shortcut_depth = 0 ) {
+		$file_id = self::bounded_drive_id( isset( $file['id'] ) ? $file['id'] : '' );
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
+		$mime = isset( $file['mimeType'] ) ? strtolower( (string) $file['mimeType'] ) : '';
+		$name = isset( $file['name'] ) ? (string) $file['name'] : '';
+
+		if ( 'application/vnd.google-apps.shortcut' === $mime ) {
+			if ( $shortcut_depth >= 4 ) return new WP_Error( 'mad4b_google_drive_shortcut_depth_exceeded', 'Drive shortcut chain exceeds the certified normalization depth.' );
+			$target_id = isset( $file['shortcutDetails']['targetId'] ) ? self::bounded_drive_id( $file['shortcutDetails']['targetId'] ) : '';
+			if ( '' === $target_id ) return self::normalization_record( '', false, 'incomplete', 'shortcut_target_missing' );
+			$target = self::get_file_metadata( $target_id );
+			if ( is_wp_error( $target ) ) return $target;
+			return self::fetch_text_content_record( $target, $shortcut_depth + 1 );
+		}
+
+		if ( 'application/vnd.google-apps.document' === $mime ) {
+			$bytes = self::export_workspace_bytes( $file_id, 'text/plain' );
+			return is_wp_error( $bytes ) ? $bytes : self::normalization_record( $bytes, true, 'ready', 'google_doc_export' );
+		}
+		if ( 'application/vnd.google-apps.spreadsheet' === $mime ) {
+			$bytes = self::export_workspace_bytes( $file_id, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' );
+			return is_wp_error( $bytes ) ? $bytes : self::normalize_xlsx( $bytes );
+		}
+		if ( 'application/vnd.google-apps.presentation' === $mime ) {
+			$bytes = self::export_workspace_bytes( $file_id, 'application/vnd.openxmlformats-officedocument.presentationml.presentation' );
+			return is_wp_error( $bytes ) ? $bytes : self::normalize_pptx( $bytes );
+		}
+		if ( 'application/vnd.google-apps.drawing' === $mime ) {
+			$bytes = self::export_workspace_bytes( $file_id, 'image/svg+xml' );
+			return is_wp_error( $bytes ) ? $bytes : self::normalization_record( self::html_visible_text( $bytes ), true, 'ready', 'google_drawing_svg_export' );
+		}
+		if ( 'application/vnd.google-apps.script' === $mime ) {
+			$bytes = self::export_workspace_bytes( $file_id, 'application/vnd.google-apps.script+json' );
+			return is_wp_error( $bytes ) ? $bytes : self::normalization_record( $bytes, true, 'ready', 'google_apps_script_export' );
+		}
+
+		if ( 0 === strpos( $mime, 'text/' ) || in_array( $mime, array( 'application/json', 'application/xml', 'application/csv', 'application/javascript', 'application/x-javascript' ), true ) ) {
+			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?alt=media&supportsAllDrives=true';
+			$bytes = self::fetch_bounded_bytes( $url, self::MAX_TEXT_BYTES, 'mad4b_google_drive_content_fetch_failed' );
+			if ( is_wp_error( $bytes ) ) return $bytes;
+			if ( 'text/html' === $mime || 'image/svg+xml' === $mime ) return self::normalization_record( self::html_visible_text( $bytes ), true, 'ready', 'markup_local' );
+			return self::normalization_record( $bytes, true, 'ready', 'text_blob' );
+		}
+
+		$binary = self::download_blob_bytes( $file_id );
+		if ( is_wp_error( $binary ) ) return $binary;
+		$local = self::normalize_binary_content( $mime, $binary, $name );
+		if ( is_wp_error( $local ) ) return $local;
+		if ( ! empty( $local['complete'] ) || 'extractor_required' !== ( isset( $local['normalization_status'] ) ? (string) $local['normalization_status'] : '' ) ) return $local;
+		return self::external_extractor_record( $file, $binary, $local );
 	}
 
 	private static function fetch_text_content( array $file ) {
@@ -1336,6 +1619,45 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		return isset( $record['content'] ) ? (string) $record['content'] : '';
 	}
+
+	private static function external_extractor_record( array $file, $binary, array $fallback ) {
+		if ( ! self::external_extractor_configured() ) return $fallback;
+		$url = esc_url_raw( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) );
+		$token = trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) );
+		if ( '' === $url || '' === $token || 0 !== strpos( $url, 'https://' ) ) return self::normalization_record( '', false, 'error', 'external_extractor_configuration_invalid', strlen( (string) $binary ) );
+		$mime = isset( $file['mimeType'] ) ? strtolower( (string) $file['mimeType'] ) : 'application/octet-stream';
+		$payload = array(
+			'contract' => 'mad4b.context-extraction-request.v1',
+			'file_id_sha256' => hash( 'sha256', isset( $file['id'] ) ? (string) $file['id'] : '' ),
+			'name' => isset( $file['name'] ) ? sanitize_text_field( (string) $file['name'] ) : '',
+			'mime_type' => $mime,
+			'content_sha256' => hash( 'sha256', (string) $binary ),
+			'content_base64' => base64_encode( (string) $binary ),
+			'max_text_bytes' => self::MAX_TEXT_BYTES,
+		);
+		$response = wp_remote_post(
+			$url,
+			array(
+				'timeout' => 60,
+				'redirection' => 0,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $token,
+					'Content-Type' => 'application/json',
+					'Accept' => 'application/json',
+				),
+				'body' => wp_json_encode( $payload ),
+			)
+		);
+		if ( is_wp_error( $response ) ) return self::normalization_record( '', false, 'error', 'external_extractor_transport_failed', strlen( (string) $binary ) );
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( $status < 200 || $status >= 300 || ! is_array( $data ) || 'mad4b.context-extraction-result.v1' !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) return self::normalization_record( '', false, 'error', 'external_extractor_response_invalid', strlen( (string) $binary ) );
+		$text = isset( $data['text'] ) ? (string) $data['text'] : '';
+		$complete = ! empty( $data['complete'] );
+		if ( '' === trim( $text ) ) return self::normalization_record( '', false, 'incomplete', 'external_extractor_empty', strlen( (string) $binary ) );
+		return self::normalization_record( $text, $complete, $complete ? 'ready' : 'incomplete', isset( $data['reason'] ) ? sanitize_key( (string) $data['reason'] ) : 'external_extractor', strlen( (string) $binary ) );
+	}
+
 
 	private static function api_get( $url ) {
 		$token = self::access_token();

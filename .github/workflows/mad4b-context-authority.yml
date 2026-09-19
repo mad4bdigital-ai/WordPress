@@ -36,6 +36,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-parent-lineage-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php'
       - '.github/workflows/mad4b-context-authority.yml'
@@ -67,6 +68,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+          extensions: zip, mbstring
 
       - name: Lint Context Authority runtime
         shell: bash
@@ -100,6 +102,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-parent-lineage-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-skill-enforcement-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php
 
@@ -198,6 +201,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-content-completeness-runtime.php
+
+      - name: Execute document normalization runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-document-normalization-runtime.php
 
       - name: Execute Skill Context enforcement runtime
         shell: bash
