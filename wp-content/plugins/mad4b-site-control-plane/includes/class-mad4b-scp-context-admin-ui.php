@@ -748,6 +748,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 		}
 		if ( 'conflicts' === $action ) {
 			echo '<p><strong>' . esc_html__( 'State:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( isset( $result['state'] ) ? $result['state'] : '' ) . ' · <strong>' . esc_html__( 'Conflicts:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( isset( $result['conflict_count'] ) ? (string) $result['conflict_count'] : '0' ) . '</p>';
+			if ( ! empty( $result['blockers'] ) ) echo '<div class="notice notice-error inline"><p><strong>' . esc_html__( 'Coverage incomplete:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', $result['blockers'] ) ) . '</code></p></div>';
+			if ( ! empty( $result['warnings'] ) ) echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Warnings:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( implode( ' · ', $result['warnings'] ) ) . '</code></p>';
 			foreach ( isset( $result['conflicts'] ) && is_array( $result['conflicts'] ) ? $result['conflicts'] : array() as $conflict ) {
 				echo '<div class="mad4b-context-conflict-card"><strong>' . esc_html( isset( $conflict['category'] ) ? $conflict['category'] : '' ) . ' / ' . esc_html( isset( $conflict['directive_key'] ) ? $conflict['directive_key'] : '' ) . '</strong> <span class="mad4b-context-badge">' . esc_html( isset( $conflict['severity'] ) ? $conflict['severity'] : '' ) . '</span>';
 				echo '<p class="mad4b-scp-muted">' . esc_html__( 'Human resolution required. No winner was selected automatically.', 'mad4b-site-control-plane' ) . '</p><ul>';

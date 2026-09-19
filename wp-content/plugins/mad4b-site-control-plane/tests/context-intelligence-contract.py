@@ -56,6 +56,9 @@ for marker in [
     "imitation_instruction_allowed",
     "mandatory_assets",
     "ranked_optional_assets",
+    "coverage_complete",
+    "conflict_provider_read_limit_reached",
+    "compliance_rule_limit_reached",
 ]:
     if marker not in intelligence:
         raise SystemExit(f"Missing fail-closed/explainability marker: {marker}")
@@ -63,4 +66,4 @@ for marker in [
 if "class-mad4b-scp-context-intelligence.php" not in main:
     raise SystemExit("Context Intelligence runtime is not loaded by the plugin entrypoint")
 
-print("mad4b.context-intelligence.contract.v1: PASS")
+print("mad4b.context-intelligence.contract.v2: PASS")

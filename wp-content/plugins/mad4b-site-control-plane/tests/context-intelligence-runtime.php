@@ -49,6 +49,7 @@ $a = str_repeat( 'a', 64 );
 $b = str_repeat( 'b', 64 );
 $c = str_repeat( 'c', 64 );
 $d = str_repeat( 'd', 64 );
+$f = str_repeat( 'f', 64 );
 
 $base_quality = array( 'dimensions' => array( 'freshness' => 90 ) );
 MAD4B_SCP_Context_Authority::$assets = array(
@@ -91,6 +92,19 @@ ci_assert( 1 === $conflicts['conflict_count'], 'Expected one explicit positionin
 ci_assert( 'human_required' === $conflicts['conflicts'][0]['resolution'], 'Conflict must require human resolution.', $conflicts );
 ci_assert( false === $conflicts['conflicts'][0]['auto_resolution'], 'Conflict must never auto-resolve.', $conflicts );
 
+MAD4B_SCP_Context_Authority::$assets[ $f ] = array(
+	'asset_id' => $f, 'title' => 'Unreadable Brand Strategy', 'path' => 'Brand/Unreadable', 'source_mode' => 'governed',
+	'category' => 'brand_strategy', 'authority_class' => 'brand_authority', 'required' => false, 'priority' => 80,
+	'status' => 'ready', 'content_complete' => true, 'review_status' => 'approved', 'quality_score' => 90,
+	'quality' => $base_quality, 'classification_confidence' => 1.0, 'content_excerpt' => 'unreadable fixture',
+);
+$incomplete_conflicts = MAD4B_SCP_Context_Intelligence::conflict_report();
+ci_assert( ! is_wp_error( $incomplete_conflicts ), 'Incomplete conflict report returned an error.', $incomplete_conflicts );
+ci_assert( false === $incomplete_conflicts['ready'], 'Unreadable governed authority asset must fail conflict coverage closed.', $incomplete_conflicts );
+ci_assert( false === $incomplete_conflicts['coverage_complete'], 'Unreadable governed authority asset must mark conflict coverage incomplete.', $incomplete_conflicts );
+ci_assert( in_array( 'asset_unreadable:' . $f, $incomplete_conflicts['blockers'], true ), 'Unreadable governed authority asset blocker missing.', $incomplete_conflicts );
+unset( MAD4B_SCP_Context_Authority::$assets[ $f ] );
+
 $profile = MAD4B_SCP_Context_Intelligence::reference_profile( array( 'asset_id' => $c ) );
 ci_assert( ! is_wp_error( $profile ), 'Reference profile returned an error.', $profile );
 ci_assert( 'structural_reference_only' === $profile['usage'], 'Reference profile must be structural only.', $profile );
@@ -132,4 +146,28 @@ ci_assert( 'PASS' === $good['verdict'], 'Compliant draft should pass explicit-ru
 ci_assert( true === $good['coverage_limited'], 'Compliance must disclose deterministic coverage limits.', $good );
 ci_assert( false === $good['semantic_model_used'], 'Compliance foundation must not claim opaque model semantics.', $good );
 
-echo "mad4b.context-intelligence.runtime.v1: PASS\n";
+MAD4B_SCP_Context_Authority::$assets[ $f ] = array(
+	'asset_id' => $f, 'title' => 'Large Claim Policy', 'path' => 'Brand/Claim Policy', 'source_mode' => 'governed',
+	'category' => 'claim_policy', 'authority_class' => 'policy_authority', 'required' => true, 'priority' => 100,
+	'status' => 'ready', 'content_complete' => true, 'review_status' => 'approved', 'quality_score' => 100,
+	'quality' => $base_quality, 'classification_confidence' => 1.0, 'content_excerpt' => 'bounded policy fixture',
+);
+$rule_lines = array();
+for ( $i = 0; $i <= MAD4B_SCP_Context_Intelligence::MAX_RULES; ++$i ) $rule_lines[] = 'Forbidden claim: forbidden-rule-' . $i;
+MAD4B_SCP_Google_Drive_Context::$content[ $f ] = implode( "\n", $rule_lines );
+$limited_receipt = array(
+	'ready' => true,
+	'receipt_sha256' => str_repeat( '9', 64 ),
+	'assets_loaded' => array( array( 'asset_id' => $f ) ),
+);
+$limited = MAD4B_SCP_Context_Intelligence::compliance_check( array(
+	'text' => 'A clean draft that does not contain the generated forbidden phrases.',
+	'receipt' => $limited_receipt,
+) );
+ci_assert( ! is_wp_error( $limited ), 'Rule-limit compliance check returned an error.', $limited );
+ci_assert( false === $limited['ready'], 'Rule-limit compliance scan must fail closed.', $limited );
+ci_assert( 'BLOCKED' === $limited['verdict'], 'Rule-limit compliance scan must not return PASS or revision-only status.', $limited );
+ci_assert( in_array( 'compliance_rule_limit_reached', $limited['blockers'], true ), 'Rule-limit blocker missing.', $limited );
+unset( MAD4B_SCP_Context_Authority::$assets[ $f ], MAD4B_SCP_Google_Drive_Context::$content[ $f ] );
+
+echo "mad4b.context-intelligence.runtime.v2: PASS\n";

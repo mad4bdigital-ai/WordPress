@@ -357,4 +357,65 @@ require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-run
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v9: PASS')
+pr_concurrency_workflows = [
+    '.github/workflows/mad4b-governed-execution-fence.yml',
+    '.github/workflows/mad4b-plugin-package.yml',
+    '.github/workflows/mad4b-live-acceptance-reconciler.yml',
+    '.github/workflows/mad4b-site-control-plane.yml',
+    '.github/workflows/mad4b-web-mcp-lifecycle.yml',
+    '.github/workflows/mad4b-mcp-adapter-metadata-bridge.yml',
+    '.github/workflows/mad4b-acceptance-core.yml',
+    '.github/workflows/mad4b-adapter-coverage.yml',
+    '.github/workflows/mad4b-general-distribution-foundation.yml',
+    '.github/workflows/mad4b-connection-governance.yml',
+    '.github/workflows/mad4b-core-content-modeling.yml',
+    '.github/workflows/mad4b-mcp-client-compatibility.yml',
+    '.github/workflows/mad4b-etg-dfsb-adapter.yml',
+    '.github/workflows/mad4b-oauth-resource-bridge.yml',
+    '.github/workflows/mad4b-admin-performance.yml',
+    '.github/workflows/mad4b-stable-external-write-catalog.yml',
+    '.github/workflows/mad4b-readonly-diagnostics.yml',
+    '.github/workflows/mad4b-full-governed-content-operations.yml',
+    '.github/workflows/mad4b-local-oauth-standalone.yml',
+    '.github/workflows/mad4b-query-monitor-evidence-bridge.yml',
+    '.github/workflows/mad4b-browser-acceptance-core.yml',
+    '.github/workflows/mad4b-provider-behavioral-recertification.yml',
+    '.github/workflows/mad4b-local-transport-oauth-isolation.yml',
+    '.github/workflows/mad4b-approval-replay-contract.yml',
+    '.github/workflows/mad4b-site-profile-write-enablement.yml',
+    '.github/workflows/mad4b-provider-bounded-reversible.yml',
+    '.github/workflows/mad4b-dynamic-skills.yml',
+    '.github/workflows/mad4b-live-acceptance-evidence.yml',
+    '.github/workflows/mad4b-spec-consistency.yml',
+    '.github/workflows/mad4b-runtime-integration.yml',
+    '.github/workflows/mad4b-control-plane-package.yml',
+    '.github/workflows/mad4b-pre-install-hardening.yml',
+    '.github/workflows/mad4b-provider-compatibility-engine.yml',
+    '.github/workflows/mad4b-core-mutation-gate.yml',
+    '.github/workflows/mad4b-apply-nhi-core-gate.yml',
+    '.github/workflows/mad4b-wpml-external-diagnostic.yml',
+    '.github/workflows/mad4b-wpml-response-contract.yml',
+    '.github/workflows/mad4b-approval-decision-contract.yml',
+    '.github/workflows/mad4b-context-authority.yml',
+]
+for relative in pr_concurrency_workflows:
+    workflow_path = REPO / relative
+    if not workflow_path.is_file():
+        raise SystemExit(f'FAIL pr-workflow-concurrency-missing: {relative}')
+    workflow = read(workflow_path)
+    lines = workflow.splitlines()
+    try:
+        start = next(i for i, line in enumerate(lines) if line.strip() == 'concurrency:')
+    except StopIteration:
+        raise SystemExit(f'FAIL pr-workflow-concurrency-absent: {relative}')
+    block = []
+    for line in lines[start:start + 8]:
+        if block and line and not line[0].isspace():
+            break
+        block.append(line)
+    concurrency = '\n'.join(block)
+    require(concurrency, 'github.event.pull_request.number || github.ref', f'pr-workflow-stable-concurrency-{relative}')
+    require(concurrency, 'cancel-in-progress: true', f'pr-workflow-cancel-superseded-{relative}')
+    forbid(concurrency, 'github.event.pull_request.head.sha', f'pr-workflow-no-sha-concurrency-{relative}')
+
+print('mad4b.site-control-plane.spec-consistency.v10: PASS')

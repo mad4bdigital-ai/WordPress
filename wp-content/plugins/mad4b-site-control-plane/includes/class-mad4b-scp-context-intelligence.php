@@ -28,6 +28,8 @@ final class MAD4B_SCP_Context_Intelligence {
 		$assets = self::assets();
 		$directive_rows = array();
 		$warnings = array();
+		$blockers = array();
+		$result_truncated = false;
 		$reads = 0;
 
 		foreach ( $assets as $asset ) {
@@ -35,13 +37,13 @@ final class MAD4B_SCP_Context_Intelligence {
 			$category = isset( $asset['category'] ) ? sanitize_key( (string) $asset['category'] ) : '';
 			if ( '' !== $category_filter && $category_filter !== $category ) continue;
 			if ( $reads >= self::MAX_PROVIDER_READS ) {
-				$warnings[] = 'conflict_provider_read_limit_reached';
+				$blockers[] = 'conflict_provider_read_limit_reached';
 				break;
 			}
 			$read = self::read_asset( $asset );
 			++$reads;
 			if ( is_wp_error( $read ) ) {
-				$warnings[] = 'asset_unreadable:' . ( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' );
+				$blockers[] = 'asset_unreadable:' . ( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' );
 				continue;
 			}
 			$directives = self::extract_keyed_directives( isset( $read['content'] ) ? (string) $read['content'] : '' );
@@ -83,17 +85,27 @@ final class MAD4B_SCP_Context_Intelligence {
 				'auto_resolution' => false,
 				'precedence_guidance' => 'policy_authority > brand_authority > task_knowledge > reference',
 			);
-			if ( count( $conflicts ) >= $limit ) break;
+			if ( count( $conflicts ) >= $limit ) {
+				$result_truncated = true;
+				break;
+			}
 		}
+		if ( $result_truncated ) $warnings[] = 'conflict_result_limit_reached';
+		$state = ! empty( $blockers )
+			? ( empty( $conflicts ) ? 'incomplete' : 'incomplete_review_required' )
+			: ( empty( $conflicts ) ? 'clear' : 'review_required' );
 
 		return array(
 			'contract' => self::CONFLICT_CONTRACT,
-			'ready' => true,
-			'state' => empty( $conflicts ) ? 'clear' : 'review_required',
+			'ready' => empty( $blockers ),
+			'state' => $state,
+			'coverage_complete' => empty( $blockers ),
 			'conflict_count' => count( $conflicts ),
 			'conflicts' => $conflicts,
 			'provider_reads' => $reads,
+			'blockers' => array_values( array_unique( array_filter( $blockers ) ) ),
 			'warnings' => array_values( array_unique( array_filter( $warnings ) ) ),
+			'result_limit_reached' => (bool) $result_truncated,
 			'auto_resolution_performed' => false,
 		);
 	}
@@ -294,7 +306,10 @@ final class MAD4B_SCP_Context_Intelligence {
 			}
 			foreach ( self::extract_compliance_rules( isset( $read['content'] ) ? (string) $read['content'] : '', $asset_id, $category ) as $rule ) {
 				$rules[] = $rule;
-				if ( count( $rules ) >= self::MAX_RULES ) break 2;
+				if ( count( $rules ) >= self::MAX_RULES ) {
+					$blockers[] = 'compliance_rule_limit_reached';
+					break 2;
+				}
 			}
 		}
 		if ( ! empty( $blockers ) ) {
