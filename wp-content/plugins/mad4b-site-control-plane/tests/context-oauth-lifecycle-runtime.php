@@ -9,6 +9,7 @@ $GLOBALS['mad4b_context_options'] = array();
 $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
+$GLOBALS['mad4b_context_last_token_request'] = array();
 
 class WP_Error {
 	private $code;
@@ -56,6 +57,7 @@ function wp_remote_retrieve_response_code( $response ) { return isset( $response
 function wp_remote_retrieve_body( $response ) { return isset( $response['body'] ) ? (string) $response['body'] : ''; }
 function wp_remote_post( $url, $args = array() ) {
 	if ( false !== strpos( $url, 'oauth2.googleapis.com/token' ) ) {
+		$GLOBALS['mad4b_context_last_token_request'] = $args;
 		if ( empty( $GLOBALS['mad4b_context_token_responses'] ) ) return new WP_Error( 'token_fixture_exhausted', 'No OAuth token fixture remains.' );
 		$data = array_shift( $GLOBALS['mad4b_context_token_responses'] );
 		return array( 'response' => array( 'code' => 200 ), 'body' => json_encode( $data ) );
@@ -106,7 +108,12 @@ $GLOBALS['mad4b_context_token_responses'][] = array(
 );
 $url = MAD4B_SCP_Google_Drive_Context::authorization_url( 'read_only' );
 mad4b_oauth_assert( ! is_wp_error( $url ), 'Read-only OAuth authorization URL must be created.', $url );
+parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $oauth_query );
+mad4b_oauth_assert( isset( $oauth_query['code_challenge_method'] ) && 'S256' === $oauth_query['code_challenge_method'], 'Google OAuth authorization must use PKCE S256.', $oauth_query );
+mad4b_oauth_assert( ! empty( $oauth_query['code_challenge'] ), 'Google OAuth authorization must include a PKCE challenge.', $oauth_query );
+mad4b_oauth_assert( ! isset( $oauth_query['code_verifier'] ), 'PKCE verifier must never be sent in the browser authorization URL.', $oauth_query );
 $read = MAD4B_SCP_Google_Drive_Context::complete_oauth( 'code-read', 'context-oauth-state' );
+mad4b_oauth_assert( ! empty( $GLOBALS['mad4b_context_last_token_request']['body']['code_verifier'] ), 'OAuth token exchange must include the server-side PKCE verifier.' );
 mad4b_oauth_assert( ! is_wp_error( $read ), 'Read-only OAuth exchange must succeed.', $read );
 mad4b_oauth_assert( ! empty( $read['connected'] ) && ! empty( $read['read_available'] ), 'Read-only connection must expose read capability.', $read );
 mad4b_oauth_assert( empty( $read['write_available'] ) && 'read_only' === $read['access_mode'], 'Read-only connection must not expose Drive writes.', $read );
@@ -156,4 +163,4 @@ foreach ( array( 'access-read-fixture', 'refresh-read-fixture', 'access-write-fi
 	mad4b_oauth_assert( false === strpos( $encoded, $secret ), 'OAuth status must never expose token material.' );
 }
 
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v3: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v4: PASS\n";
