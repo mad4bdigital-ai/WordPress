@@ -399,6 +399,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $membership ) ) return $membership;
 		$metadata = self::get_file_metadata( $file_id );
 		if ( is_wp_error( $metadata ) ) return $metadata;
+		$mime = isset( $metadata['mimeType'] ) ? strtolower( (string) $metadata['mimeType'] ) : '';
+		if ( 'application/vnd.google-apps.document' === $mime ) return new WP_Error( 'mad4b_google_docs_rich_rollback_not_certified', 'In-place Google Docs text replacement is not mounted until rich document structure has an exact rollback contract. Recreate remains available for assets confirmed unavailable.' );
+		if ( 0 !== strpos( $mime, 'text/' ) && ! in_array( $mime, array( 'application/json', 'application/xml', 'application/csv' ), true ) ) return new WP_Error( 'mad4b_google_drive_reversible_update_type_unsupported', 'This Drive file type is not certified for reversible in-place text update.', array( 'mime_type' => $mime ) );
 		$content = self::fetch_text_content( $metadata );
 		if ( is_wp_error( $content ) ) return $content;
 		if ( strlen( $content ) > self::MAX_REVERSIBLE_TEXT_BYTES ) return new WP_Error( 'mad4b_google_drive_reversible_snapshot_too_large', 'Current Drive asset exceeds the reversible snapshot limit.', array( 'max_bytes' => self::MAX_REVERSIBLE_TEXT_BYTES ) );
