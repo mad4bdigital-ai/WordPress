@@ -106,7 +106,9 @@ for token in (
 assert "expected_schema_sha256" in semantics_src
 assert "schema_sha256" in jetengine_client_src
 assert "validate_tool_input( $tool_name, $arguments, $expected_schema_sha256 )" in jetengine_client_src
-assert "call_rest_tool( $tool_name, $arguments )" in jetengine_client_src
+assert "call_rest_tool( $tool_name, $arguments, false, $operation )" in jetengine_client_src
+assert "call_rest_tool( $tool_name, $arguments, true, $operation )" in jetengine_client_src
+assert "mad4b.jetengine-native-rest-execution-diagnostic.v1" in jetengine_client_src
 
 # Translation reads may keep provider=auto, but write schemas must be rewritten
 # to require an exact provider and runtime validation must deny missing/auto.
