@@ -355,6 +355,39 @@ final class MAD4B_SCP_Context_Authority {
 		return isset( $records[ $old_asset_id ] ) ? $records[ $old_asset_id ] : array();
 	}
 
+	public static function rollback_recreated_asset( $old_asset_id, $replacement_asset_id, array $before_state ) {
+		$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
+		$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
+		$records = self::assets();
+		if ( ! isset( $records[ $old_asset_id ] ) || ! isset( $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback requires both original and replacement registry records.' );
+		$current = $records[ $old_asset_id ];
+		if ( 'recreated' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_rollback_status_drift', 'Original Context asset is no longer in recreated state.' );
+		if ( empty( $current['replacement_asset_id'] ) || ! hash_equals( (string) $current['replacement_asset_id'], $replacement_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_binding_drift', 'Original Context asset no longer points to the recorded replacement.' );
+		if ( empty( $before_state['asset_id'] ) || ! hash_equals( (string) $before_state['asset_id'], $old_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_before_mismatch', 'Rollback state is not bound to the original Context asset.' );
+		if ( empty( $before_state['source_id'] ) || ! hash_equals( (string) $before_state['source_id'], (string) $current['source_id'] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_source_mismatch', 'Rollback state is not bound to the original Context source.' );
+
+		unset( $records[ $replacement_asset_id ] );
+		$records[ $old_asset_id ]['status'] = isset( $before_state['status'] ) ? sanitize_key( (string) $before_state['status'] ) : 'unavailable';
+		$records[ $old_asset_id ]['availability_reason'] = isset( $before_state['availability_reason'] ) ? sanitize_key( (string) $before_state['availability_reason'] ) : 'not_seen_in_latest_scan';
+		unset( $records[ $old_asset_id ]['replacement_asset_id'], $records[ $old_asset_id ]['recreated_at'] );
+		$written = self::write_option( self::ASSETS_OPTION, $records );
+		if ( false === $written ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_write_failed', 'Replacement file was removed but Context registry rollback could not be persisted.' );
+		self::refresh_profile_fingerprint( $records, self::sources() );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'mad4b/context-recreate-rollback',
+				array(
+					'asset_id' => $old_asset_id,
+					'replacement_asset_id' => $replacement_asset_id,
+					'source_id' => (string) $before_state['source_id'],
+					'restored_status' => (string) $records[ $old_asset_id ]['status'],
+				),
+				'ok'
+			);
+		}
+		return $records[ $old_asset_id ];
+	}
+
 	private static function refresh_profile_fingerprint( array $assets, array $sources ) {
 		$profile = self::profile();
 		if ( empty( $profile ) ) return;

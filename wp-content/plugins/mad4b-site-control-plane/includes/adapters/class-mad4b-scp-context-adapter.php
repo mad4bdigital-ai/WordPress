@@ -10,6 +10,13 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	protected function mutation_requires_certification() { return false; }
 	protected function detect_plugin_version() { return defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : ''; }
 
+	public function reversible_contracts() {
+		return array(
+			'context/update-drive-asset' => 'mad4b.rollback.google-drive-context-update.v1',
+			'context/recreate-drive-asset' => 'mad4b.rollback.google-drive-context-recreate.v1',
+		);
+	}
+
 	public function ability_names() {
 		return array(
 			'read' => array(
@@ -86,7 +93,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				array(
 					'asset_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 					'expected_content_hash' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
-					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Google_Drive_Context::MAX_WRITE_BYTES ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Google_Drive_Context::MAX_REVERSIBLE_TEXT_BYTES ),
 				),
 				array( 'asset_id', 'expected_content_hash', 'content' )
 			),
@@ -103,7 +110,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$this->schema(
 				array(
 					'asset_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
-					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Google_Drive_Context::MAX_WRITE_BYTES ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Google_Drive_Context::MAX_REVERSIBLE_TEXT_BYTES ),
 					'format' => array( 'type' => 'string', 'enum' => array( 'google_doc', 'markdown', 'text' ), 'default' => 'google_doc' ),
 				),
 				array( 'asset_id', 'content' )
@@ -136,6 +143,57 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			);
 		}
 		return true;
+	}
+
+	public function capture_reversible_state( $ability_name, array $input ) {
+		if ( 'context/update-drive-asset' === $ability_name ) {
+			$asset_id = isset( $input['asset_id'] ) ? (string) $input['asset_id'] : '';
+			$expected = isset( $input['expected_content_hash'] ) ? (string) $input['expected_content_hash'] : '';
+			$state = MAD4B_SCP_Google_Drive_Context::reversible_update_state( $asset_id, $expected );
+			if ( is_wp_error( $state ) ) return $state;
+			return array(
+				'target_type' => 'google_drive_context_asset',
+				'target_id' => (string) $state['asset_id'],
+				'target' => array(
+					'operation' => 'update',
+					'asset_id' => (string) $state['asset_id'],
+					'source_id' => (string) $state['source_id'],
+					'file_id' => (string) $state['file_id'],
+				),
+				'state' => $state,
+			);
+		}
+		if ( 'context/recreate-drive-asset' === $ability_name ) {
+			$asset_id = isset( $input['asset_id'] ) ? (string) $input['asset_id'] : '';
+			$state = MAD4B_SCP_Google_Drive_Context::reversible_recreate_state( $asset_id );
+			if ( is_wp_error( $state ) ) return $state;
+			if ( 'unavailable' !== ( isset( $state['status'] ) ? (string) $state['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_snapshot_not_unavailable', 'Recreate rollback capture requires an unavailable original asset.' );
+			return array(
+				'target_type' => 'google_drive_context_asset',
+				'target_id' => (string) $state['asset_id'],
+				'target' => array(
+					'operation' => 'recreate',
+					'asset_id' => (string) $state['asset_id'],
+					'source_id' => (string) $state['source_id'],
+					'file_id' => (string) $state['original_file_id'],
+				),
+				'state' => $state,
+			);
+		}
+		return parent::capture_reversible_state( $ability_name, $input );
+	}
+
+	public function read_reversible_state( $ability_name, array $target ) {
+		$asset_id = isset( $target['asset_id'] ) ? (string) $target['asset_id'] : '';
+		if ( 'context/update-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::reversible_update_state( $asset_id );
+		if ( 'context/recreate-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::reversible_recreate_state( $asset_id );
+		return parent::read_reversible_state( $ability_name, $target );
+	}
+
+	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) {
+		if ( 'context/update-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::restore_update_state( $target, $state );
+		if ( 'context/recreate-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::restore_recreate_state( $target, $state );
+		return parent::restore_reversible_state( $ability_name, $target, $state, $record );
 	}
 
 	public function context_status() {

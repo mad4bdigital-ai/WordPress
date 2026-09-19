@@ -30,6 +30,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const MAX_SCAN_FOLDERS = 120;
 	const MAX_TEXT_BYTES = 262144;
 	const MAX_WRITE_BYTES = 1048576;
+	const MAX_REVERSIBLE_TEXT_BYTES = 196608;
 	const MAX_PARENT_DEPTH = 16;
 
 	public static function redirect_uri() {
@@ -298,7 +299,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $content_guard ) ) return $content_guard;
 		$file = self::create_provider_file( (string) $source['external_root_id'], $name, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
-		$asset = self::provider_asset_payload( $source, $file, $content );
+		$observed = self::provider_observed_text( $file, $content );
+		if ( is_wp_error( $observed ) ) return $observed;
+		$asset = self::provider_asset_payload( $source, $file, $observed );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $asset );
 		if ( is_wp_error( $registered ) ) return $registered;
 		return array(
@@ -324,6 +327,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$content = (string) $content;
 		$content_guard = self::validate_write_content( $content );
 		if ( is_wp_error( $content_guard ) ) return $content_guard;
+		if ( strlen( $content ) > self::MAX_REVERSIBLE_TEXT_BYTES ) return new WP_Error( 'mad4b_google_drive_reversible_write_too_large', 'Governed Drive update exceeds the reversible snapshot limit.', array( 'max_bytes' => self::MAX_REVERSIBLE_TEXT_BYTES ) );
 		$file_id = isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '';
 		$membership = self::assert_file_within_source( $file_id, $source );
 		if ( is_wp_error( $membership ) ) return $membership;
@@ -335,7 +339,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! hash_equals( $expected_content_hash, $current_hash ) ) return new WP_Error( 'mad4b_google_drive_asset_remote_stale', 'Google Drive content changed since the Context asset was read.', array( 'current_content_hash' => $current_hash ) );
 		$updated = self::replace_provider_file_content( $metadata, $content );
 		if ( is_wp_error( $updated ) ) return $updated;
-		$payload = self::provider_asset_payload( $source, $updated, $content );
+		$observed = self::provider_observed_text( $updated, $content );
+		if ( is_wp_error( $observed ) ) return $observed;
+		$payload = self::provider_asset_payload( $source, $updated, $observed );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
 		if ( is_wp_error( $registered ) ) return $registered;
 		return array(
@@ -359,11 +365,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$content = (string) $content;
 		$content_guard = self::validate_write_content( $content );
 		if ( is_wp_error( $content_guard ) ) return $content_guard;
+		if ( strlen( $content ) > self::MAX_REVERSIBLE_TEXT_BYTES ) return new WP_Error( 'mad4b_google_drive_reversible_write_too_large', 'Governed Drive recreation exceeds the reversible snapshot limit.', array( 'max_bytes' => self::MAX_REVERSIBLE_TEXT_BYTES ) );
 		$title = isset( $asset['title'] ) ? (string) $asset['title'] : 'Recreated Context Asset';
 		$title = preg_replace( '/\s+\(recreated[^)]*\)$/i', '', $title );
 		$file = self::create_provider_file( (string) $source['external_root_id'], $title, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
-		$payload = self::provider_asset_payload( $source, $file, $content );
+		$observed = self::provider_observed_text( $file, $content );
+		if ( is_wp_error( $observed ) ) return $observed;
+		$payload = self::provider_asset_payload( $source, $file, $observed );
 		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
 		if ( is_wp_error( $registered ) ) return $registered;
 		MAD4B_SCP_Context_Authority::mark_asset_recreated( $asset_id, $registered );
@@ -377,6 +386,135 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'content_sha256' => (string) $registered['content_hash'],
 			'status' => 'recreated',
 		);
+	}
+
+	public static function reversible_update_state( $asset_id, $expected_content_hash = '' ) {
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
+		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+		if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_update_asset_not_ready', 'Only a ready Context asset can be updated.' );
+		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '', 'update' );
+		if ( is_wp_error( $source ) ) return $source;
+		$file_id = isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '';
+		$membership = self::assert_file_within_source( $file_id, $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$metadata = self::get_file_metadata( $file_id );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$content = self::fetch_text_content( $metadata );
+		if ( is_wp_error( $content ) ) return $content;
+		if ( strlen( $content ) > self::MAX_REVERSIBLE_TEXT_BYTES ) return new WP_Error( 'mad4b_google_drive_reversible_snapshot_too_large', 'Current Drive asset exceeds the reversible snapshot limit.', array( 'max_bytes' => self::MAX_REVERSIBLE_TEXT_BYTES ) );
+		$hash = hash( 'sha256', (string) $content );
+		$expected_content_hash = strtolower( trim( (string) $expected_content_hash ) );
+		if ( '' !== $expected_content_hash && ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_content_hash ) || ! hash_equals( $expected_content_hash, $hash ) ) ) return new WP_Error( 'mad4b_google_drive_reversible_snapshot_stale', 'Drive asset changed before reversible mutation capture.', array( 'current_content_hash' => $hash ) );
+		return array(
+			'asset_id' => (string) $asset['asset_id'],
+			'source_id' => (string) $asset['source_id'],
+			'file_id' => $file_id,
+			'mime_type' => isset( $metadata['mimeType'] ) ? (string) $metadata['mimeType'] : '',
+			'status' => (string) $asset['status'],
+			'content' => (string) $content,
+			'content_sha256' => $hash,
+		);
+	}
+
+	public static function reversible_recreate_state( $asset_id ) {
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
+		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '', 'recreate' );
+		if ( is_wp_error( $source ) ) return $source;
+		$status = isset( $asset['status'] ) ? (string) $asset['status'] : '';
+		$replacement_asset_id = isset( $asset['replacement_asset_id'] ) ? (string) $asset['replacement_asset_id'] : '';
+		$state = array(
+			'asset_id' => (string) $asset['asset_id'],
+			'source_id' => (string) $asset['source_id'],
+			'original_file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
+			'status' => $status,
+			'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
+			'replacement_asset_id' => $replacement_asset_id,
+			'replacement_file_id' => '',
+			'replacement_content_sha256' => '',
+		);
+		if ( 'unavailable' === $status && '' === $replacement_asset_id ) return $state;
+		if ( 'recreated' !== $status || '' === $replacement_asset_id ) return new WP_Error( 'mad4b_google_drive_recreate_state_invalid', 'Context asset is neither an unavailable original nor a verified recreated asset.' );
+		$replacement = MAD4B_SCP_Context_Authority::asset( $replacement_asset_id );
+		if ( empty( $replacement ) || empty( $replacement['file_id'] ) || ! hash_equals( (string) $asset['source_id'], (string) $replacement['source_id'] ) ) return new WP_Error( 'mad4b_google_drive_replacement_registry_invalid', 'Recreated Context asset replacement binding is missing or invalid.' );
+		$membership = self::assert_file_within_source( (string) $replacement['file_id'], $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$metadata = self::get_file_metadata( (string) $replacement['file_id'] );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$content = self::fetch_text_content( $metadata );
+		if ( is_wp_error( $content ) ) return $content;
+		if ( strlen( $content ) > self::MAX_REVERSIBLE_TEXT_BYTES ) return new WP_Error( 'mad4b_google_drive_reversible_snapshot_too_large', 'Recreated Drive asset exceeds the reversible snapshot limit.', array( 'max_bytes' => self::MAX_REVERSIBLE_TEXT_BYTES ) );
+		$state['replacement_file_id'] = (string) $replacement['file_id'];
+		$state['replacement_content_sha256'] = hash( 'sha256', (string) $content );
+		return $state;
+	}
+
+	public static function restore_update_state( array $target, array $before_state ) {
+		$asset_id = isset( $target['asset_id'] ) ? (string) $target['asset_id'] : '';
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
+		if ( empty( $asset ) || ! array_key_exists( 'content', $before_state ) ) return new WP_Error( 'mad4b_google_drive_update_restore_state_invalid', 'Drive update rollback state is incomplete.' );
+		foreach ( array( 'source_id', 'file_id' ) as $field ) {
+			if ( empty( $target[ $field ] ) || empty( $before_state[ $field ] ) || ! hash_equals( (string) $target[ $field ], (string) $before_state[ $field ] ) ) return new WP_Error( 'mad4b_google_drive_update_restore_target_mismatch', 'Drive update rollback target no longer matches the captured asset identity.' );
+		}
+		if ( ! hash_equals( (string) $asset['source_id'], (string) $target['source_id'] ) || ! hash_equals( (string) $asset['file_id'], (string) $target['file_id'] ) ) return new WP_Error( 'mad4b_google_drive_update_restore_registry_drift', 'Context asset identity changed after the recorded Drive update.' );
+		$source = self::write_source( (string) $asset['source_id'], 'update' );
+		if ( is_wp_error( $source ) ) return $source;
+		$membership = self::assert_file_within_source( (string) $asset['file_id'], $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$metadata = self::get_file_metadata( (string) $asset['file_id'] );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$restored = self::replace_provider_file_content( $metadata, (string) $before_state['content'] );
+		if ( is_wp_error( $restored ) ) return $restored;
+		$observed = self::provider_observed_text( $restored, (string) $before_state['content'] );
+		if ( is_wp_error( $observed ) ) return $observed;
+		$payload = self::provider_asset_payload( $source, $restored, $observed );
+		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
+		return is_wp_error( $registered ) ? $registered : true;
+	}
+
+	public static function restore_recreate_state( array $target, array $before_state ) {
+		$asset_id = isset( $target['asset_id'] ) ? (string) $target['asset_id'] : '';
+		$current = self::reversible_recreate_state( $asset_id );
+		if ( is_wp_error( $current ) ) return $current;
+		if ( 'recreated' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) || empty( $current['replacement_asset_id'] ) || empty( $current['replacement_file_id'] ) ) return new WP_Error( 'mad4b_google_drive_recreate_restore_state_invalid', 'Recreated Drive asset has no exact replacement to undo.' );
+		if ( empty( $before_state['asset_id'] ) || ! hash_equals( (string) $before_state['asset_id'], $asset_id ) || 'unavailable' !== ( isset( $before_state['status'] ) ? (string) $before_state['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_restore_before_invalid', 'Recreate rollback does not contain the unavailable original state.' );
+		$source = self::write_source( (string) $current['source_id'], 'recreate' );
+		if ( is_wp_error( $source ) ) return $source;
+		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array();
+		if ( ! is_array( $audit ) || empty( $audit['ready'] ) ) return new WP_Error( 'mad4b_google_drive_recreate_undo_audit_not_ready', 'Append-only audit storage must be ready before deleting a replacement during canonical undo.' );
+		$deleted = self::delete_provider_file_for_rollback( (string) $current['replacement_file_id'], $source );
+		if ( is_wp_error( $deleted ) ) return $deleted;
+		return MAD4B_SCP_Context_Authority::rollback_recreated_asset( $asset_id, (string) $current['replacement_asset_id'], $before_state );
+	}
+
+	private static function provider_observed_text( array $file, $fallback ) {
+		$observed = self::fetch_text_content( $file );
+		if ( is_wp_error( $observed ) ) return $observed;
+		if ( '' === (string) $observed && '' !== (string) $fallback ) return new WP_Error( 'mad4b_google_drive_write_readback_empty', 'Google Drive write completed but provider readback was unexpectedly empty.' );
+		return (string) $observed;
+	}
+
+	private static function delete_provider_file_for_rollback( $file_id, array $source ) {
+		$file_id = self::bounded_drive_id( $file_id );
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive replacement file ID is invalid.' );
+		$membership = self::assert_file_within_source( $file_id, $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$token = self::access_token();
+		if ( is_wp_error( $token ) ) return $token;
+		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?supportsAllDrives=true';
+		$response = wp_remote_request(
+			esc_url_raw( $url ),
+			array(
+				'method' => 'DELETE',
+				'timeout' => 25,
+				'redirection' => 0,
+				'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ),
+			)
+		);
+		if ( is_wp_error( $response ) ) return $response;
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $status && 204 !== $status ) return new WP_Error( 'mad4b_google_drive_rollback_delete_failed', 'Canonical Drive rollback could not remove the exact replacement file.', array( 'status' => $status ) );
+		return true;
 	}
 
 	private static function write_source( $source_id, $operation ) {
