@@ -79,14 +79,17 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'scope' => self::READ_SCOPE,
 			'updated_at' => gmdate( 'c' ),
 		);
-		self::write_option( self::CONFIG_OPTION, $record );
+		if ( ! self::write_option( self::CONFIG_OPTION, $record ) ) return new WP_Error( 'mad4b_google_drive_config_persist_failed', 'Google OAuth configuration could not be persisted.' );
 		return self::credentials_status();
 	}
 
 	public static function connection_status() {
+		$stored_token = get_option( self::TOKEN_OPTION, array() );
+		$stored_token_present = is_array( $stored_token ) && self::CONTRACT === ( isset( $stored_token['contract'] ) ? (string) $stored_token['contract'] : '' );
 		$token = self::token_record();
+		$token_unreadable = $stored_token_present && ( ! is_array( $token ) || empty( $token['refresh_token'] ) );
 		$credentials = self::credentials_status();
-		$connected = is_array( $token ) && ! empty( $token['refresh_token'] );
+		$connected = ! $token_unreadable && is_array( $token ) && ! empty( $token['refresh_token'] );
 		$revocation_pending = $connected && ! empty( $token['revocation_pending'] );
 		$scope = $connected && isset( $token['scope'] ) ? trim( (string) $token['scope'] ) : '';
 		$read_available = $connected && ! $revocation_pending && self::scope_allows_read( $scope );
@@ -98,8 +101,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'read_available' => $read_available,
 			'write_available' => $write_available,
 			'read_only' => $connected && ! $write_available,
-			'access_mode' => $revocation_pending ? 'revocation_pending' : ( $write_available ? 'read_write' : 'read_only' ),
+			'access_mode' => $token_unreadable ? 'token_unreadable' : ( $revocation_pending ? 'revocation_pending' : ( $write_available ? 'read_write' : 'read_only' ) ),
 			'revocation_pending' => $revocation_pending,
+			'token_unreadable' => $token_unreadable,
 			'revocation_error' => $revocation_pending && isset( $token['revocation_error'] ) ? sanitize_key( (string) $token['revocation_error'] ) : '',
 			'revocation_attempted_at' => $revocation_pending && isset( $token['revocation_attempted_at'] ) ? sanitize_text_field( (string) $token['revocation_attempted_at'] ) : '',
 			'scope' => $scope,
@@ -217,10 +221,19 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function disconnect() {
+		$stored = get_option( self::TOKEN_OPTION, array() );
+		$stored_present = is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' );
 		$record = self::token_record();
+		if ( $stored_present && ( ! is_array( $record ) || empty( $record['refresh_token'] ) ) ) {
+			self::delete_option_verified( self::TOKEN_OPTION );
+			return new WP_Error(
+				'mad4b_google_drive_token_unreadable_manual_revoke_required',
+				'Stored Google token cannot be decrypted, so remote revocation cannot be proven. Local credentials were discarded; revoke MAD4B access manually in the Google account before reconnecting.'
+			);
+		}
 		$token = is_array( $record ) && ! empty( $record['refresh_token'] ) ? (string) $record['refresh_token'] : ( is_array( $record ) && ! empty( $record['access_token'] ) ? (string) $record['access_token'] : '' );
 		if ( '' === $token ) {
-			delete_option( self::TOKEN_OPTION );
+			self::delete_option_verified( self::TOKEN_OPTION );
 			$status = self::connection_status();
 			$status['remote_revocation_attempted'] = false;
 			$status['remote_revocation_confirmed'] = false;
@@ -247,7 +260,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 
 		if ( $confirmed ) {
-			delete_option( self::TOKEN_OPTION );
+			if ( ! self::delete_option_verified( self::TOKEN_OPTION ) ) return new WP_Error( 'mad4b_google_drive_local_token_delete_failed', 'Google access was revoked remotely, but the local encrypted token could not be removed.' );
 			$status = self::connection_status();
 			$status['remote_revocation_attempted'] = true;
 			$status['remote_revocation_confirmed'] = true;
@@ -259,8 +272,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$record['revocation_error'] = $revocation_error ? $revocation_error : 'google_revocation_unconfirmed';
 		$record['revocation_attempted_at'] = gmdate( 'c' );
 		$sealed = self::seal_token_record( $record );
-		if ( is_wp_error( $sealed ) ) return $sealed;
-		self::write_option( self::TOKEN_OPTION, $sealed );
+		if ( is_wp_error( $sealed ) ) {
+			self::delete_option_verified( self::TOKEN_OPTION );
+			return new WP_Error( 'mad4b_google_drive_revocation_state_persist_failed', 'Google revocation was not confirmed and the disabled retry state could not be sealed. Local credentials were discarded; revoke Google access manually before reconnecting.' );
+		}
+		if ( ! self::write_option( self::TOKEN_OPTION, $sealed ) ) {
+			self::delete_option_verified( self::TOKEN_OPTION );
+			return new WP_Error( 'mad4b_google_drive_revocation_state_persist_failed', 'Google revocation was not confirmed and the disabled retry state could not be persisted. Local credentials were discarded; revoke Google access manually before reconnecting.' );
+		}
 		return new WP_Error(
 			'mad4b_google_drive_remote_revocation_unconfirmed',
 			'Google access could not be confirmed revoked. The connection is disabled locally and retained only to retry revocation.',
@@ -1112,7 +1131,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$record['updated_at'] = gmdate( 'c' );
 		$sealed = self::seal_token_record( $record );
 		if ( is_wp_error( $sealed ) ) return $sealed;
-		self::write_option( self::TOKEN_OPTION, $sealed );
+		if ( ! self::write_option( self::TOKEN_OPTION, $sealed ) ) return new WP_Error( 'mad4b_google_drive_token_persist_failed', 'Google OAuth token could not be persisted securely.' );
 		return $record;
 	}
 
@@ -1261,7 +1280,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 	private static function connection_blockers( array $credentials, $token ) {
 		$blockers = array();
 		if ( empty( $credentials['configured'] ) ) $blockers[] = 'google_oauth_credentials_missing';
-		if ( ! is_array( $token ) || empty( $token['refresh_token'] ) ) $blockers[] = 'google_drive_not_connected';
+		$stored = get_option( self::TOKEN_OPTION, array() );
+		$stored_present = is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' );
+		if ( $stored_present && ( ! is_array( $token ) || empty( $token['refresh_token'] ) ) ) $blockers[] = 'google_drive_token_unreadable';
+		elseif ( ! is_array( $token ) || empty( $token['refresh_token'] ) ) $blockers[] = 'google_drive_not_connected';
 		elseif ( ! empty( $token['revocation_pending'] ) ) $blockers[] = 'google_drive_revocation_pending';
 		return $blockers;
 	}
@@ -1283,7 +1305,16 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	private static function write_option( $name, $value ) {
-		if ( false === get_option( $name, false ) ) return add_option( $name, $value, '', false );
-		return update_option( $name, $value, false );
+		$current = get_option( $name, false );
+		if ( false !== $current && $current === $value ) return true;
+		$result = false === $current ? add_option( $name, $value, '', false ) : update_option( $name, $value, false );
+		if ( true === $result ) return true;
+		return get_option( $name, false ) === $value;
+	}
+
+	private static function delete_option_verified( $name ) {
+		if ( false === get_option( $name, false ) ) return true;
+		if ( delete_option( $name ) ) return true;
+		return false === get_option( $name, false );
 	}
 }
