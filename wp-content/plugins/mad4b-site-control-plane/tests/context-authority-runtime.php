@@ -51,6 +51,8 @@ $matches = $ref->getMethod( 'scope_matches_requested_mode' );
 $matches->setAccessible( true );
 $verify_parent = $ref->getMethod( 'verify_created_file_parent' );
 $verify_parent->setAccessible( true );
+$connection_blockers = $ref->getMethod( 'connection_blockers' );
+$connection_blockers->setAccessible( true );
 
 $ro = MAD4B_SCP_Google_Drive_Context::READ_SCOPE;
 $rw = MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE;
@@ -81,10 +83,17 @@ mad4b_context_assert( is_wp_error( $wrong_parent ) && 'mad4b_google_drive_create
 $multiple_parents = $verify_parent->invoke( null, array( 'id' => 'created-file', 'parents' => array( 'selected-folder', 'other-folder' ) ), 'selected-folder' );
 mad4b_context_assert( is_wp_error( $multiple_parents ) && 'mad4b_google_drive_created_parent_mismatch' === $multiple_parents->get_error_code(), 'ambiguous provider parent binding must fail closed' );
 
+$pending_blockers = $connection_blockers->invoke(
+	null,
+	array( 'configured' => true ),
+	array( 'refresh_token' => 'encrypted-runtime-fixture', 'revocation_pending' => true )
+);
+mad4b_context_assert( in_array( 'google_drive_revocation_pending', $pending_blockers, true ), 'pending remote revocation must block Drive use even while a refresh token remains stored' );
+
 $status_method = $ref->getMethod( 'connection_status' );
 $status = $status_method->invoke( null );
 $encoded = json_encode( $status );
 mad4b_context_assert( false === strpos( $encoded, 'access_token' ), 'connection status must not expose access token' );
 mad4b_context_assert( false === strpos( $encoded, 'refresh_token' ), 'connection status must not expose refresh token' );
 
-echo "mad4b.site-control-plane.context-authority-runtime.v3: PASS\n";
+echo "mad4b.site-control-plane.context-authority-runtime.v4: PASS\n";
