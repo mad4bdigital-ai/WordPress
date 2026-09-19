@@ -147,7 +147,7 @@ final class MAD4B_SCP_Skill_Seeder {
 
 		$audit = MAD4B_SCP_Audit::record(
 			'mad4b/skill-seed-provision',
-			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'enabled' => $enabled, 'seed_version' => self::SEED_VERSION, 'after_sha256' => $sha, 'bytes' => strlen( $document ) ),
+			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'enabled' => $enabled, 'seed_version' => self::SEED_VERSION, 'after_sha256' => $sha, 'context_policy_sha256' => (string) $context_policy_sha256, 'bytes' => strlen( $document ) ),
 			'ok'
 		);
 		if ( is_wp_error( $audit ) ) {
