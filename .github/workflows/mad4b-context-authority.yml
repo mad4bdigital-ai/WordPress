@@ -19,6 +19,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-site-binding-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-quality-scoring-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-provider-absence-runtime.php'
       - '.github/workflows/mad4b-context-authority.yml'
   workflow_dispatch:
 
@@ -64,6 +65,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-site-binding-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-quality-scoring-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-provider-absence-runtime.php
 
       - name: Enforce Context Authority architecture
         shell: bash
@@ -100,6 +102,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-site-binding-runtime.php
+
+      - name: Execute provider-absence recreation runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-provider-absence-runtime.php
 
       - name: Execute recreate registry rollback runtime
         shell: bash
