@@ -3,6 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
+	const PROVIDER_CONTRACT = 'mad4b.google-drive-context-provider.v1';
 	public function id() { return 'context'; }
 	public function label() { return 'Context Authority'; }
 	public function is_available() { return class_exists( 'MAD4B_SCP_Context_Authority' ) && class_exists( 'MAD4B_SCP_Google_Drive_Context' ); }
@@ -143,7 +144,96 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				array( 'operation' => $mapping['operation'] )
 			);
 		}
+		$provider_contract = $this->context_provider_contract_status();
+		if ( empty( $provider_contract['ready'] ) ) {
+			return new WP_Error(
+				'mad4b_context_provider_contract_not_ready',
+				'Google Drive Context write is denied because the first-party provider contract is incomplete or drifted.',
+				array( 'provider_contract' => $provider_contract )
+			);
+		}
 		return true;
+	}
+
+	public function context_provider_contract_status() {
+		$blockers = array();
+		$required_methods = array(
+			'MAD4B_SCP_Google_Drive_Context' => array(
+				'write_capability_status',
+				'create_asset',
+				'update_asset',
+				'recreate_asset',
+				'reversible_update_state',
+				'restore_update_state',
+				'reversible_recreate_state',
+				'restore_recreate_state',
+			),
+			'MAD4B_SCP_Context_Authority' => array(
+				'source_allows_write',
+				'registry_revision',
+				'context_fingerprint',
+				'authority_manifest_fingerprint',
+				'begin_recreated_asset_rollback',
+				'rollback_recreated_asset',
+			),
+		);
+		foreach ( $required_methods as $class => $methods ) {
+			if ( ! class_exists( $class ) ) {
+				$blockers[] = 'class_missing:' . $class;
+				continue;
+			}
+			foreach ( $methods as $method ) if ( ! method_exists( $class, $method ) ) $blockers[] = 'method_missing:' . $class . '::' . $method;
+		}
+
+		$contracts = $this->reversible_contracts();
+		if ( 'mad4b.rollback.google-drive-context-update.v1' !== ( isset( $contracts['context/update-drive-asset'] ) ? (string) $contracts['context/update-drive-asset'] : '' ) ) $blockers[] = 'update_rollback_contract_drift';
+		if ( 'mad4b.rollback.google-drive-context-recreate.v1' !== ( isset( $contracts['context/recreate-drive-asset'] ) ? (string) $contracts['context/recreate-drive-asset'] : '' ) ) $blockers[] = 'recreate_rollback_contract_drift';
+
+		$critical_hashes = array();
+		$critical_files = array(
+			'includes/adapters/class-mad4b-scp-context-adapter.php',
+			'includes/class-mad4b-scp-context-authority.php',
+			'includes/class-mad4b-scp-google-drive-context.php',
+			'includes/class-mad4b-scp-context-preflight.php',
+		);
+		if ( ! defined( 'MAD4B_SCP_DIR' ) ) {
+			$blockers[] = 'control_plane_runtime_root_unavailable';
+		} else {
+			foreach ( $critical_files as $relative ) {
+				$file = MAD4B_SCP_DIR . $relative;
+				if ( ! is_file( $file ) || ! is_readable( $file ) ) {
+					$blockers[] = 'critical_file_unreadable:' . $relative;
+					continue;
+				}
+				$hash = hash_file( 'sha256', $file );
+				if ( ! is_string( $hash ) || ! preg_match( '/^[a-f0-9]{64}$/', $hash ) ) {
+					$blockers[] = 'critical_file_hash_failed:' . $relative;
+					continue;
+				}
+				$critical_hashes[ $relative ] = $hash;
+			}
+		}
+		ksort( $critical_hashes, SORT_STRING );
+		$payload = array(
+			'contract' => self::PROVIDER_CONTRACT,
+			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
+			'critical_files' => $critical_hashes,
+			'rollback_contracts' => $contracts,
+		);
+		$json = function_exists( 'wp_json_encode' )
+			? wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+			: json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return array(
+			'contract' => self::PROVIDER_CONTRACT,
+			'provider' => 'google_drive_context',
+			'ready' => empty( $blockers ),
+			'first_party' => true,
+			'certification_mode' => 'runtime_structural_plus_exact_artifact_fingerprint',
+			'artifact_fingerprint' => is_string( $json ) ? hash( 'sha256', $json ) : '',
+			'critical_files' => $critical_hashes,
+			'rollback_contracts' => $contracts,
+			'blockers' => array_values( array_unique( $blockers ) ),
+		);
 	}
 
 	public function capture_reversible_state( $ability_name, array $input ) {
@@ -206,6 +296,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		return array(
 			'connection' => MAD4B_SCP_Google_Drive_Context::connection_status(),
 			'write_capability' => MAD4B_SCP_Google_Drive_Context::write_capability_status(),
+			'provider_contract' => $this->context_provider_contract_status(),
 		);
 	}
 
