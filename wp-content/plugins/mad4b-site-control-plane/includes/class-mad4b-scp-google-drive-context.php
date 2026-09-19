@@ -139,7 +139,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'response_type' => 'code',
 				'scope' => $requested_scope,
 				'access_type' => 'offline',
-				'include_granted_scopes' => 'read_write' === $access_mode ? 'true' : 'false',
+				'include_granted_scopes' => 'false',
 				'prompt' => 'consent',
 				'state' => $state,
 			),
