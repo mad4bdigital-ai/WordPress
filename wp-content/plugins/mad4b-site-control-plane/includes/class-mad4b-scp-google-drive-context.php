@@ -92,6 +92,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	public static function authorization_url() {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );
 		$credentials = self::credentials();
 		if ( is_wp_error( $credentials ) ) return $credentials;
 		$state = wp_generate_password( 64, false, false );
