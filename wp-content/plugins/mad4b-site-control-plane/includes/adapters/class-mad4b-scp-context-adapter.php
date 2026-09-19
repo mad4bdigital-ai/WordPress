@@ -88,6 +88,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$this->schema(
 				array(
 					'asset_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160, 'default' => '' ),
 				),
 				array( 'asset_id' )
 			)

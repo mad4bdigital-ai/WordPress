@@ -714,6 +714,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$reference_assets = array();
 		foreach ( MAD4B_SCP_Context_Authority::assets() as $asset ) {
 			if ( ! is_array( $asset ) || 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
+			if ( 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) || 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) continue;
 			$category = isset( $asset['category'] ) ? (string) $asset['category'] : '';
 			if ( ! in_array( $category, array( 'writer_reference', 'content_example', 'historical_content' ), true ) && 'reference' !== ( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) ) continue;
 			$reference_assets[] = $asset;

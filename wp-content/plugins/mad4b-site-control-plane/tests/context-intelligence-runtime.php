@@ -50,6 +50,7 @@ $b = str_repeat( 'b', 64 );
 $c = str_repeat( 'c', 64 );
 $d = str_repeat( 'd', 64 );
 $f = str_repeat( 'f', 64 );
+$g = str_repeat( '7', 64 );
 
 $base_quality = array( 'dimensions' => array( 'freshness' => 90 ) );
 MAD4B_SCP_Context_Authority::$assets = array(
@@ -112,6 +113,23 @@ ci_assert( false === $profile['imitation_instruction_allowed'], 'Reference profi
 ci_assert( $profile['metrics']['word_count'] > 20, 'Reference profile did not analyze text.', $profile );
 ci_assert( false === strpos( json_encode( $profile ), 'Why do some journeys stay with us' ), 'Reference profile leaked raw source content.', $profile );
 
+MAD4B_SCP_Context_Authority::$assets[ $g ] = MAD4B_SCP_Context_Authority::$assets[ $c ];
+MAD4B_SCP_Context_Authority::$assets[ $g ]['asset_id'] = $g;
+MAD4B_SCP_Context_Authority::$assets[ $g ]['review_status'] = 'unreviewed';
+MAD4B_SCP_Google_Drive_Context::$content[ $g ] = MAD4B_SCP_Google_Drive_Context::$content[ $c ];
+$unreviewed_reference = MAD4B_SCP_Context_Intelligence::reference_profile( array( 'asset_id' => $g ) );
+ci_assert( is_wp_error( $unreviewed_reference ) && 'mad4b_reference_asset_review_required' === $unreviewed_reference->get_error_code(), 'Unreviewed governed reference must be denied.', $unreviewed_reference );
+
+MAD4B_SCP_Context_Authority::$assets[ $g ]['source_mode'] = 'task_attachment';
+MAD4B_SCP_Context_Authority::$assets[ $g ]['task_scope'] = 'task-private';
+$unscoped_reference = MAD4B_SCP_Context_Intelligence::reference_profile( array( 'asset_id' => $g ) );
+ci_assert( is_wp_error( $unscoped_reference ) && 'mad4b_reference_task_scope_mismatch' === $unscoped_reference->get_error_code(), 'Task reference without exact scope must be denied.', $unscoped_reference );
+$wrong_scope_reference = MAD4B_SCP_Context_Intelligence::reference_profile( array( 'asset_id' => $g, 'task_scope' => 'task-other' ) );
+ci_assert( is_wp_error( $wrong_scope_reference ) && 'mad4b_reference_task_scope_mismatch' === $wrong_scope_reference->get_error_code(), 'Task reference with wrong scope must be denied.', $wrong_scope_reference );
+$scoped_reference = MAD4B_SCP_Context_Intelligence::reference_profile( array( 'asset_id' => $g, 'task_scope' => 'task-private' ) );
+ci_assert( ! is_wp_error( $scoped_reference ) && 'structural_reference_only' === $scoped_reference['usage'], 'Exact task scope must permit structural reference profiling.', $scoped_reference );
+unset( MAD4B_SCP_Context_Authority::$assets[ $g ], MAD4B_SCP_Google_Drive_Context::$content[ $g ] );
+
 $retrieval = MAD4B_SCP_Context_Intelligence::retrieve( array(
 	'query' => 'premium cultural Egypt journeys',
 	'task_scope' => 'campaign-2026',
@@ -123,6 +141,23 @@ ci_assert( 1 === count( $retrieval['mandatory_assets'] ), 'Required governed ass
 ci_assert( $a === $retrieval['mandatory_assets'][0]['asset_id'], 'Wrong mandatory asset selected.', $retrieval );
 $ranked_ids = array_map( static function ( $row ) { return $row['asset_id']; }, $retrieval['ranked_optional_assets'] );
 ci_assert( in_array( $d, $ranked_ids, true ), 'Matching task-scoped source was not included.', $retrieval );
+
+$filtered_retrieval = MAD4B_SCP_Context_Intelligence::retrieve( array(
+	'query' => 'writer narrative',
+	'task_scope' => 'campaign-2026',
+	'category' => 'writer_reference',
+	'limit' => 10,
+) );
+ci_assert( ! is_wp_error( $filtered_retrieval ), 'Category-filtered retrieval returned an error.', $filtered_retrieval );
+ci_assert( 1 === count( $filtered_retrieval['mandatory_assets'] ), 'Category filter must never hide required governed Context.', $filtered_retrieval );
+ci_assert( $a === $filtered_retrieval['mandatory_assets'][0]['asset_id'], 'Required Brand Context identity changed under category filter.', $filtered_retrieval );
+
+MAD4B_SCP_Context_Authority::$assets[ $a ]['content_complete'] = false;
+$incomplete_required = MAD4B_SCP_Context_Intelligence::retrieve( array( 'query' => 'premium cultural Egypt journeys' ) );
+ci_assert( ! is_wp_error( $incomplete_required ), 'Incomplete mandatory retrieval returned an error.', $incomplete_required );
+ci_assert( false === $incomplete_required['ready'], 'Incomplete required governed content must block retrieval readiness.', $incomplete_required );
+ci_assert( in_array( 'mandatory_asset_not_ready:' . $a, $incomplete_required['blockers'], true ), 'Incomplete required content blocker missing.', $incomplete_required );
+MAD4B_SCP_Context_Authority::$assets[ $a ]['content_complete'] = true;
 
 $receipt = array(
 	'ready' => true,
@@ -170,4 +205,4 @@ ci_assert( 'BLOCKED' === $limited['verdict'], 'Rule-limit compliance scan must n
 ci_assert( in_array( 'compliance_rule_limit_reached', $limited['blockers'], true ), 'Rule-limit blocker missing.', $limited );
 unset( MAD4B_SCP_Context_Authority::$assets[ $f ], MAD4B_SCP_Google_Drive_Context::$content[ $f ] );
 
-echo "mad4b.context-intelligence.runtime.v2: PASS\n";
+echo "mad4b.context-intelligence.runtime.v3: PASS\n";

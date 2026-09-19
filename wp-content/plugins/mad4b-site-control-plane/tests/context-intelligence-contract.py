@@ -63,7 +63,23 @@ for marker in [
     if marker not in intelligence:
         raise SystemExit(f"Missing fail-closed/explainability marker: {marker}")
 
+retrieve_block = intelligence.split("public static function retrieve", 1)[1].split("public static function compliance_check", 1)[0]
+if retrieve_block.index("'governed' === $mode && ! empty( $asset['required'] )") > retrieve_block.index("if ( '' !== $category_filter"):
+    raise SystemExit("Required governed Context must be resolved before optional category filtering")
+for marker in [
+    "empty( $asset['content_complete'] )",
+    "mad4b_reference_asset_review_required",
+    "mad4b_reference_task_scope_mismatch",
+    "hash_equals( $asset_scope, $requested_scope )",
+]:
+    if marker not in intelligence:
+        raise SystemExit(f"Missing reference/retrieval isolation marker: {marker}")
+
+reference_block = adapter.split("'context/reference-profile'", 1)[1].split("'context/retrieve'", 1)[0]
+if "'task_scope'" not in reference_block:
+    raise SystemExit("Context reference-profile ability must expose bounded task_scope for task attachments")
+
 if "class-mad4b-scp-context-intelligence.php" not in main:
     raise SystemExit("Context Intelligence runtime is not loaded by the plugin entrypoint")
 
-print("mad4b.context-intelligence.contract.v2: PASS")
+print("mad4b.context-intelligence.contract.v3: PASS")

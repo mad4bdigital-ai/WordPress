@@ -115,6 +115,14 @@ final class MAD4B_SCP_Context_Intelligence {
 		$asset = self::asset( $asset_id );
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_reference_asset_not_found', 'Reference asset was not found in the active Context registry.' );
 		$category = isset( $asset['category'] ) ? sanitize_key( (string) $asset['category'] ) : '';
+		$mode = isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '';
+		if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true ) ) return new WP_Error( 'mad4b_reference_asset_source_mode_invalid', 'Reference asset must belong to a live governed or task-scoped source.' );
+		if ( 'governed' === $mode && 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) return new WP_Error( 'mad4b_reference_asset_review_required', 'Governed reference asset requires human approval before profiling.' );
+		if ( 'task_attachment' === $mode ) {
+			$requested_scope = isset( $input['task_scope'] ) ? trim( sanitize_text_field( (string) $input['task_scope'] ) ) : '';
+			$asset_scope = isset( $asset['task_scope'] ) ? (string) $asset['task_scope'] : '';
+			if ( '' === $requested_scope || '' === $asset_scope || ! hash_equals( $asset_scope, $requested_scope ) ) return new WP_Error( 'mad4b_reference_task_scope_mismatch', 'Task-scoped reference asset requires its exact task_scope.' );
+		}
 		$allowed = array( 'writer_reference', 'content_example', 'historical_content' );
 		if ( ! in_array( $category, $allowed, true ) && 'reference' !== ( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) ) {
 			return new WP_Error( 'mad4b_reference_asset_category_invalid', 'Writer Reference Profile requires a reference/content-example asset.' );
@@ -194,12 +202,8 @@ final class MAD4B_SCP_Context_Intelligence {
 			$status = isset( $asset['status'] ) ? (string) $asset['status'] : '';
 			$category = isset( $asset['category'] ) ? sanitize_key( (string) $asset['category'] ) : '';
 			$mode = isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '';
-			if ( '' !== $category_filter && $category_filter !== $category ) continue;
-			if ( 'task_attachment' === $mode ) {
-				if ( '' === $task_scope || ! hash_equals( $task_scope, isset( $asset['task_scope'] ) ? (string) $asset['task_scope'] : '' ) ) continue;
-			}
 			if ( 'governed' === $mode && ! empty( $asset['required'] ) ) {
-				if ( 'ready' !== $status || 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) {
+				if ( 'ready' !== $status || empty( $asset['content_complete'] ) || 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) {
 					$blockers[] = 'mandatory_asset_not_ready:' . ( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' );
 					continue;
 				}
@@ -212,6 +216,10 @@ final class MAD4B_SCP_Context_Intelligence {
 					'classification_confidence' => self::classification_weight( $asset ),
 				) );
 				continue;
+			}
+			if ( '' !== $category_filter && $category_filter !== $category ) continue;
+			if ( 'task_attachment' === $mode ) {
+				if ( '' === $task_scope || ! hash_equals( $task_scope, isset( $asset['task_scope'] ) ? (string) $asset['task_scope'] : '' ) ) continue;
 			}
 			if ( 'ready' !== $status ) continue;
 			if ( 'governed' === $mode && 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) continue;
