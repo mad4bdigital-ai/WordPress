@@ -364,6 +364,39 @@ final class MAD4B_SCP_Context_Authority {
 		self::write_option( self::PROFILE_OPTION, $profile );
 	}
 
+	public static function update_source_write_policy( $source_id, $write_policy ) {
+		$audit_ready = self::audit_preflight();
+		if ( is_wp_error( $audit_ready ) ) return $audit_ready;
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
+		$write_policy = sanitize_key( (string) $write_policy );
+		$sources = self::sources();
+		if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+		$source = $sources[ $source_id ];
+		if ( ! hash_equals( (string) $site['site_uuid'], (string) $source['site_uuid'] ) ) return new WP_Error( 'mad4b_context_source_site_mismatch', 'Context source is not bound to this Site Profile.' );
+		if ( ! isset( self::write_policies()[ $write_policy ] ) ) return new WP_Error( 'mad4b_context_source_write_policy_invalid', 'Context source write policy is invalid.' );
+		if ( 'task_attachment' === ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) && 'read_only' !== $write_policy ) return new WP_Error( 'mad4b_context_task_source_write_forbidden', 'Task-only Context sources are read-only in this release.' );
+		$previous = isset( $source['write_policy'] ) ? (string) $source['write_policy'] : 'read_only';
+		$sources[ $source_id ]['write_policy'] = $write_policy;
+		$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
+		self::write_option( self::SOURCES_OPTION, $sources );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'mad4b/context-source-write-policy',
+				array(
+					'source_id' => $source_id,
+					'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
+					'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
+					'previous_write_policy' => $previous,
+					'write_policy' => $write_policy,
+				),
+				'ok'
+			);
+		}
+		return $sources[ $source_id ];
+	}
+
 	public static function remove_source( $source_id ) {
 		$audit_ready = self::audit_preflight();
 		if ( is_wp_error( $audit_ready ) ) return $audit_ready;
