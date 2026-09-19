@@ -565,7 +565,11 @@ final class MAD4B_SCP_Context_Authority {
 			if ( 'unavailable' === $asset['status'] ) ++$unavailable;
 		}
 		$ready_required = 0;
-		foreach ( $required as $asset ) if ( 'ready' === $asset['status'] ) ++$ready_required;
+		$approved_required = 0;
+		foreach ( $required as $asset ) {
+			if ( 'ready' === $asset['status'] ) ++$ready_required;
+			if ( 'ready' === $asset['status'] && 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) ++$approved_required;
+		}
 		$blockers = array();
 		if ( empty( $site_status['configured'] ) || empty( $site_status['origin_match'] ) || empty( $site_status['environment_match'] ) ) $blockers[] = 'site_profile_not_enrolled';
 		if ( empty( $profile ) ) $blockers[] = 'brand_context_profile_unconfigured';
@@ -573,6 +577,7 @@ final class MAD4B_SCP_Context_Authority {
 		if ( empty( $governed_assets ) ) $blockers[] = 'governed_context_assets_missing';
 		if ( ! empty( $governed_assets ) && empty( $required ) ) $blockers[] = 'mandatory_context_unclassified';
 		if ( count( $required ) !== $ready_required ) $blockers[] = 'mandatory_context_not_ready';
+		if ( count( $required ) !== $approved_required ) $blockers[] = 'mandatory_context_review_required';
 		if ( $stale > 0 ) $blockers[] = 'brand_context_contains_stale_assets';
 		if ( $unavailable > 0 ) $blockers[] = 'brand_context_contains_unavailable_assets';
 		if ( $conflicting > 0 ) $blockers[] = 'mandatory_context_conflict';
@@ -592,6 +597,7 @@ final class MAD4B_SCP_Context_Authority {
 			'governed_asset_count' => count( $governed_assets ),
 			'required_asset_count' => count( $required ),
 			'ready_required_asset_count' => $ready_required,
+			'approved_required_asset_count' => $approved_required,
 			'stale_asset_count' => $stale,
 			'unavailable_asset_count' => $unavailable,
 			'conflicting_asset_count' => $conflicting,
