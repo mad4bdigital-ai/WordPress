@@ -276,6 +276,9 @@ require(preflight, "commit_receipt_evidence", "durable append-only Context recei
 require(preflight, "mad4b/context-receipt-bound", "Context receipt audit binding")
 require(preflight, "canonical_receipt_digest", "canonical Context receipt integrity digest")
 require(preflight, "content_mutation_requirement", "central content-bearing mutation classifier")
+require(preflight, "mad4b/content-create-post", "core post creation receipt enforcement")
+require(preflight, "mad4b/taxonomy-create-term", "core taxonomy creation receipt enforcement")
+require(preflight, "media/update-metadata", "media text metadata receipt enforcement")
 require(preflight, "mad4b/content-import-bundle", "content bundle receipt enforcement")
 require(preflight, "mad4b/taxonomy-update-term", "taxonomy copy receipt enforcement")
 require(preflight, "seo/update-meta", "SEO copy receipt enforcement")
@@ -336,4 +339,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v37: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v38: PASS")
