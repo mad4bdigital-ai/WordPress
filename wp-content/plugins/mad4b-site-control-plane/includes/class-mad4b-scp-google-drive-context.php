@@ -3,10 +3,15 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Read-only Google Drive source provider for Context Authority.
+ * Governed Google Drive source provider for Context Authority.
  *
- * No Google Drive mutation endpoints are implemented. Credentials/tokens are
- * encrypted at rest with a site-bound key derived from WordPress salts.
+ * OAuth supports explicit read-only and read+write modes. Full Drive OAuth
+ * authority never implies MAD4B mutation authority: writes remain bounded to
+ * selected Context source folders and are intended to run through mad4b-write
+ * with exact NHI grants and one-time approval.
+ *
+ * Credentials/tokens are encrypted at rest with a site-bound key derived from
+ * WordPress salts.
  */
 final class MAD4B_SCP_Google_Drive_Context {
 	const CONTRACT = 'mad4b.google-drive-context.v1';
@@ -16,11 +21,16 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 	const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 	const DRIVE_API = 'https://www.googleapis.com/drive/v3';
-	const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+	const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
+	const DOCS_API = 'https://docs.googleapis.com/v1';
+	const READ_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+	const WRITE_SCOPE = 'https://www.googleapis.com/auth/drive';
 
 	const MAX_SCAN_FILES = 500;
 	const MAX_SCAN_FOLDERS = 120;
 	const MAX_TEXT_BYTES = 262144;
+	const MAX_WRITE_BYTES = 1048576;
+	const MAX_PARENT_DEPTH = 16;
 
 	public static function redirect_uri() {
 		return admin_url( 'admin-post.php?action=mad4b_context_google_callback' );
@@ -35,8 +45,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'client_id' => is_wp_error( $credentials ) ? '' : sanitize_text_field( (string) $credentials['client_id'] ),
 			'client_id_suffix' => is_wp_error( $credentials ) ? '' : self::suffix( $credentials['client_id'] ),
 			'redirect_uri' => self::redirect_uri(),
-			'scope' => self::DRIVE_SCOPE,
-			'read_only' => true,
+			'read_scope' => self::READ_SCOPE,
+			'write_scope' => self::WRITE_SCOPE,
+			'supported_access_modes' => array( 'read_only', 'read_write' ),
 		);
 	}
 
@@ -63,7 +74,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'client_id' => $client_id,
 			'client_secret' => $secret_envelope,
 			'redirect_uri' => self::redirect_uri(),
-			'scope' => self::DRIVE_SCOPE,
+			'scope' => self::READ_SCOPE,
 			'updated_at' => gmdate( 'c' ),
 		);
 		self::write_option( self::CONFIG_OPTION, $record );
@@ -74,12 +85,18 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$token = self::token_record();
 		$credentials = self::credentials_status();
 		$connected = is_array( $token ) && ! empty( $token['refresh_token'] );
+		$scope = $connected && isset( $token['scope'] ) ? trim( (string) $token['scope'] ) : '';
+		$read_available = $connected && self::scope_allows_read( $scope );
+		$write_available = $connected && self::scope_allows_write( $scope );
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => ! empty( $credentials['configured'] ),
 			'connected' => $connected,
-			'read_only' => true,
-			'scope' => self::DRIVE_SCOPE,
+			'read_available' => $read_available,
+			'write_available' => $write_available,
+			'read_only' => $connected && ! $write_available,
+			'access_mode' => $write_available ? 'read_write' : 'read_only',
+			'scope' => $scope,
 			'account_email' => $connected && isset( $token['account_email'] ) ? sanitize_email( (string) $token['account_email'] ) : '',
 			'account_name' => $connected && isset( $token['account_name'] ) ? sanitize_text_field( (string) $token['account_name'] ) : '',
 			'permission_id' => $connected && isset( $token['permission_id'] ) ? sanitize_text_field( (string) $token['permission_id'] ) : '',
@@ -87,14 +104,18 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! empty( $token['refresh_token'] ) ),
 			'last_verified_at' => $connected && isset( $token['last_verified_at'] ) ? sanitize_text_field( (string) $token['last_verified_at'] ) : '',
 			'blockers' => self::connection_blockers( $credentials, $token ),
+			'write_blockers' => $write_available ? array() : array( 'google_drive_write_scope_not_granted' ),
 		);
 	}
 
-	public static function authorization_url() {
+	public static function authorization_url( $access_mode = 'read_only' ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );
 		$credentials = self::credentials();
 		if ( is_wp_error( $credentials ) ) return $credentials;
+		$access_mode = sanitize_key( (string) $access_mode );
+		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
+		$requested_scope = 'read_write' === $access_mode ? self::WRITE_SCOPE : self::READ_SCOPE;
 		$state = wp_generate_password( 64, false, false );
 		if ( '' === $state ) return new WP_Error( 'mad4b_google_drive_state_generation_failed', 'Unable to generate OAuth state.' );
 		set_transient(
@@ -103,6 +124,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'state' => hash( 'sha256', $state ),
 				'redirect_uri' => self::redirect_uri(),
 				'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
+				'access_mode' => $access_mode,
+				'requested_scope' => $requested_scope,
 				'created_at' => time(),
 			),
 			10 * MINUTE_IN_SECONDS
@@ -112,7 +135,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'client_id' => $credentials['client_id'],
 				'redirect_uri' => self::redirect_uri(),
 				'response_type' => 'code',
-				'scope' => self::DRIVE_SCOPE,
+				'scope' => $requested_scope,
 				'access_type' => 'offline',
 				'include_granted_scopes' => 'true',
 				'prompt' => 'consent',
@@ -161,7 +184,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 			(string) $tokens['access_token'],
 			$refresh,
 			isset( $tokens['expires_in'] ) ? absint( $tokens['expires_in'] ) : 3600,
-			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : self::DRIVE_SCOPE
+			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : ( isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : self::READ_SCOPE ),
+			array(),
+			isset( $stored['access_mode'] ) ? (string) $stored['access_mode'] : 'read_only'
 		);
 		if ( is_wp_error( $record ) ) return $record;
 		$about = self::about();
@@ -260,6 +285,219 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'truncated' => count( $assets ) >= self::MAX_SCAN_FILES || count( $visited ) >= self::MAX_SCAN_FOLDERS,
 			'assets' => $assets,
 		);
+	}
+
+	public static function create_asset( $source_id, $name, $content, $format = 'markdown' ) {
+		$source = self::write_source( $source_id );
+		if ( is_wp_error( $source ) ) return $source;
+		$name = trim( sanitize_text_field( (string) $name ) );
+		$content = (string) $content;
+		$format = sanitize_key( (string) $format );
+		if ( '' === $name || strlen( $name ) > 180 ) return new WP_Error( 'mad4b_google_drive_asset_name_invalid', 'Drive asset name is required and must be 180 characters or fewer.' );
+		$content_guard = self::validate_write_content( $content );
+		if ( is_wp_error( $content_guard ) ) return $content_guard;
+		$file = self::create_provider_file( (string) $source['external_root_id'], $name, $content, $format );
+		if ( is_wp_error( $file ) ) return $file;
+		$asset = self::provider_asset_payload( $source, $file, $content );
+		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $asset );
+		if ( is_wp_error( $registered ) ) return $registered;
+		return array(
+			'contract' => 'mad4b.google-drive-asset-mutation.v1',
+			'operation' => 'create',
+			'source_id' => (string) $source['source_id'],
+			'asset_id' => (string) $registered['asset_id'],
+			'file_id' => (string) $registered['file_id'],
+			'content_sha256' => (string) $registered['content_hash'],
+			'mime_type' => (string) $registered['mime_type'],
+			'status' => 'created',
+		);
+	}
+
+	public static function update_asset( $asset_id, $expected_content_hash, $content ) {
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
+		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' );
+		if ( is_wp_error( $source ) ) return $source;
+		$expected_content_hash = strtolower( trim( (string) $expected_content_hash ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_content_hash ) ) return new WP_Error( 'mad4b_google_drive_expected_hash_invalid', 'Expected content hash must be SHA-256.' );
+		if ( empty( $asset['content_hash'] ) || ! hash_equals( (string) $asset['content_hash'], $expected_content_hash ) ) return new WP_Error( 'mad4b_google_drive_asset_registry_stale', 'Context asset registry changed since the mutation was planned.', array( 'current_content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) );
+		$content = (string) $content;
+		$content_guard = self::validate_write_content( $content );
+		if ( is_wp_error( $content_guard ) ) return $content_guard;
+		$file_id = isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '';
+		$membership = self::assert_file_within_source( $file_id, $source );
+		if ( is_wp_error( $membership ) ) return $membership;
+		$metadata = self::get_file_metadata( $file_id );
+		if ( is_wp_error( $metadata ) ) return $metadata;
+		$current_text = self::fetch_text_content( $metadata );
+		if ( is_wp_error( $current_text ) ) return $current_text;
+		$current_hash = hash( 'sha256', (string) $current_text );
+		if ( ! hash_equals( $expected_content_hash, $current_hash ) ) return new WP_Error( 'mad4b_google_drive_asset_remote_stale', 'Google Drive content changed since the Context asset was read.', array( 'current_content_hash' => $current_hash ) );
+		$updated = self::replace_provider_file_content( $metadata, $content );
+		if ( is_wp_error( $updated ) ) return $updated;
+		$payload = self::provider_asset_payload( $source, $updated, $content );
+		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
+		if ( is_wp_error( $registered ) ) return $registered;
+		return array(
+			'contract' => 'mad4b.google-drive-asset-mutation.v1',
+			'operation' => 'update',
+			'source_id' => (string) $source['source_id'],
+			'asset_id' => (string) $registered['asset_id'],
+			'file_id' => (string) $registered['file_id'],
+			'before_sha256' => $expected_content_hash,
+			'after_sha256' => (string) $registered['content_hash'],
+			'status' => 'updated',
+		);
+	}
+
+	public static function recreate_asset( $asset_id, $content, $format = 'google_doc' ) {
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
+		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' );
+		if ( is_wp_error( $source ) ) return $source;
+		$content = (string) $content;
+		$content_guard = self::validate_write_content( $content );
+		if ( is_wp_error( $content_guard ) ) return $content_guard;
+		$title = isset( $asset['title'] ) ? (string) $asset['title'] : 'Recreated Context Asset';
+		$title = preg_replace( '/\s+\(recreated[^)]*\)$/i', '', $title );
+		$file = self::create_provider_file( (string) $source['external_root_id'], $title, $content, $format );
+		if ( is_wp_error( $file ) ) return $file;
+		$payload = self::provider_asset_payload( $source, $file, $content );
+		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
+		if ( is_wp_error( $registered ) ) return $registered;
+		MAD4B_SCP_Context_Authority::mark_asset_recreated( $asset_id, $registered );
+		return array(
+			'contract' => 'mad4b.google-drive-asset-mutation.v1',
+			'operation' => 'recreate',
+			'source_id' => (string) $source['source_id'],
+			'previous_asset_id' => (string) $asset_id,
+			'asset_id' => (string) $registered['asset_id'],
+			'file_id' => (string) $registered['file_id'],
+			'content_sha256' => (string) $registered['content_hash'],
+			'status' => 'recreated',
+		);
+	}
+
+	private static function write_source( $source_id ) {
+		$status = self::connection_status();
+		if ( empty( $status['write_available'] ) ) return new WP_Error( 'mad4b_google_drive_write_scope_required', 'Google Drive is connected without governed read+write scope. Upgrade the connection before attempting a Drive mutation.' );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_context_authority_unavailable', 'Context Authority is unavailable.' );
+		$source = MAD4B_SCP_Context_Authority::source( $source_id );
+		if ( empty( $source ) || 'google_drive' !== ( isset( $source['provider'] ) ? (string) $source['provider'] : '' ) ) return new WP_Error( 'mad4b_google_drive_source_not_found', 'Selected Context source is not a Google Drive source.' );
+		if ( 'root' === (string) $source['external_root_id'] ) return new WP_Error( 'mad4b_google_drive_root_write_forbidden', 'Drive write operations require a specific selected source folder; My Drive root is intentionally read-only.' );
+		return $source;
+	}
+
+	private static function validate_write_content( $content ) {
+		$bytes = strlen( (string) $content );
+		if ( $bytes < 1 ) return new WP_Error( 'mad4b_google_drive_empty_write_denied', 'Drive asset content cannot be empty.' );
+		if ( $bytes > self::MAX_WRITE_BYTES ) return new WP_Error( 'mad4b_google_drive_write_too_large', 'Drive asset content exceeds the governed write size limit.', array( 'max_bytes' => self::MAX_WRITE_BYTES ) );
+		if ( ! seems_utf8( (string) $content ) ) return new WP_Error( 'mad4b_google_drive_write_utf8_required', 'Drive asset content must be valid UTF-8 text.' );
+		return true;
+	}
+
+	private static function create_provider_file( $folder_id, $name, $content, $format ) {
+		$folder_id = self::bounded_drive_id( $folder_id );
+		if ( '' === $folder_id || 'root' === $folder_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for writes.' );
+		$format = sanitize_key( (string) $format );
+		$target_mime = '';
+		$media_mime = 'text/plain; charset=UTF-8';
+		if ( 'google_doc' === $format ) $target_mime = 'application/vnd.google-apps.document';
+		elseif ( 'markdown' === $format ) { $target_mime = 'text/markdown'; $media_mime = 'text/markdown; charset=UTF-8'; if ( ! preg_match( '/\.md$/i', $name ) ) $name .= '.md'; }
+		elseif ( 'text' === $format ) { $target_mime = 'text/plain'; if ( ! preg_match( '/\.txt$/i', $name ) ) $name .= '.txt'; }
+		else return new WP_Error( 'mad4b_google_drive_write_format_invalid', 'Drive write format must be google_doc, markdown, or text.' );
+		$metadata = array( 'name' => $name, 'parents' => array( $folder_id ), 'mimeType' => $target_mime );
+		$boundary = 'mad4b_' . wp_generate_password( 24, false, false );
+		$body = '--' . $boundary . "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" . wp_json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+			. "\r\n--" . $boundary . "\r\nContent-Type: " . $media_mime . "\r\n\r\n" . (string) $content . "\r\n--" . $boundary . "--";
+		$url = self::DRIVE_UPLOAD_API . '/files?uploadType=multipart&supportsAllDrives=true&fields=' . rawurlencode( 'id,name,mimeType,parents,modifiedTime,webViewLink' );
+		return self::authorized_json_request( 'POST', $url, $body, 'multipart/related; boundary=' . $boundary, 'mad4b_google_drive_create_failed' );
+	}
+
+	private static function replace_provider_file_content( array $metadata, $content ) {
+		$file_id = self::bounded_drive_id( isset( $metadata['id'] ) ? $metadata['id'] : '' );
+		$mime = isset( $metadata['mimeType'] ) ? strtolower( (string) $metadata['mimeType'] ) : '';
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
+		if ( 'application/vnd.google-apps.document' === $mime ) return self::replace_google_doc_body( $file_id, $content );
+		if ( 0 !== strpos( $mime, 'text/' ) && ! in_array( $mime, array( 'application/json', 'application/xml', 'application/csv' ), true ) ) {
+			return new WP_Error( 'mad4b_google_drive_asset_update_unsupported', 'This Drive file type cannot be safely updated as governed text. Use recreate instead.', array( 'mime_type' => $mime ) );
+		}
+		$url = self::DRIVE_UPLOAD_API . '/files/' . rawurlencode( $file_id ) . '?uploadType=media&supportsAllDrives=true&fields=' . rawurlencode( 'id,name,mimeType,parents,modifiedTime,webViewLink' );
+		return self::authorized_json_request( 'PATCH', $url, (string) $content, ( $mime ? $mime : 'text/plain' ) . '; charset=UTF-8', 'mad4b_google_drive_update_failed' );
+	}
+
+	private static function replace_google_doc_body( $file_id, $content ) {
+		$url = self::DOCS_API . '/documents/' . rawurlencode( $file_id );
+		$document = self::authorized_json_request( 'GET', $url, null, '', 'mad4b_google_docs_read_failed' );
+		if ( is_wp_error( $document ) ) return $document;
+		$end_index = 1;
+		foreach ( isset( $document['body']['content'] ) && is_array( $document['body']['content'] ) ? $document['body']['content'] : array() as $node ) {
+			if ( isset( $node['endIndex'] ) ) $end_index = max( $end_index, absint( $node['endIndex'] ) );
+		}
+		$requests = array();
+		if ( $end_index > 2 ) $requests[] = array( 'deleteContentRange' => array( 'range' => array( 'startIndex' => 1, 'endIndex' => $end_index - 1 ) ) );
+		$requests[] = array( 'insertText' => array( 'location' => array( 'index' => 1 ), 'text' => (string) $content ) );
+		$updated = self::authorized_json_request( 'POST', $url . ':batchUpdate', wp_json_encode( array( 'requests' => $requests ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), 'application/json; charset=UTF-8', 'mad4b_google_docs_update_failed' );
+		if ( is_wp_error( $updated ) ) return $updated;
+		return self::get_file_metadata( $file_id );
+	}
+
+	private static function get_file_metadata( $file_id ) {
+		$file_id = self::bounded_drive_id( $file_id );
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
+		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?' . http_build_query(
+			array( 'fields' => 'id,name,mimeType,parents,modifiedTime,size,md5Checksum,driveId,webViewLink', 'supportsAllDrives' => 'true' ),
+			'', '&', PHP_QUERY_RFC3986
+		);
+		return self::api_get( $url );
+	}
+
+	private static function assert_file_within_source( $file_id, array $source ) {
+		$root_id = isset( $source['external_root_id'] ) ? (string) $source['external_root_id'] : '';
+		if ( '' === $root_id || 'root' === $root_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for writes.' );
+		$current = self::get_file_metadata( $file_id );
+		if ( is_wp_error( $current ) ) return $current;
+		$visited = array();
+		for ( $depth = 0; $depth < self::MAX_PARENT_DEPTH; $depth++ ) {
+			$parents = isset( $current['parents'] ) && is_array( $current['parents'] ) ? $current['parents'] : array();
+			foreach ( $parents as $parent_id ) if ( hash_equals( $root_id, (string) $parent_id ) ) return true;
+			if ( empty( $parents ) ) break;
+			$parent_id = (string) reset( $parents );
+			if ( isset( $visited[ $parent_id ] ) ) break;
+			$visited[ $parent_id ] = true;
+			$current = self::get_file_metadata( $parent_id );
+			if ( is_wp_error( $current ) ) return $current;
+		}
+		return new WP_Error( 'mad4b_google_drive_asset_outside_selected_source', 'Drive asset is outside the selected Context source folder.' );
+	}
+
+	private static function provider_asset_payload( array $source, array $file, $content ) {
+		$name = isset( $file['name'] ) ? (string) $file['name'] : 'Untitled';
+		return array(
+			'file_id' => isset( $file['id'] ) ? (string) $file['id'] : '',
+			'title' => $name,
+			'path' => ( isset( $source['label'] ) ? (string) $source['label'] : 'Drive' ) . '/' . $name,
+			'mimeType' => isset( $file['mimeType'] ) ? (string) $file['mimeType'] : 'text/plain',
+			'modifiedTime' => isset( $file['modifiedTime'] ) ? (string) $file['modifiedTime'] : gmdate( 'c' ),
+			'webViewLink' => isset( $file['webViewLink'] ) ? esc_url_raw( (string) $file['webViewLink'] ) : '',
+			'normalized_text' => (string) $content,
+			'content_hash' => hash( 'sha256', (string) $content ),
+		);
+	}
+
+	private static function authorized_json_request( $method, $url, $body, $content_type, $error_code ) {
+		$token = self::access_token();
+		if ( is_wp_error( $token ) ) return $token;
+		$args = array(
+			'method' => strtoupper( (string) $method ),
+			'timeout' => 25,
+			'redirection' => 0,
+			'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ),
+		);
+		if ( '' !== (string) $content_type ) $args['headers']['Content-Type'] = (string) $content_type;
+		if ( null !== $body ) $args['body'] = $body;
+		$response = wp_remote_request( esc_url_raw( $url ), $args );
+		return self::decode_json_response( $response, $error_code );
 	}
 
 	private static function list_children( $parent_id, $folders_only ) {
@@ -369,22 +607,27 @@ final class MAD4B_SCP_Google_Drive_Context {
 			(string) $tokens['access_token'],
 			(string) $record['refresh_token'],
 			isset( $tokens['expires_in'] ) ? absint( $tokens['expires_in'] ) : 3600,
-			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : ( isset( $record['scope'] ) ? (string) $record['scope'] : self::DRIVE_SCOPE ),
-			$record
+			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : ( isset( $record['scope'] ) ? (string) $record['scope'] : self::READ_SCOPE ),
+			$record,
+			isset( $record['access_mode'] ) ? (string) $record['access_mode'] : ( self::scope_allows_write( isset( $record['scope'] ) ? $record['scope'] : '' ) ? 'read_write' : 'read_only' )
 		);
 		if ( is_wp_error( $persisted ) ) return $persisted;
 		return (string) $persisted['access_token'];
 	}
 
-	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array() ) {
+	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only' ) {
 		$scope = trim( (string) $scope );
-		if ( ! self::scope_is_readonly( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_readonly', 'Google granted a scope set broader than the governed Drive read-only contract.' );
+		if ( ! self::scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
+		$requested_mode = sanitize_key( (string) $requested_mode );
+		if ( 'read_write' === $requested_mode && ! self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_write_scope_missing', 'Google did not grant the required Drive read+write scope.' );
+		if ( 'read_only' === $requested_mode && ! self::scope_allows_read( $scope ) ) return new WP_Error( 'mad4b_google_drive_read_scope_missing', 'Google did not grant a Drive read scope.' );
 		$record = is_array( $existing ) ? $existing : array();
 		$record['contract'] = self::CONTRACT;
 		$record['access_token'] = trim( (string) $access_token );
 		$record['refresh_token'] = trim( (string) $refresh_token );
 		$record['expires_at'] = time() + max( 60, absint( $expires_in ) );
-		$record['scope'] = trim( (string) $scope );
+		$record['scope'] = $scope;
+		$record['access_mode'] = self::scope_allows_write( $scope ) ? 'read_write' : 'read_only';
 		$record['updated_at'] = gmdate( 'c' );
 		$sealed = self::seal_token_record( $record );
 		if ( is_wp_error( $sealed ) ) return $sealed;
@@ -414,12 +657,43 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $record;
 	}
 
-	private static function scope_is_readonly( $scope ) {
+	private static function scope_items( $scope ) {
 		$items = preg_split( '/\s+/', trim( (string) $scope ) );
-		$items = array_values( array_unique( array_filter( is_array( $items ) ? $items : array() ) ) );
+		return array_values( array_unique( array_filter( is_array( $items ) ? $items : array() ) ) );
+	}
+
+	private static function scope_is_allowed( $scope ) {
+		$items = self::scope_items( $scope );
 		if ( empty( $items ) ) return false;
-		foreach ( $items as $item ) if ( ! hash_equals( self::DRIVE_SCOPE, (string) $item ) ) return false;
+		foreach ( $items as $item ) {
+			if ( ! hash_equals( self::READ_SCOPE, (string) $item ) && ! hash_equals( self::WRITE_SCOPE, (string) $item ) ) return false;
+		}
 		return true;
+	}
+
+	private static function scope_allows_read( $scope ) {
+		$items = self::scope_items( $scope );
+		return in_array( self::READ_SCOPE, $items, true ) || in_array( self::WRITE_SCOPE, $items, true );
+	}
+
+	private static function scope_allows_write( $scope ) {
+		return in_array( self::WRITE_SCOPE, self::scope_items( $scope ), true );
+	}
+
+	public static function write_capability_status() {
+		$status = self::connection_status();
+		return array(
+			'contract' => 'mad4b.google-drive-write-capability.v1',
+			'connected' => ! empty( $status['connected'] ),
+			'read_available' => ! empty( $status['read_available'] ),
+			'write_available' => ! empty( $status['write_available'] ),
+			'access_mode' => isset( $status['access_mode'] ) ? (string) $status['access_mode'] : 'read_only',
+			'selected_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? count( MAD4B_SCP_Context_Authority::sources() ) : 0,
+			'allowed_operations' => array( 'create', 'update', 'recreate' ),
+			'delete_supported' => false,
+			'trash_supported' => false,
+			'blockers' => ! empty( $status['write_available'] ) ? array() : array( 'google_drive_write_scope_not_granted' ),
+		);
 	}
 
 	private static function credentials() {
