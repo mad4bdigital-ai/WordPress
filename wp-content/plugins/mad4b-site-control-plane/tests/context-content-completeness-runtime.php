@@ -48,7 +48,7 @@ mad4b_content_assert( is_array( $opaque ) && empty( $opaque['complete'] ), 'Opaq
 mad4b_content_assert( 'extractor_required' === $opaque['normalization_status'], 'Opaque binary content must explicitly require a governed extractor.', $opaque );
 
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-google-drive-context.php' );
-mad4b_content_assert( false !== strpos( $source, "'limit_response_size' => (int) $max_bytes + 1" ), 'All provider reads must retain a bounded sentinel byte.' );
+mad4b_content_assert( false !== strpos( $source, "'limit_response_size' => (int) \$max_bytes + 1" ), 'All provider reads must retain a bounded sentinel byte.' );
 mad4b_content_assert( false !== strpos( $source, '$multimodal' ), 'Incomplete PDF/image/audio/video normalization must route through the governed multimodal fallback.' );
 mad4b_content_assert( false !== strpos( $source, 'external_extractor_record( $file, $binary, $local )' ), 'Governed extractor fallback must remain explicit.' );
 mad4b_content_assert( false !== strpos( $source, 'mad4b_context_asset_content_incomplete' ), 'Incomplete provider content must fail closed for runtime Context.' );
