@@ -15,13 +15,13 @@ if ( 'production' !== $status['environment'] ) {
 	fwrite( STDERR, 'Expected production environment, got: ' . (string) $status['environment'] . "\n" );
 	exit( 1 );
 }
-if ( empty( $status['staging_only'] ) || ! empty( $status['can_run'] ) ) exit( 1 );
+if ( empty( $status['governed_nonproduction_only'] ) || ! empty( $status['target_eligible'] ) || ! empty( $status['can_run'] ) ) exit( 1 );
 
 ob_start();
 MAD4B_SCP_Local_OAuth_Browser_Canary::render_page();
 $html = (string) ob_get_clean();
-if ( false === strpos( $html, 'Canary configuration is intentionally unavailable outside Staging.' ) ) exit( 1 );
-foreach ( array( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS', 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS', 'Run Local OAuth Browser Canary', 'mad4b-staging-browser-canary', 'mad4b-staging-canary' ) as $forbidden ) {
+if ( false === strpos( $html, 'Canary configuration is available only on an explicitly enrolled local, development, or staging site with OAuth enabled.' ) ) exit( 1 );
+foreach ( array( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS', 'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS', 'Run Local OAuth Browser Canary', 'mad4b-governed-browser-canary', 'mad4b-governed-canary' ) as $forbidden ) {
 	if ( false !== strpos( $html, $forbidden ) ) {
 		fwrite( STDERR, "Production canary UI exposed forbidden configuration marker: {$forbidden}\n" );
 		exit( 1 );

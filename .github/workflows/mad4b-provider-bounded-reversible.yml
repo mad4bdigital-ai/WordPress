@@ -1,0 +1,72 @@
+name: MAD4B Provider Bounded Reversible
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetsmartfilters-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-bounded-reversible-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/mad4b-provider-bounded-reversible.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-provider-bounded-reversible-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provider-bounded-reversible:
+    name: Provider bounded reversible contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify release marker parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          main="$root/mad4b-site-control-plane.php"
+          marker="$root/MAD4B-RUNTIME-BUILD.txt"
+          header_version="$(sed -nE 's/^ \* Version: ([^[:space:]]+).*/\1/p' "$main" | head -n1)"
+          constant_version="$(sed -nE "s/^define\( 'MAD4B_SCP_VERSION', '([^']+)' \);/\1/p" "$main" | head -n1)"
+          marker_version="$(sed -nE 's/^release=([^[:space:]]+).*/\1/p' "$marker" | head -n1)"
+          test -n "$header_version"
+          test "$header_version" = "$constant_version"
+          test "$header_version" = "$marker_version"
+
+      - name: Lint governed provider mutation paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/adapters/class-mad4b-scp-elementor-adapter.php"
+          php -l "$root/includes/adapters/class-mad4b-scp-jetengine-adapter.php"
+          php -l "$root/includes/adapters/class-mad4b-scp-jetsmartfilters-adapter.php"
+          php -l "$root/includes/adapters/class-mad4b-scp-adapter-base.php"
+          php -l "$root/includes/class-mad4b-scp-reversible-adapter-mutations.php"
+
+      - name: Verify bounded reversible provider contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-bounded-reversible-contract.py

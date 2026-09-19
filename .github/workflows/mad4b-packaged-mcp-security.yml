@@ -8,6 +8,7 @@ on:
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/elementor.zip'
       - 'wp-content/plugins/bit-pi.zip'
+      - 'tools/normalize-premium-provider-package.py'
       - '.github/workflows/mad4b-packaged-mcp-security.yml'
   push:
     branches:
@@ -18,6 +19,7 @@ on:
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/elementor.zip'
       - 'wp-content/plugins/bit-pi.zip'
+      - 'tools/normalize-premium-provider-package.py'
       - '.github/workflows/mad4b-packaged-mcp-security.yml'
   workflow_dispatch:
 
@@ -32,13 +34,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify inspected archives
+      - name: Materialize canonical inspected archives
         shell: bash
         run: |
           set -euo pipefail
+          plugins=/tmp/mad4b-packaged-mcp-security-plugins
+          evidence=/tmp/mad4b-packaged-mcp-normalization
+          rm -rf "$plugins" "$evidence"
+          mkdir -p "$plugins" "$evidence"
+
+          cp wp-content/plugins/elementor.zip "$plugins/elementor.zip"
+          cp wp-content/plugins/bit-pi.zip "$plugins/bit-pi.zip"
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetengine \
+            --input wp-content/plugins/jet-engine.zip \
+            --output "$plugins/jet-engine.zip" \
+            --expected-version 3.8.15 \
+            --report "$evidence/jetengine-normalization.json"
+
           for archive in jet-engine.zip elementor.zip bit-pi.zip; do
-            test -s "wp-content/plugins/$archive"
-            unzip -tqq "wp-content/plugins/$archive"
+            test -s "$plugins/$archive"
+            unzip -tqq "$plugins/$archive"
           done
 
       - name: Enforce native MCP security invariants
@@ -46,14 +62,16 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/inspect-packaged-mcp-security.py \
-            --plugins-dir wp-content/plugins \
+            --plugins-dir /tmp/mad4b-packaged-mcp-security-plugins \
             --output /tmp/mad4b-packaged-mcp-security.json
 
       - name: Upload native MCP security evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mad4b-packaged-mcp-security-${{ github.sha }}
-          path: /tmp/mad4b-packaged-mcp-security.json
+          name: mad4b-packaged-mcp-security-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            /tmp/mad4b-packaged-mcp-security.json
+            /tmp/mad4b-packaged-mcp-normalization/*.json
           if-no-files-found: error
           retention-days: 30

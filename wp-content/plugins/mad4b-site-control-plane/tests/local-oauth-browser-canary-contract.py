@@ -11,10 +11,12 @@ plugin = (root / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='
 for marker in [
     'mad4b.local-oauth-browser-canary.v1',
     'mad4b-control-plane-oauth-canary',
-    'mad4b-staging-browser-canary',
-    'mad4b-staging-canary',
+    'mad4b-governed-browser-canary',
+    'mad4b-governed-canary',
     'http://127.0.0.1:8765/callback',
-    "'staging_only' => true",
+    "'governed_nonproduction_only' => true",
+    "MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' )",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
     "'persists_pkce_material' => false",
     "'persists_bearer_tokens' => false",
     "'creates_credentials' => false",
@@ -27,8 +29,7 @@ for marker in [
     "MAD4B_MCP_OAUTH_MODE', 'local'",
     "application_type' => 'web'",
     "application_type' => 'native'",
-    'Canary configuration is intentionally unavailable outside Staging.',
-    "if ( 'staging' !== $status['environment'] ) return;",
+    'Canary configuration is available only on an explicitly enrolled local, development, or staging site with OAuth enabled.',
 ]:
     if marker not in php:
         raise SystemExit(f'missing browser canary PHP marker: {marker}')
@@ -68,7 +69,7 @@ for forbidden in [
         raise SystemExit(f'forbidden browser canary JS persistence/auth primitive: {forbidden}')
 
 for marker in [
-    "[string]$ClientId = 'mad4b-staging-canary'",
+    "[string]$ClientId = 'mad4b-governed-canary'",
     "[string]$RedirectUri = 'http://127.0.0.1:8765/callback'",
     'PKCE RFC 7636 self-test failed',
     'The access token was intentionally not printed or persisted.',

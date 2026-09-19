@@ -49,7 +49,8 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( '/mcp/mad4b-chatgpt' !== $route ) return $result;
+		$resource = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_for_route( $route ) : '';
+		if ( '' === $resource ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
 
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
@@ -61,7 +62,6 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 
 		$issuer = isset( $claims['iss'] ) && is_string( $claims['iss'] ) ? $claims['iss'] : '';
 		$subject = isset( $claims['sub'] ) && is_string( $claims['sub'] ) ? trim( $claims['sub'] ) : '';
-		$resource = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
 		if ( '' === $issuer || ! MAD4B_SCP_OAuth_Resource_Bridge::is_trusted_issuer( $issuer ) ) return self::denied( 'mad4b_oauth_subject_issuer_mismatch', 'OAuth subject issuer is not trusted for this resource.', 403 );
 		if ( '' === $subject || strlen( $subject ) > 512 ) return self::denied( 'mad4b_oauth_subject_invalid', 'OAuth subject is invalid.', 403 );
 		if ( ! self::audience_contains( isset( $claims['aud'] ) ? $claims['aud'] : null, $resource ) ) return self::denied( 'mad4b_oauth_subject_audience_mismatch', 'OAuth subject audience binding does not match.', 403 );

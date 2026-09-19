@@ -36,36 +36,29 @@ final class MAD4B_SCP_Audit_Integrity {
 		$tables_ready = $events_exists && $heads_exists;
 		$transactional = $tables_ready && self::transactional_table( $t['audit_events'] ) && self::transactional_table( $t['audit_heads'] );
 		$legacy = self::legacy_snapshot();
-		$head = $tables_ready ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['audit_heads']} WHERE chain_name = %s LIMIT 1", MAD4B_SCP_Audit::CHAIN ), ARRAY_A ) : null; // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$snapshot = $tables_ready ? self::committed_snapshot( $t['audit_heads'], $t['audit_events'] ) : array();
 
-		$event_count = 0;
+		$event_count = $snapshot ? (int) $snapshot['event_count'] : 0;
+		$head_initialized = $snapshot && null !== $snapshot['head_sequence'];
 		$head_consistent = true;
 		$legacy_anchor_match = true;
-		$head_sequence = 0;
-		$head_entry_hash = $legacy['anchor_sha256'];
+		$head_sequence = $head_initialized ? (int) $snapshot['head_sequence'] : 0;
+		$head_entry_hash = $head_initialized ? (string) $snapshot['head_entry_hash'] : (string) $legacy['anchor_sha256'];
 
-		if ( $tables_ready ) {
-			$event_count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['audit_events']} WHERE chain_name = %s", MAD4B_SCP_Audit::CHAIN ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		}
-
-		if ( $head ) {
-			$head_sequence = (int) $head['sequence'];
-			$head_entry_hash = (string) $head['entry_hash'];
-			$legacy_anchor_match = isset( $head['legacy_anchor_sha256'] ) && hash_equals( (string) $head['legacy_anchor_sha256'], (string) $legacy['anchor_sha256'] );
-			$stored_legacy_valid = ! empty( $head['legacy_chain_valid'] );
+		if ( $head_initialized ) {
+			$legacy_anchor_match = isset( $snapshot['legacy_anchor_sha256'] )
+				&& hash_equals( (string) $snapshot['legacy_anchor_sha256'], (string) $legacy['anchor_sha256'] );
+			$stored_legacy_valid = ! empty( $snapshot['legacy_chain_valid'] );
 			if ( $stored_legacy_valid !== (bool) $legacy['chain_valid'] ) $legacy_anchor_match = false;
 
-			$last = $wpdb->get_row( $wpdb->prepare(
-				"SELECT sequence,entry_hash FROM {$t['audit_events']} WHERE chain_name = %s ORDER BY sequence DESC LIMIT 1",
-				MAD4B_SCP_Audit::CHAIN
-			), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-
 			if ( 0 === $head_sequence ) {
-				$head_consistent = 0 === $event_count && hash_equals( (string) $legacy['anchor_sha256'], $head_entry_hash );
+				$head_consistent = 0 === $event_count
+					&& null === $snapshot['last_sequence']
+					&& hash_equals( (string) $legacy['anchor_sha256'], $head_entry_hash );
 			} else {
-				$head_consistent = $last
-					&& (int) $last['sequence'] === $head_sequence
-					&& hash_equals( (string) $last['entry_hash'], $head_entry_hash )
+				$head_consistent = null !== $snapshot['last_sequence']
+					&& (int) $snapshot['last_sequence'] === $head_sequence
+					&& hash_equals( (string) $snapshot['last_entry_hash'], $head_entry_hash )
 					&& $event_count === $head_sequence;
 			}
 		} elseif ( $event_count > 0 ) {
@@ -85,7 +78,7 @@ final class MAD4B_SCP_Audit_Integrity {
 			'legacy_entry_count' => (int) $legacy['entry_count'],
 			'legacy_anchor_sha256' => (string) $legacy['anchor_sha256'],
 			'legacy_anchor_match' => $legacy_anchor_match,
-			'head_initialized' => (bool) $head,
+			'head_initialized' => (bool) $head_initialized,
 			'head_consistent' => $head_consistent,
 			'head_sequence' => $head_sequence,
 			'head_entry_hash' => $head_entry_hash,
@@ -93,30 +86,61 @@ final class MAD4B_SCP_Audit_Integrity {
 		);
 	}
 
+	/**
+	 * Read head/count/tail in one SQL statement so an append commit cannot be
+	 * observed half-before and half-after across independent autocommit reads.
+	 */
+	private static function committed_snapshot( $heads_table, $events_table ) {
+		global $wpdb;
+		$sql = "SELECT
+			(SELECT sequence FROM {$heads_table} WHERE chain_name = %s LIMIT 1) AS head_sequence,
+			(SELECT entry_hash FROM {$heads_table} WHERE chain_name = %s LIMIT 1) AS head_entry_hash,
+			(SELECT legacy_anchor_sha256 FROM {$heads_table} WHERE chain_name = %s LIMIT 1) AS legacy_anchor_sha256,
+			(SELECT legacy_chain_valid FROM {$heads_table} WHERE chain_name = %s LIMIT 1) AS legacy_chain_valid,
+			(SELECT COUNT(*) FROM {$events_table} WHERE chain_name = %s) AS event_count,
+			(SELECT sequence FROM {$events_table} WHERE chain_name = %s ORDER BY sequence DESC LIMIT 1) AS last_sequence,
+			(SELECT entry_hash FROM {$events_table} WHERE chain_name = %s ORDER BY sequence DESC LIMIT 1) AS last_entry_hash";
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				$sql,
+				MAD4B_SCP_Audit::CHAIN,
+				MAD4B_SCP_Audit::CHAIN,
+				MAD4B_SCP_Audit::CHAIN,
+				MAD4B_SCP_Audit::CHAIN,
+				MAD4B_SCP_Audit::CHAIN,
+				MAD4B_SCP_Audit::CHAIN,
+				MAD4B_SCP_Audit::CHAIN
+			),
+			ARRAY_A
+		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return is_array( $row ) ? $row : array();
+	}
+
 	public static function verify_chain() {
 		global $wpdb;
 
 		$status = self::storage_status();
 		if ( empty( $status['ready'] ) ) return false;
+		if ( empty( $status['head_initialized'] ) ) return 0 === (int) $status['event_count'];
+
 		$t = MAD4B_SCP_Schema::tables();
-		$head = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['audit_heads']} WHERE chain_name = %s LIMIT 1", MAD4B_SCP_Audit::CHAIN ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( ! $head ) return 0 === (int) $status['event_count'];
-
+		$target_sequence = (int) $status['head_sequence'];
+		$target_hash = (string) $status['head_entry_hash'];
 		$expected_sequence = 1;
-		$previous_hash = (string) $head['legacy_anchor_sha256'];
+		$previous_hash = (string) $status['legacy_anchor_sha256'];
 
-		while ( true ) {
+		while ( $expected_sequence <= $target_sequence ) {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT * FROM {$t['audit_events']} WHERE chain_name = %s AND sequence >= %d ORDER BY sequence ASC LIMIT %d",
+					"SELECT * FROM {$t['audit_events']} WHERE chain_name = %s AND sequence >= %d AND sequence <= %d ORDER BY sequence ASC LIMIT %d",
 					MAD4B_SCP_Audit::CHAIN,
 					$expected_sequence,
+					$target_sequence,
 					MAD4B_SCP_Audit::VERIFY_BATCH
 				),
 				ARRAY_A
 			); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			if ( ! is_array( $rows ) ) return false;
-			if ( empty( $rows ) ) break;
+			if ( ! is_array( $rows ) || empty( $rows ) ) return false;
 
 			foreach ( $rows as $row ) {
 				if ( (int) $row['sequence'] !== $expected_sequence ) return false;
@@ -128,12 +152,10 @@ final class MAD4B_SCP_Audit_Integrity {
 				$previous_hash = (string) $row['entry_hash'];
 				++$expected_sequence;
 			}
-			if ( count( $rows ) < MAD4B_SCP_Audit::VERIFY_BATCH ) break;
 		}
 
-		$last_sequence = $expected_sequence - 1;
-		if ( $last_sequence !== (int) $head['sequence'] ) return false;
-		if ( ! hash_equals( $previous_hash, (string) $head['entry_hash'] ) ) return false;
+		if ( $expected_sequence - 1 !== $target_sequence ) return false;
+		if ( ! hash_equals( $previous_hash, $target_hash ) ) return false;
 		return true;
 	}
 
@@ -226,7 +248,7 @@ final class MAD4B_SCP_Audit_Integrity {
 
 	public static function transactional_table( $table ) {
 		global $wpdb;
-		$row = $wpdb->get_row( $wpdb->prepare( 'SHOW TABLE STATUS LIKE %s', $table ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$row = $wpdb->get_row( $wpdb->prepare( 'SHOW TABLE STATUS LIKE %s', $table ), ARRAY_A );
 		$engine = $row && isset( $row['Engine'] ) ? strtolower( (string) $row['Engine'] ) : '';
 		return in_array( $engine, array( 'innodb', 'xtradb' ), true );
 	}

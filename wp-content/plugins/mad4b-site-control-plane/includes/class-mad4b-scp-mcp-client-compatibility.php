@@ -14,6 +14,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 	const CONTRACT = 'mad4b.mcp-client-compatibility.v4';
 	const WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource';
 	const RESOURCE_PATH = '/wp-json/mcp/mad4b-chatgpt';
+	const ENROLLMENT_RESOURCE_PATH = '/wp-json/mcp/mad4b-enrollment';
 	const MANIFEST_NAMESPACE = 'mad4b/v1';
 	const MANIFEST_ROUTE = '/client-compatibility';
 
@@ -56,6 +57,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'authentication' => array(
 				'methods' => array( 'oauth_discovery', 'bearer_header' ),
 				'protected_resource_metadata' => self::authoritative_well_known_url(),
+				'enrollment_protected_resource_metadata' => self::authoritative_well_known_url( 'mad4b-enrollment' ),
 				'scope' => $status['scope'],
 				'authority_mode' => $status['oauth_authority_mode'],
 				'authorization_servers' => self::authorization_servers(),
@@ -93,6 +95,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'oauth_discovery_ready' => $discovery_ready,
 			'local_key_path_policy_ready' => $local_key_ready,
 			'authoritative_well_known_url' => self::authoritative_well_known_url(),
+			'enrollment_authoritative_well_known_url' => self::authoritative_well_known_url( 'mad4b-enrollment' ),
 			'compatibility_alias_url' => self::compatibility_alias_url(),
 			'compatibility_manifest_url' => untrailingslashit( rest_url( self::MANIFEST_NAMESPACE . self::MANIFEST_ROUTE ) ),
 			'profile_registry_contract' => isset( $registry['contract'] ) ? $registry['contract'] : '',
@@ -102,33 +105,46 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'unknown_clients_supported' => true,
 			'environment' => isset( $oauth['environment'] ) ? sanitize_key( (string) $oauth['environment'] ) : '',
 			'resource' => self::resource_identifier(),
+			'enrollment_resource' => self::resource_identifier( 'mad4b-enrollment' ),
 			'resource_name' => self::resource_name(),
 			'scope' => class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE : 'mad4b:read',
 		);
 	}
 
-	public static function resource_identifier() {
-		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier();
+	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
+		$server_id = sanitize_key( (string) $server_id );
+		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id );
+		if ( 'mad4b-enrollment' === $server_id ) return untrailingslashit( rest_url( 'mcp/mad4b-enrollment' ) );
 		return untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
 	}
 
-	public static function authoritative_well_known_url() { return self::origin() . self::WELL_KNOWN_PREFIX . self::RESOURCE_PATH; }
+	public static function authoritative_well_known_url( $server_id = 'mad4b-chatgpt' ) {
+		return self::origin( $server_id ) . self::authoritative_path( $server_id );
+	}
+
 	public static function compatibility_alias_url() { return self::origin() . self::WELL_KNOWN_PREFIX; }
 
 	public static function is_well_known_path( $path ) {
 		$path = self::normalize_path( $path );
-		return self::authoritative_path() === $path || self::WELL_KNOWN_PREFIX === $path;
+		return self::authoritative_path() === $path
+			|| self::authoritative_path( 'mad4b-enrollment' ) === $path
+			|| self::WELL_KNOWN_PREFIX === $path;
 	}
 
 	public static function metadata_for_path( $path ) {
 		$path = self::normalize_path( $path );
-		if ( self::authoritative_path() !== $path ) return new WP_Error( 'mad4b_oauth_resource_metadata_path_unknown', 'Protected-resource metadata must use the RFC 9728 path-derived location.' );
+		$server_id = '';
+		if ( self::authoritative_path() === $path ) $server_id = 'mad4b-chatgpt';
+		elseif ( self::authoritative_path( 'mad4b-enrollment' ) === $path ) $server_id = 'mad4b-enrollment';
+		if ( '' === $server_id ) return new WP_Error( 'mad4b_oauth_resource_metadata_path_unknown', 'Protected-resource metadata must use an RFC 9728 path-derived location for a governed MAD4B protected resource.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return new WP_Error( 'mad4b_oauth_resource_bridge_unavailable', 'OAuth resource bridge is unavailable.' );
 		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
 		if ( ! self::oauth_discovery_ready( $status ) ) return new WP_Error( 'mad4b_oauth_resource_discovery_not_ready', 'OAuth protected-resource discovery is not configured for this environment.' );
-		$metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata();
-		$metadata['resource'] = self::resource_identifier();
-		$metadata['resource_name'] = self::resource_name();
+		$resource = self::resource_identifier( $server_id );
+		$metadata = MAD4B_SCP_OAuth_Resource_Bridge::protected_resource_metadata( $resource );
+		if ( empty( $metadata ) ) return new WP_Error( 'mad4b_oauth_resource_metadata_unavailable', 'OAuth protected-resource metadata is unavailable for this resource.' );
+		$metadata['resource'] = $resource;
+		$metadata['resource_name'] = self::resource_name( $server_id );
 		$metadata['mad4b_authority_mode'] = isset( $status['authority_mode'] ) ? $status['authority_mode'] : '';
 		$metadata['mad4b_client_compatibility'] = untrailingslashit( rest_url( self::MANIFEST_NAMESPACE . self::MANIFEST_ROUTE ) );
 		return $metadata;
@@ -170,8 +186,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 
 	private static function oauth_discovery_ready( $status ) {
 		if ( ! is_array( $status ) ) return false;
-		$environment = isset( $status['environment'] ) ? sanitize_key( (string) $status['environment'] ) : '';
-		$environment_allowed = 'staging' === $environment || ( 'production' === $environment && ! empty( $status['production_approved'] ) );
+		$environment_allowed = ! empty( $status['environment_allowed'] );
 		return ! empty( $status['configured'] )
 			&& ! empty( $status['effective'] )
 			&& self::local_key_policy_ready( $status )
@@ -188,20 +203,24 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		return class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) && MAD4B_SCP_Local_OAuth_Key_Path_Policy::transport_ready();
 	}
 
-	private static function resource_name() {
+	private static function resource_name( $server_id = 'mad4b-chatgpt' ) {
+		$server_id = sanitize_key( (string) $server_id );
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 		$label = 'MAD4B WordPress';
 		if ( 'staging' === $environment ) $label .= ' Staging';
 		elseif ( 'production' === $environment ) $label .= ' Production';
 		elseif ( '' !== $environment && 'unknown' !== $environment ) $label .= ' ' . ucfirst( $environment );
-		return $label . ' ChatGPT Read MCP';
+		return $label . ( 'mad4b-enrollment' === $server_id ? ' Enrollment MCP' : ' ChatGPT Read MCP' );
 	}
 
-	private static function authoritative_path() { return self::WELL_KNOWN_PREFIX . self::RESOURCE_PATH; }
+	private static function authoritative_path( $server_id = 'mad4b-chatgpt' ) {
+		return self::WELL_KNOWN_PREFIX . ( 'mad4b-enrollment' === sanitize_key( (string) $server_id ) ? self::ENROLLMENT_RESOURCE_PATH : self::RESOURCE_PATH );
+	}
+
 	private static function normalize_path( $path ) { $path = '/' . ltrim( (string) $path, '/' ); return rtrim( $path, '/' ); }
 
-	private static function origin() {
-		$parts = wp_parse_url( self::resource_identifier() );
+	private static function origin( $server_id = 'mad4b-chatgpt' ) {
+		$parts = wp_parse_url( self::resource_identifier( $server_id ) );
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
 		$origin = strtolower( (string) $parts['scheme'] ) . '://' . strtolower( (string) $parts['host'] );
 		if ( isset( $parts['port'] ) ) $origin .= ':' . absint( $parts['port'] );

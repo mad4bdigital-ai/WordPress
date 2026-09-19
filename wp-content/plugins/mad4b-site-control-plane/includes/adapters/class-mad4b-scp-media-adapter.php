@@ -111,6 +111,13 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		$file = get_attached_file( $post->ID, true );
 		return array( 'id' => $post->ID, 'title' => $post->post_title, 'caption' => $post->post_excerpt, 'description' => $post->post_content, 'alt' => get_post_meta( $post->ID, '_wp_attachment_image_alt', true ), 'mime_type' => $post->post_mime_type, 'modified_gmt' => $post->post_modified_gmt, 'url' => wp_get_attachment_url( $post->ID ), 'file' => $file ? basename( $file ) : '', 'metadata' => wp_get_attachment_metadata( $post->ID ) );
 	}
-	private function mutable_payload( array $payload ) { return array_intersect_key( $payload, array( 'id' => true, 'title' => true, 'caption' => true, 'description' => true, 'alt' => true, 'modified_gmt' => true ) ); }
+	private function mutable_payload( array $payload ) {
+		// Optimistic concurrency and reversible verification must cover exactly the
+		// state owned by the rollback contract. WordPress refreshes post_modified_gmt
+		// as an incidental timestamp during update/restore, and that timestamp is not
+		// part of the restorable Media metadata state. Including it made exact undo
+		// hashes time-dependent even when every governed field was restored exactly.
+		return array_intersect_key( $payload, array( 'id' => true, 'title' => true, 'caption' => true, 'description' => true, 'alt' => true ) );
+	}
 	private function restore_metadata_state( array $payload ) { return array( 'title' => isset( $payload['title'] ) ? (string) $payload['title'] : '', 'caption' => isset( $payload['caption'] ) ? (string) $payload['caption'] : '', 'description' => isset( $payload['description'] ) ? (string) $payload['description'] : '', 'alt' => isset( $payload['alt'] ) ? (string) $payload['alt'] : '' ); }
 }

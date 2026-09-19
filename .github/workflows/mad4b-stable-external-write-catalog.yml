@@ -1,0 +1,62 @@
+name: MAD4B Stable External Write Catalog
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-stable-external-write-catalog.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/stable-external-write-catalog-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/external-attestation-runtime-projection.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-stable-external-write-catalog-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: Stable catalog contract (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint changed runtime contracts
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/stable-external-write-catalog-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/external-attestation-runtime-projection.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php
+
+      - name: Prove stable catalog and fail-closed execution
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/stable-external-write-catalog-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/external-attestation-runtime-projection.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php

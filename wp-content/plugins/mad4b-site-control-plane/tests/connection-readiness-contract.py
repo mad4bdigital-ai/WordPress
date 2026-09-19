@@ -23,6 +23,8 @@ adapter_ui = read('includes/class-mad4b-scp-adapter-coverage-admin-ui.php')
 admin_experience = read('includes/class-mad4b-scp-admin-experience.php')
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
 isolation = read('includes/class-mad4b-scp-mcp-provider-isolation.php')
+bridge = read('includes/class-mad4b-scp-mcp-registration-bridge.php')
+diagnostics = read('includes/class-mad4b-scp-mcp-registration-diagnostics-admin.php')
 transport_context = read('includes/class-mad4b-scp-transport-context.php')
 authz = read('includes/class-mad4b-scp-authorization.php')
 servers = read('includes/class-mad4b-scp-servers.php')
@@ -48,20 +50,94 @@ for marker in (
     require(status, marker, 'connection-status-truth')
 forbid(status, "'connection_certified' => false", 'connection-no-permanent-false')
 
+
+require(ability, "'output_schema' => array( 'type' => 'object', 'additionalProperties' => true )", 'connection-output-schema-open')
+for marker in (
+    "'mcp_registration_lifecycle'",
+    'MAD4B_SCP_MCP_Registration_Bridge::status()',
+    "'rest_init_seen_before_bridge_boot'",
+    "'adapter_init_seen_before_bridge_boot'",
+    "'missed_rest_recovery_scheduled'",
+    "'missed_rest_recovery_attempted'",
+    "'missed_rest_recovery_succeeded'",
+    "'missed_rest_recovery_state'",
+    "'missed_rest_recovery_blocker'",
+    "'mcp_adapter_init_count'",
+    "'rest_api_init_count'",
+    "'first_rest_observed'",
+    "'plugins_loaded_count_at_first_rest'",
+    "'init_count_at_first_rest'",
+    "'wp_loaded_count_at_first_rest'",
+    "'doing_plugins_loaded_at_first_rest'",
+    "'doing_init_at_first_rest'",
+    "'jetengine_registry_class_loaded_at_first_rest'",
+    "'jetengine_registry_callback_present_at_first_rest'",
+    "'jetengine_rest_manager_class_loaded_at_first_rest'",
+    "'jetengine_rest_manager_callback_present_at_first_rest'",
+    "'mcp_adapter_callback_present_at_first_rest'",
+    "'first_rest_classification'",
+    "'caller_trace'",
+):
+    require(status, marker, 'connection-mcp-registration-lifecycle')
+
+lifecycle_start = status.index('private static function bounded_mcp_registration_lifecycle()')
+lifecycle_end = status.index('private static function oauth_preflight_blockers', lifecycle_start)
+lifecycle = status[lifecycle_start:lifecycle_end]
+for forbidden in (
+    'rest_get_server(', 'rest_do_request(', 'register_routes(', 'register_rest_route(',
+    "do_action( 'rest_api_init'", 'Registry::register_features_api(',
+    'update_option(', 'add_option(', 'delete_option(', '$wpdb->',
+):
+    forbid(lifecycle, forbidden, 'lifecycle-diagnostic-observational-only')
+for secret_key in (
+    'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'raw_token',
+    'app_id', 'oauth_subject', 'nonce', 'password',
+):
+    forbid(lifecycle.lower(), secret_key, 'lifecycle-diagnostic-no-secret-or-authority')
+
+
+for marker in (
+    "add_action( 'rest_api_init', array( __CLASS__, 'observe_first_rest_init' ), PHP_INT_MIN )",
+    "debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 16 )",
+    "class_exists( $registry_class, false )",
+    "get_declared_classes()",
+    "'rest_before_plugins_loaded'",
+    "'rest_during_plugins_loaded_before_jetengine_registration'",
+    "'jetengine_callbacks_present_at_first_rest'",
+    "'first_rest_phase_undetermined'",
+):
+    require(bridge, marker, 'first-rest-trace-contract')
+
+observer_start = bridge.index('public static function observe_first_rest_init()')
+observer_end = bridge.index('public static function verify_adapter_init_after_rest()', observer_start)
+observer = bridge[observer_start:observer_end]
+for forbidden in (
+    'rest_get_server(', 'rest_do_request(', "do_action( 'rest_api_init'", 'register_rest_route(',
+    'register_features_api()', '->register_features_api(', '->register_routes(', 'new Get_Controller',
+    'new MCP_Controller', 'new Run_Controller', 'update_option(', 'add_option(', 'delete_option(',
+    '$wpdb->', 'HTTP_AUTHORIZATION', 'access_token', 'refresh_token', 'client_secret',
+):
+    forbid(observer, forbidden, 'first-rest-observer-observational-only')
+require(observer, "DEBUG_BACKTRACE_IGNORE_ARGS", 'first-rest-trace-no-args')
+require(observer, "relative_wordpress_path", 'first-rest-trace-relative-paths')
+
 if status.index('$oauth_blockers = self::oauth_preflight_blockers') > status.index('$remote_preflight_blockers = array_merge'):
     raise SystemExit('FAIL oauth-before-remote-preflight: OAuth blockers must be resolved before remote readiness is claimed')
 if status.index('$remote_preflight_blockers = array_merge') > status.index('$connection_certified = empty( $certification_blockers )'):
     raise SystemExit('FAIL preflight-before-certification: remote blockers must be assembled before final certification')
 
 for marker in (
-    "const CONTRACT = 'mad4b.external-handshake-evidence.v1'",
+    "const CONTRACT = 'mad4b.external-handshake-evidence.v3'",
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
     "defined( 'DOING_CRON' ) && DOING_CRON", 'verified_bearer_active()',
     "'initialize'", "'tools/list'", "hash( 'sha256', $session_id )",
     "update_option( self::OPTION, $evidence, false )", "'credential_material_stored' => false",
-    "'stale_build_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
+    "'stale_build_evidence'", "'stale_tool_inventory_evidence'", "'stale_time_evidence'", 'build_fingerprint()',
+    "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
+    "'provider_gated_write_tools'", "'eligible_write_tool_count'", "'expected_eligible_write_tool_count'",
+    'expected_tool_names()', 'expected_write_tool_names()', 'expected_eligible_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
 ):
     require(evidence, marker, 'external-handshake-evidence')
 for forbidden in (
@@ -71,11 +147,11 @@ for forbidden in (
     forbid(evidence, forbidden, 'external-evidence-no-secret-or-outbound')
 
 for outbound in ('wp_remote_get(', 'wp_remote_post(', 'wp_remote_request(', 'curl_exec(', 'fsockopen('):
-    forbid(status + '\n' + ui, outbound, 'no-self-probe-ssrf')
+    forbid(status + '\n' + ui + '\n' + diagnostics, outbound, 'no-self-probe-ssrf')
 for write in ('$_POST', 'admin_post_', '$wpdb->insert(', '$wpdb->update(', '$wpdb->delete(', 'update_option(', 'add_option(', 'delete_option('):
-    forbid(ui + '\n' + adapter_ui + '\n' + admin_experience, write, 'admin-experience-read-only')
+    forbid(ui + '\n' + adapter_ui + '\n' + admin_experience + '\n' + diagnostics, write, 'admin-experience-read-only')
 for secret_key in ("'client_secret'", "'access_token'", "'refresh_token'", "'authorization_header'", "'raw_token'", "'password_hash'"):
-    forbid(ui + '\n' + status, secret_key, 'connection-no-secret-material')
+    forbid(ui + '\n' + status + '\n' + diagnostics, secret_key, 'connection-no-secret-material')
 
 require(ability, "const ABILITY = 'mad4b/connection-status'", 'connection-ability')
 require(ability, "'readonly' => true", 'connection-ability-readonly')
@@ -85,6 +161,8 @@ require(servers, "'mad4b-write'", 'write-server-id')
 require(servers, "'MAD4B Write MCP'", 'write-server-registration')
 require(servers, "array( __CLASS__, 'can_write_transport' )", 'write-server-permission')
 require(servers, "public static function write_tools()", 'write-tool-projection')
+require(servers, "public static function external_write_tools()", 'stable-external-write-catalog')
+require(servers, "public static function is_external_write_candidate", 'stable-external-write-membership')
 require(servers, "array_key_exists( 'readonly', $annotations )", 'write-explicit-annotation')
 require(servers, "false !== $annotations['readonly']", 'write-readonly-denial')
 require(servers, "MAD4B_SCP_Adapter_Registry::instance()", 'write-adapter-projection')
@@ -92,12 +170,18 @@ require(servers, "return 'core';", 'write-core-provider-binding')
 for generic in ('execute-any', 'generic-dispatch', 'call_user_func( $input', 'ability_name_from_request'):
     forbid(servers, generic, 'write-no-generic-dispatcher')
 
-require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v1'", 'transport-context-contract')
+require(transport_context, "const CONTRACT = 'mad4b.mcp-transport-context.v3'", 'transport-context-contract')
 require(transport_context, "'/mcp/' . $server_id", 'transport-exact-route')
 require(transport_context, "'mad4b_transport_route_mismatch'", 'transport-route-mismatch')
 require(transport_context, 'resolve_server_for_ability', 'transport-effective-server-resolver')
 require(transport_context, 'MAD4B_SCP_Servers::ability_is_mounted', 'transport-mount-verification')
 require(transport_context, "'mad4b_transport_ability_not_mounted'", 'transport-ability-mount-denial')
+require(transport_context, 'MAD4B_SCP_Servers::is_external_write_candidate', 'transport-stable-write-candidate-check')
+require(transport_context, 'MAD4B_SCP_Staging_Write_Authority::is_write_ability', 'transport-chatgpt-write-delegation')
+require(transport_context, "'mad4b_write_capability_not_eligible'", 'transport-provider-write-gate')
+require(transport_context, "return 'mad4b-write';", 'transport-dedicated-write-authority')
+require(transport_context, "'mad4b_write_authority_mount_missing'", 'transport-write-authority-mount-denial')
+require(transport_context, "'stable_unified_catalog_fail_closed_execution'", 'transport-stable-discovery-model')
 for bypass in ("apply_filters( 'mad4b_scp_transport", "$_REQUEST", "$_GET", "$_POST"):
     forbid(transport_context, bypass, 'transport-context-no-bypass-input')
 
@@ -106,8 +190,8 @@ require(authz, '$declared_server_id', 'declared-server-evidence')
 require(authz, "'transport_bound'", 'transport-binding-evidence')
 if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > authz.index('MAD4B_SCP_Agent_Registry::exact_grant'):
     raise SystemExit('FAIL transport-before-grant: active MCP transport must bind before exact grant lookup')
-if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > authz.index('MAD4B_SCP_Approval_Tickets::consume_exact'):
-    raise SystemExit('FAIL transport-before-approval: active MCP transport must bind before approval consumption')
+if authz.index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > authz.index('MAD4B_SCP_Approval_Tickets::authorize_exact'):
+    raise SystemExit('FAIL transport-before-approval: active MCP transport must bind before read-only approval preflight')
 
 require(ui, 'add_submenu_page(', 'connection-admin-submenu')
 require(ui, "'manage_options'", 'connection-admin-capability')
@@ -149,17 +233,44 @@ for marker in (
     'class-mad4b-scp-mcp-provider-isolation.php', 'class-mad4b-scp-external-handshake-evidence.php',
     'class-mad4b-scp-transport-context.php', 'class-mad4b-scp-connection-status.php',
     'class-mad4b-scp-connection-ability.php', 'class-mad4b-scp-admin-experience.php',
-    'class-mad4b-scp-connection-admin-ui.php',
+    'class-mad4b-scp-connection-admin-ui.php', 'class-mad4b-scp-mcp-registration-bridge.php',
+    'class-mad4b-scp-mcp-registration-diagnostics-admin.php',
 ):
     require(bootstrap, marker, 'bootstrap-load')
+require(bootstrap, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'mcp-registration-early-boot')
+require(bootstrap, 'MAD4B_SCP_MCP_Registration_Diagnostics_Admin::boot();', 'mcp-registration-diagnostics-boot')
 require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'provider-early-boot')
 require(bootstrap, 'MAD4B_SCP_External_Handshake_Evidence::boot();', 'external-evidence-boot')
 require(plugin, 'MAD4B_SCP_Connection_Admin_UI::boot()', 'connection-ui-boot')
 require(plugin, 'MAD4B_SCP_Connection_Ability::boot()', 'connection-ability-boot')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'isolation-boot')
+require(plugin, 'MAD4B_SCP_MCP_Registration_Bridge::boot_early();', 'registration-bridge-idempotent-boot')
+forbid(plugin, "add_action( 'mcp_adapter_init', array( $servers, 'register_servers' )", 'no-late-mcp-server-binding')
 
 for marker in (
-    "const CONTRACT = 'mad4b.mcp-provider-isolation.v2'", "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const CONTRACT = 'mad4b.mcp-registration-bridge.v2'",
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_core_categories' ), 10 )",
+    "add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_registry_categories' ), 20 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_core_abilities' ), 10 )",
+    "add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_registry_abilities' ), 20 )",
+    "add_action( 'mcp_adapter_init', array( __CLASS__, 'register_servers' ), 10, 1 )",
+    "'ability_hook_bound' => $core_ability_hook_bound && $registry_ability_hook_bound",
+    "'adapter_init_seen_before_bridge_boot'", "'adapter_runtime_from_official_plugin'", "'registration_errors'",
+    "'rest_init_seen_before_bridge_boot'", "'missed_rest_recovery_succeeded'", "'missed_rest_recovery_blocker'",
+):
+    require(bridge, marker, 'mcp-registration-bridge')
+for marker in (
+    'MAD4B MCP registration diagnostics', 'Adapter runtime from official plugin',
+    'Adapter init happened before bridge boot', 'Registration error:',
+):
+    require(diagnostics, marker, 'mcp-registration-diagnostics')
+
+for marker in (
+    "const CONTRACT = 'mad4b.mcp-provider-isolation.v3'",
+    "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED'",
+    'public static function runtime_suppression_approved()',
+    'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;',
     "add_filter( 'wpmedia_mcp_oauth_server_enabled'", 'filter_wpmedia_oauth_server_enabled',
     "add_filter( 'mcp_adapter_create_default_server'", "add_action( 'rest_api_init', array( __CLASS__, 'suppress_provider_server_registrations' ), 14 )",
     "add_action( 'init', array( __CLASS__, 'suppress_provider_server_registrations' ), 19 )",
@@ -167,6 +278,7 @@ for marker in (
     "add_filter( 'rest_endpoints'", "'hostinger-ai-assistant-mcp-server'", "'elementskit-mcp-server'",
     "/hostinger-ai-assistant/v1/mcp/", "/hostinger-ai-assistant/v1/jwt/", "/elementskit/mcp/",
     "'unknown_routes_fail_closed' => true", "'changes_provider_settings' => false", "'creates_authority' => false",
+    "'legacy_enable_flag_alone_is_non_mutating' => true", "'runtime_suppression_requires_second_gate' => true",
 ):
     require(isolation, marker, 'provider-isolation-contract')
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post(', 'deactivate_plugins(', 'activate_plugin(', 'ReflectionClass', 'setAccessible('):
@@ -183,4 +295,4 @@ for marker in (
 for bypass in ("apply_filters( 'mad4b_scp_mcp_peer", "apply_filters( 'mad4b_scp_ignore_mcp", "apply_filters( 'mad4b_scp_side_channel", "if ( '/mcp' === $route ) continue"):
     forbid(peer, bypass, 'foreign-mcp-no-bypass')
 
-print('mad4b.site-control-plane.connection-readiness-contract.v7: PASS')
+print('mad4b.site-control-plane.connection-readiness-contract.v10: PASS')

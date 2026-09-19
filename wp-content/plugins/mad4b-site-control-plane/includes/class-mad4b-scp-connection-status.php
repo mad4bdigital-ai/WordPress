@@ -21,7 +21,7 @@ final class MAD4B_SCP_Connection_Status {
 		$provider_ok = ! empty( $provider['runtime_contract_ok'] );
 
 		$servers = self::server_status();
-		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 6;
+		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : 7;
 		$server_ok = count( $servers ) === $expected_count;
 		foreach ( $servers as $server ) {
 			if ( empty( $server['registered'] ) || empty( $server['route_registered'] ) || empty( $server['permission_callback_match'] ) ) { $server_ok = false; break; }
@@ -32,6 +32,7 @@ final class MAD4B_SCP_Connection_Status {
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array( 'available' => false );
 		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) ? MAD4B_SCP_External_Handshake_Evidence::status() : array( 'verified' => false, 'status' => 'evidence_component_unavailable' );
 		$oauth_blockers = self::oauth_preflight_blockers( $oauth );
+		$mcp_registration_lifecycle = self::bounded_mcp_registration_lifecycle();
 
 		$local_blockers = array();
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
@@ -49,15 +50,20 @@ final class MAD4B_SCP_Connection_Status {
 		$certification_blockers = $remote_preflight_blockers;
 		if ( empty( $handshake['verified'] ) ) {
 			$handshake_status = isset( $handshake['status'] ) ? sanitize_key( (string) $handshake['status'] ) : 'unverified';
-			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
+			$certification_blockers[] = in_array( $handshake_status, array( 'stale_build_evidence', 'stale_tool_inventory_evidence', 'stale_time_evidence' ), true ) ? 'external_handshake_stale' : 'external_handshake_unverified';
 		}
 		$certification_blockers = array_values( array_unique( array_map( 'sanitize_key', $certification_blockers ) ) );
 		$connection_certified = empty( $certification_blockers );
+		$profile_enrolled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled();
+		$environment_key = sanitize_key( (string) $environment );
+		$environment_supported = $profile_enrolled && in_array( $environment_key, array( 'local', 'development', 'staging', 'production' ), true );
 
 		return array(
 			'contract' => self::CONTRACT,
-			'environment' => sanitize_key( (string) $environment ),
-			'environment_is_staging' => 'staging' === sanitize_key( (string) $environment ),
+			'environment' => $environment_key,
+			'environment_supported' => $environment_supported,
+			'site_profile_enrolled' => $profile_enrolled,
+			'environment_is_staging' => 'staging' === $environment_key,
 			'site_url' => esc_url_raw( site_url() ),
 			'home_url' => esc_url_raw( home_url() ),
 			'rest_url' => esc_url_raw( rest_url() ),
@@ -67,6 +73,7 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_adapter_version' => $adapter_version,
 			'mcp_adapter_certification' => $provider,
 			'mcp_adapter_certified' => (bool) $provider_ok,
+			'mcp_registration_lifecycle' => $mcp_registration_lifecycle,
 			'local_transport_ready' => empty( $local_blockers ),
 			'local_blockers' => $local_blockers,
 			'remote_endpoint_preflight_ready' => empty( $remote_preflight_blockers ),
@@ -93,6 +100,52 @@ final class MAD4B_SCP_Connection_Status {
 		);
 	}
 
+	private static function bounded_mcp_registration_lifecycle() {
+		$status = class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ) ? MAD4B_SCP_MCP_Registration_Bridge::status() : array();
+		if ( ! is_array( $status ) ) $status = array();
+		return array(
+			'rest_init_seen_before_bridge_boot' => ! empty( $status['rest_init_seen_before_bridge_boot'] ),
+			'adapter_init_seen_before_bridge_boot' => ! empty( $status['adapter_init_seen_before_bridge_boot'] ),
+			'missed_rest_recovery_scheduled' => ! empty( $status['missed_rest_recovery_scheduled'] ),
+			'missed_rest_recovery_attempted' => ! empty( $status['missed_rest_recovery_attempted'] ),
+			'missed_rest_recovery_succeeded' => ! empty( $status['missed_rest_recovery_succeeded'] ),
+			'missed_rest_recovery_state' => isset( $status['missed_rest_recovery_state'] ) ? sanitize_key( (string) $status['missed_rest_recovery_state'] ) : '',
+			'missed_rest_recovery_blocker' => isset( $status['missed_rest_recovery_blocker'] ) ? sanitize_key( (string) $status['missed_rest_recovery_blocker'] ) : '',
+			'mcp_adapter_init_count' => isset( $status['mcp_adapter_init_count'] ) ? max( 0, (int) $status['mcp_adapter_init_count'] ) : 0,
+			'rest_api_init_count' => isset( $status['rest_api_init_count'] ) ? max( 0, (int) $status['rest_api_init_count'] ) : 0,
+			'first_rest_observed' => ! empty( $status['first_rest_observed'] ),
+			'plugins_loaded_count_at_first_rest' => isset( $status['plugins_loaded_count_at_first_rest'] ) ? max( 0, (int) $status['plugins_loaded_count_at_first_rest'] ) : 0,
+			'init_count_at_first_rest' => isset( $status['init_count_at_first_rest'] ) ? max( 0, (int) $status['init_count_at_first_rest'] ) : 0,
+			'wp_loaded_count_at_first_rest' => isset( $status['wp_loaded_count_at_first_rest'] ) ? max( 0, (int) $status['wp_loaded_count_at_first_rest'] ) : 0,
+			'doing_plugins_loaded_at_first_rest' => ! empty( $status['doing_plugins_loaded_at_first_rest'] ),
+			'doing_init_at_first_rest' => ! empty( $status['doing_init_at_first_rest'] ),
+			'jetengine_registry_class_loaded_at_first_rest' => ! empty( $status['jetengine_registry_class_loaded_at_first_rest'] ),
+			'jetengine_registry_callback_present_at_first_rest' => ! empty( $status['jetengine_registry_callback_present_at_first_rest'] ),
+			'jetengine_rest_manager_class_loaded_at_first_rest' => ! empty( $status['jetengine_rest_manager_class_loaded_at_first_rest'] ),
+			'jetengine_rest_manager_callback_present_at_first_rest' => ! empty( $status['jetengine_rest_manager_callback_present_at_first_rest'] ),
+			'mcp_adapter_callback_present_at_first_rest' => ! empty( $status['mcp_adapter_callback_present_at_first_rest'] ),
+			'first_rest_classification' => isset( $status['first_rest_classification'] ) ? sanitize_key( (string) $status['first_rest_classification'] ) : 'not_observed',
+			'caller_trace' => self::bounded_first_rest_caller_trace( isset( $status['caller_trace'] ) ? $status['caller_trace'] : array() ),
+		);
+	}
+
+	private static function bounded_first_rest_caller_trace( $trace ) {
+		$result = array();
+		foreach ( is_array( $trace ) ? $trace : array() as $frame ) {
+			if ( ! is_array( $frame ) ) continue;
+			$file = isset( $frame['relative_file'] ) ? str_replace( '\\', '/', sanitize_text_field( (string) $frame['relative_file'] ) ) : '';
+			if ( '' !== $file && ( '/' === substr( $file, 0, 1 ) || preg_match( '/^[A-Za-z]:\//', $file ) || false !== strpos( $file, '../' ) ) ) $file = '';
+			$result[] = array(
+				'class' => isset( $frame['class'] ) ? sanitize_text_field( (string) $frame['class'] ) : '',
+				'function' => isset( $frame['function'] ) ? sanitize_text_field( (string) $frame['function'] ) : '',
+				'relative_file' => $file,
+				'line' => isset( $frame['line'] ) ? max( 0, (int) $frame['line'] ) : 0,
+			);
+			if ( count( $result ) >= 16 ) break;
+		}
+		return $result;
+	}
+
 	private static function oauth_preflight_blockers( $oauth ) {
 		if ( ! is_array( $oauth ) || isset( $oauth['available'] ) && false === $oauth['available'] ) return array( 'oauth_resource_bridge_unavailable' );
 		$blockers = array();
@@ -102,7 +155,8 @@ final class MAD4B_SCP_Connection_Status {
 		elseif ( empty( $oauth['wp_user_capable'] ) ) $blockers[] = 'oauth_wp_subject_invalid';
 		if ( empty( $oauth['https'] ) ) $blockers[] = 'oauth_https_required';
 		$env = isset( $oauth['environment'] ) ? sanitize_key( (string) $oauth['environment'] ) : '';
-		$environment_allowed = 'staging' === $env || ( 'production' === $env && ! empty( $oauth['production_approved'] ) );
+		$profile_ok = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		$environment_allowed = $profile_ok && ( in_array( $env, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $env && ! empty( $oauth['production_approved'] ) ) );
 		if ( ! $environment_allowed ) $blockers[] = 'oauth_environment_not_allowed';
 		if ( empty( $oauth['effective'] ) && ! $blockers ) $blockers[] = 'oauth_resource_bridge_not_effective';
 		return array_values( array_unique( $blockers ) );
@@ -159,18 +213,25 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_session_fingerprint_present' => ! empty( $handshake['mcp_session_fingerprint_present'] ),
 			'scope_set' => isset( $handshake['scope_set'] ) && is_array( $handshake['scope_set'] ) ? array_slice( array_map( 'sanitize_text_field', $handshake['scope_set'] ), 0, 20 ) : array(),
 			'tool_count' => isset( $handshake['tool_count'] ) ? (int) $handshake['tool_count'] : 0,
+			'expected_tool_count' => isset( $handshake['expected_tool_count'] ) ? (int) $handshake['expected_tool_count'] : 0,
+			'write_tool_count' => isset( $handshake['write_tool_count'] ) ? (int) $handshake['write_tool_count'] : 0,
+			'expected_write_tool_count' => isset( $handshake['expected_write_tool_count'] ) ? (int) $handshake['expected_write_tool_count'] : 0,
+			'tool_inventory_fingerprint' => isset( $handshake['tool_inventory_fingerprint'] ) ? sanitize_text_field( (string) $handshake['tool_inventory_fingerprint'] ) : '',
+			'expected_tool_inventory_fingerprint' => isset( $handshake['expected_tool_inventory_fingerprint'] ) ? sanitize_text_field( (string) $handshake['expected_tool_inventory_fingerprint'] ) : '',
+			'tool_inventory_match' => ! empty( $handshake['tool_inventory_match'] ),
 			'verified_at' => isset( $handshake['verified_at'] ) ? sanitize_text_field( (string) $handshake['verified_at'] ) : '',
 			'build_fingerprint_match' => ! empty( $handshake['build_fingerprint_match'] ),
 			'credential_material_stored' => false,
-			'note' => $verified ? 'Verified from a real Staging REST OAuth bearer session that completed MCP initialize and tools/list on the same hashed session identity. No bearer or raw MCP session id is persisted.' : 'Local readiness never self-certifies the external connection; a real ChatGPT OAuth/MCP session must complete initialize and tools/list.',
+			'note' => $verified ? 'Verified from a real enrolled-site REST OAuth bearer session that completed MCP initialize and tools/list on the same hashed session identity. No bearer or raw MCP session id is persisted.' : 'Local readiness never self-certifies the external connection; a real ChatGPT OAuth/MCP session must complete initialize and tools/list.',
 		);
 	}
 
 	private static function server_status() {
-		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
+		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
 		$expected_permissions = array(
 			'mad4b-read' => array( 'MAD4B_SCP_Servers', 'can_read_transport' ),
 			'mad4b-chatgpt' => array( 'MAD4B_SCP_Servers', 'can_chatgpt_transport' ),
+			'mad4b-enrollment' => array( 'MAD4B_SCP_Servers', 'can_enrollment_transport' ),
 			'mad4b-content' => array( 'MAD4B_SCP_Servers', 'can_content_transport' ),
 			'mad4b-write' => array( 'MAD4B_SCP_Servers', 'can_write_transport' ),
 			'mad4b-admin' => array( 'MAD4B_SCP_Servers', 'can_admin_transport' ),
@@ -324,6 +385,7 @@ final class MAD4B_SCP_Connection_Status {
 	private static function surface_label( $id ) {
 		if ( 'mad4b-read' === $id ) return 'read';
 		if ( 'mad4b-chatgpt' === $id ) return 'chatgpt-read';
+		if ( 'mad4b-enrollment' === $id ) return 'enrollment';
 		if ( 'mad4b-content' === $id ) return 'content';
 		if ( 'mad4b-write' === $id ) return 'write';
 		if ( 'mad4b-admin' === $id ) return 'admin';

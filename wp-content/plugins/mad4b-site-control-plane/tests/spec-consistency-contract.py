@@ -108,13 +108,29 @@ for marker in (
     'T103 real Staging remains a separate mandatory boundary',
 ): require(adapter_contract, marker, 'adapter-coverage-contract-invariant')
 
-require(data_model, 'Schema version: `4`', 'data-model-schema-v4')
+# Normative documentation must move with the physical schema. Schema v6 keeps the
+# same nine-table topology but extends exact approval authority with Site Profile
+# identity/revision/digest so clone/profile/build drift cannot inherit authority.
+require(data_model, 'Schema version: `6`', 'data-model-schema-v6')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
     'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
 ): require(data_model, table, 'data-model-table')
+for marker in (
+    'candidate_binding_contract', 'candidate_sha CHAR(40)', 'build_fingerprint CHAR(64)',
+    'binding_environment', 'binding_host', 'site_uuid CHAR(36)',
+    'site_profile_revision BIGINT UNSIGNED', 'site_profile_digest CHAR(64)', 'bound_at',
+    'decision_inbox (status, expires_at, id)',
+    'candidate_inbox (candidate_sha, build_fingerprint, status, expires_at)',
+    'site_profile_inbox (site_uuid, site_profile_revision, status, expires_at)',
+    'mad4b.approval-candidate-binding.v2', 'site_profile_binding',
+    'derived read-model states', 'approved -> executing',
+    'clone', 'Site Profile drift', 'current expected version is `6`',
+): require(data_model, marker, 'data-model-approval-v6')
 for stale in (
+    'Schema version: `5`',
+    'current expected version is `5`',
     'Initial migration target: `2`',
     'Initial implementation may use atomic transients/options for counters',
     'audit chain: current option model retained in first implementation',
@@ -124,6 +140,7 @@ for stale in (
 
 implementation_files = {
     'schema': PLUGIN / 'includes/class-mad4b-scp-schema.php',
+    'site_profile': PLUGIN / 'includes/class-mad4b-scp-site-profile.php',
     'identity': PLUGIN / 'includes/class-mad4b-scp-identity-context.php',
     'registry': PLUGIN / 'includes/class-mad4b-scp-agent-registry.php',
     'adapter_registry': PLUGIN / 'includes/class-mad4b-scp-adapter-registry.php',
@@ -132,6 +149,7 @@ implementation_files = {
     'adapter_admin': PLUGIN / 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php',
     'authz': PLUGIN / 'includes/class-mad4b-scp-authorization.php',
     'approval': PLUGIN / 'includes/class-mad4b-scp-approval-tickets.php',
+    'approval_repository': PLUGIN / 'includes/class-mad4b-scp-approval-repository.php',
     'budgets': PLUGIN / 'includes/class-mad4b-scp-budgets.php',
     'peer': PLUGIN / 'includes/class-mad4b-scp-mcp-peer-governance.php',
     'isolation': PLUGIN / 'includes/class-mad4b-scp-mcp-provider-isolation.php',
@@ -157,29 +175,68 @@ for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
 
-require(impl['schema'], 'const VERSION = 4;', 'implementation-schema-v4')
+require(impl['schema'], 'const VERSION = 6;', 'implementation-schema-v6')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
+for marker in (
+    'candidate_binding_contract', 'candidate_sha char(40)', 'build_fingerprint char(64)',
+    'binding_environment', 'binding_host', 'site_uuid char(36)',
+    'site_profile_revision bigint(20) unsigned', 'site_profile_digest char(64)', 'bound_at datetime',
+    'KEY decision_inbox (status,expires_at,id)',
+    'KEY candidate_inbox (candidate_sha,build_fingerprint,status,expires_at)',
+    'KEY site_profile_inbox (site_uuid,site_profile_revision,status,expires_at)',
+    'public static function critical_ready()',
+    'public static function physical_integrity_status()',
+): require(impl['schema'], marker, 'implementation-schema-v6-approval-guard')
+for marker in (
+    'const CONTRACT = \'mad4b.site-profile.v2\'',
+    'public static function origin_enrolled()', 'public static function site_uuid()',
+    'public static function revision()', 'public static function profile_digest()',
+    'public static function write_enabled()',
+): require(impl['site_profile'], marker, 'implementation-site-profile-authority')
+for marker in (
+    "const CANDIDATE_BINDING_CONTRACT = 'mad4b.approval-candidate-binding.v2'",
+    'public static function candidate_binding_from_ticket',
+    'private static function profile_snapshot', 'private static function profile_bindings_equal',
+    "'site_profile_binding'", "'site_uuid'", "'profile_revision'", "'profile_digest'",
+    'MAD4B_SCP_Site_Profile::origin_enrolled()', 'MAD4B_SCP_Site_Profile::write_enabled()',
+): require(impl['approval'], marker, 'implementation-approval-tenant-build-binding')
+require(impl['approval'], 'private static function require_critical_schema()', 'implementation-approval-physical-schema-guard')
+require(impl['approval_repository'], "const CONTRACT = 'mad4b.approval-read-model.v3'", 'implementation-approval-read-model-v3')
+require(impl['approval_repository'], 'public static function effective_status', 'implementation-approval-effective-status')
+for marker in ("'site_uuid'", "'site_profile_revision'", "'site_profile_digest'"):
+    require(impl['approval_repository'], marker, 'implementation-approval-read-model-profile-binding')
 require(impl['identity'], 'mad4b_scp_authenticated_subject_context', 'implementation-subject-bridge')
 require(impl['registry'], 'mad4b_wildcard_grant_denied', 'implementation-wildcard-denial')
 require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
 require(impl['authz'], 'MAD4B_SCP_Transport_Context::resolve_server_for_ability', 'implementation-effective-transport-binding')
 require(impl['authz'], 'MAD4B_SCP_Budgets::reserve', 'implementation-budget-before-effect')
-require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::consume_exact', 'implementation-exact-approval')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::authorize_exact', 'implementation-exact-approval-preflight')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::claim_exact', 'implementation-exact-approval-claim')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::finalize_claim', 'implementation-exact-approval-finalize')
+require(impl['authz'], 'public static function wrap_execution_boundary', 'implementation-execution-boundary')
 if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Agent_Registry::exact_grant'):
     raise SystemExit('FAIL implementation-transport-before-grant')
-if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::consume_exact'):
-    raise SystemExit('FAIL implementation-transport-before-approval')
+if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::authorize_exact'):
+    raise SystemExit('FAIL implementation-transport-before-approval-authorization')
+if impl['authz'].index('MAD4B_SCP_Approval_Tickets::authorize_exact') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::claim_exact'):
+    raise SystemExit('FAIL implementation-approval-authorization-before-claim')
+preflight = impl['authz'][impl['authz'].index('public static function authorize_mutation'):impl['authz'].index('public static function claim_mutation')]
+for side_effect in ('MAD4B_SCP_Budgets::reserve', 'MAD4B_SCP_Budgets::commit', 'MAD4B_SCP_Approval_Tickets::claim_exact', 'MAD4B_SCP_Approval_Tickets::consume_exact', 'MAD4B_SCP_Approval_Tickets::finalize_claim'):
+    forbid(preflight, side_effect, 'implementation-permission-preflight-readonly')
 require(impl['peer'], 'mcp_write_side_channel_detected', 'implementation-side-channel-blocker')
 require(impl['peer'], 'foreign_transport_inventory', 'implementation-foreign-mcp-inventory')
 require(impl['peer'], 'mcp_foreign_transport_unreviewed', 'implementation-foreign-mcp-blocker')
 require(impl['peer'], 'HOSTINGER_BANNER_CONTROL_ROUTE', 'implementation-reviewed-hostinger-banner-control')
 require(impl['peer'], 'reviewed_non_transport_routes', 'implementation-reviewed-nontransport-inventory')
 for marker in (
-    'mad4b.mcp-provider-isolation.v2',
+    'mad4b.mcp-provider-isolation.v3',
     "const ENABLE_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_ENABLED'",
+    "const RUNTIME_SUPPRESSION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_RUNTIME_SUPPRESSION_APPROVED'",
     "const PRODUCTION_APPROVAL_FLAG = 'MAD4B_MCP_PROVIDER_ISOLATION_PRODUCTION_APPROVED'",
+    'public static function runtime_suppression_approved()',
+    'if ( ! self::configured() || ! self::runtime_suppression_approved() ) return false;',
     "add_filter( 'wpmedia_mcp_oauth_server_enabled'",
     'filter_wpmedia_oauth_server_enabled',
     "add_filter( 'mcp_adapter_create_default_server'",
@@ -187,13 +244,18 @@ for marker in (
     "'unknown_routes_fail_closed' => true",
     "'changes_provider_settings' => false",
     "'creates_authority' => false",
+    "'legacy_enable_flag_alone_is_non_mutating' => true",
+    "'runtime_suppression_requires_second_gate' => true",
 ): require(impl['isolation'], marker, 'implementation-provider-isolation')
 for forbidden in ('update_option(', 'add_option(', 'delete_option(', 'wp_remote_get(', 'wp_remote_post('):
     forbid(impl['isolation'], forbidden, 'implementation-provider-isolation-deny-only')
-require(impl['transport'], 'mad4b.mcp-transport-context.v1', 'implementation-transport-context')
+require(impl['transport'], 'mad4b.mcp-transport-context.v3', 'implementation-transport-context')
 require(impl['transport'], "'/mcp/' . $server_id", 'implementation-transport-exact-route')
 require(impl['transport'], 'mad4b_transport_route_mismatch', 'implementation-transport-route-mismatch')
 require(impl['transport'], 'MAD4B_SCP_Servers::ability_is_mounted', 'implementation-transport-mount-check')
+require(impl['transport'], 'MAD4B_SCP_Staging_Write_Authority::is_write_ability', 'implementation-chatgpt-write-delegation')
+require(impl['transport'], "return 'mad4b-write';", 'implementation-dedicated-write-authority')
+require(impl['transport'], 'mad4b_write_authority_mount_missing', 'implementation-write-authority-mount-denial')
 require(impl['connection'], 'mad4b.connection-readiness.v4', 'implementation-connection-readiness')
 forbid(impl['connection'], "'connection_certified' => false", 'implementation-no-permanent-false')
 require(impl['connection'], 'MAD4B_SCP_External_Handshake_Evidence::status()', 'implementation-external-evidence-readback')
@@ -201,13 +263,15 @@ require(impl['connection'], '$connection_certified = empty( $certification_block
 require(impl['connection'], "'external_handshake_unverified'", 'implementation-unverified-handshake-blocker')
 require(impl['connection'], "'external_handshake_stale'", 'implementation-stale-handshake-blocker')
 for marker in (
-    'mad4b.external-handshake-evidence.v1',
+    'mad4b.external-handshake-evidence.v3',
     "const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json'",
     "const SERVER_ID = 'mad4b-chatgpt'",
     "defined( 'REST_REQUEST' )", "defined( 'WP_CLI' ) && WP_CLI",
     'verified_bearer_active()', "'initialize'", "'tools/list'",
     "hash( 'sha256', $session_id )", "update_option( self::OPTION, $evidence, false )",
-    "'credential_material_stored' => false", "'stale_build_evidence'", 'build_fingerprint()',
+    "'credential_material_stored' => false", "'stale_build_evidence'", "'stale_tool_inventory_evidence'", 'build_fingerprint()',
+    "'tool_inventory_fingerprint'", "'expected_tool_inventory_fingerprint'", "'tool_inventory_match'",
+    'expected_tool_names()', 'expected_write_tool_names()', 'blocked_write_tool_names()', 'breakglass_tool_names()',
 ): require(impl['external_evidence'], marker, 'implementation-external-handshake-evidence')
 for forbidden in ("'access_token' =>", "'refresh_token' =>", "'authorization_header' =>", "'raw_token' =>", 'wp_remote_get(', 'wp_remote_post('):
     forbid(impl['external_evidence'], forbidden, 'implementation-external-evidence-secret-free')
@@ -281,7 +345,7 @@ require(read(adapter_runtime), 'mad4b.site-control-plane.runtime-plugin-adapter-
 require(read(adapter_reversible_runtime), 'mad4b.site-control-plane.runtime-reversible-adapter.v1', 'adapter-reversible-runtime')
 require(read(jetengine_runtime), 'mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1', 'jetengine-side-channel-runtime')
 require(read(isolation_static), 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3', 'provider-isolation-static')
-require(read(isolation_runtime), 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v3', 'provider-isolation-runtime')
+require(read(isolation_runtime), 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v4', 'provider-isolation-runtime')
 for marker in ('Repository plugin adapter coverage contract', 'Core adapter runtime', 'JetEngine adapter boundary'):
     require(read(adapter_workflow), marker, 'adapter-coverage-workflow')
 for marker in ('Prove explicit provider MCP isolation remains deny-only', 'mcp-provider-isolation-contract.py', 'class-mad4b-scp-external-handshake-evidence.php'):
@@ -293,4 +357,4 @@ require(tasks, 'Runtime UI smoke PASS on WordPress 6.9/latest', 'tasks-admin-run
 require(tasks, 'Production write remains NO-GO', 'tasks-production-no-go')
 require(tasks, 'T103 — Real target staging', 'tasks-staging-gate')
 
-print('mad4b.site-control-plane.spec-consistency.v6: PASS')
+print('mad4b.site-control-plane.spec-consistency.v9: PASS')

@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
- * Staging-only browser client for proving the local OAuth browser round trip.
+ * Governed non-production browser client for proving the local OAuth browser round trip.
  *
  * This class does not enable OAuth, register a hidden client, create credentials,
  * persist PKCE material, persist bearer tokens, or mark external MCP connection
@@ -14,8 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 	const CONTRACT = 'mad4b.local-oauth-browser-canary.v1';
 	const PAGE_SLUG = 'mad4b-control-plane-oauth-canary';
-	const CLIENT_ID = 'mad4b-staging-browser-canary';
-	const CLI_CLIENT_ID = 'mad4b-staging-canary';
+	const CLIENT_ID = 'mad4b-governed-browser-canary';
+	const CLI_CLIENT_ID = 'mad4b-governed-canary';
 	const CALLBACK_MARKER = 'callback';
 
 	private static $booted = false;
@@ -53,13 +53,14 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
 		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
 		$client_ready = self::client_registered();
-		$staging = 'staging' === $environment;
-		$can_run = $staging && current_user_can( 'manage_options' ) && $client_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] );
+		$target_eligible = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$can_run = $target_eligible && current_user_can( 'manage_options' ) && $client_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] );
 
 		return array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment,
-			'staging_only' => true,
+			'governed_nonproduction_only' => true,
+			'target_eligible' => (bool) $target_eligible,
 			'client_id' => self::CLIENT_ID,
 			'cli_client_id' => self::CLI_CLIENT_ID,
 			'client_registered' => $client_ready,
@@ -83,7 +84,7 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 		if ( self::PAGE_SLUG !== $page ) return;
 
 		$status = self::status();
-		if ( 'staging' !== $status['environment'] ) return;
+		if ( empty( $status['target_eligible'] ) ) return;
 		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
 		wp_enqueue_script(
 			'mad4b-scp-local-oauth-canary',
@@ -117,9 +118,9 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'MAD4B Local OAuth Browser Canary', 'mad4b-site-control-plane' ); ?></h1>
-			<p><?php echo esc_html__( 'Staging-only proof of the local browser Authorization Code + PKCE S256 round trip. This does not certify an external MCP client and does not persist OAuth tokens.', 'mad4b-site-control-plane' ); ?></p>
-			<?php if ( 'staging' !== $status['environment'] ) : ?>
-				<div class="notice notice-warning inline"><p><?php echo esc_html__( 'Canary configuration is intentionally unavailable outside Staging.', 'mad4b-site-control-plane' ); ?></p></div>
+			<p><?php echo esc_html__( 'Proof of the local browser Authorization Code + PKCE S256 round trip on an explicitly enrolled non-production site. This does not certify an external MCP client and does not persist OAuth tokens.', 'mad4b-site-control-plane' ); ?></p>
+			<?php if ( empty( $status['target_eligible'] ) ) : ?>
+				<div class="notice notice-warning inline"><p><?php echo esc_html__( 'Canary configuration is available only on an explicitly enrolled local, development, or staging site with OAuth enabled.', 'mad4b-site-control-plane' ); ?></p></div>
 			</div>
 				<?php return; ?>
 			<?php endif; ?>
@@ -135,8 +136,8 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 				</tbody>
 			</table>
 
-			<h2><?php echo esc_html__( 'Explicit Staging configuration', 'mad4b-site-control-plane' ); ?></h2>
-			<p><?php echo esc_html__( 'For a fresh Staging configuration, add the following to wp-config.php. If these constants already exist, merge both canary clients and the issuer-bound subject into the existing arrays instead of defining the constants twice.', 'mad4b-site-control-plane' ); ?></p>
+			<h2><?php echo esc_html__( 'Explicit governed-site configuration', 'mad4b-site-control-plane' ); ?></h2>
+			<p><?php echo esc_html__( 'For a fresh governed non-production configuration, add the following to wp-config.php. If these constants already exist, merge both canary clients and the issuer-bound subject into the existing arrays instead of defining the constants twice.', 'mad4b-site-control-plane' ); ?></p>
 			<textarea readonly rows="30" style="width:100%;max-width:1100px;font-family:monospace"><?php echo esc_textarea( self::configuration_snippet() ); ?></textarea>
 
 			<h2><?php echo esc_html__( 'Browser canary', 'mad4b-site-control-plane' ); ?></h2>
@@ -146,7 +147,7 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 
 			<h2><?php echo esc_html__( 'CLI fallback', 'mad4b-site-control-plane' ); ?></h2>
 			<p><code>tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1</code></p>
-			<p><?php echo esc_html__( 'The bundled PowerShell canary uses the separately pre-registered mad4b-staging-canary loopback client and intentionally never prints the access token.', 'mad4b-site-control-plane' ); ?></p>
+			<p><?php echo esc_html__( 'The bundled PowerShell canary uses the separately pre-registered mad4b-governed-canary loopback client and intentionally never prints the access token.', 'mad4b-site-control-plane' ); ?></p>
 		</div>
 		<?php
 	}
@@ -173,8 +174,8 @@ final class MAD4B_SCP_Local_OAuth_Browser_Canary {
 			. "define( 'MAD4B_MCP_OAUTH_WP_USER_ID', " . (int) $user_id . " );\n\n"
 			. "define(\n\t'MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS',\n\tarray(\n\t\t'" . esc_url_raw( $issuer ) . "' => array( 'user:" . (int) $user_id . "' ),\n\t)\n);\n\n"
 			. "define(\n\t'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',\n\tarray(\n"
-			. "\t\t'" . self::CLIENT_ID . "' => array(\n\t\t\t'client_name' => 'MAD4B Staging Browser Canary',\n\t\t\t'redirect_uris' => array( '" . esc_url_raw( $redirect ) . "' ),\n\t\t\t'application_type' => 'web',\n\t\t),\n"
-			. "\t\t'" . self::CLI_CLIENT_ID . "' => array(\n\t\t\t'client_name' => 'MAD4B Staging CLI Canary',\n\t\t\t'redirect_uris' => array( 'http://127.0.0.1:8765/callback' ),\n\t\t\t'application_type' => 'native',\n\t\t),\n"
+			. "\t\t'" . self::CLIENT_ID . "' => array(\n\t\t\t'client_name' => 'MAD4B Governed Browser Canary',\n\t\t\t'redirect_uris' => array( '" . esc_url_raw( $redirect ) . "' ),\n\t\t\t'application_type' => 'web',\n\t\t),\n"
+			. "\t\t'" . self::CLI_CLIENT_ID . "' => array(\n\t\t\t'client_name' => 'MAD4B Governed CLI Canary',\n\t\t\t'redirect_uris' => array( 'http://127.0.0.1:8765/callback' ),\n\t\t\t'application_type' => 'native',\n\t\t),\n"
 			. "\t)\n);";
 	}
 }

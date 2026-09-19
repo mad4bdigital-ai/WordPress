@@ -85,8 +85,24 @@ def main():
 
     # High-side-effect adapters default deny exceptional paths.
     require(bitflows, "mad4b_scp_bitflows_flow_allowed', false", "Bit Flows per-flow default deny")
-    require(elementor, "MAD4B_MCP_ELEMENTOR_LEGACY_WRITE_ENABLED", "Elementor legacy master opt-in")
-    require(elementor, "mad4b_scp_allow_elementor_legacy_write', false", "Elementor legacy site-policy deny")
+
+    # Elementor's old generic legacy writer must stay removed. The replacement is stronger:
+    # exact provider certification + exact document SHA + widget/key allowlists + bounded payload,
+    # post-write readback, and canonical reversible restoration.
+    require(elementor, "MAD4B_MCP_ELEMENTOR_LEGACY_WRITE_ENABLED", "Elementor legacy configuration visibility")
+    require(elementor, "legacy_generic_writer_used_by_governed_fallback'] = false", "Elementor legacy writer disabled")
+    require(elementor, "exact_provider_certified()", "Elementor exact provider certification")
+    require(elementor, "mad4b_elementor_provider_not_certified", "Elementor uncertified provider rejection")
+    require(elementor, "validate_settings_policy", "Elementor bounded widget/key policy")
+    require(elementor, "mad4b_elementor_setting_policy_denied", "Elementor unallowlisted setting rejection")
+    require(elementor, "expected_sha256", "Elementor optimistic document guard")
+    require(elementor, "mad4b_elementor_readback_mismatch", "Elementor post-write readback verification")
+    require(elementor, "mad4b.rollback.elementor-widget-settings.v1", "Elementor reversible mutation contract")
+    require(elementor, "restore_reversible_state", "Elementor bounded rollback implementation")
+    forbid(elementor, "legacy_explicit_opt_in", "Elementor legacy direct writer mode")
+    forbid(elementor, "apply_filters( 'mad4b_scp_allow_elementor_legacy_write'", "Elementor legacy generic writer policy surface")
+    forbid(elementor, "merge_widget_settings", "Elementor legacy generic document merge writer")
+
     require(jetengine, "mad4b_scp_jetengine_field_write_allowed', false", "JetEngine unknown-field default deny")
     require(jetengine, "$field !== sanitize_key( $field )", "JetEngine exact-key rejection")
     require(jetengine, "is_sensitive_meta_key", "JetEngine secret-like meta classifier")
