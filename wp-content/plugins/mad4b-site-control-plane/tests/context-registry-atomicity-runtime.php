@@ -196,6 +196,7 @@ $failed_upsert = MAD4B_SCP_Context_Authority::upsert_source(
 		'external_root_id' => 'folder-audit-compensation',
 		'label' => 'Audit Compensation Folder',
 		'write_policy' => 'repair_only',
+		'write_policy_confirmed' => true,
 	)
 );
 mad4b_atomic_assert( is_wp_error( $failed_upsert ), 'Source upsert must fail when append-only audit commit fails.', $failed_upsert );
@@ -211,6 +212,7 @@ $successful_upsert = MAD4B_SCP_Context_Authority::upsert_source(
 		'external_root_id' => 'folder-audited-success',
 		'label' => 'Audited Source Folder',
 		'write_policy' => 'repair_only',
+		'write_policy_confirmed' => true,
 	)
 );
 mad4b_atomic_assert( ! is_wp_error( $successful_upsert ), 'Healthy source upsert must commit with audit evidence.', $successful_upsert );
