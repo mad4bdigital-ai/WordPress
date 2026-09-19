@@ -194,6 +194,10 @@ require(adapter, "capture_reversible_state", "Drive reversible capture")
 require(adapter, "read_reversible_state", "Drive reversible readback")
 require(adapter, "restore_reversible_state", "Drive reversible restore")
 assert "context/create-drive-asset' => 'mad4b.rollback." not in adapter, "Drive create must not claim pre-target reversibility"
+write_capability = drive.split("public static function write_capability_status()",1)[1].split("public static function asset_write_capabilities",1)[0]
+require(write_capability, "'allowed_operations' => array( 'update', 'recreate' )", "only certified Drive operations are advertised")
+require(write_capability, "'create' => 'mad4b_google_drive_create_rollback_not_certified'", "create capability advertises rollback blocker")
+require(adapter, "mad4b_google_drive_create_rollback_not_certified", "arbitrary create denied until exact rollback certification")
 require(adapter, "google_drive_write_scope_required", "write mount requires OAuth write capability")
 require(adapter, "source_required_for_write", "write mount requires selected Context source")
 require(adapter, "context_provider_contract_status", "first-party Context provider certification")
@@ -304,4 +308,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v28: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v29: PASS")

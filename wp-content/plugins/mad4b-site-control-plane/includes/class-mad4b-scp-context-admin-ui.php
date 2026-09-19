@@ -230,7 +230,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$credentials = MAD4B_SCP_Google_Drive_Context::credentials_status();
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( '1. Google OAuth setup', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'Create a Google OAuth Web application, enable Google Drive API, and add this exact redirect URI. Start read-only, or explicitly grant read + write when you want governed asset create/update/recreate.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'Create a Google OAuth Web application, enable Google Drive API, and add this exact redirect URI. Start read-only, or explicitly grant read + write when you want governed asset update/recreate. Arbitrary new-file create remains disabled until its exact rollback contract is certified.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p><label><strong>' . esc_html__( 'Authorized redirect URI', 'mad4b-site-control-plane' ) . '</strong></label><br><input type="text" readonly class="large-text code" value="' . esc_attr( $credentials['redirect_uri'] ) . '"></p>';
 		if ( ! empty( $credentials['configured_by_constants'] ) ) {
 			echo '<div class="notice notice-success inline"><p>' . esc_html__( 'OAuth client credentials are managed by wp-config constants. Secrets are not editable here.', 'mad4b-site-control-plane' ) . '</p></div>';
@@ -272,7 +272,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '"><input type="hidden" name="access_mode" value="read_write">';
-			echo '<h3>' . esc_html__( 'Read + Write', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'Adds Drive create/update/recreate capability. MAD4B still requires exact write authority and one-time approval for every mutation.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<h3>' . esc_html__( 'Read + Write', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'Adds Drive provider capability for governed update/recreate. Arbitrary create remains unmounted until exact rollback is certified; every mounted mutation still requires exact write authority and one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
 			submit_button( __( 'Connect Read + Write', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 			echo '</form></div></div>';
 			return;
@@ -301,7 +301,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			submit_button( __( 'Upgrade to Read + Write', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 			echo '</form></div>';
 		} else {
-			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Drive write capability is available.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Create, update and recreate remain mounted on mad4b-write and require exact NHI grant plus one-time approval. This page never executes those mutations directly.', 'mad4b-site-control-plane' ) . '</p><p class="description">' . esc_html__( 'To return to least-privilege Read-only mode, disconnect and revoke this grant first, then reconnect Read-only.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Drive write capability is available.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Update and recreate can mount on mad4b-write and require exact NHI grant plus one-time approval. Arbitrary create remains blocked until exact create rollback is certified. This page never executes those mutations directly.', 'mad4b-site-control-plane' ) . '</p><p class="description">' . esc_html__( 'To return to least-privilege Read-only mode, disconnect and revoke this grant first, then reconnect Read-only.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 		echo '<p><a class="button button-primary" href="' . esc_url( self::tab_url( 'google-drive', array( 'folder' => 'root' ) ) ) . '">' . esc_html__( 'Choose Source Folder', 'mad4b-site-control-plane' ) . '</a></p>';
 		echo '<form class="mad4b-context-folder-jump" method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '"><input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '"><input type="hidden" name="tab" value="google-drive"><label><strong>' . esc_html__( 'Open a shared folder by ID', 'mad4b-site-control-plane' ) . '</strong><span class="description"> ' . esc_html__( 'Useful for Shared Drives or folders that do not appear under My Drive.', 'mad4b-site-control-plane' ) . '</span></label><div><input type="text" name="folder" class="regular-text code" placeholder="Google Drive folder ID"> ';
@@ -319,7 +319,6 @@ final class MAD4B_SCP_Context_Admin_UI {
 	private static function render_write_governance_readiness() {
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		$abilities = array(
-			'context/create-drive-asset',
 			'context/update-drive-asset',
 			'context/recreate-drive-asset',
 		);
@@ -345,7 +344,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$context_grant_blockers = array_values( array_unique( $context_grant_blockers ) );
 		$runtime_reconciled = ! empty( $truth['runtime_reconciled'] );
 		$authority_ready = ! empty( $truth['ready'] );
-		$desired_write_ops = array_sum( $policy_ops );
+		$desired_write_ops = (int) $policy_ops['update'] + (int) $policy_ops['recreate'];
 		$provider_write_ready = ! empty( $connection['write_available'] );
 		$context_authority_ready = $provider_write_ready && $desired_write_ops > 0 && ! empty( $mounted ) && empty( $context_grant_blockers ) && $runtime_reconciled && $authority_ready;
 
@@ -353,8 +352,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<p>' . esc_html__( 'Google OAuth is provider capability only. MAD4B write authority is evaluated separately from the live write inventory and exact grants.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="mad4b-context-governance-grid">';
 		self::governance_cell( 'Google provider access', $provider_write_ready ? 'Read + Write' : ( ! empty( $connection['read_available'] ) ? 'Read-only' : 'Unavailable' ), $provider_write_ready ? 'complete' : 'attention' );
-		self::governance_cell( 'Source policy', sprintf( 'create %d · update %d · recreate %d', $policy_ops['create'], $policy_ops['update'], $policy_ops['recreate'] ), $desired_write_ops > 0 ? 'complete' : 'pending' );
-		self::governance_cell( 'mad4b-write mount', count( $mounted ) . '/3 Context abilities', count( $mounted ) > 0 ? 'complete' : 'pending' );
+		self::governance_cell( 'Source policy', sprintf( 'create %d (reserved) · update %d · recreate %d', $policy_ops['create'], $policy_ops['update'], $policy_ops['recreate'] ), $desired_write_ops > 0 ? 'complete' : 'pending' );
+		self::governance_cell( 'mad4b-write mount', count( $mounted ) . '/2 certified Context abilities', count( $mounted ) > 0 ? 'complete' : 'pending' );
 		self::governance_cell( 'Exact authority', $context_authority_ready ? 'Ready' : ( $desired_write_ops > 0 && $provider_write_ready ? 'Reconciliation required' : 'Not requested' ), $context_authority_ready ? 'complete' : ( $desired_write_ops > 0 && $provider_write_ready ? 'attention' : 'pending' ) );
 		echo '</div>';
 
@@ -422,7 +421,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div class="mad4b-context-source-mode">';
 		echo '<label><input type="radio" name="write_policy" value="read_only"> <strong>' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Scan and use context without Drive mutations.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '<label><input type="radio" name="write_policy" value="repair_only" checked> <strong>' . esc_html__( 'Repair existing assets', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Update existing assets and recreate ones confirmed unavailable. No unrelated new files.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label><input type="radio" name="write_policy" value="managed"> <strong>' . esc_html__( 'Managed library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Create, update and recreate inside this selected folder. Every write still needs governed approval.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="managed"> <strong>' . esc_html__( 'Managed library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Managed policy reserves future create authority, but only update and recreate are currently certifiable. Every mounted write still needs governed approval.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '</div>';
 		echo '<p><label for="mad4b-task-scope"><strong>' . esc_html__( 'Task scope', 'mad4b-site-control-plane' ) . '</strong> <span class="description">' . esc_html__( '(required only for Task-only Source)', 'mad4b-site-control-plane' ) . '</span></label><br><input id="mad4b-task-scope" type="text" name="task_scope" class="regular-text" placeholder="e.g. luxor-family-blog-2026"></p>';
 		echo '<p><label><input type="checkbox" name="recursive" value="1" checked> ' . esc_html__( 'Include subfolders', 'mad4b-site-control-plane' ) . '</label></p>';

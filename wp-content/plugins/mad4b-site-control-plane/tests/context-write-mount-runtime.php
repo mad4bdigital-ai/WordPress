@@ -109,8 +109,10 @@ mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibil
 mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibility( 'context/recreate-drive-asset' ), 'Repair-only source must mount governed recreate when OAuth write is available.' );
 
 MAD4B_SCP_Google_Drive_Context::$status['create_source_count'] = 1;
-mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibility( 'context/create-drive-asset' ), 'Managed source must mount governed create when OAuth write is available.' );
+$result = $adapter->mutation_ability_runtime_eligibility( 'context/create-drive-asset' );
+mad4b_context_mount_assert( is_wp_error( $result ), 'Managed source must not mount arbitrary create before exact create rollback is certified.', $result );
+mad4b_context_mount_assert( 'mad4b_google_drive_create_rollback_not_certified' === $result->get_error_code(), 'Create mount must expose the rollback-certification blocker.', $result->get_error_code() );
 
 mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibility( 'context/status' ), 'Read ability eligibility must remain unaffected by write gates.' );
 
-echo "mad4b.site-control-plane.context-write-mount.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-write-mount.runtime.v3: PASS\n";
