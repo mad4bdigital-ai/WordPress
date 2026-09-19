@@ -149,6 +149,11 @@ mad4b_context_policy_assert( isset( $raw_assets_after[ $mode_mismatch_asset ] ),
 
 $visible_after = MAD4B_SCP_Context_Authority::assets();
 mad4b_context_policy_assert( isset( $visible_after[ $valid_asset ] ), 'Authorized asset must remain visible after partial refresh.' );
-mad4b_context_policy_assert( ! isset( $visible_after[ $root_asset ], $visible_after[ $orphan_asset ], $visible_after[ $mode_mismatch_asset ] ), 'Raw hidden assets must remain excluded from the live Authority projection after mutation.' );
+mad4b_context_policy_assert(
+	! isset( $visible_after[ $root_asset ] )
+	&& ! isset( $visible_after[ $orphan_asset ] )
+	&& ! isset( $visible_after[ $mode_mismatch_asset ] ),
+	'Every raw hidden asset must remain excluded from the live Authority projection after mutation.'
+);
 
 echo "mad4b.site-control-plane.context-source-write-policy.runtime.v4: PASS\n";
