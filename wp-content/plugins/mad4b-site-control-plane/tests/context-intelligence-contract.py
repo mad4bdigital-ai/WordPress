@@ -75,11 +75,15 @@ for marker in [
     if marker not in intelligence:
         raise SystemExit(f"Missing reference/retrieval isolation marker: {marker}")
 
-reference_block = adapter.split("'context/reference-profile'", 1)[1].split("'context/retrieve'", 1)[0]
+reference_registration = "$this->add_ability(\n\t\t\t'context/reference-profile'"
+retrieve_registration = "$this->add_ability(\n\t\t\t'context/retrieve'"
+if reference_registration not in adapter or retrieve_registration not in adapter:
+    raise SystemExit("Context Intelligence ability registration blocks are missing")
+reference_block = adapter.split(reference_registration, 1)[1].split(retrieve_registration, 1)[0]
 if "'task_scope'" not in reference_block:
     raise SystemExit("Context reference-profile ability must expose bounded task_scope for task attachments")
 
 if "class-mad4b-scp-context-intelligence.php" not in main:
     raise SystemExit("Context Intelligence runtime is not loaded by the plugin entrypoint")
 
-print("mad4b.context-intelligence.contract.v3: PASS")
+print("mad4b.context-intelligence.contract.v4: PASS")
