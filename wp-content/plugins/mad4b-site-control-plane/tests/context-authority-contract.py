@@ -121,6 +121,7 @@ require(preflight, "MAX_CONTEXT_BYTES", "bounded Context envelope")
 require(preflight, "required_context_asset_unreadable", "provider-read fail-closed")
 require(preflight, "required_context_sets_missing", "missing required category fail-closed")
 require(preflight, "review_status", "human review carried into Context receipt")
+require(preflight, "'approved' !== ( isset( $asset['review_status'] )", "mandatory governed assets require human approval")
 
 # Guided UX makes OAuth capability vs MAD4B authority explicit.
 require(admin, "Connect Read-only", "read-only connect UX")
@@ -136,4 +137,4 @@ require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v4: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v5: PASS")
