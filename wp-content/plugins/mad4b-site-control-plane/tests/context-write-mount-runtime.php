@@ -52,6 +52,10 @@ class MAD4B_SCP_Google_Drive_Context {
 	public static function restore_recreate_state() { return true; }
 }
 
+class MAD4B_SCP_External_Handshake_Evidence {
+	public static function build_fingerprint() { return str_repeat( 'c', 64 ); }
+}
+
 require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-context-adapter.php';
 
 function mad4b_context_mount_assert( $condition, $message, $context = null ) {
@@ -65,6 +69,8 @@ $adapter = new MAD4B_SCP_Context_Adapter();
 $contract = $adapter->context_provider_contract_status();
 mad4b_context_mount_assert( ! empty( $contract['ready'] ), 'First-party Context provider contract must certify exact runtime surfaces.', $contract );
 mad4b_context_mount_assert( preg_match( '/^[a-f0-9]{64}$/', $contract['artifact_fingerprint'] ), 'Provider contract must expose exact critical-file artifact fingerprint.', $contract );
+mad4b_context_mount_assert( str_repeat( 'c', 64 ) === $contract['control_plane_build_fingerprint'], 'Provider contract must bind the exact Control Plane build fingerprint.', $contract );
+mad4b_context_mount_assert( 'runtime_structural_plus_build_bound_artifact_fingerprint' === $contract['certification_mode'], 'Provider certification mode must remain build-bound.', $contract );
 
 MAD4B_SCP_Google_Drive_Context::$status = array(
 	'write_available' => false,
@@ -107,4 +113,4 @@ mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibil
 
 mad4b_context_mount_assert( true === $adapter->mutation_ability_runtime_eligibility( 'context/status' ), 'Read ability eligibility must remain unaffected by write gates.' );
 
-echo "mad4b.site-control-plane.context-write-mount.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-write-mount.runtime.v2: PASS\n";
