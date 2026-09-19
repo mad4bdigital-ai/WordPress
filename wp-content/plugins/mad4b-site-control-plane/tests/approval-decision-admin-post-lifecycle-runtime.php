@@ -122,6 +122,7 @@ class MAD4B_SCP_Staging_Write_Authority {
 	public static $reconcile_calls = 0;
 	public static $force_block = false;
 	public static function effective() { return self::$ready; }
+	public static function status() { return array( 'ready' => self::$ready, 'state' => self::$ready ? 'ready' : 'blocked' ); }
 	public static function reconcile() {
 		++self::$reconcile_calls;
 		if ( self::$force_block ) { self::$ready = false; return array( 'ready' => false, 'state' => 'blocked' ); }
@@ -151,14 +152,16 @@ $request = array(
 );
 
 // Exact validation happens first, then bounded request-local runtime preparation,
-// then exactly one human transition.
-MAD4B_SCP_Staging_Write_Authority::$ready = false;
+// then exactly one human transition. Authority must already be explicitly
+// reconciled by the governed authority surface; approval itself is read-only
+// with respect to grants/subjects/authority reconciliation.
+MAD4B_SCP_Staging_Write_Authority::$ready = true;
 $result = MAD4B_SCP_Approval_Decision_Admin::decide( $request );
 mad4b_lifecycle_assert( is_array( $result ) && 'approved' === $result['status'], 'Validated admin-post decision must reconcile request-local authority and approve the exact ticket.' );
 mad4b_lifecycle_assert( 1 === $GLOBALS['mad4b_prime_calls'], 'Decision lifecycle must prime REST/MCP runtime exactly once.' );
 mad4b_lifecycle_assert( array( 'admin_approval_decision' ) === MAD4B_SCP_MCP_Registration_Rescue::$calls, 'Decision lifecycle must run bounded registration rescue.' );
-mad4b_lifecycle_assert( 1 === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Decision lifecycle must reconcile write authority in the same request.' );
-mad4b_lifecycle_assert( MAD4B_SCP_Staging_Write_Authority::effective(), 'Request-local authority must be ready after reconciliation.' );
+mad4b_lifecycle_assert( 0 === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Human approval must not reconcile write authority or mutate grants.' );
+mad4b_lifecycle_assert( MAD4B_SCP_Staging_Write_Authority::effective(), 'Previously reconciled authority must remain ready during approval.' );
 mad4b_lifecycle_assert( 1 === MAD4B_SCP_Approval_Tickets::$decisions, 'Human approval must perform only the ticket transition once.' );
 
 // Exact validation must happen before priming/reconciliation side effects.
@@ -172,8 +175,8 @@ mad4b_lifecycle_assert( $prime_before === $GLOBALS['mad4b_prime_calls'], 'Invali
 mad4b_lifecycle_assert( $reconcile_before === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Invalid candidate must not reconcile write authority.' );
 mad4b_lifecycle_assert( $decisions_before === MAD4B_SCP_Approval_Tickets::$decisions, 'Invalid candidate must not decide a ticket.' );
 
-// Runtime priming failure remains fail-closed.
-MAD4B_SCP_Staging_Write_Authority::$ready = false;
+// Runtime priming failure remains fail-closed even when authority was already reconciled.
+MAD4B_SCP_Staging_Write_Authority::$ready = true;
 $GLOBALS['mad4b_prime_fail'] = true;
 $decisions_before = MAD4B_SCP_Approval_Tickets::$decisions;
 $result = MAD4B_SCP_Approval_Decision_Admin::decide( $request );
@@ -182,12 +185,12 @@ mad4b_lifecycle_assert( $decisions_before === MAD4B_SCP_Approval_Tickets::$decis
 $GLOBALS['mad4b_prime_fail'] = false;
 
 MAD4B_SCP_Staging_Write_Authority::$ready = false;
-MAD4B_SCP_Staging_Write_Authority::$force_block = true;
+$reconcile_before = MAD4B_SCP_Staging_Write_Authority::$reconcile_calls;
 $decisions_before = MAD4B_SCP_Approval_Tickets::$decisions;
 $result = MAD4B_SCP_Approval_Decision_Admin::decide( $request );
-mad4b_lifecycle_assert( mad4b_lifecycle_error( $result, 'mad4b_approval_decision_write_authority_not_ready' ), 'Blocked authority after reconciliation must fail closed.' );
+mad4b_lifecycle_assert( mad4b_lifecycle_error( $result, 'mad4b_approval_decision_write_authority_not_ready' ), 'Blocked persisted authority must fail closed without self-repair.' );
+mad4b_lifecycle_assert( $reconcile_before === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'Blocked approval must not reconcile write authority.' );
 mad4b_lifecycle_assert( $decisions_before === MAD4B_SCP_Approval_Tickets::$decisions, 'Blocked authority must not decide ticket.' );
-MAD4B_SCP_Staging_Write_Authority::$force_block = false;
 
 // GET Approval Console is read-only and removes runtime mutation lifecycle hooks.
 $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -208,4 +211,4 @@ $GLOBALS['mad4b_removed_actions'] = array();
 MAD4B_SCP_Approval_Decision_Admin::protect_read_model_hot_path();
 mad4b_lifecycle_assert( empty( $GLOBALS['mad4b_removed_actions'] ), 'Unrelated wp-admin GET must not remove MAD4B lifecycle hooks.' );
 
-echo "mad4b.approval-decision.admin-post-lifecycle.v4: PASS\n";
+echo "mad4b.approval-decision.admin-post-lifecycle.v5: PASS\n";
