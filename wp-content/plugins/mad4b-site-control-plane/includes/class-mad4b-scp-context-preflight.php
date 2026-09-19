@@ -166,6 +166,8 @@ final class MAD4B_SCP_Context_Preflight {
 
 		if ( empty( $profile ) ) $blockers[] = 'brand_context_profile_unconfigured';
 		if ( empty( $authority['site_uuid'] ) ) $blockers[] = 'context_site_binding_unavailable';
+		if ( ! empty( $authority['source_registry_capacity_exceeded'] ) ) $blockers[] = 'context_source_registry_capacity_exceeded';
+		if ( ! empty( $authority['asset_registry_capacity_exceeded'] ) ) $blockers[] = 'context_asset_registry_capacity_exceeded';
 		if ( ! empty( $authority['partial_source_count'] ) ) $blockers[] = 'governed_context_source_scan_incomplete';
 		if ( ! empty( $authority['required_stale_asset_count'] ) ) $blockers[] = 'mandatory_context_contains_stale_assets';
 		if ( ! empty( $authority['required_unavailable_asset_count'] ) ) $blockers[] = 'mandatory_context_contains_unavailable_assets';
