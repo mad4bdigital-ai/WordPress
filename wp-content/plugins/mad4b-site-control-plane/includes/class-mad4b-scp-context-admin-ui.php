@@ -419,7 +419,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<tr><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( $asset['path'] ) . '</span></td>';
 			echo '<td>' . esc_html( $asset['source_mode'] ) . '</td><td><code>' . esc_html( $asset['category'] ) . '</code></td><td>' . esc_html( $asset['authority_class'] ) . '</td>';
 			echo '<td>' . esc_html( ! empty( $asset['required'] ) ? 'yes' : 'no' ) . '</td>';
-			echo '<td><strong>' . esc_html( null === $asset['quality_score'] ? '—' : (string) $asset['quality_score'] . '/100' ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( isset( $quality['mode'] ) ? $quality['mode'] : '' ) . '</span></td>';
+			$quality_profile = isset( $quality['profile'] ) ? (string) $quality['profile'] : 'legacy';
+			$quality_confidence = isset( $quality['confidence'] ) ? (float) $quality['confidence'] : null;
+			echo '<td><strong>' . esc_html( null === $asset['quality_score'] ? '—' : (string) $asset['quality_score'] . '/100' ) . '</strong>';
+			echo '<br><span class="mad4b-context-badge">' . esc_html( $quality_profile ) . '</span>';
+			echo '<br><span class="mad4b-scp-muted">' . esc_html( isset( $quality['mode'] ) ? $quality['mode'] : '' );
+			if ( null !== $quality_confidence ) echo ' · ' . esc_html( number_format_i18n( $quality_confidence * 100, 0 ) . '% score confidence' );
+			echo '</span></td>';
 			echo '<td>' . esc_html( number_format_i18n( (float) $asset['classification_confidence'] * 100, 0 ) . '%' ) . '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['classification_source'] ) ? $asset['classification_source'] : '' ) . '</span></td>';
 			echo '<td><strong>' . esc_html( $asset['status'] ) . '</strong>';
 			if ( 'unavailable' === $asset['status'] ) {
@@ -461,22 +467,29 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$groups = array();
 		foreach ( $assets as $asset ) {
 			$category = isset( $asset['category'] ) ? $asset['category'] : 'uncategorized';
-			if ( ! isset( $groups[ $category ] ) ) $groups[ $category ] = array( 'count' => 0, 'scores' => array(), 'provisional' => 0 );
+			if ( ! isset( $groups[ $category ] ) ) $groups[ $category ] = array( 'count' => 0, 'scores' => array(), 'confidences' => array(), 'profiles' => array(), 'provisional' => 0 );
 			++$groups[ $category ]['count'];
 			if ( null !== $asset['quality_score'] ) $groups[ $category ]['scores'][] = (int) $asset['quality_score'];
-			if ( ! empty( $asset['quality']['provisional'] ) ) ++$groups[ $category ]['provisional'];
+			$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
+			if ( isset( $quality['confidence'] ) ) $groups[ $category ]['confidences'][] = (float) $quality['confidence'];
+			if ( ! empty( $quality['profile'] ) ) $groups[ $category ]['profiles'][] = (string) $quality['profile'];
+			if ( ! empty( $quality['provisional'] ) ) ++$groups[ $category ]['provisional'];
 		}
 		ksort( $groups );
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Content Quality', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Quality and authority are separate. A high-quality reference never outranks an authoritative Brand Core asset. Scores are transparent and show whether content or metadata was analyzed.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( ! $groups ) { echo '<p>' . esc_html__( 'No quality evidence yet.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Category</th><th>Assets</th><th>Average score</th><th>Metadata-only</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Category</th><th>Quality profile</th><th>Assets</th><th>Average score</th><th>Score confidence</th><th>Metadata-only</th></tr></thead><tbody>';
 		foreach ( $groups as $category => $group ) {
 			$average = $group['scores'] ? (int) round( array_sum( $group['scores'] ) / count( $group['scores'] ) ) : null;
-			echo '<tr><td><code>' . esc_html( $category ) . '</code></td><td>' . esc_html( (string) $group['count'] ) . '</td><td>' . esc_html( null === $average ? '—' : $average . '/100' ) . '</td><td>' . esc_html( (string) $group['provisional'] ) . '</td></tr>';
+			$confidence = $group['confidences'] ? array_sum( $group['confidences'] ) / count( $group['confidences'] ) : null;
+			$profiles = array_values( array_unique( $group['profiles'] ) );
+			$profile = $profiles ? implode( ', ', $profiles ) : 'legacy';
+			echo '<tr><td><code>' . esc_html( $category ) . '</code></td><td><code>' . esc_html( $profile ) . '</code></td><td>' . esc_html( (string) $group['count'] ) . '</td><td>' . esc_html( null === $average ? '—' : $average . '/100' ) . '</td><td>' . esc_html( null === $confidence ? '—' : number_format_i18n( $confidence * 100, 0 ) . '%' ) . '</td><td>' . esc_html( (string) $group['provisional'] ) . '</td></tr>';
 		}
 		echo '</tbody></table></div>';
-		echo '<h3>' . esc_html__( 'Scoring dimensions', 'mad4b-site-control-plane' ) . '</h3><p><code>freshness · completeness · structure · source_quality · extractability</code></p>';
+		echo '<h3>' . esc_html__( 'Scoring dimensions', 'mad4b-site-control-plane' ) . '</h3><p><code>freshness · completeness · structure · specificity · source_quality · language_quality · retrieval_quality · extractability</code></p>';
+		echo '<p class="description">' . esc_html__( 'Weights change by quality profile. Authority is never part of the quality score; Brand Authority and human review remain separate governance dimensions.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '</div>';
 	}
 
