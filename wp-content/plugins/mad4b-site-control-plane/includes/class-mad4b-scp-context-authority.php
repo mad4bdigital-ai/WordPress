@@ -203,6 +203,23 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+	private static function recursive_scope_expansion_requires_confirmation( array $current, $recursive ) {
+		return ! empty( $current ) && empty( $current['recursive'] ) && (bool) $recursive;
+	}
+
+	private static function assert_recursive_scope_transition( array $current, $recursive, $confirmed ) {
+		if ( ! self::recursive_scope_expansion_requires_confirmation( $current, $recursive ) ) return true;
+		if ( $confirmed ) return true;
+		return new WP_Error(
+			'mad4b_context_source_recursive_confirmation_required',
+			'Expanding an existing Context source to include subfolders requires explicit confirmation.',
+			array(
+				'previous_recursive' => false,
+				'requested_recursive' => true,
+			)
+		);
+	}
+
 	public static function source_write_policy( $source_id ) {
 		$source = self::source( $source_id );
 		return empty( $source ) ? 'read_only' : ( isset( $source['write_policy'] ) ? (string) $source['write_policy'] : 'read_only' );
@@ -310,6 +327,13 @@ final class MAD4B_SCP_Context_Authority {
 				$transition = self::assert_write_policy_transition( $previous_write_policy, $write_policy, ! empty( $input['write_policy_confirmed'] ) );
 				if ( is_wp_error( $transition ) ) return $transition;
 
+				$previous_recursive = ! empty( $current ) ? ! empty( $current['recursive'] ) : null;
+				$recursive = array_key_exists( 'recursive', $input )
+					? ! empty( $input['recursive'] )
+					: ( null === $previous_recursive ? true : $previous_recursive );
+				$recursive_transition = self::assert_recursive_scope_transition( $current, $recursive, ! empty( $input['recursive_scope_confirmed'] ) );
+				if ( is_wp_error( $recursive_transition ) ) return $recursive_transition;
+
 				$record = array(
 					'contract' => self::SOURCE_CONTRACT,
 					'source_id' => $source_id,
@@ -321,7 +345,7 @@ final class MAD4B_SCP_Context_Authority {
 					'label' => $label,
 					'task_scope' => 'task_attachment' === $mode ? $task_scope : '',
 					'write_policy' => $write_policy,
-					'recursive' => ! isset( $input['recursive'] ) || ! empty( $input['recursive'] ),
+					'recursive' => (bool) $recursive,
 					'status' => isset( $current['status'] ) ? (string) $current['status'] : 'selected',
 					'last_synced_at' => isset( $current['last_synced_at'] ) ? (string) $current['last_synced_at'] : '',
 					'last_scan_complete' => ! empty( $current['last_scan_complete'] ),
@@ -346,7 +370,10 @@ final class MAD4B_SCP_Context_Authority {
 						'write_policy' => $write_policy,
 						'write_policy_escalated' => self::write_policy_escalation_requires_confirmation( $previous_write_policy, $write_policy ),
 						'write_policy_confirmed' => ! empty( $input['write_policy_confirmed'] ),
+						'previous_recursive' => null === $previous_recursive ? null : (bool) $previous_recursive,
 						'recursive' => ! empty( $record['recursive'] ),
+						'recursive_scope_escalated' => self::recursive_scope_expansion_requires_confirmation( $current, $recursive ),
+						'recursive_scope_confirmed' => ! empty( $input['recursive_scope_confirmed'] ),
 						'created' => empty( $current ),
 					),
 					'ok'

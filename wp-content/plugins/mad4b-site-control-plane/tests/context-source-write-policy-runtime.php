@@ -160,6 +160,51 @@ $new_source = MAD4B_SCP_Context_Authority::upsert_source(
 	)
 );
 mad4b_context_policy_assert( ! is_wp_error( $new_source ) && 'read_only' === $new_source['write_policy'], 'New governed sources must default to read-only server-side.' );
+mad4b_context_policy_assert( empty( $new_source['recursive'] ), 'Explicit non-recursive source creation must remain non-recursive.' );
+
+$recursive_omitted = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-new-default',
+		'label' => 'Least Privilege Source',
+	)
+);
+mad4b_context_policy_assert( ! is_wp_error( $recursive_omitted ) && empty( $recursive_omitted['recursive'] ), 'Existing non-recursive source must preserve its boundary when recursive is omitted.' );
+
+$recursive_escalation_denied = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-new-default',
+		'label' => 'Least Privilege Source',
+		'recursive' => true,
+	)
+);
+mad4b_context_policy_assert( is_wp_error( $recursive_escalation_denied ) && 'mad4b_context_source_recursive_confirmation_required' === $recursive_escalation_denied->get_error_code(), 'Non-recursive to recursive source expansion must require explicit confirmation.' );
+
+$recursive_escalated = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-new-default',
+		'label' => 'Least Privilege Source',
+		'recursive' => true,
+		'recursive_scope_confirmed' => true,
+	)
+);
+mad4b_context_policy_assert( ! is_wp_error( $recursive_escalated ) && ! empty( $recursive_escalated['recursive'] ), 'Confirmed recursive source expansion must succeed.' );
+
+$recursive_reduced = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-new-default',
+		'label' => 'Least Privilege Source',
+		'recursive' => false,
+	)
+);
+mad4b_context_policy_assert( ! is_wp_error( $recursive_reduced ) && empty( $recursive_reduced['recursive'] ), 'Recursive scope reduction must remain frictionless and require no confirmation.' );
 
 $new_source_escalation_denied = MAD4B_SCP_Context_Authority::upsert_source(
 	array(
@@ -225,4 +270,4 @@ $policy_scan_events = array_values( array_filter( MAD4B_SCP_Audit::$events, stat
 mad4b_context_policy_assert( 1 === count( $policy_scan_events ), 'Partial authorized source refresh must append one governance scan event.' );
 mad4b_context_policy_assert( 'partial' === $policy_scan_events[0]['status'], 'Partial authorized source refresh audit must remain explicitly partial.' );
 
-echo "mad4b.site-control-plane.context-source-write-policy.runtime.v6: PASS\n";
+echo "mad4b.site-control-plane.context-source-write-policy.runtime.v7: PASS\n";
