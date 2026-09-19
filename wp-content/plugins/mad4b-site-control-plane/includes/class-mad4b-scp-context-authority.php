@@ -376,7 +376,7 @@ final class MAD4B_SCP_Context_Authority {
 				$profile = self::profile();
 				if ( ! empty( $profile ) ) {
 					$profile['context_fingerprint'] = self::context_fingerprint( $records, $sources );
-					$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $records );
+					$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $records, $sources );
 					if ( $scan_complete ) $profile['last_verified_at'] = $scan_completed_at;
 					$profile['status'] = $scan_complete ? 'indexed' : 'partial_index';
 					$profile['updated_at'] = gmdate( 'c' );
@@ -399,7 +399,7 @@ final class MAD4B_SCP_Context_Authority {
 					'scan_complete' => (bool) $scan_complete,
 					'scan_generation' => $scan_generation,
 					'context_fingerprint' => self::context_fingerprint( $records, $sources ),
-					'authority_manifest_fingerprint' => self::authority_manifest_fingerprint( $records ),
+					'authority_manifest_fingerprint' => self::authority_manifest_fingerprint( $records, $sources ),
 				);
 			}
 		);
