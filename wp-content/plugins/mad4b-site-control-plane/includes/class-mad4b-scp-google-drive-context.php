@@ -395,6 +395,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( 'unavailable' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_requires_unavailable_asset', 'Recreate is only allowed for a Context asset confirmed unavailable by the latest source scan.' );
 		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '', 'recreate' );
 		if ( is_wp_error( $source ) ) return $source;
+		$absence = self::assert_original_file_absent( isset( $asset['file_id'] ) ? $asset['file_id'] : '' );
+		if ( is_wp_error( $absence ) ) return $absence;
 		$content = (string) $content;
 		$content_guard = self::validate_write_content( $content );
 		if ( is_wp_error( $content_guard ) ) return $content_guard;
@@ -459,6 +461,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $source ) ) return $source;
 		$status = isset( $asset['status'] ) ? (string) $asset['status'] : '';
 		$replacement_asset_id = isset( $asset['replacement_asset_id'] ) ? (string) $asset['replacement_asset_id'] : '';
+		if ( 'unavailable' === $status && '' === $replacement_asset_id ) {
+			$absence = self::assert_original_file_absent( isset( $asset['file_id'] ) ? $asset['file_id'] : '' );
+			if ( is_wp_error( $absence ) ) return $absence;
+		}
 		$state = array(
 			'asset_id' => (string) $asset['asset_id'],
 			'source_id' => (string) $asset['source_id'],
@@ -704,6 +710,32 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$updated = self::authorized_json_request( 'POST', $url . ':batchUpdate', wp_json_encode( array( 'requests' => $requests ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), 'application/json; charset=UTF-8', 'mad4b_google_docs_update_failed' );
 		if ( is_wp_error( $updated ) ) return $updated;
 		return self::get_file_metadata( $file_id );
+	}
+
+	private static function provider_absence_from_metadata_result( $result ) {
+		if ( ! is_wp_error( $result ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_recreate_original_restored',
+				'Original Google Drive asset exists again. Rescan Context before attempting recreation.'
+			);
+		}
+		$data = $result->get_error_data();
+		$status = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 0;
+		if ( 404 === $status ) return true;
+		return new WP_Error(
+			'mad4b_google_drive_recreate_absence_unverified',
+			'Google Drive did not prove the original asset is absent; recreation remains fail-closed.',
+			array(
+				'provider_error_code' => $result->get_error_code(),
+				'http_status' => $status,
+			)
+		);
+	}
+
+	private static function assert_original_file_absent( $file_id ) {
+		$file_id = self::bounded_drive_id( $file_id );
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Original Google Drive file ID is invalid.' );
+		return self::provider_absence_from_metadata_result( self::get_file_metadata( $file_id ) );
 	}
 
 	private static function get_file_metadata( $file_id ) {
