@@ -56,6 +56,7 @@ final class MAD4B_SCP_Skill_Abilities {
 					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
 					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*$' ),
 					'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
 				),
 				'required' => array( 'level', 'name' ),
 				'additionalProperties' => false,
@@ -129,11 +130,12 @@ final class MAD4B_SCP_Skill_Abilities {
 		$target = isset( $input['target'] ) ? $input['target'] : '';
 		$name = isset( $input['name'] ) ? $input['name'] : '';
 		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
+		$intended_ability = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
 		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
 		if ( is_wp_error( $skill ) ) return $skill;
 		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Skill exposure is denied because Context Preflight is unavailable.' );
 
-		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope );
+		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended_ability );
 		if ( is_wp_error( $preflight ) ) return $preflight;
 		if ( empty( $preflight['ready'] ) ) {
 			return new WP_Error(
@@ -147,7 +149,7 @@ final class MAD4B_SCP_Skill_Abilities {
 		}
 
 		return array(
-			'contract' => 'mad4b.skill-get.v2',
+			'contract' => 'mad4b.skill-get.v3',
 			'skill' => $skill,
 			'context_preflight' => $preflight,
 			'context_envelope' => isset( $preflight['envelope'] ) ? $preflight['envelope'] : array(),

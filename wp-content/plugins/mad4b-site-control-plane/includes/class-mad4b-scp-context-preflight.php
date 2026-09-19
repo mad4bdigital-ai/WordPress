@@ -20,6 +20,7 @@ final class MAD4B_SCP_Context_Preflight {
 	const MAX_CONTEXT_ASSETS = 24;
 	const MAX_CONTEXT_BYTES = 786432; // 768 KiB exact-provider text across one preflight.
 	const MAX_RECEIPT_AGE = 1800; // 30 minutes; approval is still one-time and separately short-lived.
+	const MAX_ALLOWED_MUTATION_ABILITIES = 20;
 
 	public static function presets() {
 		return array(
@@ -52,6 +53,7 @@ final class MAD4B_SCP_Context_Preflight {
 			'required_context_sets' => array(),
 			'optional_context_sets' => array(),
 			'allow_task_context' => false,
+			'allowed_mutation_abilities' => array(),
 		);
 	}
 
@@ -80,6 +82,8 @@ final class MAD4B_SCP_Context_Preflight {
 		$optional = array_values( array_diff( $optional, $required ) );
 
 		if ( empty( $required ) ) return new WP_Error( 'mad4b_skill_context_required_sets_empty', 'A Context-required Skill must declare at least one required context set.' );
+		$allowed_mutations = self::normalize_mutation_abilities( isset( $input['allowed_mutation_abilities'] ) ? $input['allowed_mutation_abilities'] : array() );
+		if ( is_wp_error( $allowed_mutations ) ) return $allowed_mutations;
 
 		return array(
 			'contract' => self::POLICY_CONTRACT,
@@ -88,6 +92,7 @@ final class MAD4B_SCP_Context_Preflight {
 			'required_context_sets' => $required,
 			'optional_context_sets' => $optional,
 			'allow_task_context' => 'brand_core' === $preset ? true : ! empty( $input['allow_task_context'] ),
+			'allowed_mutation_abilities' => $allowed_mutations,
 		);
 	}
 
@@ -98,16 +103,23 @@ final class MAD4B_SCP_Context_Preflight {
 		return is_string( $json ) && '' !== $json ? hash( 'sha256', $json ) : '';
 	}
 
-	public static function preflight_skill( $level, $target, $name, $task_scope = '' ) {
+	public static function preflight_skill( $level, $target, $name, $task_scope = '', $intended_ability = '' ) {
 		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) ) return new WP_Error( 'mad4b_skill_registry_unavailable', 'Skill registry is unavailable.' );
 		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
 		if ( is_wp_error( $skill ) ) return $skill;
-		return self::preflight_entry( $skill, $task_scope );
+		return self::preflight_entry( $skill, $task_scope, $intended_ability );
 	}
 
-	public static function preflight_entry( array $skill, $task_scope = '' ) {
+	public static function preflight_entry( array $skill, $task_scope = '', $intended_ability = '' ) {
 		$policy = self::normalize_policy( isset( $skill['context_policy'] ) ? $skill['context_policy'] : array() );
 		if ( is_wp_error( $policy ) ) return $policy;
+		$intended_ability = trim( (string) $intended_ability );
+		if ( '' !== $intended_ability ) {
+			if ( empty( $policy['brand_context_required'] ) ) return new WP_Error( 'mad4b_skill_context_mutation_policy_required', 'A write-bound Context Receipt cannot be issued from a Skill whose Context policy is disabled.' );
+			if ( ! in_array( $intended_ability, self::brand_bearing_mutation_abilities(), true ) ) return new WP_Error( 'mad4b_skill_context_mutation_ability_unsupported', 'Requested intended ability is not a supported Brand-bearing Context mutation.', array( 'ability' => $intended_ability ) );
+			$allowed = isset( $policy['allowed_mutation_abilities'] ) && is_array( $policy['allowed_mutation_abilities'] ) ? $policy['allowed_mutation_abilities'] : array();
+			if ( ! in_array( $intended_ability, $allowed, true ) ) return new WP_Error( 'mad4b_skill_context_mutation_ability_not_allowed', 'This Skill Context policy does not allow the requested mutation ability.', array( 'ability' => $intended_ability, 'allowed_mutation_abilities' => $allowed ) );
+		}
 		$policy_digest = self::policy_digest( $policy );
 		$logical_id = isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '';
 		$skill_sha = isset( $skill['sha256'] ) ? strtolower( trim( (string) $skill['sha256'] ) ) : '';
@@ -307,7 +319,8 @@ final class MAD4B_SCP_Context_Preflight {
 			$task_scope,
 			$brand_id,
 			$authority_manifest_fingerprint,
-			$registry_revision
+			$registry_revision,
+			$intended_ability
 		);
 		return array(
 			'contract' => self::PREFLIGHT_CONTRACT,
@@ -333,6 +346,7 @@ final class MAD4B_SCP_Context_Preflight {
 				'task_scope' => $task_scope,
 				'precedence' => array( 'site_policy', 'brand_core', 'editorial_strategy', 'campaign_context', 'task_knowledge', 'writer_reference', 'general_model_knowledge' ),
 				'effective_required_context_sets' => $effective_required_sets,
+				'intended_ability' => $intended_ability,
 				'assets' => $envelope_assets,
 				'total_bytes' => $total_bytes,
 			),
@@ -367,6 +381,37 @@ final class MAD4B_SCP_Context_Preflight {
 		return $out;
 	}
 
+	public static function brand_bearing_mutation_abilities() {
+		return array(
+			'mad4b/content-create-post',
+			'mad4b/content-update-post',
+			'mad4b/content-import-bundle',
+			'mad4b/taxonomy-create-term',
+			'mad4b/taxonomy-update-term',
+			'seo/update-meta',
+			'woocommerce/update-product',
+			'media/update-metadata',
+			'mad4b/content-set-meta',
+			'jetengine/update-post-meta',
+			'elementor/update-widget-settings',
+		);
+	}
+
+	private static function normalize_mutation_abilities( $abilities ) {
+		if ( ! is_array( $abilities ) ) return new WP_Error( 'mad4b_skill_context_mutation_abilities_invalid', 'Allowed mutation abilities must be an array.' );
+		if ( count( $abilities ) > self::MAX_ALLOWED_MUTATION_ABILITIES ) return new WP_Error( 'mad4b_skill_context_mutation_abilities_limit', 'Allowed mutation ability count exceeds the bounded limit.' );
+		$supported = self::brand_bearing_mutation_abilities();
+		$out = array();
+		foreach ( $abilities as $ability ) {
+			$ability = trim( (string) $ability );
+			if ( '' === $ability || ! in_array( $ability, $supported, true ) ) return new WP_Error( 'mad4b_skill_context_mutation_ability_invalid', 'Skill Context policy contains an unsupported mutation ability.', array( 'ability' => $ability ) );
+			$out[] = $ability;
+		}
+		$out = array_values( array_unique( $out ) );
+		sort( $out, SORT_STRING );
+		return $out;
+	}
+
 	private static function normalize_sets( $sets, $limit ) {
 		if ( ! is_array( $sets ) ) return new WP_Error( 'mad4b_skill_context_sets_invalid', 'Context sets must be an array.' );
 		if ( count( $sets ) > $limit ) return new WP_Error( 'mad4b_skill_context_sets_limit', 'Skill Context set count exceeds the bounded limit.' );
@@ -390,13 +435,15 @@ final class MAD4B_SCP_Context_Preflight {
 			'required_context_sets' => isset( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array(),
 			'optional_context_sets' => isset( $policy['optional_context_sets'] ) ? array_values( $policy['optional_context_sets'] ) : array(),
 			'allow_task_context' => ! empty( $policy['allow_task_context'] ),
+			'allowed_mutation_abilities' => isset( $policy['allowed_mutation_abilities'] ) ? array_values( $policy['allowed_mutation_abilities'] ) : array(),
 		);
 		sort( $canonical['required_context_sets'], SORT_STRING );
 		sort( $canonical['optional_context_sets'], SORT_STRING );
+		sort( $canonical['allowed_mutation_abilities'], SORT_STRING );
 		return $canonical;
 	}
 
-	private static function receipt( $logical_id, $skill_sha, array $policy, $policy_digest, array $assets, array $missing_sets, array $blockers, $site_uuid, $revision, $fingerprint, $observed_at, $task_scope, $brand_id = '', $authority_manifest_fingerprint = '', $registry_revision = 0 ) {
+	private static function receipt( $logical_id, $skill_sha, array $policy, $policy_digest, array $assets, array $missing_sets, array $blockers, $site_uuid, $revision, $fingerprint, $observed_at, $task_scope, $brand_id = '', $authority_manifest_fingerprint = '', $registry_revision = 0, $intended_ability = '' ) {
 		$effective_required = isset( $policy['effective_required_context_sets'] ) && is_array( $policy['effective_required_context_sets'] )
 			? array_values( $policy['effective_required_context_sets'] )
 			: ( isset( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array() );
@@ -409,6 +456,9 @@ final class MAD4B_SCP_Context_Preflight {
 			'skill_logical_id' => (string) $logical_id,
 			'skill_sha256' => (string) $skill_sha,
 			'context_policy_sha256' => (string) $policy_digest,
+			'brand_context_required' => ! empty( $policy['brand_context_required'] ),
+			'intended_ability' => (string) $intended_ability,
+			'allowed_mutation_abilities' => isset( $policy['allowed_mutation_abilities'] ) ? array_values( $policy['allowed_mutation_abilities'] ) : array(),
 			'brand_context_revision' => (int) $revision,
 			'registry_revision' => (int) $registry_revision,
 			'context_fingerprint' => (string) $fingerprint,
@@ -449,6 +499,12 @@ final class MAD4B_SCP_Context_Preflight {
 					'matched_fields' => isset( $requirement['matched_fields'] ) ? array_values( $requirement['matched_fields'] ) : array(),
 				)
 			);
+		}
+		if ( $requires_receipt ) {
+			if ( empty( $receipt['brand_context_required'] ) ) return new WP_Error( 'mad4b_content_context_receipt_policy_not_authorizing', 'Brand-bearing mutation cannot use a receipt issued by a no-context Skill.' );
+			$intended = isset( $receipt['intended_ability'] ) ? (string) $receipt['intended_ability'] : '';
+			if ( '' === $intended ) return new WP_Error( 'mad4b_content_context_receipt_ability_binding_required', 'Brand-bearing mutation requires a Context Receipt minted for one exact intended ability.' );
+			if ( ! hash_equals( $ability_name, $intended ) ) return new WP_Error( 'mad4b_content_context_receipt_ability_mismatch', 'Context Receipt was issued for a different mutation ability.', array( 'expected_ability' => $ability_name, 'receipt_ability' => $intended ) );
 		}
 		return self::validate_receipt_binding( $receipt );
 	}
@@ -596,6 +652,15 @@ final class MAD4B_SCP_Context_Preflight {
 		if ( isset( $current_skill['context_policy_sha256'] ) && '' !== (string) $current_skill['context_policy_sha256'] ) {
 			if ( empty( $receipt['context_policy_sha256'] ) || ! hash_equals( (string) $current_skill['context_policy_sha256'], (string) $receipt['context_policy_sha256'] ) ) return new WP_Error( 'mad4b_context_receipt_policy_drift', 'Skill Context Policy changed after the Context Receipt was issued.' );
 		}
+		$current_policy = self::normalize_policy( isset( $current_skill['context_policy'] ) ? $current_skill['context_policy'] : array() );
+		if ( is_wp_error( $current_policy ) ) return new WP_Error( 'mad4b_context_receipt_policy_invalid', 'Live Skill Context Policy can no longer be normalized.' );
+		$receipt_requires_context = ! empty( $receipt['brand_context_required'] );
+		if ( $receipt_requires_context !== ! empty( $current_policy['brand_context_required'] ) ) return new WP_Error( 'mad4b_context_receipt_policy_drift', 'Context requirement changed after the receipt was issued.' );
+		$intended_ability = isset( $receipt['intended_ability'] ) ? (string) $receipt['intended_ability'] : '';
+		if ( '' !== $intended_ability ) {
+			$allowed = isset( $current_policy['allowed_mutation_abilities'] ) && is_array( $current_policy['allowed_mutation_abilities'] ) ? $current_policy['allowed_mutation_abilities'] : array();
+			if ( ! in_array( $intended_ability, $allowed, true ) ) return new WP_Error( 'mad4b_context_receipt_ability_not_allowed', 'Context Receipt intended ability is no longer allowed by the live Skill policy.' );
+		}
 
 		return array(
 			'contract' => 'mad4b.context-receipt-validation.v1',
@@ -606,6 +671,7 @@ final class MAD4B_SCP_Context_Preflight {
 			'context_fingerprint' => $current_fingerprint,
 			'authority_manifest_fingerprint' => $current_authority_fingerprint,
 			'skill_logical_id' => $logical_id,
+			'intended_ability' => $intended_ability,
 		);
 	}
 
@@ -628,6 +694,7 @@ final class MAD4B_SCP_Context_Preflight {
 				'skill_logical_id' => (string) $validated['skill_logical_id'],
 				'skill_sha256' => isset( $receipt['skill_sha256'] ) ? (string) $receipt['skill_sha256'] : '',
 				'context_policy_sha256' => isset( $receipt['context_policy_sha256'] ) ? (string) $receipt['context_policy_sha256'] : '',
+				'intended_ability' => isset( $receipt['intended_ability'] ) ? (string) $receipt['intended_ability'] : '',
 				'asset_count' => isset( $receipt['assets_loaded'] ) && is_array( $receipt['assets_loaded'] ) ? count( $receipt['assets_loaded'] ) : 0,
 				'observed_at' => isset( $receipt['observed_at'] ) ? (string) $receipt['observed_at'] : '',
 				'ability' => isset( $binding['ability'] ) ? (string) $binding['ability'] : '',

@@ -118,7 +118,7 @@ function mad4b_context_asset( $id, $category, $mode, $review, $task_scope = '', 
 $skill = array(
 	'logical_id' => 'site:_site:blog-writer',
 	'sha256' => str_repeat( 'b', 64 ),
-	'context_policy' => array( 'preset' => 'brand_core' ),
+	'context_policy' => array( 'preset' => 'brand_core', 'allowed_mutation_abilities' => array( 'mad4b/content-update-post', 'media/update-metadata' ) ),
 );
 MAD4B_SCP_Skill_Registry::$skill = $skill;
 
@@ -166,15 +166,29 @@ $missing_receipt = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 );
 mad4b_context_preflight_assert( is_wp_error( $missing_receipt ) && 'mad4b_content_context_receipt_required' === $missing_receipt->get_error_code(), 'Brand-bearing content mutation must require Context Receipt.', $missing_receipt );
 
+$write_ready = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x', 'mad4b/content-update-post' );
+mad4b_context_preflight_assert( ! empty( $write_ready['ready'] ), 'Write-bound Context preflight must be ready for an explicitly allowed mutation.', $write_ready );
+mad4b_context_preflight_assert( 'mad4b/content-update-post' === $write_ready['receipt']['intended_ability'], 'Context Receipt must bind one exact intended mutation ability.', $write_ready['receipt'] );
 $guarded = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 	'mad4b/content-update-post',
 	array(
 		'post_id' => 12,
 		'post_content' => 'Generated content',
-		'_mad4b_context_receipt' => $site_union['receipt'],
+		'_mad4b_context_receipt' => $write_ready['receipt'],
 	)
 );
-mad4b_context_preflight_assert( is_array( $guarded ) && ! empty( $guarded['ready'] ), 'Exact receipt must authorize Context guard.', $guarded );
+mad4b_context_preflight_assert( is_array( $guarded ) && ! empty( $guarded['ready'] ), 'Exact ability-bound receipt must authorize Context guard.', $guarded );
+
+$cross_ability = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+	'media/update-metadata',
+	array(
+		'attachment_id' => 44,
+		'expected_sha256' => str_repeat( 'a', 64 ),
+		'alt' => 'Brand image',
+		'_mad4b_context_receipt' => $write_ready['receipt'],
+	)
+);
+mad4b_context_preflight_assert( is_wp_error( $cross_ability ) && 'mad4b_content_context_receipt_ability_mismatch' === $cross_ability->get_error_code(), 'Context Receipt must not replay horizontally against a different Brand-bearing ability.', $cross_ability );
 
 $content_guard_cases = array(
 	array(
@@ -336,7 +350,7 @@ $expired_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $expire
 mad4b_context_preflight_assert( is_wp_error( $expired_result ) && 'mad4b_context_receipt_expired' === $expired_result->get_error_code(), 'Expired Context Receipt must fail closed.', $expired_result );
 
 $committed = MAD4B_SCP_Context_Preflight::commit_receipt_evidence(
-	$site_union['receipt'],
+	$write_ready['receipt'],
 	array(
 		'ability' => 'mad4b/content-update-post',
 		'provider' => 'core',
@@ -361,5 +375,12 @@ $none = MAD4B_SCP_Context_Preflight::preflight_entry(
 	)
 );
 mad4b_context_preflight_assert( ! empty( $none['ready'] ) && 'not_required' === $none['state'], 'Non-context Skill must remain usable without Brand Context.', $none );
+$none_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+	'mad4b/content-update-post',
+	array( 'post_id' => 12, 'post_content' => 'Brand content', '_mad4b_context_receipt' => $none['receipt'] )
+);
+mad4b_context_preflight_assert( is_wp_error( $none_guard ) && 'mad4b_content_context_receipt_policy_not_authorizing' === $none_guard->get_error_code(), 'No-context receipt must never authorize Brand-bearing mutation.', $none_guard );
+$not_allowed = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x', 'seo/update-meta' );
+mad4b_context_preflight_assert( is_wp_error( $not_allowed ) && 'mad4b_skill_context_mutation_ability_not_allowed' === $not_allowed->get_error_code(), 'Skill policy must deny write-bound receipts for undeclared abilities.', $not_allowed );
 
-echo "mad4b.site-control-plane.context-preflight.runtime.v3: PASS\n";
+echo "mad4b.site-control-plane.context-preflight.runtime.v4: PASS\n";

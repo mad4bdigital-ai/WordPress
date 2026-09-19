@@ -13,6 +13,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-snapshot-identity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-exporter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
@@ -79,6 +80,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-snapshot-identity.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-exporter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
