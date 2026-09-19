@@ -152,6 +152,14 @@ final class MAD4B_SCP_Skill_Registry {
 		$before_skill = is_file( $skill_file ) ? file_get_contents( $skill_file ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$before_meta = is_file( $meta_file ) ? file_get_contents( $meta_file ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		if ( false === $before_skill || false === $before_meta ) return new WP_Error( 'mad4b_skill_before_state_read_failed', 'Unable to capture the complete pre-change Skill state.' );
+		$previous_meta = is_string( $before_meta ) && '' !== trim( $before_meta ) ? json_decode( $before_meta, true ) : array();
+		if ( ! is_array( $previous_meta ) ) $previous_meta = array();
+		$context_policy_input = array_key_exists( 'context_policy', $input )
+			? $input['context_policy']
+			: ( isset( $previous_meta['context_policy'] ) && is_array( $previous_meta['context_policy'] ) ? $previous_meta['context_policy'] : array() );
+		$context_policy = self::normalize_context_policy( $context_policy_input );
+		if ( is_wp_error( $context_policy ) ) return $context_policy;
+		$context_policy_sha256 = self::context_policy_digest( $context_policy );
 		$previous_sha = is_string( $before_skill ) ? hash( 'sha256', $before_skill ) : '';
 		$sha = hash( 'sha256', $document );
 		$meta = array(
@@ -162,6 +170,8 @@ final class MAD4B_SCP_Skill_Registry {
 			'enabled' => $enabled,
 			'sha256' => $sha,
 			'previous_sha256' => $previous_sha,
+			'context_policy' => $context_policy,
+			'context_policy_sha256' => $context_policy_sha256,
 			'updated_at' => gmdate( 'c' ),
 			'updated_by' => get_current_user_id(),
 		);
@@ -186,6 +196,8 @@ final class MAD4B_SCP_Skill_Registry {
 				'enabled' => $enabled,
 				'before_sha256' => $previous_sha,
 				'after_sha256' => $sha,
+				'context_policy_sha256' => $context_policy_sha256,
+				'context_required' => ! empty( $context_policy['brand_context_required'] ),
 				'bytes' => strlen( $document ),
 			),
 			'ok'
@@ -266,6 +278,9 @@ final class MAD4B_SCP_Skill_Registry {
 		$parsed = self::validate_document( $content, $slug );
 		if ( is_wp_error( $parsed ) ) return $parsed;
 		$meta = self::read_meta( $dir . '/' . self::META_FILE );
+		$context_policy = self::normalize_context_policy( isset( $meta['context_policy'] ) && is_array( $meta['context_policy'] ) ? $meta['context_policy'] : array() );
+		if ( is_wp_error( $context_policy ) ) return $context_policy;
+		$context_policy_sha256 = self::context_policy_digest( $context_policy );
 		$entry = array(
 			'contract' => self::CONTRACT,
 			'logical_id' => self::logical_id( $level, $target, $slug ),
@@ -277,10 +292,37 @@ final class MAD4B_SCP_Skill_Registry {
 			'sha256' => hash( 'sha256', $content ),
 			'bytes' => strlen( $content ),
 			'updated_at' => isset( $meta['updated_at'] ) ? (string) $meta['updated_at'] : '',
+			'context_policy' => $context_policy,
+			'context_policy_sha256' => $context_policy_sha256,
 			'resources' => self::resource_inventory( $dir ),
 		);
 		if ( $include_content ) $entry['content'] = $content;
 		return $entry;
+	}
+
+	private static function normalize_context_policy( $policy ) {
+		if ( empty( $policy ) ) {
+			if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return MAD4B_SCP_Context_Preflight::default_policy();
+			return array(
+				'contract' => 'mad4b.skill-context-policy.v1',
+				'preset' => 'none',
+				'brand_context_required' => false,
+				'required_context_sets' => array(),
+				'optional_context_sets' => array(),
+				'allow_task_context' => false,
+			);
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Context-required Skill metadata cannot be loaded because Context Preflight is unavailable.' );
+		return MAD4B_SCP_Context_Preflight::normalize_policy( $policy );
+	}
+
+	private static function context_policy_digest( array $policy ) {
+		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
+			$digest = MAD4B_SCP_Context_Preflight::policy_digest( $policy );
+			if ( '' !== $digest ) return $digest;
+		}
+		$json = wp_json_encode( $policy, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $json ) ? hash( 'sha256', $json ) : '';
 	}
 
 	private static function summary( array $entry ) {
