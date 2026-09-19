@@ -333,6 +333,8 @@ final class MAD4B_SCP_Context_Authority {
 				$source_id = strtolower( trim( (string) $source_id ) );
 				$authorized_sources = self::sources();
 				if ( ! isset( $authorized_sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+				$audit_ready = self::audit_preflight();
+				if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 				$source = $authorized_sources[ $source_id ];
 				$sources = self::raw_sources();
 				$records = self::raw_assets();
@@ -485,7 +487,7 @@ final class MAD4B_SCP_Context_Authority {
 				);
 				if ( is_wp_error( $commit ) ) return $commit;
 
-				return array(
+				$result = array(
 					'source' => $sources[ $source_id ],
 					'asset_count' => $source_asset_count,
 					'observed_asset_count' => count( $normalized_assets ),
@@ -495,6 +497,21 @@ final class MAD4B_SCP_Context_Authority {
 					'truncation_reasons' => $truncation_reasons,
 					'context_fingerprint' => self::context_fingerprint( $records, $sources ),
 					'authority_manifest_fingerprint' => self::authority_manifest_fingerprint( $records, $sources ),
+				);
+				return self::audited_registry_result(
+					$result,
+					'mad4b/context-source-scan',
+					array(
+						'source_id' => $source_id,
+						'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
+						'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
+						'scan_generation' => $scan_generation,
+						'scan_complete' => (bool) $scan_complete,
+						'observed_asset_count' => count( $normalized_assets ),
+						'represented_asset_count' => count( $selected_assets ),
+						'truncation_reasons' => $truncation_reasons,
+					),
+					$scan_complete ? 'ok' : 'partial'
 				);
 			}
 		);

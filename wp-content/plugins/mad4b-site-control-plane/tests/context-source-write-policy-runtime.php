@@ -21,6 +21,15 @@ function update_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $na
 function delete_option( $name ) { unset( $GLOBALS['mad4b_context_options'][ $name ] ); return true; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 
+class MAD4B_SCP_Audit {
+	public static $events = array();
+	public static function storage_status() { return array( 'ready' => true ); }
+	public static function record( $ability, $summary = array(), $status = 'ok' ) {
+		self::$events[] = array( 'ability' => (string) $ability, 'summary' => $summary, 'status' => (string) $status );
+		return true;
+	}
+}
+
 class MAD4B_SCP_Site_Profile {
 	public static $site_uuid = '11111111-1111-4111-8111-111111111111';
 	public static function status() {
@@ -155,5 +164,8 @@ mad4b_context_policy_assert(
 	&& ! isset( $visible_after[ $mode_mismatch_asset ] ),
 	'Every raw hidden asset must remain excluded from the live Authority projection after mutation.'
 );
+$policy_scan_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $row ) { return 'mad4b/context-source-scan' === $row['ability']; } ) );
+mad4b_context_policy_assert( 1 === count( $policy_scan_events ), 'Partial authorized source refresh must append one governance scan event.' );
+mad4b_context_policy_assert( 'partial' === $policy_scan_events[0]['status'], 'Partial authorized source refresh audit must remain explicitly partial.' );
 
-echo "mad4b.site-control-plane.context-source-write-policy.runtime.v4: PASS\n";
+echo "mad4b.site-control-plane.context-source-write-policy.runtime.v5: PASS\n";

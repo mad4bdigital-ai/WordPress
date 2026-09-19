@@ -25,6 +25,15 @@ function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
 function wp_trim_words( $value, $num_words = 55, $more = null ) { return (string) $value; }
 function esc_url_raw( $value ) { return (string) $value; }
 
+class MAD4B_SCP_Audit {
+	public static $events = array();
+	public static function storage_status() { return array( 'ready' => true ); }
+	public static function record( $ability, $summary = array(), $status = 'ok' ) {
+		self::$events[] = array( 'ability' => (string) $ability, 'summary' => $summary, 'status' => (string) $status );
+		return true;
+	}
+}
+
 class MAD4B_SCP_Site_Profile {
 	public static function status() {
 		return array(
@@ -216,4 +225,10 @@ mad4b_scan_assert( 'not_seen_in_complete_scan' === $assets[ $asset_id ]['availab
 mad4b_scan_assert( str_repeat( '6', 64 ) === $assets[ $asset_id ]['absence_scan_generation'], 'Absence evidence must bind the exact complete scan generation.', $assets[ $asset_id ] );
 mad4b_scan_assert( str_repeat( '6', 64 ) === $sources[ $source_id ]['last_complete_scan_generation'], 'Source must retain exact complete scan generation.', $sources[ $source_id ] );
 
-echo "mad4b.site-control-plane.context-scan-completeness.runtime.v2: PASS\n";
+$scan_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $row ) { return 'mad4b/context-source-scan' === $row['ability']; } ) );
+mad4b_scan_assert( 4 === count( $scan_events ), 'Every committed source scan must append one bounded governance audit event.', $scan_events );
+mad4b_scan_assert( 'partial' === $scan_events[0]['status'] && empty( $scan_events[0]['summary']['scan_complete'] ), 'Partial source scan must remain explicit in audit evidence.', $scan_events[0] );
+mad4b_scan_assert( 'ok' === $scan_events[3]['status'] && ! empty( $scan_events[3]['summary']['scan_complete'] ), 'Complete source scan must be recorded as complete audit evidence.', $scan_events[3] );
+mad4b_scan_assert( ! array_key_exists( 'content', $scan_events[3]['summary'] ) && ! array_key_exists( 'file_id', $scan_events[3]['summary'] ), 'Scan audit summary must not contain raw Context content or provider file IDs.', $scan_events[3] );
+
+echo "mad4b.site-control-plane.context-scan-completeness.runtime.v3: PASS\n";
