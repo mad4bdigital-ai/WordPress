@@ -192,10 +192,13 @@ final class MAD4B_SCP_Context_Authority {
 		$source = $sources[ $source_id ];
 		$records = self::assets();
 		$previous = array();
+		$scan_started_at = gmdate( 'c' );
 		foreach ( $records as $asset_id => $record ) {
 			if ( isset( $record['source_id'] ) && hash_equals( $source_id, (string) $record['source_id'] ) ) {
 				$previous[ (string) $asset_id ] = $record;
-				unset( $records[ $asset_id ] );
+				$records[ $asset_id ]['status'] = 'unavailable';
+				$records[ $asset_id ]['availability_reason'] = 'not_seen_in_latest_scan';
+				$records[ $asset_id ]['last_missing_at'] = $scan_started_at;
 			}
 		}
 		$count = 0;
@@ -222,6 +225,10 @@ final class MAD4B_SCP_Context_Authority {
 					$normalized['review_status'] = 'needs_review_content_changed';
 				}
 			}
+			$normalized['status'] = 'ready';
+			$normalized['availability_reason'] = '';
+			$normalized['last_seen_at'] = $scan_started_at;
+			$normalized['last_missing_at'] = isset( $prior['last_missing_at'] ) ? (string) $prior['last_missing_at'] : '';
 			$records[ $normalized['asset_id'] ] = $normalized;
 			++$count;
 			if ( count( $records ) >= self::MAX_ASSETS ) break;
@@ -242,6 +249,66 @@ final class MAD4B_SCP_Context_Authority {
 			self::write_option( self::PROFILE_OPTION, $profile );
 		}
 		return array( 'source' => $sources[ $source_id ], 'asset_count' => $count, 'context_fingerprint' => self::context_fingerprint( $records, $sources ) );
+	}
+
+	public static function source( $source_id ) {
+		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
+		$sources = self::sources();
+		return isset( $sources[ $source_id ] ) ? $sources[ $source_id ] : array();
+	}
+
+	public static function asset( $asset_id ) {
+		$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
+		$assets = self::assets();
+		return isset( $assets[ $asset_id ] ) ? $assets[ $asset_id ] : array();
+	}
+
+	public static function upsert_asset_from_provider( $source_id, array $provider_asset, array $preserve = array() ) {
+		$source = self::source( $source_id );
+		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+		$normalized = self::normalize_asset( $source, $provider_asset );
+		if ( is_wp_error( $normalized ) ) return $normalized;
+		$records = self::assets();
+		$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
+		foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+			if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
+			elseif ( ! empty( $existing['reviewed_at'] ) && 'human' === ( isset( $existing['classification_source'] ) ? $existing['classification_source'] : '' ) && array_key_exists( $field, $existing ) ) $normalized[ $field ] = $existing[ $field ];
+		}
+		if ( ! empty( $existing['quality']['human_override'] ) && isset( $existing['content_hash'] ) && hash_equals( (string) $existing['content_hash'], (string) $normalized['content_hash'] ) ) {
+			$normalized['quality_score'] = isset( $existing['quality_score'] ) ? (int) $existing['quality_score'] : $normalized['quality_score'];
+			$normalized['quality'] = $existing['quality'];
+		}
+		$normalized['status'] = 'ready';
+		$normalized['availability_reason'] = '';
+		$normalized['last_seen_at'] = gmdate( 'c' );
+		$records[ $normalized['asset_id'] ] = $normalized;
+		self::write_option( self::ASSETS_OPTION, $records );
+		self::refresh_profile_fingerprint( $records, self::sources() );
+		return $normalized;
+	}
+
+	public static function mark_asset_recreated( $old_asset_id, array $new_asset ) {
+		$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
+		$records = self::assets();
+		if ( isset( $records[ $old_asset_id ] ) ) {
+			$records[ $old_asset_id ]['status'] = 'recreated';
+			$records[ $old_asset_id ]['availability_reason'] = 'replacement_created';
+			$records[ $old_asset_id ]['replacement_asset_id'] = isset( $new_asset['asset_id'] ) ? (string) $new_asset['asset_id'] : '';
+			$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
+		}
+		if ( ! empty( $new_asset['asset_id'] ) ) $records[ (string) $new_asset['asset_id'] ] = $new_asset;
+		self::write_option( self::ASSETS_OPTION, $records );
+		self::refresh_profile_fingerprint( $records, self::sources() );
+		return isset( $records[ $old_asset_id ] ) ? $records[ $old_asset_id ] : array();
+	}
+
+	private static function refresh_profile_fingerprint( array $assets, array $sources ) {
+		$profile = self::profile();
+		if ( empty( $profile ) ) return;
+		$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
+		$profile['last_verified_at'] = gmdate( 'c' );
+		$profile['updated_at'] = gmdate( 'c' );
+		self::write_option( self::PROFILE_OPTION, $profile );
 	}
 
 	public static function remove_source( $source_id ) {
