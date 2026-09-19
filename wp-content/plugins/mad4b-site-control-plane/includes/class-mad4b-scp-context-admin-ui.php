@@ -13,6 +13,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	const ACTION_SCAN_SOURCE = 'mad4b_context_scan_source';
 	const ACTION_REVIEW_ASSET = 'mad4b_context_review_asset';
 	const ACTION_REMOVE_SOURCE = 'mad4b_context_remove_source';
+	const ACTION_UPDATE_SOURCE_POLICY = 'mad4b_context_update_source_policy';
 
 	private static $booted = false;
 
@@ -30,6 +31,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_SCAN_SOURCE => 'handle_scan_source',
 			self::ACTION_REVIEW_ASSET => 'handle_review_asset',
 			self::ACTION_REMOVE_SOURCE => 'handle_remove_source',
+			self::ACTION_UPDATE_SOURCE_POLICY => 'handle_update_source_policy',
 		) as $action => $method ) add_action( 'admin_post_' . $action, array( __CLASS__, $method ) );
 	}
 
@@ -89,10 +91,15 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	public static function handle_select_source() {
 		self::require_admin( self::ACTION_SELECT_SOURCE );
+		$mode = isset( $_POST['source_mode'] ) ? sanitize_key( wp_unslash( $_POST['source_mode'] ) ) : 'governed';
+		$write_policy = 'task_attachment' === $mode
+			? 'read_only'
+			: ( isset( $_POST['write_policy'] ) ? sanitize_key( wp_unslash( $_POST['write_policy'] ) ) : 'repair_only' );
 		$result = MAD4B_SCP_Context_Authority::upsert_source(
 			array(
 				'provider' => 'google_drive',
-				'mode' => isset( $_POST['source_mode'] ) ? wp_unslash( $_POST['source_mode'] ) : 'governed',
+				'mode' => $mode,
+				'write_policy' => $write_policy,
 				'external_root_id' => isset( $_POST['folder_id'] ) ? wp_unslash( $_POST['folder_id'] ) : '',
 				'label' => isset( $_POST['folder_name'] ) ? wp_unslash( $_POST['folder_name'] ) : '',
 				'task_scope' => isset( $_POST['task_scope'] ) ? wp_unslash( $_POST['task_scope'] ) : '',
@@ -100,6 +107,15 @@ final class MAD4B_SCP_Context_Admin_UI {
 			)
 		);
 		self::redirect_result( $result, 'sources', 'source_selected' );
+	}
+
+	public static function handle_update_source_policy() {
+		self::require_admin( self::ACTION_UPDATE_SOURCE_POLICY );
+		$result = MAD4B_SCP_Context_Authority::update_source_write_policy(
+			isset( $_POST['source_id'] ) ? wp_unslash( $_POST['source_id'] ) : '',
+			isset( $_POST['write_policy'] ) ? wp_unslash( $_POST['write_policy'] ) : 'read_only'
+		);
+		self::redirect_result( $result, 'sources', 'source_policy_updated' );
 	}
 
 	public static function handle_scan_source() {
@@ -179,7 +195,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			array( 'label' => 'Context Authority', 'value' => strtoupper( $status['state'] ), 'help' => $status['ready'] ? 'Skills can rely on governed context.' : 'Fail-closed until mandatory assets are ready.', 'state' => $status['ready'] ? 'complete' : 'attention' ),
 			array( 'label' => 'Governed Sources', 'value' => (string) $status['governed_source_count'], 'help' => 'Affect Brand Context fingerprint.', 'state' => $status['governed_source_count'] ? 'complete' : 'pending' ),
 			array( 'label' => 'Task Sources', 'value' => (string) $status['task_source_count'], 'help' => 'Temporary context; does not change Brand Authority.', 'state' => 'pending' ),
-			array( 'label' => 'Assets', 'value' => (string) $status['asset_count'], 'help' => $status['required_asset_count'] . ' mandatory.', 'state' => $status['asset_count'] ? 'complete' : 'pending' ),
+			array( 'label' => 'Assets', 'value' => (string) $status['asset_count'], 'help' => $status['required_asset_count'] . ' mandatory · ' . ( isset( $status['unavailable_asset_count'] ) ? $status['unavailable_asset_count'] : 0 ) . ' unavailable.', 'state' => ! empty( $status['unavailable_asset_count'] ) ? 'attention' : ( $status['asset_count'] ? 'complete' : 'pending' ) ),
 			array( 'label' => 'Average Quality', 'value' => $quality, 'help' => $status['quality_scored_asset_count'] . ' asset(s) scored.', 'state' => null === $status['average_quality_score'] ? 'pending' : 'complete' ),
 		);
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::cards( $cards );
@@ -304,7 +320,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<input type="hidden" name="folder_id" value="' . esc_attr( isset( $folder['id'] ) ? $folder['id'] : '' ) . '">';
 		echo '<input type="hidden" name="folder_name" value="' . esc_attr( isset( $folder['name'] ) ? $folder['name'] : '' ) . '">';
 		echo '<div class="mad4b-context-source-mode"><label><input type="radio" name="source_mode" value="governed" checked> <strong>' . esc_html__( 'Governed Library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Affects Brand Context fingerprint and mandatory context.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label><input type="radio" name="source_mode" value="task_attachment"> <strong>' . esc_html__( 'Task-only Source', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Temporary context; excluded from Brand Authority.', 'mad4b-site-control-plane' ) . '</span></label></div>';
+		echo '<label><input type="radio" name="source_mode" value="task_attachment"> <strong>' . esc_html__( 'Task-only Source', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Temporary context; excluded from Brand Authority and always read-only in this release.', 'mad4b-site-control-plane' ) . '</span></label></div>';
+		echo '<h4>' . esc_html__( 'Write policy for Governed Library', 'mad4b-site-control-plane' ) . '</h4>';
+		echo '<div class="mad4b-context-source-mode">';
+		echo '<label><input type="radio" name="write_policy" value="read_only"> <strong>' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Scan and use context without Drive mutations.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="repair_only" checked> <strong>' . esc_html__( 'Repair existing assets', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Update existing assets and recreate ones confirmed unavailable. No unrelated new files.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="managed"> <strong>' . esc_html__( 'Managed library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Create, update and recreate inside this selected folder. Every write still needs governed approval.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '</div>';
 		echo '<p><label for="mad4b-task-scope"><strong>' . esc_html__( 'Task scope', 'mad4b-site-control-plane' ) . '</strong> <span class="description">' . esc_html__( '(required only for Task-only Source)', 'mad4b-site-control-plane' ) . '</span></label><br><input id="mad4b-task-scope" type="text" name="task_scope" class="regular-text" placeholder="e.g. luxor-family-blog-2026"></p>';
 		echo '<p><label><input type="checkbox" name="recursive" value="1" checked> ' . esc_html__( 'Include subfolders', 'mad4b-site-control-plane' ) . '</label></p>';
 		submit_button( __( 'Add Source Folder', 'mad4b-site-control-plane' ), 'primary' );
@@ -322,10 +344,22 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</div>';
 			return;
 		}
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Folder</th><th>Mode</th><th>Task scope</th><th>Status</th><th>Assets</th><th>Last scan</th><th>Action</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Folder</th><th>Mode</th><th>Write policy</th><th>Task scope</th><th>Status</th><th>Assets</th><th>Last scan</th><th>Action</th></tr></thead><tbody>';
 		foreach ( $sources as $source ) {
 			echo '<tr><td><strong>' . esc_html( $source['label'] ) . '</strong><br><code>' . esc_html( $source['external_root_id'] ) . '</code></td>';
-			echo '<td><span class="mad4b-context-badge">' . esc_html( $source['mode'] ) . '</span></td><td>' . esc_html( $source['task_scope'] ? $source['task_scope'] : '—' ) . '</td>';
+			echo '<td><span class="mad4b-context-badge">' . esc_html( $source['mode'] ) . '</span></td>';
+			echo '<td><form class="mad4b-context-policy-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( self::ACTION_UPDATE_SOURCE_POLICY );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_UPDATE_SOURCE_POLICY ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
+			if ( 'task_attachment' === $source['mode'] ) {
+				echo '<input type="hidden" name="write_policy" value="read_only"><code>read_only</code>';
+			} else {
+				echo '<select name="write_policy">';
+				foreach ( MAD4B_SCP_Context_Authority::write_policies() as $policy_key => $policy ) echo '<option value="' . esc_attr( $policy_key ) . '"' . selected( $source['write_policy'], $policy_key, false ) . '>' . esc_html( $policy['label'] ) . '</option>';
+				echo '</select> ';
+				submit_button( __( 'Save', 'mad4b-site-control-plane' ), 'secondary small', 'submit', false );
+			}
+			echo '</form></td><td>' . esc_html( $source['task_scope'] ? $source['task_scope'] : '—' ) . '</td>';
 			echo '<td>' . esc_html( $source['status'] ) . '</td><td>' . esc_html( (string) $source['asset_count'] ) . '</td><td>' . esc_html( $source['last_synced_at'] ? $source['last_synced_at'] : 'Never' ) . '</td>';
 			echo '<td><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SCAN_SOURCE );
@@ -345,14 +379,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$assets = MAD4B_SCP_Context_Authority::assets();
 		$mode_filter = isset( $_GET['mode_filter'] ) ? sanitize_key( wp_unslash( $_GET['mode_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
 		$category_filter = isset( $_GET['category_filter'] ) ? sanitize_key( wp_unslash( $_GET['category_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
-		$review_filter = isset( $_GET['review_filter'] ) ? sanitize_key( wp_unslash( $_GET['review_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
+		$review_filter = isset( $_GET['review_filter'] ) ? sanitize_key( wp_unslash( $_GET['review_filter'] ) ) : '';
+		$status_filter = isset( $_GET['status_filter'] ) ? sanitize_key( wp_unslash( $_GET['status_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
 		$search_filter = isset( $_GET['asset_search'] ) ? trim( sanitize_text_field( wp_unslash( $_GET['asset_search'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
 		$all_assets = $assets;
 		$assets = array_filter(
 			$assets,
-			static function ( $asset ) use ( $mode_filter, $category_filter, $review_filter, $search_filter ) {
+			static function ( $asset ) use ( $mode_filter, $category_filter, $review_filter, $status_filter, $search_filter ) {
 				if ( $mode_filter && $mode_filter !== ( isset( $asset['source_mode'] ) ? $asset['source_mode'] : '' ) ) return false;
 				if ( $category_filter && $category_filter !== ( isset( $asset['category'] ) ? $asset['category'] : '' ) ) return false;
+				if ( $status_filter && $status_filter !== ( isset( $asset['status'] ) ? $asset['status'] : '' ) ) return false;
 				$review = isset( $asset['review_status'] ) ? $asset['review_status'] : 'unreviewed';
 				if ( 'needs_review' === $review_filter && ! in_array( $review, array( 'unreviewed', 'needs_review_content_changed' ), true ) ) return false;
 				if ( 'approved' === $review_filter && 'approved' !== $review ) return false;
@@ -371,7 +407,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<select name="mode_filter"><option value="">' . esc_html__( 'All modes', 'mad4b-site-control-plane' ) . '</option><option value="governed"' . selected( $mode_filter, 'governed', false ) . '>Governed</option><option value="task_attachment"' . selected( $mode_filter, 'task_attachment', false ) . '>Task-only</option></select>';
 		echo '<select name="category_filter"><option value="">' . esc_html__( 'All categories', 'mad4b-site-control-plane' ) . '</option>';
 		foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $category_filter, $key, false ) . '>' . esc_html( $label ) . '</option>';
-		echo '</select><select name="review_filter"><option value="">' . esc_html__( 'All review states', 'mad4b-site-control-plane' ) . '</option><option value="needs_review"' . selected( $review_filter, 'needs_review', false ) . '>' . esc_html__( 'Needs review', 'mad4b-site-control-plane' ) . '</option><option value="approved"' . selected( $review_filter, 'approved', false ) . '>' . esc_html__( 'Approved', 'mad4b-site-control-plane' ) . '</option></select>';
+		echo '</select><select name="status_filter"><option value="">' . esc_html__( 'All availability', 'mad4b-site-control-plane' ) . '</option><option value="ready"' . selected( $status_filter, 'ready', false ) . '>' . esc_html__( 'Ready', 'mad4b-site-control-plane' ) . '</option><option value="unavailable"' . selected( $status_filter, 'unavailable', false ) . '>' . esc_html__( 'Unavailable', 'mad4b-site-control-plane' ) . '</option><option value="recreated"' . selected( $status_filter, 'recreated', false ) . '>' . esc_html__( 'Recreated', 'mad4b-site-control-plane' ) . '</option></select><select name="review_filter"><option value="">' . esc_html__( 'All review states', 'mad4b-site-control-plane' ) . '</option><option value="needs_review"' . selected( $review_filter, 'needs_review', false ) . '>' . esc_html__( 'Needs review', 'mad4b-site-control-plane' ) . '</option><option value="approved"' . selected( $review_filter, 'approved', false ) . '>' . esc_html__( 'Approved', 'mad4b-site-control-plane' ) . '</option></select>';
 		submit_button( __( 'Filter', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 		echo ' <span class="mad4b-scp-muted">' . esc_html( sprintf( __( 'Showing %1$d of %2$d assets', 'mad4b-site-control-plane' ), count( $assets ), count( $all_assets ) ) ) . '</span></form>';
 		if ( ! $all_assets ) { echo '<p>' . esc_html__( 'Scan a source folder to discover assets.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
@@ -384,7 +420,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<td>' . esc_html( $asset['source_mode'] ) . '</td><td><code>' . esc_html( $asset['category'] ) . '</code></td><td>' . esc_html( $asset['authority_class'] ) . '</td>';
 			echo '<td>' . esc_html( ! empty( $asset['required'] ) ? 'yes' : 'no' ) . '</td>';
 			echo '<td><strong>' . esc_html( null === $asset['quality_score'] ? '—' : (string) $asset['quality_score'] . '/100' ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( isset( $quality['mode'] ) ? $quality['mode'] : '' ) . '</span></td>';
-			echo '<td>' . esc_html( number_format_i18n( (float) $asset['classification_confidence'] * 100, 0 ) . '%' ) . '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['classification_source'] ) ? $asset['classification_source'] : '' ) . '</span></td><td>' . esc_html( $asset['status'] ) . '</td>';
+			echo '<td>' . esc_html( number_format_i18n( (float) $asset['classification_confidence'] * 100, 0 ) . '%' ) . '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['classification_source'] ) ? $asset['classification_source'] : '' ) . '</span></td>';
+			echo '<td><strong>' . esc_html( $asset['status'] ) . '</strong>';
+			if ( 'unavailable' === $asset['status'] ) {
+				$source_policy = MAD4B_SCP_Context_Authority::source_write_policy( $asset['source_id'] );
+				$repair_allowed = MAD4B_SCP_Context_Authority::source_allows_write( $asset['source_id'], 'recreate' );
+				echo '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['availability_reason'] ) ? $asset['availability_reason'] : 'not_seen_in_latest_scan' ) . '</span>';
+				if ( $repair_allowed ) echo '<div class="mad4b-context-repair-hint"><code>context/recreate-drive-asset</code><br><span>' . esc_html__( 'Repair path available through governed approval.', 'mad4b-site-control-plane' ) . '</span></div>';
+				else echo '<div class="mad4b-context-repair-hint"><span>' . esc_html( sprintf( __( 'Source policy %s blocks recreation.', 'mad4b-site-control-plane' ), $source_policy ) ) . '</span></div>';
+			}
+			echo '</td>';
 			echo '<td><details><summary class="button button-small">' . esc_html__( 'Review', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REVIEW_ASSET );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';
@@ -439,6 +484,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'google_connected' => __( 'Google Drive connected with read-only access.', 'mad4b-site-control-plane' ),
 			'google_disconnected' => __( 'Google Drive disconnected. Existing Context assets were not deleted.', 'mad4b-site-control-plane' ),
 			'source_selected' => __( 'Source folder added. Scan it when you are ready.', 'mad4b-site-control-plane' ),
+			'source_policy_updated' => __( 'Source write policy updated. Runtime write eligibility will follow the selected policy and OAuth scope.', 'mad4b-site-control-plane' ),
 			'source_scanned' => __( 'Source scan completed and Context assets were refreshed.', 'mad4b-site-control-plane' ),
 			'source_scanned_truncated' => __( 'Source scan completed at the safety limit. Review the folder scope before increasing coverage.', 'mad4b-site-control-plane' ),
 			'asset_review_saved' => __( 'Asset classification and quality review saved and the Context fingerprint was refreshed.', 'mad4b-site-control-plane' ),
