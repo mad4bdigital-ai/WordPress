@@ -185,6 +185,9 @@ require(drive, "download_workspace_lro_bytes", "Drive long-running read for nati
 require(drive, "application/vnd.google-apps.form", "Google Forms normalization route")
 require(drive, "application/vnd.google-apps.site", "Google Sites normalization route")
 require(drive, "application/vnd.google-apps.vid", "Google Vids normalization route")
+require(drive, "normalize_native_download_bytes", "future Google-native content sniffing")
+require(drive, "application/vnd.google-gemini.", "Google Gemini Drive MIME fallback")
+require(drive, "google_drive_metadata_only_type", "folders and third-party shortcuts remain metadata-only")
 require(drive, "normalize_generic_archive", "Google Forms and generic ZIP normalization")
 require(drive, "MAD4B_CONTEXT_EXTRACTOR_URL", "explicit external extractor endpoint configuration")
 require(drive, "MAD4B_CONTEXT_EXTRACTOR_TOKEN", "explicit external extractor credential configuration")
@@ -374,4 +377,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v47: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v48: PASS")

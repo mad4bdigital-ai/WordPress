@@ -334,6 +334,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			array( 'type' => 'Google Sites', 'mime' => 'application/vnd.google-apps.site', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Downloaded read-only as raw text.' ),
 			array( 'type' => 'Jamboard', 'mime' => 'application/vnd.google-apps.jam', 'mode' => 'text_or_ocr', 'status' => 'ready_with_ocr_fallback', 'note' => 'Downloaded read-only as PDF, then normalized through the PDF path.' ),
 			array( 'type' => 'Google Vids', 'mime' => 'application/vnd.google-apps.vid', 'mode' => 'transcription', 'status' => self::external_extractor_configured() ? 'ready' : 'extractor_required', 'note' => 'Downloaded via Drive files.download and passed to the governed media extractor.' ),
+			array( 'type' => 'Other Google-native content', 'mime' => 'application/vnd.google-apps.* / application/vnd.google-gemini.*', 'mode' => 'auto_detect', 'status' => self::external_extractor_configured() ? 'ready' : 'local_or_extractor', 'note' => 'Future/legacy Google-native types use read-only files.download, content sniffing, then governed extraction when needed. Folders and third-party shortcuts remain metadata-only by definition.' ),
 			array( 'type' => 'Text / Markdown / CSV / JSON / XML / HTML / SVG', 'mime' => 'text/*', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Downloaded and normalized as bounded text.' ),
 			array( 'type' => 'DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB', 'mime' => 'application/*+zip', 'mode' => 'structured_text', 'status' => $zip ? 'ready' : 'runtime_dependency', 'note' => $zip ? 'Normalized locally from the archive without mutating Drive.' : 'ZipArchive is required for archive document normalization.' ),
 			array( 'type' => 'RTF', 'mime' => 'application/rtf', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Normalized locally with bounded RTF decoding.' ),
@@ -1628,6 +1629,32 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::normalization_record( '', false, 'extractor_required', 'external_extractor_required', strlen( (string) $binary ) );
 	}
 
+	private static function normalize_native_download_bytes( $binary ) {
+		$binary = (string) $binary;
+		if ( 0 === strpos( $binary, '%PDF-' ) ) return self::normalize_pdf( $binary );
+		if ( 0 === strpos( $binary, "PK\x03\x04" ) ) return self::normalize_generic_archive( $binary, 'google_native_archive_download' );
+		$sample = substr( $binary, 0, min( strlen( $binary ), 65536 ) );
+		$has_nul = false !== strpos( $sample, "\x00" );
+		$utf8 = wp_check_invalid_utf8( $sample, true );
+		if ( ! $has_nul && '' !== trim( (string) $utf8 ) ) {
+			$trimmed = ltrim( $binary );
+			if ( 0 === strpos( $trimmed, '<' ) ) return self::normalization_record( self::html_visible_text( $binary ), true, 'ready', 'google_native_markup_download' );
+			return self::normalization_record( $binary, true, 'ready', 'google_native_text_download' );
+		}
+		return self::normalization_record( '', false, 'extractor_required', 'google_native_binary_extractor_required', strlen( $binary ) );
+	}
+
+	private static function native_extractor_mime( $mime ) {
+		$mime = strtolower( trim( (string) $mime ) );
+		$map = array(
+			'application/vnd.google-apps.audio' => 'audio/mpeg',
+			'application/vnd.google-apps.video' => 'video/mp4',
+			'application/vnd.google-apps.photo' => 'image/jpeg',
+			'application/vnd.google-apps.pic' => 'image/jpeg',
+		);
+		return isset( $map[ $mime ] ) ? $map[ $mime ] : $mime;
+	}
+
 
 	private static function fetch_text_content_record( array $file, $shortcut_depth = 0 ) {
 		$file_id = self::bounded_drive_id( isset( $file['id'] ) ? $file['id'] : '' );
@@ -1685,6 +1712,21 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$bytes = self::download_workspace_lro_bytes( $file_id, 'video/mp4' );
 			if ( is_wp_error( $bytes ) ) return $bytes;
 			return self::external_extractor_record( array_merge( $file, array( 'mimeType' => 'video/mp4' ) ), $bytes, self::normalization_record( '', false, 'extractor_required', 'video_transcription_required', strlen( $bytes ) ) );
+		}
+
+		if ( in_array( $mime, array( 'application/vnd.google-apps.folder', 'application/vnd.google-apps.drive-sdk' ), true ) ) {
+			return self::normalization_record( '', false, 'metadata_only', 'google_drive_metadata_only_type' );
+		}
+
+		$is_google_native = 0 === strpos( $mime, 'application/vnd.google-apps.' ) || 0 === strpos( $mime, 'application/vnd.google-gemini.' );
+		if ( $is_google_native ) {
+			$bytes = self::download_workspace_lro_bytes( $file_id );
+			if ( is_wp_error( $bytes ) ) return $bytes;
+			$local = self::normalize_native_download_bytes( $bytes );
+			if ( is_wp_error( $local ) ) return $local;
+			if ( ! empty( $local['complete'] ) ) return $local;
+			$extractor_file = array_merge( $file, array( 'mimeType' => self::native_extractor_mime( $mime ) ) );
+			return self::external_extractor_record( $extractor_file, $bytes, $local );
 		}
 
 		if ( 0 === strpos( $mime, 'text/' ) || in_array( $mime, array( 'application/json', 'application/xml', 'application/csv', 'application/javascript', 'application/x-javascript' ), true ) ) {
