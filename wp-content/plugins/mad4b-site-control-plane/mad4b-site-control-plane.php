@@ -83,6 +83,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-exporter.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skill-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-context-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-skills-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-runtime-component-adapters.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php';
@@ -171,6 +172,7 @@ MAD4B_SCP_MCP_Provider_Isolation::boot_early();
 MAD4B_SCP_External_Handshake_Evidence::boot();
 MAD4B_SCP_ChatGPT_OAuth_Lifecycle::boot();
 MAD4B_SCP_Local_OAuth_Consent_UI::boot();
+MAD4B_SCP_Context_Admin_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
 add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );
 add_action( 'admin_init', static function () {
