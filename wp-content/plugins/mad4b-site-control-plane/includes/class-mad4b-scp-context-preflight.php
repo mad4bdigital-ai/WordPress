@@ -429,21 +429,132 @@ final class MAD4B_SCP_Context_Preflight {
 	public static function mutation_context_guard( $ability_name, $input ) {
 		$ability_name = (string) $ability_name;
 		$input = is_array( $input ) ? $input : array();
-		$requires_receipt = false;
-		if ( 'mad4b/content-update-post' === $ability_name ) {
-			foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) {
-				if ( array_key_exists( $field, $input ) ) { $requires_receipt = true; break; }
-			}
-		}
-		if ( 'mad4b/content-create-post' === $ability_name ) $requires_receipt = true;
+		$requirement = self::content_mutation_requirement( $ability_name, $input );
+		$requires_receipt = ! empty( $requirement['required'] );
 
 		$receipt = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			? MAD4B_SCP_Staging_Write_Authority::context_receipt_from_input( $input )
 			: ( isset( $input['_mad4b_context_receipt'] ) && is_array( $input['_mad4b_context_receipt'] ) ? $input['_mad4b_context_receipt'] : array() );
 
 		if ( ! $requires_receipt && empty( $receipt ) ) return true;
-		if ( $requires_receipt && empty( $receipt ) ) return new WP_Error( 'mad4b_content_context_receipt_required', 'Brand-bearing content text mutation requires the exact governed Context Receipt returned by mad4b/skill-get.' );
+		if ( $requires_receipt && empty( $receipt ) ) {
+			return new WP_Error(
+				'mad4b_content_context_receipt_required',
+				'This mutation changes brand-bearing content and requires the exact governed Context Receipt returned by mad4b/skill-get.',
+				array(
+					'ability' => $ability_name,
+					'reason' => isset( $requirement['reason'] ) ? (string) $requirement['reason'] : 'content_bearing_mutation',
+					'matched_fields' => isset( $requirement['matched_fields'] ) ? array_values( $requirement['matched_fields'] ) : array(),
+				)
+			);
+		}
 		return self::validate_receipt_binding( $receipt );
+	}
+
+	public static function content_mutation_requirement( $ability_name, $input ) {
+		$ability_name = (string) $ability_name;
+		$input = is_array( $input ) ? $input : array();
+		$matched = array();
+
+		if ( 'mad4b/content-update-post' === $ability_name ) {
+			foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
+			return self::content_requirement_result( $matched, 'post_text_fields' );
+		}
+
+		if ( 'mad4b/content-import-bundle' === $ability_name ) {
+			$posts = isset( $input['bundle']['posts'] ) && is_array( $input['bundle']['posts'] ) ? $input['bundle']['posts'] : array();
+			foreach ( $posts as $index => $post ) {
+				if ( ! is_array( $post ) ) continue;
+				foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) {
+					if ( array_key_exists( $field, $post ) && '' !== trim( (string) $post[ $field ] ) ) $matched[] = 'bundle.posts.' . (int) $index . '.' . $field;
+				}
+			}
+			return self::content_requirement_result( $matched, 'content_bundle_text' );
+		}
+
+		if ( 'mad4b/taxonomy-update-term' === $ability_name ) {
+			foreach ( array( 'name', 'description' ) as $field ) if ( array_key_exists( $field, $input ) ) $matched[] = $field;
+			return self::content_requirement_result( $matched, 'taxonomy_text_fields' );
+		}
+
+		if ( 'seo/update-meta' === $ability_name ) {
+			$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
+			foreach ( array( 'title', 'description', 'focus_keyword' ) as $field ) if ( array_key_exists( $field, $fields ) ) $matched[] = 'fields.' . $field;
+			return self::content_requirement_result( $matched, 'seo_text_fields' );
+		}
+
+		if ( 'woocommerce/update-product' === $ability_name ) {
+			$fields = isset( $input['fields'] ) && is_array( $input['fields'] ) ? $input['fields'] : array();
+			foreach ( array( 'name', 'description', 'short_description' ) as $field ) if ( array_key_exists( $field, $fields ) ) $matched[] = 'fields.' . $field;
+			return self::content_requirement_result( $matched, 'product_text_fields' );
+		}
+
+		if ( 'mad4b/content-set-meta' === $ability_name ) {
+			$key = isset( $input['key'] ) ? (string) $input['key'] : '';
+			if ( self::content_field_name( $key ) || self::value_looks_like_content( isset( $input['value'] ) ? $input['value'] : null ) ) $matched[] = 'key:' . $key;
+			return self::content_requirement_result( $matched, 'post_meta_text' );
+		}
+
+		if ( 'jetengine/update-post-meta' === $ability_name ) {
+			$field = isset( $input['field'] ) ? (string) $input['field'] : '';
+			if ( self::content_field_name( $field ) || self::value_looks_like_content( isset( $input['value'] ) ? $input['value'] : null ) ) $matched[] = 'field:' . $field;
+			return self::content_requirement_result( $matched, 'jetengine_text_meta' );
+		}
+
+		if ( 'elementor/update-widget-settings' === $ability_name ) {
+			$settings = isset( $input['settings'] ) && is_array( $input['settings'] ) ? $input['settings'] : array();
+			$matched = self::content_paths_in_value( $settings, 'settings', 0 );
+			return self::content_requirement_result( $matched, 'elementor_text_settings' );
+		}
+
+		return array(
+			'contract' => 'mad4b.content-context-requirement.v1',
+			'required' => false,
+			'reason' => 'not_content_bearing',
+			'matched_fields' => array(),
+		);
+	}
+
+	private static function content_requirement_result( array $matched, $reason ) {
+		$matched = array_values( array_unique( array_filter( array_map( 'strval', $matched ) ) ) );
+		return array(
+			'contract' => 'mad4b.content-context-requirement.v1',
+			'required' => ! empty( $matched ),
+			'reason' => empty( $matched ) ? 'not_content_bearing' : sanitize_key( (string) $reason ),
+			'matched_fields' => $matched,
+		);
+	}
+
+	private static function content_field_name( $key ) {
+		$key = strtolower( trim( (string) $key ) );
+		if ( '' === $key ) return false;
+		return 1 === preg_match(
+			'/(^|[_\-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords)([_\-]|$)/',
+			$key
+		);
+	}
+
+	private static function value_looks_like_content( $value ) {
+		if ( is_string( $value ) ) {
+			$text = trim( wp_strip_all_tags( $value ) );
+			if ( strlen( $text ) < 80 ) return false;
+			return preg_match( '/\s/u', $text ) && preg_match( '/[\p{L}]/u', $text );
+		}
+		if ( ! is_array( $value ) ) return false;
+		foreach ( $value as $item ) if ( self::value_looks_like_content( $item ) ) return true;
+		return false;
+	}
+
+	private static function content_paths_in_value( $value, $path, $depth ) {
+		if ( $depth > 8 || ! is_array( $value ) ) return array();
+		$matched = array();
+		foreach ( $value as $key => $item ) {
+			$key_text = is_string( $key ) ? $key : (string) $key;
+			$child_path = '' === $path ? $key_text : $path . '.' . $key_text;
+			if ( self::content_field_name( $key_text ) && ( is_scalar( $item ) || null === $item || self::value_looks_like_content( $item ) ) ) $matched[] = $child_path;
+			if ( is_array( $item ) ) $matched = array_merge( $matched, self::content_paths_in_value( $item, $child_path, $depth + 1 ) );
+		}
+		return array_values( array_unique( $matched ) );
 	}
 
 	public static function validate_receipt_binding( $receipt ) {
