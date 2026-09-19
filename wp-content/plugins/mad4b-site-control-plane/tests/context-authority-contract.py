@@ -157,6 +157,8 @@ require(authority, "cancel_recreated_asset_rollback", "rollback intent cancellat
 require(drive, "mad4b_google_drive_recreate_rollback_recovery_required", "post-side-effect recovery-required state")
 require(drive, "mad4b_google_drive_root_write_forbidden", "no broad My Drive root writes")
 require(drive, "mad4b_google_drive_asset_outside_selected_source", "selected-source write boundary")
+require(drive, "non_recursive_source_boundary", "non-recursive source write boundary")
+require(drive, "0 === $depth && empty( $source['recursive'] )", "nested update denied for non-recursive source")
 require(drive, "mad4b_google_drive_asset_remote_stale", "remote stale hash guard")
 require(drive, "mad4b_google_drive_recreate_requires_unavailable_asset", "recreate only missing assets")
 require(drive, "provider_absence_from_metadata_result", "provider absence classification")
@@ -177,6 +179,7 @@ require(drive, "recreate_parent_candidate", "recreate parent candidate")
 require(drive, "resolve_recreate_target_folder", "exact recreate parent resolver")
 require(drive, "mad4b_google_drive_recreate_parent_unavailable", "missing parent fail-closed")
 require(drive, "mad4b_google_drive_recreate_parent_outside_source", "parent source-boundary fail-closed")
+require(drive, "! $is_source_root && empty( $source['recursive'] )", "nested recreate denied for non-recursive source")
 require(drive, "create_provider_file( $target_folder_id", "recreate writes to exact parent folder")
 assert "create_provider_file( (string) $source['external_root_id'], $title" not in drive, "Recreate must never silently fall back to source root"
 assert drive.count("self::assert_original_file_absent(") >= 2, "Recreate capture and execution must independently prove provider absence"
@@ -346,4 +349,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v40: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v41: PASS")

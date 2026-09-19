@@ -978,10 +978,22 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'Original asset has no exact parent-folder lineage. Rescan the governed source before attempting recreation.'
 			);
 		}
+		$is_source_root = hash_equals( $root_id, $parent_folder_id );
+		if ( ! $is_source_root && empty( $source['recursive'] ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_recreate_parent_outside_source',
+				'Non-recursive Context sources may recreate assets only in the selected source folder itself.',
+				array(
+					'parent_folder_id' => $parent_folder_id,
+					'root_id' => $root_id,
+					'reason' => 'non_recursive_source_boundary',
+				)
+			);
+		}
 		return array(
 			'root_id' => $root_id,
 			'parent_folder_id' => $parent_folder_id,
-			'is_source_root' => hash_equals( $root_id, $parent_folder_id ),
+			'is_source_root' => $is_source_root,
 		);
 	}
 
@@ -1142,6 +1154,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$parents = isset( $current['parents'] ) && is_array( $current['parents'] ) ? $current['parents'] : array();
 			foreach ( $parents as $parent_id ) if ( hash_equals( $root_id, (string) $parent_id ) ) return true;
 			if ( empty( $parents ) ) break;
+			if ( 0 === $depth && empty( $source['recursive'] ) ) {
+				return new WP_Error(
+					'mad4b_google_drive_asset_outside_selected_source',
+					'Drive asset is not an immediate child of this non-recursive Context source.',
+					array( 'reason' => 'non_recursive_source_boundary', 'root_id' => $root_id )
+				);
+			}
 			$parent_id = (string) reset( $parents );
 			if ( isset( $visited[ $parent_id ] ) ) break;
 			$visited[ $parent_id ] = true;

@@ -31,13 +31,22 @@ $candidate->setAccessible( true );
 $payload = $ref->getMethod( 'provider_asset_payload' );
 $payload->setAccessible( true );
 
-$source = array( 'external_root_id' => 'folder-root', 'label' => 'Brand Core' );
+$source = array( 'external_root_id' => 'folder-root', 'label' => 'Brand Core', 'recursive' => true );
+$flat_source = array( 'external_root_id' => 'folder-root', 'label' => 'Brand Core', 'recursive' => false );
 
 $nested = $candidate->invoke( null, array( 'parent_folder_id' => 'folder-nested' ), $source );
 mad4b_parent_assert( is_array( $nested ) && 'folder-nested' === $nested['parent_folder_id'] && empty( $nested['is_source_root'] ), 'Nested recreate must retain exact parent candidate.', $nested );
 
 $root = $candidate->invoke( null, array( 'parent_folder_id' => 'folder-root' ), $source );
 mad4b_parent_assert( is_array( $root ) && ! empty( $root['is_source_root'] ), 'Top-level asset may recreate in the selected source root.', $root );
+
+$flat_root = $candidate->invoke( null, array( 'parent_folder_id' => 'folder-root' ), $flat_source );
+mad4b_parent_assert( is_array( $flat_root ) && ! empty( $flat_root['is_source_root'] ), 'Non-recursive source must still allow recreation directly in its selected root.', $flat_root );
+
+$flat_nested = $candidate->invoke( null, array( 'parent_folder_id' => 'folder-nested' ), $flat_source );
+mad4b_parent_assert( is_wp_error( $flat_nested ) && 'mad4b_google_drive_recreate_parent_outside_source' === $flat_nested->get_error_code(), 'Non-recursive source must reject recreation into nested folders.', $flat_nested );
+$flat_nested_data = $flat_nested->get_error_data();
+mad4b_parent_assert( is_array( $flat_nested_data ) && 'non_recursive_source_boundary' === ( isset( $flat_nested_data['reason'] ) ? $flat_nested_data['reason'] : '' ), 'Non-recursive recreate denial must expose bounded source-boundary reason.', $flat_nested_data );
 
 $missing = $candidate->invoke( null, array(), $source );
 mad4b_parent_assert( is_wp_error( $missing ) && 'mad4b_google_drive_recreate_parent_unavailable' === $missing->get_error_code(), 'Legacy/missing parent lineage must fail closed instead of falling back to root.', $missing );
@@ -64,4 +73,4 @@ $moved_payload = $payload->invoke( null, $source, $moved, 'replacement content',
 mad4b_parent_assert( 'folder-other' === $moved_payload['parent_folder_id'], 'Provider-observed parent must win over stale preserved parent.', $moved_payload );
 mad4b_parent_assert( 'Brand Core/Tone of Voice.md' === $moved_payload['path'], 'Path must not be preserved when provider parent differs.', $moved_payload );
 
-echo "mad4b.site-control-plane.context-parent-lineage.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-parent-lineage.runtime.v2: PASS\n";
