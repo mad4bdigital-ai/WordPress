@@ -16,6 +16,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-write-mount-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-site-binding-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-quality-scoring-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php'
@@ -63,6 +64,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-write-mount-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-site-binding-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-quality-scoring-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
@@ -92,6 +94,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
+
+      - name: Execute Drive write mount runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-write-mount-runtime.php
 
       - name: Execute profile-aware quality scoring runtime
         shell: bash
