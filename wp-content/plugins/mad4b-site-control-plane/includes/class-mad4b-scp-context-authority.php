@@ -466,6 +466,61 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+	public static function begin_recreated_asset_rollback( $old_asset_id, $replacement_asset_id ) {
+		return self::with_registry_lock(
+			'begin_recreated_asset_rollback',
+			static function () use ( $old_asset_id, $replacement_asset_id ) {
+				$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
+				$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
+				$records = self::assets();
+				if ( ! isset( $records[ $old_asset_id ], $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback intent requires both original and replacement registry records.' );
+				$original = $records[ $old_asset_id ];
+				$replacement = $records[ $replacement_asset_id ];
+				if ( 'recreated' !== ( isset( $original['status'] ) ? (string) $original['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_rollback_status_drift', 'Original Context asset is no longer in recreated state.' );
+				if ( empty( $original['replacement_asset_id'] ) || ! hash_equals( (string) $original['replacement_asset_id'], $replacement_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_binding_drift', 'Original Context asset no longer points to the recorded replacement.' );
+				if ( empty( $replacement['source_id'] ) || empty( $original['source_id'] ) || ! hash_equals( (string) $original['source_id'], (string) $replacement['source_id'] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_source_mismatch', 'Replacement no longer belongs to the original governed source.' );
+
+				$started_at = gmdate( 'c' );
+				$records[ $old_asset_id ]['status'] = 'rollback_pending';
+				$records[ $old_asset_id ]['rollback_started_at'] = $started_at;
+				$records[ $replacement_asset_id ]['status'] = 'rollback_pending';
+				$records[ $replacement_asset_id ]['rollback_started_at'] = $started_at;
+				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_rollback_intent_write_failed', 'Recreate rollback intent could not be persisted before provider deletion.' );
+				self::refresh_profile_fingerprint( $records, self::sources() );
+				return array(
+					'contract' => 'mad4b.context-recreate-rollback-intent.v1',
+					'asset_id' => $old_asset_id,
+					'replacement_asset_id' => $replacement_asset_id,
+					'source_id' => (string) $original['source_id'],
+					'started_at' => $started_at,
+				);
+			}
+		);
+	}
+
+	public static function cancel_recreated_asset_rollback( $old_asset_id, $replacement_asset_id, $reason = '' ) {
+		return self::with_registry_lock(
+			'cancel_recreated_asset_rollback',
+			static function () use ( $old_asset_id, $replacement_asset_id, $reason ) {
+				$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
+				$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
+				$records = self::assets();
+				if ( ! isset( $records[ $old_asset_id ], $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_registry_missing', 'Rollback cancellation requires both original and replacement registry records.' );
+				if ( 'rollback_pending' !== ( isset( $records[ $old_asset_id ]['status'] ) ? (string) $records[ $old_asset_id ]['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_state_drift', 'Original Context asset is not in rollback_pending state.' );
+				if ( empty( $records[ $old_asset_id ]['replacement_asset_id'] ) || ! hash_equals( (string) $records[ $old_asset_id ]['replacement_asset_id'], $replacement_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_binding_drift', 'Rollback cancellation replacement binding drifted.' );
+
+				$records[ $old_asset_id ]['status'] = 'recreated';
+				$records[ $old_asset_id ]['rollback_cancel_reason'] = sanitize_key( (string) $reason );
+				unset( $records[ $old_asset_id ]['rollback_started_at'] );
+				$records[ $replacement_asset_id ]['status'] = 'ready';
+				unset( $records[ $replacement_asset_id ]['rollback_started_at'] );
+				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_write_failed', 'Rollback cancellation could not restore the registry state.' );
+				self::refresh_profile_fingerprint( $records, self::sources() );
+				return true;
+			}
+		);
+	}
+
 	public static function rollback_recreated_asset( $old_asset_id, $replacement_asset_id, array $before_state ) {
 		return self::with_registry_lock(
 			'rollback_recreated_asset',
