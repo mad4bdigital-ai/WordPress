@@ -152,6 +152,7 @@ $review = MAD4B_SCP_Context_Authority::review_asset(
 		'category' => 'tone_of_voice',
 		'authority_class' => 'brand_authority',
 		'required' => true,
+		'quality_mode' => 'manual',
 		'quality_score' => '97',
 	)
 );
@@ -206,7 +207,28 @@ mad4b_review_assert( empty( $status['ready'] ), 'Context Authority must fail clo
 mad4b_review_assert( in_array( 'mandatory_context_review_required', $status['blockers'], true ), 'Changed mandatory content must surface review blocker.', $status['blockers'] );
 mad4b_review_assert( ! hash_equals( $review_fingerprint, MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ), 'Review invalidation must change the authority manifest fingerprint.' );
 
-$review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
-mad4b_review_assert( 1 === count( $review_events ), 'Human review must emit exactly one audit event in this flow.', $review_events );
+$automatic_review = MAD4B_SCP_Context_Authority::review_asset(
+	$asset_id,
+	array(
+		'category' => 'tone_of_voice',
+		'authority_class' => 'brand_authority',
+		'required' => true,
+		'quality_mode' => 'automatic',
+		'quality_score' => '',
+	)
+);
+mad4b_review_assert( ! is_wp_error( $automatic_review ), 'Reviewer must be able to return a previously overridden asset to automatic scoring.', $automatic_review );
+mad4b_review_assert( 'approved' === $automatic_review['review_status'], 'Automatic-score review must approve the current changed content.', $automatic_review );
+mad4b_review_assert( empty( $automatic_review['quality']['human_override'] ), 'Automatic-score review must clear the prior human quality override.', $automatic_review );
+mad4b_review_assert( (int) $automatic_review['quality_auto_score'] === (int) $automatic_review['quality_score'], 'Automatic-score review must restore the current computed score.', $automatic_review );
+mad4b_review_assert( 'human_override' !== ( isset( $automatic_review['quality']['mode'] ) ? (string) $automatic_review['quality']['mode'] : '' ), 'Automatic-score review must restore automatic scoring semantics.', $automatic_review );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v1: PASS\n";
+$ready_status = MAD4B_SCP_Context_Authority::status();
+mad4b_review_assert( ! in_array( 'mandatory_context_review_required', $ready_status['blockers'], true ), 'Renewed review must clear the mandatory review blocker.', $ready_status['blockers'] );
+
+$review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
+mad4b_review_assert( 2 === count( $review_events ), 'Manual review and automatic-score reset must each emit one audit event.', $review_events );
+mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
+mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
+
+echo "mad4b.site-control-plane.context-human-review.runtime.v2: PASS\n";

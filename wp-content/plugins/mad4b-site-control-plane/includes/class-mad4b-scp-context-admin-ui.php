@@ -149,6 +149,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				'category' => isset( $_POST['category'] ) ? wp_unslash( $_POST['category'] ) : '',
 				'authority_class' => isset( $_POST['authority_class'] ) ? wp_unslash( $_POST['authority_class'] ) : '',
 				'required' => ! empty( $_POST['required'] ),
+				'quality_mode' => isset( $_POST['quality_mode'] ) ? wp_unslash( $_POST['quality_mode'] ) : 'automatic',
 				'quality_score' => isset( $_POST['quality_score'] ) ? wp_unslash( $_POST['quality_score'] ) : '',
 			)
 		);
@@ -545,7 +546,15 @@ final class MAD4B_SCP_Context_Admin_UI {
 			foreach ( $authorities as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['authority_class'], $key, false ) . '>' . esc_html( $label ) . '</option>';
 			echo '</select></label>';
 			echo '<label><input type="checkbox" name="required" value="1"' . checked( ! empty( $asset['required'] ), true, false ) . '> ' . esc_html__( 'Required context', 'mad4b-site-control-plane' ) . '</label>';
-			echo '<label><strong>' . esc_html__( 'Quality 0–100', 'mad4b-site-control-plane' ) . '</strong><input type="number" min="0" max="100" name="quality_score" value="' . esc_attr( isset( $asset['quality_score'] ) ? (string) $asset['quality_score'] : '' ) . '"></label>';
+			$human_quality_override = ! empty( $quality['human_override'] );
+			$automatic_quality_score = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $quality['automatic_score'] ) ? (int) $quality['automatic_score'] : null );
+			echo '<fieldset class="mad4b-context-quality-mode"><legend><strong>' . esc_html__( 'Quality score', 'mad4b-site-control-plane' ) . '</strong></legend>';
+			echo '<label><input type="radio" name="quality_mode" value="automatic"' . checked( $human_quality_override, false, false ) . '> ' . esc_html__( 'Use automatic score', 'mad4b-site-control-plane' );
+			if ( null !== $automatic_quality_score ) echo ' <strong>(' . esc_html( (string) $automatic_quality_score . '/100' ) . ')</strong>';
+			echo '<span>' . esc_html__( 'Recommended. Uses the current scoring profile and updates naturally when the source changes.', 'mad4b-site-control-plane' ) . '</span></label>';
+			echo '<label><input type="radio" name="quality_mode" value="manual"' . checked( $human_quality_override, true, false ) . '> ' . esc_html__( 'Manual override', 'mad4b-site-control-plane' ) . '<span>' . esc_html__( 'Use only when a reviewer has a documented reason to replace the automatic score.', 'mad4b-site-control-plane' ) . '</span></label>';
+			echo '<input type="number" min="0" max="100" name="quality_score" value="' . esc_attr( $human_quality_override && isset( $asset['quality_score'] ) ? (string) $asset['quality_score'] : '' ) . '" placeholder="' . esc_attr( null === $automatic_quality_score ? '0–100' : (string) $automatic_quality_score ) . '">';
+			echo '</fieldset>';
 			submit_button( __( 'Save Review', 'mad4b-site-control-plane' ), 'primary small', 'submit', false );
 			echo '</form></details></td></tr>';
 		}
@@ -683,7 +692,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		.mad4b-context-repair-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.mad4b-context-repair-title h2{margin-top:0}.mad4b-context-repair-count{display:inline-flex;min-width:38px;height:38px;align-items:center;justify-content:center;border-radius:20px;background:#f0f0f1;font-weight:700;font-size:16px}
 		.mad4b-context-repair-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px}.mad4b-context-repair-card{border:1px solid #dcdcde;border-left-width:4px;border-radius:5px;background:#fff;padding:13px}.mad4b-context-repair-card.is-ready{border-left-color:#00a32a}.mad4b-context-repair-card.is-blocked{border-left-color:#dba617}.mad4b-context-repair-card-head{display:flex;justify-content:space-between;gap:8px}.mad4b-context-repair-card dl{display:grid;grid-template-columns:auto 1fr;gap:5px 10px}.mad4b-context-repair-card dt{font-weight:600}.mad4b-context-repair-card dd{margin:0;min-width:0;overflow-wrap:anywhere}
 		.mad4b-context-governance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}.mad4b-context-governance-cell{border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-governance-cell span{display:block;color:#646970;margin-bottom:5px}.mad4b-context-governance-cell strong{display:block}.mad4b-context-governance-cell.is-complete{border-left:4px solid #00a32a}.mad4b-context-governance-cell.is-attention{border-left:4px solid #dba617}.mad4b-context-governance-cell.is-pending{border-left:4px solid #8c8f94}
-		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}
+		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}.mad4b-context-quality-mode{border:0;padding:0;margin:0 0 12px}.mad4b-context-quality-mode label{padding:8px;border:1px solid #dcdcde;border-radius:4px}.mad4b-context-quality-mode label span{display:block;margin:4px 0 0 22px;color:#646970;font-weight:400}
 		.mad4b-context-filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px}.mad4b-context-folder-jump{margin:14px 0 18px}.mad4b-context-folder-jump label{display:block;margin-bottom:6px}.mad4b-context-filterbar select,.mad4b-context-filterbar input{max-width:220px}.mad4b-context-remove{margin-top:8px}.mad4b-context-remove form{margin-top:8px;max-width:280px}
 		@media(max-width:782px){.mad4b-context-folder-head{align-items:flex-start!important;flex-direction:column}}
 		</style>';

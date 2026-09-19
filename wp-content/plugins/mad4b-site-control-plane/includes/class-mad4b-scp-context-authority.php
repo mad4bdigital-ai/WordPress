@@ -730,16 +730,50 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['required'] = ! empty( $input['required'] );
 			$asset['priority'] = 'brand_authority' === $authority || 'policy_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
 			$quality_input = isset( $input['quality_score'] ) ? trim( (string) $input['quality_score'] ) : '';
-			if ( '' !== $quality_input ) {
+			$current_quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array( 'contract' => self::QUALITY_CONTRACT );
+			$quality_mode = sanitize_key(
+				isset( $input['quality_mode'] )
+					? (string) $input['quality_mode']
+					: ( '' !== $quality_input ? 'manual' : ( ! empty( $current_quality['human_override'] ) ? 'manual' : 'automatic' ) )
+			);
+			if ( ! in_array( $quality_mode, array( 'automatic', 'manual' ), true ) ) return new WP_Error( 'mad4b_context_quality_mode_invalid', 'Quality mode must be automatic or manual.' );
+			$automatic = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $current_quality['automatic_score'] ) ? (int) $current_quality['automatic_score'] : null );
+
+			if ( 'automatic' === $quality_mode ) {
+				if ( null === $automatic ) return new WP_Error( 'mad4b_context_automatic_quality_unavailable', 'Automatic quality score is unavailable for this asset. Rescan the source before resetting the review score.' );
+				$automatic_mode = isset( $current_quality['automatic_mode'] ) && '' !== (string) $current_quality['automatic_mode']
+					? sanitize_key( (string) $current_quality['automatic_mode'] )
+					: ( isset( $current_quality['mode'] ) && 'human_override' !== (string) $current_quality['mode']
+						? sanitize_key( (string) $current_quality['mode'] )
+						: ( ! empty( $asset['content_available'] ) ? 'content_heuristic_v2' : 'metadata_provisional' ) );
+				$automatic_provisional = array_key_exists( 'automatic_provisional', $current_quality )
+					? (bool) $current_quality['automatic_provisional']
+					: ( 'metadata_provisional' === $automatic_mode );
+				$asset['quality_score'] = $automatic;
+				$current_quality['overall_score'] = $automatic;
+				$current_quality['automatic_score'] = $automatic;
+				$current_quality['mode'] = $automatic_mode;
+				$current_quality['provisional'] = $automatic_provisional;
+				unset( $current_quality['human_override'], $current_quality['automatic_mode'], $current_quality['automatic_provisional'] );
+				$asset['quality'] = $current_quality;
+			} else {
+				if ( '' === $quality_input ) return new WP_Error( 'mad4b_context_quality_score_required', 'Manual quality mode requires a score between 0 and 100.' );
 				if ( ! preg_match( '/^\d{1,3}$/', $quality_input ) || (int) $quality_input < 0 || (int) $quality_input > 100 ) return new WP_Error( 'mad4b_context_quality_score_invalid', 'Quality score must be between 0 and 100.' );
-				$automatic = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null );
+				if ( null === $automatic ) $automatic = isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null;
+				if ( null === $automatic ) return new WP_Error( 'mad4b_context_automatic_quality_unavailable', 'Automatic quality score is unavailable for this asset. Rescan the source before applying a manual override.' );
+				if ( empty( $current_quality['human_override'] ) ) {
+					$current_quality['automatic_mode'] = isset( $current_quality['mode'] ) && '' !== (string) $current_quality['mode']
+						? sanitize_key( (string) $current_quality['mode'] )
+						: ( ! empty( $asset['content_available'] ) ? 'content_heuristic_v2' : 'metadata_provisional' );
+					$current_quality['automatic_provisional'] = ! empty( $current_quality['provisional'] );
+				}
 				$asset['quality_score'] = (int) $quality_input;
-				if ( ! isset( $asset['quality'] ) || ! is_array( $asset['quality'] ) ) $asset['quality'] = array( 'contract' => self::QUALITY_CONTRACT );
-				$asset['quality']['automatic_score'] = $automatic;
-				$asset['quality']['overall_score'] = (int) $quality_input;
-				$asset['quality']['mode'] = 'human_override';
-				$asset['quality']['human_override'] = true;
-				$asset['quality']['provisional'] = false;
+				$current_quality['automatic_score'] = $automatic;
+				$current_quality['overall_score'] = (int) $quality_input;
+				$current_quality['mode'] = 'human_override';
+				$current_quality['human_override'] = true;
+				$current_quality['provisional'] = false;
+				$asset['quality'] = $current_quality;
 			}
 			$asset['reviewed_by'] = get_current_user_id();
 			$asset['reviewed_at'] = gmdate( 'c' );
@@ -765,6 +799,7 @@ final class MAD4B_SCP_Context_Authority {
 						'authority_class' => $authority,
 						'required' => ! empty( $asset['required'] ),
 						'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+						'quality_mode' => $quality_mode,
 						'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
 					)
 				);
