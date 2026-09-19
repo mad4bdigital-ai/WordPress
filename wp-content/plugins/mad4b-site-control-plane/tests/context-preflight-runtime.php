@@ -15,6 +15,7 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( preg_replace( '/[\r\n\t]+/', ' ', (string) $value ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
 
 final class MAD4B_SCP_Context_Authority {
 	public static $assets = array();
@@ -175,6 +176,113 @@ $guarded = MAD4B_SCP_Context_Preflight::mutation_context_guard(
 );
 mad4b_context_preflight_assert( is_array( $guarded ) && ! empty( $guarded['ready'] ), 'Exact receipt must authorize Context guard.', $guarded );
 
+$content_guard_cases = array(
+	array(
+		'ability' => 'mad4b/content-import-bundle',
+		'input' => array( 'bundle' => array( 'posts' => array( array( 'post_title' => 'Brand article', 'post_content' => 'Body copy' ) ) ) ),
+		'required' => true,
+		'label' => 'Content bundle import',
+	),
+	array(
+		'ability' => 'mad4b/taxonomy-update-term',
+		'input' => array( 'name' => 'New destination category' ),
+		'required' => true,
+		'label' => 'Taxonomy name',
+	),
+	array(
+		'ability' => 'mad4b/taxonomy-update-term',
+		'input' => array( 'slug' => 'new-destination', 'parent' => 4 ),
+		'required' => false,
+		'label' => 'Taxonomy structural update',
+	),
+	array(
+		'ability' => 'seo/update-meta',
+		'input' => array( 'fields' => array( 'title' => 'Travel offer title' ) ),
+		'required' => true,
+		'label' => 'SEO title',
+	),
+	array(
+		'ability' => 'seo/update-meta',
+		'input' => array( 'fields' => array( 'robots' => array( 'index', 'follow' ), 'canonical_url' => 'https://example.test/page' ) ),
+		'required' => false,
+		'label' => 'SEO operational metadata',
+	),
+	array(
+		'ability' => 'woocommerce/update-product',
+		'input' => array( 'fields' => array( 'description' => 'A brand-facing product description.' ) ),
+		'required' => true,
+		'label' => 'WooCommerce description',
+	),
+	array(
+		'ability' => 'woocommerce/update-product',
+		'input' => array( 'fields' => array( 'regular_price' => '120', 'sale_price' => '95', 'stock_status' => 'instock' ) ),
+		'required' => false,
+		'label' => 'WooCommerce commercial state',
+	),
+	array(
+		'ability' => 'elementor/update-widget-settings',
+		'input' => array( 'settings' => array( 'title' => 'Hero headline' ) ),
+		'required' => true,
+		'label' => 'Elementor content setting',
+	),
+	array(
+		'ability' => 'elementor/update-widget-settings',
+		'input' => array( 'settings' => array( 'background_color' => '#ffffff', 'margin' => array( 'top' => 10, 'bottom' => 10 ) ) ),
+		'required' => false,
+		'label' => 'Elementor visual setting',
+	),
+	array(
+		'ability' => 'jetengine/update-post-meta',
+		'input' => array( 'field' => 'long_description', 'value' => 'A governed long description.' ),
+		'required' => true,
+		'label' => 'JetEngine descriptive field',
+	),
+	array(
+		'ability' => 'jetengine/update-post-meta',
+		'input' => array( 'field' => 'price', 'value' => 99 ),
+		'required' => false,
+		'label' => 'JetEngine numeric field',
+	),
+	array(
+		'ability' => 'mad4b/content-set-meta',
+		'input' => array( 'key' => 'hero_heading', 'value' => 'Explore Egypt' ),
+		'required' => true,
+		'label' => 'Content meta heading',
+	),
+	array(
+		'ability' => 'mad4b/content-set-meta',
+		'input' => array( 'key' => '_menu_order', 'value' => 3 ),
+		'required' => false,
+		'label' => 'Operational post meta',
+	),
+);
+
+foreach ( $content_guard_cases as $case ) {
+	$result = MAD4B_SCP_Context_Preflight::mutation_context_guard( $case['ability'], $case['input'] );
+	if ( $case['required'] ) {
+		mad4b_context_preflight_assert(
+			is_wp_error( $result ) && 'mad4b_content_context_receipt_required' === $result->get_error_code(),
+			$case['label'] . ' must require Context Receipt.',
+			$result
+		);
+	} else {
+		mad4b_context_preflight_assert( true === $result, $case['label'] . ' must remain operational without Brand Context Receipt.', $result );
+	}
+}
+
+$long_unlabeled_meta = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+	'jetengine/update-post-meta',
+	array(
+		'field' => 'custom_blob',
+		'value' => str_repeat( 'This is natural-language campaign copy requiring governed context. ', 3 ),
+	)
+);
+mad4b_context_preflight_assert(
+	is_wp_error( $long_unlabeled_meta ) && 'mad4b_content_context_receipt_required' === $long_unlabeled_meta->get_error_code(),
+	'Long natural-language meta must require Context even when the custom field key is not semantically named.',
+	$long_unlabeled_meta
+);
+
 $tampered = $site_union['receipt'];
 $tampered['registry_revision'] = 99;
 $tampered_result = MAD4B_SCP_Context_Preflight::validate_receipt_binding( $tampered );
@@ -212,4 +320,4 @@ $none = MAD4B_SCP_Context_Preflight::preflight_entry(
 );
 mad4b_context_preflight_assert( ! empty( $none['ready'] ) && 'not_required' === $none['state'], 'Non-context Skill must remain usable without Brand Context.', $none );
 
-echo "mad4b.site-control-plane.context-preflight.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-preflight.runtime.v2: PASS\n";
