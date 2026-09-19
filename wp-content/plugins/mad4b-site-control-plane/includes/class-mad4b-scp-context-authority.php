@@ -332,7 +332,6 @@ final class MAD4B_SCP_Context_Authority {
 					if ( count( $records ) >= self::MAX_ASSETS ) break;
 				}
 
-				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_asset_registry_write_failed', 'Context asset registry could not persist the source scan.' );
 				$sources[ $source_id ]['status'] = $scan_complete ? 'ready' : 'partial_scan';
 				$sources[ $source_id ]['last_synced_at'] = $scan_completed_at;
 				$sources[ $source_id ]['last_scan_complete'] = (bool) $scan_complete;
@@ -344,7 +343,6 @@ final class MAD4B_SCP_Context_Authority {
 				}
 				$sources[ $source_id ]['asset_count'] = $count;
 				$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
-				if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_registry_write_failed', 'Context source scan state could not be persisted.' );
 
 				$profile = self::profile();
 				if ( ! empty( $profile ) ) {
@@ -353,8 +351,19 @@ final class MAD4B_SCP_Context_Authority {
 					if ( $scan_complete ) $profile['last_verified_at'] = $scan_completed_at;
 					$profile['status'] = $scan_complete ? 'indexed' : 'partial_index';
 					$profile['updated_at'] = gmdate( 'c' );
-					if ( ! self::write_option( self::PROFILE_OPTION, $profile ) ) return new WP_Error( 'mad4b_context_profile_write_failed', 'Brand Context Profile scan state could not be persisted.' );
 				}
+				$changes = array(
+					self::ASSETS_OPTION => $records,
+					self::SOURCES_OPTION => $sources,
+				);
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes(
+					$changes,
+					'mad4b_context_scan_registry_commit_failed',
+					'Context scan registry state could not be committed atomically.'
+				);
+				if ( is_wp_error( $commit ) ) return $commit;
+
 				return array(
 					'source' => $sources[ $source_id ],
 					'asset_count' => $count,
@@ -400,8 +409,16 @@ final class MAD4B_SCP_Context_Authority {
 				$normalized['availability_reason'] = '';
 				$normalized['last_seen_at'] = gmdate( 'c' );
 				$records[ $normalized['asset_id'] ] = $normalized;
-				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_asset_registry_write_failed', 'Context asset registry could not persist the provider readback.' );
-				self::refresh_profile_fingerprint( $records, self::sources() );
+				$sources = self::sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes(
+					$changes,
+					'mad4b_context_asset_registry_write_failed',
+					'Context asset registry and fingerprint could not be committed atomically.'
+				);
+				if ( is_wp_error( $commit ) ) return $commit;
 				return $normalized;
 			}
 		);
@@ -436,8 +453,16 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['replacement_asset_id'] = (string) $normalized['asset_id'];
 				$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
 				$records[ $normalized['asset_id'] ] = $normalized;
-				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_registry_commit_failed', 'Context registry could not atomically bind the recreated replacement.' );
-				self::refresh_profile_fingerprint( $records, self::sources() );
+				$sources = self::sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes(
+					$changes,
+					'mad4b_context_recreate_registry_commit_failed',
+					'Context recreation registry state could not be committed atomically.'
+				);
+				if ( is_wp_error( $commit ) ) return $commit;
 				if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/context-recreated-asset-registered', array( 'asset_id' => $old_asset_id, 'replacement_asset_id' => (string) $normalized['asset_id'], 'source_id' => $source_id, 'file_id' => (string) $normalized['file_id'] ), 'ok' );
 				return array( 'original' => $records[ $old_asset_id ], 'replacement' => $normalized );
 			}
@@ -457,9 +482,16 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
 			}
 			if ( ! empty( $new_asset['asset_id'] ) ) $records[ (string) $new_asset['asset_id'] ] = $new_asset;
-			$written = self::write_option( self::ASSETS_OPTION, $records );
-			if ( false === $written ) return new WP_Error( 'mad4b_context_recreate_registry_write_failed', 'Context registry could not persist recreated-asset lineage.' );
-			self::refresh_profile_fingerprint( $records, self::sources() );
+			$sources = self::sources();
+			$profile = self::refreshed_profile_record( $records, $sources, true );
+			$changes = array( self::ASSETS_OPTION => $records );
+			if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+			$commit = self::commit_option_changes(
+				$changes,
+				'mad4b_context_recreate_registry_write_failed',
+				'Context recreated-asset lineage could not be committed atomically.'
+			);
+			if ( is_wp_error( $commit ) ) return $commit;
 			return isset( $records[ $old_asset_id ] ) ? $records[ $old_asset_id ] : array();
 		
 			}
