@@ -517,8 +517,16 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['rollback_started_at'] = $started_at;
 				$records[ $replacement_asset_id ]['status'] = 'rollback_pending';
 				$records[ $replacement_asset_id ]['rollback_started_at'] = $started_at;
-				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_rollback_intent_write_failed', 'Recreate rollback intent could not be persisted before provider deletion.' );
-				self::refresh_profile_fingerprint( $records, self::sources() );
+				$sources = self::sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes(
+					$changes,
+					'mad4b_context_recreate_rollback_intent_write_failed',
+					'Recreate rollback intent and Context fingerprint could not be committed atomically.'
+				);
+				if ( is_wp_error( $commit ) ) return $commit;
 				return array(
 					'contract' => 'mad4b.context-recreate-rollback-intent.v1',
 					'asset_id' => $old_asset_id,
@@ -546,8 +554,16 @@ final class MAD4B_SCP_Context_Authority {
 				unset( $records[ $old_asset_id ]['rollback_started_at'] );
 				$records[ $replacement_asset_id ]['status'] = 'ready';
 				unset( $records[ $replacement_asset_id ]['rollback_started_at'] );
-				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_rollback_cancel_write_failed', 'Rollback cancellation could not restore the registry state.' );
-				self::refresh_profile_fingerprint( $records, self::sources() );
+				$sources = self::sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes(
+					$changes,
+					'mad4b_context_recreate_rollback_cancel_write_failed',
+					'Rollback cancellation and Context fingerprint could not be committed atomically.'
+				);
+				if ( is_wp_error( $commit ) ) return $commit;
 				return true;
 			}
 		);
@@ -572,8 +588,16 @@ final class MAD4B_SCP_Context_Authority {
 				$records[ $old_asset_id ]['availability_reason'] = isset( $before_state['availability_reason'] ) ? sanitize_key( (string) $before_state['availability_reason'] ) : 'not_seen_in_complete_scan';
 				if ( isset( $before_state['absence_scan_generation'] ) ) $records[ $old_asset_id ]['absence_scan_generation'] = (string) $before_state['absence_scan_generation'];
 				unset( $records[ $old_asset_id ]['replacement_asset_id'], $records[ $old_asset_id ]['recreated_at'], $records[ $old_asset_id ]['rollback_started_at'] );
-				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_write_failed', 'Replacement file was removed but Context registry rollback could not be persisted.' );
-				self::refresh_profile_fingerprint( $records, self::sources() );
+				$sources = self::sources();
+				$profile = self::refreshed_profile_record( $records, $sources, true );
+				$changes = array( self::ASSETS_OPTION => $records );
+				if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+				$commit = self::commit_option_changes(
+					$changes,
+					'mad4b_context_recreate_rollback_registry_write_failed',
+					'Replacement file was removed but Context registry rollback could not be finalized atomically.'
+				);
+				if ( is_wp_error( $commit ) ) return $commit;
 				if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/context-recreate-rollback', array( 'asset_id' => $old_asset_id, 'replacement_asset_id' => $replacement_asset_id, 'source_id' => (string) $before_state['source_id'], 'restored_status' => (string) $records[ $old_asset_id ]['status'] ), 'ok' );
 				return $records[ $old_asset_id ];
 			}
@@ -649,15 +673,18 @@ final class MAD4B_SCP_Context_Authority {
 				}
 			}
 			unset( $sources[ $source_id ] );
-			self::write_option( self::ASSETS_OPTION, $assets );
-			self::write_option( self::SOURCES_OPTION, $sources );
-			$profile = self::profile();
-			if ( ! empty( $profile ) ) {
-				$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
-				$profile['last_verified_at'] = gmdate( 'c' );
-				$profile['updated_at'] = gmdate( 'c' );
-				self::write_option( self::PROFILE_OPTION, $profile );
-			}
+			$profile = self::refreshed_profile_record( $assets, $sources, true );
+			$changes = array(
+				self::ASSETS_OPTION => $assets,
+				self::SOURCES_OPTION => $sources,
+			);
+			if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+			$commit = self::commit_option_changes(
+				$changes,
+				'mad4b_context_source_remove_commit_failed',
+				'Context source removal could not be committed atomically.'
+			);
+			if ( is_wp_error( $commit ) ) return $commit;
 			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 				MAD4B_SCP_Audit::record(
 					'mad4b/context-source-remove',
@@ -718,15 +745,16 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['reviewed_at'] = gmdate( 'c' );
 			$asset['review_status'] = 'approved';
 			$records[ $asset_id ] = $asset;
-			self::write_option( self::ASSETS_OPTION, $records );
-	
-			$profile = self::profile();
-			if ( ! empty( $profile ) ) {
-				$profile['context_fingerprint'] = self::context_fingerprint( $records, self::sources() );
-				$profile['last_verified_at'] = gmdate( 'c' );
-				$profile['updated_at'] = gmdate( 'c' );
-				self::write_option( self::PROFILE_OPTION, $profile );
-			}
+			$sources = self::sources();
+			$profile = self::refreshed_profile_record( $records, $sources, true );
+			$changes = array( self::ASSETS_OPTION => $records );
+			if ( ! empty( $profile ) ) $changes[ self::PROFILE_OPTION ] = $profile;
+			$commit = self::commit_option_changes(
+				$changes,
+				'mad4b_context_asset_review_commit_failed',
+				'Context asset review and authority fingerprint could not be committed atomically.'
+			);
+			if ( is_wp_error( $commit ) ) return $commit;
 			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 				MAD4B_SCP_Audit::record(
 					'mad4b/context-asset-review',
