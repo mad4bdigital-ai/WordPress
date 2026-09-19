@@ -99,6 +99,9 @@ assert drive.count("self::assert_original_file_absent(") >= 2, "Recreate capture
 require(drive, "create_asset", "Drive asset create")
 require(drive, "$target_folder_id = self::bounded_drive_id", "selected-folder create binding")
 require(drive, "create_provider_file( $target_folder_id, $name", "create writes only to selected source folder")
+require(drive, "verify_created_file_parent", "provider-confirmed created parent")
+require(drive, "mad4b_google_drive_created_parent_mismatch", "created-parent mismatch fail-closed")
+require(drive, "delete_provider_file_for_rollback( $file_id, $source, false )", "exact newly-created file compensation")
 assert "'target_folder_id' => $target_folder_id" in drive, "create receipt must bind the exact selected folder"
 require(drive, "update_asset", "Drive asset update")
 require(drive, "recreate_asset", "Drive asset recreate")
@@ -167,5 +170,9 @@ require(admin, "Quality and authority are separate", "quality/authority UX guida
 require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
+require(admin, "Write Governance Readiness", "write governance readiness UX")
+require(admin, "MAD4B_SCP_Live_Truth::current_authority_status()", "live authority truth in UX")
+require(admin, "Context Authority never reconciles grants automatically", "no automatic grant reconciliation UX")
+require(admin, "runtime_authority_not_reconciled", "runtime reconciliation blocker UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v14: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v15: PASS")

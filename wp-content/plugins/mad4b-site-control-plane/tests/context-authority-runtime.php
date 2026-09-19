@@ -49,6 +49,8 @@ $read = $ref->getMethod( 'scope_allows_read' );
 $read->setAccessible( true );
 $matches = $ref->getMethod( 'scope_matches_requested_mode' );
 $matches->setAccessible( true );
+$verify_parent = $ref->getMethod( 'verify_created_file_parent' );
+$verify_parent->setAccessible( true );
 
 $ro = MAD4B_SCP_Google_Drive_Context::READ_SCOPE;
 $rw = MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE;
@@ -70,10 +72,19 @@ mad4b_context_assert( false === $matches->invoke( null, $ro . ' ' . $rw, 'read_w
 mad4b_context_assert( false === $allowed->invoke( null, $rw . ' https://www.googleapis.com/auth/gmail.readonly' ), 'unrelated Google scopes must fail closed' );
 mad4b_context_assert( false === $allowed->invoke( null, 'https://www.googleapis.com/auth/drive.file' ), 'drive.file is not accepted by the existing-asset repair contract' );
 
+mad4b_context_assert(
+	true === $verify_parent->invoke( null, array( 'id' => 'created-file', 'parents' => array( 'selected-folder' ) ), 'selected-folder' ),
+	'provider-confirmed create parent must match the exact selected folder'
+);
+$wrong_parent = $verify_parent->invoke( null, array( 'id' => 'created-file', 'parents' => array( 'other-folder' ) ), 'selected-folder' );
+mad4b_context_assert( is_wp_error( $wrong_parent ) && 'mad4b_google_drive_created_parent_mismatch' === $wrong_parent->get_error_code(), 'provider parent mismatch must fail closed' );
+$multiple_parents = $verify_parent->invoke( null, array( 'id' => 'created-file', 'parents' => array( 'selected-folder', 'other-folder' ) ), 'selected-folder' );
+mad4b_context_assert( is_wp_error( $multiple_parents ) && 'mad4b_google_drive_created_parent_mismatch' === $multiple_parents->get_error_code(), 'ambiguous provider parent binding must fail closed' );
+
 $status_method = $ref->getMethod( 'connection_status' );
 $status = $status_method->invoke( null );
 $encoded = json_encode( $status );
 mad4b_context_assert( false === strpos( $encoded, 'access_token' ), 'connection status must not expose access token' );
 mad4b_context_assert( false === strpos( $encoded, 'refresh_token' ), 'connection status must not expose refresh token' );
 
-echo "mad4b.site-control-plane.context-authority-runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-authority-runtime.v3: PASS\n";
