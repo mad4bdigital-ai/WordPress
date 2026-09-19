@@ -187,11 +187,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		$refresh = '' !== $new_refresh ? $new_refresh : ( is_array( $existing ) && isset( $existing['refresh_token'] ) ? (string) $existing['refresh_token'] : '' );
 		if ( '' === $refresh ) return new WP_Error( 'mad4b_google_drive_refresh_token_missing', 'Google did not return a refresh token. Reconnect and grant offline access.' );
+		$granted_scope = isset( $tokens['scope'] ) ? trim( (string) $tokens['scope'] ) : '';
+		if ( '' === $granted_scope ) return new WP_Error( 'mad4b_google_drive_granted_scope_missing', 'Google OAuth token exchange did not return an explicit granted scope set; connection remains fail-closed.' );
 		$record = self::persist_tokens(
 			(string) $tokens['access_token'],
 			$refresh,
 			isset( $tokens['expires_in'] ) ? absint( $tokens['expires_in'] ) : 3600,
-			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : ( isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : self::READ_SCOPE ),
+			$granted_scope,
 			array(),
 			$requested_mode
 		);
@@ -981,7 +983,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! self::scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
 		$requested_mode = sanitize_key( (string) $requested_mode );
 		if ( 'read_write' === $requested_mode && ! self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_write_scope_missing', 'Google did not grant the required Drive read+write scope.' );
-		if ( 'read_only' === $requested_mode && ! self::scope_allows_read( $scope ) ) return new WP_Error( 'mad4b_google_drive_read_scope_missing', 'Google did not grant a Drive read scope.' );
+		if ( 'read_only' === $requested_mode ) {
+			if ( ! self::scope_allows_read( $scope ) ) return new WP_Error( 'mad4b_google_drive_read_scope_missing', 'Google did not grant a Drive read scope.' );
+			if ( self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_readonly_scope_escalated', 'Google returned Drive write authority for a read-only connection. Revoke Google access and reconnect with Read-only to restore least privilege.' );
+		}
 		$record = is_array( $existing ) ? $existing : array();
 		$record['contract'] = self::CONTRACT;
 		$record['access_token'] = trim( (string) $access_token );
