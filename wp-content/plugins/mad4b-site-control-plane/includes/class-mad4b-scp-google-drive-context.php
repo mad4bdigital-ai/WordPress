@@ -330,6 +330,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			array( 'type' => 'Google Slides', 'mime' => 'application/vnd.google-apps.presentation', 'mode' => 'structured_text', 'status' => $zip ? 'ready' : 'runtime_dependency', 'note' => $zip ? 'Exported as PPTX and normalized across slides and notes.' : 'ZipArchive is required for presentation normalization.' ),
 			array( 'type' => 'Google Drawings', 'mime' => 'application/vnd.google-apps.drawing', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as SVG and normalized from visible text.' ),
 			array( 'type' => 'Google Apps Script', 'mime' => 'application/vnd.google-apps.script', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Exported as bounded JSON.' ),
+			array( 'type' => 'Google Forms', 'mime' => 'application/vnd.google-apps.form', 'mode' => 'structured_text', 'status' => $zip ? 'ready' : 'runtime_dependency', 'note' => 'Downloaded read-only as ZIP and normalized from textual entries.' ),
+			array( 'type' => 'Google Sites', 'mime' => 'application/vnd.google-apps.site', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Downloaded read-only as raw text.' ),
+			array( 'type' => 'Jamboard', 'mime' => 'application/vnd.google-apps.jam', 'mode' => 'text_or_ocr', 'status' => 'ready_with_ocr_fallback', 'note' => 'Downloaded read-only as PDF, then normalized through the PDF path.' ),
+			array( 'type' => 'Google Vids', 'mime' => 'application/vnd.google-apps.vid', 'mode' => 'transcription', 'status' => self::external_extractor_configured() ? 'ready' : 'extractor_required', 'note' => 'Downloaded via Drive files.download and passed to the governed media extractor.' ),
 			array( 'type' => 'Text / Markdown / CSV / JSON / XML / HTML / SVG', 'mime' => 'text/*', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Downloaded and normalized as bounded text.' ),
 			array( 'type' => 'DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB', 'mime' => 'application/*+zip', 'mode' => 'structured_text', 'status' => $zip ? 'ready' : 'runtime_dependency', 'note' => $zip ? 'Normalized locally from the archive without mutating Drive.' : 'ZipArchive is required for archive document normalization.' ),
 			array( 'type' => 'RTF', 'mime' => 'application/rtf', 'mode' => 'full_text', 'status' => 'ready', 'note' => 'Normalized locally with bounded RTF decoding.' ),
@@ -1321,6 +1325,47 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::fetch_bounded_bytes( $url, self::MAX_BINARY_BYTES, 'mad4b_google_drive_export_failed' );
 	}
 
+	private static function download_workspace_lro_bytes( $file_id, $mime_type = '' ) {
+		$file_id = self::bounded_drive_id( $file_id );
+		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
+		$token = self::access_token();
+		if ( is_wp_error( $token ) ) return $token;
+		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '/download';
+		if ( '' !== (string) $mime_type ) $url .= '?mimeType=' . rawurlencode( (string) $mime_type );
+		$response = wp_remote_request(
+			$url,
+			array(
+				'method' => 'POST',
+				'timeout' => 20,
+				'redirection' => 0,
+				'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Length' => '0' ),
+				'body' => '',
+			)
+		);
+		if ( is_wp_error( $response ) ) return $response;
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$operation = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( $status < 200 || $status >= 300 || ! is_array( $operation ) ) return new WP_Error( 'mad4b_google_drive_download_lro_failed', 'Drive long-running download could not be started.', array( 'status' => $status ) );
+		for ( $attempt = 0; $attempt < 4 && empty( $operation['done'] ); ++$attempt ) {
+			$name = isset( $operation['name'] ) ? trim( (string) $operation['name'] ) : '';
+			if ( '' === $name || strlen( $name ) > 512 || ! preg_match( '/^[A-Za-z0-9_\.\-\/]+$/', $name ) ) break;
+			if ( function_exists( 'usleep' ) ) usleep( 200000 * ( $attempt + 1 ) );
+			$poll = wp_remote_get(
+				'https://www.googleapis.com/drive/v3/operations/' . rawurlencode( $name ),
+				array( 'timeout' => 15, 'redirection' => 0, 'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ) )
+			);
+			if ( is_wp_error( $poll ) ) return $poll;
+			$poll_status = (int) wp_remote_retrieve_response_code( $poll );
+			$operation = json_decode( (string) wp_remote_retrieve_body( $poll ), true );
+			if ( $poll_status < 200 || $poll_status >= 300 || ! is_array( $operation ) ) return new WP_Error( 'mad4b_google_drive_download_lro_poll_failed', 'Drive long-running download polling failed.', array( 'status' => $poll_status ) );
+		}
+		if ( empty( $operation['done'] ) ) return new WP_Error( 'mad4b_google_drive_download_lro_pending', 'Drive long-running download is still processing; retry the source scan after the operation is ready.' );
+		if ( ! empty( $operation['error'] ) ) return new WP_Error( 'mad4b_google_drive_download_lro_provider_error', 'Drive long-running download completed with a provider error.' );
+		$download_uri = isset( $operation['response']['downloadUri'] ) ? esc_url_raw( (string) $operation['response']['downloadUri'] ) : '';
+		if ( '' === $download_uri || 0 !== strpos( $download_uri, 'https://' ) ) return new WP_Error( 'mad4b_google_drive_download_uri_missing', 'Drive long-running download did not return a valid HTTPS download URI.' );
+		return self::fetch_bounded_bytes( $download_uri, self::MAX_BINARY_BYTES, 'mad4b_google_drive_download_uri_fetch_failed' );
+	}
+
 	private static function zip_entries( $binary ) {
 		if ( ! class_exists( 'ZipArchive' ) ) return new WP_Error( 'mad4b_context_ziparchive_unavailable', 'ZipArchive is required to normalize this document type.' );
 		$tmp = tempnam( sys_get_temp_dir(), 'mad4b-context-' );
@@ -1456,6 +1501,24 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::normalization_record( implode( "\n\n", $parts ), true, 'ready', 'epub_local' );
 	}
 
+	private static function normalize_generic_archive( $binary, $reason = 'archive_local' ) {
+		$entries = self::zip_entries( $binary );
+		if ( is_wp_error( $entries ) ) return $entries;
+		ksort( $entries, SORT_STRING );
+		$parts = array();
+		foreach ( $entries as $name => $content ) {
+			if ( ! preg_match( '/\.(txt|md|markdown|csv|tsv|json|xml|xhtml|html|htm|yaml|yml|rtf)$/i', $name ) ) continue;
+			if ( preg_match( '/\.(xhtml|html|htm)$/i', $name ) ) $text = self::html_visible_text( $content );
+			elseif ( preg_match( '/\.rtf$/i', $name ) ) {
+				$record = self::normalize_rtf( $content );
+				$text = is_wp_error( $record ) ? '' : ( isset( $record['content'] ) ? (string) $record['content'] : '' );
+			} else $text = self::xml_visible_text( $content );
+			if ( '' !== trim( $text ) ) $parts[] = '[' . $name . "]\n" . trim( $text );
+		}
+		if ( empty( $parts ) ) return self::normalization_record( '', false, 'extractor_required', 'archive_no_text_entries', strlen( (string) $binary ) );
+		return self::normalization_record( implode( "\n\n", $parts ), true, 'ready', $reason );
+	}
+
 	private static function normalize_rtf( $rtf ) {
 		$text = (string) $rtf;
 		$text = preg_replace_callback( "/\\\\'([0-9a-fA-F]{2})/", static function ( $m ) { return chr( hexdec( $m[1] ) ); }, $text );
@@ -1543,6 +1606,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( 'application/vnd.oasis.opendocument.spreadsheet' === $mime ) return self::normalize_odf( $binary, 'ods' );
 		if ( 'application/vnd.oasis.opendocument.presentation' === $mime ) return self::normalize_odf( $binary, 'odp' );
 		if ( 'application/epub+zip' === $mime ) return self::normalize_epub( $binary );
+		if ( in_array( $mime, array( 'application/zip', 'application/x-zip-compressed' ), true ) ) return self::normalize_generic_archive( $binary );
 		if ( in_array( $mime, array( 'application/rtf', 'text/rtf' ), true ) ) return self::normalize_rtf( $binary );
 		if ( 'application/pdf' === $mime ) return self::normalize_pdf( $binary );
 		if ( 'text/html' === $mime || 'application/xhtml+xml' === $mime || 'image/svg+xml' === $mime ) return self::normalization_record( self::html_visible_text( $binary ), true, 'ready', 'markup_local' );
@@ -1584,6 +1648,28 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( 'application/vnd.google-apps.script' === $mime ) {
 			$bytes = self::export_workspace_bytes( $file_id, 'application/vnd.google-apps.script+json' );
 			return is_wp_error( $bytes ) ? $bytes : self::normalization_record( $bytes, true, 'ready', 'google_apps_script_export' );
+		}
+
+		if ( 'application/vnd.google-apps.form' === $mime ) {
+			$bytes = self::download_workspace_lro_bytes( $file_id, 'application/zip' );
+			return is_wp_error( $bytes ) ? $bytes : self::normalize_generic_archive( $bytes, 'google_form_download' );
+		}
+		if ( 'application/vnd.google-apps.site' === $mime ) {
+			$bytes = self::download_workspace_lro_bytes( $file_id, 'text/raw' );
+			return is_wp_error( $bytes ) ? $bytes : self::normalization_record( $bytes, true, 'ready', 'google_site_download' );
+		}
+		if ( in_array( $mime, array( 'application/vnd.google-apps.jam', 'application/vnd.google-apps.jamboard' ), true ) ) {
+			$bytes = self::download_workspace_lro_bytes( $file_id, 'application/pdf' );
+			if ( is_wp_error( $bytes ) ) return $bytes;
+			$local = self::normalize_pdf( $bytes );
+			if ( ! is_wp_error( $local ) && ! empty( $local['complete'] ) ) return $local;
+			$fallback = is_wp_error( $local ) ? self::normalization_record( '', false, 'extractor_required', 'jamboard_pdf_extractor_required', strlen( $bytes ) ) : $local;
+			return self::external_extractor_record( array_merge( $file, array( 'mimeType' => 'application/pdf' ) ), $bytes, $fallback );
+		}
+		if ( 'application/vnd.google-apps.vid' === $mime ) {
+			$bytes = self::download_workspace_lro_bytes( $file_id, 'video/mp4' );
+			if ( is_wp_error( $bytes ) ) return $bytes;
+			return self::external_extractor_record( array_merge( $file, array( 'mimeType' => 'video/mp4' ) ), $bytes, self::normalization_record( '', false, 'extractor_required', 'video_transcription_required', strlen( $bytes ) ) );
 		}
 
 		if ( 0 === strpos( $mime, 'text/' ) || in_array( $mime, array( 'application/json', 'application/xml', 'application/csv', 'application/javascript', 'application/x-javascript' ), true ) ) {

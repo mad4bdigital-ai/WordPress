@@ -77,9 +77,13 @@ if (class_exists('ZipArchive')) {
 	$r=$normalize->invoke(null,'application/vnd.oasis.opendocument.text',$odt,'guide.odt');
 	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Editorial Guide'),'ODT normalization must extract visible content.',$r);
 
+	$formZip=makezip(array('form.json'=>'{"title":"Brand Survey","question":"Preferred tone"}','notes.txt'=>'Campaign research'));
+	$r=$normalize->invoke(null,'application/zip',$formZip,'form.zip');
+	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Brand Survey'),'Generic ZIP normalization must extract Google Forms/download text payloads.',$r);
+
 	$epub=makezip(array('OEBPS/ch1.xhtml'=>'<html><body><h1>Writer Reference</h1><p>Structure</p></body></html>'));
 	$r=$normalize->invoke(null,'application/epub+zip',$epub,'reference.epub');
 	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Writer Reference'),'EPUB normalization must extract reading text.',$r);
 }
 
-echo "mad4b.site-control-plane.context-document-normalization.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-document-normalization.runtime.v2: PASS\n";
