@@ -1,0 +1,399 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/**
+ * Resolves the exact governed context required by one Skill execution.
+ *
+ * This service is read-only. It never repairs, reclassifies, rescans or writes
+ * provider/context state while answering readiness.
+ */
+final class MAD4B_SCP_Context_Preflight {
+	const POLICY_CONTRACT = 'mad4b.skill-context-policy.v1';
+	const PREFLIGHT_CONTRACT = 'mad4b.context-preflight.v1';
+	const ENVELOPE_CONTRACT = 'mad4b.context-envelope.v1';
+	const RECEIPT_CONTRACT = 'mad4b.content-context-receipt.v1';
+
+	const MAX_REQUIRED_SETS = 12;
+	const MAX_OPTIONAL_SETS = 16;
+	const MAX_ASSETS_PER_SET = 3;
+	const MAX_CONTEXT_ASSETS = 24;
+	const MAX_CONTEXT_BYTES = 786432; // 768 KiB exact-provider text across one preflight.
+
+	public static function presets() {
+		return array(
+			'none' => array(
+				'label' => 'No governed context',
+				'required_context_sets' => array(),
+				'optional_context_sets' => array(),
+				'allow_task_context' => false,
+			),
+			'brand_core' => array(
+				'label' => 'Brand Core required',
+				'required_context_sets' => array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ),
+				'optional_context_sets' => array( 'terminology', 'claim_policy', 'seo_strategy', 'writer_reference' ),
+				'allow_task_context' => true,
+			),
+			'custom' => array(
+				'label' => 'Custom',
+				'required_context_sets' => array(),
+				'optional_context_sets' => array(),
+				'allow_task_context' => true,
+			),
+		);
+	}
+
+	public static function default_policy() {
+		return array(
+			'contract' => self::POLICY_CONTRACT,
+			'preset' => 'none',
+			'brand_context_required' => false,
+			'required_context_sets' => array(),
+			'optional_context_sets' => array(),
+			'allow_task_context' => false,
+		);
+	}
+
+	public static function normalize_policy( $input ) {
+		if ( null === $input || false === $input || '' === $input ) return self::default_policy();
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_skill_context_policy_invalid', 'Skill Context policy must be an object.' );
+
+		$preset = isset( $input['preset'] ) ? sanitize_key( (string) $input['preset'] ) : '';
+		if ( '' === $preset ) {
+			$preset = ! empty( $input['brand_context_required'] ) || ! empty( $input['required_context_sets'] ) || ! empty( $input['optional_context_sets'] ) ? 'custom' : 'none';
+		}
+		$presets = self::presets();
+		if ( ! isset( $presets[ $preset ] ) ) return new WP_Error( 'mad4b_skill_context_preset_invalid', 'Skill Context preset is not supported.' );
+
+		if ( 'none' === $preset ) return self::default_policy();
+
+		$required = 'brand_core' === $preset
+			? $presets['brand_core']['required_context_sets']
+			: self::normalize_sets( isset( $input['required_context_sets'] ) ? $input['required_context_sets'] : array(), self::MAX_REQUIRED_SETS );
+		if ( is_wp_error( $required ) ) return $required;
+
+		$optional = 'brand_core' === $preset
+			? $presets['brand_core']['optional_context_sets']
+			: self::normalize_sets( isset( $input['optional_context_sets'] ) ? $input['optional_context_sets'] : array(), self::MAX_OPTIONAL_SETS );
+		if ( is_wp_error( $optional ) ) return $optional;
+		$optional = array_values( array_diff( $optional, $required ) );
+
+		if ( empty( $required ) ) return new WP_Error( 'mad4b_skill_context_required_sets_empty', 'A Context-required Skill must declare at least one required context set.' );
+
+		return array(
+			'contract' => self::POLICY_CONTRACT,
+			'preset' => $preset,
+			'brand_context_required' => true,
+			'required_context_sets' => $required,
+			'optional_context_sets' => $optional,
+			'allow_task_context' => 'brand_core' === $preset ? true : ! empty( $input['allow_task_context'] ),
+		);
+	}
+
+	public static function policy_digest( $policy ) {
+		$policy = self::normalize_policy( $policy );
+		if ( is_wp_error( $policy ) || empty( $policy['brand_context_required'] ) ) return '';
+		$json = wp_json_encode( self::canonical_policy( $policy ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $json ) && '' !== $json ? hash( 'sha256', $json ) : '';
+	}
+
+	public static function preflight_skill( $level, $target, $name, $task_scope = '' ) {
+		if ( ! class_exists( 'MAD4B_SCP_Skill_Registry' ) ) return new WP_Error( 'mad4b_skill_registry_unavailable', 'Skill registry is unavailable.' );
+		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
+		if ( is_wp_error( $skill ) ) return $skill;
+		return self::preflight_entry( $skill, $task_scope );
+	}
+
+	public static function preflight_entry( array $skill, $task_scope = '' ) {
+		$policy = self::normalize_policy( isset( $skill['context_policy'] ) ? $skill['context_policy'] : array() );
+		if ( is_wp_error( $policy ) ) return $policy;
+		$policy_digest = self::policy_digest( $policy );
+		$logical_id = isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '';
+		$skill_sha = isset( $skill['sha256'] ) ? strtolower( trim( (string) $skill['sha256'] ) ) : '';
+		$task_scope = substr( sanitize_text_field( (string) $task_scope ), 0, 160 );
+		$observed_at = gmdate( 'c' );
+
+		if ( empty( $policy['brand_context_required'] ) ) {
+			$receipt = self::receipt(
+				$logical_id,
+				$skill_sha,
+				$policy,
+				$policy_digest,
+				array(),
+				array(),
+				array(),
+				'',
+				0,
+				'',
+				$observed_at,
+				$task_scope
+			);
+			return array(
+				'contract' => self::PREFLIGHT_CONTRACT,
+				'ready' => true,
+				'state' => 'not_required',
+				'skill_logical_id' => $logical_id,
+				'skill_sha256' => $skill_sha,
+				'policy' => $policy,
+				'policy_sha256' => '',
+				'blockers' => array(),
+				'warnings' => array(),
+				'envelope' => array(
+					'contract' => self::ENVELOPE_CONTRACT,
+					'required' => false,
+					'context_fingerprint' => '',
+					'assets' => array(),
+					'total_bytes' => 0,
+				),
+				'receipt' => $receipt,
+			);
+		}
+
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ) {
+			return self::blocked( $skill, $policy, $policy_digest, array( 'context_authority_unavailable' ), $task_scope, $observed_at );
+		}
+
+		$authority = MAD4B_SCP_Context_Authority::status();
+		$profile = MAD4B_SCP_Context_Authority::profile();
+		$assets = MAD4B_SCP_Context_Authority::assets();
+		$blockers = array();
+		$warnings = array();
+		if ( empty( $profile ) ) $blockers[] = 'brand_context_profile_unconfigured';
+		if ( empty( $authority['site_uuid'] ) ) $blockers[] = 'context_site_binding_unavailable';
+		if ( ! empty( $authority['stale_asset_count'] ) ) $blockers[] = 'brand_context_contains_stale_assets';
+		if ( ! empty( $authority['conflicting_asset_count'] ) ) $blockers[] = 'mandatory_context_conflict';
+
+		$selected = array();
+		$missing_sets = array();
+		foreach ( $policy['required_context_sets'] as $category ) {
+			$candidates = self::category_candidates( $assets, $category, true, '' );
+			if ( empty( $candidates ) ) {
+				$missing_sets[] = $category;
+				continue;
+			}
+			foreach ( array_slice( $candidates, 0, self::MAX_ASSETS_PER_SET ) as $asset ) $selected[ (string) $asset['asset_id'] ] = $asset;
+		}
+		if ( $missing_sets ) $blockers[] = 'required_context_sets_missing';
+
+		foreach ( $policy['optional_context_sets'] as $category ) {
+			$candidates = self::category_candidates( $assets, $category, true, '' );
+			foreach ( array_slice( $candidates, 0, self::MAX_ASSETS_PER_SET ) as $asset ) {
+				if ( count( $selected ) >= self::MAX_CONTEXT_ASSETS ) break 2;
+				$selected[ (string) $asset['asset_id'] ] = $asset;
+			}
+			if ( ! empty( $policy['allow_task_context'] ) && '' !== $task_scope ) {
+				$task_candidates = self::category_candidates( $assets, $category, false, $task_scope );
+				foreach ( array_slice( $task_candidates, 0, self::MAX_ASSETS_PER_SET ) as $asset ) {
+					if ( count( $selected ) >= self::MAX_CONTEXT_ASSETS ) break 2;
+					$selected[ (string) $asset['asset_id'] ] = $asset;
+				}
+			}
+		}
+
+		$envelope_assets = array();
+		$receipt_assets = array();
+		$total_bytes = 0;
+		$required_ids = array();
+		foreach ( $policy['required_context_sets'] as $category ) {
+			foreach ( self::category_candidates( $assets, $category, true, '' ) as $candidate ) $required_ids[ (string) $candidate['asset_id'] ] = true;
+		}
+
+		foreach ( $selected as $asset_id => $asset ) {
+			$required_asset = isset( $required_ids[ $asset_id ] );
+			$content = MAD4B_SCP_Google_Drive_Context::read_context_asset( $asset_id );
+			if ( is_wp_error( $content ) ) {
+				if ( $required_asset ) $blockers[] = 'required_context_asset_unreadable';
+				else $warnings[] = 'optional_context_asset_unreadable:' . $asset_id;
+				continue;
+			}
+			$bytes = isset( $content['bytes'] ) ? (int) $content['bytes'] : strlen( isset( $content['content'] ) ? (string) $content['content'] : '' );
+			if ( $total_bytes + $bytes > self::MAX_CONTEXT_BYTES ) {
+				if ( $required_asset ) $blockers[] = 'required_context_envelope_budget_exceeded';
+				else $warnings[] = 'optional_context_asset_budget_omitted:' . $asset_id;
+				continue;
+			}
+			$total_bytes += $bytes;
+			$summary = array(
+				'asset_id' => $asset_id,
+				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+				'source_mode' => isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '',
+				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
+				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
+				'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '',
+				'content_sha256' => isset( $content['content_sha256'] ) ? (string) $content['content_sha256'] : '',
+				'bytes' => $bytes,
+				'required_for_skill' => $required_asset,
+			);
+			$receipt_assets[] = $summary;
+			$envelope_assets[] = $summary + array( 'content' => isset( $content['content'] ) ? (string) $content['content'] : '' );
+		}
+
+		foreach ( $policy['required_context_sets'] as $category ) {
+			$loaded = false;
+			foreach ( $receipt_assets as $asset ) {
+				if ( ! empty( $asset['required_for_skill'] ) && $category === $asset['category'] ) { $loaded = true; break; }
+			}
+			if ( ! $loaded ) $blockers[] = 'required_context_set_not_loaded:' . $category;
+		}
+
+		$blockers = array_values( array_unique( $blockers ) );
+		$warnings = array_values( array_unique( $warnings ) );
+		$fingerprint = isset( $authority['context_fingerprint'] ) ? (string) $authority['context_fingerprint'] : '';
+		$site_uuid = isset( $authority['site_uuid'] ) ? (string) $authority['site_uuid'] : '';
+		$revision = isset( $authority['profile_revision'] ) ? (int) $authority['profile_revision'] : 0;
+		$brand_id = isset( $authority['brand_id'] ) ? (string) $authority['brand_id'] : '';
+		$ready = empty( $blockers );
+
+		$receipt = self::receipt(
+			$logical_id,
+			$skill_sha,
+			$policy,
+			$policy_digest,
+			$receipt_assets,
+			$missing_sets,
+			$blockers,
+			$site_uuid,
+			$revision,
+			$fingerprint,
+			$observed_at,
+			$task_scope,
+			$brand_id
+		);
+		return array(
+			'contract' => self::PREFLIGHT_CONTRACT,
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : 'blocked',
+			'skill_logical_id' => $logical_id,
+			'skill_sha256' => $skill_sha,
+			'policy' => $policy,
+			'policy_sha256' => $policy_digest,
+			'blockers' => $blockers,
+			'warnings' => $warnings,
+			'missing_context_sets' => $missing_sets,
+			'envelope' => array(
+				'contract' => self::ENVELOPE_CONTRACT,
+				'required' => true,
+				'site_uuid' => $site_uuid,
+				'brand_id' => $brand_id,
+				'brand_context_revision' => $revision,
+				'context_fingerprint' => $fingerprint,
+				'task_scope' => $task_scope,
+				'precedence' => array( 'site_policy', 'brand_core', 'editorial_strategy', 'campaign_context', 'task_knowledge', 'writer_reference', 'general_model_knowledge' ),
+				'assets' => $envelope_assets,
+				'total_bytes' => $total_bytes,
+			),
+			'receipt' => $receipt,
+		);
+	}
+
+	private static function category_candidates( array $assets, $category, $governed, $task_scope ) {
+		$out = array();
+		foreach ( $assets as $asset ) {
+			if ( ! is_array( $asset ) || $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
+			if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
+			$mode = isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '';
+			if ( $governed ) {
+				if ( 'governed' !== $mode || 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) continue;
+			} else {
+				if ( 'task_attachment' !== $mode || '' === $task_scope || ! hash_equals( $task_scope, isset( $asset['task_scope'] ) ? (string) $asset['task_scope'] : '' ) ) continue;
+			}
+			$out[] = $asset;
+		}
+		usort(
+			$out,
+			static function ( $a, $b ) {
+				$priority = (int) ( isset( $b['priority'] ) ? $b['priority'] : 0 ) <=> (int) ( isset( $a['priority'] ) ? $a['priority'] : 0 );
+				if ( 0 !== $priority ) return $priority;
+				$quality = (int) ( isset( $b['quality_score'] ) ? $b['quality_score'] : 0 ) <=> (int) ( isset( $a['quality_score'] ) ? $a['quality_score'] : 0 );
+				if ( 0 !== $quality ) return $quality;
+				return strcmp( isset( $a['asset_id'] ) ? (string) $a['asset_id'] : '', isset( $b['asset_id'] ) ? (string) $b['asset_id'] : '' );
+			}
+		);
+		return $out;
+	}
+
+	private static function normalize_sets( $sets, $limit ) {
+		if ( ! is_array( $sets ) ) return new WP_Error( 'mad4b_skill_context_sets_invalid', 'Context sets must be an array.' );
+		if ( count( $sets ) > $limit ) return new WP_Error( 'mad4b_skill_context_sets_limit', 'Skill Context set count exceeds the bounded limit.' );
+		$allowed = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::categories() : array();
+		$out = array();
+		foreach ( $sets as $set ) {
+			$key = sanitize_key( (string) $set );
+			if ( '' === $key || ! isset( $allowed[ $key ] ) ) return new WP_Error( 'mad4b_skill_context_set_invalid', 'Skill Context policy contains an unsupported Context category.', array( 'category' => $key ) );
+			$out[] = $key;
+		}
+		$out = array_values( array_unique( $out ) );
+		sort( $out, SORT_STRING );
+		return $out;
+	}
+
+	private static function canonical_policy( array $policy ) {
+		$canonical = array(
+			'contract' => self::POLICY_CONTRACT,
+			'preset' => isset( $policy['preset'] ) ? (string) $policy['preset'] : 'none',
+			'brand_context_required' => ! empty( $policy['brand_context_required'] ),
+			'required_context_sets' => isset( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array(),
+			'optional_context_sets' => isset( $policy['optional_context_sets'] ) ? array_values( $policy['optional_context_sets'] ) : array(),
+			'allow_task_context' => ! empty( $policy['allow_task_context'] ),
+		);
+		sort( $canonical['required_context_sets'], SORT_STRING );
+		sort( $canonical['optional_context_sets'], SORT_STRING );
+		return $canonical;
+	}
+
+	private static function receipt( $logical_id, $skill_sha, array $policy, $policy_digest, array $assets, array $missing_sets, array $blockers, $site_uuid, $revision, $fingerprint, $observed_at, $task_scope, $brand_id = '' ) {
+		$receipt = array(
+			'contract' => self::RECEIPT_CONTRACT,
+			'ephemeral' => true,
+			'site_uuid' => (string) $site_uuid,
+			'brand_id' => (string) $brand_id,
+			'skill_logical_id' => (string) $logical_id,
+			'skill_sha256' => (string) $skill_sha,
+			'context_policy_sha256' => (string) $policy_digest,
+			'brand_context_revision' => (int) $revision,
+			'context_fingerprint' => (string) $fingerprint,
+			'task_scope' => (string) $task_scope,
+			'required_context_sets' => isset( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array(),
+			'optional_context_sets' => isset( $policy['optional_context_sets'] ) ? array_values( $policy['optional_context_sets'] ) : array(),
+			'assets_loaded' => array_values( $assets ),
+			'required_assets_missing' => array_values( $missing_sets ),
+			'blockers' => array_values( $blockers ),
+			'ready' => empty( $blockers ),
+			'observed_at' => (string) $observed_at,
+		);
+		$json = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$receipt['receipt_sha256'] = is_string( $json ) ? hash( 'sha256', $json ) : '';
+		return $receipt;
+	}
+
+	private static function blocked( array $skill, array $policy, $policy_digest, array $blockers, $task_scope, $observed_at ) {
+		$receipt = self::receipt(
+			isset( $skill['logical_id'] ) ? $skill['logical_id'] : '',
+			isset( $skill['sha256'] ) ? $skill['sha256'] : '',
+			$policy,
+			$policy_digest,
+			array(),
+			isset( $policy['required_context_sets'] ) ? $policy['required_context_sets'] : array(),
+			$blockers,
+			'',
+			0,
+			'',
+			$observed_at,
+			$task_scope
+		);
+		return array(
+			'contract' => self::PREFLIGHT_CONTRACT,
+			'ready' => false,
+			'state' => 'blocked',
+			'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
+			'policy' => $policy,
+			'policy_sha256' => $policy_digest,
+			'blockers' => array_values( array_unique( $blockers ) ),
+			'warnings' => array(),
+			'envelope' => array( 'contract' => self::ENVELOPE_CONTRACT, 'required' => true, 'assets' => array(), 'total_bytes' => 0 ),
+			'receipt' => $receipt,
+		);
+	}
+}

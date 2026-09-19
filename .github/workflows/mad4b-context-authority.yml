@@ -1,0 +1,92 @@
+name: MAD4B Context Authority
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php'
+      - '.github/workflows/mad4b-context-authority.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-context-authority-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  context-authority:
+    name: Context Authority (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Lint Context Authority runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
+
+      - name: Enforce Context Authority architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py
+
+      - name: Execute Context Authority runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+
+      - name: Execute Skill Context preflight runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
+
+      - name: Execute source write-policy runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php
+
+      - name: Execute recreate registry rollback runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php
