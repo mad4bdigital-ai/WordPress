@@ -33,6 +33,7 @@ require(registry, "'MAD4B_SCP_Context_Adapter'", "context adapter registry regis
 # Context Authority semantics.
 require(authority, "'governed'", "governed source mode")
 require(authority, "'task_attachment'", "task-only source mode")
+require(authority, "mad4b_context_source_root_forbidden", "My Drive root source denial")
 require(authority, "context_fingerprint", "context fingerprint")
 require(authority, "$site = self::site_binding();", "Context reads bind to current Site Profile")
 require(authority, "hash_equals( (string) $site['site_uuid']", "exact Site UUID read isolation")
@@ -243,6 +244,7 @@ require(admin, "Google revocation is pending.", "pending revoke warning UX")
 require(admin, "Retry revoke", "revocation retry UX")
 require(admin, "one-time approval", "governed write UX")
 require(admin, "Folder Picker", "folder picker")
+require(admin, "My Drive is available for navigation only", "root folder browse-only UX")
 require(admin, "Governed Library", "governed library UX")
 require(admin, "Task-only Source", "task-only source UX")
 require(admin, "Quality and authority are separate", "quality/authority UX guidance")
@@ -259,4 +261,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v21: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v22: PASS")

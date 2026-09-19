@@ -223,6 +223,7 @@ final class MAD4B_SCP_Context_Authority {
 
 				$external_root_id = self::bounded_external_id( isset( $input['external_root_id'] ) ? $input['external_root_id'] : '' );
 				if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical Google Drive folder ID is required.' );
+				if ( 'root' === strtolower( $external_root_id ) ) return new WP_Error( 'mad4b_context_source_root_forbidden', 'My Drive root is browse-only. Select a specific Google Drive folder as the Context source boundary.' );
 				$label = trim( sanitize_text_field( isset( $input['label'] ) ? $input['label'] : '' ) );
 				if ( '' === $label ) $label = 'Google Drive Folder';
 				$task_scope = trim( sanitize_text_field( isset( $input['task_scope'] ) ? $input['task_scope'] : '' ) );
@@ -1238,7 +1239,9 @@ final class MAD4B_SCP_Context_Authority {
 
 	private static function valid_source( $record ) {
 		if ( ! is_array( $record ) || self::SOURCE_CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) return false;
-		return ! empty( $record['source_id'] ) && ! empty( $record['site_uuid'] ) && ! empty( $record['external_root_id'] ) && in_array( isset( $record['mode'] ) ? $record['mode'] : '', array( 'governed', 'task_attachment' ), true );
+		$external_root_id = isset( $record['external_root_id'] ) ? trim( (string) $record['external_root_id'] ) : '';
+		if ( '' === $external_root_id || 'root' === strtolower( $external_root_id ) ) return false;
+		return ! empty( $record['source_id'] ) && ! empty( $record['site_uuid'] ) && in_array( isset( $record['mode'] ) ? $record['mode'] : '', array( 'governed', 'task_attachment' ), true );
 	}
 
 	private static function valid_asset( $record ) {

@@ -403,6 +403,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</div>';
 		} else echo '<p class="mad4b-scp-muted">' . esc_html__( 'No child folders here. You can still select this folder as a source.', 'mad4b-site-control-plane' ) . '</p>';
 
+		$current_folder_id = isset( $folder['id'] ) ? (string) $folder['id'] : '';
+		if ( 'root' === strtolower( $current_folder_id ) ) {
+			echo '<hr><div class="mad4b-scp-next-step is-attention"><h3>' . esc_html__( 'Choose a specific folder', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'My Drive is available for navigation only. Open a Brand, project, or reference folder and select that folder as the governed source boundary.', 'mad4b-site-control-plane' ) . '</p></div></div>';
+			return;
+		}
 		echo '<hr><h3>' . esc_html__( 'Use this folder', 'mad4b-site-control-plane' ) . '</h3>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SELECT_SOURCE );

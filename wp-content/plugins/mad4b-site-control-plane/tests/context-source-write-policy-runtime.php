@@ -65,17 +65,20 @@ $old = str_repeat( 'a', 64 );
 $repair = str_repeat( 'b', 64 );
 $managed = str_repeat( 'c', 64 );
 $task = str_repeat( 'd', 64 );
+$root = str_repeat( 'e', 64 );
 
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ] = array(
 	$old => mad4b_source_fixture( $old, 'governed' ),
 	$repair => mad4b_source_fixture( $repair, 'governed', 'repair_only' ),
 	$managed => mad4b_source_fixture( $managed, 'governed', 'managed' ),
 	$task => mad4b_source_fixture( $task, 'task_attachment', 'managed' ),
+	$root => array_merge( mad4b_source_fixture( $root, 'governed', 'managed' ), array( 'external_root_id' => 'root' ) ),
 );
 
 $sources = MAD4B_SCP_Context_Authority::sources();
 mad4b_context_policy_assert( 'read_only' === $sources[ $old ]['write_policy'], 'legacy source without policy must remain read-only' );
 mad4b_context_policy_assert( 'read_only' === $sources[ $task ]['write_policy'], 'task-only source must normalize to read-only even if stored otherwise' );
+mad4b_context_policy_assert( ! isset( $sources[ $root ] ), 'My Drive root must never materialize as a Context source boundary' );
 
 mad4b_context_policy_assert( false === MAD4B_SCP_Context_Authority::source_allows_write( $old, 'update' ), 'legacy read-only source must deny update' );
 mad4b_context_policy_assert( false === MAD4B_SCP_Context_Authority::source_allows_write( $repair, 'create' ), 'repair-only source must deny create' );
@@ -90,4 +93,4 @@ mad4b_context_policy_assert( 1 === MAD4B_SCP_Context_Authority::writable_source_
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'update' ), 'repair and managed sources should enable update' );
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ), 'repair and managed sources should enable recreate' );
 
-echo "mad4b.site-control-plane.context-source-write-policy.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-source-write-policy.runtime.v2: PASS\n";
