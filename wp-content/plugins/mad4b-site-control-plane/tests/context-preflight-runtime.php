@@ -35,12 +35,17 @@ final class MAD4B_SCP_Context_Authority {
 			'brand_id' => 'brand-001',
 			'profile_revision' => 7,
 			'context_fingerprint' => str_repeat( 'a', 64 ),
+			'authority_manifest_fingerprint' => str_repeat( 'd', 64 ),
+			'registry_revision' => 12,
+			'partial_source_count' => 0,
 			'stale_asset_count' => 0,
 			'conflicting_asset_count' => 0,
 		);
 	}
 	public static function profile() { return array( 'brand_id' => 'brand-001', 'revision' => 7 ); }
 	public static function assets() { return self::$assets; }
+	public static function registry_revision() { return 12; }
+	public static function authority_manifest_fingerprint( $assets = null ) { return str_repeat( 'd', 64 ); }
 }
 
 final class MAD4B_SCP_Google_Drive_Context {
@@ -52,6 +57,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'content' => $content,
 				'bytes' => strlen( $content ),
 				'content_sha256' => hash( 'sha256', $content ),
+				'content_complete' => true,
 			);
 		}
 		return new WP_Error( 'missing', 'Asset missing.' );
@@ -79,6 +85,7 @@ function mad4b_context_asset( $id, $category, $mode, $review, $task_scope = '', 
 		'quality_score' => $quality,
 		'priority' => $priority,
 		'status' => 'ready',
+		'content_complete' => true,
 		'review_status' => $review,
 	);
 }
@@ -115,6 +122,14 @@ sort( $ids, SORT_STRING );
 mad4b_context_preflight_assert( in_array( 'brand', $ids, true ) && in_array( 'tone', $ids, true ) && in_array( 'editorial', $ids, true ), 'All approved mandatory Brand Core assets must load.', $ids );
 mad4b_context_preflight_assert( in_array( 'writer', $ids, true ), 'Exact task-scoped optional writer reference should load.', $ids );
 mad4b_context_preflight_assert( 'site_policy' === $ready['envelope']['precedence'][0] && 'brand_core' === $ready['envelope']['precedence'][1], 'Context precedence must keep Site Policy and Brand Core ahead of references.', $ready['envelope']['precedence'] );
+
+MAD4B_SCP_Context_Authority::$assets['terminology'] = mad4b_context_asset( 'terminology', 'terminology', 'governed', 'approved' );
+MAD4B_SCP_Context_Authority::$assets['terminology']['required'] = true;
+$site_union = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x' );
+mad4b_context_preflight_assert( ! empty( $site_union['ready'] ), 'Site-mandatory approved Context must join Skill-required Context without blocking.', $site_union );
+mad4b_context_preflight_assert( in_array( 'terminology', $site_union['envelope']['effective_required_context_sets'], true ), 'Site mandatory terminology must be included in effective required sets.', $site_union['envelope'] );
+mad4b_context_preflight_assert( 12 === (int) $site_union['receipt']['registry_revision'], 'Receipt must bind the exact Context registry revision.', $site_union['receipt'] );
+mad4b_context_preflight_assert( str_repeat( 'd', 64 ) === $site_union['receipt']['authority_manifest_fingerprint'], 'Receipt must bind authority manifest fingerprint.', $site_union['receipt'] );
 
 $wrong_scope = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'another-task' );
 $wrong_ids = array();
