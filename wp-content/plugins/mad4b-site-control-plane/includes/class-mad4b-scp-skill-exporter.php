@@ -96,6 +96,14 @@ final class MAD4B_SCP_Skill_Exporter {
 		foreach ( $skills as $summary ) {
 			$skill = MAD4B_SCP_Skill_Registry::get_skill( $summary['level'], $summary['target'], $summary['name'] );
 			if ( is_wp_error( $skill ) ) { $zip->close(); @unlink( $tmp ); return $skill; }
+			if ( ! empty( $skill['context_policy']['brand_context_required'] ) ) {
+				return self::abort_zip(
+					$zip,
+					$tmp,
+					'mad4b_context_required_skill_portable_export_unsupported',
+					'Portable export is denied for Context-required Skills until the portable runtime can enforce the exact governed Context Preflight and receipt binding.'
+				);
+			}
 			$name = (string) $skill['name'];
 			$content = (string) $skill['content'];
 			$skill_sha = hash( 'sha256', $content );
@@ -128,6 +136,7 @@ final class MAD4B_SCP_Skill_Exporter {
 				'name' => $name,
 				'sha256' => $skill_sha,
 				'bytes' => $skill_bytes,
+				'context_policy_sha256' => isset( $skill['context_policy_sha256'] ) ? (string) $skill['context_policy_sha256'] : '',
 				'resources' => $observed_resources,
 			);
 			$index[] = array(
@@ -135,6 +144,8 @@ final class MAD4B_SCP_Skill_Exporter {
 				'logical_id' => (string) $skill['logical_id'],
 				'sha256' => $skill_sha,
 				'bytes' => $skill_bytes,
+				'context_policy_sha256' => isset( $skill['context_policy_sha256'] ) ? (string) $skill['context_policy_sha256'] : '',
+				'context_required' => ! empty( $skill['context_policy']['brand_context_required'] ),
 			);
 		}
 
