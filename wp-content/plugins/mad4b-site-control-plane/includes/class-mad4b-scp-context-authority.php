@@ -200,7 +200,7 @@ final class MAD4B_SCP_Context_Authority {
 				'created_at' => isset( $current['created_at'] ) ? (string) $current['created_at'] : gmdate( 'c' ),
 				'updated_at' => gmdate( 'c' ),
 			);
-			self::write_option( self::PROFILE_OPTION, $record );
+			if ( ! self::write_option( self::PROFILE_OPTION, $record ) ) return new WP_Error( 'mad4b_context_profile_write_failed', 'Brand Context Profile could not be persisted.' );
 			return $record;
 		
 			}
@@ -549,13 +549,11 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	private static function refresh_profile_fingerprint( array $assets, array $sources ) {
-		$profile = self::profile();
-		if ( empty( $profile ) ) return;
-		$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
-		$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $assets );
-		$profile['last_verified_at'] = gmdate( 'c' );
-		$profile['updated_at'] = gmdate( 'c' );
-		self::write_option( self::PROFILE_OPTION, $profile );
+		$profile = self::refreshed_profile_record( $assets, $sources, true );
+		if ( empty( $profile ) ) return true;
+		return self::write_option( self::PROFILE_OPTION, $profile )
+			? true
+			: new WP_Error( 'mad4b_context_profile_fingerprint_write_failed', 'Context Profile fingerprint could not be persisted.' );
 	}
 
 	public static function update_source_write_policy( $source_id, $write_policy ){
@@ -577,7 +575,7 @@ final class MAD4B_SCP_Context_Authority {
 			$previous = isset( $source['write_policy'] ) ? (string) $source['write_policy'] : 'read_only';
 			$sources[ $source_id ]['write_policy'] = $write_policy;
 			$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
-			self::write_option( self::SOURCES_OPTION, $sources );
+			if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_policy_write_failed', 'Context source write policy could not be persisted.' );
 			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 				MAD4B_SCP_Audit::record(
 					'mad4b/context-source-write-policy',
@@ -1184,6 +1182,56 @@ final class MAD4B_SCP_Context_Authority {
 		$next = self::registry_revision() + 1;
 		self::write_option( self::REGISTRY_REVISION_OPTION, $next );
 		return $next;
+	}
+
+	private static function commit_option_changes( array $changes, $error_code, $message ) {
+		if ( empty( $changes ) ) return true;
+		$sentinel = '__mad4b_context_option_missing__' . hash( 'sha256', implode( '|', array_keys( $changes ) ) . '|' . microtime( true ) );
+		$before = array();
+		$applied = array();
+		foreach ( $changes as $name => $value ) {
+			$current = get_option( $name, $sentinel );
+			$before[ $name ] = array(
+				'existed' => $sentinel !== $current,
+				'value' => $current,
+			);
+			if ( self::write_option( $name, $value ) ) {
+				$applied[] = $name;
+				continue;
+			}
+
+			$rollback_failures = array();
+			foreach ( array_reverse( $applied ) as $applied_name ) {
+				$restore = $before[ $applied_name ];
+				$ok = ! empty( $restore['existed'] )
+					? self::write_option( $applied_name, $restore['value'] )
+					: delete_option( $applied_name );
+				if ( ! $ok && ( ! empty( $restore['existed'] ) ? get_option( $applied_name, $sentinel ) !== $restore['value'] : false !== get_option( $applied_name, false ) ) ) $rollback_failures[] = $applied_name;
+			}
+			if ( $rollback_failures ) {
+				return new WP_Error(
+					'mad4b_context_registry_compensation_failed',
+					'Context registry persistence failed and the previous option snapshot could not be fully restored.',
+					array(
+						'failed_option' => $name,
+						'rollback_failures' => $rollback_failures,
+						'original_error_code' => sanitize_key( (string) $error_code ),
+					)
+				);
+			}
+			return new WP_Error( sanitize_key( (string) $error_code ), (string) $message, array( 'failed_option' => $name ) );
+		}
+		return true;
+	}
+
+	private static function refreshed_profile_record( array $assets, array $sources, $verified = true ) {
+		$profile = self::profile();
+		if ( empty( $profile ) ) return array();
+		$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
+		$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $assets );
+		if ( $verified ) $profile['last_verified_at'] = gmdate( 'c' );
+		$profile['updated_at'] = gmdate( 'c' );
+		return $profile;
 	}
 
 	private static function write_option( $name, $value ) {
