@@ -178,6 +178,42 @@ mad4b_context_preflight_assert( is_array( $guarded ) && ! empty( $guarded['ready
 
 $content_guard_cases = array(
 	array(
+		'ability' => 'mad4b/content-create-post',
+		'input' => array( 'post_type' => 'post', 'post_title' => 'Brand launch article', 'post_content' => 'Governed article body.' ),
+		'required' => true,
+		'label' => 'Core content post creation',
+	),
+	array(
+		'ability' => 'mad4b/taxonomy-create-term',
+		'input' => array( 'taxonomy' => 'category', 'name' => 'Luxury Nile Cruises', 'description' => 'Brand-facing taxonomy copy.' ),
+		'required' => true,
+		'label' => 'Core taxonomy term creation',
+	),
+	array(
+		'ability' => 'media/update-metadata',
+		'input' => array( 'attachment_id' => 44, 'expected_sha256' => str_repeat( 'a', 64 ), 'alt' => 'Egypt travel campaign hero image' ),
+		'required' => true,
+		'label' => 'Media brand text metadata',
+	),
+	array(
+		'ability' => 'media/update-metadata',
+		'input' => array( 'attachment_id' => 44, 'expected_sha256' => str_repeat( 'a', 64 ) ),
+		'required' => false,
+		'label' => 'Media metadata concurrency-only input',
+	),
+	array(
+		'ability' => 'mad4b/taxonomy-set-object-terms',
+		'input' => array( 'object_id' => 12, 'taxonomy' => 'category', 'term_ids' => array( 3, 4 ), 'expected_term_ids' => array( 3 ) ),
+		'required' => false,
+		'label' => 'Taxonomy relationship assignment',
+	),
+	array(
+		'ability' => 'media/set-featured',
+		'input' => array( 'post_id' => 12, 'attachment_id' => 44, 'expected_thumbnail_id' => 0 ),
+		'required' => false,
+		'label' => 'Featured image relationship update',
+	),
+	array(
 		'ability' => 'mad4b/content-import-bundle',
 		'input' => array( 'bundle' => array( 'posts' => array( array( 'post_title' => 'Brand article', 'post_content' => 'Body copy' ) ) ) ),
 		'required' => true,
@@ -326,4 +362,4 @@ $none = MAD4B_SCP_Context_Preflight::preflight_entry(
 );
 mad4b_context_preflight_assert( ! empty( $none['ready'] ) && 'not_required' === $none['state'], 'Non-context Skill must remain usable without Brand Context.', $none );
 
-echo "mad4b.site-control-plane.context-preflight.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-preflight.runtime.v3: PASS\n";
