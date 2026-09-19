@@ -56,16 +56,24 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function profile() {
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return array();
 		$record = get_option( self::PROFILE_OPTION, array() );
-		return self::valid_profile( $record ) ? $record : array();
+		if ( ! self::valid_profile( $record ) ) return array();
+		$record_site_uuid = strtolower( trim( (string) $record['site_uuid'] ) );
+		return hash_equals( (string) $site['site_uuid'], $record_site_uuid ) ? $record : array();
 	}
 
 	public static function sources() {
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return array();
 		$records = get_option( self::SOURCES_OPTION, array() );
 		if ( ! is_array( $records ) ) return array();
 		$out = array();
 		foreach ( array_slice( $records, -self::MAX_SOURCES, self::MAX_SOURCES, true ) as $key => $record ) {
 			if ( ! self::valid_source( $record ) ) continue;
+			$record_site_uuid = strtolower( trim( (string) $record['site_uuid'] ) );
+			if ( ! hash_equals( (string) $site['site_uuid'], $record_site_uuid ) ) continue;
 			$policy = isset( $record['write_policy'] ) ? sanitize_key( (string) $record['write_policy'] ) : 'read_only';
 			if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
 			if ( 'task_attachment' === ( isset( $record['mode'] ) ? (string) $record['mode'] : '' ) ) $policy = 'read_only';
@@ -76,11 +84,15 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function assets() {
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return array();
 		$records = get_option( self::ASSETS_OPTION, array() );
 		if ( ! is_array( $records ) ) return array();
 		$out = array();
 		foreach ( array_slice( $records, -self::MAX_ASSETS, self::MAX_ASSETS, true ) as $key => $record ) {
 			if ( ! self::valid_asset( $record ) ) continue;
+			$record_site_uuid = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
+			if ( '' === $record_site_uuid || ! hash_equals( (string) $site['site_uuid'], $record_site_uuid ) ) continue;
 			$out[ (string) $key ] = $record;
 		}
 		return $out;
