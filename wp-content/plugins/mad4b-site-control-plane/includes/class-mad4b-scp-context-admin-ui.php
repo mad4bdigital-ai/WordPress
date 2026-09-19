@@ -462,6 +462,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	private static function render_assets() {
 		$assets = MAD4B_SCP_Context_Authority::assets();
+		self::render_repair_queue( $assets );
 		$mode_filter = isset( $_GET['mode_filter'] ) ? sanitize_key( wp_unslash( $_GET['mode_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
 		$category_filter = isset( $_GET['category_filter'] ) ? sanitize_key( wp_unslash( $_GET['category_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
 		$review_filter = isset( $_GET['review_filter'] ) ? sanitize_key( wp_unslash( $_GET['review_filter'] ) ) : '';
@@ -545,6 +546,49 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</form></details></td></tr>';
 		}
 		echo '</tbody></table></div></div>';
+	}
+
+	private static function render_repair_queue( array $assets ) {
+		$unavailable = array();
+		foreach ( $assets as $asset ) {
+			if ( ! is_array( $asset ) || 'unavailable' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
+			$unavailable[] = $asset;
+		}
+		if ( empty( $unavailable ) ) return;
+
+		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+		$provider_write = ! empty( $connection['write_available'] );
+		echo '<div class="mad4b-scp-panel mad4b-context-repair-queue"><div class="mad4b-context-repair-title"><div><h2>' . esc_html__( 'Repair Queue', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Unavailable governed assets are listed here first. This screen never mutates Drive directly; repair remains a governed mad4b-write operation with exact approval.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-repair-count">' . esc_html( (string) count( $unavailable ) ) . '</span></div>';
+		if ( ! $provider_write ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google Drive is not connected with write access.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'You can still review the queue. Upgrade OAuth to Read + Write before a governed repair can mount.', 'mad4b-site-control-plane' ) . ' <a href="' . esc_url( self::tab_url( 'google-drive' ) ) . '">' . esc_html__( 'Open Google Drive settings', 'mad4b-site-control-plane' ) . '</a></p></div>';
+		}
+		echo '<div class="mad4b-context-repair-grid">';
+		foreach ( array_slice( $unavailable, 0, 24 ) as $asset ) {
+			$source_id = isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '';
+			$policy = MAD4B_SCP_Context_Authority::source_write_policy( $source_id );
+			$cap = MAD4B_SCP_Google_Drive_Context::asset_write_capabilities( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' );
+			$recreate_ready = $provider_write && ! empty( $cap['recreate'] );
+			$state = $recreate_ready ? 'ready' : 'blocked';
+			echo '<div class="mad4b-context-repair-card is-' . esc_attr( $state ) . '">';
+			echo '<div class="mad4b-context-repair-card-head"><strong>' . esc_html( isset( $asset['title'] ) ? $asset['title'] : 'Unavailable asset' ) . '</strong><span class="mad4b-context-badge">' . esc_html( $recreate_ready ? 'repair ready' : 'blocked' ) . '</span></div>';
+			echo '<p class="mad4b-scp-muted">' . esc_html( isset( $asset['path'] ) ? $asset['path'] : '' ) . '</p>';
+			echo '<dl><dt>' . esc_html__( 'Reason', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['availability_reason'] ) ? $asset['availability_reason'] : 'not_seen_in_latest_scan' ) . '</code></dd>';
+			echo '<dt>' . esc_html__( 'Source policy', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( $policy ) . '</code></dd>';
+			echo '<dt>' . esc_html__( 'Governed ability', 'mad4b-site-control-plane' ) . '</dt><dd><code>context/recreate-drive-asset</code></dd>';
+			echo '<dt>' . esc_html__( 'Authority', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( ! empty( $asset['authority_class'] ) ? $asset['authority_class'] : 'reference' ) . ( ! empty( $asset['required'] ) ? ' · required' : '' ) . '</dd></dl>';
+			if ( ! $recreate_ready ) {
+				$blockers = isset( $cap['blockers'] ) && is_array( $cap['blockers'] ) ? array_values( array_unique( array_map( 'sanitize_key', $cap['blockers'] ) ) ) : array();
+				if ( ! $provider_write ) array_unshift( $blockers, 'google_drive_write_scope_not_granted' );
+				$blockers = array_values( array_unique( $blockers ) );
+				if ( $blockers ) echo '<p><strong>' . esc_html__( 'Blockers:', 'mad4b-site-control-plane' ) . '</strong><br><code>' . esc_html( implode( ' · ', $blockers ) ) . '</code></p>';
+			} else {
+				echo '<p class="mad4b-scp-muted">' . esc_html__( 'Use the normal approval-plan → human approval → mad4b-write execution flow. No direct repair button is exposed here.', 'mad4b-site-control-plane' ) . '</p>';
+			}
+			echo '</div>';
+		}
+		echo '</div>';
+		if ( count( $unavailable ) > 24 ) echo '<p class="description">' . esc_html( sprintf( __( 'Showing the first 24 of %d unavailable assets. Use the availability filter below to review all items.', 'mad4b-site-control-plane' ), count( $unavailable ) ) ) . '</p>';
+		echo '</div>';
 	}
 
 	private static function render_quality() {
@@ -632,6 +676,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 		.mad4b-context-source-mode{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:12px 0}
 		.mad4b-context-source-mode label{display:block;border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-source-mode label span{display:block;margin:5px 0 0 24px;color:#646970}
 		.mad4b-context-badge{display:inline-block;padding:3px 7px;border-radius:12px;background:#f0f0f1;font-size:12px}.mad4b-context-fingerprint{margin:18px 0;color:#646970}
+		.mad4b-context-repair-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.mad4b-context-repair-title h2{margin-top:0}.mad4b-context-repair-count{display:inline-flex;min-width:38px;height:38px;align-items:center;justify-content:center;border-radius:20px;background:#f0f0f1;font-weight:700;font-size:16px}
+		.mad4b-context-repair-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px}.mad4b-context-repair-card{border:1px solid #dcdcde;border-left-width:4px;border-radius:5px;background:#fff;padding:13px}.mad4b-context-repair-card.is-ready{border-left-color:#00a32a}.mad4b-context-repair-card.is-blocked{border-left-color:#dba617}.mad4b-context-repair-card-head{display:flex;justify-content:space-between;gap:8px}.mad4b-context-repair-card dl{display:grid;grid-template-columns:auto 1fr;gap:5px 10px}.mad4b-context-repair-card dt{font-weight:600}.mad4b-context-repair-card dd{margin:0;min-width:0;overflow-wrap:anywhere}
 		.mad4b-context-governance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}.mad4b-context-governance-cell{border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-governance-cell span{display:block;color:#646970;margin-bottom:5px}.mad4b-context-governance-cell strong{display:block}.mad4b-context-governance-cell.is-complete{border-left:4px solid #00a32a}.mad4b-context-governance-cell.is-attention{border-left:4px solid #dba617}.mad4b-context-governance-cell.is-pending{border-left:4px solid #8c8f94}
 		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}
 		.mad4b-context-filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px}.mad4b-context-folder-jump{margin:14px 0 18px}.mad4b-context-folder-jump label{display:block;margin-bottom:6px}.mad4b-context-filterbar select,.mad4b-context-filterbar input{max-width:220px}.mad4b-context-remove{margin-top:8px}.mad4b-context-remove form{margin-top:8px;max-width:280px}
