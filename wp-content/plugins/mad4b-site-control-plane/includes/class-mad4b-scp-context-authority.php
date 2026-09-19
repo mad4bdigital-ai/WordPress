@@ -15,7 +15,7 @@ final class MAD4B_SCP_Context_Authority {
 	const PROFILE_CONTRACT = 'mad4b.brand-context-profile.v1';
 	const SOURCE_CONTRACT = 'mad4b.context-source.v1';
 	const ASSET_CONTRACT = 'mad4b.context-asset.v1';
-	const QUALITY_CONTRACT = 'mad4b.context-quality-score.v1';
+	const QUALITY_CONTRACT = 'mad4b.context-quality-score.v2';
 
 	const PROFILE_OPTION = 'mad4b_scp_brand_context_profile_v1';
 	const SOURCES_OPTION = 'mad4b_scp_context_sources_v1';
@@ -669,40 +669,149 @@ final class MAD4B_SCP_Context_Authority {
 	public static function score_asset( array $metadata, $content = '' ) {
 		$content = trim( (string) $content );
 		$word_count = '' === $content ? 0 : count( preg_split( '/\s+/u', $content, -1, PREG_SPLIT_NO_EMPTY ) );
-		$paragraph_count = '' === $content ? 0 : count( array_filter( preg_split( '/\R{2,}/u', $content ) ) );
+		$paragraphs = '' === $content ? array() : array_values( array_filter( preg_split( '/\R{2,}/u', $content ) ) );
+		$paragraph_count = count( $paragraphs );
+		$category = isset( $metadata['category'] ) ? sanitize_key( (string) $metadata['category'] ) : 'uncategorized';
+		$profile = self::quality_profile_for_category( $category );
+		$target_words = self::quality_target_words( $profile );
+
 		$modified = isset( $metadata['modifiedTime'] ) ? strtotime( (string) $metadata['modifiedTime'] ) : false;
 		$age_days = false === $modified ? null : max( 0, (int) floor( ( time() - $modified ) / DAY_IN_SECONDS ) );
 		$freshness = null === $age_days ? 50 : ( $age_days <= 90 ? 100 : ( $age_days <= 365 ? 85 : ( $age_days <= 730 ? 65 : 45 ) ) );
 		$extractability = '' !== $content ? 100 : 45;
-		$completeness = 40;
-		if ( $word_count >= 150 ) $completeness = 65;
-		if ( $word_count >= 500 ) $completeness = 82;
-		if ( $word_count >= 1200 ) $completeness = 95;
-		$structure = '' === $content ? 45 : min( 100, 55 + min( 30, $paragraph_count * 4 ) + ( preg_match( '/(^|\R)#{1,6}\s+/u', $content ) ? 15 : 0 ) );
-		$category = isset( $metadata['category'] ) ? sanitize_key( (string) $metadata['category'] ) : 'uncategorized';
-		$source_quality = in_array( $category, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines', 'terminology', 'claim_policy' ), true ) ? 95 : 80;
+
+		$metadata_signals = 0;
+		foreach ( array( 'file_id', 'mimeType', 'modifiedTime', 'webViewLink' ) as $field ) if ( ! empty( $metadata[ $field ] ) ) ++$metadata_signals;
+		$source_quality = min( 100, 55 + ( $metadata_signals * 10 ) + ( ! empty( $metadata['classification_confidence'] ) ? 5 : 0 ) );
+
+		$reasons = array();
+		if ( null === $age_days ) $reasons[] = 'freshness_unknown';
+		elseif ( $age_days <= 90 ) $reasons[] = 'recent_source';
+		elseif ( $age_days > 730 ) $reasons[] = 'source_older_than_two_years';
+
 		if ( '' === $content ) {
-			$overall = (int) round( $freshness * 0.45 + $extractability * 0.30 + $source_quality * 0.25 );
-			$mode = 'metadata_provisional';
-		} else {
-			$overall = (int) round( $freshness * 0.15 + $completeness * 0.30 + $structure * 0.20 + $source_quality * 0.20 + $extractability * 0.15 );
-			$mode = 'content_heuristic';
+			$overall = (int) round( $freshness * 0.35 + $source_quality * 0.35 + $extractability * 0.30 );
+			$reasons[] = 'metadata_only_no_normalized_text';
+			return array(
+				'contract' => self::QUALITY_CONTRACT,
+				'profile' => $profile,
+				'overall_score' => max( 0, min( 100, $overall ) ),
+				'confidence' => 0.45,
+				'mode' => 'metadata_provisional',
+				'provisional' => true,
+				'word_count' => 0,
+				'paragraph_count' => 0,
+				'weights' => array( 'freshness' => 0.35, 'source_quality' => 0.35, 'extractability' => 0.30 ),
+				'dimensions' => array(
+					'freshness' => $freshness,
+					'completeness' => null,
+					'structure' => null,
+					'specificity' => null,
+					'source_quality' => $source_quality,
+					'language_quality' => null,
+					'retrieval_quality' => null,
+					'extractability' => $extractability,
+				),
+				'reasons' => $reasons,
+			);
 		}
+
+		$ratio = $target_words > 0 ? min( 1, $word_count / $target_words ) : 1;
+		$completeness = (int) round( 35 + ( $ratio * 65 ) );
+		if ( $ratio < 0.35 ) $reasons[] = 'content_short_for_quality_profile';
+		elseif ( $ratio >= 0.85 ) $reasons[] = 'content_depth_matches_quality_profile';
+
+		$heading_count = preg_match_all( '/(^|\R)\s*#{1,6}\s+|(^|\R)\s*[^\r\n]{2,80}:\s*(?=\R|$)/um', $content, $unused );
+		$bullet_count = preg_match_all( '/(^|\R)\s*(?:[-*•]|\d+[.)])\s+/u', $content, $unused );
+		$table_signal = preg_match( '/\|[^\r\n]+\|/u', $content ) ? 1 : 0;
+		$structure = min( 100, 42 + min( 28, $paragraph_count * 4 ) + min( 15, $heading_count * 5 ) + min( 10, $bullet_count * 2 ) + ( $table_signal ? 5 : 0 ) );
+		if ( $structure >= 80 ) $reasons[] = 'well_structured_for_retrieval';
+		elseif ( $structure < 55 ) $reasons[] = 'weak_document_structure';
+
+		$number_signals = preg_match_all( '/\p{N}+(?:[.,]\p{N}+)?%?/u', $content, $unused );
+		$reference_signals = preg_match_all( '/https?:\/\/|\[[0-9]+\]|\([^\)]{2,80},\s*20[0-9]{2}\)/u', $content, $unused );
+		$list_signals = min( 5, $bullet_count );
+		$specificity = min( 100, 45 + min( 30, $number_signals * 3 ) + min( 15, $reference_signals * 5 ) + ( $list_signals * 2 ) );
+		if ( $specificity >= 75 ) $reasons[] = 'strong_specificity_signals';
+		elseif ( $specificity < 55 ) $reasons[] = 'limited_specificity_signals';
+
+		$sentence_count = max( 1, preg_match_all( '/[.!?؟]+(?:\s|$)/u', $content, $unused ) );
+		$long_paragraphs = 0;
+		foreach ( $paragraphs as $paragraph ) {
+			$words = count( preg_split( '/\s+/u', trim( $paragraph ), -1, PREG_SPLIT_NO_EMPTY ) );
+			if ( $words > 160 ) ++$long_paragraphs;
+		}
+		$language_quality = 82;
+		if ( $word_count < 80 ) $language_quality -= 12;
+		if ( $sentence_count < 3 && $word_count > 150 ) $language_quality -= 10;
+		$language_quality -= min( 20, $long_paragraphs * 5 );
+		if ( preg_match( '/([!?؟.,])\1{2,}/u', $content ) ) $language_quality -= 8;
+		$language_quality = max( 35, min( 100, $language_quality ) );
+		if ( $long_paragraphs > 0 ) $reasons[] = 'very_long_paragraphs_reduce_readability';
+
+		$retrieval_quality = min( 100, 45 + min( 25, $paragraph_count * 4 ) + min( 15, $heading_count * 5 ) + ( $word_count >= 200 ? 10 : 0 ) + ( $extractability >= 100 ? 5 : 0 ) );
+		if ( $retrieval_quality >= 80 ) $reasons[] = 'high_retrieval_readiness';
+
+		$dimensions = array(
+			'freshness' => $freshness,
+			'completeness' => $completeness,
+			'structure' => $structure,
+			'specificity' => $specificity,
+			'source_quality' => $source_quality,
+			'language_quality' => $language_quality,
+			'retrieval_quality' => $retrieval_quality,
+			'extractability' => $extractability,
+		);
+		$weights = self::quality_weights( $profile );
+		$overall = 0.0;
+		foreach ( $weights as $dimension => $weight ) $overall += ( isset( $dimensions[ $dimension ] ) ? (float) $dimensions[ $dimension ] : 0.0 ) * (float) $weight;
+		$confidence = min( 0.96, 0.62 + ( min( 1, $ratio ) * 0.22 ) + ( min( 1, $paragraph_count / 5 ) * 0.08 ) + ( $metadata_signals >= 3 ? 0.04 : 0 ) );
+
 		return array(
 			'contract' => self::QUALITY_CONTRACT,
-			'overall_score' => max( 0, min( 100, $overall ) ),
-			'mode' => $mode,
-			'provisional' => 'content_heuristic' !== $mode,
+			'profile' => $profile,
+			'overall_score' => max( 0, min( 100, (int) round( $overall ) ) ),
+			'confidence' => round( $confidence, 2 ),
+			'mode' => 'content_heuristic_v2',
+			'provisional' => false,
 			'word_count' => $word_count,
 			'paragraph_count' => $paragraph_count,
-			'dimensions' => array(
-				'freshness' => $freshness,
-				'completeness' => $completeness,
-				'structure' => $structure,
-				'source_quality' => $source_quality,
-				'extractability' => $extractability,
-			),
+			'target_word_count' => $target_words,
+			'weights' => $weights,
+			'dimensions' => $dimensions,
+			'reasons' => array_values( array_unique( $reasons ) ),
 		);
+	}
+
+	private static function quality_profile_for_category( $category ) {
+		$category = sanitize_key( (string) $category );
+		if ( in_array( $category, array( 'brand_strategy', 'brand_positioning', 'audience_persona', 'tone_of_voice', 'messaging', 'editorial_guidelines', 'terminology', 'claim_policy', 'legal_policy', 'operational_policy' ), true ) ) return 'brand_policy';
+		if ( 'market_research' === $category ) return 'market_research';
+		if ( in_array( $category, array( 'writer_reference', 'content_example', 'historical_content' ), true ) ) return 'writer_reference';
+		if ( in_array( $category, array( 'seo_strategy', 'content_strategy', 'campaign_strategy', 'product_knowledge', 'service_knowledge', 'destination_knowledge' ), true ) ) return 'knowledge';
+		return 'generic';
+	}
+
+	private static function quality_target_words( $profile ) {
+		$targets = array(
+			'brand_policy' => 300,
+			'knowledge' => 600,
+			'market_research' => 900,
+			'writer_reference' => 700,
+			'generic' => 400,
+		);
+		return isset( $targets[ $profile ] ) ? (int) $targets[ $profile ] : 400;
+	}
+
+	private static function quality_weights( $profile ) {
+		$profiles = array(
+			'brand_policy' => array( 'freshness' => 0.12, 'completeness' => 0.18, 'structure' => 0.10, 'specificity' => 0.18, 'source_quality' => 0.14, 'language_quality' => 0.10, 'retrieval_quality' => 0.10, 'extractability' => 0.08 ),
+			'knowledge' => array( 'freshness' => 0.15, 'completeness' => 0.20, 'structure' => 0.10, 'specificity' => 0.18, 'source_quality' => 0.14, 'language_quality' => 0.08, 'retrieval_quality' => 0.10, 'extractability' => 0.05 ),
+			'market_research' => array( 'freshness' => 0.22, 'completeness' => 0.17, 'structure' => 0.08, 'specificity' => 0.22, 'source_quality' => 0.17, 'language_quality' => 0.04, 'retrieval_quality' => 0.06, 'extractability' => 0.04 ),
+			'writer_reference' => array( 'freshness' => 0.05, 'completeness' => 0.15, 'structure' => 0.18, 'specificity' => 0.12, 'source_quality' => 0.10, 'language_quality' => 0.25, 'retrieval_quality' => 0.10, 'extractability' => 0.05 ),
+			'generic' => array( 'freshness' => 0.15, 'completeness' => 0.20, 'structure' => 0.15, 'specificity' => 0.15, 'source_quality' => 0.15, 'language_quality' => 0.08, 'retrieval_quality' => 0.08, 'extractability' => 0.04 ),
+		);
+		return isset( $profiles[ $profile ] ) ? $profiles[ $profile ] : $profiles['generic'];
 	}
 
 	public static function context_fingerprint( $assets = null, $sources = null ) {
@@ -735,6 +844,7 @@ final class MAD4B_SCP_Context_Authority {
 		$classification = self::classify_asset( $title, isset( $asset['path'] ) ? $asset['path'] : '', $content );
 		$metadata = $asset;
 		$metadata['category'] = $classification['category'];
+		$metadata['classification_confidence'] = $classification['classification_confidence'];
 		$quality = self::score_asset( $metadata, $content );
 		$content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $content_hash ) ) {
