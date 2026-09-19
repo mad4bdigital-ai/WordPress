@@ -106,6 +106,16 @@ require(authority, "'created' => empty( $current )", "source upsert audit distin
 require(authority, "mad4b/context-asset-review", "asset review audit")
 require(authority, "mad4b_context_audit_not_ready", "audit fail-closed preflight")
 
+# First-party Context provider structural contract must cover every Authority helper
+# used by update/recreate/undo paths, not only the happy-path restore methods.
+require(adapter, "'source'", "provider contract source lookup")
+require(adapter, "'asset'", "provider contract asset lookup")
+require(adapter, "'upsert_asset_from_provider'", "provider contract update registry commit")
+require(adapter, "'register_recreated_asset'", "provider contract recreate registry commit")
+require(adapter, "'begin_recreated_asset_rollback'", "provider contract rollback intent")
+require(adapter, "'cancel_recreated_asset_rollback'", "provider contract rollback intent cancellation")
+require(adapter, "'rollback_recreated_asset'", "provider contract rollback finalization")
+
 # Google OAuth supports explicit read-only and read+write, never implicit upgrade.
 require(drive, "const READ_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';", "Drive read-only scope")
 require(drive, "const WRITE_SCOPE = 'https://www.googleapis.com/auth/drive';", "Drive read-write scope")
@@ -325,4 +335,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v35: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v36: PASS")
