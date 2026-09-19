@@ -429,10 +429,17 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$observed = self::provider_observed_text( $file, $content );
 		if ( is_wp_error( $observed ) ) return self::compensate_created_file_failure( $observed, $file, $source, 'recreate' );
 		$payload = self::provider_asset_payload( $source, $file, $observed, $asset );
-		$registered = MAD4B_SCP_Context_Authority::upsert_asset_from_provider( (string) $source['source_id'], $payload, $asset );
-		if ( is_wp_error( $registered ) ) return self::compensate_created_file_failure( $registered, $file, $source, 'recreate' );
-		$marked = MAD4B_SCP_Context_Authority::mark_asset_recreated( $asset_id, $registered );
-		if ( is_wp_error( $marked ) ) return self::compensate_created_file_failure( $marked, $file, $source, 'recreate' );
+		$transition = MAD4B_SCP_Context_Authority::register_recreated_asset( (string) $asset_id, (string) $source['source_id'], $payload, $asset );
+		if ( is_wp_error( $transition ) ) return self::compensate_created_file_failure( $transition, $file, $source, 'recreate' );
+		$registered = isset( $transition['replacement'] ) && is_array( $transition['replacement'] ) ? $transition['replacement'] : array();
+		if ( empty( $registered['asset_id'] ) || empty( $registered['file_id'] ) ) {
+			return self::compensate_created_file_failure(
+				new WP_Error( 'mad4b_context_recreate_registry_transition_invalid', 'Context recreation registry transition returned an invalid replacement binding.' ),
+				$file,
+				$source,
+				'recreate'
+			);
+		}
 		return array(
 			'contract' => 'mad4b.google-drive-asset-mutation.v1',
 			'operation' => 'recreate',
