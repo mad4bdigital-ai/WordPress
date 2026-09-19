@@ -233,6 +233,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
 				'mime_type' => isset( $asset['mime_type'] ) ? (string) $asset['mime_type'] : '',
 				'last_synced_at' => isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '',
+				'write_capabilities' => MAD4B_SCP_Google_Drive_Context::asset_write_capabilities( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' ),
 			);
 			if ( count( $items ) >= $limit ) break;
 		}

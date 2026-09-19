@@ -413,7 +413,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( ! $all_assets ) { echo '<p>' . esc_html__( 'Scan a source folder to discover assets.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
 		if ( ! $assets ) { echo '<p>' . esc_html__( 'No assets match the current filters.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
 		$authorities = MAD4B_SCP_Context_Authority::authority_classes();
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Status</th><th>Review</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Status</th><th>Actionability</th><th>Review</th></tr></thead><tbody>';
 		foreach ( $assets as $asset ) {
 			$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
 			echo '<tr><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( $asset['path'] ) . '</span></td>';
@@ -430,6 +430,15 @@ final class MAD4B_SCP_Context_Admin_UI {
 				else echo '<div class="mad4b-context-repair-hint"><span>' . esc_html( sprintf( __( 'Source policy %s blocks recreation.', 'mad4b-site-control-plane' ), $source_policy ) ) . '</span></div>';
 			}
 			echo '</td>';
+			$write_capabilities = MAD4B_SCP_Google_Drive_Context::asset_write_capabilities( $asset['asset_id'] );
+			echo '<td><div class="mad4b-context-actionability">';
+			if ( ! empty( $write_capabilities['update'] ) ) echo '<code>context/update-drive-asset</code><br><span class="mad4b-scp-muted">' . esc_html__( 'Reversible text update · governed approval required.', 'mad4b-site-control-plane' ) . '</span>';
+			elseif ( ! empty( $write_capabilities['recreate'] ) ) echo '<code>context/recreate-drive-asset</code><br><span class="mad4b-scp-muted">' . esc_html__( 'Reversible missing-asset recreation · governed approval required.', 'mad4b-site-control-plane' ) . '</span>';
+			else {
+				echo '<strong>' . esc_html__( 'No direct mutation', 'mad4b-site-control-plane' ) . '</strong>';
+				if ( ! empty( $write_capabilities['blockers'] ) ) echo '<br><span class="mad4b-scp-muted">' . esc_html( implode( ' · ', array_map( 'sanitize_key', $write_capabilities['blockers'] ) ) ) . '</span>';
+			}
+			echo '</div></td>';
 			echo '<td><details><summary class="button button-small">' . esc_html__( 'Review', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REVIEW_ASSET );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';

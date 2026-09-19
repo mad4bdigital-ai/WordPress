@@ -520,6 +520,43 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return true;
 	}
 
+	public static function asset_write_capabilities( $asset_id ) {
+		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
+		if ( empty( $asset ) ) return array( 'update' => false, 'recreate' => false, 'blockers' => array( 'context_asset_not_found' ) );
+		$source = MAD4B_SCP_Context_Authority::source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' );
+		$status = self::connection_status();
+		$blockers = array();
+		if ( empty( $status['write_available'] ) ) $blockers[] = 'google_drive_write_scope_not_granted';
+		if ( empty( $source ) ) $blockers[] = 'context_source_not_found';
+		if ( ! empty( $source ) && 'task_attachment' === ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) ) $blockers[] = 'task_source_write_forbidden';
+		$mime = isset( $asset['mime_type'] ) ? strtolower( (string) $asset['mime_type'] ) : '';
+		$text_update_type = 0 === strpos( $mime, 'text/' ) || in_array( $mime, array( 'application/json', 'application/xml', 'application/csv' ), true );
+		$update = ! empty( $status['write_available'] )
+			&& 'ready' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' )
+			&& $text_update_type
+			&& ! empty( $source )
+			&& MAD4B_SCP_Context_Authority::source_allows_write( (string) $source['source_id'], 'update' );
+		$recreate = ! empty( $status['write_available'] )
+			&& 'unavailable' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' )
+			&& ! empty( $source )
+			&& MAD4B_SCP_Context_Authority::source_allows_write( (string) $source['source_id'], 'recreate' );
+		if ( 'ready' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) && 'application/vnd.google-apps.document' === $mime ) $blockers[] = 'google_docs_rich_rollback_not_certified';
+		elseif ( 'ready' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) && ! $text_update_type ) $blockers[] = 'asset_type_not_certified_for_reversible_update';
+		if ( 'ready' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) && ! empty( $source ) && ! MAD4B_SCP_Context_Authority::source_allows_write( (string) $source['source_id'], 'update' ) ) $blockers[] = 'source_policy_blocks_update';
+		if ( 'unavailable' === ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) && ! empty( $source ) && ! MAD4B_SCP_Context_Authority::source_allows_write( (string) $source['source_id'], 'recreate' ) ) $blockers[] = 'source_policy_blocks_recreate';
+		return array(
+			'contract' => 'mad4b.context-asset-write-capabilities.v1',
+			'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+			'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+			'write_available' => ! empty( $status['write_available'] ),
+			'update' => (bool) $update,
+			'recreate' => (bool) $recreate,
+			'update_reversible' => (bool) $update,
+			'recreate_reversible' => (bool) $recreate,
+			'blockers' => array_values( array_unique( $blockers ) ),
+		);
+	}
+
 	private static function write_source( $source_id, $operation ) {
 		$status = self::connection_status();
 		if ( empty( $status['write_available'] ) ) return new WP_Error( 'mad4b_google_drive_write_scope_required', 'Google Drive is connected without governed read+write scope. Upgrade the connection before attempting a Drive mutation.' );
