@@ -1351,7 +1351,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			if ( '' === $name || strlen( $name ) > 512 || ! preg_match( '/^[A-Za-z0-9_\.\-\/]+$/', $name ) ) break;
 			if ( function_exists( 'usleep' ) ) usleep( 200000 * ( $attempt + 1 ) );
 			$poll = wp_remote_get(
-				'https://www.googleapis.com/drive/v3/operations/' . rawurlencode( $name ),
+				'https://www.googleapis.com/drive/v3/operations/' . implode( '/', array_map( 'rawurlencode', explode( '/', $name ) ) ),
 				array( 'timeout' => 15, 'redirection' => 0, 'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json' ) )
 			);
 			if ( is_wp_error( $poll ) ) return $poll;
@@ -1699,8 +1699,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $binary ) ) return $binary;
 		$local = self::normalize_binary_content( $mime, $binary, $name );
 		if ( is_wp_error( $local ) ) return $local;
-		if ( ! empty( $local['complete'] ) || 'extractor_required' !== ( isset( $local['normalization_status'] ) ? (string) $local['normalization_status'] : '' ) ) return $local;
-		return self::external_extractor_record( $file, $binary, $local );
+		if ( ! empty( $local['complete'] ) ) return $local;
+		$normalization_status = isset( $local['normalization_status'] ) ? (string) $local['normalization_status'] : '';
+		$multimodal = 'application/pdf' === $mime
+			|| 0 === strpos( $mime, 'image/' )
+			|| 0 === strpos( $mime, 'audio/' )
+			|| 0 === strpos( $mime, 'video/' );
+		if ( $multimodal || 'extractor_required' === $normalization_status ) return self::external_extractor_record( $file, $binary, $local );
+		return $local;
 	}
 
 	private static function fetch_text_content( array $file ) {
