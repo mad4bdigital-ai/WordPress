@@ -208,12 +208,32 @@ $changed = MAD4B_SCP_Context_Authority::asset( $asset_id );
 mad4b_review_assert( 'human' === $changed['classification_source'], 'Human classification decision must remain visible after content changes.', $changed );
 mad4b_review_assert( 'tone_of_voice' === $changed['category'] && 'brand_authority' === $changed['authority_class'], 'Human authority metadata must remain stable after content changes.', $changed );
 mad4b_review_assert( 'needs_review_content_changed' === $changed['review_status'], 'Changed content must invalidate approval.', $changed );
+mad4b_review_assert( empty( $changed['reviewed_at'] ) && empty( $changed['reviewed_by'] ), 'Changed content must clear reviewer identity/timestamp as current approval evidence.', $changed );
 mad4b_review_assert( empty( $changed['quality']['human_override'] ), 'Changed content must not reuse a prior human quality override.', $changed );
 
 $status = MAD4B_SCP_Context_Authority::status();
 mad4b_review_assert( empty( $status['ready'] ), 'Context Authority must fail closed until changed mandatory content is reviewed again.', $status );
 mad4b_review_assert( in_array( 'mandatory_context_review_required', $status['blockers'], true ), 'Changed mandatory content must surface review blocker.', $status['blockers'] );
 mad4b_review_assert( ! hash_equals( $review_fingerprint, MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ), 'Review invalidation must change the authority manifest fingerprint.' );
+
+$scan4 = MAD4B_SCP_Context_Authority::replace_source_assets(
+	$source_id,
+	array( mad4b_review_asset_payload( $file_id, $changed_text ) ),
+	array(
+		'complete' => true,
+		'started_at' => '2026-09-19T18:03:00Z',
+		'completed_at' => '2026-09-19T18:03:03Z',
+		'scan_generation' => str_repeat( '4', 64 ),
+	)
+);
+mad4b_review_assert( ! is_wp_error( $scan4 ), 'Same changed-content rescan before renewed review must succeed without re-approving.', $scan4 );
+$still_pending_review = MAD4B_SCP_Context_Authority::asset( $asset_id );
+mad4b_review_assert( 'human' === $still_pending_review['classification_source'], 'Human classification must survive repeated changed-content rescans.', $still_pending_review );
+mad4b_review_assert( 'needs_review_content_changed' === $still_pending_review['review_status'], 'Repeated same-hash rescan must not auto-approve content awaiting renewed review.', $still_pending_review );
+mad4b_review_assert( empty( $still_pending_review['reviewed_at'] ) && empty( $still_pending_review['reviewed_by'] ), 'Repeated same-hash rescan must not recreate reviewer approval evidence.', $still_pending_review );
+$still_blocked = MAD4B_SCP_Context_Authority::status();
+mad4b_review_assert( empty( $still_blocked['ready'] ), 'Context Authority must remain blocked across repeated rescans until human re-review.', $still_blocked );
+mad4b_review_assert( in_array( 'mandatory_context_review_required', $still_blocked['blockers'], true ), 'Repeated rescan must retain mandatory review blocker.', $still_blocked['blockers'] );
 
 $automatic_review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
@@ -298,4 +318,4 @@ mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'Fi
 mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
 mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[2] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v5: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v6: PASS\n";

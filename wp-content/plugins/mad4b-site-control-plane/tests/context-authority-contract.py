@@ -60,6 +60,9 @@ require(authority, "quality_mode", "explicit automatic/manual quality review mod
 require(authority, "mad4b_context_quality_score_required", "manual quality score fail-closed")
 require(authority, "mad4b_context_automatic_quality_unavailable", "automatic score reset fail-closed")
 require(authority, "needs_review_content_changed", "rescan review invalidation")
+require(authority, "$prior_approved = $same_content", "approval remains bound to exact content hash")
+require(authority, "&& 'approved' === ( isset( $prior['review_status'] )", "rescan may preserve only an already-approved exact hash")
+require(authority, "$normalized['reviewed_at'] = '';", "content change clears reviewer timestamp evidence")
 require(authority, "status'] = 'unavailable'", "missing asset retention")
 require(authority, "not_seen_in_complete_scan", "complete-scan missing asset reason")
 require(authority, "last_complete_scan_generation", "complete scan generation evidence")
@@ -316,4 +319,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v31: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v32: PASS")
