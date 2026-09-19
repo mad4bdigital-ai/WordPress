@@ -118,6 +118,29 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
+	public static function public_connection_status() {
+		$status = self::connection_status();
+		$public = array(
+			'contract' => 'mad4b.google-drive-public-connection.v1',
+			'configured' => ! empty( $status['configured'] ),
+			'connected' => ! empty( $status['connected'] ),
+			'read_available' => ! empty( $status['read_available'] ),
+			'write_available' => ! empty( $status['write_available'] ),
+			'read_only' => ! empty( $status['read_only'] ),
+			'access_mode' => isset( $status['access_mode'] ) ? (string) $status['access_mode'] : 'read_only',
+			'revocation_pending' => ! empty( $status['revocation_pending'] ),
+			'token_unreadable' => ! empty( $status['token_unreadable'] ),
+			'revocation_error' => isset( $status['revocation_error'] ) ? (string) $status['revocation_error'] : '',
+			'revocation_attempted_at' => isset( $status['revocation_attempted_at'] ) ? (string) $status['revocation_attempted_at'] : '',
+			'expires_at' => isset( $status['expires_at'] ) ? (int) $status['expires_at'] : 0,
+			'token_healthy' => ! empty( $status['token_healthy'] ),
+			'last_verified_at' => isset( $status['last_verified_at'] ) ? (string) $status['last_verified_at'] : '',
+			'blockers' => isset( $status['blockers'] ) && is_array( $status['blockers'] ) ? array_values( $status['blockers'] ) : array(),
+			'write_blockers' => isset( $status['write_blockers'] ) && is_array( $status['write_blockers'] ) ? array_values( $status['write_blockers'] ) : array(),
+		);
+		return $public;
+	}
+
 	public static function authorization_url( $access_mode = 'read_only' ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );

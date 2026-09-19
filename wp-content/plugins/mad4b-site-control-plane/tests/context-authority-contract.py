@@ -172,9 +172,13 @@ require(drive, "recreate_asset", "Drive asset recreate")
 assert "delete_asset(" not in drive, "Drive delete surface must remain absent"
 assert "trash_asset(" not in drive, "Drive trash surface must remain absent"
 
-status_body = drive.split("public static function connection_status()",1)[1].split("public static function authorization_url",1)[0]
+status_body = drive.split("public static function connection_status()",1)[1].split("public static function public_connection_status",1)[0]
+public_status_body = drive.split("public static function public_connection_status()",1)[1].split("public static function authorization_url",1)[0]
 assert "'access_token' =>" not in status_body, "connection status must not expose access token"
 assert "'refresh_token' =>" not in status_body, "connection status must not expose refresh token"
+for sensitive in ("'scope' =>", "'account_email' =>", "'account_name' =>", "'permission_id' =>", "'access_token' =>", "'refresh_token' =>"):
+    assert sensitive not in public_status_body, f"public Google Drive status leaked identity/credential field: {sensitive}"
+require(adapter, "MAD4B_SCP_Google_Drive_Context::public_connection_status()", "remote Google Drive status uses privacy-bounded projection")
 
 # Governed adapter surfaces.
 for ability in [
@@ -312,4 +316,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v30: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v31: PASS")

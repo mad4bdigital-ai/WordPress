@@ -125,6 +125,13 @@ mad4b_oauth_assert( ! is_wp_error( $write ), 'Explicit Read+Write OAuth exchange
 mad4b_oauth_assert( ! empty( $write['write_available'] ) && 'read_write' === $write['access_mode'], 'Read+Write connection must expose provider write capability.', $write );
 mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE === $write['scope'], 'Read+Write connection must retain exact governed full Drive scope only.', $write );
 
+$public_write = MAD4B_SCP_Google_Drive_Context::public_connection_status();
+mad4b_oauth_assert( 'mad4b.google-drive-public-connection.v1' === $public_write['contract'], 'Public Drive status contract mismatch.', $public_write );
+mad4b_oauth_assert( ! empty( $public_write['write_available'] ) && 'read_write' === $public_write['access_mode'], 'Public Drive status must retain capability truth.', $public_write );
+foreach ( array( 'scope', 'account_email', 'account_name', 'permission_id', 'access_token', 'refresh_token' ) as $sensitive_key ) {
+	mad4b_oauth_assert( ! array_key_exists( $sensitive_key, $public_write ), 'Public Drive status leaked account/token identity field: ' . $sensitive_key, $public_write );
+}
+
 $GLOBALS['mad4b_context_token_responses'][] = array(
 	'access_token' => 'access-downgrade-fixture',
 	'expires_in' => 3600,
@@ -150,4 +157,4 @@ foreach ( array( 'access-read-fixture', 'refresh-read-fixture', 'access-write-fi
 	mad4b_oauth_assert( false === strpos( $encoded, $secret ), 'OAuth status must never expose token material.' );
 }
 
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v2: PASS\n";

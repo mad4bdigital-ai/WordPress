@@ -368,7 +368,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function google_drive_status() {
 		return array(
-			'connection' => MAD4B_SCP_Google_Drive_Context::connection_status(),
+			'connection' => MAD4B_SCP_Google_Drive_Context::public_connection_status(),
 			'write_capability' => MAD4B_SCP_Google_Drive_Context::write_capability_status(),
 			'provider_contract' => $this->context_provider_contract_status(),
 		);
