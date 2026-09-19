@@ -207,6 +207,8 @@ final class MAD4B_SCP_Context_Authority {
 			static function () use ( $brand_name ) {	
 			$site = self::site_binding();
 			if ( is_wp_error( $site ) ) return $site;
+			$audit_ready = self::audit_preflight();
+			if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 			$brand_name = trim( sanitize_text_field( (string) $brand_name ) );
 			if ( '' === $brand_name ) return new WP_Error( 'mad4b_brand_context_name_required', 'Brand name is required.' );
 			$current = self::profile();
@@ -225,7 +227,17 @@ final class MAD4B_SCP_Context_Authority {
 				'updated_at' => gmdate( 'c' ),
 			);
 			if ( ! self::write_option( self::PROFILE_OPTION, $record ) ) return new WP_Error( 'mad4b_context_profile_write_failed', 'Brand Context Profile could not be persisted.' );
-			return $record;
+			return self::audited_registry_result(
+				$record,
+				'mad4b/context-profile-save',
+				array(
+					'site_uuid' => (string) $site['site_uuid'],
+					'brand_id' => (string) $record['brand_id'],
+					'revision' => (int) $record['revision'],
+					'created' => empty( $current ),
+				),
+				'ok'
+			);
 		
 			}
 		);

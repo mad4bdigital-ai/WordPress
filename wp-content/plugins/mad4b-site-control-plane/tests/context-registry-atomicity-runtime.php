@@ -219,4 +219,21 @@ $source_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static fu
 mad4b_atomic_assert( 1 === count( $source_events ), 'Healthy source upsert must append exactly one governed audit event.', $source_events );
 mad4b_atomic_assert( 'google_drive' === $source_events[0]['summary']['provider'] && 'repair_only' === $source_events[0]['summary']['write_policy'], 'Source upsert audit must bind provider and write policy.', $source_events[0] );
 
-echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v2: PASS\n";
+$before_profile = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ];
+$before_profile_revision = MAD4B_SCP_Context_Authority::registry_revision();
+MAD4B_SCP_Audit::$fail_append = true;
+$failed_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand' );
+mad4b_atomic_assert( is_wp_error( $failed_profile ), 'Brand Context Profile save must fail when append-only audit commit fails.', $failed_profile );
+mad4b_atomic_assert( 'mad4b_context_registry_audit_commit_failed' === $failed_profile->get_error_code(), 'Profile audit failure must expose compensated audit error.', $failed_profile->get_error_code() );
+mad4b_atomic_assert( $before_profile === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ], 'Profile audit failure must restore exact prior Brand Context Profile.' );
+mad4b_atomic_assert( $before_profile_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Profile audit failure must restore pre-save registry revision.' );
+
+MAD4B_SCP_Audit::$fail_append = false;
+$saved_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand' );
+mad4b_atomic_assert( ! is_wp_error( $saved_profile ), 'Healthy Brand Context Profile save must commit with audit evidence.', $saved_profile );
+mad4b_atomic_assert( $before_profile_revision + 1 === MAD4B_SCP_Context_Authority::registry_revision(), 'Healthy audited profile save must advance registry revision exactly once.' );
+$profile_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $row ) { return 'mad4b/context-profile-save' === $row['ability']; } ) );
+mad4b_atomic_assert( 1 === count( $profile_events ), 'Healthy Brand Context Profile save must append exactly one governed audit event.', $profile_events );
+mad4b_atomic_assert( 2 === (int) $profile_events[0]['summary']['revision'] && empty( $profile_events[0]['summary']['created'] ), 'Profile save audit must bind exact revision and update/create state.', $profile_events[0] );
+
+echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v3: PASS\n";
