@@ -316,6 +316,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$expected = isset( $input['expected_content_hash'] ) ? (string) $input['expected_content_hash'] : '';
 			$state = MAD4B_SCP_Google_Drive_Context::reversible_update_state( $asset_id, $expected );
 			if ( is_wp_error( $state ) ) return $state;
+			$state = $this->bind_reversible_state_to_provider_contract( $state );
+			if ( is_wp_error( $state ) ) return $state;
 			return array(
 				'target_type' => 'google_drive_context_asset',
 				'target_id' => (string) $state['asset_id'],
@@ -331,6 +333,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( 'context/recreate-drive-asset' === $ability_name ) {
 			$asset_id = isset( $input['asset_id'] ) ? (string) $input['asset_id'] : '';
 			$state = MAD4B_SCP_Google_Drive_Context::reversible_recreate_state( $asset_id );
+			if ( is_wp_error( $state ) ) return $state;
+			$state = $this->bind_reversible_state_to_provider_contract( $state );
 			if ( is_wp_error( $state ) ) return $state;
 			if ( 'unavailable' !== ( isset( $state['status'] ) ? (string) $state['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_snapshot_not_unavailable', 'Recreate rollback capture requires an unavailable original asset.' );
 			return array(
@@ -351,15 +355,65 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function read_reversible_state( $ability_name, array $target ) {
 		$asset_id = isset( $target['asset_id'] ) ? (string) $target['asset_id'] : '';
-		if ( 'context/update-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::reversible_update_state( $asset_id );
-		if ( 'context/recreate-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::reversible_recreate_state( $asset_id );
+		if ( 'context/update-drive-asset' === $ability_name ) {
+			$state = MAD4B_SCP_Google_Drive_Context::reversible_update_state( $asset_id );
+			return is_wp_error( $state ) ? $state : $this->bind_reversible_state_to_provider_contract( $state );
+		}
+		if ( 'context/recreate-drive-asset' === $ability_name ) {
+			$state = MAD4B_SCP_Google_Drive_Context::reversible_recreate_state( $asset_id );
+			return is_wp_error( $state ) ? $state : $this->bind_reversible_state_to_provider_contract( $state );
+		}
 		return parent::read_reversible_state( $ability_name, $target );
 	}
 
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) {
+		if ( in_array( $ability_name, array( 'context/update-drive-asset', 'context/recreate-drive-asset' ), true ) ) {
+			$guard = $this->validate_reversible_provider_binding( $state );
+			if ( is_wp_error( $guard ) ) return $guard;
+		}
 		if ( 'context/update-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::restore_update_state( $target, $state );
 		if ( 'context/recreate-drive-asset' === $ability_name ) return MAD4B_SCP_Google_Drive_Context::restore_recreate_state( $target, $state );
 		return parent::restore_reversible_state( $ability_name, $target, $state, $record );
+	}
+
+	private function bind_reversible_state_to_provider_contract( array $state ) {
+		$provider = $this->context_provider_contract_status();
+		if ( empty( $provider['ready'] ) ) {
+			return new WP_Error(
+				'mad4b_context_reversible_provider_contract_not_ready',
+				'Context reversible state cannot be captured because the exact first-party provider contract is not ready.',
+				array( 'blockers' => isset( $provider['blockers'] ) ? $provider['blockers'] : array() )
+			);
+		}
+		$artifact = isset( $provider['artifact_fingerprint'] ) ? strtolower( trim( (string) $provider['artifact_fingerprint'] ) ) : '';
+		$build = isset( $provider['control_plane_build_fingerprint'] ) ? strtolower( trim( (string) $provider['control_plane_build_fingerprint'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $artifact ) || ! preg_match( '/^[a-f0-9]{64}$/', $build ) ) {
+			return new WP_Error( 'mad4b_context_reversible_provider_binding_invalid', 'Context reversible provider binding is incomplete.' );
+		}
+		$state['_mad4b_provider_binding'] = array(
+			'contract' => self::PROVIDER_CONTRACT,
+			'artifact_fingerprint' => $artifact,
+			'control_plane_build_fingerprint' => $build,
+		);
+		return $state;
+	}
+
+	private function validate_reversible_provider_binding( array $state ) {
+		$recorded = isset( $state['_mad4b_provider_binding'] ) && is_array( $state['_mad4b_provider_binding'] ) ? $state['_mad4b_provider_binding'] : array();
+		$current = $this->context_provider_contract_status();
+		if ( empty( $current['ready'] ) ) return new WP_Error( 'mad4b_context_undo_provider_contract_not_ready', 'Context undo is denied because the current provider contract is not ready.' );
+		foreach ( array( 'artifact_fingerprint', 'control_plane_build_fingerprint' ) as $field ) {
+			$before = isset( $recorded[ $field ] ) ? strtolower( trim( (string) $recorded[ $field ] ) ) : '';
+			$now = isset( $current[ $field ] ) ? strtolower( trim( (string) $current[ $field ] ) ) : '';
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $before ) || ! preg_match( '/^[a-f0-9]{64}$/', $now ) || ! hash_equals( $before, $now ) ) {
+				return new WP_Error(
+					'mad4b_context_undo_provider_contract_drift',
+					'Context undo is denied because the first-party provider artifact/build no longer matches the mutation snapshot.',
+					array( 'field' => $field )
+				);
+			}
+		}
+		return true;
 	}
 
 	public function context_status() {
