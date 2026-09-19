@@ -20,6 +20,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 	const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+	const REVOKE_ENDPOINT = 'https://oauth2.googleapis.com/revoke';
 	const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 	const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 	const DOCS_API = 'https://docs.googleapis.com/v1';
@@ -138,7 +139,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'response_type' => 'code',
 				'scope' => $requested_scope,
 				'access_type' => 'offline',
-				'include_granted_scopes' => 'true',
+				'include_granted_scopes' => 'read_write' === $access_mode ? 'true' : 'false',
 				'prompt' => 'consent',
 				'state' => $state,
 			),
@@ -179,7 +180,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $tokens ) ) return $tokens;
 		if ( empty( $tokens['access_token'] ) ) return new WP_Error( 'mad4b_google_drive_access_token_missing', 'Google did not return an access token.' );
 		$existing = self::token_record();
-		$refresh = isset( $tokens['refresh_token'] ) ? (string) $tokens['refresh_token'] : ( is_array( $existing ) && isset( $existing['refresh_token'] ) ? (string) $existing['refresh_token'] : '' );
+		$requested_mode = isset( $stored['access_mode'] ) ? sanitize_key( (string) $stored['access_mode'] ) : 'read_only';
+		$new_refresh = isset( $tokens['refresh_token'] ) ? trim( (string) $tokens['refresh_token'] ) : '';
+		if ( '' === $new_refresh && 'read_only' === $requested_mode && is_array( $existing ) && self::scope_allows_write( isset( $existing['scope'] ) ? $existing['scope'] : '' ) ) {
+			return new WP_Error( 'mad4b_google_drive_readonly_downgrade_requires_revoke', 'Cannot prove a least-privilege downgrade while the previous read+write refresh grant remains. Disconnect and revoke Google access, then connect Read-only.' );
+		}
+		$refresh = '' !== $new_refresh ? $new_refresh : ( is_array( $existing ) && isset( $existing['refresh_token'] ) ? (string) $existing['refresh_token'] : '' );
 		if ( '' === $refresh ) return new WP_Error( 'mad4b_google_drive_refresh_token_missing', 'Google did not return a refresh token. Reconnect and grant offline access.' );
 		$record = self::persist_tokens(
 			(string) $tokens['access_token'],
@@ -187,7 +193,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			isset( $tokens['expires_in'] ) ? absint( $tokens['expires_in'] ) : 3600,
 			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : ( isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : self::READ_SCOPE ),
 			array(),
-			isset( $stored['access_mode'] ) ? (string) $stored['access_mode'] : 'read_only'
+			$requested_mode
 		);
 		if ( is_wp_error( $record ) ) return $record;
 		$about = self::about();
@@ -203,8 +209,35 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function disconnect() {
+		$record = self::token_record();
+		$revocation_attempted = false;
+		$revocation_confirmed = false;
+		$revocation_error = '';
+		$token = is_array( $record ) && ! empty( $record['refresh_token'] ) ? (string) $record['refresh_token'] : ( is_array( $record ) && ! empty( $record['access_token'] ) ? (string) $record['access_token'] : '' );
+		if ( '' !== $token ) {
+			$revocation_attempted = true;
+			$response = wp_remote_post(
+				self::REVOKE_ENDPOINT,
+				array(
+					'timeout' => 20,
+					'redirection' => 0,
+					'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
+					'body' => array( 'token' => $token ),
+				)
+			);
+			if ( is_wp_error( $response ) ) $revocation_error = sanitize_key( $response->get_error_code() );
+			else {
+				$status = (int) wp_remote_retrieve_response_code( $response );
+				$revocation_confirmed = 200 === $status;
+				if ( ! $revocation_confirmed ) $revocation_error = 'google_revocation_http_' . $status;
+			}
+		}
 		delete_option( self::TOKEN_OPTION );
-		return self::connection_status();
+		$status = self::connection_status();
+		$status['remote_revocation_attempted'] = $revocation_attempted;
+		$status['remote_revocation_confirmed'] = $revocation_confirmed;
+		$status['remote_revocation_error'] = $revocation_error;
+		return $status;
 	}
 
 	public static function about() {

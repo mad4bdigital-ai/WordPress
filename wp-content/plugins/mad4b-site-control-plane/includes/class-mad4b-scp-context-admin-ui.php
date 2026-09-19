@@ -272,7 +272,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			submit_button( __( 'Upgrade to Read + Write', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 			echo '</form></div>';
 		} else {
-			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Drive write capability is available.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Create, update and recreate remain mounted on mad4b-write and require exact NHI grant plus one-time approval. This page never executes those mutations directly.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Drive write capability is available.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Create, update and recreate remain mounted on mad4b-write and require exact NHI grant plus one-time approval. This page never executes those mutations directly.', 'mad4b-site-control-plane' ) . '</p><p class="description">' . esc_html__( 'To return to least-privilege Read-only mode, disconnect and revoke this grant first, then reconnect Read-only.', 'mad4b-site-control-plane' ) . '</p></div>';
 		}
 		echo '<p><a class="button button-primary" href="' . esc_url( self::tab_url( 'google-drive', array( 'folder' => 'root' ) ) ) . '">' . esc_html__( 'Choose Source Folder', 'mad4b-site-control-plane' ) . '</a></p>';
 		echo '<form class="mad4b-context-folder-jump" method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '"><input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '"><input type="hidden" name="tab" value="google-drive"><label><strong>' . esc_html__( 'Open a shared folder by ID', 'mad4b-site-control-plane' ) . '</strong><span class="description"> ' . esc_html__( 'Useful for Shared Drives or folders that do not appear under My Drive.', 'mad4b-site-control-plane' ) . '</span></label><div><input type="text" name="folder" class="regular-text code" placeholder="Google Drive folder ID"> ';
@@ -281,7 +281,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_DISCONNECT_GOOGLE );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_DISCONNECT_GOOGLE ) . '">';
-		submit_button( __( 'Disconnect Google Drive', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+		submit_button( __( 'Disconnect & Revoke Google Access', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 		echo '</form></div>';
 		self::render_folder_browser();
 	}
