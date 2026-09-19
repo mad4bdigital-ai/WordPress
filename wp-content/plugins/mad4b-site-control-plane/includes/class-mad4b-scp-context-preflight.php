@@ -142,6 +142,8 @@ final class MAD4B_SCP_Context_Preflight {
 					'contract' => self::ENVELOPE_CONTRACT,
 					'required' => false,
 					'context_fingerprint' => '',
+					'authority_manifest_fingerprint' => '',
+					'registry_revision' => 0,
 					'assets' => array(),
 					'total_bytes' => 0,
 				),
@@ -156,16 +158,35 @@ final class MAD4B_SCP_Context_Preflight {
 		$authority = MAD4B_SCP_Context_Authority::status();
 		$profile = MAD4B_SCP_Context_Authority::profile();
 		$assets = MAD4B_SCP_Context_Authority::assets();
+		$registry_revision = isset( $authority['registry_revision'] ) ? (int) $authority['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision();
+		$authority_manifest_fingerprint = isset( $authority['authority_manifest_fingerprint'] ) ? (string) $authority['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint( $assets );
 		$blockers = array();
 		$warnings = array();
+
 		if ( empty( $profile ) ) $blockers[] = 'brand_context_profile_unconfigured';
 		if ( empty( $authority['site_uuid'] ) ) $blockers[] = 'context_site_binding_unavailable';
+		if ( ! empty( $authority['partial_source_count'] ) ) $blockers[] = 'governed_context_source_scan_incomplete';
 		if ( ! empty( $authority['stale_asset_count'] ) ) $blockers[] = 'brand_context_contains_stale_assets';
 		if ( ! empty( $authority['conflicting_asset_count'] ) ) $blockers[] = 'mandatory_context_conflict';
 
+		$site_required_sets = array();
+		foreach ( $assets as $asset ) {
+			if ( ! is_array( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) || empty( $asset['required'] ) ) continue;
+			$category = isset( $asset['category'] ) ? sanitize_key( (string) $asset['category'] ) : '';
+			if ( '' !== $category && 'uncategorized' !== $category ) $site_required_sets[] = $category;
+		}
+		$site_required_sets = array_values( array_unique( $site_required_sets ) );
+		sort( $site_required_sets, SORT_STRING );
+		$effective_required_sets = array_values( array_unique( array_merge( $policy['required_context_sets'], $site_required_sets ) ) );
+		sort( $effective_required_sets, SORT_STRING );
+		if ( empty( $effective_required_sets ) ) $blockers[] = 'required_context_sets_empty';
+
+		$effective_optional_sets = array_values( array_diff( $policy['optional_context_sets'], $effective_required_sets ) );
+		sort( $effective_optional_sets, SORT_STRING );
+
 		$selected = array();
 		$missing_sets = array();
-		foreach ( $policy['required_context_sets'] as $category ) {
+		foreach ( $effective_required_sets as $category ) {
 			$candidates = self::category_candidates( $assets, $category, true, '' );
 			if ( empty( $candidates ) ) {
 				$missing_sets[] = $category;
@@ -175,7 +196,7 @@ final class MAD4B_SCP_Context_Preflight {
 		}
 		if ( $missing_sets ) $blockers[] = 'required_context_sets_missing';
 
-		foreach ( $policy['optional_context_sets'] as $category ) {
+		foreach ( $effective_optional_sets as $category ) {
 			$candidates = self::category_candidates( $assets, $category, true, '' );
 			foreach ( array_slice( $candidates, 0, self::MAX_ASSETS_PER_SET ) as $asset ) {
 				if ( count( $selected ) >= self::MAX_CONTEXT_ASSETS ) break 2;
@@ -194,7 +215,7 @@ final class MAD4B_SCP_Context_Preflight {
 		$receipt_assets = array();
 		$total_bytes = 0;
 		$required_ids = array();
-		foreach ( $policy['required_context_sets'] as $category ) {
+		foreach ( $effective_required_sets as $category ) {
 			foreach ( self::category_candidates( $assets, $category, true, '' ) as $candidate ) $required_ids[ (string) $candidate['asset_id'] ] = true;
 		}
 
@@ -204,6 +225,11 @@ final class MAD4B_SCP_Context_Preflight {
 			if ( is_wp_error( $content ) ) {
 				if ( $required_asset ) $blockers[] = 'required_context_asset_unreadable';
 				else $warnings[] = 'optional_context_asset_unreadable:' . $asset_id;
+				continue;
+			}
+			if ( empty( $content['content_complete'] ) ) {
+				if ( $required_asset ) $blockers[] = 'required_context_asset_incomplete';
+				else $warnings[] = 'optional_context_asset_incomplete:' . $asset_id;
 				continue;
 			}
 			$bytes = isset( $content['bytes'] ) ? (int) $content['bytes'] : strlen( isset( $content['content'] ) ? (string) $content['content'] : '' );
@@ -224,19 +250,25 @@ final class MAD4B_SCP_Context_Preflight {
 				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '',
 				'content_sha256' => isset( $content['content_sha256'] ) ? (string) $content['content_sha256'] : '',
 				'bytes' => $bytes,
+				'content_complete' => true,
 				'required_for_skill' => $required_asset,
 			);
 			$receipt_assets[] = $summary;
 			$envelope_assets[] = $summary + array( 'content' => isset( $content['content'] ) ? (string) $content['content'] : '' );
 		}
 
-		foreach ( $policy['required_context_sets'] as $category ) {
+		foreach ( $effective_required_sets as $category ) {
 			$loaded = false;
 			foreach ( $receipt_assets as $asset ) {
 				if ( ! empty( $asset['required_for_skill'] ) && $category === $asset['category'] ) { $loaded = true; break; }
 			}
 			if ( ! $loaded ) $blockers[] = 'required_context_set_not_loaded:' . $category;
 		}
+
+		$registry_revision_after = MAD4B_SCP_Context_Authority::registry_revision();
+		if ( $registry_revision_after !== $registry_revision ) $blockers[] = 'context_registry_changed_during_preflight';
+		$current_authority_fingerprint = MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
+		if ( '' === $authority_manifest_fingerprint || ! hash_equals( $authority_manifest_fingerprint, $current_authority_fingerprint ) ) $blockers[] = 'context_authority_changed_during_preflight';
 
 		$blockers = array_values( array_unique( $blockers ) );
 		$warnings = array_values( array_unique( $warnings ) );
@@ -246,10 +278,15 @@ final class MAD4B_SCP_Context_Preflight {
 		$brand_id = isset( $authority['brand_id'] ) ? (string) $authority['brand_id'] : '';
 		$ready = empty( $blockers );
 
+		$effective_policy = $policy;
+		$effective_policy['site_required_context_sets'] = $site_required_sets;
+		$effective_policy['effective_required_context_sets'] = $effective_required_sets;
+		$effective_policy['effective_optional_context_sets'] = $effective_optional_sets;
+
 		$receipt = self::receipt(
 			$logical_id,
 			$skill_sha,
-			$policy,
+			$effective_policy,
 			$policy_digest,
 			$receipt_assets,
 			$missing_sets,
@@ -259,7 +296,9 @@ final class MAD4B_SCP_Context_Preflight {
 			$fingerprint,
 			$observed_at,
 			$task_scope,
-			$brand_id
+			$brand_id,
+			$authority_manifest_fingerprint,
+			$registry_revision
 		);
 		return array(
 			'contract' => self::PREFLIGHT_CONTRACT,
@@ -268,6 +307,7 @@ final class MAD4B_SCP_Context_Preflight {
 			'skill_logical_id' => $logical_id,
 			'skill_sha256' => $skill_sha,
 			'policy' => $policy,
+			'effective_policy' => $effective_policy,
 			'policy_sha256' => $policy_digest,
 			'blockers' => $blockers,
 			'warnings' => $warnings,
@@ -278,9 +318,12 @@ final class MAD4B_SCP_Context_Preflight {
 				'site_uuid' => $site_uuid,
 				'brand_id' => $brand_id,
 				'brand_context_revision' => $revision,
+				'registry_revision' => $registry_revision,
 				'context_fingerprint' => $fingerprint,
+				'authority_manifest_fingerprint' => $authority_manifest_fingerprint,
 				'task_scope' => $task_scope,
 				'precedence' => array( 'site_policy', 'brand_core', 'editorial_strategy', 'campaign_context', 'task_knowledge', 'writer_reference', 'general_model_knowledge' ),
+				'effective_required_context_sets' => $effective_required_sets,
 				'assets' => $envelope_assets,
 				'total_bytes' => $total_bytes,
 			),
@@ -293,6 +336,7 @@ final class MAD4B_SCP_Context_Preflight {
 		foreach ( $assets as $asset ) {
 			if ( ! is_array( $asset ) || $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
 			if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
+			if ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) continue;
 			$mode = isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '';
 			if ( $governed ) {
 				if ( 'governed' !== $mode || 'approved' !== ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) continue;
@@ -343,20 +387,28 @@ final class MAD4B_SCP_Context_Preflight {
 		return $canonical;
 	}
 
-	private static function receipt( $logical_id, $skill_sha, array $policy, $policy_digest, array $assets, array $missing_sets, array $blockers, $site_uuid, $revision, $fingerprint, $observed_at, $task_scope, $brand_id = '' ) {
+	private static function receipt( $logical_id, $skill_sha, array $policy, $policy_digest, array $assets, array $missing_sets, array $blockers, $site_uuid, $revision, $fingerprint, $observed_at, $task_scope, $brand_id = '', $authority_manifest_fingerprint = '', $registry_revision = 0 ) {
+		$effective_required = isset( $policy['effective_required_context_sets'] ) && is_array( $policy['effective_required_context_sets'] )
+			? array_values( $policy['effective_required_context_sets'] )
+			: ( isset( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array() );
 		$receipt = array(
 			'contract' => self::RECEIPT_CONTRACT,
 			'ephemeral' => true,
+			'persistence_state' => 'bindable_digest_not_yet_committed',
 			'site_uuid' => (string) $site_uuid,
 			'brand_id' => (string) $brand_id,
 			'skill_logical_id' => (string) $logical_id,
 			'skill_sha256' => (string) $skill_sha,
 			'context_policy_sha256' => (string) $policy_digest,
 			'brand_context_revision' => (int) $revision,
+			'registry_revision' => (int) $registry_revision,
 			'context_fingerprint' => (string) $fingerprint,
+			'authority_manifest_fingerprint' => (string) $authority_manifest_fingerprint,
 			'task_scope' => (string) $task_scope,
-			'required_context_sets' => isset( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array(),
-			'optional_context_sets' => isset( $policy['optional_context_sets'] ) ? array_values( $policy['optional_context_sets'] ) : array(),
+			'declared_required_context_sets' => isset( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array(),
+			'site_required_context_sets' => isset( $policy['site_required_context_sets'] ) ? array_values( $policy['site_required_context_sets'] ) : array(),
+			'required_context_sets' => $effective_required,
+			'optional_context_sets' => isset( $policy['effective_optional_context_sets'] ) ? array_values( $policy['effective_optional_context_sets'] ) : ( isset( $policy['optional_context_sets'] ) ? array_values( $policy['optional_context_sets'] ) : array() ),
 			'assets_loaded' => array_values( $assets ),
 			'required_assets_missing' => array_values( $missing_sets ),
 			'blockers' => array_values( $blockers ),
