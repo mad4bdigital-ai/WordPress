@@ -286,6 +286,18 @@ $meta = json_decode( (string) $meta_json, true );
 if ( ! is_array( $meta ) || empty( $meta['identity_token'] ) || ! hash_equals( $token_file, (string) $meta['identity_token'] ) ) $fail( 'MAD4B-SNAPSHOT.json identity token mismatch.' );
 if ( empty( $meta['governed_write_ready'] ) || empty( $meta['write_certification_ready'] ) ) $fail( 'MAD4B-SNAPSHOT.json is missing governed Write certification.' );
 if ( ! isset( $meta['resource_count'], $meta['uncompressed_payload_bytes'], $meta['export_limits'] ) ) $fail( 'MAD4B-SNAPSHOT.json is missing bounded export evidence.' );
+if ( empty( $meta['context_enforcement']['context_required_skills_require_policy_digest'] ) || empty( $meta['context_enforcement']['context_required_skills_require_server_preflight'] ) || empty( $meta['context_enforcement']['brand_bearing_writes_require_exact_context_receipt'] ) || empty( $meta['context_enforcement']['portable_skill_does_not_grant_write_authority'] ) ) {
+	$fail( 'MAD4B-SNAPSHOT.json is missing portable Context enforcement evidence.' );
+}
+$exported_content_skill = null;
+foreach ( isset( $meta['skills'] ) && is_array( $meta['skills'] ) ? $meta['skills'] : array() as $exported_skill ) {
+	if ( isset( $exported_skill['name'] ) && 'wordpress-content-authoring' === (string) $exported_skill['name'] ) { $exported_content_skill = $exported_skill; break; }
+}
+if ( ! is_array( $exported_content_skill ) || empty( $exported_content_skill['context_required'] ) ) $fail( 'Portable snapshot is missing the governed content-authoring Skill.' );
+if ( empty( $exported_content_skill['context_policy_sha256'] ) || ! hash_equals( (string) $content_skill['context_policy_sha256'], (string) $exported_content_skill['context_policy_sha256'] ) ) $fail( 'Portable content-authoring policy digest drifted.' );
+if ( 'brand_core' !== ( isset( $exported_content_skill['context_policy']['preset'] ) ? (string) $exported_content_skill['context_policy']['preset'] : '' ) ) $fail( 'Portable content-authoring Skill lost Brand Core policy.' );
+if ( 'mad4b.context-preflight.v1' !== ( isset( $exported_content_skill['context_preflight_contract'] ) ? (string) $exported_content_skill['context_preflight_contract'] : '' ) ) $fail( 'Portable content-authoring Skill lost Context Preflight contract.' );
+if ( 'mad4b.content-context-receipt.v1' !== ( isset( $exported_content_skill['context_receipt_contract'] ) ? (string) $exported_content_skill['context_receipt_contract'] : '' ) ) $fail( 'Portable content-authoring Skill lost Context Receipt contract.' );
 if ( (int) $meta['resource_count'] !== (int) $export['resource_count'] || (int) $meta['uncompressed_payload_bytes'] !== (int) $export['uncompressed_payload_bytes'] ) $fail( 'Export result and embedded payload counters disagree.' );
 $app = json_decode( (string) $app_json, true );
 $zip_app_id = is_array( $app ) && isset( $app['apps']['mad4b-wordpress']['id'] ) ? (string) $app['apps']['mad4b-wordpress']['id'] : '';
