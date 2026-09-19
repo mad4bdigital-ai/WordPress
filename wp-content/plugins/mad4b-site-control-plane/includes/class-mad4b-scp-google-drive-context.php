@@ -41,9 +41,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function save_credentials( $client_id, $client_secret ) {
-		if ( defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) || defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' ) ) {
-			return new WP_Error( 'mad4b_google_drive_credentials_managed_by_constants', 'Google Drive credentials are managed by wp-config constants.' );
-		}
+		$constant_id = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' );
+		$constant_secret = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' );
+		if ( $constant_id xor $constant_secret ) return new WP_Error( 'mad4b_google_drive_constants_incomplete', 'Define both Google Drive OAuth constants or neither of them.' );
+		if ( $constant_id && $constant_secret ) return new WP_Error( 'mad4b_google_drive_credentials_managed_by_constants', 'Google Drive credentials are managed by wp-config constants.' );
 		$client_id = trim( sanitize_text_field( (string) $client_id ) );
 		$client_secret = trim( (string) $client_secret );
 		if ( '' === $client_id || strlen( $client_id ) > 512 ) return new WP_Error( 'mad4b_google_drive_client_id_invalid', 'A valid Google OAuth client ID is required.' );
@@ -100,6 +101,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			array(
 				'state' => hash( 'sha256', $state ),
 				'redirect_uri' => self::redirect_uri(),
+				'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
 				'created_at' => time(),
 			),
 			10 * MINUTE_IN_SECONDS
@@ -127,6 +129,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! is_array( $stored ) || empty( $stored['state'] ) || '' === $state || ! hash_equals( (string) $stored['state'], hash( 'sha256', $state ) ) ) {
 			return new WP_Error( 'mad4b_google_drive_oauth_state_invalid', 'Google OAuth state is missing, expired, or invalid.' );
 		}
+		$current_site_uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '';
+		if ( empty( $stored['site_uuid'] ) || '' === $current_site_uuid || ! hash_equals( (string) $stored['site_uuid'], $current_site_uuid ) ) return new WP_Error( 'mad4b_google_drive_oauth_site_binding_changed', 'Site Profile binding changed during Google OAuth. Start the connection again.' );
+		if ( empty( $stored['redirect_uri'] ) || ! hash_equals( (string) $stored['redirect_uri'], self::redirect_uri() ) ) return new WP_Error( 'mad4b_google_drive_oauth_redirect_binding_changed', 'OAuth redirect binding changed during Google connection. Start the connection again.' );
 		$code = trim( (string) $code );
 		if ( '' === $code || strlen( $code ) > 4096 ) return new WP_Error( 'mad4b_google_drive_oauth_code_invalid', 'Google OAuth authorization code is missing or invalid.' );
 		$credentials = self::credentials();
@@ -371,6 +376,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array() ) {
+		$scope = trim( (string) $scope );
+		if ( ! self::scope_is_readonly( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_readonly', 'Google granted a scope set broader than the governed Drive read-only contract.' );
 		$record = is_array( $existing ) ? $existing : array();
 		$record['contract'] = self::CONTRACT;
 		$record['access_token'] = trim( (string) $access_token );
@@ -406,8 +413,19 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $record;
 	}
 
+	private static function scope_is_readonly( $scope ) {
+		$items = preg_split( '/\s+/', trim( (string) $scope ) );
+		$items = array_values( array_unique( array_filter( is_array( $items ) ? $items : array() ) ) );
+		if ( empty( $items ) ) return false;
+		foreach ( $items as $item ) if ( ! hash_equals( self::DRIVE_SCOPE, (string) $item ) ) return false;
+		return true;
+	}
+
 	private static function credentials() {
-		if ( defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' ) ) {
+		$constant_id = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' );
+		$constant_secret = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' );
+		if ( $constant_id xor $constant_secret ) return new WP_Error( 'mad4b_google_drive_constants_incomplete', 'Define both Google Drive OAuth constants or neither of them.' );
+		if ( $constant_id && $constant_secret ) {
 			$id = trim( (string) constant( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) );
 			$secret = trim( (string) constant( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' ) );
 			if ( '' !== $id && '' !== $secret ) return array( 'client_id' => $id, 'client_secret' => $secret );

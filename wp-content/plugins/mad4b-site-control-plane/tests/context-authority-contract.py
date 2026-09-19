@@ -38,6 +38,10 @@ assert "https://www.googleapis.com/auth/drive.file" not in drive, "Drive write s
 assert "https://www.googleapis.com/auth/drive\'" not in drive, "Full Drive scope must not be requested"
 require(drive, "aes-256-gcm", "encrypted token storage")
 require(drive, "mad4b_google_drive_client_secret_required_for_new_client", "safe OAuth client rotation")
+require(drive, "mad4b_google_drive_scope_not_readonly", "least-privilege token scope enforcement")
+require(drive, "mad4b_google_drive_oauth_site_binding_changed", "OAuth state Site Profile binding")
+require(drive, "mad4b_google_drive_oauth_redirect_binding_changed", "OAuth redirect binding")
+require(drive, "mad4b_google_drive_constants_incomplete", "partial constant fail-closed")
 require(drive, "refresh_token", "offline token refresh")
 require(drive, "MAX_SCAN_FILES", "bounded file scan")
 require(drive, "MAX_SCAN_FOLDERS", "bounded folder scan")
