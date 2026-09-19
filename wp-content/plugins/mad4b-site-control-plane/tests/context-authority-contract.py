@@ -89,6 +89,9 @@ require(drive, "create_provider_file( $target_folder_id", "recreate writes to ex
 assert "create_provider_file( (string) $source['external_root_id'], $title" not in drive, "Recreate must never silently fall back to source root"
 assert drive.count("self::assert_original_file_absent(") >= 2, "Recreate capture and execution must independently prove provider absence"
 require(drive, "create_asset", "Drive asset create")
+require(drive, "$target_folder_id = self::bounded_drive_id", "selected-folder create binding")
+require(drive, "create_provider_file( $target_folder_id, $name", "create writes only to selected source folder")
+assert "'target_folder_id' => $target_folder_id" in drive, "create receipt must bind the exact selected folder"
 require(drive, "update_asset", "Drive asset update")
 require(drive, "recreate_asset", "Drive asset recreate")
 assert "delete_asset(" not in drive, "Drive delete surface must remain absent"
@@ -157,4 +160,4 @@ require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v10: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v11: PASS")
