@@ -20,6 +20,19 @@ function add_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name 
 function update_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name ] = $value; return true; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 
+class MAD4B_SCP_Site_Profile {
+	public static $site_uuid = '11111111-1111-4111-8111-111111111111';
+	public static function status() {
+		return array(
+			'configured' => true,
+			'origin_match' => true,
+			'environment_match' => true,
+			'site_uuid' => self::$site_uuid,
+			'environment' => 'staging',
+		);
+	}
+}
+
 class MAD4B_SCP_Audit {
 	public static $events = array();
 	public static function record( $ability, $payload = array(), $status = 'ok' ) { self::$events[] = array( $ability, $payload, $status ); return true; }
