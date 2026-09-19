@@ -288,7 +288,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function create_asset( $source_id, $name, $content, $format = 'markdown' ) {
-		$source = self::write_source( $source_id );
+		$source = self::write_source( $source_id, 'create' );
 		if ( is_wp_error( $source ) ) return $source;
 		$name = trim( sanitize_text_field( (string) $name ) );
 		$content = (string) $content;
@@ -316,7 +316,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	public static function update_asset( $asset_id, $expected_content_hash, $content ) {
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
-		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' );
+		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '', 'update' );
 		if ( is_wp_error( $source ) ) return $source;
 		$expected_content_hash = strtolower( trim( (string) $expected_content_hash ) );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_content_hash ) ) return new WP_Error( 'mad4b_google_drive_expected_hash_invalid', 'Expected content hash must be SHA-256.' );
@@ -354,7 +354,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
 		if ( 'unavailable' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_requires_unavailable_asset', 'Recreate is only allowed for a Context asset confirmed unavailable by the latest source scan.' );
-		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' );
+		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '', 'recreate' );
 		if ( is_wp_error( $source ) ) return $source;
 		$content = (string) $content;
 		$content_guard = self::validate_write_content( $content );
@@ -379,13 +379,25 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
-	private static function write_source( $source_id ) {
+	private static function write_source( $source_id, $operation ) {
 		$status = self::connection_status();
 		if ( empty( $status['write_available'] ) ) return new WP_Error( 'mad4b_google_drive_write_scope_required', 'Google Drive is connected without governed read+write scope. Upgrade the connection before attempting a Drive mutation.' );
 		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_context_authority_unavailable', 'Context Authority is unavailable.' );
 		$source = MAD4B_SCP_Context_Authority::source( $source_id );
 		if ( empty( $source ) || 'google_drive' !== ( isset( $source['provider'] ) ? (string) $source['provider'] : '' ) ) return new WP_Error( 'mad4b_google_drive_source_not_found', 'Selected Context source is not a Google Drive source.' );
 		if ( 'root' === (string) $source['external_root_id'] ) return new WP_Error( 'mad4b_google_drive_root_write_forbidden', 'Drive write operations require a specific selected source folder; My Drive root is intentionally read-only.' );
+		$operation = sanitize_key( (string) $operation );
+		if ( ! MAD4B_SCP_Context_Authority::source_allows_write( (string) $source['source_id'], $operation ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_source_write_policy_denied',
+				'The selected Context source policy does not allow this Drive mutation.',
+				array(
+					'source_id' => (string) $source['source_id'],
+					'operation' => $operation,
+					'write_policy' => isset( $source['write_policy'] ) ? (string) $source['write_policy'] : 'read_only',
+				)
+			);
+		}
 		return $source;
 	}
 
@@ -690,6 +702,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'write_available' => ! empty( $status['write_available'] ),
 			'access_mode' => isset( $status['access_mode'] ) ? (string) $status['access_mode'] : 'read_only',
 			'selected_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? count( MAD4B_SCP_Context_Authority::sources() ) : 0,
+			'create_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'create' ) : 0,
+			'update_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'update' ) : 0,
+			'recreate_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ) : 0,
 			'allowed_operations' => array( 'create', 'update', 'recreate' ),
 			'delete_supported' => false,
 			'trash_supported' => false,
