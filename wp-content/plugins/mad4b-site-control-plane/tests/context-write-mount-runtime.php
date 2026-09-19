@@ -33,13 +33,18 @@ abstract class MAD4B_SCP_Adapter_Base {
 
 class MAD4B_SCP_Context_Authority {
 	public static $assets = array();
+	public static function source() { return array( 'source_id' => str_repeat( 'e', 64 ) ); }
+	public static function asset( $asset_id = '' ) { return isset( self::$assets[ $asset_id ] ) ? self::$assets[ $asset_id ] : array(); }
 	public static function source_allows_write() { return true; }
 	public static function source_write_policy() { return 'read_only'; }
 	public static function assets() { return self::$assets; }
+	public static function upsert_asset_from_provider( $source_id = '', $provider_asset = array(), $preserve = array() ) { return is_array( $provider_asset ) ? $provider_asset : array(); }
+	public static function register_recreated_asset( $old_asset_id = '', $source_id = '', $provider_asset = array(), $preserve = array() ) { return array( 'replacement' => $provider_asset ); }
 	public static function registry_revision() { return 1; }
 	public static function context_fingerprint() { return str_repeat( 'a', 64 ); }
 	public static function authority_manifest_fingerprint() { return str_repeat( 'b', 64 ); }
 	public static function begin_recreated_asset_rollback() { return true; }
+	public static function cancel_recreated_asset_rollback() { return true; }
 	public static function rollback_recreated_asset() { return true; }
 }
 
@@ -195,4 +200,4 @@ mad4b_context_mount_assert( is_wp_error( $missing_scope ) && 'mad4b_context_task
 $task_only = $adapter->list_assets( array( 'mode' => 'task_attachment', 'task_scope' => 'task-b' ) );
 mad4b_context_mount_assert( ! is_wp_error( $task_only ) && 1 === $task_only['count'] && $task_b_id === $task_only['items'][0]['asset_id'], 'Exact task-only listing must return only the matching task attachment.', $task_only );
 
-echo "mad4b.site-control-plane.context-write-mount.runtime.v5: PASS\n";
+echo "mad4b.site-control-plane.context-write-mount.runtime.v6: PASS\n";
