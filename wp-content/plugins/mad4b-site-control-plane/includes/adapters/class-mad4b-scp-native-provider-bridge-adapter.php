@@ -351,7 +351,7 @@ final class MAD4B_SCP_Native_Provider_Bridge_Adapter extends MAD4B_SCP_Adapter_B
 		$mode = $this->enforce_native_mode( $row, (bool) $expect_write, $operation );
 		if ( is_wp_error( $mode ) ) return $mode;
 		$provider_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
-		if ( 'jetengine-mcp' === $resolved['transport'] ) return MAD4B_SCP_JetEngine_MCP_Client::call_tool( $resolved['name'], $provider_input, $expected_hash );
+		if ( 'jetengine-mcp' === $resolved['transport'] ) return MAD4B_SCP_JetEngine_MCP_Client::call_tool( $resolved['name'], $provider_input, $expected_hash, $operation );
 		if ( ! is_object( $resolved['ability'] ) || ! method_exists( $resolved['ability'], 'execute' ) ) return new WP_Error( 'mad4b_native_provider_executor_unavailable', 'Resolved WordPress Ability cannot be executed.' );
 		return $resolved['ability']->execute( $provider_input );
 	}

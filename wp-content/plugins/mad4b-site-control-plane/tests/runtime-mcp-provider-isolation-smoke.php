@@ -46,7 +46,11 @@ remove_action( 'mcp_adapter_init', array( $unknown, 'register_server' ), 10 );
 
 add_action( 'rest_api_init', function () {
 	$permission = function () { return true; };
+	$external_run_permission = function () {
+		return new WP_Error( 'jetengine_external_auth_required', 'External JetEngine run transport requires provider authentication.', array( 'status' => 401 ) );
+	};
 	$callback = function () { return rest_ensure_response( array( 'ok' => true ) ); };
+	$GLOBALS['mad4b_ci_jetengine_run_callback_reached'] = false;
 	register_rest_route( 'hostinger-ai-assistant/v1', '/mcp', array( 'methods' => array( 'GET', 'POST' ), 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'hostinger-ai-assistant/v1', '/jwt/token', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
 	register_rest_route( 'hostinger-ai-assistant/v1', '/jwt/revoke', array( 'methods' => 'POST', 'callback' => $callback, 'permission_callback' => $permission ) );
@@ -91,6 +95,13 @@ add_action( 'rest_api_init', function () {
 					'annotations' => array( 'readOnlyHint' => false ),
 					'inputSchema' => array( 'type' => 'object', 'additionalProperties' => true ),
 				),
+				array(
+					'name' => 'resource-provider-error',
+					'title' => 'Provider Error Diagnostic Fixture',
+					'description' => 'Read-only fixture that returns a bounded provider error.',
+					'annotations' => array( 'readOnlyHint' => true ),
+					'inputSchema' => array(),
+				),
 			) ) );
 		},
 		'permission_callback' => $permission,
@@ -98,13 +109,17 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'jet-engine/v1', '/mcp-tools/run/(?P<tool>[a-zA-Z0-9\-\/]+?)', array(
 		'methods' => 'POST',
 		'callback' => function ( $request ) {
+			$GLOBALS['mad4b_ci_jetengine_run_callback_reached'] = true;
+			if ( 'resource-provider-error' === (string) $request->get_param( 'tool' ) ) {
+				return new WP_Error( 'jetengine_fixture_provider_failure', 'Fixture provider failure.', array( 'status' => 409 ) );
+			}
 			return rest_ensure_response( array(
 				'ok' => true,
 				'tool' => (string) $request->get_param( 'tool' ),
 				'input' => (array) $request->get_param( 'input' ),
 			) );
 		},
-		'permission_callback' => $permission,
+		'permission_callback' => $external_run_permission,
 		'args' => array(
 			'input' => array( 'type' => 'object', 'required' => false, 'default' => array() ),
 		),
@@ -214,7 +229,33 @@ $read_result = $native_bridge->jetengine_get_website_config( array(
 	'input' => array(),
 ) );
 if ( is_wp_error( $read_result ) || empty( $read_result['ok'] ) || 'resource-get-website-config' !== ( isset( $read_result['tool'] ) ? $read_result['tool'] : '' ) ) {
-	mad4b_isolation_fail( 'Governed Native Provider Bridge could not execute the retained read-only JetEngine handler.', $read_result );
+	mad4b_isolation_fail( 'Governed Native Provider Bridge could not execute the retained read-only JetEngine handler when external provider auth rejects the raw run route.', $read_result );
+}
+if ( empty( $GLOBALS['mad4b_ci_jetengine_run_callback_reached'] ) ) {
+	mad4b_isolation_fail( 'Internal governed handoff did not reach the retained JetEngine provider callback.' );
+}
+
+$diagnostic_schema = array();
+$diagnostic_hash = hash( 'sha256', wp_json_encode( $diagnostic_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+$diagnostic_error = MAD4B_SCP_JetEngine_MCP_Client::call_tool( 'resource-provider-error', array(), $diagnostic_hash, 'get_configuration' );
+if ( ! is_wp_error( $diagnostic_error ) || 'mad4b_jetengine_rest_tool_http_error' !== $diagnostic_error->get_error_code() ) {
+	mad4b_isolation_fail( 'Bounded native REST execution diagnostic did not preserve the provider non-success status.', $diagnostic_error );
+}
+$diagnostic = $diagnostic_error->get_error_data();
+if (
+	! is_array( $diagnostic )
+	|| 'mad4b.jetengine-native-rest-execution-diagnostic.v1' !== ( isset( $diagnostic['contract'] ) ? (string) $diagnostic['contract'] : '' )
+	|| 409 !== ( isset( $diagnostic['http_status'] ) ? (int) $diagnostic['http_status'] : 0 )
+	|| 'jetengine_fixture_provider_failure' !== ( isset( $diagnostic['provider_response_error_code'] ) ? (string) $diagnostic['provider_response_error_code'] : '' )
+	|| 'bypassed_external_provider_permission' !== ( isset( $diagnostic['permission_result'] ) ? (string) $diagnostic['permission_result'] : '' )
+	|| empty( $diagnostic['provider_permission_callback_present'] )
+	|| empty( $diagnostic['callback_reached'] )
+	|| 'resource-provider-error' !== ( isset( $diagnostic['native_tool_name'] ) ? (string) $diagnostic['native_tool_name'] : '' )
+	|| '/jet-engine/v1/mcp-tools/run/resource-provider-error' !== ( isset( $diagnostic['internal_route'] ) ? (string) $diagnostic['internal_route'] : '' )
+	|| 'POST' !== ( isset( $diagnostic['http_method'] ) ? (string) $diagnostic['http_method'] : '' )
+	|| ! preg_match( '/^[a-f0-9]{64}$/', isset( $diagnostic['request_envelope_digest'] ) ? (string) $diagnostic['request_envelope_digest'] : '' )
+) {
+	mad4b_isolation_fail( 'Native REST execution diagnostic is incomplete or leaked out of its bounded contract.', $diagnostic );
 }
 
 $status = MAD4B_SCP_MCP_Provider_Isolation::status();
@@ -266,4 +307,4 @@ if ( empty( $peer['write_side_channel_detected'] ) || ! in_array( 'mcp_foreign_t
 	mad4b_isolation_fail( 'Unknown MCP route must continue to fail closed.', $peer );
 }
 
-fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v3: PASS' . PHP_EOL );
+fwrite( STDOUT, 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v4: PASS' . PHP_EOL );

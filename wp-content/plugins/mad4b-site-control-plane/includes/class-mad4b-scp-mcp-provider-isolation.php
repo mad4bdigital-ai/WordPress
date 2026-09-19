@@ -18,18 +18,41 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 if ( class_exists( 'WP_REST_Server' ) && ! class_exists( 'MAD4B_SCP_Internal_Provider_REST_Dispatcher', false ) ) {
 	final class MAD4B_SCP_Internal_Provider_REST_Dispatcher extends WP_REST_Server {
-		public function dispatch_retained( WP_REST_Request $request, $route, array $handler, array $url_params = array() ) {
+		public function dispatch_retained( WP_REST_Request $request, $route, array $handler, array $url_params = array(), $bypass_provider_permission = false ) {
 			$request->set_url_params( $url_params );
-			$request->set_attributes( $handler );
+
+			// Retained JetEngine routes are no longer external transports. The outer
+			// MAD4B Ability permission/authorization layer owns read access, NHI,
+			// exact one-time approval and replay denial before execution can reach
+			// this handoff. Replaying the provider's external REST authentication
+			// here makes the isolated bridge require credentials that were
+			// intentionally removed with the raw provider route.
+			$effective_handler = $handler;
+			$provider_permission_present = isset( $handler['permission_callback'] ) && is_callable( $handler['permission_callback'] );
+			$permission_result = 'provider_permission_evaluated';
+			if ( $bypass_provider_permission ) {
+				$effective_handler['permission_callback'] = '__return_true';
+				$permission_result = 'bypassed_external_provider_permission';
+			}
+
+			$callback_reached = false;
+			if ( ! empty( $effective_handler['callback'] ) && is_callable( $effective_handler['callback'] ) ) {
+				$provider_callback = $effective_handler['callback'];
+				$effective_handler['callback'] = static function ( $callback_request ) use ( $provider_callback, &$callback_reached ) {
+					$callback_reached = true;
+					return call_user_func( $provider_callback, $callback_request );
+				};
+			}
+			$request->set_attributes( $effective_handler );
 
 			$defaults = array();
-			foreach ( isset( $handler['args'] ) && is_array( $handler['args'] ) ? $handler['args'] : array() as $arg => $options ) {
+			foreach ( isset( $effective_handler['args'] ) && is_array( $effective_handler['args'] ) ? $effective_handler['args'] : array() as $arg => $options ) {
 				if ( is_array( $options ) && isset( $options['default'] ) ) $defaults[ $arg ] = $options['default'];
 			}
 			$request->set_default_params( $defaults );
 
 			$error = null;
-			if ( empty( $handler['callback'] ) || ! is_callable( $handler['callback'] ) ) {
+			if ( empty( $effective_handler['callback'] ) || ! is_callable( $effective_handler['callback'] ) ) {
 				$error = new WP_Error( 'mad4b_internal_provider_handler_invalid', 'Retained provider route handler is not callable.', array( 'status' => 500 ) );
 			}
 			if ( ! is_wp_error( $error ) ) {
@@ -41,7 +64,13 @@ if ( class_exists( 'WP_REST_Server' ) && ! class_exists( 'MAD4B_SCP_Internal_Pro
 					if ( is_wp_error( $sanitized ) ) $error = $sanitized;
 				}
 			}
-			return $this->respond_to_request( $request, (string) $route, $handler, $error );
+			$response = $this->respond_to_request( $request, (string) $route, $effective_handler, $error );
+			if ( is_object( $response ) && method_exists( $response, 'header' ) ) {
+				$response->header( 'X-MAD4B-Internal-Provider-Permission', $permission_result );
+				$response->header( 'X-MAD4B-Internal-Provider-Permission-Present', $provider_permission_present ? '1' : '0' );
+				$response->header( 'X-MAD4B-Internal-Provider-Callback-Reached', $callback_reached ? '1' : '0' );
+			}
+			return $response;
 		}
 	}
 }
@@ -220,6 +249,7 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 			'registry_available' => $registry,
 			'run_available' => $run,
 			'raw_routes_exposed' => false,
+			'internal_permission_mode' => 'mad4b-governed-provider-permission-bypass',
 		);
 	}
 
@@ -275,7 +305,8 @@ final class MAD4B_SCP_MCP_Provider_Isolation {
 				$request,
 				isset( $matched['route'] ) ? (string) $matched['route'] : $actual_route,
 				$handler,
-				isset( $matched['params'] ) && is_array( $matched['params'] ) ? $matched['params'] : array()
+				isset( $matched['params'] ) && is_array( $matched['params'] ) ? $matched['params'] : array(),
+				true
 			);
 		}
 		return new WP_Error( 'mad4b_internal_provider_handler_unavailable', 'No retained JetEngine provider handler accepts the requested method.' );

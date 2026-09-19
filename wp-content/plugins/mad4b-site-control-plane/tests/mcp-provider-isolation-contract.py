@@ -68,6 +68,12 @@ require(isolation, "'wpmedia_oauth_server_suppressed' => self::effective()", 'wp
 require(isolation, "retain_internal_provider_route", 'jetengine-internal-route-retention')
 require(isolation, "internal_provider_transport_status", 'jetengine-internal-transport-status')
 require(isolation, "dispatch_internal_provider_request", 'jetengine-internal-dispatch')
+require(isolation, "bypassed_external_provider_permission", 'internal-handoff-does-not-replay-provider-external-auth')
+require(isolation, "'internal_permission_mode' => 'mad4b-governed-provider-permission-bypass'", 'internal-handoff-permission-mode-evidence')
+require(client, "mad4b.jetengine-native-rest-execution-diagnostic.v1", 'native-rest-bounded-error-diagnostic')
+require(client, "'request_envelope_digest'", 'native-rest-request-envelope-digest')
+require(client, "'provider_response_error_code'", 'native-rest-provider-error-code')
+require(client, "'callback_reached'", 'native-rest-callback-reachability')
 require(isolation, "'raw_routes_exposed' => false", 'jetengine-raw-routes-remain-hidden')
 require(isolation, "'mcp_execution_surface' === (string) $descriptor['class']", 'retain-execution-surfaces-only')
 require(client, "'isolated-native-rest-tools'", 'native-bridge-isolated-transport')
@@ -127,4 +133,4 @@ require(bootstrap, "class-mad4b-scp-mcp-provider-isolation.php", 'bootstrap-load
 require(bootstrap, 'MAD4B_SCP_MCP_Provider_Isolation::boot_early();', 'bootstrap-early-kill-switch')
 require(plugin, 'MAD4B_SCP_MCP_Provider_Isolation::boot();', 'plugin-boot')
 
-print('mad4b.site-control-plane.mcp-provider-isolation-contract.v5: PASS')
+print('mad4b.site-control-plane.mcp-provider-isolation-contract.v6: PASS')

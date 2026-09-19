@@ -398,7 +398,27 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		return true;
 	}
 
-	private static function call_rest_tool( $tool_name, array $arguments, $isolated = false ) {
+	private static function response_header( $response, $name ) {
+		if ( ! is_object( $response ) || ! method_exists( $response, 'get_headers' ) ) return '';
+		$headers = $response->get_headers();
+		if ( ! is_array( $headers ) ) return '';
+		foreach ( $headers as $key => $value ) {
+			if ( strtolower( (string) $key ) !== strtolower( (string) $name ) ) continue;
+			return is_array( $value ) ? (string) reset( $value ) : (string) $value;
+		}
+		return '';
+	}
+
+	private static function provider_response_error_code( $data ) {
+		if ( ! is_array( $data ) ) return '';
+		if ( isset( $data['code'] ) && is_scalar( $data['code'] ) ) return substr( sanitize_key( (string) $data['code'] ), 0, 120 );
+		if ( isset( $data['error'] ) && is_array( $data['error'] ) && isset( $data['error']['code'] ) && is_scalar( $data['error']['code'] ) ) {
+			return substr( sanitize_key( (string) $data['error']['code'] ), 0, 120 );
+		}
+		return '';
+	}
+
+	private static function call_rest_tool( $tool_name, array $arguments, $isolated = false, $operation = '' ) {
 		if ( $isolated ) {
 			if ( ! self::isolated_rest_tools_available() ) return new WP_Error( 'mad4b_jetengine_isolated_rest_tool_run_unavailable', 'JetEngine isolated native REST tool run handler is unavailable.' );
 		} elseif ( ! self::rest_run_route_available() ) {
@@ -409,21 +429,71 @@ final class MAD4B_SCP_JetEngine_MCP_Client {
 		$request = new WP_REST_Request( 'POST', $route );
 		$request->set_header( 'content-type', 'application/json' );
 		$request->set_body_params( array( 'input' => $arguments ) );
+		$input_encoded = wp_json_encode( $arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$input_digest = hash( 'sha256', false === $input_encoded ? '' : $input_encoded );
+		$envelope = array(
+			'contract' => 'mad4b.jetengine-native-rest-execution-envelope.v1',
+			'operation' => sanitize_key( (string) $operation ),
+			'native_tool_name' => (string) $tool_name,
+			'internal_route' => $route,
+			'http_method' => 'POST',
+			'input_sha256' => $input_digest,
+			'isolated' => (bool) $isolated,
+		);
+		$envelope_encoded = wp_json_encode( $envelope, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$request_envelope_digest = hash( 'sha256', false === $envelope_encoded ? '' : $envelope_encoded );
+
 		$response = $isolated ? self::dispatch_isolated_request( $request ) : rest_do_request( $request );
-		if ( is_wp_error( $response ) ) return $response;
+		if ( is_wp_error( $response ) ) {
+			return new WP_Error(
+				$response->get_error_code(),
+				$response->get_error_message(),
+				array(
+					'contract' => 'mad4b.jetengine-native-rest-execution-diagnostic.v1',
+					'operation' => sanitize_key( (string) $operation ),
+					'native_tool_name' => (string) $tool_name,
+					'internal_route' => $route,
+					'http_method' => 'POST',
+					'http_status' => 0,
+					'provider_response_error_code' => $response->get_error_code(),
+					'permission_result' => $isolated ? 'internal_dispatch_wp_error' : 'external_rest_wp_error',
+					'request_envelope_digest' => $request_envelope_digest,
+					'callback_reached' => false,
+				)
+			);
+		}
 		$status = (int) $response->get_status();
-		if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_jetengine_rest_tool_http_error', 'JetEngine native REST tool execution returned a non-success HTTP status.', array( 'status' => $status, 'tool' => $tool_name ) );
-		return $response->get_data();
+		$data = $response->get_data();
+		if ( $status < 200 || $status >= 300 ) {
+			return new WP_Error(
+				'mad4b_jetengine_rest_tool_http_error',
+				'JetEngine native REST tool execution returned a non-success HTTP status.',
+				array(
+					'contract' => 'mad4b.jetengine-native-rest-execution-diagnostic.v1',
+					'operation' => sanitize_key( (string) $operation ),
+					'native_tool_name' => (string) $tool_name,
+					'internal_route' => $route,
+					'http_method' => 'POST',
+					'http_status' => $status,
+					'provider_response_error_code' => self::provider_response_error_code( $data ),
+					'permission_result' => self::response_header( $response, 'X-MAD4B-Internal-Provider-Permission' ),
+					'provider_permission_callback_present' => '1' === self::response_header( $response, 'X-MAD4B-Internal-Provider-Permission-Present' ),
+					'request_envelope_digest' => $request_envelope_digest,
+					'callback_reached' => '1' === self::response_header( $response, 'X-MAD4B-Internal-Provider-Callback-Reached' ),
+				)
+			);
+		}
+		return $data;
 	}
 
-	public static function call_tool( $tool_name, array $arguments, $expected_schema_sha256 ) {
+	public static function call_tool( $tool_name, array $arguments, $expected_schema_sha256, $operation = '' ) {
 		$valid = self::validate_tool_input( $tool_name, $arguments, $expected_schema_sha256 );
 		if ( is_wp_error( $valid ) ) return $valid;
 		$tools = self::tools();
 		if ( is_wp_error( $tools ) || ! isset( $tools[ $tool_name ] ) ) return is_wp_error( $tools ) ? $tools : new WP_Error( 'mad4b_jetengine_mcp_tool_missing', 'Planned JetEngine native tool is no longer available.' );
 		$channel = isset( $tools[ $tool_name ]['provider_native_channel'] ) ? (string) $tools[ $tool_name ]['provider_native_channel'] : 'mcp-jsonrpc';
-		if ( 'native-rest-tools' === $channel ) return self::call_rest_tool( $tool_name, $arguments );
-		if ( 'isolated-native-rest-tools' === $channel ) return self::call_rest_tool( $tool_name, $arguments, true );
+		if ( 'native-rest-tools' === $channel ) return self::call_rest_tool( $tool_name, $arguments, false, $operation );
+		if ( 'isolated-native-rest-tools' === $channel ) return self::call_rest_tool( $tool_name, $arguments, true, $operation );
 		$init = self::initialize();
 		if ( is_wp_error( $init ) ) return $init;
 		$call = self::rpc( 'tools/call', array( 'name' => (string) $tool_name, 'arguments' => $arguments ), (string) $init['session_id'] );
