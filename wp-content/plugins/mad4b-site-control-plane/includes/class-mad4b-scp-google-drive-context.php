@@ -614,10 +614,23 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $source ) ) return $source;
 		$status = isset( $asset['status'] ) ? (string) $asset['status'] : '';
 		$replacement_asset_id = isset( $asset['replacement_asset_id'] ) ? (string) $asset['replacement_asset_id'] : '';
+
 		if ( 'unavailable' === $status && '' === $replacement_asset_id ) {
-			$absence = self::assert_original_file_absent( isset( $asset['file_id'] ) ? $asset['file_id'] : '' );
+			$absence = self::assert_original_file_absent( isset( $asset['file_id'] ) ? $asset['file_id'] : '', $asset, $source );
 			if ( is_wp_error( $absence ) ) return $absence;
 		}
+		if ( 'rollback_pending' === $status && '' !== $replacement_asset_id ) {
+			return new WP_Error(
+				'mad4b_google_drive_recreate_recovery_required',
+				'Recreate rollback is already pending. Complete registry/provider recovery before another mutation is attempted.',
+				array(
+					'asset_id' => (string) $asset['asset_id'],
+					'replacement_asset_id' => $replacement_asset_id,
+					'rollback_started_at' => isset( $asset['rollback_started_at'] ) ? (string) $asset['rollback_started_at'] : '',
+				)
+			);
+		}
+
 		$state = array(
 			'asset_id' => (string) $asset['asset_id'],
 			'source_id' => (string) $asset['source_id'],
@@ -625,12 +638,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'parent_folder_id' => isset( $asset['parent_folder_id'] ) ? (string) $asset['parent_folder_id'] : '',
 			'status' => $status,
 			'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
+			'absence_scan_generation' => isset( $asset['absence_scan_generation'] ) ? (string) $asset['absence_scan_generation'] : '',
 			'replacement_asset_id' => $replacement_asset_id,
 			'replacement_file_id' => '',
 			'replacement_content_sha256' => '',
 		);
 		if ( 'unavailable' === $status && '' === $replacement_asset_id ) return $state;
 		if ( 'recreated' !== $status || '' === $replacement_asset_id ) return new WP_Error( 'mad4b_google_drive_recreate_state_invalid', 'Context asset is neither an unavailable original nor a verified recreated asset.' );
+
 		$replacement = MAD4B_SCP_Context_Authority::asset( $replacement_asset_id );
 		if ( empty( $replacement ) || empty( $replacement['file_id'] ) || ! hash_equals( (string) $asset['source_id'], (string) $replacement['source_id'] ) ) return new WP_Error( 'mad4b_google_drive_replacement_registry_invalid', 'Recreated Context asset replacement binding is missing or invalid.' );
 		$membership = self::assert_file_within_source( (string) $replacement['file_id'], $source );
@@ -678,9 +693,46 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $source ) ) return $source;
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array();
 		if ( ! is_array( $audit ) || empty( $audit['ready'] ) ) return new WP_Error( 'mad4b_google_drive_recreate_undo_audit_not_ready', 'Append-only audit storage must be ready before deleting a replacement during canonical undo.' );
+
+		$intent = MAD4B_SCP_Context_Authority::begin_recreated_asset_rollback( $asset_id, (string) $current['replacement_asset_id'] );
+		if ( is_wp_error( $intent ) ) return $intent;
+
 		$deleted = self::delete_provider_file_for_rollback( (string) $current['replacement_file_id'], $source );
-		if ( is_wp_error( $deleted ) ) return $deleted;
-		return MAD4B_SCP_Context_Authority::rollback_recreated_asset( $asset_id, (string) $current['replacement_asset_id'], $before_state );
+		if ( is_wp_error( $deleted ) ) {
+			$cancel = MAD4B_SCP_Context_Authority::cancel_recreated_asset_rollback( $asset_id, (string) $current['replacement_asset_id'], $deleted->get_error_code() );
+			if ( is_wp_error( $cancel ) ) {
+				return new WP_Error(
+					'mad4b_google_drive_recreate_rollback_recovery_required',
+					'Provider deletion failed and rollback intent could not be cancelled cleanly. Manual governed recovery is required.',
+					array(
+						'provider_error_code' => $deleted->get_error_code(),
+						'registry_error_code' => $cancel->get_error_code(),
+						'asset_id' => $asset_id,
+						'replacement_asset_id' => (string) $current['replacement_asset_id'],
+						'replacement_file_id' => (string) $current['replacement_file_id'],
+						'provider_deleted' => false,
+					)
+				);
+			}
+			return $deleted;
+		}
+
+		$finalized = MAD4B_SCP_Context_Authority::rollback_recreated_asset( $asset_id, (string) $current['replacement_asset_id'], $before_state );
+		if ( is_wp_error( $finalized ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_recreate_rollback_recovery_required',
+				'The exact replacement file was deleted, but the Context registry could not finalize rollback. The persisted rollback intent prevents further mutation until recovery completes.',
+				array(
+					'registry_error_code' => $finalized->get_error_code(),
+					'asset_id' => $asset_id,
+					'replacement_asset_id' => (string) $current['replacement_asset_id'],
+					'replacement_file_id' => (string) $current['replacement_file_id'],
+					'provider_deleted' => true,
+					'rollback_intent_contract' => isset( $intent['contract'] ) ? (string) $intent['contract'] : '',
+				)
+			);
+		}
+		return $finalized;
 	}
 
 	private static function verify_created_file_parent( array $file, $expected_folder_id ) {
