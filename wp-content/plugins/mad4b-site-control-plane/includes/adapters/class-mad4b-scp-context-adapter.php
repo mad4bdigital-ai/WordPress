@@ -233,11 +233,16 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'restore_recreate_state',
 			),
 			'MAD4B_SCP_Context_Authority' => array(
+				'source',
+				'asset',
 				'source_allows_write',
+				'upsert_asset_from_provider',
+				'register_recreated_asset',
 				'registry_revision',
 				'context_fingerprint',
 				'authority_manifest_fingerprint',
 				'begin_recreated_asset_rollback',
+				'cancel_recreated_asset_rollback',
 				'rollback_recreated_asset',
 			),
 			'MAD4B_SCP_External_Handshake_Evidence' => array(
