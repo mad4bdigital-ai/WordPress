@@ -172,7 +172,15 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				'type' => 'string',
 				'minLength' => 36,
 				'maxLength' => 36,
-				'pattern' => '^[A-Fa-f0-9-]{36}
+				'pattern' => '^[A-Fa-f0-9-]{36}$',
+				'description' => 'One-time exact MAD4B approval ticket required for remote governed writes.',
+			);
+			$args['input_schema']['properties'][ self::CONTEXT_RECEIPT_INPUT_KEY ] = array(
+				'type' => 'object',
+				'additionalProperties' => true,
+				'description' => 'Governed Context Receipt returned by mad4b/skill-get. Required automatically for brand-bearing content text mutations and bound into the exact approval payload.',
+			);
+		}
 
 		if ( isset( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
 			$original = $args['execute_callback'];
