@@ -116,12 +116,93 @@ mad4b_scan_assert( empty( $assets[ $asset_id ]['absence_scan_generation'] ), 'Pa
 mad4b_scan_assert( 'partial_scan' === $sources[ $source_id ]['status'], 'Partial scan must remain explicit on the source.', $sources[ $source_id ] );
 mad4b_scan_assert( str_repeat( '1', 64 ) === $sources[ $source_id ]['last_complete_scan_generation'], 'Partial scan must not replace the last complete scan generation.', $sources[ $source_id ] );
 
+$normalization_loss = MAD4B_SCP_Context_Authority::replace_source_assets(
+	$source_id,
+	array(
+		array(
+			'file_id' => '',
+			'title' => 'Invalid observed asset',
+			'mimeType' => 'text/plain',
+			'normalized_text' => 'Observed but not representable.',
+			'content_complete' => true,
+		),
+	),
+	array(
+		'complete' => true,
+		'scan_generation' => str_repeat( '4', 64 ),
+		'started_at' => gmdate( 'c' ),
+		'completed_at' => gmdate( 'c' ),
+		'truncation_reasons' => array(),
+	)
+);
+mad4b_scan_assert( ! is_wp_error( $normalization_loss ), 'Normalization loss must persist as explicit partial scan state.', $normalization_loss );
+mad4b_scan_assert( empty( $normalization_loss['scan_complete'] ), 'Unrepresentable observed asset must downgrade caller-complete scan to partial.', $normalization_loss );
+mad4b_scan_assert( in_array( 'asset_normalization_failed', $normalization_loss['truncation_reasons'], true ), 'Normalization loss reason must be explicit.', $normalization_loss );
+$assets = MAD4B_SCP_Context_Authority::assets();
+$sources = MAD4B_SCP_Context_Authority::sources();
+mad4b_scan_assert( 'ready' === $assets[ $asset_id ]['status'], 'Normalization-loss scan must not mint absence for unseen existing asset.', $assets[ $asset_id ] );
+mad4b_scan_assert( empty( $assets[ $asset_id ]['absence_scan_generation'] ), 'Normalization-loss scan must not create absence generation.', $assets[ $asset_id ] );
+mad4b_scan_assert( str_repeat( '1', 64 ) === $sources[ $source_id ]['last_complete_scan_generation'], 'Normalization-loss scan must preserve the last proven complete generation.', $sources[ $source_id ] );
+
+// Fill the raw registry with hidden orphan records without exposing them through
+// Context Authority. A new observed asset then cannot fit and must downgrade
+// the scan to partial instead of silently omitting it.
+for ( $i = 0; $i < MAD4B_SCP_Context_Authority::MAX_ASSETS - 1; ++$i ) {
+	$hidden_id = hash( 'sha256', 'hidden-orphan-' . $i );
+	$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $hidden_id ] = array(
+		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
+		'asset_id' => $hidden_id,
+		'site_uuid' => $site_uuid,
+		'brand_id' => 'brand-fixture',
+		'source_id' => str_repeat( 'f', 64 ),
+		'source_mode' => 'governed',
+		'provider' => 'google_drive',
+		'file_id' => 'hidden-file-' . $i,
+		'title' => 'Hidden orphan',
+		'status' => 'ready',
+	);
+}
+mad4b_scan_assert( MAD4B_SCP_Context_Authority::MAX_ASSETS === count( $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] ), 'Capacity fixture must exactly fill raw asset storage.' );
+
+$capacity_loss = MAD4B_SCP_Context_Authority::replace_source_assets(
+	$source_id,
+	array(
+		array(
+			'file_id' => 'new-observed-file',
+			'parent_folder_id' => 'folder-fixture',
+			'title' => 'New Observed Asset',
+			'mimeType' => 'text/plain',
+			'modifiedTime' => gmdate( 'c' ),
+			'normalized_text' => 'New governed context.',
+			'content_complete' => true,
+			'content_bytes' => 21,
+			'normalization_status' => 'ready',
+			'content_hash' => hash( 'sha256', 'New governed context.' ),
+		),
+	),
+	array(
+		'complete' => true,
+		'scan_generation' => str_repeat( '5', 64 ),
+		'started_at' => gmdate( 'c' ),
+		'completed_at' => gmdate( 'c' ),
+		'truncation_reasons' => array(),
+	)
+);
+mad4b_scan_assert( ! is_wp_error( $capacity_loss ), 'Registry capacity loss must persist as explicit partial scan state.', $capacity_loss );
+mad4b_scan_assert( empty( $capacity_loss['scan_complete'] ), 'Insufficient raw registry capacity must downgrade complete scan.', $capacity_loss );
+mad4b_scan_assert( in_array( 'registry_asset_capacity_limit', $capacity_loss['truncation_reasons'], true ), 'Registry capacity truncation reason must be explicit.', $capacity_loss );
+mad4b_scan_assert( 1 === (int) $capacity_loss['observed_asset_count'] && 0 === (int) $capacity_loss['represented_asset_count'], 'Capacity loss must distinguish observed from represented asset counts.', $capacity_loss );
+$assets = MAD4B_SCP_Context_Authority::assets();
+$sources = MAD4B_SCP_Context_Authority::sources();
+mad4b_scan_assert( 'ready' === $assets[ $asset_id ]['status'], 'Capacity-loss scan must not mark existing unseen asset unavailable.', $assets[ $asset_id ] );
+mad4b_scan_assert( str_repeat( '1', 64 ) === $sources[ $source_id ]['last_complete_scan_generation'], 'Capacity-loss scan must not replace complete-scan evidence.', $sources[ $source_id ] );
+
 $complete = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
 	array(),
 	array(
 		'complete' => true,
-		'scan_generation' => str_repeat( '3', 64 ),
+		'scan_generation' => str_repeat( '6', 64 ),
 		'started_at' => gmdate( 'c' ),
 		'completed_at' => gmdate( 'c' ),
 		'truncation_reasons' => array(),
@@ -132,7 +213,7 @@ $assets = MAD4B_SCP_Context_Authority::assets();
 $sources = MAD4B_SCP_Context_Authority::sources();
 mad4b_scan_assert( 'unavailable' === $assets[ $asset_id ]['status'], 'Only complete scan may mark unseen asset unavailable.', $assets[ $asset_id ] );
 mad4b_scan_assert( 'not_seen_in_complete_scan' === $assets[ $asset_id ]['availability_reason'], 'Complete-scan missing reason must be explicit.', $assets[ $asset_id ] );
-mad4b_scan_assert( str_repeat( '3', 64 ) === $assets[ $asset_id ]['absence_scan_generation'], 'Absence evidence must bind the exact complete scan generation.', $assets[ $asset_id ] );
-mad4b_scan_assert( str_repeat( '3', 64 ) === $sources[ $source_id ]['last_complete_scan_generation'], 'Source must retain exact complete scan generation.', $sources[ $source_id ] );
+mad4b_scan_assert( str_repeat( '6', 64 ) === $assets[ $asset_id ]['absence_scan_generation'], 'Absence evidence must bind the exact complete scan generation.', $assets[ $asset_id ] );
+mad4b_scan_assert( str_repeat( '6', 64 ) === $sources[ $source_id ]['last_complete_scan_generation'], 'Source must retain exact complete scan generation.', $sources[ $source_id ] );
 
-echo "mad4b.site-control-plane.context-scan-completeness.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-scan-completeness.runtime.v2: PASS\n";
