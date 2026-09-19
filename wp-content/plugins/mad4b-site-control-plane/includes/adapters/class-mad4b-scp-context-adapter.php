@@ -1,0 +1,193 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
+	public function id() { return 'context'; }
+	public function label() { return 'Context Authority'; }
+	public function is_available() { return class_exists( 'MAD4B_SCP_Context_Authority' ) && class_exists( 'MAD4B_SCP_Google_Drive_Context' ); }
+	protected function certified_provider_key() { return 'google_drive_context'; }
+	protected function mutation_requires_certification() { return false; }
+	protected function detect_plugin_version() { return defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : ''; }
+
+	public function ability_names() {
+		return array(
+			'read' => array(
+				'context/status',
+				'context/assets',
+				'context/google-drive-status',
+			),
+			'content' => array(),
+			'write' => array(
+				'context/create-drive-asset',
+				'context/update-drive-asset',
+				'context/recreate-drive-asset',
+			),
+			'admin' => array(),
+		);
+	}
+
+	public function register_abilities() {
+		$this->add_ability(
+			'context/status',
+			'Context Authority Status',
+			'context_status',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/assets',
+			'List Context Assets',
+			'list_assets',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema(
+				array(
+					'mode' => array( 'type' => 'string', 'enum' => array( '', 'governed', 'task_attachment' ), 'default' => '' ),
+					'status' => array( 'type' => 'string', 'default' => '' ),
+					'category' => array( 'type' => 'string', 'default' => '' ),
+					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 200, 'default' => 100 ),
+				)
+			)
+		);
+		$this->add_ability(
+			'context/google-drive-status',
+			'Google Drive Context Connection Status',
+			'google_drive_status',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+
+		$write_permission = array( 'MAD4B_SCP_Policy', 'can_admin' );
+		$this->add_ability(
+			'context/create-drive-asset',
+			'Create Google Drive Context Asset',
+			'create_drive_asset',
+			$write_permission,
+			$this->schema(
+				array(
+					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'name' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Google_Drive_Context::MAX_WRITE_BYTES ),
+					'format' => array( 'type' => 'string', 'enum' => array( 'google_doc', 'markdown', 'text' ), 'default' => 'markdown' ),
+				),
+				array( 'source_id', 'name', 'content' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
+		$this->add_ability(
+			'context/update-drive-asset',
+			'Update Google Drive Context Asset',
+			'update_drive_asset',
+			$write_permission,
+			$this->schema(
+				array(
+					'asset_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'expected_content_hash' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Google_Drive_Context::MAX_WRITE_BYTES ),
+				),
+				array( 'asset_id', 'expected_content_hash', 'content' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
+		$this->add_ability(
+			'context/recreate-drive-asset',
+			'Recreate Unavailable Google Drive Context Asset',
+			'recreate_drive_asset',
+			$write_permission,
+			$this->schema(
+				array(
+					'asset_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'content' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => MAD4B_SCP_Google_Drive_Context::MAX_WRITE_BYTES ),
+					'format' => array( 'type' => 'string', 'enum' => array( 'google_doc', 'markdown', 'text' ), 'default' => 'google_doc' ),
+				),
+				array( 'asset_id', 'content' )
+			),
+			'write',
+			false,
+			true,
+			false
+		);
+	}
+
+	public function mutation_ability_runtime_eligibility( $ability_name ) {
+		if ( ! in_array( (string) $ability_name, $this->ability_names()['write'], true ) ) return true;
+		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
+		$status = MAD4B_SCP_Google_Drive_Context::write_capability_status();
+		if ( empty( $status['write_available'] ) ) return new WP_Error( 'mad4b_google_drive_write_scope_required', 'Google Drive read+write OAuth scope is required before Context write abilities can mount.' );
+		if ( empty( $status['selected_source_count'] ) ) return new WP_Error( 'mad4b_context_source_required_for_write', 'Select at least one Context source folder before Drive write abilities can mount.' );
+		return true;
+	}
+
+	public function context_status() {
+		return MAD4B_SCP_Context_Authority::status();
+	}
+
+	public function google_drive_status() {
+		return array(
+			'connection' => MAD4B_SCP_Google_Drive_Context::connection_status(),
+			'write_capability' => MAD4B_SCP_Google_Drive_Context::write_capability_status(),
+		);
+	}
+
+	public function list_assets( $input ) {
+		$mode = sanitize_key( isset( $input['mode'] ) ? (string) $input['mode'] : '' );
+		$status = sanitize_key( isset( $input['status'] ) ? (string) $input['status'] : '' );
+		$category = sanitize_key( isset( $input['category'] ) ? (string) $input['category'] : '' );
+		$limit = isset( $input['limit'] ) ? max( 1, min( 200, absint( $input['limit'] ) ) ) : 100;
+		$items = array();
+		foreach ( MAD4B_SCP_Context_Authority::assets() as $asset ) {
+			if ( '' !== $mode && $mode !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) continue;
+			if ( '' !== $status && $status !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
+			if ( '' !== $category && $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
+			$items[] = array(
+				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+				'source_mode' => isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '',
+				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
+				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
+				'required' => ! empty( $asset['required'] ),
+				'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
+				'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
+				'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+				'file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
+				'mime_type' => isset( $asset['mime_type'] ) ? (string) $asset['mime_type'] : '',
+				'last_synced_at' => isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '',
+			);
+			if ( count( $items ) >= $limit ) break;
+		}
+		return array( 'items' => $items, 'count' => count( $items ) );
+	}
+
+	public function create_drive_asset( $input ) {
+		return MAD4B_SCP_Google_Drive_Context::create_asset(
+			(string) $input['source_id'],
+			(string) $input['name'],
+			(string) $input['content'],
+			isset( $input['format'] ) ? (string) $input['format'] : 'markdown'
+		);
+	}
+
+	public function update_drive_asset( $input ) {
+		return MAD4B_SCP_Google_Drive_Context::update_asset(
+			(string) $input['asset_id'],
+			(string) $input['expected_content_hash'],
+			(string) $input['content']
+		);
+	}
+
+	public function recreate_drive_asset( $input ) {
+		return MAD4B_SCP_Google_Drive_Context::recreate_asset(
+			(string) $input['asset_id'],
+			(string) $input['content'],
+			isset( $input['format'] ) ? (string) $input['format'] : 'google_doc'
+		);
+	}
+}
