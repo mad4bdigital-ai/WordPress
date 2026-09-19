@@ -1,5 +1,8 @@
 <?php
 define( 'ABSPATH', '/tmp/mad4b-context-doc-normalization/' );
+define( 'MAD4B_CONTEXT_GEMINI_ENABLED', true );
+define( 'MAD4B_CONTEXT_GEMINI_API_KEY', 'fixture-key' );
+define( 'MAD4B_CONTEXT_GEMINI_MODEL', 'gemini-3.8-flash' );
 
 class WP_Error {
 	private $code; private $message; private $data;
@@ -27,6 +30,11 @@ function nassert($ok,$message,$context=null){
 $ref = new ReflectionClass('MAD4B_SCP_Google_Drive_Context');
 $normalize = $ref->getMethod('normalize_binary_content'); $normalize->setAccessible(true);
 $pdf = $ref->getMethod('normalize_pdf'); $pdf->setAccessible(true);
+$geminiConfigured = $ref->getMethod('gemini_extractor_configured'); $geminiConfigured->setAccessible(true);
+nassert(true === $geminiConfigured->invoke(null), 'Explicit Gemini opt-in must activate the governed multimodal extractor.');
+$capabilities = MAD4B_SCP_Google_Drive_Context::normalization_capabilities();
+$readyMedia = array_values(array_filter($capabilities, static function($row){ return in_array($row['type'], array('Raster images','Audio / Video / Google Vids','Google Vids'), true) && 'ready' === $row['status']; }));
+nassert(count($readyMedia) >= 2, 'Gemini opt-in must advertise OCR/transcription readiness.', $capabilities);
 
 $rtf = "{\\rtf1\\ansi Brand \\b strategy\\b0\\par Tone of Voice}";
 $r = $normalize->invoke(null,'application/rtf',$rtf,'brand.rtf');
@@ -86,4 +94,4 @@ if (class_exists('ZipArchive')) {
 	nassert(!is_wp_error($r)&&!empty($r['complete'])&&false!==strpos($r['content'],'Writer Reference'),'EPUB normalization must extract reading text.',$r);
 }
 
-echo "mad4b.site-control-plane.context-document-normalization.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-document-normalization.runtime.v3: PASS\n";

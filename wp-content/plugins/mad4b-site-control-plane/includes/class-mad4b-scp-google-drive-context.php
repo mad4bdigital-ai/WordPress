@@ -1591,10 +1591,25 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::normalization_record( $text, ! $unsupported_filter, $unsupported_filter ? 'incomplete' : 'ready', $unsupported_filter ? 'pdf_mixed_filters_not_fully_decoded' : 'pdf_local_text', strlen( $binary ) );
 	}
 
-	private static function external_extractor_configured() {
+	private static function gemini_extractor_configured() {
+		return defined( 'MAD4B_CONTEXT_GEMINI_ENABLED' ) && true === (bool) constant( 'MAD4B_CONTEXT_GEMINI_ENABLED' )
+			&& defined( 'MAD4B_CONTEXT_GEMINI_API_KEY' )
+			&& '' !== trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) );
+	}
+
+	private static function gemini_model() {
+		$model = defined( 'MAD4B_CONTEXT_GEMINI_MODEL' ) ? trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_MODEL' ) ) : 'gemini-3.8-flash';
+		return preg_match( '/^[A-Za-z0-9._\-]+$/', $model ) ? $model : 'gemini-3.8-flash';
+	}
+
+	private static function generic_extractor_configured() {
 		return defined( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) && defined( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' )
 			&& '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) )
 			&& '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) );
+	}
+
+	private static function external_extractor_configured() {
+		return self::gemini_extractor_configured() || self::generic_extractor_configured();
 	}
 
 	private static function normalize_binary_content( $mime, $binary, $name = '' ) {
@@ -1706,8 +1721,58 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return isset( $record['content'] ) ? (string) $record['content'] : '';
 	}
 
+	private static function gemini_extractor_record( array $file, $binary, array $fallback ) {
+		if ( ! self::gemini_extractor_configured() ) return $fallback;
+		$mime = isset( $file['mimeType'] ) ? strtolower( (string) $file['mimeType'] ) : 'application/octet-stream';
+		$prompt = 'Extract complete usable context for a governed brand knowledge system. ';
+		if ( 'application/pdf' === $mime ) $prompt .= 'OCR all readable pages when needed and preserve page order, headings, tables, labels, and meaningful visual text. ';
+		elseif ( 0 === strpos( $mime, 'image/' ) ) $prompt .= 'OCR all visible text and describe meaningful charts, diagrams, logos, labels, and layout relationships factually. ';
+		elseif ( 0 === strpos( $mime, 'audio/' ) ) $prompt .= 'Transcribe all speech, speaker changes, and timestamps when available, including meaningful non-speech cues. ';
+		elseif ( 0 === strpos( $mime, 'video/' ) ) $prompt .= 'Transcribe speech with timestamps and extract visible text plus concise factual descriptions of meaningful visual events. ';
+		else $prompt .= 'Extract all readable text and structured factual information without summarizing away source details. ';
+		$prompt .= 'Return only canonical extracted text. Do not invent facts or add recommendations.';
+		$body = array(
+			'contents' => array(
+				array(
+					'parts' => array(
+						array( 'text' => $prompt ),
+						array( 'inline_data' => array( 'mime_type' => $mime, 'data' => base64_encode( (string) $binary ) ) ),
+					),
+				),
+			),
+			'generationConfig' => array( 'temperature' => 0, 'maxOutputTokens' => 16384 ),
+		);
+		$response = wp_remote_post(
+			'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode( self::gemini_model() ) . ':generateContent',
+			array(
+				'timeout' => 90,
+				'redirection' => 0,
+				'headers' => array(
+					'x-goog-api-key' => trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) ),
+					'Content-Type' => 'application/json',
+					'Accept' => 'application/json',
+				),
+				'body' => wp_json_encode( $body ),
+			)
+		);
+		if ( is_wp_error( $response ) ) return self::normalization_record( '', false, 'error', 'gemini_extractor_transport_failed', strlen( (string) $binary ) );
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+		if ( $status < 200 || $status >= 300 || ! is_array( $data ) ) return self::normalization_record( '', false, 'error', 'gemini_extractor_response_invalid', strlen( (string) $binary ) );
+		$parts = isset( $data['candidates'][0]['content']['parts'] ) && is_array( $data['candidates'][0]['content']['parts'] ) ? $data['candidates'][0]['content']['parts'] : array();
+		$texts = array();
+		foreach ( $parts as $part ) if ( is_array( $part ) && isset( $part['text'] ) && '' !== trim( (string) $part['text'] ) ) $texts[] = (string) $part['text'];
+		$text = trim( implode( "\n", $texts ) );
+		$finish = isset( $data['candidates'][0]['finishReason'] ) ? sanitize_key( (string) $data['candidates'][0]['finishReason'] ) : '';
+		$complete = '' === $finish || 'stop' === $finish;
+		if ( '' === $text ) return self::normalization_record( '', false, 'incomplete', 'gemini_extractor_empty', strlen( (string) $binary ) );
+		return self::normalization_record( $text, $complete, $complete ? 'ready' : 'incomplete', $complete ? 'gemini_multimodal' : 'gemini_output_incomplete', strlen( (string) $binary ) );
+	}
+
+
 	private static function external_extractor_record( array $file, $binary, array $fallback ) {
-		if ( ! self::external_extractor_configured() ) return $fallback;
+		if ( self::gemini_extractor_configured() ) return self::gemini_extractor_record( $file, $binary, $fallback );
+		if ( ! self::generic_extractor_configured() ) return $fallback;
 		$url = esc_url_raw( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) );
 		$token = trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) );
 		if ( '' === $url || '' === $token || 0 !== strpos( $url, 'https://' ) ) return self::normalization_record( '', false, 'error', 'external_extractor_configuration_invalid', strlen( (string) $binary ) );
