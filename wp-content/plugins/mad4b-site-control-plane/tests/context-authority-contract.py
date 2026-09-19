@@ -65,6 +65,11 @@ require(authority, "not_seen_in_complete_scan", "complete-scan missing asset rea
 require(authority, "last_complete_scan_generation", "complete scan generation evidence")
 require(authority, "absence_scan_generation", "absence evidence binding")
 require(authority, "partial_scan", "partial scan state")
+require(authority, "asset_normalization_failed", "scan normalization loss downgrades completeness")
+require(authority, "registry_asset_capacity_limit", "registry capacity loss downgrades completeness")
+require(authority, "observed_asset_count", "scan observed asset evidence")
+require(authority, "represented_asset_count", "scan represented asset evidence")
+require(authority, "Only a fully observed + normalized + representable scan", "absence minted only after representability proof")
 require(authority, "REGISTRY_REVISION_OPTION", "Context registry revision")
 require(authority, "REGISTRY_LOCK_OPTION", "Context registry mutation lock")
 require(authority, "authority_manifest_fingerprint", "authority manifest fingerprint")
@@ -288,4 +293,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v26: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v27: PASS")
