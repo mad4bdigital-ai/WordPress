@@ -283,7 +283,70 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_DISCONNECT_GOOGLE ) . '">';
 		submit_button( __( 'Disconnect & Revoke Google Access', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 		echo '</form></div>';
+		self::render_write_governance_readiness();
 		self::render_folder_browser();
+	}
+
+	private static function render_write_governance_readiness() {
+		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+		$abilities = array(
+			'context/create-drive-asset',
+			'context/update-drive-asset',
+			'context/recreate-drive-asset',
+		);
+		$sources = MAD4B_SCP_Context_Authority::sources();
+		$policy_ops = array( 'create' => 0, 'update' => 0, 'recreate' => 0 );
+		foreach ( $sources as $source ) {
+			if ( ! is_array( $source ) || 'governed' !== ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) ) continue;
+			foreach ( array_keys( $policy_ops ) as $operation ) {
+				if ( MAD4B_SCP_Context_Authority::source_allows_write( (string) $source['source_id'], $operation ) ) ++$policy_ops[ $operation ];
+			}
+		}
+
+		$truth = class_exists( 'MAD4B_SCP_Live_Truth' ) ? MAD4B_SCP_Live_Truth::current_authority_status() : array();
+		$write_tools = isset( $truth['write_tools'] ) && is_array( $truth['write_tools'] ) ? array_values( array_map( 'strval', $truth['write_tools'] ) ) : array();
+		$mounted = array_values( array_intersect( $abilities, $write_tools ) );
+		$context_grant_blockers = array();
+		foreach ( isset( $truth['grant_blockers'] ) && is_array( $truth['grant_blockers'] ) ? $truth['grant_blockers'] : array() as $blocker ) {
+			$blocker = (string) $blocker;
+			foreach ( $abilities as $ability ) {
+				if ( false !== strpos( $blocker, $ability ) ) { $context_grant_blockers[] = $blocker; break; }
+			}
+		}
+		$context_grant_blockers = array_values( array_unique( $context_grant_blockers ) );
+		$runtime_reconciled = ! empty( $truth['runtime_reconciled'] );
+		$authority_ready = ! empty( $truth['ready'] );
+		$desired_write_ops = array_sum( $policy_ops );
+		$provider_write_ready = ! empty( $connection['write_available'] );
+		$context_authority_ready = $provider_write_ready && $desired_write_ops > 0 && ! empty( $mounted ) && empty( $context_grant_blockers ) && $runtime_reconciled && $authority_ready;
+
+		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( '3. Write Governance Readiness', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Google OAuth is provider capability only. MAD4B write authority is evaluated separately from the live write inventory and exact grants.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="mad4b-context-governance-grid">';
+		self::governance_cell( 'Google provider access', $provider_write_ready ? 'Read + Write' : ( ! empty( $connection['read_available'] ) ? 'Read-only' : 'Unavailable' ), $provider_write_ready ? 'complete' : 'attention' );
+		self::governance_cell( 'Source policy', sprintf( 'create %d · update %d · recreate %d', $policy_ops['create'], $policy_ops['update'], $policy_ops['recreate'] ), $desired_write_ops > 0 ? 'complete' : 'pending' );
+		self::governance_cell( 'mad4b-write mount', count( $mounted ) . '/3 Context abilities', count( $mounted ) > 0 ? 'complete' : 'pending' );
+		self::governance_cell( 'Exact authority', $context_authority_ready ? 'Ready' : ( $desired_write_ops > 0 && $provider_write_ready ? 'Reconciliation required' : 'Not requested' ), $context_authority_ready ? 'complete' : ( $desired_write_ops > 0 && $provider_write_ready ? 'attention' : 'pending' ) );
+		echo '</div>';
+
+		if ( $desired_write_ops > 0 && $provider_write_ready && ! $context_authority_ready ) {
+			echo '<div class="mad4b-scp-next-step is-attention"><p><strong>' . esc_html__( 'Provider write access is ready, but governed execution is not fully reconciled yet.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Review the changed mad4b-write inventory, then run the explicit governed write-grant reconciliation flow. Context Authority never reconciles grants automatically.', 'mad4b-site-control-plane' ) . '</p>';
+			if ( ! empty( $context_grant_blockers ) ) {
+				echo '<p><strong>' . esc_html__( 'Context grant blockers', 'mad4b-site-control-plane' ) . '</strong></p><ul>';
+				foreach ( $context_grant_blockers as $blocker ) echo '<li><code>' . esc_html( $blocker ) . '</code></li>';
+				echo '</ul>';
+			}
+			if ( ! $runtime_reconciled ) echo '<p><code>runtime_authority_not_reconciled</code></p>';
+			echo '</div>';
+		} elseif ( $context_authority_ready ) {
+			echo '<div class="mad4b-scp-next-step is-complete"><p><strong>' . esc_html__( 'Governed Drive writes are ready.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Each mutation still requires its own exact one-time approval.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
+		echo '</div>';
+	}
+
+	private static function governance_cell( $label, $value, $state ) {
+		$state = in_array( $state, array( 'complete', 'attention', 'pending' ), true ) ? $state : 'pending';
+		echo '<div class="mad4b-context-governance-cell is-' . esc_attr( $state ) . '"><span>' . esc_html( $label ) . '</span><strong>' . esc_html( $value ) . '</strong></div>';
 	}
 
 	private static function render_folder_browser() {
@@ -547,6 +610,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		.mad4b-context-source-mode{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:12px 0}
 		.mad4b-context-source-mode label{display:block;border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-source-mode label span{display:block;margin:5px 0 0 24px;color:#646970}
 		.mad4b-context-badge{display:inline-block;padding:3px 7px;border-radius:12px;background:#f0f0f1;font-size:12px}.mad4b-context-fingerprint{margin:18px 0;color:#646970}
+		.mad4b-context-governance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}.mad4b-context-governance-cell{border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-governance-cell span{display:block;color:#646970;margin-bottom:5px}.mad4b-context-governance-cell strong{display:block}.mad4b-context-governance-cell.is-complete{border-left:4px solid #00a32a}.mad4b-context-governance-cell.is-attention{border-left:4px solid #dba617}.mad4b-context-governance-cell.is-pending{border-left:4px solid #8c8f94}
 		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}
 		.mad4b-context-filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px}.mad4b-context-folder-jump{margin:14px 0 18px}.mad4b-context-folder-jump label{display:block;margin-bottom:6px}.mad4b-context-filterbar select,.mad4b-context-filterbar input{max-width:220px}.mad4b-context-remove{margin-top:8px}.mad4b-context-remove form{margin-top:8px;max-width:280px}
 		@media(max-width:782px){.mad4b-context-folder-head{align-items:flex-start!important;flex-direction:column}}
