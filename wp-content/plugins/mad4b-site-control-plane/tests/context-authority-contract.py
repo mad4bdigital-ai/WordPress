@@ -339,7 +339,11 @@ require(skill_abilities, "mad4b.skill-get.v3", "Context-bound Skill get contract
 require(skill_abilities, "intended_ability", "Skill get intended mutation input")
 require(skills_admin, "Allowed Brand-bearing write abilities", "Skill Context mutation allowlist UX")
 require(skill_snapshot, "context_policy_sha256", "portable snapshot Context policy identity")
-require(skill_exporter, "mad4b_context_required_skill_portable_export_unsupported", "portable Context bypass denied")
+require(skill_exporter, "mad4b_context_required_skill_policy_identity_missing", "portable Context-required Skill requires exact policy identity")
+require(skill_exporter, "mad4b_context_required_skill_preflight_unavailable", "portable Context-required Skill requires server preflight")
+require(skill_exporter, "context_required_skills_require_policy_digest", "portable snapshot records Context policy enforcement")
+require(skill_exporter, "brand_bearing_writes_require_exact_context_receipt", "portable snapshot records exact receipt enforcement")
+require(skill_exporter, "portable_skill_does_not_grant_write_authority", "portable Context Skill cannot become write authority")
 
 # Context receipt must remain governance evidence: included in planning/approval
 # identity, revalidated before claim, persisted before side effects, then stripped
