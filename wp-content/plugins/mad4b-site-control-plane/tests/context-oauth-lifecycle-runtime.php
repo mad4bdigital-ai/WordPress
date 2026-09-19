@@ -133,6 +133,14 @@ mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE === $write['scop
 
 $public_write = MAD4B_SCP_Google_Drive_Context::public_connection_status();
 mad4b_oauth_assert( 'mad4b.google-drive-public-connection.v1' === $public_write['contract'], 'Public Drive status contract mismatch.', $public_write );
+
+$runtime_readiness = MAD4B_SCP_Google_Drive_Context::runtime_readiness();
+mad4b_oauth_assert( 'mad4b.google-drive-context-runtime-readiness.v1' === $runtime_readiness['contract'], 'Context runtime readiness contract mismatch.', $runtime_readiness );
+mad4b_oauth_assert( ! empty( $runtime_readiness['oauth']['pkce_s256'] ) && empty( $runtime_readiness['secrets_exposed'] ), 'Runtime readiness must prove PKCE and secret non-disclosure.', $runtime_readiness );
+$readiness_json = wp_json_encode( $runtime_readiness );
+foreach ( array( 'client-id.apps.googleusercontent.com', 'client-secret-fixture', 'access-write-fixture', 'refresh-write-fixture' ) as $secret_fixture ) {
+	mad4b_oauth_assert( false === strpos( $readiness_json, $secret_fixture ), 'Runtime readiness leaked credential/token fixture material.', $runtime_readiness );
+}
 mad4b_oauth_assert( ! empty( $public_write['write_available'] ) && 'read_write' === $public_write['access_mode'], 'Public Drive status must retain capability truth.', $public_write );
 foreach ( array( 'scope', 'account_email', 'account_name', 'permission_id', 'access_token', 'refresh_token' ) as $sensitive_key ) {
 	mad4b_oauth_assert( ! array_key_exists( $sensitive_key, $public_write ), 'Public Drive status leaked account/token identity field: ' . $sensitive_key, $public_write );
