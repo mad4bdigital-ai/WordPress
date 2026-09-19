@@ -435,6 +435,7 @@ final class MAD4B_SCP_Context_Authority {
 		$quality_values = array();
 		$stale = 0;
 		$conflicting = 0;
+		$unavailable = 0;
 		foreach ( $assets as $asset ) {
 			if ( 'governed' !== $asset['source_mode'] ) continue;
 			$governed_assets[] = $asset;
@@ -442,6 +443,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( null !== $asset['quality_score'] ) $quality_values[] = (int) $asset['quality_score'];
 			if ( 'stale' === $asset['status'] ) ++$stale;
 			if ( 'conflicting' === $asset['status'] ) ++$conflicting;
+			if ( 'unavailable' === $asset['status'] ) ++$unavailable;
 		}
 		$ready_required = 0;
 		foreach ( $required as $asset ) if ( 'ready' === $asset['status'] ) ++$ready_required;
@@ -453,6 +455,7 @@ final class MAD4B_SCP_Context_Authority {
 		if ( ! empty( $governed_assets ) && empty( $required ) ) $blockers[] = 'mandatory_context_unclassified';
 		if ( count( $required ) !== $ready_required ) $blockers[] = 'mandatory_context_not_ready';
 		if ( $stale > 0 ) $blockers[] = 'brand_context_contains_stale_assets';
+		if ( $unavailable > 0 ) $blockers[] = 'brand_context_contains_unavailable_assets';
 		if ( $conflicting > 0 ) $blockers[] = 'mandatory_context_conflict';
 
 		return array(
@@ -471,6 +474,7 @@ final class MAD4B_SCP_Context_Authority {
 			'required_asset_count' => count( $required ),
 			'ready_required_asset_count' => $ready_required,
 			'stale_asset_count' => $stale,
+			'unavailable_asset_count' => $unavailable,
 			'conflicting_asset_count' => $conflicting,
 			'average_quality_score' => $quality_values ? (int) round( array_sum( $quality_values ) / count( $quality_values ) ) : null,
 			'quality_scored_asset_count' => count( $quality_values ),
