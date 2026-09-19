@@ -12,6 +12,7 @@ class WP_Error {
 	public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
+function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-google-drive-context.php';
 
@@ -44,4 +45,4 @@ mad4b_content_assert( false !== strpos( $source, "'limit_response_size' => self:
 mad4b_content_assert( false !== strpos( $source, "'content_complete' => false" ) || false !== strpos( $source, "'complete' => false" ), 'Incomplete normalization must remain explicit.' );
 mad4b_content_assert( false !== strpos( $source, 'mad4b_context_asset_content_incomplete' ), 'Incomplete provider content must fail closed for runtime Context.' );
 
-echo "mad4b.site-control-plane.context-content-completeness.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-content-completeness.runtime.v3: PASS\n";
