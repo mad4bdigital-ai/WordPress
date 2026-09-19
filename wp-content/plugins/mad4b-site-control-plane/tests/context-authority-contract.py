@@ -13,6 +13,9 @@ skill_registry = (root / "includes/class-mad4b-scp-skill-registry.php").read_tex
 skill_abilities = (root / "includes/class-mad4b-scp-skill-abilities.php").read_text(encoding="utf-8")
 skill_snapshot = (root / "includes/class-mad4b-scp-skill-snapshot-identity.php").read_text(encoding="utf-8")
 skill_exporter = (root / "includes/class-mad4b-scp-skill-exporter.php").read_text(encoding="utf-8")
+authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
+planning_guard = (root / "includes/class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 
 def require(text, needle, label):
     assert needle in text, f"missing {label}: {needle}"
@@ -52,6 +55,11 @@ require(authority, "partial_scan", "partial scan state")
 require(authority, "REGISTRY_REVISION_OPTION", "Context registry revision")
 require(authority, "REGISTRY_LOCK_OPTION", "Context registry mutation lock")
 require(authority, "authority_manifest_fingerprint", "authority manifest fingerprint")
+require(authority, "commit_option_changes", "compensated multi-option registry commit")
+require(authority, "registry_option_snapshot", "pre-mutation registry snapshot")
+require(authority, "restore_registry_option_snapshot", "registry snapshot compensation")
+require(authority, "mad4b_context_registry_revision_write_failed", "revision persistence fail-closed")
+require(authority, "mad4b_context_registry_revision_recovery_required", "revision compensation recovery-required state")
 require(authority, "brand_context_contains_unavailable_assets", "unavailable asset fail closed")
 require(authority, "upsert_asset_from_provider", "provider registry refresh")
 require(authority, "register_recreated_asset", "atomic replacement registration")
@@ -155,7 +163,11 @@ require(adapter, "restore_reversible_state", "Drive reversible restore")
 assert "context/create-drive-asset' => 'mad4b.rollback." not in adapter, "Drive create must not claim pre-target reversibility"
 require(adapter, "google_drive_write_scope_required", "write mount requires OAuth write capability")
 require(adapter, "source_required_for_write", "write mount requires selected Context source")
-require(adapter, "return false;", "provider certification override remains explicit")
+require(adapter, "context_provider_contract_status", "first-party Context provider certification")
+require(adapter, "mad4b.google-drive-context-provider.v1", "first-party provider contract version")
+require(adapter, "artifact_fingerprint", "critical runtime artifact fingerprint")
+require(adapter, "mad4b_context_provider_contract_not_ready", "provider contract fail-closed write mount")
+require(adapter, "return false;", "generic external-plugin certification engine remains explicitly bypassed only in favor of the dedicated first-party Context provider contract")
 assert "'content' => array(\n\t\t\t'context/" not in adapter, "Context Drive mutations must not mount on content surface"
 
 # Server mounting must stay structural: reads are projected from the read
@@ -185,6 +197,12 @@ require(preflight, "registry_revision", "Context receipt registry revision bindi
 require(preflight, "authority_manifest_fingerprint", "Context receipt authority fingerprint binding")
 require(preflight, "context_registry_changed_during_preflight", "preflight concurrent registry drift blocker")
 require(preflight, "context_authority_changed_during_preflight", "preflight authority drift blocker")
+require(preflight, "MAX_RECEIPT_AGE", "bounded Context receipt freshness")
+require(preflight, "mutation_context_guard", "brand-bearing content mutation Context guard")
+require(preflight, "validate_receipt_binding", "live Context receipt revalidation")
+require(preflight, "commit_receipt_evidence", "durable append-only Context receipt evidence")
+require(preflight, "mad4b/context-receipt-bound", "Context receipt audit binding")
+require(preflight, "canonical_receipt_digest", "canonical Context receipt integrity digest")
 
 # Skill exposure must be Context-bound; portable export may not bypass it.
 require(skill_registry, "context_policy_sha256", "Skill Context policy digest")
@@ -194,6 +212,19 @@ require(skill_abilities, "mad4b_required_brand_context_unavailable", "Skill fail
 require(skill_abilities, "mad4b.skill-get.v2", "Context-bound Skill get contract")
 require(skill_snapshot, "context_policy_sha256", "portable snapshot Context policy identity")
 require(skill_exporter, "mad4b_context_required_skill_portable_export_unsupported", "portable Context bypass denied")
+
+# Context receipt must remain governance evidence: included in planning/approval
+# identity, revalidated before claim, persisted before side effects, then stripped
+# before the provider callback.
+require(write_authority, "CONTEXT_RECEIPT_INPUT_KEY", "Context receipt governance envelope key")
+require(write_authority, "context_receipt_from_input", "Context receipt extraction")
+require(write_authority, "provider_input", "provider-facing governance metadata stripping")
+require(write_authority, "unset( $clean[ self::CONTEXT_RECEIPT_INPUT_KEY ] )", "Context receipt stripped before provider callback")
+require(authorization, "mutation_context_guard", "central mutation Context guard")
+require(authorization, "commit_receipt_evidence", "receipt evidence committed before execution")
+require(authorization, "context_receipt_bound", "receipt execution binding state")
+require(planning_guard, "mutation_context_guard", "approval planning Context guard")
+require(planning_guard, "Brand-bearing content approval planning", "planning fail-closed when Context runtime is unavailable")
 
 # Guided UX makes OAuth capability vs MAD4B authority explicit.
 require(admin, "Connect Read-only", "read-only connect UX")
@@ -215,4 +246,4 @@ require(admin, "MAD4B_SCP_Live_Truth::current_authority_status()", "live authori
 require(admin, "Context Authority never reconciles grants automatically", "no automatic grant reconciliation UX")
 require(admin, "runtime_authority_not_reconciled", "runtime reconciliation blocker UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v17: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v18: PASS")
