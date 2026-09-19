@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Skill_Seeder {
 	const CONTRACT = 'mad4b.skill-seeder.v1';
 	const OPTION = 'mad4b_scp_skill_seed_v1';
-	const SEED_VERSION = 2;
+	const SEED_VERSION = 3;
 	const SEED_DIR = 'skill-seeds';
 
 	private static $ran = false;
@@ -101,6 +101,10 @@ final class MAD4B_SCP_Skill_Seeder {
 		$target = isset( $seed['target'] ) ? sanitize_key( (string) $seed['target'] ) : '';
 		$name = isset( $seed['name'] ) ? sanitize_key( (string) $seed['name'] ) : '';
 		$enabled = ! array_key_exists( 'enabled', $seed ) || (bool) $seed['enabled'];
+		$context_policy_input = isset( $seed['context_policy'] ) && is_array( $seed['context_policy'] ) ? $seed['context_policy'] : array();
+		$context_policy = class_exists( 'MAD4B_SCP_Context_Preflight' ) ? MAD4B_SCP_Context_Preflight::normalize_policy( $context_policy_input ) : array();
+		if ( is_wp_error( $context_policy ) ) return $context_policy;
+		$context_policy_sha256 = class_exists( 'MAD4B_SCP_Context_Preflight' ) ? MAD4B_SCP_Context_Preflight::policy_digest( $context_policy ) : '';
 		if ( ! in_array( $level, MAD4B_SCP_Skill_Registry::levels(), true ) || '' === $target || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) ) {
 			return new WP_Error( 'mad4b_skill_seed_definition_invalid', 'Canonical seed definition is invalid.' );
 		}
@@ -112,7 +116,7 @@ final class MAD4B_SCP_Skill_Seeder {
 		$file = $dir . '/SKILL.md';
 		$meta_file = $dir . '/.mad4b.json';
 
-		if ( is_file( $file ) ) return self::refresh_existing_if_managed( $file, $meta_file, $level, $target, $name, $document, $sha );
+		if ( is_file( $file ) ) return self::refresh_existing_if_managed( $file, $meta_file, $level, $target, $name, $document, $sha, $context_policy, $context_policy_sha256 );
 		if ( ! wp_mkdir_p( $dir ) ) return new WP_Error( 'mad4b_skill_seed_directory_failed', 'Unable to create the seed Skill directory.' );
 		if ( ! self::within_root( $root, $dir ) ) return new WP_Error( 'mad4b_skill_seed_escape_denied', 'Seed Skill path escaped the managed Skill root.' );
 
@@ -124,6 +128,8 @@ final class MAD4B_SCP_Skill_Seeder {
 			'enabled' => $enabled,
 			'sha256' => $sha,
 			'previous_sha256' => '',
+			'context_policy' => $context_policy,
+			'context_policy_sha256' => $context_policy_sha256,
 			'updated_at' => gmdate( 'c' ),
 			'updated_by' => 0,
 			'provisioned_by' => self::CONTRACT,
@@ -153,7 +159,7 @@ final class MAD4B_SCP_Skill_Seeder {
 		return array( 'created' => true, 'refreshed' => false );
 	}
 
-	private static function refresh_existing_if_managed( $file, $meta_file, $level, $target, $name, $document, $canonical_sha ) {
+	private static function refresh_existing_if_managed( $file, $meta_file, $level, $target, $name, $document, $canonical_sha, array $context_policy, $context_policy_sha256 ) {
 		if ( is_link( $file ) || ! is_file( $meta_file ) || is_link( $meta_file ) ) return array( 'created' => false, 'refreshed' => false );
 		$before_skill = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$before_meta = file_get_contents( $meta_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
@@ -169,17 +175,26 @@ final class MAD4B_SCP_Skill_Seeder {
 			// them. Treat the file as user-owned and never overwrite it automatically.
 			return array( 'created' => false, 'refreshed' => false );
 		}
-		if ( hash_equals( $current_sha, $canonical_sha ) ) return array( 'created' => false, 'refreshed' => false );
+		$content_changed = ! hash_equals( $current_sha, $canonical_sha );
+		$current_policy_json = wp_json_encode( isset( $meta['context_policy'] ) && is_array( $meta['context_policy'] ) ? $meta['context_policy'] : array(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$canonical_policy_json = wp_json_encode( $context_policy, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$policy_changed = ! is_string( $current_policy_json ) || ! is_string( $canonical_policy_json ) || ! hash_equals( $current_policy_json, $canonical_policy_json );
+		$policy_digest_changed = ! hash_equals( isset( $meta['context_policy_sha256'] ) ? (string) $meta['context_policy_sha256'] : '', (string) $context_policy_sha256 );
+		$metadata_changed = $policy_changed || $policy_digest_changed || self::SEED_VERSION !== ( isset( $meta['seed_version'] ) ? (int) $meta['seed_version'] : 0 );
+		if ( ! $content_changed && ! $metadata_changed ) return array( 'created' => false, 'refreshed' => false );
 
 		$meta['previous_sha256'] = $current_sha;
 		$meta['sha256'] = $canonical_sha;
+		$meta['context_policy'] = $context_policy;
+		$meta['context_policy_sha256'] = $context_policy_sha256;
 		$meta['updated_at'] = gmdate( 'c' );
 		$meta['updated_by'] = 0;
 		$meta['seed_version'] = self::SEED_VERSION;
 		$meta['canonical_source'] = self::SEED_DIR . '/' . $name . '/SKILL.md';
 		$meta_json = wp_json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n";
 
-		$written = self::atomic_write( $file, $document );
+		$written = true;
+		if ( $content_changed ) $written = self::atomic_write( $file, $document );
 		if ( is_wp_error( $written ) ) return $written;
 		$written_meta = self::atomic_write( $meta_file, $meta_json );
 		if ( is_wp_error( $written_meta ) ) {
@@ -189,7 +204,7 @@ final class MAD4B_SCP_Skill_Seeder {
 
 		$audit = MAD4B_SCP_Audit::record(
 			'mad4b/skill-seed-refresh',
-			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'seed_version' => self::SEED_VERSION, 'before_sha256' => $current_sha, 'after_sha256' => $canonical_sha, 'bytes' => strlen( $document ) ),
+			array( 'logical_id' => $level . ':' . $target . ':' . $name, 'seed_version' => self::SEED_VERSION, 'before_sha256' => $current_sha, 'after_sha256' => $canonical_sha, 'context_policy_sha256' => (string) $context_policy_sha256, 'content_changed' => (bool) $content_changed, 'bytes' => strlen( $document ) ),
 			'ok'
 		);
 		if ( is_wp_error( $audit ) ) {
@@ -267,6 +282,17 @@ final class MAD4B_SCP_Skill_Seeder {
 			array( 'level' => 'provider', 'target' => 'jet-engine', 'name' => 'jetengine-content-modeling', 'enabled' => false ),
 			array( 'level' => 'workflow', 'target' => 'archive-audit', 'name' => 'wordpress-archive-audit' ),
 			array( 'level' => 'workflow', 'target' => 'change-safety', 'name' => 'wordpress-change-safety' ),
+			array(
+				'level' => 'workflow',
+				'target' => 'content-authoring',
+				'name' => 'wordpress-content-authoring',
+				'context_policy' => array(
+					'preset' => 'brand_core',
+					'brand_context_required' => true,
+					'allow_task_context' => true,
+					'allowed_mutation_abilities' => MAD4B_SCP_Context_Preflight::brand_bearing_mutation_abilities(),
+				),
+			),
 		);
 	}
 }
