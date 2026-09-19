@@ -325,6 +325,10 @@ final class MAD4B_SCP_Context_Authority {
 					? array_values( array_unique( array_filter( array_map( 'sanitize_key', $scan['truncation_reasons'] ) ) ) )
 					: array();
 
+				if ( count( $records ) > self::MAX_ASSETS ) {
+					$scan_complete = false;
+					$truncation_reasons[] = 'registry_asset_capacity_exceeded';
+				}
 				if ( count( $assets ) > self::MAX_ASSETS ) {
 					$scan_complete = false;
 					$truncation_reasons[] = 'scan_asset_input_limit';
