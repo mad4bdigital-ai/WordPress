@@ -492,13 +492,37 @@ final class MAD4B_SCP_Context_Authority {
 					);
 				}
 				$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
-				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+				$review_source = ! empty( $preserve ) ? $preserve : $existing;
+
+				// Classification/authority is governance metadata and may survive a
+				// provider content change. Content approval and manual quality never
+				// do: they are evidence about an exact content hash.
+				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority' ) as $field ) {
 					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
 					elseif ( ! empty( $existing['reviewed_at'] ) && 'human' === ( isset( $existing['classification_source'] ) ? $existing['classification_source'] : '' ) && array_key_exists( $field, $existing ) ) $normalized[ $field ] = $existing[ $field ];
 				}
-				if ( ! empty( $existing['quality']['human_override'] ) && isset( $existing['content_hash'] ) && hash_equals( (string) $existing['content_hash'], (string) $normalized['content_hash'] ) ) {
-					$normalized['quality_score'] = isset( $existing['quality_score'] ) ? (int) $existing['quality_score'] : $normalized['quality_score'];
-					$normalized['quality'] = $existing['quality'];
+
+				$previous_hash = isset( $review_source['content_hash'] ) ? strtolower( trim( (string) $review_source['content_hash'] ) ) : '';
+				$current_hash = isset( $normalized['content_hash'] ) ? strtolower( trim( (string) $normalized['content_hash'] ) ) : '';
+				$same_content = preg_match( '/^[a-f0-9]{64}$/', $previous_hash )
+					&& preg_match( '/^[a-f0-9]{64}$/', $current_hash )
+					&& hash_equals( $previous_hash, $current_hash );
+				$human_review = ! empty( $review_source['reviewed_at'] )
+					&& 'human' === ( isset( $review_source['classification_source'] ) ? (string) $review_source['classification_source'] : '' );
+
+				if ( $human_review && $same_content ) {
+					foreach ( array( 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+						if ( array_key_exists( $field, $review_source ) ) $normalized[ $field ] = $review_source[ $field ];
+					}
+				} elseif ( $human_review && ! $same_content ) {
+					$normalized['reviewed_by'] = 0;
+					$normalized['reviewed_at'] = '';
+					$normalized['review_status'] = 'needs_review_content_changed';
+				}
+
+				if ( $same_content && ! empty( $review_source['quality']['human_override'] ) ) {
+					$normalized['quality_score'] = isset( $review_source['quality_score'] ) ? (int) $review_source['quality_score'] : $normalized['quality_score'];
+					$normalized['quality'] = $review_source['quality'];
 				}
 				$normalized['availability_reason'] = '';
 				$normalized['last_seen_at'] = gmdate( 'c' );
@@ -542,10 +566,16 @@ final class MAD4B_SCP_Context_Authority {
 						array( 'limit' => self::MAX_ASSETS, 'stored_asset_count' => count( $records ) )
 					);
 				}
-				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority' ) as $field ) {
 					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
 					elseif ( array_key_exists( $field, $original ) ) $normalized[ $field ] = $original[ $field ];
 				}
+				// A recreated file has a new provider identity and newly supplied
+				// content. Preserve governance classification, never the old content
+				// approval or a manual quality override.
+				$normalized['reviewed_by'] = 0;
+				$normalized['reviewed_at'] = '';
+				$normalized['review_status'] = 'needs_review_content_changed';
 				$normalized['availability_reason'] = '';
 				$normalized['last_seen_at'] = gmdate( 'c' );
 
