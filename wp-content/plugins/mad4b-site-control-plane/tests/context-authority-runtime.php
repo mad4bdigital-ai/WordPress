@@ -31,7 +31,6 @@ function delete_option() { return true; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function home_url() { return 'https://staging.example.test/'; }
 function wp_salt() { return 'context-runtime-test-salt'; }
-function seems_utf8( $value ) { return true; }
 function wp_check_invalid_utf8( $value ) { return (string) $value; }
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-google-drive-context.php';
@@ -96,4 +95,4 @@ $encoded = json_encode( $status );
 mad4b_context_assert( false === strpos( $encoded, 'access_token' ), 'connection status must not expose access token' );
 mad4b_context_assert( false === strpos( $encoded, 'refresh_token' ), 'connection status must not expose refresh token' );
 
-echo "mad4b.site-control-plane.context-authority-runtime.v4: PASS\n";
+echo "mad4b.site-control-plane.context-authority-runtime.v5: PASS\n";

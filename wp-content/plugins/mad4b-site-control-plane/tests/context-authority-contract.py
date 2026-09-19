@@ -89,7 +89,6 @@ require(authority, "compensate_registry_error", "callback/revision/audit compens
 require(authority, "mad4b_context_registry_audit_commit_failed", "audit failure compensated error")
 require(authority, "mad4b_context_registry_recovery_required", "failed compensation recovery-required state")
 require(authority, "mad4b_context_registry_revision_write_failed", "revision persistence fail-closed")
-require(authority, "mad4b_context_registry_revision_recovery_required", "revision compensation recovery-required state")
 require(authority, "mandatory_context_contains_unavailable_assets", "mandatory unavailable asset fail closed")
 require(authority, "optional_context_contains_unavailable_assets", "optional unavailable asset warning")
 require(authority, "ready_with_warnings", "optional Context degradation state")
@@ -339,4 +338,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v38: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v39: PASS")
