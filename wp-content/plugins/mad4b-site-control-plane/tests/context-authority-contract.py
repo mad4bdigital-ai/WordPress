@@ -26,6 +26,11 @@ require(authority, "classification_confidence", "classification confidence")
 require(authority, "authority_class", "authority class")
 require(authority, "quality_score", "quality score")
 require(authority, "mandatory_context_not_ready", "fail-closed mandatory context")
+require(authority, "review_asset", "human review contract")
+require(authority, "needs_review_content_changed", "rescan review invalidation")
+require(authority, "remove_source", "bounded source removal")
+require(authority, "mad4b/context-asset-review", "asset review audit")
+require(authority, "mad4b/context-source-remove", "source removal audit")
 
 require(drive, "https://www.googleapis.com/auth/drive.readonly", "Drive read-only OAuth scope")
 assert "https://www.googleapis.com/auth/drive.file" not in drive, "Drive write scope must not be requested"
@@ -47,6 +52,8 @@ require(admin, "Governed Library", "governed library UX")
 require(admin, "Task-only Source", "task-only source UX")
 require(admin, "Quality and authority are separate", "quality/authority UX guidance")
 require(admin, "Action stopped safely", "fail-closed UX feedback")
+require(admin, "Needs review", "review queue filter")
+require(admin, "Remove Source", "source cleanup UX")
 
 assert servers.count("mad4b/context-authority-status") == 2, "Context status must be mounted only on read and ChatGPT read catalogs"
 write_section = servers.split("private static function core_write_candidates()",1)[1].split("private static function registered_adapter_write_candidates()",1)[0]

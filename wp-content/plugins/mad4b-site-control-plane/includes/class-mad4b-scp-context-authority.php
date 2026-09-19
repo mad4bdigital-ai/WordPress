@@ -244,6 +244,46 @@ final class MAD4B_SCP_Context_Authority {
 		return array( 'source' => $sources[ $source_id ], 'asset_count' => $count, 'context_fingerprint' => self::context_fingerprint( $records, $sources ) );
 	}
 
+	public static function remove_source( $source_id ) {
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
+		$sources = self::sources();
+		if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+		$source = $sources[ $source_id ];
+		if ( ! hash_equals( (string) $site['site_uuid'], (string) $source['site_uuid'] ) ) return new WP_Error( 'mad4b_context_source_site_mismatch', 'Context source is not bound to this Site Profile.' );
+		$assets = self::assets();
+		$removed_assets = 0;
+		foreach ( $assets as $asset_id => $asset ) {
+			if ( isset( $asset['source_id'] ) && hash_equals( $source_id, (string) $asset['source_id'] ) ) {
+				unset( $assets[ $asset_id ] );
+				++$removed_assets;
+			}
+		}
+		unset( $sources[ $source_id ] );
+		self::write_option( self::ASSETS_OPTION, $assets );
+		self::write_option( self::SOURCES_OPTION, $sources );
+		$profile = self::profile();
+		if ( ! empty( $profile ) ) {
+			$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
+			$profile['last_verified_at'] = gmdate( 'c' );
+			$profile['updated_at'] = gmdate( 'c' );
+			self::write_option( self::PROFILE_OPTION, $profile );
+		}
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'mad4b/context-source-remove',
+				array(
+					'source_id' => $source_id,
+					'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
+					'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
+					'removed_asset_count' => $removed_assets,
+				)
+			);
+		}
+		return array( 'source_id' => $source_id, 'removed_asset_count' => $removed_assets, 'context_fingerprint' => self::context_fingerprint( $assets, $sources ) );
+	}
+
 	public static function review_asset( $asset_id, array $input ) {
 		$site = self::site_binding();
 		if ( is_wp_error( $site ) ) return $site;
