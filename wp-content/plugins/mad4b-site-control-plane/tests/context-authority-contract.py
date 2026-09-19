@@ -16,6 +16,7 @@ skill_exporter = (root / "includes/class-mad4b-scp-skill-exporter.php").read_tex
 authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 planning_guard = (root / "includes/class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
+workflow = (root.parents[2] / ".github/workflows/mad4b-context-authority.yml").read_text(encoding="utf-8")
 
 def require(text, needle, label):
     assert needle in text, f"missing {label}: {needle}"
@@ -246,4 +247,7 @@ require(admin, "MAD4B_SCP_Live_Truth::current_authority_status()", "live authori
 require(admin, "Context Authority never reconciles grants automatically", "no automatic grant reconciliation UX")
 require(admin, "runtime_authority_not_reconciled", "runtime reconciliation blocker UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v18: PASS")
+require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
+require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
+
+print("mad4b.site-control-plane.context-authority-contract.v19: PASS")
