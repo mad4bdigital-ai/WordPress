@@ -117,12 +117,12 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 	),
 );
 
-function mad4b_review_asset_payload( $file_id, $content, $title = 'Voice Reference Notes' ) {
+function mad4b_review_asset_payload( $file_id, $content, $title = 'Voice Reference Notes', $path = 'Brand Core/Voice Reference Notes.txt' ) {
 	return array(
 		'file_id' => $file_id,
 		'parent_folder_id' => 'folder-brand-core',
 		'title' => $title,
-		'path' => 'Brand Core/Voice Reference Notes.txt',
+		'path' => $path,
 		'mimeType' => 'text/plain',
 		'modifiedTime' => gmdate( 'c' ),
 		'normalized_text' => $content,
@@ -140,7 +140,7 @@ $scan1 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
 	array(
 		mad4b_review_asset_payload( $file_id, $initial_text ),
-		mad4b_review_asset_payload( 'writer-file-optional', str_repeat( "Writer reference sample with narrative structure and sentence rhythm.\n\n", 10 ), 'Writer Reference Sample' ),
+		mad4b_review_asset_payload( 'writer-file-optional', str_repeat( "Writer reference sample with narrative structure and sentence rhythm.\n\n", 10 ), 'Writer Reference Sample', 'References/Writer Reference Sample.txt' ),
 	),
 	array(
 		'complete' => true,
@@ -150,6 +150,12 @@ $scan1 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	)
 );
 mad4b_review_assert( ! is_wp_error( $scan1 ), 'Initial complete scan must succeed.', $scan1 );
+
+$optional_asset_id = hash( 'sha256', $source_id . '|writer-file-optional' );
+$optional_initial = MAD4B_SCP_Context_Authority::asset( $optional_asset_id );
+mad4b_review_assert( ! empty( $optional_initial ), 'Optional writer reference must be present after initial scan.', $optional_initial );
+mad4b_review_assert( 'writer_reference' === $optional_initial['category'], 'Writer reference fixture must classify as writer_reference, not Brand Core.', $optional_initial );
+mad4b_review_assert( empty( $optional_initial['required'] ), 'Writer reference fixture must remain optional by default.', $optional_initial );
 
 $review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
@@ -173,7 +179,7 @@ $scan2 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
 	array(
 		mad4b_review_asset_payload( $file_id, $initial_text ),
-		mad4b_review_asset_payload( 'writer-file-optional', str_repeat( "Writer reference sample with narrative structure and sentence rhythm.\n\n", 10 ), 'Writer Reference Sample' ),
+		mad4b_review_asset_payload( 'writer-file-optional', str_repeat( "Writer reference sample with narrative structure and sentence rhythm.\n\n", 10 ), 'Writer Reference Sample', 'References/Writer Reference Sample.txt' ),
 	),
 	array(
 		'complete' => true,
@@ -318,4 +324,4 @@ mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'Fi
 mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
 mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[2] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v6: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v7: PASS\n";

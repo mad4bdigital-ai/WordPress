@@ -82,7 +82,6 @@ function wp_remote_get( $url, $args = array() ) {
 	}
 	return new WP_Error( 'unexpected_get', 'Unexpected HTTP GET target.' );
 }
-function seems_utf8( $value ) { return true; }
 function wp_check_invalid_utf8( $value ) { return (string) $value; }
 
 class MAD4B_SCP_Site_Profile {
@@ -157,4 +156,4 @@ foreach ( array( 'access-read-fixture', 'refresh-read-fixture', 'access-write-fi
 	mad4b_oauth_assert( false === strpos( $encoded, $secret ), 'OAuth status must never expose token material.' );
 }
 
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v3: PASS\n";
