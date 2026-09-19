@@ -11,6 +11,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	const ACTION_DISCONNECT_GOOGLE = 'mad4b_context_google_disconnect';
 	const ACTION_SELECT_SOURCE = 'mad4b_context_select_source';
 	const ACTION_SCAN_SOURCE = 'mad4b_context_scan_source';
+	const ACTION_REVIEW_ASSET = 'mad4b_context_review_asset';
 
 	private static $booted = false;
 
@@ -26,6 +27,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_DISCONNECT_GOOGLE => 'handle_disconnect_google',
 			self::ACTION_SELECT_SOURCE => 'handle_select_source',
 			self::ACTION_SCAN_SOURCE => 'handle_scan_source',
+			self::ACTION_REVIEW_ASSET => 'handle_review_asset',
 		) as $action => $method ) add_action( 'admin_post_' . $action, array( __CLASS__, $method ) );
 	}
 
@@ -107,6 +109,20 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( is_wp_error( $scan ) ) self::redirect_result( $scan, 'sources', '' );
 		$result = MAD4B_SCP_Context_Authority::replace_source_assets( $source_id, isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array() );
 		self::redirect_result( $result, 'assets', ! empty( $scan['truncated'] ) ? 'source_scanned_truncated' : 'source_scanned' );
+	}
+
+	public static function handle_review_asset() {
+		self::require_admin( self::ACTION_REVIEW_ASSET );
+		$result = MAD4B_SCP_Context_Authority::review_asset(
+			isset( $_POST['asset_id'] ) ? wp_unslash( $_POST['asset_id'] ) : '',
+			array(
+				'category' => isset( $_POST['category'] ) ? wp_unslash( $_POST['category'] ) : '',
+				'authority_class' => isset( $_POST['authority_class'] ) ? wp_unslash( $_POST['authority_class'] ) : '',
+				'required' => ! empty( $_POST['required'] ),
+				'quality_score' => isset( $_POST['quality_score'] ) ? wp_unslash( $_POST['quality_score'] ) : '',
+			)
+		);
+		self::redirect_result( $result, 'assets', 'asset_review_saved' );
 	}
 
 	public static function render_page() {
@@ -293,14 +309,29 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Context Assets', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Classification is automatic in this first slice and remains visible with confidence. Quality scores marked provisional are metadata-based because the file type did not expose normalized text.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( ! $assets ) { echo '<p>' . esc_html__( 'Scan a source folder to discover assets.', 'mad4b-site-control-plane' ) . '</p></div>'; return; }
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Status</th></tr></thead><tbody>';
+		$categories = MAD4B_SCP_Context_Authority::categories();
+		$authorities = MAD4B_SCP_Context_Authority::authority_classes();
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Status</th><th>Review</th></tr></thead><tbody>';
 		foreach ( $assets as $asset ) {
 			$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
 			echo '<tr><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( $asset['path'] ) . '</span></td>';
 			echo '<td>' . esc_html( $asset['source_mode'] ) . '</td><td><code>' . esc_html( $asset['category'] ) . '</code></td><td>' . esc_html( $asset['authority_class'] ) . '</td>';
 			echo '<td>' . esc_html( ! empty( $asset['required'] ) ? 'yes' : 'no' ) . '</td>';
 			echo '<td><strong>' . esc_html( null === $asset['quality_score'] ? '—' : (string) $asset['quality_score'] . '/100' ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( isset( $quality['mode'] ) ? $quality['mode'] : '' ) . '</span></td>';
-			echo '<td>' . esc_html( number_format_i18n( (float) $asset['classification_confidence'] * 100, 0 ) . '%' ) . '</td><td>' . esc_html( $asset['status'] ) . '</td></tr>';
+			echo '<td>' . esc_html( number_format_i18n( (float) $asset['classification_confidence'] * 100, 0 ) . '%' ) . '<br><span class="mad4b-scp-muted">' . esc_html( isset( $asset['classification_source'] ) ? $asset['classification_source'] : '' ) . '</span></td><td>' . esc_html( $asset['status'] ) . '</td>';
+			echo '<td><details><summary class="button button-small">' . esc_html__( 'Review', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( self::ACTION_REVIEW_ASSET );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';
+			echo '<label><strong>' . esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
+			foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['category'], $key, false ) . '>' . esc_html( $label ) . '</option>';
+			echo '</select></label>';
+			echo '<label><strong>' . esc_html__( 'Authority', 'mad4b-site-control-plane' ) . '</strong><select name="authority_class">';
+			foreach ( $authorities as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['authority_class'], $key, false ) . '>' . esc_html( $label ) . '</option>';
+			echo '</select></label>';
+			echo '<label><input type="checkbox" name="required" value="1"' . checked( ! empty( $asset['required'] ), true, false ) . '> ' . esc_html__( 'Required context', 'mad4b-site-control-plane' ) . '</label>';
+			echo '<label><strong>' . esc_html__( 'Quality 0–100', 'mad4b-site-control-plane' ) . '</strong><input type="number" min="0" max="100" name="quality_score" value="' . esc_attr( isset( $asset['quality_score'] ) ? (string) $asset['quality_score'] : '' ) . '"></label>';
+			submit_button( __( 'Save Review', 'mad4b-site-control-plane' ), 'primary small', 'submit', false );
+			echo '</form></details></td></tr>';
 		}
 		echo '</tbody></table></div></div>';
 	}
@@ -344,6 +375,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'source_selected' => __( 'Source folder added. Scan it when you are ready.', 'mad4b-site-control-plane' ),
 			'source_scanned' => __( 'Source scan completed and Context assets were refreshed.', 'mad4b-site-control-plane' ),
 			'source_scanned_truncated' => __( 'Source scan completed at the safety limit. Review the folder scope before increasing coverage.', 'mad4b-site-control-plane' ),
+			'asset_review_saved' => __( 'Asset classification and quality review saved and the Context fingerprint was refreshed.', 'mad4b-site-control-plane' ),
 		);
 		if ( $notice && isset( $messages[ $notice ] ) ) echo '<div class="notice notice-success"><p>' . esc_html( $messages[ $notice ] ) . '</p></div>';
 	}
@@ -374,6 +406,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		.mad4b-context-source-mode{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:12px 0}
 		.mad4b-context-source-mode label{display:block;border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-source-mode label span{display:block;margin:5px 0 0 24px;color:#646970}
 		.mad4b-context-badge{display:inline-block;padding:3px 7px;border-radius:12px;background:#f0f0f1;font-size:12px}.mad4b-context-fingerprint{margin:18px 0;color:#646970}
+		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}
 		@media(max-width:782px){.mad4b-context-folder-head{align-items:flex-start!important;flex-direction:column}}
 		</style>';
 	}

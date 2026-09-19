@@ -82,6 +82,41 @@ final class MAD4B_SCP_Context_Authority {
 		return $out;
 	}
 
+	public static function categories() {
+		return array(
+			'brand_strategy' => 'Brand Strategy',
+			'brand_positioning' => 'Brand Positioning',
+			'audience_persona' => 'Audience / Persona',
+			'tone_of_voice' => 'Tone of Voice',
+			'messaging' => 'Messaging',
+			'editorial_guidelines' => 'Editorial Guidelines',
+			'terminology' => 'Terminology',
+			'claim_policy' => 'Claim Policy',
+			'seo_strategy' => 'SEO Strategy',
+			'content_strategy' => 'Content Strategy',
+			'campaign_strategy' => 'Campaign Strategy',
+			'product_knowledge' => 'Product Knowledge',
+			'service_knowledge' => 'Service Knowledge',
+			'destination_knowledge' => 'Destination Knowledge',
+			'market_research' => 'Market Research',
+			'writer_reference' => 'Writer Reference',
+			'content_example' => 'Content Example',
+			'historical_content' => 'Historical Content',
+			'legal_policy' => 'Legal Policy',
+			'operational_policy' => 'Operational Policy',
+			'uncategorized' => 'Uncategorized',
+		);
+	}
+
+	public static function authority_classes() {
+		return array(
+			'brand_authority' => 'Brand Authority',
+			'policy_authority' => 'Policy Authority',
+			'task_knowledge' => 'Task Knowledge',
+			'reference' => 'Reference',
+		);
+	}
+
 	public static function save_profile( $brand_name ) {
 		$site = self::site_binding();
 		if ( is_wp_error( $site ) ) return $site;
@@ -156,14 +191,37 @@ final class MAD4B_SCP_Context_Authority {
 		if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
 		$source = $sources[ $source_id ];
 		$records = self::assets();
+		$previous = array();
 		foreach ( $records as $asset_id => $record ) {
-			if ( isset( $record['source_id'] ) && hash_equals( $source_id, (string) $record['source_id'] ) ) unset( $records[ $asset_id ] );
+			if ( isset( $record['source_id'] ) && hash_equals( $source_id, (string) $record['source_id'] ) ) {
+				$previous[ (string) $asset_id ] = $record;
+				unset( $records[ $asset_id ] );
+			}
 		}
 		$count = 0;
 		foreach ( array_slice( $assets, 0, self::MAX_ASSETS ) as $asset ) {
 			if ( ! is_array( $asset ) ) continue;
 			$normalized = self::normalize_asset( $source, $asset );
 			if ( is_wp_error( $normalized ) ) continue;
+			$prior = isset( $previous[ $normalized['asset_id'] ] ) ? $previous[ $normalized['asset_id'] ] : array();
+			if ( ! empty( $prior['reviewed_at'] ) && 'human' === ( isset( $prior['classification_source'] ) ? $prior['classification_source'] : '' ) ) {
+				$normalized['category'] = isset( $prior['category'] ) ? (string) $prior['category'] : $normalized['category'];
+				$normalized['classification_confidence'] = 1.0;
+				$normalized['classification_source'] = 'human';
+				$normalized['authority_class'] = isset( $prior['authority_class'] ) ? (string) $prior['authority_class'] : $normalized['authority_class'];
+				$normalized['required'] = ! empty( $prior['required'] );
+				$normalized['priority'] = isset( $prior['priority'] ) ? (int) $prior['priority'] : $normalized['priority'];
+				$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
+				$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
+				$normalized['review_status'] = 'approved';
+				$same_content = ! empty( $prior['content_hash'] ) && hash_equals( (string) $prior['content_hash'], (string) $normalized['content_hash'] );
+				if ( $same_content && ! empty( $prior['quality']['human_override'] ) ) {
+					$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
+					$normalized['quality'] = $prior['quality'];
+				} elseif ( ! $same_content ) {
+					$normalized['review_status'] = 'needs_review_content_changed';
+				}
+			}
 			$records[ $normalized['asset_id'] ] = $normalized;
 			++$count;
 			if ( count( $records ) >= self::MAX_ASSETS ) break;
@@ -184,6 +242,70 @@ final class MAD4B_SCP_Context_Authority {
 			self::write_option( self::PROFILE_OPTION, $profile );
 		}
 		return array( 'source' => $sources[ $source_id ], 'asset_count' => $count, 'context_fingerprint' => self::context_fingerprint( $records, $sources ) );
+	}
+
+	public static function review_asset( $asset_id, array $input ) {
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		$asset_id = strtolower( trim( sanitize_text_field( (string) $asset_id ) ) );
+		$records = self::assets();
+		if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+		$asset = $records[ $asset_id ];
+		if ( ! hash_equals( (string) $site['site_uuid'], (string) $asset['site_uuid'] ) ) return new WP_Error( 'mad4b_context_asset_site_mismatch', 'Context asset is not bound to this Site Profile.' );
+
+		$categories = self::categories();
+		$authorities = self::authority_classes();
+		$category = sanitize_key( isset( $input['category'] ) ? $input['category'] : '' );
+		$authority = sanitize_key( isset( $input['authority_class'] ) ? $input['authority_class'] : '' );
+		if ( ! isset( $categories[ $category ] ) ) return new WP_Error( 'mad4b_context_category_invalid', 'Context category is invalid.' );
+		if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
+
+		$asset['category'] = $category;
+		$asset['classification_confidence'] = 1.0;
+		$asset['classification_source'] = 'human';
+		$asset['authority_class'] = $authority;
+		$asset['required'] = ! empty( $input['required'] );
+		$asset['priority'] = 'brand_authority' === $authority || 'policy_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
+		$quality_input = isset( $input['quality_score'] ) ? trim( (string) $input['quality_score'] ) : '';
+		if ( '' !== $quality_input ) {
+			if ( ! preg_match( '/^\d{1,3}$/', $quality_input ) || (int) $quality_input < 0 || (int) $quality_input > 100 ) return new WP_Error( 'mad4b_context_quality_score_invalid', 'Quality score must be between 0 and 100.' );
+			$automatic = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null );
+			$asset['quality_score'] = (int) $quality_input;
+			if ( ! isset( $asset['quality'] ) || ! is_array( $asset['quality'] ) ) $asset['quality'] = array( 'contract' => self::QUALITY_CONTRACT );
+			$asset['quality']['automatic_score'] = $automatic;
+			$asset['quality']['overall_score'] = (int) $quality_input;
+			$asset['quality']['mode'] = 'human_override';
+			$asset['quality']['human_override'] = true;
+			$asset['quality']['provisional'] = false;
+		}
+		$asset['reviewed_by'] = get_current_user_id();
+		$asset['reviewed_at'] = gmdate( 'c' );
+		$asset['review_status'] = 'approved';
+		$records[ $asset_id ] = $asset;
+		self::write_option( self::ASSETS_OPTION, $records );
+
+		$profile = self::profile();
+		if ( ! empty( $profile ) ) {
+			$profile['context_fingerprint'] = self::context_fingerprint( $records, self::sources() );
+			$profile['last_verified_at'] = gmdate( 'c' );
+			$profile['updated_at'] = gmdate( 'c' );
+			self::write_option( self::PROFILE_OPTION, $profile );
+		}
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'mad4b/context-asset-review',
+				array(
+					'asset_id' => $asset_id,
+					'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+					'category' => $category,
+					'authority_class' => $authority,
+					'required' => ! empty( $asset['required'] ),
+					'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+					'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+				)
+			);
+		}
+		return $asset;
 	}
 
 	public static function status() {
@@ -394,7 +516,11 @@ final class MAD4B_SCP_Context_Authority {
 			'language' => isset( $asset['language'] ) ? sanitize_key( (string) $asset['language'] ) : '',
 			'scope' => 'all',
 			'quality_score' => isset( $quality['overall_score'] ) ? (int) $quality['overall_score'] : null,
+			'quality_auto_score' => isset( $quality['overall_score'] ) ? (int) $quality['overall_score'] : null,
 			'quality' => $quality,
+			'reviewed_by' => 0,
+			'reviewed_at' => '',
+			'review_status' => 'unreviewed',
 			'status' => 'ready',
 			'last_synced_at' => gmdate( 'c' ),
 		);
