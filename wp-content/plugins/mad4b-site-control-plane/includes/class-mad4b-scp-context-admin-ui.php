@@ -490,7 +490,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$messages = array(
 			'brand_profile_saved' => __( 'Brand Context Profile saved.', 'mad4b-site-control-plane' ),
 			'google_credentials_saved' => __( 'Google OAuth configuration saved securely.', 'mad4b-site-control-plane' ),
-			'google_connected' => __( 'Google Drive connected with read-only access.', 'mad4b-site-control-plane' ),
+			'google_connected' => __( 'Google Drive connected.', 'mad4b-site-control-plane' ),
 			'google_disconnected' => __( 'Google Drive disconnected. Existing Context assets were not deleted.', 'mad4b-site-control-plane' ),
 			'source_selected' => __( 'Source folder added. Scan it when you are ready.', 'mad4b-site-control-plane' ),
 			'source_policy_updated' => __( 'Source write policy updated. Runtime write eligibility will follow the selected policy and OAuth scope.', 'mad4b-site-control-plane' ),
@@ -499,6 +499,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'asset_review_saved' => __( 'Asset classification and quality review saved and the Context fingerprint was refreshed.', 'mad4b-site-control-plane' ),
 			'source_removed' => __( 'Source and its indexed assets were removed. Google Drive content was not changed.', 'mad4b-site-control-plane' ),
 		);
+		if ( 'google_connected' === $notice ) {
+			$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+			$mode = ! empty( $connection['write_available'] ) ? __( 'Read + Write', 'mad4b-site-control-plane' ) : __( 'Read-only', 'mad4b-site-control-plane' );
+			echo '<div class="notice notice-success"><p>' . esc_html( sprintf( __( 'Google Drive connected. Access mode: %s.', 'mad4b-site-control-plane' ), $mode ) ) . '</p></div>';
+			return;
+		}
 		if ( $notice && isset( $messages[ $notice ] ) ) echo '<div class="notice notice-success"><p>' . esc_html( $messages[ $notice ] ) . '</p></div>';
 	}
 
