@@ -116,11 +116,25 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	public function mutation_ability_runtime_eligibility( $ability_name ) {
-		if ( ! in_array( (string) $ability_name, $this->ability_names()['write'], true ) ) return true;
+		$ability_name = (string) $ability_name;
+		if ( ! in_array( $ability_name, $this->ability_names()['write'], true ) ) return true;
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
 		$status = MAD4B_SCP_Google_Drive_Context::write_capability_status();
 		if ( empty( $status['write_available'] ) ) return new WP_Error( 'mad4b_google_drive_write_scope_required', 'Google Drive read+write OAuth scope is required before Context write abilities can mount.' );
-		if ( empty( $status['selected_source_count'] ) ) return new WP_Error( 'mad4b_context_source_required_for_write', 'Select at least one Context source folder before Drive write abilities can mount.' );
+		$operation_map = array(
+			'context/create-drive-asset' => array( 'operation' => 'create', 'count_key' => 'create_source_count' ),
+			'context/update-drive-asset' => array( 'operation' => 'update', 'count_key' => 'update_source_count' ),
+			'context/recreate-drive-asset' => array( 'operation' => 'recreate', 'count_key' => 'recreate_source_count' ),
+		);
+		if ( ! isset( $operation_map[ $ability_name ] ) ) return new WP_Error( 'mad4b_context_write_operation_unknown', 'Context write ability has no source policy mapping.' );
+		$mapping = $operation_map[ $ability_name ];
+		if ( empty( $status[ $mapping['count_key'] ] ) ) {
+			return new WP_Error(
+				'mad4b_context_source_policy_blocks_write',
+				'No selected Context source policy currently permits this Drive mutation.',
+				array( 'operation' => $mapping['operation'] )
+			);
+		}
 		return true;
 	}
 
@@ -149,6 +163,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
 				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
 				'source_mode' => isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '',
+				'source_write_policy' => class_exists( 'MAD4B_SCP_Context_Authority' ) && ! empty( $asset['source_id'] ) ? MAD4B_SCP_Context_Authority::source_write_policy( (string) $asset['source_id'] ) : 'read_only',
 				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
 				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
