@@ -410,22 +410,22 @@ final class MAD4B_SCP_Context_Authority {
 	public static function classify_asset( $name, $path = '', $content = '' ) {
 		$haystack = strtolower( trim( (string) $name . ' ' . (string) $path . ' ' . substr( (string) $content, 0, 6000 ) ) );
 		$rules = array(
-			'brand_strategy' => array( 'brand strategy', 'brand core', 'brand plan' ),
-			'brand_positioning' => array( 'positioning', 'brand position' ),
-			'audience_persona' => array( 'persona', 'audience', 'customer profile', 'buyer profile' ),
-			'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'brand voice', 'tov' ),
+			 'brand_strategy' => array( 'brand strategy', 'brand core', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
+			 'brand_positioning' => array( 'positioning', 'brand position', 'تموضع العلامة', 'التموضع' ),
+			 'audience_persona' => array( 'persona', 'audience', 'customer profile', 'buyer profile', 'الجمهور', 'شخصية العميل', 'العميل المثالي' ),
+			 'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'brand voice', 'tov', 'نبرة الصوت', 'نبرة العلامة', 'أسلوب الكتابة' ),
 			'messaging' => array( 'messaging', 'message framework', 'key messages' ),
-			'editorial_guidelines' => array( 'editorial', 'writing guideline', 'style guide', 'content guideline' ),
-			'terminology' => array( 'terminology', 'naming rule', 'glossary', 'vocabulary' ),
+			 'editorial_guidelines' => array( 'editorial', 'writing guideline', 'style guide', 'content guideline', 'دليل التحرير', 'إرشادات الكتابة', 'قواعد المحتوى' ),
+			 'terminology' => array( 'terminology', 'naming rule', 'glossary', 'vocabulary', 'المصطلحات', 'قاموس', 'التسمية' ),
 			'claim_policy' => array( 'prohibited claim', 'claim policy', 'restriction', 'legal claim' ),
-			'seo_strategy' => array( 'seo', 'search strategy', 'keyword strategy' ),
+			 'seo_strategy' => array( 'seo', 'search strategy', 'keyword strategy', 'استراتيجية السيو', 'الكلمات المفتاحية', 'تحسين محركات البحث' ),
 			'content_strategy' => array( 'content strategy', 'blog strategy', 'content pillar' ),
 			'campaign_strategy' => array( 'campaign plan', 'campaign strategy' ),
 			'product_knowledge' => array( 'product knowledge', 'product guide', 'product catalog' ),
 			'service_knowledge' => array( 'service knowledge', 'service guide', 'services' ),
 			'destination_knowledge' => array( 'destination guide', 'destination knowledge', 'travel guide' ),
-			'market_research' => array( 'market research', 'market report', 'research report', 'market insight' ),
-			'writer_reference' => array( 'writer reference', 'author reference', 'journalist', 'writing sample', 'style profile' ),
+			 'market_research' => array( 'market research', 'market report', 'research report', 'market insight', 'بحث السوق', 'دراسة السوق', 'تقرير السوق' ),
+			 'writer_reference' => array( 'writer reference', 'author reference', 'journalist', 'writing sample', 'style profile', 'مرجع كاتب', 'نموذج كتابة', 'أسلوب الكاتب' ),
 			'content_example' => array( 'content example', 'sample article', 'sample blog', 'example copy' ),
 		);
 		$best = 'uncategorized';

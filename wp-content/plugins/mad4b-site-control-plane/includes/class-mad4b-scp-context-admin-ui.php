@@ -214,7 +214,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SAVE_GOOGLE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_GOOGLE ) . '">';
-			echo '<table class="form-table"><tr><th><label for="mad4b-google-client-id">' . esc_html__( 'Client ID', 'mad4b-site-control-plane' ) . '</label></th><td><input id="mad4b-google-client-id" name="client_id" type="text" class="large-text" required autocomplete="off"><p class="description">' . esc_html( ! empty( $credentials['configured'] ) ? 'Already configured. Enter the same or replacement Client ID.' : 'From Google Cloud OAuth credentials.' ) . '</p></td></tr>';
+			echo '<table class="form-table"><tr><th><label for="mad4b-google-client-id">' . esc_html__( 'Client ID', 'mad4b-site-control-plane' ) . '</label></th><td><input id="mad4b-google-client-id" name="client_id" type="text" class="large-text" required autocomplete="off" value="' . esc_attr( isset( $credentials['client_id'] ) ? $credentials['client_id'] : '' ) . '"><p class="description">' . esc_html( ! empty( $credentials['configured'] ) ? 'Already configured. Enter the same or replacement Client ID.' : 'From Google Cloud OAuth credentials.' ) . '</p></td></tr>';
 			echo '<tr><th><label for="mad4b-google-client-secret">' . esc_html__( 'Client Secret', 'mad4b-site-control-plane' ) . '</label></th><td><input id="mad4b-google-client-secret" name="client_secret" type="password" class="regular-text" autocomplete="new-password"><p class="description">' . esc_html__( 'Encrypted at rest. Leave blank after first setup to keep the stored secret.', 'mad4b-site-control-plane' ) . '</p></td></tr></table>';
 			submit_button( __( 'Save OAuth Configuration', 'mad4b-site-control-plane' ) );
 			echo '</form>';
@@ -239,6 +239,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( $connection['account_email'] ) echo ' · ' . esc_html( $connection['account_email'] );
 		echo ' · ' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</p></div>';
 		echo '<p><a class="button button-primary" href="' . esc_url( self::tab_url( 'google-drive', array( 'folder' => 'root' ) ) ) . '">' . esc_html__( 'Choose Source Folder', 'mad4b-site-control-plane' ) . '</a></p>';
+		echo '<form class="mad4b-context-folder-jump" method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '"><input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '"><input type="hidden" name="tab" value="google-drive"><label><strong>' . esc_html__( 'Open a shared folder by ID', 'mad4b-site-control-plane' ) . '</strong><span class="description"> ' . esc_html__( 'Useful for Shared Drives or folders that do not appear under My Drive.', 'mad4b-site-control-plane' ) . '</span></label><div><input type="text" name="folder" class="regular-text code" placeholder="Google Drive folder ID"> ';
+		submit_button( __( 'Open Folder', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+		echo '</div></form>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_DISCONNECT_GOOGLE );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_DISCONNECT_GOOGLE ) . '">';
@@ -451,7 +454,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		.mad4b-context-source-mode label{display:block;border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-source-mode label span{display:block;margin:5px 0 0 24px;color:#646970}
 		.mad4b-context-badge{display:inline-block;padding:3px 7px;border-radius:12px;background:#f0f0f1;font-size:12px}.mad4b-context-fingerprint{margin:18px 0;color:#646970}
 		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}
-		.mad4b-context-filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px}.mad4b-context-filterbar select,.mad4b-context-filterbar input{max-width:220px}.mad4b-context-remove{margin-top:8px}.mad4b-context-remove form{margin-top:8px;max-width:280px}
+		.mad4b-context-filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px}.mad4b-context-folder-jump{margin:14px 0 18px}.mad4b-context-folder-jump label{display:block;margin-bottom:6px}.mad4b-context-filterbar select,.mad4b-context-filterbar input{max-width:220px}.mad4b-context-remove{margin-top:8px}.mad4b-context-remove form{margin-top:8px;max-width:280px}
 		@media(max-width:782px){.mad4b-context-folder-head{align-items:flex-start!important;flex-direction:column}}
 		</style>';
 	}

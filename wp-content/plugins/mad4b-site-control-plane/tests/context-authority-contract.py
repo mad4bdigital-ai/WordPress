@@ -23,6 +23,7 @@ require(authority, "'governed'", "governed source mode")
 require(authority, "'task_attachment'", "task-only source mode")
 require(authority, "context_fingerprint", "context fingerprint")
 require(authority, "classification_confidence", "classification confidence")
+require(authority, "نبرة الصوت", "Arabic classification signals")
 require(authority, "authority_class", "authority class")
 require(authority, "quality_score", "quality score")
 require(authority, "mandatory_context_not_ready", "fail-closed mandatory context")
@@ -36,6 +37,7 @@ require(drive, "https://www.googleapis.com/auth/drive.readonly", "Drive read-onl
 assert "https://www.googleapis.com/auth/drive.file" not in drive, "Drive write scope must not be requested"
 assert "https://www.googleapis.com/auth/drive\'" not in drive, "Full Drive scope must not be requested"
 require(drive, "aes-256-gcm", "encrypted token storage")
+require(drive, "mad4b_google_drive_client_secret_required_for_new_client", "safe OAuth client rotation")
 require(drive, "refresh_token", "offline token refresh")
 require(drive, "MAX_SCAN_FILES", "bounded file scan")
 require(drive, "MAX_SCAN_FOLDERS", "bounded folder scan")
@@ -48,6 +50,7 @@ assert "'refresh_token' =>" not in status_body, "connection status must not expo
 
 require(admin, "Connect Google Drive", "guided connection CTA")
 require(admin, "Folder Picker", "folder picker")
+require(admin, "Open a shared folder by ID", "shared-folder direct navigation")
 require(admin, "Governed Library", "governed library UX")
 require(admin, "Task-only Source", "task-only source UX")
 require(admin, "Quality and authority are separate", "quality/authority UX guidance")

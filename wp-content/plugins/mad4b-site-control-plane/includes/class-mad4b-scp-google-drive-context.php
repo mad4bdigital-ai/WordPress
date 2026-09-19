@@ -32,6 +32,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'contract' => self::CONTRACT,
 			'configured' => ! is_wp_error( $credentials ),
 			'configured_by_constants' => defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' ),
+			'client_id' => is_wp_error( $credentials ) ? '' : sanitize_text_field( (string) $credentials['client_id'] ),
 			'client_id_suffix' => is_wp_error( $credentials ) ? '' : self::suffix( $credentials['client_id'] ),
 			'redirect_uri' => self::redirect_uri(),
 			'scope' => self::DRIVE_SCOPE,
@@ -49,6 +50,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$current = get_option( self::CONFIG_OPTION, array() );
 		$current = is_array( $current ) ? $current : array();
 		$secret_envelope = isset( $current['client_secret'] ) ? (string) $current['client_secret'] : '';
+		$current_client_id = isset( $current['client_id'] ) ? trim( (string) $current['client_id'] ) : '';
+		if ( '' === $client_secret && '' !== $current_client_id && ! hash_equals( $current_client_id, $client_id ) ) return new WP_Error( 'mad4b_google_drive_client_secret_required_for_new_client', 'Client Secret is required when changing the Google OAuth Client ID.' );
 		if ( '' !== $client_secret ) {
 			$secret_envelope = self::encrypt_secret( $client_secret );
 			if ( is_wp_error( $secret_envelope ) ) return $secret_envelope;
