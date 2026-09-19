@@ -613,16 +613,21 @@ final class MAD4B_SCP_Context_Preflight {
 			array(
 				'receipt_sha256' => (string) $validated['receipt_sha256'],
 				'site_uuid' => (string) $validated['site_uuid'],
+				'brand_id' => isset( $receipt['brand_id'] ) ? (string) $receipt['brand_id'] : '',
+				'brand_context_revision' => isset( $receipt['brand_context_revision'] ) ? (int) $receipt['brand_context_revision'] : 0,
 				'registry_revision' => (int) $validated['registry_revision'],
 				'context_fingerprint' => (string) $validated['context_fingerprint'],
 				'authority_manifest_fingerprint' => (string) $validated['authority_manifest_fingerprint'],
 				'skill_logical_id' => (string) $validated['skill_logical_id'],
+				'skill_sha256' => isset( $receipt['skill_sha256'] ) ? (string) $receipt['skill_sha256'] : '',
+				'context_policy_sha256' => isset( $receipt['context_policy_sha256'] ) ? (string) $receipt['context_policy_sha256'] : '',
+				'asset_count' => isset( $receipt['assets_loaded'] ) && is_array( $receipt['assets_loaded'] ) ? count( $receipt['assets_loaded'] ) : 0,
+				'observed_at' => isset( $receipt['observed_at'] ) ? (string) $receipt['observed_at'] : '',
 				'ability' => isset( $binding['ability'] ) ? (string) $binding['ability'] : '',
 				'provider' => isset( $binding['provider'] ) ? sanitize_key( (string) $binding['provider'] ) : '',
 				'target_fingerprint' => isset( $binding['target_fingerprint'] ) ? (string) $binding['target_fingerprint'] : '',
 				'approval_ticket_id' => isset( $binding['approval_ticket_id'] ) ? (string) $binding['approval_ticket_id'] : '',
 				'request_id' => isset( $binding['request_id'] ) ? (string) $binding['request_id'] : '',
-				'context_receipt' => $receipt,
 			),
 			'ok'
 		);
