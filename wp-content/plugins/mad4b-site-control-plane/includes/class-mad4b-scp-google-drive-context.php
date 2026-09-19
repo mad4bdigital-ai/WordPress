@@ -331,7 +331,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( '' === $name || strlen( $name ) > 180 ) return new WP_Error( 'mad4b_google_drive_asset_name_invalid', 'Drive asset name is required and must be 180 characters or fewer.' );
 		$content_guard = self::validate_write_content( $content );
 		if ( is_wp_error( $content_guard ) ) return $content_guard;
-		$file = self::create_provider_file( (string) $source['external_root_id'], $name, $content, $format );
+		$target_folder_id = self::bounded_drive_id( isset( $source['external_root_id'] ) ? $source['external_root_id'] : '' );
+		if ( '' === $target_folder_id || 'root' === $target_folder_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for creates.' );
+		$file = self::create_provider_file( $target_folder_id, $name, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
 		$observed = self::provider_observed_text( $file, $content );
 		if ( is_wp_error( $observed ) ) return $observed;
