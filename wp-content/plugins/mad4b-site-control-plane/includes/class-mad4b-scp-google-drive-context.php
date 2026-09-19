@@ -327,29 +327,83 @@ final class MAD4B_SCP_Google_Drive_Context {
 	public static function scan_folder( $folder_id, $recursive = true ) {
 		$folder = self::get_folder( $folder_id );
 		if ( is_wp_error( $folder ) ) return $folder;
+		$started_at = gmdate( 'c' );
+		$scan_generation = hash( 'sha256', (string) $folder['id'] . '|' . $started_at . '|' . ( function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : uniqid( 'mad4b-', true ) ) );
 		$queue = array( array( 'id' => (string) $folder['id'], 'path' => (string) $folder['name'], 'depth' => 0 ) );
 		$assets = array();
 		$visited = array();
-		while ( $queue && count( $assets ) < self::MAX_SCAN_FILES && count( $visited ) < self::MAX_SCAN_FOLDERS ) {
+		$complete = true;
+		$truncation_reasons = array();
+
+		while ( $queue ) {
+			if ( count( $assets ) >= self::MAX_SCAN_FILES ) {
+				$complete = false;
+				$truncation_reasons[] = 'scan_file_limit';
+				break;
+			}
+			if ( count( $visited ) >= self::MAX_SCAN_FOLDERS ) {
+				$complete = false;
+				$truncation_reasons[] = 'scan_folder_limit';
+				break;
+			}
+
 			$current = array_shift( $queue );
 			$id = (string) $current['id'];
 			if ( isset( $visited[ $id ] ) ) continue;
 			$visited[ $id ] = true;
-			$children = self::list_children( $id, false );
-			if ( is_wp_error( $children ) ) return $children;
-			foreach ( $children as $child ) {
+
+			$children_result = self::list_children( $id, false, true );
+			if ( is_wp_error( $children_result ) ) return $children_result;
+			if ( empty( $children_result['complete'] ) ) {
+				$complete = false;
+				foreach ( isset( $children_result['truncation_reasons'] ) && is_array( $children_result['truncation_reasons'] ) ? $children_result['truncation_reasons'] : array( 'child_listing_incomplete' ) as $reason ) {
+					$truncation_reasons[] = (string) $reason;
+				}
+			}
+
+			foreach ( isset( $children_result['items'] ) && is_array( $children_result['items'] ) ? $children_result['items'] : array() as $child ) {
 				$mime = isset( $child['mimeType'] ) ? (string) $child['mimeType'] : '';
 				$name = isset( $child['name'] ) ? (string) $child['name'] : 'Untitled';
 				$path = rtrim( (string) $current['path'], '/' ) . '/' . $name;
+
 				if ( 'application/vnd.google-apps.folder' === $mime ) {
-					if ( $recursive && (int) $current['depth'] < 8 && count( $visited ) + count( $queue ) < self::MAX_SCAN_FOLDERS ) {
-						$queue[] = array( 'id' => (string) $child['id'], 'path' => $path, 'depth' => (int) $current['depth'] + 1 );
+					if ( ! $recursive ) continue;
+					if ( (int) $current['depth'] >= 8 ) {
+						$complete = false;
+						$truncation_reasons[] = 'scan_depth_limit';
+						continue;
 					}
+					if ( count( $visited ) + count( $queue ) >= self::MAX_SCAN_FOLDERS ) {
+						$complete = false;
+						$truncation_reasons[] = 'scan_folder_limit';
+						continue;
+					}
+					$queue[] = array( 'id' => (string) $child['id'], 'path' => $path, 'depth' => (int) $current['depth'] + 1 );
 					continue;
 				}
-				$text = self::fetch_text_content( $child );
-				if ( is_wp_error( $text ) ) $text = '';
-				$basis = '' !== $text ? $text : ( isset( $child['md5Checksum'] ) && $child['md5Checksum'] ? (string) $child['md5Checksum'] : (string) $child['id'] . '|' . ( isset( $child['modifiedTime'] ) ? $child['modifiedTime'] : '' ) );
+
+				if ( count( $assets ) >= self::MAX_SCAN_FILES ) {
+					$complete = false;
+					$truncation_reasons[] = 'scan_file_limit';
+					break;
+				}
+
+				$content_record = self::fetch_text_content_record( $child );
+				if ( is_wp_error( $content_record ) ) {
+					$content_record = array(
+						'content' => '',
+						'complete' => false,
+						'bytes' => 0,
+						'normalization_status' => 'error',
+						'normalization_reason' => $content_record->get_error_code(),
+					);
+				}
+				$content_complete = ! empty( $content_record['complete'] );
+				$text = $content_complete && isset( $content_record['content'] ) ? (string) $content_record['content'] : '';
+				$basis = '' !== $text
+					? $text
+					: ( isset( $child['md5Checksum'] ) && $child['md5Checksum'] ? (string) $child['md5Checksum'] : (string) $child['id'] . '|' . ( isset( $child['modifiedTime'] ) ? $child['modifiedTime'] : '' ) );
+
 				$assets[] = array(
 					'file_id' => isset( $child['id'] ) ? (string) $child['id'] : '',
 					'parent_folder_id' => ! empty( $child['parents'] ) && is_array( $child['parents'] ) ? (string) reset( $child['parents'] ) : '',
@@ -360,18 +414,32 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'size' => isset( $child['size'] ) ? (string) $child['size'] : '',
 					'webViewLink' => isset( $child['webViewLink'] ) ? esc_url_raw( (string) $child['webViewLink'] ) : '',
 					'normalized_text' => $text,
+					'content_complete' => $content_complete,
+					'content_bytes' => isset( $content_record['bytes'] ) ? (int) $content_record['bytes'] : strlen( $text ),
+					'normalization_status' => isset( $content_record['normalization_status'] ) ? sanitize_key( (string) $content_record['normalization_status'] ) : ( $content_complete ? 'ready' : 'incomplete' ),
+					'normalization_reason' => isset( $content_record['normalization_reason'] ) ? sanitize_key( (string) $content_record['normalization_reason'] ) : '',
 					'content_hash' => hash( 'sha256', $basis ),
 				);
-				if ( count( $assets ) >= self::MAX_SCAN_FILES ) break;
 			}
 		}
+
+		if ( ! empty( $queue ) ) {
+			$complete = false;
+			$truncation_reasons[] = 'scan_queue_incomplete';
+		}
+		$truncation_reasons = array_values( array_unique( array_filter( array_map( 'sanitize_key', $truncation_reasons ) ) ) );
 		return array(
-			'contract' => 'mad4b.google-drive-folder-scan.v1',
+			'contract' => 'mad4b.google-drive-folder-scan.v2',
+			'scan_generation' => $scan_generation,
+			'started_at' => $started_at,
+			'completed_at' => gmdate( 'c' ),
 			'folder' => $folder,
 			'recursive' => (bool) $recursive,
 			'asset_count' => count( $assets ),
 			'folder_count' => count( $visited ),
-			'truncated' => count( $assets ) >= self::MAX_SCAN_FILES || count( $visited ) >= self::MAX_SCAN_FOLDERS,
+			'complete' => (bool) $complete,
+			'truncated' => ! $complete,
+			'truncation_reasons' => $truncation_reasons,
 			'assets' => $assets,
 		);
 	}
@@ -468,7 +536,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( 'unavailable' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_requires_unavailable_asset', 'Recreate is only allowed for a Context asset confirmed unavailable by the latest source scan.' );
 		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '', 'recreate' );
 		if ( is_wp_error( $source ) ) return $source;
-		$absence = self::assert_original_file_absent( isset( $asset['file_id'] ) ? $asset['file_id'] : '' );
+		$absence = self::assert_original_file_absent( isset( $asset['file_id'] ) ? $asset['file_id'] : '', $asset, $source );
 		if ( is_wp_error( $absence ) ) return $absence;
 		$target_folder_id = self::resolve_recreate_target_folder( $asset, $source );
 		if ( is_wp_error( $target_folder_id ) ) return $target_folder_id;
@@ -707,6 +775,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
 		if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) return new WP_Error( 'mad4b_context_asset_not_ready', 'Context asset is not ready for runtime loading.' );
+		if ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) return new WP_Error( 'mad4b_context_asset_content_incomplete', 'Context asset normalization is incomplete and cannot be used as governed runtime context.' );
 		$source = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' ) : array();
 		if ( empty( $source ) || 'google_drive' !== ( isset( $source['provider'] ) ? (string) $source['provider'] : '' ) ) return new WP_Error( 'mad4b_context_asset_source_invalid', 'Context asset is not bound to the governed Google Drive source provider.' );
 		$file_id = isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '';
@@ -714,10 +783,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_wp_error( $membership ) ) return $membership;
 		$metadata = self::get_file_metadata( $file_id );
 		if ( is_wp_error( $metadata ) ) return $metadata;
-		$content = self::fetch_text_content( $metadata );
-		if ( is_wp_error( $content ) ) return $content;
-		if ( '' === (string) $content ) return new WP_Error( 'mad4b_context_asset_text_unavailable', 'Context asset does not expose normalized text through the certified read provider.' );
-		$observed_hash = hash( 'sha256', (string) $content );
+		$content_record = self::fetch_text_content_record( $metadata );
+		if ( is_wp_error( $content_record ) ) return $content_record;
+		if ( empty( $content_record['complete'] ) ) return new WP_Error( 'mad4b_context_asset_content_incomplete', 'Context asset provider readback is incomplete; refresh and normalize the source before using it.' );
+		$content = isset( $content_record['content'] ) ? (string) $content_record['content'] : '';
+		if ( '' === $content ) return new WP_Error( 'mad4b_context_asset_text_unavailable', 'Context asset does not expose normalized text through the certified read provider.' );
+		$observed_hash = hash( 'sha256', $content );
 		$registered_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $registered_hash ) || ! hash_equals( $registered_hash, $observed_hash ) ) {
 			return new WP_Error(
@@ -731,12 +802,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 			);
 		}
 		return array(
-			'contract' => 'mad4b.context-asset-read.v1',
+			'contract' => 'mad4b.context-asset-read.v2',
 			'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
 			'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
 			'file_id' => $file_id,
-			'content' => (string) $content,
-			'bytes' => strlen( (string) $content ),
+			'content' => $content,
+			'bytes' => strlen( $content ),
+			'content_complete' => true,
 			'content_sha256' => $observed_hash,
 			'mime_type' => isset( $metadata['mimeType'] ) ? (string) $metadata['mimeType'] : '',
 			'observed_at' => gmdate( 'c' ),
@@ -926,10 +998,42 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
-	private static function assert_original_file_absent( $file_id ) {
+	private static function assert_original_file_absent( $file_id, array $asset = array(), array $source = array() ) {
 		$file_id = self::bounded_drive_id( $file_id );
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Original Google Drive file ID is invalid.' );
-		return self::provider_absence_from_metadata_result( self::get_file_metadata( $file_id ) );
+		if ( empty( $source ) || empty( $source['external_root_id'] ) ) return new WP_Error( 'mad4b_google_drive_recreate_absence_source_invalid', 'Recreation requires the exact governed source binding used by the last complete scan.' );
+		if ( empty( $source['last_scan_complete'] ) || empty( $source['last_complete_scan_generation'] ) ) return new WP_Error( 'mad4b_google_drive_recreate_complete_scan_required', 'Recreation requires a complete governed source scan proving the original asset was not observed.' );
+		if ( empty( $asset['absence_scan_generation'] ) || ! hash_equals( (string) $source['last_complete_scan_generation'], (string) $asset['absence_scan_generation'] ) ) {
+			return new WP_Error( 'mad4b_google_drive_recreate_absence_generation_stale', 'Unavailable-asset evidence is not bound to the latest complete source scan.' );
+		}
+
+		$root = self::get_folder( (string) $source['external_root_id'] );
+		if ( is_wp_error( $root ) ) return new WP_Error( 'mad4b_google_drive_recreate_source_unreadable', 'The governed source root is not currently readable; absence cannot be proven.', array( 'provider_error_code' => $root->get_error_code() ) );
+
+		$parent_id = self::bounded_drive_id( isset( $asset['parent_folder_id'] ) ? $asset['parent_folder_id'] : '' );
+		if ( '' === $parent_id ) return new WP_Error( 'mad4b_google_drive_recreate_parent_unavailable', 'Original parent lineage is required before absence can be proven.' );
+		$parent = self::get_file_metadata( $parent_id );
+		if ( is_wp_error( $parent ) ) return new WP_Error( 'mad4b_google_drive_recreate_parent_unreadable', 'Original parent folder is not currently readable; absence cannot be proven.', array( 'provider_error_code' => $parent->get_error_code() ) );
+		if ( 'application/vnd.google-apps.folder' !== ( isset( $parent['mimeType'] ) ? (string) $parent['mimeType'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_parent_not_folder', 'Stored parent lineage no longer resolves to a folder.' );
+		if ( ! hash_equals( (string) $source['external_root_id'], $parent_id ) ) {
+			$membership = self::assert_file_within_source( $parent_id, $source );
+			if ( is_wp_error( $membership ) ) return new WP_Error( 'mad4b_google_drive_recreate_parent_outside_source', 'Original parent folder is no longer inside the governed source.', array( 'membership_error' => $membership->get_error_code() ) );
+		}
+
+		$absence = self::provider_absence_from_metadata_result( self::get_file_metadata( $file_id ) );
+		if ( is_wp_error( $absence ) ) return $absence;
+
+		$siblings = self::list_children( $parent_id, false, true );
+		if ( is_wp_error( $siblings ) ) return $siblings;
+		if ( empty( $siblings['complete'] ) ) return new WP_Error( 'mad4b_google_drive_recreate_parent_listing_incomplete', 'Parent-folder listing is incomplete; duplicate-safe recreation remains fail-closed.' );
+		$title = isset( $asset['title'] ) ? trim( (string) $asset['title'] ) : '';
+		foreach ( isset( $siblings['items'] ) && is_array( $siblings['items'] ) ? $siblings['items'] : array() as $sibling ) {
+			$sibling_id = isset( $sibling['id'] ) ? (string) $sibling['id'] : '';
+			$sibling_name = isset( $sibling['name'] ) ? trim( (string) $sibling['name'] ) : '';
+			if ( '' !== $sibling_id && hash_equals( $file_id, $sibling_id ) ) return new WP_Error( 'mad4b_google_drive_recreate_original_restored', 'Original Google Drive asset exists again. Rescan Context before attempting recreation.' );
+			if ( '' !== $title && '' !== $sibling_name && 0 === strcasecmp( $title, $sibling_name ) ) return new WP_Error( 'mad4b_google_drive_recreate_duplicate_title_detected', 'A file with the original asset title already exists in the exact parent folder; recreation requires operator review.' );
+		}
+		return true;
 	}
 
 	private static function get_file_metadata( $file_id ) {
@@ -967,9 +1071,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$parent_folder_id = $parents ? self::bounded_drive_id( (string) reset( $parents ) ) : '';
 		$path = ( isset( $source['label'] ) ? (string) $source['label'] : 'Drive' ) . '/' . $name;
 		$preserved_parent = isset( $preserve['parent_folder_id'] ) ? self::bounded_drive_id( (string) $preserve['parent_folder_id'] ) : '';
-		if ( '' !== $parent_folder_id && '' !== $preserved_parent && hash_equals( $parent_folder_id, $preserved_parent ) && ! empty( $preserve['path'] ) ) {
-			$path = (string) $preserve['path'];
-		}
+		if ( '' !== $parent_folder_id && '' !== $preserved_parent && hash_equals( $parent_folder_id, $preserved_parent ) && ! empty( $preserve['path'] ) ) $path = (string) $preserve['path'];
 		return array(
 			'file_id' => isset( $file['id'] ) ? (string) $file['id'] : '',
 			'parent_folder_id' => $parent_folder_id,
@@ -979,6 +1081,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'modifiedTime' => isset( $file['modifiedTime'] ) ? (string) $file['modifiedTime'] : gmdate( 'c' ),
 			'webViewLink' => isset( $file['webViewLink'] ) ? esc_url_raw( (string) $file['webViewLink'] ) : '',
 			'normalized_text' => (string) $content,
+			'content_complete' => true,
+			'content_bytes' => strlen( (string) $content ),
+			'normalization_status' => 'ready',
+			'normalization_reason' => '',
 			'content_hash' => hash( 'sha256', (string) $content ),
 		);
 	}
@@ -998,7 +1104,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::decode_json_response( $response, $error_code );
 	}
 
-	private static function list_children( $parent_id, $folders_only ) {
+	private static function list_children( $parent_id, $folders_only, $detailed = false ) {
 		$parent_id = self::bounded_drive_id( $parent_id );
 		if ( '' === $parent_id ) return new WP_Error( 'mad4b_google_drive_parent_id_invalid', 'Google Drive parent folder ID is invalid.' );
 		$q = "'" . str_replace( "'", "\\'", $parent_id ) . "' in parents and trashed = false";
@@ -1006,6 +1112,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$items = array();
 		$page_token = '';
 		$pages = 0;
+		$limit_hit = false;
+		$reasons = array();
+
 		do {
 			$params = array(
 				'q' => $q,
@@ -1019,17 +1128,34 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$url = self::DRIVE_API . '/files?' . http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
 			$data = self::api_get( $url );
 			if ( is_wp_error( $data ) ) return $data;
+
+			$next_page_token = isset( $data['nextPageToken'] ) ? sanitize_text_field( (string) $data['nextPageToken'] ) : '';
 			foreach ( isset( $data['files'] ) && is_array( $data['files'] ) ? $data['files'] : array() as $file ) {
 				if ( is_array( $file ) ) $items[] = $file;
-				if ( count( $items ) >= self::MAX_SCAN_FILES ) break 2;
+				if ( count( $items ) >= self::MAX_SCAN_FILES ) {
+					$limit_hit = true;
+					$reasons[] = 'child_item_limit';
+					break;
+				}
 			}
-			$page_token = isset( $data['nextPageToken'] ) ? sanitize_text_field( (string) $data['nextPageToken'] ) : '';
 			++$pages;
+			$page_token = $next_page_token;
+			if ( $limit_hit ) break;
 		} while ( '' !== $page_token && $pages < 10 );
-		return $items;
+
+		if ( '' !== $page_token ) $reasons[] = $pages >= 10 ? 'child_page_limit' : 'child_listing_continuation';
+		$complete = ! $limit_hit && '' === $page_token;
+		$result = array(
+			'items' => $items,
+			'complete' => $complete,
+			'next_page_token' => $page_token,
+			'page_count' => $pages,
+			'truncation_reasons' => array_values( array_unique( $reasons ) ),
+		);
+		return $detailed ? $result : $items;
 	}
 
-	private static function fetch_text_content( array $file ) {
+	private static function fetch_text_content_record( array $file ) {
 		$file_id = self::bounded_drive_id( isset( $file['id'] ) ? $file['id'] : '' );
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive file ID is invalid.' );
 		$mime = isset( $file['mimeType'] ) ? strtolower( (string) $file['mimeType'] ) : '';
@@ -1041,7 +1167,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		} elseif ( 0 === strpos( $mime, 'text/' ) || in_array( $mime, array( 'application/json', 'application/xml', 'application/csv' ), true ) ) {
 			$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?alt=media&supportsAllDrives=true';
 		} else {
-			return '';
+			return array(
+				'content' => '',
+				'complete' => false,
+				'bytes' => 0,
+				'normalization_status' => 'unsupported',
+				'normalization_reason' => 'unsupported_mime_type',
+			);
 		}
 		$token = self::access_token();
 		if ( is_wp_error( $token ) ) return $token;
@@ -1051,15 +1183,48 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'timeout' => 20,
 				'redirection' => 2,
 				'headers' => array( 'Authorization' => 'Bearer ' . $token ),
-				'limit_response_size' => self::MAX_TEXT_BYTES,
+				'limit_response_size' => self::MAX_TEXT_BYTES + 1,
 			)
 		);
 		if ( is_wp_error( $response ) ) return $response;
 		$status = (int) wp_remote_retrieve_response_code( $response );
 		if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_google_drive_content_fetch_failed', 'Google Drive content export returned a non-success status.', array( 'status' => $status ) );
-		$body = (string) wp_remote_retrieve_body( $response );
-		if ( strlen( $body ) > self::MAX_TEXT_BYTES ) $body = substr( $body, 0, self::MAX_TEXT_BYTES );
-		return wp_check_invalid_utf8( $body, true );
+		$body = wp_check_invalid_utf8( (string) wp_remote_retrieve_body( $response ), true );
+		$bytes = strlen( $body );
+		if ( $bytes > self::MAX_TEXT_BYTES ) {
+			return array(
+				'content' => substr( $body, 0, self::MAX_TEXT_BYTES ),
+				'complete' => false,
+				'bytes' => $bytes,
+				'normalization_status' => 'incomplete',
+				'normalization_reason' => 'max_text_bytes_exceeded',
+			);
+		}
+		return array(
+			'content' => $body,
+			'complete' => true,
+			'bytes' => $bytes,
+			'normalization_status' => 'ready',
+			'normalization_reason' => '',
+		);
+	}
+
+	private static function fetch_text_content( array $file ) {
+		$record = self::fetch_text_content_record( $file );
+		if ( is_wp_error( $record ) ) return $record;
+		if ( empty( $record['complete'] ) ) {
+			if ( 'unsupported' === ( isset( $record['normalization_status'] ) ? (string) $record['normalization_status'] : '' ) ) return '';
+			return new WP_Error(
+				'mad4b_context_asset_content_incomplete',
+				'Google Drive text normalization exceeded the certified bounded read limit; incomplete content cannot become governed runtime context.',
+				array(
+					'bytes_observed' => isset( $record['bytes'] ) ? (int) $record['bytes'] : 0,
+					'max_bytes' => self::MAX_TEXT_BYTES,
+					'reason' => isset( $record['normalization_reason'] ) ? (string) $record['normalization_reason'] : 'incomplete',
+				)
+			);
+		}
+		return isset( $record['content'] ) ? (string) $record['content'] : '';
 	}
 
 	private static function api_get( $url ) {
