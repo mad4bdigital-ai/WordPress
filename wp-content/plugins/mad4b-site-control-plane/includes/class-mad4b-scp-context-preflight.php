@@ -415,9 +415,120 @@ final class MAD4B_SCP_Context_Preflight {
 			'ready' => empty( $blockers ),
 			'observed_at' => (string) $observed_at,
 		);
-		$json = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		$receipt['receipt_sha256'] = is_string( $json ) ? hash( 'sha256', $json ) : '';
+		$receipt['receipt_sha256'] = self::canonical_receipt_digest( $receipt );
 		return $receipt;
+	}
+
+	public static function mutation_context_guard( $ability_name, $input ) {
+		$ability_name = (string) $ability_name;
+		$input = is_array( $input ) ? $input : array();
+		$requires_receipt = false;
+		if ( 'mad4b/content-update-post' === $ability_name ) {
+			foreach ( array( 'post_title', 'post_content', 'post_excerpt' ) as $field ) {
+				if ( array_key_exists( $field, $input ) ) { $requires_receipt = true; break; }
+			}
+		}
+		if ( 'mad4b/content-create-post' === $ability_name ) $requires_receipt = true;
+
+		$receipt = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			? MAD4B_SCP_Staging_Write_Authority::context_receipt_from_input( $input )
+			: ( isset( $input['_mad4b_context_receipt'] ) && is_array( $input['_mad4b_context_receipt'] ) ? $input['_mad4b_context_receipt'] : array() );
+
+		if ( ! $requires_receipt && empty( $receipt ) ) return true;
+		if ( $requires_receipt && empty( $receipt ) ) return new WP_Error( 'mad4b_content_context_receipt_required', 'Brand-bearing content text mutation requires the exact governed Context Receipt returned by mad4b/skill-get.' );
+		return self::validate_receipt_binding( $receipt );
+	}
+
+	public static function validate_receipt_binding( $receipt ) {
+		if ( ! is_array( $receipt ) || self::RECEIPT_CONTRACT !== ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' ) ) return new WP_Error( 'mad4b_context_receipt_invalid', 'Context Receipt contract is missing or invalid.' );
+		if ( empty( $receipt['ready'] ) || ! empty( $receipt['blockers'] ) ) return new WP_Error( 'mad4b_context_receipt_not_ready', 'Context Receipt was not issued from a ready governed preflight.' );
+		$expected_digest = isset( $receipt['receipt_sha256'] ) ? strtolower( trim( (string) $receipt['receipt_sha256'] ) ) : '';
+		$observed_digest = self::canonical_receipt_digest( $receipt );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) || ! hash_equals( $expected_digest, $observed_digest ) ) return new WP_Error( 'mad4b_context_receipt_integrity_failed', 'Context Receipt digest does not match its canonical evidence.' );
+
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_context_authority_unavailable', 'Context Authority is unavailable while validating the receipt.' );
+		$authority = MAD4B_SCP_Context_Authority::status();
+		$current_site_uuid = isset( $authority['site_uuid'] ) ? (string) $authority['site_uuid'] : '';
+		$current_revision = isset( $authority['profile_revision'] ) ? (int) $authority['profile_revision'] : 0;
+		$current_registry_revision = isset( $authority['registry_revision'] ) ? (int) $authority['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision();
+		$current_fingerprint = isset( $authority['context_fingerprint'] ) ? (string) $authority['context_fingerprint'] : '';
+		$current_authority_fingerprint = isset( $authority['authority_manifest_fingerprint'] ) ? (string) $authority['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
+
+		if ( '' === $current_site_uuid || empty( $receipt['site_uuid'] ) || ! hash_equals( $current_site_uuid, (string) $receipt['site_uuid'] ) ) return new WP_Error( 'mad4b_context_receipt_site_drift', 'Context Receipt belongs to a different Site Profile.' );
+		if ( $current_revision < 1 || $current_revision !== (int) ( isset( $receipt['brand_context_revision'] ) ? $receipt['brand_context_revision'] : 0 ) ) return new WP_Error( 'mad4b_context_receipt_profile_revision_drift', 'Brand Context Profile revision changed after the receipt was issued.' );
+		if ( $current_registry_revision !== (int) ( isset( $receipt['registry_revision'] ) ? $receipt['registry_revision'] : -1 ) ) return new WP_Error( 'mad4b_context_receipt_registry_revision_drift', 'Context registry changed after the receipt was issued.' );
+		if ( '' === $current_fingerprint || empty( $receipt['context_fingerprint'] ) || ! hash_equals( $current_fingerprint, (string) $receipt['context_fingerprint'] ) ) return new WP_Error( 'mad4b_context_receipt_fingerprint_drift', 'Context content fingerprint changed after the receipt was issued.' );
+		if ( '' === $current_authority_fingerprint || empty( $receipt['authority_manifest_fingerprint'] ) || ! hash_equals( $current_authority_fingerprint, (string) $receipt['authority_manifest_fingerprint'] ) ) return new WP_Error( 'mad4b_context_receipt_authority_drift', 'Context authority manifest changed after the receipt was issued.' );
+
+		$logical_id = isset( $receipt['skill_logical_id'] ) ? (string) $receipt['skill_logical_id'] : '';
+		$parts = explode( ':', $logical_id, 3 );
+		if ( 3 !== count( $parts ) || ! class_exists( 'MAD4B_SCP_Skill_Registry' ) ) return new WP_Error( 'mad4b_context_receipt_skill_unresolvable', 'Context Receipt Skill identity cannot be resolved against the live registry.' );
+		$current_skill = MAD4B_SCP_Skill_Registry::get_skill( $parts[0], $parts[1], $parts[2] );
+		if ( is_wp_error( $current_skill ) ) return new WP_Error( 'mad4b_context_receipt_skill_unresolvable', 'Context Receipt Skill no longer resolves in the live registry.', array( 'skill_error' => $current_skill->get_error_code() ) );
+		if ( empty( $receipt['skill_sha256'] ) || empty( $current_skill['sha256'] ) || ! hash_equals( (string) $current_skill['sha256'], (string) $receipt['skill_sha256'] ) ) return new WP_Error( 'mad4b_context_receipt_skill_drift', 'Skill content changed after the Context Receipt was issued.' );
+		if ( isset( $current_skill['context_policy_sha256'] ) && '' !== (string) $current_skill['context_policy_sha256'] ) {
+			if ( empty( $receipt['context_policy_sha256'] ) || ! hash_equals( (string) $current_skill['context_policy_sha256'], (string) $receipt['context_policy_sha256'] ) ) return new WP_Error( 'mad4b_context_receipt_policy_drift', 'Skill Context Policy changed after the Context Receipt was issued.' );
+		}
+
+		return array(
+			'contract' => 'mad4b.context-receipt-validation.v1',
+			'ready' => true,
+			'receipt_sha256' => $expected_digest,
+			'site_uuid' => $current_site_uuid,
+			'registry_revision' => $current_registry_revision,
+			'context_fingerprint' => $current_fingerprint,
+			'authority_manifest_fingerprint' => $current_authority_fingerprint,
+			'skill_logical_id' => $logical_id,
+		);
+	}
+
+	public static function commit_receipt_evidence( $receipt, array $binding = array() ) {
+		$validated = self::validate_receipt_binding( $receipt );
+		if ( is_wp_error( $validated ) ) return $validated;
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_context_receipt_audit_unavailable', 'Append-only audit is unavailable for Context Receipt binding.' );
+		$audit_status = MAD4B_SCP_Audit::storage_status();
+		if ( ! is_array( $audit_status ) || empty( $audit_status['ready'] ) ) return new WP_Error( 'mad4b_context_receipt_audit_not_ready', 'Append-only audit must be ready before Context-bound content execution.' );
+		$event = MAD4B_SCP_Audit::record(
+			'mad4b/context-receipt-bound',
+			array(
+				'receipt_sha256' => (string) $validated['receipt_sha256'],
+				'site_uuid' => (string) $validated['site_uuid'],
+				'registry_revision' => (int) $validated['registry_revision'],
+				'context_fingerprint' => (string) $validated['context_fingerprint'],
+				'authority_manifest_fingerprint' => (string) $validated['authority_manifest_fingerprint'],
+				'skill_logical_id' => (string) $validated['skill_logical_id'],
+				'ability' => isset( $binding['ability'] ) ? (string) $binding['ability'] : '',
+				'provider' => isset( $binding['provider'] ) ? sanitize_key( (string) $binding['provider'] ) : '',
+				'target_fingerprint' => isset( $binding['target_fingerprint'] ) ? (string) $binding['target_fingerprint'] : '',
+				'approval_ticket_id' => isset( $binding['approval_ticket_id'] ) ? (string) $binding['approval_ticket_id'] : '',
+				'request_id' => isset( $binding['request_id'] ) ? (string) $binding['request_id'] : '',
+				'context_receipt' => $receipt,
+			),
+			'ok'
+		);
+		return is_wp_error( $event ) ? $event : $validated;
+	}
+
+	private static function canonical_receipt_digest( array $receipt ) {
+		unset( $receipt['receipt_sha256'] );
+		$canonical = self::canonicalize_receipt_value( $receipt );
+		$json = wp_json_encode( $canonical, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return is_string( $json ) ? hash( 'sha256', $json ) : '';
+	}
+
+	private static function canonicalize_receipt_value( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+		if ( $is_list ) {
+			$out = array();
+			foreach ( $value as $item ) $out[] = self::canonicalize_receipt_value( $item );
+			return $out;
+		}
+		$keys = array_keys( $value );
+		sort( $keys, SORT_STRING );
+		$out = array();
+		foreach ( $keys as $key ) $out[ $key ] = self::canonicalize_receipt_value( $value[ $key ] );
+		return $out;
 	}
 
 	private static function blocked( array $skill, array $policy, $policy_digest, array $blockers, $task_scope, $observed_at ) {
