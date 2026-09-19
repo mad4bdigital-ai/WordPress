@@ -564,8 +564,17 @@ final class MAD4B_SCP_Context_Authority {
 					'Context recreation registry state could not be committed atomically.'
 				);
 				if ( is_wp_error( $commit ) ) return $commit;
-				if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/context-recreated-asset-registered', array( 'asset_id' => $old_asset_id, 'replacement_asset_id' => (string) $normalized['asset_id'], 'source_id' => $source_id, 'file_id' => (string) $normalized['file_id'] ), 'ok' );
-				return array( 'original' => $records[ $old_asset_id ], 'replacement' => $normalized );
+				return self::audited_registry_result(
+					array( 'original' => $records[ $old_asset_id ], 'replacement' => $normalized ),
+					'mad4b/context-recreated-asset-registered',
+					array(
+						'asset_id' => $old_asset_id,
+						'replacement_asset_id' => (string) $normalized['asset_id'],
+						'source_id' => $source_id,
+						'file_id' => (string) $normalized['file_id'],
+					),
+					'ok'
+				);
 			}
 		);
 	}
@@ -713,8 +722,17 @@ final class MAD4B_SCP_Context_Authority {
 					'Replacement file was removed but Context registry rollback could not be finalized atomically.'
 				);
 				if ( is_wp_error( $commit ) ) return $commit;
-				if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/context-recreate-rollback', array( 'asset_id' => $old_asset_id, 'replacement_asset_id' => $replacement_asset_id, 'source_id' => (string) $before_state['source_id'], 'restored_status' => (string) $records[ $old_asset_id ]['status'] ), 'ok' );
-				return $records[ $old_asset_id ];
+				return self::audited_registry_result(
+					$records[ $old_asset_id ],
+					'mad4b/context-recreate-rollback',
+					array(
+						'asset_id' => $old_asset_id,
+						'replacement_asset_id' => $replacement_asset_id,
+						'source_id' => (string) $before_state['source_id'],
+						'restored_status' => (string) $records[ $old_asset_id ]['status'],
+					),
+					'ok'
+				);
 			}
 		);
 	}
@@ -748,20 +766,18 @@ final class MAD4B_SCP_Context_Authority {
 			$sources[ $source_id ]['write_policy'] = $write_policy;
 			$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
 			if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_policy_write_failed', 'Context source write policy could not be persisted.' );
-			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-				MAD4B_SCP_Audit::record(
-					'mad4b/context-source-write-policy',
-					array(
-						'source_id' => $source_id,
-						'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
-						'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
-						'previous_write_policy' => $previous,
-						'write_policy' => $write_policy,
-					),
-					'ok'
-				);
-			}
-			return $sources[ $source_id ];
+			return self::audited_registry_result(
+				$sources[ $source_id ],
+				'mad4b/context-source-write-policy',
+				array(
+					'source_id' => $source_id,
+					'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
+					'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
+					'previous_write_policy' => $previous,
+					'write_policy' => $write_policy,
+				),
+				'ok'
+			);
 		
 			}
 		);
@@ -802,18 +818,21 @@ final class MAD4B_SCP_Context_Authority {
 				'Context source removal could not be committed atomically.'
 			);
 			if ( is_wp_error( $commit ) ) return $commit;
-			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-				MAD4B_SCP_Audit::record(
-					'mad4b/context-source-remove',
-					array(
-						'source_id' => $source_id,
-						'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
-						'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
-						'removed_asset_count' => $removed_assets,
-					)
-				);
-			}
-			return array( 'source_id' => $source_id, 'removed_asset_count' => $removed_assets, 'context_fingerprint' => self::context_fingerprint( $assets, $sources ) );
+			return self::audited_registry_result(
+				array(
+					'source_id' => $source_id,
+					'removed_asset_count' => $removed_assets,
+					'context_fingerprint' => self::context_fingerprint( $assets, $sources ),
+				),
+				'mad4b/context-source-remove',
+				array(
+					'source_id' => $source_id,
+					'provider' => isset( $source['provider'] ) ? (string) $source['provider'] : '',
+					'mode' => isset( $source['mode'] ) ? (string) $source['mode'] : '',
+					'removed_asset_count' => $removed_assets,
+				),
+				'ok'
+			);
 		
 			}
 		);
@@ -908,22 +927,21 @@ final class MAD4B_SCP_Context_Authority {
 				'Context asset review and authority fingerprint could not be committed atomically.'
 			);
 			if ( is_wp_error( $commit ) ) return $commit;
-			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-				MAD4B_SCP_Audit::record(
-					'mad4b/context-asset-review',
-					array(
-						'asset_id' => $asset_id,
-						'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
-						'category' => $category,
-						'authority_class' => $authority,
-						'required' => ! empty( $asset['required'] ),
-						'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
-						'quality_mode' => $quality_mode,
-						'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
-					)
-				);
-			}
-			return $asset;
+			return self::audited_registry_result(
+				$asset,
+				'mad4b/context-asset-review',
+				array(
+					'asset_id' => $asset_id,
+					'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+					'category' => $category,
+					'authority_class' => $authority,
+					'required' => ! empty( $asset['required'] ),
+					'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+					'quality_mode' => $quality_mode,
+					'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+				),
+				'ok'
+			);
 		
 			}
 		);
@@ -1426,39 +1444,113 @@ final class MAD4B_SCP_Context_Authority {
 		$snapshot = self::registry_option_snapshot();
 		try {
 			$result = call_user_func( $callback );
-			if ( is_wp_error( $result ) ) return $result;
+			if ( is_wp_error( $result ) ) return self::compensate_registry_error( $snapshot, $operation, $result, 'callback' );
+
+			$wrapped = self::is_audited_registry_result( $result );
+			$public_result = $wrapped ? $result['result'] : $result;
+			$audit = $wrapped ? $result['audit'] : array();
 
 			$revision = self::bump_registry_revision();
-			if ( ! is_wp_error( $revision ) ) return $result;
+			if ( is_wp_error( $revision ) ) {
+				$failure = self::compensate_registry_error( $snapshot, $operation, $revision, 'revision' );
+				if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+					MAD4B_SCP_Audit::record(
+						'mad4b/context-registry-revision-commit-failed',
+						array(
+							'operation' => sanitize_key( (string) $operation ),
+							'error_code' => $revision->get_error_code(),
+							'compensated' => 'mad4b_context_registry_recovery_required' !== ( is_wp_error( $failure ) ? $failure->get_error_code() : '' ),
+						),
+						'failure'
+					);
+				}
+				return $failure;
+			}
 
-			$restored = self::restore_registry_option_snapshot( $snapshot );
-			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-				MAD4B_SCP_Audit::record(
-					'mad4b/context-registry-revision-commit-failed',
-					array(
-						'operation' => sanitize_key( (string) $operation ),
-						'error_code' => $revision->get_error_code(),
-						'compensated' => ! is_wp_error( $restored ),
-						'compensation_error_code' => is_wp_error( $restored ) ? $restored->get_error_code() : '',
-					),
-					is_wp_error( $restored ) ? 'failure' : 'compensated'
-				);
+			if ( $audit ) {
+				if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) {
+					$audit_result = new WP_Error( 'mad4b_context_audit_unavailable', 'Append-only audit service is unavailable for the committed Context governance mutation.' );
+				} else {
+					$audit_result = MAD4B_SCP_Audit::record(
+						(string) $audit['ability'],
+						isset( $audit['summary'] ) && is_array( $audit['summary'] ) ? $audit['summary'] : array(),
+						isset( $audit['status'] ) ? (string) $audit['status'] : 'ok'
+					);
+				}
+				if ( is_wp_error( $audit_result ) ) return self::compensate_registry_error( $snapshot, $operation, $audit_result, 'audit' );
 			}
-			if ( is_wp_error( $restored ) ) {
-				return new WP_Error(
-					'mad4b_context_registry_revision_recovery_required',
-					'Context registry changed but its revision could not be committed and the pre-operation snapshot could not be fully restored.',
-					array(
-						'operation' => sanitize_key( (string) $operation ),
-						'revision_error_code' => $revision->get_error_code(),
-						'compensation_error_code' => $restored->get_error_code(),
-					)
-				);
-			}
-			return $revision;
+
+			return $public_result;
 		} finally {
 			self::release_registry_lock( $lock );
 		}
+	}
+
+	private static function audited_registry_result( $result, $ability, array $summary, $status = 'ok' ) {
+		return array(
+			'__mad4b_registry_mutation_v1' => true,
+			'result' => $result,
+			'audit' => array(
+				'ability' => (string) $ability,
+				'summary' => $summary,
+				'status' => sanitize_key( (string) $status ),
+			),
+		);
+	}
+
+	private static function is_audited_registry_result( $value ) {
+		return is_array( $value )
+			&& ! empty( $value['__mad4b_registry_mutation_v1'] )
+			&& array_key_exists( 'result', $value )
+			&& ! empty( $value['audit'] )
+			&& is_array( $value['audit'] );
+	}
+
+	private static function registry_snapshot_changed( array $snapshot ) {
+		$sentinel = isset( $snapshot['_sentinel'] ) ? (string) $snapshot['_sentinel'] : '__mad4b_context_snapshot_compare_missing__';
+		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) return true;
+			$current = get_option( $name, $sentinel );
+			$expected = $snapshot[ $name ];
+			if ( ! empty( $expected['existed'] ) ) {
+				if ( $current !== $expected['value'] ) return true;
+			} elseif ( $sentinel !== $current ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static function compensate_registry_error( array $snapshot, $operation, $error, $phase ) {
+		if ( ! is_wp_error( $error ) ) return $error;
+		if ( ! self::registry_snapshot_changed( $snapshot ) ) return $error;
+
+		$restored = self::restore_registry_option_snapshot( $snapshot );
+		if ( ! is_wp_error( $restored ) ) {
+			if ( 'audit' === (string) $phase ) {
+				return new WP_Error(
+					'mad4b_context_registry_audit_commit_failed',
+					'Context governance mutation was compensated because append-only audit evidence could not be committed.',
+					array(
+						'operation' => sanitize_key( (string) $operation ),
+						'audit_error_code' => $error->get_error_code(),
+						'compensated' => true,
+					)
+				);
+			}
+			return $error;
+		}
+
+		return new WP_Error(
+			'mad4b_context_registry_recovery_required',
+			'Context registry mutation failed after changing local state and the pre-operation snapshot could not be fully restored.',
+			array(
+				'operation' => sanitize_key( (string) $operation ),
+				'phase' => sanitize_key( (string) $phase ),
+				'original_error_code' => $error->get_error_code(),
+				'compensation_error_code' => $restored->get_error_code(),
+			)
+		);
 	}
 
 	private static function acquire_registry_lock( $operation ) {
