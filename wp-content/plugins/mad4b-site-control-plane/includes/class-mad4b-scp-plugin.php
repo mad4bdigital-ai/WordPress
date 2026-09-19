@@ -59,6 +59,7 @@ final class MAD4B_SCP_Plugin {
 		if ( is_wp_error( self::$schema_error ) ) add_action( 'admin_notices', array( __CLASS__, 'schema_notice' ) );
 
 		MAD4B_SCP_Admin_UI::boot();
+		MAD4B_SCP_Context_Admin_UI::boot();
 		MAD4B_SCP_Connection_Admin_UI::boot();
 		MAD4B_SCP_ChatGPT_Connection_Admin_UI::boot();
 		MAD4B_SCP_Adapter_Coverage_Admin_UI::boot();

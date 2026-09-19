@@ -37,3 +37,4 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/spec-consistency-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py
