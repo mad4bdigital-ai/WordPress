@@ -1211,10 +1211,39 @@ final class MAD4B_SCP_Context_Authority {
 	private static function with_registry_lock( $operation, $callback ) {
 		$lock = self::acquire_registry_lock( $operation );
 		if ( is_wp_error( $lock ) ) return $lock;
+		$snapshot = self::registry_option_snapshot();
 		try {
 			$result = call_user_func( $callback );
-			if ( ! is_wp_error( $result ) ) self::bump_registry_revision();
-			return $result;
+			if ( is_wp_error( $result ) ) return $result;
+
+			$revision = self::bump_registry_revision();
+			if ( ! is_wp_error( $revision ) ) return $result;
+
+			$restored = self::restore_registry_option_snapshot( $snapshot );
+			if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+				MAD4B_SCP_Audit::record(
+					'mad4b/context-registry-revision-commit-failed',
+					array(
+						'operation' => sanitize_key( (string) $operation ),
+						'error_code' => $revision->get_error_code(),
+						'compensated' => ! is_wp_error( $restored ),
+						'compensation_error_code' => is_wp_error( $restored ) ? $restored->get_error_code() : '',
+					),
+					is_wp_error( $restored ) ? 'failure' : 'compensated'
+				);
+			}
+			if ( is_wp_error( $restored ) ) {
+				return new WP_Error(
+					'mad4b_context_registry_revision_recovery_required',
+					'Context registry changed but its revision could not be committed and the pre-operation snapshot could not be fully restored.',
+					array(
+						'operation' => sanitize_key( (string) $operation ),
+						'revision_error_code' => $revision->get_error_code(),
+						'compensation_error_code' => $restored->get_error_code(),
+					)
+				);
+			}
+			return $revision;
 		} finally {
 			self::release_registry_lock( $lock );
 		}
@@ -1239,9 +1268,49 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	private static function bump_registry_revision() {
-		$next = self::registry_revision() + 1;
-		self::write_option( self::REGISTRY_REVISION_OPTION, $next );
+		$current = self::registry_revision();
+		$next = $current + 1;
+		if ( ! self::write_option( self::REGISTRY_REVISION_OPTION, $next ) ) {
+			return new WP_Error(
+				'mad4b_context_registry_revision_write_failed',
+				'Context registry state changed but its monotonic revision could not be persisted.',
+				array( 'current_revision' => $current, 'attempted_revision' => $next )
+			);
+		}
 		return $next;
+	}
+
+	private static function registry_option_snapshot() {
+		$sentinel = '__mad4b_context_snapshot_missing__' . hash( 'sha256', microtime( true ) . '|' . self::registry_revision() );
+		$snapshot = array( '_sentinel' => $sentinel );
+		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+			$value = get_option( $name, $sentinel );
+			$snapshot[ $name ] = array(
+				'existed' => $sentinel !== $value,
+				'value' => $value,
+			);
+		}
+		return $snapshot;
+	}
+
+	private static function restore_registry_option_snapshot( array $snapshot ) {
+		$failures = array();
+		foreach ( array( self::PROFILE_OPTION, self::SOURCES_OPTION, self::ASSETS_OPTION, self::REGISTRY_REVISION_OPTION ) as $name ) {
+			if ( ! isset( $snapshot[ $name ] ) || ! is_array( $snapshot[ $name ] ) ) {
+				$failures[] = $name . ':snapshot_missing';
+				continue;
+			}
+			$entry = $snapshot[ $name ];
+			if ( ! empty( $entry['existed'] ) ) {
+				if ( ! self::write_option( $name, $entry['value'] ) ) $failures[] = $name;
+			} else {
+				$deleted = delete_option( $name );
+				if ( ! $deleted && false !== get_option( $name, false ) ) $failures[] = $name;
+			}
+		}
+		return $failures
+			? new WP_Error( 'mad4b_context_registry_snapshot_restore_failed', 'Context registry pre-operation snapshot could not be fully restored.', array( 'failures' => $failures ) )
+			: true;
 	}
 
 	private static function commit_option_changes( array $changes, $error_code, $message ) {
