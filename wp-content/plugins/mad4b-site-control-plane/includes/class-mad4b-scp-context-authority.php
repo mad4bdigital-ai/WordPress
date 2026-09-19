@@ -347,9 +347,57 @@ final class MAD4B_SCP_Context_Authority {
 		$normalized['availability_reason'] = '';
 		$normalized['last_seen_at'] = gmdate( 'c' );
 		$records[ $normalized['asset_id'] ] = $normalized;
-		self::write_option( self::ASSETS_OPTION, $records );
+		$written = self::write_option( self::ASSETS_OPTION, $records );
+		if ( false === $written ) return new WP_Error( 'mad4b_context_asset_registry_write_failed', 'Context asset registry could not persist the provider readback.' );
 		self::refresh_profile_fingerprint( $records, self::sources() );
 		return $normalized;
+	}
+
+	public static function register_recreated_asset( $old_asset_id, $source_id, array $provider_asset, array $preserve = array() ) {
+		$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
+		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
+		$source = self::source( $source_id );
+		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found for recreation.' );
+		$records = self::assets();
+		if ( ! isset( $records[ $old_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_original_missing', 'Original Context asset is missing from the registry.' );
+		$original = $records[ $old_asset_id ];
+		if ( ! hash_equals( (string) $original['source_id'], $source_id ) ) return new WP_Error( 'mad4b_context_recreate_source_mismatch', 'Original Context asset is not bound to the requested source.' );
+		if ( 'unavailable' !== ( isset( $original['status'] ) ? (string) $original['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_original_not_unavailable', 'Only an unavailable Context asset can be atomically replaced.' );
+
+		$normalized = self::normalize_asset( $source, $provider_asset );
+		if ( is_wp_error( $normalized ) ) return $normalized;
+		if ( $old_asset_id === (string) $normalized['asset_id'] ) return new WP_Error( 'mad4b_context_recreate_identity_collision', 'Recreated provider asset unexpectedly reused the unavailable asset identity.' );
+
+		foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+			if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
+			elseif ( array_key_exists( $field, $original ) ) $normalized[ $field ] = $original[ $field ];
+		}
+		$normalized['status'] = 'ready';
+		$normalized['availability_reason'] = '';
+		$normalized['last_seen_at'] = gmdate( 'c' );
+
+		$records[ $old_asset_id ]['status'] = 'recreated';
+		$records[ $old_asset_id ]['availability_reason'] = 'replacement_created';
+		$records[ $old_asset_id ]['replacement_asset_id'] = (string) $normalized['asset_id'];
+		$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
+		$records[ $normalized['asset_id'] ] = $normalized;
+
+		$written = self::write_option( self::ASSETS_OPTION, $records );
+		if ( false === $written ) return new WP_Error( 'mad4b_context_recreate_registry_commit_failed', 'Context registry could not atomically bind the recreated replacement.' );
+		self::refresh_profile_fingerprint( $records, self::sources() );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record(
+				'mad4b/context-recreated-asset-registered',
+				array(
+					'asset_id' => $old_asset_id,
+					'replacement_asset_id' => (string) $normalized['asset_id'],
+					'source_id' => $source_id,
+					'file_id' => (string) $normalized['file_id'],
+				),
+				'ok'
+			);
+		}
+		return array( 'original' => $records[ $old_asset_id ], 'replacement' => $normalized );
 	}
 
 	public static function mark_asset_recreated( $old_asset_id, array $new_asset ) {
@@ -362,7 +410,8 @@ final class MAD4B_SCP_Context_Authority {
 			$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
 		}
 		if ( ! empty( $new_asset['asset_id'] ) ) $records[ (string) $new_asset['asset_id'] ] = $new_asset;
-		self::write_option( self::ASSETS_OPTION, $records );
+		$written = self::write_option( self::ASSETS_OPTION, $records );
+		if ( false === $written ) return new WP_Error( 'mad4b_context_recreate_registry_write_failed', 'Context registry could not persist recreated-asset lineage.' );
 		self::refresh_profile_fingerprint( $records, self::sources() );
 		return isset( $records[ $old_asset_id ] ) ? $records[ $old_asset_id ] : array();
 	}
