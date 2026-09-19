@@ -179,6 +179,9 @@ require(adapter, "source_required_for_write", "write mount requires selected Con
 require(adapter, "context_provider_contract_status", "first-party Context provider certification")
 require(adapter, "mad4b.google-drive-context-provider.v1", "first-party provider contract version")
 require(adapter, "artifact_fingerprint", "critical runtime artifact fingerprint")
+require(adapter, "control_plane_build_fingerprint", "Control Plane build-bound provider identity")
+require(adapter, "runtime_structural_plus_build_bound_artifact_fingerprint", "build-bound first-party provider certification mode")
+require(adapter, "MAD4B_SCP_External_Handshake_Evidence", "shared exact Control Plane build fingerprint source")
 require(adapter, "mad4b_context_provider_contract_not_ready", "provider contract fail-closed write mount")
 require(adapter, "return false;", "generic external-plugin certification engine remains explicitly bypassed only in favor of the dedicated first-party Context provider contract")
 assert "'content' => array(\n\t\t\t'context/" not in adapter, "Context Drive mutations must not mount on content surface"
@@ -218,6 +221,17 @@ require(preflight, "validate_receipt_binding", "live Context receipt revalidatio
 require(preflight, "commit_receipt_evidence", "durable append-only Context receipt evidence")
 require(preflight, "mad4b/context-receipt-bound", "Context receipt audit binding")
 require(preflight, "canonical_receipt_digest", "canonical Context receipt integrity digest")
+require(preflight, "content_mutation_requirement", "central content-bearing mutation classifier")
+require(preflight, "mad4b/content-import-bundle", "content bundle receipt enforcement")
+require(preflight, "mad4b/taxonomy-update-term", "taxonomy copy receipt enforcement")
+require(preflight, "seo/update-meta", "SEO copy receipt enforcement")
+require(preflight, "woocommerce/update-product", "product copy receipt enforcement")
+require(preflight, "elementor/update-widget-settings", "Elementor copy receipt enforcement")
+require(preflight, "jetengine/update-post-meta", "JetEngine copy receipt enforcement")
+require(preflight, "mad4b/content-set-meta", "post meta copy receipt enforcement")
+require(preflight, "content_paths_in_value", "nested widget content detection")
+require(preflight, "editor|html|wysiwyg", "rich-text field-name detection")
+assert "'context_receipt' => $receipt" not in preflight, "Full Context receipt must not be duplicated into append-only audit payload"
 
 # Skill exposure must be Context-bound; portable export may not bypass it.
 require(skill_registry, "context_policy_sha256", "Skill Context policy digest")
@@ -268,4 +282,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v24: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v25: PASS")
