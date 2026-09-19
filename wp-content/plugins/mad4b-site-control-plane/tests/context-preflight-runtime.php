@@ -227,6 +227,12 @@ $content_guard_cases = array(
 	),
 	array(
 		'ability' => 'elementor/update-widget-settings',
+		'input' => array( 'settings' => array( 'editor' => '<p>Long-form governed rich text from the page builder.</p>' ) ),
+		'required' => true,
+		'label' => 'Elementor rich-text editor setting',
+	),
+	array(
+		'ability' => 'elementor/update-widget-settings',
 		'input' => array( 'settings' => array( 'background_color' => '#ffffff', 'margin' => array( 'top' => 10, 'bottom' => 10 ) ) ),
 		'required' => false,
 		'label' => 'Elementor visual setting',
