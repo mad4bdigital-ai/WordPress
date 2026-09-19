@@ -345,7 +345,7 @@ require(read(adapter_runtime), 'mad4b.site-control-plane.runtime-plugin-adapter-
 require(read(adapter_reversible_runtime), 'mad4b.site-control-plane.runtime-reversible-adapter.v1', 'adapter-reversible-runtime')
 require(read(jetengine_runtime), 'mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1', 'jetengine-side-channel-runtime')
 require(read(isolation_static), 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3', 'provider-isolation-static')
-require(read(isolation_runtime), 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v3', 'provider-isolation-runtime')
+require(read(isolation_runtime), 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v4', 'provider-isolation-runtime')
 for marker in ('Repository plugin adapter coverage contract', 'Core adapter runtime', 'JetEngine adapter boundary'):
     require(read(adapter_workflow), marker, 'adapter-coverage-workflow')
 for marker in ('Prove explicit provider MCP isolation remains deny-only', 'mcp-provider-isolation-contract.py', 'class-mad4b-scp-external-handshake-evidence.php'):
