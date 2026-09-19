@@ -337,6 +337,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( '' === $target_folder_id || 'root' === $target_folder_id ) return new WP_Error( 'mad4b_google_drive_write_folder_invalid', 'A specific selected Drive folder is required for creates.' );
 		$file = self::create_provider_file( $target_folder_id, $name, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
+		$parent_verified = self::verify_created_file_parent( $file, $target_folder_id );
+		if ( is_wp_error( $parent_verified ) ) return self::compensate_created_file_failure( $parent_verified, $file, $source, 'create' );
 		$observed = self::provider_observed_text( $file, $content );
 		if ( is_wp_error( $observed ) ) return self::compensate_created_file_failure( $observed, $file, $source, 'create' );
 		$asset = self::provider_asset_payload( $source, $file, $observed );
@@ -426,6 +428,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$title = preg_replace( '/\s+\(recreated[^)]*\)$/i', '', $title );
 		$file = self::create_provider_file( $target_folder_id, $title, $content, $format );
 		if ( is_wp_error( $file ) ) return $file;
+		$parent_verified = self::verify_created_file_parent( $file, $target_folder_id );
+		if ( is_wp_error( $parent_verified ) ) return self::compensate_created_file_failure( $parent_verified, $file, $source, 'recreate' );
 		$observed = self::provider_observed_text( $file, $content );
 		if ( is_wp_error( $observed ) ) return self::compensate_created_file_failure( $observed, $file, $source, 'recreate' );
 		$payload = self::provider_asset_payload( $source, $file, $observed, $asset );
@@ -559,6 +563,26 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return MAD4B_SCP_Context_Authority::rollback_recreated_asset( $asset_id, (string) $current['replacement_asset_id'], $before_state );
 	}
 
+	private static function verify_created_file_parent( array $file, $expected_folder_id ) {
+		$expected_folder_id = self::bounded_drive_id( $expected_folder_id );
+		$file_id = self::bounded_drive_id( isset( $file['id'] ) ? $file['id'] : '' );
+		if ( '' === $expected_folder_id || 'root' === $expected_folder_id || '' === $file_id ) return new WP_Error( 'mad4b_google_drive_created_parent_verification_invalid', 'Created Drive file cannot be bound to an invalid target folder or provider identity.' );
+		$parents = isset( $file['parents'] ) && is_array( $file['parents'] ) ? array_values( array_filter( array_map( 'strval', $file['parents'] ) ) ) : array();
+		if ( empty( $parents ) ) {
+			$metadata = self::get_file_metadata( $file_id );
+			if ( is_wp_error( $metadata ) ) return $metadata;
+			$parents = isset( $metadata['parents'] ) && is_array( $metadata['parents'] ) ? array_values( array_filter( array_map( 'strval', $metadata['parents'] ) ) ) : array();
+		}
+		if ( 1 !== count( $parents ) || ! hash_equals( $expected_folder_id, (string) reset( $parents ) ) ) {
+			return new WP_Error(
+				'mad4b_google_drive_created_parent_mismatch',
+				'Google Drive created the asset outside the exact selected target folder; the write will be compensated.',
+				array( 'file_id' => $file_id, 'expected_folder_id' => $expected_folder_id, 'observed_parent_count' => count( $parents ) )
+			);
+		}
+		return true;
+	}
+
 	private static function provider_observed_text( array $file, $fallback ) {
 		$observed = self::fetch_text_content( $file );
 		if ( is_wp_error( $observed ) ) return $observed;
@@ -572,7 +596,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$operation = sanitize_key( (string) $operation );
 		if ( '' === $file_id ) return $provider_error;
 
-		$cleanup = self::delete_provider_file_for_rollback( $file_id, $source );
+		$cleanup = self::delete_provider_file_for_rollback( $file_id, $source, false );
 		$cleanup_ok = true === $cleanup;
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 			MAD4B_SCP_Audit::record(
@@ -602,11 +626,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
-	private static function delete_provider_file_for_rollback( $file_id, array $source ) {
+	private static function delete_provider_file_for_rollback( $file_id, array $source, $require_source_membership = true ) {
 		$file_id = self::bounded_drive_id( $file_id );
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_google_drive_file_id_invalid', 'Google Drive replacement file ID is invalid.' );
-		$membership = self::assert_file_within_source( $file_id, $source );
-		if ( is_wp_error( $membership ) ) return $membership;
+		if ( $require_source_membership ) {
+			$membership = self::assert_file_within_source( $file_id, $source );
+			if ( is_wp_error( $membership ) ) return $membership;
+		}
 		$token = self::access_token();
 		if ( is_wp_error( $token ) ) return $token;
 		$url = self::DRIVE_API . '/files/' . rawurlencode( $file_id ) . '?supportsAllDrives=true';
