@@ -58,8 +58,10 @@ class MAD4B_SCP_Site_Profile {
 }
 
 class MAD4B_SCP_Audit {
+	public static $fail_append = false;
 	public static function storage_status() { return array( 'ready' => true ); }
 	public static function record( $event, $data = array(), $status = 'ok' ) {
+		if ( self::$fail_append ) return new WP_Error( 'fixture_audit_append_failed', 'Injected append-only audit failure.' );
 		$GLOBALS['mad4b_context_audit'][] = array( 'event' => $event, 'data' => $data, 'status' => $status );
 		return array( 'event' => $event, 'status' => $status );
 	}
@@ -236,9 +238,28 @@ mad4b_review_assert( ! in_array( 'mandatory_context_review_required', $ready_sta
 mad4b_review_assert( in_array( 'optional_context_contains_unavailable_assets', $ready_status['warnings'], true ), 'Missing optional writer reference must remain visible as a warning.', $ready_status['warnings'] );
 mad4b_review_assert( 1 === (int) $ready_status['optional_unavailable_asset_count'], 'Exactly one optional unavailable asset must be reported.', $ready_status );
 
+$before_failed_review_asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
+$before_failed_review_revision = MAD4B_SCP_Context_Authority::registry_revision();
+MAD4B_SCP_Audit::$fail_append = true;
+$failed_audit_review = MAD4B_SCP_Context_Authority::review_asset(
+	$asset_id,
+	array(
+		'category' => 'tone_of_voice',
+		'authority_class' => 'brand_authority',
+		'required' => true,
+		'quality_mode' => 'manual',
+		'quality_score' => '88',
+	)
+);
+MAD4B_SCP_Audit::$fail_append = false;
+mad4b_review_assert( is_wp_error( $failed_audit_review ), 'Audit append failure must fail the governance mutation.', $failed_audit_review );
+mad4b_review_assert( 'mad4b_context_registry_audit_commit_failed' === $failed_audit_review->get_error_code(), 'Audit append failure must expose compensated registry error.', $failed_audit_review->get_error_code() );
+mad4b_review_assert( $before_failed_review_asset === MAD4B_SCP_Context_Authority::asset( $asset_id ), 'Audit failure must restore the exact pre-review asset state.' );
+mad4b_review_assert( $before_failed_review_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Audit failure must restore the exact pre-review registry revision.' );
+
 $review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
 mad4b_review_assert( 2 === count( $review_events ), 'Manual review and automatic-score reset must each emit one audit event.', $review_events );
 mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
 mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v3: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v4: PASS\n";
