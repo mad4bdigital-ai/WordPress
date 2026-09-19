@@ -20,6 +20,9 @@ final class MAD4B_SCP_Context_Authority {
 	const PROFILE_OPTION = 'mad4b_scp_brand_context_profile_v1';
 	const SOURCES_OPTION = 'mad4b_scp_context_sources_v1';
 	const ASSETS_OPTION = 'mad4b_scp_context_assets_v1';
+	const REGISTRY_REVISION_OPTION = 'mad4b_scp_context_registry_revision_v1';
+	const REGISTRY_LOCK_OPTION = 'mad4b_scp_context_registry_lock_v1';
+	const REGISTRY_LOCK_TTL = 45;
 
 	const ABILITY = 'mad4b/context-authority-status';
 	const MAX_SOURCES = 50;
@@ -199,121 +202,163 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function upsert_source( array $input ) {
-		$site = self::site_binding();
-		if ( is_wp_error( $site ) ) return $site;
-		$profile = self::profile();
-		if ( empty( $profile ) ) return new WP_Error( 'mad4b_brand_context_profile_required', 'Configure the Brand Context Profile before adding sources.' );
+		return self::with_registry_lock(
+			'upsert_source',
+			static function () use ( $input ) {
+				$site = self::site_binding();
+				if ( is_wp_error( $site ) ) return $site;
+				$profile = self::profile();
+				if ( empty( $profile ) ) return new WP_Error( 'mad4b_brand_context_profile_required', 'Configure the Brand Context Profile before adding sources.' );
 
-		$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
-		$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
-		if ( 'google_drive' !== $provider ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Only the governed Google Drive context provider is supported in this foundation.' );
-		if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true ) ) return new WP_Error( 'mad4b_context_source_mode_invalid', 'Context source mode must be governed or task_attachment.' );
+				$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
+				$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
+				if ( 'google_drive' !== $provider ) return new WP_Error( 'mad4b_context_source_provider_invalid', 'Only the governed Google Drive context provider is supported in this foundation.' );
+				if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true ) ) return new WP_Error( 'mad4b_context_source_mode_invalid', 'Context source mode must be governed or task_attachment.' );
 
-		$external_root_id = self::bounded_external_id( isset( $input['external_root_id'] ) ? $input['external_root_id'] : '' );
-		if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical Google Drive folder ID is required.' );
-		$label = trim( sanitize_text_field( isset( $input['label'] ) ? $input['label'] : '' ) );
-		if ( '' === $label ) $label = 'Google Drive Folder';
-		$task_scope = trim( sanitize_text_field( isset( $input['task_scope'] ) ? $input['task_scope'] : '' ) );
-		if ( 'task_attachment' === $mode && '' === $task_scope ) return new WP_Error( 'mad4b_context_task_scope_required', 'Task-only sources require a task scope label.' );
+				$external_root_id = self::bounded_external_id( isset( $input['external_root_id'] ) ? $input['external_root_id'] : '' );
+				if ( '' === $external_root_id ) return new WP_Error( 'mad4b_context_source_root_required', 'A canonical Google Drive folder ID is required.' );
+				$label = trim( sanitize_text_field( isset( $input['label'] ) ? $input['label'] : '' ) );
+				if ( '' === $label ) $label = 'Google Drive Folder';
+				$task_scope = trim( sanitize_text_field( isset( $input['task_scope'] ) ? $input['task_scope'] : '' ) );
+				if ( 'task_attachment' === $mode && '' === $task_scope ) return new WP_Error( 'mad4b_context_task_scope_required', 'Task-only sources require a task scope label.' );
 
-		$sources = self::sources();
-		$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
-		$current = isset( $sources[ $source_id ] ) ? $sources[ $source_id ] : array();
-		$write_policy = isset( $input['write_policy'] )
-			? sanitize_key( (string) $input['write_policy'] )
-			: ( isset( $current['write_policy'] ) ? sanitize_key( (string) $current['write_policy'] ) : ( 'governed' === $mode ? 'repair_only' : 'read_only' ) );
-		if ( ! isset( self::write_policies()[ $write_policy ] ) ) return new WP_Error( 'mad4b_context_source_write_policy_invalid', 'Context source write policy is invalid.' );
-		if ( 'task_attachment' === $mode && 'read_only' !== $write_policy ) return new WP_Error( 'mad4b_context_task_source_write_forbidden', 'Task-only Context sources are read-only in this release.' );
+				$sources = self::sources();
+				$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
+				$current = isset( $sources[ $source_id ] ) ? $sources[ $source_id ] : array();
+				$write_policy = isset( $input['write_policy'] )
+					? sanitize_key( (string) $input['write_policy'] )
+					: ( isset( $current['write_policy'] ) ? sanitize_key( (string) $current['write_policy'] ) : ( 'governed' === $mode ? 'repair_only' : 'read_only' ) );
+				if ( ! isset( self::write_policies()[ $write_policy ] ) ) return new WP_Error( 'mad4b_context_source_write_policy_invalid', 'Context source write policy is invalid.' );
+				if ( 'task_attachment' === $mode && 'read_only' !== $write_policy ) return new WP_Error( 'mad4b_context_task_source_write_forbidden', 'Task-only Context sources are read-only in this release.' );
 
-
-		$record = array(
-			'contract' => self::SOURCE_CONTRACT,
-			'source_id' => $source_id,
-			'site_uuid' => $site['site_uuid'],
-			'brand_id' => (string) $profile['brand_id'],
-			'provider' => $provider,
-			'mode' => $mode,
-			'external_root_id' => $external_root_id,
-			'label' => $label,
-			'task_scope' => 'task_attachment' === $mode ? $task_scope : '',
-			'write_policy' => $write_policy,
-			'recursive' => ! isset( $input['recursive'] ) || ! empty( $input['recursive'] ),
-			'status' => 'selected',
-			'last_synced_at' => isset( $current['last_synced_at'] ) ? (string) $current['last_synced_at'] : '',
-			'asset_count' => isset( $current['asset_count'] ) ? absint( $current['asset_count'] ) : 0,
-			'created_at' => isset( $current['created_at'] ) ? (string) $current['created_at'] : gmdate( 'c' ),
-			'updated_at' => gmdate( 'c' ),
+				$record = array(
+					'contract' => self::SOURCE_CONTRACT,
+					'source_id' => $source_id,
+					'site_uuid' => $site['site_uuid'],
+					'brand_id' => (string) $profile['brand_id'],
+					'provider' => $provider,
+					'mode' => $mode,
+					'external_root_id' => $external_root_id,
+					'label' => $label,
+					'task_scope' => 'task_attachment' === $mode ? $task_scope : '',
+					'write_policy' => $write_policy,
+					'recursive' => ! isset( $input['recursive'] ) || ! empty( $input['recursive'] ),
+					'status' => isset( $current['status'] ) ? (string) $current['status'] : 'selected',
+					'last_synced_at' => isset( $current['last_synced_at'] ) ? (string) $current['last_synced_at'] : '',
+					'last_scan_complete' => ! empty( $current['last_scan_complete'] ),
+					'last_scan_generation' => isset( $current['last_scan_generation'] ) ? (string) $current['last_scan_generation'] : '',
+					'last_complete_scan_generation' => isset( $current['last_complete_scan_generation'] ) ? (string) $current['last_complete_scan_generation'] : '',
+					'last_complete_scan_at' => isset( $current['last_complete_scan_at'] ) ? (string) $current['last_complete_scan_at'] : '',
+					'last_scan_truncation_reasons' => isset( $current['last_scan_truncation_reasons'] ) && is_array( $current['last_scan_truncation_reasons'] ) ? $current['last_scan_truncation_reasons'] : array(),
+					'asset_count' => isset( $current['asset_count'] ) ? absint( $current['asset_count'] ) : 0,
+					'created_at' => isset( $current['created_at'] ) ? (string) $current['created_at'] : gmdate( 'c' ),
+					'updated_at' => gmdate( 'c' ),
+				);
+				$sources[ $source_id ] = $record;
+				if ( count( $sources ) > self::MAX_SOURCES ) $sources = array_slice( $sources, -self::MAX_SOURCES, self::MAX_SOURCES, true );
+				if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_registry_write_failed', 'Context source registry could not be persisted.' );
+				return $record;
+			}
 		);
-		$sources[ $source_id ] = $record;
-		if ( count( $sources ) > self::MAX_SOURCES ) $sources = array_slice( $sources, -self::MAX_SOURCES, self::MAX_SOURCES, true );
-		self::write_option( self::SOURCES_OPTION, $sources );
-		return $record;
 	}
 
-	public static function replace_source_assets( $source_id, array $assets ) {
-		$source_id = strtolower( trim( (string) $source_id ) );
-		$sources = self::sources();
-		if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
-		$source = $sources[ $source_id ];
-		$records = self::assets();
-		$previous = array();
-		$scan_started_at = gmdate( 'c' );
-		foreach ( $records as $asset_id => $record ) {
-			if ( isset( $record['source_id'] ) && hash_equals( $source_id, (string) $record['source_id'] ) ) {
-				$previous[ (string) $asset_id ] = $record;
-				$records[ $asset_id ]['status'] = 'unavailable';
-				$records[ $asset_id ]['availability_reason'] = 'not_seen_in_latest_scan';
-				$records[ $asset_id ]['last_missing_at'] = $scan_started_at;
-			}
-		}
-		$count = 0;
-		foreach ( array_slice( $assets, 0, self::MAX_ASSETS ) as $asset ) {
-			if ( ! is_array( $asset ) ) continue;
-			$normalized = self::normalize_asset( $source, $asset );
-			if ( is_wp_error( $normalized ) ) continue;
-			$prior = isset( $previous[ $normalized['asset_id'] ] ) ? $previous[ $normalized['asset_id'] ] : array();
-			if ( ! empty( $prior['reviewed_at'] ) && 'human' === ( isset( $prior['classification_source'] ) ? $prior['classification_source'] : '' ) ) {
-				$normalized['category'] = isset( $prior['category'] ) ? (string) $prior['category'] : $normalized['category'];
-				$normalized['classification_confidence'] = 1.0;
-				$normalized['classification_source'] = 'human';
-				$normalized['authority_class'] = isset( $prior['authority_class'] ) ? (string) $prior['authority_class'] : $normalized['authority_class'];
-				$normalized['required'] = ! empty( $prior['required'] );
-				$normalized['priority'] = isset( $prior['priority'] ) ? (int) $prior['priority'] : $normalized['priority'];
-				$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
-				$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
-				$normalized['review_status'] = 'approved';
-				$same_content = ! empty( $prior['content_hash'] ) && hash_equals( (string) $prior['content_hash'], (string) $normalized['content_hash'] );
-				if ( $same_content && ! empty( $prior['quality']['human_override'] ) ) {
-					$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
-					$normalized['quality'] = $prior['quality'];
-				} elseif ( ! $same_content ) {
-					$normalized['review_status'] = 'needs_review_content_changed';
-				}
-			}
-			$normalized['status'] = 'ready';
-			$normalized['availability_reason'] = '';
-			$normalized['last_seen_at'] = $scan_started_at;
-			$normalized['last_missing_at'] = isset( $prior['last_missing_at'] ) ? (string) $prior['last_missing_at'] : '';
-			$records[ $normalized['asset_id'] ] = $normalized;
-			++$count;
-			if ( count( $records ) >= self::MAX_ASSETS ) break;
-		}
-		self::write_option( self::ASSETS_OPTION, $records );
-		$sources[ $source_id ]['status'] = 'ready';
-		$sources[ $source_id ]['last_synced_at'] = gmdate( 'c' );
-		$sources[ $source_id ]['asset_count'] = $count;
-		$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
-		self::write_option( self::SOURCES_OPTION, $sources );
+	public static function replace_source_assets( $source_id, array $assets, array $scan = array() ) {
+		return self::with_registry_lock(
+			'replace_source_assets',
+			static function () use ( $source_id, $assets, $scan ) {
+				$source_id = strtolower( trim( (string) $source_id ) );
+				$sources = self::sources();
+				if ( ! isset( $sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+				$source = $sources[ $source_id ];
+				$records = self::assets();
+				$previous = array();
+				$scan_started_at = isset( $scan['started_at'] ) ? sanitize_text_field( (string) $scan['started_at'] ) : gmdate( 'c' );
+				$scan_completed_at = isset( $scan['completed_at'] ) ? sanitize_text_field( (string) $scan['completed_at'] ) : gmdate( 'c' );
+				$scan_complete = ! array_key_exists( 'complete', $scan ) || ! empty( $scan['complete'] );
+				$scan_generation = isset( $scan['scan_generation'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $scan['scan_generation'] )
+					? strtolower( (string) $scan['scan_generation'] )
+					: hash( 'sha256', $source_id . '|' . $scan_started_at . '|' . count( $assets ) );
+				$truncation_reasons = isset( $scan['truncation_reasons'] ) && is_array( $scan['truncation_reasons'] )
+					? array_values( array_unique( array_filter( array_map( 'sanitize_key', $scan['truncation_reasons'] ) ) ) )
+					: array();
 
-		$profile = self::profile();
-		if ( ! empty( $profile ) ) {
-			$profile['context_fingerprint'] = self::context_fingerprint( $records, $sources );
-			$profile['last_verified_at'] = gmdate( 'c' );
-			$profile['status'] = 'indexed';
-			$profile['updated_at'] = gmdate( 'c' );
-			self::write_option( self::PROFILE_OPTION, $profile );
-		}
-		return array( 'source' => $sources[ $source_id ], 'asset_count' => $count, 'context_fingerprint' => self::context_fingerprint( $records, $sources ) );
+				foreach ( $records as $asset_id => $record ) {
+					if ( ! isset( $record['source_id'] ) || ! hash_equals( $source_id, (string) $record['source_id'] ) ) continue;
+					$previous[ (string) $asset_id ] = $record;
+					if ( $scan_complete ) {
+						$records[ $asset_id ]['status'] = 'unavailable';
+						$records[ $asset_id ]['availability_reason'] = 'not_seen_in_complete_scan';
+						$records[ $asset_id ]['last_missing_at'] = $scan_completed_at;
+						$records[ $asset_id ]['absence_scan_generation'] = $scan_generation;
+					}
+				}
+
+				$count = 0;
+				foreach ( array_slice( $assets, 0, self::MAX_ASSETS ) as $asset ) {
+					if ( ! is_array( $asset ) ) continue;
+					$normalized = self::normalize_asset( $source, $asset );
+					if ( is_wp_error( $normalized ) ) continue;
+					$prior = isset( $previous[ $normalized['asset_id'] ] ) ? $previous[ $normalized['asset_id'] ] : array();
+					if ( ! empty( $prior['reviewed_at'] ) && 'human' === ( isset( $prior['classification_source'] ) ? $prior['classification_source'] : '' ) ) {
+						$normalized['category'] = isset( $prior['category'] ) ? (string) $prior['category'] : $normalized['category'];
+						$normalized['classification_confidence'] = 1.0;
+						$normalized['classification_source'] = 'human';
+						$normalized['authority_class'] = isset( $prior['authority_class'] ) ? (string) $prior['authority_class'] : $normalized['authority_class'];
+						$normalized['required'] = ! empty( $prior['required'] );
+						$normalized['priority'] = isset( $prior['priority'] ) ? (int) $prior['priority'] : $normalized['priority'];
+						$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
+						$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
+						$normalized['review_status'] = 'approved';
+						$same_content = ! empty( $prior['content_hash'] ) && hash_equals( (string) $prior['content_hash'], (string) $normalized['content_hash'] );
+						if ( $same_content && ! empty( $prior['quality']['human_override'] ) ) {
+							$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
+							$normalized['quality'] = $prior['quality'];
+						} elseif ( ! $same_content ) {
+							$normalized['review_status'] = 'needs_review_content_changed';
+						}
+					}
+					$normalized['availability_reason'] = '';
+					$normalized['last_seen_at'] = $scan_completed_at;
+					$normalized['last_missing_at'] = isset( $prior['last_missing_at'] ) ? (string) $prior['last_missing_at'] : '';
+					unset( $normalized['absence_scan_generation'] );
+					$records[ $normalized['asset_id'] ] = $normalized;
+					++$count;
+					if ( count( $records ) >= self::MAX_ASSETS ) break;
+				}
+
+				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_asset_registry_write_failed', 'Context asset registry could not persist the source scan.' );
+				$sources[ $source_id ]['status'] = $scan_complete ? 'ready' : 'partial_scan';
+				$sources[ $source_id ]['last_synced_at'] = $scan_completed_at;
+				$sources[ $source_id ]['last_scan_complete'] = (bool) $scan_complete;
+				$sources[ $source_id ]['last_scan_generation'] = $scan_generation;
+				$sources[ $source_id ]['last_scan_truncation_reasons'] = $truncation_reasons;
+				if ( $scan_complete ) {
+					$sources[ $source_id ]['last_complete_scan_generation'] = $scan_generation;
+					$sources[ $source_id ]['last_complete_scan_at'] = $scan_completed_at;
+				}
+				$sources[ $source_id ]['asset_count'] = $count;
+				$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
+				if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_registry_write_failed', 'Context source scan state could not be persisted.' );
+
+				$profile = self::profile();
+				if ( ! empty( $profile ) ) {
+					$profile['context_fingerprint'] = self::context_fingerprint( $records, $sources );
+					$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $records );
+					if ( $scan_complete ) $profile['last_verified_at'] = $scan_completed_at;
+					$profile['status'] = $scan_complete ? 'indexed' : 'partial_index';
+					$profile['updated_at'] = gmdate( 'c' );
+					if ( ! self::write_option( self::PROFILE_OPTION, $profile ) ) return new WP_Error( 'mad4b_context_profile_write_failed', 'Brand Context Profile scan state could not be persisted.' );
+				}
+				return array(
+					'source' => $sources[ $source_id ],
+					'asset_count' => $count,
+					'scan_complete' => (bool) $scan_complete,
+					'scan_generation' => $scan_generation,
+					'context_fingerprint' => self::context_fingerprint( $records, $sources ),
+					'authority_manifest_fingerprint' => self::authority_manifest_fingerprint( $records ),
+				);
+			}
+		);
 	}
 
 	public static function source( $source_id ) {
@@ -329,75 +374,68 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function upsert_asset_from_provider( $source_id, array $provider_asset, array $preserve = array() ) {
-		$source = self::source( $source_id );
-		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
-		$normalized = self::normalize_asset( $source, $provider_asset );
-		if ( is_wp_error( $normalized ) ) return $normalized;
-		$records = self::assets();
-		$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
-		foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
-			if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
-			elseif ( ! empty( $existing['reviewed_at'] ) && 'human' === ( isset( $existing['classification_source'] ) ? $existing['classification_source'] : '' ) && array_key_exists( $field, $existing ) ) $normalized[ $field ] = $existing[ $field ];
-		}
-		if ( ! empty( $existing['quality']['human_override'] ) && isset( $existing['content_hash'] ) && hash_equals( (string) $existing['content_hash'], (string) $normalized['content_hash'] ) ) {
-			$normalized['quality_score'] = isset( $existing['quality_score'] ) ? (int) $existing['quality_score'] : $normalized['quality_score'];
-			$normalized['quality'] = $existing['quality'];
-		}
-		$normalized['status'] = 'ready';
-		$normalized['availability_reason'] = '';
-		$normalized['last_seen_at'] = gmdate( 'c' );
-		$records[ $normalized['asset_id'] ] = $normalized;
-		$written = self::write_option( self::ASSETS_OPTION, $records );
-		if ( false === $written ) return new WP_Error( 'mad4b_context_asset_registry_write_failed', 'Context asset registry could not persist the provider readback.' );
-		self::refresh_profile_fingerprint( $records, self::sources() );
-		return $normalized;
+		return self::with_registry_lock(
+			'upsert_asset_from_provider',
+			static function () use ( $source_id, $provider_asset, $preserve ) {
+				$source = self::source( $source_id );
+				if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
+				$normalized = self::normalize_asset( $source, $provider_asset );
+				if ( is_wp_error( $normalized ) ) return $normalized;
+				$records = self::assets();
+				$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
+				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
+					elseif ( ! empty( $existing['reviewed_at'] ) && 'human' === ( isset( $existing['classification_source'] ) ? $existing['classification_source'] : '' ) && array_key_exists( $field, $existing ) ) $normalized[ $field ] = $existing[ $field ];
+				}
+				if ( ! empty( $existing['quality']['human_override'] ) && isset( $existing['content_hash'] ) && hash_equals( (string) $existing['content_hash'], (string) $normalized['content_hash'] ) ) {
+					$normalized['quality_score'] = isset( $existing['quality_score'] ) ? (int) $existing['quality_score'] : $normalized['quality_score'];
+					$normalized['quality'] = $existing['quality'];
+				}
+				$normalized['availability_reason'] = '';
+				$normalized['last_seen_at'] = gmdate( 'c' );
+				$records[ $normalized['asset_id'] ] = $normalized;
+				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_asset_registry_write_failed', 'Context asset registry could not persist the provider readback.' );
+				self::refresh_profile_fingerprint( $records, self::sources() );
+				return $normalized;
+			}
+		);
 	}
 
 	public static function register_recreated_asset( $old_asset_id, $source_id, array $provider_asset, array $preserve = array() ) {
-		$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
-		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
-		$source = self::source( $source_id );
-		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found for recreation.' );
-		$records = self::assets();
-		if ( ! isset( $records[ $old_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_original_missing', 'Original Context asset is missing from the registry.' );
-		$original = $records[ $old_asset_id ];
-		if ( ! hash_equals( (string) $original['source_id'], $source_id ) ) return new WP_Error( 'mad4b_context_recreate_source_mismatch', 'Original Context asset is not bound to the requested source.' );
-		if ( 'unavailable' !== ( isset( $original['status'] ) ? (string) $original['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_original_not_unavailable', 'Only an unavailable Context asset can be atomically replaced.' );
+		return self::with_registry_lock(
+			'register_recreated_asset',
+			static function () use ( $old_asset_id, $source_id, $provider_asset, $preserve ) {
+				$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
+				$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
+				$source = self::source( $source_id );
+				if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found for recreation.' );
+				$records = self::assets();
+				if ( ! isset( $records[ $old_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_original_missing', 'Original Context asset is missing from the registry.' );
+				$original = $records[ $old_asset_id ];
+				if ( ! hash_equals( (string) $original['source_id'], $source_id ) ) return new WP_Error( 'mad4b_context_recreate_source_mismatch', 'Original Context asset is not bound to the requested source.' );
+				if ( 'unavailable' !== ( isset( $original['status'] ) ? (string) $original['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_original_not_unavailable', 'Only an unavailable Context asset can be atomically replaced.' );
 
-		$normalized = self::normalize_asset( $source, $provider_asset );
-		if ( is_wp_error( $normalized ) ) return $normalized;
-		if ( $old_asset_id === (string) $normalized['asset_id'] ) return new WP_Error( 'mad4b_context_recreate_identity_collision', 'Recreated provider asset unexpectedly reused the unavailable asset identity.' );
+				$normalized = self::normalize_asset( $source, $provider_asset );
+				if ( is_wp_error( $normalized ) ) return $normalized;
+				if ( $old_asset_id === (string) $normalized['asset_id'] ) return new WP_Error( 'mad4b_context_recreate_identity_collision', 'Recreated provider asset unexpectedly reused the unavailable asset identity.' );
+				foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
+					elseif ( array_key_exists( $field, $original ) ) $normalized[ $field ] = $original[ $field ];
+				}
+				$normalized['availability_reason'] = '';
+				$normalized['last_seen_at'] = gmdate( 'c' );
 
-		foreach ( array( 'category', 'classification_confidence', 'classification_source', 'authority_class', 'required', 'priority', 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
-			if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
-			elseif ( array_key_exists( $field, $original ) ) $normalized[ $field ] = $original[ $field ];
-		}
-		$normalized['status'] = 'ready';
-		$normalized['availability_reason'] = '';
-		$normalized['last_seen_at'] = gmdate( 'c' );
-
-		$records[ $old_asset_id ]['status'] = 'recreated';
-		$records[ $old_asset_id ]['availability_reason'] = 'replacement_created';
-		$records[ $old_asset_id ]['replacement_asset_id'] = (string) $normalized['asset_id'];
-		$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
-		$records[ $normalized['asset_id'] ] = $normalized;
-
-		$written = self::write_option( self::ASSETS_OPTION, $records );
-		if ( false === $written ) return new WP_Error( 'mad4b_context_recreate_registry_commit_failed', 'Context registry could not atomically bind the recreated replacement.' );
-		self::refresh_profile_fingerprint( $records, self::sources() );
-		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-			MAD4B_SCP_Audit::record(
-				'mad4b/context-recreated-asset-registered',
-				array(
-					'asset_id' => $old_asset_id,
-					'replacement_asset_id' => (string) $normalized['asset_id'],
-					'source_id' => $source_id,
-					'file_id' => (string) $normalized['file_id'],
-				),
-				'ok'
-			);
-		}
-		return array( 'original' => $records[ $old_asset_id ], 'replacement' => $normalized );
+				$records[ $old_asset_id ]['status'] = 'recreated';
+				$records[ $old_asset_id ]['availability_reason'] = 'replacement_created';
+				$records[ $old_asset_id ]['replacement_asset_id'] = (string) $normalized['asset_id'];
+				$records[ $old_asset_id ]['recreated_at'] = gmdate( 'c' );
+				$records[ $normalized['asset_id'] ] = $normalized;
+				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_registry_commit_failed', 'Context registry could not atomically bind the recreated replacement.' );
+				self::refresh_profile_fingerprint( $records, self::sources() );
+				if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/context-recreated-asset-registered', array( 'asset_id' => $old_asset_id, 'replacement_asset_id' => (string) $normalized['asset_id'], 'source_id' => $source_id, 'file_id' => (string) $normalized['file_id'] ), 'ok' );
+				return array( 'original' => $records[ $old_asset_id ], 'replacement' => $normalized );
+			}
+		);
 	}
 
 	public static function mark_asset_recreated( $old_asset_id, array $new_asset ) {
@@ -417,36 +455,30 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	public static function rollback_recreated_asset( $old_asset_id, $replacement_asset_id, array $before_state ) {
-		$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
-		$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
-		$records = self::assets();
-		if ( ! isset( $records[ $old_asset_id ] ) || ! isset( $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback requires both original and replacement registry records.' );
-		$current = $records[ $old_asset_id ];
-		if ( 'recreated' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_rollback_status_drift', 'Original Context asset is no longer in recreated state.' );
-		if ( empty( $current['replacement_asset_id'] ) || ! hash_equals( (string) $current['replacement_asset_id'], $replacement_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_binding_drift', 'Original Context asset no longer points to the recorded replacement.' );
-		if ( empty( $before_state['asset_id'] ) || ! hash_equals( (string) $before_state['asset_id'], $old_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_before_mismatch', 'Rollback state is not bound to the original Context asset.' );
-		if ( empty( $before_state['source_id'] ) || ! hash_equals( (string) $before_state['source_id'], (string) $current['source_id'] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_source_mismatch', 'Rollback state is not bound to the original Context source.' );
+		return self::with_registry_lock(
+			'rollback_recreated_asset',
+			static function () use ( $old_asset_id, $replacement_asset_id, $before_state ) {
+				$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
+				$replacement_asset_id = strtolower( trim( sanitize_text_field( (string) $replacement_asset_id ) ) );
+				$records = self::assets();
+				if ( ! isset( $records[ $old_asset_id ] ) || ! isset( $records[ $replacement_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_missing', 'Recreate rollback requires both original and replacement registry records.' );
+				$current = $records[ $old_asset_id ];
+				if ( ! in_array( isset( $current['status'] ) ? (string) $current['status'] : '', array( 'recreated', 'rollback_pending' ), true ) ) return new WP_Error( 'mad4b_context_recreate_rollback_status_drift', 'Original Context asset is no longer in a rollback-compatible recreated state.' );
+				if ( empty( $current['replacement_asset_id'] ) || ! hash_equals( (string) $current['replacement_asset_id'], $replacement_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_binding_drift', 'Original Context asset no longer points to the recorded replacement.' );
+				if ( empty( $before_state['asset_id'] ) || ! hash_equals( (string) $before_state['asset_id'], $old_asset_id ) ) return new WP_Error( 'mad4b_context_recreate_rollback_before_mismatch', 'Rollback state is not bound to the original Context asset.' );
+				if ( empty( $before_state['source_id'] ) || ! hash_equals( (string) $before_state['source_id'], (string) $current['source_id'] ) ) return new WP_Error( 'mad4b_context_recreate_rollback_source_mismatch', 'Rollback state is not bound to the original Context source.' );
 
-		unset( $records[ $replacement_asset_id ] );
-		$records[ $old_asset_id ]['status'] = isset( $before_state['status'] ) ? sanitize_key( (string) $before_state['status'] ) : 'unavailable';
-		$records[ $old_asset_id ]['availability_reason'] = isset( $before_state['availability_reason'] ) ? sanitize_key( (string) $before_state['availability_reason'] ) : 'not_seen_in_latest_scan';
-		unset( $records[ $old_asset_id ]['replacement_asset_id'], $records[ $old_asset_id ]['recreated_at'] );
-		$written = self::write_option( self::ASSETS_OPTION, $records );
-		if ( false === $written ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_write_failed', 'Replacement file was removed but Context registry rollback could not be persisted.' );
-		self::refresh_profile_fingerprint( $records, self::sources() );
-		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-			MAD4B_SCP_Audit::record(
-				'mad4b/context-recreate-rollback',
-				array(
-					'asset_id' => $old_asset_id,
-					'replacement_asset_id' => $replacement_asset_id,
-					'source_id' => (string) $before_state['source_id'],
-					'restored_status' => (string) $records[ $old_asset_id ]['status'],
-				),
-				'ok'
-			);
-		}
-		return $records[ $old_asset_id ];
+				unset( $records[ $replacement_asset_id ] );
+				$records[ $old_asset_id ]['status'] = isset( $before_state['status'] ) ? sanitize_key( (string) $before_state['status'] ) : 'unavailable';
+				$records[ $old_asset_id ]['availability_reason'] = isset( $before_state['availability_reason'] ) ? sanitize_key( (string) $before_state['availability_reason'] ) : 'not_seen_in_complete_scan';
+				if ( isset( $before_state['absence_scan_generation'] ) ) $records[ $old_asset_id ]['absence_scan_generation'] = (string) $before_state['absence_scan_generation'];
+				unset( $records[ $old_asset_id ]['replacement_asset_id'], $records[ $old_asset_id ]['recreated_at'], $records[ $old_asset_id ]['rollback_started_at'] );
+				if ( ! self::write_option( self::ASSETS_OPTION, $records ) ) return new WP_Error( 'mad4b_context_recreate_rollback_registry_write_failed', 'Replacement file was removed but Context registry rollback could not be persisted.' );
+				self::refresh_profile_fingerprint( $records, self::sources() );
+				if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/context-recreate-rollback', array( 'asset_id' => $old_asset_id, 'replacement_asset_id' => $replacement_asset_id, 'source_id' => (string) $before_state['source_id'], 'restored_status' => (string) $records[ $old_asset_id ]['status'] ), 'ok' );
+				return $records[ $old_asset_id ];
+			}
+		);
 	}
 
 	private static function refresh_profile_fingerprint( array $assets, array $sources ) {
@@ -606,9 +638,12 @@ final class MAD4B_SCP_Context_Authority {
 		$assets = self::assets();
 		$governed_sources = array();
 		$task_sources = array();
+		$partial_sources = 0;
 		foreach ( $sources as $source ) {
-			if ( 'governed' === $source['mode'] ) $governed_sources[] = $source;
-			else $task_sources[] = $source;
+			if ( 'governed' === $source['mode'] ) {
+				$governed_sources[] = $source;
+				if ( 'partial_scan' === ( isset( $source['status'] ) ? (string) $source['status'] : '' ) || empty( $source['last_scan_complete'] ) ) ++$partial_sources;
+			} else $task_sources[] = $source;
 		}
 		$governed_assets = array();
 		$required = array();
@@ -616,6 +651,7 @@ final class MAD4B_SCP_Context_Authority {
 		$stale = 0;
 		$conflicting = 0;
 		$unavailable = 0;
+		$incomplete = 0;
 		foreach ( $assets as $asset ) {
 			if ( 'governed' !== $asset['source_mode'] ) continue;
 			$governed_assets[] = $asset;
@@ -624,17 +660,20 @@ final class MAD4B_SCP_Context_Authority {
 			if ( 'stale' === $asset['status'] ) ++$stale;
 			if ( 'conflicting' === $asset['status'] ) ++$conflicting;
 			if ( 'unavailable' === $asset['status'] ) ++$unavailable;
+			if ( 'incomplete' === $asset['status'] || ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) ) ++$incomplete;
 		}
 		$ready_required = 0;
 		$approved_required = 0;
 		foreach ( $required as $asset ) {
-			if ( 'ready' === $asset['status'] ) ++$ready_required;
-			if ( 'ready' === $asset['status'] && 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) ++$approved_required;
+			$content_complete = ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] );
+			if ( 'ready' === $asset['status'] && $content_complete ) ++$ready_required;
+			if ( 'ready' === $asset['status'] && $content_complete && 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) ++$approved_required;
 		}
 		$blockers = array();
 		if ( empty( $site_status['configured'] ) || empty( $site_status['origin_match'] ) || empty( $site_status['environment_match'] ) ) $blockers[] = 'site_profile_not_enrolled';
 		if ( empty( $profile ) ) $blockers[] = 'brand_context_profile_unconfigured';
 		if ( empty( $governed_sources ) ) $blockers[] = 'governed_context_source_missing';
+		if ( $partial_sources > 0 ) $blockers[] = 'governed_context_source_scan_incomplete';
 		if ( empty( $governed_assets ) ) $blockers[] = 'governed_context_assets_missing';
 		if ( ! empty( $governed_assets ) && empty( $required ) ) $blockers[] = 'mandatory_context_unclassified';
 		if ( count( $required ) !== $ready_required ) $blockers[] = 'mandatory_context_not_ready';
@@ -642,18 +681,22 @@ final class MAD4B_SCP_Context_Authority {
 		if ( $stale > 0 ) $blockers[] = 'brand_context_contains_stale_assets';
 		if ( $unavailable > 0 ) $blockers[] = 'brand_context_contains_unavailable_assets';
 		if ( $conflicting > 0 ) $blockers[] = 'mandatory_context_conflict';
+		if ( $incomplete > 0 ) $blockers[] = 'brand_context_contains_incomplete_assets';
 
 		return array(
-			'contract' => self::CONTRACT,
+			'contract' => 'mad4b.context-authority.v2',
 			'ready' => empty( $blockers ),
 			'state' => empty( $blockers ) ? 'ready' : ( empty( $profile ) ? 'unconfigured' : 'blocked' ),
 			'site_uuid' => isset( $site_status['site_uuid'] ) ? (string) $site_status['site_uuid'] : '',
 			'brand_id' => isset( $profile['brand_id'] ) ? (string) $profile['brand_id'] : '',
 			'brand_name' => isset( $profile['brand_name'] ) ? (string) $profile['brand_name'] : '',
 			'profile_revision' => isset( $profile['revision'] ) ? absint( $profile['revision'] ) : 0,
+			'registry_revision' => self::registry_revision(),
 			'context_fingerprint' => self::context_fingerprint( $assets, $sources ),
+			'authority_manifest_fingerprint' => self::authority_manifest_fingerprint( $assets ),
 			'governed_source_count' => count( $governed_sources ),
 			'task_source_count' => count( $task_sources ),
+			'partial_source_count' => $partial_sources,
 			'asset_count' => count( $assets ),
 			'governed_asset_count' => count( $governed_assets ),
 			'required_asset_count' => count( $required ),
@@ -661,6 +704,7 @@ final class MAD4B_SCP_Context_Authority {
 			'approved_required_asset_count' => $approved_required,
 			'stale_asset_count' => $stale,
 			'unavailable_asset_count' => $unavailable,
+			'incomplete_asset_count' => $incomplete,
 			'conflicting_asset_count' => $conflicting,
 			'average_quality_score' => $quality_values ? (int) round( array_sum( $quality_values ) / count( $quality_values ) ) : null,
 			'quality_scored_asset_count' => count( $quality_values ),
@@ -871,10 +915,16 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! is_array( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? $asset['source_mode'] : '' ) ) continue;
 			$rows[] = array(
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
 				'version' => isset( $asset['version'] ) ? (string) $asset['version'] : '',
 				'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+				'content_complete' => ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] ),
+				'normalization_status' => isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : '',
 				'parent_folder_id' => isset( $asset['parent_folder_id'] ) ? (string) $asset['parent_folder_id'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
+				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
+				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '',
 				'priority' => isset( $asset['priority'] ) ? (int) $asset['priority'] : 0,
 				'required' => ! empty( $asset['required'] ),
 				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
@@ -889,18 +939,17 @@ final class MAD4B_SCP_Context_Authority {
 		$file_id = self::bounded_external_id( isset( $asset['file_id'] ) ? $asset['file_id'] : '' );
 		if ( '' === $file_id ) return new WP_Error( 'mad4b_context_asset_file_id_required', 'Asset requires a canonical external file ID.' );
 		$parent_folder_id = self::bounded_external_id( isset( $asset['parent_folder_id'] ) ? $asset['parent_folder_id'] : '' );
-		if ( '' === $parent_folder_id && ! empty( $asset['parents'] ) && is_array( $asset['parents'] ) ) {
-			$parent_folder_id = self::bounded_external_id( (string) reset( $asset['parents'] ) );
-		}
+		if ( '' === $parent_folder_id && ! empty( $asset['parents'] ) && is_array( $asset['parents'] ) ) $parent_folder_id = self::bounded_external_id( (string) reset( $asset['parents'] ) );
 		$title = trim( sanitize_text_field( isset( $asset['title'] ) ? $asset['title'] : '' ) );
 		if ( '' === $title ) $title = 'Untitled';
-		$content = isset( $asset['normalized_text'] ) ? (string) $asset['normalized_text'] : '';
+		$content_complete = ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] );
+		$content = $content_complete && isset( $asset['normalized_text'] ) ? (string) $asset['normalized_text'] : '';
 		$classification = self::classify_asset( $title, isset( $asset['path'] ) ? $asset['path'] : '', $content );
 		$metadata = $asset;
 		$metadata['category'] = $classification['category'];
 		$metadata['classification_confidence'] = $classification['classification_confidence'];
 		$quality = self::score_asset( $metadata, $content );
-		$content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+		$content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $content_hash ) ) {
 			$basis = '' !== $content ? $content : $file_id . '|' . ( isset( $asset['modifiedTime'] ) ? $asset['modifiedTime'] : '' );
 			$content_hash = hash( 'sha256', $basis );
@@ -922,8 +971,12 @@ final class MAD4B_SCP_Context_Authority {
 			'mime_type' => isset( $asset['mimeType'] ) ? substr( sanitize_text_field( (string) $asset['mimeType'] ), 0, 191 ) : '',
 			'version' => isset( $asset['modifiedTime'] ) ? sanitize_text_field( (string) $asset['modifiedTime'] ) : '',
 			'content_hash' => $content_hash,
-			'content_available' => '' !== $content,
-			'content_excerpt' => '' !== $content ? wp_trim_words( wp_strip_all_tags( $content ), 45, '…' ) : '',
+			'content_complete' => (bool) $content_complete,
+			'content_bytes' => isset( $asset['content_bytes'] ) ? max( 0, (int) $asset['content_bytes'] ) : strlen( $content ),
+			'normalization_status' => isset( $asset['normalization_status'] ) ? sanitize_key( (string) $asset['normalization_status'] ) : ( $content_complete ? 'ready' : 'incomplete' ),
+			'normalization_reason' => isset( $asset['normalization_reason'] ) ? sanitize_key( (string) $asset['normalization_reason'] ) : '',
+			'content_available' => $content_complete && '' !== $content,
+			'content_excerpt' => $content_complete && '' !== $content ? wp_trim_words( wp_strip_all_tags( $content ), 45, '…' ) : '',
 			'category' => $classification['category'],
 			'classification_confidence' => $classification['classification_confidence'],
 			'classification_source' => $classification['classification_source'],
@@ -938,7 +991,7 @@ final class MAD4B_SCP_Context_Authority {
 			'reviewed_by' => 0,
 			'reviewed_at' => '',
 			'review_status' => 'unreviewed',
-			'status' => 'ready',
+			'status' => $content_complete ? 'ready' : 'incomplete',
 			'last_synced_at' => gmdate( 'c' ),
 		);
 	}
@@ -985,8 +1038,73 @@ final class MAD4B_SCP_Context_Authority {
 		return $value;
 	}
 
+	public static function registry_revision() {
+		return max( 0, (int) get_option( self::REGISTRY_REVISION_OPTION, 0 ) );
+	}
+
+	public static function authority_manifest_fingerprint( $assets = null ) {
+		if ( null === $assets ) $assets = self::assets();
+		$rows = array();
+		foreach ( is_array( $assets ) ? $assets : array() as $asset ) {
+			if ( ! is_array( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) continue;
+			$rows[] = array(
+				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
+				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
+				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '',
+				'required' => ! empty( $asset['required'] ),
+				'priority' => isset( $asset['priority'] ) ? (int) $asset['priority'] : 0,
+				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
+				'content_complete' => ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] ),
+			);
+		}
+		usort( $rows, static function ( $a, $b ) { return strcmp( $a['asset_id'], $b['asset_id'] ); } );
+		$json = wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return hash( 'sha256', is_string( $json ) ? $json : '[]' );
+	}
+
+	private static function with_registry_lock( $operation, $callback ) {
+		$lock = self::acquire_registry_lock( $operation );
+		if ( is_wp_error( $lock ) ) return $lock;
+		try {
+			$result = call_user_func( $callback );
+			if ( ! is_wp_error( $result ) ) self::bump_registry_revision();
+			return $result;
+		} finally {
+			self::release_registry_lock( $lock );
+		}
+	}
+
+	private static function acquire_registry_lock( $operation ) {
+		$operation = sanitize_key( (string) $operation );
+		$owner = function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : hash( 'sha256', uniqid( 'mad4b-context-lock-', true ) );
+		$record = array( 'owner' => $owner, 'operation' => $operation, 'expires_at' => time() + self::REGISTRY_LOCK_TTL );
+		if ( add_option( self::REGISTRY_LOCK_OPTION, $record, '', false ) ) return $owner;
+		$current = get_option( self::REGISTRY_LOCK_OPTION, array() );
+		if ( is_array( $current ) && isset( $current['expires_at'] ) && (int) $current['expires_at'] < time() ) {
+			delete_option( self::REGISTRY_LOCK_OPTION );
+			if ( add_option( self::REGISTRY_LOCK_OPTION, $record, '', false ) ) return $owner;
+		}
+		return new WP_Error( 'mad4b_context_registry_busy', 'Context registry is being changed by another governed operation. Retry against the new registry revision.', array( 'operation' => $operation, 'registry_revision' => self::registry_revision() ) );
+	}
+
+	private static function release_registry_lock( $owner ) {
+		$current = get_option( self::REGISTRY_LOCK_OPTION, array() );
+		if ( is_array( $current ) && isset( $current['owner'] ) && hash_equals( (string) $current['owner'], (string) $owner ) ) delete_option( self::REGISTRY_LOCK_OPTION );
+	}
+
+	private static function bump_registry_revision() {
+		$next = self::registry_revision() + 1;
+		self::write_option( self::REGISTRY_REVISION_OPTION, $next );
+		return $next;
+	}
+
 	private static function write_option( $name, $value ) {
-		if ( false === get_option( $name, false ) ) return add_option( $name, $value, '', false );
-		return update_option( $name, $value, false );
+		$current = get_option( $name, false );
+		if ( false !== $current && $current === $value ) return true;
+		$result = false === $current ? add_option( $name, $value, '', false ) : update_option( $name, $value, false );
+		if ( true === $result ) return true;
+		return get_option( $name, false ) === $value;
 	}
 }
