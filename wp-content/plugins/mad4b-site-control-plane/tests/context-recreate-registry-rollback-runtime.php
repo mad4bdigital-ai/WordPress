@@ -104,7 +104,7 @@ $base = array(
 	'scope' => 'all',
 	'quality_score' => 90,
 	'quality_auto_score' => 90,
-	'quality' => array( 'contract' => MAD4B_SCP_Context_Authority::QUALITY_CONTRACT, 'overall_score' => 90 ),
+	'quality' => array( 'contract' => MAD4B_SCP_Context_Authority::QUALITY_CONTRACT, 'overall_score' => 90, 'human_override' => true, 'mode' => 'human_override' ),
 	'reviewed_by' => 1,
 	'reviewed_at' => gmdate( 'c' ),
 	'review_status' => 'approved',
@@ -140,6 +140,12 @@ $after_register = MAD4B_SCP_Context_Authority::assets();
 mad4b_context_rollback_assert( 'recreated' === $after_register[ $old_id ]['status'], 'atomic recreation must mark original recreated' );
 mad4b_context_rollback_assert( hash_equals( $new_id, (string) $after_register[ $old_id ]['replacement_asset_id'] ), 'original must bind exact replacement identity' );
 mad4b_context_rollback_assert( isset( $after_register[ $new_id ] ) && 'ready' === $after_register[ $new_id ]['status'], 'replacement must become ready in same registry transition' );
+mad4b_context_rollback_assert( 'human' === $after_register[ $new_id ]['classification_source'], 'recreated replacement must preserve human classification authority' );
+mad4b_context_rollback_assert( 'tone_of_voice' === $after_register[ $new_id ]['category'] && 'brand_authority' === $after_register[ $new_id ]['authority_class'], 'recreated replacement must preserve category and authority metadata' );
+mad4b_context_rollback_assert( ! empty( $after_register[ $new_id ]['required'] ), 'recreated replacement must preserve the required-context decision' );
+mad4b_context_rollback_assert( 'needs_review_content_changed' === $after_register[ $new_id ]['review_status'], 'recreated replacement content must require renewed human review' );
+mad4b_context_rollback_assert( empty( $after_register[ $new_id ]['reviewed_at'] ) && empty( $after_register[ $new_id ]['reviewed_by'] ), 'recreated replacement must not inherit current approval evidence from the unavailable original' );
+mad4b_context_rollback_assert( empty( $after_register[ $new_id ]['quality']['human_override'] ), 'recreated replacement must not inherit a manual quality score from different content' );
 
 $before = array(
 	'asset_id' => $old_id,
@@ -168,4 +174,4 @@ mad4b_context_rollback_assert( 'not_seen_in_latest_scan' === $assets[ $old_id ][
 mad4b_context_rollback_assert( empty( $assets[ $old_id ]['replacement_asset_id'] ), 'replacement lineage must be cleared after undo' );
 mad4b_context_rollback_assert( ! empty( MAD4B_SCP_Audit::$events ), 'recreation rollback must be audited' );
 
-echo "mad4b.site-control-plane.context-recreate-registry-rollback.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-recreate-registry-rollback.runtime.v3: PASS\n";
