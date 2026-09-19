@@ -91,9 +91,10 @@ jobs:
             jetengine-content-modeling
             wordpress-archive-audit
             wordpress-change-safety
+            wordpress-content-authoring
           )
           test -d "$seed"
-          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '6'
+          test "$(find "$seed" -mindepth 2 -maxdepth 2 -type f -name SKILL.md | wc -l)" = '7'
           for name in "${expected[@]}"; do
             cmp --silent "$seed/$name/SKILL.md" "plugins/mad4b-wordpress/skills/$name/SKILL.md"
           done
