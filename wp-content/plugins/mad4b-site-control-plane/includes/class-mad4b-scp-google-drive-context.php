@@ -353,6 +353,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	public static function recreate_asset( $asset_id, $content, $format = 'google_doc' ) {
 		$asset = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset( $asset_id ) : array();
 		if ( empty( $asset ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found.' );
+		if ( 'unavailable' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) return new WP_Error( 'mad4b_google_drive_recreate_requires_unavailable_asset', 'Recreate is only allowed for a Context asset confirmed unavailable by the latest source scan.' );
 		$source = self::write_source( isset( $asset['source_id'] ) ? $asset['source_id'] : '' );
 		if ( is_wp_error( $source ) ) return $source;
 		$content = (string) $content;
