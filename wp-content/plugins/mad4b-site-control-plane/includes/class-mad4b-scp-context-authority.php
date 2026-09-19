@@ -89,6 +89,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function assets() {
 		$site = self::site_binding();
 		if ( is_wp_error( $site ) ) return array();
+		$sources = self::sources();
 		$records = get_option( self::ASSETS_OPTION, array() );
 		if ( ! is_array( $records ) ) return array();
 		$out = array();
@@ -96,6 +97,11 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! self::valid_asset( $record ) ) continue;
 			$record_site_uuid = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
 			if ( '' === $record_site_uuid || ! hash_equals( (string) $site['site_uuid'], $record_site_uuid ) ) continue;
+			$source_id = isset( $record['source_id'] ) ? (string) $record['source_id'] : '';
+			if ( '' === $source_id || ! isset( $sources[ $source_id ] ) ) continue;
+			$source_mode = isset( $sources[ $source_id ]['mode'] ) ? (string) $sources[ $source_id ]['mode'] : '';
+			$asset_mode = isset( $record['source_mode'] ) ? (string) $record['source_mode'] : '';
+			if ( '' === $source_mode || '' === $asset_mode || ! hash_equals( $source_mode, $asset_mode ) ) continue;
 			$out[ (string) $key ] = $record;
 		}
 		return $out;

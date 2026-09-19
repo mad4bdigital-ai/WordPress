@@ -37,6 +37,8 @@ require(authority, "mad4b_context_source_root_forbidden", "My Drive root source 
 require(authority, "context_fingerprint", "context fingerprint")
 require(authority, "$site = self::site_binding();", "Context reads bind to current Site Profile")
 require(authority, "hash_equals( (string) $site['site_uuid']", "exact Site UUID read isolation")
+require(authority, "! isset( $sources[ $source_id ] )", "orphan asset source denial")
+require(authority, "hash_equals( $source_mode, $asset_mode )", "asset/source mode binding")
 require(authority, "classification_confidence", "classification confidence")
 require(authority, "authority_class", "authority class")
 require(authority, "quality_score", "quality score")
@@ -266,4 +268,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v23: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v24: PASS")

@@ -75,10 +75,43 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 	$root => array_merge( mad4b_source_fixture( $root, 'governed', 'managed' ), array( 'external_root_id' => 'root' ) ),
 );
 
+$valid_asset = str_repeat( '1', 64 );
+$root_asset = str_repeat( '2', 64 );
+$orphan_asset = str_repeat( '3', 64 );
+$mode_mismatch_asset = str_repeat( '4', 64 );
+
+function mad4b_asset_fixture( $asset_id, $source_id, $mode ) {
+	return array(
+		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
+		'asset_id' => $asset_id,
+		'site_uuid' => '11111111-1111-4111-8111-111111111111',
+		'brand_id' => 'brand-fixture',
+		'source_id' => $source_id,
+		'source_mode' => $mode,
+		'file_id' => 'file-' . substr( $asset_id, 0, 8 ),
+		'title' => 'Fixture Asset',
+		'status' => 'ready',
+	);
+}
+
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] = array(
+	$valid_asset => mad4b_asset_fixture( $valid_asset, $managed, 'governed' ),
+	$root_asset => mad4b_asset_fixture( $root_asset, $root, 'governed' ),
+	$orphan_asset => mad4b_asset_fixture( $orphan_asset, str_repeat( 'f', 64 ), 'governed' ),
+	$mode_mismatch_asset => mad4b_asset_fixture( $mode_mismatch_asset, $task, 'governed' ),
+);
+
 $sources = MAD4B_SCP_Context_Authority::sources();
 mad4b_context_policy_assert( 'read_only' === $sources[ $old ]['write_policy'], 'legacy source without policy must remain read-only' );
 mad4b_context_policy_assert( 'read_only' === $sources[ $task ]['write_policy'], 'task-only source must normalize to read-only even if stored otherwise' );
 mad4b_context_policy_assert( ! isset( $sources[ $root ] ), 'My Drive root must never materialize as a Context source boundary' );
+
+$assets = MAD4B_SCP_Context_Authority::assets();
+mad4b_context_policy_assert( isset( $assets[ $valid_asset ] ), 'Asset bound to a current valid source must remain eligible.' );
+mad4b_context_policy_assert( ! isset( $assets[ $root_asset ] ), 'Asset bound to rejected My Drive root source must be excluded from Context Authority.' );
+mad4b_context_policy_assert( ! isset( $assets[ $orphan_asset ] ), 'Asset whose source no longer exists must be excluded from Context Authority.' );
+mad4b_context_policy_assert( ! isset( $assets[ $mode_mismatch_asset ] ), 'Asset source mode must exactly match its current source mode.' );
+mad4b_context_policy_assert( 1 === count( $assets ), 'Only source-authoritative assets may materialize in the Context registry view.' );
 
 mad4b_context_policy_assert( false === MAD4B_SCP_Context_Authority::source_allows_write( $old, 'update' ), 'legacy read-only source must deny update' );
 mad4b_context_policy_assert( false === MAD4B_SCP_Context_Authority::source_allows_write( $repair, 'create' ), 'repair-only source must deny create' );
@@ -93,4 +126,4 @@ mad4b_context_policy_assert( 1 === MAD4B_SCP_Context_Authority::writable_source_
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'update' ), 'repair and managed sources should enable update' );
 mad4b_context_policy_assert( 2 === MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ), 'repair and managed sources should enable recreate' );
 
-echo "mad4b.site-control-plane.context-source-write-policy.runtime.v2: PASS\n";
+echo "mad4b.site-control-plane.context-source-write-policy.runtime.v3: PASS\n";
