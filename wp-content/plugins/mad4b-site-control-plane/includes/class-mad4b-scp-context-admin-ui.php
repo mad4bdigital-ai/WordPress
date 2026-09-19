@@ -126,7 +126,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$source = $sources[ $source_id ];
 		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $source['external_root_id'], ! empty( $source['recursive'] ) );
 		if ( is_wp_error( $scan ) ) self::redirect_result( $scan, 'sources', '' );
-		$result = MAD4B_SCP_Context_Authority::replace_source_assets( $source_id, isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array() );
+		$result = MAD4B_SCP_Context_Authority::replace_source_assets(
+			$source_id,
+			isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array(),
+			$scan
+		);
 		self::redirect_result( $result, 'assets', ! empty( $scan['truncated'] ) ? 'source_scanned_truncated' : 'source_scanned' );
 	}
 
@@ -637,7 +641,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			'source_selected' => __( 'Source folder added. Scan it when you are ready.', 'mad4b-site-control-plane' ),
 			'source_policy_updated' => __( 'Source write policy updated. Runtime write eligibility will follow the selected policy and OAuth scope.', 'mad4b-site-control-plane' ),
 			'source_scanned' => __( 'Source scan completed and Context assets were refreshed.', 'mad4b-site-control-plane' ),
-			'source_scanned_truncated' => __( 'Source scan completed at the safety limit. Review the folder scope before increasing coverage.', 'mad4b-site-control-plane' ),
+			'source_scanned_truncated' => __( 'Source scan was partial. Seen assets were refreshed, but unseen assets were not marked unavailable. Narrow the folder or increase certified coverage before using absence as evidence.', 'mad4b-site-control-plane' ),
 			'asset_review_saved' => __( 'Asset classification and quality review saved and the Context fingerprint was refreshed.', 'mad4b-site-control-plane' ),
 			'source_removed' => __( 'Source and its indexed assets were removed. Google Drive content was not changed.', 'mad4b-site-control-plane' ),
 		);
