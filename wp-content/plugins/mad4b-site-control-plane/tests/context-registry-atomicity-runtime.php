@@ -37,6 +37,18 @@ function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
 function wp_trim_words( $value, $num_words = 55, $more = null ) { return (string) $value; }
 function esc_url_raw( $value ) { return (string) $value; }
 
+class MAD4B_SCP_Audit {
+	public static $ready = true;
+	public static $fail_append = false;
+	public static $events = array();
+	public static function storage_status() { return array( 'ready' => self::$ready ); }
+	public static function record( $ability, $summary = array(), $status = 'ok' ) {
+		if ( self::$fail_append ) return new WP_Error( 'fixture_audit_append_failed', 'fixture audit append failed' );
+		self::$events[] = array( 'ability' => (string) $ability, 'summary' => $summary, 'status' => (string) $status );
+		return true;
+	}
+}
+
 class MAD4B_SCP_Site_Profile {
 	public static function status() {
 		return array(
@@ -104,6 +116,17 @@ $asset = array(
 	'status' => 'ready',
 );
 
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
+	'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+	'site_uuid' => $site_uuid,
+	'brand_id' => 'brand-fixture',
+	'brand_name' => 'Fixture Brand',
+	'revision' => 1,
+	'status' => 'configured',
+	'context_policy' => 'site_bound_governed_plus_task_sources',
+	'context_fingerprint' => str_repeat( '0', 64 ),
+	'last_verified_at' => '',
+);
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ] = array( $source_id => $source );
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] = array( $asset_id => $asset );
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::REGISTRY_REVISION_OPTION ] = 7;
@@ -163,4 +186,37 @@ mad4b_atomic_assert( 8 === (int) $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Co
 $after = MAD4B_SCP_Context_Authority::assets();
 mad4b_atomic_assert( 'unavailable' === $after[ $asset_id ]['status'], 'Committed complete scan must expose its intended asset state.' );
 
-echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v1: PASS\n";
+$before_upsert_sources = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
+$before_upsert_revision = MAD4B_SCP_Context_Authority::registry_revision();
+MAD4B_SCP_Audit::$fail_append = true;
+$failed_upsert = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-audit-compensation',
+		'label' => 'Audit Compensation Folder',
+		'write_policy' => 'repair_only',
+	)
+);
+mad4b_atomic_assert( is_wp_error( $failed_upsert ), 'Source upsert must fail when append-only audit commit fails.', $failed_upsert );
+mad4b_atomic_assert( 'mad4b_context_registry_audit_commit_failed' === $failed_upsert->get_error_code(), 'Source upsert audit failure must expose compensated audit error.', $failed_upsert->get_error_code() );
+mad4b_atomic_assert( $before_upsert_sources === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ], 'Source upsert audit failure must restore the exact pre-upsert source registry.' );
+mad4b_atomic_assert( $before_upsert_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Source upsert audit failure must restore the pre-upsert registry revision.' );
+
+MAD4B_SCP_Audit::$fail_append = false;
+$successful_upsert = MAD4B_SCP_Context_Authority::upsert_source(
+	array(
+		'provider' => 'google_drive',
+		'mode' => 'governed',
+		'external_root_id' => 'folder-audited-success',
+		'label' => 'Audited Source Folder',
+		'write_policy' => 'repair_only',
+	)
+);
+mad4b_atomic_assert( ! is_wp_error( $successful_upsert ), 'Healthy source upsert must commit with audit evidence.', $successful_upsert );
+mad4b_atomic_assert( $before_upsert_revision + 1 === MAD4B_SCP_Context_Authority::registry_revision(), 'Healthy audited source upsert must advance registry revision exactly once.' );
+$source_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $row ) { return 'mad4b/context-source-upsert' === $row['ability']; } ) );
+mad4b_atomic_assert( 1 === count( $source_events ), 'Healthy source upsert must append exactly one governed audit event.', $source_events );
+mad4b_atomic_assert( 'google_drive' === $source_events[0]['summary']['provider'] && 'repair_only' === $source_events[0]['summary']['write_policy'], 'Source upsert audit must bind provider and write policy.', $source_events[0] );
+
+echo "mad4b.site-control-plane.context-registry-atomicity.runtime.v2: PASS\n";

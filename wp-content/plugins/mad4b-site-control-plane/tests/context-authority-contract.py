@@ -97,6 +97,8 @@ require(authority, "upsert_asset_from_provider", "provider registry refresh")
 require(authority, "register_recreated_asset", "atomic replacement registration")
 require(authority, "mad4b_context_recreate_registry_commit_failed", "atomic replacement commit failure")
 require(authority, "mark_asset_recreated", "legacy replacement lineage helper")
+require(authority, "mad4b/context-source-upsert", "source binding upsert audit")
+require(authority, "'created' => empty( $current )", "source upsert audit distinguishes create/update")
 require(authority, "mad4b/context-asset-review", "asset review audit")
 require(authority, "mad4b_context_audit_not_ready", "audit fail-closed preflight")
 
@@ -319,4 +321,4 @@ require(admin, "runtime_authority_not_reconciled", "runtime reconciliation block
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v32: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v33: PASS")

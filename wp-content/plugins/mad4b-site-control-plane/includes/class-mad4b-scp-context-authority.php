@@ -239,6 +239,8 @@ final class MAD4B_SCP_Context_Authority {
 				if ( is_wp_error( $site ) ) return $site;
 				$profile = self::profile();
 				if ( empty( $profile ) ) return new WP_Error( 'mad4b_brand_context_profile_required', 'Configure the Brand Context Profile before adding sources.' );
+				$audit_ready = self::audit_preflight();
+				if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 
 				$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
 				$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
@@ -295,7 +297,19 @@ final class MAD4B_SCP_Context_Authority {
 				);
 				$sources[ $source_id ] = $record;
 				if ( ! self::write_option( self::SOURCES_OPTION, $sources ) ) return new WP_Error( 'mad4b_context_source_registry_write_failed', 'Context source registry could not be persisted.' );
-				return $record;
+				return self::audited_registry_result(
+					$record,
+					'mad4b/context-source-upsert',
+					array(
+						'source_id' => $source_id,
+						'provider' => $provider,
+						'mode' => $mode,
+						'write_policy' => $write_policy,
+						'recursive' => ! empty( $record['recursive'] ),
+						'created' => empty( $current ),
+					),
+					'ok'
+				);
 			}
 		);
 	}
