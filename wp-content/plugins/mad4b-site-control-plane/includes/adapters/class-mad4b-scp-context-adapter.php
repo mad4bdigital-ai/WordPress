@@ -24,6 +24,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/status',
 				'context/assets',
 				'context/google-drive-status',
+				'context/runtime-readiness',
 				'context/conflicts',
 				'context/reference-profile',
 				'context/retrieve',
@@ -66,6 +67,13 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'context/google-drive-status',
 			'Google Drive Context Connection Status',
 			'google_drive_status',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/runtime-readiness',
+			'Context Runtime Readiness',
+			'context_runtime_readiness',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
 		);
@@ -431,6 +439,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'write_capability' => MAD4B_SCP_Google_Drive_Context::write_capability_status(),
 			'provider_contract' => $this->context_provider_contract_status(),
 		);
+	}
+
+	public function context_runtime_readiness() {
+		return MAD4B_SCP_Google_Drive_Context::runtime_readiness();
 	}
 
 	public function list_assets( $input ) {
