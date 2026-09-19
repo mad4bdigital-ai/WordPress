@@ -142,6 +142,57 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $public;
 	}
 
+	public static function runtime_readiness() {
+		$credentials = self::credentials_status();
+		$connection = self::public_connection_status();
+		$gemini_enabled_defined = defined( 'MAD4B_CONTEXT_GEMINI_ENABLED' );
+		$gemini_enabled_effective = $gemini_enabled_defined && true === (bool) constant( 'MAD4B_CONTEXT_GEMINI_ENABLED' );
+		$gemini_key_present = defined( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_API_KEY' ) );
+		$gemini_model_present = defined( 'MAD4B_CONTEXT_GEMINI_MODEL' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_GEMINI_MODEL' ) );
+		$generic_url_present = defined( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_URL' ) );
+		$generic_token_present = defined( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) && '' !== trim( (string) constant( 'MAD4B_CONTEXT_EXTRACTOR_TOKEN' ) );
+		$dependencies = array(
+			'ziparchive' => array( 'available' => class_exists( 'ZipArchive' ), 'required_for' => array( 'xlsx', 'pptx', 'docx', 'odf', 'epub', 'zip', 'google_forms' ) ),
+			'mbstring' => array( 'available' => extension_loaded( 'mbstring' ) && function_exists( 'mb_strlen' ), 'required_for' => array( 'unicode_text_normalization' ) ),
+			'zlib' => array( 'available' => extension_loaded( 'zlib' ) && function_exists( 'gzuncompress' ), 'required_for' => array( 'compressed_pdf_streams', 'archive_payloads' ) ),
+			'imagick' => array( 'available' => extension_loaded( 'imagick' ) && class_exists( 'Imagick' ), 'required_for' => array( 'optional_local_raster_preparation' ) ),
+		);
+		return array(
+			'contract' => 'mad4b.google-drive-context-runtime-readiness.v1',
+			'php_version' => PHP_VERSION,
+			'dependencies' => $dependencies,
+			'oauth' => array(
+				'credentials_configured' => ! empty( $credentials['configured'] ),
+				'configured_by_constants' => ! empty( $credentials['configured_by_constants'] ),
+				'redirect_uri_configured' => '' !== (string) self::redirect_uri(),
+				'redirect_uri' => self::redirect_uri(),
+				'state_site_binding' => true,
+				'pkce_s256' => true,
+				'connection' => $connection,
+			),
+			'extractor' => array(
+				'gemini_enabled_defined' => $gemini_enabled_defined,
+				'gemini_enabled_effective' => $gemini_enabled_effective,
+				'gemini_api_key_present' => $gemini_key_present,
+				'gemini_model_present' => $gemini_model_present,
+				'gemini_model_effective' => self::gemini_model(),
+				'generic_extractor_url_present' => $generic_url_present,
+				'generic_extractor_token_present' => $generic_token_present,
+				'gemini_configured' => self::gemini_extractor_configured(),
+				'generic_extractor_configured' => self::generic_extractor_configured(),
+				'external_extractor_configured' => self::external_extractor_configured(),
+			),
+			'normalization_capabilities' => self::normalization_capabilities(),
+			'limits' => array(
+				'max_text_bytes' => self::MAX_TEXT_BYTES,
+				'max_binary_bytes' => self::MAX_BINARY_BYTES,
+				'max_write_bytes' => self::MAX_WRITE_BYTES,
+				'max_reversible_text_bytes' => self::MAX_REVERSIBLE_TEXT_BYTES,
+			),
+			'secrets_exposed' => false,
+		);
+	}
+
 	public static function authorization_url( $access_mode = 'read_only' ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );
@@ -155,6 +206,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$access_mode = sanitize_key( (string) $access_mode );
 		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
 		$requested_scope = 'read_write' === $access_mode ? self::WRITE_SCOPE : self::READ_SCOPE;
+		try {
+			$pkce_verifier = rtrim( strtr( base64_encode( random_bytes( 48 ) ), '+/', '-_' ), '=' );
+		} catch ( Exception $e ) {
+			return new WP_Error( 'mad4b_google_drive_pkce_generation_failed', 'Unable to generate the Google OAuth PKCE verifier.' );
+		}
+		if ( ! preg_match( '/^[A-Za-z0-9._~-]{43,128}$/', $pkce_verifier ) ) return new WP_Error( 'mad4b_google_drive_pkce_generation_failed', 'Generated Google OAuth PKCE verifier is invalid.' );
+		$pkce_challenge = rtrim( strtr( base64_encode( hash( 'sha256', $pkce_verifier, true ) ), '+/', '-_' ), '=' );
 		$state = wp_generate_password( 64, false, false );
 		if ( '' === $state ) return new WP_Error( 'mad4b_google_drive_state_generation_failed', 'Unable to generate OAuth state.' );
 		set_transient(
@@ -165,6 +223,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
 				'access_mode' => $access_mode,
 				'requested_scope' => $requested_scope,
+				'pkce_verifier' => $pkce_verifier,
 				'created_at' => time(),
 			),
 			10 * MINUTE_IN_SECONDS
@@ -178,6 +237,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'access_type' => 'offline',
 				'include_granted_scopes' => 'false',
 				'prompt' => 'consent',
+				'code_challenge' => $pkce_challenge,
+				'code_challenge_method' => 'S256',
 				'state' => $state,
 			),
 			self::AUTH_ENDPOINT
@@ -195,6 +256,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$current_site_uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '';
 		if ( empty( $stored['site_uuid'] ) || '' === $current_site_uuid || ! hash_equals( (string) $stored['site_uuid'], $current_site_uuid ) ) return new WP_Error( 'mad4b_google_drive_oauth_site_binding_changed', 'Site Profile binding changed during Google OAuth. Start the connection again.' );
 		if ( empty( $stored['redirect_uri'] ) || ! hash_equals( (string) $stored['redirect_uri'], self::redirect_uri() ) ) return new WP_Error( 'mad4b_google_drive_oauth_redirect_binding_changed', 'OAuth redirect binding changed during Google connection. Start the connection again.' );
+		$pkce_verifier = isset( $stored['pkce_verifier'] ) ? (string) $stored['pkce_verifier'] : '';
+		if ( ! preg_match( '/^[A-Za-z0-9._~-]{43,128}$/', $pkce_verifier ) ) return new WP_Error( 'mad4b_google_drive_oauth_pkce_invalid', 'Google OAuth PKCE verifier is missing, expired, or invalid.' );
 		$code = trim( (string) $code );
 		if ( '' === $code || strlen( $code ) > 4096 ) return new WP_Error( 'mad4b_google_drive_oauth_code_invalid', 'Google OAuth authorization code is missing or invalid.' );
 		$credentials = self::credentials();
@@ -210,6 +273,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'code' => $code,
 					'grant_type' => 'authorization_code',
 					'redirect_uri' => self::redirect_uri(),
+					'code_verifier' => $pkce_verifier,
 				),
 			)
 		);
