@@ -128,6 +128,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
 		$status = MAD4B_SCP_Google_Drive_Context::write_capability_status();
 		if ( empty( $status['write_available'] ) ) return new WP_Error( 'mad4b_google_drive_write_scope_required', 'Google Drive read+write OAuth scope is required before Context write abilities can mount.' );
+		if ( empty( $status['selected_source_count'] ) ) return new WP_Error( 'mad4b_context_source_required_for_write', 'Select a governed Google Drive source folder before Context write abilities can mount.' );
 		$operation_map = array(
 			'context/create-drive-asset' => array( 'operation' => 'create', 'count_key' => 'create_source_count' ),
 			'context/update-drive-asset' => array( 'operation' => 'update', 'count_key' => 'update_source_count' ),
