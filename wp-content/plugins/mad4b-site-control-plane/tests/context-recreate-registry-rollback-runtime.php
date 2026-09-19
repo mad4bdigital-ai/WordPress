@@ -19,6 +19,7 @@ function absint( $value ) { return abs( (int) $value ); }
 function get_option( $name, $default = false ) { return array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ? $GLOBALS['mad4b_context_options'][ $name ] : $default; }
 function add_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name ] = $value; return true; }
 function update_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name ] = $value; return true; }
+function delete_option( $name ) { unset( $GLOBALS['mad4b_context_options'][ $name ] ); return true; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
 function wp_trim_words( $value, $num_words = 55, $more = null ) {
@@ -151,8 +152,14 @@ $before = array(
 	'replacement_content_sha256' => '',
 );
 
+$intent = MAD4B_SCP_Context_Authority::begin_recreated_asset_rollback( $old_id, $new_id );
+mad4b_context_rollback_assert( ! is_wp_error( $intent ), 'rollback intent must persist before provider deletion' );
+$pending = MAD4B_SCP_Context_Authority::assets();
+mad4b_context_rollback_assert( 'rollback_pending' === $pending[ $old_id ]['status'], 'original must enter rollback_pending before deletion' );
+mad4b_context_rollback_assert( 'rollback_pending' === $pending[ $new_id ]['status'], 'replacement must enter rollback_pending before deletion' );
+
 $result = MAD4B_SCP_Context_Authority::rollback_recreated_asset( $old_id, $new_id, $before );
-mad4b_context_rollback_assert( ! is_wp_error( $result ), 'exact recreation lineage should roll back' );
+mad4b_context_rollback_assert( ! is_wp_error( $result ), 'exact recreation lineage should finalize after persisted rollback intent' );
 $assets = MAD4B_SCP_Context_Authority::assets();
 mad4b_context_rollback_assert( isset( $assets[ $old_id ] ), 'original asset must remain in registry' );
 mad4b_context_rollback_assert( ! isset( $assets[ $new_id ] ), 'replacement asset must be removed from registry' );
