@@ -176,6 +176,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'begin_recreated_asset_rollback',
 				'rollback_recreated_asset',
 			),
+			'MAD4B_SCP_External_Handshake_Evidence' => array(
+				'build_fingerprint',
+			),
 		);
 		foreach ( $required_methods as $class => $methods ) {
 			if ( ! class_exists( $class ) ) {
@@ -214,9 +217,15 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			}
 		}
 		ksort( $critical_hashes, SORT_STRING );
+		$control_plane_build_fingerprint = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'build_fingerprint' )
+			? strtolower( trim( (string) MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() ) )
+			: '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $control_plane_build_fingerprint ) ) $blockers[] = 'control_plane_build_fingerprint_unavailable';
+
 		$payload = array(
 			'contract' => self::PROVIDER_CONTRACT,
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
+			'control_plane_build_fingerprint' => $control_plane_build_fingerprint,
 			'critical_files' => $critical_hashes,
 			'rollback_contracts' => $contracts,
 		);
@@ -228,7 +237,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'provider' => 'google_drive_context',
 			'ready' => empty( $blockers ),
 			'first_party' => true,
-			'certification_mode' => 'runtime_structural_plus_exact_artifact_fingerprint',
+			'certification_mode' => 'runtime_structural_plus_build_bound_artifact_fingerprint',
+			'control_plane_build_fingerprint' => $control_plane_build_fingerprint,
 			'artifact_fingerprint' => is_string( $json ) ? hash( 'sha256', $json ) : '',
 			'critical_files' => $critical_hashes,
 			'rollback_contracts' => $contracts,
