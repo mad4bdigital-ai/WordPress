@@ -485,6 +485,7 @@ final class MAD4B_SCP_Context_Authority {
 		$profile = self::profile();
 		if ( empty( $profile ) ) return;
 		$profile['context_fingerprint'] = self::context_fingerprint( $assets, $sources );
+		$profile['authority_manifest_fingerprint'] = self::authority_manifest_fingerprint( $assets );
 		$profile['last_verified_at'] = gmdate( 'c' );
 		$profile['updated_at'] = gmdate( 'c' );
 		self::write_option( self::PROFILE_OPTION, $profile );
@@ -949,7 +950,7 @@ final class MAD4B_SCP_Context_Authority {
 		$metadata['category'] = $classification['category'];
 		$metadata['classification_confidence'] = $classification['classification_confidence'];
 		$quality = self::score_asset( $metadata, $content );
-		$content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) : '';
+		$content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $content_hash ) ) {
 			$basis = '' !== $content ? $content : $file_id . '|' . ( isset( $asset['modifiedTime'] ) ? $asset['modifiedTime'] : '' );
 			$content_hash = hash( 'sha256', $basis );
