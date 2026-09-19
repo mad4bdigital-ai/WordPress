@@ -272,7 +272,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_CONNECT_GOOGLE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_CONNECT_GOOGLE ) . '"><input type="hidden" name="access_mode" value="read_write">';
-			echo '<h3>' . esc_html__( 'Read + Write', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'Adds Drive provider capability for governed update/recreate. Arbitrary create remains unmounted until exact rollback is certified; every mounted mutation still requires exact write authority and one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<h3>' . esc_html__( 'Read + Write', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'Adds Drive provider capability for governed update/recreate. Google grants the Drive write scope at the account API layer, but MAD4B restricts execution to your selected Context source folders and source write policies. Arbitrary create remains unmounted until exact rollback is certified; every mounted mutation still requires exact write authority and one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
 			submit_button( __( 'Connect Read + Write', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 			echo '</form></div></div>';
 			return;
