@@ -529,7 +529,7 @@ final class MAD4B_SCP_Context_Preflight {
 		$key = strtolower( trim( (string) $key ) );
 		if ( '' === $key ) return false;
 		return 1 === preg_match(
-			'/(^|[_\-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords)([_\-]|$)/',
+			'/(^|[_\-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords|editor|html|wysiwyg)([_\-]|$)/',
 			$key
 		);
 	}
