@@ -87,9 +87,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$token = self::token_record();
 		$credentials = self::credentials_status();
 		$connected = is_array( $token ) && ! empty( $token['refresh_token'] );
+		$revocation_pending = $connected && ! empty( $token['revocation_pending'] );
 		$scope = $connected && isset( $token['scope'] ) ? trim( (string) $token['scope'] ) : '';
-		$read_available = $connected && self::scope_allows_read( $scope );
-		$write_available = $connected && self::scope_allows_write( $scope );
+		$read_available = $connected && ! $revocation_pending && self::scope_allows_read( $scope );
+		$write_available = $connected && ! $revocation_pending && self::scope_allows_write( $scope );
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => ! empty( $credentials['configured'] ),
@@ -97,7 +98,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'read_available' => $read_available,
 			'write_available' => $write_available,
 			'read_only' => $connected && ! $write_available,
-			'access_mode' => $write_available ? 'read_write' : 'read_only',
+			'access_mode' => $revocation_pending ? 'revocation_pending' : ( $write_available ? 'read_write' : 'read_only' ),
+			'revocation_pending' => $revocation_pending,
+			'revocation_error' => $revocation_pending && isset( $token['revocation_error'] ) ? sanitize_key( (string) $token['revocation_error'] ) : '',
+			'revocation_attempted_at' => $revocation_pending && isset( $token['revocation_attempted_at'] ) ? sanitize_text_field( (string) $token['revocation_attempted_at'] ) : '',
 			'scope' => $scope,
 			'account_email' => $connected && isset( $token['account_email'] ) ? sanitize_email( (string) $token['account_email'] ) : '',
 			'account_name' => $connected && isset( $token['account_name'] ) ? sanitize_text_field( (string) $token['account_name'] ) : '',
@@ -115,6 +119,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );
 		$credentials = self::credentials();
 		if ( is_wp_error( $credentials ) ) return $credentials;
+		$current_token = self::token_record();
+		if ( is_array( $current_token ) && ! empty( $current_token['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive revocation is still pending. Retry revoke before starting a new OAuth connection.' );
 		$access_mode = sanitize_key( (string) $access_mode );
 		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
 		$requested_scope = 'read_write' === $access_mode ? self::WRITE_SCOPE : self::READ_SCOPE;
@@ -212,34 +218,58 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	public static function disconnect() {
 		$record = self::token_record();
-		$revocation_attempted = false;
-		$revocation_confirmed = false;
-		$revocation_error = '';
 		$token = is_array( $record ) && ! empty( $record['refresh_token'] ) ? (string) $record['refresh_token'] : ( is_array( $record ) && ! empty( $record['access_token'] ) ? (string) $record['access_token'] : '' );
-		if ( '' !== $token ) {
-			$revocation_attempted = true;
-			$response = wp_remote_post(
-				self::REVOKE_ENDPOINT,
-				array(
-					'timeout' => 20,
-					'redirection' => 0,
-					'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
-					'body' => array( 'token' => $token ),
-				)
-			);
-			if ( is_wp_error( $response ) ) $revocation_error = sanitize_key( $response->get_error_code() );
-			else {
-				$status = (int) wp_remote_retrieve_response_code( $response );
-				$revocation_confirmed = 200 === $status;
-				if ( ! $revocation_confirmed ) $revocation_error = 'google_revocation_http_' . $status;
-			}
+		if ( '' === $token ) {
+			delete_option( self::TOKEN_OPTION );
+			$status = self::connection_status();
+			$status['remote_revocation_attempted'] = false;
+			$status['remote_revocation_confirmed'] = false;
+			$status['remote_revocation_error'] = '';
+			return $status;
 		}
-		delete_option( self::TOKEN_OPTION );
-		$status = self::connection_status();
-		$status['remote_revocation_attempted'] = $revocation_attempted;
-		$status['remote_revocation_confirmed'] = $revocation_confirmed;
-		$status['remote_revocation_error'] = $revocation_error;
-		return $status;
+
+		$response = wp_remote_post(
+			self::REVOKE_ENDPOINT,
+			array(
+				'timeout' => 20,
+				'redirection' => 0,
+				'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
+				'body' => array( 'token' => $token ),
+			)
+		);
+		$revocation_error = '';
+		$confirmed = false;
+		if ( is_wp_error( $response ) ) $revocation_error = sanitize_key( $response->get_error_code() );
+		else {
+			$status_code = (int) wp_remote_retrieve_response_code( $response );
+			$confirmed = 200 === $status_code;
+			if ( ! $confirmed ) $revocation_error = 'google_revocation_http_' . $status_code;
+		}
+
+		if ( $confirmed ) {
+			delete_option( self::TOKEN_OPTION );
+			$status = self::connection_status();
+			$status['remote_revocation_attempted'] = true;
+			$status['remote_revocation_confirmed'] = true;
+			$status['remote_revocation_error'] = '';
+			return $status;
+		}
+
+		$record['revocation_pending'] = true;
+		$record['revocation_error'] = $revocation_error ? $revocation_error : 'google_revocation_unconfirmed';
+		$record['revocation_attempted_at'] = gmdate( 'c' );
+		$sealed = self::seal_token_record( $record );
+		if ( is_wp_error( $sealed ) ) return $sealed;
+		self::write_option( self::TOKEN_OPTION, $sealed );
+		return new WP_Error(
+			'mad4b_google_drive_remote_revocation_unconfirmed',
+			'Google access could not be confirmed revoked. The connection is disabled locally and retained only to retry revocation.',
+			array(
+				'revocation_pending' => true,
+				'revocation_error' => (string) $record['revocation_error'],
+				'revocation_attempted_at' => (string) $record['revocation_attempted_at'],
+			)
+		);
 	}
 
 	public static function about() {
@@ -1030,6 +1060,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	private static function access_token() {
 		$record = self::token_record();
 		if ( ! is_array( $record ) || empty( $record['refresh_token'] ) ) return new WP_Error( 'mad4b_google_drive_not_connected', 'Google Drive is not connected.' );
+		if ( ! empty( $record['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive access is disabled while remote revocation is pending.' );
 		if ( ! empty( $record['access_token'] ) && ! empty( $record['expires_at'] ) && (int) $record['expires_at'] > time() + 90 ) return (string) $record['access_token'];
 		$credentials = self::credentials();
 		if ( is_wp_error( $credentials ) ) return $credentials;
@@ -1231,6 +1262,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$blockers = array();
 		if ( empty( $credentials['configured'] ) ) $blockers[] = 'google_oauth_credentials_missing';
 		if ( ! is_array( $token ) || empty( $token['refresh_token'] ) ) $blockers[] = 'google_drive_not_connected';
+		elseif ( ! empty( $token['revocation_pending'] ) ) $blockers[] = 'google_drive_revocation_pending';
 		return $blockers;
 	}
 
