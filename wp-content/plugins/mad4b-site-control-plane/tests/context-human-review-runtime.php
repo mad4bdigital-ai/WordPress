@@ -231,6 +231,41 @@ mad4b_review_assert( empty( $automatic_review['quality']['human_override'] ), 'A
 mad4b_review_assert( (int) $automatic_review['quality_auto_score'] === (int) $automatic_review['quality_score'], 'Automatic-score review must restore the current computed score.', $automatic_review );
 mad4b_review_assert( 'human_override' !== ( isset( $automatic_review['quality']['mode'] ) ? (string) $automatic_review['quality']['mode'] : '' ), 'Automatic-score review must restore automatic scoring semantics.', $automatic_review );
 
+// A governed provider mutation is not a rescan, but it changes the same content
+// authority. It must therefore invalidate human content approval exactly like a
+// changed-content scan while preserving the human classification decision.
+$provider_write_text = $changed_text . "\nGoverned provider update changes the approved body and requires a new review.";
+$before_provider_write = MAD4B_SCP_Context_Authority::asset( $asset_id );
+$provider_upsert = MAD4B_SCP_Context_Authority::upsert_asset_from_provider(
+	$source_id,
+	mad4b_review_asset_payload( $file_id, $provider_write_text ),
+	$before_provider_write
+);
+mad4b_review_assert( ! is_wp_error( $provider_upsert ), 'Governed provider update registry refresh must succeed.', $provider_upsert );
+mad4b_review_assert( 'human' === $provider_upsert['classification_source'], 'Provider update must preserve human classification authority.', $provider_upsert );
+mad4b_review_assert( 'tone_of_voice' === $provider_upsert['category'] && 'brand_authority' === $provider_upsert['authority_class'], 'Provider update must preserve reviewed governance metadata.', $provider_upsert );
+mad4b_review_assert( ! empty( $provider_upsert['required'] ), 'Provider update must preserve the required-context decision.', $provider_upsert );
+mad4b_review_assert( 'needs_review_content_changed' === $provider_upsert['review_status'], 'Provider content mutation must invalidate human content approval.', $provider_upsert );
+mad4b_review_assert( empty( $provider_upsert['reviewed_at'] ) && empty( $provider_upsert['reviewed_by'] ), 'Invalidated provider content must not retain reviewer identity/timestamp as current approval evidence.', $provider_upsert );
+mad4b_review_assert( empty( $provider_upsert['quality']['human_override'] ), 'Provider content mutation must not inherit a manual quality override from different content.', $provider_upsert );
+
+$provider_write_status = MAD4B_SCP_Context_Authority::status();
+mad4b_review_assert( empty( $provider_write_status['ready'] ), 'Mandatory Context must fail closed after governed provider content mutation until renewed review.', $provider_write_status );
+mad4b_review_assert( in_array( 'mandatory_context_review_required', $provider_write_status['blockers'], true ), 'Governed provider content mutation must surface mandatory review blocker.', $provider_write_status['blockers'] );
+
+$provider_rereview = MAD4B_SCP_Context_Authority::review_asset(
+	$asset_id,
+	array(
+		'category' => 'tone_of_voice',
+		'authority_class' => 'brand_authority',
+		'required' => true,
+		'quality_mode' => 'automatic',
+		'quality_score' => '',
+	)
+);
+mad4b_review_assert( ! is_wp_error( $provider_rereview ), 'Reviewer must be able to approve the exact provider-mutated content.', $provider_rereview );
+mad4b_review_assert( 'approved' === $provider_rereview['review_status'], 'Renewed review must approve the provider-mutated content.', $provider_rereview );
+
 $ready_status = MAD4B_SCP_Context_Authority::status();
 mad4b_review_assert( ! empty( $ready_status['ready'] ), 'Unavailable optional reference must not block mandatory Brand Context readiness.', $ready_status );
 mad4b_review_assert( 'ready_with_warnings' === $ready_status['state'], 'Optional unavailable context must produce ready_with_warnings, not blocked.', $ready_status );
@@ -258,8 +293,9 @@ mad4b_review_assert( $before_failed_review_asset === MAD4B_SCP_Context_Authority
 mad4b_review_assert( $before_failed_review_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Audit failure must restore the exact pre-review registry revision.' );
 
 $review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
-mad4b_review_assert( 2 === count( $review_events ), 'Manual review and automatic-score reset must each emit one audit event.', $review_events );
+mad4b_review_assert( 3 === count( $review_events ), 'Initial review, changed-content reset review, and provider-mutation renewed review must each emit one audit event.', $review_events );
 mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
 mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
+mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[2] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v4: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v5: PASS\n";
