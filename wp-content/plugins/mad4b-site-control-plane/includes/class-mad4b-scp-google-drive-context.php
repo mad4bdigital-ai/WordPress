@@ -123,7 +123,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );
 		$credentials = self::credentials();
 		if ( is_wp_error( $credentials ) ) return $credentials;
+		$stored_token = get_option( self::TOKEN_OPTION, array() );
+		$stored_token_present = is_array( $stored_token ) && self::CONTRACT === ( isset( $stored_token['contract'] ) ? (string) $stored_token['contract'] : '' );
 		$current_token = self::token_record();
+		if ( $stored_token_present && ( ! is_array( $current_token ) || empty( $current_token['refresh_token'] ) ) ) return new WP_Error( 'mad4b_google_drive_token_unreadable_manual_revoke_required', 'Stored Google token is unreadable. Clear the local token and revoke MAD4B access in the Google account before reconnecting.' );
 		if ( is_array( $current_token ) && ! empty( $current_token['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive revocation is still pending. Retry revoke before starting a new OAuth connection.' );
 		$access_mode = sanitize_key( (string) $access_mode );
 		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
