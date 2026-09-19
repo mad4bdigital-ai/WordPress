@@ -260,6 +260,18 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</form></div></div>';
 			return;
 		}
+		if ( ! empty( $connection['revocation_pending'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google revocation is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'All Drive reads and writes are disabled locally. Retry revoke to finish disconnecting before reconnecting.', 'mad4b-site-control-plane' ) . '</p>';
+			if ( ! empty( $connection['revocation_error'] ) ) echo '<p><code>' . esc_html( $connection['revocation_error'] ) . '</code></p>';
+			echo '</div>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( self::ACTION_DISCONNECT_GOOGLE );
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_DISCONNECT_GOOGLE ) . '">';
+			submit_button( __( 'Retry revoke', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
+			echo '</form></div>';
+			self::render_write_governance_readiness();
+			return;
+		}
 		$access_label = ! empty( $connection['write_available'] ) ? __( 'Read + Write', 'mad4b-site-control-plane' ) : __( 'Read-only', 'mad4b-site-control-plane' );
 		echo '<div class="notice notice-success inline"><p><strong>' . esc_html__( 'Connected', 'mad4b-site-control-plane' ) . '</strong>';
 		if ( $connection['account_email'] ) echo ' · ' . esc_html( $connection['account_email'] );
