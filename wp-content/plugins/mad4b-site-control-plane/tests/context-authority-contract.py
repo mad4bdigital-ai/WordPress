@@ -7,6 +7,8 @@ drive = (root / "includes/class-mad4b-scp-google-drive-context.php").read_text(e
 admin = (root / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
 adapter = (root / "includes/adapters/class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
 registry = (root / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
+servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+preflight = (root / "includes/class-mad4b-scp-context-preflight.php").read_text(encoding="utf-8")
 
 def require(text, needle, label):
     assert needle in text, f"missing {label}: {needle}"
@@ -99,6 +101,27 @@ require(adapter, "source_required_for_write", "write mount requires selected Con
 require(adapter, "return false;", "provider certification override remains explicit")
 assert "'content' => array(\n\t\t\t'context/" not in adapter, "Context Drive mutations must not mount on content surface"
 
+# Server mounting must stay structural: reads are projected from the read
+# adapter surface; mutations are projected only through the dedicated write
+# surface and are never hard-coded into content/admin core maps.
+require(servers, "$registry->ability_names( 'read' )", "adapter read projection")
+require(servers, "foreach ( array( 'content', 'admin', 'write' ) as $surface )", "dedicated adapter write projection")
+require(servers, "if ( 'mad4b-write' === $server_id )", "dedicated write authority branch")
+require(servers, "self::write_tools()", "runtime-gated write mount")
+for ability in [
+    "context/create-drive-asset",
+    "context/update-drive-asset",
+    "context/recreate-drive-asset",
+]:
+    assert ability not in servers, f"{ability} must be adapter-projected, never hard-coded into core server maps"
+
+# Skill Context preflight is read-only, bounded and fail-closed.
+require(preflight, "This service is read-only", "read-only Context preflight")
+require(preflight, "MAX_CONTEXT_BYTES", "bounded Context envelope")
+require(preflight, "required_context_asset_unreadable", "provider-read fail-closed")
+require(preflight, "required_context_sets_missing", "missing required category fail-closed")
+require(preflight, "review_status", "human review carried into Context receipt")
+
 # Guided UX makes OAuth capability vs MAD4B authority explicit.
 require(admin, "Connect Read-only", "read-only connect UX")
 require(admin, "Connect Read + Write", "read-write connect UX")
@@ -113,4 +136,4 @@ require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v3: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v4: PASS")
