@@ -78,7 +78,7 @@ for marker in [
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
-    "const SEED_VERSION = 2",
+    "const SEED_VERSION = 3",
     "const SEED_DIR = 'skill-seeds'",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
