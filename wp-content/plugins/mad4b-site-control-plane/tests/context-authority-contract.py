@@ -77,6 +77,10 @@ require(drive, "mad4b_google_drive_root_write_forbidden", "no broad My Drive roo
 require(drive, "mad4b_google_drive_asset_outside_selected_source", "selected-source write boundary")
 require(drive, "mad4b_google_drive_asset_remote_stale", "remote stale hash guard")
 require(drive, "mad4b_google_drive_recreate_requires_unavailable_asset", "recreate only missing assets")
+require(drive, "provider_absence_from_metadata_result", "provider absence classification")
+require(drive, "mad4b_google_drive_recreate_original_restored", "restored-original blocker")
+require(drive, "mad4b_google_drive_recreate_absence_unverified", "unverified-absence blocker")
+assert drive.count("self::assert_original_file_absent(") >= 2, "Recreate capture and execution must independently prove provider absence"
 require(drive, "create_asset", "Drive asset create")
 require(drive, "update_asset", "Drive asset update")
 require(drive, "recreate_asset", "Drive asset recreate")
@@ -146,4 +150,4 @@ require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
 
-print("mad4b.site-control-plane.context-authority-contract.v7: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v9: PASS")
