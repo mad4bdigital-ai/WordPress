@@ -47,6 +47,8 @@ $write = $ref->getMethod( 'scope_allows_write' );
 $write->setAccessible( true );
 $read = $ref->getMethod( 'scope_allows_read' );
 $read->setAccessible( true );
+$matches = $ref->getMethod( 'scope_matches_requested_mode' );
+$matches->setAccessible( true );
 
 $ro = MAD4B_SCP_Google_Drive_Context::READ_SCOPE;
 $rw = MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE;
@@ -58,7 +60,13 @@ mad4b_context_assert( true === $allowed->invoke( null, $rw ), 'full Drive scope 
 mad4b_context_assert( true === $read->invoke( null, $rw ), 'full Drive scope must provide read capability' );
 mad4b_context_assert( true === $write->invoke( null, $rw ), 'full Drive scope must provide write capability' );
 
-mad4b_context_assert( true === $allowed->invoke( null, $ro . ' ' . $rw ), 'incremental OAuth may retain both governed Drive scopes' );
+mad4b_context_assert( true === $allowed->invoke( null, $ro . ' ' . $rw ), 'the generic allowlist may parse both governed Drive scopes' );
+mad4b_context_assert( true === $matches->invoke( null, $ro, 'read_only' ), 'read-only mode must accept exactly drive.readonly' );
+mad4b_context_assert( false === $matches->invoke( null, $rw, 'read_only' ), 'read-only mode must reject Drive write scope' );
+mad4b_context_assert( true === $matches->invoke( null, $rw, 'read_write' ), 'read-write mode must accept exactly full Drive scope' );
+mad4b_context_assert( false === $matches->invoke( null, $ro, 'read_write' ), 'read-write mode must reject read-only scope' );
+mad4b_context_assert( false === $matches->invoke( null, $ro . ' ' . $rw, 'read_only' ), 'read-only mode must reject accumulated Drive scopes' );
+mad4b_context_assert( false === $matches->invoke( null, $ro . ' ' . $rw, 'read_write' ), 'read-write mode must reject accumulated Drive scopes' );
 mad4b_context_assert( false === $allowed->invoke( null, $rw . ' https://www.googleapis.com/auth/gmail.readonly' ), 'unrelated Google scopes must fail closed' );
 mad4b_context_assert( false === $allowed->invoke( null, 'https://www.googleapis.com/auth/drive.file' ), 'drive.file is not accepted by the existing-asset repair contract' );
 
@@ -68,4 +76,4 @@ $encoded = json_encode( $status );
 mad4b_context_assert( false === strpos( $encoded, 'access_token' ), 'connection status must not expose access token' );
 mad4b_context_assert( false === strpos( $encoded, 'refresh_token' ), 'connection status must not expose refresh token' );
 
-echo "mad4b.site-control-plane.context-authority-runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-authority-runtime.v2: PASS\n";

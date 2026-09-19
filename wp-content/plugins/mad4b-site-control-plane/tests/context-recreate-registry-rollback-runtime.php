@@ -1,6 +1,7 @@
 <?php
 
 define( 'ABSPATH', '/tmp/mad4b-context-recreate-rollback/' );
+define( 'DAY_IN_SECONDS', 86400 );
 
 $GLOBALS['mad4b_context_options'] = array();
 
@@ -19,6 +20,13 @@ function get_option( $name, $default = false ) { return array_key_exists( $name,
 function add_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name ] = $value; return true; }
 function update_option( $name, $value ) { $GLOBALS['mad4b_context_options'][ $name ] = $value; return true; }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
+function wp_trim_words( $value, $num_words = 55, $more = null ) {
+	$words = preg_split( '/\s+/u', trim( strip_tags( (string) $value ) ), -1, PREG_SPLIT_NO_EMPTY );
+	if ( count( $words ) <= $num_words ) return implode( ' ', $words );
+	return implode( ' ', array_slice( $words, 0, $num_words ) ) . ( null === $more ? '…' : $more );
+}
+function esc_url_raw( $value ) { return (string) $value; }
 
 class MAD4B_SCP_Site_Profile {
 	public static $site_uuid = '11111111-1111-4111-8111-111111111111';
@@ -105,18 +113,32 @@ $base = array(
 $old = $base;
 $old['asset_id'] = $old_id;
 $old['file_id'] = 'old-file';
-$old['status'] = 'recreated';
-$old['availability_reason'] = 'replacement_created';
-$old['replacement_asset_id'] = $new_id;
-$old['recreated_at'] = gmdate( 'c' );
+$old['parent_folder_id'] = 'folder-fixture';
+$old['status'] = 'unavailable';
+$old['availability_reason'] = 'not_seen_in_latest_scan';
+$old['replacement_asset_id'] = '';
 
-$new = $base;
-$new['asset_id'] = $new_id;
-$new['file_id'] = 'replacement-file';
-$new['status'] = 'ready';
-$new['availability_reason'] = '';
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] = array( $old_id => $old );
 
-$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] = array( $old_id => $old, $new_id => $new );
+$provider_asset = array(
+	'file_id' => 'replacement-file',
+	'parent_folder_id' => 'folder-fixture',
+	'title' => 'Tone of Voice',
+	'path' => 'Brand Core/Tone of Voice',
+	'mimeType' => 'text/plain',
+	'modifiedTime' => gmdate( 'c' ),
+	'webViewLink' => 'https://drive.example/replacement-file',
+	'normalized_text' => "Brand tone guidance with clear terminology and structured editorial rules.\n\n# Voice\nUse precise language and consistent terminology.",
+	'content_hash' => hash( 'sha256', "Brand tone guidance with clear terminology and structured editorial rules.\n\n# Voice\nUse precise language and consistent terminology." ),
+);
+$transition = MAD4B_SCP_Context_Authority::register_recreated_asset( $old_id, $source_id, $provider_asset, $old );
+mad4b_context_rollback_assert( ! is_wp_error( $transition ), 'unavailable original and provider replacement must commit atomically' );
+mad4b_context_rollback_assert( ! empty( $transition['replacement']['asset_id'] ), 'atomic recreation must return replacement identity' );
+$new_id = (string) $transition['replacement']['asset_id'];
+$after_register = MAD4B_SCP_Context_Authority::assets();
+mad4b_context_rollback_assert( 'recreated' === $after_register[ $old_id ]['status'], 'atomic recreation must mark original recreated' );
+mad4b_context_rollback_assert( hash_equals( $new_id, (string) $after_register[ $old_id ]['replacement_asset_id'] ), 'original must bind exact replacement identity' );
+mad4b_context_rollback_assert( isset( $after_register[ $new_id ] ) && 'ready' === $after_register[ $new_id ]['status'], 'replacement must become ready in same registry transition' );
 
 $before = array(
 	'asset_id' => $old_id,
@@ -139,4 +161,4 @@ mad4b_context_rollback_assert( 'not_seen_in_latest_scan' === $assets[ $old_id ][
 mad4b_context_rollback_assert( empty( $assets[ $old_id ]['replacement_asset_id'] ), 'replacement lineage must be cleared after undo' );
 mad4b_context_rollback_assert( ! empty( MAD4B_SCP_Audit::$events ), 'recreation rollback must be audited' );
 
-echo "mad4b.site-control-plane.context-recreate-registry-rollback.runtime.v1: PASS\n";
+echo "mad4b.site-control-plane.context-recreate-registry-rollback.runtime.v2: PASS\n";
