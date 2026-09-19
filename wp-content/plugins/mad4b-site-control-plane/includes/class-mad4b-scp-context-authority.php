@@ -307,6 +307,10 @@ final class MAD4B_SCP_Context_Authority {
 				$sources = self::raw_sources();
 				$records = self::raw_assets();
 				$previous = array();
+				foreach ( $records as $asset_id => $record ) {
+					if ( isset( $record['source_id'] ) && hash_equals( $source_id, (string) $record['source_id'] ) ) $previous[ (string) $asset_id ] = $record;
+				}
+
 				$scan_started_at = isset( $scan['started_at'] ) ? sanitize_text_field( (string) $scan['started_at'] ) : gmdate( 'c' );
 				$scan_completed_at = isset( $scan['completed_at'] ) ? sanitize_text_field( (string) $scan['completed_at'] ) : gmdate( 'c' );
 				$scan_complete = ! array_key_exists( 'complete', $scan ) || ! empty( $scan['complete'] );
@@ -317,22 +321,26 @@ final class MAD4B_SCP_Context_Authority {
 					? array_values( array_unique( array_filter( array_map( 'sanitize_key', $scan['truncation_reasons'] ) ) ) )
 					: array();
 
-				foreach ( $records as $asset_id => $record ) {
-					if ( ! isset( $record['source_id'] ) || ! hash_equals( $source_id, (string) $record['source_id'] ) ) continue;
-					$previous[ (string) $asset_id ] = $record;
-					if ( $scan_complete ) {
-						$records[ $asset_id ]['status'] = 'unavailable';
-						$records[ $asset_id ]['availability_reason'] = 'not_seen_in_complete_scan';
-						$records[ $asset_id ]['last_missing_at'] = $scan_completed_at;
-						$records[ $asset_id ]['absence_scan_generation'] = $scan_generation;
-					}
+				if ( count( $assets ) > self::MAX_ASSETS ) {
+					$scan_complete = false;
+					$truncation_reasons[] = 'scan_asset_input_limit';
 				}
 
-				$count = 0;
+				// Phase 1: normalize every observed record we intend to represent.
+				// No absence state is minted until this phase proves representability.
+				$normalized_assets = array();
 				foreach ( array_slice( $assets, 0, self::MAX_ASSETS ) as $asset ) {
-					if ( ! is_array( $asset ) ) continue;
+					if ( ! is_array( $asset ) ) {
+						$scan_complete = false;
+						$truncation_reasons[] = 'asset_record_invalid';
+						continue;
+					}
 					$normalized = self::normalize_asset( $source, $asset );
-					if ( is_wp_error( $normalized ) ) continue;
+					if ( is_wp_error( $normalized ) ) {
+						$scan_complete = false;
+						$truncation_reasons[] = 'asset_normalization_failed';
+						continue;
+					}
 					$prior = isset( $previous[ $normalized['asset_id'] ] ) ? $previous[ $normalized['asset_id'] ] : array();
 					if ( ! empty( $prior['reviewed_at'] ) && 'human' === ( isset( $prior['classification_source'] ) ? $prior['classification_source'] : '' ) ) {
 						$normalized['category'] = isset( $prior['category'] ) ? (string) $prior['category'] : $normalized['category'];
@@ -356,11 +364,42 @@ final class MAD4B_SCP_Context_Authority {
 					$normalized['last_seen_at'] = $scan_completed_at;
 					$normalized['last_missing_at'] = isset( $prior['last_missing_at'] ) ? (string) $prior['last_missing_at'] : '';
 					unset( $normalized['absence_scan_generation'] );
-					$records[ $normalized['asset_id'] ] = $normalized;
-					++$count;
-					if ( count( $records ) >= self::MAX_ASSETS ) break;
+					$normalized_assets[ (string) $normalized['asset_id'] ] = $normalized;
 				}
 
+				// Phase 2: prove the raw registry can represent every observed unique
+				// asset without deleting unrelated/hidden storage records.
+				$selected_assets = array();
+				$new_slots = max( 0, self::MAX_ASSETS - count( $records ) );
+				foreach ( $normalized_assets as $asset_id => $normalized ) {
+					if ( isset( $records[ $asset_id ] ) ) {
+						$selected_assets[ $asset_id ] = $normalized;
+						continue;
+					}
+					if ( $new_slots > 0 ) {
+						$selected_assets[ $asset_id ] = $normalized;
+						--$new_slots;
+						continue;
+					}
+					$scan_complete = false;
+					$truncation_reasons[] = 'registry_asset_capacity_limit';
+				}
+
+				// Only a fully observed + normalized + representable scan may create
+				// absence evidence for an asset that was not observed this generation.
+				if ( $scan_complete ) {
+					foreach ( $previous as $asset_id => $record ) {
+						if ( isset( $selected_assets[ $asset_id ] ) ) continue;
+						$records[ $asset_id ]['status'] = 'unavailable';
+						$records[ $asset_id ]['availability_reason'] = 'not_seen_in_complete_scan';
+						$records[ $asset_id ]['last_missing_at'] = $scan_completed_at;
+						$records[ $asset_id ]['absence_scan_generation'] = $scan_generation;
+					}
+				}
+
+				foreach ( $selected_assets as $asset_id => $normalized ) $records[ $asset_id ] = $normalized;
+
+				$truncation_reasons = array_values( array_unique( array_filter( array_map( 'sanitize_key', $truncation_reasons ) ) ) );
 				$sources[ $source_id ]['status'] = $scan_complete ? 'ready' : 'partial_scan';
 				$sources[ $source_id ]['last_synced_at'] = $scan_completed_at;
 				$sources[ $source_id ]['last_scan_complete'] = (bool) $scan_complete;
@@ -370,7 +409,15 @@ final class MAD4B_SCP_Context_Authority {
 					$sources[ $source_id ]['last_complete_scan_generation'] = $scan_generation;
 					$sources[ $source_id ]['last_complete_scan_at'] = $scan_completed_at;
 				}
-				$sources[ $source_id ]['asset_count'] = $count;
+
+				$site = self::site_binding();
+				$proposed_sources = is_wp_error( $site ) ? array() : self::authorized_sources_from_records( $sources, $site );
+				$proposed_assets = is_wp_error( $site ) ? array() : self::authorized_assets_from_records( $records, $proposed_sources, $site );
+				$source_asset_count = 0;
+				foreach ( $proposed_assets as $proposed_asset ) {
+					if ( isset( $proposed_asset['source_id'] ) && hash_equals( $source_id, (string) $proposed_asset['source_id'] ) ) ++$source_asset_count;
+				}
+				$sources[ $source_id ]['asset_count'] = $source_asset_count;
 				$sources[ $source_id ]['updated_at'] = gmdate( 'c' );
 
 				$profile = self::profile();
@@ -395,9 +442,12 @@ final class MAD4B_SCP_Context_Authority {
 
 				return array(
 					'source' => $sources[ $source_id ],
-					'asset_count' => $count,
+					'asset_count' => $source_asset_count,
+					'observed_asset_count' => count( $normalized_assets ),
+					'represented_asset_count' => count( $selected_assets ),
 					'scan_complete' => (bool) $scan_complete,
 					'scan_generation' => $scan_generation,
+					'truncation_reasons' => $truncation_reasons,
 					'context_fingerprint' => self::context_fingerprint( $records, $sources ),
 					'authority_manifest_fingerprint' => self::authority_manifest_fingerprint( $records, $sources ),
 				);
