@@ -6,10 +6,13 @@ Status: WordPress client contract implemented. Broker deployment is separately g
 
 Managed Google Sign-In lets a WordPress site connect Google Drive without storing a Google OAuth Client ID or Client Secret on that site.
 
-The WordPress plugin supports two explicit authentication modes:
+The WordPress plugin supports three explicit authentication modes:
 
-- `managed_google` — recommended; Google OAuth application credentials remain on the MAD4B broker.
-- `custom_credentials` — advanced; the site operator supplies a Google OAuth Web client ID/secret.
+- `managed_google` — recommended; Google OAuth application credentials remain on the MAD4B central broker.
+- `dedicated_google` — site-local; a Google OAuth Web client is dedicated to this Site Profile and the callback is generated from the site's enrolled canonical origin. It has no dependency on `auth.mad4b.com`.
+- `custom_credentials` — advanced/legacy; the site operator supplies a Google OAuth Web client ID/secret through the existing custom path.
+
+The managed broker described in this document is required only for `managed_google`. It is not used by `dedicated_google`.
 
 Changing modes requires the current Google grant to be disconnected and remotely revoked first.
 
