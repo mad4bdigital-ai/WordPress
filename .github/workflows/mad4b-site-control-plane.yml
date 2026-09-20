@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -58,7 +60,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify provider archives
         shell: bash
         run: |
@@ -94,7 +97,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify required modules and core safety gates
         shell: bash
         run: |

@@ -343,7 +343,7 @@ for path in (adapter_static, adapter_runtime, adapter_reversible_runtime, jeteng
 require(read(adapter_static), 'mad4b.site-control-plane.adapter-discovery-reversibility.v2', 'adapter-static-v2')
 require(read(adapter_runtime), 'mad4b.site-control-plane.runtime-plugin-adapter-discovery.v1', 'adapter-discovery-runtime')
 require(read(adapter_reversible_runtime), 'mad4b.site-control-plane.runtime-reversible-adapter.v2', 'adapter-reversible-runtime')
-require(read(jetengine_runtime), 'mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1', 'jetengine-side-channel-runtime')
+require(read(jetengine_runtime), 'mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v2', 'jetengine-side-channel-runtime')
 require(read(isolation_static), 'mad4b.site-control-plane.mcp-provider-isolation-contract.v3', 'provider-isolation-static')
 require(read(isolation_runtime), 'mad4b.site-control-plane.runtime-mcp-provider-isolation.v4', 'provider-isolation-runtime')
 for marker in ('Repository plugin adapter coverage contract', 'Core adapter runtime', 'JetEngine adapter boundary'):

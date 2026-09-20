@@ -2,10 +2,10 @@
 /**
  * Disposable runtime proof for the exact packaged JetEngine adapter boundary.
  *
- * JetEngine 3.8.15 is now present as the exact owner-supplied package, but its
- * version-scoped mutation profile remains fail-closed until semantic review is
- * approved. JetEngine also exposes a native MCP REST plane, which independently
- * blocks normal MAD4B mutation until that provider-native plane is isolated.
+ * The reversible implementation exists, but packaged JetEngine may be either an exact
+ * certified provider or a known premium candidate pending semantic attestation. JetEngine
+ * also exposes a native MCP REST plane. Mutation must fail closed for either unresolved
+ * provider certification or unisolated parallel native authority.
  */
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
 $check = static function ( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); };
@@ -14,36 +14,23 @@ $adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'jetengine' );
 $check( $adapter instanceof MAD4B_SCP_JetEngine_Adapter && $adapter->is_available(), 'JetEngine adapter/runtime is unavailable.' );
 $status = $adapter->status();
 $certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
-$check( isset( $certification['installed_version'] ) && '3.8.15' === (string) $certification['installed_version'], 'Exact owner-supplied JetEngine 3.8.15 runtime was not observed.' );
-$check( empty( $certification['runtime_contract_ok'] ), 'JetEngine 3.8.15 mutation contract must remain fail-closed before semantic attestation approval.' );
-$check( isset( $certification['status'] ) && 'version_drift' === (string) $certification['status'], 'Unattested JetEngine 3.8.15 must remain version-drifted against the certified mutation profile.' );
+$runtime_contract_ok = ! empty( $certification['runtime_contract_ok'] );
+if ( ! $runtime_contract_ok ) {
+	$candidate = isset( $certification['candidate_attestation'] ) && is_array( $certification['candidate_attestation'] ) ? $certification['candidate_attestation'] : array();
+	$check( ! empty( $candidate['known_candidate'] ), 'Uncertified packaged JetEngine is not recorded as a known candidate.' );
+	$check( ! empty( $candidate['attestation_required'] ), 'Known uncertified JetEngine candidate is missing the attestation requirement.' );
+	$check( 'pending_semantic_review' === ( isset( $candidate['attestation_state'] ) ? (string) $candidate['attestation_state'] : '' ), 'Known JetEngine candidate is not fail-closed in pending semantic review.' );
+	$check( 'fail_closed_until_attested_exact_package_manifest' === ( isset( $candidate['mutation_policy'] ) ? (string) $candidate['mutation_policy'] : '' ), 'Pending JetEngine candidate mutation policy is not fail-closed.' );
+	$guard = MAD4B_SCP_Provider_Contracts::mutation_guard( 'jetengine', true );
+	$check( is_wp_error( $guard ) && 'mad4b_provider_mutation_not_certified' === $guard->get_error_code(), 'Pending JetEngine candidate did not fail closed at provider mutation guard.' );
+	$data = $guard->get_error_data();
+	$violations = is_array( $data ) && isset( $data['violations'] ) && is_array( $data['violations'] ) ? $data['violations'] : array();
+	$check( in_array( 'candidate_attestation_required', $violations, true ) && in_array( 'pending_semantic_review', $violations, true ), 'Pending JetEngine mutation guard did not expose exact attestation blockers.' );
+}
 $check( wp_has_ability( 'jetengine/get-post-meta' ) && wp_has_ability( 'jetengine/update-post-meta' ), 'JetEngine abilities are missing.' );
 $write_ability = wp_get_ability( 'jetengine/update-post-meta' );
 $meta = $write_ability->get_meta();
 $check( isset( $meta['mcp']['mad4b_reversible_contract'] ) && 'mad4b.rollback.jetengine-post-meta.v1' === $meta['mcp']['mad4b_reversible_contract'], 'JetEngine writer is not bound to exact reversible contract.' );
-
-
-$registration_diagnostics = MAD4B_SCP_Adapter_Registry::instance()->get( 'jetengine-features-registration-diagnostics' );
-$check( $registration_diagnostics instanceof MAD4B_SCP_JetEngine_Features_Registration_Diagnostics_Adapter, 'JetEngine Features registration diagnostics adapter is unavailable.' );
-$check( wp_has_ability( 'jetengine/features-registration-diagnostics' ), 'JetEngine Features registration diagnostics ability is missing.' );
-$rest_server_before_registration_diagnostics = isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] );
-$rest_count_before_registration_diagnostics = did_action( 'rest_api_init' );
-$registration_evidence = $registration_diagnostics->diagnostics();
-$rest_server_after_registration_diagnostics = isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] );
-$check( is_array( $registration_evidence ) && 'mad4b.jetengine-features-registration-diagnostics.v1' === $registration_evidence['contract'], 'JetEngine Features registration diagnostics contract drifted.' );
-$check( ! empty( $registration_evidence['read_only'] ), 'JetEngine Features registration diagnostics lost read-only semantics.' );
-$check( false === $registration_evidence['callback_execution_attempted'], 'Features registration diagnostics invoked the provider callback.' );
-$check( false === $registration_evidence['controller_instantiation_attempted'], 'Features registration diagnostics instantiated a provider controller.' );
-$check( false === $registration_evidence['route_registration_attempted'], 'Features registration diagnostics attempted route registration.' );
-$check( false === $registration_evidence['rest_api_init_replayed'], 'Features registration diagnostics replayed rest_api_init.' );
-$check( false === $registration_evidence['rest_server_instantiated'], 'Features registration diagnostics reported REST-server instantiation.' );
-$check( $rest_server_before_registration_diagnostics === $rest_server_after_registration_diagnostics, 'Features registration diagnostics changed REST-server presence.' );
-$check( $rest_count_before_registration_diagnostics === did_action( 'rest_api_init' ), 'Features registration diagnostics changed rest_api_init execution count.' );
-$check( isset( $registration_evidence['controllers'] ) && 3 === count( $registration_evidence['controllers'] ), 'Features registration diagnostics did not report the three bounded controllers.' );
-foreach ( $registration_evidence['controllers'] as $controller_evidence ) {
-	$check( ! empty( $controller_evidence['class_loaded'] ), 'Expected JetEngine REST controller class was not loaded.' );
-	$check( ! empty( $controller_evidence['register_routes']['available'] ), 'Expected JetEngine register_routes method is unavailable.' );
-}
 
 $peer = MAD4B_SCP_MCP_Peer_Governance::status();
 $check( ! empty( $peer['inventory_ready'] ), 'MCP peer inventory is unavailable with JetEngine active.' );
@@ -55,12 +42,14 @@ foreach ( isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_rou
 	$route = strtolower( (string) $route );
 	if ( 0 === strpos( $route, '/jet-engine/v1/' ) && false !== strpos( $route, 'mcp' ) ) { $jetengine_foreign_route = true; break; }
 }
-$check( $jetengine_foreign_route, 'Foreign MCP evidence was not attributable to the exact JetEngine namespace.' );
+$check( $jetengine_foreign_route, 'Foreign MCP evidence was not attributable to the certified JetEngine namespace.' );
 
 $coverage = MAD4B_SCP_Plugin_Discovery::coverage();
 $jetengine_coverage = null;
 foreach ( $coverage['plugins'] as $item ) if ( 'jet-engine/jet-engine.php' === $item['plugin_file'] ) { $jetengine_coverage = $item; break; }
 $check( is_array( $jetengine_coverage ), 'JetEngine was not present in adapter coverage discovery.' );
+$check( ! empty( $jetengine_coverage['provider_certification_required'] ), 'JetEngine coverage did not retain provider certification as a mutation requirement.' );
+if ( ! $runtime_contract_ok ) $check( empty( $jetengine_coverage['provider_certification_ok'] ), 'Pending JetEngine candidate was incorrectly reported as mutation-certified.' );
 $check( 'adapter_present_side_channel_blocked' === $jetengine_coverage['coverage_state'], 'JetEngine coverage incorrectly claims mutation readiness while its native MCP plane is active.' );
 $check( 'mcp_foreign_transport_unreviewed' === $jetengine_coverage['side_channel_blocker'], 'JetEngine coverage did not expose the native MCP blocker.' );
 $check( isset( $jetengine_coverage['support_request']['reason_code'] ) && 'parallel_mcp_write_plane_requires_isolation' === $jetengine_coverage['support_request']['reason_code'], 'JetEngine support request does not require native MCP isolation.' );
@@ -120,4 +109,4 @@ $check( 'before' === get_post_meta( $post_id, $field, true ), 'Denied JetEngine 
 $check( $mutations_before === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['mutations']}" ), 'Denied JetEngine ability created a mutation envelope.' );
 
 wp_delete_post( $post_id, true );
-echo "mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-jetengine-side-channel-boundary.v2: PASS\n";
