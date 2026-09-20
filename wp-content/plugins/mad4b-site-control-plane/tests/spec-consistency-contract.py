@@ -108,7 +108,7 @@ for marker in (
     'T103 real Staging remains a separate mandatory boundary',
 ): require(adapter_contract, marker, 'adapter-coverage-contract-invariant')
 
-require(data_model, 'Schema version: `4`', 'data-model-schema-v4')
+require(data_model, 'Schema version: `6`', 'data-model-schema-v6')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
