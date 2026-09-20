@@ -25,12 +25,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-approval-console-v2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   approval-console-v2-contract:
     name: Approval Console v2 contract
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Lint approval runtime
         run: |
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php
