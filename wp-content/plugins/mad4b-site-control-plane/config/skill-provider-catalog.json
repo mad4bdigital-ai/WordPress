@@ -108,6 +108,15 @@
         "description": "Inspect WPML translation plugin state, language inventory, and multilingual content dependencies through MAD4B read surfaces.",
         "body": "1. Identify the content and language context.\n2. Inspect WPML plugin family status and available language inventory.\n3. Separate translation availability from template, taxonomy, and routing issues.\n4. Return confirmed gaps and safe remediation without changing translation state."
       }
+    ],
+    "wp-import-export": [
+      {
+        "level": "provider",
+        "target": "wp-import-export",
+        "name": "wp-import-export-governed-operations",
+        "description": "Inspect WP All Import / Export jobs, validate bulk-operation impact, inspect export artifacts, and prepare governed execution plans without exposing provider secrets.",
+        "body": "1. Read provider status and exact import/export job identity.\\n2. Inspect the job through provider-backed read abilities.\\n3. Validate impact and execution readiness before proposing any bulk operation.\\n4. Never request or echo import/export cron secrets; provider secret material is server-resolved only.\\n5. Treat import as high-risk because one run can create, update, delete, retaxonomize, or attach media to many records.\\n6. Do not claim execution readiness while the direct execution contract or import run-level rollback is uncertified.\\n7. Return blockers and the next governed action instead of bypassing them."
+      }
     ]
   }
 }
