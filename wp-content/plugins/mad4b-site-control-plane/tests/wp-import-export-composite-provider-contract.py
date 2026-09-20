@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 provider_src = (ROOT / "includes/class-mad4b-scp-provider-contracts.php").read_text("utf-8")
 compat_src = (ROOT / "includes/class-mad4b-scp-provider-compatibility-certification.php").read_text("utf-8")
 adapter_src = (ROOT / "includes/adapters/class-mad4b-scp-wp-import-export-adapter.php").read_text("utf-8")
+inspection_src = (ROOT / "tests/wp-import-export-provider-package-inspection.py").read_text("utf-8")
 certified = json.loads((ROOT / "config/certified-providers.json").read_text("utf-8"))
 capabilities = json.loads((ROOT / "config/provider-capability-contracts.json").read_text("utf-8"))
 
@@ -55,6 +56,16 @@ for marker in (
     "runtime_artifact_fingerprint",
 ):
     assert marker in compat_src, marker
+
+for marker in (
+    "expected_critical = expected.get(\"critical_files\", {})",
+    "missing_critical",
+    "mismatched_critical",
+    "certified_critical_files_verified",
+    "additional_structural_files",
+):
+    assert marker in inspection_src, marker
+assert 'expected.get("critical_files", {}) != normalized' not in inspection_src
 
 catalog = capabilities["providers"]["wp-import-export"]["capabilities"]
 assert catalog["jobs.read"]["risk"] == "read"
