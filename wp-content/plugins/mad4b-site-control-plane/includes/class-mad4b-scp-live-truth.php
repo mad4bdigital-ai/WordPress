@@ -159,13 +159,19 @@ final class MAD4B_SCP_Live_Truth {
 		if ( $breakglass ) $blockers[] = 'breakglass_leak';
 
 		$runtime = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array( 'required' => false, 'match' => true );
+		$candidate_reconciled = empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] );
 		$runtime_reconciled = ! empty( $runtime['ready'] )
 			&& empty( $runtime['blocker'] )
 			&& isset( $runtime['write_tool_count'] )
 			&& (int) $runtime['write_tool_count'] === count( $tools )
 			&& isset( $runtime['write_inventory_fingerprint'], $inventory['write_inventory_fingerprint'] )
 			&& '' !== (string) $inventory['write_inventory_fingerprint']
-			&& hash_equals( (string) $inventory['write_inventory_fingerprint'], (string) $runtime['write_inventory_fingerprint'] );
+			&& hash_equals( (string) $inventory['write_inventory_fingerprint'], (string) $runtime['write_inventory_fingerprint'] )
+			&& $candidate_reconciled;
+		if ( $eligible && ! $candidate_reconciled ) $blockers[] = 'runtime_authority_candidate_not_reconciled';
 		if ( $eligible && ! $runtime_reconciled ) $blockers[] = 'runtime_authority_not_reconciled';
 
 		$blockers = array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) );
@@ -213,6 +219,13 @@ final class MAD4B_SCP_Live_Truth {
 			'oauth_role' => 'identity_only',
 			'runtime_reconciled' => $runtime_reconciled,
 			'runtime_state' => isset( $runtime['state'] ) ? (string) $runtime['state'] : 'unknown',
+			'candidate_binding_required' => ! empty( $candidate_binding['required'] ),
+			'candidate_binding_match' => ! empty( $candidate_binding['match'] ),
+			'candidate_binding_contract' => isset( $candidate_binding['contract'] ) ? (string) $candidate_binding['contract'] : '',
+			'candidate_source_commit_sha' => isset( $candidate_binding['stored_source_commit_sha'] ) ? (string) $candidate_binding['stored_source_commit_sha'] : '',
+			'candidate_build_fingerprint' => isset( $candidate_binding['stored_build_fingerprint'] ) ? (string) $candidate_binding['stored_build_fingerprint'] : '',
+			'current_source_commit_sha' => isset( $candidate_binding['current_source_commit_sha'] ) ? (string) $candidate_binding['current_source_commit_sha'] : '',
+			'current_build_fingerprint' => isset( $candidate_binding['current_build_fingerprint'] ) ? (string) $candidate_binding['current_build_fingerprint'] : '',
 			'control_plane_version' => isset( $inventory['control_plane_version'] ) ? $inventory['control_plane_version'] : '',
 			'write_inventory_fingerprint' => isset( $inventory['write_inventory_fingerprint'] ) ? $inventory['write_inventory_fingerprint'] : '',
 			'provider_blocked_fingerprint' => isset( $inventory['provider_blocked_fingerprint'] ) ? $inventory['provider_blocked_fingerprint'] : '',
