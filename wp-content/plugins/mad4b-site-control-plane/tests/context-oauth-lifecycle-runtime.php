@@ -4,6 +4,8 @@ define( 'ABSPATH', '/tmp/mad4b-context-oauth-lifecycle/' );
 define( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID', 'client-id.apps.googleusercontent.com' );
 define( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET', 'client-secret-fixture' );
 define( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL', 'https://auth.example.test/mad4b' );
+define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID', 'context-staging-v1' );
+define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', 'managed-google-site-signing-secret-fixture-0123456789' );
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) define( 'MINUTE_IN_SECONDS', 60 );
 
 $GLOBALS['mad4b_context_options'] = array();
@@ -14,6 +16,7 @@ $GLOBALS['mad4b_context_last_token_request'] = array();
 $GLOBALS['mad4b_managed_requests'] = array();
 $GLOBALS['mad4b_managed_redeem_responses'] = array();
 $GLOBALS['mad4b_managed_refresh_responses'] = array();
+$GLOBALS['mad4b_managed_site_nonces'] = array();
 
 class WP_Error {
 	private $code;
@@ -59,8 +62,36 @@ function delete_option( $name ) {
 }
 function wp_remote_retrieve_response_code( $response ) { return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0; }
 function wp_remote_retrieve_body( $response ) { return isset( $response['body'] ) ? (string) $response['body'] : ''; }
+function mad4b_assert_managed_site_signature( $operation, $args ) {
+	$headers = isset( $args['headers'] ) && is_array( $args['headers'] ) ? $args['headers'] : array();
+	foreach ( array( 'X-MAD4B-Site-Key-ID', 'X-MAD4B-Site-Timestamp', 'X-MAD4B-Site-Nonce', 'X-MAD4B-Site-Signature' ) as $required ) {
+		if ( empty( $headers[ $required ] ) ) throw new RuntimeException( 'Missing managed site auth header: ' . $required );
+	}
+	if ( MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID !== $headers['X-MAD4B-Site-Key-ID'] ) throw new RuntimeException( 'Managed site key ID mismatch.' );
+	$timestamp = (string) $headers['X-MAD4B-Site-Timestamp'];
+	$nonce = (string) $headers['X-MAD4B-Site-Nonce'];
+	$signature = strtolower( (string) $headers['X-MAD4B-Site-Signature'] );
+	if ( ! preg_match( '/^\d{10}$/', $timestamp ) ) throw new RuntimeException( 'Managed site timestamp invalid.' );
+	if ( abs( time() - (int) $timestamp ) > 5 ) throw new RuntimeException( 'Managed site timestamp outside test clock window.' );
+	if ( ! preg_match( '/^[A-Za-z0-9_-]{22,128}$/', $nonce ) ) throw new RuntimeException( 'Managed site nonce invalid.' );
+	if ( isset( $GLOBALS['mad4b_managed_site_nonces'][ $nonce ] ) ) throw new RuntimeException( 'Managed site nonce replayed.' );
+	$GLOBALS['mad4b_managed_site_nonces'][ $nonce ] = true;
+	$body = isset( $args['body'] ) ? (string) $args['body'] : '';
+	$path = '/v1/google/oauth/' . $operation;
+	$signing_payload = implode( "\n", array(
+		MAD4B_SCP_Google_Drive_Context::MANAGED_SITE_AUTH_SCHEME,
+		'POST',
+		$path,
+		$timestamp,
+		$nonce,
+		hash( 'sha256', $body ),
+	) );
+	$expected = hash_hmac( 'sha256', $signing_payload, MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET );
+	if ( ! hash_equals( $expected, $signature ) ) throw new RuntimeException( 'Managed site HMAC signature mismatch.' );
+}
 function wp_remote_post( $url, $args = array() ) {
 	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/session' ) ) {
+		mad4b_assert_managed_site_signature( 'session', $args );
 		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
 		$GLOBALS['mad4b_managed_requests']['session'] = is_array( $payload ) ? $payload : array();
 		return array(
@@ -73,6 +104,7 @@ function wp_remote_post( $url, $args = array() ) {
 		);
 	}
 	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/redeem' ) ) {
+		mad4b_assert_managed_site_signature( 'redeem', $args );
 		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
 		$GLOBALS['mad4b_managed_requests']['redeem'] = is_array( $payload ) ? $payload : array();
 		if ( empty( $GLOBALS['mad4b_managed_redeem_responses'] ) ) return new WP_Error( 'managed_redeem_fixture_exhausted', 'No managed redeem fixture remains.' );
@@ -80,6 +112,7 @@ function wp_remote_post( $url, $args = array() ) {
 		return array( 'response' => array( 'code' => 200 ), 'body' => json_encode( $data ) );
 	}
 	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/refresh' ) ) {
+		mad4b_assert_managed_site_signature( 'refresh', $args );
 		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
 		$GLOBALS['mad4b_managed_requests']['refresh'] = is_array( $payload ) ? $payload : array();
 		if ( empty( $GLOBALS['mad4b_managed_refresh_responses'] ) ) return new WP_Error( 'managed_refresh_fixture_exhausted', 'No managed refresh fixture remains.' );
@@ -214,6 +247,9 @@ mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $mode_
 
 $managed_credentials = MAD4B_SCP_Google_Drive_Context::credentials_status();
 mad4b_oauth_assert( ! empty( $managed_credentials['configured'] ), 'Managed mode must use broker readiness instead of site Google credentials.', $managed_credentials );
+mad4b_oauth_assert( ! empty( $managed_credentials['managed_broker']['site_request_auth']['configured'] ), 'Managed mode must require configured site-to-broker request signing.', $managed_credentials );
+mad4b_oauth_assert( 'context-staging-v1' === $managed_credentials['managed_broker']['site_request_auth']['key_id'], 'Managed broker status must expose only the non-secret site key ID.', $managed_credentials );
+mad4b_oauth_assert( empty( $managed_credentials['managed_broker']['site_request_auth']['secret_exposed'] ), 'Managed broker status must never expose the site request-signing secret.', $managed_credentials );
 mad4b_oauth_assert( empty( $managed_credentials['client_id'] ) && empty( $managed_credentials['client_id_suffix'] ), 'Managed mode must not expose or require a Google Client ID on the site.', $managed_credentials );
 mad4b_oauth_assert( empty( $managed_credentials['google_client_secret_on_site'] ) && 'mad4b_managed_oauth' === $managed_credentials['credential_custody'], 'Managed mode must declare off-site Google client-secret custody.', $managed_credentials );
 
@@ -264,7 +300,7 @@ mad4b_oauth_assert( 'mad4b_google_drive_auth_mode_change_requires_disconnect' ==
 
 $managed_public = MAD4B_SCP_Google_Drive_Context::public_connection_status();
 $managed_public_json = json_encode( $managed_public );
-foreach ( array( 'managed-refresh-token', 'managed-access-short', 'managed-access-refreshed', 'client-secret-fixture' ) as $secret ) {
+foreach ( array( 'managed-refresh-token', 'managed-access-short', 'managed-access-refreshed', 'client-secret-fixture', 'managed-google-site-signing-secret-fixture-0123456789' ) as $secret ) {
 	mad4b_oauth_assert( false === strpos( $managed_public_json, $secret ), 'Managed public status leaked OAuth/token material.', $managed_public );
 }
 
@@ -322,4 +358,5 @@ foreach ( array( 'dedicated-client-secret-fixture', 'dedicated-access-short', 'd
 $dedicated_disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
 mad4b_oauth_assert( ! is_wp_error( $dedicated_disconnected ) && empty( $dedicated_disconnected['connected'] ), 'Dedicated Google grant must revoke and disconnect cleanly.', $dedicated_disconnected );
 
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v6: PASS\n";
+mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v7: PASS\n";
