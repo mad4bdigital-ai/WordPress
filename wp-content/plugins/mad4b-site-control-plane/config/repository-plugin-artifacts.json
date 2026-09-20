@@ -23,6 +23,27 @@
         "astra-addon.zip"
       ]
     },
+    "bitflows": {
+      "support_mode": "specialized",
+      "mutation_scope": "governed_execution_where_certified",
+      "artifacts": [
+        "bit-pi.zip"
+      ]
+    },
+    "bulk-taxonomy-editor": {
+      "support_mode": "family_read",
+      "mutation_scope": "none",
+      "artifacts": [
+        "bulk-taxonomy-editor.zip"
+      ]
+    },
+    "custom-mega-menu": {
+      "support_mode": "family_read",
+      "mutation_scope": "none",
+      "artifacts": [
+        "custom-mega-menu-v43.zip"
+      ]
+    },
     "dangerous-code-execution": {
       "support_mode": "excluded_high_risk",
       "mutation_scope": "breakglass_review_only",
@@ -32,44 +53,6 @@
         "custom-css-js.zip",
         "user-role-editor.zip",
         "wp-file-manager.zip"
-      ]
-    },
-    "bitflows": {
-      "support_mode": "specialized",
-      "mutation_scope": "governed_execution_where_certified",
-      "artifacts": [
-        "bit-pi.zip"
-      ]
-    },
-    "content-utilities": {
-      "support_mode": "family_read",
-      "mutation_scope": "none",
-      "artifacts": [
-        "bulk-taxonomy-editor.zip",
-        "custom-mega-menu-v43.zip",
-        "meta-catalog-feed-mapper-pro.zip"
-      ]
-    },
-    "jet-ecosystem": {
-      "support_mode": "family_read",
-      "mutation_scope": "none",
-      "artifacts": [
-        "crocoblock-timber-library.zip",
-        "crocoblock-wizard.zip",
-        "jet-blocks.zip",
-        "jet-blog.zip",
-        "jet-elements.zip",
-        "jet-forms-popup-notification-master.zip",
-        "jet-search.zip",
-        "jet-tabs.zip",
-        "jet-woo-product-gallery.zip"
-      ]
-    },
-    "analytics": {
-      "support_mode": "family_read",
-      "mutation_scope": "none",
-      "artifacts": [
-        "duracelltomi-google-tag-manager.zip"
       ]
     },
     "elementor": {
@@ -91,6 +74,13 @@
         "multilingual-forms-fluent-forms-wpml.zip"
       ]
     },
+    "google-tag-manager": {
+      "support_mode": "family_read",
+      "mutation_scope": "none",
+      "artifacts": [
+        "duracelltomi-google-tag-manager.zip"
+      ]
+    },
     "hostinger": {
       "support_mode": "family_read",
       "mutation_scope": "none",
@@ -98,14 +88,26 @@
         "hostinger.zip"
       ]
     },
-    "media": {
-      "support_mode": "specialized_or_adjacent",
-      "mutation_scope": "metadata_write_where_certified",
+    "identity-admin": {
+      "support_mode": "restricted_read",
+      "mutation_scope": "none",
       "artifacts": [
-        "imagify.zip",
-        "shortpixel-image-optimiser.zip",
-        "smart-media-converter.zip",
-        "webp-converter-for-media.zip"
+        "user-switching.zip"
+      ]
+    },
+    "jet-ecosystem": {
+      "support_mode": "family_read",
+      "mutation_scope": "none",
+      "artifacts": [
+        "crocoblock-timber-library.zip",
+        "crocoblock-wizard.zip",
+        "jet-blocks.zip",
+        "jet-blog.zip",
+        "jet-elements.zip",
+        "jet-forms-popup-notification-master.zip",
+        "jet-search.zip",
+        "jet-tabs.zip",
+        "jet-woo-product-gallery.zip"
       ]
     },
     "jetengine": {
@@ -134,6 +136,13 @@
         "jet-engine.zip"
       ]
     },
+    "jetformbuilder": {
+      "support_mode": "specialized",
+      "mutation_scope": "none",
+      "artifacts": [
+        "jetformbuilder.zip"
+      ]
+    },
     "jetsmartfilters": {
       "support_mode": "specialized",
       "mutation_scope": "bounded_filter_write_where_certified",
@@ -141,13 +150,6 @@
         "jet-smart-filters-advanced-date-filter-master.zip",
         "jet-smart-filters-astra-master.zip",
         "jet-smart-filters.zip"
-      ]
-    },
-    "jetformbuilder": {
-      "support_mode": "specialized",
-      "mutation_scope": "none",
-      "artifacts": [
-        "jetformbuilder.zip"
       ]
     },
     "litespeed": {
@@ -165,17 +167,21 @@
         "mcp-adapter.zip"
       ]
     },
-    "wpml": {
+    "media": {
+      "support_mode": "specialized_or_adjacent",
+      "mutation_scope": "metadata_write_where_certified",
+      "artifacts": [
+        "imagify.zip",
+        "shortpixel-image-optimiser.zip",
+        "smart-media-converter.zip",
+        "webp-converter-for-media.zip"
+      ]
+    },
+    "meta-catalog-feed-mapper": {
       "support_mode": "family_read",
       "mutation_scope": "none",
       "artifacts": [
-        "otgs-installer-plugin.zip",
-        "sitepress-multilingual-cms.zip",
-        "wp-seo-multilingual.zip",
-        "wpml-cms-nav.zip",
-        "wpml-import.zip",
-        "wpml-meta-id-mapper-ui.zip",
-        "wpml-string-translation.zip"
+        "meta-catalog-feed-mapper-pro.zip"
       ]
     },
     "reviews": {
@@ -191,13 +197,6 @@
       "artifacts": [
         "seo-by-rank-math-pro.zip",
         "seo-by-rank-math.zip"
-      ]
-    },
-    "identity-admin": {
-      "support_mode": "restricted_read",
-      "mutation_scope": "none",
-      "artifacts": [
-        "user-switching.zip"
       ]
     },
     "wp-import-export": {
@@ -219,6 +218,19 @@
       "artifacts": [
         "wpl-client-1238.zip",
         "wpl-client.zip"
+      ]
+    },
+    "wpml": {
+      "support_mode": "family_read",
+      "mutation_scope": "none",
+      "artifacts": [
+        "otgs-installer-plugin.zip",
+        "sitepress-multilingual-cms.zip",
+        "wp-seo-multilingual.zip",
+        "wpml-cms-nav.zip",
+        "wpml-import.zip",
+        "wpml-meta-id-mapper-ui.zip",
+        "wpml-string-translation.zip"
       ]
     }
   }
