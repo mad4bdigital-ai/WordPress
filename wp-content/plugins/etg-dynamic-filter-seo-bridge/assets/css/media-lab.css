@@ -1,0 +1,13 @@
+.etg-media-lab .etg-media-preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:14px 0 20px}
+.etg-media-lab .etg-media-preview{margin:0;padding:8px;border:1px solid #dcdcde;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.etg-media-lab .etg-media-preview img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:7px;background:#f0f0f1}
+.etg-media-lab .etg-media-preview figcaption{padding:7px 2px 0;color:#50575e;font:600 11px/1.2 Consolas,Monaco,monospace;text-align:center}
+.etg-media-lab textarea.code{min-height:150px;resize:vertical}
+.etg-media-lab .etg-overview-card{min-width:0}
+.etg-media-lab .etg-overview-card textarea{width:100%}
+.etg-media-lab .etg-status-grid{margin-top:2px}
+.etg-media-lab .etg-table-scroll td code{word-break:break-word}
+.etg-media-lab .etg-table-scroll form{white-space:nowrap}
+.etg-media-lab .etg-guide-recipe-grid{margin-top:4px}
+.etg-media-lab .etg-panel .notice.inline{margin:12px 0 0}
+@media(max-width:782px){.etg-media-lab .etg-media-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.etg-media-lab .etg-actions select{width:100%;max-width:none}.etg-media-lab .etg-actions{align-items:stretch}}
