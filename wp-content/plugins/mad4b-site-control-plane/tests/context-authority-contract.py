@@ -402,7 +402,7 @@ require(admin, "handle_google_dedicated_callback", "Dedicated Site OAuth callbac
 require(admin, "Save Dedicated OAuth Configuration", "Dedicated Site OAuth settings UX")
 require(admin, "Save Connection Method", "Explicit authentication mode selection UX")
 require(admin, "Managed Google Sign-In", "Managed OAuth setup UX")
-require(admin, "MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL", "Managed OAuth broker readiness UX")
+require(admin, "MAD4B Managed OAuth broker and per-site request signing are configured.", "Managed OAuth broker readiness UX")
 require(admin, "handle_google_managed_callback", "Managed OAuth dedicated callback handler")
 require(admin, "Connect Read-only", "read-only connect UX")
 require(admin, "Connect Read + Write", "read-write connect UX")
