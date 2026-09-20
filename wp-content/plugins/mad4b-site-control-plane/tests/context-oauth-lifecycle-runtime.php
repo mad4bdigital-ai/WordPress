@@ -3,7 +3,7 @@
 define( 'ABSPATH', '/tmp/mad4b-context-oauth-lifecycle/' );
 define( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID', 'client-id.apps.googleusercontent.com' );
 define( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET', 'client-secret-fixture' );
-define( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL', 'https://auth.example.test/mad4b' );
+define( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL', 'https://auth.example.test' );
 define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID', 'context-staging-v1' );
 define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', 'managed-google-site-signing-secret-fixture-0123456789' );
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) define( 'MINUTE_IN_SECONDS', 60 );
