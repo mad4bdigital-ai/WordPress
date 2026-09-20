@@ -166,10 +166,16 @@ require(impl['registry'], 'mad4b_wildcard_grant_denied', 'implementation-wildcar
 require(impl['authz'], 'exact_grant', 'implementation-exact-grant')
 require(impl['authz'], 'MAD4B_SCP_Transport_Context::resolve_server_for_ability', 'implementation-effective-transport-binding')
 require(impl['authz'], 'MAD4B_SCP_Budgets::reserve', 'implementation-budget-before-effect')
-require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::consume_exact', 'implementation-exact-approval')
+require(impl['authz'], 'MAD4B_SCP_Approval_Tickets::authorize_exact', 'implementation-exact-approval-preflight')
+require(impl['approval'], 'public static function authorize_exact', 'implementation-approval-authorize-exact')
+require(impl['approval'], 'public static function claim_exact', 'implementation-approval-claim-exact')
+require(impl['approval'], 'public static function finalize_claim', 'implementation-approval-finalize-claim')
+require(impl['approval'], "'executing'", 'implementation-approval-executing-state')
+if 'MAD4B_SCP_Approval_Tickets::consume_exact' in impl['authz']:
+    raise SystemExit('FAIL implementation-authz-must-not-consume-approval-before-effect')
 if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Agent_Registry::exact_grant'):
     raise SystemExit('FAIL implementation-transport-before-grant')
-if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::consume_exact'):
+if impl['authz'].index('MAD4B_SCP_Transport_Context::resolve_server_for_ability') > impl['authz'].index('MAD4B_SCP_Approval_Tickets::authorize_exact'):
     raise SystemExit('FAIL implementation-transport-before-approval')
 require(impl['peer'], 'mcp_write_side_channel_detected', 'implementation-side-channel-blocker')
 require(impl['peer'], 'foreign_transport_inventory', 'implementation-foreign-mcp-inventory')
