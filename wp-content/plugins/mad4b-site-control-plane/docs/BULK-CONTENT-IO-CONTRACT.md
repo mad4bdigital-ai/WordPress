@@ -54,6 +54,31 @@ For WP All Export Pro 1.9.15, the exact package exposes a server-local `PMXE_Exp
 
 No cron URL or provider secret becomes a public MAD4B transport at any layer.
 
+### Behavioral acceptance planning
+
+Read-only ability:
+
+`wp-import-export/behavioral-acceptance-plan`
+
+Contract:
+
+`mad4b.bulk-content-io-behavioral-acceptance-plan.v1`
+
+The plan binds one existing provider job to the current provider artifact fingerprint, capability contract digest, candidate/configuration hashes and transport contract. It declares the exact observations that must be collected before behavioral execution can be certified.
+
+The acceptance plan is evidence planning only:
+
+- it is non-authorizing;
+- it does not mount `run-import` or `run-export`;
+- it does not create or modify a provider job;
+- it requires a pre-existing saved provider job explicitly prepared as disposable test data;
+- it is non-production only;
+- it never accepts or returns provider cron secrets.
+
+Import acceptance requires successful execution, exact outcome reconciliation, dry-run parity and exact rollback. Export acceptance requires successful execution, verified artifact hash, Artifact Registry ingest and unchanged content state.
+
+A successful negative transport canary or a generated acceptance plan cannot produce a behavioral receipt by itself.
+
 ## Import exact identity
 
 An import cannot be authorized by numeric job ID alone.
