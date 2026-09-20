@@ -66,5 +66,8 @@ assert "mad4b/provider-contract-discovery" in registry
 assert "provider_contract_discovery" in registry
 assert "'mad4b/provider-contract-discovery'" in registry
 assert "MAD4B_SCP_Plugin_Discovery::contract_discovery_report()" in registry
+assert "'mad4b/provider-functional-coverage'" in registry
+assert "'mad4b/provider-contract-discovery'" in registry
+assert "ability_names( $surface )" in registry
 
 print('mad4b.provider-contract-discovery.contract.v1: PASS')
