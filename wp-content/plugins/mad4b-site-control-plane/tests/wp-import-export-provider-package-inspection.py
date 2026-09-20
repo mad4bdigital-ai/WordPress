@@ -274,8 +274,25 @@ def main():
         for member, digest in observed.get("critical_files", {}).items():
             rel = member[len(prefix):] if member.startswith(prefix) else member
             normalized[rel] = digest
-        if expected.get("critical_files", {}) != normalized:
-            raise SystemExit(f"{kind}: certified critical-file manifest drifted")
+        expected_critical = expected.get("critical_files", {})
+        if not isinstance(expected_critical, dict) or not expected_critical:
+            raise SystemExit(f"{kind}: certified critical-file manifest is missing")
+        missing_critical = sorted(rel for rel in expected_critical if rel not in normalized)
+        mismatched_critical = sorted(
+            rel for rel, digest in expected_critical.items()
+            if rel in normalized and normalized.get(rel) != digest
+        )
+        if missing_critical or mismatched_critical:
+            raise SystemExit(
+                f"{kind}: certified critical-file manifest drifted "
+                f"(missing={missing_critical}, mismatched={mismatched_critical})"
+            )
+        additional_structural = {
+            rel: digest for rel, digest in sorted(normalized.items())
+            if rel not in expected_critical
+        }
+        observed["certified_critical_files_verified"] = True
+        observed["additional_structural_files"] = additional_structural
     report["composite_provider_contract_verified"] = True
     report["composite_contract_mode"] = provider_contract.get("contract_mode", "")
 
