@@ -131,6 +131,49 @@ final class MAD4B_SCP_Plugin_Discovery {
 		);
 	}
 
+	public static function contract_discovery_report() {
+		$coverage = self::coverage();
+		$families = array();
+		foreach ( isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array() as $plugin ) {
+			if ( empty( $plugin['active'] ) || empty( $plugin['functional_coverage'] ) || ! is_array( $plugin['functional_coverage'] ) ) continue;
+			$f = $plugin['functional_coverage'];
+			if ( 'contract_discovery_required' !== ( isset( $f['state'] ) ? (string) $f['state'] : '' ) ) continue;
+			$family = ! empty( $plugin['family'] ) ? sanitize_key( (string) $plugin['family'] ) : 'unknown';
+			if ( ! isset( $families[ $family ] ) ) {
+				$families[ $family ] = array(
+					'family' => $family,
+					'adapter_id' => isset( $plugin['adapter_id'] ) ? sanitize_key( (string) $plugin['adapter_id'] ) : '',
+					'risk' => isset( $plugin['risk'] ) ? sanitize_key( (string) $plugin['risk'] ) : 'unknown',
+					'reason' => isset( $f['reason'] ) ? sanitize_text_field( (string) $f['reason'] ) : '',
+					'evidence_requirements' => isset( $f['evidence_requirements'] ) && is_array( $f['evidence_requirements'] ) ? array_values( $f['evidence_requirements'] ) : array(),
+					'safe_now' => isset( $f['safe_now'] ) && is_array( $f['safe_now'] ) ? array_values( $f['safe_now'] ) : array(),
+					'prohibited_until_certified' => isset( $f['prohibited_until_certified'] ) && is_array( $f['prohibited_until_certified'] ) ? array_values( $f['prohibited_until_certified'] ) : array(),
+					'next_action' => isset( $f['next_action'] ) ? sanitize_key( (string) $f['next_action'] ) : '',
+					'plugin_files' => array(),
+					'plugin_names' => array(),
+				);
+			}
+			if ( ! empty( $plugin['plugin_file'] ) ) $families[ $family ]['plugin_files'][] = self::normalize_plugin_file( (string) $plugin['plugin_file'] );
+			if ( ! empty( $plugin['name'] ) ) $families[ $family ]['plugin_names'][] = sanitize_text_field( (string) $plugin['name'] );
+		}
+		foreach ( $families as $family => $item ) {
+			$families[ $family ]['plugin_files'] = array_values( array_unique( $item['plugin_files'] ) );
+			$families[ $family ]['plugin_names'] = array_values( array_unique( $item['plugin_names'] ) );
+		}
+		ksort( $families, SORT_STRING );
+		return array(
+			'contract' => 'mad4b.provider-contract-discovery.v1',
+			'read_only' => true,
+			'active_only' => true,
+			'network_request_sent' => false,
+			'credential_material_exposed' => false,
+			'authority_created' => false,
+			'mutation_default' => 'deny',
+			'items' => array_values( $families ),
+			'count' => count( $families ),
+		);
+	}
+
 	public static function support_requests() {
 		$coverage = self::coverage();
 		return array(
