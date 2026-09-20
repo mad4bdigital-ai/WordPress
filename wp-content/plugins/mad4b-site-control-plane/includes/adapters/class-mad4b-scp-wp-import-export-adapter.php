@@ -26,7 +26,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				'wp-import-export/inspect-import-contract','wp-import-export/validate-import','wp-import-export/plan-import-run',
 				'wp-import-export/list-exports','wp-import-export/get-export',
 				'wp-import-export/inspect-export-contract','wp-import-export/get-export-file-metadata','wp-import-export/validate-export',
-				'wp-import-export/plan-export-run','wp-import-export/execution-readiness',
+				'wp-import-export/plan-export-run','wp-import-export/execution-readiness','wp-import-export/behavioral-acceptance-plan',
 			),
 			'content' => array(), 'admin' => array(),
 		);
@@ -36,6 +36,10 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$id = $this->schema( array( 'id' => array( 'type'=>'integer','minimum'=>1 ) ), array( 'id' ) );
 		$list = $this->schema( array( 'limit' => array( 'type'=>'integer','minimum'=>1,'maximum'=>self::MAX_ITEMS ) ) );
+		$acceptance_plan = $this->schema( array(
+			'kind' => array( 'type'=>'string','enum'=>array('import','export') ),
+			'id' => array( 'type'=>'integer','minimum'=>1 ),
+		), array( 'kind','id' ) );
 		$export_plan = $this->schema( array(
 			'id' => array( 'type'=>'integer','minimum'=>1 ),
 			'data_classification' => array( 'type'=>'string','enum'=>array('public','internal','sensitive','restricted') ),
@@ -54,6 +58,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->add_ability('wp-import-export/validate-export','Validate WP All Export Job Readiness','validate_export',$read,$id);
 		$this->add_ability('wp-import-export/plan-export-run','Plan Governed WP All Export Run','plan_export_run',$read,$export_plan);
 		$this->add_ability('wp-import-export/execution-readiness','Read WP All Import / Export Execution Readiness','execution_readiness',$read);
+		$this->add_ability('wp-import-export/behavioral-acceptance-plan','Plan Disposable WP Import Export Behavioral Acceptance','behavioral_acceptance_plan',$read,$acceptance_plan);
 	}
 
 	public function status( $input = array() ) {
@@ -160,6 +165,70 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'ledger_contract'=>'mad4b.content-operations-ledger.v1',
 			'reconciliation_contract'=>'mad4b.bulk-content-io-reconciliation.v1',
 			'receipt_contract'=>'mad4b.bulk-content-io-receipt.v1',
+		);
+	}
+
+	public function behavioral_acceptance_plan( $input ) {
+		$kind=isset($input['kind'])?sanitize_key((string)$input['kind']):'';
+		$id=$this->input_id($input);
+		if(!in_array($kind,array('import','export'),true))return new WP_Error('mad4b_wp_import_export_acceptance_kind_invalid','Behavioral acceptance requires import or export kind.');
+		$r=$this->record($kind,$id); if(is_wp_error($r))return $r;
+		$readiness=$this->execution_readiness();
+		$provider=$this->provider_certification($this->is_available());
+		$artifact_fingerprint='';
+		$capability_digest='';
+		$capability_id='import'===$kind?'import.execute':'export.execute';
+		$target_ability='import'===$kind?'wp-import-export/run-import':'wp-import-export/run-export';
+		if(class_exists('MAD4B_SCP_Provider_Compatibility_Certification')&&MAD4B_SCP_Provider_Compatibility_Certification::supports_provider($this->provider_key())){
+			$status=MAD4B_SCP_Provider_Compatibility_Certification::ability_status($this->provider_key(),$target_ability,$this);
+			if(is_array($status)){
+				$artifact_fingerprint=isset($status['artifact']['runtime_artifact_fingerprint'])?(string)$status['artifact']['runtime_artifact_fingerprint']:'';
+				$capability_digest=isset($status['capability_contract_digest'])?(string)$status['capability_contract_digest']:'';
+			}
+		}
+		$exact='import'===$kind?$this->import_contract($r):$this->export_contract($r);
+		if(is_wp_error($exact))return $exact;
+		$seed=array(
+			'kind'=>$kind,'job_id'=>$id,'candidate_sha256'=>isset($exact['candidate_sha256'])?$exact['candidate_sha256']:'',
+			'artifact_fingerprint'=>$artifact_fingerprint,'capability_contract_digest'=>$capability_digest,
+		);
+		$plan_id='bulk-acceptance-'.substr(hash('sha256',wp_json_encode($seed)),0,24);
+		$expected='import'===$kind?array(
+			'provider_job_completes'=>true,
+			'create_update_delete_counts_reconciled'=>true,
+			'dry_run_parity_verified'=>true,
+			'rollback_restores_exact_before_state'=>true,
+			'no_post_probe_drift'=>true,
+		):array(
+			'provider_job_completes'=>true,
+			'artifact_created'=>true,
+			'artifact_sha256_verified'=>true,
+			'artifact_registry_ingest_verified'=>true,
+			'content_state_unchanged'=>true,
+		);
+		return array(
+			'contract'=>'mad4b.bulk-content-io-behavioral-acceptance-plan.v1',
+			'plan_id'=>$plan_id,'kind'=>$kind,'job_id'=>$id,'provider_id'=>$this->provider_key(),
+			'capability_id'=>$capability_id,'target_ability'=>$target_ability,
+			'execution_transport_candidate'=>isset($readiness[$kind]['execution_transport_candidate'])?$readiness[$kind]['execution_transport_candidate']:'unresolved',
+			'transport_contract'=>isset($readiness[$kind]['transport_contract'])?$readiness[$kind]['transport_contract']:'',
+			'exact_composite_artifact_certified'=>!empty($readiness['exact_composite_artifact_certified']),
+			'provider_runtime_status'=>is_array($provider)&&isset($provider['status'])?(string)$provider['status']:'unknown',
+			'artifact_fingerprint'=>$artifact_fingerprint,'capability_contract_digest'=>$capability_digest,
+			'candidate_sha256'=>isset($exact['candidate_sha256'])?$exact['candidate_sha256']:'',
+			'configuration_sha256'=>isset($exact['configuration_sha256'])?$exact['configuration_sha256']:'',
+			'provider_versions'=>isset($exact['provider_versions'])?$exact['provider_versions']:array(),
+			'disposable_job_required'=>true,'preexisting_saved_provider_job_required'=>true,
+			'production_allowed'=>false,'execution_mounted'=>false,'authorizing'=>false,
+			'caller_supplied_secret_allowed'=>false,'cron_url_execution_allowed'=>false,
+			'required_environment'=>'governed_nonproduction',
+			'required_evidence'=>$expected,
+			'import_rollback_contract'=>'import'===$kind?self::IMPORT_ROLLBACK_CONTRACT:'',
+			'export_artifact_contract'=>'export'===$kind?'mad4b.bulk-export-artifact.v1':'',
+			'receipt_contract'=>'mad4b.bulk-content-io-receipt.v1',
+			'reconciliation_contract'=>'mad4b.bulk-content-io-reconciliation.v1',
+			'current_blockers'=>isset($readiness[$kind]['blockers'])?$readiness[$kind]['blockers']:array(),
+			'next_action'=>'execute_this_exact_plan_only_against_a_disposable_saved_provider_job_under_governed_nonproduction_authority',
 		);
 	}
 
