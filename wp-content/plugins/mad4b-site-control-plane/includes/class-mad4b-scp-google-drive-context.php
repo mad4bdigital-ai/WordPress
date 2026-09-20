@@ -56,7 +56,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return '';
 		$origin = rtrim( (string) MAD4B_SCP_Site_Profile::site_origin(), '/' );
 		if ( '' === $origin ) return '';
-		return add_query_arg( 'action', 'mad4b_context_google_dedicated_callback', $origin . '/wp-admin/admin-post.php' );
+		return add_query_arg( array( 'action' => 'mad4b_context_google_dedicated_callback' ), $origin . '/wp-admin/admin-post.php' );
 	}
 
 	public static function auth_mode() {
