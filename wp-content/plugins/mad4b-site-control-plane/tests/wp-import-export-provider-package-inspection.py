@@ -189,6 +189,35 @@ def main():
     for kind, cfg in TARGETS.items():
         report["archives"][kind] = inspect_archive(plugin_dir, kind, cfg)
 
+    certified_path = plugin_dir / "mad4b-site-control-plane" / "config" / "certified-providers.json"
+    certified = json.loads(certified_path.read_text(encoding="utf-8"))
+    provider_contract = certified.get("providers", {}).get("wp-import-export", {})
+    components = provider_contract.get("components", {})
+    for kind in ("import", "export"):
+        observed = report["archives"][kind]
+        expected = components.get(kind, {})
+        if not expected:
+            raise SystemExit(f"{kind}: exact composite provider component is not cataloged")
+        if expected.get("version") != observed["plugin"].get("version"):
+            raise SystemExit(f"{kind}: certified version does not match exact repository archive")
+        if expected.get("archive") != observed.get("archive"):
+            raise SystemExit(f"{kind}: certified archive name does not match exact repository archive")
+        if expected.get("archive_sha256") != observed.get("archive_sha256"):
+            raise SystemExit(f"{kind}: certified archive SHA-256 drifted")
+        expected_plugin_file = expected.get("plugin_file", "")
+        observed_plugin_file = observed["plugin"].get("plugin_file", "")
+        if expected_plugin_file != observed_plugin_file:
+            raise SystemExit(f"{kind}: certified plugin_file drifted")
+        prefix = observed_plugin_file.rsplit("/", 1)[0] + "/"
+        normalized = {}
+        for member, digest in observed.get("critical_files", {}).items():
+            rel = member[len(prefix):] if member.startswith(prefix) else member
+            normalized[rel] = digest
+        if expected.get("critical_files", {}) != normalized:
+            raise SystemExit(f"{kind}: certified critical-file manifest drifted")
+    report["composite_provider_contract_verified"] = True
+    report["composite_contract_mode"] = provider_contract.get("contract_mode", "")
+
     # Guard against accidentally treating package introspection as behavioral certification.
     report["behavioral_certified"] = False
     report["rollback_certified"] = False
