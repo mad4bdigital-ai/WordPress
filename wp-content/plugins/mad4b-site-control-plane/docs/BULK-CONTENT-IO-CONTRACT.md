@@ -35,6 +35,25 @@ Provider trigger/process/cancel primitives are implementation details of a compo
 
 Execution is not mounted in this PR.
 
+## Execution evidence ladder
+
+Bulk execution readiness is intentionally split into independent evidence layers:
+
+1. **Exact package certification** — exact provider versions and critical-file hashes match the certified repository artifacts.
+2. **Transport surface observation** — the exact package exposes the intended server-local invocation surface.
+3. **Negative transport canary** — an invalid/disposable request reaches the provider transport and fails closed without content mutation or secret disclosure.
+4. **Behavioral execution certification** — a valid disposable provider job executes successfully under the exact current package and produces bounded reconciliation evidence.
+5. **Rollback / artifact proof** — import proves exact rollback; export proves governed Artifact Registry ingestion.
+6. **Operation receipt and reconciliation** — the composite MAD4B operation closes with an exact receipt and verified final state.
+
+Passing a lower layer never implies a higher layer.
+
+For WP All Import Pro 5.0.8, the exact package exposes the server-local WP-CLI command `all-import`. Repository CI may exercise unknown-job failure behavior, but that negative canary is **not** behavioral execution certification.
+
+For WP All Export Pro 1.9.15, the exact package exposes a server-local `PMXE_Export_Record::execute` surface and no WP All Export WP-CLI command. Package reflection alone is **not** behavioral execution certification.
+
+No cron URL or provider secret becomes a public MAD4B transport at any layer.
+
 ## Import exact identity
 
 An import cannot be authorized by numeric job ID alone.
