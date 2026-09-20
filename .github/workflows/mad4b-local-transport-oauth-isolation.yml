@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify optional OAuth transport boundary
         shell: bash
         run: |
@@ -60,8 +60,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
