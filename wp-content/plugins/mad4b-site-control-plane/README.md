@@ -8,6 +8,8 @@ Current plugin version: **0.4.0-rc.35**.
 
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
+Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
 ## MCP surfaces
 
 MAD4B now owns five governed custom MCP server IDs:
