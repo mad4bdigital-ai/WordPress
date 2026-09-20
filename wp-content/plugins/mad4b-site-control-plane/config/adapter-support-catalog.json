@@ -325,7 +325,9 @@
         "reversible_import_run"
       ],
       "mutation_scope": "governed_execution_unmounted_until_certified",
-      "functional_mode": "specialized"
+      "functional_mode": "specialized",
+      "functional_rationale": "Bulk job inspection is supported; execution stays fail-closed until direct secret-safe execution and import run-level rollback are certified.",
+      "functional_next_action": "certify_direct_execution_and_import_run_level_rollback"
     },
     {
       "id": "hostinger",
@@ -396,7 +398,9 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required"
+      "functional_mode": "review_required",
+      "functional_rationale": "This family groups unrelated content tools. A generic writer would create ambiguous authority across taxonomy editing, feeds, permalinks and post-table products.",
+      "functional_next_action": "split_content_utilities_into_provider_specific_families_before_adding_functional_abilities"
     },
     {
       "id": "analytics",
@@ -410,7 +414,9 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required"
+      "functional_mode": "review_required",
+      "functional_rationale": "Analytics/tag-management plugins can own external measurement configuration and credentials. Provider-specific read contracts must be reviewed before exposing configuration details.",
+      "functional_next_action": "review_active_analytics_provider_and_define_non_secret_configuration_read_contract"
     },
     {
       "id": "reviews",
@@ -453,7 +459,9 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required"
+      "functional_mode": "review_required",
+      "functional_rationale": "The installed WPL client contract is not yet documented strongly enough to infer safe functional operations from plugin presence.",
+      "functional_next_action": "capture_runtime_and_vendor_contract_before_specialized_adapter_design"
     },
     {
       "id": "woocommerce",
