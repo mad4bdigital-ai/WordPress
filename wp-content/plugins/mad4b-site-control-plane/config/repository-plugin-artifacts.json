@@ -202,14 +202,16 @@
     },
     "wp-import-export": {
       "support_mode": "specialized",
-      "mutation_scope": "governed_execution_unmounted_until_certified",
+      "mutation_scope": "composite_run_execution_unmounted_until_all_safety_contracts_certified",
       "artifacts": [
         "wp-all-export-csv-excel-xml-for-acf.zip",
         "wp-all-export-pro.zip",
         "wp-all-import-pro.zip",
         "wpae-acf-add-on.zip",
         "wpai-woocommerce-add-on.zip"
-      ]
+      ],
+      "execution_contract": "mad4b.bulk-content-io-operation.v1",
+      "receipt_contract": "mad4b.bulk-content-io-receipt.v1"
     },
     "wpl-client": {
       "support_mode": "family_read",
