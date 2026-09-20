@@ -38,7 +38,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-etg-dfsb-adapter-${{ github.event.pull_request.head.sha || github.sha }}
+  group: mad4b-etg-dfsb-adapter-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -173,8 +173,8 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-etg-wordpress
-          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
-          unzip -q wp-content/plugins/elementor.zip -d "$WP_PATH/wp-content/plugins"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/elementor.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug elementor
           unzip -q /tmp/mad4b-etg-providers/jet-engine.zip -d "$WP_PATH/wp-content/plugins"
           unzip -q /tmp/mad4b-etg-providers/jet-smart-filters.zip -d "$WP_PATH/wp-content/plugins"
           cp -R wp-content/plugins/etg-dynamic-filter-seo-bridge "$WP_PATH/wp-content/plugins/etg-dynamic-filter-seo-bridge"
