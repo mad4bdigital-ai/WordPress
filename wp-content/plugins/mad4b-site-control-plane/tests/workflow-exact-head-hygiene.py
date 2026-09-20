@@ -75,8 +75,8 @@ def inspect(path: Path) -> list[dict]:
         issues.append({"workflow": path.name, "reason": "stale_run_cancellation_disabled"})
 
     for i, line in enumerate(lines):
-        if re.search(r"\bunzip\s+-q\s+", line) and "$WP_PATH/wp-content/plugins" in line:
-            issues.append({"workflow": path.name, "line": i + 1, "reason": "interactive_unzip_into_shared_plugin_directory"})
+        if re.search(r"\bunzip\b", line) and "$WP_PATH/wp-content/plugins" in line:
+            issues.append({"workflow": path.name, "line": i + 1, "reason": "direct_archive_extract_into_shared_plugin_directory"})
 
     return issues
 
