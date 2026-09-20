@@ -37,8 +37,13 @@ if ( ! empty( $status['mutation_exposed'] ) ) $fail( 'Bulk mutation is unexpecte
 if ( ! empty( $status['caller_supplied_secret_allowed'] ) || ! empty( $status['secret_material_exposed'] ) || ! empty( $status['cron_url_execution_allowed'] ) ) $fail( 'Secret/cron safety invariant failed.' );
 
 $ready = $adapter->execution_readiness();
-if ( ! is_array( $ready ) || 'mad4b.wp-import-export-execution-readiness.v2' !== ( $ready['contract'] ?? '' ) ) $fail( 'Unexpected execution readiness contract.' );
+if ( ! is_array( $ready ) || 'mad4b.wp-import-export-execution-readiness.v3' !== ( $ready['contract'] ?? '' ) ) $fail( 'Unexpected execution readiness contract.' );
 if ( empty( $ready['provider_certification_required'] ) ) $fail( 'Provider certification requirement is missing.' );
+if ( ! empty( $ready['import']['server_secret_required'] ) || ! empty( $ready['export']['server_secret_required'] ) ) $fail( 'Provider cron secrets must never be execution prerequisites.' );
+if ( in_array( 'wp_all_import_server_secret_missing', (array) ( $ready['import']['blockers'] ?? array() ), true ) ) $fail( 'Import cron-secret blocker must not return.' );
+if ( in_array( 'wp_all_export_server_secret_missing', (array) ( $ready['export']['blockers'] ?? array() ), true ) ) $fail( 'Export cron-secret blocker must not return.' );
+if ( 'server_local_wp_cli' !== ( $ready['import']['execution_transport_candidate'] ?? '' ) ) $fail( 'Import transport candidate must be server-local WP-CLI.' );
+if ( 'server_local_provider_record_execute' !== ( $ready['export']['execution_transport_candidate'] ?? '' ) ) $fail( 'Export transport candidate must remain server-local provider Record execution.' );
 if ( ! empty( $ready['mounted_execution_abilities'] ) ) $fail( 'Execution abilities must remain unmounted.' );
 
 $desired = isset( $ready['desired_execution_abilities'] ) && is_array( $ready['desired_execution_abilities'] ) ? $ready['desired_execution_abilities'] : array();
