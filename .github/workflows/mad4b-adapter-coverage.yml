@@ -53,6 +53,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/jetengine-features-registration-diagnostics-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-governed-adapter-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-provider-coverage-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/adapter-discovery-reversibility-contract.py \
             --output /tmp/mad4b-repository-plugin-adapter-coverage.json
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-plugin-artifact-coverage.py \
