@@ -103,7 +103,7 @@ if ( empty( $restored_hash['runtime_contract_ok'] ) || 'certified' !== ( $restor
 $import_main_path = WP_PLUGIN_DIR . '/wp-all-import-pro/wp-all-import-pro.php';
 $import_main_original = is_readable( $import_main_path ) ? file_get_contents( $import_main_path ) : false;
 if ( false === $import_main_original ) $fail( 'Unable to read import main file for version drift proof.' );
-$import_main_drifted = preg_replace( '/(^[ \t*#\/]*Version\s*:\s*)5\.0\.8(\s*$)/mi', '$1' . '5.0.9' . '$2', $import_main_original, 1, $version_replacements );
+$import_main_drifted = preg_replace( '/(^[ \t*#\/]*Version\s*:\s*)5\.0\.8(\s*$)/mi', '${1}5.0.9${2}', $import_main_original, 1, $version_replacements );
 if ( 1 !== $version_replacements || ! is_string( $import_main_drifted ) ) $fail( 'Unable to create deterministic provider version drift fixture.' );
 if ( false === file_put_contents( $import_main_path, $import_main_drifted ) ) $fail( 'Unable to inject provider version drift.' );
 $version_drift = MAD4B_SCP_Provider_Contracts::runtime_status( 'wp-import-export', true );
