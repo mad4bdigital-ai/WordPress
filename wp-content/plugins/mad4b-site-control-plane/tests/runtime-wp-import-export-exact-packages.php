@@ -84,4 +84,33 @@ $readiness = $adapter->execution_readiness();
 if ( ! empty( $readiness['mounted_execution_abilities'] ) ) $fail( 'Execution readiness unexpectedly mounted provider mutations.' );
 if ( ! empty( $readiness['caller_supplied_secret_allowed'] ) || ! empty( $readiness['secret_material_exposed'] ) || ! empty( $readiness['cron_url_execution_allowed'] ) ) $fail( 'Secret/cron safety invariant failed.' );
 
-echo "mad4b.wp-import-export-exact-package-runtime.v1: PASS\n";
+// Exact package identity must fail closed on file drift and recover only after
+// the exact bytes are restored. This is disposable CI only.
+$import_record_path = WP_PLUGIN_DIR . '/wp-all-import-pro/models/import/record.php';
+$import_record_original = is_readable( $import_record_path ) ? file_get_contents( $import_record_path ) : false;
+if ( false === $import_record_original ) $fail( 'Unable to read import critical file for drift proof.' );
+if ( false === file_put_contents( $import_record_path, $import_record_original . "\n// MAD4B CI integrity drift probe\n" ) ) $fail( 'Unable to inject integrity drift probe.' );
+$hash_drift = MAD4B_SCP_Provider_Contracts::runtime_status( 'wp-import-export', true );
+if ( ! empty( $hash_drift['runtime_contract_ok'] ) || 'component_drift' !== ( $hash_drift['status'] ?? '' ) ) $fail( 'Critical-file drift did not fail closed.' );
+$hash_mismatch = isset( $hash_drift['runtime_integrity']['mismatched'] ) ? (array) $hash_drift['runtime_integrity']['mismatched'] : array();
+if ( ! array_key_exists( 'import:models/import/record.php', $hash_mismatch ) ) $fail( 'Critical-file drift evidence did not identify import record.php.' );
+if ( false === file_put_contents( $import_record_path, $import_record_original ) ) $fail( 'Unable to restore exact import critical file.' );
+$restored_hash = MAD4B_SCP_Provider_Contracts::runtime_status( 'wp-import-export', true );
+if ( empty( $restored_hash['runtime_contract_ok'] ) || 'certified' !== ( $restored_hash['status'] ?? '' ) ) $fail( 'Exact runtime did not recover after byte restoration.' );
+
+// Version metadata drift is separately fail-closed even when the provider code
+// is already loaded in the current request.
+$import_main_path = WP_PLUGIN_DIR . '/wp-all-import-pro/wp-all-import-pro.php';
+$import_main_original = is_readable( $import_main_path ) ? file_get_contents( $import_main_path ) : false;
+if ( false === $import_main_original ) $fail( 'Unable to read import main file for version drift proof.' );
+$import_main_drifted = preg_replace( '/(^[ \t*#\/]*Version\s*:\s*)5\.0\.8(\s*$)/mi', '$1' . '5.0.9' . '$2', $import_main_original, 1, $version_replacements );
+if ( 1 !== $version_replacements || ! is_string( $import_main_drifted ) ) $fail( 'Unable to create deterministic provider version drift fixture.' );
+if ( false === file_put_contents( $import_main_path, $import_main_drifted ) ) $fail( 'Unable to inject provider version drift.' );
+$version_drift = MAD4B_SCP_Provider_Contracts::runtime_status( 'wp-import-export', true );
+if ( ! empty( $version_drift['runtime_contract_ok'] ) || 'component_drift' !== ( $version_drift['status'] ?? '' ) ) $fail( 'Provider version drift did not fail closed.' );
+if ( 'version_drift' !== ( $version_drift['components']['import']['status'] ?? '' ) ) $fail( 'Import component version drift was not explicit.' );
+if ( false === file_put_contents( $import_main_path, $import_main_original ) ) $fail( 'Unable to restore exact import main file.' );
+$restored_version = MAD4B_SCP_Provider_Contracts::runtime_status( 'wp-import-export', true );
+if ( empty( $restored_version['runtime_contract_ok'] ) || 'certified' !== ( $restored_version['status'] ?? '' ) ) $fail( 'Exact runtime did not recover after version restoration.' );
+
+echo "mad4b.wp-import-export-exact-package-runtime.v2: PASS\n";
