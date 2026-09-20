@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout exact ref
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup PHP 7.4
         uses: shivammathur/setup-php@v2
