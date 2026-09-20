@@ -55,7 +55,8 @@
       "risk": "high",
       "requested_contracts": [
         "platform_inventory"
-      ]
+      ],
+      "functional_mode": "platform_core"
     },
     {
       "id": "dangerous-code-execution",
@@ -73,7 +74,8 @@
       "requested_contracts": [
         "read_only_inventory_or_breakglass_review"
       ],
-      "mutation_scope": "breakglass_review_only"
+      "mutation_scope": "breakglass_review_only",
+      "functional_mode": "intentionally_excluded"
     },
     {
       "id": "etg-dfsb",
@@ -93,7 +95,8 @@
         "profile_inventory_plan_only",
         "dynamic_content_catalog_read"
       ],
-      "mutation_scope": "none_read_only_non_authorizing"
+      "mutation_scope": "none_read_only_non_authorizing",
+      "functional_mode": "specialized"
     },
     {
       "id": "elementor",
@@ -110,7 +113,8 @@
         "read",
         "provider_native_write",
         "reversible_restore_where_certified"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "jetengine",
@@ -128,7 +132,8 @@
         "exact_field_write",
         "reversible_meta_restore",
         "native_mcp_isolation"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "jetsmartfilters",
@@ -143,7 +148,8 @@
         "read",
         "bounded_filter_write",
         "reversible_restore_where_provider_safe"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "jetformbuilder",
@@ -157,7 +163,8 @@
       "requested_contracts": [
         "form_inventory_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "specialized_candidate"
     },
     {
       "id": "jet-ecosystem",
@@ -179,7 +186,8 @@
         "plugin_status_read",
         "runtime_inventory_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "inventory_only"
     },
     {
       "id": "rank-math",
@@ -194,7 +202,8 @@
         "seo_read",
         "allowlisted_meta_write",
         "reversible_meta_restore"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "wpml",
@@ -214,7 +223,15 @@
         "language_inventory_read",
         "translation_plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "cross_surface",
+      "functional_cross_surface_abilities": [
+        "mad4b/translation-status",
+        "mad4b/translation-list-languages",
+        "mad4b/translation-get-post",
+        "mad4b/translation-set-post-language",
+        "mad4b/translation-link-posts"
+      ]
     },
     {
       "id": "fluentforms",
@@ -231,7 +248,8 @@
       "requested_contracts": [
         "form_plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "specialized_candidate"
     },
     {
       "id": "bitflows",
@@ -246,7 +264,8 @@
       "requested_contracts": [
         "flow_read",
         "governed_execution"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "litespeed",
@@ -259,7 +278,8 @@
       "requested_contracts": [
         "status",
         "bounded_cache_actions"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "media-optimization",
@@ -276,7 +296,8 @@
         "media_read",
         "metadata_write",
         "reversible_metadata_restore"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "wp-import-export",
@@ -299,7 +320,8 @@
         "governed_export_execution",
         "reversible_import_run"
       ],
-      "mutation_scope": "governed_execution_unmounted_until_certified"
+      "mutation_scope": "governed_execution_unmounted_until_certified",
+      "functional_mode": "specialized"
     },
     {
       "id": "hostinger",
@@ -313,7 +335,11 @@
         "read_only_inventory",
         "host_connector_separation"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "external_authority",
+      "functional_cross_surface_abilities": [
+        "MAD4B Host Connector"
+      ]
     },
     {
       "id": "admin-utilities",
@@ -331,7 +357,8 @@
       "requested_contracts": [
         "plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "inventory_only"
     },
     {
       "id": "astra",
@@ -344,7 +371,12 @@
       "requested_contracts": [
         "plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "cross_surface",
+      "functional_cross_surface_abilities": [
+        "astra-theme/status",
+        "astra-child-theme/inventory"
+      ]
     },
     {
       "id": "content-utilities",
@@ -359,7 +391,8 @@
       "requested_contracts": [
         "plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "review_required"
     },
     {
       "id": "analytics",
@@ -372,7 +405,8 @@
       "requested_contracts": [
         "plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "review_required"
     },
     {
       "id": "reviews",
@@ -385,7 +419,8 @@
       "requested_contracts": [
         "plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "inventory_only"
     },
     {
       "id": "identity-admin",
@@ -398,7 +433,8 @@
       "requested_contracts": [
         "plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "intentionally_restricted"
     },
     {
       "id": "wpl-client",
@@ -412,7 +448,8 @@
       "requested_contracts": [
         "plugin_status_read"
       ],
-      "mutation_scope": "none_read_only"
+      "mutation_scope": "none_read_only",
+      "functional_mode": "review_required"
     },
     {
       "id": "woocommerce",
@@ -426,7 +463,8 @@
         "product_read",
         "bounded_product_write",
         "reversible_product_restore"
-      ]
+      ],
+      "functional_mode": "specialized"
     },
     {
       "id": "polylang",
@@ -441,7 +479,8 @@
         "language_read",
         "bounded_language_assignment",
         "reversible_language_restore"
-      ]
+      ],
+      "functional_mode": "specialized"
     }
   ]
 }
