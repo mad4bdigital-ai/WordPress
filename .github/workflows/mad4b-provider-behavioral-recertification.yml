@@ -125,6 +125,28 @@ jobs:
             exit 1
           fi
 
+      - name: Prove server-local Import transport fails closed on unknown job
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wp-import-export-runtime
+          BEFORE_POSTS="$(php /tmp/wp-cli.phar post list --path="$WP_PATH" --user=mad4b-ci-admin --format=count)"
+          set +e
+          php /tmp/wp-cli.phar all-import run 2147483647 --path="$WP_PATH" --user=mad4b-ci-admin >/tmp/wp-all-import-invalid-run.txt 2>&1
+          RC=$?
+          set -e
+          if [ "$RC" -eq 0 ]; then
+            echo 'Unknown WP All Import job unexpectedly returned success.' >&2
+            cat /tmp/wp-all-import-invalid-run.txt >&2
+            exit 1
+          fi
+          AFTER_POSTS="$(php /tmp/wp-cli.phar post list --path="$WP_PATH" --user=mad4b-ci-admin --format=count)"
+          test "$BEFORE_POSTS" = "$AFTER_POSTS"
+          if grep -Eqi 'cron_job_key|import_key|export_key' /tmp/wp-all-import-invalid-run.txt; then
+            echo 'Provider secret marker leaked through failed server-local Import transport.' >&2
+            exit 1
+          fi
+
       - name: Prove exact composite certification remains execution-shadowed
         shell: bash
         run: |
