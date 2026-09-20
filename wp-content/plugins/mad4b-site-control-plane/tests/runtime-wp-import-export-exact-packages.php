@@ -23,12 +23,13 @@ foreach ( $expected as $plugin_file => $version ) {
 }
 
 foreach ( array(
-	'PMXI_Plugin', 'PMXI_Import_Record', 'PMXI_Import_List',
+	'PMXI_Plugin', 'PMXI_Import_Record', 'PMXI_Import_List', 'PMXI_Cli',
 	'PMXE_Plugin', 'PMXE_Export_Record', 'PMXE_Export_List',
 ) as $class ) {
 	if ( ! class_exists( $class ) ) $fail( 'Required provider class missing: ' . $class );
 }
 foreach ( array(
+	array( 'PMXI_Cli', 'run' ),
 	array( 'PMXI_Import_Record', 'execute' ),
 	array( 'PMXI_Import_Record', 'process' ),
 	array( 'PMXI_Import_Record', 'get_missing_records' ),
@@ -41,6 +42,7 @@ foreach ( array(
 
 $signature_evidence = array();
 foreach ( array(
+	array( 'PMXI_Cli', 'run' ),
 	array( 'PMXI_Import_Record', 'execute' ),
 	array( 'PMXI_Import_Record', 'process' ),
 	array( 'PMXI_Import_Record', 'get_missing_records' ),
