@@ -31,6 +31,11 @@ required = [
     'wp-import-export/validate-export',
     'wp-import-export/plan-export-run',
     'wp-import-export/execution-readiness',
+    'wp-import-export/behavioral-acceptance-plan',
+    'mad4b.bulk-content-io-behavioral-acceptance-plan.v1',
+    'preexisting_saved_provider_job_required',
+    'disposable_job_required',
+    'execute_this_exact_plan_only_against_a_disposable_saved_provider_job_under_governed_nonproduction_authority',
     'mad4b.wp-all-import-exact-contract.v1',
     'mad4b.wp-all-export-exact-contract.v1',
     'mad4b.bulk-source-artifact.v1',
@@ -137,7 +142,7 @@ assert 'MAD4B_SCP_WP_Import_Export_Adapter' in registry
 provider = capability_catalog.get('providers', {}).get('wp-import-export', {})
 assert provider.get('adapter_id') == 'wp-import-export'
 caps = provider.get('capabilities', {})
-for capability_id in ('jobs.read', 'import.plan', 'export.plan', 'import.execute', 'export.execute'):
+for capability_id in ('jobs.read', 'import.plan', 'export.plan', 'execution.acceptance-plan', 'import.execute', 'export.execute'):
     assert capability_id in caps, capability_id
 assert caps['import.execute'].get('risk') == 'high_risk_write'
 assert caps['import.execute'].get('reversible') is True
@@ -146,5 +151,8 @@ assert caps['export.execute'].get('risk') == 'high_risk_write'
 assert caps['export.execute'].get('reversible') is False
 assert caps['import.execute'].get('abilities') == ['wp-import-export/run-import']
 assert caps['export.execute'].get('abilities') == ['wp-import-export/run-export']
+
+assert caps['execution.acceptance-plan'].get('risk') == 'read'
+assert caps['execution.acceptance-plan'].get('abilities') == ['wp-import-export/behavioral-acceptance-plan']
 
 print('mad4b.wp-import-export-governed-adapter.contract.v3: PASS')
