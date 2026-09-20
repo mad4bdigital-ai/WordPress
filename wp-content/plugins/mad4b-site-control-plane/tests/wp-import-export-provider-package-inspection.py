@@ -26,6 +26,8 @@ HEADER_RE = re.compile(r"(?mi)^\s*(Plugin Name|Version)\s*:\s*([^\r\n]+)")
 CLASS_TEMPLATE = r"\bclass\s+%s\b"
 METHOD_RE = re.compile(r"(?mi)\b(?:public|protected|private)?\s*(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 HOOK_RE = re.compile(r"['\"]((?:pmxi|pmxe|wp_all_import|wp_all_export)_[A-Za-z0-9_]+)['\"]")
+CLASS_RE = re.compile(r"(?mi)\bclass\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+extends\s+([A-Za-z_\\][A-Za-z0-9_\\]*))?")
+CLI_ADD_RE = re.compile(r"WP_CLI\s*::\s*add_command\s*\(\s*['\"]([^'\"]+)['\"]\s*,\s*([^,\)]+)", re.I)
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -81,6 +83,11 @@ def inspect_archive(base: Path, kind: str, config: dict):
             "add_command_marker": False,
         },
         "critical_files": {},
+        "structural_api_map": {
+            "class_inheritance": {},
+            "record_model_candidates": [],
+            "wp_cli_registrations": [],
+        },
         "source_exposed": False,
         "secret_values_exposed": False,
     }
@@ -132,6 +139,38 @@ def inspect_archive(base: Path, kind: str, config: dict):
             "all_import_command_marker": bool(re.search(r"all[-_ ]import", all_text, re.I)),
             "all_export_command_marker": bool(re.search(r"all[-_ ]export", all_text, re.I)),
             "add_command_marker": "add_command" in all_text and "WP_CLI" in all_text,
+        }
+
+        class_inheritance = {}
+        record_candidates = []
+        cli_registrations = []
+        for name, (raw, text) in php.items():
+            declared = CLASS_RE.findall(text)
+            methods = sorted(set(METHOD_RE.findall(text)))
+            for class_name, parent_name in declared:
+                class_inheritance[class_name] = parent_name or ""
+                if {"set", "save", "getById"}.issubset(set(methods)):
+                    record_candidates.append({
+                        "class": class_name,
+                        "parent": parent_name or "",
+                        "file": name,
+                        "file_sha256": sha256_bytes(raw),
+                        "methods": [m for m in methods if m in {
+                            "set", "save", "getById", "getBy", "isEmpty", "execute",
+                            "process", "delete", "deletePosts", "delete_missing_records"
+                        }],
+                    })
+            for command, callback in CLI_ADD_RE.findall(text):
+                cli_registrations.append({
+                    "command": command.strip(),
+                    "callback_identifier": re.sub(r"\s+", " ", callback.strip())[:160],
+                    "file": name,
+                    "file_sha256": sha256_bytes(raw),
+                })
+        result["structural_api_map"] = {
+            "class_inheritance": dict(sorted(class_inheritance.items())),
+            "record_model_candidates": sorted(record_candidates, key=lambda item: (item["class"], item["file"])),
+            "wp_cli_registrations": sorted(cli_registrations, key=lambda item: (item["command"], item["file"])),
         }
 
         for cls in config["classes"]:
