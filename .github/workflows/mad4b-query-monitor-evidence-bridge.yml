@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-query-monitor-evidence-bridge-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   query-monitor-evidence-bridge:
     name: QM collector attribution (${{ matrix.php }})
