@@ -333,12 +333,17 @@
         "reversible_import_run",
         "operation_receipt",
         "content_operations_ledger",
-        "post_execution_reconciliation"
+        "post_execution_reconciliation",
+        "exact_composite_package_certification",
+        "server_local_import_transport_surface",
+        "server_local_export_transport_surface",
+        "negative_transport_canary",
+        "behavioral_execution_certification"
       ],
       "mutation_scope": "composite_run_execution_unmounted_until_all_safety_contracts_certified",
       "functional_mode": "specialized",
-      "functional_rationale": "Bulk job inspection and exact planning are supported. Import/export execution remains fail-closed until provider execution, exact dry-run diff, provider/schema/source bindings, import rollback, export artifact-registry ingest, operation receipt and reconciliation are certified.",
-      "functional_next_action": "certify_exact_dry_run_provider_execution_import_rollback_export_artifact_ingest_receipt_and_reconciliation"
+      "functional_rationale": "Exact WP All Import Pro 5.0.8 and WP All Export Pro 1.9.15 packages are composite-certified, and their server-local execution surfaces are structurally identified. Execution remains fail-closed because structural/negative transport evidence does not replace valid disposable behavioral execution, exact import dry-run, import rollback, export Artifact Registry ingest, operation receipt and reconciliation.",
+      "functional_next_action": "prove_disposable_saved_import_and_export_behavior_then_certify_import_rollback_export_artifact_ingest_receipt_and_reconciliation"
     },
     {
       "id": "hostinger",
