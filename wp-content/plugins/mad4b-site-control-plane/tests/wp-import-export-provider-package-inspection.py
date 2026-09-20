@@ -10,7 +10,7 @@ CONTRACT = "mad4b.wp-import-export-provider-package-inspection.v1"
 TARGETS = {
     "import": {
         "archive": "wp-all-import-pro.zip",
-        "classes": ["PMXI_Plugin", "PMXI_Import_Record", "PMXI_Import_List"],
+        "classes": ["PMXI_Plugin", "PMXI_Import_Record", "PMXI_Import_List", "PMXI_Cli"],
         "hook_prefix": "pmxi_",
         "secret_markers": ["cron_job_key", "import_key"],
     },
@@ -25,6 +25,7 @@ TARGETS = {
 HEADER_RE = re.compile(r"(?mi)^\s*(Plugin Name|Version)\s*:\s*([^\r\n]+)")
 CLASS_TEMPLATE = r"\bclass\s+%s\b"
 METHOD_RE = re.compile(r"(?mi)\b(?:public|protected|private)?\s*(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+METHOD_SIGNATURE_RE = re.compile(r"(?mis)\b(?:public|protected|private)?\s*(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)")
 HOOK_RE = re.compile(r"['\"]((?:pmxi|pmxe|wp_all_import|wp_all_export)_[A-Za-z0-9_]+)['\"]")
 CLASS_RE = re.compile(r"(?mi)\bclass\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+extends\s+([A-Za-z_\\][A-Za-z0-9_\\]*))?")
 CLI_ADD_RE = re.compile(r"WP_CLI\s*::\s*add_command\s*\(\s*['\"]([^'\"]+)['\"]\s*,\s*([^,\)]+)", re.I)
@@ -87,6 +88,7 @@ def inspect_archive(base: Path, kind: str, config: dict):
             "class_inheritance": {},
             "record_model_candidates": [],
             "wp_cli_registrations": [],
+            "execution_method_signatures": [],
         },
         "source_exposed": False,
         "secret_values_exposed": False,
@@ -167,10 +169,30 @@ def inspect_archive(base: Path, kind: str, config: dict):
                     "file": name,
                     "file_sha256": sha256_bytes(raw),
                 })
+        execution_signatures = []
+        execution_targets = {"execute", "process", "generate_bundle", "run"}
+        for name, (raw, text) in php.items():
+            for method_name, args in METHOD_SIGNATURE_RE.findall(text):
+                if method_name not in execution_targets:
+                    continue
+                if not (
+                    "models/import/record.php" in name
+                    or "models/export/record.php" in name
+                    or "cli" in name.lower()
+                    or "command" in name.lower()
+                ):
+                    continue
+                execution_signatures.append({
+                    "file": name,
+                    "file_sha256": sha256_bytes(raw),
+                    "method": method_name,
+                    "arguments": " ".join(args.split())[:500],
+                })
         result["structural_api_map"] = {
             "class_inheritance": dict(sorted(class_inheritance.items())),
             "record_model_candidates": sorted(record_candidates, key=lambda item: (item["class"], item["file"])),
             "wp_cli_registrations": sorted(cli_registrations, key=lambda item: (item["command"], item["file"])),
+            "execution_method_signatures": sorted(execution_signatures, key=lambda item: (item["file"], item["method"], item["arguments"])),
         }
 
         for cls in config["classes"]:
