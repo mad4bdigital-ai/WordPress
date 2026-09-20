@@ -81,6 +81,7 @@ jobs:
             includes/class-mad4b-scp-transport-context.php \
             includes/class-mad4b-scp-servers.php \
             includes/adapters/class-mad4b-scp-skills-adapter.php \
+            includes/adapters/class-mad4b-scp-wp-import-export-adapter.php \
             tests/runtime-dynamic-skills-smoke.php \
             tests/runtime-governance-readonly-immutability.php \
             tests/runtime-plugin-lifecycle-data-continuity.php \
