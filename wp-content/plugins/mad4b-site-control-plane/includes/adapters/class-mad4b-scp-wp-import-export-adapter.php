@@ -82,17 +82,30 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function execution_readiness( $input = array() ) {
 		$import_secret=self::provider_option_present('PMXI_Plugin','cron_job_key');
 		$export_secret=self::provider_option_present('PMXE_Plugin','cron_job_key');
+		$certification=$this->provider_certification($this->is_available());
+		$exact_composite=!empty($certification['runtime_contract_ok'])&&'certified'===(isset($certification['status'])?(string)$certification['status']:'');
+		$contract=class_exists('MAD4B_SCP_Provider_Contracts')?MAD4B_SCP_Provider_Contracts::get($this->id()):array();
+		$components=isset($contract['components'])&&is_array($contract['components'])?$contract['components']:array();
+		$import_verified=isset($components['import']['verified_contracts'])&&is_array($components['import']['verified_contracts'])?$components['import']['verified_contracts']:array();
+		$export_verified=isset($components['export']['verified_contracts'])&&is_array($components['export']['verified_contracts'])?$components['export']['verified_contracts']:array();
+		$import_cli=in_array('WP_CLI_all_import_present',$import_verified,true);
+		$export_record=isset($components['export']['critical_files']['models/export/record.php']);
 		return array(
-			'contract'=>'mad4b.wp-import-export-execution-readiness.v2',
+			'contract'=>'mad4b.wp-import-export-execution-readiness.v3',
 			'provider_certification_required'=>true,
+			'exact_composite_artifact_certified'=>$exact_composite,
 			'import'=>array(
-				'provider_available'=>self::import_runtime_available(),'server_secret_configured'=>$import_secret,
+				'provider_available'=>self::import_runtime_available(),
+				'server_secret_configured'=>$import_secret,'server_secret_required'=>false,
+				'execution_transport_candidate'=>$import_cli?'server_local_wp_cli':'unresolved',
+				'package_transport_surface_observed'=>$import_cli,
 				'direct_execution_contract_certified'=>false,'dry_run_diff_certified'=>false,
 				'run_level_rollback_certified'=>false,'composite_receipt_certified'=>false,
 				'rollback_contract'=>self::IMPORT_ROLLBACK_CONTRACT,'mounted'=>false,
 				'blockers'=>array_values(array_filter(array(
 					self::import_runtime_available()?'':'wp_all_import_runtime_unavailable',
-					$import_secret?'':'wp_all_import_server_secret_missing',
+					$exact_composite?'':'mad4b_wp_import_export_exact_composite_artifact_not_certified',
+					$import_cli?'':'mad4b_wp_all_import_server_local_transport_unverified',
 					'mad4b_wp_all_import_direct_execution_contract_unverified',
 					'mad4b_wp_all_import_dry_run_diff_not_certified',
 					'mad4b_wp_all_import_run_rollback_not_certified',
@@ -100,12 +113,16 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				))),
 			),
 			'export'=>array(
-				'provider_available'=>self::export_runtime_available(),'server_secret_configured'=>$export_secret,
+				'provider_available'=>self::export_runtime_available(),
+				'server_secret_configured'=>$export_secret,'server_secret_required'=>false,
+				'execution_transport_candidate'=>$export_record?'server_local_provider_record_execute':'unresolved',
+				'package_transport_surface_observed'=>$export_record,
 				'direct_execution_contract_certified'=>false,'artifact_registry_ingest_certified'=>false,
 				'composite_receipt_certified'=>false,'mounted'=>false,
 				'blockers'=>array_values(array_filter(array(
 					self::export_runtime_available()?'':'wp_all_export_runtime_unavailable',
-					$export_secret?'':'wp_all_export_server_secret_missing',
+					$exact_composite?'':'mad4b_wp_import_export_exact_composite_artifact_not_certified',
+					$export_record?'':'mad4b_wp_all_export_server_local_transport_unverified',
 					'mad4b_wp_all_export_direct_execution_contract_unverified',
 					'mad4b_wp_all_export_artifact_registry_ingest_not_certified',
 					'mad4b_bulk_content_io_operation_receipt_not_certified',
