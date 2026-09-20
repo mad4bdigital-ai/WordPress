@@ -5,6 +5,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 support=json.loads((ROOT/'config/adapter-support-catalog.json').read_text('utf-8'))
 artifacts=json.loads((ROOT/'config/repository-plugin-artifacts.json').read_text('utf-8'))
+discovery=(ROOT/'includes/class-mad4b-scp-plugin-discovery.php').read_text('utf-8')
+registry=(ROOT/'includes/class-mad4b-scp-adapter-registry.php').read_text('utf-8')
 
 families={item['id']:item for item in support.get('families',[]) if isinstance(item,dict) and item.get('id')}
 expected={
@@ -43,5 +45,26 @@ assert 'feed_publish' in families['meta-catalog-feed-mapper']['functional_prohib
 assert 'container_publish' in families['google-tag-manager']['functional_prohibited_until_certified']
 assert 'bulk_taxonomy_write' in families['bulk-taxonomy-editor']['functional_prohibited_until_certified']
 assert 'menu_structure_write' in families['custom-mega-menu']['functional_prohibited_until_certified']
+
+
+for marker in [
+    'public static function contract_discovery_report()',
+    "'contract' => 'mad4b.provider-contract-discovery.v1'",
+    "'read_only' => true",
+    "'active_only' => true",
+    "'network_request_sent' => false",
+    "'credential_material_exposed' => false",
+    "'authority_created' => false",
+    "'mutation_default' => 'deny'",
+    "'evidence_requirements'",
+    "'safe_now'",
+    "'prohibited_until_certified'",
+]:
+    assert marker in discovery, marker
+
+assert "mad4b/provider-contract-discovery" in registry
+assert "provider_contract_discovery" in registry
+assert "'mad4b/provider-contract-discovery'" in registry
+assert "MAD4B_SCP_Plugin_Discovery::contract_discovery_report()" in registry
 
 print('mad4b.provider-contract-discovery.contract.v1: PASS')
