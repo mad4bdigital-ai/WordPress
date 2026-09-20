@@ -4,7 +4,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[4]
 PLUGIN = REPO / 'wp-content/plugins/mad4b-site-control-plane'
 SPEC = REPO / 'specs/006-agent-governed-reversible-control-plane'
-CONSTITUTION = REPO / '.specify/memory/constitution.md'
+CONSTITUTION = SPEC / 'constitution.md'
 CONNECTION = SPEC / 'contracts/connection-readiness.md'
 ADAPTER_COVERAGE = SPEC / 'contracts/adapter-coverage.md'
 

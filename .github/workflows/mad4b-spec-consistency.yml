@@ -3,7 +3,6 @@ name: MAD4B Spec Consistency
 on:
   pull_request:
     paths:
-      - '.specify/memory/constitution.md'
       - 'specs/006-agent-governed-reversible-control-plane/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - '.github/workflows/mad4b-spec-consistency.yml'
@@ -11,7 +10,6 @@ on:
     branches:
       - master
     paths:
-      - '.specify/memory/constitution.md'
       - 'specs/006-agent-governed-reversible-control-plane/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - '.github/workflows/mad4b-spec-consistency.yml'
