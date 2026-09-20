@@ -90,7 +90,7 @@ function mad4b_assert_managed_site_signature( $operation, $args ) {
 	if ( ! hash_equals( $expected, $signature ) ) throw new RuntimeException( 'Managed site HMAC signature mismatch.' );
 }
 function wp_remote_post( $url, $args = array() ) {
-	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/session' ) ) {
+	if ( false !== strpos( $url, 'auth.example.test/v1/google/oauth/session' ) ) {
 		mad4b_assert_managed_site_signature( 'session', $args );
 		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
 		$GLOBALS['mad4b_managed_requests']['session'] = is_array( $payload ) ? $payload : array();
@@ -103,7 +103,7 @@ function wp_remote_post( $url, $args = array() ) {
 			) ),
 		);
 	}
-	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/redeem' ) ) {
+	if ( false !== strpos( $url, 'auth.example.test/v1/google/oauth/redeem' ) ) {
 		mad4b_assert_managed_site_signature( 'redeem', $args );
 		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
 		$GLOBALS['mad4b_managed_requests']['redeem'] = is_array( $payload ) ? $payload : array();
@@ -111,7 +111,7 @@ function wp_remote_post( $url, $args = array() ) {
 		$data = array_shift( $GLOBALS['mad4b_managed_redeem_responses'] );
 		return array( 'response' => array( 'code' => 200 ), 'body' => json_encode( $data ) );
 	}
-	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/refresh' ) ) {
+	if ( false !== strpos( $url, 'auth.example.test/v1/google/oauth/refresh' ) ) {
 		mad4b_assert_managed_site_signature( 'refresh', $args );
 		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
 		$GLOBALS['mad4b_managed_requests']['refresh'] = is_array( $payload ) ? $payload : array();
