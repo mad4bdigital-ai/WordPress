@@ -331,6 +331,18 @@ jobs:
           php /tmp/wp-cli.phar plugin status wp-all-import-pro --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin status wp-all-export-pro --path="$WP_PATH"
 
+      - name: Prove exact provider WP-CLI execution surface split
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wp-import-export-runtime
+          php /tmp/wp-cli.phar help all-import --path="$WP_PATH" > /tmp/mad4b-all-import-help.txt
+          grep -Eq '(^|[[:space:]])run([[:space:]]|$)' /tmp/mad4b-all-import-help.txt
+          if php /tmp/wp-cli.phar help all-export --path="$WP_PATH" > /tmp/mad4b-all-export-help.txt 2>&1; then
+            echo "Unexpected all-export WP-CLI command on exact WP All Export 1.9.15 package" >&2
+            exit 1
+          fi
+
       - name: Prove exact composite provider certification and drift fail-closed
         shell: bash
         run: |
