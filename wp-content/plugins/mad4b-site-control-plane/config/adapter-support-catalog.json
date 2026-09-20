@@ -412,9 +412,25 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required",
+      "functional_mode": "contract_discovery",
       "functional_rationale": "Bulk taxonomy operations can change many term relationships at once. Provider-specific read and bounded-write contracts must be reviewed before exposing taxonomy operations.",
-      "functional_next_action": "capture_bulk_taxonomy_editor_runtime_contract_then_define_read_scope_before_any_bounded_write"
+      "functional_next_action": "capture_bulk_taxonomy_editor_runtime_contract_then_define_read_scope_before_any_bounded_write",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "provider_read_api_or_stable_local_model",
+        "taxonomy_scope_model",
+        "capability_requirements",
+        "bounded_write_impact_model",
+        "rollback_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "bulk_taxonomy_write",
+        "term_relationship_mutation",
+        "taxonomy_delete_or_merge"
+      ]
     },
     {
       "id": "custom-mega-menu",
@@ -428,9 +444,25 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required",
+      "functional_mode": "contract_discovery",
       "functional_rationale": "Menu structure changes are content mutations with navigation-wide impact. The provider needs an exact menu-model read contract before any mutation surface is considered.",
-      "functional_next_action": "capture_custom_mega_menu_runtime_contract_then_define_menu_structure_read_scope"
+      "functional_next_action": "capture_custom_mega_menu_runtime_contract_then_define_menu_structure_read_scope",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "provider_read_api_or_stable_local_model",
+        "menu_structure_model",
+        "capability_requirements",
+        "navigation_impact_model",
+        "rollback_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "menu_structure_write",
+        "navigation_assignment_mutation",
+        "menu_item_delete"
+      ]
     },
     {
       "id": "meta-catalog-feed-mapper",
@@ -444,9 +476,26 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required",
+      "functional_mode": "contract_discovery",
       "functional_rationale": "Feed mapping can affect external catalog publication and may involve provider credentials or outbound side effects. Only non-secret read diagnostics are eligible until the external execution boundary is documented.",
-      "functional_next_action": "capture_feed_mapper_runtime_and_external_side_effect_contract_before_non_secret_read_adapter_design"
+      "functional_next_action": "capture_feed_mapper_runtime_and_external_side_effect_contract_before_non_secret_read_adapter_design",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "non_secret_local_configuration_model",
+        "outbound_endpoint_inventory",
+        "credential_boundary",
+        "external_side_effect_model",
+        "artifact_or_reconciliation_model"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "credential_read",
+        "feed_publish",
+        "external_catalog_mutation",
+        "mapping_write"
+      ]
     },
     {
       "id": "google-tag-manager",
@@ -460,9 +509,25 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required",
+      "functional_mode": "contract_discovery",
       "functional_rationale": "Google Tag Manager integration can contain measurement identifiers and configuration tied to an external platform. Only a non-secret local configuration read contract is eligible before any broader adapter surface.",
-      "functional_next_action": "capture_gtm_plugin_runtime_contract_and_define_non_secret_local_configuration_read_scope"
+      "functional_next_action": "capture_gtm_plugin_runtime_contract_and_define_non_secret_local_configuration_read_scope",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "non_secret_local_configuration_model",
+        "measurement_identifier_redaction_policy",
+        "credential_boundary",
+        "external_side_effect_model"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "secret_or_token_read",
+        "container_publish",
+        "external_gtm_mutation",
+        "local_configuration_write"
+      ]
     },
     {
       "id": "reviews",
@@ -505,9 +570,29 @@
         "plugin_status_read"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "review_required",
+      "functional_mode": "contract_discovery",
       "functional_rationale": "The installed WPL client contract is not yet documented strongly enough to infer safe functional operations from plugin presence.",
-      "functional_next_action": "capture_runtime_and_vendor_contract_before_specialized_adapter_design"
+      "functional_next_action": "capture_runtime_and_vendor_contract_before_specialized_adapter_design",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "vendor_or_runtime_api_contract",
+        "capability_requirements",
+        "data_classification",
+        "credential_boundary",
+        "outbound_side_effect_model",
+        "write_impact_model",
+        "rollback_or_reconciliation_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "credential_read",
+        "remote_execution",
+        "local_write",
+        "external_write",
+        "filesystem_or_code_execution"
+      ]
     },
     {
       "id": "woocommerce",
