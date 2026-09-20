@@ -49,9 +49,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'excluded_high_risk' => 0,
 			'priority_external_missing' => 0,
 		);
-		$functional_counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
+		$functional_counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'contract_discovery_required'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
 		$functional_family_states = array();
-		$functional_severity = array( 'inactive'=>0, 'functional_ready'=>1, 'intentionally_excluded'=>2, 'status_only_candidate'=>3, 'adapter_missing'=>4, 'safety_blocked'=>5 );
+		$functional_severity = array( 'inactive'=>0, 'functional_ready'=>1, 'intentionally_excluded'=>2, 'status_only_candidate'=>3, 'contract_discovery_required'=>4, 'adapter_missing'=>5, 'safety_blocked'=>6 );
 
 		foreach ( $plugins as $plugin_file => $headers ) {
 			if ( count( $items ) >= self::MAX_PLUGINS ) break;
@@ -97,7 +97,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 	}
 
 	private static function functional_state_counts( array $states ) {
-		$counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
+		$counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'contract_discovery_required'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
 		foreach ( $states as $state ) {
 			$state = sanitize_key( (string) $state );
 			if ( isset( $counts[ $state ] ) ) ++$counts[ $state ];
@@ -201,6 +201,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$mode = isset( $descriptor['functional_mode'] ) ? sanitize_key( (string) $descriptor['functional_mode'] ) : 'review_required';
 		$declared_rationale = isset( $descriptor['functional_rationale'] ) ? sanitize_text_field( (string) $descriptor['functional_rationale'] ) : '';
 		$declared_next = isset( $descriptor['functional_next_action'] ) ? sanitize_key( (string) $descriptor['functional_next_action'] ) : '';
+		$evidence_requirements = isset( $descriptor['functional_evidence_requirements'] ) && is_array( $descriptor['functional_evidence_requirements'] ) ? array_values( array_filter( array_map( 'sanitize_key', $descriptor['functional_evidence_requirements'] ) ) ) : array();
+		$safe_now = isset( $descriptor['functional_safe_now'] ) && is_array( $descriptor['functional_safe_now'] ) ? array_values( array_filter( array_map( 'sanitize_key', $descriptor['functional_safe_now'] ) ) ) : array();
+		$prohibited_until_certified = isset( $descriptor['functional_prohibited_until_certified'] ) && is_array( $descriptor['functional_prohibited_until_certified'] ) ? array_values( array_filter( array_map( 'sanitize_key', $descriptor['functional_prohibited_until_certified'] ) ) ) : array();
 		$cross = isset( $descriptor['functional_cross_surface_abilities'] ) && is_array( $descriptor['functional_cross_surface_abilities'] ) ? array_values( array_map( 'sanitize_text_field', $descriptor['functional_cross_surface_abilities'] ) ) : array();
 		$map = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$reads = isset( $map['read'] ) && is_array( $map['read'] ) ? array_values( $map['read'] ) : array();
@@ -229,6 +232,11 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$execution_blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $execution_blockers ) ) ) );
 			if ( ! empty( $desired ) && count( $mounted ) < count( $desired ) ) {
 				$state = 'safety_blocked'; $reason = 'desired_execution_not_certified_or_mounted'; $next = 'close_reported_execution_readiness_blockers_before_mount'; $blockers = $execution_blockers;
+			} elseif ( 'contract_discovery' === $mode ) {
+				$state = 'contract_discovery_required';
+				$reason = '' !== $declared_rationale ? $declared_rationale : 'provider_contract_evidence_incomplete';
+				$blockers = array( 'provider_contract_evidence_incomplete' );
+				$next = '' !== $declared_next ? $declared_next : 'capture_provider_contract_evidence_before_expanding_functional_scope';
 			} elseif ( in_array( $mode, array( 'inventory_only','platform_core','external_authority','cross_surface','specialized' ), true ) ) {
 				$state = 'functional_ready';
 				$reason = 'cross_surface' === $mode ? 'governed_functionality_available_on_separate_surface' : ( 'external_authority' === $mode ? 'execution_delegated_to_external_authority' : 'declared_functional_scope_satisfied' );
@@ -246,6 +254,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'functional_mode' => $mode,
 			'cross_surface_abilities' => $cross,
 			'declared_rationale' => $declared_rationale,
+			'evidence_requirements' => $evidence_requirements,
+			'safe_now' => $safe_now,
+			'prohibited_until_certified' => $prohibited_until_certified,
 			'read_ability_count' => count( $reads ),
 			'write_ability_count' => count( $writes ),
 			'read_abilities' => $reads,
