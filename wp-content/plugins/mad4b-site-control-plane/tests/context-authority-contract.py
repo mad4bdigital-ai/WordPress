@@ -18,6 +18,7 @@ authorization = (root / "includes/class-mad4b-scp-authorization.php").read_text(
 write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 planning_guard = (root / "includes/class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 workflow = (root.parents[2] / ".github/workflows/mad4b-context-authority.yml").read_text(encoding="utf-8")
+oauth_runtime = (root / "tests/context-oauth-lifecycle-runtime.php").read_text(encoding="utf-8")
 
 def require(text, needle, label):
     assert needle in text, f"missing {label}: {needle}"
@@ -172,6 +173,21 @@ require(drive, "gemini_api_key_present", "Gemini secret presence-only diagnostic
 require(drive, "generic_extractor_token_present", "generic extractor secret presence-only diagnostic")
 require(drive, "'secrets_exposed' => false", "runtime readiness explicitly denies secret exposure")
 require(drive, "'pkce_s256' => true", "OAuth PKCE S256 readiness declaration")
+require(drive, "AUTH_MODE_CONTRACT = 'mad4b.google-drive-auth-mode.v1'", "Google Drive auth-mode contract")
+require(drive, "AUTH_MODE_CUSTOM = 'custom_credentials'", "Custom OAuth authentication mode")
+require(drive, "AUTH_MODE_MANAGED = 'managed_google'", "Managed Google authentication mode")
+require(drive, "MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL", "Managed OAuth broker configuration boundary")
+require(drive, "mad4b.google-managed-oauth-session.v1", "Managed OAuth session contract")
+require(drive, "mad4b.google-managed-oauth-redemption.v1", "Managed OAuth one-time redemption contract")
+require(drive, "mad4b.google-managed-oauth-refresh.v1", "Managed OAuth refresh contract")
+require(drive, "verifier_challenge", "Managed OAuth verifier challenge")
+require(drive, "'verifier_method' => 'S256'", "Managed OAuth S256 handoff")
+require(drive, "managed_redirect_uri", "Managed OAuth dedicated callback")
+require(drive, "managed_broker_post", "Managed OAuth server-to-server broker exchange")
+require(drive, "mad4b_google_drive_auth_mode_change_requires_disconnect", "Authentication mode switch requires disconnect")
+require(drive, "'google_client_secret_on_site' => false", "Managed OAuth denies Google Client Secret custody on WordPress")
+require(drive, "'credential_custody' => 'mad4b_managed_oauth'", "Managed OAuth custody declaration")
+require(drive, "refresh_managed_access_token", "Managed OAuth broker refresh path")
 require(drive, "'code_challenge_method' => 'S256'", "OAuth authorization uses PKCE S256")
 require(drive, "'code_verifier' => $pkce_verifier", "OAuth token exchange binds PKCE verifier")
 require(drive, "normalization_capabilities", "normalization capability manifest")
@@ -359,6 +375,12 @@ require(planning_guard, "mutation_context_guard", "approval planning Context gua
 require(planning_guard, "Brand-bearing content approval planning", "planning fail-closed when Context runtime is unavailable")
 
 # Guided UX makes OAuth capability vs MAD4B authority explicit.
+require(admin, "Sign in with Google — Recommended", "Managed Google Sign-In recommended UX")
+require(admin, "Custom Google OAuth App — Advanced", "Custom OAuth advanced UX")
+require(admin, "Save Connection Method", "Explicit authentication mode selection UX")
+require(admin, "Managed Google Sign-In", "Managed OAuth setup UX")
+require(admin, "MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL", "Managed OAuth broker readiness UX")
+require(admin, "handle_google_managed_callback", "Managed OAuth dedicated callback handler")
 require(admin, "Connect Read-only", "read-only connect UX")
 require(admin, "Connect Read + Write", "read-write connect UX")
 require(admin, "Upgrade to Read + Write", "explicit scope upgrade UX")
@@ -390,6 +412,10 @@ require(admin, "Context Authority never reconciles grants automatically", "no au
 require(admin, "runtime_authority_not_reconciled", "runtime reconciliation blocker UX")
 
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
+require(oauth_runtime, "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v5: PASS", "Managed OAuth lifecycle runtime proof")
+require(oauth_runtime, "managed_authorization_url", "Managed OAuth session runtime test")
+require(oauth_runtime, "complete_managed_oauth", "Managed OAuth redemption runtime test")
+require(oauth_runtime, "mad4b_google_drive_auth_mode_change_requires_disconnect", "Connected auth mode change fail-closed runtime test")
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 
-print("mad4b.site-control-plane.context-authority-contract.v49: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v50: PASS")
