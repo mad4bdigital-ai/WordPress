@@ -2426,7 +2426,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$url = self::validated_https_url( (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) );
 		if ( '' === $url ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be a valid HTTPS URL.' );
 		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
-		if ( ! is_array( $parts ) || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL cannot contain query, fragment, or user-info components.' );
+		$path = is_array( $parts ) && isset( $parts['path'] ) ? rtrim( (string) $parts['path'], '/' ) : '';
+		if ( ! is_array( $parts ) || '' !== $path || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be an HTTPS origin with no path, query, fragment, or user-info components.' );
 		return rtrim( $url, '/' );
 	}
 
