@@ -37,7 +37,9 @@ if ( ! empty( $status['mutation_exposed'] ) ) $fail( 'Bulk mutation is unexpecte
 if ( ! empty( $status['caller_supplied_secret_allowed'] ) || ! empty( $status['secret_material_exposed'] ) || ! empty( $status['cron_url_execution_allowed'] ) ) $fail( 'Secret/cron safety invariant failed.' );
 
 $ready = $adapter->execution_readiness();
-if ( ! is_array( $ready ) || 'mad4b.wp-import-export-execution-readiness.v3' !== ( $ready['contract'] ?? '' ) ) $fail( 'Unexpected execution readiness contract.' );
+if ( ! is_array( $ready ) || 'mad4b.wp-import-export-execution-readiness.v4' !== ( $ready['contract'] ?? '' ) ) $fail( 'Unexpected execution readiness contract.' );
+if ( 'mad4b.bulk-content-io-execution-evidence.v1' !== ( $ready['evidence_ladder_contract'] ?? '' ) ) $fail( 'Bulk execution evidence ladder contract is missing.' );
+if ( 'lower_ladder_evidence_never_implies_higher_ladder_certification' !== ( $ready['evidence_semantics'] ?? '' ) ) $fail( 'Bulk execution evidence semantics are missing.' );
 if ( empty( $ready['provider_certification_required'] ) ) $fail( 'Provider certification requirement is missing.' );
 if ( ! empty( $ready['import']['server_secret_required'] ) || ! empty( $ready['export']['server_secret_required'] ) ) $fail( 'Provider cron secrets must never be execution prerequisites.' );
 if ( in_array( 'wp_all_import_server_secret_missing', (array) ( $ready['import']['blockers'] ?? array() ), true ) ) $fail( 'Import cron-secret blocker must not return.' );
@@ -45,6 +47,15 @@ if ( in_array( 'wp_all_export_server_secret_missing', (array) ( $ready['export']
 if ( 'server_local_wp_cli' !== ( $ready['import']['execution_transport_candidate'] ?? '' ) ) $fail( 'Import transport candidate must be server-local WP-CLI.' );
 if ( 'server_local_provider_record_execute' !== ( $ready['export']['execution_transport_candidate'] ?? '' ) ) $fail( 'Export transport candidate must remain server-local provider Record execution.' );
 if ( ! empty( $ready['mounted_execution_abilities'] ) ) $fail( 'Execution abilities must remain unmounted.' );
+
+foreach ( array( 'import', 'export' ) as $kind ) {
+	if ( empty( $ready[ $kind ]['transport_surface_structurally_verified'] ) ) $fail( 'Exact package transport surface must be structurally verified for ' . $kind . '.' );
+	if ( empty( $ready[ $kind ]['negative_transport_canary_required'] ) ) $fail( 'Negative transport canary must remain required for ' . $kind . '.' );
+	if ( ! empty( $ready[ $kind ]['behavioral_execution_certified'] ) ) $fail( 'Behavioral execution must remain uncertified before disposable success evidence for ' . $kind . '.' );
+	if ( ! empty( $ready[ $kind ]['direct_execution_contract_certified'] ) ) $fail( 'Direct execution must remain uncertified before disposable success evidence for ' . $kind . '.' );
+}
+if ( 'mad4b.wp-all-import.server-local-wp-cli.v1' !== ( $ready['import']['transport_contract'] ?? '' ) ) $fail( 'Import transport contract drifted.' );
+if ( 'mad4b.wp-all-export.server-local-record-execute.v1' !== ( $ready['export']['transport_contract'] ?? '' ) ) $fail( 'Export transport contract drifted.' );
 
 $desired = isset( $ready['desired_execution_abilities'] ) && is_array( $ready['desired_execution_abilities'] ) ? $ready['desired_execution_abilities'] : array();
 sort( $desired, SORT_STRING );
