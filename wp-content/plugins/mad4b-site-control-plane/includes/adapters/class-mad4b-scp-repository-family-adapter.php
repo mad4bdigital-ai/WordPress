@@ -112,7 +112,7 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function id() { return $this->family_id; }
 	public function label() {
 		$labels = array(
-			'admin-utilities'=>'Admin Utilities','analytics'=>'Analytics / Tag Manager','astra'=>'Astra Add-ons','content-utilities'=>'Content Utilities',
+			'admin-utilities'=>'Admin Utilities','google-tag-manager'=>'Google Tag Manager','bulk-taxonomy-editor'=>'Bulk Taxonomy Editor','custom-mega-menu'=>'Custom Mega Menu','meta-catalog-feed-mapper'=>'Meta Catalog Feed Mapper','astra'=>'Astra Add-ons',
 			'dangerous-code-execution'=>'High-Risk Code / Filesystem Tools','fluentforms'=>'Fluent Forms','hostinger'=>'Hostinger',
 			'identity-admin'=>'Identity Administration','jet-ecosystem'=>'Jet Ecosystem','jetformbuilder'=>'JetFormBuilder','reviews'=>'Reviews / TripAdvisor',
 			'wp-import-export'=>'WP Import / Export','wpl-client'=>'WPL Client','wpml'=>'WPML','mad4b-platform'=>'MAD4B Platform',
