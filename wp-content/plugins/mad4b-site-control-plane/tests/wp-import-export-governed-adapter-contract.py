@@ -18,7 +18,6 @@ required = [
     'negative_transport_canary_required',
     'behavioral_execution_certified',
     'lower_ladder_evidence_never_implies_higher_ladder_certification',
-    'mad4b.wp-import-export-execution-readiness.v3',
     'wp-import-export/list-imports',
     'wp-import-export/get-import',
     'wp-import-export/inspect-import-contract',
