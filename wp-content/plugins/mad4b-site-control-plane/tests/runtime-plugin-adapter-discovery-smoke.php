@@ -22,7 +22,7 @@ foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-request
 }
 
 $registry = MAD4B_SCP_Adapter_Registry::instance();
-foreach ( array( 'admin-utilities', 'astra', 'dangerous-code-execution', 'content-utilities', 'jet-ecosystem', 'analytics', 'fluentforms', 'hostinger', 'jetformbuilder', 'mad4b-platform', 'wpml', 'reviews', 'identity-admin', 'wp-import-export', 'wpl-client', 'repository-plugins' ) as $adapter_id ) {
+foreach ( array( 'admin-utilities', 'astra', 'dangerous-code-execution', 'bulk-taxonomy-editor', 'custom-mega-menu', 'meta-catalog-feed-mapper', 'jet-ecosystem', 'google-tag-manager', 'fluentforms', 'hostinger', 'jetformbuilder', 'mad4b-platform', 'wpml', 'reviews', 'identity-admin', 'wp-import-export', 'wpl-client', 'repository-plugins' ) as $adapter_id ) {
 	$adapter = $registry->get( $adapter_id );
 	$check( is_object( $adapter ), 'Repository family adapter was not registered: ' . $adapter_id );
 	$map = $adapter->ability_names();
