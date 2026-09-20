@@ -10,6 +10,7 @@ capability_catalog = json.loads((ROOT / 'config/provider-capability-contracts.js
 
 required = [
     'mad4b.wp-import-export-governed-adapter.v3',
+    'mad4b.wp-import-export-execution-readiness.v3',
     'wp-import-export/list-imports',
     'wp-import-export/get-import',
     'wp-import-export/inspect-import-contract',
@@ -101,6 +102,12 @@ assert "provider_option_present('PMXI_Plugin','cron_job_key')" in src
 assert "provider_option_present('PMXE_Plugin','cron_job_key')" in src
 assert "'server_secret_configured'=>$import_secret" in src
 assert "'server_secret_configured'=>$export_secret" in src
+assert "'server_secret_required'=>false" in src
+assert "'execution_transport_candidate'=>$import_cli?'server_local_wp_cli':'unresolved'" in src
+assert "'execution_transport_candidate'=>$export_record?'server_local_provider_record_execute':'unresolved'" in src
+assert 'wp_all_import_server_secret_missing' not in src
+assert 'wp_all_export_server_secret_missing' not in src
+assert 'mad4b_wp_import_export_exact_composite_artifact_not_certified' in src
 
 # Import configuration/source identity is hash-bound while raw options/paths stay hidden.
 assert "'raw_options_exposed'=>false" in src
