@@ -129,7 +129,13 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$network_active = self::is_network_active( $plugin_file );
 		$strategy = isset( $descriptor['strategy'] ) ? sanitize_key( (string) $descriptor['strategy'] ) : 'adapter_required';
 		$risk = isset( $descriptor['risk'] ) ? sanitize_key( (string) $descriptor['risk'] ) : 'unknown';
-		$status = is_object( $adapter ) && method_exists( $adapter, 'status' ) ? $adapter->status() : array();
+		$status_value = is_object( $adapter ) && method_exists( $adapter, 'status' ) ? $adapter->status() : array();
+		$status = is_array( $status_value ) ? $status_value : array();
+		if ( is_wp_error( $status_value ) ) {
+			$status['_discovery_error'] = sanitize_key( (string) $status_value->get_error_code() );
+		} elseif ( ! is_array( $status_value ) && null !== $status_value ) {
+			$status['_discovery_error'] = 'adapter_status_invalid_contract';
+		}
 		$side_channel_blocker = self::parallel_mcp_blocker( $descriptor, $active );
 		$state = self::coverage_state( $strategy, $adapter, $active, $status, $side_channel_blocker );
 		$reversible = self::adapter_reversible_contracts( $adapter );
@@ -186,6 +192,11 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$state = 'intentionally_excluded'; $reason = 'normal_writer_excluded_by_policy'; $next = 'retain_restricted_scope_unless_separately_reviewed';
 		} elseif ( ! is_object( $adapter ) ) {
 			$state = 'adapter_missing'; $reason = 'no_registered_adapter'; $next = 'implement_and_certify_provider_adapter';
+		} elseif ( ! empty( $status['_discovery_error'] ) ) {
+			$state = 'safety_blocked';
+			$reason = 'adapter_status_unavailable';
+			$blockers = array( sanitize_key( (string) $status['_discovery_error'] ) );
+			$next = 'inspect_adapter_status_contract_before_treating_provider_as_ready';
 		} else {
 			$execution = isset( $status['execution'] ) && is_array( $status['execution'] ) ? $status['execution'] : array();
 			$desired = isset( $execution['desired_execution_abilities'] ) && is_array( $execution['desired_execution_abilities'] ) ? $execution['desired_execution_abilities'] : array();
