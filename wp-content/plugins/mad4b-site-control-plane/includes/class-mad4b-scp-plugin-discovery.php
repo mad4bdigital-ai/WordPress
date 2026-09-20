@@ -49,11 +49,13 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'excluded_high_risk' => 0,
 			'priority_external_missing' => 0,
 		);
+		$functional_counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
 
 		foreach ( $plugins as $plugin_file => $headers ) {
 			if ( count( $items ) >= self::MAX_PLUGINS ) break;
 			$item = self::describe_installed_plugin( (string) $plugin_file, is_array( $headers ) ? $headers : array() );
 			$items[] = $item;
+			if ( isset( $item['functional_coverage']['state'] ) && isset( $functional_counts[ $item['functional_coverage']['state'] ] ) ) ++$functional_counts[ $item['functional_coverage']['state'] ];
 			++$counts['installed'];
 			if ( ! empty( $item['active'] ) ) ++$counts['active'];
 			if ( isset( $counts[ $item['coverage_state'] ] ) ) ++$counts[ $item['coverage_state'] ];
@@ -77,7 +79,32 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'priority_external' => $priority,
 			'support_requests' => self::dedupe_requests( $requests ),
 			'counts' => $counts,
+			'functional_counts' => $functional_counts,
 			'truncated' => count( $plugins ) > self::MAX_PLUGINS,
+		);
+	}
+
+	public static function functional_coverage_report() {
+		$coverage = self::coverage();
+		$items = array();
+		foreach ( isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array() as $plugin ) {
+			if ( empty( $plugin['active'] ) || empty( $plugin['functional_coverage'] ) || ! is_array( $plugin['functional_coverage'] ) ) continue;
+			$items[] = array(
+				'plugin_file' => isset( $plugin['plugin_file'] ) ? $plugin['plugin_file'] : '',
+				'plugin_name' => isset( $plugin['name'] ) ? $plugin['name'] : '',
+				'family' => isset( $plugin['family'] ) ? $plugin['family'] : '',
+				'adapter_id' => isset( $plugin['adapter_id'] ) ? $plugin['adapter_id'] : '',
+				'risk' => isset( $plugin['risk'] ) ? $plugin['risk'] : '',
+				'functional_coverage' => $plugin['functional_coverage'],
+			);
+		}
+		return array(
+			'contract' => 'mad4b.provider-functional-coverage.v1',
+			'read_only' => true,
+			'authority_created' => false,
+			'counts' => isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array(),
+			'items' => $items,
+			'count' => count( $items ),
 		);
 	}
 
@@ -135,7 +162,47 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'provider_status' => isset( $certification['status'] ) ? sanitize_key( (string) $certification['status'] ) : '',
 			'side_channel_blocker' => $side_channel_blocker,
 			'mutation_auto_enabled' => false,
+			'functional_coverage' => self::functional_coverage( $adapter, $status, $descriptor, $active, $state ),
 			'support_request' => $request,
+		);
+	}
+
+	private static function functional_coverage( $adapter, array $status, array $descriptor, $active, $coverage_state ) {
+		$requested = isset( $descriptor['requested_contracts'] ) && is_array( $descriptor['requested_contracts'] ) ? array_values( array_map( 'sanitize_key', $descriptor['requested_contracts'] ) ) : array();
+		$map = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
+		$reads = isset( $map['read'] ) && is_array( $map['read'] ) ? array_values( $map['read'] ) : array();
+		$writes = array();
+		foreach ( array( 'content', 'write', 'admin' ) as $surface ) if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $writes = array_merge( $writes, $map[ $surface ] );
+		$writes = array_values( array_unique( $writes ) );
+		$state = 'functional_ready'; $reason = ''; $next = 'no_action_required';
+
+		if ( ! $active ) {
+			$state = 'inactive'; $reason = 'plugin_not_active'; $next = 'activate_only_if_operationally_required';
+		} elseif ( 'excluded_high_risk' === $coverage_state ) {
+			$state = 'intentionally_excluded'; $reason = 'normal_writer_excluded_by_risk'; $next = 'use_breakglass_review_only_if_explicitly_approved';
+		} elseif ( ! is_object( $adapter ) ) {
+			$state = 'adapter_missing'; $reason = 'no_registered_adapter'; $next = 'implement_and_certify_provider_adapter';
+		} else {
+			$execution = isset( $status['execution'] ) && is_array( $status['execution'] ) ? $status['execution'] : array();
+			$desired = isset( $execution['desired_execution_abilities'] ) && is_array( $execution['desired_execution_abilities'] ) ? $execution['desired_execution_abilities'] : array();
+			$mounted = isset( $execution['mounted_execution_abilities'] ) && is_array( $execution['mounted_execution_abilities'] ) ? $execution['mounted_execution_abilities'] : array();
+			if ( ! empty( $desired ) && count( $mounted ) < count( $desired ) ) {
+				$state = 'safety_blocked'; $reason = 'desired_execution_not_certified_or_mounted'; $next = 'close_reported_execution_readiness_blockers_before_mount';
+			} elseif ( 'mad4b.repository-family-read-adapter.v1' === ( isset( $status['contract'] ) ? (string) $status['contract'] : '' ) && count( $reads ) <= 1 && empty( $writes ) ) {
+				$state = 'status_only_candidate'; $reason = 'family_adapter_exposes_status_only'; $next = 'review_provider_functions_and_add_read_plan_execute_contracts_where_justified';
+			}
+		}
+		return array(
+			'contract' => 'mad4b.provider-functional-coverage-item.v1',
+			'state' => $state,
+			'reason' => $reason,
+			'read_ability_count' => count( $reads ),
+			'write_ability_count' => count( $writes ),
+			'read_abilities' => $reads,
+			'write_abilities' => $writes,
+			'requested_contracts' => $requested,
+			'next_action' => $next,
+			'authority_created' => false,
 		);
 	}
 
