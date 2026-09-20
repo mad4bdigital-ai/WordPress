@@ -37,6 +37,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			'overview' => __( 'Overview', 'mad4b-site-control-plane' ),
 			'installed' => __( 'Installed Plugins', 'mad4b-site-control-plane' ),
 			'priority' => __( 'Priority Coverage', 'mad4b-site-control-plane' ),
+			'functional' => __( 'Functional Gaps', 'mad4b-site-control-plane' ),
 			'requests' => __( 'Support Requests', 'mad4b-site-control-plane' ),
 		);
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
@@ -54,6 +55,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		if ( 'overview' === $tab ) self::render_overview( $snapshot, $counts );
 		if ( 'installed' === $tab ) self::render_plugins( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array() );
 		if ( 'priority' === $tab ) self::render_priority( isset( $snapshot['priority_external'] ) && is_array( $snapshot['priority_external'] ) ? $snapshot['priority_external'] : array() );
+		if ( 'functional' === $tab ) self::render_functional( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array(), isset( $snapshot['functional_counts'] ) && is_array( $snapshot['functional_counts'] ) ? $snapshot['functional_counts'] : array() );
 		if ( 'requests' === $tab ) self::render_requests( isset( $snapshot['support_requests'] ) && is_array( $snapshot['support_requests'] ) ? $snapshot['support_requests'] : array() );
 		echo '</div>';
 	}
@@ -138,6 +140,31 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			$request = isset( $item['support_request']['support_request_id'] ) ? (string) $item['support_request']['support_request_id'] : '';
 			echo '<tr><td>' . esc_html( isset( $item['name'] ) ? $item['name'] : '' ) . '</td><td><code>' . esc_html( isset( $item['adapter_id'] ) ? $item['adapter_id'] : '' ) . '</code></td><td>' . esc_html( isset( $item['coverage_state'] ) ? $item['coverage_state'] : '' ) . '</td><td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( $request ) . '</code></td></tr>';
 		}
+		echo '</tbody></table></div>';
+	}
+
+	private static function render_functional( array $items, array $counts ) {
+		echo '<h2>' . esc_html__( 'Functional coverage gaps', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Detects active providers whose business functions are not yet represented by governed abilities. This view is read-only and never creates adapters, grants, approvals or mutation authority.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="mad4b-scp-panel"><strong>' . esc_html__( 'Summary:', 'mad4b-site-control-plane' ) . '</strong> ';
+		foreach ( array( 'functional_ready','status_only_candidate','safety_blocked','adapter_missing','intentionally_excluded' ) as $key ) {
+			echo '<span style="margin-right:14px"><code>' . esc_html( $key ) . '</code> ' . esc_html( isset( $counts[ $key ] ) ? (string) $counts[ $key ] : '0' ) . '</span>';
+		}
+		echo '</div>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Plugin</th><th>Family</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Next safe action</th></tr></thead><tbody>';
+		$shown = 0;
+		foreach ( $items as $item ) {
+			if ( empty( $item['active'] ) || empty( $item['functional_coverage'] ) || ! is_array( $item['functional_coverage'] ) ) continue;
+			$f = $item['functional_coverage'];
+			$state = isset( $f['state'] ) ? (string) $f['state'] : '';
+			if ( in_array( $state, array( 'functional_ready', 'inactive' ), true ) ) continue;
+			++$shown;
+			echo '<tr><td><strong>' . esc_html( isset( $item['name'] ) ? $item['name'] : '' ) . '</strong><br><code>' . esc_html( isset( $item['plugin_file'] ) ? $item['plugin_file'] : '' ) . '</code></td>';
+			echo '<td>' . esc_html( isset( $item['family'] ) ? $item['family'] : '' ) . '</td><td><strong>' . esc_html( $state ) . '</strong></td>';
+			echo '<td>' . esc_html( isset( $f['read_ability_count'] ) ? (string) $f['read_ability_count'] : '0' ) . '</td><td>' . esc_html( isset( $f['write_ability_count'] ) ? (string) $f['write_ability_count'] : '0' ) . '</td>';
+			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
+		}
+		if ( 0 === $shown ) echo '<tr><td colspan="8">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
 		echo '</tbody></table></div>';
 	}
 
