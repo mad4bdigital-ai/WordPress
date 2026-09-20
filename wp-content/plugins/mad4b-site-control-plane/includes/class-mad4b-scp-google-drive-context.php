@@ -215,6 +215,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$status = self::connection_status();
 		$public = array(
 			'contract' => 'mad4b.google-drive-public-connection.v1',
+			'auth_mode' => isset( $status['auth_mode'] ) ? (string) $status['auth_mode'] : self::AUTH_MODE_CUSTOM,
+			'credential_custody' => isset( $status['credential_custody'] ) ? (string) $status['credential_custody'] : 'site_managed',
 			'configured' => ! empty( $status['configured'] ),
 			'connected' => ! empty( $status['connected'] ),
 			'read_available' => ! empty( $status['read_available'] ),
