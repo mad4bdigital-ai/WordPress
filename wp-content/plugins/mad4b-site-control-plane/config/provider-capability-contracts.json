@@ -248,8 +248,18 @@
             {
               "type": "class_any",
               "values": [
-                "PMXI_Import_Record",
-                "PMXI_Import_List",
+                "PMXI_Import_Record"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "PMXI_Import_List"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
                 "PMXI_Plugin"
               ]
             }
@@ -268,8 +278,18 @@
             {
               "type": "class_any",
               "values": [
-                "PMXE_Export_Record",
-                "PMXE_Export_List",
+                "PMXE_Export_Record"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "PMXE_Export_List"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
                 "PMXE_Plugin"
               ]
             }
@@ -289,8 +309,18 @@
             {
               "type": "class_any",
               "values": [
-                "PMXI_Import_Record",
-                "PMXI_Import_List",
+                "PMXI_Import_Record"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "PMXI_Import_List"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
                 "PMXI_Plugin"
               ]
             }
@@ -309,8 +339,18 @@
             {
               "type": "class_any",
               "values": [
-                "PMXE_Export_Record",
-                "PMXE_Export_List",
+                "PMXE_Export_Record"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "PMXE_Export_List"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
                 "PMXE_Plugin"
               ]
             }
