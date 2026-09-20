@@ -49,10 +49,11 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		if ( is_wp_error( $snapshot ) ) { echo '<div class="notice notice-error"><p>' . esc_html( $snapshot->get_error_message() ) . '</p></div></div>'; return; }
 
 		$counts = isset( $snapshot['counts'] ) && is_array( $snapshot['counts'] ) ? $snapshot['counts'] : array();
-		MAD4B_SCP_Admin_Experience::stages( self::coverage_stages( $counts ) );
+		$functional_counts = isset( $snapshot['functional_counts'] ) && is_array( $snapshot['functional_counts'] ) ? $snapshot['functional_counts'] : array();
+		MAD4B_SCP_Admin_Experience::stages( self::coverage_stages( $counts, $functional_counts ) );
 		MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 
-		if ( 'overview' === $tab ) self::render_overview( $snapshot, $counts );
+		if ( 'overview' === $tab ) self::render_overview( $snapshot, $counts, $functional_counts );
 		if ( 'installed' === $tab ) self::render_plugins( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array() );
 		if ( 'priority' === $tab ) self::render_priority( isset( $snapshot['priority_external'] ) && is_array( $snapshot['priority_external'] ) ? $snapshot['priority_external'] : array() );
 		if ( 'functional' === $tab ) self::render_functional( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array(), isset( $snapshot['functional_counts'] ) && is_array( $snapshot['functional_counts'] ) ? $snapshot['functional_counts'] : array() );
@@ -60,20 +61,23 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		echo '</div>';
 	}
 
-	private static function coverage_stages( array $counts ) {
+	private static function coverage_stages( array $counts, array $functional_counts = array() ) {
 		$installed = isset( $counts['installed'] ) ? (int) $counts['installed'] : 0;
 		$needs_adapter = isset( $counts['adapter_required'] ) ? (int) $counts['adapter_required'] : 0;
 		$needs_cert = isset( $counts['adapter_present_certification_required'] ) ? (int) $counts['adapter_present_certification_required'] : 0;
 		$side_channel = isset( $counts['adapter_present_side_channel_blocked'] ) ? (int) $counts['adapter_present_side_channel_blocked'] : 0;
+		$safety_blocked = isset( $functional_counts['safety_blocked'] ) ? (int) $functional_counts['safety_blocked'] : 0;
+		$review_candidates = ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
 		return array(
 			array( 'label' => __( 'Discover', 'mad4b-site-control-plane' ), 'state' => $installed > 0 ? 'complete' : 'pending', 'detail' => __( 'Inventory installed and active plugins.', 'mad4b-site-control-plane' ), 'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'installed' ) ),
 			array( 'label' => __( 'Match adapter', 'mad4b-site-control-plane' ), 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'detail' => __( 'Map each plugin to a governed support strategy.', 'mad4b-site-control-plane' ), 'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'requests' ) ),
 			array( 'label' => __( 'Certify provider', 'mad4b-site-control-plane' ), 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'detail' => __( 'Verify exact provider version and contract before mutation.', 'mad4b-site-control-plane' ), 'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'installed' ) ),
 			array( 'label' => __( 'Clear runtime blockers', 'mad4b-site-control-plane' ), 'state' => 0 === $side_channel ? 'complete' : 'blocked', 'detail' => __( 'Resolve parallel MCP/write-plane isolation blockers.', 'mad4b-site-control-plane' ), 'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'installed' ) ),
+			array( 'label' => __( 'Functional readiness', 'mad4b-site-control-plane' ), 'state' => $safety_blocked > 0 ? 'blocked' : ( $review_candidates > 0 ? 'attention' : 'complete' ), 'detail' => $safety_blocked > 0 ? __( 'Execution exists in the product model but remains fail-closed until safety contracts are certified.', 'mad4b-site-control-plane' ) : __( 'Review remaining status-only or missing functional coverage.', 'mad4b-site-control-plane' ), 'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'functional' ) ),
 		);
 	}
 
-	private static function render_overview( array $snapshot, array $counts ) {
+	private static function render_overview( array $snapshot, array $counts, array $functional_counts = array() ) {
 		$supported = (int) ( isset( $counts['supported_reversible'] ) ? $counts['supported_reversible'] : 0 )
 			+ (int) ( isset( $counts['supported_governed'] ) ? $counts['supported_governed'] : 0 )
 			+ (int) ( isset( $counts['read_only_supported'] ) ? $counts['read_only_supported'] : 0 );
@@ -81,6 +85,8 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		$needs_cert = isset( $counts['adapter_present_certification_required'] ) ? (int) $counts['adapter_present_certification_required'] : 0;
 		$side_channel = isset( $counts['adapter_present_side_channel_blocked'] ) ? (int) $counts['adapter_present_side_channel_blocked'] : 0;
 		$priority_missing = isset( $counts['priority_external_missing'] ) ? (int) $counts['priority_external_missing'] : 0;
+		$functional_blocked = isset( $functional_counts['safety_blocked'] ) ? (int) $functional_counts['safety_blocked'] : 0;
+		$functional_review = ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
 
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Installed', 'value' => isset( $counts['installed'] ) ? (string) $counts['installed'] : '0', 'state' => ! empty( $counts['installed'] ) ? 'complete' : 'pending', 'help' => 'Plugins included in runtime discovery.' ),
@@ -88,6 +94,8 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			array( 'label' => 'Needs adapter', 'value' => (string) $needs_adapter, 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'help' => 'No silent fallback to write authority.' ),
 			array( 'label' => 'Needs certification', 'value' => (string) $needs_cert, 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'help' => 'Adapter exists but exact provider proof is missing.' ),
 			array( 'label' => 'Runtime blocked', 'value' => (string) $side_channel, 'state' => 0 === $side_channel ? 'complete' : 'blocked', 'help' => 'Parallel MCP/write-plane risk remains.' ),
+			array( 'label' => 'Functional blocked', 'value' => (string) $functional_blocked, 'state' => 0 === $functional_blocked ? 'complete' : 'blocked', 'help' => 'Desired provider execution remains intentionally unmounted until safety contracts close.' ),
+			array( 'label' => 'Functional review', 'value' => (string) $functional_review, 'state' => 0 === $functional_review ? 'complete' : 'attention', 'help' => 'Status-only or missing provider functions that need an explicit scope decision.' ),
 			array( 'label' => 'Priority missing', 'value' => (string) $priority_missing, 'state' => 0 === $priority_missing ? 'complete' : 'pending', 'help' => 'Priority external plugins not installed on this site.' ),
 		) );
 
