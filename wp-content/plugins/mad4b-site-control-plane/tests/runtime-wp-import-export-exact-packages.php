@@ -39,6 +39,36 @@ foreach ( array(
 	if ( ! method_exists( $method[0], $method[1] ) ) $fail( 'Required provider method missing: ' . implode( '::', $method ) );
 }
 
+$signature_evidence = array();
+foreach ( array(
+	array( 'PMXI_Import_Record', 'execute' ),
+	array( 'PMXI_Import_Record', 'process' ),
+	array( 'PMXI_Import_Record', 'get_missing_records' ),
+	array( 'PMXI_Import_Record', 'delete_missing_records' ),
+	array( 'PMXE_Export_Record', 'execute' ),
+	array( 'PMXE_Export_Record', 'generate_bundle' ),
+) as $method ) {
+	$reflection = new ReflectionMethod( $method[0], $method[1] );
+	$params = array();
+	foreach ( $reflection->getParameters() as $parameter ) {
+		$params[] = array(
+			'name' => $parameter->getName(),
+			'optional' => $parameter->isOptional(),
+			'variadic' => $parameter->isVariadic(),
+			'by_reference' => $parameter->isPassedByReference(),
+			'default_available' => $parameter->isDefaultValueAvailable(),
+		);
+	}
+	$signature_evidence[ $method[0] . '::' . $method[1] ] = array(
+		'public' => $reflection->isPublic(),
+		'static' => $reflection->isStatic(),
+		'required_parameters' => $reflection->getNumberOfRequiredParameters(),
+		'total_parameters' => $reflection->getNumberOfParameters(),
+		'parameters' => $params,
+	);
+}
+echo 'MAD4B_WP_IMPORT_EXPORT_REFLECTION=' . wp_json_encode( $signature_evidence, JSON_UNESCAPED_SLASHES ) . PHP_EOL;
+
 if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) $fail( 'Provider contract authority unavailable.' );
 $runtime = MAD4B_SCP_Provider_Contracts::runtime_status( 'wp-import-export', true );
 if ( ! is_array( $runtime ) || 'certified' !== ( $runtime['status'] ?? '' ) || empty( $runtime['runtime_contract_ok'] ) ) {
