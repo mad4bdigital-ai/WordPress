@@ -101,9 +101,14 @@ final class MAD4B_SCP_Provider_Contracts {
 
 	private static function installed_version_for_contract( array $contract ) {
 		if ( empty( $contract['plugin_file'] ) ) return '';
+		$file = ltrim( str_replace( '\\', '/', (string) $contract['plugin_file'] ), '/' );
+		$absolute = trailingslashit( WP_PLUGIN_DIR ) . $file;
+		if ( is_readable( $absolute ) && function_exists( 'get_file_data' ) ) {
+			$data = get_file_data( $absolute, array( 'Version' => 'Version' ), 'plugin' );
+			if ( is_array( $data ) && ! empty( $data['Version'] ) ) return trim( (string) $data['Version'] );
+		}
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
-		$file = (string) $contract['plugin_file'];
 		return isset( $plugins[ $file ] ) && ! empty( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '';
 	}
 
