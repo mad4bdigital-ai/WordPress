@@ -26,6 +26,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-packaged-mcp-security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   packaged-mcp-security:
     name: Native MCP security enforcement
@@ -33,7 +37,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Materialize canonical inspected archives
         shell: bash
         run: |
