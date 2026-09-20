@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-finalizer-identity-binding-${{ github.event.pull_request.head.sha || github.sha }}
+  group: mad4b-finalizer-identity-binding-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

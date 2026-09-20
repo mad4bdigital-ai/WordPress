@@ -62,10 +62,23 @@ MAX_FUNCTION_LINES = 120
 ROUTE_CONTEXT_LINES = 16
 
 JETENGINE_EXPECTED_ROUTE_FILES = {
-    "jet-engine/includes/core/mcp-tools/rest-api/get-controller.php",
-    "jet-engine/includes/core/mcp-tools/rest-api/mcp-controller.php",
-    "jet-engine/includes/core/mcp-tools/rest-api/run-controller.php",
+    "includes/core/mcp-tools/rest-api/get-controller.php",
+    "includes/core/mcp-tools/rest-api/mcp-controller.php",
+    "includes/core/mcp-tools/rest-api/run-controller.php",
 }
+
+
+def canonical_provider_path(provider: str, value: str) -> str:
+    normalized = str(value or "").replace("\\", "/").lstrip("/")
+    prefixes = {
+        "jetengine": ("jet-engine/",),
+        "elementor": ("elementor/",),
+        "bit_pi": ("bit-pi/",),
+    }
+    for prefix in prefixes.get(provider, ()):
+        if normalized.startswith(prefix):
+            return normalized[len(prefix):]
+    return normalized
 
 
 def safe_extract(archive: Path, destination: Path) -> None:
@@ -280,7 +293,10 @@ def enforce_security(report: dict) -> list[dict]:
     if not jetengine.get("present"):
         issues.append({"provider": "jetengine", "contract": "package", "reason": "missing"})
     else:
-        actual_routes = set(jetengine.get("route_files") or [])
+        actual_routes = {
+            canonical_provider_path("jetengine", value)
+            for value in (jetengine.get("route_files") or [])
+        }
         if actual_routes != JETENGINE_EXPECTED_ROUTE_FILES:
             issues.append(
                 {

@@ -156,10 +156,10 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-acceptance-wordpress
-          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
-          unzip -q wp-content/plugins/elementor.zip -d "$WP_PATH/wp-content/plugins"
-          unzip -q /tmp/mad4b-acceptance-providers/jet-engine.zip -d "$WP_PATH/wp-content/plugins"
-          unzip -q /tmp/mad4b-acceptance-providers/jet-smart-filters.zip -d "$WP_PATH/wp-content/plugins"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "wp-content/plugins/mcp-adapter.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "wp-content/plugins/elementor.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug elementor
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "/tmp/mad4b-acceptance-providers/jet-engine.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug jet-engine
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "/tmp/mad4b-acceptance-providers/jet-smart-filters.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug jet-smart-filters
           cp -R wp-content/plugins/etg-dynamic-filter-seo-bridge "$WP_PATH/wp-content/plugins/etg-dynamic-filter-seo-bridge"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
