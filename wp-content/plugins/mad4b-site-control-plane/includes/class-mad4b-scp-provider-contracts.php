@@ -20,68 +20,57 @@ final class MAD4B_SCP_Provider_Contracts {
 		return self::$contracts;
 	}
 
-	private static function profiles() {
+	public static function get( $provider ) {
+		$contracts = self::all();
+		return isset( $contracts[ $provider ] ) && is_array( $contracts[ $provider ] ) ? $contracts[ $provider ] : array();
+	}
+
+	public static function profile_catalog() {
 		if ( null !== self::$profiles ) return self::$profiles;
 		$path = MAD4B_SCP_DIR . 'config/certified-provider-profiles.json';
 		if ( ! is_readable( $path ) ) { self::$profiles = array(); return self::$profiles; }
 		$raw = file_get_contents( $path );
 		if ( false === $raw ) { self::$profiles = array(); return self::$profiles; }
 		$data = json_decode( $raw, true );
-		if ( ! is_array( $data ) || empty( $data['providers'] ) || ! is_array( $data['providers'] ) ) { self::$profiles = array(); return self::$profiles; }
-		self::$profiles = $data['providers'];
+		self::$profiles = is_array( $data ) ? $data : array();
 		return self::$profiles;
 	}
 
-	public static function get( $provider ) {
-		$contracts = self::all();
-		return isset( $contracts[ $provider ] ) && is_array( $contracts[ $provider ] ) ? $contracts[ $provider ] : array();
-	}
-
-	private static function valid_profile( $version, $profile ) {
-		if ( ! is_array( $profile ) || ! preg_match( '/^[0-9A-Za-z._-]+$/', (string) $version ) ) return false;
-		if ( empty( $profile['version'] ) || ! hash_equals( (string) $version, (string) $profile['version'] ) ) return false;
-		// Extra versions must carry their own complete runtime integrity authority.
-		// Never let a version-only profile inherit old critical-file hashes and pass.
-		return ! empty( $profile['critical_files'] ) && is_array( $profile['critical_files'] );
-	}
-
-	public static function certified_versions( $provider ) {
-		$base = self::get( $provider );
-		$versions = array();
-		if ( ! empty( $base['version'] ) ) $versions[] = (string) $base['version'];
-		$profiles = self::profiles();
-		if ( ! empty( $profiles[ $provider ] ) && is_array( $profiles[ $provider ] ) ) {
-			foreach ( $profiles[ $provider ] as $version => $profile ) {
-				if ( self::valid_profile( $version, $profile ) ) $versions[] = (string) $version;
-			}
+	public static function candidate_attestation( $provider, $installed_version = '' ) {
+		$provider = sanitize_key( (string) $provider );
+		$installed_version = trim( (string) $installed_version );
+		$catalog = self::profile_catalog();
+		$profiles = isset( $catalog['providers'][ $provider ] ) && is_array( $catalog['providers'][ $provider ] ) ? $catalog['providers'][ $provider ] : array();
+		if ( '' !== $installed_version && isset( $profiles[ $installed_version ] ) && is_array( $profiles[ $installed_version ] ) ) {
+			$profile = $profiles[ $installed_version ];
+			return array(
+				'known_candidate' => true,
+				'attestation_required' => false,
+				'attestation_state' => 'profile_certified',
+				'version' => $installed_version,
+				'archive_sha256' => isset( $profile['archive_sha256'] ) ? strtolower( (string) $profile['archive_sha256'] ) : '',
+				'archive_bytes' => isset( $profile['archive_bytes'] ) ? (int) $profile['archive_bytes'] : 0,
+				'archive_layout' => isset( $profile['archive_layout'] ) ? sanitize_key( (string) $profile['archive_layout'] ) : '',
+				'mutation_policy' => 'certified_profile_subject_to_runtime_integrity',
+				'contract' => isset( $catalog['contract'] ) ? (string) $catalog['contract'] : '',
+			);
 		}
-		return array_values( array_unique( $versions ) );
-	}
-
-	private static function contract_for_version( $provider, $version ) {
-		$base = self::get( $provider );
-		if ( empty( $base ) ) return array();
-		$version = (string) $version;
-		if ( '' === $version || ( isset( $base['version'] ) && hash_equals( (string) $base['version'], $version ) ) ) return $base;
-		$profiles = self::profiles();
-		if ( empty( $profiles[ $provider ][ $version ] ) || ! self::valid_profile( $version, $profiles[ $provider ][ $version ] ) ) return $base;
-		$profile = $profiles[ $provider ][ $version ];
-		$contract = array_replace_recursive( $base, $profile );
-
-		// Security-sensitive collections are complete version-scoped declarations,
-		// not deltas. Replacing them wholesale prevents stale baseline entries or
-		// numeric-array tails from being inherited silently by a newer provider.
-		$replace_fields = array(
-			'critical_files',
-			'native_abilities',
-			'verified_absent_abilities',
-			'verified_contracts',
-			'known_upstream_constraints',
-			'native_mcp',
-			'native_mcp_security',
+		$policy = isset( $catalog['premium_provider_policy'][ $provider ] ) && is_array( $catalog['premium_provider_policy'][ $provider ] ) ? $catalog['premium_provider_policy'][ $provider ] : array();
+		$observed = isset( $policy['observed_version'] ) ? trim( (string) $policy['observed_version'] ) : '';
+		if ( '' === $installed_version || '' === $observed || ! hash_equals( $observed, $installed_version ) ) return array( 'known_candidate' => false );
+		return array(
+			'known_candidate' => true,
+			'attestation_required' => ! empty( $policy['attestation_required'] ),
+			'attestation_state' => isset( $policy['attestation_state'] ) ? sanitize_key( (string) $policy['attestation_state'] ) : 'unknown',
+			'attestation_contract' => isset( $policy['attestation_contract'] ) ? sanitize_text_field( (string) $policy['attestation_contract'] ) : '',
+			'version' => $installed_version,
+			'archive_sha256' => isset( $policy['repository_archive_sha256'] ) ? strtolower( (string) $policy['repository_archive_sha256'] ) : '',
+			'archive_bytes' => isset( $policy['repository_archive_bytes'] ) ? (int) $policy['repository_archive_bytes'] : 0,
+			'archive_layout' => isset( $policy['repository_archive_layout'] ) ? sanitize_key( (string) $policy['repository_archive_layout'] ) : '',
+			'normalized_archive_sha256' => isset( $policy['normalized_archive_sha256'] ) ? strtolower( (string) $policy['normalized_archive_sha256'] ) : '',
+			'mutation_policy' => isset( $policy['mutation_policy'] ) ? sanitize_key( (string) $policy['mutation_policy'] ) : 'fail_closed',
+			'contract' => isset( $catalog['contract'] ) ? (string) $catalog['contract'] : '',
 		);
-		foreach ( $replace_fields as $field ) if ( array_key_exists( $field, $profile ) ) $contract[ $field ] = $profile[ $field ];
-		return $contract;
 	}
 
 	public static function required_providers() {
@@ -147,15 +136,13 @@ final class MAD4B_SCP_Provider_Contracts {
 	}
 
 	public static function runtime_status( $provider, $available = null ) {
-		$base_contract = self::get( $provider );
-		if ( empty( $base_contract ) ) return array( 'provider' => $provider, 'status' => 'uncertified_provider', 'runtime_contract_ok' => false );
+		$contract = self::get( $provider );
+		if ( empty( $contract ) ) return array( 'provider' => $provider, 'status' => 'uncertified_provider', 'runtime_contract_ok' => false );
 
-		$actual = self::installed_version( $provider );
-		$contract = self::contract_for_version( $provider, $actual );
 		$expected = isset( $contract['version'] ) ? (string) $contract['version'] : '';
-		$certified_versions = self::certified_versions( $provider );
+		$actual = self::installed_version( $provider );
 		if ( false === $available || '' === $actual ) $status = 'unavailable';
-		elseif ( '' !== $expected && hash_equals( $expected, $actual ) && in_array( $actual, $certified_versions, true ) ) $status = 'certified';
+		elseif ( '' !== $expected && hash_equals( $expected, $actual ) ) $status = 'certified';
 		else $status = 'version_drift';
 
 		$result = array(
@@ -163,12 +150,12 @@ final class MAD4B_SCP_Provider_Contracts {
 			'label' => isset( $contract['label'] ) ? $contract['label'] : $provider,
 			'status' => $status,
 			'certified_version' => $expected,
-			'certified_versions' => $certified_versions,
 			'installed_version' => $actual,
 			'contract_mode' => isset( $contract['contract_mode'] ) ? $contract['contract_mode'] : '',
-			'certification_authority' => isset( $contract['certification_authority'] ) ? $contract['certification_authority'] : 'repository_baseline',
 			'runtime_integrity' => self::integrity_status( $contract ),
 		);
+		$candidate_attestation = self::candidate_attestation( $provider, $actual );
+		if ( ! empty( $candidate_attestation['known_candidate'] ) ) $result['candidate_attestation'] = $candidate_attestation;
 
 		if ( ! empty( $contract['native_abilities'] ) && is_array( $contract['native_abilities'] ) ) {
 			$present = array(); $missing = array();
@@ -193,6 +180,10 @@ final class MAD4B_SCP_Provider_Contracts {
 	public static function violations_for_status( array $status ) {
 		$violations = array();
 		if ( empty( $status['status'] ) || 'certified' !== $status['status'] ) $violations[] = empty( $status['status'] ) ? 'unknown_status' : (string) $status['status'];
+		if ( ! empty( $status['candidate_attestation']['attestation_required'] ) ) {
+			$violations[] = 'candidate_attestation_required';
+			if ( ! empty( $status['candidate_attestation']['attestation_state'] ) ) $violations[] = sanitize_key( (string) $status['candidate_attestation']['attestation_state'] );
+		}
 		if ( ! empty( $status['native_abilities_missing'] ) ) $violations[] = 'native_abilities_missing';
 		if ( ! empty( $status['newly_present_abilities'] ) ) $violations[] = 'verified_absent_ability_present';
 		$integrity = isset( $status['runtime_integrity'] ) && is_array( $status['runtime_integrity'] ) ? $status['runtime_integrity'] : array();
