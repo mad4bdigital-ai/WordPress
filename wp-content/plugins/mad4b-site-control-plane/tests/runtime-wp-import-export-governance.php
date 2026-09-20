@@ -25,6 +25,7 @@ foreach ( array(
 	'wp-import-export/inspect-export-contract',
 	'wp-import-export/plan-export-run',
 	'wp-import-export/execution-readiness',
+	'wp-import-export/behavioral-acceptance-plan',
 ) as $required ) {
 	if ( ! in_array( $required, $reads, true ) ) $fail( 'Missing governed read/plan ability: ' . $required );
 }
