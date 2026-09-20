@@ -161,10 +161,12 @@
       "strategy": "registered_adapter",
       "risk": "high",
       "requested_contracts": [
-        "form_inventory_read"
+        "form_inventory_read",
+        "form_metadata_read",
+        "submission_values_excluded"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "specialized_candidate"
+      "functional_mode": "specialized"
     },
     {
       "id": "jet-ecosystem",
@@ -246,10 +248,12 @@
       "strategy": "registered_adapter",
       "risk": "high",
       "requested_contracts": [
-        "form_plugin_status_read"
+        "form_inventory_read",
+        "form_metadata_read",
+        "submission_values_excluded"
       ],
       "mutation_scope": "none_read_only",
-      "functional_mode": "specialized_candidate"
+      "functional_mode": "specialized"
     },
     {
       "id": "bitflows",
