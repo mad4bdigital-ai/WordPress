@@ -318,16 +318,27 @@
       "requested_contracts": [
         "job_inventory_read",
         "job_detail_read",
-        "execution_readiness",
+        "exact_configuration_fingerprint",
+        "source_artifact_hash_binding",
+        "identity_cardinality_policy",
+        "delete_policy_fail_closed",
+        "exact_dry_run_diff",
         "plan_only_execution",
         "server_resolved_secret_only",
+        "provider_version_binding",
+        "content_schema_binding",
         "governed_export_execution",
-        "reversible_import_run"
+        "export_data_classification",
+        "artifact_registry_handoff",
+        "reversible_import_run",
+        "operation_receipt",
+        "content_operations_ledger",
+        "post_execution_reconciliation"
       ],
-      "mutation_scope": "governed_execution_unmounted_until_certified",
+      "mutation_scope": "composite_run_execution_unmounted_until_all_safety_contracts_certified",
       "functional_mode": "specialized",
-      "functional_rationale": "Bulk job inspection is supported; execution stays fail-closed until direct secret-safe execution and import run-level rollback are certified.",
-      "functional_next_action": "certify_direct_execution_and_import_run_level_rollback"
+      "functional_rationale": "Bulk job inspection and exact planning are supported. Import/export execution remains fail-closed until provider execution, exact dry-run diff, provider/schema/source bindings, import rollback, export artifact-registry ingest, operation receipt and reconciliation are certified.",
+      "functional_next_action": "certify_exact_dry_run_provider_execution_import_rollback_export_artifact_ingest_receipt_and_reconciliation"
     },
     {
       "id": "hostinger",
