@@ -165,6 +165,42 @@ function mad4b_oauth_assert( $condition, $message, $context = null ) {
 	exit( 1 );
 }
 
+$managed_vector_body = array(
+	'requested_scope' => 'https://www.googleapis.com/auth/drive.readonly',
+	'origin' => 'https://staging.egypttourgates.com',
+	'contract' => 'mad4b.google-managed-oauth-session.v1',
+	'site_uuid' => 'd745d81f-6fc4-5c6a-99dd-d953c92137bf',
+	'callback_uri' => 'https://staging.egypttourgates.com/wp-admin/admin-post.php?action=mad4b_context_google_managed_callback',
+	'verifier_method' => 'S256',
+	'access_mode' => 'read_only',
+	'state' => 'state-fixture-abcdefghijklmnopqrstuvwxyz0123456789',
+	'verifier_challenge' => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi_jklmnopqrstu-1234567890',
+);
+$managed_canonical_reflection = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'managed_canonical_json' );
+$managed_canonical_reflection->setAccessible( true );
+$managed_vector_canonical = $managed_canonical_reflection->invoke( null, $managed_vector_body );
+mad4b_oauth_assert( ! is_wp_error( $managed_vector_canonical ), 'Managed Google canonical JSON vector must serialize.', $managed_vector_canonical );
+$managed_vector_body_hash = hash( 'sha256', $managed_vector_canonical );
+mad4b_oauth_assert(
+	'337c650bf992ce6108a3f8ee69c8ba04bec319f70de266027c4c372b9d6483f1' === $managed_vector_body_hash,
+	'PHP Managed Google canonical body hash drifted from the Node cross-language contract.',
+	array( 'canonical' => $managed_vector_canonical, 'sha256' => $managed_vector_body_hash )
+);
+$managed_vector_payload = implode( "\n", array(
+	MAD4B_SCP_Google_Drive_Context::MANAGED_SITE_AUTH_SCHEME,
+	'POST',
+	'/v1/google/oauth/session',
+	'1760000000',
+	'abcdefghijklmnopqrstuvwxYZ012345',
+	$managed_vector_body_hash,
+) );
+$managed_vector_signature = hash_hmac( 'sha256', $managed_vector_payload, 'site-broker-secret-fixture-0123456789abcdef' );
+mad4b_oauth_assert(
+	'0cb44b37a06baa3d48050474bee31a1a519eef22651d8be7295c840066966e48' === $managed_vector_signature,
+	'PHP Managed Google site HMAC drifted from the Node cross-language contract.',
+	$managed_vector_signature
+);
+
 $GLOBALS['mad4b_context_token_responses'][] = array(
 	'access_token' => 'access-read-fixture',
 	'refresh_token' => 'refresh-read-fixture',
