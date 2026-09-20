@@ -7,7 +7,7 @@ ui=(ROOT/'includes/class-mad4b-scp-adapter-coverage-admin-ui.php').read_text('ut
 for marker in ['mad4b.provider-functional-coverage.v1','mad4b.provider-functional-coverage-item.v1','status_only_candidate','safety_blocked','adapter_missing','adapter_status_unavailable','adapter_status_invalid_contract','functional_coverage_report','functional_family_counts','functional_family_states','functional_state_counts','authority_created']:
     assert marker in discovery, marker
 assert 'mad4b/provider-functional-coverage' in registry
-for marker in ['Functional Gaps','Functional coverage gaps','Provider-family summary','deduplicated by family','Next safe action','status_only_candidate','safety_blocked']:
+for marker in ['Functional Gaps','Functional coverage gaps','Provider-family summary','ordered by blocking state and provider risk','deduplicated by family','risk_ranks','uasort( $groups','Next safe action','status_only_candidate','safety_blocked']:
     assert marker in ui, marker
 for forbidden in ['$_POST','admin_post_','$wpdb->insert','$wpdb->update','$wpdb->delete']:
     assert forbidden not in ui, forbidden
