@@ -58,6 +58,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function status( $input = array() ) {
 		$runtime = class_exists('MAD4B_SCP_Repository_Artifact_Catalog') ? MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family($this->id()) : array();
+		$certification=$this->provider_certification($this->is_available());
 		$versions=array();
 		foreach($runtime as $plugin){
 			$file=isset($plugin['plugin_file'])?(string)$plugin['plugin_file']:'';
@@ -72,6 +73,8 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'export_runtime_available'=>self::export_runtime_available(),'execution'=>$this->execution_readiness(),
 			'caller_supplied_secret_allowed'=>false,'secret_material_exposed'=>false,'cron_url_execution_allowed'=>false,
 			'import_run_rollback_contract'=>self::IMPORT_ROLLBACK_CONTRACT,'import_run_rollback_certified'=>false,
+			'mutation_requires_certification'=>true,
+			'provider_certification'=>is_array($certification)?$certification:null,
 			'mutation_exposed'=>false,'reversible_contracts'=>array(),'runtime_plugins'=>$runtime,
 		);
 	}
@@ -117,6 +120,8 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'mounted_execution_abilities'=>array(),'caller_supplied_secret_allowed'=>false,
 			'secret_material_exposed'=>false,'cron_url_execution_allowed'=>false,
 			'operation_contract'=>'mad4b.bulk-content-io-operation.v1',
+			'ledger_contract'=>'mad4b.content-operations-ledger.v1',
+			'reconciliation_contract'=>'mad4b.bulk-content-io-reconciliation.v1',
 			'receipt_contract'=>'mad4b.bulk-content-io-receipt.v1',
 		);
 	}
@@ -194,6 +199,8 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'approval_can_be_created'=>false,'write_ability_mounted'=>false,
 			'required_rollback_contract'=>self::IMPORT_ROLLBACK_CONTRACT,
 			'required_receipt_contract'=>'mad4b.bulk-content-io-receipt.v1',
+			'ledger_contract'=>'mad4b.content-operations-ledger.v1',
+			'reconciliation_contract'=>'mad4b.bulk-content-io-reconciliation.v1',
 			'context_receipt_required_before_execution'=>true,
 			'blockers'=>$v['blockers'],
 			'next_action'=>'close_exact_dry_run_rollback_receipt_and_secret_safe_provider_execution_contracts_before_mount',
@@ -215,6 +222,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'data_classification'=>$classification,'retention_hours'=>$retention,
 			'destination'=>'mad4b_artifact_registry','artifact_registry_required'=>true,
 			'artifact_contract'=>'mad4b.bulk-export-artifact.v1','required_receipt_contract'=>'mad4b.bulk-content-io-receipt.v1',
+			'ledger_contract'=>'mad4b.content-operations-ledger.v1','reconciliation_contract'=>'mad4b.bulk-content-io-reconciliation.v1',
 			'impact'=>'consequential_non_content_mutating','human_approval_required'=>true,
 			'approval_can_be_created'=>false,'write_ability_mounted'=>false,
 			'exact_preconditions'=>array('expected_candidate_sha256'=>$v['candidate_sha256'],'expected_configuration_sha256'=>$v['configuration_sha256']),
@@ -252,6 +260,8 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		$effects=$this->field_effect_policy($options);
 		$blockers=array('mad4b_wp_all_import_dry_run_diff_not_certified');
 		if(empty($identity['configured']))$blockers[]='wp_all_import_identity_strategy_unknown';
+		if(empty($deletion['known']))$blockers[]='wp_all_import_delete_policy_unknown';
+		if(empty($job['target_type']))$blockers[]='wp_all_import_target_content_schema_unknown';
 		if(empty($source['sha256']))$blockers[]='wp_all_import_source_artifact_not_hash_bound';
 		if(!empty($deletion['destructive_mode_detected']))$blockers[]='wp_all_import_destructive_delete_requires_separate_approval';
 		$dry=array(
@@ -261,12 +271,14 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'reason'=>'provider_exact_diff_simulation_not_yet_certified',
 		);
 		$candidate=self::canonical_hash(array(
-			'job'=>$job,'configuration_sha256'=>$config_sha,'source_sha256'=>$source['sha256'],
+			'job'=>$job,'provider_versions'=>$this->provider_versions(),'configuration_sha256'=>$config_sha,'source_sha256'=>$source['sha256'],
 			'identity_sha256'=>$identity['identity_sha256'],'deletion_policy'=>$deletion,'field_effect_policy'=>$effects,
 		));
 		return array(
 			'contract'=>'mad4b.wp-all-import-exact-contract.v1','job_id'=>$job['id'],
-			'configuration_sha256'=>$config_sha,'source_artifact'=>$source,'identity_strategy'=>$identity,
+			'configuration_sha256'=>$config_sha,'provider_versions'=>$this->provider_versions(),
+			'target_content_type'=>$job['target_type'],'content_schema_binding_required'=>true,
+			'source_artifact'=>$source,'identity_strategy'=>$identity,
 			'deletion_policy'=>$deletion,'field_effect_policy'=>$effects,'dry_run'=>$dry,
 			'candidate_sha256'=>$candidate,'blockers'=>array_values(array_unique($blockers)),
 			'raw_options_exposed'=>false,'source_path_exposed'=>false,'secret_material_exposed'=>false,
@@ -284,13 +296,25 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		$field_sha=self::canonical_hash($field_material);
 		$filter_sha=self::canonical_hash($filter_material);
-		$candidate=self::canonical_hash(array('job'=>$job,'configuration_sha256'=>$config_sha,'field_selection_sha256'=>$field_sha,'filter_sha256'=>$filter_sha));
+		$candidate=self::canonical_hash(array('job'=>$job,'provider_versions'=>$this->provider_versions(),'configuration_sha256'=>$config_sha,'field_selection_sha256'=>$field_sha,'filter_sha256'=>$filter_sha));
 		return array(
 			'contract'=>'mad4b.wp-all-export-exact-contract.v1','job_id'=>$job['id'],
+			'provider_versions'=>$this->provider_versions(),
 			'configuration_sha256'=>$config_sha,'field_selection_sha256'=>$field_sha,'filter_sha256'=>$filter_sha,
 			'candidate_sha256'=>$candidate,'data_classification_required'=>true,
 			'artifact_registry_required'=>true,'raw_options_exposed'=>false,'secret_material_exposed'=>false,
 		);
+	}
+	private function provider_versions() {
+		$runtime=class_exists('MAD4B_SCP_Repository_Artifact_Catalog')?MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family($this->id()):array();
+		$out=array();
+		foreach((array)$runtime as $plugin){
+			$file=isset($plugin['plugin_file'])?(string)$plugin['plugin_file']:'';
+			$version=isset($plugin['version'])?sanitize_text_field((string)$plugin['version']):'';
+			if(false!==strpos($file,'wp-all-import'))$out['import']=$version;
+			if(false!==strpos($file,'wp-all-export')||false!==strpos($file,'wpae-'))$out['export']=$version;
+		}
+		ksort($out,SORT_STRING); return $out;
 	}
 	private function source_artifact( $r, array $options ) {
 		$candidates=array();
