@@ -101,7 +101,8 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		$import_cli=in_array('WP_CLI_all_import_present',$import_verified,true);
 		$export_record=isset($components['export']['critical_files']['models/export/record.php']);
 		return array(
-			'contract'=>'mad4b.wp-import-export-execution-readiness.v3',
+			'contract'=>'mad4b.wp-import-export-execution-readiness.v4',
+			'evidence_ladder_contract'=>'mad4b.bulk-content-io-execution-evidence.v1',
 			'provider_certification_required'=>true,
 			'exact_composite_artifact_certified'=>$exact_composite,
 			'import'=>array(
@@ -109,6 +110,10 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				'server_secret_configured'=>$import_secret,'server_secret_required'=>false,
 				'execution_transport_candidate'=>$import_cli?'server_local_wp_cli':'unresolved',
 				'package_transport_surface_observed'=>$import_cli,
+				'transport_contract'=>$import_cli?'mad4b.wp-all-import.server-local-wp-cli.v1':'',
+				'transport_surface_structurally_verified'=>$import_cli,
+				'negative_transport_canary_required'=>true,
+				'behavioral_execution_certified'=>false,
 				'direct_execution_contract_certified'=>false,'dry_run_diff_certified'=>false,
 				'run_level_rollback_certified'=>false,'composite_receipt_certified'=>false,
 				'rollback_contract'=>self::IMPORT_ROLLBACK_CONTRACT,'mounted'=>false,
@@ -127,6 +132,10 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				'server_secret_configured'=>$export_secret,'server_secret_required'=>false,
 				'execution_transport_candidate'=>$export_record?'server_local_provider_record_execute':'unresolved',
 				'package_transport_surface_observed'=>$export_record,
+				'transport_contract'=>$export_record?'mad4b.wp-all-export.server-local-record-execute.v1':'',
+				'transport_surface_structurally_verified'=>$export_record,
+				'negative_transport_canary_required'=>true,
+				'behavioral_execution_certified'=>false,
 				'direct_execution_contract_certified'=>false,'artifact_registry_ingest_certified'=>false,
 				'composite_receipt_certified'=>false,'mounted'=>false,
 				'blockers'=>array_values(array_filter(array(
@@ -145,6 +154,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 				'trigger-import','process-import','cancel-import','trigger-export','process-export','cancel-export',
 			),
 			'mounted_execution_abilities'=>array(),'caller_supplied_secret_allowed'=>false,
+			'evidence_semantics'=>'lower_ladder_evidence_never_implies_higher_ladder_certification',
 			'secret_material_exposed'=>false,'cron_url_execution_allowed'=>false,
 			'operation_contract'=>'mad4b.bulk-content-io-operation.v1',
 			'ledger_contract'=>'mad4b.content-operations-ledger.v1',
