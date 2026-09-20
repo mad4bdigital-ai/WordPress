@@ -9,6 +9,19 @@ artifacts = json.loads((ROOT/'config/repository-plugin-artifacts.json').read_tex
 families = {row.get('id'): row for row in catalog.get('families', []) if isinstance(row, dict)}
 manifest = artifacts.get('families', {})
 
+support_rows = [row for row in catalog.get('families', []) if isinstance(row, dict)]
+support_ids = {row.get('id') for row in support_rows}
+support_adapter_ids = {row.get('adapter_id') for row in support_rows}
+for family_id in manifest:
+    assert family_id in support_ids or family_id in support_adapter_ids, (
+        f'orphan repository artifact family has no support-family or adapter-id mapping: {family_id}'
+    )
+
+# These two intentionally use business-facing support-family names while keeping
+# specialized adapter IDs stable. The alias must remain explicit and resolvable.
+assert families.get('media-optimization', {}).get('adapter_id') == 'media'
+assert families.get('rank-math', {}).get('adapter_id') == 'seo'
+
 expected = {
     'bulk-taxonomy-editor': 'bulk-taxonomy-editor.zip',
     'custom-mega-menu': 'custom-mega-menu-v43.zip',
