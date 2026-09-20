@@ -48,7 +48,10 @@ final class MAD4B_SCP_Provider_Contracts {
 	public static function certified_versions( $provider ) {
 		$base = self::get( $provider );
 		$versions = array();
-		if ( ! empty( $base['version'] ) ) $versions[] = (string) $base['version'];
+		if ( ! empty( $base['components'] ) && is_array( $base['components'] ) ) {
+			$composite = self::composite_version_string( $base['components'], false );
+			if ( '' !== $composite ) $versions[] = $composite;
+		} elseif ( ! empty( $base['version'] ) ) $versions[] = (string) $base['version'];
 		$profiles = self::profiles();
 		if ( ! empty( $profiles[ $provider ] ) && is_array( $profiles[ $provider ] ) ) {
 			foreach ( $profiles[ $provider ] as $version => $profile ) {
@@ -92,11 +95,28 @@ final class MAD4B_SCP_Provider_Contracts {
 
 	public static function installed_version( $provider ) {
 		$contract = self::get( $provider );
+		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) return self::composite_version_string( $contract['components'], true );
+		return self::installed_version_for_contract( $contract );
+	}
+
+	private static function installed_version_for_contract( array $contract ) {
 		if ( empty( $contract['plugin_file'] ) ) return '';
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
 		$file = (string) $contract['plugin_file'];
 		return isset( $plugins[ $file ] ) && ! empty( $plugins[ $file ]['Version'] ) ? (string) $plugins[ $file ]['Version'] : '';
+	}
+
+	private static function composite_version_string( array $components, $installed ) {
+		$parts = array();
+		ksort( $components, SORT_STRING );
+		foreach ( $components as $key => $component ) {
+			if ( ! is_array( $component ) ) continue;
+			$version = $installed ? self::installed_version_for_contract( $component ) : ( isset( $component['version'] ) ? (string) $component['version'] : '' );
+			if ( '' === $version ) continue;
+			$parts[] = sanitize_key( (string) $key ) . '=' . $version;
+		}
+		return implode( ';', $parts );
 	}
 
 	private static function integrity_status( array $contract ) {
@@ -149,6 +169,9 @@ final class MAD4B_SCP_Provider_Contracts {
 	public static function runtime_status( $provider, $available = null ) {
 		$base_contract = self::get( $provider );
 		if ( empty( $base_contract ) ) return array( 'provider' => $provider, 'status' => 'uncertified_provider', 'runtime_contract_ok' => false );
+		if ( ! empty( $base_contract['components'] ) && is_array( $base_contract['components'] ) ) {
+			return self::composite_runtime_status( $provider, $base_contract, $available );
+		}
 
 		$actual = self::installed_version( $provider );
 		$contract = self::contract_for_version( $provider, $actual );
@@ -186,6 +209,62 @@ final class MAD4B_SCP_Provider_Contracts {
 			$result['newly_present_abilities'] = $unexpected;
 		}
 
+		$result['runtime_contract_ok'] = empty( self::violations_for_status( $result ) );
+		return $result;
+	}
+
+	private static function composite_runtime_status( $provider, array $contract, $available = null ) {
+		$components = array();
+		$aggregate = array( 'required' => true, 'manifest_present' => true, 'verified' => array(), 'missing' => array(), 'mismatched' => array() );
+		$all_certified = true;
+		$any_installed = false;
+		$expected_parts = array();
+		$actual_parts = array();
+		foreach ( $contract['components'] as $key => $component ) {
+			$key = sanitize_key( (string) $key );
+			if ( '' === $key || ! is_array( $component ) ) { $all_certified = false; continue; }
+			$expected = isset( $component['version'] ) ? (string) $component['version'] : '';
+			$actual = self::installed_version_for_contract( $component );
+			$integrity = self::integrity_status( $component );
+			$installed = '' !== $actual;
+			$any_installed = $any_installed || $installed;
+			$status = $installed && '' !== $expected && hash_equals( $expected, $actual ) ? 'certified' : ( $installed ? 'version_drift' : 'unavailable' );
+			if ( 'certified' !== $status || ( ! empty( $integrity['required'] ) && ( empty( $integrity['manifest_present'] ) || ! empty( $integrity['missing'] ) || ! empty( $integrity['mismatched'] ) ) ) ) $all_certified = false;
+			if ( '' !== $expected ) $expected_parts[] = $key . '=' . $expected;
+			if ( '' !== $actual ) $actual_parts[] = $key . '=' . $actual;
+			foreach ( (array) $integrity['verified'] as $item ) $aggregate['verified'][] = $key . ':' . $item;
+			foreach ( (array) $integrity['missing'] as $item ) $aggregate['missing'][] = $key . ':' . $item;
+			foreach ( (array) $integrity['mismatched'] as $item => $details ) $aggregate['mismatched'][ $key . ':' . $item ] = $details;
+			if ( empty( $integrity['manifest_present'] ) ) $aggregate['manifest_present'] = false;
+			$components[ $key ] = array(
+				'label' => isset( $component['label'] ) ? (string) $component['label'] : $key,
+				'plugin_file' => isset( $component['plugin_file'] ) ? (string) $component['plugin_file'] : '',
+				'archive' => isset( $component['archive'] ) ? (string) $component['archive'] : '',
+				'archive_sha256' => isset( $component['archive_sha256'] ) ? strtolower( (string) $component['archive_sha256'] ) : '',
+				'certification_authority' => isset( $component['certification_authority'] ) ? (string) $component['certification_authority'] : '',
+				'certified_version' => $expected,
+				'installed_version' => $actual,
+				'status' => $status,
+				'runtime_integrity' => $integrity,
+			);
+		}
+		sort( $expected_parts, SORT_STRING ); sort( $actual_parts, SORT_STRING ); ksort( $components, SORT_STRING );
+		if ( false === $available || ! $any_installed ) $status = 'unavailable';
+		elseif ( $all_certified ) $status = 'certified';
+		else $status = 'component_drift';
+		$result = array(
+			'provider' => $provider,
+			'label' => isset( $contract['label'] ) ? (string) $contract['label'] : $provider,
+			'status' => $status,
+			'certified_version' => implode( ';', $expected_parts ),
+			'certified_versions' => array( implode( ';', $expected_parts ) ),
+			'installed_version' => implode( ';', $actual_parts ),
+			'contract_mode' => isset( $contract['contract_mode'] ) ? (string) $contract['contract_mode'] : 'composite_exact_packaged_components',
+			'certification_authority' => isset( $contract['certification_authority'] ) ? (string) $contract['certification_authority'] : 'repository_composite_exact_archives',
+			'components' => $components,
+			'runtime_integrity' => $aggregate,
+			'component_count' => count( $components ),
+		);
 		$result['runtime_contract_ok'] = empty( self::violations_for_status( $result ) );
 		return $result;
 	}
