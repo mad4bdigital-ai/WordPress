@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 src = (ROOT / 'includes/adapters/class-mad4b-scp-wp-import-export-adapter.php').read_text('utf-8')
 main = (ROOT / 'mad4b-site-control-plane.php').read_text('utf-8')
 registry = (ROOT / 'includes/class-mad4b-scp-adapter-registry.php').read_text('utf-8')
+capability_catalog = json.loads((ROOT / 'config/provider-capability-contracts.json').read_text('utf-8'))
 
 required = [
     'mad4b.wp-import-export-governed-adapter.v3',
@@ -116,4 +118,18 @@ assert 'mad4b_wp_all_export_retention_invalid' in src
 
 assert 'class-mad4b-scp-wp-import-export-adapter.php' in main
 assert 'MAD4B_SCP_WP_Import_Export_Adapter' in registry
+
+provider = capability_catalog.get('providers', {}).get('wp-import-export', {})
+assert provider.get('adapter_id') == 'wp-import-export'
+caps = provider.get('capabilities', {})
+for capability_id in ('jobs.read', 'import.plan', 'export.plan', 'import.execute', 'export.execute'):
+    assert capability_id in caps, capability_id
+assert caps['import.execute'].get('risk') == 'high_risk_write'
+assert caps['import.execute'].get('reversible') is True
+assert caps['import.execute'].get('rollback_contract') == 'mad4b.rollback.wp-all-import-run.v1'
+assert caps['export.execute'].get('risk') == 'high_risk_write'
+assert caps['export.execute'].get('reversible') is False
+assert caps['import.execute'].get('abilities') == ['wp-import-export/run-import']
+assert caps['export.execute'].get('abilities') == ['wp-import-export/run-export']
+
 print('mad4b.wp-import-export-governed-adapter.contract.v3: PASS')
