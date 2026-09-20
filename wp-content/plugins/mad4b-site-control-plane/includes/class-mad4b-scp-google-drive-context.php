@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Google_Drive_Context {
 	const CONTRACT = 'mad4b.google-drive-context.v1';
 	const CONFIG_OPTION = 'mad4b_scp_google_drive_oauth_config_v1';
+	const DEDICATED_CONFIG_OPTION = 'mad4b_scp_google_drive_dedicated_oauth_config_v1';
 	const TOKEN_OPTION = 'mad4b_scp_google_drive_oauth_token_v1';
 	const AUTH_MODE_OPTION = 'mad4b_scp_google_drive_auth_mode_v1';
 	const AUTH_MODE_CONTRACT = 'mad4b.google-drive-auth-mode.v1';
@@ -51,6 +52,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return admin_url( 'admin-post.php?action=mad4b_context_google_managed_callback' );
 	}
 
+	public static function dedicated_redirect_uri() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return '';
+		$origin = rtrim( (string) MAD4B_SCP_Site_Profile::site_origin(), '/' );
+		if ( '' === $origin ) return '';
+		return add_query_arg( 'action', 'mad4b_context_google_dedicated_callback', $origin . '/wp-admin/admin-post.php' );
+	}
+
 	public static function auth_mode() {
 		$record = get_option( self::AUTH_MODE_OPTION, array() );
 		if ( is_array( $record ) && self::AUTH_MODE_CONTRACT === ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ) {
@@ -77,28 +85,28 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
-	public static function dedicated_broker_status() {
-		$base = self::managed_broker_base_url( self::AUTH_MODE_DEDICATED );
-		$configured = ! is_wp_error( $base );
+	public static function dedicated_oauth_status() {
+		$credentials = self::credentials( self::AUTH_MODE_DEDICATED );
+		$redirect_uri = self::dedicated_redirect_uri();
 		return array(
-			'contract' => 'mad4b.google-dedicated-oauth-broker-status.v1',
-			'configured' => $configured,
-			'base_url' => $configured ? (string) $base : '',
-			'session_endpoint' => $configured ? self::managed_broker_endpoint( 'session', self::AUTH_MODE_DEDICATED ) : '',
-			'redeem_endpoint' => $configured ? self::managed_broker_endpoint( 'redeem', self::AUTH_MODE_DEDICATED ) : '',
-			'refresh_endpoint' => $configured ? self::managed_broker_endpoint( 'refresh', self::AUTH_MODE_DEDICATED ) : '',
-			'google_client_secret_on_site' => false,
-			'one_time_handoff' => true,
-			'verifier_bound' => true,
+			'contract' => 'mad4b.google-dedicated-oauth-status.v1',
+			'configured' => ! is_wp_error( $credentials ) && '' !== $redirect_uri,
+			'configured_by_constants' => defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' ),
+			'client_id' => is_wp_error( $credentials ) ? '' : sanitize_text_field( (string) $credentials['client_id'] ),
+			'client_id_suffix' => is_wp_error( $credentials ) ? '' : self::suffix( $credentials['client_id'] ),
+			'redirect_uri' => $redirect_uri,
+			'credential_custody' => 'dedicated_site_managed',
+			'google_client_secret_on_site' => true,
 			'central_mad4b_dependency' => false,
-			'blockers' => $configured ? array() : array( 'dedicated_google_oauth_broker_not_configured' ),
+			'primary_domain_derived_from_site_profile' => true,
+			'blockers' => ! is_wp_error( $credentials ) && '' !== $redirect_uri ? array() : array( is_wp_error( $credentials ) ? 'dedicated_google_oauth_credentials_missing' : 'dedicated_google_site_origin_unavailable' ),
 		);
 	}
 
 	public static function auth_mode_status() {
 		$mode = self::auth_mode();
 		$broker = self::managed_broker_status();
-		$dedicated_broker = self::dedicated_broker_status();
+		$dedicated_oauth = self::dedicated_oauth_status();
 		$stored = get_option( self::TOKEN_OPTION, array() );
 		$connected_record_present = is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' );
 		return array(
@@ -114,13 +122,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'google_client_secret_on_site' => false,
 				'broker' => $broker,
 			),
-			'dedicated_google' => array(
-				'configured' => ! empty( $dedicated_broker['configured'] ),
-				'credential_custody' => 'dedicated_managed_oauth',
-				'google_client_secret_on_site' => false,
-				'central_mad4b_dependency' => false,
-				'broker' => $dedicated_broker,
-			),
+			'dedicated_google' => $dedicated_oauth,
 			'custom_credentials' => array(
 				'credential_custody' => 'site_managed',
 				'google_client_secret_on_site' => true,
@@ -135,10 +137,11 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) ) {
 			return new WP_Error( 'mad4b_google_drive_auth_mode_change_requires_disconnect', 'Disconnect and revoke the current Google connection before changing authentication mode.' );
 		}
-		if ( in_array( $mode, array( self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) {
-			$broker = self::managed_broker_base_url( $mode );
+		if ( self::AUTH_MODE_MANAGED === $mode ) {
+			$broker = self::managed_broker_base_url();
 			if ( is_wp_error( $broker ) ) return $broker;
 		}
+		if ( self::AUTH_MODE_DEDICATED === $mode && '' === self::dedicated_redirect_uri() ) return new WP_Error( 'mad4b_google_dedicated_site_origin_unavailable', 'Dedicated Google Sign-In requires an enrolled Site Profile whose canonical origin matches this site.' );
 		$record = array( 'contract' => self::AUTH_MODE_CONTRACT, 'mode' => $mode, 'updated_at' => gmdate( 'c' ) );
 		if ( ! self::write_option( self::AUTH_MODE_OPTION, $record ) ) return new WP_Error( 'mad4b_google_drive_auth_mode_persist_failed', 'Google Drive authentication mode could not be persisted.' );
 		return self::auth_mode_status();
@@ -146,28 +149,28 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	public static function credentials_status() {
 		$mode = self::auth_mode();
-		$credentials = self::credentials();
+		$credentials = self::credentials( self::auth_mode() );
 		$broker = self::managed_broker_status();
-		$dedicated_broker = self::dedicated_broker_status();
+		$dedicated_oauth = self::dedicated_oauth_status();
 		$custom_configured = ! is_wp_error( $credentials );
 		$managed_configured = ! empty( $broker['configured'] );
-		$dedicated_configured = ! empty( $dedicated_broker['configured'] );
+		$dedicated_configured = ! empty( $dedicated_oauth['configured'] );
 		return array(
 			'contract' => self::CONTRACT,
 			'auth_mode_contract' => self::AUTH_MODE_CONTRACT,
 			'auth_mode' => $mode,
 			'configured' => self::AUTH_MODE_MANAGED === $mode ? $managed_configured : ( self::AUTH_MODE_DEDICATED === $mode ? $dedicated_configured : $custom_configured ),
 			'configured_by_constants' => self::AUTH_MODE_CUSTOM === $mode && defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' ),
-			'credential_custody' => self::AUTH_MODE_MANAGED === $mode ? 'mad4b_managed_oauth' : ( self::AUTH_MODE_DEDICATED === $mode ? 'dedicated_managed_oauth' : 'site_managed' ),
-			'google_client_secret_on_site' => self::AUTH_MODE_CUSTOM === $mode,
+			'credential_custody' => self::AUTH_MODE_MANAGED === $mode ? 'mad4b_managed_oauth' : ( self::AUTH_MODE_DEDICATED === $mode ? 'dedicated_site_managed' : 'site_managed' ),
+			'google_client_secret_on_site' => in_array( $mode, array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_DEDICATED ), true ),
 			'central_mad4b_dependency' => self::AUTH_MODE_MANAGED === $mode,
 			'client_id' => self::AUTH_MODE_CUSTOM === $mode && ! is_wp_error( $credentials ) ? sanitize_text_field( (string) $credentials['client_id'] ) : '',
 			'client_id_suffix' => self::AUTH_MODE_CUSTOM === $mode && ! is_wp_error( $credentials ) ? self::suffix( $credentials['client_id'] ) : '',
-			'redirect_uri' => in_array( $mode, array( self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ? self::managed_redirect_uri() : self::redirect_uri(),
+			'redirect_uri' => self::AUTH_MODE_MANAGED === $mode ? self::managed_redirect_uri() : ( self::AUTH_MODE_DEDICATED === $mode ? self::dedicated_redirect_uri() : self::redirect_uri() ),
 			'custom_redirect_uri' => self::redirect_uri(),
 			'managed_redirect_uri' => self::managed_redirect_uri(),
 			'managed_broker' => $broker,
-			'dedicated_broker' => $dedicated_broker,
+			'dedicated_oauth' => $dedicated_oauth,
 			'read_scope' => self::READ_SCOPE,
 			'write_scope' => self::WRITE_SCOPE,
 			'supported_access_modes' => array( 'read_only', 'read_write' ),
@@ -205,6 +208,38 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::credentials_status();
 	}
 
+	public static function save_dedicated_credentials( $client_id, $client_secret ) {
+		if ( self::AUTH_MODE_DEDICATED !== self::auth_mode() ) return new WP_Error( 'mad4b_google_drive_dedicated_mode_inactive', 'Switch Google Drive authentication to Dedicated Site OAuth before saving dedicated client credentials.' );
+		if ( '' === self::dedicated_redirect_uri() ) return new WP_Error( 'mad4b_google_dedicated_site_origin_unavailable', 'Dedicated Google Sign-In requires an enrolled Site Profile whose canonical origin matches this site.' );
+		$constant_id = defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' );
+		$constant_secret = defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' );
+		if ( $constant_id xor $constant_secret ) return new WP_Error( 'mad4b_google_dedicated_constants_incomplete', 'Define both dedicated Google OAuth constants or neither of them.' );
+		if ( $constant_id && $constant_secret ) return new WP_Error( 'mad4b_google_dedicated_credentials_managed_by_constants', 'Dedicated Google OAuth credentials are managed by wp-config constants.' );
+		$client_id = trim( sanitize_text_field( (string) $client_id ) );
+		$client_secret = trim( (string) $client_secret );
+		if ( '' === $client_id || strlen( $client_id ) > 512 ) return new WP_Error( 'mad4b_google_dedicated_client_id_invalid', 'A valid dedicated Google OAuth client ID is required.' );
+		$current = get_option( self::DEDICATED_CONFIG_OPTION, array() );
+		$current = is_array( $current ) ? $current : array();
+		$secret_envelope = isset( $current['client_secret'] ) ? (string) $current['client_secret'] : '';
+		$current_client_id = isset( $current['client_id'] ) ? trim( (string) $current['client_id'] ) : '';
+		if ( '' === $client_secret && '' !== $current_client_id && ! hash_equals( $current_client_id, $client_id ) ) return new WP_Error( 'mad4b_google_dedicated_client_secret_required_for_new_client', 'Client Secret is required when changing the dedicated Google OAuth Client ID.' );
+		if ( '' !== $client_secret ) {
+			$secret_envelope = self::encrypt_secret( $client_secret );
+			if ( is_wp_error( $secret_envelope ) ) return $secret_envelope;
+		}
+		if ( '' === $secret_envelope ) return new WP_Error( 'mad4b_google_dedicated_client_secret_required', 'Dedicated Google OAuth client secret is required on first setup.' );
+		$record = array(
+			'contract' => self::CONTRACT,
+			'client_id' => $client_id,
+			'client_secret' => $secret_envelope,
+			'redirect_uri' => self::dedicated_redirect_uri(),
+			'scope' => self::READ_SCOPE,
+			'updated_at' => gmdate( 'c' ),
+		);
+		if ( ! self::write_option( self::DEDICATED_CONFIG_OPTION, $record ) ) return new WP_Error( 'mad4b_google_dedicated_config_persist_failed', 'Dedicated Google OAuth configuration could not be persisted.' );
+		return self::dedicated_oauth_status();
+	}
+
 	public static function connection_status() {
 		$stored_token = get_option( self::TOKEN_OPTION, array() );
 		$stored_token_present = is_array( $stored_token ) && self::CONTRACT === ( isset( $stored_token['contract'] ) ? (string) $stored_token['contract'] : '' );
@@ -219,7 +254,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return array(
 			'contract' => self::CONTRACT,
 			'auth_mode' => self::auth_mode(),
-			'credential_custody' => self::AUTH_MODE_MANAGED === self::auth_mode() ? 'mad4b_managed_oauth' : ( self::AUTH_MODE_DEDICATED === self::auth_mode() ? 'dedicated_managed_oauth' : 'site_managed' ),
+			'credential_custody' => self::AUTH_MODE_MANAGED === self::auth_mode() ? 'mad4b_managed_oauth' : ( self::AUTH_MODE_DEDICATED === self::auth_mode() ? 'dedicated_site_managed' : 'site_managed' ),
 			'configured' => ! empty( $credentials['configured'] ),
 			'connected' => $connected,
 			'read_available' => $read_available,
@@ -291,12 +326,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'auth_mode_contract' => self::AUTH_MODE_CONTRACT,
 				'credentials_configured' => ! empty( $credentials['configured'] ),
 				'managed_broker' => self::managed_broker_status(),
-				'dedicated_broker' => self::dedicated_broker_status(),
+				'dedicated_oauth' => self::dedicated_oauth_status(),
 				'central_mad4b_dependency' => self::AUTH_MODE_MANAGED === self::auth_mode(),
-				'google_client_secret_on_site' => self::AUTH_MODE_CUSTOM === self::auth_mode(),
+				'google_client_secret_on_site' => in_array( self::auth_mode(), array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_DEDICATED ), true ),
 				'configured_by_constants' => ! empty( $credentials['configured_by_constants'] ),
-				'redirect_uri_configured' => '' !== (string) self::redirect_uri(),
-				'redirect_uri' => self::redirect_uri(),
+				'redirect_uri_configured' => '' !== (string) self::redirect_uri_for_mode( self::auth_mode() ),
+				'redirect_uri' => self::redirect_uri_for_mode( self::auth_mode() ),
 				'state_site_binding' => true,
 				'pkce_s256' => true,
 				'connection' => $connection,
@@ -325,10 +360,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function authorization_url( $access_mode = 'read_only' ) {
-		if ( self::AUTH_MODE_CUSTOM !== self::auth_mode() ) return new WP_Error( 'mad4b_google_drive_custom_oauth_mode_inactive', 'Custom Google OAuth is not the active authentication mode.' );
+		if ( ! in_array( self::auth_mode(), array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_local_oauth_mode_inactive', 'Custom or Dedicated Site Google OAuth must be the active authentication mode.' );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );
-		$credentials = self::credentials();
+		$credentials = self::credentials( self::auth_mode() );
 		if ( is_wp_error( $credentials ) ) return $credentials;
 		$stored_token = get_option( self::TOKEN_OPTION, array() );
 		$stored_token_present = is_array( $stored_token ) && self::CONTRACT === ( isset( $stored_token['contract'] ) ? (string) $stored_token['contract'] : '' );
@@ -347,11 +382,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$pkce_challenge = rtrim( strtr( base64_encode( hash( 'sha256', $pkce_verifier, true ) ), '+/', '-_' ), '=' );
 		$state = wp_generate_password( 64, false, false );
 		if ( '' === $state ) return new WP_Error( 'mad4b_google_drive_state_generation_failed', 'Unable to generate OAuth state.' );
+		$redirect_uri = self::redirect_uri_for_mode( self::auth_mode() );
+		if ( '' === $redirect_uri ) return new WP_Error( 'mad4b_google_drive_oauth_redirect_unavailable', 'Google OAuth redirect URI is unavailable for the selected authentication mode.' );
 		set_transient(
 			self::state_key( get_current_user_id() ),
 			array(
 				'state' => hash( 'sha256', $state ),
-				'redirect_uri' => self::redirect_uri(),
+				'redirect_uri' => $redirect_uri,
+				'auth_mode' => self::auth_mode(),
 				'site_uuid' => class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '',
 				'access_mode' => $access_mode,
 				'requested_scope' => $requested_scope,
@@ -363,7 +401,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return add_query_arg(
 			array(
 				'client_id' => $credentials['client_id'],
-				'redirect_uri' => self::redirect_uri(),
+				'redirect_uri' => $redirect_uri,
 				'response_type' => 'code',
 				'scope' => $requested_scope,
 				'access_type' => 'offline',
@@ -378,7 +416,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function complete_oauth( $code, $state ) {
-		if ( self::AUTH_MODE_CUSTOM !== self::auth_mode() ) return new WP_Error( 'mad4b_google_drive_custom_oauth_mode_inactive', 'Custom Google OAuth is not the active authentication mode.' );
+		if ( ! in_array( self::auth_mode(), array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_local_oauth_mode_inactive', 'Custom or Dedicated Site Google OAuth must be the active authentication mode.' );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to complete Google Drive connection.' );
 		$stored = get_transient( self::state_key( get_current_user_id() ) );
 		delete_transient( self::state_key( get_current_user_id() ) );
@@ -388,7 +426,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		$current_site_uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::site_uuid() : '';
 		if ( empty( $stored['site_uuid'] ) || '' === $current_site_uuid || ! hash_equals( (string) $stored['site_uuid'], $current_site_uuid ) ) return new WP_Error( 'mad4b_google_drive_oauth_site_binding_changed', 'Site Profile binding changed during Google OAuth. Start the connection again.' );
-		if ( empty( $stored['redirect_uri'] ) || ! hash_equals( (string) $stored['redirect_uri'], self::redirect_uri() ) ) return new WP_Error( 'mad4b_google_drive_oauth_redirect_binding_changed', 'OAuth redirect binding changed during Google connection. Start the connection again.' );
+		if ( empty( $stored['auth_mode'] ) || ! hash_equals( (string) $stored['auth_mode'], self::auth_mode() ) ) return new WP_Error( 'mad4b_google_drive_oauth_mode_binding_changed', 'Google OAuth authentication mode changed during connection. Start again.' );
+		if ( empty( $stored['redirect_uri'] ) || ! hash_equals( (string) $stored['redirect_uri'], self::redirect_uri_for_mode( self::auth_mode() ) ) ) return new WP_Error( 'mad4b_google_drive_oauth_redirect_binding_changed', 'OAuth redirect binding changed during Google connection. Start the connection again.' );
 		$pkce_verifier = isset( $stored['pkce_verifier'] ) ? (string) $stored['pkce_verifier'] : '';
 		if ( ! preg_match( '/^[A-Za-z0-9._~-]{43,128}$/', $pkce_verifier ) ) return new WP_Error( 'mad4b_google_drive_oauth_pkce_invalid', 'Google OAuth PKCE verifier is missing, expired, or invalid.' );
 		$code = trim( (string) $code );
@@ -405,7 +444,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 					'client_secret' => $credentials['client_secret'],
 					'code' => $code,
 					'grant_type' => 'authorization_code',
-					'redirect_uri' => self::redirect_uri(),
+					'redirect_uri' => self::redirect_uri_for_mode( self::auth_mode() ),
 					'code_verifier' => $pkce_verifier,
 				),
 			)
@@ -430,7 +469,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$granted_scope,
 			array(),
 			$requested_mode,
-			self::AUTH_MODE_CUSTOM
+			self::auth_mode()
 		);
 		if ( is_wp_error( $record ) ) return $record;
 		$about = self::about();
@@ -447,7 +486,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 
 	public static function managed_authorization_url( $access_mode = 'read_only' ) {
-		if ( ! in_array( self::auth_mode(), array( self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_managed_oauth_mode_inactive', 'Managed Google Sign-In is not the active authentication mode.' );
+		if ( self::AUTH_MODE_MANAGED !== self::auth_mode() ) return new WP_Error( 'mad4b_google_drive_managed_oauth_mode_inactive', 'Managed Google Sign-In is not the active authentication mode.' );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to connect Google Drive.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || '' === MAD4B_SCP_Site_Profile::site_uuid() ) return new WP_Error( 'mad4b_google_drive_site_profile_required', 'Enroll this Site Profile before connecting Google Drive.' );
 		$broker = self::managed_broker_base_url( self::auth_mode() );
@@ -510,7 +549,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	public static function complete_managed_oauth( $handoff_code, $state ) {
-		if ( ! in_array( self::auth_mode(), array( self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_managed_oauth_mode_inactive', 'Managed Google Sign-In is not the active authentication mode.' );
+		if ( self::AUTH_MODE_MANAGED !== self::auth_mode() ) return new WP_Error( 'mad4b_google_drive_managed_oauth_mode_inactive', 'Managed Google Sign-In is not the active authentication mode.' );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_google_drive_admin_required', 'Administrator capability is required to complete Google Drive connection.' );
 		$stored = get_transient( self::managed_state_key( get_current_user_id() ) );
 		delete_transient( self::managed_state_key( get_current_user_id() ) );
@@ -2194,8 +2233,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! empty( $record['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive access is disabled while remote revocation is pending.' );
 		if ( ! empty( $record['access_token'] ) && ! empty( $record['expires_at'] ) && (int) $record['expires_at'] > time() + 90 ) return (string) $record['access_token'];
 		$record_mode = isset( $record['auth_mode'] ) ? sanitize_key( (string) $record['auth_mode'] ) : self::AUTH_MODE_CUSTOM;
-		if ( in_array( $record_mode, array( self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) return self::refresh_managed_access_token( $record );
-		$credentials = self::credentials();
+		if ( self::AUTH_MODE_MANAGED === $record_mode ) return self::refresh_managed_access_token( $record );
+		$credentials = self::credentials( $record_mode );
 		if ( is_wp_error( $credentials ) ) return $credentials;
 		$response = wp_remote_post(
 			self::TOKEN_ENDPOINT,
@@ -2220,7 +2259,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : ( isset( $record['scope'] ) ? (string) $record['scope'] : self::READ_SCOPE ),
 			$record,
 			isset( $record['access_mode'] ) ? (string) $record['access_mode'] : ( self::scope_allows_write( isset( $record['scope'] ) ? $record['scope'] : '' ) ? 'read_write' : 'read_only' ),
-			self::AUTH_MODE_CUSTOM
+			$record_mode
 		);
 		if ( is_wp_error( $persisted ) ) return $persisted;
 		return (string) $persisted['access_token'];
@@ -2371,29 +2410,25 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $record;
 	}
 
-	private static function managed_broker_base_url( $mode = '' ) {
-		$mode = sanitize_key( (string) $mode );
-		if ( '' === $mode ) $mode = self::auth_mode();
-		$dedicated = self::AUTH_MODE_DEDICATED === $mode;
-		$constant = $dedicated ? 'MAD4B_GOOGLE_DEDICATED_OAUTH_BROKER_URL' : 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL';
-		if ( ! defined( $constant ) ) return new WP_Error( $dedicated ? 'mad4b_google_dedicated_broker_not_configured' : 'mad4b_google_managed_broker_not_configured', $dedicated ? 'Dedicated Google Sign-In requires MAD4B_GOOGLE_DEDICATED_OAUTH_BROKER_URL.' : 'Managed Google Sign-In requires MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL.' );
-		$url = self::validated_https_url( (string) constant( $constant ) );
+	private static function managed_broker_base_url() {
+		if ( ! defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) ) return new WP_Error( 'mad4b_google_managed_broker_not_configured', 'Managed Google Sign-In requires MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL.' );
+		$url = self::validated_https_url( (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) );
 		if ( '' === $url ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be a valid HTTPS URL.' );
 		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
 		if ( ! is_array( $parts ) || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL cannot contain query, fragment, or user-info components.' );
 		return rtrim( $url, '/' );
 	}
 
-	private static function managed_broker_endpoint( $operation, $mode = '' ) {
-		$base = self::managed_broker_base_url( $mode );
+	private static function managed_broker_endpoint( $operation ) {
+		$base = self::managed_broker_base_url();
 		if ( is_wp_error( $base ) ) return '';
 		$operation = sanitize_key( (string) $operation );
 		if ( ! in_array( $operation, array( 'session', 'redeem', 'refresh' ), true ) ) return '';
 		return rtrim( (string) $base, '/' ) . '/v1/google/oauth/' . $operation;
 	}
 
-	private static function managed_broker_post( $operation, array $payload, $error_code, $mode = '' ) {
-		$endpoint = self::managed_broker_endpoint( $operation, $mode );
+	private static function managed_broker_post( $operation, array $payload, $error_code ) {
+		$endpoint = self::managed_broker_endpoint( $operation );
 		if ( '' === $endpoint ) return new WP_Error( 'mad4b_google_managed_broker_not_configured', 'Managed Google Sign-In broker is unavailable.' );
 		$response = wp_remote_post(
 			$endpoint,
@@ -2426,11 +2461,38 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 	private static function canonical_origin() {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() ) {
+			$origin = (string) MAD4B_SCP_Site_Profile::site_origin();
+			if ( '' !== $origin ) return rtrim( $origin, '/' );
+		}
 		return rtrim( (string) home_url( '/' ), '/' );
 	}
 
+	private static function redirect_uri_for_mode( $mode ) {
+		$mode = sanitize_key( (string) $mode );
+		if ( self::AUTH_MODE_DEDICATED === $mode ) return self::dedicated_redirect_uri();
+		if ( self::AUTH_MODE_MANAGED === $mode ) return self::managed_redirect_uri();
+		return self::redirect_uri();
+	}
 
-	private static function credentials() {
+	private static function credentials( $mode = '' ) {
+		$mode = sanitize_key( (string) $mode );
+		if ( '' === $mode ) $mode = self::auth_mode();
+		if ( self::AUTH_MODE_DEDICATED === $mode ) {
+			$constant_id = defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' );
+			$constant_secret = defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' );
+			if ( $constant_id xor $constant_secret ) return new WP_Error( 'mad4b_google_dedicated_constants_incomplete', 'Define both dedicated Google OAuth constants or neither of them.' );
+			if ( $constant_id && $constant_secret ) {
+				$id = trim( (string) constant( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' ) );
+				$secret = trim( (string) constant( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' ) );
+				if ( '' !== $id && '' !== $secret ) return array( 'client_id' => $id, 'client_secret' => $secret );
+			}
+			$record = get_option( self::DEDICATED_CONFIG_OPTION, array() );
+			if ( ! is_array( $record ) || self::CONTRACT !== ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) || empty( $record['client_id'] ) || empty( $record['client_secret'] ) ) return new WP_Error( 'mad4b_google_dedicated_credentials_missing', 'Dedicated Google OAuth client credentials are not configured.' );
+			$secret = self::decrypt_secret( (string) $record['client_secret'] );
+			if ( is_wp_error( $secret ) ) return $secret;
+			return array( 'client_id' => (string) $record['client_id'], 'client_secret' => $secret );
+		}
 		$constant_id = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' );
 		$constant_secret = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' );
 		if ( $constant_id xor $constant_secret ) return new WP_Error( 'mad4b_google_drive_constants_incomplete', 'Define both Google Drive OAuth constants or neither of them.' );
@@ -2502,7 +2564,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	private static function connection_blockers( array $credentials, $token ) {
 		$blockers = array();
-		if ( empty( $credentials['configured'] ) ) $blockers[] = self::AUTH_MODE_MANAGED === self::auth_mode() ? 'managed_google_oauth_broker_not_configured' : ( self::AUTH_MODE_DEDICATED === self::auth_mode() ? 'dedicated_google_oauth_broker_not_configured' : 'google_oauth_credentials_missing' );
+		if ( empty( $credentials['configured'] ) ) $blockers[] = self::AUTH_MODE_MANAGED === self::auth_mode() ? 'managed_google_oauth_broker_not_configured' : ( self::AUTH_MODE_DEDICATED === self::auth_mode() ? 'dedicated_google_oauth_credentials_missing' : 'google_oauth_credentials_missing' );
 		$stored = get_option( self::TOKEN_OPTION, array() );
 		$stored_present = is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' );
 		if ( $stored_present && ( ! is_array( $token ) || empty( $token['refresh_token'] ) ) ) $blockers[] = 'google_drive_token_unreadable';
