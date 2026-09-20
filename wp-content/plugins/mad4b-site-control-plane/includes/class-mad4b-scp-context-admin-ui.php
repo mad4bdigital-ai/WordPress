@@ -6,9 +6,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 	const PAGE_SLUG = 'mad4b-control-plane-context';
 	const ACTION_SAVE_PROFILE = 'mad4b_context_save_profile';
 	const ACTION_SAVE_GOOGLE = 'mad4b_context_google_save';
+	const ACTION_SAVE_GOOGLE_DEDICATED = 'mad4b_context_google_dedicated_save';
 	const ACTION_SAVE_GOOGLE_AUTH_MODE = 'mad4b_context_google_auth_mode_save';
 	const ACTION_CONNECT_GOOGLE = 'mad4b_context_google_connect';
 	const ACTION_GOOGLE_CALLBACK = 'mad4b_context_google_callback';
+	const ACTION_GOOGLE_DEDICATED_CALLBACK = 'mad4b_context_google_dedicated_callback';
 	const ACTION_GOOGLE_MANAGED_CALLBACK = 'mad4b_context_google_managed_callback';
 	const ACTION_DISCONNECT_GOOGLE = 'mad4b_context_google_disconnect';
 	const ACTION_SELECT_SOURCE = 'mad4b_context_select_source';
@@ -26,9 +28,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 		foreach ( array(
 			self::ACTION_SAVE_PROFILE => 'handle_save_profile',
 			self::ACTION_SAVE_GOOGLE => 'handle_save_google',
+			self::ACTION_SAVE_GOOGLE_DEDICATED => 'handle_save_google_dedicated',
 			self::ACTION_SAVE_GOOGLE_AUTH_MODE => 'handle_save_google_auth_mode',
 			self::ACTION_CONNECT_GOOGLE => 'handle_connect_google',
 			self::ACTION_GOOGLE_CALLBACK => 'handle_google_callback',
+			self::ACTION_GOOGLE_DEDICATED_CALLBACK => 'handle_google_dedicated_callback',
 			self::ACTION_GOOGLE_MANAGED_CALLBACK => 'handle_google_managed_callback',
 			self::ACTION_DISCONNECT_GOOGLE => 'handle_disconnect_google',
 			self::ACTION_SELECT_SOURCE => 'handle_select_source',
@@ -71,6 +75,15 @@ final class MAD4B_SCP_Context_Admin_UI {
 		self::redirect_result( $result, 'google-drive', 'google_credentials_saved' );
 	}
 
+	public static function handle_save_google_dedicated() {
+		self::require_admin( self::ACTION_SAVE_GOOGLE_DEDICATED );
+		$result = MAD4B_SCP_Google_Drive_Context::save_dedicated_credentials(
+			isset( $_POST['client_id'] ) ? wp_unslash( $_POST['client_id'] ) : '',
+			isset( $_POST['client_secret'] ) ? wp_unslash( $_POST['client_secret'] ) : ''
+		);
+		self::redirect_result( $result, 'google-drive', 'google_dedicated_credentials_saved' );
+	}
+
 	public static function handle_connect_google() {
 		self::require_admin( self::ACTION_CONNECT_GOOGLE );
 		$access_mode = isset( $_POST['access_mode'] ) ? sanitize_key( wp_unslash( $_POST['access_mode'] ) ) : 'read_only';
@@ -86,6 +99,19 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		if ( isset( $_GET['error'] ) ) {
 			$error = new WP_Error( 'mad4b_google_drive_oauth_denied', 'Google OAuth was cancelled or denied.', array( 'provider_error' => sanitize_key( wp_unslash( $_GET['error'] ) ) ) );
+			self::redirect_result( $error, 'google-drive', '' );
+		}
+		$result = MAD4B_SCP_Google_Drive_Context::complete_oauth(
+			isset( $_GET['code'] ) ? wp_unslash( $_GET['code'] ) : '',
+			isset( $_GET['state'] ) ? wp_unslash( $_GET['state'] ) : ''
+		);
+		self::redirect_result( $result, 'google-drive', 'google_connected' );
+	}
+
+	public static function handle_google_dedicated_callback() {
+		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		if ( isset( $_GET['error'] ) ) {
+			$error = new WP_Error( 'mad4b_google_dedicated_oauth_denied', 'Dedicated Google OAuth was cancelled or denied.', array( 'provider_error' => sanitize_key( wp_unslash( $_GET['error'] ) ) ) );
 			self::redirect_result( $error, 'google-drive', '' );
 		}
 		$result = MAD4B_SCP_Google_Drive_Context::complete_oauth(
@@ -259,21 +285,27 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$auth_mode_status = MAD4B_SCP_Google_Drive_Context::auth_mode_status();
 		$auth_mode = isset( $auth_mode_status['mode'] ) ? (string) $auth_mode_status['mode'] : MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM;
 		$managed_ready = ! empty( $auth_mode_status['managed_google']['configured'] );
+		$dedicated_ready = ! empty( $auth_mode_status['dedicated_google']['configured'] );
+		$dedicated_origin_ready = ! empty( $auth_mode_status['dedicated_google']['redirect_uri'] );
 
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( '1. Connection method', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( ! empty( $connection['connected'] ) || ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ) {
-			$mode_label = MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode ? __( 'Sign in with Google — Managed', 'mad4b-site-control-plane' ) : __( 'Custom Google OAuth App', 'mad4b-site-control-plane' );
+			$mode_label = MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode
+				? __( 'Sign in with Google — Managed', 'mad4b-site-control-plane' )
+				: ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $auth_mode ? __( 'Dedicated Google OAuth — Site Domain', 'mad4b-site-control-plane' ) : __( 'Custom Google OAuth App', 'mad4b-site-control-plane' ) );
 			echo '<div class="notice notice-info inline"><p><strong>' . esc_html( $mode_label ) . '</strong> · ' . esc_html__( 'Disconnect and revoke the current Google grant before changing authentication mode.', 'mad4b-site-control-plane' ) . '</p></div>';
 		} else {
-			echo '<p>' . esc_html__( 'Choose how this site authenticates with Google. Managed Sign-In is recommended because no Google Client Secret is stored on this WordPress site.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p>' . esc_html__( 'Choose how this site authenticates with Google. Managed Sign-In uses the central MAD4B broker; Dedicated Site OAuth stays entirely on this site primary domain; Custom OAuth keeps the legacy manual setup.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SAVE_GOOGLE_AUTH_MODE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_GOOGLE_AUTH_MODE ) . '">';
 			echo '<div class="mad4b-context-source-mode">';
 			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED, $auth_mode, false ) . ( $managed_ready ? '' : ' disabled' ) . '> <strong>' . esc_html__( 'Sign in with Google — Recommended', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Uses MAD4B Managed OAuth. No Google Client ID or Client Secret is stored on this site.', 'mad4b-site-control-plane' ) . '</span></label>';
-			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM, $auth_mode, false ) . '> <strong>' . esc_html__( 'Custom Google OAuth App — Advanced', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Use your own Google Cloud OAuth Web application and site-managed client credentials.', 'mad4b-site-control-plane' ) . '</span></label>';
+			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED, $auth_mode, false ) . ( $dedicated_origin_ready ? '' : ' disabled' ) . '> <strong>' . esc_html__( 'Dedicated Google OAuth — Site Domain', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Uses a Google OAuth app dedicated to this site. Callback and token lifecycle stay on the Site Profile primary domain with no auth.mad4b.com dependency.', 'mad4b-site-control-plane' ) . '</span></label>';
+			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM, $auth_mode, false ) . '> <strong>' . esc_html__( 'Custom Google OAuth App — Advanced', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Use your own Google Cloud OAuth Web application and the existing custom credential path.', 'mad4b-site-control-plane' ) . '</span></label>';
 			echo '</div>';
 			if ( ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is unavailable until MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL is configured on the server.', 'mad4b-site-control-plane' ) . '</p></div>';
+			if ( ! $dedicated_origin_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Dedicated Site OAuth requires an enrolled Site Profile whose canonical origin matches the current WordPress Home URL and Site URL.', 'mad4b-site-control-plane' ) . '</p></div>';
 			submit_button( __( 'Save Connection Method', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 			echo '</form>';
 		}
@@ -286,6 +318,22 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<p><label><strong>' . esc_html__( 'Managed callback URI', 'mad4b-site-control-plane' ) . '</strong></label><br><input type="text" readonly class="large-text code" value="' . esc_attr( $credentials['managed_redirect_uri'] ) . '"></p>';
 			if ( $managed_ready ) echo '<p><span class="dashicons dashicons-yes-alt"></span> ' . esc_html__( 'MAD4B Managed OAuth broker is configured.', 'mad4b-site-control-plane' ) . '</p>';
 			else echo '<p><code>managed_google_oauth_broker_not_configured</code></p>';
+			echo '</div>';
+		} elseif ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $auth_mode ) {
+			echo '<div class="mad4b-scp-next-step ' . ( $dedicated_ready ? 'is-complete' : 'is-attention' ) . '"><h3>' . esc_html__( 'Dedicated Google OAuth — Site Domain', 'mad4b-site-control-plane' ) . '</h3>';
+			echo '<p>' . esc_html__( 'This mode is fully independent of auth.mad4b.com. The Google OAuth Web Client is dedicated to this site, and its callback URI is derived dynamically from the enrolled Site Profile canonical origin. The Client Secret is encrypted and stored on this WordPress site.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p><label><strong>' . esc_html__( 'Authorized redirect URI', 'mad4b-site-control-plane' ) . '</strong></label><br><input type="text" readonly class="large-text code" value="' . esc_attr( isset( $credentials['dedicated_redirect_uri'] ) ? $credentials['dedicated_redirect_uri'] : '' ) . '"></p>';
+			if ( ! empty( $credentials['configured_by_constants'] ) ) {
+				echo '<div class="notice notice-success inline"><p>' . esc_html__( 'Dedicated Google OAuth credentials are managed by wp-config constants.', 'mad4b-site-control-plane' ) . '</p></div>';
+			} else {
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+				wp_nonce_field( self::ACTION_SAVE_GOOGLE_DEDICATED );
+				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_GOOGLE_DEDICATED ) . '">';
+				echo '<table class="form-table"><tr><th><label for="mad4b-google-dedicated-client-id">' . esc_html__( 'Dedicated Client ID', 'mad4b-site-control-plane' ) . '</label></th><td><input id="mad4b-google-dedicated-client-id" name="client_id" type="text" class="large-text" required autocomplete="off" value="' . esc_attr( isset( $credentials['client_id'] ) ? $credentials['client_id'] : '' ) . '"><p class="description">' . esc_html__( 'Google OAuth Web Client dedicated to this Site Profile.', 'mad4b-site-control-plane' ) . '</p></td></tr>';
+				echo '<tr><th><label for="mad4b-google-dedicated-client-secret">' . esc_html__( 'Dedicated Client Secret', 'mad4b-site-control-plane' ) . '</label></th><td><input id="mad4b-google-dedicated-client-secret" name="client_secret" type="password" class="regular-text" autocomplete="new-password"><p class="description">' . esc_html__( 'Encrypted at rest on this site. Leave blank after first setup to keep the stored secret.', 'mad4b-site-control-plane' ) . '</p></td></tr></table>';
+				submit_button( __( 'Save Dedicated OAuth Configuration', 'mad4b-site-control-plane' ) );
+				echo '</form>';
+			}
 			echo '</div>';
 		} else {
 			echo '<p>' . esc_html__( 'Create a Google OAuth Web application, enable Google Drive API, and add this exact redirect URI. Start read-only, or explicitly grant read + write when you want governed asset update/recreate. Arbitrary new-file create remains disabled until its exact rollback contract is certified.', 'mad4b-site-control-plane' ) . '</p>';
