@@ -3,6 +3,7 @@
 define( 'ABSPATH', '/tmp/mad4b-context-oauth-lifecycle/' );
 define( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID', 'client-id.apps.googleusercontent.com' );
 define( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET', 'client-secret-fixture' );
+define( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL', 'https://auth.example.test/mad4b' );
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) define( 'MINUTE_IN_SECONDS', 60 );
 
 $GLOBALS['mad4b_context_options'] = array();
@@ -10,6 +11,9 @@ $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
 $GLOBALS['mad4b_context_last_token_request'] = array();
+$GLOBALS['mad4b_managed_requests'] = array();
+$GLOBALS['mad4b_managed_redeem_responses'] = array();
+$GLOBALS['mad4b_managed_refresh_responses'] = array();
 
 class WP_Error {
 	private $code;
@@ -56,6 +60,32 @@ function delete_option( $name ) {
 function wp_remote_retrieve_response_code( $response ) { return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0; }
 function wp_remote_retrieve_body( $response ) { return isset( $response['body'] ) ? (string) $response['body'] : ''; }
 function wp_remote_post( $url, $args = array() ) {
+	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/session' ) ) {
+		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
+		$GLOBALS['mad4b_managed_requests']['session'] = is_array( $payload ) ? $payload : array();
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body' => json_encode( array(
+				'contract' => MAD4B_SCP_Google_Drive_Context::MANAGED_SESSION_CONTRACT,
+				'session_id' => 'managed-session-fixture',
+				'authorization_url' => 'https://accounts.google.com/o/oauth2/v2/auth?client_id=managed-fixture',
+			) ),
+		);
+	}
+	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/redeem' ) ) {
+		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
+		$GLOBALS['mad4b_managed_requests']['redeem'] = is_array( $payload ) ? $payload : array();
+		if ( empty( $GLOBALS['mad4b_managed_redeem_responses'] ) ) return new WP_Error( 'managed_redeem_fixture_exhausted', 'No managed redeem fixture remains.' );
+		$data = array_shift( $GLOBALS['mad4b_managed_redeem_responses'] );
+		return array( 'response' => array( 'code' => 200 ), 'body' => json_encode( $data ) );
+	}
+	if ( false !== strpos( $url, 'auth.example.test/mad4b/v1/google/oauth/refresh' ) ) {
+		$payload = json_decode( isset( $args['body'] ) ? (string) $args['body'] : '', true );
+		$GLOBALS['mad4b_managed_requests']['refresh'] = is_array( $payload ) ? $payload : array();
+		if ( empty( $GLOBALS['mad4b_managed_refresh_responses'] ) ) return new WP_Error( 'managed_refresh_fixture_exhausted', 'No managed refresh fixture remains.' );
+		$data = array_shift( $GLOBALS['mad4b_managed_refresh_responses'] );
+		return array( 'response' => array( 'code' => 200 ), 'body' => json_encode( $data ) );
+	}
 	if ( false !== strpos( $url, 'oauth2.googleapis.com/token' ) ) {
 		$GLOBALS['mad4b_context_last_token_request'] = $args;
 		if ( empty( $GLOBALS['mad4b_context_token_responses'] ) ) return new WP_Error( 'token_fixture_exhausted', 'No OAuth token fixture remains.' );
@@ -88,6 +118,8 @@ function wp_check_invalid_utf8( $value ) { return (string) $value; }
 
 class MAD4B_SCP_Site_Profile {
 	public static function origin_enrolled() { return true; }
+	public static function site_urls_match_enrollment() { return true; }
+	public static function site_origin() { return 'https://staging.example.test'; }
 	public static function site_uuid() { return '11111111-1111-4111-8111-111111111111'; }
 }
 
@@ -171,4 +203,123 @@ foreach ( array( 'access-read-fixture', 'refresh-read-fixture', 'access-write-fi
 	mad4b_oauth_assert( false === strpos( $encoded, $secret ), 'OAuth status must never expose token material.' );
 }
 
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v4: PASS\n";
+
+$mode_status = MAD4B_SCP_Google_Drive_Context::auth_mode_status();
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM === $mode_status['mode'], 'Legacy/default authentication mode must remain Custom OAuth for backward compatibility.', $mode_status );
+mad4b_oauth_assert( ! empty( $mode_status['managed_google']['configured'] ), 'Managed Google Sign-In broker must be reported configured when the server constant is present.', $mode_status );
+
+$mode_change = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED );
+mad4b_oauth_assert( ! is_wp_error( $mode_change ), 'Authentication mode must switch to Managed Google after the previous Google grant is fully revoked.', $mode_change );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $mode_change['mode'], 'Managed Google mode must become active.', $mode_change );
+
+$managed_credentials = MAD4B_SCP_Google_Drive_Context::credentials_status();
+mad4b_oauth_assert( ! empty( $managed_credentials['configured'] ), 'Managed mode must use broker readiness instead of site Google credentials.', $managed_credentials );
+mad4b_oauth_assert( empty( $managed_credentials['client_id'] ) && empty( $managed_credentials['client_id_suffix'] ), 'Managed mode must not expose or require a Google Client ID on the site.', $managed_credentials );
+mad4b_oauth_assert( empty( $managed_credentials['google_client_secret_on_site'] ) && 'mad4b_managed_oauth' === $managed_credentials['credential_custody'], 'Managed mode must declare off-site Google client-secret custody.', $managed_credentials );
+
+$managed_url = MAD4B_SCP_Google_Drive_Context::managed_authorization_url( 'read_only' );
+mad4b_oauth_assert( ! is_wp_error( $managed_url ), 'Managed Google authorization session must be created.', $managed_url );
+mad4b_oauth_assert( 0 === strpos( $managed_url, 'https://accounts.google.com/' ), 'Managed broker must return an HTTPS Google authorization URL.', $managed_url );
+$managed_session_request = $GLOBALS['mad4b_managed_requests']['session'];
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::MANAGED_SESSION_CONTRACT === $managed_session_request['contract'], 'Managed session contract mismatch.', $managed_session_request );
+mad4b_oauth_assert( '11111111-1111-4111-8111-111111111111' === $managed_session_request['site_uuid'], 'Managed session must bind exact Site Profile UUID.', $managed_session_request );
+mad4b_oauth_assert( 'https://staging.example.test' === $managed_session_request['origin'], 'Managed session must bind canonical origin.', $managed_session_request );
+mad4b_oauth_assert( 'S256' === $managed_session_request['verifier_method'] && ! empty( $managed_session_request['verifier_challenge'] ), 'Managed session must use verifier-bound S256 handoff.', $managed_session_request );
+$managed_session_json = json_encode( $managed_session_request );
+foreach ( array( 'client-secret-fixture', 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET', 'refresh-read-fixture', 'refresh-write-fixture' ) as $forbidden ) {
+	mad4b_oauth_assert( false === strpos( $managed_session_json, $forbidden ), 'Managed session request leaked site OAuth secret/token material.', $managed_session_request );
+}
+
+$GLOBALS['mad4b_managed_redeem_responses'][] = array(
+	'contract' => MAD4B_SCP_Google_Drive_Context::MANAGED_REDEEM_CONTRACT,
+	'access_token' => 'managed-access-short',
+	'refresh_token' => 'managed-refresh-token',
+	'expires_in' => 60,
+	'scope' => MAD4B_SCP_Google_Drive_Context::READ_SCOPE,
+);
+$GLOBALS['mad4b_managed_refresh_responses'][] = array(
+	'contract' => MAD4B_SCP_Google_Drive_Context::MANAGED_REFRESH_CONTRACT,
+	'access_token' => 'managed-access-refreshed',
+	'expires_in' => 3600,
+	'scope' => MAD4B_SCP_Google_Drive_Context::READ_SCOPE,
+);
+$managed = MAD4B_SCP_Google_Drive_Context::complete_managed_oauth( 'managed-handoff-code', 'context-oauth-state' );
+mad4b_oauth_assert( ! is_wp_error( $managed ), 'Managed one-time handoff redemption must succeed.', $managed );
+mad4b_oauth_assert( ! empty( $managed['connected'] ) && ! empty( $managed['read_available'] ) && empty( $managed['write_available'] ), 'Managed read-only connection capability truth mismatch.', $managed );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $managed['auth_mode'], 'Managed connection must retain authentication mode in token state.', $managed );
+mad4b_oauth_assert( 'mad4b_managed_oauth' === $managed['credential_custody'], 'Managed connection must expose managed credential custody.', $managed );
+
+$redeem_request = $GLOBALS['mad4b_managed_requests']['redeem'];
+mad4b_oauth_assert( 'managed-session-fixture' === $redeem_request['session_id'], 'Managed redemption must bind broker session ID.', $redeem_request );
+mad4b_oauth_assert( ! empty( $redeem_request['verifier'] ), 'Managed redemption must include the one-time verifier server-to-server.', $redeem_request );
+mad4b_oauth_assert( 'https://staging.example.test' === $redeem_request['origin'], 'Managed redemption must retain canonical origin binding.', $redeem_request );
+
+$refresh_request = $GLOBALS['mad4b_managed_requests']['refresh'];
+mad4b_oauth_assert( 'managed-refresh-token' === $refresh_request['refresh_token'], 'Managed access-token refresh must route through the broker using the Google refresh token.', $refresh_request );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::READ_SCOPE === $refresh_request['requested_scope'], 'Managed refresh must preserve exact governed scope.', $refresh_request );
+
+$blocked_mode_change = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM );
+mad4b_oauth_assert( is_wp_error( $blocked_mode_change ), 'Authentication mode change must fail while a managed Google token is connected.', $blocked_mode_change );
+mad4b_oauth_assert( 'mad4b_google_drive_auth_mode_change_requires_disconnect' === $blocked_mode_change->get_error_code(), 'Connected mode-change blocker must be stable.', $blocked_mode_change->get_error_code() );
+
+$managed_public = MAD4B_SCP_Google_Drive_Context::public_connection_status();
+$managed_public_json = json_encode( $managed_public );
+foreach ( array( 'managed-refresh-token', 'managed-access-short', 'managed-access-refreshed', 'client-secret-fixture' ) as $secret ) {
+	mad4b_oauth_assert( false === strpos( $managed_public_json, $secret ), 'Managed public status leaked OAuth/token material.', $managed_public );
+}
+
+$managed_disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
+mad4b_oauth_assert( ! is_wp_error( $managed_disconnected ) && empty( $managed_disconnected['connected'] ), 'Managed Google grant must revoke and disconnect cleanly.', $managed_disconnected );
+
+$dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
+mad4b_oauth_assert( ! is_wp_error( $dedicated_mode ), 'Authentication mode must switch to Dedicated Site OAuth after managed grant revocation.', $dedicated_mode );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $dedicated_mode['mode'], 'Dedicated Site OAuth mode must become active.', $dedicated_mode );
+
+$dedicated_saved = MAD4B_SCP_Google_Drive_Context::save_dedicated_credentials(
+	'dedicated-client.apps.googleusercontent.com',
+	'dedicated-client-secret-fixture'
+);
+mad4b_oauth_assert( ! is_wp_error( $dedicated_saved ), 'Dedicated Google OAuth credentials must persist encrypted in site settings.', $dedicated_saved );
+mad4b_oauth_assert( 'https://staging.example.test/wp-admin/admin-post.php?action=mad4b_context_google_dedicated_callback' === $dedicated_saved['redirect_uri'], 'Dedicated OAuth redirect must be derived from the Site Profile primary domain.', $dedicated_saved );
+
+$dedicated_credentials = MAD4B_SCP_Google_Drive_Context::credentials_status();
+mad4b_oauth_assert( ! empty( $dedicated_credentials['configured'] ), 'Dedicated Google OAuth must become configured after saving site credentials.', $dedicated_credentials );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $dedicated_credentials['auth_mode'], 'Dedicated credential status must preserve selected mode.', $dedicated_credentials );
+mad4b_oauth_assert( 'dedicated_site_managed' === $dedicated_credentials['credential_custody'], 'Dedicated OAuth must declare site-managed credential custody.', $dedicated_credentials );
+mad4b_oauth_assert( ! empty( $dedicated_credentials['google_client_secret_on_site'] ), 'Dedicated OAuth must explicitly report local Client Secret custody.', $dedicated_credentials );
+mad4b_oauth_assert( empty( $dedicated_credentials['central_mad4b_dependency'] ), 'Dedicated OAuth must have no central MAD4B OAuth dependency.', $dedicated_credentials );
+mad4b_oauth_assert( 'https://staging.example.test/wp-admin/admin-post.php?action=mad4b_context_google_dedicated_callback' === $dedicated_credentials['dedicated_redirect_uri'], 'Dedicated callback must stay on the enrolled primary site domain.', $dedicated_credentials );
+
+$managed_requests_before_dedicated = json_encode( $GLOBALS['mad4b_managed_requests'] );
+$GLOBALS['mad4b_context_token_responses'][] = array(
+	'access_token' => 'dedicated-access-short',
+	'refresh_token' => 'dedicated-refresh-token',
+	'expires_in' => 3600,
+	'scope' => MAD4B_SCP_Google_Drive_Context::READ_SCOPE,
+);
+$dedicated_url = MAD4B_SCP_Google_Drive_Context::authorization_url( 'read_only' );
+mad4b_oauth_assert( ! is_wp_error( $dedicated_url ), 'Dedicated OAuth authorization URL must be created locally.', $dedicated_url );
+parse_str( (string) parse_url( $dedicated_url, PHP_URL_QUERY ), $dedicated_query );
+mad4b_oauth_assert( 'dedicated-client.apps.googleusercontent.com' === $dedicated_query['client_id'], 'Dedicated authorization must use the site dedicated Google Client ID.', $dedicated_query );
+mad4b_oauth_assert( $dedicated_credentials['dedicated_redirect_uri'] === $dedicated_query['redirect_uri'], 'Dedicated authorization must use the dynamic site-domain redirect URI.', $dedicated_query );
+mad4b_oauth_assert( 'S256' === $dedicated_query['code_challenge_method'], 'Dedicated OAuth must preserve PKCE S256.', $dedicated_query );
+
+$dedicated = MAD4B_SCP_Google_Drive_Context::complete_oauth( 'code-dedicated', 'context-oauth-state' );
+mad4b_oauth_assert( ! is_wp_error( $dedicated ), 'Dedicated Site OAuth token exchange must succeed locally.', $dedicated );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $dedicated['auth_mode'], 'Dedicated token state must preserve dedicated auth mode.', $dedicated );
+mad4b_oauth_assert( 'dedicated_site_managed' === $dedicated['credential_custody'], 'Dedicated connection must preserve local dedicated credential custody.', $dedicated );
+mad4b_oauth_assert( empty( $dedicated['write_available'] ) && ! empty( $dedicated['read_available'] ), 'Dedicated read-only OAuth must expose only read capability.', $dedicated );
+mad4b_oauth_assert( 'dedicated-client.apps.googleusercontent.com' === $GLOBALS['mad4b_context_last_token_request']['body']['client_id'], 'Dedicated token exchange must use dedicated site Client ID.' );
+mad4b_oauth_assert( 'dedicated-client-secret-fixture' === $GLOBALS['mad4b_context_last_token_request']['body']['client_secret'], 'Dedicated token exchange must use dedicated encrypted site Client Secret.' );
+mad4b_oauth_assert( $dedicated_credentials['dedicated_redirect_uri'] === $GLOBALS['mad4b_context_last_token_request']['body']['redirect_uri'], 'Dedicated token exchange must bind exact dynamic site-domain callback.' );
+mad4b_oauth_assert( $managed_requests_before_dedicated === json_encode( $GLOBALS['mad4b_managed_requests'] ), 'Dedicated OAuth must not call the MAD4B managed OAuth broker.' );
+
+$dedicated_public_json = json_encode( MAD4B_SCP_Google_Drive_Context::public_connection_status() );
+foreach ( array( 'dedicated-client-secret-fixture', 'dedicated-access-short', 'dedicated-refresh-token' ) as $secret ) {
+	mad4b_oauth_assert( false === strpos( $dedicated_public_json, $secret ), 'Dedicated public status leaked OAuth/token material.' );
+}
+
+$dedicated_disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
+mad4b_oauth_assert( ! is_wp_error( $dedicated_disconnected ) && empty( $dedicated_disconnected['connected'] ), 'Dedicated Google grant must revoke and disconnect cleanly.', $dedicated_disconnected );
+
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v6: PASS\n";
