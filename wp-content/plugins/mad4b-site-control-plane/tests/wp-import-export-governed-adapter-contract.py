@@ -10,6 +10,14 @@ capability_catalog = json.loads((ROOT / 'config/provider-capability-contracts.js
 
 required = [
     'mad4b.wp-import-export-governed-adapter.v3',
+    'mad4b.wp-import-export-execution-readiness.v4',
+    'mad4b.bulk-content-io-execution-evidence.v1',
+    'mad4b.wp-all-import.server-local-wp-cli.v1',
+    'mad4b.wp-all-export.server-local-record-execute.v1',
+    'transport_surface_structurally_verified',
+    'negative_transport_canary_required',
+    'behavioral_execution_certified',
+    'lower_ladder_evidence_never_implies_higher_ladder_certification',
     'mad4b.wp-import-export-execution-readiness.v3',
     'wp-import-export/list-imports',
     'wp-import-export/get-import',
