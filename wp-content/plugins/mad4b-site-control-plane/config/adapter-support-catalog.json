@@ -401,13 +401,11 @@
       ]
     },
     {
-      "id": "content-utilities",
+      "id": "bulk-taxonomy-editor",
       "match": [
-        "bulk-taxonomy-editor/",
-        "custom-mega-menu-v43/",
-        "meta-catalog-feed-mapper-pro/"
+        "bulk-taxonomy-editor/"
       ],
-      "adapter_id": "content-utilities",
+      "adapter_id": "bulk-taxonomy-editor",
       "strategy": "registered_adapter",
       "risk": "medium",
       "requested_contracts": [
@@ -415,15 +413,47 @@
       ],
       "mutation_scope": "none_read_only",
       "functional_mode": "review_required",
-      "functional_rationale": "This family groups unrelated content tools. A generic writer would create ambiguous authority across taxonomy editing, feeds, permalinks and post-table products.",
-      "functional_next_action": "split_content_utilities_into_provider_specific_families_before_adding_functional_abilities"
+      "functional_rationale": "Bulk taxonomy operations can change many term relationships at once. Provider-specific read and bounded-write contracts must be reviewed before exposing taxonomy operations.",
+      "functional_next_action": "capture_bulk_taxonomy_editor_runtime_contract_then_define_read_scope_before_any_bounded_write"
     },
     {
-      "id": "analytics",
+      "id": "custom-mega-menu",
+      "match": [
+        "custom-mega-menu-v43/"
+      ],
+      "adapter_id": "custom-mega-menu",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "review_required",
+      "functional_rationale": "Menu structure changes are content mutations with navigation-wide impact. The provider needs an exact menu-model read contract before any mutation surface is considered.",
+      "functional_next_action": "capture_custom_mega_menu_runtime_contract_then_define_menu_structure_read_scope"
+    },
+    {
+      "id": "meta-catalog-feed-mapper",
+      "match": [
+        "meta-catalog-feed-mapper-pro/"
+      ],
+      "adapter_id": "meta-catalog-feed-mapper",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "review_required",
+      "functional_rationale": "Feed mapping can affect external catalog publication and may involve provider credentials or outbound side effects. Only non-secret read diagnostics are eligible until the external execution boundary is documented.",
+      "functional_next_action": "capture_feed_mapper_runtime_and_external_side_effect_contract_before_non_secret_read_adapter_design"
+    },
+    {
+      "id": "google-tag-manager",
       "match": [
         "duracelltomi-google-tag-manager/"
       ],
-      "adapter_id": "analytics",
+      "adapter_id": "google-tag-manager",
       "strategy": "registered_adapter",
       "risk": "medium",
       "requested_contracts": [
@@ -431,8 +461,8 @@
       ],
       "mutation_scope": "none_read_only",
       "functional_mode": "review_required",
-      "functional_rationale": "Analytics/tag-management plugins can own external measurement configuration and credentials. Provider-specific read contracts must be reviewed before exposing configuration details.",
-      "functional_next_action": "review_active_analytics_provider_and_define_non_secret_configuration_read_contract"
+      "functional_rationale": "Google Tag Manager integration can contain measurement identifiers and configuration tied to an external platform. Only a non-secret local configuration read contract is eligible before any broader adapter surface.",
+      "functional_next_action": "capture_gtm_plugin_runtime_contract_and_define_non_secret_local_configuration_read_scope"
     },
     {
       "id": "reviews",
