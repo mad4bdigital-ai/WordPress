@@ -20,6 +20,18 @@ exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(en
 portable = json.loads((repo / 'plugins' / 'mad4b-wordpress' / 'plugin.json').read_text(encoding='utf-8'))
 deployment = json.loads((wp / 'config' / 'staging-deployment-handoff.json').read_text(encoding='utf-8'))
 
+# A previous stacked patch accidentally appended a second authority implementation
+# after the class closing brace. Lock the file to one canonical lifecycle.
+for signature in [
+    'public static function augment_write_ability',
+    'public static function reconcile()',
+    'private static function base_status()',
+]:
+    if write.count(signature) != 1:
+        raise SystemExit(f'write authority implementation duplicated or missing: {signature}')
+if not write.rstrip().endswith('}'):
+    raise SystemExit('write authority file must end at the canonical class closing brace')
+
 # Runtime write authority is tenant-neutral. ETG binding belongs to the reviewed
 # deployment Site Profile/handoff, never to a host constant inside the authority.
 for marker in [
