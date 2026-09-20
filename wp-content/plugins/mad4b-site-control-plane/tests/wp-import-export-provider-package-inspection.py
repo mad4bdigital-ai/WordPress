@@ -25,7 +25,7 @@ TARGETS = {
 HEADER_RE = re.compile(r"(?mi)^\s*(Plugin Name|Version)\s*:\s*([^\r\n]+)")
 CLASS_TEMPLATE = r"\bclass\s+%s\b"
 METHOD_RE = re.compile(r"(?mi)\b(?:public|protected|private)?\s*(?:static\s+)?function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(")
-HOOK_RE = re.compile(r"['\"]((?:pmxi|pmxe)_[A-Za-z0-9_]+)['\"]")
+HOOK_RE = re.compile(r"['\"]((?:pmxi|pmxe|wp_all_import|wp_all_export)_[A-Za-z0-9_]+)['\"]")
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -74,6 +74,12 @@ def inspect_archive(base: Path, kind: str, config: dict):
         "classes": {},
         "hooks": [],
         "lifecycle_markers": {},
+        "wp_cli": {
+            "wp_cli_symbol_present": False,
+            "all_import_command_marker": False,
+            "all_export_command_marker": False,
+            "add_command_marker": False,
+        },
         "critical_files": {},
         "source_exposed": False,
         "secret_values_exposed": False,
@@ -117,9 +123,16 @@ def inspect_archive(base: Path, kind: str, config: dict):
         hooks = set()
         all_text = "\n".join(text for _, text in php.values())
         for hook in HOOK_RE.findall(all_text):
-            if hook.startswith(config["hook_prefix"]):
+            if hook.startswith(config["hook_prefix"]) or hook.startswith("wp_all_import_") or hook.startswith("wp_all_export_"):
                 hooks.add(hook)
         result["hooks"] = sorted(hooks)
+
+        result["wp_cli"] = {
+            "wp_cli_symbol_present": "WP_CLI" in all_text,
+            "all_import_command_marker": bool(re.search(r"all[-_ ]import", all_text, re.I)),
+            "all_export_command_marker": bool(re.search(r"all[-_ ]export", all_text, re.I)),
+            "add_command_marker": "add_command" in all_text and "WP_CLI" in all_text,
+        }
 
         for cls in config["classes"]:
             rx = re.compile(CLASS_TEMPLATE % re.escape(cls))
@@ -137,7 +150,13 @@ def inspect_archive(base: Path, kind: str, config: dict):
 
         for marker in config["secret_markers"]:
             result["lifecycle_markers"][marker] = marker in all_text
-        for marker in ["action=trigger", "action=processing", "trigger", "processing", "canceled", "executing"]:
+        for marker in [
+            "action=trigger", "action=processing", "action=cancel",
+            "trigger", "processing", "canceled", "executing",
+            "pmxi_before_xml_import", "pmxi_saved_post", "pmxi_after_xml_import",
+            "wp_all_import_is_post_to_delete", "wp_all_import_is_post_to_change_missing",
+            "pmxi_missing_post", "pmxe_before_export", "pmxe_exported_post", "pmxe_after_export",
+        ]:
             result["lifecycle_markers"][marker] = marker in all_text
 
     for cls, matches in result["classes"].items():
