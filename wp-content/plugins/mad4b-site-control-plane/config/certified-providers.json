@@ -288,6 +288,76 @@
         "backend/app/src/Mcp/McpClient.php": "0f48abaeeb6b41f15ed0ae98d79cd99fe980eafdbe22db25d0445fb3889b4c2d",
         "bit-pi.php": "2d7bdda05fc00248c481ad74687e40e68d9017a007110115ee67400de986cd36"
       }
+    },
+    "wp-import-export": {
+      "label": "WP All Import / WP All Export",
+      "contract_mode": "composite_exact_packaged_components",
+      "certification_authority": "repository_composite_exact_archives",
+      "components": {
+        "import": {
+          "label": "WP All Import Pro",
+          "plugin_file": "wp-all-import-pro/wp-all-import-pro.php",
+          "archive": "wp-all-import-pro.zip",
+          "version": "5.0.8",
+          "archive_sha256": "eca6af2f5ecaa4119d051a0108045f61543d966e4765cfd219e49a60a7a50de3",
+          "certification_authority": "repository_artifact:wp-content/plugins/wp-all-import-pro.zip",
+          "critical_files": {
+            "models/import/list.php": "811765e8f173a6a6cf4c190d4053584bf93ff992c1d5475c6be7bce2b4433292",
+            "models/import/record.php": "e155e892824deffcb222e7c990f4ff66bc5a524742542dce5d6a70b77d887f73",
+            "wp-all-import-pro.php": "773888d9f16de9e024c45d7a3479e6760f6abe958198f03ffcb331cad604c079"
+          },
+          "verified_contracts": [
+            "exact_repository_archive",
+            "PMXI_Plugin",
+            "PMXI_Import_Record",
+            "PMXI_Import_List",
+            "WP_CLI_all_import_present",
+            "pmxi_before_xml_import",
+            "pmxi_saved_post",
+            "pmxi_after_xml_import",
+            "pmxi_missing_post",
+            "wp_all_import_is_post_to_delete",
+            "wp_all_import_is_post_to_change_missing"
+          ]
+        },
+        "export": {
+          "label": "WP All Export Pro",
+          "plugin_file": "wp-all-export-pro/wp-all-export-pro.php",
+          "archive": "wp-all-export-pro.zip",
+          "version": "1.9.15",
+          "archive_sha256": "28ceaee61f25523b86b559162e84c9535a482b00da21dcd4a6b21e7f709347b2",
+          "certification_authority": "repository_artifact:wp-content/plugins/wp-all-export-pro.zip",
+          "critical_files": {
+            "models/export/list.php": "afce43af8e542c73bc32284d17e7d84ba35b0af48ad7c92c489f07f7824e9bed",
+            "models/export/record.php": "b097dbfdd2e3393b74d214e34c2fceecacbaedb0577f0b4f3bedd4b544cc7e1d",
+            "wp-all-export-pro.php": "2ea9e2caf036cd992b52d7e4e9ace2691100d7a4b361dceda1ba93e943c7efb0"
+          },
+          "verified_contracts": [
+            "exact_repository_archive",
+            "PMXE_Plugin",
+            "PMXE_Export_Record",
+            "PMXE_Export_List",
+            "pmxe_before_export",
+            "pmxe_exported_post",
+            "pmxe_after_export",
+            "WP_CLI_not_present"
+          ]
+        }
+      },
+      "known_upstream_constraints": [
+        {
+          "constraint": "WP All Import provider cron execution embeds a secret-bearing key and is not a public MAD4B execution surface.",
+          "mad4b_policy": "Use server-resolved local execution only; never expose or accept provider cron keys."
+        },
+        {
+          "constraint": "Exact create/update/delete dry-run parity is not certified by package introspection.",
+          "mad4b_policy": "Keep import execution unmounted until a disposable behavioral probe proves exact diff and rollback."
+        },
+        {
+          "constraint": "WP All Export package has no observed WP_CLI registration surface.",
+          "mad4b_policy": "Keep export execution unmounted until a direct provider execution path is behaviorally certified."
+        }
+      ]
     }
   }
 }
