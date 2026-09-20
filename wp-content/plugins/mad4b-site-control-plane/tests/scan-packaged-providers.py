@@ -294,6 +294,140 @@ def primary_version(result: dict) -> str:
     return str(headers[0].get("version") or "")
 
 
+def _component_header(headers: list[dict], plugin_file: str) -> dict:
+    plugin_file = str(plugin_file or "").replace("\\", "/").lstrip("/")
+    basename = Path(plugin_file).name
+    candidates = []
+    for header in headers:
+        rel = str(header.get("file") or "").replace("\\", "/").lstrip("/")
+        if rel == plugin_file or rel.endswith("/" + plugin_file) or rel == basename or rel.endswith("/" + basename):
+            candidates.append(header)
+    if not candidates:
+        return {}
+    candidates.sort(key=lambda item: (str(item.get("file") or "").count("/"), len(str(item.get("file") or ""))))
+    return candidates[0]
+
+
+def _find_component_file(root: Path, relative: str) -> tuple[Path | None, str]:
+    relative = str(relative or "").replace("\\", "/").lstrip("/")
+    if not relative or ".." in Path(relative).parts:
+        return None, "invalid_relative_path"
+    exact = root / relative
+    if exact.is_file():
+        return exact, ""
+    matches = []
+    suffix = "/" + relative
+    for candidate in root.rglob(Path(relative).name):
+        if not candidate.is_file():
+            continue
+        rel = candidate.relative_to(root).as_posix()
+        if rel == relative or rel.endswith(suffix):
+            matches.append(candidate)
+    if len(matches) == 1:
+        return matches[0], ""
+    if not matches:
+        return None, "missing"
+    return None, "ambiguous"
+
+
+def scan_composite_provider(provider: str, expected: dict, plugins_dir: Path, temp_root: Path) -> dict:
+    components = expected.get("components") or {}
+    result = {
+        "provider": provider,
+        "composite": True,
+        "present": True,
+        "components": {},
+        "required_contracts_pass": True,
+        "missing_required": [],
+    }
+    if not isinstance(components, dict) or not components:
+        result["present"] = False
+        result["required_contracts_pass"] = False
+        result["missing_required"].append("components")
+        return result
+
+    for component, contract in sorted(components.items()):
+        contract = contract if isinstance(contract, dict) else {}
+        archive_name = str(contract.get("archive") or "")
+        archive = plugins_dir / archive_name
+        component_result = {
+            "archive": archive_name,
+            "present": archive.is_file(),
+            "archive_sha256": "",
+            "archive_bytes": 0,
+            "expected_version": str(contract.get("version") or ""),
+            "actual_version": "",
+            "version_match": False,
+            "critical_files": {},
+            "required_contracts_pass": True,
+            "violations": [],
+        }
+        if not archive_name or not archive.is_file():
+            component_result["required_contracts_pass"] = False
+            component_result["violations"].append("plugin_archive_missing")
+            result["components"][component] = component_result
+            result["present"] = False
+            result["required_contracts_pass"] = False
+            result["missing_required"].append(f"{component}:plugin_archive")
+            continue
+
+        actual_sha = sha256(archive)
+        component_result["archive_sha256"] = actual_sha
+        component_result["archive_bytes"] = archive.stat().st_size
+        expected_sha = str(contract.get("archive_sha256") or "").lower()
+        if not expected_sha or actual_sha.lower() != expected_sha:
+            component_result["required_contracts_pass"] = False
+            component_result["violations"].append("archive_sha256_mismatch")
+
+        extract_dir = temp_root / f"{provider}-{component}"
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        safe_extract(archive, extract_dir)
+        files = list(iter_text_files(extract_dir))
+        headers = plugin_headers(files, extract_dir)
+        header = _component_header(headers, str(contract.get("plugin_file") or ""))
+        actual_version = str(header.get("version") or "")
+        component_result["actual_version"] = actual_version
+        component_result["version_match"] = bool(component_result["expected_version"]) and actual_version == component_result["expected_version"]
+        component_result["plugin_header"] = header
+        if not component_result["version_match"]:
+            component_result["required_contracts_pass"] = False
+            component_result["violations"].append("plugin_version_mismatch")
+
+        critical_files = contract.get("critical_files") or {}
+        if not isinstance(critical_files, dict) or not critical_files:
+            component_result["required_contracts_pass"] = False
+            component_result["violations"].append("critical_file_manifest_missing")
+        else:
+            for relative, expected_file_sha in sorted(critical_files.items()):
+                candidate, locate_error = _find_component_file(extract_dir, str(relative))
+                entry = {
+                    "expected_sha256": str(expected_file_sha or "").lower(),
+                    "actual_sha256": "",
+                    "status": "missing" if candidate is None else "verified",
+                }
+                if candidate is None:
+                    entry["status"] = locate_error or "missing"
+                    component_result["required_contracts_pass"] = False
+                    component_result["violations"].append(f"critical_file_{entry['status']}")
+                else:
+                    file_sha = sha256(candidate)
+                    entry["actual_sha256"] = file_sha
+                    if not entry["expected_sha256"] or file_sha.lower() != entry["expected_sha256"]:
+                        entry["status"] = "hash_mismatch"
+                        component_result["required_contracts_pass"] = False
+                        component_result["violations"].append("critical_file_hash_mismatch")
+                component_result["critical_files"][str(relative)] = entry
+
+        component_result["violations"] = sorted(set(component_result["violations"]))
+        result["components"][component] = component_result
+        if not component_result["required_contracts_pass"]:
+            result["required_contracts_pass"] = False
+            result["missing_required"].extend(f"{component}:{item}" for item in component_result["violations"])
+
+    result["missing_required"] = sorted(set(result["missing_required"]))
+    return result
+
+
 def compare_baseline(report: dict, baseline_path: Path) -> tuple[list[dict], list[dict]]:
     if not baseline_path.is_file():
         return ([{"field": "baseline", "reason": "missing", "expected": str(baseline_path)}], [])
@@ -437,6 +571,22 @@ def main() -> int:
             report["providers"][provider] = result
             if not result.get("present") or not result.get("required_contracts_pass"):
                 failures.append(provider)
+
+        if args.baseline:
+            baseline_path = Path(args.baseline).resolve()
+            try:
+                baseline_doc = json.loads(baseline_path.read_text("utf-8")) if baseline_path.is_file() else {}
+            except (OSError, json.JSONDecodeError):
+                baseline_doc = {}
+            expected_providers = baseline_doc.get("providers") or {}
+            if isinstance(expected_providers, dict):
+                for provider, expected in expected_providers.items():
+                    if provider in report["providers"] or not isinstance(expected, dict) or not isinstance(expected.get("components"), dict):
+                        continue
+                    result = scan_composite_provider(provider, expected, plugins_dir, temp_root)
+                    report["providers"][provider] = result
+                    if not result.get("present") or not result.get("required_contracts_pass"):
+                        failures.append(provider)
 
     baseline_issues = []
     pending_attestations = []
