@@ -153,7 +153,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 
 	private static function render_functional( array $items, array $counts ) {
 		echo '<h2>' . esc_html__( 'Functional coverage gaps', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Provider-family view of active business-function gaps. Counts are deduplicated by family so add-ons do not inflate readiness. This view is read-only and never creates adapters, grants, approvals or mutation authority.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Provider-family view of active business-function gaps, ordered by blocking state and provider risk. Counts are deduplicated by family so add-ons do not inflate readiness. This view is read-only and never creates adapters, grants, approvals or mutation authority.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="mad4b-scp-panel"><strong>' . esc_html__( 'Provider-family summary:', 'mad4b-site-control-plane' ) . '</strong> ';
 		foreach ( array( 'functional_ready','status_only_candidate','safety_blocked','adapter_missing','intentionally_excluded' ) as $key ) {
 			echo '<span style="margin-right:14px"><code>' . esc_html( $key ) . '</code> ' . esc_html( isset( $counts[ $key ] ) ? (string) $counts[ $key ] : '0' ) . '</span>';
@@ -184,7 +184,22 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 				$groups[ $key ]['state'] = $state;
 			}
 		}
-		ksort( $groups, SORT_STRING );
+		$risk_ranks = array( 'critical'=>5, 'high'=>4, 'medium'=>3, 'low'=>2, 'none'=>1, ''=>0 );
+		uasort( $groups, static function( $left, $right ) use ( $ranks, $risk_ranks ) {
+			$left_state = isset( $left['state'] ) ? (string) $left['state'] : '';
+			$right_state = isset( $right['state'] ) ? (string) $right['state'] : '';
+			$left_state_rank = isset( $ranks[ $left_state ] ) ? (int) $ranks[ $left_state ] : 0;
+			$right_state_rank = isset( $ranks[ $right_state ] ) ? (int) $ranks[ $right_state ] : 0;
+			if ( $left_state_rank !== $right_state_rank ) return $right_state_rank <=> $left_state_rank;
+			$left_risk = isset( $left['item']['risk'] ) ? sanitize_key( (string) $left['item']['risk'] ) : '';
+			$right_risk = isset( $right['item']['risk'] ) ? sanitize_key( (string) $right['item']['risk'] ) : '';
+			$left_risk_rank = isset( $risk_ranks[ $left_risk ] ) ? (int) $risk_ranks[ $left_risk ] : 0;
+			$right_risk_rank = isset( $risk_ranks[ $right_risk ] ) ? (int) $risk_ranks[ $right_risk ] : 0;
+			if ( $left_risk_rank !== $right_risk_rank ) return $right_risk_rank <=> $left_risk_rank;
+			$left_family = isset( $left['item']['family'] ) ? (string) $left['item']['family'] : '';
+			$right_family = isset( $right['item']['family'] ) ? (string) $right['item']['family'] : '';
+			return strcmp( $left_family, $right_family );
+		} );
 
 		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
 		foreach ( $groups as $family => $group ) {
