@@ -159,7 +159,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			echo '<span style="margin-right:14px"><code>' . esc_html( $key ) . '</code> ' . esc_html( isset( $counts[ $key ] ) ? (string) $counts[ $key ] : '0' ) . '</span>';
 		}
 		echo '</div>';
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Plugin</th><th>Family</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Next safe action</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Plugin</th><th>Family</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
 		$shown = 0;
 		foreach ( $items as $item ) {
 			if ( empty( $item['active'] ) || empty( $item['functional_coverage'] ) || ! is_array( $item['functional_coverage'] ) ) continue;
@@ -170,9 +170,9 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			echo '<tr><td><strong>' . esc_html( isset( $item['name'] ) ? $item['name'] : '' ) . '</strong><br><code>' . esc_html( isset( $item['plugin_file'] ) ? $item['plugin_file'] : '' ) . '</code></td>';
 			echo '<td>' . esc_html( isset( $item['family'] ) ? $item['family'] : '' ) . '</td><td><strong>' . esc_html( $state ) . '</strong></td>';
 			echo '<td>' . esc_html( isset( $f['read_ability_count'] ) ? (string) $f['read_ability_count'] : '0' ) . '</td><td>' . esc_html( isset( $f['write_ability_count'] ) ? (string) $f['write_ability_count'] : '0' ) . '</td>';
-			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
+			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td><td><code>' . esc_html( ! empty( $f['blockers'] ) && is_array( $f['blockers'] ) ? implode( ', ', $f['blockers'] ) : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
 		}
-		if ( 0 === $shown ) echo '<tr><td colspan="8">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
+		if ( 0 === $shown ) echo '<tr><td colspan="9">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
 		echo '</tbody></table></div>';
 	}
 
