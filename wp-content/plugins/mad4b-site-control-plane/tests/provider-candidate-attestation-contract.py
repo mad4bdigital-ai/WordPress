@@ -10,7 +10,7 @@ for marker in [
     'private static $profiles = null',
     'public static function profile_catalog()',
     'public static function candidate_attestation(',
-    "'candidate_attestation' =>",
+    "$result['candidate_attestation'] = $candidate_attestation",
     "'candidate_attestation_required'",
 ]:
     assert marker in provider, marker
