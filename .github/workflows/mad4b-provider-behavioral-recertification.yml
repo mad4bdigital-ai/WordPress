@@ -33,3 +33,12 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-provider-package-inspection.py --output /tmp/mad4b-wp-import-export-package-inspection.json
+
+      - name: Upload exact WP Import Export package inspection evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-wp-import-export-package-inspection-${{ matrix.php }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-wp-import-export-package-inspection.json
+          if-no-files-found: error
+          retention-days: 14
