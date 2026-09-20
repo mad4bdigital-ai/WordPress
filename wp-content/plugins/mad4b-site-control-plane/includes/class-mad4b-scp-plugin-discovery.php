@@ -50,12 +50,22 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'priority_external_missing' => 0,
 		);
 		$functional_counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
+		$functional_family_states = array();
+		$functional_severity = array( 'inactive'=>0, 'functional_ready'=>1, 'intentionally_excluded'=>2, 'status_only_candidate'=>3, 'adapter_missing'=>4, 'safety_blocked'=>5 );
 
 		foreach ( $plugins as $plugin_file => $headers ) {
 			if ( count( $items ) >= self::MAX_PLUGINS ) break;
 			$item = self::describe_installed_plugin( (string) $plugin_file, is_array( $headers ) ? $headers : array() );
 			$items[] = $item;
 			if ( isset( $item['functional_coverage']['state'] ) && isset( $functional_counts[ $item['functional_coverage']['state'] ] ) ) ++$functional_counts[ $item['functional_coverage']['state'] ];
+			if ( ! empty( $item['active'] ) && isset( $item['functional_coverage']['state'] ) ) {
+				$family_key = ! empty( $item['family'] ) ? sanitize_key( (string) $item['family'] ) : self::normalize_plugin_file( $plugin_file );
+				$family_state = sanitize_key( (string) $item['functional_coverage']['state'] );
+				$current_state = isset( $functional_family_states[ $family_key ] ) ? $functional_family_states[ $family_key ] : '';
+				$current_rank = isset( $functional_severity[ $current_state ] ) ? (int) $functional_severity[ $current_state ] : -1;
+				$new_rank = isset( $functional_severity[ $family_state ] ) ? (int) $functional_severity[ $family_state ] : 0;
+				if ( '' === $current_state || $new_rank > $current_rank ) $functional_family_states[ $family_key ] = $family_state;
+			}
 			++$counts['installed'];
 			if ( ! empty( $item['active'] ) ) ++$counts['active'];
 			if ( isset( $counts[ $item['coverage_state'] ] ) ) ++$counts[ $item['coverage_state'] ];
@@ -80,8 +90,19 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'support_requests' => self::dedupe_requests( $requests ),
 			'counts' => $counts,
 			'functional_counts' => $functional_counts,
+			'functional_family_counts' => self::functional_state_counts( $functional_family_states ),
+			'functional_family_states' => $functional_family_states,
 			'truncated' => count( $plugins ) > self::MAX_PLUGINS,
 		);
+	}
+
+	private static function functional_state_counts( array $states ) {
+		$counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
+		foreach ( $states as $state ) {
+			$state = sanitize_key( (string) $state );
+			if ( isset( $counts[ $state ] ) ) ++$counts[ $state ];
+		}
+		return $counts;
 	}
 
 	public static function functional_coverage_report() {
@@ -102,7 +123,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'contract' => 'mad4b.provider-functional-coverage.v1',
 			'read_only' => true,
 			'authority_created' => false,
-			'counts' => isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array(),
+			'counts' => isset( $coverage['functional_family_counts'] ) ? $coverage['functional_family_counts'] : ( isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array() ),
+			'plugin_counts' => isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array(),
+			'family_states' => isset( $coverage['functional_family_states'] ) ? $coverage['functional_family_states'] : array(),
 			'items' => $items,
 			'count' => count( $items ),
 		);
