@@ -169,6 +169,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 
 	private static function functional_coverage( $adapter, array $status, array $descriptor, $active, $coverage_state ) {
 		$requested = isset( $descriptor['requested_contracts'] ) && is_array( $descriptor['requested_contracts'] ) ? array_values( array_map( 'sanitize_key', $descriptor['requested_contracts'] ) ) : array();
+		$mode = isset( $descriptor['functional_mode'] ) ? sanitize_key( (string) $descriptor['functional_mode'] ) : 'review_required';
+		$cross = isset( $descriptor['functional_cross_surface_abilities'] ) && is_array( $descriptor['functional_cross_surface_abilities'] ) ? array_values( array_map( 'sanitize_text_field', $descriptor['functional_cross_surface_abilities'] ) ) : array();
 		$map = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$reads = isset( $map['read'] ) && is_array( $map['read'] ) ? array_values( $map['read'] ) : array();
 		$writes = array();
@@ -178,8 +180,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 
 		if ( ! $active ) {
 			$state = 'inactive'; $reason = 'plugin_not_active'; $next = 'activate_only_if_operationally_required';
-		} elseif ( 'excluded_high_risk' === $coverage_state ) {
-			$state = 'intentionally_excluded'; $reason = 'normal_writer_excluded_by_risk'; $next = 'use_breakglass_review_only_if_explicitly_approved';
+		} elseif ( 'excluded_high_risk' === $coverage_state || 'intentionally_excluded' === $mode || 'intentionally_restricted' === $mode ) {
+			$state = 'intentionally_excluded'; $reason = 'normal_writer_excluded_by_policy'; $next = 'retain_restricted_scope_unless_separately_reviewed';
 		} elseif ( ! is_object( $adapter ) ) {
 			$state = 'adapter_missing'; $reason = 'no_registered_adapter'; $next = 'implement_and_certify_provider_adapter';
 		} else {
@@ -188,14 +190,22 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$mounted = isset( $execution['mounted_execution_abilities'] ) && is_array( $execution['mounted_execution_abilities'] ) ? $execution['mounted_execution_abilities'] : array();
 			if ( ! empty( $desired ) && count( $mounted ) < count( $desired ) ) {
 				$state = 'safety_blocked'; $reason = 'desired_execution_not_certified_or_mounted'; $next = 'close_reported_execution_readiness_blockers_before_mount';
+			} elseif ( in_array( $mode, array( 'inventory_only','platform_core','external_authority','cross_surface','specialized' ), true ) ) {
+				$state = 'functional_ready';
+				$reason = 'cross_surface' === $mode ? 'governed_functionality_available_on_separate_surface' : ( 'external_authority' === $mode ? 'execution_delegated_to_external_authority' : 'declared_functional_scope_satisfied' );
+				$next = 'cross_surface' === $mode ? 'use_declared_cross_surface_abilities' : ( 'external_authority' === $mode ? 'use_external_authority_for_execution' : 'no_action_required' );
 			} elseif ( 'mad4b.repository-family-read-adapter.v1' === ( isset( $status['contract'] ) ? (string) $status['contract'] : '' ) && count( $reads ) <= 1 && empty( $writes ) ) {
-				$state = 'status_only_candidate'; $reason = 'family_adapter_exposes_status_only'; $next = 'review_provider_functions_and_add_read_plan_execute_contracts_where_justified';
+				$state = 'status_only_candidate';
+				$reason = 'specialized_candidate' === $mode ? 'known_provider_functions_exceed_status_only_surface' : 'provider_functional_scope_requires_review';
+				$next = 'review_provider_functions_and_add_read_plan_execute_contracts_where_justified';
 			}
 		}
 		return array(
 			'contract' => 'mad4b.provider-functional-coverage-item.v1',
 			'state' => $state,
 			'reason' => $reason,
+			'functional_mode' => $mode,
+			'cross_surface_abilities' => $cross,
 			'read_ability_count' => count( $reads ),
 			'write_ability_count' => count( $writes ),
 			'read_abilities' => $reads,
