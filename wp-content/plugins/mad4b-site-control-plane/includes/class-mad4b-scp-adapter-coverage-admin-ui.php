@@ -49,7 +49,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		if ( is_wp_error( $snapshot ) ) { echo '<div class="notice notice-error"><p>' . esc_html( $snapshot->get_error_message() ) . '</p></div></div>'; return; }
 
 		$counts = isset( $snapshot['counts'] ) && is_array( $snapshot['counts'] ) ? $snapshot['counts'] : array();
-		$functional_counts = isset( $snapshot['functional_counts'] ) && is_array( $snapshot['functional_counts'] ) ? $snapshot['functional_counts'] : array();
+		$functional_counts = isset( $snapshot['functional_family_counts'] ) && is_array( $snapshot['functional_family_counts'] ) ? $snapshot['functional_family_counts'] : ( isset( $snapshot['functional_counts'] ) && is_array( $snapshot['functional_counts'] ) ? $snapshot['functional_counts'] : array() );
 		MAD4B_SCP_Admin_Experience::stages( self::coverage_stages( $counts, $functional_counts ) );
 		MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 
@@ -153,26 +153,49 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 
 	private static function render_functional( array $items, array $counts ) {
 		echo '<h2>' . esc_html__( 'Functional coverage gaps', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Detects active providers whose business functions are not yet represented by governed abilities. This view is read-only and never creates adapters, grants, approvals or mutation authority.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<div class="mad4b-scp-panel"><strong>' . esc_html__( 'Summary:', 'mad4b-site-control-plane' ) . '</strong> ';
+		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Provider-family view of active business-function gaps. Counts are deduplicated by family so add-ons do not inflate readiness. This view is read-only and never creates adapters, grants, approvals or mutation authority.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="mad4b-scp-panel"><strong>' . esc_html__( 'Provider-family summary:', 'mad4b-site-control-plane' ) . '</strong> ';
 		foreach ( array( 'functional_ready','status_only_candidate','safety_blocked','adapter_missing','intentionally_excluded' ) as $key ) {
 			echo '<span style="margin-right:14px"><code>' . esc_html( $key ) . '</code> ' . esc_html( isset( $counts[ $key ] ) ? (string) $counts[ $key ] : '0' ) . '</span>';
 		}
 		echo '</div>';
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Plugin</th><th>Family</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
-		$shown = 0;
+
+		$ranks = array( 'functional_ready'=>1, 'intentionally_excluded'=>2, 'status_only_candidate'=>3, 'adapter_missing'=>4, 'safety_blocked'=>5 );
+		$groups = array();
 		foreach ( $items as $item ) {
 			if ( empty( $item['active'] ) || empty( $item['functional_coverage'] ) || ! is_array( $item['functional_coverage'] ) ) continue;
 			$f = $item['functional_coverage'];
-			$state = isset( $f['state'] ) ? (string) $f['state'] : '';
+			$state = isset( $f['state'] ) ? sanitize_key( (string) $f['state'] ) : '';
 			if ( in_array( $state, array( 'functional_ready', 'inactive' ), true ) ) continue;
-			++$shown;
-			echo '<tr><td><strong>' . esc_html( isset( $item['name'] ) ? $item['name'] : '' ) . '</strong><br><code>' . esc_html( isset( $item['plugin_file'] ) ? $item['plugin_file'] : '' ) . '</code></td>';
-			echo '<td>' . esc_html( isset( $item['family'] ) ? $item['family'] : '' ) . '</td><td><strong>' . esc_html( $state ) . '</strong></td>';
+			$key = ! empty( $item['family'] ) ? sanitize_key( (string) $item['family'] ) : sanitize_key( (string) ( isset( $item['plugin_file'] ) ? $item['plugin_file'] : '' ) );
+			if ( '' === $key ) $key = 'unknown-provider';
+			$member = trim( (string) ( isset( $item['name'] ) ? $item['name'] : '' ) );
+			if ( '' === $member ) $member = isset( $item['plugin_file'] ) ? (string) $item['plugin_file'] : $key;
+			if ( ! isset( $groups[ $key ] ) ) {
+				$groups[ $key ] = array( 'item'=>$item, 'functional'=>$f, 'state'=>$state, 'members'=>array( $member ) );
+				continue;
+			}
+			$groups[ $key ]['members'][] = $member;
+			$current_rank = isset( $ranks[ $groups[ $key ]['state'] ] ) ? (int) $ranks[ $groups[ $key ]['state'] ] : 0;
+			$new_rank = isset( $ranks[ $state ] ) ? (int) $ranks[ $state ] : 0;
+			if ( $new_rank > $current_rank ) {
+				$groups[ $key ]['item'] = $item;
+				$groups[ $key ]['functional'] = $f;
+				$groups[ $key ]['state'] = $state;
+			}
+		}
+		ksort( $groups, SORT_STRING );
+
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
+		foreach ( $groups as $family => $group ) {
+			$item = $group['item']; $f = $group['functional']; $members = array_values( array_unique( $group['members'] ) );
+			$visible = array_slice( $members, 0, 4 ); $member_text = implode( ' · ', $visible );
+			if ( count( $members ) > count( $visible ) ) $member_text .= ' · +' . ( count( $members ) - count( $visible ) ) . ' more';
+			echo '<tr><td><strong>' . esc_html( $family ) . '</strong></td><td>' . esc_html( $member_text ) . '</td><td><strong>' . esc_html( $group['state'] ) . '</strong></td>';
 			echo '<td>' . esc_html( isset( $f['read_ability_count'] ) ? (string) $f['read_ability_count'] : '0' ) . '</td><td>' . esc_html( isset( $f['write_ability_count'] ) ? (string) $f['write_ability_count'] : '0' ) . '</td>';
 			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td><td><code>' . esc_html( ! empty( $f['blockers'] ) && is_array( $f['blockers'] ) ? implode( ', ', $f['blockers'] ) : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
 		}
-		if ( 0 === $shown ) echo '<tr><td colspan="9">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
+		if ( empty( $groups ) ) echo '<tr><td colspan="9">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
 		echo '</tbody></table></div>';
 	}
 
