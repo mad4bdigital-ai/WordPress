@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-etg-dfsb-adapter-${{ github.event.pull_request.head.sha || github.sha }}
+  group: mad4b-etg-dfsb-adapter-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -36,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify read-only adapter contract
         shell: bash
         run: |
@@ -52,6 +54,8 @@ jobs:
         php: ['7.4', '8.3']
     steps:
       - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -79,6 +83,8 @@ jobs:
           --health-retries=10
     steps:
       - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
         with:
           fetch-depth: 1
       - name: Materialize exact ETG Alpha13 candidate
