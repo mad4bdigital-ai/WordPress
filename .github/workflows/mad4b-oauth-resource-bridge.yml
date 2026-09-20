@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-oauth-resource-bridge-${{ github.event.pull_request.head.sha || github.sha }}
+  group: mad4b-oauth-resource-bridge-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify OAuth resource bridge and ChatGPT package
         shell: bash
         run: |
@@ -74,6 +76,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -112,7 +116,7 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
-          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          unzip -oq wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
@@ -152,6 +156,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -193,7 +199,7 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress-hybrid
-          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          unzip -oq wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
           rm -rf "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
