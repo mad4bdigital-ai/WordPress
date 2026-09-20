@@ -83,7 +83,7 @@
       ]
     },
     "fluentforms": {
-      "support_mode": "family_read",
+      "support_mode": "specialized",
       "mutation_scope": "none",
       "artifacts": [
         "fluentform.zip",
@@ -144,7 +144,7 @@
       ]
     },
     "jetformbuilder": {
-      "support_mode": "family_read",
+      "support_mode": "specialized",
       "mutation_scope": "none",
       "artifacts": [
         "jetformbuilder.zip"
