@@ -22,9 +22,13 @@ The WordPress host must define:
 
 ```php
 define( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL', 'https://auth.example.com' );
+define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID', 'site-key-v1' );
+define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', '<32+-character-random-site-broker-secret>' );
 ```
 
-The value must be HTTPS and must not contain user-info, query or fragment components.
+The broker URL must be HTTPS and must not contain user-info, query or fragment components.
+
+The site key/secret are **MAD4B broker credentials**, not Google OAuth credentials. The Google Client Secret remains only on the central broker. Each managed WordPress Site Profile must use a distinct site signing secret and a server-owned `key_id` registered in the broker site-binding allowlist.
 
 The plugin derives:
 
@@ -37,6 +41,19 @@ POST {base}/v1/google/oauth/refresh
 No Google Client Secret is sent to or stored by WordPress in managed mode.
 
 ## Security model
+
+Managed OAuth is a server-to-server one-time handoff.
+
+Every WordPress-to-broker POST request (`session`, `redeem`, and `refresh`) is authenticated independently with:
+
+- `X-MAD4B-Site-Key-ID`;
+- `X-MAD4B-Site-Timestamp`;
+- `X-MAD4B-Site-Nonce`;
+- `X-MAD4B-Site-Signature`.
+
+The signature contract is `mad4b.google-managed-oauth-site-request-auth.v1`. The site computes HMAC-SHA256 over the exact method, broker path, timestamp, nonce, and SHA-256 of canonical JSON. The broker verifies the signature with a server-owned per-site secret registry, enforces a bounded clock-skew window, binds the key ID to the exact Site Profile/origin/callback allowlist, and atomically consumes each nonce to deny replay.
+
+The Google browser callback itself does not use the site HMAC because it originates from Google. It remains protected by one-time broker state and the exact broker session lifecycle.
 
 Managed OAuth is a server-to-server one-time handoff.
 
@@ -206,6 +223,9 @@ The broker implementation must provide:
 - verifier challenge comparison;
 - atomic redemption / replay denial;
 - exact Site UUID and origin binding;
+- per-site HMAC request authentication for session/redeem/refresh;
+- timestamp freshness and nonce replay denial;
+- exact key_id-to-Site Profile binding;
 - no token values in redirect URLs;
 - no token values in logs;
 - no Google Client Secret in responses;
