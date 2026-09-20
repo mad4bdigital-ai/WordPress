@@ -176,7 +176,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$writes = array();
 		foreach ( array( 'content', 'write', 'admin' ) as $surface ) if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $writes = array_merge( $writes, $map[ $surface ] );
 		$writes = array_values( array_unique( $writes ) );
-		$state = 'functional_ready'; $reason = ''; $next = 'no_action_required';
+		$state = 'functional_ready'; $reason = ''; $next = 'no_action_required'; $blockers = array();
 
 		if ( ! $active ) {
 			$state = 'inactive'; $reason = 'plugin_not_active'; $next = 'activate_only_if_operationally_required';
@@ -188,8 +188,11 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$execution = isset( $status['execution'] ) && is_array( $status['execution'] ) ? $status['execution'] : array();
 			$desired = isset( $execution['desired_execution_abilities'] ) && is_array( $execution['desired_execution_abilities'] ) ? $execution['desired_execution_abilities'] : array();
 			$mounted = isset( $execution['mounted_execution_abilities'] ) && is_array( $execution['mounted_execution_abilities'] ) ? $execution['mounted_execution_abilities'] : array();
+			$execution_blockers = array();
+			foreach ( array( 'import', 'export' ) as $lane ) if ( isset( $execution[ $lane ]['blockers'] ) && is_array( $execution[ $lane ]['blockers'] ) ) $execution_blockers = array_merge( $execution_blockers, $execution[ $lane ]['blockers'] );
+			$execution_blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $execution_blockers ) ) ) );
 			if ( ! empty( $desired ) && count( $mounted ) < count( $desired ) ) {
-				$state = 'safety_blocked'; $reason = 'desired_execution_not_certified_or_mounted'; $next = 'close_reported_execution_readiness_blockers_before_mount';
+				$state = 'safety_blocked'; $reason = 'desired_execution_not_certified_or_mounted'; $next = 'close_reported_execution_readiness_blockers_before_mount'; $blockers = $execution_blockers;
 			} elseif ( in_array( $mode, array( 'inventory_only','platform_core','external_authority','cross_surface','specialized' ), true ) ) {
 				$state = 'functional_ready';
 				$reason = 'cross_surface' === $mode ? 'governed_functionality_available_on_separate_surface' : ( 'external_authority' === $mode ? 'execution_delegated_to_external_authority' : 'declared_functional_scope_satisfied' );
@@ -211,6 +214,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'read_abilities' => $reads,
 			'write_abilities' => $writes,
 			'requested_contracts' => $requested,
+			'blockers' => $blockers,
 			'next_action' => $next,
 			'authority_created' => false,
 		);
