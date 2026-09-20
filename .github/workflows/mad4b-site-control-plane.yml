@@ -73,6 +73,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/composite-packaged-provider-scan-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/scan-packaged-providers.py \
             --plugins-dir wp-content/plugins \
             --baseline wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json \
