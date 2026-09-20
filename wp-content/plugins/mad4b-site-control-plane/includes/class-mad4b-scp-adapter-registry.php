@@ -238,7 +238,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		);
 	}
 	public function ability_names( $surface ) {
-		$names = array(); if ( 'read' === $surface ) $names = array( 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/runtime-self-test' );
+		$names = array(); if ( 'read' === $surface ) $names = array( 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/runtime-self-test' );
 		foreach ( $this->adapters as $adapter ) { $map = $adapter->ability_names(); if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $names = array_merge( $names, $map[ $surface ] ); }
 		return array_values( array_unique( $names ) );
 	}
