@@ -56,7 +56,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		if ( 'overview' === $tab ) self::render_overview( $snapshot, $counts, $functional_counts );
 		if ( 'installed' === $tab ) self::render_plugins( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array() );
 		if ( 'priority' === $tab ) self::render_priority( isset( $snapshot['priority_external'] ) && is_array( $snapshot['priority_external'] ) ? $snapshot['priority_external'] : array() );
-		if ( 'functional' === $tab ) self::render_functional( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array(), isset( $snapshot['functional_counts'] ) && is_array( $snapshot['functional_counts'] ) ? $snapshot['functional_counts'] : array() );
+		if ( 'functional' === $tab ) self::render_functional( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array(), $functional_counts );
 		if ( 'requests' === $tab ) self::render_requests( isset( $snapshot['support_requests'] ) && is_array( $snapshot['support_requests'] ) ? $snapshot['support_requests'] : array() );
 		echo '</div>';
 	}
@@ -67,7 +67,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		$needs_cert = isset( $counts['adapter_present_certification_required'] ) ? (int) $counts['adapter_present_certification_required'] : 0;
 		$side_channel = isset( $counts['adapter_present_side_channel_blocked'] ) ? (int) $counts['adapter_present_side_channel_blocked'] : 0;
 		$safety_blocked = isset( $functional_counts['safety_blocked'] ) ? (int) $functional_counts['safety_blocked'] : 0;
-		$review_candidates = ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
+		$review_candidates = ( isset( $functional_counts['contract_discovery_required'] ) ? (int) $functional_counts['contract_discovery_required'] : 0 ) + ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
 		return array(
 			array( 'label' => __( 'Discover', 'mad4b-site-control-plane' ), 'state' => $installed > 0 ? 'complete' : 'pending', 'detail' => __( 'Inventory installed and active plugins.', 'mad4b-site-control-plane' ), 'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'installed' ) ),
 			array( 'label' => __( 'Match adapter', 'mad4b-site-control-plane' ), 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'detail' => __( 'Map each plugin to a governed support strategy.', 'mad4b-site-control-plane' ), 'url' => MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'requests' ) ),
@@ -86,7 +86,8 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		$side_channel = isset( $counts['adapter_present_side_channel_blocked'] ) ? (int) $counts['adapter_present_side_channel_blocked'] : 0;
 		$priority_missing = isset( $counts['priority_external_missing'] ) ? (int) $counts['priority_external_missing'] : 0;
 		$functional_blocked = isset( $functional_counts['safety_blocked'] ) ? (int) $functional_counts['safety_blocked'] : 0;
-		$functional_review = ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
+		$contract_discovery = isset( $functional_counts['contract_discovery_required'] ) ? (int) $functional_counts['contract_discovery_required'] : 0;
+		$functional_review = $contract_discovery + ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
 
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Installed', 'value' => isset( $counts['installed'] ) ? (string) $counts['installed'] : '0', 'state' => ! empty( $counts['installed'] ) ? 'complete' : 'pending', 'help' => 'Plugins included in runtime discovery.' ),
@@ -95,18 +96,23 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			array( 'label' => 'Needs certification', 'value' => (string) $needs_cert, 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'help' => 'Adapter exists but exact provider proof is missing.' ),
 			array( 'label' => 'Runtime blocked', 'value' => (string) $side_channel, 'state' => 0 === $side_channel ? 'complete' : 'blocked', 'help' => 'Parallel MCP/write-plane risk remains.' ),
 			array( 'label' => 'Functional blocked', 'value' => (string) $functional_blocked, 'state' => 0 === $functional_blocked ? 'complete' : 'blocked', 'help' => 'Desired provider execution remains intentionally unmounted until safety contracts close.' ),
-			array( 'label' => 'Functional review', 'value' => (string) $functional_review, 'state' => 0 === $functional_review ? 'complete' : 'attention', 'help' => 'Status-only or missing provider functions that need an explicit scope decision.' ),
+			array( 'label' => 'Contract discovery', 'value' => (string) $contract_discovery, 'state' => 0 === $contract_discovery ? 'complete' : 'attention', 'help' => 'Providers whose exact read/write/credential/side-effect contract must be captured before scope expansion.' ),
+			array( 'label' => 'Functional review', 'value' => (string) $functional_review, 'state' => 0 === $functional_review ? 'complete' : 'attention', 'help' => 'Contract discovery, status-only or missing provider functions that still need an explicit scope decision.' ),
 			array( 'label' => 'Priority missing', 'value' => (string) $priority_missing, 'state' => 0 === $priority_missing ? 'complete' : 'pending', 'help' => 'Priority external plugins not installed on this site.' ),
 		) );
 
 		if ( $side_channel > 0 ) {
 			MAD4B_SCP_Admin_Experience::next_step( 'Highest-priority attention', 'One or more adapters are blocked by a parallel MCP/write surface. Keep normal mutation denied until the provider-native plane is isolated and certified.', 'blocked', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'installed' ), 'Inspect runtime blockers' );
+		} elseif ( $functional_blocked > 0 ) {
+			MAD4B_SCP_Admin_Experience::next_step( 'Functional execution blocked', 'One or more provider execution paths are intentionally unmounted until their safety contracts close.', 'blocked', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'functional' ), 'Inspect functional blockers' );
 		} elseif ( $needs_cert > 0 ) {
 			MAD4B_SCP_Admin_Experience::next_step( 'Next step', 'Complete exact provider certification for adapters that are present but not yet mutation-ready.', 'attention', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'installed' ), 'Inspect provider certification' );
 		} elseif ( $needs_adapter > 0 ) {
 			MAD4B_SCP_Admin_Experience::next_step( 'Next step', 'Review deterministic adapter support requests for plugins that do not yet have a governed support contract.', 'attention', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'requests' ), 'Review support requests' );
+		} elseif ( $functional_review > 0 ) {
+			MAD4B_SCP_Admin_Experience::next_step( 'Contract discovery required', 'Provider inventory is known, but one or more functional contracts still need runtime/vendor evidence before scope can safely expand.', 'attention', MAD4B_SCP_Admin_Experience::tab_url( self::PAGE_SLUG, 'functional' ), 'Review contract discovery' );
 		} else {
-			MAD4B_SCP_Admin_Experience::next_step( 'Coverage ready', 'No unresolved adapter, certification or side-channel blockers are reported by the current discovery snapshot.', 'complete' );
+			MAD4B_SCP_Admin_Experience::next_step( 'Coverage ready', 'No unresolved adapter, certification, runtime or functional-contract blockers are reported by the current discovery snapshot.', 'complete' );
 		}
 
 		echo '<h2>' . esc_html__( 'Coverage counts', 'mad4b-site-control-plane' ) . '</h2>';
@@ -155,12 +161,12 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		echo '<h2>' . esc_html__( 'Functional coverage gaps', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Provider-family view of active business-function gaps, ordered by blocking state and provider risk. Counts are deduplicated by family so add-ons do not inflate readiness. This view is read-only and never creates adapters, grants, approvals or mutation authority.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="mad4b-scp-panel"><strong>' . esc_html__( 'Provider-family summary:', 'mad4b-site-control-plane' ) . '</strong> ';
-		foreach ( array( 'functional_ready','status_only_candidate','safety_blocked','adapter_missing','intentionally_excluded' ) as $key ) {
+		foreach ( array( 'functional_ready','status_only_candidate','contract_discovery_required','safety_blocked','adapter_missing','intentionally_excluded' ) as $key ) {
 			echo '<span style="margin-right:14px"><code>' . esc_html( $key ) . '</code> ' . esc_html( isset( $counts[ $key ] ) ? (string) $counts[ $key ] : '0' ) . '</span>';
 		}
 		echo '</div>';
 
-		$ranks = array( 'functional_ready'=>1, 'intentionally_excluded'=>2, 'status_only_candidate'=>3, 'adapter_missing'=>4, 'safety_blocked'=>5 );
+		$ranks = array( 'functional_ready'=>1, 'intentionally_excluded'=>2, 'status_only_candidate'=>3, 'contract_discovery_required'=>4, 'adapter_missing'=>5, 'safety_blocked'=>6 );
 		$groups = array();
 		foreach ( $items as $item ) {
 			if ( empty( $item['active'] ) || empty( $item['functional_coverage'] ) || ! is_array( $item['functional_coverage'] ) ) continue;
@@ -201,16 +207,20 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			return strcmp( $left_family, $right_family );
 		} );
 
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Evidence needed</th><th>Safe now</th><th>Blocked scope</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
 		foreach ( $groups as $family => $group ) {
 			$item = $group['item']; $f = $group['functional']; $members = array_values( array_unique( $group['members'] ) );
 			$visible = array_slice( $members, 0, 4 ); $member_text = implode( ' · ', $visible );
 			if ( count( $members ) > count( $visible ) ) $member_text .= ' · +' . ( count( $members ) - count( $visible ) ) . ' more';
 			echo '<tr><td><strong>' . esc_html( $family ) . '</strong></td><td>' . esc_html( $member_text ) . '</td><td><strong>' . esc_html( $group['state'] ) . '</strong></td>';
 			echo '<td>' . esc_html( isset( $f['read_ability_count'] ) ? (string) $f['read_ability_count'] : '0' ) . '</td><td>' . esc_html( isset( $f['write_ability_count'] ) ? (string) $f['write_ability_count'] : '0' ) . '</td>';
-			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td><td><code>' . esc_html( ! empty( $f['blockers'] ) && is_array( $f['blockers'] ) ? implode( ', ', $f['blockers'] ) : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
+			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td>';
+			echo '<td>' . esc_html( ! empty( $f['evidence_requirements'] ) && is_array( $f['evidence_requirements'] ) ? implode( ', ', $f['evidence_requirements'] ) : '' ) . '</td>';
+			echo '<td><code>' . esc_html( ! empty( $f['safe_now'] ) && is_array( $f['safe_now'] ) ? implode( ', ', $f['safe_now'] ) : '' ) . '</code></td>';
+			echo '<td><code>' . esc_html( ! empty( $f['prohibited_until_certified'] ) && is_array( $f['prohibited_until_certified'] ) ? implode( ', ', $f['prohibited_until_certified'] ) : '' ) . '</code></td>';
+			echo '<td><code>' . esc_html( ! empty( $f['blockers'] ) && is_array( $f['blockers'] ) ? implode( ', ', $f['blockers'] ) : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
 		}
-		if ( empty( $groups ) ) echo '<tr><td colspan="9">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
+		if ( empty( $groups ) ) echo '<tr><td colspan="12">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
 		echo '</tbody></table></div>';
 	}
 
