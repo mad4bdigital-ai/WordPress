@@ -355,6 +355,29 @@
               ]
             }
           ]
+        },
+        "execution.acceptance-plan": {
+          "risk": "read",
+          "abilities": [
+            "wp-import-export/behavioral-acceptance-plan"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "PMXI_Import_Record"
+              ]
+            },
+            {
+              "type": "class_any",
+              "values": [
+                "PMXE_Export_Record"
+              ]
+            }
+          ]
         }
       }
     }
