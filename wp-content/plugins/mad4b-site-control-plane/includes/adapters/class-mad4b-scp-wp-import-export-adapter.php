@@ -154,7 +154,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'candidate_sha256'=>$contract['candidate_sha256'],'configuration_sha256'=>$contract['configuration_sha256'],
 			'source_artifact'=>$contract['source_artifact'],'identity_strategy'=>$contract['identity_strategy'],
 			'deletion_policy'=>$contract['deletion_policy'],'field_effect_policy'=>$contract['field_effect_policy'],
-			'dry_run'=>$contract['dry_run'],
+			'target_content_schema'=>$contract['target_content_schema'],'dry_run'=>$contract['dry_run'],
 			'potential_effects'=>array('create_records','update_records','delete_or_trash_records','taxonomy_changes','media_changes','custom_field_changes'),
 			'human_approval_required'=>true,'run_level_rollback_required'=>true,'ready_for_execution'=>false,
 			'blockers'=>array_values(array_unique(array_filter($blockers))),
@@ -187,11 +187,13 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'operation_id'=>$operation_id,'operation'=>'import_run','job_id'=>$v['job']['id'],
 			'candidate_sha256'=>$v['candidate_sha256'],'configuration_sha256'=>$v['configuration_sha256'],
 			'source_artifact'=>$v['source_artifact'],'identity_strategy'=>$v['identity_strategy'],
-			'deletion_policy'=>$v['deletion_policy'],'field_effect_policy'=>$v['field_effect_policy'],'dry_run'=>$v['dry_run'],
+			'deletion_policy'=>$v['deletion_policy'],'field_effect_policy'=>$v['field_effect_policy'],
+			'target_content_schema'=>isset($v['target_content_schema'])?$v['target_content_schema']:array(),'dry_run'=>$v['dry_run'],
 			'exact_preconditions'=>array(
 				'expected_configuration_sha256'=>$v['configuration_sha256'],
 				'expected_source_sha256'=>isset($v['source_artifact']['sha256'])?$v['source_artifact']['sha256']:'',
 				'expected_candidate_sha256'=>$v['candidate_sha256'],
+				'expected_target_schema_sha256'=>isset($v['target_content_schema']['schema_sha256'])?$v['target_content_schema']['schema_sha256']:'',
 			),
 			'impact'=>!empty($v['deletion_policy']['destructive_mode_detected'])?'critical':'high',
 			'human_approval_required'=>true,
@@ -258,10 +260,11 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		$identity=$this->identity_strategy($options);
 		$deletion=$this->deletion_policy($options);
 		$effects=$this->field_effect_policy($options);
+		$schema=$this->target_schema_binding(isset($job['target_type'])?$job['target_type']:'');
 		$blockers=array('mad4b_wp_all_import_dry_run_diff_not_certified');
 		if(empty($identity['configured']))$blockers[]='wp_all_import_identity_strategy_unknown';
 		if(empty($deletion['known']))$blockers[]='wp_all_import_delete_policy_unknown';
-		if(empty($job['target_type']))$blockers[]='wp_all_import_target_content_schema_unknown';
+		if(empty($schema['bound']))$blockers[]='wp_all_import_target_content_schema_unknown';
 		if(empty($source['sha256']))$blockers[]='wp_all_import_source_artifact_not_hash_bound';
 		if(!empty($deletion['destructive_mode_detected']))$blockers[]='wp_all_import_destructive_delete_requires_separate_approval';
 		$dry=array(
@@ -273,11 +276,13 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		$candidate=self::canonical_hash(array(
 			'job'=>$job,'provider_versions'=>$this->provider_versions(),'configuration_sha256'=>$config_sha,'source_sha256'=>$source['sha256'],
 			'identity_sha256'=>$identity['identity_sha256'],'deletion_policy'=>$deletion,'field_effect_policy'=>$effects,
+			'target_schema_sha256'=>isset($schema['schema_sha256'])?$schema['schema_sha256']:'',
 		));
 		return array(
 			'contract'=>'mad4b.wp-all-import-exact-contract.v1','job_id'=>$job['id'],
 			'configuration_sha256'=>$config_sha,'provider_versions'=>$this->provider_versions(),
 			'target_content_type'=>$job['target_type'],'content_schema_binding_required'=>true,
+			'target_content_schema'=>$schema,
 			'source_artifact'=>$source,'identity_strategy'=>$identity,
 			'deletion_policy'=>$deletion,'field_effect_policy'=>$effects,'dry_run'=>$dry,
 			'candidate_sha256'=>$candidate,'blockers'=>array_values(array_unique($blockers)),
@@ -303,6 +308,41 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'configuration_sha256'=>$config_sha,'field_selection_sha256'=>$field_sha,'filter_sha256'=>$filter_sha,
 			'candidate_sha256'=>$candidate,'data_classification_required'=>true,
 			'artifact_registry_required'=>true,'raw_options_exposed'=>false,'secret_material_exposed'=>false,
+		);
+	}
+	private function target_schema_binding( $post_type ) {
+		$post_type=sanitize_key((string)$post_type);
+		if(''===$post_type||!function_exists('post_type_exists')||!post_type_exists($post_type)){
+			return array(
+				'contract'=>'mad4b.bulk-target-content-schema.v1','post_type'=>$post_type,
+				'bound'=>false,'schema_sha256'=>'','reason'=>'post_type_unavailable',
+			);
+		}
+		$obj=get_post_type_object($post_type);
+		if(!is_object($obj)){
+			return array(
+				'contract'=>'mad4b.bulk-target-content-schema.v1','post_type'=>$post_type,
+				'bound'=>false,'schema_sha256'=>'','reason'=>'post_type_object_unavailable',
+			);
+		}
+		$supports=function_exists('get_all_post_type_supports')?(array)get_all_post_type_supports($post_type):array();
+		$support_names=array_keys($supports); sort($support_names,SORT_STRING);
+		$taxonomies=function_exists('get_object_taxonomies')?(array)get_object_taxonomies($post_type,'names'):array();
+		$taxonomies=array_values(array_unique(array_map('sanitize_key',$taxonomies))); sort($taxonomies,SORT_STRING);
+		$material=array(
+			'post_type'=>$post_type,
+			'public'=>!empty($obj->public),
+			'hierarchical'=>!empty($obj->hierarchical),
+			'show_ui'=>!empty($obj->show_ui),
+			'supports'=>$support_names,
+			'taxonomies'=>$taxonomies,
+		);
+		return array(
+			'contract'=>'mad4b.bulk-target-content-schema.v1','post_type'=>$post_type,
+			'bound'=>true,'schema_sha256'=>self::canonical_hash($material),
+			'public'=>$material['public'],'hierarchical'=>$material['hierarchical'],'show_ui'=>$material['show_ui'],
+			'supports'=>$support_names,'taxonomies'=>$taxonomies,
+			'raw_capabilities_exposed'=>false,
 		);
 	}
 	private function provider_versions() {
