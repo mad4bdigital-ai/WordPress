@@ -58,7 +58,14 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function status( $input = array() ) {
 		$runtime = class_exists('MAD4B_SCP_Repository_Artifact_Catalog') ? MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family($this->id()) : array();
-		$certification=$this->provider_certification($this->is_available());
+		$available=$this->is_available();
+		$certification=$this->provider_certification($available);
+		$capability_certification=null;
+		$capability_mount_projection=null;
+		if(class_exists('MAD4B_SCP_Provider_Compatibility_Certification')&&MAD4B_SCP_Provider_Compatibility_Certification::supports_provider($this->provider_key())){
+			$capability_certification=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider($this->provider_key(),$this);
+			$capability_mount_projection=MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection($this->provider_key(),$this);
+		}
 		$versions=array();
 		foreach($runtime as $plugin){
 			$file=isset($plugin['plugin_file'])?(string)$plugin['plugin_file']:'';
@@ -67,7 +74,7 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			if(false!==strpos($file,'wp-all-export')||false!==strpos($file,'wpae-'))$versions['export']=$version;
 		}
 		return array(
-			'contract'=>self::CONTRACT,'id'=>$this->id(),'label'=>$this->label(),'available'=>$this->is_available(),
+			'contract'=>self::CONTRACT,'id'=>$this->id(),'label'=>$this->label(),'available'=>$available,
 			'authority_mode'=>'governed_read_plan_execution_unmounted','abilities'=>$this->ability_names(),
 			'component_versions'=>$versions,'import_runtime_available'=>self::import_runtime_available(),
 			'export_runtime_available'=>self::export_runtime_available(),'execution'=>$this->execution_readiness(),
@@ -75,6 +82,9 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'import_run_rollback_contract'=>self::IMPORT_ROLLBACK_CONTRACT,'import_run_rollback_certified'=>false,
 			'mutation_requires_certification'=>true,
 			'provider_certification'=>is_array($certification)?$certification:null,
+			'capability_certification'=>is_array($capability_certification)?$capability_certification:null,
+			'capability_mount_projection'=>is_array($capability_mount_projection)?$capability_mount_projection:null,
+			'capability_certification_mode'=>'per_ability_separate_from_artifact_truth',
 			'mutation_exposed'=>false,'reversible_contracts'=>array(),'runtime_plugins'=>$runtime,
 		);
 	}
