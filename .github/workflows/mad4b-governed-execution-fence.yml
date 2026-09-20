@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mad4b-governed-execution-fence-${{ github.event.pull_request.head.sha || github.sha }}
+  group: mad4b-governed-execution-fence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -96,7 +96,7 @@ jobs:
           cp -a wp-content/plugins/mad4b-site-control-plane/. "$PLUGIN_STAGE/"
           rm -rf "$PLUGIN_STAGE/tests"
 
-          unzip -q wp-content/plugins/mcp-adapter.zip -d "$WP_PATH/wp-content/plugins"
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "wp-content/plugins/mcp-adapter.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
           ADAPTER_SHA="$(sha256sum wp-content/plugins/mcp-adapter.zip | awk '{print $1}')"
           test "$ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
 
