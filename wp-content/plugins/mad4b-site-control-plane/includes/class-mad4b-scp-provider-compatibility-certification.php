@@ -508,10 +508,32 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 	private static function artifact_evidence( $provider, array $runtime ) {
 		$contract = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::get( $provider ) : array();
 		$integrity = isset( $runtime['runtime_integrity'] ) && is_array( $runtime['runtime_integrity'] ) ? $runtime['runtime_integrity'] : array();
+		$component_artifacts = array();
+		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
+			foreach ( $contract['components'] as $key => $component ) {
+				if ( ! is_array( $component ) ) continue;
+				$key = sanitize_key( (string) $key );
+				$runtime_component = isset( $runtime['components'][ $key ] ) && is_array( $runtime['components'][ $key ] ) ? $runtime['components'][ $key ] : array();
+				$component_artifacts[ $key ] = array(
+					'plugin_file' => isset( $component['plugin_file'] ) ? (string) $component['plugin_file'] : '',
+					'archive' => isset( $component['archive'] ) ? (string) $component['archive'] : '',
+					'archive_sha256' => isset( $component['archive_sha256'] ) ? strtolower( (string) $component['archive_sha256'] ) : '',
+					'certified_version' => isset( $component['version'] ) ? (string) $component['version'] : '',
+					'installed_version' => isset( $runtime_component['installed_version'] ) ? (string) $runtime_component['installed_version'] : '',
+					'status' => isset( $runtime_component['status'] ) ? (string) $runtime_component['status'] : 'unknown',
+				);
+			}
+			ksort( $component_artifacts, SORT_STRING );
+		}
+		$baseline_sha = isset( $contract['archive_sha256'] ) ? (string) $contract['archive_sha256'] : '';
+		if ( '' === $baseline_sha && ! empty( $component_artifacts ) ) {
+			$baseline_sha = self::stable_digest( array_map( static function ( $item ) { return isset( $item['archive_sha256'] ) ? $item['archive_sha256'] : ''; }, $component_artifacts ) );
+		}
 		$fingerprint_payload = array(
 			'provider' => $provider,
 			'installed_version' => isset( $runtime['installed_version'] ) ? (string) $runtime['installed_version'] : '',
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
+			'components' => $component_artifacts,
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : '',
 			'verified' => array_values( (array) ( $integrity['verified'] ?? array() ) ),
 			'missing' => array_values( (array) ( $integrity['missing'] ?? array() ) ),
@@ -522,7 +544,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'certified_versions' => array_values( (array) ( $runtime['certified_versions'] ?? array() ) ),
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : 'repository_baseline',
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
-			'baseline_package_sha256' => isset( $contract['archive_sha256'] ) ? (string) $contract['archive_sha256'] : '',
+			'component_artifacts' => $component_artifacts,
+			'baseline_package_sha256' => $baseline_sha,
 			'runtime_status' => isset( $runtime['status'] ) ? (string) $runtime['status'] : 'unknown',
 			'runtime_integrity' => $integrity,
 			'runtime_artifact_fingerprint' => self::stable_digest( $fingerprint_payload ),
