@@ -1,6 +1,6 @@
 {
   "name": "mad4b-wordpress",
-  "version": "0.2.0-rc.1",
+  "version": "0.2.0-rc.2",
   "description": "Governed WordPress diagnostics, reusable workflow skills and exact-approval tenant-bound write operations for MAD4B.",
   "apps": "./.app.json",
   "skills": "./skills/",
@@ -10,7 +10,10 @@
     "longDescription": "WordPress diagnostics, connection checks, Elementor, JetEngine, archive audits and governed tenant-bound update/write/mutation workflows backed by explicit Site Profile enrollment, exact NHI grants, one-time approvals and MAD4B MCP certification.",
     "developerName": "MAD4B",
     "category": "Productivity",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://github.com/mad4bdigital-ai/WordPress"
   }
 }
