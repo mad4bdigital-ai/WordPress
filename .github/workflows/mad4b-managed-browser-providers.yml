@@ -28,19 +28,24 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-managed-browser-providers-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   contract:
     name: Browser provider contract
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install exact runtime dependencies
+      - name: Install runtime dependencies
         run: npm install --no-save playwright-core @browserbasehq/sdk steel-sdk
       - name: Provider selection and plan-boundary tests
         run: node tools/browser-acceptance/test-provider-selection.mjs
@@ -69,7 +74,10 @@ jobs:
       BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
       STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
