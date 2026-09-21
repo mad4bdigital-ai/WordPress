@@ -394,5 +394,43 @@ foreach ( array( 'dedicated-client-secret-fixture', 'dedicated-access-short', 'd
 $dedicated_disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
 mad4b_oauth_assert( ! is_wp_error( $dedicated_disconnected ) && empty( $dedicated_disconnected['connected'] ), 'Dedicated Google grant must revoke and disconnect cleanly.', $dedicated_disconnected );
 
+$same_dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
+mad4b_oauth_assert( ! is_wp_error( $same_dedicated_mode ) && MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $same_dedicated_mode['mode'], 'Saving the already-effective auth mode must be idempotent instead of reporting persistence failure.', $same_dedicated_mode );
+
+$full_suite_selection = MAD4B_SCP_Google_Drive_Context::full_suite_grant_selection();
+$full_suite = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( $full_suite_selection );
+mad4b_oauth_assert( ! is_wp_error( $full_suite ), 'Full Apps Suite grant selection must persist.', $full_suite );
+mad4b_oauth_assert( ! empty( $full_suite['full_suite_selected'] ), 'Full Apps Suite selection must be reported explicitly.', $full_suite );
+mad4b_oauth_assert( 14 === (int) $full_suite['scope_count'], 'Full Apps Suite must resolve to the expected deduplicated OAuth scope count.', $full_suite );
+
+$full_suite_url = MAD4B_SCP_Google_Drive_Context::authorization_url( 'read_write' );
+mad4b_oauth_assert( ! is_wp_error( $full_suite_url ), 'Full Apps Suite OAuth authorization URL must be created.', $full_suite_url );
+parse_str( (string) parse_url( $full_suite_url, PHP_URL_QUERY ), $full_suite_query );
+$full_suite_scopes = preg_split( '/\s+/', isset( $full_suite_query['scope'] ) ? (string) $full_suite_query['scope'] : '' );
+$full_suite_scopes = array_values( array_unique( array_filter( is_array( $full_suite_scopes ) ? $full_suite_scopes : array() ) ) );
+foreach ( array(
+	MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::DOCS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SHEETS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_PROJECTS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_DEPLOYMENTS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_PROCESSES_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_METRICS_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::DRIVE_SCRIPTS_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GEMINI_CLOUD_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GEMINI_RETRIEVER_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GMAIL_FULL_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GMAIL_SETTINGS_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GMAIL_SHARING_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::CALENDAR_FULL_SCOPE,
+) as $required_scope ) {
+	mad4b_oauth_assert( in_array( $required_scope, $full_suite_scopes, true ), 'Full Apps Suite OAuth request is missing required scope: ' . $required_scope, $full_suite_scopes );
+}
+
+update_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array( 'contract' => MAD4B_SCP_Google_Drive_Context::CONTRACT, 'refresh_token' => 'sealed-fixture' ), false );
+$blocked_grant_change = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( array( 'drive' => 'read' ) );
+mad4b_oauth_assert( is_wp_error( $blocked_grant_change ) && 'mad4b_google_workspace_grants_change_requires_disconnect' === $blocked_grant_change->get_error_code(), 'Workspace grants must not change while a Google token exists.', $blocked_grant_change );
+delete_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION );
+
 mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v7: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v8: PASS\n";
