@@ -63,6 +63,53 @@ $check( ! empty( $comparison['dynamic_tag_drift'] ), 'Elementor comparison did n
 $check( empty( $comparison['parity'] ), 'Drifted Elementor documents were incorrectly reported as parity.' );
 $check( ! empty( $comparison['read_only'] ), 'Elementor comparator must remain read-only.' );
 
+$before_document = $adapter->get_document( array( 'post_id' => $target_id ) );
+$check( ! is_wp_error( $before_document ) && preg_match( '/^[a-f0-9]{64}$/', (string) ( $before_document['sha256'] ?? '' ) ), 'Disposable target document must expose exact SHA-256 before mutation.' );
+$before_sha = (string) $before_document['sha256'];
+$mutation_input = array(
+	'post_id' => $target_id,
+	'element_id' => 'aaa1111',
+	'target_setting' => 'gallery',
+	'tag_name' => 'etg-filter-gallery',
+	'mode' => 'combined',
+	'limit' => 9,
+	'expected_sha256' => $before_sha,
+);
+$rollback = $adapter->capture_reversible_state( 'elementor/set-etg-dynamic-tag', $mutation_input );
+$check( ! is_wp_error( $rollback ) && 'elementor-structural-element' === (string) ( $rollback['target_type'] ?? '' ), 'Canonical ETG dynamic-tag mutation must capture bounded rollback state.' );
+
+$mutation = $adapter->set_etg_dynamic_tag( $mutation_input );
+$check( ! is_wp_error( $mutation ), 'Canonical ETG Gallery dynamic-tag mutation failed on exact certified Elementor runtime.' );
+$check( ! empty( $mutation['updated'] ) && 'etg-filter-gallery' === (string) ( $mutation['dynamic_tag_name'] ?? '' ), 'Canonical ETG Gallery mutation did not report exact updated tag.' );
+$check( preg_match( '/^[a-f0-9]{64}$/', (string) ( $mutation['sha256'] ?? '' ) ) && ! hash_equals( $before_sha, (string) $mutation['sha256'] ), 'Canonical ETG Gallery mutation must change the document SHA.' );
+
+$dynamic_readback = $adapter->get_dynamic_tags( array( 'post_id' => $target_id ) );
+$check( ! is_wp_error( $dynamic_readback ), 'Dynamic-tag readback failed after canonical ETG Gallery mutation.' );
+$gallery_binding = '';
+foreach ( (array) ( $dynamic_readback['dynamic_tags'] ?? array() ) as $entry ) {
+	if ( 'aaa1111' === (string) ( $entry['element_id'] ?? '' ) && 'gallery' === (string) ( $entry['setting'] ?? '' ) ) {
+		$gallery_binding = (string) ( $entry['tag'] ?? '' );
+		break;
+	}
+}
+$check( '' !== $gallery_binding, 'Canonical ETG Gallery binding was not persisted in Elementor __dynamic__ state.' );
+$parsed_gallery = $parse_method->invoke( $adapter, $gallery_binding );
+$check( ! is_wp_error( $parsed_gallery ) && 'etg-filter-gallery' === (string) ( $parsed_gallery['name'] ?? '' ), 'Persisted ETG Gallery binding did not round-trip through Elementor parser.' );
+$check( 'combined' === (string) ( $parsed_gallery['settings']['mode'] ?? '' ) && 9 === (int) ( $parsed_gallery['settings']['limit'] ?? 0 ), 'Persisted ETG Gallery settings drifted during readback.' );
+
+$stale = $adapter->set_etg_dynamic_tag( $mutation_input );
+$check( is_wp_error( $stale ) && 'mad4b_elementor_stale_document' === $stale->get_error_code(), 'Replaying canonical ETG mutation with stale document SHA must fail closed.' );
+
+$restored = $adapter->restore_reversible_state(
+	'elementor/set-etg-dynamic-tag',
+	(array) $rollback['target'],
+	(array) $rollback['state'],
+	array()
+);
+$check( true === $restored, 'Canonical ETG Gallery rollback failed.' );
+$restored_document = $adapter->get_document( array( 'post_id' => $target_id ) );
+$check( ! is_wp_error( $restored_document ) && hash_equals( $before_sha, (string) ( $restored_document['sha256'] ?? '' ) ), 'Canonical ETG Gallery rollback did not restore exact pre-mutation document SHA.' );
+
 wp_delete_post( $source_id, true );
 wp_delete_post( $target_id, true );
 echo "mad4b.elementor-etg-structural-primitives.runtime.v1: PASS\n";
