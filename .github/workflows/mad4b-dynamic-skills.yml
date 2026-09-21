@@ -87,6 +87,7 @@ jobs:
             tests/runtime-dynamic-skills-smoke.php \
             tests/runtime-governance-readonly-immutability.php \
             tests/runtime-plugin-lifecycle-data-continuity.php \
+            tests/runtime-workflow-lifecycle-governance.php \
             tests/runtime-authority-concurrency-worker.php \
             tests/runtime-authority-concurrency-verify.php \
             tests/authority-candidate-binding-runtime.php \
@@ -246,6 +247,12 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+      - name: Prove workflow provider and plugin lifecycle planning fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-workflow-lifecycle-governance.php" --path=/tmp/mad4b-dynamic-skills-staging --user=mad4b-ci-admin
+
       - name: Prove bulk Import Export remains exact-plan-only and fail-closed
         shell: bash
         run: |
