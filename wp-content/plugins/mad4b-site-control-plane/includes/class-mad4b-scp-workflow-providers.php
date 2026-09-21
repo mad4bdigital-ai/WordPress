@@ -17,20 +17,23 @@ final class MAD4B_SCP_Workflow_Providers {
 	private static $config = null;
 
 	public static function boot() {
+		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ), 25 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
+	}
+
+	public static function register_category() {
+		if ( ! function_exists( 'wp_register_ability_category' ) ) return;
+		wp_register_ability_category(
+			'mad4b-workflows',
+			array(
+				'label' => 'MAD4B Workflows',
+				'description' => 'Provider-neutral governed workflow planning and provider capability discovery.',
+			)
+		);
 	}
 
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
-		if ( function_exists( 'wp_register_ability_category' ) ) {
-			wp_register_ability_category(
-				'mad4b-workflows',
-				array(
-					'label' => 'MAD4B Workflows',
-					'description' => 'Provider-neutral governed workflow planning and provider capability discovery.',
-				)
-			);
-		}
 
 		if ( ! wp_has_ability( 'mad4b/workflow-provider-status' ) ) {
 			wp_register_ability(
