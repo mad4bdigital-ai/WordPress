@@ -267,9 +267,16 @@
       "risk": "high",
       "requested_contracts": [
         "flow_read",
-        "governed_execution"
+        "governed_execution",
+        "workflow_provider_contract",
+        "flow_enable_disable",
+        "execution_status",
+        "retry_cancel"
       ],
-      "functional_mode": "specialized"
+      "functional_mode": "specialized",
+      "mutation_scope": "governed_execution_only_until_lifecycle_contracts_certified",
+      "functional_rationale": "Bit Flows is an execution provider behind MAD4B governance. Read and exact governed run-flow remain the only mapped operations; create/enable/disable/retry/cancel stay fail-closed until their public provider contracts and behavioral evidence are certified.",
+      "functional_next_action": "recertify_installed_bitflows_capabilities_then_promote_each_operation_independently_without_direct_provider_database_writes"
     },
     {
       "id": "litespeed",
