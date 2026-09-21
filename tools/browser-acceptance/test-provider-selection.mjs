@@ -42,6 +42,12 @@ const websocketClass = classifyProviderError(websocketFailure, contracts.provide
 assert.equal(websocketClass.category, "provider_transport_or_runtime");
 assert.equal(websocketClass.fallback_allowed, true);
 
+const secretFailure = new Error("connect failed wss://production-sfo.browserless.io?token=super-secret-token&timeout=120000 Authorization: Bearer very-secret");
+const secretClass = classifyProviderError(secretFailure, contracts.providers.browserless);
+assert.equal(secretClass.message.includes("super-secret-token"), false);
+assert.equal(secretClass.message.includes("very-secret"), false);
+assert.match(secretClass.message, /REDACTED/);
+
 const now = Math.floor(Date.now() / 1000);
 const plan = {
   contract: "mad4b.browser-acceptance-plan.v1",
