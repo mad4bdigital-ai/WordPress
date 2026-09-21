@@ -320,7 +320,11 @@ if "'mad4b_write_capability_not_eligible'" not in (root / 'includes/class-mad4b-
 for marker in [
     "'production_auto_enable' => false",
     "'breakglass_auto_enable' => false",
-    "'all_remote_writes_require_exact_approval' => true",
+    "'all_remote_writes_require_exact_approval' => false",
+    "'normal_remote_writes_require_exact_approval' => true",
+    "'remote_write_approval_policy' => 'exact_approval_except_bounded_candidate_bootstrap'",
+    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY )",
+    "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'",
 ]:
     if marker not in write:
         raise SystemExit('Write authority invariant missing: ' + marker)
