@@ -38,7 +38,7 @@ export function classifyProviderError(error, definition = {}) {
   const text = raw.toLowerCase();
   const fallbackStatuses = new Set(definition.fallback_statuses || []);
   const acceptanceExecutionError =
-    /^(browser_plan_|browser_filter_|browser_observer_|browser_presentation_|browser_case_|browser_reset_|browser_dom_|browser_origin_)/.test(text);
+    /^(browser_plan_|browser_execution_|browser_filter_|browser_observer_|browser_presentation_|browser_case_|browser_reset_|browser_dom_|browser_origin_)/.test(text);
   const quotaLike =
     fallbackStatuses.has(status) ||
     /quota|rate.?limit|too many|capacity|concurr|browser time limit|credits?|payment|required|exhaust/.test(text);
