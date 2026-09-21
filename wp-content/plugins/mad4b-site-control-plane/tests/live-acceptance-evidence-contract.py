@@ -48,6 +48,7 @@ required_observer = [
     "'readonly' => true",
     "'surface' => 'read'",
     "'production_capture_persistence_enabled' => false",
+    "'closed_observation' => $closed_observation",
     "'pending_external_evidence'",
     "'external_facts_self_certified' => false",
     "'provider_gated_write_tools'",
