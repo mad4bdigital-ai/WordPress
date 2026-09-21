@@ -124,7 +124,11 @@ if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'C
 $write_authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
 if ( empty( $write_authority['ready'] ) || 'ready' !== $write_authority['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_authority ) );
 if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );
-if ( empty( $write_authority['all_remote_writes_require_exact_approval'] ) ) $fail( 'Remote governed writes are not forced through exact approvals.' );
+if ( ! array_key_exists( 'all_remote_writes_require_exact_approval', $write_authority ) || false !== $write_authority['all_remote_writes_require_exact_approval'] ) $fail( 'Write authority did not expose the bounded bootstrap approval exception truth.' );
+if ( empty( $write_authority['normal_remote_writes_require_exact_approval'] ) ) $fail( 'Normal remote governed writes are not forced through exact approvals.' );
+if ( 'exact_approval_except_bounded_candidate_bootstrap' !== (string) $write_authority['remote_write_approval_policy'] ) $fail( 'Write authority remote approval policy is not the bounded bootstrap contract.' );
+$prior_approval_exceptions = isset( $write_authority['remote_write_prior_approval_exceptions'] ) && is_array( $write_authority['remote_write_prior_approval_exceptions'] ) ? array_values( $write_authority['remote_write_prior_approval_exceptions'] ) : array();
+if ( array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY ) !== $prior_approval_exceptions ) $fail( 'Write authority prior-approval exception set is not limited to the candidate bootstrap ability.' );
 if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into governed write authority.' );
 if ( empty( $write_authority['write_tool_count'] ) ) $fail( 'Write authority inventory is empty.' );
 if ( empty( $write_authority['site_uuid'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $write_authority['site_uuid'] ) ) $fail( 'Write authority is not bound to the enrolled site UUID.' );
@@ -255,7 +259,10 @@ if ( empty( $readback['ready'] ) || ! hash_equals( (string) $cert['evidence_dige
 
 $write_cert = MAD4B_SCP_Write_Runtime_Certification::observe();
 if ( empty( $write_cert['ready'] ) || 'ready' !== $write_cert['state'] ) $fail( 'Governed write certification is blocked: ' . wp_json_encode( isset( $write_cert['blockers'] ) ? $write_cert['blockers'] : array() ) );
-if ( empty( $write_cert['exact_approval_required_for_remote_write'] ) ) $fail( 'Write certification does not require exact remote approvals.' );
+if ( empty( $write_cert['normal_remote_write_exact_approval_required'] ) ) $fail( 'Write certification does not require exact approvals for normal remote writes.' );
+$bootstrap_exception = isset( $write_cert['candidate_bootstrap_prior_approval_exception'] ) ? (string) $write_cert['candidate_bootstrap_prior_approval_exception'] : '';
+if ( empty( $write_cert['exact_approval_required_for_remote_write'] ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY !== $bootstrap_exception ) $fail( 'Write certification relaxed exact approval outside the bounded candidate bootstrap ability.' );
+if ( ! empty( $write_cert['exact_approval_required_for_remote_write'] ) && '' !== $bootstrap_exception ) $fail( 'Write certification reported a bootstrap exception while claiming all remote writes require exact approval.' );
 if ( 'pending_ticket_creation_only' !== $write_cert['approval_planner_bootstrap_exception'] ) $fail( 'Write certification did not record the bounded planner bootstrap exception.' );
 if ( ! empty( $write_cert['external_client_tools_verified'] ) ) $fail( 'WordPress must not claim external client tool refresh.' );
 if ( (int) $write_cert['write_tool_count'] !== count( $write_tools ) ) $fail( 'Write certification inventory count mismatch.' );
