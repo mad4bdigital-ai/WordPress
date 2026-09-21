@@ -1,0 +1,65 @@
+{
+  "contract": "mad4b.browser-execution-providers.v1",
+  "selection_policy": "priority_first_available_with_runtime_fallback",
+  "priority": ["cloudflare", "browserbase", "browserless", "steel"],
+  "limits_are_advisory": true,
+  "runtime_fallback_is_authoritative": true,
+  "providers": {
+    "cloudflare": {
+      "label": "Cloudflare Browser Run",
+      "execution_mode": "managed_browser_agent",
+      "recurring_free_tier": true,
+      "priority": 10,
+      "credential_env": ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_BROWSER_RUN_API_TOKEN"],
+      "advisory_free_limits": {
+        "browser_seconds_per_day": 600,
+        "concurrent_browsers": 3,
+        "session_seconds": 600
+      },
+      "capabilities": ["playwright_cdp", "session_guardrails"],
+      "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
+    },
+    "browserbase": {
+      "label": "Browserbase",
+      "execution_mode": "managed_browser_agent",
+      "recurring_free_tier": true,
+      "priority": 20,
+      "credential_env": ["BROWSERBASE_API_KEY"],
+      "advisory_free_limits": {
+        "browser_seconds_per_month": 3600,
+        "concurrent_browsers": 3,
+        "session_seconds": 900
+      },
+      "capabilities": ["playwright_cdp"],
+      "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
+    },
+    "browserless": {
+      "label": "Browserless",
+      "execution_mode": "managed_browser_agent",
+      "recurring_free_tier": true,
+      "priority": 30,
+      "credential_env": ["BROWSERLESS_TOKEN"],
+      "advisory_free_limits": {
+        "units_per_month": 1000,
+        "concurrent_browsers": 2,
+        "session_seconds": 120
+      },
+      "capabilities": ["playwright_cdp", "short_session_chunking"],
+      "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
+    },
+    "steel": {
+      "label": "Steel",
+      "execution_mode": "managed_browser_agent",
+      "recurring_free_tier": false,
+      "priority": 40,
+      "credential_env": ["STEEL_API_KEY"],
+      "advisory_free_limits": {
+        "one_time_credit_usd": 30,
+        "concurrent_browsers": 10,
+        "session_seconds": 900
+      },
+      "capabilities": ["playwright_cdp"],
+      "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
+    }
+  }
+}

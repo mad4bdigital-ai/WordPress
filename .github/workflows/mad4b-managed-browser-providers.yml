@@ -1,0 +1,102 @@
+name: MAD4B Managed Browser Providers
+
+on:
+  pull_request:
+    paths:
+      - 'tools/browser-acceptance/**'
+      - '.github/workflows/mad4b-managed-browser-providers.yml'
+      - 'docs/MAD4B-MANAGED-BROWSER-PROVIDERS.md'
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'Provider: auto uses governed priority/fallback'
+        type: choice
+        required: true
+        default: auto
+        options:
+          - auto
+          - cloudflare
+          - browserbase
+          - browserless
+          - steel
+      live:
+        description: 'Run live only when a fresh signed plan file is provided by the calling environment'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Browser provider contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install exact runtime dependencies
+        run: npm install --no-save playwright-core @browserbasehq/sdk steel-sdk
+      - name: Provider selection and plan-boundary tests
+        run: node tools/browser-acceptance/test-provider-selection.mjs
+      - name: Deny arbitrary execution inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner=tools/browser-acceptance/run-etg-browser-acceptance.mjs
+          driver=tools/browser-acceptance/etg-driver.mjs
+          ! grep -Eq -- '--url|--selector|--javascript|--taxonomy|--term' "$runner"
+          grep -Fq 'plan.cases' "$driver"
+          grep -Fq 'plan.origin' "$driver"
+          grep -Fq 'plan.challenge' "$driver"
+
+  live:
+    name: Live ETG managed browser acceptance
+    needs: contract
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MAD4B_BROWSER_PROVIDER: ${{ inputs.provider }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
+      STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-save playwright-core @browserbasehq/sdk steel-sdk
+      - name: Require caller-provided fresh signed plan file
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${MAD4B_BROWSER_PLAN_FILE:-}" || {
+            echo 'MAD4B_BROWSER_PLAN_FILE is intentionally not synthesized by GitHub Actions.' >&2
+            echo 'The authenticated MAD4B transport must materialize a fresh signed plan in the runner environment.' >&2
+            exit 2
+          }
+          test -s "$MAD4B_BROWSER_PLAN_FILE"
+      - name: Execute governed browser plan with provider fallback
+        run: |
+          node tools/browser-acceptance/run-etg-browser-acceptance.mjs \
+            --plan "$MAD4B_BROWSER_PLAN_FILE" \
+            --provider "$MAD4B_BROWSER_PROVIDER" \
+            --out browser-evidence.json \
+            --attempts-out browser-provider-attempts.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mad4b-browser-provider-evidence-${{ github.sha }}
+          path: |
+            browser-evidence.json
+            browser-provider-attempts.json
+          if-no-files-found: warn
+          retention-days: 14
