@@ -442,7 +442,7 @@ require(admin, "Context Authority never reconciles grants automatically", "no au
 require(admin, "runtime_authority_not_reconciled", "runtime reconciliation blocker UX")
 
 require(workflow, "context-oauth-lifecycle-runtime.php", "OAuth lifecycle runtime CI")
-require(oauth_runtime, "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v7: PASS", "Managed, Dedicated, and site-HMAC OAuth lifecycle runtime proof")
+require(oauth_runtime, "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v8: PASS", "Managed, Dedicated, Workspace grants, and site-HMAC OAuth lifecycle runtime proof")
 require(oauth_runtime, "mad4b_assert_managed_site_signature", "Managed broker site-HMAC runtime verification")
 require(oauth_runtime, "MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET", "Managed broker signing secret runtime fixture")
 require(oauth_runtime, "Managed session/redeem/refresh must each use a fresh request nonce.", "Managed broker fresh nonce runtime assertion")
