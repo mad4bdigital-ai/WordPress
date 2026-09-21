@@ -51,8 +51,8 @@ function node(attrs={},text=''){return{attrs:Object.assign({},attrs),textContent
   subs['ajaxFilters/updated']('jet-engine','tours_query_archive');
   document.dispatchEvent({type:'etg-dfsb/ajax-presentation-updated',detail:{provider:'jet-engine',query_id:'tours_query_archive'}});await sleep(5);
   const largeEvidence=await observer.snapshotAsync();
-  const canonical=v=>JSON.stringify(v);
-  const hex=v=>nodeCrypto.createHash('sha256').update(canonical(v)).digest('hex');
+  const canonicalJson=v=>JSON.stringify(v);
+  const hex=v=>nodeCrypto.createHash('sha256').update(canonicalJson(v)).digest('hex');
   assert.strictEqual(largeEvidence.rendered.ids.length,100,'sync evidence stays capped at 100 IDs');
   assert.strictEqual(largeEvidence.rendered.observed_id_count,150,'observer records full bounded DOM count');
   assert.strictEqual(largeEvidence.rendered.digest_authoritative,true,'async snapshot produces authoritative large-result digest');
