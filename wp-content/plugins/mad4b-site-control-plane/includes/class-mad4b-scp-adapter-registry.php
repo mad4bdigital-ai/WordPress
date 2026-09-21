@@ -77,6 +77,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			'mad4b/filesystem-list', 'mad4b/filesystem-read', 'mad4b/database-list-tables', 'mad4b/database-describe-table',
 			'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 			'mad4b/write-authority-status', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status',
+			'mad4b/plugin-lifecycle-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan',
 			'mad4b/content-get-post', 'mad4b/content-update-post',
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch',
 			'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/mutation-get', 'mad4b/mutation-undo',
