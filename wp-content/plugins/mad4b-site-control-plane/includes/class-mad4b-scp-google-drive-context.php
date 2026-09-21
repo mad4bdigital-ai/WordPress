@@ -2887,24 +2887,44 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return strlen( $value ) <= 8 ? $value : '…' . substr( $value, -8 );
 	}
 
+	private static function option_values_equal( $left, $right ) {
+		return serialize( $left ) === serialize( $right );
+	}
+
+	private static function clear_option_read_cache( $name ) {
+		if ( ! function_exists( 'wp_cache_delete' ) ) return;
+		wp_cache_delete( $name, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+	}
+
 	private static function write_option( $name, $value ) {
 		$current = get_option( $name, false );
-		if ( false !== $current && $current === $value ) return true;
+		if ( false !== $current && self::option_values_equal( $current, $value ) ) return true;
+
 		$result = false === $current ? add_option( $name, $value, '', 'no' ) : update_option( $name, $value );
-		if ( function_exists( 'wp_cache_delete' ) ) {
-			wp_cache_delete( $name, 'options' );
-			wp_cache_delete( 'alloptions', 'options' );
-		}
+		self::clear_option_read_cache( $name );
 		$readback = get_option( $name, false );
-		if ( true === $result || $readback === $value ) return true;
-		if ( false !== $current ) {
+		if ( self::option_values_equal( $readback, $value ) ) return true;
+
+		// Persistent object caches can retain a stale notoptions entry. In that
+		// state get_option() reports "missing", add_option() loses the database
+		// uniqueness race because the row already exists, and a naive writer
+		// returns a false persistence failure. After invalidation, update the
+		// revealed row through the WordPress Options API and verify exact readback.
+		if ( false !== $readback ) {
 			update_option( $name, $value );
-			if ( function_exists( 'wp_cache_delete' ) ) {
-				wp_cache_delete( $name, 'options' );
-				wp_cache_delete( 'alloptions', 'options' );
-			}
-			return get_option( $name, false ) === $value;
+			self::clear_option_read_cache( $name );
+			return self::option_values_equal( get_option( $name, false ), $value );
 		}
+
+		// Genuine absence: retry add once after clearing the negative cache.
+		if ( false === $current && false === $result ) {
+			add_option( $name, $value, '', 'no' );
+			self::clear_option_read_cache( $name );
+			return self::option_values_equal( get_option( $name, false ), $value );
+		}
+
 		return false;
 	}
 
