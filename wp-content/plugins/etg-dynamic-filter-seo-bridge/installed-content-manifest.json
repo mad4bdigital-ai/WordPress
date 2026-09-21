@@ -64,7 +64,7 @@
     "includes/Diagnostics/RuntimeInventoryStructureTrait.php": "bfa8765f8890b455f97727a19e0ccd97d403ce8301b68d5e59ceaf33c4104da4",
     "includes/Elementor/ArchiveHeroPreset.php": "d2220efd6e076d7ad7c80fc30d39f361d369ba26a8986e7b621485229c93bb4d",
     "includes/Elementor/ContainerDynamicBackground.php": "4b1e3ca4f6d60c7f2f338916eab7636b46f2ca7a8660afcd995d04df386d76e1",
-    "includes/Elementor/DynamicTagRegistrar.php": "8b76a4ad44e673036342533c5b811fc9bf539a524696f5bb0edc2b4cc0bf7a2f",
+    "includes/Elementor/DynamicTagRegistrar.php": "3a9416587430323fa8cdd0206ff1d0e00ff94d7244d37933664af4b36319f5b3",
     "includes/Elementor/DynamicTags/ContentSlotGalleryTag.php": "af5c0d5944689fe5178922e1a1698921620cefddab805813af96a85a6e9a4ebb",
     "includes/Elementor/DynamicTags/ContentSlotImageTag.php": "679850b57e46b774d79d777f14d09706313507b8eb71d8d0d4dfc0d0be51ab5e",
     "includes/Elementor/DynamicTags/ContentSlotTag.php": "a1b0485df96fdcdb0712095f68e037e64f910c0e4781aa57ad712e34cf7e554e",
