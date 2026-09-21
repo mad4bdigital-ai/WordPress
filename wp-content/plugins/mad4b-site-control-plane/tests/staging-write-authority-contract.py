@@ -76,6 +76,10 @@ for marker in [
     "'jetengine/create-query'",
     "'jetengine/create-taxonomy'",
     "'jetengine/manage-modules'",
+    "'elementor/clone-subtree' => 'elementor'",
+    "'elementor/move-element' => 'elementor'",
+    "'elementor/delete-element' => 'elementor'",
+    "'elementor/set-dynamic-tag' => 'elementor'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
     "MAD4B_SCP_Agent_Registry::resolve_agent",
@@ -99,7 +103,17 @@ for marker in [
     if marker not in grant_reconcile:
         raise SystemExit(f'missing bounded exact grant-reconciliation invariant: {marker}')
 
-allowlist = grant_reconcile.split('public static function allowed_abilities()', 1)[1].split('public static function boot()', 1)[0]
+allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function boot()', 1)[0]
+for required_pair in [
+    "'jetengine/create-cpt' => 'native-provider'",
+    "'elementor/clone-subtree' => 'elementor'",
+    "'elementor/move-element' => 'elementor'",
+    "'elementor/delete-element' => 'elementor'",
+    "'elementor/set-dynamic-tag' => 'elementor'",
+]:
+    if required_pair not in allowlist:
+        raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
+
 for forbidden_grant in [
     "'jetengine/import-configuration'",
     "'jetengine/export-configuration'",
