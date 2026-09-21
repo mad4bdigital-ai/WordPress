@@ -25,6 +25,7 @@ const outPath = arg("out", process.env.MAD4B_BROWSER_EVIDENCE_FILE || "browser-e
 const attemptsPath = arg("attempts-out", "browser-provider-attempts.json");
 const requested = arg("provider", process.env.MAD4B_BROWSER_PROVIDER || "auto");
 const executionDeadline = Number(process.env.MAD4B_BROWSER_EXECUTION_DEADLINE_EPOCH || 0);
+const allowCreditProviders = requested !== "auto" || /^(1|true|yes|on)$/i.test(String(process.env.MAD4B_BROWSER_ALLOW_CREDIT_FALLBACK || ""));
 
 if (!planPath) {
   console.error("Missing --plan. Browser runner consumes a fresh signed MAD4B Browser Acceptance plan file.");
@@ -36,8 +37,9 @@ const contracts = loadProviderContracts();
 const budget = new BrowserRunBudget(contracts);
 const configured = configuredProviders(process.env, requested);
 const candidates = requested === "auto"
-  ? rankProviderCandidates(configured, plan, contracts)
-  : rankProviderCandidates(configured, plan, contracts).sort((a, b) => Number(a.definition?.priority || 9999) - Number(b.definition?.priority || 9999));
+  ? rankProviderCandidates(configured, plan, contracts, { allowCreditProviders })
+  : rankProviderCandidates(configured, plan, contracts, { allowCreditProviders: true })
+      .sort((a, b) => Number(a.definition?.priority || 9999) - Number(b.definition?.priority || 9999));
 
 const attempts = [];
 let selectedProvider = "";
@@ -152,6 +154,7 @@ fs.writeFileSync(attemptsPath, JSON.stringify({
   contract: "mad4b.browser-provider-attempts.v2",
   provider_contract: contracts.contract,
   selection_policy: contracts.selection_policy,
+  allow_credit_fallback: allowCreditProviders,
   plan_digest: plan.plan_digest,
   selected_provider: selectedProvider,
   run_budget: { ...budget.snapshot(), execution_deadline_epoch: executionDeadline || null },
