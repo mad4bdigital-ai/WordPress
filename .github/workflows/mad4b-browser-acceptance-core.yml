@@ -12,6 +12,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php'
       - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js'
       - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserObserverAsset.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserObserverAsset.php'
       - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceFreshnessGuard.php'
       - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-browser-acceptance-observer-smoke.js'
       - 'wp-content/plugins/jet-engine.zip'
@@ -81,6 +83,21 @@ jobs:
           done
       - name: Run fail-closed browser provider projection contract
         run: php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php
+
+  observer-js:
+    name: ETG Browser Observer JS contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact PR head checkout
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run exact observer contract smoke
+        run: node wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-browser-acceptance-observer-smoke.js
 
   exact-etg-runtime:
     name: Exact ETG Browser Acceptance Provider runtime
