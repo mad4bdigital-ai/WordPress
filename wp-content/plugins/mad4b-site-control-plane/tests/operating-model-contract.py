@@ -20,6 +20,15 @@ if machine.get("states")!=["UNBOUND","CANDIDATE_VERIFIED","BINDING_BOOTSTRAP_ALL
 if "write_runtime_ready" in machine["transitions"][1].get("requires",[]): raise SystemExit("bootstrap depends on write runtime")
 bridge=config["workflow_provider_bridge"]
 if bridge.get("provider")!="bitflows" or bridge.get("state")!="blocked_pending_public_provider_contract" or bridge.get("direct_provider_database_writes")!="forbidden" or bridge.get("production_authority")!="forbidden": raise SystemExit("Bit Flows bridge fail-closed contract invalid")
+boundaries=config.get("coverage_boundaries",{})
+expected_boundaries={
+    "generic_browser_assertion_expression_dsl":"partial",
+    "persistent_universal_evidence_graph_store_query_api":"partial",
+    "universal_ownership_driven_reconciliation_engine":"partial",
+    "bitflows_addon_bridge_activation":"contracted_not_activated",
+}
+for boundary,state in expected_boundaries.items():
+    if boundaries.get(boundary,{}).get("state")!=state: raise SystemExit(f"operating-model coverage boundary drifted: {boundary}")
 markers=("mad4b/operating-model-status","mad4b/semantic-identity-map","mad4b/site-feature-bundle-validate","mad4b/state-diff","mad4b/operation-plan","mad4b/evidence-invalidation-plan","mad4b/invariant-evaluate","mad4b/candidate-state","mad4b/workflow-compile","plan_sha256","workflow_sha256","non_authorizing","mutation_performed","authority_created","mad4b_capability")
 for marker in markers:
     if marker not in impl: raise SystemExit(f"implementation missing {marker}")
