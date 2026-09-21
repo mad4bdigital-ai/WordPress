@@ -3,10 +3,11 @@ import { configuredProviders, classifyProviderError, loadProviderContracts } fro
 import { validatePlan } from "./etg-driver.mjs";
 
 const contracts = loadProviderContracts();
+assert.equal(contracts.contract, "mad4b.browser-execution-providers.v2");
 assert.deepEqual(contracts.priority, ["cloudflare", "browserbase", "browserless", "steel"]);
 assert.equal(contracts.providers.cloudflare.advisory_free_limits.browser_seconds_per_day, 600);
-assert.equal(contracts.providers.browserbase.advisory_free_limits.session_seconds, 900);
-assert.equal(contracts.providers.browserless.advisory_free_limits.session_seconds, 120);
+assert.equal(contracts.providers.browserbase.runtime_constraints.hard_session_seconds, 900);
+assert.equal(contracts.providers.browserless.runtime_constraints.hard_session_seconds, 120);
 assert.equal(contracts.providers.steel.advisory_free_limits.one_time_credit_usd, 30);
 
 const env = {
