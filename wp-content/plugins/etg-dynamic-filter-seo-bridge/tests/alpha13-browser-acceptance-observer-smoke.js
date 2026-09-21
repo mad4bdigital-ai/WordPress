@@ -1,5 +1,6 @@
 'use strict';
-const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
+const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm'),nodeCrypto=require('crypto');
+const {TextEncoder}=require('util');
 const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'assets/js/browser-acceptance-observer.js'),'utf8');
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
@@ -12,8 +13,8 @@ function node(attrs={},text=''){return{attrs:Object.assign({},attrs),textContent
   const history={pushState(){},replaceState(){}};
   let perfNow=1000;
   const performance={now(){perfNow+=25;return perfNow;},getEntriesByType(type){return type==='navigation'?[{startTime:0,requestStart:10,responseStart:60,domContentLoadedEventEnd:180,loadEventEnd:220}]:[];}};
-  const window={performance,location:{href:'https://staging.egypttourgates.com/tours-and-activities/',pathname:'/tours-and-activities/'},history,fetch:originalFetch,JetSmartFilters:{filterGroups:{'jet-engine/tours_query_archive':{currentQuery:{}}},events:{subscribe(name,cb){subs[name]=cb;}}},setTimeout,clearTimeout};
-  const context={window,document,URL,JSON,Array,String,Number,Error,RegExp,parseInt,isFinite,setTimeout,clearTimeout,console};
+  const window={performance,crypto:nodeCrypto.webcrypto,TextEncoder,location:{href:'https://staging.egypttourgates.com/tours-and-activities/',pathname:'/tours-and-activities/'},history,fetch:originalFetch,JetSmartFilters:{filterGroups:{'jet-engine/tours_query_archive':{currentQuery:{}}},events:{subscribe(name,cb){subs[name]=cb;}}},setTimeout,clearTimeout};
+  const context={window,document,URL,JSON,Array,String,Number,Error,RegExp,parseInt,isFinite,setTimeout,clearTimeout,console,Uint8Array,Promise};
   vm.runInNewContext(source,context,{filename:'browser-acceptance-observer.js'});
   const observer=window.ETGDFSBBrowserAcceptanceObserver;
   assert(observer,'observer must expose a bounded API');assert.strictEqual(observer.contract,'etg.dfsb.browser-acceptance-observer.v1');assert.strictEqual(observer.passive,true);assert.strictEqual(observer.authorizing,false);
@@ -43,6 +44,22 @@ function node(attrs={},text=''){return{attrs:Object.assign({},attrs),textContent
   assert.strictEqual(evidence.reset.event_observed,true);assert.strictEqual(evidence.reset.neutral_state_restored,true);
   assert.strictEqual(evidence.history_calls.length,32,'history diagnostics must be capped');assert(evidence.history_calls.every(item=>item.method==='pushState'&&item.etg_source===false),'history diagnostics must stay bounded and non-authorizing');
   assert.strictEqual(evidence.blocked_events.length,32,'blocked diagnostics must be capped');assert(evidence.blocked_events.every(item=>item.reason.length===160),'blocked reason strings must be bounded');assert(evidence.blocked_events.every(item=>item.blocking_reasons.length===32),'blocked reason arrays must be bounded');assert(evidence.blocked_events.every(item=>!Object.prototype.hasOwnProperty.call(item,'unknown')),'blocked diagnostics must drop arbitrary fields');
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(evidence.rendered,'proof_ids'),false,'raw full proof IDs must not cross the evidence boundary');
+  observer.disarm();
+  ids=Array.from({length:150},(_,i)=>i+1);count=150;window.location.href='https://staging.egypttourgates.com/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:luxor/';window.location.pathname='/tours-and-activities/jsf/jet-engine:tours_query_archive/tax/location_jet:luxor/';
+  assert.strictEqual(observer.arm(planCase,challenge).ok,true,'large-result case re-arms');
+  subs['ajaxFilters/updated']('jet-engine','tours_query_archive');
+  document.dispatchEvent({type:'etg-dfsb/ajax-presentation-updated',detail:{provider:'jet-engine',query_id:'tours_query_archive'}});await sleep(5);
+  const largeEvidence=await observer.snapshotAsync();
+  const canonical=v=>JSON.stringify(v);
+  const hex=v=>nodeCrypto.createHash('sha256').update(canonical(v)).digest('hex');
+  assert.strictEqual(largeEvidence.rendered.ids.length,100,'sync evidence stays capped at 100 IDs');
+  assert.strictEqual(largeEvidence.rendered.observed_id_count,150,'observer records full bounded DOM count');
+  assert.strictEqual(largeEvidence.rendered.digest_authoritative,true,'async snapshot produces authoritative large-result digest');
+  assert.strictEqual(largeEvidence.rendered.proof_item_count,150,'async digest binds the full DOM proof count');
+  assert.strictEqual(largeEvidence.rendered.identity_digest,hex(ids.slice().sort((a,b)=>a-b)),'identity digest matches canonical semantic proof');
+  assert.strictEqual(largeEvidence.rendered.order_digest,hex(ids),'order digest matches canonical semantic proof');
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(largeEvidence.rendered,'proof_ids'),false,'async evidence does not leak raw full proof IDs');
   observer.disarm();assert.strictEqual(window.fetch,originalFetch,'observer restores fetch instrumentation on disarm');
   assert(!source.includes('.click('),'observer must not drive UI clicks');assert(!source.includes('location.href ='),'observer must not navigate the browser');assert(!source.includes('history.pushState('),'observer must not create history state');
   console.log('Alpha13 passive browser acceptance observer smoke tests passed.');
