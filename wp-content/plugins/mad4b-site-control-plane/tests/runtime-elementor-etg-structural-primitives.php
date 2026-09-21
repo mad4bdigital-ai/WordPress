@@ -76,7 +76,19 @@ $mutation_input = array(
 	'expected_sha256' => $before_sha,
 );
 $rollback = $adapter->capture_reversible_state( 'elementor/set-etg-dynamic-tag', $mutation_input );
-$check( ! is_wp_error( $rollback ) && 'elementor-structural-element' === (string) ( $rollback['target_type'] ?? '' ), 'Canonical ETG dynamic-tag mutation must capture bounded rollback state.' );
+if ( is_wp_error( $rollback ) ) {
+	$runtime_status = class_exists( 'MAD4B_SCP_Provider_Contracts' )
+		? MAD4B_SCP_Provider_Contracts::runtime_status( 'elementor', true )
+		: array( 'provider_contracts' => 'unavailable' );
+	throw new RuntimeException(
+		'Canonical ETG dynamic-tag rollback capture failed: '
+		. $rollback->get_error_code()
+		. ' | ' . $rollback->get_error_message()
+		. ' | data=' . wp_json_encode( $rollback->get_error_data() )
+		. ' | runtime=' . wp_json_encode( $runtime_status )
+	);
+}
+$check( 'elementor-structural-element' === (string) ( $rollback['target_type'] ?? '' ), 'Canonical ETG dynamic-tag mutation must capture bounded rollback state.' );
 
 $mutation = $adapter->set_etg_dynamic_tag( $mutation_input );
 $check( ! is_wp_error( $mutation ), 'Canonical ETG Gallery dynamic-tag mutation failed on exact certified Elementor runtime.' );
