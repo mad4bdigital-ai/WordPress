@@ -10,6 +10,7 @@ import {
   requestBrowserPlan,
   submitBrowserEvidence
 } from "./mcp-bridge.mjs";
+import { buildBrowserExecutionReceipt } from "./receipt.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -24,6 +25,7 @@ const browserProvider = arg("browser-provider", process.env.MAD4B_BROWSER_PROVID
 const evidencePath = path.resolve(arg("out", "browser-evidence.json"));
 const attemptsPath = path.resolve(arg("attempts-out", "browser-provider-attempts.json"));
 const resultPath = path.resolve(arg("result-out", "browser-acceptance-result.json"));
+const receiptPath = path.resolve(arg("receipt-out", "browser-execution-receipt.json"));
 
 if (!resource || !accessToken) {
   console.error("MAD4B_MCP_RESOURCE and a short-lived MAD4B_MCP_ACCESS_TOKEN are required.");
@@ -70,6 +72,16 @@ try {
   const result = await submitBrowserEvidence(session, plan, evidence);
   fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
+  const attempts = JSON.parse(fs.readFileSync(attemptsPath, "utf8"));
+  const receipt = buildBrowserExecutionReceipt({
+    plan,
+    attempts,
+    evidence,
+    result,
+    sourceHead: process.env.GITHUB_SHA || ""
+  });
+  fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2));
+
   const verified = result?.verification?.browser_runtime_parity_verified === true;
   const verdict = String(result?.verdict || "");
   console.log(JSON.stringify({
@@ -80,7 +92,9 @@ try {
     result_contract: result.contract,
     verdict,
     browser_runtime_parity_verified: verified,
-    result_file: resultPath
+    result_file: resultPath,
+    receipt_file: receiptPath,
+    receipt_sha256: receipt.receipt_sha256
   }));
 
   if (verdict !== "PASS" || !verified) process.exitCode = 1;
