@@ -71,7 +71,7 @@ namespace {
 
     $capabilities=call_user_func($guarded['capabilities_callback']);
     etg_browser_same('mad4b.browser-acceptance-capabilities.v1',$capabilities['contract'],'central capability contract is exposed');
-    foreach(array('browser.ajax_round_trip','browser.event_stream','browser.dom_result_count','browser.dataset_id_parity','browser.dataset_digest_parity','browser.order_parity','browser.url_state','browser.seo_non_authority','browser.reset_behavior')as$capability){
+    foreach(array('browser.ajax_round_trip','browser.event_stream','browser.dom_result_count','browser.dataset_id_parity','browser.dataset_digest_parity','browser.order_parity','browser.url_state','browser.seo_non_authority','browser.reset_behavior','browser.performance_baseline')as$capability){
         etg_browser_expect(in_array($capability,$capabilities['capabilities'],true),'capability missing: '.$capability);
     }
     etg_browser_same('etg.dfsb.browser-acceptance-challenge.v1',$capabilities['freshness_challenge']['contract'],'freshness challenge contract is advertised');
@@ -122,6 +122,7 @@ namespace {
             'runtime'=>array('javascript_runtime'=>true,'jet_smart_filters_observed'=>true,'filter_group'=>$case['provider'].'/'.$case['query_id']),
             'events'=>array('ajax_filters_updated'=>true,'presentation_updated'=>true,'presentation_reset'=>true),
             'network'=>array('method'=>'POST','endpoint'=>'https://staging.egypttourgates.com/wp-json/etg-dfsb/v1/ajax-presentation','http_status'=>200,'contract'=>'etg.dfsb.ajax-presentation.v1','status'=>'ready','authorizing'=>false,'url_authority'=>false,'seo_mutation'=>false,'provider'=>$case['provider'],'query_id'=>$case['query_id']),
+            'performance'=>array('ttfb_ms'=>120.0,'ajax_endpoint_latency_ms'=>75.0,'filter_to_presentation_ms'=>95.0),
             'rendered'=>array('result_count'=>$case['expected']['result_total'],'result_count_authoritative'=>true,'result_count_source'=>'jet_smart_filters_results_count','ids'=>$case['expected']['ids'],'ids_complete'=>true),
             'url_state'=>array('filter_state_observed'=>true,'etg_history_mutation'=>false),
             'seo'=>array('canonical_unchanged'=>true,'robots_unchanged'=>true,'hreflang_unchanged'=>true,'rank_math_unchanged'=>true),
