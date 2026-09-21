@@ -10,7 +10,7 @@ import {
   requestBrowserPlan,
   submitBrowserEvidence
 } from "./mcp-bridge.mjs";
-import { buildBrowserExecutionReceipt } from "./receipt.mjs";
+import { buildBrowserExecutionReceipt, canonicalSha256 } from "./receipt.mjs";
 import { loadProviderContracts } from "./providers.mjs";
 
 function arg(name, fallback = "") {
@@ -94,6 +94,15 @@ try {
   const result = await submitBrowserEvidence(session, plan, evidence);
   fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
+  const localEvidenceDigest = canonicalSha256(evidence);
+  const reducerEvidenceDigest = String(result?.evidence_digest || "");
+  if (!/^[a-f0-9]{64}$/.test(reducerEvidenceDigest) || reducerEvidenceDigest !== localEvidenceDigest) {
+    throw new Error("mad4b_browser_evidence_digest_mismatch");
+  }
+  if (!/^[a-f0-9]{64}$/.test(String(result?.receipt_signature || ""))) {
+    throw new Error("mad4b_browser_receipt_signature_missing");
+  }
+
   const attempts = JSON.parse(fs.readFileSync(attemptsPath, "utf8"));
   const receipt = buildBrowserExecutionReceipt({
     plan,
@@ -119,7 +128,9 @@ try {
     browser_runtime_parity_verified: verified,
     result_file: resultPath,
     receipt_file: receiptPath,
-    receipt_sha256: receipt.receipt_sha256
+    receipt_sha256: receipt.receipt_sha256,
+    reducer_evidence_digest: reducerEvidenceDigest,
+    reducer_receipt_signature_present: true
   }));
 
   if (verdict !== "PASS" || !verified) process.exitCode = 1;
