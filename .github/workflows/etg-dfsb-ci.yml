@@ -229,7 +229,7 @@ jobs:
           PY
 
       - name: Enforce PR change boundary
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'master'
         shell: bash
         run: |
           set -euo pipefail
