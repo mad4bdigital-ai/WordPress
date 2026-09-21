@@ -17,21 +17,9 @@ on:
       - 'wp-content/plugins/wpml-string-translation.zip'
       - 'wp-content/plugins/wp-seo-multilingual.zip'
   push:
-    branches: [feat/etg-dynamic-filter-seo-bridge]
-    paths:
-      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
-      - 'specs/001-etg-dynamic-filter-seo-operational/**'
-      - '.specify/**'
-      - '.github/workflows/etg-dfsb-ci.yml'
-      - '.github/workflows/etg-dfsb-jetengine-ci.yml'
-      - '.github/workflows/indexflow-foundation-ci.yml'
-      - 'wp-content/plugins/jet-engine.zip'
-      - 'wp-content/plugins/jet-smart-filters.zip'
-      - 'wp-content/plugins/seo-by-rank-math.zip'
-      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
-      - 'wp-content/plugins/sitepress-multilingual-cms.zip'
-      - 'wp-content/plugins/wpml-string-translation.zip'
-      - 'wp-content/plugins/wp-seo-multilingual.zip'
+    branches:
+      - feat/etg-dynamic-filter-seo-bridge
+      - 'fix/etg-*'
 
 concurrency:
   group: etg-dfsb-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
