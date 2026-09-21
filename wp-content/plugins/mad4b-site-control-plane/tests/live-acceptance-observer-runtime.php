@@ -12,6 +12,7 @@ namespace {
 	$GLOBALS['mad4b_test_env'] = 'staging';
 	$GLOBALS['mad4b_test_home'] = 'https://staging.egypttourgates.com';
 	$GLOBALS['mad4b_test_init'] = 0;
+	$GLOBALS['mad4b_test_options'] = array();
 
 	class WP_Error {
 		private $code;
@@ -32,8 +33,8 @@ namespace {
 	function absint( $value ) { return abs( (int) $value ); }
 	function add_action() {}
 	function add_filter() {}
-	function get_option( $key, $default = false ) { return $default; }
-	function update_option() { return true; }
+	function get_option( $key, $default = false ) { return array_key_exists( $key, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $key ] : $default; }
+	function update_option( $key, $value, $autoload = false ) { $GLOBALS['mad4b_test_options'][ $key ] = $value; return true; }
 	function set_transient() { return true; }
 	function get_transient() { return false; }
 	function delete_transient() { return true; }
@@ -44,6 +45,7 @@ namespace {
 		public static function site_host() { return (string) parse_url( self::site_origin(), PHP_URL_HOST ); }
 		public static function related_origin( $environment ) { return 'production' === (string) $environment ? 'https://production.test' : self::site_origin(); }
 		public static function nonproduction_governed( $feature = '' ) { return in_array( self::current_environment(), array( 'local', 'development', 'staging' ), true ) && ( '' === $feature || 'acceptance' === $feature ); }
+		public static function acceptance_enabled() { return true; }
 		public static function site_urls_match_enrollment() { return ! isset( $GLOBALS['mad4b_test_urls_match'] ) || ! empty( $GLOBALS['mad4b_test_urls_match'] ); }
 	}
 	class MAD4B_SCP_Servers {
@@ -118,6 +120,55 @@ namespace {
 		'success' => MAD4B_SCP_Live_Acceptance_Finalizer::classify_wpml_response( 200, array( 'status' => 'valid', 'get_parameters' => 'valid' ), '', true ),
 	);
 	foreach ( $wpml_classes as $expected => $result ) mad4b_assert( $expected === $result['classification'], 'WPML normalized classification failed for ' . $expected );
+
+	$observer_reflection = new ReflectionClass( 'MAD4B_SCP_Live_Acceptance_Observer' );
+	$current_build_method = $observer_reflection->getMethod( 'current_build_fingerprint' );
+	$current_build_method->setAccessible( true );
+	$current_build = (string) $current_build_method->invoke( null );
+	mad4b_assert( 1 === preg_match( '/^[a-f0-9]{64}$/', $current_build ), 'Runtime fixture must resolve a current build fingerprint for performance evidence.' );
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ] = array(
+		'contract' => MAD4B_SCP_Live_Acceptance_Observer::QUERY_MONITOR_CONTRACT,
+		'control_plane_version' => MAD4B_SCP_VERSION,
+		'build_fingerprint' => $current_build,
+		'capture_started_at' => gmdate( 'Y-m-d H:i:s', time() - 60 ),
+		'last_observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ),
+		'observed_request_count' => 1,
+		'request_coverage' => array( 'mcp' => 0, 'rest' => 0, 'wp_admin' => 0, 'frontend' => 1 ),
+		'counters' => array(
+			'mad4b' => array(
+				'doing_it_wrong' => 0, 'deprecated_function' => 0, 'deprecated_argument' => 0,
+				'deprecated_hook' => 0, 'deprecated_class' => 0, 'ability_not_found' => 0,
+				'wp_get_ability_missing' => 0, 'pre_init_abilities_violation' => 0,
+			),
+			'third_party' => array( 'fluentform_action_scheduler' => 0 ),
+			'wordpress_core' => array(),
+			'unknown' => array(),
+		),
+		'events' => array(),
+		'performance' => array(
+			'contract' => 'mad4b.frontend-performance-evidence.v1',
+			'frontend_observed' => true,
+			'rest_observed' => false,
+			'samples' => array(),
+			'last_by_class' => array(
+				'frontend' => array(
+					'request_class' => 'frontend',
+					'server_elapsed_ms' => 125.0,
+					'db_queries' => 37,
+					'peak_memory_bytes' => 16777216,
+					'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ),
+				),
+			),
+		),
+	);
+	$performance = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( ! empty( $performance['ready'] ), 'Current-build front-end performance sample must become ready.' );
+	mad4b_assert( 'ready' === (string) $performance['state'], 'Current-build front-end performance state must be ready.' );
+	mad4b_assert( ! empty( $performance['baseline_only'] ) && empty( $performance['budget_evaluated'] ), 'Front-end performance evidence must remain a baseline, not a synthetic budget verdict.' );
+	mad4b_assert( empty( $performance['ttfb_claimed'] ), 'Server elapsed evidence must not self-claim TTFB.' );
+	mad4b_assert( 125.0 === (float) $performance['metrics']['server_elapsed_ms'], 'Front-end server elapsed sample drifted.' );
+	mad4b_assert( 37 === (int) $performance['metrics']['db_queries'], 'Front-end DB query sample drifted.' );
+	mad4b_assert( 16777216 === (int) $performance['metrics']['peak_memory_bytes'], 'Front-end peak memory sample drifted.' );
 
 	$match = MAD4B_SCP_Live_Acceptance_Observer::snapshot_verify( array( 'client_snapshot_token' => 'sha256:' . str_repeat( 'a', 64 ) ) );
 	mad4b_assert( ! empty( $match['exact_match'] ), 'Matching snapshot token must compare true.' );

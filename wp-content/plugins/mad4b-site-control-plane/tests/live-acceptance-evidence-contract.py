@@ -286,6 +286,8 @@ for marker in [
 
 # Positive reachability is a mandatory regression, not only false-pass checks.
 for marker in [
+    'Current-build front-end performance sample must become ready.',
+    'Server elapsed evidence must not self-claim TTFB.',
     'Valid authoritative mutation receipt must become ready.',
     'Wrong mutation SHA must fail closed.',
     'Wrong mutation fingerprint must fail closed.',
