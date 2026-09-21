@@ -298,12 +298,39 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$blockers[] = 'grant_registry_unavailable';
 		}
 
+		$bootstrap_provider = null;
 		if ( ! in_array( self::CANDIDATE_BOOTSTRAP_ABILITY, self::write_tools(), true ) ) $blockers[] = 'bootstrap_ability_not_runtime_eligible';
 		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
-			if ( null === MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', self::CANDIDATE_BOOTSTRAP_ABILITY ) ) $blockers[] = 'bootstrap_provider_unmounted';
+			$bootstrap_provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', self::CANDIDATE_BOOTSTRAP_ABILITY );
+			if ( null === $bootstrap_provider ) $blockers[] = 'bootstrap_provider_unmounted';
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', self::CANDIDATE_BOOTSTRAP_ABILITY ) ) $blockers[] = 'bootstrap_ability_unmounted';
 		} else {
 			$blockers[] = 'server_registry_unavailable';
+		}
+
+		// Actual execution eligibility additionally proves the same OAuth/NHI and
+		// exact ability/provider grant that central authorization will re-check.
+		// Policy projection without an input remains read-only and does not require
+		// an active bearer identity.
+		if ( is_array( $input ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+				$blockers[] = 'bootstrap_identity_registry_unavailable';
+			} else {
+				$identity = MAD4B_SCP_Identity_Context::current();
+				if ( is_wp_error( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) {
+					$blockers[] = 'bootstrap_oauth_identity_required';
+				} else {
+					$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+					if ( is_wp_error( $agent ) || empty( $agent['id'] ) || 'chatgpt-governed-write' !== ( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) {
+						$blockers[] = 'bootstrap_canonical_agent_required';
+					} elseif ( null === $bootstrap_provider ) {
+						$blockers[] = 'bootstrap_exact_grant_provider_missing';
+					} else {
+						$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::CANDIDATE_BOOTSTRAP_ABILITY, sanitize_key( (string) $bootstrap_provider ) );
+						if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'bootstrap_exact_nhi_grant_missing';
+					}
+				}
+			}
 		}
 
 		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
@@ -341,6 +368,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'blockers' => $blockers,
 			'input_binding_verified' => $input_binding_verified,
 			'prior_approval_required' => false,
+			'exact_nhi_grant_verified' => is_array( $input ) && ! in_array( 'bootstrap_exact_nhi_grant_missing', $blockers, true ) && ! in_array( 'bootstrap_exact_grant_provider_missing', $blockers, true ) && ! in_array( 'bootstrap_oauth_identity_required', $blockers, true ) && ! in_array( 'bootstrap_canonical_agent_required', $blockers, true ),
 			'exact_nhi_grant_required_downstream' => true,
 			'budget_required_downstream' => true,
 			'audit_required_downstream' => true,
