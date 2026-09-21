@@ -936,6 +936,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$messages = array(
 			'brand_profile_saved' => __( 'Brand Context Profile saved.', 'mad4b-site-control-plane' ),
 			'google_credentials_saved' => __( 'Google OAuth configuration saved securely.', 'mad4b-site-control-plane' ),
+			'google_dedicated_credentials_saved' => __( 'Dedicated Google OAuth configuration saved securely.', 'mad4b-site-control-plane' ),
+			'google_auth_mode_saved' => __( 'Google connection method saved.', 'mad4b-site-control-plane' ),
+			'google_grants_saved' => __( 'Google Workspace grants saved.', 'mad4b-site-control-plane' ),
 			'google_connected' => __( 'Google Drive connected.', 'mad4b-site-control-plane' ),
 			'google_disconnected' => __( 'Google Drive disconnected. Existing Context assets were not deleted.', 'mad4b-site-control-plane' ),
 			'source_selected' => __( 'Source folder added. Scan it when you are ready.', 'mad4b-site-control-plane' ),
@@ -1003,16 +1006,17 @@ final class MAD4B_SCP_Context_Admin_UI {
 	private static function scripts() {
 		echo '<script>
 		(function(){
-			function feedback(message, ok){
+			function feedback(message, ok, code){
+				document.querySelectorAll(".mad4b-context-page > .notice").forEach(function(node){node.remove();});
 				var box=document.getElementById("mad4b-google-ajax-feedback");
 				if(!box)return;
 				box.className="mad4b-google-ajax-feedback notice "+(ok?"notice-success":"notice-error")+" inline";
 				box.innerHTML="<p></p>";
-				box.querySelector("p").textContent=message||"";
+				box.querySelector("p").textContent=(code?code+" · ":"")+(message||"");
 			}
 			async function refreshPanels(){
-				var response=await fetch(window.location.href,{credentials:"same-origin",headers:{"X-MAD4B-Fragment":"google-context"}});
-				if(!response.ok)return;
+				var response=await fetch(window.location.href,{credentials:"same-origin",headers:{"X-MAD4B-Fragment":"google-context","Cache-Control":"no-cache"}});
+				if(!response.ok)throw new Error("Updated settings were saved, but the Google setup panels could not be refreshed.");
 				var html=await response.text();
 				var doc=new DOMParser().parseFromString(html,"text/html");
 				["mad4b-google-connection-method","mad4b-google-grants","mad4b-google-auth-setup","mad4b-google-connect"].forEach(function(id){
@@ -1027,13 +1031,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 				var form=button.closest("form");
 				if(!form)return;
 				form.querySelectorAll("select[data-full-mode]").forEach(function(select){select.value=select.getAttribute("data-full-mode");});
-				feedback("Full Apps Suite selected. Save Grants to persist the reviewed scope set.",true);
+				feedback("Full Apps Suite selected. Save Grants to persist the reviewed scope set.",true,"");
 			});
 			document.addEventListener("change",function(event){
 				var input=event.target.closest(".mad4b-context-auth-mode-form input[name=auth_mode]");
 				if(!input)return;
 				var form=input.closest("form");
-				if(!form)return;
+				if(!form||form.dataset.mad4bBusy==="1")return;
 				if(typeof form.requestSubmit==="function")form.requestSubmit();
 				else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
 			});
@@ -1041,20 +1045,32 @@ final class MAD4B_SCP_Context_Admin_UI {
 				var form=event.target.closest(".mad4b-context-ajax-form");
 				if(!form)return;
 				event.preventDefault();
-				var submit=form.querySelector("[type=submit]");
-				if(submit)submit.disabled=true;
+				if(form.dataset.mad4bBusy==="1")return;
+				form.dataset.mad4bBusy="1";
+				form.setAttribute("aria-busy","true");
+				var body=new URLSearchParams(new FormData(form));
+				var controls=Array.prototype.slice.call(form.querySelectorAll("button,input,select,textarea"));
+				var priorDisabled=controls.map(function(control){return control.disabled;});
+				controls.forEach(function(control){control.disabled=true;});
+				feedback("Saving…",true,"");
 				try{
-					var body=new URLSearchParams(new FormData(form));
-					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"},body:body.toString()});
+					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","X-Requested-With":"XMLHttpRequest"},body:body.toString()});
 					var payload=await response.json();
-					if(!payload||!payload.success)throw new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Settings could not be saved.");
+					if(!payload||!payload.success){
+						var failure=new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Settings could not be saved.");
+						failure.mad4bCode=payload&&payload.data&&payload.data.code?payload.data.code:"mad4b_context_ajax_save_failed";
+						throw failure;
+					}
 					form.querySelectorAll("input[type=password]").forEach(function(input){input.value="";});
-					feedback(payload.data&&payload.data.message?payload.data.message:"Saved.",true);
 					if(payload.data&&payload.data.refresh)await refreshPanels();
+					feedback(payload.data&&payload.data.message?payload.data.message:"Saved.",true,"");
 				}catch(error){
-					feedback(error&&error.message?error.message:"Settings could not be saved.",false);
+					try{await refreshPanels();}catch(refreshError){}
+					feedback(error&&error.message?error.message:"Settings could not be saved.",false,error&&error.mad4bCode?error.mad4bCode:"");
 				}finally{
-					if(submit)submit.disabled=false;
+					form.removeAttribute("aria-busy");
+					delete form.dataset.mad4bBusy;
+					controls.forEach(function(control,index){control.disabled=priorDisabled[index];});
 				}
 			});
 		})();
