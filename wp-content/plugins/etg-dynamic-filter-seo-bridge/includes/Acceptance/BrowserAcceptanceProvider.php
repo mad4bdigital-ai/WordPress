@@ -95,6 +95,7 @@ final class BrowserAcceptanceProvider {
                 'browser.url_state',
                 'browser.seo_non_authority',
                 'browser.reset_behavior',
+                'browser.performance_baseline',
             ),
             'required_events'=>array('ajaxFilters/updated','etg-dfsb/ajax-presentation-updated','etg-dfsb/ajax-presentation-reset'),
             'required_network'=>array('POST /wp-json/etg-dfsb/v1/ajax-presentation'),
@@ -300,6 +301,14 @@ final class BrowserAcceptanceProvider {
         $tests['browser_ajax_round_trip']=$networkPass?'PASS':'BLOCKED';
         if(!$networkPass)$infra[]='browser_ajax_round_trip_invalid';
 
+        $performance=(array)($evidence['performance']??array());
+        $ttfb=isset($performance['ttfb_ms'])&&is_numeric($performance['ttfb_ms'])?(float)$performance['ttfb_ms']:-1;
+        $ajaxLatency=isset($performance['ajax_endpoint_latency_ms'])&&is_numeric($performance['ajax_endpoint_latency_ms'])?(float)$performance['ajax_endpoint_latency_ms']:(isset($network['latency_ms'])&&is_numeric($network['latency_ms'])?(float)$network['latency_ms']:-1);
+        $presentationLatency=isset($performance['filter_to_presentation_ms'])&&is_numeric($performance['filter_to_presentation_ms'])?(float)$performance['filter_to_presentation_ms']:-1;
+        $performancePass=$ttfb>=0&&$ajaxLatency>=0&&$presentationLatency>=0;
+        $tests['browser_performance_baseline']=$performancePass?'PASS':'INCOMPLETE_EVIDENCE';
+        if(!$performancePass)$incomplete[]='browser_performance_baseline_missing';
+
         $rendered=(array)($evidence['rendered'] ?? array());
         $expectedProof=(array)$expected['expected'];
         $expectedTotal=(int)($expectedProof['result_total']??0);
@@ -387,6 +396,7 @@ final class BrowserAcceptanceProvider {
             'observed_total'=>$actualTotal,
             'result_count_authoritative'=>$countAuthoritative,
             'result_count_source'=>(string)($rendered['result_count_source']??''),
+            'performance'=>array('ttfb_ms'=>$ttfb,'ajax_endpoint_latency_ms'=>$ajaxLatency,'filter_to_presentation_ms'=>$presentationLatency),
             'observed_ids'=>$actualIds,
             'tests'=>$tests,
             'blocking_reasons'=>array(),
@@ -440,7 +450,7 @@ final class BrowserAcceptanceProvider {
     }
 
     private function reduceTests(array $cases):array{
-        $keys=array('browser_ajax_round_trip','browser_event_stream','browser_dom_result_count','browser_dataset_id_parity','browser_order_parity','browser_url_state','browser_seo_non_authority','browser_reset_behavior');$out=array();
+        $keys=array('browser_ajax_round_trip','browser_event_stream','browser_dom_result_count','browser_dataset_id_parity','browser_order_parity','browser_url_state','browser_seo_non_authority','browser_reset_behavior','browser_performance_baseline');$out=array();
         foreach($keys as$key){$status='PASS';foreach($cases as$case){$caseStatus=(string)($case['tests'][$key]??'INCOMPLETE_EVIDENCE');if('BLOCKED'===$caseStatus){$status='BLOCKED';break;}if('FAIL'===$caseStatus){$status='FAIL';continue;}if('INCOMPLETE_EVIDENCE'===$caseStatus&&'PASS'===$status)$status='INCOMPLETE_EVIDENCE';}$out[$key]=$status;}return$out;
     }
     private function buildIdentity():array{try{$identity=call_user_func($this->buildIdentityProvider);}catch(\Throwable$e){return array('valid'=>false);}return is_array($identity)?$identity:array('valid'=>false);}
