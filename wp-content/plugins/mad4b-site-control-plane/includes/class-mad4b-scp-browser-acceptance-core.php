@@ -315,7 +315,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'additionalProperties' => false,
 				),
 				'network' => array(
-					'type' => 'object', 'maxProperties' => 10,
+					'type' => 'object', 'maxProperties' => 11,
 					'properties' => array(
 						'method' => array( 'type' => 'string', 'maxLength' => 16 ),
 						'endpoint' => $string2048,
@@ -327,6 +327,18 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 						'seo_mutation' => array( 'type' => 'boolean' ),
 						'provider' => $string80,
 						'query_id' => array( 'type' => 'string', 'maxLength' => 128 ),
+						'latency_ms' => array( 'type' => 'number', 'minimum' => 0, 'maximum' => 120000 ),
+					),
+					'additionalProperties' => false,
+				),
+				'performance' => array(
+					'type' => 'object', 'maxProperties' => 5,
+					'properties' => array(
+						'ttfb_ms' => array( 'type' => 'number', 'minimum' => 0, 'maximum' => 120000 ),
+						'dom_content_loaded_ms' => array( 'type' => 'number', 'minimum' => 0, 'maximum' => 120000 ),
+						'load_event_ms' => array( 'type' => 'number', 'minimum' => 0, 'maximum' => 120000 ),
+						'ajax_endpoint_latency_ms' => array( 'type' => 'number', 'minimum' => 0, 'maximum' => 120000 ),
+						'filter_to_presentation_ms' => array( 'type' => 'number', 'minimum' => 0, 'maximum' => 120000 ),
 					),
 					'additionalProperties' => false,
 				),
