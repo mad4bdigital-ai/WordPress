@@ -78,7 +78,7 @@ for marker in [
 
 for marker in [
     "const CONTRACT = 'mad4b.skill-seeder.v1'",
-    "const SEED_VERSION = 4",
+    "const SEED_VERSION = 5",
     "const SEED_DIR = 'skill-seeds'",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
     "MAD4B_SCP_Skill_Registry::editor_enabled()",
@@ -316,6 +316,10 @@ for skill_dir in (portable / 'skills').iterdir():
         raise SystemExit(f'{skill_dir.name} frontmatter name must match folder')
     if 'description:' not in text.split('---', 2)[1]:
         raise SystemExit(f'{skill_dir.name} missing frontmatter description')
+    if skill_dir.name == 'wordpress-release-orchestration':
+        for marker in ('plan_sha256', 'expected_plan_sha256', 'expected_state_sha256', 're-planning and re-approval'):
+            if marker not in text:
+                raise SystemExit(f'wordpress-release-orchestration missing plan-bound authority instruction: {marker}')
     found.add(skill_dir.name)
 
     canonical = seed_root / skill_dir.name / 'SKILL.md'
@@ -336,4 +340,4 @@ if not entry or entry.get('source', {}).get('path') != './plugins/mad4b-wordpres
 if entry.get('policy', {}).get('authentication') != 'ON_INSTALL':
     raise SystemExit('MAD4B WordPress marketplace entry must authenticate on install')
 
-print('mad4b.dynamic-skills.v7: PASS')
+print('mad4b.dynamic-skills.v8: PASS')
