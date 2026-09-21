@@ -37,12 +37,16 @@ export function buildBrowserExecutionReceipt({
     attempt_ledger_sha256: canonicalSha256(attempts || {}),
     evidence_contract: String(evidence?.contract || ""),
     evidence_sha256: canonicalSha256(evidence || {}),
+    mad4b_evidence_digest: String(result?.evidence_digest || ""),
+    mad4b_receipt_signature: String(result?.receipt_signature || ""),
     result_contract: String(result?.contract || ""),
     result_sha256: canonicalSha256(result || {}),
     verdict: String(result?.verdict || ""),
     browser_runtime_parity_verified: result?.verification?.browser_runtime_parity_verified === true,
     case_count: Array.isArray(evidence?.cases) ? evidence.cases.length : 0,
-    authorizing: false
+    authorizing: false,
+    integrity_model: "content_addressed_receipt_anchored_by_mad4b_reducer_signature",
+    independently_signed_by_browser_runner: false
   };
   return { ...base, receipt_sha256: canonicalSha256(base) };
 }
