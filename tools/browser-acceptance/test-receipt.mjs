@@ -17,8 +17,11 @@ const evidence = {
   contract: "etg.dfsb.browser-acceptance-evidence.v1",
   cases: [{ case_id: "cairo" }]
 };
+const evidenceDigest = canonicalSha256(evidence);
 const result = {
   contract: "mad4b.browser-acceptance-result.v1",
+  evidence_digest: evidenceDigest,
+  receipt_signature: "d".repeat(64),
   verdict: "PASS",
   verification: { browser_runtime_parity_verified: true }
 };
@@ -40,6 +43,10 @@ assert.equal(a.receipt_sha256, b.receipt_sha256);
 assert.equal(a.browser_runtime_parity_verified, true);
 assert.equal(a.case_count, 1);
 assert.equal(a.authorizing, false);
+assert.equal(a.mad4b_evidence_digest, evidenceDigest);
+assert.equal(a.mad4b_receipt_signature, "d".repeat(64));
+assert.equal(a.integrity_model, "content_addressed_receipt_anchored_by_mad4b_reducer_signature");
+assert.equal(a.independently_signed_by_browser_runner, false);
 assert.match(a.receipt_sha256, /^[a-f0-9]{64}$/);
 assert.equal(a.plan_signature_sha256, canonicalSha256(plan.plan_signature));
 assert.notEqual(a.plan_signature_sha256, plan.plan_signature);
