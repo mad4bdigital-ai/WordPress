@@ -32,6 +32,19 @@ final class DynamicTagRegistrar {
         add_action('elementor/dynamic_tags/before_render',array(DynamicTagRuntime::class,'beginEditorRenderPass'));
         add_action('elementor/dynamic_tags/after_render',array(DynamicTagRuntime::class,'endEditorRenderPass'));
         add_action('elementor/editor/after_enqueue_styles',array($this,'enqueueEditorStyles'));
+
+        // Safe Boot or provider activation can make this registrar available after
+        // Elementor has already emitted its one-shot dynamic-tag registration hook.
+        // In that case register the bounded ETG tags against the live manager now;
+        // the normal hook remains authoritative for standard boot ordering.
+        if(
+            did_action('elementor/dynamic_tags/register')
+            && class_exists('\\Elementor\\Plugin')
+            && isset(\Elementor\Plugin::$instance)
+            && isset(\Elementor\Plugin::$instance->dynamic_tags)
+        ){
+            $this->register(\Elementor\Plugin::$instance->dynamic_tags);
+        }
     }
     public function enqueueEditorStyles():void{
         wp_enqueue_style(
