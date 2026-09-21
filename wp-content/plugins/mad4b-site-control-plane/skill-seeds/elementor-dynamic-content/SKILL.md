@@ -6,7 +6,7 @@ description: Inspect and safely reconcile Elementor templates, dynamic tags, wid
 Use MAD4B Elementor read tools first. Use governed write tools only when the user explicitly asks to apply a change and the exact provider/runtime authorization gates are ready.
 
 1. Confirm Elementor provider status and exact certification before trusting provider-specific assumptions or attempting a mutation.
-2. Identify the exact source and target post, template, archive, or document. Read both current document SHA-256 values immediately before planning any write.
+2. Identify the exact source and target post, template, archive, or document. Run `elementor/compare-documents` when reconciling translated/template variants, then read both current document SHA-256 values immediately before planning any write.
 3. Inspect the document structure, target parent/index, element IDs, widget settings, and dynamic tags. When JetEngine or another provider supplies the value, inspect that provider's read contract too.
 4. Trace each value from source field or relation to dynamic tag to widget output. Distinguish missing data, wrong context, unsupported tag, provider drift, template conditions, and rendering/cache issues.
 5. Prefer Dynamic Tags and provider-native dynamic content over shortcodes when both are supported and the user wants a reusable visual-builder setup.
