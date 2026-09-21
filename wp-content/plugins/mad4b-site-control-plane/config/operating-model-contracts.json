@@ -50,7 +50,7 @@
     "contract":"mad4b.workflow-provider-bridge.v1","provider":"bitflows","state":"blocked_pending_public_provider_contract","source_of_truth":"mad4b.operation-plan.v1",
     "preferred_public_surfaces":["webhook","http_api","wordpress_hooks","custom_app"],"direct_provider_database_writes":"forbidden","caller_supplied_credentials":"forbidden","production_authority":"forbidden",
     "planned_triggers":["candidate_ready","evidence_changed","approval_granted"],"planned_actions":["request_plan","run_capability","verify_evidence","wait_for_gate","publish_workflow_receipt"]
-  ,
+  },
   "coverage_boundaries":{
     "generic_browser_assertion_expression_dsl":{"state":"partial","reason":"generic browser plan/result schemas exist but no provider-neutral assertion-expression DSL is execution authority"},
     "persistent_universal_evidence_graph_store_query_api":{"state":"partial","reason":"dependency and invalidation planning exist but evidence remains distributed across governed receipts and stores"},
