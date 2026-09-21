@@ -9,7 +9,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function is_available() { return defined( 'ELEMENTOR_VERSION' ) || class_exists( '\\Elementor\\Plugin' ); }
 	public function ability_names() {
 		return array(
-			'read' => array( 'elementor/status', 'elementor/get-document', 'elementor/list-widgets', 'elementor/get-dynamic-tags', 'elementor/validate-document' ),
+			'read' => array( 'elementor/status', 'elementor/get-document', 'elementor/list-widgets', 'elementor/get-dynamic-tags', 'elementor/validate-document', 'elementor/compare-documents' ),
 			'content' => array( 'elementor/update-widget-settings', 'elementor/clone-subtree', 'elementor/move-element', 'elementor/delete-element', 'elementor/set-dynamic-tag', 'elementor/set-etg-dynamic-tag' ),
 			'admin' => array(),
 		);
@@ -33,6 +33,19 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->add_ability( 'elementor/list-widgets', 'List Elementor Widgets', 'list_widgets', array( $this, 'can_read_post' ), $post_schema );
 		$this->add_ability( 'elementor/get-dynamic-tags', 'Get Elementor Dynamic Tags', 'get_dynamic_tags', array( $this, 'can_read_post' ), $post_schema );
 		$this->add_ability( 'elementor/validate-document', 'Validate Elementor Document', 'validate_document', array( $this, 'can_read_post' ), $post_schema );
+		$this->add_ability(
+			'elementor/compare-documents',
+			'Compare Elementor Documents',
+			'compare_documents',
+			array( $this, 'can_compare_documents' ),
+			$this->schema(
+				array(
+					'source_post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+					'target_post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+				),
+				array( 'source_post_id', 'target_post_id' )
+			)
+		);
 		$this->add_ability(
 			'elementor/update-widget-settings',
 			'Update Elementor Widget Settings',
@@ -175,6 +188,11 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		return $source > 0 && $target > 0 && current_user_can( 'read_post', $source ) && current_user_can( 'edit_post', $target );
 	}
 	public function can_set_dynamic_tag( $input ) { return $this->can_clone_subtree( $input ); }
+	public function can_compare_documents( $input ) {
+		$source = is_array( $input ) && isset( $input['source_post_id'] ) ? absint( $input['source_post_id'] ) : 0;
+		$target = is_array( $input ) && isset( $input['target_post_id'] ) ? absint( $input['target_post_id'] ) : 0;
+		return $source > 0 && $target > 0 && current_user_can( 'read_post', $source ) && current_user_can( 'read_post', $target );
+	}
 
 	public function status() {
 		$status = parent::status();
@@ -220,6 +238,52 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$document = $this->load_document( absint( $input['post_id'] ) ); if ( is_wp_error( $document ) ) return $document;
 		$ids = array(); $errors = array(); $this->validate_elements( $document['elements'], $ids, $errors, 0 );
 		return array( 'post_id' => absint( $input['post_id'] ), 'valid' => empty( $errors ), 'sha256' => $document['sha256'], 'element_count' => count( $ids ), 'errors' => array_slice( $errors, 0, 100 ) );
+	}
+
+	public function compare_documents( $input ) {
+		$source_id = absint( $input['source_post_id'] );
+		$target_id = absint( $input['target_post_id'] );
+		$source = $this->load_document( $source_id ); if ( is_wp_error( $source ) ) return $source;
+		$target = $this->load_document( $target_id ); if ( is_wp_error( $target ) ) return $target;
+		$source_index = array(); $target_index = array();
+		$this->index_document_elements( $source['elements'], self::ROOT_PARENT, 0, $source_index );
+		$this->index_document_elements( $target['elements'], self::ROOT_PARENT, 0, $target_index );
+		if ( count( $source_index ) > 1000 || count( $target_index ) > 1000 ) return new WP_Error( 'mad4b_elementor_compare_element_limit', 'Elementor document comparison exceeds the bounded 1000-element limit.' );
+		$source_ids = array_keys( $source_index ); $target_ids = array_keys( $target_index );
+		$missing = array_values( array_diff( $source_ids, $target_ids ) );
+		$extra = array_values( array_diff( $target_ids, $source_ids ) );
+		sort( $missing, SORT_STRING ); sort( $extra, SORT_STRING );
+		$shared = array_values( array_intersect( $source_ids, $target_ids ) );
+		$location_drift = array(); $dynamic_drift = array(); $type_drift = array();
+		foreach ( $shared as $element_id ) {
+			$s = $source_index[ $element_id ]; $t = $target_index[ $element_id ];
+			if ( (string) $s['parent_id'] !== (string) $t['parent_id'] || (int) $s['index'] !== (int) $t['index'] ) {
+				$location_drift[] = array( 'element_id' => $element_id, 'source_parent_id' => $s['parent_id'], 'source_index' => $s['index'], 'target_parent_id' => $t['parent_id'], 'target_index' => $t['index'] );
+			}
+			if ( (string) $s['el_type'] !== (string) $t['el_type'] || (string) $s['widget_type'] !== (string) $t['widget_type'] ) {
+				$type_drift[] = array( 'element_id' => $element_id, 'source_el_type' => $s['el_type'], 'source_widget_type' => $s['widget_type'], 'target_el_type' => $t['el_type'], 'target_widget_type' => $t['widget_type'] );
+			}
+			if ( ! hash_equals( (string) $s['dynamic_tag_sha256'], (string) $t['dynamic_tag_sha256'] ) ) {
+				$dynamic_drift[] = array( 'element_id' => $element_id, 'source_settings' => $s['dynamic_settings'], 'target_settings' => $t['dynamic_settings'], 'source_dynamic_tag_sha256' => $s['dynamic_tag_sha256'], 'target_dynamic_tag_sha256' => $t['dynamic_tag_sha256'] );
+			}
+		}
+		return array(
+			'contract' => 'mad4b.elementor-document-comparison.v1',
+			'source_post_id' => $source_id,
+			'target_post_id' => $target_id,
+			'source_sha256' => $source['sha256'],
+			'target_sha256' => $target['sha256'],
+			'source_element_count' => count( $source_index ),
+			'target_element_count' => count( $target_index ),
+			'shared_element_count' => count( $shared ),
+			'missing_in_target' => array_slice( $missing, 0, 500 ),
+			'extra_in_target' => array_slice( $extra, 0, 500 ),
+			'location_drift' => array_slice( $location_drift, 0, 500 ),
+			'type_drift' => array_slice( $type_drift, 0, 500 ),
+			'dynamic_tag_drift' => array_slice( $dynamic_drift, 0, 500 ),
+			'parity' => empty( $missing ) && empty( $extra ) && empty( $location_drift ) && empty( $type_drift ) && empty( $dynamic_drift ),
+			'read_only' => true,
+		);
 	}
 
 	public function update_widget_settings( $input ) {
@@ -578,6 +642,26 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			$id = isset( $element['id'] ) ? (string) $element['id'] : '';
 			if ( $id === $element_id ) $matches[] = array( 'element' => $element, 'parent_id' => (string) $parent_id, 'index' => (int) $index );
 			if ( isset( $element['elements'] ) && is_array( $element['elements'] ) ) $this->collect_element_targets( $element['elements'], $element_id, $id, $depth + 1, $matches );
+		}
+	}
+
+	private function index_document_elements( array $elements, $parent_id, $depth, array &$index ) {
+		if ( $depth > 50 ) return;
+		foreach ( $elements as $position => $element ) {
+			if ( ! is_array( $element ) ) continue;
+			$id = isset( $element['id'] ) ? (string) $element['id'] : '';
+			if ( '' === $id || strlen( $id ) > 100 ) continue;
+			$dynamic = isset( $element['settings']['__dynamic__'] ) && is_array( $element['settings']['__dynamic__'] ) ? $element['settings']['__dynamic__'] : array();
+			$dynamic_settings = array_keys( $dynamic ); sort( $dynamic_settings, SORT_STRING );
+			$index[ $id ] = array(
+				'parent_id' => (string) $parent_id,
+				'index' => (int) $position,
+				'el_type' => isset( $element['elType'] ) ? (string) $element['elType'] : '',
+				'widget_type' => isset( $element['widgetType'] ) ? (string) $element['widgetType'] : '',
+				'dynamic_settings' => array_slice( $dynamic_settings, 0, 50 ),
+				'dynamic_tag_sha256' => $this->hash_value( $dynamic ),
+			);
+			if ( isset( $element['elements'] ) && is_array( $element['elements'] ) ) $this->index_document_elements( $element['elements'], $id, $depth + 1, $index );
 		}
 	}
 
