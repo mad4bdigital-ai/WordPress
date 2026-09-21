@@ -24,6 +24,14 @@ export function configuredProviders(env = process.env, requested = "auto") {
   });
 }
 
+function redactProviderMessage(value) {
+  return String(value || "")
+    .replace(/(authorization\s*[:=]\s*bearer\s+)[^\s,;]+/gi, "$1[REDACTED]")
+    .replace(/(bearer\s+)[A-Za-z0-9._~+\/=\-]+/gi, "$1[REDACTED]")
+    .replace(/([?&](?:token|apikey|api_key|key|secret)=)[^&\s]+/gi, "$1[REDACTED]")
+    .slice(0, 500);
+}
+
 export function classifyProviderError(error, definition = {}) {
   const status = Number(error?.status || error?.statusCode || error?.response?.status || 0);
   const raw = String(error?.message || error || "");
@@ -51,7 +59,7 @@ export function classifyProviderError(error, definition = {}) {
             ? "provider_transport_or_runtime"
             : "provider_runtime_error",
     fallback_allowed: fallbackAllowed,
-    message: raw.slice(0, 500)
+    message: redactProviderMessage(raw)
   };
 }
 
