@@ -169,6 +169,9 @@ browser_expect( 8 === (int) $evidence_schema['properties']['cases']['maxItems'],
 browser_expect( 15 === (int) $case_schema['maxProperties'], 'browser case schema must include bounded performance evidence without opening arbitrary properties' );
 $network_schema = $case_schema['properties']['network'];
 browser_expect( isset( $network_schema['properties']['latency_ms'] ), 'browser network schema must expose bounded AJAX latency' );
+$observer_schema = $evidence_schema['properties']['observer'];
+browser_expect( isset( $observer_schema['properties']['execution_mode'] ), 'browser observer schema must expose bounded execution mode' );
+browser_expect( 4 === (int) $observer_schema['maxProperties'], 'browser observer schema property budget drifted' );
 $performance_schema = $case_schema['properties']['performance'];
 foreach ( array( 'ttfb_ms', 'ajax_endpoint_latency_ms', 'filter_to_presentation_ms' ) as $metric ) {
 	browser_expect( isset( $performance_schema['properties'][ $metric ] ), 'browser performance metric missing: ' . $metric );
