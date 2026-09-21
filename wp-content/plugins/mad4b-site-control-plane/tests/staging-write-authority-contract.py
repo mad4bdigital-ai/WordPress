@@ -37,6 +37,10 @@ if not write.rstrip().endswith('}'):
 for marker in [
     "const CONTRACT = 'mad4b.governed-write-authority.v2'",
     "const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v1'",
+    "const CANDIDATE_BOOTSTRAP_CONTRACT = 'mad4b.governed-write-candidate-bootstrap.v1'",
+    "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'",
+    "public static function candidate_bootstrap_status( $ability_name, $input = null )",
+    "public static function candidate_bootstrap_allowed( $ability_name, $input = null )",
     "const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id'",
     "public static function candidate_binding_status()",
     "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint )",
@@ -112,6 +116,46 @@ core_write = servers[servers.index('private static function core_write_candidate
 if "'mad4b/staging-write-grant-reconcile'" in core_write:
     raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
 
+
+# A package transition may expose one bootstrap write before the persisted candidate
+# binding is refreshed. Lock the exception to the isolated acceptance target and
+# require all normal authorization layers to remain downstream.
+bootstrap_body = write.split("public static function candidate_bootstrap_status", 1)[1].split("public static function candidate_bootstrap_allowed", 1)[0]
+for marker in [
+    "self::CANDIDATE_BOOTSTRAP_ABILITY !== $ability_name",
+    "'staging' !== MAD4B_SCP_Site_Profile::current_environment()",
+    "MAD4B_SCP_Site_Profile::origin_enrolled()",
+    "MAD4B_SCP_Site_Profile::site_urls_match_enrollment()",
+    "MAD4B_SCP_Site_Profile::write_enabled()",
+    "MAD4B_MCP_MUTATION_ENABLED",
+    "'candidate_already_bound'",
+    "'wildcard_grants_detected'",
+    "'breakglass_enabled'",
+    "'acceptance_target_already_exists'",
+    "'acceptance_target_not_safe'",
+    "'acceptance_target_not_isolated'",
+    "'exact_nhi_grant_required_downstream' => true",
+    "'budget_required_downstream' => true",
+    "'audit_required_downstream' => true",
+    "'prior_approval_required' => false",
+]:
+    if marker not in bootstrap_body:
+        raise SystemExit(f'candidate bootstrap guard missing bounded invariant: {marker}')
+for forbidden in [
+    "grant_ability(",
+    "bind_candidate_identity(",
+    "update_option(",
+    "wp_insert_post(",
+]:
+    if forbidden in bootstrap_body:
+        raise SystemExit(f'candidate bootstrap guard must remain read-only: {forbidden}')
+
+scope_body = write.split("public static function remote_scope_delegation_allowed", 1)[1].split("public static function force_remote_write_approval", 1)[0]
+if "if ( $bootstrap ) return true;" not in scope_body:
+    raise SystemExit('candidate bootstrap must have one explicit no-prior-ticket scope delegation branch')
+if "mad4b:read" not in scope_body or "oauth2_bearer" not in scope_body:
+    raise SystemExit('candidate bootstrap scope delegation must retain verified OAuth read identity')
+
 for forbidden in [
     "const STAGING_HOST = 'staging.egypttourgates.com'",
     "const AGENT_SLUG = 'chatgpt-staging-write'",
@@ -152,6 +196,8 @@ for marker in [
 
 for marker in [
     "MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name )",
+    "MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_allowed( $ability_name, $input )",
+    "MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_status( $ability_name, $input )",
     "return 'mad4b-write'",
     "mad4b_write_authority_mount_missing",
 ]:
@@ -159,6 +205,7 @@ for marker in [
         raise SystemExit(f'missing transport-to-write-authority binding: {marker}')
 
 for marker in [
+    "MAD4B_SCP_Transport_Context::resolve_server_for_ability( $declared_server_id, $ability_name, $input )",
     "MAD4B_SCP_Staging_Write_Authority::authorization_input( $input )",
     "MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input )",
     "MAD4B_SCP_Staging_Write_Authority::remote_scope_delegation_allowed",
@@ -272,6 +319,9 @@ for marker in [
     "external_wpml_acceptance_verified",
     "external_wpml_test_url",
     "exact_approval_required_for_remote_write",
+    "normal_remote_write_exact_approval_required",
+    "candidate_bootstrap_prior_approval_exception",
+    "candidate_bootstrap_exception_bounded",
     "approval_planner_bootstrap_exception",
     "external_client_tools_verified",
     "MAD4B_SCP_Audit::record",
