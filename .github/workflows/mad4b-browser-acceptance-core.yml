@@ -198,6 +198,16 @@ jobs:
           set -euo pipefail
           WP_PATH=/tmp/mad4b-browser-acceptance-wordpress
           php /tmp/wp-cli.phar eval '
+            $config = new \ETG\DynamicFilterSEOBridge\Config\Configuration();
+            $settings = $config->all();
+            $settings["profiles_json"] = wp_json_encode( array(
+                array(
+                    "id" => "ci-elementor-runtime",
+                    "enabled" => true,
+                    "required_capabilities" => array( "presentation.dynamic_content" ),
+                ),
+            ) );
+            update_option( \ETG\DynamicFilterSEOBridge\Config\Configuration::OPTION_NAME, $config->sanitize( $settings ), false );
             $ok = \ETG\DynamicFilterSEOBridge\Runtime\BootGuard::run( static function () {
                 \ETG\DynamicFilterSEOBridge\Bootstrap::instance()->boot();
             } );
