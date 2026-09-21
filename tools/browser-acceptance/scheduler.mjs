@@ -1,6 +1,7 @@
 export function providerExecutionPlan(definition, caseCount, options = {}) {
   const estimatedCaseSeconds = Math.max(1, Number(options.estimatedCaseSeconds || 45));
   const reserveSeconds = Math.max(0, Number(options.reserveSeconds || 30));
+  const sessionStartOverheadSeconds = Math.max(0, Number(options.sessionStartOverheadSeconds || 10));
   const constraints = definition?.runtime_constraints || {};
   const mode = String(constraints.session_limit_mode || "unknown");
   const hardSessionSeconds = Number(constraints.hard_session_seconds || 0);
@@ -24,7 +25,8 @@ export function providerExecutionPlan(definition, caseCount, options = {}) {
     session_limit_mode: mode,
     hard_session_seconds: hardSessionSeconds || null,
     recurring_free_tier: !!definition?.recurring_free_tier,
-    billing_class: String(definition?.billing_class || "unknown")
+    billing_class: String(definition?.billing_class || "unknown"),
+    estimated_total_seconds: caseCount * estimatedCaseSeconds + sessionsRequired * sessionStartOverheadSeconds
   };
 }
 
@@ -33,11 +35,12 @@ export function rankProviderCandidates(candidates, plan, contracts, options = {}
   const maxSessions = Math.max(1, Number(options.maxSessions || budget.max_browser_sessions || 12));
   const estimatedCaseSeconds = Math.max(1, Number(options.estimatedCaseSeconds || budget.estimated_case_seconds || 45));
   const reserveSeconds = Math.max(0, Number(options.reserveSeconds || budget.challenge_expiry_reserve_seconds || 30));
+  const sessionStartOverheadSeconds = Math.max(0, Number(options.sessionStartOverheadSeconds || budget.session_start_overhead_seconds || 10));
   const caseCount = Array.isArray(plan?.cases) ? plan.cases.length : 0;
 
   return candidates.map((candidate, index) => {
     const execution = candidate.definition
-      ? providerExecutionPlan(candidate.definition, caseCount, { estimatedCaseSeconds, reserveSeconds })
+      ? providerExecutionPlan(candidate.definition, caseCount, { estimatedCaseSeconds, reserveSeconds, sessionStartOverheadSeconds })
       : null;
     const budgetEligible = !!execution && execution.sessions_required <= maxSessions;
     const recurringPenalty = candidate.definition?.recurring_free_tier ? 0 : 1000;
