@@ -241,12 +241,17 @@ jobs:
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
             git cat-file -e "$BASE_SHA^{commit}" || git fetch --no-tags origin "$BASE_SHA"
             MERGE_BASE=$(git merge-base "$BASE_SHA" HEAD)
+            test -n "$MERGE_BASE"
+            git diff --check "$MERGE_BASE...HEAD"
           else
-            git fetch --no-tags origin master
-            MERGE_BASE=$(git merge-base origin/master HEAD)
+            BEFORE_SHA="${{ github.event.before }}"
+            if [[ "$BEFORE_SHA" =~ ^0{40}$ || -z "$BEFORE_SHA" ]]; then
+              git diff --check HEAD^..HEAD
+            else
+              git cat-file -e "$BEFORE_SHA^{commit}" || git fetch --no-tags origin "$BEFORE_SHA"
+              git diff --check "$BEFORE_SHA..HEAD"
+            fi
           fi
-          test -n "$MERGE_BASE"
-          git diff --check "$MERGE_BASE...HEAD"
           ! find .github -maxdepth 1 -type f \( -name 'etg-op-payload*' -o -name '*payload.part-*' -o -name '*materializer*' -o -name '*probe*' \) -print -quit | grep -q .
 
       - name: Build deterministic installable package and provenance v6
