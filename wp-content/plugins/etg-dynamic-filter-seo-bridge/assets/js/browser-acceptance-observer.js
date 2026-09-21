@@ -124,7 +124,8 @@
         };
     }
 
-    function domIds() {
+    function domIds(limit) {
+        limit = Math.max(1, Math.min(5000, parseInt(limit, 10) || 100));
         var selectors = [
             '.jet-listing-grid__item[data-post-id]',
             '.jet-listing-grid__item [data-post-id]',
@@ -134,7 +135,7 @@
         selectors.forEach(function (selector) {
             Array.prototype.forEach.call(document.querySelectorAll(selector), function (node) {
                 var id = parseInt(node.getAttribute('data-post-id'), 10);
-                if (id > 0 && out.indexOf(id) === -1 && out.length < 100) { out.push(id); }
+                if (id > 0 && out.indexOf(id) === -1 && out.length < limit) { out.push(id); }
             });
         });
         return out;
@@ -159,12 +160,16 @@
     }
 
     function domState() {
-        var ids = domIds();
-        var count = resultCount(ids);
+        var proofIds = domIds(5000);
+        var ids = proofIds.slice(0, 100);
+        var count = resultCount(proofIds);
         return {
             ids: ids,
-            ids_complete: !!count.authoritative && count.count <= 100 && ids.length === count.count,
-            observed_id_count: ids.length,
+            ids_complete: !!count.authoritative && count.count <= 100 && proofIds.length === count.count,
+            observed_id_count: proofIds.length,
+            proof_ids: proofIds,
+            proof_ids_complete: !!count.authoritative && count.count <= 5000 && proofIds.length === count.count,
+            proof_item_count: proofIds.length,
             result_count: count.count,
             result_count_authoritative: !!count.authoritative,
             result_count_source: count.source
@@ -330,6 +335,31 @@
         armed = false; currentCase = null; currentChallengeNonce = ''; restoreFetch(); restoreHistory();
     }
 
+    function renderedEvidence(dom) {
+        dom = dom && typeof dom === 'object' ? dom : {};
+        var out = {};
+        ['ids','ids_complete','observed_id_count','result_count','result_count_authoritative','result_count_source'].forEach(function (key) {
+            if (Object.prototype.hasOwnProperty.call(dom, key)) { out[key] = clone(dom[key]); }
+        });
+        return out;
+    }
+
+    function canonicalIdsJson(ids) {
+        return JSON.stringify((Array.isArray(ids) ? ids : []).map(function (id) { return parseInt(id, 10) || 0; }));
+    }
+
+    function sha256Hex(text) {
+        try {
+            if (!window.crypto || !window.crypto.subtle || typeof window.crypto.subtle.digest !== 'function' || typeof window.TextEncoder !== 'function') {
+                return Promise.resolve('');
+            }
+            var bytes = (new window.TextEncoder()).encode(String(text || ''));
+            return window.crypto.subtle.digest('SHA-256', bytes).then(function (buffer) {
+                return Array.prototype.map.call(new Uint8Array(buffer), function (b) { return ('00' + b.toString(16)).slice(-2); }).join('');
+            }, function () { return ''; });
+        } catch (error) { return Promise.resolve(''); }
+    }
+
     function snapshot() {
         var filtered = state.filteredSnapshot || snapshotState();
         var reset = state.resetSnapshot || snapshotState();
@@ -364,7 +394,7 @@
                 if (state.filterToPresentationMs !== null) { perf.filter_to_presentation_ms = state.filterToPresentationMs; }
                 return perf;
             }()),
-            rendered: clone(filtered.dom) || { ids: [], result_count: 0 },
+            rendered: renderedEvidence(filtered.dom),
             url_state: {
                 filter_state_observed: normalizedPath(filtered.url) !== normalizedPath(baseline.url) || state.ajaxFiltersUpdated,
                 etg_history_mutation: state.etgHistoryMutation,
@@ -386,12 +416,35 @@
         };
     }
 
+    function snapshotAsync() {
+        var evidence = snapshot();
+        var filtered = state.filteredSnapshot || snapshotState();
+        var dom = filtered && filtered.dom ? filtered.dom : {};
+        var proofIds = Array.isArray(dom.proof_ids) ? dom.proof_ids.slice(0, 5000) : [];
+        var total = Number(evidence.rendered && evidence.rendered.result_count || 0);
+        var authoritative = !!(evidence.rendered && evidence.rendered.result_count_authoritative);
+        if (!authoritative || total <= 100 || total > 5000 || proofIds.length !== total) {
+            return Promise.resolve(evidence);
+        }
+        var identity = proofIds.slice().sort(function (a, b) { return Number(a) - Number(b); });
+        return Promise.all([sha256Hex(canonicalIdsJson(identity)), sha256Hex(canonicalIdsJson(proofIds))]).then(function (digests) {
+            if (/^[a-f0-9]{64}$/.test(digests[0]) && /^[a-f0-9]{64}$/.test(digests[1])) {
+                evidence.rendered.digest_authoritative = true;
+                evidence.rendered.proof_item_count = proofIds.length;
+                evidence.rendered.identity_digest = digests[0];
+                evidence.rendered.order_digest = digests[1];
+            }
+            return evidence;
+        });
+    }
+
     window.ETGDFSBBrowserAcceptanceObserver = {
         contract: CONTRACT,
         passive: true,
         authorizing: false,
         arm: arm,
         snapshot: snapshot,
+        snapshotAsync: snapshotAsync,
         disarm: disarm
     };
 }(window, document));

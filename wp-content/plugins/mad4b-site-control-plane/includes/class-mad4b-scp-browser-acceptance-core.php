@@ -421,7 +421,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
 						'origin' => $string2048,
 						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
-						'observer' => array( 'type' => 'object', 'maxProperties' => 3, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80 ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 4, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80, 'execution_mode' => array( 'type' => 'string', 'enum' => array( 'external_browser_agent', 'local_interactive_browser', 'self_hosted_browser_agent', 'managed_browser_agent' ) ) ), 'additionalProperties' => false ),
 						'challenge' => $challenge_schema,
 						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
 					),

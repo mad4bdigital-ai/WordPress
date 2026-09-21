@@ -96,10 +96,12 @@ final class BrowserAcceptanceProvider {
                 'browser.seo_non_authority',
                 'browser.reset_behavior',
                 'browser.performance_baseline',
+                'browser.async_digest_snapshot',
             ),
             'required_events'=>array('ajaxFilters/updated','etg-dfsb/ajax-presentation-updated','etg-dfsb/ajax-presentation-reset'),
             'required_network'=>array('POST /wp-json/etg-dfsb/v1/ajax-presentation'),
             'required_head_state'=>array('canonical','robots','hreflang','rank_math'),
+            'observer_snapshot'=>array('default'=>'snapshot','full_digest'=>'snapshotAsync','max_digest_ids'=>self::MAX_DIGEST_IDS),
         );
     }
 
