@@ -96,10 +96,12 @@ final class BrowserAcceptanceProvider {
                 'browser.seo_non_authority',
                 'browser.reset_behavior',
                 'browser.performance_baseline',
+                'browser.async_digest_snapshot',
             ),
             'required_events'=>array('ajaxFilters/updated','etg-dfsb/ajax-presentation-updated','etg-dfsb/ajax-presentation-reset'),
             'required_network'=>array('POST /wp-json/etg-dfsb/v1/ajax-presentation'),
             'required_head_state'=>array('canonical','robots','hreflang','rank_math'),
+            'observer_snapshot'=>array('default'=>'snapshot','full_digest'=>'snapshotAsync','max_digest_ids'=>self::MAX_DIGEST_IDS),
         );
     }
 
@@ -342,20 +344,10 @@ final class BrowserAcceptanceProvider {
                 if(!$orderPass)$defects[]='browser_dataset_order_divergence';
             }
         } else {
-            $proofIds=$this->normalizeIds((array)($rendered['proof_ids']??array()),self::MAX_DIGEST_IDS);
-            $proofIdsComplete=!empty($rendered['proof_ids_complete'])&&$expectedTotal<=self::MAX_DIGEST_IDS&&count($proofIds)===$expectedTotal;
-            if($proofIdsComplete){
-                $identityProof=$proofIds;sort($identityProof,SORT_NUMERIC);
-                $actualIdentity=hash('sha256',$this->canonicalIdsJson($identityProof));
-                $actualOrder=hash('sha256',$this->canonicalIdsJson($proofIds));
-                $actualProofCount=count($proofIds);
-                $digestAuthoritative=true;
-            } else {
-                $digestAuthoritative=!empty($rendered['digest_authoritative']);
-                $actualProofCount=isset($rendered['proof_item_count'])&&is_numeric($rendered['proof_item_count'])?(int)$rendered['proof_item_count']:-1;
-                $actualIdentity=strtolower((string)($rendered['identity_digest']??''));
-                $actualOrder=strtolower((string)($rendered['order_digest']??''));
-            }
+            $digestAuthoritative=!empty($rendered['digest_authoritative']);
+            $actualProofCount=isset($rendered['proof_item_count'])&&is_numeric($rendered['proof_item_count'])?(int)$rendered['proof_item_count']:-1;
+            $actualIdentity=strtolower((string)($rendered['identity_digest']??''));
+            $actualOrder=strtolower((string)($rendered['order_digest']??''));
             if(!$digestAuthoritative || $actualProofCount!==$expectedTotal || !$this->validDigest($actualIdentity) || !$this->validDigest($actualOrder)){
                 $tests['browser_dataset_id_parity']='INCOMPLETE_EVIDENCE';
                 $tests['browser_order_parity']='INCOMPLETE_EVIDENCE';
@@ -468,7 +460,6 @@ final class BrowserAcceptanceProvider {
     private function normalizeOrigin(string $origin):string{$origin=trim($origin);if(''===$origin)return'';return rtrim($origin,'/').'/';}
     private function caseArchivePath(array $semanticPlan,array $case):string{if(isset($case['archive_path']))return(string)$case['archive_path'];foreach((array)($semanticPlan['cases']??array())as$candidate){if((string)($candidate['case_id']??'')===(string)($case['case_id']??'')&&isset($candidate['archive_path']))return(string)$candidate['archive_path'];}return'/';}
     private function normalizeIds(array $ids,int $limit):array{$out=array();foreach(array_slice($ids,0,$limit)as$id){$id=(int)$id;if($id>0&&!in_array($id,$out,true))$out[]=$id;}return$out;}
-    private function canonicalIdsJson(array $ids):string{$encoded=json_encode(array_values(array_map('intval',$ids)),JSON_UNESCAPED_SLASHES);return is_string($encoded)?$encoded:'[]';}
     private function endpointMatches(string $endpoint):bool{$endpoint=trim($endpoint);if(''===$endpoint)return false;$path=parse_url($endpoint,PHP_URL_PATH);if(!is_string($path)||''===$path)$path=$endpoint;return'/wp-json/etg-dfsb/v1/ajax-presentation'===rtrim($path,'/');}
     private function authority():array{return array('authorizing'=>false,'persistent_mutation'=>false,'profile_mutation'=>false,'seo_publication'=>false,'production_activation'=>false,'browser_state_transient_only'=>true);}
     private function supportedExecutionModes():array{return array('external_browser_agent','local_interactive_browser','self_hosted_browser_agent','managed_browser_agent');}
