@@ -32,7 +32,7 @@ if ( empty( $registry['portable_app_id_configured'] ) ) $fail( 'Portable App map
 
 $seed = MAD4B_SCP_Skill_Seeder::status();
 if ( ! isset( $seed['state'] ) || 'ready' !== $seed['state'] ) $fail( 'Seed pack is not ready.' );
-if ( ! isset( $seed['seed_version'] ) || 3 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v3.' );
+if ( ! isset( $seed['seed_version'] ) || 4 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v4.' );
 if ( ! empty( $seed['overwrites_user_owned'] ) ) $fail( 'Seeder must never overwrite user-owned Skills.' );
 if ( empty( $seed['refreshes_only_digest_clean_managed'] ) ) $fail( 'Managed seed refresh must remain digest-clean only.' );
 
@@ -48,6 +48,7 @@ $seed_identities = array(
 	array( 'provider', 'jet-engine', 'jetengine-content-modeling', false ),
 	array( 'workflow', 'archive-audit', 'wordpress-archive-audit', true ),
 	array( 'workflow', 'change-safety', 'wordpress-change-safety', true ),
+	array( 'workflow', 'release-orchestration', 'wordpress-release-orchestration', true ),
 	array( 'workflow', 'content-authoring', 'wordpress-content-authoring', true ),
 );
 $workspace = getenv( 'GITHUB_WORKSPACE' );
