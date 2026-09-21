@@ -73,7 +73,7 @@ final class MAD4B_SCP_Authorization {
 
 		$declared_server_id = sanitize_key( (string) $server_id );
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return self::error( 'mad4b_transport_context_unavailable', 'MCP transport context is unavailable; governed mutation fails closed.' );
-		$resolved_server_id = MAD4B_SCP_Transport_Context::resolve_server_for_ability( $declared_server_id, $ability_name );
+		$resolved_server_id = MAD4B_SCP_Transport_Context::resolve_server_for_ability( $declared_server_id, $ability_name, $input );
 		if ( is_wp_error( $resolved_server_id ) ) return $resolved_server_id;
 		$server_id = sanitize_key( (string) $resolved_server_id );
 		if ( '' === $server_id ) return self::error( 'mad4b_transport_server_unresolved', 'The effective MCP mutation server could not be resolved.' );
