@@ -172,7 +172,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_state_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
 			),
-			array( 'plugin', 'expected_active', 'reason' )
+			array( 'plugin', 'expected_active', 'expected_state_sha256', 'reason' )
 		);
 	}
 
