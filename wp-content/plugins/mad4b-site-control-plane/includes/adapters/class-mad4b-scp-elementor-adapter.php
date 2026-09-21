@@ -793,7 +793,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	private function allowed_dynamic_tag_name( $tag ) {
-		$allowed = array( 'etg-filter-title', 'etg-filter-image', 'etg-filter-intro', 'etg-dynamic-content-slot', 'etg-filter-gallery' );
+		$allowed = array( 'etg-filter-title', 'etg-filter-image', 'etg-filter-intro', 'etg-dynamic-content-slot', 'etg-filter-gallery', 'etg-filter-result-summary' );
 		foreach ( $allowed as $name ) {
 			if ( preg_match( '/(^|[^A-Za-z0-9_-])' . preg_quote( $name, '/' ) . '($|[^A-Za-z0-9_-])/i', (string) $tag ) ) return $name;
 		}

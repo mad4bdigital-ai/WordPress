@@ -17,21 +17,9 @@ on:
       - 'wp-content/plugins/wpml-string-translation.zip'
       - 'wp-content/plugins/wp-seo-multilingual.zip'
   push:
-    branches: [feat/etg-dynamic-filter-seo-bridge]
-    paths:
-      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
-      - 'specs/001-etg-dynamic-filter-seo-operational/**'
-      - '.specify/**'
-      - '.github/workflows/etg-dfsb-ci.yml'
-      - '.github/workflows/etg-dfsb-jetengine-ci.yml'
-      - '.github/workflows/indexflow-foundation-ci.yml'
-      - 'wp-content/plugins/jet-engine.zip'
-      - 'wp-content/plugins/jet-smart-filters.zip'
-      - 'wp-content/plugins/seo-by-rank-math.zip'
-      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
-      - 'wp-content/plugins/sitepress-multilingual-cms.zip'
-      - 'wp-content/plugins/wpml-string-translation.zip'
-      - 'wp-content/plugins/wp-seo-multilingual.zip'
+    branches:
+      - feat/etg-dynamic-filter-seo-bridge
+      - 'fix/etg-*'
 
 concurrency:
   group: etg-dfsb-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
@@ -240,7 +228,7 @@ jobs:
           test -n "$MERGE_BASE"
           git diff --name-only "$MERGE_BASE...HEAD" | while IFS= read -r path; do
             case "$path" in
-              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-browser-acceptance-core.yml|.github/workflows/mad4b-control-plane-package.yml|.github/workflows/mad4b-general-distribution-foundation.yml|.github/workflows/mad4b-wpml-external-diagnostic.yml|plugins/mad4b-wordpress/skills/elementor-dynamic-content/SKILL.md|wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php|wp-content/plugins/mad4b-site-control-plane/skill-seeds/elementor-dynamic-content/SKILL.md|wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php|wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-evidence-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php|wp-content/plugins/mad4b-site-control-plane/tests/provider-bounded-reversible-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-evidence-bridge-runtime.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php|wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py|.github/workflows/mad4b-dynamic-skills.yml|docs/MAD4B-UNIFIED-WORDPRESS-WORKFLOW-OPERATING-MODEL.md|plugins/mad4b-wordpress/.codex-plugin/plugin.json|plugins/mad4b-wordpress/plugin.json|plugins/mad4b-wordpress/skills/wordpress-release-orchestration/SKILL.md|wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt|wp-content/plugins/mad4b-site-control-plane/README.md|wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json|wp-content/plugins/mad4b-site-control-plane/config/workflow-provider-contracts.json|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-lifecycle.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-seeder.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workflow-providers.php|wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php|wp-content/plugins/mad4b-site-control-plane/skill-seeds/wordpress-release-orchestration/SKILL.md|wp-content/plugins/mad4b-site-control-plane/tests/dynamic-skills-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/runtime-workflow-lifecycle-governance.php|wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-contract.py) ;;
+              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-browser-acceptance-core.yml|.github/workflows/mad4b-control-plane-package.yml|.github/workflows/mad4b-general-distribution-foundation.yml|.github/workflows/mad4b-wpml-external-diagnostic.yml|plugins/mad4b-wordpress/skills/elementor-dynamic-content/SKILL.md|wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php|wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php|wp-content/plugins/mad4b-site-control-plane/skill-seeds/elementor-dynamic-content/SKILL.md|wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php|wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-evidence-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/live-acceptance-observer-runtime.php|wp-content/plugins/mad4b-site-control-plane/tests/provider-bounded-reversible-contract.py|wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-evidence-bridge-runtime.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-dynamic-skills-smoke.php|wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php|wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py) ;;
               *) echo "Unexpected path in ETG PR: $path"; exit 1 ;;
             esac
           done
@@ -261,27 +249,7 @@ jobs:
           git diff --check "$MERGE_BASE...HEAD"
           ! find .github -maxdepth 1 -type f \( -name 'etg-op-payload*' -o -name '*payload.part-*' -o -name '*materializer*' -o -name '*probe*' \) -print -quit | grep -q .
 
-      - name: Detect installable ETG source changes
-        id: etg-installable
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          git cat-file -e "$BASE_SHA^{commit}" || git fetch --no-tags origin "$BASE_SHA"
-          MERGE_BASE=$(git merge-base "$BASE_SHA" HEAD)
-          test -n "$MERGE_BASE"
-          if git diff --name-only "$MERGE_BASE...HEAD" -- 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**' \
-            ':(exclude)wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/**' \
-            ':(exclude)wp-content/plugins/etg-dynamic-filter-seo-bridge/installed-content-manifest.json' \
-            | grep -q .; then
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build deterministic installable package and provenance v6
-        if: github.event_name != 'pull_request' || steps.etg-installable.outputs.changed == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -468,7 +436,6 @@ jobs:
           PY
 
       - uses: actions/upload-artifact@v4
-        if: github.event_name != 'pull_request' || steps.etg-installable.outputs.changed == 'true'
         with:
           name: etg-dfsb-operational-candidate-${{ env.SOURCE_SHA }}
           path: |

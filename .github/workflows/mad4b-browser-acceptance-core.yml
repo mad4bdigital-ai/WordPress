@@ -199,15 +199,46 @@ jobs:
           WP_PATH=/tmp/mad4b-browser-acceptance-wordpress
           php /tmp/wp-cli.phar eval '
             $config = new \ETG\DynamicFilterSEOBridge\Config\Configuration();
-            $settings = $config->all();
-            $settings["profiles_json"] = wp_json_encode( array(
-                array(
-                    "id" => "ci-elementor-runtime",
-                    "enabled" => true,
-                    "required_capabilities" => array( "presentation.dynamic_content" ),
+            $profile = array(
+                "id" => "ci-browser",
+                "enabled" => true,
+                "inherit_global_defaults" => false,
+                "archive_slugs" => array( "tours-and-activities" ),
+                "archive_paths" => array( "/tours-and-activities/" ),
+                "providers" => array( "jet-engine" ),
+                "query_ids" => array( "tours_query_archive" ),
+                "routes" => array(
+                    array( "provider" => "jet-engine", "query_id" => "tours_query_archive" ),
                 ),
+                "publication" => array(
+                    "metadata" => false,
+                    "sitemap" => false,
+                    "multilingual" => false,
+                    "hreflang" => false,
+                    "schema" => false,
+                    "social" => false,
+                    "include_images_in_sitemap" => false,
+                    "require_elementor_content" => false,
+                    "elementor_render_when_global_off" => true,
+                    "provider_observation_verified" => false,
+                    "require_result_count_parity_for_publication" => false
+                )
+            );
+            $settings = $config->sanitizeForStorage( array(
+                "enabled" => false,
+                "compatibility_profile" => "",
+                "profiles_json" => wp_json_encode( array( $profile ) )
             ) );
-            update_option( \ETG\DynamicFilterSEOBridge\Config\Configuration::OPTION_NAME, $config->sanitize( $settings ), false );
+            update_option( \ETG\DynamicFilterSEOBridge\Config\Configuration::OPTION_NAME, $settings, false );
+            $profiles = new \ETG\DynamicFilterSEOBridge\Config\ProfileRegistry( new \ETG\DynamicFilterSEOBridge\Config\Configuration() );
+            $requirements = \ETG\DynamicFilterSEOBridge\Runtime\CapabilityRequirements::forProfiles( $profiles->all(), true );
+            if ( ! in_array( "elementor", (array) ( $requirements["adapters"] ?? array() ), true ) ) {
+                throw new RuntimeException( "Disposable ETG profile did not resolve the Elementor adapter: " . wp_json_encode( $requirements ) );
+            }
+            if ( in_array( "elementor_pro", (array) ( $requirements["adapters"] ?? array() ), true ) ) {
+                throw new RuntimeException( "Disposable ETG profile unexpectedly requires Elementor Pro." );
+            }
+
             $ok = \ETG\DynamicFilterSEOBridge\Runtime\BootGuard::run( static function () {
                 \ETG\DynamicFilterSEOBridge\Bootstrap::instance()->boot();
             } );
