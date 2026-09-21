@@ -9,12 +9,14 @@ This is a delivery contract, not a marketing checklist. A requirement is **imple
 | Capability-first / Skill-driven separation | Implemented | bounded abilities/adapters; Skills are non-authorizing |
 | Machine-readable Contracts | Implemented foundation | operating-model contract + bundle validation |
 | Ownership model | Implemented foundation | mad4b.ownership-model.v1 |
+| Universal ownership-driven provider reconciliation | Partial | ownership + semantic identity are defined, but every provider reconciler does not consume them automatically yet |
 | Semantic identity vs physical IDs | Implemented | mad4b/semantic-identity-map |
 | Desired vs Observed State | Implemented | mad4b/state-diff |
 | Independent operation planner | Implemented | mad4b/operation-plan |
 | Exact plan authority binding | Implemented for new lifecycle/workflow writes | expected_plan_sha256 is mandatory and revalidated immediately before plugin lifecycle or Bit Flows execution; approval tickets bind that exact input plus target/NHI/build/Site Profile |
 | First-class rollback | Implemented | reversible mutation envelope + readback + undo drift guard |
 | Evidence dependency graph | Implemented | dependency graph + mad4b/evidence-invalidation-plan |
+| Persistent universal Evidence Graph store/query API | Partial | dependency/invalidation engine and governed receipts exist; evidence is not yet unified into one persistent graph query surface |
 | Dependency-scoped evidence reuse | Implemented planning primitive | transitive stale-set calculation |
 | Small composable Skills | Implemented foundation | canonical Skill pack + release coordinator |
 | Declarative Site/Feature bundles | Implemented foundation | Site Profile v2 + bundle validator |
@@ -43,6 +45,7 @@ This is a delivery contract, not a marketing checklist. A requirement is **imple
 | production authority | forbidden to workflow provider |
 | prefer Free/public integration surfaces | contracted: webhook, HTTP API, WordPress hooks, Custom App |
 | Bridge trigger/action model | contracted, not activated pending public provider contract |
+| Bit Flows Addon/Bridge activation | Contracted, not activated | requires provider-public API/hook/Custom App contract plus exact-runtime behavioral certification; no internal DB/class fallback |
 | Pro-only features as core dependency | not required |
 
 ## Compatibility debt
