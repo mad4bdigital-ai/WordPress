@@ -240,9 +240,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 	public static function workspace_grants_status() {
 		$catalog = self::workspace_grant_catalog();
 		$stored = get_option( self::WORKSPACE_GRANTS_OPTION, array() );
+		$configured = is_array( $stored ) && self::WORKSPACE_GRANTS_CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) && isset( $stored['selection'] ) && is_array( $stored['selection'] );
 		$selection = array();
 		foreach ( $catalog as $app => $definition ) $selection[ $app ] = isset( $definition['default'] ) ? (string) $definition['default'] : 'off';
-		if ( is_array( $stored ) && self::WORKSPACE_GRANTS_CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) && isset( $stored['selection'] ) && is_array( $stored['selection'] ) ) {
+		if ( $configured ) {
 			foreach ( $catalog as $app => $definition ) {
 				$mode = isset( $stored['selection'][ $app ] ) ? sanitize_key( (string) $stored['selection'][ $app ] ) : $selection[ $app ];
 				if ( isset( $definition['modes'][ $mode ] ) ) $selection[ $app ] = $mode;
@@ -252,6 +253,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$full = self::full_suite_grant_selection();
 		return array(
 			'contract' => self::WORKSPACE_GRANTS_CONTRACT,
+			'configured' => $configured,
 			'selection' => $selection,
 			'scopes' => $scopes,
 			'scope_count' => count( $scopes ),
@@ -2504,8 +2506,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$selection = isset( $status['selection'] ) && is_array( $status['selection'] ) ? $status['selection'] : array( 'drive' => 'read' );
 		$drive_mode = isset( $selection['drive'] ) ? sanitize_key( (string) $selection['drive'] ) : 'read';
 		$expected_mode = 'full' === $drive_mode ? 'read_write' : 'read_only';
-		if ( ! hash_equals( $expected_mode, $access_mode ) ) return new WP_Error( 'mad4b_google_workspace_drive_access_mode_mismatch', 'The Connect action must match the saved Google Drive grant mode.' );
-		$scopes = isset( $status['scopes'] ) && is_array( $status['scopes'] ) ? $status['scopes'] : array();
+		if ( ! empty( $status['configured'] ) && ! hash_equals( $expected_mode, $access_mode ) ) return new WP_Error( 'mad4b_google_workspace_drive_access_mode_mismatch', 'The Connect action must match the saved Google Drive grant mode.' );
+		if ( empty( $status['configured'] ) ) {
+			$selection['drive'] = 'read_write' === $access_mode ? 'full' : 'read';
+			$scopes = self::scopes_for_workspace_grants( $selection );
+		} else {
+			$scopes = isset( $status['scopes'] ) && is_array( $status['scopes'] ) ? $status['scopes'] : array();
+		}
 		if ( empty( $scopes ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_empty', 'At least one Google Workspace OAuth scope is required.' );
 		return implode( ' ', $scopes );
 	}
