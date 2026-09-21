@@ -13,7 +13,7 @@ final class BrowserAcceptanceProvider {
     const MAX_CASES = 8;
     const MAX_IDS = 100;
     const MAX_DIGEST_IDS = 5000;
-    const MAX_EVIDENCE_BYTES = 2097152;
+    const MAX_EVIDENCE_BYTES = 131072;
 
     private $semanticProvider;
     private $buildIdentityProvider;
