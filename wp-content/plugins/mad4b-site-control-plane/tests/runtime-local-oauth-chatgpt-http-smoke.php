@@ -4,7 +4,8 @@
  *
  * This exercises the exact seam missing from the earlier component tests:
  * local RS256 token verification, WordPress subject mapping, REST transport
- * permission, MCP initialize/session establishment, and tools/list.
+ * permission, MCP initialize/session establishment, tools/list, and a real
+ * tools/call through the packaged MCP Adapter.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -107,7 +108,6 @@ $tools_response = $dispatch(
 	$token,
 	$session_id
 );
-remove_filter( 'pre_http_request', $http_spy, 9999 );
 
 if ( ! $tools_response instanceof WP_REST_Response ) $fail( 'tools/list did not return WP_REST_Response.', gettype( $tools_response ) );
 if ( 200 !== (int) $tools_response->get_status() ) $fail( 'OAuth bearer tools/list failed.', array( 'status' => $tools_response->get_status(), 'body' => $tools_response->get_data() ) );
@@ -121,7 +121,7 @@ foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && 
 $names = array_values( array_unique( $names ) );
 sort( $names );
 
-foreach ( array( 'mad4b-site-info', 'mad4b-list-post-types', 'mad4b-list-plugins', 'mad4b-abilities-inventory', 'mad4b-diagnostics-health', 'mad4b-runtime-authority-status', 'mad4b-connection-status' ) as $required ) {
+foreach ( array( 'mad4b-site-info', 'mad4b-list-post-types', 'mad4b-list-plugins', 'mad4b-abilities-inventory', 'mad4b-diagnostics-health', 'mad4b-runtime-authority-status', 'mad4b-connection-status', 'mad4b-browser-acceptance-capabilities' ) as $required ) {
 	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required safe-read tool.', $required );
 }
 // Exact enrolled Staging intentionally exposes the unified normal Read + Write
@@ -132,6 +132,63 @@ foreach ( array( 'mad4b-filesystem-read', 'mad4b-filesystem-write', 'mad4b-datab
 if ( in_array( 'mad4b-database-raw-query', $names, true ) ) {
 	$fail( 'OAuth bearer tools/list exposed Breakglass Raw SQL.', 'mad4b-database-raw-query' );
 }
+
+// Prove the exact packaged MCP Adapter can execute a safe Browser Acceptance
+// read ability through tools/call and that its wire result is compatible with
+// external MCP clients. Provider discovery may be empty in this generic OAuth
+// runtime; the core contract and authority boundary must still be stable.
+$browser_call = $dispatch(
+	array(
+		'jsonrpc' => '2.0',
+		'id' => 72,
+		'method' => 'tools/call',
+		'params' => array(
+			'name' => 'mad4b-browser-acceptance-capabilities',
+			'arguments' => array(),
+		),
+	),
+	$token,
+	$session_id
+);
+if ( ! $browser_call instanceof WP_REST_Response ) $fail( 'Browser Acceptance tools/call did not return WP_REST_Response.', gettype( $browser_call ) );
+if ( 200 !== (int) $browser_call->get_status() ) {
+	$fail( 'OAuth bearer Browser Acceptance tools/call failed.', array( 'status' => $browser_call->get_status(), 'body' => $browser_call->get_data() ) );
+}
+$browser_call_data = $normalize( $browser_call->get_data() );
+if ( ! is_array( $browser_call_data ) || isset( $browser_call_data['error'] ) ) {
+	$fail( 'OAuth bearer Browser Acceptance tools/call returned a JSON-RPC error.', $browser_call_data );
+}
+$browser_rpc_result = isset( $browser_call_data['result'] ) && is_array( $browser_call_data['result'] ) ? $browser_call_data['result'] : array();
+$browser_value = null;
+
+if ( isset( $browser_rpc_result['structuredContent'] ) && is_array( $browser_rpc_result['structuredContent'] ) ) {
+	$structured = $browser_rpc_result['structuredContent'];
+	$browser_value = isset( $structured['result'] ) && is_array( $structured['result'] ) ? $structured['result'] : $structured;
+}
+if ( null === $browser_value && isset( $browser_rpc_result['content'] ) && is_array( $browser_rpc_result['content'] ) ) {
+	foreach ( $browser_rpc_result['content'] as $item ) {
+		if ( ! is_array( $item ) || 'text' !== ( isset( $item['type'] ) ? (string) $item['type'] : '' ) || ! isset( $item['text'] ) || ! is_string( $item['text'] ) ) continue;
+		$decoded = json_decode( $item['text'], true );
+		if ( ! is_array( $decoded ) ) continue;
+		$browser_value = isset( $decoded['result'] ) && is_array( $decoded['result'] ) ? $decoded['result'] : $decoded;
+		break;
+	}
+}
+if ( null === $browser_value && isset( $browser_rpc_result['result'] ) && is_array( $browser_rpc_result['result'] ) ) {
+	$browser_value = $browser_rpc_result['result'];
+}
+if ( ! is_array( $browser_value ) ) $fail( 'Browser Acceptance tools/call returned no decodable structured value.', $browser_call_data );
+if ( 'mad4b.browser-acceptance-capabilities.v1' !== ( isset( $browser_value['contract'] ) ? (string) $browser_value['contract'] : '' ) ) {
+	$fail( 'Browser Acceptance tools/call returned an unexpected contract.', $browser_value );
+}
+if ( empty( $browser_value['read_only'] ) || ! empty( $browser_value['authorizing'] ) ) {
+	$fail( 'Browser Acceptance tools/call changed the read-only non-authorizing boundary.', $browser_value );
+}
+if ( 'external_browser_agent' !== ( isset( $browser_value['execution_mode'] ) ? (string) $browser_value['execution_mode'] : '' ) ) {
+	$fail( 'Browser Acceptance tools/call changed execution ownership.', $browser_value );
+}
+
+remove_filter( 'pre_http_request', $http_spy, 9999 );
 
 if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) $fail( 'Verified bearer context was not active after MCP dispatch.' );
 if ( 1 !== get_current_user_id() || ! current_user_can( 'manage_options' ) ) $fail( 'OAuth bearer did not map to the configured WordPress subject.' );
@@ -146,6 +203,8 @@ fwrite(
 			'http_filter_calls' => count( $http_seen ),
 			'unpreempted_http_calls' => count( $unpreempted_http ),
 			'session_established' => true,
+			'browser_tools_call_verified' => true,
+			'browser_tools_call_contract' => (string) $browser_value['contract'],
 		),
 		JSON_UNESCAPED_SLASHES
 	) . PHP_EOL
