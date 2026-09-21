@@ -70,6 +70,10 @@ $check( 'etg.dfsb.browser-acceptance-observer.v1' === (string) ( $asset['observe
 $check( ! empty( $asset['available'] ) && ! empty( $asset['same_origin'] ), 'ETG observer asset must be available from the exact same origin.' );
 $check( empty( $asset['authorizing'] ) && empty( $asset['arbitrary_javascript'] ) && empty( $asset['auto_enqueued'] ), 'ETG observer asset delivery opened authority or visitor-side auto injection.' );
 $check( 'external_browser_agent_same_origin_asset' === (string) ( $asset['load_mode'] ?? '' ), 'ETG observer asset load mode drifted.' );
+$check( 'snapshot' === (string) ( $asset['snapshot_method'] ?? '' ), 'ETG observer default snapshot method drifted.' );
+$check( 'snapshotAsync' === (string) ( $asset['full_digest_snapshot_method'] ?? '' ), 'ETG observer full-digest snapshot method drifted.' );
+$check( 5000 === (int) ( $asset['max_digest_ids'] ?? 0 ), 'ETG observer digest coverage ceiling drifted.' );
+$check( ! empty( $asset['web_crypto_required_for_full_digest'] ), 'ETG observer must declare Web Crypto for full-digest evidence.' );
 $check( preg_match( '/^[a-f0-9]{64}$/', (string) ( $asset['sha256'] ?? '' ) ), 'ETG observer asset lacks exact SHA-256.' );
 $check( (int) ( $asset['bytes'] ?? 0 ) > 0, 'ETG observer asset size is unavailable.' );
 $check( false !== strpos( (string) ( $asset['url'] ?? '' ), '/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js' ), 'ETG observer asset URL is not package-owned.' );
