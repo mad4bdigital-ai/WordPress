@@ -26,17 +26,32 @@ export function configuredProviders(env = process.env, requested = "auto") {
 
 export function classifyProviderError(error, definition = {}) {
   const status = Number(error?.status || error?.statusCode || error?.response?.status || 0);
-  const text = String(error?.message || error || "").toLowerCase();
+  const raw = String(error?.message || error || "");
+  const text = raw.toLowerCase();
   const fallbackStatuses = new Set(definition.fallback_statuses || []);
+  const acceptanceExecutionError =
+    /^(browser_plan_|browser_filter_|browser_observer_|browser_presentation_|browser_case_|browser_reset_|browser_dom_|browser_origin_)/.test(text);
   const quotaLike =
     fallbackStatuses.has(status) ||
-    /quota|rate.?limit|too many|capacity|concurr|browser time limit|credits?|payment|required|exhaust|timeout|temporar|unavailable/.test(text);
+    /quota|rate.?limit|too many|capacity|concurr|browser time limit|credits?|payment|required|exhaust/.test(text);
   const authLike = status === 401 || status === 403 || /unauthori|forbidden|invalid api|invalid token|credential/.test(text);
+  const transportLike =
+    status === 408 || status === 425 || status === 429 || status >= 500 ||
+    /timeout|temporar|unavailable|websocket|econnreset|econnrefused|socket hang up|target page, context or browser has been closed|browser has been closed/.test(text);
+  const fallbackAllowed = !acceptanceExecutionError && (quotaLike || authLike || transportLike);
   return {
     status,
-    category: quotaLike ? "provider_limit_or_capacity" : authLike ? "provider_auth_or_config" : "provider_runtime_error",
-    fallback_allowed: true,
-    message: String(error?.message || error || "").slice(0, 500)
+    category: acceptanceExecutionError
+      ? "acceptance_execution_error"
+      : quotaLike
+        ? "provider_limit_or_capacity"
+        : authLike
+          ? "provider_auth_or_config"
+          : transportLike
+            ? "provider_transport_or_runtime"
+            : "provider_runtime_error",
+    fallback_allowed: fallbackAllowed,
+    message: raw.slice(0, 500)
   };
 }
 
@@ -178,7 +193,7 @@ export async function connectWithFallback({ chromium, env = process.env, origin,
     } catch (error) {
       const classified = classifyProviderError(error, candidate.definition);
       attempts.push({ provider: candidate.id, state: "failed", ...classified });
-      if (requested !== "auto") {
+      if (requested !== "auto" || !classified.fallback_allowed) {
         const wrapped = new Error(`browser_provider_failed:${candidate.id}:${classified.category}`);
         wrapped.attempts = attempts;
         throw wrapped;
