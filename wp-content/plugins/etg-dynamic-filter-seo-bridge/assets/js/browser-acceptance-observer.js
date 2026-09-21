@@ -124,7 +124,8 @@
         };
     }
 
-    function domIds() {
+    function domIds(limit) {
+        limit = Math.max(1, Math.min(5000, parseInt(limit, 10) || 100));
         var selectors = [
             '.jet-listing-grid__item[data-post-id]',
             '.jet-listing-grid__item [data-post-id]',
@@ -134,7 +135,7 @@
         selectors.forEach(function (selector) {
             Array.prototype.forEach.call(document.querySelectorAll(selector), function (node) {
                 var id = parseInt(node.getAttribute('data-post-id'), 10);
-                if (id > 0 && out.indexOf(id) === -1 && out.length < 100) { out.push(id); }
+                if (id > 0 && out.indexOf(id) === -1 && out.length < limit) { out.push(id); }
             });
         });
         return out;
@@ -159,12 +160,16 @@
     }
 
     function domState() {
-        var ids = domIds();
-        var count = resultCount(ids);
+        var proofIds = domIds(5000);
+        var ids = proofIds.slice(0, 100);
+        var count = resultCount(proofIds);
         return {
             ids: ids,
-            ids_complete: !!count.authoritative && count.count <= 100 && ids.length === count.count,
-            observed_id_count: ids.length,
+            ids_complete: !!count.authoritative && count.count <= 100 && proofIds.length === count.count,
+            observed_id_count: proofIds.length,
+            proof_ids: proofIds,
+            proof_ids_complete: !!count.authoritative && count.count <= 5000 && proofIds.length === count.count,
+            proof_item_count: proofIds.length,
             result_count: count.count,
             result_count_authoritative: !!count.authoritative,
             result_count_source: count.source
