@@ -19,8 +19,10 @@ const env = {
 const ranked = rankProviderCandidates(configuredProviders(env), plan, contracts);
 assert.deepEqual(ranked.map((x) => x.id), ["cloudflare", "browserbase", "browserless", "steel"]);
 assert.equal(ranked[0].execution.sessions_required, 1);
+assert.equal(ranked[0].execution.estimated_total_seconds, 370);
 assert.equal(ranked[1].execution.sessions_required, 1);
 assert.equal(ranked[2].execution.sessions_required, 8);
+assert.equal(ranked[2].execution.estimated_total_seconds, 440);
 assert.equal(ranked[2].execution.chunked, true);
 assert.equal(ranked[3].execution.sessions_required, 1);
 assert.equal(ranked[3].execution.recurring_free_tier, false);
