@@ -35,6 +35,11 @@ for op, ability in expected_read.items():
 execute = ops.get("execute", {})
 if execute.get("ability") != "bitflows/run-flow" or execute.get("risk") != "high_risk_write":
     raise SystemExit("Bit Flows execute mapping must remain high-risk and bound to the governed run-flow ability")
+if execute.get("capability_id") != "flow.execute":
+    raise SystemExit("Bit Flows execute mapping must bind to the exact flow.execute capability certification")
+for read_op in ("list", "get", "execution_status"):
+    if ops.get(read_op, {}).get("capability_id") != "flows.read":
+        raise SystemExit(f"Bit Flows {read_op} mapping must bind to flows.read capability certification")
 required = set(execute.get("requires", []))
 for marker in {"provider_capability_certified", "exact_workflow_fingerprint", "exact_nhi_grant", "one_time_approval", "budget", "audit"}:
     if marker not in required:
@@ -59,6 +64,9 @@ for marker in (
     "mad4b/workflow-plan",
     "non_authorizing",
     "plan_sha256",
+    "capability_id",
+    "capability_certified",
+    "write_eligible",
     "mutation_performed",
     "authority_created",
 ):
