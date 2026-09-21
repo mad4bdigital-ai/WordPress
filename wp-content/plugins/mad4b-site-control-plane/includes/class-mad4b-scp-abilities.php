@@ -169,6 +169,7 @@ final class MAD4B_SCP_Abilities {
 			array(
 				'plugin' => array( 'type' => 'string', 'minLength' => 1 ),
 				'expected_active' => array( 'type' => 'boolean' ),
+				'expected_state_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
 			),
 			array( 'plugin', 'expected_active', 'reason' )
@@ -367,9 +368,16 @@ final class MAD4B_SCP_Abilities {
 		if ( $current !== (bool) $input['expected_active'] ) return new WP_Error( 'mad4b_stale_plugin_state', 'Plugin active state changed since it was reviewed.', array( 'current_active' => $current ) );
 		if ( $current ) return new WP_Error( 'mad4b_plugin_already_active', 'Plugin is already active.' );
 		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'activate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
+		$preflight = class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ? MAD4B_SCP_Plugin_Lifecycle::mutation_preflight( $plugin, true, $input ) : new WP_Error( 'mad4b_plugin_lifecycle_preflight_unavailable', 'Plugin lifecycle preflight is unavailable.' );
+		if ( is_wp_error( $preflight ) ) return $preflight;
 		$result = activate_plugin( $plugin ); if ( is_wp_error( $result ) ) return $result;
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'reason' => sanitize_text_field( $input['reason'] ) ) );
-		return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ) );
+		$readback = MAD4B_SCP_Plugin_Lifecycle::verify_state( $plugin, true );
+		if ( is_wp_error( $readback ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'readback_verified' => false ), 'failure' );
+			return $readback;
+		}
+		MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'reason' => sanitize_text_field( $input['reason'] ), 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true ) );
+		return array( 'plugin' => $plugin, 'active' => true, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true );
 	}
 
 	public function plugin_deactivate( $input ) {
@@ -386,11 +394,18 @@ final class MAD4B_SCP_Abilities {
 		$is_mcp_adapter = 0 === strpos( strtolower( $plugin ), 'mcp-adapter/' ) || 'mcp-adapter' === $text_domain || false !== strpos( $name, 'mcp adapter' );
 		if ( $plugin === $self || $is_mcp_adapter || MAD4B_SCP_Policy::plugin_lifecycle_protected( $plugin ) ) return new WP_Error( 'mad4b_control_plane_dependency_protected', 'The control plane, its MCP Adapter dependency, and protected plugins cannot be deactivated through the normal admin surface.' );
 		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'deactivate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
+		$preflight = class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ? MAD4B_SCP_Plugin_Lifecycle::mutation_preflight( $plugin, false, $input ) : new WP_Error( 'mad4b_plugin_lifecycle_preflight_unavailable', 'Plugin lifecycle preflight is unavailable.' );
+		if ( is_wp_error( $preflight ) ) return $preflight;
 		$network = is_multisite() && is_plugin_active_for_network( $plugin );
 		if ( $network && ! current_user_can( 'manage_network_plugins' ) ) return new WP_Error( 'mad4b_network_plugin_capability_denied', 'Network-wide plugin deactivation requires manage_network_plugins.' );
 		deactivate_plugins( $plugin, false, $network );
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'reason' => sanitize_text_field( $input['reason'] ) ) );
-		return array( 'plugin' => $plugin, 'active' => is_plugin_active( $plugin ), 'network_active' => is_multisite() ? is_plugin_active_for_network( $plugin ) : false );
+		$readback = MAD4B_SCP_Plugin_Lifecycle::verify_state( $plugin, false );
+		if ( is_wp_error( $readback ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'readback_verified' => false ), 'failure' );
+			return $readback;
+		}
+		MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'reason' => sanitize_text_field( $input['reason'] ), 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true ) );
+		return array( 'plugin' => $plugin, 'active' => false, 'network_active' => (bool) $readback['network_active'], 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true );
 	}
 
 	public function filesystem_write( $input ) {
