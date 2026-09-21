@@ -37,16 +37,18 @@ export function rankProviderCandidates(candidates, plan, contracts, options = {}
   const reserveSeconds = Math.max(0, Number(options.reserveSeconds || budget.challenge_expiry_reserve_seconds || 30));
   const sessionStartOverheadSeconds = Math.max(0, Number(options.sessionStartOverheadSeconds || budget.session_start_overhead_seconds || 10));
   const caseCount = Array.isArray(plan?.cases) ? plan.cases.length : 0;
+  const allowCreditProviders = options.allowCreditProviders === true;
 
   return candidates.map((candidate, index) => {
     const execution = candidate.definition
       ? providerExecutionPlan(candidate.definition, caseCount, { estimatedCaseSeconds, reserveSeconds, sessionStartOverheadSeconds })
       : null;
     const budgetEligible = !!execution && execution.sessions_required <= maxSessions;
+    const spendEligible = !candidate.definition?.auto_requires_spend_authorization || allowCreditProviders;
     const recurringPenalty = candidate.definition?.recurring_free_tier ? 0 : 1000;
     const sessionPenalty = execution ? execution.sessions_required * 5 : 5000;
     const basePriority = Number(candidate.definition?.priority || (index + 1) * 100);
-    const score = candidate.available && budgetEligible
+    const score = candidate.available && budgetEligible && spendEligible
       ? recurringPenalty + basePriority + sessionPenalty
       : Number.POSITIVE_INFINITY;
 
@@ -54,6 +56,7 @@ export function rankProviderCandidates(candidates, plan, contracts, options = {}
       ...candidate,
       execution,
       budget_eligible: budgetEligible,
+      spend_eligible: spendEligible,
       score,
       selection_blocker: !candidate.definition
         ? "provider_unknown"
@@ -61,7 +64,9 @@ export function rankProviderCandidates(candidates, plan, contracts, options = {}
           ? "credentials_missing"
           : !budgetEligible
             ? "session_budget_exceeded"
-            : ""
+            : !spendEligible
+              ? "spend_authorization_required"
+              : ""
     };
   }).sort((a, b) => {
     if (a.score !== b.score) return a.score - b.score;
