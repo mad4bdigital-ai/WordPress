@@ -32,6 +32,16 @@ const auth = new Error("unauthorized");
 auth.status = 401;
 assert.equal(classifyProviderError(auth, contracts.providers.browserbase).category, "provider_auth_or_config");
 
+const driverFailure = new Error("browser_filter_control_not_found:cairo");
+const driverClass = classifyProviderError(driverFailure, contracts.providers.cloudflare);
+assert.equal(driverClass.category, "acceptance_execution_error");
+assert.equal(driverClass.fallback_allowed, false);
+
+const websocketFailure = new Error("websocket connection temporarily unavailable");
+const websocketClass = classifyProviderError(websocketFailure, contracts.providers.cloudflare);
+assert.equal(websocketClass.category, "provider_transport_or_runtime");
+assert.equal(websocketClass.fallback_allowed, true);
+
 const now = Math.floor(Date.now() / 1000);
 const plan = {
   contract: "mad4b.browser-acceptance-plan.v1",
