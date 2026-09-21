@@ -9,6 +9,10 @@ import {
   connectBrowserProvider,
   loadProviderContracts
 } from "./providers.mjs";
+import {
+  BrowserRunBudget,
+  rankProviderCandidates
+} from "./scheduler.mjs";
 import { runBrowserPlan, validatePlan } from "./etg-driver.mjs";
 
 function arg(name, fallback = "") {
@@ -28,36 +32,43 @@ if (!planPath) {
 
 const plan = validatePlan(JSON.parse(fs.readFileSync(planPath, "utf8")));
 const contracts = loadProviderContracts();
-const candidates = configuredProviders(process.env, requested);
+const budget = new BrowserRunBudget(contracts);
+const configured = configuredProviders(process.env, requested);
+const candidates = requested === "auto"
+  ? rankProviderCandidates(configured, plan, contracts)
+  : rankProviderCandidates(configured, plan, contracts).sort((a, b) => Number(a.definition?.priority || 9999) - Number(b.definition?.priority || 9999));
+
 const attempts = [];
 let selectedProvider = "";
 let finalEvidence = null;
 
-async function executeInProvider(candidate) {
-  const sessionSeconds = Number(candidate.definition?.advisory_free_limits?.session_seconds || 900);
-  const chunkPerCase = sessionSeconds <= 180 && plan.cases.length > 1;
-  if (!chunkPerCase) {
-    const connection = await connectBrowserProvider(candidate.id, chromium, process.env, plan.origin);
-    try {
-      return await runBrowserPlan({ browser: connection.browser, providerId: candidate.id, plan });
-    } finally {
-      await connection.release();
-    }
-  }
+function chunkCases(candidate) {
+  const execution = candidate.execution || {};
+  const size = Math.max(1, Number(execution.cases_per_session || plan.cases.length || 1));
+  const chunks = [];
+  for (let i = 0; i < plan.cases.length; i += size) chunks.push(plan.cases.slice(i, i + size));
+  return chunks;
+}
 
+async function executeInProvider(candidate) {
+  const chunks = chunkCases(candidate);
   const cases = [];
   let envelope = null;
-  for (const planCase of plan.cases) {
+
+  for (const caseChunk of chunks) {
     const now = Math.floor(Date.now() / 1000);
-    if (Number(plan.challenge?.expires_at || 0) <= now + 20) {
-      throw new Error("browser_plan_challenge_near_expiry_during_chunked_execution");
+    const reserve = Number(contracts.run_budget?.challenge_expiry_reserve_seconds || 30);
+    if (Number(plan.challenge?.expires_at || 0) <= now + reserve) {
+      throw new Error("browser_plan_challenge_near_expiry_during_execution");
     }
+
+    budget.reserveSession();
     const connection = await connectBrowserProvider(candidate.id, chromium, process.env, plan.origin);
     try {
       const partial = await runBrowserPlan({
         browser: connection.browser,
         providerId: candidate.id,
-        plan: { ...plan, cases: [planCase], case_count: 1 }
+        plan: { ...plan, cases: caseChunk, case_count: caseChunk.length }
       });
       if (!envelope) envelope = partial;
       cases.push(...partial.cases);
@@ -65,52 +76,80 @@ async function executeInProvider(candidate) {
       await connection.release();
     }
   }
+
   return { ...envelope, cases };
 }
 
 for (const candidate of candidates) {
-  if (!candidate.definition) {
-    attempts.push({ provider: candidate.id, state: "skipped", reason: "provider_unknown" });
-    continue;
-  }
-  if (!candidate.available) {
-    attempts.push({ provider: candidate.id, state: "skipped", reason: "credentials_missing", missing: candidate.missing });
+  if (candidate.selection_blocker) {
+    attempts.push({
+      provider: candidate.id,
+      state: "skipped",
+      reason: candidate.selection_blocker,
+      missing: candidate.missing || [],
+      execution: candidate.execution || null
+    });
     continue;
   }
 
+  if (!budget.canAttemptProvider(candidate.id)) {
+    attempts.push({ provider: candidate.id, state: "skipped", reason: "provider_circuit_or_attempt_budget_open" });
+    continue;
+  }
+
+  budget.reserveProvider(candidate.id);
+  const startedAt = new Date().toISOString();
   try {
     finalEvidence = await executeInProvider(candidate);
     selectedProvider = candidate.id;
     attempts.push({
       provider: candidate.id,
       state: "selected",
-      session_seconds_hint: candidate.definition?.advisory_free_limits?.session_seconds || null
+      started_at: startedAt,
+      completed_at: new Date().toISOString(),
+      execution: candidate.execution,
+      budget: budget.snapshot()
     });
     break;
   } catch (error) {
+    budget.openCircuit(candidate.id);
     const classified = classifyProviderError(error, candidate.definition);
-    attempts.push({ provider: candidate.id, state: "failed", ...classified });
+    attempts.push({
+      provider: candidate.id,
+      state: "failed",
+      started_at: startedAt,
+      completed_at: new Date().toISOString(),
+      execution: candidate.execution,
+      budget: budget.snapshot(),
+      ...classified
+    });
     if (requested !== "auto" || !classified.fallback_allowed) break;
   }
 }
 
+fs.mkdirSync(path.dirname(path.resolve(attemptsPath)), { recursive: true });
 fs.writeFileSync(attemptsPath, JSON.stringify({
-  contract: "mad4b.browser-provider-attempts.v1",
+  contract: "mad4b.browser-provider-attempts.v2",
   provider_contract: contracts.contract,
+  selection_policy: contracts.selection_policy,
+  plan_digest: plan.plan_digest,
   selected_provider: selectedProvider,
+  run_budget: budget.snapshot(),
   attempts
 }, null, 2));
 
 if (!finalEvidence) {
-  console.error(JSON.stringify({ error: "no_browser_provider_completed_plan", attempts }, null, 2));
+  console.error(JSON.stringify({ error: "no_browser_provider_completed_plan", attempts, run_budget: budget.snapshot() }, null, 2));
   process.exit(1);
 }
 
 fs.mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });
 fs.writeFileSync(outPath, JSON.stringify(finalEvidence, null, 2));
 console.log(JSON.stringify({
-  contract: "mad4b.browser-execution-run.v1",
+  contract: "mad4b.browser-execution-run.v2",
   selected_provider: selectedProvider,
   case_count: finalEvidence.cases.length,
-  evidence_file: outPath
+  browser_sessions_started: budget.snapshot().browser_sessions_started,
+  evidence_file: outPath,
+  attempts_file: attemptsPath
 }));
