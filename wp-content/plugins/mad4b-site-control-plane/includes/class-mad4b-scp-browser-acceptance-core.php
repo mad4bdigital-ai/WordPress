@@ -343,7 +343,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'additionalProperties' => false,
 				),
 				'rendered' => array(
-					'type' => 'object', 'maxProperties' => 12,
+					'type' => 'object', 'maxProperties' => 10,
 					'properties' => array(
 						'result_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000000 ),
 						'result_count_authoritative' => array( 'type' => 'boolean' ),
@@ -351,8 +351,6 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 						'ids' => array( 'type' => 'array', 'maxItems' => 100, 'items' => array( 'type' => 'integer', 'minimum' => 1 ) ),
 						'ids_complete' => array( 'type' => 'boolean' ),
 						'observed_id_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000000 ),
-						'proof_ids' => array( 'type' => 'array', 'maxItems' => 5000, 'items' => array( 'type' => 'integer', 'minimum' => 1 ) ),
-						'proof_ids_complete' => array( 'type' => 'boolean' ),
 						'digest_authoritative' => array( 'type' => 'boolean' ),
 						'proof_item_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 5000 ),
 						'identity_digest' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
