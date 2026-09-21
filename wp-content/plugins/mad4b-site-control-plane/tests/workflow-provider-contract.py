@@ -52,6 +52,9 @@ if policy.get("governance_owner") != "mad4b":
     raise SystemExit("MAD4B must remain workflow governance owner")
 
 for marker in (
+    "wp_abilities_api_categories_init",
+    "register_category",
+    "mad4b-workflows",
     "mad4b/workflow-provider-status",
     "mad4b/workflow-plan",
     "non_authorizing",
