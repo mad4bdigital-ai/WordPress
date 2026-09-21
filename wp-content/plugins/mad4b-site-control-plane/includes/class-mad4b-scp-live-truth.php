@@ -167,7 +167,14 @@ final class MAD4B_SCP_Live_Truth {
 			? MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_status( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY )
 			: array();
 		$candidate_bootstrap_exception_active = ! $candidate_reconciled && ! empty( $candidate_bootstrap['policy_available'] );
-		$remote_approval_exceptions = $candidate_bootstrap_exception_active ? array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY ) : array();
+		$approval_policy = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'approval_policy_projection' )
+			? MAD4B_SCP_Staging_Write_Authority::approval_policy_projection( $candidate_bootstrap_exception_active )
+			: array(
+				'all_remote_writes_require_exact_approval' => ! $candidate_bootstrap_exception_active,
+				'normal_remote_writes_require_exact_approval' => true,
+				'remote_write_approval_policy' => $candidate_bootstrap_exception_active ? 'exact_approval_except_bounded_candidate_bootstrap' : 'exact_approval_required',
+				'remote_write_approval_exceptions' => $candidate_bootstrap_exception_active ? array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY ) : array(),
+			);
 		$runtime_reconciled = ! empty( $runtime['ready'] )
 			&& empty( $runtime['blocker'] )
 			&& isset( $runtime['write_tool_count'] )
@@ -238,10 +245,14 @@ final class MAD4B_SCP_Live_Truth {
 			'production_auto_enable' => false,
 			'breakglass_auto_enable' => false,
 			'breakglass_included' => $breakglass,
-			'all_remote_writes_require_exact_approval' => ! $candidate_bootstrap_exception_active,
-			'normal_remote_writes_require_exact_approval' => true,
-			'remote_write_approval_policy' => $candidate_bootstrap_exception_active ? 'exact_approval_except_bounded_candidate_bootstrap' : 'exact_approval_required',
-			'remote_write_approval_exceptions' => $remote_approval_exceptions,
+			'approval_policy_contract' => isset( $approval_policy['approval_policy_contract'] ) ? (string) $approval_policy['approval_policy_contract'] : '',
+			'approval_policy_scope' => isset( $approval_policy['approval_policy_scope'] ) ? (string) $approval_policy['approval_policy_scope'] : 'effective_runtime',
+			'approval_policy_effective_state_resolved' => true,
+			'all_remote_writes_require_exact_approval' => ! empty( $approval_policy['all_remote_writes_require_exact_approval'] ),
+			'normal_remote_writes_require_exact_approval' => ! empty( $approval_policy['normal_remote_writes_require_exact_approval'] ),
+			'remote_write_approval_policy' => isset( $approval_policy['remote_write_approval_policy'] ) ? (string) $approval_policy['remote_write_approval_policy'] : '',
+			'remote_write_approval_exceptions' => isset( $approval_policy['remote_write_approval_exceptions'] ) ? (array) $approval_policy['remote_write_approval_exceptions'] : array(),
+			'candidate_bootstrap_exception_defined' => ! empty( $approval_policy['candidate_bootstrap_exception_defined'] ),
 			'candidate_bootstrap_exception_active' => $candidate_bootstrap_exception_active,
 			'candidate_bootstrap_contract' => isset( $candidate_bootstrap['contract'] ) ? (string) $candidate_bootstrap['contract'] : '',
 			'candidate_bootstrap_closure' => $candidate_bootstrap_closure,

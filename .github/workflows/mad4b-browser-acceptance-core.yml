@@ -175,13 +175,24 @@ jobs:
           python3 tools/normalize-premium-provider-package.py --provider jetsmartfilters --input wp-content/plugins/jet-smart-filters.zip --output "$out/jet-smart-filters.zip" --expected-version 3.8.5 --report "$out/jetsmartfilters-normalization.json"
           unzip -tqq "$out/jet-engine.zip"
           unzip -tqq "$out/jet-smart-filters.zip"
+      - name: Acquire exact certified Elementor 4.2.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-browser-acceptance-providers/elementor-4.2.4.zip
+          curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+            https://downloads.wordpress.org/plugin/elementor.4.2.4.zip \
+            --output "$out"
+          echo "eaff579f54079b72063c4ee67e607228eeb5d7eaff4cb13e889a262a1d3ca7a3  $out" | sha256sum --check --strict
+          unzip -tqq "$out"
+
       - name: Install exact providers, ETG and MAD4B Control Plane
         shell: bash
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-browser-acceptance-wordpress
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "wp-content/plugins/mcp-adapter.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
-          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "wp-content/plugins/elementor.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug elementor
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "/tmp/mad4b-browser-acceptance-providers/elementor-4.2.4.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug elementor
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "/tmp/mad4b-browser-acceptance-providers/jet-engine.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug jet-engine
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "/tmp/mad4b-browser-acceptance-providers/jet-smart-filters.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug jet-smart-filters
           cp -R wp-content/plugins/etg-dynamic-filter-seo-bridge "$WP_PATH/wp-content/plugins/etg-dynamic-filter-seo-bridge"

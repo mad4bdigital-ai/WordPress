@@ -108,15 +108,33 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 	public static function status() {
 		$status = self::raw_status();
-		// Policy truth is universal, not request-specific. Normal remote writes
-		// always require exact one-time approval; one narrowly bounded candidate
-		// bootstrap ability can execute without a prior ticket when its guard closes.
-		$status['all_remote_writes_require_exact_approval'] = false;
-		$status['normal_remote_writes_require_exact_approval'] = true;
-		$status['remote_write_approval_policy'] = 'exact_approval_except_bounded_candidate_bootstrap';
-		$status['remote_write_prior_approval_exceptions'] = array( self::CANDIDATE_BOOTSTRAP_ABILITY );
-		$status['candidate_bootstrap_contract'] = self::CANDIDATE_BOOTSTRAP_CONTRACT;
-		return $status;
+		return array_merge( $status, self::approval_policy_projection() );
+	}
+
+	public static function approval_policy_projection( $candidate_bootstrap_exception_active = null ) {
+		$resolved = is_bool( $candidate_bootstrap_exception_active );
+		$active = true === $candidate_bootstrap_exception_active;
+		$policy = array(
+			'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v1',
+			'approval_policy_scope' => $resolved ? 'effective_runtime' : 'capability_definition',
+			'approval_policy_effective_state_resolved' => $resolved,
+			'normal_remote_writes_require_exact_approval' => true,
+			'candidate_bootstrap_exception_defined' => true,
+			'candidate_bootstrap_contract' => self::CANDIDATE_BOOTSTRAP_CONTRACT,
+			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY ),
+		);
+		if ( $resolved ) {
+			$policy['candidate_bootstrap_exception_active'] = $active;
+			$policy['all_remote_writes_require_exact_approval'] = ! $active;
+			$policy['remote_write_approval_policy'] = $active ? 'exact_approval_except_bounded_candidate_bootstrap' : 'exact_approval_required';
+			$policy['remote_write_approval_exceptions'] = $active ? array( self::CANDIDATE_BOOTSTRAP_ABILITY ) : array();
+		} else {
+			// Definition scope declares the one possible exception but deliberately
+			// does not claim whether it is active for the current runtime.
+			$policy['all_remote_writes_require_exact_approval'] = false;
+			$policy['remote_write_approval_policy'] = 'exact_approval_except_bounded_candidate_bootstrap';
+		}
+		return $policy;
 	}
 
 	private static function raw_status() {
