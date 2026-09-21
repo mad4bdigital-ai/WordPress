@@ -34,6 +34,12 @@ required_observer = [
     "add_action( 'deprecated_class_run'",
     "add_filter( 'rest_post_dispatch'",
     "'mad4b/query-monitor-regression-status'",
+    "'mad4b/frontend-performance-status'",
+    "'frontend_performance_baseline' => self::gate(",
+    "'mad4b.frontend-performance-evidence.v1'",
+    "'baseline_only' => true",
+    "'budget_evaluated' => false",
+    "'ttfb_claimed' => false",
     "'mad4b/build-provenance-status'",
     "'mad4b/external-handshake-attestation-status'",
     "'mad4b/external-wpml-receipt-status'",
@@ -216,6 +222,8 @@ if "'local_rest_isolation' => self::gate( ! empty( $rest['ready'] )" not in obse
     raise SystemExit('Aggregate local REST gate no longer consumes the dedicated REST readiness result.')
 if "'external_wpml' => self::gate( ! empty( $wpml['verified'] )" not in observer:
     raise SystemExit('External WPML acceptance must remain a separate observer gate before finalization.')
+if "'frontend_performance_baseline' => self::gate( ! empty( $performance['ready'] )" not in observer:
+    raise SystemExit('Front-end performance baseline must remain a separate current-build gate.')
 
 # Environment/profile enrollment, acceptance capture and write eligibility are
 # separate governance facts. Disabled features must stay fail-closed without
