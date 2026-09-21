@@ -63,6 +63,7 @@ namespace {
     etg_browser_same(false,$descriptor['authorizing'],'browser acceptance remains non-authorizing');
     etg_browser_same(true,$descriptor['external_browser_agent_required'],'provider cannot self-certify a browser runtime');
     etg_browser_same(false,$descriptor['arbitrary_javascript_input'],'arbitrary JavaScript remains denied');
+    etg_browser_same(131072,$descriptor['max_evidence_bytes'],'provider evidence budget matches MAD4B Browser Core');
 
     $providers=$provider->registerCentralProvider(array());
     $providers=\ETG\DynamicFilterSEOBridge\Acceptance\BrowserAcceptanceFreshnessGuard::decorateProviders($providers);
