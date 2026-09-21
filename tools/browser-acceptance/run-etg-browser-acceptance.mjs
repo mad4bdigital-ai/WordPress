@@ -24,6 +24,7 @@ const planPath = arg("plan", process.env.MAD4B_BROWSER_PLAN_FILE || "");
 const outPath = arg("out", process.env.MAD4B_BROWSER_EVIDENCE_FILE || "browser-evidence.json");
 const attemptsPath = arg("attempts-out", "browser-provider-attempts.json");
 const requested = arg("provider", process.env.MAD4B_BROWSER_PROVIDER || "auto");
+const executionDeadline = Number(process.env.MAD4B_BROWSER_EXECUTION_DEADLINE_EPOCH || 0);
 
 if (!planPath) {
   console.error("Missing --plan. Browser runner consumes a fresh signed MAD4B Browser Acceptance plan file.");
@@ -61,6 +62,12 @@ async function executeInProvider(candidate) {
     if (Number(plan.challenge?.expires_at || 0) <= now + reserve) {
       throw new Error("browser_plan_challenge_near_expiry_during_execution");
     }
+    const estimatedCaseSeconds = Number(candidate.execution?.estimated_case_seconds || contracts.run_budget?.estimated_case_seconds || 45);
+    const startOverhead = Number(contracts.run_budget?.session_start_overhead_seconds || 10);
+    const estimatedChunkSeconds = caseChunk.length * estimatedCaseSeconds + startOverhead;
+    if (executionDeadline > 0 && now + estimatedChunkSeconds > executionDeadline) {
+      throw new Error("browser_execution_deadline_insufficient_for_chunk");
+    }
 
     budget.reserveSession();
     const connection = await connectBrowserProvider(candidate.id, chromium, process.env, plan.origin);
@@ -94,6 +101,19 @@ for (const candidate of candidates) {
 
   if (!budget.canAttemptProvider(candidate.id)) {
     attempts.push({ provider: candidate.id, state: "skipped", reason: "provider_circuit_or_attempt_budget_open" });
+    continue;
+  }
+
+  const remainingSeconds = executionDeadline > 0 ? executionDeadline - Math.floor(Date.now() / 1000) : null;
+  if (executionDeadline > 0 && remainingSeconds < Number(candidate.execution?.estimated_total_seconds || 0)) {
+    attempts.push({
+      provider: candidate.id,
+      state: "skipped",
+      reason: "execution_deadline_insufficient",
+      remaining_seconds: remainingSeconds,
+      execution: candidate.execution
+    });
+    if (requested !== "auto") break;
     continue;
   }
 
@@ -134,7 +154,7 @@ fs.writeFileSync(attemptsPath, JSON.stringify({
   selection_policy: contracts.selection_policy,
   plan_digest: plan.plan_digest,
   selected_provider: selectedProvider,
-  run_budget: budget.snapshot(),
+  run_budget: { ...budget.snapshot(), execution_deadline_epoch: executionDeadline || null },
   attempts
 }, null, 2));
 
@@ -150,6 +170,7 @@ console.log(JSON.stringify({
   selected_provider: selectedProvider,
   case_count: finalEvidence.cases.length,
   browser_sessions_started: budget.snapshot().browser_sessions_started,
+  execution_deadline_epoch: executionDeadline || null,
   evidence_file: outPath,
   attempts_file: attemptsPath
 }));
