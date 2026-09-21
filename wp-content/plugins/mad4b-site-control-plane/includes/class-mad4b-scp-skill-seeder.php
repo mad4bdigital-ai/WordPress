@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Skill_Seeder {
 	const CONTRACT = 'mad4b.skill-seeder.v1';
 	const OPTION = 'mad4b_scp_skill_seed_v1';
-	const SEED_VERSION = 4;
+	const SEED_VERSION = 5;
 	const SEED_DIR = 'skill-seeds';
 
 	private static $ran = false;
