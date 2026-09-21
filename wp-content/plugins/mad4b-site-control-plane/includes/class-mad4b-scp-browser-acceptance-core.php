@@ -353,7 +353,11 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 						'observed_id_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000000 ),
 						'digest_authoritative' => array( 'type' => 'boolean' ),
 						'proof_item_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 5000 ),
-						'identity_digest' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+						'identity_digest' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+						'order_digest' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+					),
+					'additionalProperties' => false,
+				),
 				'url_state' => array(
 					'type' => 'object', 'maxProperties' => 4,
 					'properties' => array(
