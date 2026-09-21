@@ -83,6 +83,7 @@ for marker in [
     "'elementor/move-element' => 'elementor'",
     "'elementor/delete-element' => 'elementor'",
     "'elementor/set-dynamic-tag' => 'elementor'",
+    "'elementor/set-etg-dynamic-tag' => 'elementor'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
     "MAD4B_SCP_Agent_Registry::resolve_agent",
@@ -113,6 +114,7 @@ for required_pair in [
     "'elementor/move-element' => 'elementor'",
     "'elementor/delete-element' => 'elementor'",
     "'elementor/set-dynamic-tag' => 'elementor'",
+    "'elementor/set-etg-dynamic-tag' => 'elementor'",
 ]:
     if required_pair not in allowlist:
         raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
