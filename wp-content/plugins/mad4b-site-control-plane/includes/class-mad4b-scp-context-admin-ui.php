@@ -304,7 +304,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED, $auth_mode, false ) . ( $dedicated_origin_ready ? '' : ' disabled' ) . '> <strong>' . esc_html__( 'Dedicated Google OAuth — Site Domain', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Uses a Google OAuth app dedicated to this site. Callback and token lifecycle stay on the Site Profile primary domain with no auth.mad4b.com dependency.', 'mad4b-site-control-plane' ) . '</span></label>';
 			echo '<label><input type="radio" name="auth_mode" value="' . esc_attr( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM ) . '" ' . checked( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_CUSTOM, $auth_mode, false ) . '> <strong>' . esc_html__( 'Custom Google OAuth App — Advanced', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Use your own Google Cloud OAuth Web application and the existing custom credential path.', 'mad4b-site-control-plane' ) . '</span></label>';
 			echo '</div>';
-			if ( ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is unavailable until MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL is configured on the server.', 'mad4b-site-control-plane' ) . '</p></div>';
+			if ( ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is unavailable until the broker URL and the per-site request-signing key ID/secret are configured on the server.', 'mad4b-site-control-plane' ) . '</p></div>';
 			if ( ! $dedicated_origin_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Dedicated Site OAuth requires an enrolled Site Profile whose canonical origin matches the current WordPress Home URL and Site URL.', 'mad4b-site-control-plane' ) . '</p></div>';
 			submit_button( __( 'Save Connection Method', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 			echo '</form>';
@@ -316,7 +316,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="mad4b-scp-next-step ' . ( $managed_ready ? 'is-complete' : 'is-attention' ) . '"><h3>' . esc_html__( 'Managed Google Sign-In', 'mad4b-site-control-plane' ) . '</h3>';
 			echo '<p>' . esc_html__( 'The Google OAuth application is held by the MAD4B broker. This site receives a one-time, site-bound handoff and stores only the encrypted Google token after server-to-server redemption. Google Client Secret never enters WordPress.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<p><label><strong>' . esc_html__( 'Managed callback URI', 'mad4b-site-control-plane' ) . '</strong></label><br><input type="text" readonly class="large-text code" value="' . esc_attr( $credentials['managed_redirect_uri'] ) . '"></p>';
-			if ( $managed_ready ) echo '<p><span class="dashicons dashicons-yes-alt"></span> ' . esc_html__( 'MAD4B Managed OAuth broker is configured.', 'mad4b-site-control-plane' ) . '</p>';
+			if ( $managed_ready ) echo '<p><span class="dashicons dashicons-yes-alt"></span> ' . esc_html__( 'MAD4B Managed OAuth broker and per-site request signing are configured.', 'mad4b-site-control-plane' ) . '</p>';
 			else echo '<p><code>managed_google_oauth_broker_not_configured</code></p>';
 			echo '</div>';
 		} elseif ( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $auth_mode ) {
