@@ -9,6 +9,10 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceFreshnessGuard.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-browser-acceptance-observer-smoke.js'
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/jet-smart-filters.zip'
       - 'tools/normalize-premium-provider-package.py'
@@ -22,6 +26,10 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceFreshnessGuard.php'
+      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-browser-acceptance-observer-smoke.js'
       - 'wp-content/plugins/jet-engine.zip'
       - 'wp-content/plugins/jet-smart-filters.zip'
       - 'tools/normalize-premium-provider-package.py'
@@ -37,8 +45,6 @@ concurrency:
 
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-  ETG_BROWSER_ACCEPTANCE_HEAD: d6381ef5ca4d9816fd9da61748f3c6b640cbf2bf
-  ETG_BROWSER_ACCEPTANCE_TREE: 314c2d13fce5777079acd6a0f5c97b70221dfd7a
 
 jobs:
   contract:
@@ -98,21 +104,20 @@ jobs:
           fetch-depth: 1
       - name: Verify exact PR head checkout
         run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-      - name: Materialize exact ETG Browser Acceptance candidate
+      - name: Bind Browser Acceptance to exact current ETG subtree
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin "$ETG_BROWSER_ACCEPTANCE_HEAD" --depth=1
-          test "$(git rev-parse FETCH_HEAD)" = "$ETG_BROWSER_ACCEPTANCE_HEAD"
-          test "$(git rev-parse "$ETG_BROWSER_ACCEPTANCE_HEAD^{tree}")" = "$ETG_BROWSER_ACCEPTANCE_TREE"
-          git checkout "$ETG_BROWSER_ACCEPTANCE_HEAD" -- wp-content/plugins/etg-dynamic-filter-seo-bridge
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          ETG_TREE="$(git rev-parse "HEAD:wp-content/plugins/etg-dynamic-filter-seo-bridge")"
+          test -n "$ETG_TREE"
           grep -Fq "Version: 0.4.0-alpha.13" wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/LiveAcceptanceProvider.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserObserverAsset.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceFreshnessGuard.php
           test -s wp-content/plugins/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js
-          printf '%s\n' "{\"contract\":\"etg.dfsb.embedded-build-identity.v1\",\"git_sha\":\"$ETG_BROWSER_ACCEPTANCE_HEAD\",\"tree_sha\":\"$ETG_BROWSER_ACCEPTANCE_TREE\",\"plugin_version\":\"0.4.0-alpha.13\"}" > wp-content/plugins/etg-dynamic-filter-seo-bridge/build-identity.json
+          printf '%s\n' "{\"contract\":\"etg.dfsb.embedded-build-identity.v1\",\"git_sha\":\"$SOURCE_SHA\",\"tree_sha\":\"$ETG_TREE\",\"plugin_version\":\"0.4.0-alpha.13\"}" > wp-content/plugins/etg-dynamic-filter-seo-bridge/build-identity.json
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
