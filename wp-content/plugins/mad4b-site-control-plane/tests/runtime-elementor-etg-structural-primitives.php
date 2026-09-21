@@ -63,6 +63,17 @@ $check( ! empty( $comparison['dynamic_tag_drift'] ), 'Elementor comparison did n
 $check( empty( $comparison['parity'] ), 'Drifted Elementor documents were incorrectly reported as parity.' );
 $check( ! empty( $comparison['read_only'] ), 'Elementor comparator must remain read-only.' );
 
+$provider_status = MAD4B_SCP_Provider_Contracts::runtime_status( 'elementor', true );
+$check(
+	! empty( $provider_status['runtime_contract_ok'] ),
+	'Exact Elementor runtime is not mutation-certified: ' . wp_json_encode( $provider_status )
+);
+$provider_guard = MAD4B_SCP_Provider_Contracts::mutation_guard( 'elementor', true );
+$check(
+	true === $provider_guard,
+	'Exact Elementor mutation guard denied disposable runtime: ' . ( is_wp_error( $provider_guard ) ? wp_json_encode( array( 'code' => $provider_guard->get_error_code(), 'data' => $provider_guard->get_error_data() ) ) : 'unknown' )
+);
+
 $before_document = $adapter->get_document( array( 'post_id' => $target_id ) );
 $check( ! is_wp_error( $before_document ) && preg_match( '/^[a-f0-9]{64}$/', (string) ( $before_document['sha256'] ?? '' ) ), 'Disposable target document must expose exact SHA-256 before mutation.' );
 $before_sha = (string) $before_document['sha256'];
@@ -76,7 +87,10 @@ $mutation_input = array(
 	'expected_sha256' => $before_sha,
 );
 $rollback = $adapter->capture_reversible_state( 'elementor/set-etg-dynamic-tag', $mutation_input );
-$check( ! is_wp_error( $rollback ) && 'elementor-structural-element' === (string) ( $rollback['target_type'] ?? '' ), 'Canonical ETG dynamic-tag mutation must capture bounded rollback state.' );
+$check(
+	! is_wp_error( $rollback ) && 'elementor-structural-element' === (string) ( $rollback['target_type'] ?? '' ),
+	'Canonical ETG dynamic-tag mutation must capture bounded rollback state: ' . ( is_wp_error( $rollback ) ? wp_json_encode( array( 'code' => $rollback->get_error_code(), 'data' => $rollback->get_error_data() ) ) : wp_json_encode( $rollback ) )
+);
 
 $mutation = $adapter->set_etg_dynamic_tag( $mutation_input );
 $check( ! is_wp_error( $mutation ), 'Canonical ETG Gallery dynamic-tag mutation failed on exact certified Elementor runtime.' );
