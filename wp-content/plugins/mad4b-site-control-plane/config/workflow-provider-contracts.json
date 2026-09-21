@@ -11,15 +11,18 @@
       "operations": {
         "list": {
           "ability": "bitflows/list-flows",
-          "risk": "read"
+          "risk": "read",
+          "capability_id": "flows.read"
         },
         "get": {
           "ability": "bitflows/get-flow",
-          "risk": "read"
+          "risk": "read",
+          "capability_id": "flows.read"
         },
         "execution_status": {
           "ability": "bitflows/get-executions",
-          "risk": "read"
+          "risk": "read",
+          "capability_id": "flows.read"
         },
         "execute": {
           "ability": "bitflows/run-flow",
@@ -31,37 +34,43 @@
             "one_time_approval",
             "budget",
             "audit"
-          ]
+          ],
+          "capability_id": "flow.execute"
         },
         "create": {
           "ability": null,
           "risk": "high_risk_write",
           "state": "unavailable",
-          "blocker": "public_provider_contract_not_certified"
+          "blocker": "public_provider_contract_not_certified",
+          "capability_id": null
         },
         "enable": {
           "ability": null,
           "risk": "bounded_write",
           "state": "unavailable",
-          "blocker": "public_provider_contract_not_certified"
+          "blocker": "public_provider_contract_not_certified",
+          "capability_id": null
         },
         "disable": {
           "ability": null,
           "risk": "bounded_write",
           "state": "unavailable",
-          "blocker": "public_provider_contract_not_certified"
+          "blocker": "public_provider_contract_not_certified",
+          "capability_id": null
         },
         "retry": {
           "ability": null,
           "risk": "high_risk_write",
           "state": "unavailable",
-          "blocker": "public_provider_contract_not_certified"
+          "blocker": "public_provider_contract_not_certified",
+          "capability_id": null
         },
         "cancel": {
           "ability": null,
           "risk": "high_risk_write",
           "state": "unavailable",
-          "blocker": "public_provider_contract_not_certified"
+          "blocker": "public_provider_contract_not_certified",
+          "capability_id": null
         }
       },
       "implementation_policy": {
