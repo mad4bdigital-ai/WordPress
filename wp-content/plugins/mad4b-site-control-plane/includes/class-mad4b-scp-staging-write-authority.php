@@ -107,6 +107,19 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	public static function status() {
+		$status = self::raw_status();
+		// Policy truth is universal, not request-specific. Normal remote writes
+		// always require exact one-time approval; one narrowly bounded candidate
+		// bootstrap ability can execute without a prior ticket when its guard closes.
+		$status['all_remote_writes_require_exact_approval'] = false;
+		$status['normal_remote_writes_require_exact_approval'] = true;
+		$status['remote_write_approval_policy'] = 'exact_approval_except_bounded_candidate_bootstrap';
+		$status['remote_write_prior_approval_exceptions'] = array( self::CANDIDATE_BOOTSTRAP_ABILITY );
+		$status['candidate_bootstrap_contract'] = self::CANDIDATE_BOOTSTRAP_CONTRACT;
+		return $status;
+	}
+
+	private static function raw_status() {
 		if ( ! empty( self::$status ) && isset( self::$status['contract'] ) ) return self::$status;
 		$stored = get_option( self::OPTION, array() );
 		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === (string) $stored['contract'] ) return $stored;
@@ -114,7 +127,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	public static function candidate_binding_status() {
-		$status = self::status();
+		$status = self::raw_status();
 		$current = self::current_candidate_identity();
 		$stored_sha = isset( $status['source_commit_sha'] ) ? strtolower( trim( (string) $status['source_commit_sha'] ) ) : '';
 		$stored_build = isset( $status['build_fingerprint'] ) ? strtolower( trim( (string) $status['build_fingerprint'] ) ) : '';
@@ -251,7 +264,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$input_binding_verified = false;
 		$target = array();
 		$binding = self::candidate_binding_status();
-		$authority = self::status();
+		$authority = self::raw_status();
 
 		if ( self::CANDIDATE_BOOTSTRAP_ABILITY !== $ability_name ) $blockers[] = 'ability_not_bootstrap_allowlisted';
 		if ( ! self::eligible() ) $blockers[] = 'write_authority_ineligible';
@@ -645,7 +658,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status['exact_grants_created'] = $granted;
 		$status['stale_allow_grants_revoked'] = $grants_revoked;
 		$status['grant_blockers'] = $all_blockers;
-		$status['all_remote_writes_require_exact_approval'] = true;
+		$status['all_remote_writes_require_exact_approval'] = false;
+		$status['normal_remote_writes_require_exact_approval'] = true;
+		$status['remote_write_approval_policy'] = 'exact_approval_except_bounded_candidate_bootstrap';
+		$status['remote_write_prior_approval_exceptions'] = array( self::CANDIDATE_BOOTSTRAP_ABILITY );
 		$status['breakglass_included'] = in_array( 'mad4b/database-raw-query', $tools, true );
 		$status['ready'] = empty( $all_blockers ) && ! $status['breakglass_included'];
 		$status['state'] = $status['ready'] ? 'ready' : 'blocked';
@@ -828,7 +844,11 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'production_auto_enable' => false,
 			'breakglass_auto_enable' => false,
 			'breakglass_included' => false,
-			'all_remote_writes_require_exact_approval' => true,
+			'all_remote_writes_require_exact_approval' => false,
+			'normal_remote_writes_require_exact_approval' => true,
+			'remote_write_approval_policy' => 'exact_approval_except_bounded_candidate_bootstrap',
+			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY ),
+			'candidate_bootstrap_contract' => self::CANDIDATE_BOOTSTRAP_CONTRACT,
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
