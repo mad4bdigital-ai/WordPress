@@ -71,13 +71,15 @@ namespace {
 
     $capabilities=call_user_func($guarded['capabilities_callback']);
     etg_browser_same('mad4b.browser-acceptance-capabilities.v1',$capabilities['contract'],'central capability contract is exposed');
-    foreach(array('browser.ajax_round_trip','browser.event_stream','browser.dom_result_count','browser.dataset_id_parity','browser.dataset_digest_parity','browser.order_parity','browser.url_state','browser.seo_non_authority','browser.reset_behavior','browser.performance_baseline')as$capability){
+    foreach(array('browser.ajax_round_trip','browser.event_stream','browser.dom_result_count','browser.dataset_id_parity','browser.dataset_digest_parity','browser.order_parity','browser.url_state','browser.seo_non_authority','browser.reset_behavior','browser.performance_baseline','browser.async_digest_snapshot')as$capability){
         etg_browser_expect(in_array($capability,$capabilities['capabilities'],true),'capability missing: '.$capability);
     }
     etg_browser_same('etg.dfsb.browser-acceptance-challenge.v1',$capabilities['freshness_challenge']['contract'],'freshness challenge contract is advertised');
     etg_browser_same(900,$capabilities['freshness_challenge']['ttl_seconds'],'freshness challenge TTL is bounded');
     etg_browser_same(false,$capabilities['freshness_challenge']['authorizing'],'freshness challenge creates no authority');
     etg_browser_same(false,$capabilities['freshness_challenge']['persistent_mutation'],'freshness guard remains stateless');
+    etg_browser_same('snapshotAsync',$capabilities['observer_snapshot']['full_digest'],'large-result proof requires the bounded async observer snapshot');
+    etg_browser_same(5000,$capabilities['observer_snapshot']['max_digest_ids'],'async digest coverage remains bounded to semantic proof ceiling');
 
     $plan=call_user_func($guarded['plan_callback'],array('profile_id'=>'tours','suite'=>'browser_runtime'));
     etg_browser_same('ready',$plan['state'],'browser plan is derived only after semantic PASS');
@@ -182,6 +184,8 @@ namespace {
     etg_browser_expect(false!==strpos($observerSource,'function arm(planCase, challenge)'),'observer arm requires explicit plan challenge');
     etg_browser_expect(false!==strpos($observerSource,'invalid_freshness_challenge'),'observer rejects missing/malformed challenge');
     etg_browser_expect(false!==strpos($observerSource,'challenge_nonce: boundedString(currentChallengeNonce, 32)'),'observer snapshot carries bounded challenge nonce');
+    etg_browser_expect(false!==strpos($observerSource,'snapshotAsync'),'observer exposes async digest snapshot for large datasets');
+    etg_browser_expect(false!==strpos($observerSource,"crypto.subtle.digest('SHA-256'"),'observer uses browser-native SHA-256 instead of transporting full proof IDs');
 
     echo "Alpha13 browser acceptance provider smoke tests passed.\n";
 }
