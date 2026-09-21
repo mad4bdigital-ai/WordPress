@@ -34,6 +34,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'elementor/move-element' => 'elementor',
 			'elementor/delete-element' => 'elementor',
 			'elementor/set-dynamic-tag' => 'elementor',
+			'elementor/set-etg-dynamic-tag' => 'elementor',
 		);
 	}
 
