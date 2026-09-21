@@ -159,7 +159,9 @@
         502,
         503,
         504
-      ]
+      ],
+      "auto_requires_spend_authorization": true,
+      "spend_authorization_scope": "single_execution"
     }
   }
 }
