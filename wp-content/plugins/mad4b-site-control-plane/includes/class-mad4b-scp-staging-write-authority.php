@@ -16,6 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Staging_Write_Authority {
 	const CONTRACT = 'mad4b.governed-write-authority.v2';
 	const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v1';
+	const CANDIDATE_BOOTSTRAP_CONTRACT = 'mad4b.governed-write-candidate-bootstrap.v1';
+	const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision';
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
 	const VERSION = 2;
 	const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id';
@@ -232,20 +234,147 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return $clean;
 	}
 
+	/**
+	 * Narrow pre-binding bootstrap for the isolated acceptance target.
+	 *
+	 * This does not grant mutation authority. It only allows the stable ChatGPT
+	 * transport to delegate this one exact ability to mad4b-write while the
+	 * persisted authority is ready but stale against a newly deployed package.
+	 * Central authorization still resolves the OAuth/NHI identity, exact grant,
+	 * budget and audit path. A prior approval ticket is intentionally not required
+	 * for this bootstrap operation because approval planning itself is candidate-
+	 * bound and would otherwise recreate the same circular dependency.
+	 */
+	public static function candidate_bootstrap_status( $ability_name, $input = null ) {
+		$ability_name = (string) $ability_name;
+		$blockers = array();
+		$input_binding_verified = false;
+		$target = array();
+		$binding = self::candidate_binding_status();
+		$authority = self::status();
+
+		if ( self::CANDIDATE_BOOTSTRAP_ABILITY !== $ability_name ) $blockers[] = 'ability_not_bootstrap_allowlisted';
+		if ( ! self::eligible() ) $blockers[] = 'write_authority_ineligible';
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) {
+			$blockers[] = 'site_profile_missing';
+		} else {
+			if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) $blockers[] = 'environment_not_staging';
+			if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) $blockers[] = 'site_profile_origin_mismatch';
+			if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) $blockers[] = 'site_profile_write_disabled';
+		}
+		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) $blockers[] = 'mutation_gate_disabled';
+		if ( empty( $authority['ready'] ) || ! empty( $authority['blocker'] ) ) $blockers[] = 'persisted_authority_not_ready';
+		if ( empty( $authority['agent_public_id'] ) || 1 !== preg_match( '/^[a-f0-9-]{36}$/i', (string) $authority['agent_public_id'] ) ) $blockers[] = 'canonical_agent_missing';
+		if ( empty( $authority['write_inventory_fingerprint'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $authority['write_inventory_fingerprint'] ) ) $blockers[] = 'write_inventory_unbound';
+		if ( ! empty( $authority['breakglass_included'] ) || in_array( 'mad4b/database-raw-query', self::write_tools(), true ) ) $blockers[] = 'breakglass_leak';
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) $blockers[] = 'breakglass_enabled';
+
+		if ( empty( $binding['required'] ) ) $blockers[] = 'candidate_binding_not_required';
+		if ( ! empty( $binding['match'] ) ) $blockers[] = 'candidate_already_bound';
+		$current_sha = isset( $binding['current_source_commit_sha'] ) ? strtolower( (string) $binding['current_source_commit_sha'] ) : '';
+		$current_build = isset( $binding['current_build_fingerprint'] ) ? strtolower( (string) $binding['current_build_fingerprint'] ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $current_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $current_build ) ) $blockers[] = 'current_candidate_provenance_invalid';
+
+		if ( is_array( $input ) ) {
+			$expected_sha = isset( $input['expected_source_commit_sha'] ) ? strtolower( trim( (string) $input['expected_source_commit_sha'] ) ) : '';
+			$expected_build = isset( $input['expected_build_fingerprint'] ) ? strtolower( trim( (string) $input['expected_build_fingerprint'] ) ) : '';
+			$expected_revision = isset( $input['expected_revision'] ) ? absint( $input['expected_revision'] ) : 0;
+			$expected_digest = isset( $input['expected_profile_digest'] ) ? strtolower( trim( (string) $input['expected_profile_digest'] ) ) : '';
+			$current_revision = class_exists( 'MAD4B_SCP_Site_Profile' ) ? (int) MAD4B_SCP_Site_Profile::revision() : 0;
+			$current_digest = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $expected_sha ) || ! hash_equals( $current_sha, $expected_sha ) ) $blockers[] = 'candidate_input_sha_mismatch';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_build ) || ! hash_equals( $current_build, $expected_build ) ) $blockers[] = 'candidate_input_build_mismatch';
+			if ( $expected_revision < 1 || $expected_revision !== $current_revision ) $blockers[] = 'candidate_input_revision_mismatch';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_digest ) || ! hash_equals( $current_digest, $expected_digest ) ) $blockers[] = 'candidate_input_profile_mismatch';
+			$input_binding_verified = empty( array_intersect( $blockers, array( 'candidate_input_sha_mismatch', 'candidate_input_build_mismatch', 'candidate_input_revision_mismatch', 'candidate_input_profile_mismatch' ) ) );
+		} else {
+			$blockers[] = 'exact_bootstrap_input_required';
+		}
+
+		if ( class_exists( 'MAD4B_SCP_Agent_Registry' ) && class_exists( 'MAD4B_SCP_Schema' ) && MAD4B_SCP_Schema::is_ready() ) {
+			$counts = MAD4B_SCP_Agent_Registry::counts();
+			if ( ! empty( $counts['wildcard_grants'] ) ) $blockers[] = 'wildcard_grants_detected';
+		} else {
+			$blockers[] = 'grant_registry_unavailable';
+		}
+
+		if ( ! in_array( self::CANDIDATE_BOOTSTRAP_ABILITY, self::write_tools(), true ) ) $blockers[] = 'bootstrap_ability_not_runtime_eligible';
+		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
+			if ( null === MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', self::CANDIDATE_BOOTSTRAP_ABILITY ) ) $blockers[] = 'bootstrap_provider_unmounted';
+			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', self::CANDIDATE_BOOTSTRAP_ABILITY ) ) $blockers[] = 'bootstrap_ability_unmounted';
+		} else {
+			$blockers[] = 'server_registry_unavailable';
+		}
+
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			$registry->register_defaults();
+			$adapter = null;
+			foreach ( $registry->all() as $candidate_adapter ) {
+				if ( is_object( $candidate_adapter ) && method_exists( $candidate_adapter, 'id' ) && 'acceptance-target' === (string) $candidate_adapter->id() ) { $adapter = $candidate_adapter; break; }
+			}
+			if ( $adapter && method_exists( $adapter, 'target_status' ) ) {
+				$target = $adapter->target_status();
+				if ( is_wp_error( $target ) ) {
+					$blockers[] = 'acceptance_target_status_error';
+					$target = array( 'error_code' => $target->get_error_code() );
+				} else {
+					if ( ! empty( $target['exists'] ) ) $blockers[] = 'acceptance_target_already_exists';
+					if ( empty( $target['safe_for_mutation_acceptance'] ) ) $blockers[] = 'acceptance_target_not_safe';
+					if ( empty( $target['isolated'] ) ) $blockers[] = 'acceptance_target_not_isolated';
+				}
+			} else {
+				$blockers[] = 'acceptance_target_adapter_unavailable';
+			}
+		} else {
+			$blockers[] = 'adapter_registry_unavailable';
+		}
+
+		$blockers = array_values( array_unique( $blockers ) );
+		$policy_blockers = array_values( array_diff( $blockers, array( 'exact_bootstrap_input_required' ) ) );
+		return array(
+			'contract' => self::CANDIDATE_BOOTSTRAP_CONTRACT,
+			'ability' => $ability_name,
+			'applicable' => self::CANDIDATE_BOOTSTRAP_ABILITY === $ability_name,
+			'policy_available' => empty( $policy_blockers ),
+			'allowed' => empty( $blockers ) && $input_binding_verified,
+			'blockers' => $blockers,
+			'input_binding_verified' => $input_binding_verified,
+			'prior_approval_required' => false,
+			'exact_nhi_grant_required_downstream' => true,
+			'budget_required_downstream' => true,
+			'audit_required_downstream' => true,
+			'breakglass_allowed' => false,
+			'candidate_binding_match' => ! empty( $binding['match'] ),
+			'current_source_commit_sha' => $current_sha,
+			'current_build_fingerprint' => $current_build,
+			'acceptance_target' => is_array( $target ) ? $target : array(),
+		);
+	}
+
+	public static function candidate_bootstrap_allowed( $ability_name, $input = null ) {
+		$status = self::candidate_bootstrap_status( $ability_name, $input );
+		return ! empty( $status['allowed'] );
+	}
+
 	public static function remote_scope_delegation_allowed( array $identity, $server_id, $ability_name, $input ) {
-		if ( ! self::effective() || 'mad4b-write' !== sanitize_key( (string) $server_id ) || ! self::is_write_ability( $ability_name ) ) return false;
+		$bootstrap = self::candidate_bootstrap_allowed( $ability_name, $input );
+		if ( ( ! self::effective() && ! $bootstrap ) || 'mad4b-write' !== sanitize_key( (string) $server_id ) || ! self::is_write_ability( $ability_name ) ) return false;
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return false;
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
+		if ( $bootstrap ) return true;
 		return '' !== self::approval_ticket_from_input( $input );
 	}
 
 	public static function force_remote_write_approval( $required, $ability_name, $provider, $input ) {
 		if ( $required ) return true;
-		if ( ! self::effective() || ! self::is_write_ability( $ability_name ) ) return $required;
+		if ( ! self::is_write_ability( $ability_name ) ) return $required;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $required;
 		$current = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
-		return in_array( $current, array( 'mad4b-chatgpt', 'mad4b-write' ), true ) ? true : $required;
+		if ( ! in_array( $current, array( 'mad4b-chatgpt', 'mad4b-write' ), true ) ) return $required;
+		if ( self::candidate_bootstrap_allowed( $ability_name, $input ) ) return false;
+		return self::effective() ? true : $required;
 	}
 
 	public static function augment_write_ability( $args, $name ) {
@@ -281,6 +410,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
 		$args['meta']['mcp']['mad4b_governed_write_authority'] = self::CONTRACT;
 		$args['meta']['mcp']['mad4b_remote_write_approval_required'] = true;
+		if ( self::CANDIDATE_BOOTSTRAP_ABILITY === (string) $name ) {
+			$args['meta']['mcp']['mad4b_candidate_bootstrap_contract'] = self::CANDIDATE_BOOTSTRAP_CONTRACT;
+			$args['meta']['mcp']['mad4b_candidate_bootstrap_prior_approval_exception'] = true;
+		}
 		return $args;
 	}
 
