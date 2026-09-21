@@ -26,6 +26,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const MANAGED_SESSION_CONTRACT = 'mad4b.google-managed-oauth-session.v1';
 	const MANAGED_REDEEM_CONTRACT = 'mad4b.google-managed-oauth-redemption.v1';
 	const MANAGED_REFRESH_CONTRACT = 'mad4b.google-managed-oauth-refresh.v1';
+	const MANAGED_SITE_AUTH_CONTRACT = 'mad4b.google-managed-oauth-site-request-auth.v1';
+	const MANAGED_SITE_AUTH_SCHEME = 'MAD4B-GOOGLE-OAUTH-SITE-V1';
 
 	const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 	const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
@@ -70,18 +72,24 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	public static function managed_broker_status() {
 		$base = self::managed_broker_base_url();
-		$configured = ! is_wp_error( $base );
+		$site_auth = self::managed_site_auth_status();
+		$base_configured = ! is_wp_error( $base );
+		$configured = $base_configured && ! empty( $site_auth['configured'] );
+		$blockers = array();
+		if ( ! $base_configured ) $blockers[] = 'managed_google_oauth_broker_not_configured';
+		if ( empty( $site_auth['configured'] ) ) $blockers[] = 'managed_google_oauth_site_request_auth_not_configured';
 		return array(
-			'contract' => 'mad4b.google-managed-oauth-broker-status.v1',
+			'contract' => 'mad4b.google-managed-oauth-broker-status.v2',
 			'configured' => $configured,
-			'base_url' => $configured ? (string) $base : '',
-			'session_endpoint' => $configured ? self::managed_broker_endpoint( 'session' ) : '',
-			'redeem_endpoint' => $configured ? self::managed_broker_endpoint( 'redeem' ) : '',
-			'refresh_endpoint' => $configured ? self::managed_broker_endpoint( 'refresh' ) : '',
+			'base_url' => $base_configured ? (string) $base : '',
+			'session_endpoint' => $base_configured ? self::managed_broker_endpoint( 'session' ) : '',
+			'redeem_endpoint' => $base_configured ? self::managed_broker_endpoint( 'redeem' ) : '',
+			'refresh_endpoint' => $base_configured ? self::managed_broker_endpoint( 'refresh' ) : '',
 			'google_client_secret_on_site' => false,
 			'one_time_handoff' => true,
 			'verifier_bound' => true,
-			'blockers' => $configured ? array() : array( 'managed_google_oauth_broker_not_configured' ),
+			'site_request_auth' => $site_auth,
+			'blockers' => array_values( array_unique( $blockers ) ),
 		);
 	}
 
@@ -138,8 +146,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			return new WP_Error( 'mad4b_google_drive_auth_mode_change_requires_disconnect', 'Disconnect and revoke the current Google connection before changing authentication mode.' );
 		}
 		if ( self::AUTH_MODE_MANAGED === $mode ) {
-			$broker = self::managed_broker_base_url();
-			if ( is_wp_error( $broker ) ) return $broker;
+			$broker = self::managed_broker_status();
+			if ( empty( $broker['configured'] ) ) return new WP_Error( 'mad4b_google_managed_broker_not_configured', 'Managed Google Sign-In requires the broker URL and site request-signing credential.' );
 		}
 		if ( self::AUTH_MODE_DEDICATED === $mode && '' === self::dedicated_redirect_uri() ) return new WP_Error( 'mad4b_google_dedicated_site_origin_unavailable', 'Dedicated Google Sign-In requires an enrolled Site Profile whose canonical origin matches this site.' );
 		$record = array( 'contract' => self::AUTH_MODE_CONTRACT, 'mode' => $mode, 'updated_at' => gmdate( 'c' ) );
@@ -2418,7 +2426,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$url = self::validated_https_url( (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_BROKER_URL' ) );
 		if ( '' === $url ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be a valid HTTPS URL.' );
 		$parts = function_exists( 'wp_parse_url' ) ? wp_parse_url( $url ) : parse_url( $url );
-		if ( ! is_array( $parts ) || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL cannot contain query, fragment, or user-info components.' );
+		$path = is_array( $parts ) && isset( $parts['path'] ) ? rtrim( (string) $parts['path'], '/' ) : '';
+		if ( ! is_array( $parts ) || '' !== $path || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) return new WP_Error( 'mad4b_google_managed_broker_invalid', 'Managed Google Sign-In broker URL must be an HTTPS origin with no path, query, fragment, or user-info components.' );
 		return rtrim( $url, '/' );
 	}
 
@@ -2433,13 +2442,17 @@ final class MAD4B_SCP_Google_Drive_Context {
 	private static function managed_broker_post( $operation, array $payload, $error_code ) {
 		$endpoint = self::managed_broker_endpoint( $operation );
 		if ( '' === $endpoint ) return new WP_Error( 'mad4b_google_managed_broker_not_configured', 'Managed Google Sign-In broker is unavailable.' );
+		$body = self::managed_canonical_json( $payload );
+		if ( is_wp_error( $body ) ) return $body;
+		$auth_headers = self::managed_site_request_headers( $operation, $payload );
+		if ( is_wp_error( $auth_headers ) ) return $auth_headers;
 		$response = wp_remote_post(
 			$endpoint,
 			array(
 				'timeout' => 20,
 				'redirection' => 0,
-				'headers' => array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ),
-				'body' => wp_json_encode( $payload, JSON_UNESCAPED_SLASHES ),
+				'headers' => array_merge( array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ), $auth_headers ),
+				'body' => $body,
 			)
 		);
 		if ( is_wp_error( $response ) ) return $response;
@@ -2451,6 +2464,77 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		if ( ! is_array( $data ) ) return new WP_Error( $error_code, 'Managed Google Sign-In broker returned invalid JSON.', array( 'status' => $status ) );
 		return $data;
+	}
+
+	private static function managed_site_auth_status() {
+		$key_id = defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? trim( (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ) : '';
+		$secret = defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) ? (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) : '';
+		$key_valid = (bool) preg_match( '/^[A-Za-z0-9._:-]{3,64}$/', $key_id );
+		$secret_valid = strlen( $secret ) >= 32;
+		return array(
+			'contract' => self::MANAGED_SITE_AUTH_CONTRACT,
+			'configured' => $key_valid && $secret_valid,
+			'key_id' => $key_valid ? $key_id : '',
+			'secret_present' => '' !== $secret,
+			'secret_length_ok' => $secret_valid,
+			'signature_algorithm' => 'HMAC-SHA256',
+			'nonce_replay_protection_required' => true,
+			'max_clock_skew_seconds' => 300,
+			'secret_exposed' => false,
+		);
+	}
+
+	private static function managed_site_request_headers( $operation, array $payload ) {
+		$status = self::managed_site_auth_status();
+		if ( empty( $status['configured'] ) ) return new WP_Error( 'mad4b_google_managed_site_auth_not_configured', 'Managed Google Sign-In site request signing is not configured.' );
+		$operation = sanitize_key( (string) $operation );
+		if ( ! in_array( $operation, array( 'session', 'redeem', 'refresh' ), true ) ) return new WP_Error( 'mad4b_google_managed_site_auth_path_invalid', 'Managed Google Sign-In request-signing operation is invalid.' );
+		try {
+			$nonce = rtrim( strtr( base64_encode( random_bytes( 24 ) ), '+/', '-_' ), '=' );
+		} catch ( Exception $e ) {
+			return new WP_Error( 'mad4b_google_managed_site_auth_nonce_failed', 'Unable to generate Managed Google Sign-In request nonce.' );
+		}
+		$timestamp = (string) time();
+		$canonical = self::managed_canonical_json( $payload );
+		if ( is_wp_error( $canonical ) ) return $canonical;
+		$path = '/v1/google/oauth/' . $operation;
+		$signing_payload = implode( "\n", array(
+			self::MANAGED_SITE_AUTH_SCHEME,
+			'POST',
+			$path,
+			$timestamp,
+			$nonce,
+			hash( 'sha256', $canonical ),
+		) );
+		$signature = hash_hmac( 'sha256', $signing_payload, (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) );
+		return array(
+			'X-MAD4B-Site-Key-ID' => (string) $status['key_id'],
+			'X-MAD4B-Site-Timestamp' => $timestamp,
+			'X-MAD4B-Site-Nonce' => $nonce,
+			'X-MAD4B-Site-Signature' => $signature,
+		);
+	}
+
+	private static function managed_canonical_json( $value ) {
+		$normalized = self::managed_canonical_value( $value );
+		$json = wp_json_encode( $normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( false === $json || null === $json ) return new WP_Error( 'mad4b_google_managed_site_auth_json_failed', 'Managed Google Sign-In request payload could not be canonicalized.' );
+		return (string) $json;
+	}
+
+	private static function managed_canonical_value( $value ) {
+		if ( is_object( $value ) ) $value = get_object_vars( $value );
+		if ( ! is_array( $value ) ) return $value;
+		$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
+		if ( $is_list ) {
+			$out = array();
+			foreach ( $value as $item ) $out[] = self::managed_canonical_value( $item );
+			return $out;
+		}
+		ksort( $value, SORT_STRING );
+		$out = array();
+		foreach ( $value as $key => $item ) $out[ (string) $key ] = self::managed_canonical_value( $item );
+		return $out;
 	}
 
 	private static function validated_https_url( $value ) {
