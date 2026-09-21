@@ -54,7 +54,7 @@ foreach ( (array) $capabilities['providers'] as $provider ) {
 	}
 }
 $check( is_array( $etg ), 'ETG Browser Acceptance Provider was not discovered through the generic browser registry.' );
-$check( 'etg.dfsb.browser-acceptance-provider.v1' === (string) $etg['contract'], 'ETG Browser Acceptance Provider contract drifted.' );
+$check( 'etg.dfsb.browser-acceptance-provider.v2' === (string) $etg['contract'], 'ETG Browser Acceptance Provider contract drifted.' );
 $descriptor = (array) $etg['descriptor'];
 $check( ! empty( $descriptor['read_only'] ) && empty( $descriptor['authorizing'] ), 'ETG Browser provider opened authority.' );
 $check( 'external_browser_agent' === (string) ( $descriptor['execution_mode'] ?? '' ), 'ETG Browser provider execution mode drifted.' );
