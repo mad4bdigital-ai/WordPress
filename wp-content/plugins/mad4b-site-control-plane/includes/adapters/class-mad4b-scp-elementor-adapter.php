@@ -163,6 +163,11 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			'jet-smart-filters-sorting' => array( 'query_id' ),
 			'jet-listing-grid' => array( 'custom_post_types', 'posts_query' ),
 		);
+		$status['bounded_structural_mutations'] = array( 'elementor/clone-subtree', 'elementor/move-element', 'elementor/delete-element', 'elementor/set-dynamic-tag' );
+		$status['structural_root_parent'] = self::ROOT_PARENT;
+		$status['structural_rollback_limit_bytes'] = self::MAX_STRUCTURAL_ROLLBACK_BYTES;
+		$status['dynamic_tag_policy'] = array( 'source_copy_only' => true, 'allowed_tag_names' => array( 'etg-filter-title', 'etg-filter-image', 'etg-filter-intro', 'etg-dynamic-content-slot', 'etg-filter-gallery' ) );
+		$status['raw_elementor_meta_exposed'] = false;
 		$status['legacy_generic_writer_used_by_governed_fallback'] = false;
 		return $status;
 	}
