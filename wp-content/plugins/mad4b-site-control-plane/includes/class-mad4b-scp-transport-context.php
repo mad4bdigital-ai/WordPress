@@ -57,10 +57,12 @@ final class MAD4B_SCP_Transport_Context {
 			if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) {
 				return new WP_Error( 'mad4b_transport_ability_not_mounted', 'The requested write ability is not mounted on the active ChatGPT transport.' );
 			}
-			$authority_effective = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
-			$bootstrap_allowed = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_allowed( $ability_name, $input );
+			$authority_class = class_exists( 'MAD4B_SCP_Staging_Write_Authority' );
+			$authority_effective = $authority_class && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'effective' ) && MAD4B_SCP_Staging_Write_Authority::effective();
+			$bootstrap_supported = $authority_class && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_bootstrap_allowed' );
+			$bootstrap_allowed = $bootstrap_supported && MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_allowed( $ability_name, $input );
 			if ( ! $authority_effective && ! $bootstrap_allowed ) {
-				$data = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_status( $ability_name, $input ) : array();
+				$data = $bootstrap_supported && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_bootstrap_status' ) ? MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_status( $ability_name, $input ) : array();
 				return new WP_Error( 'mad4b_write_authority_not_ready', 'The requested write ability is discoverable, but governed Staging write authority is not ready.', array( 'candidate_bootstrap' => $data ) );
 			}
 			if ( ! MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name ) ) {
