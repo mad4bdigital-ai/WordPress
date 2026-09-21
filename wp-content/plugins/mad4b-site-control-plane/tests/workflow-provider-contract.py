@@ -5,10 +5,12 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 config_path = root / "config" / "workflow-provider-contracts.json"
 impl_path = root / "includes" / "class-mad4b-scp-workflow-providers.php"
+adapter_path = root / "includes" / "adapters" / "class-mad4b-scp-bitflows-adapter.php"
 main_path = root / "mad4b-site-control-plane.php"
 
 config = json.loads(config_path.read_text(encoding="utf-8"))
 impl = impl_path.read_text(encoding="utf-8")
+adapter = adapter_path.read_text(encoding="utf-8")
 main = main_path.read_text(encoding="utf-8")
 
 if config.get("contract") != "mad4b.workflow-provider-contracts.v1":
@@ -41,7 +43,7 @@ for read_op in ("list", "get", "execution_status"):
     if ops.get(read_op, {}).get("capability_id") != "flows.read":
         raise SystemExit(f"Bit Flows {read_op} mapping must bind to flows.read capability certification")
 required = set(execute.get("requires", []))
-for marker in {"provider_capability_certified", "exact_workflow_fingerprint", "exact_nhi_grant", "one_time_approval", "budget", "audit"}:
+for marker in {"provider_capability_certified", "exact_workflow_fingerprint", "exact_plan_digest", "exact_nhi_grant", "one_time_approval", "budget", "audit"}:
     if marker not in required:
         raise SystemExit(f"workflow execute missing governance requirement: {marker}")
 
@@ -69,6 +71,8 @@ for marker in (
     "write_eligible",
     "mutation_performed",
     "authority_created",
+    "execution_binding",
+    "expected_plan_sha256",
 ):
     if marker not in impl:
         raise SystemExit(f"workflow provider implementation missing marker: {marker}")
@@ -76,6 +80,10 @@ for marker in (
 for forbidden in ("update_option(", "$wpdb->", "Flow::", "FlowExecutor"):
     if forbidden in impl:
         raise SystemExit(f"provider-neutral workflow facade leaked provider mutation implementation: {forbidden}")
+
+for marker in ("expected_plan_sha256", "mad4b_bitflows_plan_digest_required", "mad4b_bitflows_plan_changed", "MAD4B_SCP_Workflow_Providers::plan"):
+    if marker not in adapter:
+        raise SystemExit(f"Bit Flows execute path missing exact plan binding: {marker}")
 
 if "class-mad4b-scp-workflow-providers.php" not in main or "MAD4B_SCP_Workflow_Providers::boot();" not in main:
     raise SystemExit("main plugin does not load and boot workflow provider governance")

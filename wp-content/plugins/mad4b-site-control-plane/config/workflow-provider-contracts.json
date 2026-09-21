@@ -30,6 +30,7 @@
           "requires": [
             "provider_capability_certified",
             "exact_workflow_fingerprint",
+            "exact_plan_digest",
             "exact_nhi_grant",
             "one_time_approval",
             "budget",

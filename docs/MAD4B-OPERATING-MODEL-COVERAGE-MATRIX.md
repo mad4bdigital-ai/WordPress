@@ -12,7 +12,7 @@ This is a delivery contract, not a marketing checklist. A requirement is **imple
 | Semantic identity vs physical IDs | Implemented | mad4b/semantic-identity-map |
 | Desired vs Observed State | Implemented | mad4b/state-diff |
 | Independent operation planner | Implemented | mad4b/operation-plan |
-| Exact plan authority binding | Implemented across layers | immutable plan_sha256 + exact approval payload/target/NHI/build/Site Profile |
+| Exact plan authority binding | Implemented for new lifecycle/workflow writes | expected_plan_sha256 is mandatory and revalidated immediately before plugin lifecycle or Bit Flows execution; approval tickets bind that exact input plus target/NHI/build/Site Profile |
 | First-class rollback | Implemented | reversible mutation envelope + readback + undo drift guard |
 | Evidence dependency graph | Implemented | dependency graph + mad4b/evidence-invalidation-plan |
 | Dependency-scoped evidence reuse | Implemented planning primitive | transitive stale-set calculation |

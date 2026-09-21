@@ -106,6 +106,7 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 		$encoded = wp_json_encode( self::canonicalize( $plan ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $encoded ) return new WP_Error( 'mad4b_plugin_lifecycle_plan_encoding_failed', 'Unable to encode plugin lifecycle plan.' );
 		$plan['plan_sha256'] = hash( 'sha256', $encoded );
+		$plan['write_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
 		return $plan;
 	}
 
@@ -118,6 +119,9 @@ final class MAD4B_SCP_Plugin_Lifecycle {
 		if ( ! empty( $input['expected_state_sha256'] ) ) $plan_input['expected_state_sha256'] = (string) $input['expected_state_sha256'];
 		$plan = self::plan( $plan_input );
 		if ( is_wp_error( $plan ) ) return $plan;
+		$expected_plan_sha = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_plan_sha ) ) return new WP_Error( 'mad4b_plugin_lifecycle_plan_digest_required', 'Plugin lifecycle mutation requires expected_plan_sha256 from the reviewed lifecycle plan.' );
+		if ( ! hash_equals( $plan['plan_sha256'], $expected_plan_sha ) ) return new WP_Error( 'mad4b_plugin_lifecycle_plan_changed', 'Plugin lifecycle plan changed since approval.', array( 'current_plan_sha256' => $plan['plan_sha256'], 'expected_plan_sha256' => $expected_plan_sha ) );
 		if ( empty( $plan['eligible'] ) ) {
 			return new WP_Error(
 				'mad4b_plugin_lifecycle_preflight_blocked',

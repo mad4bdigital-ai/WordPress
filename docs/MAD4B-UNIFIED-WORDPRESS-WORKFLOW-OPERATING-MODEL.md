@@ -565,6 +565,7 @@ Implemented:
 - declarative Site/Feature bundle validation;
 - deterministic Desired State / Observed State semantic diff;
 - generic immutable operation plan with exact plan_sha256 and authority-binding metadata;
+- plugin lifecycle and Bit Flows execute writes require expected_plan_sha256 and recompute the reviewed plan immediately before mutation;
 - evidence dependency graph and transitive invalidation planner;
 - declarative invariant evaluator;
 - explicit candidate state machine that prevents bootstrap/write-runtime circular dependency;

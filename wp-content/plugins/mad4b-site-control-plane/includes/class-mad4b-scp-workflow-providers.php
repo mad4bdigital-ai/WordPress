@@ -227,6 +227,7 @@ final class MAD4B_SCP_Workflow_Providers {
 			'requires' => $requires,
 			'provider_input_template' => $provider_input,
 			'reason' => $reason,
+			'plan_digest_scope' => 'immutable_plan_core_before_execution_binding',
 			'non_authorizing' => true,
 			'mutation_performed' => false,
 			'next_action' => '' === $blocker ? 'invoke_exact_provider_ability_through_governed_authority' : 'close_provider_capability_certification_gap',
@@ -234,6 +235,8 @@ final class MAD4B_SCP_Workflow_Providers {
 		$encoded = wp_json_encode( self::canonicalize( $plan ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $encoded ) return new WP_Error( 'mad4b_workflow_plan_encoding_failed', 'Unable to encode deterministic workflow plan.' );
 		$plan['plan_sha256'] = hash( 'sha256', $encoded );
+		$plan['execution_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
+		if ( 'execute' === $operation && is_array( $plan['provider_input_template'] ) ) $plan['provider_input_template']['expected_plan_sha256'] = $plan['plan_sha256'];
 
 		return $plan;
 	}

@@ -12,6 +12,9 @@ for marker in (
     "mad4b.plugin-lifecycle-plan.v1",
     "mad4b/plugin-lifecycle-plan",
     "expected_state_sha256",
+    "expected_plan_sha256",
+    "write_binding",
+    "mad4b_plugin_lifecycle_plan_changed",
     "RequiresPlugins",
     "active_dependents",
     "required_dependencies",
@@ -31,6 +34,7 @@ for marker in (
     "after_state_sha256",
     "readback_verified",
     "expected_state_sha256",
+    "expected_plan_sha256",
 ):
     if marker not in abilities:
         raise SystemExit(f"plugin lifecycle mutation path missing evidence guard: {marker}")
