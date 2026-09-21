@@ -93,26 +93,36 @@ final class MAD4B_SCP_Workflow_Providers {
 			$operations = array();
 			$adapter_available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
 			$provider_certification = isset( $adapter_status['provider_certification'] ) && is_array( $adapter_status['provider_certification'] ) ? $adapter_status['provider_certification'] : array();
-			$provider_certified = ! empty( $provider_certification['runtime_contract_ok'] );
+			$provider_runtime_certified = ! empty( $provider_certification['runtime_contract_ok'] );
+			$capability_certification = isset( $adapter_status['capability_certification'] ) && is_array( $adapter_status['capability_certification'] ) ? $adapter_status['capability_certification'] : array();
 
 			foreach ( $definition['operations'] as $operation => $operation_definition ) {
 				$ability = isset( $operation_definition['ability'] ) && is_string( $operation_definition['ability'] )
 					? trim( $operation_definition['ability'] )
 					: '';
 				$registered = '' !== $ability && function_exists( 'wp_has_ability' ) && wp_has_ability( $ability );
+				$risk = isset( $operation_definition['risk'] ) ? sanitize_key( (string) $operation_definition['risk'] ) : 'unknown';
+				$capability_id = isset( $operation_definition['capability_id'] ) && is_string( $operation_definition['capability_id'] ) ? sanitize_text_field( (string) $operation_definition['capability_id'] ) : '';
+				$capability_status = '' !== $capability_id && isset( $capability_certification['capabilities'][ $capability_id ] ) && is_array( $capability_certification['capabilities'][ $capability_id ] )
+					? $capability_certification['capabilities'][ $capability_id ]
+					: array();
+				$capability_certified = 'read' === $risk ? ! empty( $capability_status['read_eligible'] ) : ! empty( $capability_status['write_eligible'] );
 				$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
 				$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
 				$config_blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
 				$blocker = $config_blocker;
 				if ( '' === $blocker && ! $registered ) $blocker = 'ability_not_registered';
 				if ( '' === $blocker && ! $adapter_available ) $blocker = 'provider_runtime_unavailable';
-				if ( '' === $blocker && $requires_provider_certification && ! $provider_certified ) $blocker = 'provider_capability_not_certified';
+				if ( '' === $blocker && $requires_provider_certification && ! $capability_certified ) $blocker = 'provider_capability_not_certified';
 				$operations[ sanitize_key( (string) $operation ) ] = array(
 					'ability' => $ability,
-					'risk' => isset( $operation_definition['risk'] ) ? sanitize_key( (string) $operation_definition['risk'] ) : 'unknown',
+					'risk' => $risk,
 					'registered' => $registered,
 					'provider_available' => $adapter_available,
-					'provider_certified' => $provider_certified,
+					'provider_runtime_certified' => $provider_runtime_certified,
+					'capability_id' => $capability_id,
+					'capability_certified' => $capability_certified,
+					'capability_status' => $capability_status,
 					'state' => '' === $blocker ? 'available' : ( 'unavailable' === ( isset( $operation_definition['state'] ) ? sanitize_key( (string) $operation_definition['state'] ) : '' ) ? 'unavailable' : 'blocked' ),
 					'blocker' => $blocker,
 					'requires' => $requires,
@@ -125,7 +135,7 @@ final class MAD4B_SCP_Workflow_Providers {
 				'role' => isset( $definition['role'] ) ? sanitize_key( (string) $definition['role'] ) : 'execution_provider',
 				'adapter_available' => $adapter_available,
 				'provider_certification' => $provider_certification,
-				'capability_certification' => isset( $adapter_status['capability_certification'] ) ? $adapter_status['capability_certification'] : array(),
+				'capability_certification' => $capability_certification,
 				'operations' => $operations,
 				'implementation_policy' => isset( $definition['implementation_policy'] ) && is_array( $definition['implementation_policy'] ) ? $definition['implementation_policy'] : array(),
 			);
@@ -169,13 +179,20 @@ final class MAD4B_SCP_Workflow_Providers {
 		$adapter_available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
 		$adapter_status = is_object( $adapter ) && method_exists( $adapter, 'status' ) ? $adapter->status() : array();
 		$provider_certification = isset( $adapter_status['provider_certification'] ) && is_array( $adapter_status['provider_certification'] ) ? $adapter_status['provider_certification'] : array();
-		$provider_certified = ! empty( $provider_certification['runtime_contract_ok'] );
+		$provider_runtime_certified = ! empty( $provider_certification['runtime_contract_ok'] );
+		$capability_certification = isset( $adapter_status['capability_certification'] ) && is_array( $adapter_status['capability_certification'] ) ? $adapter_status['capability_certification'] : array();
+		$risk = isset( $operation_definition['risk'] ) ? sanitize_key( (string) $operation_definition['risk'] ) : 'unknown';
+		$capability_id = isset( $operation_definition['capability_id'] ) && is_string( $operation_definition['capability_id'] ) ? sanitize_text_field( (string) $operation_definition['capability_id'] ) : '';
+		$capability_status = '' !== $capability_id && isset( $capability_certification['capabilities'][ $capability_id ] ) && is_array( $capability_certification['capabilities'][ $capability_id ] )
+			? $capability_certification['capabilities'][ $capability_id ]
+			: array();
+		$capability_certified = 'read' === $risk ? ! empty( $capability_status['read_eligible'] ) : ! empty( $capability_status['write_eligible'] );
 		$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
 		$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
 		$blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
 		if ( '' === $blocker && ! $registered ) $blocker = 'ability_not_registered';
 		if ( '' === $blocker && ! $adapter_available ) $blocker = 'provider_runtime_unavailable';
-		if ( '' === $blocker && $requires_provider_certification && ! $provider_certified ) $blocker = 'provider_capability_not_certified';
+		if ( '' === $blocker && $requires_provider_certification && ! $capability_certified ) $blocker = 'provider_capability_not_certified';
 		$workflow_ref = isset( $input['workflow_ref'] ) ? sanitize_text_field( (string) $input['workflow_ref'] ) : '';
 		$expected_sha = isset( $input['expected_workflow_sha256'] ) ? strtolower( trim( (string) $input['expected_workflow_sha256'] ) ) : '';
 
@@ -197,11 +214,14 @@ final class MAD4B_SCP_Workflow_Providers {
 			'workflow_ref' => $workflow_ref,
 			'expected_workflow_sha256' => $expected_sha,
 			'ability' => $ability,
-			'risk' => isset( $operation_definition['risk'] ) ? sanitize_key( (string) $operation_definition['risk'] ) : 'unknown',
+			'risk' => $risk,
 			'ability_registered' => $registered,
 			'provider_available' => $adapter_available,
-			'provider_certified' => $provider_certified,
+			'provider_runtime_certified' => $provider_runtime_certified,
 			'provider_certification' => $provider_certification,
+			'capability_id' => $capability_id,
+			'capability_certified' => $capability_certified,
+			'capability_status' => $capability_status,
 			'execution_ready' => '' === $blocker,
 			'blocker' => $blocker,
 			'requires' => $requires,
