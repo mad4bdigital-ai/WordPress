@@ -7,7 +7,7 @@ const CONTRACT_PATH = path.join(HERE, "provider-contracts.json");
 
 export function loadProviderContracts() {
   const parsed = JSON.parse(fs.readFileSync(CONTRACT_PATH, "utf8"));
-  if (parsed.contract !== "mad4b.browser-execution-providers.v1") {
+  if (parsed.contract !== "mad4b.browser-execution-providers.v2") {
     throw new Error("browser_provider_contract_invalid");
   }
   return parsed;
