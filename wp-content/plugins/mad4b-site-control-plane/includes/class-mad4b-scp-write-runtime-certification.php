@@ -161,6 +161,8 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
 		$approval_exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
 		$checks['candidate_bootstrap_exception_bounded'] = empty( $approval_exceptions ) || ( 1 === count( $approval_exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $approval_exceptions[0] );
+		$bootstrap_closure = isset( $authority['candidate_bootstrap_closure'] ) && is_array( $authority['candidate_bootstrap_closure'] ) ? $authority['candidate_bootstrap_closure'] : array();
+		$checks['candidate_bootstrap_closure_complete'] = empty( $bootstrap_closure['required'] ) || ! empty( $bootstrap_closure['closed'] );
 		foreach ( $checks as $key => $ok ) if ( ! $ok ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
@@ -299,6 +301,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'exact_approval_required_for_remote_write' => empty( $authority['remote_write_approval_exceptions'] ),
 			'normal_remote_write_exact_approval_required' => true,
 			'candidate_bootstrap_prior_approval_exception' => ! empty( $authority['candidate_bootstrap_exception_active'] ) ? MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY : '',
+			'candidate_bootstrap_closure' => $bootstrap_closure,
 			'approval_planner_bootstrap_exception' => 'pending_ticket_creation_only',
 			'external_wpml_acceptance_required' => true,
 			'external_wpml_acceptance_verified' => false,

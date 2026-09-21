@@ -64,6 +64,14 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0;
 		$telemetry['request_coverage'][ $class ]++;
 		$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+		$sample = self::performance_sample( $class );
+		if ( ! isset( $telemetry['performance'] ) || ! is_array( $telemetry['performance'] ) ) $telemetry['performance'] = self::empty_performance();
+		if ( ! isset( $telemetry['performance']['samples'] ) || ! is_array( $telemetry['performance']['samples'] ) ) $telemetry['performance']['samples'] = array();
+		$telemetry['performance']['samples'][] = $sample;
+		$telemetry['performance']['samples'] = array_slice( $telemetry['performance']['samples'], -32 );
+		$telemetry['performance']['last_by_class'][ $class ] = $sample;
+		if ( 'frontend' === $class ) $telemetry['performance']['frontend_observed'] = true;
+		if ( 'rest' === $class ) $telemetry['performance']['rest_observed'] = true;
 
 		foreach ( self::query_monitor_events() as $entry ) {
 			$event_type = isset( $entry['type'] ) ? sanitize_key( (string) $entry['type'] ) : '';
@@ -210,6 +218,31 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 				'unknown' => array(),
 			),
 			'events' => array(),
+			'performance' => self::empty_performance(),
+		);
+	}
+
+	private static function empty_performance() {
+		return array(
+			'contract' => 'mad4b.frontend-performance-evidence.v1',
+			'frontend_observed' => false,
+			'rest_observed' => false,
+			'samples' => array(),
+			'last_by_class' => array(),
+		);
+	}
+
+	private static function performance_sample( $class ) {
+		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) && is_numeric( $_SERVER['REQUEST_TIME_FLOAT'] ) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : 0.0;
+		$elapsed = $started > 0 ? max( 0.0, ( microtime( true ) - $started ) * 1000.0 ) : 0.0;
+		$queries = function_exists( 'get_num_queries' ) ? max( 0, (int) get_num_queries() ) : 0;
+		$peak = function_exists( 'memory_get_peak_usage' ) ? max( 0, (int) memory_get_peak_usage( true ) ) : 0;
+		return array(
+			'request_class' => (string) $class,
+			'server_elapsed_ms' => round( $elapsed, 3 ),
+			'db_queries' => $queries,
+			'peak_memory_bytes' => $peak,
+			'observed_at' => gmdate( 'Y-m-d H:i:s' ),
 		);
 	}
 

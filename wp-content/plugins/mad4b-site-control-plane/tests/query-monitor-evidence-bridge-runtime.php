@@ -18,7 +18,9 @@ function remove_action( $hook, $callback, $priority = 10 ) {
 function sanitize_key( $v ) { return strtolower( preg_replace('/[^a-z0-9_\-]/i','',(string)$v) ); }
 function get_option( $k, $d = false ) { return $GLOBALS['option'] ?: $d; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['option'] = $v; return true; }
-function is_admin() { return true; }
+function is_admin() { return false; }
+function get_num_queries() { return 37; }
+$_SERVER['REQUEST_TIME_FLOAT'] = microtime(true) - 0.125;
 
 final class MAD4B_SCP_Live_Acceptance_Observer {
     const TELEMETRY_OPTION = 'mad4b_scp_live_acceptance_observation_v1';
@@ -100,4 +102,10 @@ $check(1 === $t['counters']['mad4b']['pre_init_abilities_violation'], 'pre-init 
 $check(1 === $t['counters']['third_party']['doing_it_wrong'], 'third-party warning remains third-party');
 $check(1 === $t['counters']['third_party']['fluentform_action_scheduler'], 'FluentForms classification preserved');
 $check('mad4b.query-monitor-collector-bridge.v1' === $t['events'][0]['evidence_source'], 'collector evidence source recorded');
+$check(!empty($t['performance']['frontend_observed']), 'frontend performance evidence observed');
+$check(isset($t['performance']['last_by_class']['frontend']), 'frontend performance last sample present');
+$perf = $t['performance']['last_by_class']['frontend'];
+$check(37 === $perf['db_queries'], 'frontend DB query count captured');
+$check($perf['peak_memory_bytes'] > 0, 'frontend peak memory captured');
+$check($perf['server_elapsed_ms'] >= 100, 'frontend server elapsed captured');
 echo "mad4b.query-monitor-collector-bridge.runtime.v1: PASS\n";

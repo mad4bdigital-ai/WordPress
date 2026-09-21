@@ -83,6 +83,7 @@ for marker in [
     "'elementor/move-element' => 'elementor'",
     "'elementor/delete-element' => 'elementor'",
     "'elementor/set-dynamic-tag' => 'elementor'",
+    "'elementor/set-etg-dynamic-tag' => 'elementor'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
     "MAD4B_SCP_Agent_Registry::resolve_agent",
@@ -113,6 +114,7 @@ for required_pair in [
     "'elementor/move-element' => 'elementor'",
     "'elementor/delete-element' => 'elementor'",
     "'elementor/set-dynamic-tag' => 'elementor'",
+    "'elementor/set-etg-dynamic-tag' => 'elementor'",
 ]:
     if required_pair not in allowlist:
         raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
@@ -339,6 +341,8 @@ for marker in [
     "normal_remote_write_exact_approval_required",
     "candidate_bootstrap_prior_approval_exception",
     "candidate_bootstrap_exception_bounded",
+    "candidate_bootstrap_closure_complete",
+    "candidate_bootstrap_closure",
     "approval_planner_bootstrap_exception",
     "external_client_tools_verified",
     "MAD4B_SCP_Audit::record",
@@ -404,6 +408,10 @@ if "current_authority_status()" in effective_body:
 
 for marker in [
     "runtime_authority_candidate_not_reconciled",
+    "'contract' => 'mad4b.governed-write-candidate-bootstrap-closure.v1'",
+    "'sequence' => array( 'mad4b/acceptance-target-provision', 'mad4b/staging-write-grant-reconcile' )",
+    "'required_postconditions' => array( 'candidate_binding_match', 'runtime_reconciled', 'write_authority_ready' )",
+    "'retry_provider_mutation_on_reconciliation_failure' => false",
     "'candidate_binding_required'",
     "'candidate_binding_match'",
     "'candidate_source_commit_sha'",

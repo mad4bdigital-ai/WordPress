@@ -20,12 +20,50 @@
             filteredSnapshot: null,
             resetSnapshot: null,
             historyCalls: [],
-            etgHistoryMutation: false
+            etgHistoryMutation: false,
+            ajaxFilterStartedAt: 0,
+            ajaxEndpointLatencyMs: null,
+            filterToPresentationMs: null
         };
     }
 
     function clone(value) {
         try { return JSON.parse(JSON.stringify(value)); } catch (error) { return null; }
+    }
+
+    function nowMs() {
+        try { if (window.performance && typeof window.performance.now === 'function') { return Number(window.performance.now()) || 0; } } catch (error) {}
+        return Date.now ? Date.now() : 0;
+    }
+
+    function roundMs(value) {
+        value = Number(value);
+        return isFinite(value) && value >= 0 ? Math.round(value * 1000) / 1000 : null;
+    }
+
+    function navigationPerformance() {
+        var out = {};
+        try {
+            var perf = window.performance;
+            if (!perf) { return out; }
+            var entries = typeof perf.getEntriesByType === 'function' ? perf.getEntriesByType('navigation') : [];
+            var nav = entries && entries.length ? entries[0] : null;
+            if (nav) {
+                var requestStart = Number(nav.requestStart || 0), responseStart = Number(nav.responseStart || 0);
+                var domEnd = Number(nav.domContentLoadedEventEnd || 0), loadEnd = Number(nav.loadEventEnd || 0);
+                if (responseStart >= requestStart) { out.ttfb_ms = roundMs(responseStart - requestStart); }
+                if (domEnd >= Number(nav.startTime || 0)) { out.dom_content_loaded_ms = roundMs(domEnd - Number(nav.startTime || 0)); }
+                if (loadEnd >= Number(nav.startTime || 0) && loadEnd > 0) { out.load_event_ms = roundMs(loadEnd - Number(nav.startTime || 0)); }
+                return out;
+            }
+            var timing = perf.timing;
+            if (timing) {
+                if (Number(timing.responseStart) >= Number(timing.requestStart)) { out.ttfb_ms = roundMs(Number(timing.responseStart) - Number(timing.requestStart)); }
+                if (Number(timing.domContentLoadedEventEnd) >= Number(timing.navigationStart)) { out.dom_content_loaded_ms = roundMs(Number(timing.domContentLoadedEventEnd) - Number(timing.navigationStart)); }
+                if (Number(timing.loadEventEnd) >= Number(timing.navigationStart) && Number(timing.loadEventEnd) > 0) { out.load_event_ms = roundMs(Number(timing.loadEventEnd) - Number(timing.navigationStart)); }
+            }
+        } catch (error) {}
+        return out;
     }
 
     function boundedString(value, maxLength) {
@@ -196,11 +234,12 @@
         if (originalFetch || typeof window.fetch !== 'function') { return; }
         originalFetch = window.fetch;
         window.fetch = function (input, init) {
-            var url = requestUrl(input), method = requestMethod(input, init);
+            var url = requestUrl(input), method = requestMethod(input, init), startedAt = nowMs();
             var promise = originalFetch.apply(window, arguments);
             if (!endpointMatches(url)) { return promise; }
             promise.then(function (response) {
-                var record = { method: boundedString(method, 16), endpoint: boundedString(url, 2048), http_status: Number(response.status || 0) };
+                var record = { method: boundedString(method, 16), endpoint: boundedString(url, 2048), http_status: Number(response.status || 0), latency_ms: roundMs(nowMs() - startedAt) };
+                state.ajaxEndpointLatencyMs = record.latency_ms;
                 try {
                     response.clone().text().then(function (body) {
                         var data = {};
@@ -234,6 +273,7 @@
         jsf.events.subscribe('ajaxFilters/updated', function (provider, queryId) {
             if (!armed) { return; }
             state.ajaxFiltersUpdated = true;
+            state.ajaxFilterStartedAt = nowMs();
             state.filterGroup = boundedString(provider || '', 80) + '/' + boundedString(queryId || '', 79);
         });
         jsfSubscribed = true;
@@ -248,6 +288,7 @@
     document.addEventListener('etg-dfsb/ajax-presentation-updated', function (event) {
         if (!armed) { return; }
         state.presentationUpdated = true;
+        if (state.ajaxFilterStartedAt > 0) { state.filterToPresentationMs = roundMs(nowMs() - state.ajaxFilterStartedAt); }
         var detail = event && event.detail ? event.detail : {};
         if (detail.provider || detail.query_id) { state.filterGroup = boundedString(detail.provider || '', 80) + '/' + boundedString(detail.query_id || '', 79); }
         window.setTimeout(function () { if (armed) { state.filteredSnapshot = snapshotState(); } }, 0);
@@ -317,6 +358,12 @@
                 presentation_reset: state.presentationReset
             },
             network: clone(state.lastNetwork) || {},
+            performance: (function () {
+                var perf = navigationPerformance();
+                if (state.ajaxEndpointLatencyMs !== null) { perf.ajax_endpoint_latency_ms = state.ajaxEndpointLatencyMs; }
+                if (state.filterToPresentationMs !== null) { perf.filter_to_presentation_ms = state.filterToPresentationMs; }
+                return perf;
+            }()),
             rendered: clone(filtered.dom) || { ids: [], result_count: 0 },
             url_state: {
                 filter_state_observed: normalizedPath(filtered.url) !== normalizedPath(baseline.url) || state.ajaxFiltersUpdated,

@@ -181,6 +181,26 @@ final class MAD4B_SCP_Live_Truth {
 
 		$blockers = array_values( array_unique( array_filter( array_map( 'strval', $blockers ) ) ) );
 		$ready = $eligible && empty( $blockers );
+		$bootstrap_closure_required = ! empty( $candidate_binding['required'] );
+		$bootstrap_closure_closed = ! $bootstrap_closure_required || ( $candidate_reconciled && $runtime_reconciled && $ready );
+		if ( ! $bootstrap_closure_required ) $bootstrap_closure_state = 'not_required';
+		elseif ( $bootstrap_closure_closed ) $bootstrap_closure_state = 'closed';
+		elseif ( $candidate_bootstrap_exception_active ) $bootstrap_closure_state = 'acceptance_target_provision_required';
+		elseif ( ! $candidate_reconciled ) $bootstrap_closure_state = 'candidate_reconciliation_required';
+		else $bootstrap_closure_state = 'authority_reconciliation_required';
+		$candidate_bootstrap_closure = array(
+			'contract' => 'mad4b.governed-write-candidate-bootstrap-closure.v1',
+			'required' => $bootstrap_closure_required,
+			'sequence' => array( 'mad4b/acceptance-target-provision', 'mad4b/staging-write-grant-reconcile' ),
+			'required_postconditions' => array( 'candidate_binding_match', 'runtime_reconciled', 'write_authority_ready' ),
+			'candidate_binding_match' => ! empty( $candidate_binding['match'] ),
+			'runtime_reconciled' => $runtime_reconciled,
+			'write_authority_ready' => $ready,
+			'closed' => $bootstrap_closure_closed,
+			'state' => $bootstrap_closure_state,
+			'atomic_single_mutation' => false,
+			'retry_provider_mutation_on_reconciliation_failure' => false,
+		);
 		return array(
 			'contract' => class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::CONTRACT : 'mad4b.governed-write-authority.v2',
 			'truth_contract' => self::CONTRACT,
@@ -224,6 +244,7 @@ final class MAD4B_SCP_Live_Truth {
 			'remote_write_approval_exceptions' => $remote_approval_exceptions,
 			'candidate_bootstrap_exception_active' => $candidate_bootstrap_exception_active,
 			'candidate_bootstrap_contract' => isset( $candidate_bootstrap['contract'] ) ? (string) $candidate_bootstrap['contract'] : '',
+			'candidate_bootstrap_closure' => $candidate_bootstrap_closure,
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
