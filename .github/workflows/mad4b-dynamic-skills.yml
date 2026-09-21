@@ -64,6 +64,7 @@ jobs:
             includes/class-mad4b-scp-site-profile.php \
             includes/class-mad4b-scp-plugin-lifecycle.php \
             includes/class-mad4b-scp-workflow-providers.php \
+            includes/class-mad4b-scp-operating-model.php \
             includes/class-mad4b-scp-skill-autoconfig.php \
             includes/class-mad4b-scp-skill-registry.php \
             includes/class-mad4b-scp-skill-seeder.php \
@@ -108,6 +109,7 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-data-retention-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/workflow-provider-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/operating-model-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/authority-candidate-binding-runtime.php
 
       - name: Deny Skill mutation and breakglass leakage

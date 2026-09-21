@@ -556,70 +556,71 @@ Require a separate exact production Site Profile, candidate binding, production 
 Implemented:
 
 - provider-neutral Workflow Provider contract;
-- Bit Flows as the first execution-provider mapping;
+- Bit Flows as the first replaceable execution-provider mapping;
 - explicit unavailable lifecycle/retry operations instead of inferred support;
 - read-only workflow provider status;
-- deterministic workflow plan with SHA-256;
+- deterministic workflow plans with SHA-256;
+- generic semantic identity map separated from physical provider IDs;
+- machine-readable generic ownership model;
+- declarative Site/Feature bundle validation;
+- deterministic Desired State / Observed State semantic diff;
+- generic immutable operation plan with exact plan_sha256 and authority-binding metadata;
+- evidence dependency graph and transitive invalidation planner;
+- declarative invariant evaluator;
+- explicit candidate state machine that prevents bootstrap/write-runtime circular dependency;
+- read-only workflow DAG compiler that routes mechanics to workflow providers while preserving MAD4B mutation authority;
 - dependency-aware plugin lifecycle planner;
 - exact plugin lifecycle state fingerprint;
 - required/dependent plugin checks;
 - protected plugin checks;
 - lifecycle write binding to expected state SHA-256;
 - lifecycle post-mutation readback evidence;
-- workflow and lifecycle abilities projected to read/ChatGPT surfaces;
+- workflow, lifecycle and operating-model abilities projected to read/ChatGPT surfaces;
 - reusable release orchestration Skill;
 - portable Skill mirror;
-- CI contract guards for the new architecture.
+- CI contract/runtime guards;
+- explicit operating-model coverage matrix.
 
 Not certified by this change:
 
 - Bit Flows create;
 - Bit Flows enable/disable;
 - Bit Flows retry/cancel;
+- activation of the MAD4B Bit Flows Bridge against an uncertified provider-public contract;
 - direct provider-internal database mutation;
 - automatic production release.
 
 Those stay fail-closed until provider-specific behavioral certification is supplied.
 
-## 17. Next implementation waves
+The inherited PR #15 ability `elementor/set-etg-dynamic-tag` remains a documented compatibility exception for the exact ETG repair lineage. New generic operating-model code contains no ETG hostname, post/template ID, taxonomy or business-domain identifier. The compatibility alias must be migrated after #15 without breaking exact rollback/readback semantics.
+
+## 17. Remaining implementation/certification waves
 
 ### Wave A — close exact provider evidence
 
-- recertify Bit Flows installed runtime;
-- map public supported lifecycle operations;
-- add disposable behavioral tests;
-- keep unsupported operations explicit.
+- recertify the exact installed Bit Flows runtime capability-by-capability;
+- map only public/provider-supported lifecycle operations;
+- add disposable behavioral tests for each promoted capability;
+- keep unsupported operations explicit and unavailable.
 
-### Wave B — generic desired/observed state
+### Wave B — promote provider-public Bit Flows bridge
 
-- desired-state registry;
-- semantic observed-state snapshots;
-- drift classifier;
-- deterministic generic operation-plan schema;
-- approval-to-plan digest binding.
+- implement the external/addon bridge only after public hooks/API/Custom App surfaces are verified;
+- keep MAD4B as source of truth, policy and authority;
+- use Bit Flows only for wait/retry/routing/scheduling/integration mechanics;
+- never use direct provider database mutation as a substitute.
 
-### Wave C — evidence graph
+### Wave C — persist richer evidence-graph projections
 
-- evidence identity model;
-- dependency edges;
-- freshness/expiry policy;
-- dependency invalidation;
-- release-gate query API.
+- connect existing signed/provider/runtime receipts to the generic dependency graph;
+- add freshness/expiry query APIs where evidence source semantics support them;
+- keep invalidation dependency-scoped rather than pipeline-wide.
 
-### Wave D — reusable reconciliation engines
+### Wave D — domain migrations and reusable reconcilers
 
-- Elementor structural primitives;
-- template reconciliation;
-- multilingual ownership model;
-- Browser Assertion Engine;
-- SEO publication readiness.
-
-### Wave E — workflow compiler
-
-- compile high-level Skill intent into a provider-neutral DAG;
-- select direct/native workflow execution or Bit Flows by capability;
-- keep all mutation edges bound to MAD4B abilities;
-- support alternate workflow providers without changing Skills or contracts.
+- migrate inherited ETG-specific compatibility primitives out of generic adapters after #15 settles;
+- bind template reconciliation to semantic roles and ownership contracts;
+- continue promoting Browser assertion schemas without making the browser/provider an authority.
 
 ## 18. Definition of done
 
