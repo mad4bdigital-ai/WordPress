@@ -1,20 +1,38 @@
 {
-  "contract": "mad4b.browser-execution-providers.v1",
-  "selection_policy": "priority_first_available_with_runtime_fallback",
+  "contract": "mad4b.browser-execution-providers.v2",
+  "selection_policy": "adaptive_recurring_free_first_with_bounded_runtime_fallback",
   "priority": ["cloudflare", "browserbase", "browserless", "steel"],
   "limits_are_advisory": true,
-  "runtime_fallback_is_authoritative": true,
+  "runtime_provider_response_is_authoritative": true,
+  "run_budget": {
+    "max_provider_attempts": 4,
+    "max_browser_sessions": 12,
+    "estimated_case_seconds": 45,
+    "challenge_expiry_reserve_seconds": 30
+  },
+  "circuit_breaker": {
+    "scope": "single_execution",
+    "open_after_provider_failure": true,
+    "retry_open_provider": false
+  },
   "providers": {
     "cloudflare": {
       "label": "Cloudflare Browser Run",
       "execution_mode": "managed_browser_agent",
+      "billing_class": "recurring_free_daily",
       "recurring_free_tier": true,
       "priority": 10,
       "credential_env": ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_BROWSER_RUN_API_TOKEN"],
       "advisory_free_limits": {
         "browser_seconds_per_day": 600,
         "concurrent_browsers": 3,
-        "session_seconds": 600
+        "new_browser_interval_seconds": 20
+      },
+      "runtime_constraints": {
+        "session_limit_mode": "inactivity_keep_alive",
+        "default_inactivity_timeout_seconds": 60,
+        "max_keep_alive_seconds": 600,
+        "case_chunking": "not_required"
       },
       "capabilities": ["playwright_cdp", "session_guardrails"],
       "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
@@ -22,13 +40,18 @@
     "browserbase": {
       "label": "Browserbase",
       "execution_mode": "managed_browser_agent",
+      "billing_class": "recurring_free_monthly",
       "recurring_free_tier": true,
       "priority": 20,
       "credential_env": ["BROWSERBASE_API_KEY"],
       "advisory_free_limits": {
         "browser_seconds_per_month": 3600,
-        "concurrent_browsers": 3,
-        "session_seconds": 900
+        "concurrent_browsers": 3
+      },
+      "runtime_constraints": {
+        "session_limit_mode": "hard",
+        "hard_session_seconds": 900,
+        "case_chunking": "when_required"
       },
       "capabilities": ["playwright_cdp"],
       "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
@@ -36,13 +59,18 @@
     "browserless": {
       "label": "Browserless",
       "execution_mode": "managed_browser_agent",
+      "billing_class": "recurring_free_monthly_units",
       "recurring_free_tier": true,
       "priority": 30,
       "credential_env": ["BROWSERLESS_TOKEN"],
       "advisory_free_limits": {
         "units_per_month": 1000,
-        "concurrent_browsers": 2,
-        "session_seconds": 120
+        "concurrent_browsers": 2
+      },
+      "runtime_constraints": {
+        "session_limit_mode": "hard",
+        "hard_session_seconds": 120,
+        "case_chunking": "one_case_per_session"
       },
       "capabilities": ["playwright_cdp", "short_session_chunking"],
       "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
@@ -50,13 +78,19 @@
     "steel": {
       "label": "Steel",
       "execution_mode": "managed_browser_agent",
+      "billing_class": "one_time_credit",
       "recurring_free_tier": false,
       "priority": 40,
       "credential_env": ["STEEL_API_KEY"],
       "advisory_free_limits": {
         "one_time_credit_usd": 30,
         "concurrent_browsers": 10,
-        "session_seconds": 900
+        "credit_validity_days": 90
+      },
+      "runtime_constraints": {
+        "session_limit_mode": "hard",
+        "hard_session_seconds": 900,
+        "case_chunking": "when_required"
       },
       "capabilities": ["playwright_cdp"],
       "fallback_statuses": [402, 408, 409, 425, 429, 500, 502, 503, 504]
