@@ -9,6 +9,7 @@ define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', 'managed-google-site-signing-s
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) define( 'MINUTE_IN_SECONDS', 60 );
 
 $GLOBALS['mad4b_context_options'] = array();
+$GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array() );
 $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
@@ -44,7 +45,10 @@ function add_query_arg( $args, $url ) { return $url . '?' . http_build_query( $a
 function set_transient( $name, $value ) { $GLOBALS['mad4b_context_transients'][ $name ] = $value; return true; }
 function get_transient( $name ) { return isset( $GLOBALS['mad4b_context_transients'][ $name ] ) ? $GLOBALS['mad4b_context_transients'][ $name ] : false; }
 function delete_transient( $name ) { unset( $GLOBALS['mad4b_context_transients'][ $name ] ); return true; }
-function get_option( $name, $default = false ) { return array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ? $GLOBALS['mad4b_context_options'][ $name ] : $default; }
+function get_option( $name, $default = false ) {
+	if ( ! empty( $GLOBALS['mad4b_context_option_cache']['notoptions'][ $name ] ) ) return $default;
+	return array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ? $GLOBALS['mad4b_context_options'][ $name ] : $default;
+}
 function add_option( $name, $value ) {
 	if ( array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ) return false;
 	$GLOBALS['mad4b_context_options'][ $name ] = $value;
@@ -58,6 +62,11 @@ function update_option( $name, $value ) {
 function delete_option( $name ) {
 	if ( ! array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ) return false;
 	unset( $GLOBALS['mad4b_context_options'][ $name ] );
+	return true;
+}
+function wp_cache_delete( $key, $group = '' ) {
+	if ( 'options' !== $group ) return true;
+	if ( 'notoptions' === $key ) $GLOBALS['mad4b_context_option_cache']['notoptions'] = array();
 	return true;
 }
 function wp_remote_retrieve_response_code( $response ) { return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0; }
@@ -343,6 +352,10 @@ foreach ( array( 'managed-refresh-token', 'managed-access-short', 'managed-acces
 $managed_disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
 mad4b_oauth_assert( ! is_wp_error( $managed_disconnected ) && empty( $managed_disconnected['connected'] ), 'Managed Google grant must revoke and disconnect cleanly.', $managed_disconnected );
 
+// Reproduce stale persistent-object-cache negative state while the auth-mode
+// row still exists. A correct writer clears notoptions, discovers the row,
+// updates it through the Options API, and verifies exact readback.
+$GLOBALS['mad4b_context_option_cache']['notoptions'][ MAD4B_SCP_Google_Drive_Context::AUTH_MODE_OPTION ] = true;
 $dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
 mad4b_oauth_assert( ! is_wp_error( $dedicated_mode ), 'Authentication mode must switch to Dedicated Site OAuth after managed grant revocation.', $dedicated_mode );
 mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $dedicated_mode['mode'], 'Dedicated Site OAuth mode must become active.', $dedicated_mode );
@@ -433,4 +446,4 @@ mad4b_oauth_assert( is_wp_error( $blocked_grant_change ) && 'mad4b_google_worksp
 delete_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION );
 
 mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v8: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v9: PASS\n";
