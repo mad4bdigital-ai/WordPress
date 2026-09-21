@@ -59,6 +59,7 @@ jobs:
           node tools/browser-acceptance/test-provider-selection.mjs
           node tools/browser-acceptance/test-scheduler.mjs
           node tools/browser-acceptance/test-mcp-bridge.mjs
+          node tools/browser-acceptance/test-receipt.mjs
       - name: Syntax-check executable browser surfaces
         run: |
           node --check tools/browser-acceptance/providers.mjs
@@ -67,6 +68,7 @@ jobs:
           node --check tools/browser-acceptance/etg-driver.mjs
           node --check tools/browser-acceptance/run-etg-browser-acceptance.mjs
           node --check tools/browser-acceptance/run-live-etg-browser-acceptance.mjs
+          node --check tools/browser-acceptance/receipt.mjs
       - name: Deny arbitrary execution inputs and long-lived OAuth shortcuts
         shell: bash
         run: |
@@ -124,7 +126,8 @@ jobs:
             --browser-provider "$MAD4B_BROWSER_PROVIDER" \
             --out browser-evidence.json \
             --attempts-out browser-provider-attempts.json \
-            --result-out browser-acceptance-result.json
+            --result-out browser-acceptance-result.json \
+            --receipt-out browser-execution-receipt.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -133,5 +136,6 @@ jobs:
             browser-evidence.json
             browser-provider-attempts.json
             browser-acceptance-result.json
+            browser-execution-receipt.json
           if-no-files-found: warn
           retention-days: 14
