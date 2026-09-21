@@ -263,6 +263,23 @@ async function executeCase(page, plan, planCase) {
   return evidence;
 }
 
+export function buildEvidenceEnvelope({ plan, providerId, browserEngine, cases }) {
+  return {
+    contract: "etg.dfsb.browser-acceptance-evidence.v1",
+    plan_digest: plan.plan_digest,
+    plan_signature: plan.plan_signature,
+    origin: plan.origin,
+    build_identity: plan.build_identity,
+    observer: {
+      contract: "etg.dfsb.browser-acceptance-observer.v1",
+      javascript_runtime: true,
+      browser_engine: `${providerId}:${browserEngine}`,
+      execution_mode: "managed_browser_agent"
+    },
+    cases
+  };
+}
+
 export async function runBrowserPlan({ browser, providerId, plan }) {
   plan = validatePlan(plan);
   const { page } = await getPage(browser);
@@ -275,19 +292,5 @@ export async function runBrowserPlan({ browser, providerId, plan }) {
     evidence.challenge_nonce = plan.challenge.nonce;
     cases.push(evidence);
   }
-  return {
-    contract: "etg.dfsb.browser-acceptance-evidence.v1",
-    plan_digest: plan.plan_digest,
-    plan_signature: plan.plan_signature,
-    origin: plan.origin,
-    build_identity: plan.build_identity,
-    challenge: plan.challenge,
-    observer: {
-      contract: "etg.dfsb.browser-acceptance-observer.v1",
-      javascript_runtime: true,
-      browser_engine: `${providerId}:${browserEngine}`,
-      execution_mode: "managed_browser_agent"
-    },
-    cases
-  };
+  return buildEvidenceEnvelope({ plan, providerId, browserEngine, cases });
 }
