@@ -158,7 +158,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
-		$checks['remote_approval_required'] = ! empty( $authority['all_remote_writes_require_exact_approval'] );
+		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
+		$approval_exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
+		$checks['candidate_bootstrap_exception_bounded'] = empty( $approval_exceptions ) || ( 1 === count( $approval_exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $approval_exceptions[0] );
 		foreach ( $checks as $key => $ok ) if ( ! $ok ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
@@ -294,7 +296,9 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
-			'exact_approval_required_for_remote_write' => true,
+			'exact_approval_required_for_remote_write' => empty( $authority['remote_write_approval_exceptions'] ),
+			'normal_remote_write_exact_approval_required' => true,
+			'candidate_bootstrap_prior_approval_exception' => ! empty( $authority['candidate_bootstrap_exception_active'] ) ? MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY : '',
 			'approval_planner_bootstrap_exception' => 'pending_ticket_creation_only',
 			'external_wpml_acceptance_required' => true,
 			'external_wpml_acceptance_verified' => false,
