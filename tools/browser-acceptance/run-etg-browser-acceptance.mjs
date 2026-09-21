@@ -90,7 +90,7 @@ for (const candidate of candidates) {
   } catch (error) {
     const classified = classifyProviderError(error, candidate.definition);
     attempts.push({ provider: candidate.id, state: "failed", ...classified });
-    if (requested !== "auto") break;
+    if (requested !== "auto" || !classified.fallback_allowed) break;
   }
 }
 
