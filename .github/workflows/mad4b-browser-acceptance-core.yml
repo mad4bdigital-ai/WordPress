@@ -9,6 +9,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php'
       - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js'
       - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceProvider.php'
       - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/includes/Acceptance/BrowserAcceptanceFreshnessGuard.php'
@@ -186,6 +188,14 @@ jobs:
             if ( empty( $status["boot_ok"] ) ) throw new RuntimeException( "ETG Safe Boot did not close to boot_ok: " . wp_json_encode( $status ) );
             echo "etg-safe-boot=PASS\n";
           ' --path="$WP_PATH" --user=mad4b-ci-admin
+      - name: Prove exact Elementor ETG structural helper runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php" \
+            --path=/tmp/mad4b-browser-acceptance-wordpress --user=mad4b-ci-admin
+
       - name: Prove generic Browser Acceptance Core discovers and safely projects exact ETG provider
         shell: bash
         run: |
