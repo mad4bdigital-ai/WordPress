@@ -314,7 +314,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice notice-info inline"><p><strong>' . esc_html( $mode_label ) . '</strong> · ' . esc_html__( 'Disconnect and revoke the current Google grant before changing authentication mode.', 'mad4b-site-control-plane' ) . '</p></div>';
 		} else {
 			echo '<p>' . esc_html__( 'Choose how this site authenticates with Google. Managed Sign-In uses the central MAD4B broker; Dedicated Site OAuth stays entirely on this site primary domain; Custom OAuth keeps the legacy manual setup.', 'mad4b-site-control-plane' ) . '</p>';
-			echo '<form class="mad4b-context-ajax-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<form class="mad4b-context-ajax-form mad4b-context-auth-mode-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SAVE_GOOGLE_AUTH_MODE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_GOOGLE_AUTH_MODE ) . '">';
 			echo '<div class="mad4b-context-source-mode">';
@@ -324,8 +324,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</div>';
 			if ( ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is unavailable until the broker URL and the per-site request-signing key ID/secret are configured on the server.', 'mad4b-site-control-plane' ) . '</p></div>';
 			if ( ! $dedicated_origin_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Dedicated Site OAuth requires an enrolled Site Profile whose canonical origin matches the current WordPress Home URL and Site URL.', 'mad4b-site-control-plane' ) . '</p></div>';
+			echo '<noscript>';
 			submit_button( __( 'Save Connection Method', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-			echo '</form>';
+			echo '</noscript></form>';
 		}
 		echo '</div>';
 
@@ -1027,6 +1028,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if(!form)return;
 				form.querySelectorAll("select[data-full-mode]").forEach(function(select){select.value=select.getAttribute("data-full-mode");});
 				feedback("Full Apps Suite selected. Save Grants to persist the reviewed scope set.",true);
+			});
+			document.addEventListener("change",function(event){
+				var input=event.target.closest(".mad4b-context-auth-mode-form input[name=auth_mode]");
+				if(!input)return;
+				var form=input.closest("form");
+				if(!form)return;
+				if(typeof form.requestSubmit==="function")form.requestSubmit();
+				else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
 			});
 			document.addEventListener("submit",async function(event){
 				var form=event.target.closest(".mad4b-context-ajax-form");
