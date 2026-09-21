@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * abilities into the canonical profile-owned NHI.
  *
  * This is deliberately NOT a normal mad4b-write ability. It can create exact
- * Staging allow grants only for the reviewed JetEngine native write set below.
+ * Staging allow grants only for the reviewed provider/ability pairs below.
  * It cannot create wildcard grants, cannot touch Production, cannot grant
  * import/export, cannot create/replace agents or subjects, and cannot revoke
  * pre-existing grants except grants created by the same failed invocation.
@@ -20,17 +20,25 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	private static $booted = false;
 	private static $running = false;
 
-	public static function allowed_abilities() {
+	public static function allowed_ability_providers() {
 		return array(
-			'jetengine/create-cct',
-			'jetengine/create-cpt',
-			'jetengine/create-glossary',
-			'jetengine/create-listing',
-			'jetengine/create-meta-box',
-			'jetengine/create-query',
-			'jetengine/create-taxonomy',
-			'jetengine/manage-modules',
+			'jetengine/create-cct' => 'native-provider',
+			'jetengine/create-cpt' => 'native-provider',
+			'jetengine/create-glossary' => 'native-provider',
+			'jetengine/create-listing' => 'native-provider',
+			'jetengine/create-meta-box' => 'native-provider',
+			'jetengine/create-query' => 'native-provider',
+			'jetengine/create-taxonomy' => 'native-provider',
+			'jetengine/manage-modules' => 'native-provider',
+			'elementor/clone-subtree' => 'elementor',
+			'elementor/move-element' => 'elementor',
+			'elementor/delete-element' => 'elementor',
+			'elementor/set-dynamic-tag' => 'elementor',
 		);
+	}
+
+	public static function allowed_abilities() {
+		return array_keys( self::allowed_ability_providers() );
 	}
 
 	public static function boot() {
@@ -51,7 +59,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		try {
 			wp_register_ability( self::ABILITY, array(
 				'label' => 'Reconcile Exact Staging Write Grants',
-				'description' => 'Create only the exact missing Staging grants for the reviewed JetEngine native write expansion on the canonical profile-owned governed-write agent.',
+				'description' => 'Create only the exact missing Staging grants for reviewed provider write expansions on the canonical profile-owned governed-write agent.',
 				'category' => 'mad4b-governance',
 				'execute_callback' => array( __CLASS__, 'reconcile' ),
 				'permission_callback' => array( __CLASS__, 'can_execute' ),
@@ -68,7 +76,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 						'expected_missing_abilities' => array(
 							'type' => 'array',
 							'minItems' => 0,
-							'maxItems' => 8,
+							'maxItems' => 16,
 							'uniqueItems' => true,
 							'items' => array( 'type' => 'string', 'enum' => self::allowed_abilities() ),
 						),
@@ -238,11 +246,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			}
 			sort( $missing, SORT_STRING );
 
-			$allowed = self::allowed_abilities();
+			$allowed_providers = self::allowed_ability_providers();
+			$allowed = array_keys( $allowed_providers );
 			sort( $allowed, SORT_STRING );
 			foreach ( $missing as $ability ) {
-				if ( ! in_array( $ability, $allowed, true ) ) return new WP_Error( 'mad4b_grant_reconcile_missing_outside_allowlist', 'A missing grant exists outside the reviewed JetEngine reconciliation allowlist.', array( 'ability' => $ability ) );
-				if ( ! isset( $providers[ $ability ] ) || 'native-provider' !== sanitize_key( (string) $providers[ $ability ] ) ) return new WP_Error( 'mad4b_grant_reconcile_provider_mismatch', 'Reviewed JetEngine grant does not resolve to native-provider.', array( 'ability' => $ability, 'provider' => isset( $providers[ $ability ] ) ? $providers[ $ability ] : '' ) );
+				if ( ! in_array( $ability, $allowed, true ) ) return new WP_Error( 'mad4b_grant_reconcile_missing_outside_allowlist', 'A missing grant exists outside the reviewed provider reconciliation allowlist.', array( 'ability' => $ability ) );
+				$expected_provider = isset( $allowed_providers[ $ability ] ) ? sanitize_key( (string) $allowed_providers[ $ability ] ) : '';
+				if ( ! isset( $providers[ $ability ] ) || $expected_provider !== sanitize_key( (string) $providers[ $ability ] ) ) return new WP_Error( 'mad4b_grant_reconcile_provider_mismatch', 'Reviewed grant does not resolve to its exact allowlisted provider.', array( 'ability' => $ability, 'expected_provider' => $expected_provider, 'provider' => isset( $providers[ $ability ] ) ? $providers[ $ability ] : '' ) );
 			}
 			$expected_missing = self::normalized_expected_missing( $input );
 			if ( $missing !== $expected_missing ) return new WP_Error( 'mad4b_grant_reconcile_missing_set_mismatch', 'Live missing-grant set changed or does not match the explicit authorization input.', array( 'live_missing' => $missing, 'expected_missing' => $expected_missing ) );
