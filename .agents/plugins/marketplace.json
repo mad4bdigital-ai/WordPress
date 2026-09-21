@@ -1,0 +1,20 @@
+{
+  "name": "mad4b-wordpress-plugins",
+  "interface": {
+    "displayName": "MAD4B WordPress Plugins"
+  },
+  "plugins": [
+    {
+      "name": "mad4b-staging-control-plane",
+      "source": {
+        "source": "local",
+        "path": "./plugins/mad4b-staging-control-plane"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
