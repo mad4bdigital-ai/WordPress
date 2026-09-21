@@ -88,19 +88,31 @@ final class MAD4B_SCP_Workflow_Providers {
 			$adapter = self::adapter( $definition );
 			$adapter_status = is_object( $adapter ) && method_exists( $adapter, 'status' ) ? $adapter->status() : array();
 			$operations = array();
+			$adapter_available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
+			$provider_certification = isset( $adapter_status['provider_certification'] ) && is_array( $adapter_status['provider_certification'] ) ? $adapter_status['provider_certification'] : array();
+			$provider_certified = ! empty( $provider_certification['runtime_contract_ok'] );
 
 			foreach ( $definition['operations'] as $operation => $operation_definition ) {
 				$ability = isset( $operation_definition['ability'] ) && is_string( $operation_definition['ability'] )
 					? trim( $operation_definition['ability'] )
 					: '';
 				$registered = '' !== $ability && function_exists( 'wp_has_ability' ) && wp_has_ability( $ability );
+				$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
+				$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
+				$config_blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
+				$blocker = $config_blocker;
+				if ( '' === $blocker && ! $registered ) $blocker = 'ability_not_registered';
+				if ( '' === $blocker && ! $adapter_available ) $blocker = 'provider_runtime_unavailable';
+				if ( '' === $blocker && $requires_provider_certification && ! $provider_certified ) $blocker = 'provider_capability_not_certified';
 				$operations[ sanitize_key( (string) $operation ) ] = array(
 					'ability' => $ability,
 					'risk' => isset( $operation_definition['risk'] ) ? sanitize_key( (string) $operation_definition['risk'] ) : 'unknown',
 					'registered' => $registered,
-					'state' => isset( $operation_definition['state'] ) ? sanitize_key( (string) $operation_definition['state'] ) : ( $registered ? 'available' : 'unavailable' ),
-					'blocker' => isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : ( $registered ? '' : 'ability_not_registered' ),
-					'requires' => isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array(),
+					'provider_available' => $adapter_available,
+					'provider_certified' => $provider_certified,
+					'state' => '' === $blocker ? 'available' : ( 'unavailable' === ( isset( $operation_definition['state'] ) ? sanitize_key( (string) $operation_definition['state'] ) : '' ) ? 'unavailable' : 'blocked' ),
+					'blocker' => $blocker,
+					'requires' => $requires,
 				);
 			}
 
@@ -108,8 +120,8 @@ final class MAD4B_SCP_Workflow_Providers {
 				'adapter_id' => isset( $definition['adapter_id'] ) ? sanitize_key( (string) $definition['adapter_id'] ) : '',
 				'provider_key' => isset( $definition['provider_key'] ) ? sanitize_key( (string) $definition['provider_key'] ) : '',
 				'role' => isset( $definition['role'] ) ? sanitize_key( (string) $definition['role'] ) : 'execution_provider',
-				'adapter_available' => is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false,
-				'provider_certification' => isset( $adapter_status['provider_certification'] ) ? $adapter_status['provider_certification'] : array(),
+				'adapter_available' => $adapter_available,
+				'provider_certification' => $provider_certification,
 				'capability_certification' => isset( $adapter_status['capability_certification'] ) ? $adapter_status['capability_certification'] : array(),
 				'operations' => $operations,
 				'implementation_policy' => isset( $definition['implementation_policy'] ) && is_array( $definition['implementation_policy'] ) ? $definition['implementation_policy'] : array(),
@@ -150,6 +162,17 @@ final class MAD4B_SCP_Workflow_Providers {
 			? trim( $operation_definition['ability'] )
 			: '';
 		$registered = '' !== $ability && function_exists( 'wp_has_ability' ) && wp_has_ability( $ability );
+		$adapter = self::adapter( $definition );
+		$adapter_available = is_object( $adapter ) && method_exists( $adapter, 'is_available' ) ? (bool) $adapter->is_available() : false;
+		$adapter_status = is_object( $adapter ) && method_exists( $adapter, 'status' ) ? $adapter->status() : array();
+		$provider_certification = isset( $adapter_status['provider_certification'] ) && is_array( $adapter_status['provider_certification'] ) ? $adapter_status['provider_certification'] : array();
+		$provider_certified = ! empty( $provider_certification['runtime_contract_ok'] );
+		$requires = isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array();
+		$requires_provider_certification = in_array( 'provider_capability_certified', $requires, true );
+		$blocker = isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : '';
+		if ( '' === $blocker && ! $registered ) $blocker = 'ability_not_registered';
+		if ( '' === $blocker && ! $adapter_available ) $blocker = 'provider_runtime_unavailable';
+		if ( '' === $blocker && $requires_provider_certification && ! $provider_certified ) $blocker = 'provider_capability_not_certified';
 		$workflow_ref = isset( $input['workflow_ref'] ) ? sanitize_text_field( (string) $input['workflow_ref'] ) : '';
 		$expected_sha = isset( $input['expected_workflow_sha256'] ) ? strtolower( trim( (string) $input['expected_workflow_sha256'] ) ) : '';
 
@@ -173,14 +196,17 @@ final class MAD4B_SCP_Workflow_Providers {
 			'ability' => $ability,
 			'risk' => isset( $operation_definition['risk'] ) ? sanitize_key( (string) $operation_definition['risk'] ) : 'unknown',
 			'ability_registered' => $registered,
-			'execution_ready' => $registered && empty( $operation_definition['blocker'] ),
-			'blocker' => isset( $operation_definition['blocker'] ) ? sanitize_key( (string) $operation_definition['blocker'] ) : ( $registered ? '' : 'ability_not_registered' ),
-			'requires' => isset( $operation_definition['requires'] ) && is_array( $operation_definition['requires'] ) ? array_values( $operation_definition['requires'] ) : array(),
+			'provider_available' => $adapter_available,
+			'provider_certified' => $provider_certified,
+			'provider_certification' => $provider_certification,
+			'execution_ready' => '' === $blocker,
+			'blocker' => $blocker,
+			'requires' => $requires,
 			'provider_input_template' => $provider_input,
 			'reason' => $reason,
 			'non_authorizing' => true,
 			'mutation_performed' => false,
-			'next_action' => $registered ? 'invoke_exact_provider_ability_through_governed_authority' : 'close_provider_capability_certification_gap',
+			'next_action' => '' === $blocker ? 'invoke_exact_provider_ability_through_governed_authority' : 'close_provider_capability_certification_gap',
 		);
 		$encoded = wp_json_encode( self::canonicalize( $plan ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( false === $encoded ) return new WP_Error( 'mad4b_workflow_plan_encoding_failed', 'Unable to encode deterministic workflow plan.' );
