@@ -289,7 +289,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		);
 		$case_schema = array(
 			'type' => 'object',
-			'maxProperties' => 14,
+			'maxProperties' => 15,
 			'properties' => array(
 				'contract' => $string160,
 				'case_id' => array( 'type' => 'string', 'maxLength' => 128 ),
@@ -343,10 +343,192 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'additionalProperties' => false,
 				),
 				'rendered' => array(
-					'type' => 'object', 'maxProperties' => 2,
+					'type' => 'object', 'maxProperties' => 10,
 					'properties' => array(
 						'result_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000000 ),
+						'result_count_authoritative' => array( 'type' => 'boolean' ),
+						'result_count_source' => $string160,
 						'ids' => array( 'type' => 'array', 'maxItems' => 100, 'items' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+						'ids_complete' => array( 'type' => 'boolean' ),
+						'observed_id_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000000 ),
+						'digest_authoritative' => array( 'type' => 'boolean' ),
+						'proof_item_count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 5000 ),
+						'identity_digest' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+				'url_state' => array(
+					'type' => 'object', 'maxProperties' => 4,
+					'properties' => array(
+						'filter_state_observed' => array( 'type' => 'boolean' ),
+						'etg_history_mutation' => array( 'type' => 'boolean' ),
+						'filtered_url' => $string2048,
+						'reset_url' => $string2048,
+					),
+					'additionalProperties' => false,
+				),
+				'seo' => array(
+					'type' => 'object', 'maxProperties' => 4,
+					'properties' => array(
+						'canonical_unchanged' => array( 'type' => 'boolean' ),
+						'robots_unchanged' => array( 'type' => 'boolean' ),
+						'hreflang_unchanged' => array( 'type' => 'boolean' ),
+						'rank_math_unchanged' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
+				'reset' => array(
+					'type' => 'object', 'maxProperties' => 2,
+					'properties' => array(
+						'event_observed' => array( 'type' => 'boolean' ),
+						'neutral_state_restored' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
+				'blocked_events' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $blocked_event_schema ),
+				'history_calls' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $history_call_schema ),
+			),
+			'required' => array( 'case_id' ),
+			'additionalProperties' => false,
+		);
+		$challenge_schema = array(
+			'type' => 'object',
+			'maxProperties' => 5,
+			'properties' => array(
+				'contract' => $string160,
+				'nonce' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 32, 'pattern' => '^[A-Fa-f0-9]{32}$' ),
+				'issued_at' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'expires_at' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			),
+			'additionalProperties' => false,
+		);
+		return array(
+			'type' => 'object',
+			'properties' => array(
+				'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+				'profile_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
+				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
+				'plan_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'plan_signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'evidence' => array(
+					'type' => 'object',
+					'maxProperties' => 9,
+					'properties' => array(
+						'contract' => $string160,
+						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'origin' => $string2048,
+						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 3, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80 ), 'additionalProperties' => false ),
+						'challenge' => $challenge_schema,
+						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
+					),
+					'additionalProperties' => false,
+				),
+			),
+			'required' => array( 'profile_id', 'plan_digest', 'plan_signature' ),
+			'maxProperties' => 6,
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function registry() {
+		if ( ! self::$registry ) self::$registry = new MAD4B_SCP_Browser_Acceptance_Provider_Registry();
+		return self::$registry;
+	}
+
+	private static function clean_id( $value ) {
+		$value = strtolower( trim( (string) $value ) );
+		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/', $value ) ? $value : '';
+	}
+}
+ ),
+						'order_digest' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}
+				'url_state' => array(
+					'type' => 'object', 'maxProperties' => 4,
+					'properties' => array(
+						'filter_state_observed' => array( 'type' => 'boolean' ),
+						'etg_history_mutation' => array( 'type' => 'boolean' ),
+						'filtered_url' => $string2048,
+						'reset_url' => $string2048,
+					),
+					'additionalProperties' => false,
+				),
+				'seo' => array(
+					'type' => 'object', 'maxProperties' => 4,
+					'properties' => array(
+						'canonical_unchanged' => array( 'type' => 'boolean' ),
+						'robots_unchanged' => array( 'type' => 'boolean' ),
+						'hreflang_unchanged' => array( 'type' => 'boolean' ),
+						'rank_math_unchanged' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
+				'reset' => array(
+					'type' => 'object', 'maxProperties' => 2,
+					'properties' => array(
+						'event_observed' => array( 'type' => 'boolean' ),
+						'neutral_state_restored' => array( 'type' => 'boolean' ),
+					),
+					'additionalProperties' => false,
+				),
+				'blocked_events' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $blocked_event_schema ),
+				'history_calls' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $history_call_schema ),
+			),
+			'required' => array( 'case_id' ),
+			'additionalProperties' => false,
+		);
+		$challenge_schema = array(
+			'type' => 'object',
+			'maxProperties' => 5,
+			'properties' => array(
+				'contract' => $string160,
+				'nonce' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 32, 'pattern' => '^[A-Fa-f0-9]{32}$' ),
+				'issued_at' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'expires_at' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
+			),
+			'additionalProperties' => false,
+		);
+		return array(
+			'type' => 'object',
+			'properties' => array(
+				'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+				'profile_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
+				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
+				'plan_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'plan_signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'evidence' => array(
+					'type' => 'object',
+					'maxProperties' => 9,
+					'properties' => array(
+						'contract' => $string160,
+						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'origin' => $string2048,
+						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
+						'observer' => array( 'type' => 'object', 'maxProperties' => 3, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80 ), 'additionalProperties' => false ),
+						'challenge' => $challenge_schema,
+						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
+					),
+					'additionalProperties' => false,
+				),
+			),
+			'required' => array( 'profile_id', 'plan_digest', 'plan_signature' ),
+			'maxProperties' => 6,
+			'additionalProperties' => false,
+		);
+	}
+
+	private static function registry() {
+		if ( ! self::$registry ) self::$registry = new MAD4B_SCP_Browser_Acceptance_Provider_Registry();
+		return self::$registry;
+	}
+
+	private static function clean_id( $value ) {
+		$value = strtolower( trim( (string) $value ) );
+		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/', $value ) ? $value : '';
+	}
+}
+ ),
 					),
 					'additionalProperties' => false,
 				),
