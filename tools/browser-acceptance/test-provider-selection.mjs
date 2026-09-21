@@ -38,6 +38,11 @@ const driverClass = classifyProviderError(driverFailure, contracts.providers.clo
 assert.equal(driverClass.category, "acceptance_execution_error");
 assert.equal(driverClass.fallback_allowed, false);
 
+const deadlineFailure = new Error("browser_execution_deadline_insufficient_for_chunk");
+const deadlineClass = classifyProviderError(deadlineFailure, contracts.providers.cloudflare);
+assert.equal(deadlineClass.category, "acceptance_execution_error");
+assert.equal(deadlineClass.fallback_allowed, false);
+
 const websocketFailure = new Error("websocket connection temporarily unavailable");
 const websocketClass = classifyProviderError(websocketFailure, contracts.providers.cloudflare);
 assert.equal(websocketClass.category, "provider_transport_or_runtime");
