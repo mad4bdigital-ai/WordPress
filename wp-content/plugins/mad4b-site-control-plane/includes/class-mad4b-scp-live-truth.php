@@ -163,6 +163,11 @@ final class MAD4B_SCP_Live_Truth {
 			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array( 'required' => false, 'match' => true );
 		$candidate_reconciled = empty( $candidate_binding['required'] ) || ! empty( $candidate_binding['match'] );
+		$candidate_bootstrap = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && defined( 'MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_bootstrap_status( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY )
+			: array();
+		$candidate_bootstrap_exception_active = ! $candidate_reconciled && ! empty( $candidate_bootstrap['policy_available'] );
+		$remote_approval_exceptions = $candidate_bootstrap_exception_active ? array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY ) : array();
 		$runtime_reconciled = ! empty( $runtime['ready'] )
 			&& empty( $runtime['blocker'] )
 			&& isset( $runtime['write_tool_count'] )
@@ -213,7 +218,12 @@ final class MAD4B_SCP_Live_Truth {
 			'production_auto_enable' => false,
 			'breakglass_auto_enable' => false,
 			'breakglass_included' => $breakglass,
-			'all_remote_writes_require_exact_approval' => true,
+			'all_remote_writes_require_exact_approval' => ! $candidate_bootstrap_exception_active,
+			'normal_remote_writes_require_exact_approval' => true,
+			'remote_write_approval_policy' => $candidate_bootstrap_exception_active ? 'exact_approval_except_bounded_candidate_bootstrap' : 'exact_approval_required',
+			'remote_write_approval_exceptions' => $remote_approval_exceptions,
+			'candidate_bootstrap_exception_active' => $candidate_bootstrap_exception_active,
+			'candidate_bootstrap_contract' => isset( $candidate_bootstrap['contract'] ) ? (string) $candidate_bootstrap['contract'] : '',
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'oauth_role' => 'identity_only',
@@ -254,8 +264,10 @@ final class MAD4B_SCP_Live_Truth {
 		$checks['production_auto_enable_absent'] = empty( $authority['production_auto_enable'] );
 		$checks['breakglass_auto_enable_absent'] = empty( $authority['breakglass_auto_enable'] );
 		$checks['breakglass_not_included'] = empty( $authority['breakglass_included'] );
-		$checks['remote_approval_required'] = ! empty( $authority['all_remote_writes_require_exact_approval'] );
-		foreach ( array( 'site_profile_bound', 'write_feature_enabled', 'write_authority_eligible', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'remote_approval_required' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		$checks['normal_remote_approval_required'] = ! empty( $authority['normal_remote_writes_require_exact_approval'] );
+		$exceptions = isset( $authority['remote_write_approval_exceptions'] ) && is_array( $authority['remote_write_approval_exceptions'] ) ? array_values( $authority['remote_write_approval_exceptions'] ) : array();
+		$checks['candidate_bootstrap_exception_bounded'] = empty( $exceptions ) || ( 1 === count( $exceptions ) && class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY === (string) $exceptions[0] );
+		foreach ( array( 'site_profile_bound', 'write_feature_enabled', 'write_authority_eligible', 'authority_ready', 'mutation_gate_enabled', 'production_auto_enable_absent', 'breakglass_auto_enable_absent', 'breakglass_not_included', 'normal_remote_approval_required', 'candidate_bootstrap_exception_bounded' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$oauth = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
 		$checks['oauth_effective'] = ! empty( $oauth['effective'] );
