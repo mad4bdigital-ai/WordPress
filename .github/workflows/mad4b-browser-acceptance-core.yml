@@ -75,7 +75,8 @@ jobs:
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php \
             wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-core.php \
             wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php \
-            wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php; do
+            wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/runtime-elementor-etg-structural-primitives.php; do
               php -l "$file"
           done
       - name: Run fail-closed browser provider projection contract
