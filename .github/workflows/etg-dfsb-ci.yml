@@ -261,7 +261,27 @@ jobs:
           git diff --check "$MERGE_BASE...HEAD"
           ! find .github -maxdepth 1 -type f \( -name 'etg-op-payload*' -o -name '*payload.part-*' -o -name '*materializer*' -o -name '*probe*' \) -print -quit | grep -q .
 
+      - name: Detect installable ETG source changes
+        id: etg-installable
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          git cat-file -e "$BASE_SHA^{commit}" || git fetch --no-tags origin "$BASE_SHA"
+          MERGE_BASE=$(git merge-base "$BASE_SHA" HEAD)
+          test -n "$MERGE_BASE"
+          if git diff --name-only "$MERGE_BASE...HEAD" -- 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**' \
+            ':(exclude)wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/**' \
+            ':(exclude)wp-content/plugins/etg-dynamic-filter-seo-bridge/installed-content-manifest.json' \
+            | grep -q .; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build deterministic installable package and provenance v6
+        if: github.event_name != 'pull_request' || steps.etg-installable.outputs.changed == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -448,6 +468,7 @@ jobs:
           PY
 
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request' || steps.etg-installable.outputs.changed == 'true'
         with:
           name: etg-dfsb-operational-candidate-${{ env.SOURCE_SHA }}
           path: |
