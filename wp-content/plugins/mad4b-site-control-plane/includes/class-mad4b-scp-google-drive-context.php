@@ -20,6 +20,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const TOKEN_OPTION = 'mad4b_scp_google_drive_oauth_token_v1';
 	const AUTH_MODE_OPTION = 'mad4b_scp_google_drive_auth_mode_v1';
 	const AUTH_MODE_CONTRACT = 'mad4b.google-drive-auth-mode.v1';
+	const WORKSPACE_GRANTS_OPTION = 'mad4b_scp_google_workspace_grants_v1';
+	const WORKSPACE_GRANTS_CONTRACT = 'mad4b.google-workspace-grants.v1';
 	const AUTH_MODE_CUSTOM = 'custom_credentials';
 	const AUTH_MODE_MANAGED = 'managed_google';
 	const AUTH_MODE_DEDICATED = 'dedicated_google';
@@ -37,6 +39,25 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const DOCS_API = 'https://docs.googleapis.com/v1';
 	const READ_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 	const WRITE_SCOPE = 'https://www.googleapis.com/auth/drive';
+	const DOCS_READ_SCOPE = 'https://www.googleapis.com/auth/documents.readonly';
+	const DOCS_WRITE_SCOPE = 'https://www.googleapis.com/auth/documents';
+	const SHEETS_READ_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+	const SHEETS_WRITE_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+	const SCRIPT_PROJECTS_READ_SCOPE = 'https://www.googleapis.com/auth/script.projects.readonly';
+	const SCRIPT_PROJECTS_WRITE_SCOPE = 'https://www.googleapis.com/auth/script.projects';
+	const SCRIPT_DEPLOYMENTS_READ_SCOPE = 'https://www.googleapis.com/auth/script.deployments.readonly';
+	const SCRIPT_DEPLOYMENTS_WRITE_SCOPE = 'https://www.googleapis.com/auth/script.deployments';
+	const SCRIPT_PROCESSES_SCOPE = 'https://www.googleapis.com/auth/script.processes';
+	const SCRIPT_METRICS_SCOPE = 'https://www.googleapis.com/auth/script.metrics';
+	const DRIVE_SCRIPTS_SCOPE = 'https://www.googleapis.com/auth/drive.scripts';
+	const GEMINI_CLOUD_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
+	const GEMINI_RETRIEVER_SCOPE = 'https://www.googleapis.com/auth/generative-language.retriever';
+	const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+	const GMAIL_FULL_SCOPE = 'https://mail.google.com/';
+	const GMAIL_SETTINGS_SCOPE = 'https://www.googleapis.com/auth/gmail.settings.basic';
+	const GMAIL_SHARING_SCOPE = 'https://www.googleapis.com/auth/gmail.settings.sharing';
+	const CALENDAR_READ_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+	const CALENDAR_FULL_SCOPE = 'https://www.googleapis.com/auth/calendar';
 
 	const MAX_SCAN_FILES = 500;
 	const MAX_SCAN_FOLDERS = 120;
@@ -138,9 +159,137 @@ final class MAD4B_SCP_Google_Drive_Context {
 		);
 	}
 
+	public static function workspace_grant_catalog() {
+		return array(
+			'drive' => array(
+				'label' => 'Google Drive',
+				'default' => 'read',
+				'modes' => array(
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::READ_SCOPE ), 'sensitivity' => 'restricted' ),
+					'full' => array( 'label' => 'Full', 'scopes' => array( self::WRITE_SCOPE ), 'sensitivity' => 'restricted' ),
+				),
+			),
+			'docs' => array(
+				'label' => 'Google Docs',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::DOCS_READ_SCOPE ) ),
+					'full' => array( 'label' => 'Full', 'scopes' => array( self::DOCS_WRITE_SCOPE ) ),
+				),
+			),
+			'sheets' => array(
+				'label' => 'Google Sheets',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::SHEETS_READ_SCOPE ) ),
+					'full' => array( 'label' => 'Full', 'scopes' => array( self::SHEETS_WRITE_SCOPE ) ),
+				),
+			),
+			'apps_script' => array(
+				'label' => 'Apps Script',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::SCRIPT_PROJECTS_READ_SCOPE, self::SCRIPT_DEPLOYMENTS_READ_SCOPE, self::SCRIPT_PROCESSES_SCOPE, self::SCRIPT_METRICS_SCOPE ) ),
+					'full' => array( 'label' => 'Full', 'scopes' => array( self::SCRIPT_PROJECTS_WRITE_SCOPE, self::SCRIPT_DEPLOYMENTS_WRITE_SCOPE, self::SCRIPT_PROCESSES_SCOPE, self::SCRIPT_METRICS_SCOPE, self::DRIVE_SCRIPTS_SCOPE ) ),
+				),
+			),
+			'gemini' => array(
+				'label' => 'Gemini API',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'api' => array( 'label' => 'OAuth API', 'scopes' => array( self::GEMINI_CLOUD_SCOPE, self::GEMINI_RETRIEVER_SCOPE ), 'note' => 'Gemini OAuth runtime; not a Workspace document authority.' ),
+				),
+			),
+			'gmail' => array(
+				'label' => 'Gmail',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::GMAIL_READ_SCOPE ), 'sensitivity' => 'restricted' ),
+					'full' => array( 'label' => 'Full', 'scopes' => array( self::GMAIL_FULL_SCOPE, self::GMAIL_SETTINGS_SCOPE, self::GMAIL_SHARING_SCOPE ), 'sensitivity' => 'restricted' ),
+				),
+			),
+			'calendar' => array(
+				'label' => 'Google Calendar',
+				'default' => 'off',
+				'modes' => array(
+					'off' => array( 'label' => 'Off', 'scopes' => array() ),
+					'read' => array( 'label' => 'Read-only', 'scopes' => array( self::CALENDAR_READ_SCOPE ) ),
+					'full' => array( 'label' => 'Full', 'scopes' => array( self::CALENDAR_FULL_SCOPE ) ),
+				),
+			),
+		);
+	}
+
+	public static function full_suite_grant_selection() {
+		return array(
+			'drive' => 'full',
+			'docs' => 'full',
+			'sheets' => 'full',
+			'apps_script' => 'full',
+			'gemini' => 'api',
+			'gmail' => 'full',
+			'calendar' => 'full',
+		);
+	}
+
+	public static function workspace_grants_status() {
+		$catalog = self::workspace_grant_catalog();
+		$stored = get_option( self::WORKSPACE_GRANTS_OPTION, array() );
+		$configured = is_array( $stored ) && self::WORKSPACE_GRANTS_CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) && isset( $stored['selection'] ) && is_array( $stored['selection'] );
+		$selection = array();
+		foreach ( $catalog as $app => $definition ) $selection[ $app ] = isset( $definition['default'] ) ? (string) $definition['default'] : 'off';
+		if ( $configured ) {
+			foreach ( $catalog as $app => $definition ) {
+				$mode = isset( $stored['selection'][ $app ] ) ? sanitize_key( (string) $stored['selection'][ $app ] ) : $selection[ $app ];
+				if ( isset( $definition['modes'][ $mode ] ) ) $selection[ $app ] = $mode;
+			}
+		}
+		$scopes = self::scopes_for_workspace_grants( $selection );
+		$full = self::full_suite_grant_selection();
+		return array(
+			'contract' => self::WORKSPACE_GRANTS_CONTRACT,
+			'configured' => $configured,
+			'selection' => $selection,
+			'scopes' => $scopes,
+			'scope_count' => count( $scopes ),
+			'full_suite_selected' => $selection === $full,
+			'grant_sha256' => hash( 'sha256', wp_json_encode( $selection, JSON_UNESCAPED_SLASHES ) ),
+			'catalog' => $catalog,
+		);
+	}
+
+	public static function save_workspace_grants( $selection ) {
+		$stored_token = get_option( self::TOKEN_OPTION, array() );
+		if ( is_array( $stored_token ) && self::CONTRACT === ( isset( $stored_token['contract'] ) ? (string) $stored_token['contract'] : '' ) ) return new WP_Error( 'mad4b_google_workspace_grants_change_requires_disconnect', 'Disconnect and revoke the current Google grant before changing Workspace app grants.' );
+		$catalog = self::workspace_grant_catalog();
+		$selection = is_array( $selection ) ? $selection : array();
+		foreach ( array_keys( $selection ) as $app ) if ( ! isset( $catalog[ $app ] ) ) return new WP_Error( 'mad4b_google_workspace_grant_app_invalid', 'Unknown Google Workspace grant application.' );
+		$normalized = array();
+		foreach ( $catalog as $app => $definition ) {
+			$mode = isset( $selection[ $app ] ) ? sanitize_key( (string) $selection[ $app ] ) : ( isset( $definition['default'] ) ? (string) $definition['default'] : 'off' );
+			if ( ! isset( $definition['modes'][ $mode ] ) ) return new WP_Error( 'mad4b_google_workspace_grant_mode_invalid', 'Google Workspace grant mode is invalid.', array( 'app' => $app ) );
+			$normalized[ $app ] = $mode;
+		}
+		if ( ! in_array( $normalized['drive'], array( 'read', 'full' ), true ) ) return new WP_Error( 'mad4b_google_workspace_drive_grant_required', 'Google Drive must remain at least read-only for Context Authority.' );
+		$record = array(
+			'contract' => self::WORKSPACE_GRANTS_CONTRACT,
+			'selection' => $normalized,
+			'grant_sha256' => hash( 'sha256', wp_json_encode( $normalized, JSON_UNESCAPED_SLASHES ) ),
+			'updated_at' => gmdate( 'c' ),
+		);
+		if ( ! self::write_option( self::WORKSPACE_GRANTS_OPTION, $record ) ) return new WP_Error( 'mad4b_google_workspace_grants_persist_failed', 'Google Workspace grant selection could not be persisted.' );
+		return self::workspace_grants_status();
+	}
+
 	public static function set_auth_mode( $mode ) {
 		$mode = sanitize_key( (string) $mode );
 		if ( ! in_array( $mode, array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_auth_mode_invalid', 'Google Drive authentication mode is invalid.' );
+		if ( hash_equals( self::auth_mode(), $mode ) ) return self::auth_mode_status();
 		$stored = get_option( self::TOKEN_OPTION, array() );
 		if ( is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' ) ) {
 			return new WP_Error( 'mad4b_google_drive_auth_mode_change_requires_disconnect', 'Disconnect and revoke the current Google connection before changing authentication mode.' );
@@ -151,7 +300,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 		if ( self::AUTH_MODE_DEDICATED === $mode && '' === self::dedicated_redirect_uri() ) return new WP_Error( 'mad4b_google_dedicated_site_origin_unavailable', 'Dedicated Google Sign-In requires an enrolled Site Profile whose canonical origin matches this site.' );
 		$record = array( 'contract' => self::AUTH_MODE_CONTRACT, 'mode' => $mode, 'updated_at' => gmdate( 'c' ) );
-		if ( ! self::write_option( self::AUTH_MODE_OPTION, $record ) ) return new WP_Error( 'mad4b_google_drive_auth_mode_persist_failed', 'Google Drive authentication mode could not be persisted.' );
+		if ( ! self::write_option( self::AUTH_MODE_OPTION, $record ) ) return new WP_Error( 'mad4b_google_drive_auth_mode_persist_failed', 'Google Drive authentication mode could not be persisted.', array( 'requested_mode' => $mode, 'effective_mode' => self::auth_mode(), 'option_present' => false !== get_option( self::AUTH_MODE_OPTION, false ) ) );
 		return self::auth_mode_status();
 	}
 
@@ -185,6 +334,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'read_scope' => self::READ_SCOPE,
 			'write_scope' => self::WRITE_SCOPE,
 			'supported_access_modes' => array( 'read_only', 'read_write' ),
+			'workspace_grants' => self::workspace_grants_status(),
 		);
 	}
 
@@ -383,7 +533,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_array( $current_token ) && ! empty( $current_token['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive revocation is still pending. Retry revoke before starting a new OAuth connection.' );
 		$access_mode = sanitize_key( (string) $access_mode );
 		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
-		$requested_scope = 'read_write' === $access_mode ? self::WRITE_SCOPE : self::READ_SCOPE;
+		$requested_scope = self::requested_scope_for_access_mode( $access_mode );
+		if ( is_wp_error( $requested_scope ) ) return $requested_scope;
 		try {
 			$pkce_verifier = rtrim( strtr( base64_encode( random_bytes( 48 ) ), '+/', '-_' ), '=' );
 		} catch ( Exception $e ) {
@@ -480,7 +631,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$granted_scope,
 			array(),
 			$requested_mode,
-			self::auth_mode()
+			self::auth_mode(),
+			isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : ''
 		);
 		if ( is_wp_error( $record ) ) return $record;
 		$about = self::about();
@@ -509,7 +661,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( is_array( $current_token ) && ! empty( $current_token['revocation_pending'] ) ) return new WP_Error( 'mad4b_google_drive_revocation_pending', 'Google Drive revocation is still pending. Retry revoke before starting a new OAuth connection.' );
 		$access_mode = sanitize_key( (string) $access_mode );
 		if ( ! in_array( $access_mode, array( 'read_only', 'read_write' ), true ) ) return new WP_Error( 'mad4b_google_drive_access_mode_invalid', 'Google Drive access mode must be read_only or read_write.' );
-		$requested_scope = 'read_write' === $access_mode ? self::WRITE_SCOPE : self::READ_SCOPE;
+		$requested_scope = self::requested_scope_for_access_mode( $access_mode );
+		if ( is_wp_error( $requested_scope ) ) return $requested_scope;
 		try {
 			$verifier = rtrim( strtr( base64_encode( random_bytes( 48 ) ), '+/', '-_' ), '=' );
 		} catch ( Exception $e ) {
@@ -602,7 +755,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$granted_scope,
 			array(),
 			$requested_mode,
-			self::auth_mode()
+			self::auth_mode(),
+			isset( $stored['requested_scope'] ) ? (string) $stored['requested_scope'] : ''
 		);
 		if ( is_wp_error( $record ) ) return $record;
 		self::refresh_account_identity();
@@ -2270,16 +2424,18 @@ final class MAD4B_SCP_Google_Drive_Context {
 			isset( $tokens['scope'] ) ? (string) $tokens['scope'] : ( isset( $record['scope'] ) ? (string) $record['scope'] : self::READ_SCOPE ),
 			$record,
 			isset( $record['access_mode'] ) ? (string) $record['access_mode'] : ( self::scope_allows_write( isset( $record['scope'] ) ? $record['scope'] : '' ) ? 'read_write' : 'read_only' ),
-			$record_mode
+			$record_mode,
+			isset( $record['scope'] ) ? (string) $record['scope'] : ''
 		);
 		if ( is_wp_error( $persisted ) ) return $persisted;
 		return (string) $persisted['access_token'];
 	}
 
-	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '' ) {
+	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '', $expected_scope = '' ) {
 		$scope = trim( (string) $scope );
 		if ( ! self::scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
 		$requested_mode = sanitize_key( (string) $requested_mode );
+		if ( '' !== trim( (string) $expected_scope ) && ! self::scope_sets_equal( $scope, $expected_scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_not_exact', 'Google returned a scope set that does not exactly match the reviewed Workspace grant request.' );
 		if ( ! self::scope_matches_requested_mode( $scope, $requested_mode ) ) {
 			if ( 'read_only' === $requested_mode && self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_readonly_scope_escalated', 'Google returned Drive write authority for a read-only connection. Revoke Google access and reconnect with Read-only to restore least privilege.' );
 			if ( 'read_write' === $requested_mode && ! self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_write_scope_missing', 'Google did not grant the required Drive read+write scope.' );
@@ -2297,6 +2453,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( '' === $auth_mode ) $auth_mode = isset( $record['auth_mode'] ) ? sanitize_key( (string) $record['auth_mode'] ) : self::auth_mode();
 		if ( ! in_array( $auth_mode, array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) return new WP_Error( 'mad4b_google_drive_auth_mode_invalid', 'Google Drive token authentication mode is invalid.' );
 		$record['auth_mode'] = $auth_mode;
+		$grant_status = self::workspace_grants_status();
+		$record['workspace_grant_sha256'] = isset( $grant_status['grant_sha256'] ) ? (string) $grant_status['grant_sha256'] : '';
 		$record['updated_at'] = gmdate( 'c' );
 		$sealed = self::seal_token_record( $record );
 		if ( is_wp_error( $sealed ) ) return $sealed;
@@ -2331,13 +2489,61 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return array_values( array_unique( array_filter( is_array( $items ) ? $items : array() ) ) );
 	}
 
+	private static function scopes_for_workspace_grants( array $selection ) {
+		$catalog = self::workspace_grant_catalog();
+		$scopes = array();
+		foreach ( $catalog as $app => $definition ) {
+			$mode = isset( $selection[ $app ] ) ? sanitize_key( (string) $selection[ $app ] ) : ( isset( $definition['default'] ) ? (string) $definition['default'] : 'off' );
+			if ( ! isset( $definition['modes'][ $mode ]['scopes'] ) || ! is_array( $definition['modes'][ $mode ]['scopes'] ) ) continue;
+			foreach ( $definition['modes'][ $mode ]['scopes'] as $scope ) if ( is_string( $scope ) && '' !== trim( $scope ) ) $scopes[] = trim( $scope );
+		}
+		return array_values( array_unique( $scopes ) );
+	}
+
+	private static function requested_scope_for_access_mode( $access_mode ) {
+		$access_mode = sanitize_key( (string) $access_mode );
+		$status = self::workspace_grants_status();
+		$selection = isset( $status['selection'] ) && is_array( $status['selection'] ) ? $status['selection'] : array( 'drive' => 'read' );
+		$drive_mode = isset( $selection['drive'] ) ? sanitize_key( (string) $selection['drive'] ) : 'read';
+		$expected_mode = 'full' === $drive_mode ? 'read_write' : 'read_only';
+		if ( ! empty( $status['configured'] ) && ! hash_equals( $expected_mode, $access_mode ) ) return new WP_Error( 'mad4b_google_workspace_drive_access_mode_mismatch', 'The Connect action must match the saved Google Drive grant mode.' );
+		if ( empty( $status['configured'] ) ) {
+			$selection['drive'] = 'read_write' === $access_mode ? 'full' : 'read';
+			$scopes = self::scopes_for_workspace_grants( $selection );
+		} else {
+			$scopes = isset( $status['scopes'] ) && is_array( $status['scopes'] ) ? $status['scopes'] : array();
+		}
+		if ( empty( $scopes ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_empty', 'At least one Google Workspace OAuth scope is required.' );
+		return implode( ' ', $scopes );
+	}
+
+	private static function allowed_scope_items() {
+		$catalog = self::workspace_grant_catalog();
+		$allowed = array();
+		foreach ( $catalog as $definition ) {
+			if ( empty( $definition['modes'] ) || ! is_array( $definition['modes'] ) ) continue;
+			foreach ( $definition['modes'] as $mode ) {
+				if ( empty( $mode['scopes'] ) || ! is_array( $mode['scopes'] ) ) continue;
+				foreach ( $mode['scopes'] as $scope ) if ( is_string( $scope ) && '' !== trim( $scope ) ) $allowed[] = trim( $scope );
+			}
+		}
+		return array_values( array_unique( $allowed ) );
+	}
+
 	private static function scope_is_allowed( $scope ) {
 		$items = self::scope_items( $scope );
 		if ( empty( $items ) ) return false;
-		foreach ( $items as $item ) {
-			if ( ! hash_equals( self::READ_SCOPE, (string) $item ) && ! hash_equals( self::WRITE_SCOPE, (string) $item ) ) return false;
-		}
+		$allowed = self::allowed_scope_items();
+		foreach ( $items as $item ) if ( ! in_array( (string) $item, $allowed, true ) ) return false;
 		return true;
+	}
+
+	private static function scope_sets_equal( $actual, $expected ) {
+		$a = self::scope_items( $actual );
+		$b = self::scope_items( $expected );
+		sort( $a, SORT_STRING );
+		sort( $b, SORT_STRING );
+		return $a === $b;
 	}
 
 	private static function scope_allows_read( $scope ) {
@@ -2352,8 +2558,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 	private static function scope_matches_requested_mode( $scope, $requested_mode ) {
 		$items = self::scope_items( $scope );
 		$requested_mode = sanitize_key( (string) $requested_mode );
-		if ( 'read_only' === $requested_mode ) return 1 === count( $items ) && in_array( self::READ_SCOPE, $items, true );
-		if ( 'read_write' === $requested_mode ) return 1 === count( $items ) && in_array( self::WRITE_SCOPE, $items, true );
+		if ( 'read_only' === $requested_mode ) return in_array( self::READ_SCOPE, $items, true ) && ! in_array( self::WRITE_SCOPE, $items, true );
+		if ( 'read_write' === $requested_mode ) return in_array( self::WRITE_SCOPE, $items, true ) && ! in_array( self::READ_SCOPE, $items, true );
 		return false;
 	}
 
@@ -2400,7 +2606,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$scope,
 			$record,
 			isset( $record['access_mode'] ) ? (string) $record['access_mode'] : 'read_only',
-			$record_mode
+			$record_mode,
+			isset( $record['scope'] ) ? (string) $record['scope'] : ''
 		);
 		if ( is_wp_error( $persisted ) ) return $persisted;
 		return (string) $persisted['access_token'];
@@ -2680,12 +2887,45 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return strlen( $value ) <= 8 ? $value : '…' . substr( $value, -8 );
 	}
 
+	private static function option_values_equal( $left, $right ) {
+		return serialize( $left ) === serialize( $right );
+	}
+
+	private static function clear_option_read_cache( $name ) {
+		if ( ! function_exists( 'wp_cache_delete' ) ) return;
+		wp_cache_delete( $name, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+	}
+
 	private static function write_option( $name, $value ) {
 		$current = get_option( $name, false );
-		if ( false !== $current && $current === $value ) return true;
-		$result = false === $current ? add_option( $name, $value, '', false ) : update_option( $name, $value, false );
-		if ( true === $result ) return true;
-		return get_option( $name, false ) === $value;
+		if ( false !== $current && self::option_values_equal( $current, $value ) ) return true;
+
+		$result = false === $current ? add_option( $name, $value, '', 'no' ) : update_option( $name, $value );
+		self::clear_option_read_cache( $name );
+		$readback = get_option( $name, false );
+		if ( self::option_values_equal( $readback, $value ) ) return true;
+
+		// Persistent object caches can retain a stale notoptions entry. In that
+		// state get_option() reports "missing", add_option() loses the database
+		// uniqueness race because the row already exists, and a naive writer
+		// returns a false persistence failure. After invalidation, update the
+		// revealed row through the WordPress Options API and verify exact readback.
+		if ( false !== $readback ) {
+			update_option( $name, $value );
+			self::clear_option_read_cache( $name );
+			return self::option_values_equal( get_option( $name, false ), $value );
+		}
+
+		// Genuine absence: retry add once after clearing the negative cache.
+		if ( false === $current && false === $result ) {
+			add_option( $name, $value, '', 'no' );
+			self::clear_option_read_cache( $name );
+			return self::option_values_equal( get_option( $name, false ), $value );
+		}
+
+		return false;
 	}
 
 	private static function delete_option_verified( $name ) {
