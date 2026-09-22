@@ -62,6 +62,9 @@ for family, row in families.items():
         identity_prefixes[prefix] = family
     if row.get('repository_evidence') is True and not row.get('repository_artifacts'):
         raise SystemExit(f'{family}: repository evidence family has no artifacts')
+    if mode in {'premium_semantic','composite_behavioral'}:
+        if row.get('repository_evidence') is not True or not row.get('repository_artifacts'):
+            raise SystemExit(f'{family}: identity-first premium/composite gate lacks repository evidence')
     if mode == 'bounded_read_routes':
         if not row.get('required_get_routes') or not row.get('safe_now') or not row.get('blocked'):
             raise SystemExit(f'{family}: bounded read policy is incomplete')
@@ -105,7 +108,14 @@ required = [
     'redacted_read_contract_candidate',
     'runtime_alignment_required',
     'semantic_attestation_required',
-    'runtime_alignment_or_behavioral_recertification_required',
+    'behavioral_recertification_required',
+    'premium_provider_runtime_tree_does_not_match_repository_identity',
+    'premium_provider_exact_repository_identity_verified_semantic_review_still_required',
+    'composite_provider_runtime_components_do_not_match_repository_identity',
+    'composite_provider_exact_component_identity_verified_behavioral_execution_contract_still_required',
+    'component_identity_exact',
+    'expected_repository_artifacts',
+    'matched_repository_artifacts',
     'runtime_evidence_unstable',
     '"promotion_authorized": False',
     '"production_mutation": False',
