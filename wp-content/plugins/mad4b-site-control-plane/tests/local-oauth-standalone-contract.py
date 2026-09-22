@@ -86,7 +86,7 @@ required_server = [
     "rest_url( 'mcp/mad4b-chatgpt' )",
     "public static function consent_grant_projection()",
     "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
-    "'mad4b.oauth-consent-grant-projection.v2'",
+    "'mad4b.oauth-consent-grant-projection.v3'",
     "'write_authority_granted_by_consent' => false",
     "'oauth_scope_changed' => false",
     "'normal_remote_writes_require_exact_approval' => true",
@@ -102,12 +102,28 @@ required_server = [
     "'provider_gated_write_tool_count'",
     "'blocking_conditions'",
     "'blocked_catalog_abilities'",
+    "'projection_consistent'",
+    "'consistency_violations'",
+    "'catalog_fingerprint'",
+    "'runtime_inventory_fingerprint'",
+    "'grant_set_fingerprint'",
+    "'candidate_fingerprint'",
+    "'authority_generation'",
+    "'projection_fingerprint'",
+    "'grant_lookup_strategy'",
+    "authority_projection_inconsistent",
+    "method:\"POST\"",
+    "new URLSearchParams()",
+    "body.set(\"nonce\",nonce)",
+    "document.hidden",
+    "visibilitychange",
+    "Math.min(MAX,BASE*Math.pow(2,failures))",
     "public static function consent_user_identity",
     "'id_exposed_in_primary_ui' => false",
     "Signed in as:",
     "script-src 'nonce-",
     "connect-src 'self'",
-    "Auto-refreshing read-only authority state every 5 seconds.",
+    "Live read-only authority refresh: immediate on focus/return, then every 15 seconds while visible; paused while hidden.",
 ]
 for marker in required_server:
     if marker not in server:
@@ -126,6 +142,8 @@ for forbidden in [
     'self::REVOCATION_PATH === $path',
     "'mad4b:write'",
     "Signed in WordPress user:",
+    "add_query_arg( array( 'action' => 'mad4b_oauth_grant_projection', 'nonce'",
+    "setInterval(run,5000)",
 ]:
     if forbidden in server:
         raise SystemExit(f'forbidden local OAuth server primitive: {forbidden}')
