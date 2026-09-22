@@ -12,6 +12,134 @@ POLICY = json.loads(POLICY_RAW.decode("utf-8"))
 if POLICY.get("contract") != "mad4b.functional-gap-policy.v1":
     raise SystemExit("functional-gap policy contract mismatch")
 
+CATALOG_PATH = PLUGIN_ROOT / "mad4b-site-control-plane/config/adapter-support-catalog.json"
+ARTIFACT_MAP_PATH = PLUGIN_ROOT / "mad4b-site-control-plane/config/repository-plugin-artifacts.json"
+CATALOG = json.loads(CATALOG_PATH.read_text("utf-8"))
+ARTIFACT_MAP = json.loads(ARTIFACT_MAP_PATH.read_text("utf-8"))
+
+def normalize_plugin_file(value):
+    return str(value or "").replace("\\", "/").lstrip("/").lower()
+
+def validate_policy():
+    blockers=[]
+    if CATALOG.get("contract") != "mad4b.adapter-support-catalog.v1":
+        blockers.append("functional_gap_adapter_catalog_invalid")
+    if ARTIFACT_MAP.get("contract") != "mad4b.repository-plugin-artifacts.v1":
+        blockers.append("functional_gap_repository_artifact_catalog_invalid")
+    if POLICY.get("default_mutation") != "deny":
+        blockers.append("functional_gap_policy_mutation_default_not_deny")
+    if POLICY.get("promotion_authorized") is not False:
+        blockers.append("functional_gap_policy_promotion_not_false")
+
+    catalog_by_family={
+        str(row.get("id","")):row
+        for row in CATALOG.get("families",[])
+        if isinstance(row,dict) and row.get("id")
+    }
+    artifact_families=ARTIFACT_MAP.get("families",{}) if isinstance(ARTIFACT_MAP.get("families",{}),dict) else {}
+    supported={"bounded_read_routes","redacted_status","exact_tree_review","runtime_only","premium_semantic","composite_behavioral"}
+    prefix_owners={}
+
+    for family,row in sorted((POLICY.get("families") or {}).items()):
+        if not family or not isinstance(row,dict):
+            blockers.append("functional_gap_policy_family_identity_invalid")
+            continue
+        mode=str(row.get("evaluation_mode",""))
+        if mode not in supported:
+            blockers.append(f"functional_gap_policy_mode_invalid_{family}")
+
+        matches=[str(x) for x in (row.get("match") or []) if str(x)]
+        versioned=[str(x) for x in (row.get("versioned_match") or []) if str(x)]
+        if not matches and not versioned:
+            blockers.append(f"functional_gap_policy_match_missing_{family}")
+
+        catalog=catalog_by_family.get(family)
+        if not isinstance(catalog,dict):
+            blockers.append(f"functional_gap_policy_family_missing_from_adapter_catalog_{family}")
+            catalog={}
+
+        catalog_matches={normalize_plugin_file(x) for x in (catalog.get("match") or [])}
+        catalog_versioned={normalize_plugin_file(x).strip("/") for x in (catalog.get("versioned_match") or [])}
+        for match in matches:
+            normalized=normalize_plugin_file(match)
+            if normalized not in catalog_matches:
+                blockers.append(f"functional_gap_policy_match_escapes_adapter_catalog_{family}")
+        for base in versioned:
+            normalized=normalize_plugin_file(base).strip("/")
+            if normalized not in catalog_versioned:
+                blockers.append(f"functional_gap_policy_versioned_match_escapes_adapter_catalog_{family}")
+
+        identity_prefixes=[]
+        for match in matches:
+            normalized=normalize_plugin_file(match)
+            if not normalized:
+                blockers.append(f"functional_gap_policy_match_invalid_{family}")
+                continue
+            identity_prefixes.append(normalized)
+        for base in versioned:
+            normalized=normalize_plugin_file(base).strip("/")
+            if not normalized or re.search(r"[^a-z0-9._-]", normalized):
+                blockers.append(f"functional_gap_policy_versioned_match_invalid_{family}")
+                continue
+            identity_prefixes.append(normalized + "-v")
+
+        for prefix in identity_prefixes:
+            for known_prefix,known_family in prefix_owners.items():
+                if known_family == family:
+                    continue
+                if prefix.startswith(known_prefix) or known_prefix.startswith(prefix):
+                    blockers.append(f"functional_gap_policy_match_overlap_{known_family}_{family}")
+            prefix_owners[prefix]=family
+
+        repo_backed=row.get("repository_evidence") is True
+        artifacts=[str(x) for x in (row.get("repository_artifacts") or []) if str(x)]
+        if repo_backed and not artifacts:
+            blockers.append(f"functional_gap_policy_repository_artifacts_missing_{family}")
+        if not repo_backed and artifacts:
+            blockers.append(f"functional_gap_policy_runtime_only_artifacts_present_{family}")
+
+        if repo_backed and catalog:
+            authority_family=str(catalog.get("adapter_id") or family)
+            canonical_row=artifact_families.get(authority_family,{})
+            canonical=set(canonical_row.get("artifacts",[]) if isinstance(canonical_row,dict) else [])
+            if not canonical:
+                blockers.append(f"functional_gap_policy_repository_authority_family_missing_{family}")
+            for artifact in artifacts:
+                if artifact not in canonical:
+                    blockers.append(f"functional_gap_policy_artifact_escapes_canonical_map_{family}")
+
+        if mode == "bounded_read_routes":
+            routes=row.get("required_get_routes")
+            if not isinstance(routes,list) or not routes:
+                blockers.append(f"functional_gap_policy_required_routes_missing_{family}")
+                routes=[]
+            if not isinstance(row.get("safe_now"),list) or not row.get("safe_now") or not isinstance(row.get("blocked"),list) or not row.get("blocked"):
+                blockers.append(f"functional_gap_policy_read_boundary_missing_{family}")
+            if row.get("require_non_public_permissions") is not True:
+                blockers.append(f"functional_gap_policy_read_permission_boundary_missing_{family}")
+            callback_map=row.get("required_get_permission_callbacks") if isinstance(row.get("required_get_permission_callbacks"),dict) else {}
+            for route in routes:
+                callbacks=callback_map.get(route)
+                if not isinstance(callbacks,list) or not callbacks:
+                    blockers.append(f"functional_gap_policy_read_permission_callbacks_missing_{family}")
+                    continue
+                for callback in callbacks:
+                    value=str(callback).strip()
+                    if value.lower() in {"__return_true","closure"} or re.fullmatch(r"[A-Za-z_\\\\][A-Za-z0-9_\\\\]*(?:::[A-Za-z_][A-Za-z0-9_]*)?", value) is None:
+                        blockers.append(f"functional_gap_policy_read_permission_callback_identity_invalid_{family}")
+
+        if mode in {"premium_semantic","composite_behavioral"}:
+            if not repo_backed:
+                blockers.append(f"functional_gap_policy_identity_evidence_required_{family}")
+            if not artifacts:
+                blockers.append(f"functional_gap_policy_identity_artifacts_required_{family}")
+
+    blockers=sorted(set(blockers))
+    if blockers:
+        raise SystemExit("functional-gap policy validation failed: " + " | ".join(blockers))
+
+validate_policy()
+
 FAMILIES = {
     family: list(row.get("repository_artifacts", []))
     for family, row in POLICY.get("families", {}).items()
