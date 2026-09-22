@@ -96,14 +96,16 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		}
 		$runtime_only_family_count = count( $runtime_only_families );
 		$zero_touch = isset( $snapshot['zero_touch'] ) && is_array( $snapshot['zero_touch'] ) ? $snapshot['zero_touch'] : array();
-		$zero_touch_ready = ! empty( $zero_touch['ready'] ) && ! empty( $zero_touch['repository_evidence_valid'] ) && ! empty( $zero_touch['evidence_integrity_bound'] );
+		$zero_touch_package_consistent = ! empty( $zero_touch['package_self_consistent'] );
+		$zero_touch_ready = ! empty( $zero_touch['ready'] ) && ! empty( $zero_touch['repository_evidence_valid'] ) && ! empty( $zero_touch['evidence_integrity_bound'] ) && $zero_touch_package_consistent;
 		$zero_touch_unstable = isset( $zero_touch['unstable_family_count'] ) ? (int) $zero_touch['unstable_family_count'] : 0;
 
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Installed', 'value' => isset( $counts['installed'] ) ? (string) $counts['installed'] : '0', 'state' => ! empty( $counts['installed'] ) ? 'complete' : 'pending', 'help' => 'Plugins included in runtime discovery.' ),
 			array( 'label' => 'Adapter covered', 'value' => (string) $supported, 'state' => 'complete', 'help' => 'A governed adapter surface exists. This does not by itself mean functional or execution certification is complete.' ),
 			array( 'label' => 'Runtime-only families', 'value' => (string) $runtime_only_family_count, 'state' => 0 === $runtime_only_family_count ? 'complete' : 'attention', 'help' => 'Known runtime families with read-only identity/status coverage but no packaged repository artifact.' ),
-			array( 'label' => 'Zero-touch evidence', 'value' => $zero_touch_ready ? 'bound' : 'blocked', 'state' => $zero_touch_ready ? 'complete' : 'blocked', 'help' => 'Build-embedded evidence must match build provenance by source SHA, bytes and SHA-256 before runtime decisions are trusted.' ),
+			array( 'label' => 'Zero-touch evidence', 'value' => $zero_touch_ready ? 'bound' : 'blocked', 'state' => $zero_touch_ready ? 'complete' : 'blocked', 'help' => 'Build-embedded evidence and policy must match provenance, and the installed package manifest/build fingerprint must recompute exactly before runtime decisions are trusted.' ),
+			array( 'label' => 'Package integrity', 'value' => isset( $zero_touch['package_integrity_level'] ) ? (string) $zero_touch['package_integrity_level'] : 'unknown', 'state' => $zero_touch_package_consistent ? 'complete' : 'blocked', 'help' => 'Runtime recomputes the declared package manifest and build fingerprint with bounded read-only hashing. External cryptographic attestation is intentionally reported separately.' ),
 			array( 'label' => 'Unstable scans', 'value' => (string) $zero_touch_unstable, 'state' => 0 === $zero_touch_unstable ? 'complete' : 'attention', 'help' => 'Provider trees that changed during evidence collection are retried and never classified as stable drift.' ),
 			array( 'label' => 'Needs adapter', 'value' => (string) $needs_adapter, 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'help' => 'No silent fallback to write authority.' ),
 			array( 'label' => 'Needs certification', 'value' => (string) $needs_cert, 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'help' => 'Adapter exists but exact provider proof is missing.' ),
