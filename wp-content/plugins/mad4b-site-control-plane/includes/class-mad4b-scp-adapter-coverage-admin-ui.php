@@ -103,6 +103,12 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		$zero_touch_package_files = isset( $zero_touch['package_verified_file_count'] ) ? max( 0, (int) $zero_touch['package_verified_file_count'] ) : 0;
 		$zero_touch_runtime_ms = isset( $zero_touch['runtime_scan_elapsed_ms'] ) ? max( 0, (int) $zero_touch['runtime_scan_elapsed_ms'] ) : 0;
 		$zero_touch_runtime_files = isset( $zero_touch['runtime_scan_files_hashed'] ) ? max( 0, (int) $zero_touch['runtime_scan_files_hashed'] ) : 0;
+		$zero_touch_counts = isset( $zero_touch['counts'] ) && is_array( $zero_touch['counts'] ) ? $zero_touch['counts'] : array();
+		$zero_touch_read_candidates = (int) ( isset( $zero_touch_counts['read_contract_candidate'] ) ? $zero_touch_counts['read_contract_candidate'] : 0 ) + (int) ( isset( $zero_touch_counts['redacted_read_contract_candidate'] ) ? $zero_touch_counts['redacted_read_contract_candidate'] : 0 );
+		$zero_touch_exact_review = isset( $zero_touch_counts['contract_evidence_review'] ) ? (int) $zero_touch_counts['contract_evidence_review'] : 0;
+		$zero_touch_alignment = (int) ( isset( $zero_touch_counts['runtime_alignment_required'] ) ? $zero_touch_counts['runtime_alignment_required'] : 0 ) + (int) ( isset( $zero_touch_counts['runtime_alignment_or_behavioral_recertification_required'] ) ? $zero_touch_counts['runtime_alignment_or_behavioral_recertification_required'] : 0 );
+		$zero_touch_semantic = isset( $zero_touch_counts['semantic_attestation_required'] ) ? (int) $zero_touch_counts['semantic_attestation_required'] : 0;
+		$zero_touch_runtime_only = isset( $zero_touch_counts['runtime_contract_evidence_captured'] ) ? (int) $zero_touch_counts['runtime_contract_evidence_captured'] : 0;
 
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Installed', 'value' => isset( $counts['installed'] ) ? (string) $counts['installed'] : '0', 'state' => ! empty( $counts['installed'] ) ? 'complete' : 'pending', 'help' => 'Plugins included in runtime discovery.' ),
@@ -113,6 +119,11 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			array( 'label' => 'Integrity verify cost', 'value' => $zero_touch_package_ms . ' ms / ' . $zero_touch_package_files . ' files', 'state' => $zero_touch_package_consistent ? 'complete' : 'blocked', 'help' => 'Observed cost of recomputing package provenance on this read-only snapshot.' ),
 			array( 'label' => 'Runtime scan cost', 'value' => $zero_touch_runtime_ms . ' ms / ' . $zero_touch_runtime_files . ' files', 'state' => 0 === $zero_touch_unstable ? 'complete' : 'attention', 'help' => 'Observed cost of provider tree hashing for this zero-touch snapshot. Budget exhaustion fails closed.' ),
 			array( 'label' => 'Unstable scans', 'value' => (string) $zero_touch_unstable, 'state' => 0 === $zero_touch_unstable ? 'complete' : 'attention', 'help' => 'Provider trees that changed during evidence collection are retried and never classified as stable drift.' ),
+			array( 'label' => 'Read candidates', 'value' => (string) $zero_touch_read_candidates, 'state' => 0 === $zero_touch_read_candidates ? 'pending' : 'attention', 'help' => 'Exact evidence supports bounded read contracts only. This is evidence closure, not write authority.' ),
+			array( 'label' => 'Exact-tree review', 'value' => (string) $zero_touch_exact_review, 'state' => 0 === $zero_touch_exact_review ? 'complete' : 'attention', 'help' => 'Runtime bytes match repository evidence, but semantic scope still needs explicit review.' ),
+			array( 'label' => 'Runtime alignment', 'value' => (string) $zero_touch_alignment, 'state' => 0 === $zero_touch_alignment ? 'complete' : 'attention', 'help' => 'Live runtime does not match the repository/certified identity or still requires composite behavioral recertification.' ),
+			array( 'label' => 'Semantic attestation', 'value' => (string) $zero_touch_semantic, 'state' => 0 === $zero_touch_semantic ? 'complete' : 'attention', 'help' => 'Premium providers remain non-authorizing until explicit semantic review closes.' ),
+			array( 'label' => 'Runtime-only evidence', 'value' => (string) $zero_touch_runtime_only, 'state' => 0 === $zero_touch_runtime_only ? 'complete' : 'attention', 'help' => 'Live identity evidence exists, but no specialized provider contract or mutation authority is inferred.' ),
 			array( 'label' => 'Needs adapter', 'value' => (string) $needs_adapter, 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'help' => 'No silent fallback to write authority.' ),
 			array( 'label' => 'Needs certification', 'value' => (string) $needs_cert, 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'help' => 'Adapter exists but exact provider proof is missing.' ),
 			array( 'label' => 'Runtime blocked', 'value' => (string) $side_channel, 'state' => 0 === $side_channel ? 'complete' : 'blocked', 'help' => 'Parallel MCP/write-plane risk remains.' ),
