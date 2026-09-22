@@ -571,13 +571,14 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) ) continue;
 			$key = ( isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '' ) . "\0" . ( isset( $grant['provider'] ) ? (string) $grant['provider'] : '' );
 			$grant_environment = isset( $grant['environment'] ) ? (string) $grant['environment'] : '';
+			if ( isset( $desired[ $key ] ) && 'all' === $grant_environment ) continue;
 			if ( ! isset( $desired[ $key ] ) || $environment !== $grant_environment ) {
 				$stale[] = array(
 					'id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
 					'ability' => isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '',
 					'provider' => isset( $grant['provider'] ) ? (string) $grant['provider'] : '',
 					'environment' => $grant_environment,
-					'reason' => isset( $desired[ $key ] ) && 'all' === $grant_environment ? 'broad_environment_grant' : 'not_in_current_runtime_inventory',
+					'reason' => 'not_in_current_runtime_inventory',
 				);
 			}
 		}
@@ -605,6 +606,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'broad_environment_grants_count' => count( $broad_environment ),
 			'broad_environment_grants' => $broad_environment,
 			'duplicate_exact_allow_grants_count' => $duplicate_excess,
+			'duplicate_retention_policy' => 'lowest_grant_id',
 			'duplicate_exact_allow_grants' => $duplicates,
 			'current_agent_wildcard_grants' => $current_agent_wildcards,
 			'global_registry_wildcard_grants' => $global_wildcards,
