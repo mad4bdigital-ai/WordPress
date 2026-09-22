@@ -476,6 +476,81 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return $args;
 	}
 
+	public static function reconciliation_plan() {
+		$status = self::base_status();
+		$tools = self::write_tools();
+		$rows = array();
+		$missing = array();
+		$stale = array();
+		$existing_count = 0;
+		$agent = self::agent_by_slug( self::agent_slug() );
+		$environment = self::current_environment();
+
+		if ( is_array( $agent ) && ! empty( $agent['id'] ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			$desired = array();
+			foreach ( $tools as $ability ) {
+				$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
+				$row = array(
+					'ability' => (string) $ability,
+					'provider' => null === $provider ? '' : (string) $provider,
+					'mounted' => null !== $provider,
+					'exact_grant_present' => false,
+				);
+				if ( null !== $provider ) {
+					$key = (string) $ability . "\0" . (string) $provider;
+					$desired[ $key ] = true;
+					$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', $ability, $provider );
+					if ( ! is_wp_error( $grant ) && $environment === (string) $grant['environment'] ) {
+						$row['exact_grant_present'] = true;
+						++$existing_count;
+					} else {
+						$missing[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider );
+					}
+				} else {
+					$missing[] = array( 'ability' => (string) $ability, 'provider' => '', 'reason' => 'write_provider_unmounted' );
+				}
+				$rows[] = $row;
+			}
+
+			$grants = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $agent['id'], 'mad4b-write' );
+			foreach ( $grants as $grant ) {
+				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] ) continue;
+				$key = (string) $grant['ability_name'] . "\0" . (string) $grant['provider'];
+				if ( ! isset( $desired[ $key ] ) || $environment !== (string) $grant['environment'] ) {
+					$stale[] = array(
+						'id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
+						'ability' => isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '',
+						'provider' => isset( $grant['provider'] ) ? (string) $grant['provider'] : '',
+						'environment' => isset( $grant['environment'] ) ? (string) $grant['environment'] : '',
+					);
+				}
+			}
+		}
+
+		return array(
+			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'eligible' => ! empty( $status['eligible'] ),
+			'current_ready' => ! empty( self::status()['ready'] ),
+			'environment' => $environment,
+			'agent_present' => is_array( $agent ) && ! empty( $agent['id'] ),
+			'agent_public_id' => is_array( $agent ) && isset( $agent['public_id'] ) ? (string) $agent['public_id'] : '',
+			'write_tool_count' => count( $tools ),
+			'exact_grants_existing' => $existing_count,
+			'exact_grants_missing_count' => count( $missing ),
+			'exact_grants_missing' => $missing,
+			'stale_allow_grants_count' => count( $stale ),
+			'stale_allow_grants' => $stale,
+			'wildcard_grants' => is_array( $agent ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? (int) MAD4B_SCP_Agent_Registry::counts()['wildcard_grants'] : 0,
+			'breakglass_included' => in_array( 'mad4b/database-raw-query', $tools, true ),
+			'candidate_binding' => self::candidate_binding_status(),
+			'rows' => $rows,
+			'apply_requires_explicit_operator_action' => true,
+			'apply_method' => 'MAD4B_SCP_Staging_Write_Authority::reconcile',
+		);
+	}
+
 	public static function reconcile() {
 		if ( self::$reconciling ) return self::status();
 		self::$reconciling = true;
@@ -697,13 +772,29 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	public static function register_status_ability() {
-		if ( ! function_exists( 'wp_register_ability' ) || wp_has_ability( 'mad4b/write-authority-status' ) ) return;
-		wp_register_ability( 'mad4b/write-authority-status', array(
+		if ( ! function_exists( 'wp_register_ability' ) ) return;
+		if ( ! wp_has_ability( 'mad4b/write-authority-status' ) ) wp_register_ability( 'mad4b/write-authority-status', array(
 			'label' => 'Get Governed Write Authority Status',
 			'description' => 'Read the site-profile-bound NHI/grant/approval status for governed writes.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'status' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false,
+				'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+
+		if ( ! wp_has_ability( 'mad4b/write-authority-reconciliation-plan' ) ) wp_register_ability( 'mad4b/write-authority-reconciliation-plan', array(
+			'label' => 'Get Governed Write Authority Reconciliation Plan',
+			'description' => 'Read the exact missing/stale governed write grants without mutating authority.',
+			'category' => 'mad4b-read',
+			'execute_callback' => array( __CLASS__, 'reconciliation_plan' ),
+			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
 				'public' => false,
