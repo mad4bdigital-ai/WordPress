@@ -138,7 +138,13 @@ for marker in [
     "single_pass_non_authorizing_identity",
     "double_pass_drift_confirmation",
     "runtime_identity_captured",
-    "$repeat_on_mismatch = ! in_array( $mode, array( 'runtime_only','premium_semantic','composite_behavioral' ), true );",
+    "$repeat_on_mismatch = ! empty( $rule['repository_evidence'] );",
+    "premium_provider_runtime_tree_does_not_match_repository_identity",
+    "premium_provider_exact_repository_identity_verified_semantic_review_still_required",
+    "composite_provider_runtime_components_do_not_match_repository_identity",
+    "composite_provider_exact_component_identity_verified_behavioral_execution_contract_still_required",
+    "functional_gap_policy_identity_evidence_required_",
+    "functional_gap_policy_identity_artifacts_required_",
     "runtime_evidence_fingerprint",
     "private static function runtime_evidence_fingerprint( array $runtime )",
     "mad4b.functional-gap-decision-handoff.v1",
@@ -340,11 +346,11 @@ if "'external_cryptographic_attestation' => true" in runtime:
 if "self_consistent_package" not in runtime or "failed_closed" not in runtime:
     raise SystemExit('runtime package integrity states are incomplete')
 
-# Only non-authorizing families may skip the second full hash pass.
+# Only families without repository evidence may skip the second full hash pass.
 if "single_pass_non_authorizing_identity" not in runtime:
     raise SystemExit('non-authorizing single-pass scan strategy missing')
-if "array( 'runtime_only','premium_semantic','composite_behavioral' )" not in runtime:
-    raise SystemExit('single-pass optimization escaped its non-authorizing modes')
+if "$repeat_on_mismatch = ! empty( $rule['repository_evidence'] );" not in runtime:
+    raise SystemExit('repository-backed mismatch must receive drift-confirmation scan')
 if "double_pass_drift_confirmation" not in runtime:
     raise SystemExit('repository-backed drift confirmation lost its second pass')
 
