@@ -3,6 +3,7 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -220,8 +221,13 @@ def main():
                 raise SystemExit(f"{family}: bounded read callback identity policy missing")
             for route in required_routes:
                 callbacks = callback_map.get(route) or []
-                if not isinstance(callbacks, list) or not [str(x).strip() for x in callbacks if str(x).strip()]:
+                normalized_callbacks = [str(x).strip() for x in callbacks if str(x).strip()] if isinstance(callbacks, list) else []
+                if not normalized_callbacks:
                     raise SystemExit(f"{family}: bounded read callback identity missing for {route}")
+                for callback in normalized_callbacks:
+                    lowered = callback.lower()
+                    if lowered in {"__return_true", "closure"} or re.fullmatch(r"[A-Za-z_\\\\][A-Za-z0-9_\\\\]*(?:::[A-Za-z_][A-Za-z0-9_]*)?", callback) is None:
+                        raise SystemExit(f"{family}: bounded read callback identity invalid for {route}: {callback}")
         if rule.get("evaluation_mode") in {"premium_semantic","composite_behavioral"}:
             if rule.get("repository_evidence") is not True or not rule.get("repository_artifacts"):
                 raise SystemExit(f"{family}: identity-first provider gate requires repository evidence")
