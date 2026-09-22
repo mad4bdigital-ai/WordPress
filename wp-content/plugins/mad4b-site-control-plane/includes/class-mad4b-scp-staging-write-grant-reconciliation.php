@@ -35,6 +35,8 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'elementor/delete-element' => 'elementor',
 			'elementor/set-dynamic-tag' => 'elementor',
 			'elementor/set-etg-dynamic-tag' => 'elementor',
+			'context/update-drive-asset' => 'google_drive_context',
+			'context/recreate-drive-asset' => 'google_drive_context',
 		);
 	}
 
