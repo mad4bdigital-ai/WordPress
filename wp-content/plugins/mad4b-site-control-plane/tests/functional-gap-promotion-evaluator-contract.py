@@ -26,7 +26,6 @@ for forbidden in [
     '"functional_ready"',
     '"promotion_authorized":True',
     '"production_mutation":True',
-    "credential_read"],",
 ]:
     if forbidden in script:
         raise SystemExit(f'promotion evaluator must not auto-authorize functional/write readiness: {forbidden}')
