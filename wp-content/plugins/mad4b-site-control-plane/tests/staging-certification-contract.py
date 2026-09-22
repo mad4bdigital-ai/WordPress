@@ -29,10 +29,15 @@ require(live_body, "'write_authority' => self::gate", "write authority gate")
 # Performance is no longer baseline-only: it evaluates explicit bounded budgets.
 perf = observer.split("public static function frontend_performance_status", 1)[1].split("public static function build_provenance_status", 1)[0]
 for marker in [
-    "mad4b.frontend-performance-evidence.v2",
+    "mad4b.frontend-performance-evidence.v3",
     "'baseline_only' => false",
-    "'budget_evaluated' => $sample_valid",
+    "'budget_evaluated' => $minimum_samples_met",
     "'budget_pass' => $budget_pass",
+    "'evaluation_window' => array(",
+    "'server_elapsed_strategy' => 'median'",
+    "'db_queries_strategy' => 'max'",
+    "'peak_memory_strategy' => 'max'",
+    "'insufficient_frontend_samples'",
     "'server_elapsed_ms_max'",
     "'db_queries_max'",
     "'peak_memory_bytes_max'",
