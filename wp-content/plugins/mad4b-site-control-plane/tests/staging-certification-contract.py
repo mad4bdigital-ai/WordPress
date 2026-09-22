@@ -9,6 +9,7 @@ observer = (ROOT / "includes/class-mad4b-scp-live-acceptance-observer.php").read
 authority = (ROOT / "includes/class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 cert = (ROOT / "includes/class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
 rollback = json.loads((ROOT / "MAD4B-ROLLBACK-CANDIDATE.json").read_text(encoding="utf-8"))
+certified_providers = json.loads((ROOT / "config/certified-providers.json").read_text(encoding="utf-8"))
 
 def require(text, marker, label):
     if marker not in text:
@@ -93,13 +94,22 @@ for forbidden in [
 
 for marker in [
     "mad4b.wp-import-export-exact-remediation.v1",
-    "wp-all-import-pro.zip",
+    "config/certified-providers.json",
+    "expected_import",
     "archive_sha256",
     "install_exact_repository_import_artifact",
     "'automatic_install_performed' => false",
     "'production_mutation_performed' => false",
 ]:
     require(cert, marker, "WP Import/Export remediation invariant")
+
+wp_import = certified_providers["providers"]["wp-import-export"]["components"]["import"]
+if wp_import["version"] != "5.0.8":
+    raise SystemExit("WP All Import certified version drifted")
+if wp_import["archive"] != "wp-all-import-pro.zip":
+    raise SystemExit("WP All Import certified archive drifted")
+if wp_import["archive_sha256"] != "eca6af2f5ecaa4119d051a0108045f61543d966e4765cfd219e49a60a7a50de3":
+    raise SystemExit("WP All Import certified archive SHA-256 drifted")
 
 # Brand Core coverage must be explicit and based on approved governed assets.
 for marker in [
