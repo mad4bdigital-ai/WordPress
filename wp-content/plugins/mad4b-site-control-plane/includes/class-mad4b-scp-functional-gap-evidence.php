@@ -336,6 +336,14 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array_values( array_filter( $rows, static function ( $row ) { return is_array( $row ) && ! empty( $row['active'] ); } ) );
 	}
 
+	private static function runtime_rows_stable( array $rows ) {
+		if ( empty( $rows ) ) return false;
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) || empty( $row['plugin_tree']['scan_stable'] ) ) return false;
+		}
+		return true;
+	}
+
 	private static function plugin_versions( array $runtime, $family ) {
 		$versions = array();
 		foreach ( self::active_plugins( $runtime, $family ) as $row ) {
@@ -412,7 +420,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$required = array( '/bulk-taxonomy-editor/v1/posts', '/bulk-taxonomy-editor/v1/taxonomies', '/bulk-taxonomy-editor/v1/terms' );
 		$missing = array();
 		foreach ( $required as $route ) if ( ! isset( $routes[ $route ] ) || ! in_array( 'GET', $routes[ $route ], true ) ) $missing[] = $route;
-		if ( ! empty( $rows ) && count( $matches ) === count( $rows ) && empty( $missing ) ) {
+		if ( ! self::runtime_rows_stable( $rows ) ) {
+			$decisions[] = self::decision( $family, 'runtime_evidence_unstable', 'runtime_tree_changed_during_scan', array( 'missing_get_routes' => $missing ) );
+		} elseif ( ! empty( $rows ) && count( $matches ) === count( $rows ) && empty( $missing ) ) {
 			$decisions[] = self::decision( $family, 'read_contract_candidate', 'exact_runtime_tree_and_required_get_routes_verified', array(
 				'exact_tree_matches' => $matches,
 				'safe_now' => array( 'plugin_status_read','posts_read','taxonomies_read','terms_read' ),
@@ -430,7 +440,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$status_keys = array( 'wpl_serial_verified','wpl_verified_order_number','wpl_verified_order_numbers','wpl_verified_wpl_ids' );
 		$status_model = true;
 		foreach ( $status_keys as $key ) if ( ! array_key_exists( $key, $options ) ) $status_model = false;
-		if ( ! empty( $rows ) && count( $matches ) === count( $rows ) && $secret_ok && $status_model ) {
+		if ( ! self::runtime_rows_stable( $rows ) ) {
+			$decisions[] = self::decision( $family, 'runtime_evidence_unstable', 'runtime_tree_changed_during_scan', array( 'secret_redaction_verified' => $secret_ok ) );
+		} elseif ( ! empty( $rows ) && count( $matches ) === count( $rows ) && $secret_ok && $status_model ) {
 			$decisions[] = self::decision( $family, 'redacted_read_contract_candidate', 'exact_runtime_tree_and_secret_redaction_verified', array(
 				'exact_tree_matches' => $matches,
 				'safe_now' => array( 'plugin_status_read','license_verification_state_read_redacted' ),
@@ -443,8 +455,13 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		foreach ( array( 'custom-mega-menu','google-tag-manager','meta-catalog-feed-mapper','rank-math' ) as $family ) {
 			$rows = self::active_plugins( $runtime, $family );
 			$matches = self::tree_matches( isset( $repo_families[ $family ] ) ? $repo_families[ $family ] : array(), $rows );
-			$state = ! empty( $rows ) && count( $matches ) === count( $rows ) ? 'contract_evidence_review' : 'runtime_alignment_required';
-			$reason = 'contract_evidence_review' === $state ? 'exact_runtime_tree_verified_but_semantic_contract_not_yet_promoted' : 'live_runtime_tree_does_not_match_repository_evidence';
+			if ( ! self::runtime_rows_stable( $rows ) ) {
+				$state = 'runtime_evidence_unstable';
+				$reason = 'runtime_tree_changed_during_scan';
+			} else {
+				$state = ! empty( $rows ) && count( $matches ) === count( $rows ) ? 'contract_evidence_review' : 'runtime_alignment_required';
+				$reason = 'contract_evidence_review' === $state ? 'exact_runtime_tree_verified_but_semantic_contract_not_yet_promoted' : 'live_runtime_tree_does_not_match_repository_evidence';
+			}
 			$decisions[] = self::decision( $family, $state, $reason, array( 'runtime_versions' => self::plugin_versions( $runtime, $family ), 'exact_tree_matches' => $matches ) );
 		}
 
@@ -456,7 +473,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$plugin_files[] = isset( $row['plugin_file'] ) ? (string) $row['plugin_file'] : '';
 				$tree_hashes[] = isset( $row['plugin_tree']['tree_sha256'] ) ? (string) $row['plugin_tree']['tree_sha256'] : '';
 			}
-			$decisions[] = self::decision( $family, empty( $rows ) ? 'not_active' : 'runtime_contract_evidence_captured', 'runtime_only_provider_requires_semantic_contract_before_specialized_surface', array(
+			$state = empty( $rows ) ? 'not_active' : ( self::runtime_rows_stable( $rows ) ? 'runtime_contract_evidence_captured' : 'runtime_evidence_unstable' );
+			$reason = 'runtime_evidence_unstable' === $state ? 'runtime_tree_changed_during_scan' : 'runtime_only_provider_requires_semantic_contract_before_specialized_surface';
+			$decisions[] = self::decision( $family, $state, $reason, array(
 				'runtime_versions' => self::plugin_versions( $runtime, $family ),
 				'plugin_files' => $plugin_files,
 				'tree_sha256' => $tree_hashes,
