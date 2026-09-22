@@ -154,6 +154,8 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 		$manifest = array();
 		$total_bytes = 0;
 		$truncated = false;
+		$symlink_count = 0;
+		$read_error_count = 0;
 		foreach ( $roots as $root ) {
 			$root_manifest = self::tree_manifest( $root );
 			if ( is_wp_error( $root_manifest ) ) {
@@ -168,6 +170,8 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 				);
 			}
 			$total_bytes += (int) $root_manifest['total_bytes'];
+			$symlink_count += isset( $root_manifest['symlink_count'] ) ? (int) $root_manifest['symlink_count'] : 0;
+			$read_error_count += isset( $root_manifest['read_error_count'] ) ? (int) $root_manifest['read_error_count'] : 0;
 			if ( ! empty( $root_manifest['truncated'] ) ) $truncated = true;
 		}
 		usort( $manifest, static function ( $a, $b ) { return strcmp( $a['path'], $b['path'] ); } );
@@ -184,8 +188,10 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 			'file_count' => count( $manifest ),
 			'total_bytes' => $total_bytes,
 			'tree_sha256' => $tree_sha256,
-			'complete' => ! $truncated && empty( $root_errors ) && ! empty( $manifest ),
+			'complete' => ! $truncated && 0 === $symlink_count && 0 === $read_error_count && empty( $root_errors ) && ! empty( $manifest ),
 			'truncated' => $truncated,
+			'symlink_count' => $symlink_count,
+			'read_error_count' => $read_error_count,
 			'errors' => $root_errors,
 		);
 		if ( $include_files ) $result['files'] = $manifest;
@@ -196,6 +202,7 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 		if ( ! defined( 'WP_PLUGIN_DIR' ) ) return new WP_Error( 'mad4b_functional_gap_plugin_dir_unavailable', 'WP_PLUGIN_DIR is unavailable.' );
 		$plugin_file = self::normalize_plugin_file( $plugin_file );
 		if ( '' === $plugin_file || false !== strpos( $plugin_file, '../' ) || 0 === strpos( $plugin_file, '/' ) ) return new WP_Error( 'mad4b_functional_gap_plugin_file_invalid', 'Plugin file is outside the bounded plugin namespace.' );
+		if ( false === strpos( $plugin_file, '/' ) ) return new WP_Error( 'mad4b_functional_gap_top_level_plugin_unbounded', 'Top-level plugin files are not scanned because their directory root would include unrelated plugins.' );
 		$plugins_root = realpath( WP_PLUGIN_DIR );
 		if ( false === $plugins_root ) return new WP_Error( 'mad4b_functional_gap_plugin_dir_missing', 'WordPress plugin root is unavailable.' );
 		$candidate = trailingslashit( WP_PLUGIN_DIR ) . $plugin_file;
@@ -215,6 +222,8 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 	private static function tree_manifest( $root ) {
 		$files = array();
 		$total_bytes = 0;
+		$symlink_count = 0;
+		$read_error_count = 0;
 		$root = realpath( $root );
 		if ( false === $root || ! is_dir( $root ) ) return new WP_Error( 'mad4b_functional_gap_root_unavailable', 'Runtime family root is unavailable.' );
 		try {
@@ -223,14 +232,16 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 				RecursiveIteratorIterator::LEAVES_ONLY
 			);
 			foreach ( $iterator as $file ) {
-				if ( ! $file instanceof SplFileInfo || ! $file->isFile() || $file->isLink() ) continue;
-				if ( count( $files ) >= self::MAX_FILES_PER_FAMILY ) return array( 'files' => $files, 'total_bytes' => $total_bytes, 'truncated' => true );
+				if ( ! $file instanceof SplFileInfo ) continue;
+				if ( $file->isLink() ) { ++$symlink_count; continue; }
+				if ( ! $file->isFile() ) continue;
+				if ( count( $files ) >= self::MAX_FILES_PER_FAMILY ) return array( 'files' => $files, 'total_bytes' => $total_bytes, 'truncated' => true, 'symlink_count' => $symlink_count, 'read_error_count' => $read_error_count );
 				$size = max( 0, (int) $file->getSize() );
-				if ( $total_bytes + $size > self::MAX_BYTES_PER_FAMILY ) return array( 'files' => $files, 'total_bytes' => $total_bytes, 'truncated' => true );
+				if ( $total_bytes + $size > self::MAX_BYTES_PER_FAMILY ) return array( 'files' => $files, 'total_bytes' => $total_bytes, 'truncated' => true, 'symlink_count' => $symlink_count, 'read_error_count' => $read_error_count );
 				$path = $file->getRealPath();
-				if ( false === $path || ! is_readable( $path ) ) continue;
+				if ( false === $path || ! is_readable( $path ) ) { ++$read_error_count; continue; }
 				$sha = hash_file( 'sha256', $path );
-				if ( false === $sha ) continue;
+				if ( false === $sha ) { ++$read_error_count; continue; }
 				$relative = ltrim( substr( wp_normalize_path( $path ), strlen( trailingslashit( wp_normalize_path( $root ) ) ) ), '/' );
 				$files[] = array( 'path' => $relative, 'size' => $size, 'sha256' => strtolower( $sha ) );
 				$total_bytes += $size;
@@ -239,7 +250,7 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 			return new WP_Error( 'mad4b_functional_gap_tree_scan_failed', 'Bounded runtime tree scan failed.' );
 		}
 		usort( $files, static function ( $a, $b ) { return strcmp( $a['path'], $b['path'] ); } );
-		return array( 'files' => $files, 'total_bytes' => $total_bytes, 'truncated' => false );
+		return array( 'files' => $files, 'total_bytes' => $total_bytes, 'truncated' => false, 'symlink_count' => $symlink_count, 'read_error_count' => $read_error_count );
 	}
 
 	public static function relative_to_plugins( $path ) {
