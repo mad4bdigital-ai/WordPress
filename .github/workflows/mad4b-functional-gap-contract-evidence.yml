@@ -74,6 +74,9 @@ jobs:
                       raise SystemExit(f'{family}: missing archive sha')
                   if not artifact.get('plugin_headers'):
                       raise SystemExit(f'{family}: no plugin headers found')
+                  tree=artifact.get('package_tree') or {}
+                  if len(tree.get('tree_sha256',''))!=64 or int(tree.get('file_count',0))<1:
+                      raise SystemExit(f'{family}: package tree fingerprint missing')
           print('functional-gap evidence boundaries: PASS')
           PY
       - name: Upload evidence
