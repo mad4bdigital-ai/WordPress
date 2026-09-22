@@ -2457,9 +2457,16 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	private static function persist_tokens( $access_token, $refresh_token, $expires_in, $scope, $existing = array(), $requested_mode = 'read_only', $auth_mode = '', $expected_scope = '' ) {
 		$scope = trim( (string) $scope );
-		if ( ! self::scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
+		$expected_scope = trim( (string) $expected_scope );
+
+		if ( '' !== $expected_scope ) {
+			if ( ! self::workspace_scope_is_allowed( $scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_not_allowed', 'Google granted a scope outside the governed Workspace grant catalog.' );
+			if ( ! self::scope_sets_equal( $scope, $expected_scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_not_exact', 'Google returned a scope set that does not exactly match the reviewed Workspace grant request.' );
+		} elseif ( ! self::scope_is_allowed( $scope ) ) {
+			return new WP_Error( 'mad4b_google_drive_scope_not_allowed', 'Google granted a scope set outside the governed Drive read/read-write contracts.' );
+		}
+
 		$requested_mode = sanitize_key( (string) $requested_mode );
-		if ( '' !== trim( (string) $expected_scope ) && ! self::scope_sets_equal( $scope, $expected_scope ) ) return new WP_Error( 'mad4b_google_workspace_scope_set_not_exact', 'Google returned a scope set that does not exactly match the reviewed Workspace grant request.' );
 		if ( ! self::scope_matches_requested_mode( $scope, $requested_mode ) ) {
 			if ( 'read_only' === $requested_mode && self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_readonly_scope_escalated', 'Google returned Drive write authority for a read-only connection. Revoke Google access and reconnect with Read-only to restore least privilege.' );
 			if ( 'read_write' === $requested_mode && ! self::scope_allows_write( $scope ) ) return new WP_Error( 'mad4b_google_drive_write_scope_missing', 'Google did not grant the required Drive read+write scope.' );
@@ -2554,10 +2561,22 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return array_values( array_unique( $allowed ) );
 	}
 
-	private static function scope_is_allowed( $scope ) {
+	private static function workspace_scope_is_allowed( $scope ) {
 		$items = self::scope_items( $scope );
 		if ( empty( $items ) ) return false;
 		$allowed = self::allowed_scope_items();
+		foreach ( $items as $item ) if ( ! in_array( (string) $item, $allowed, true ) ) return false;
+		return true;
+	}
+
+	private static function scope_is_allowed( $scope ) {
+		$items = self::scope_items( $scope );
+		if ( empty( $items ) ) return false;
+
+		// This guard is intentionally Drive-only. Workspace-wide OAuth grants
+		// are validated separately against the exact reviewed scope set before
+		// token persistence, and must not broaden the Drive repair contract.
+		$allowed = array( self::READ_SCOPE, self::WRITE_SCOPE );
 		foreach ( $items as $item ) if ( ! in_array( (string) $item, $allowed, true ) ) return false;
 		return true;
 	}
