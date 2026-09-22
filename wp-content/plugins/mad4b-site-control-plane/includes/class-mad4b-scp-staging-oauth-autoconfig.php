@@ -280,7 +280,9 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return '';
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
 		$scheme = strtolower( (string) $parts['scheme'] );
-		if ( 'https' !== $scheme && ! ( 'local' === $environment && 'http' === $scheme ) ) return '';
+		$host = strtolower( (string) $parts['host'] );
+		$local_loopback = 'local' === $environment && 'http' === $scheme && in_array( $host, array( '127.0.0.1', '::1', 'localhost' ), true );
+		if ( 'https' !== $scheme && ! $local_loopback ) return '';
 		if ( ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) ) return '';
 		return $url;
 	}
