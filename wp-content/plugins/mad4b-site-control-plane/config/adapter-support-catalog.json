@@ -435,7 +435,8 @@
     {
       "id": "custom-mega-menu",
       "match": [
-        "custom-mega-menu-v43/"
+        "custom-mega-menu-v43/",
+        "custom-mega-menu/"
       ],
       "adapter_id": "custom-mega-menu",
       "strategy": "registered_adapter",
