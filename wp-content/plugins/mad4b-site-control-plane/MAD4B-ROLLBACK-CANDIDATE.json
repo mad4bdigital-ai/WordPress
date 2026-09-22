@@ -1,0 +1,15 @@
+{
+  "contract": "mad4b.rollback-candidate.v1",
+  "source_commit_sha": "67168b9dc0ed468f5ac44c649c24d4327c8a1162",
+  "control_plane_version": "0.4.0-rc.38",
+  "build_fingerprint": "ac16b9aa41e9cd44a360b981436dd7a459a8033476a54cf956afaed833a6a8b6",
+  "package_manifest_digest": "2aad4f7adffa36447f8b8bcfc9b374cd263d1a5165cb14e217962c8e25fc4177",
+  "artifact_sha256": "b029df8a47c8bd1ed87278347e21430becec3279e8510f038cfc65bd999c78d2",
+  "build_run_id": "35677125021",
+  "artifact_name": "mad4b-site-control-plane-general-distribution-kit-67168b9dc0ed468f5ac44c649c24d4327c8a1162",
+  "artifact_id": "10672967772",
+  "repository": "mad4bdigital-ai/WordPress",
+  "rollback_scope": "plugin_package_only",
+  "production_authority": false,
+  "artifact_retention_verified_by_package": false
+}
