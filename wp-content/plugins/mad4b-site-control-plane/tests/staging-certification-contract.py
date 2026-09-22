@@ -90,6 +90,19 @@ for forbidden in [
     if forbidden in cert:
         raise SystemExit(f"staging certification must remain observation-only: {forbidden}")
 
+# Brand Core coverage must be explicit and based on approved governed assets.
+for marker in [
+    "mad4b.brand-core-context-coverage.v1",
+    "'brand_strategy'",
+    "'tone_of_voice'",
+    "'editorial_guidelines'",
+    "'approved' === $summary['review_status']",
+    "'brand_authority' === $summary['authority_class']",
+    "'governed' === $summary['source_mode']",
+    "required_context_set_missing:",
+]:
+    require(cert, marker, "Brand Core coverage invariant")
+
 # Browser view may reduce existing/fresh evidence but cannot create an executor
 # or claim browser parity by itself.
 require(cert, "browser_runtime_not_observed", "browser observation gap")
