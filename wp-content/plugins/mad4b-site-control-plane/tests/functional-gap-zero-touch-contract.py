@@ -66,6 +66,13 @@ for marker in [
     "functional_gap_policy_promotion_not_false",
     "functional_gap_policy_match_overlap_",
     "functional_gap_policy_probe_regex_invalid_",
+    "functional_gap_adapter_catalog_invalid",
+    "functional_gap_repository_artifact_catalog_invalid",
+    "functional_gap_policy_family_missing_from_adapter_catalog_",
+    "functional_gap_policy_match_escapes_adapter_catalog_",
+    "functional_gap_policy_versioned_match_escapes_adapter_catalog_",
+    "functional_gap_policy_repository_authority_family_missing_",
+    "functional_gap_policy_artifact_escapes_canonical_map_",
     "functional_gap_policy_read_permission_boundary_missing_",
     "plugin_matches_policy_family",
     "callback_descriptor",
@@ -282,10 +289,11 @@ for family,rule in policy_data.get('families',{}).items():
     if rule.get('evaluation_mode')=='bounded_read_routes' and rule.get('require_non_public_permissions') is not True:
         raise SystemExit(f'bounded read family lost non-public permission requirement: {family}')
     if rule.get('repository_evidence'):
-        artifacts=artifact_families.get(family,{}).get('artifacts',[]) if isinstance(artifact_families.get(family,{}),dict) else []
+        authority_family=str(catalog.get('adapter_id') or family)
+        artifacts=artifact_families.get(authority_family,{}).get('artifacts',[]) if isinstance(artifact_families.get(authority_family,{}),dict) else []
         missing=set(rule.get('repository_artifacts',[]) or [])-set(artifacts)
         if missing:
-            raise SystemExit(f'functional-gap policy repository artifacts escape canonical artifact map: {family}: {sorted(missing)}')
+            raise SystemExit(f'functional-gap policy repository artifacts escape canonical artifact map: {family} via {authority_family}: {sorted(missing)}')
 
 for marker in [
     'POLICY_PATH',
