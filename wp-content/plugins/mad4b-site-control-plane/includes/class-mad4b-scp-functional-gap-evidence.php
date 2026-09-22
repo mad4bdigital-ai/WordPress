@@ -20,6 +20,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	const MAX_TREE_BYTES = 805306368;
 
 	private static $snapshot = null;
+	private static $snapshot_key = '';
 
 	private static function targets() {
 		return array(
@@ -44,6 +45,47 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 	private static function normalize_plugin_file( $value ) {
 		return strtolower( ltrim( str_replace( '\\', '/', (string) $value ), '/' ) );
+	}
+
+	private static function runtime_identity_key() {
+		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$plugins = get_plugins();
+		if ( ! is_array( $plugins ) ) $plugins = array();
+		ksort( $plugins, SORT_STRING );
+		$active = array();
+		foreach ( array_merge( (array) get_option( 'active_plugins', array() ), is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) : array() ) as $plugin_file ) {
+			$active[ self::normalize_plugin_file( $plugin_file ) ] = true;
+		}
+		$rows = array();
+		$targets = self::targets();
+		foreach ( $plugins as $plugin_file => $headers ) {
+			$normalized = self::normalize_plugin_file( $plugin_file );
+			$matched = false;
+			foreach ( $targets as $prefixes ) {
+				foreach ( $prefixes as $prefix ) {
+					$prefix = self::normalize_plugin_file( $prefix );
+					if ( '' !== $prefix && 0 === strpos( $normalized, $prefix ) ) { $matched = true; break 2; }
+				}
+			}
+			if ( ! $matched ) continue;
+			$main = WP_PLUGIN_DIR . '/' . ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
+			$rows[] = implode( "\0", array(
+				$normalized,
+				isset( $headers['Version'] ) ? (string) $headers['Version'] : '',
+				isset( $active[ $normalized ] ) ? '1' : '0',
+				is_file( $main ) ? (string) @filesize( $main ) : '-1',
+				is_file( $main ) ? (string) @filemtime( $main ) : '-1',
+			) );
+		}
+		foreach ( array( MAD4B_SCP_DIR . self::REPOSITORY_FILE, MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ) as $path ) {
+			$rows[] = implode( "\0", array(
+				basename( $path ),
+				is_file( $path ) ? (string) @filesize( $path ) : '-1',
+				is_file( $path ) ? (string) @filemtime( $path ) : '-1',
+			) );
+		}
+		sort( $rows, SORT_STRING );
+		return hash( 'sha256', implode( "\n", $rows ) );
 	}
 
 	private static function plugin_tree_once( $plugin_file ) {
@@ -531,12 +573,15 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	}
 
 	public static function snapshot() {
-		if ( null !== self::$snapshot ) return self::$snapshot;
+		$key = self::runtime_identity_key();
+		if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) return self::$snapshot;
 		$repository = self::repository_evidence();
 		$runtime = self::runtime_evidence( $repository );
 		$evaluation = self::evaluate( $repository, $runtime );
+		self::$snapshot_key = $key;
 		self::$snapshot = array(
 			'contract' => self::CONTRACT,
+			'snapshot_identity_sha256' => $key,
 			'read_only' => true,
 			'authority_created' => false,
 			'mutation_performed' => false,
