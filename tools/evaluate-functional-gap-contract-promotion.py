@@ -202,6 +202,22 @@ def main():
                 **base,
             ))
 
+    decisions = sorted(decisions, key=lambda row: str(row.get("family", "")))
+    fingerprint_payload = {
+        "contract": "mad4b.functional-gap-promotion-evaluation.v2",
+        "policy_sha256": policy_sha,
+        "repository_evidence_sha256": sha256_file(args.repository_evidence),
+        "repository_source_commit_sha": repo.get("source_commit_sha", ""),
+        "decisions": decisions,
+    }
+    fingerprint_json = json.dumps(
+        fingerprint_payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    decision_fingerprint = hashlib.sha256(fingerprint_json).hexdigest()
+
     counts = {}
     for row in decisions:
         counts[row["state"]] = counts.get(row["state"], 0) + 1
@@ -210,6 +226,7 @@ def main():
         "contract": "mad4b.functional-gap-promotion-evaluation.v2",
         "policy_contract": policy["contract"],
         "policy_sha256": policy_sha,
+        "decision_fingerprint": decision_fingerprint,
         "repository_source_commit_sha": repo.get("source_commit_sha", ""),
         "runtime_generated_at": runtime.get("generated_at", ""),
         "ready": not blockers,
