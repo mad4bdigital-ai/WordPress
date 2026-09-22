@@ -116,6 +116,7 @@ required_server = [
     "'authority_generation'",
     "'projection_fingerprint'",
     "'grant_lookup_strategy'",
+    "broad_environment_grants",
     "authority_projection_inconsistent",
     "provider_gated_runtime_overlap",
     "method:\"POST\"",
