@@ -101,6 +101,40 @@ jobs:
                   tree=artifact.get('package_tree') or {}
                   if len(tree.get('tree_sha256',''))!=64 or int(tree.get('file_count',0))<1:
                       raise SystemExit(f'{family}: package tree fingerprint missing')
+
+          for family,rule in policy.get('families',{}).items():
+              if rule.get('evaluation_mode') not in {'premium_semantic','composite_behavioral'}:
+                  continue
+              components=rule.get('identity_components') or []
+              if not components:
+                  raise SystemExit(f'{family}: identity components missing')
+              evidence_artifacts={
+                  row.get('archive'):row
+                  for row in data.get('families',{}).get(family,{}).get('artifacts',[])
+                  if isinstance(row,dict) and row.get('archive')
+              }
+              expected_artifacts=sorted(set(rule.get('repository_artifacts') or []))
+              component_artifacts=sorted(set(str(row.get('artifact','')) for row in components))
+              if component_artifacts!=expected_artifacts:
+                  raise SystemExit(f'{family}: identity component artifact set mismatch')
+              seen_plugins=set()
+              for component in components:
+                  archive=str(component.get('artifact',''))
+                  plugin_file=str(component.get('plugin_file','')).replace('\\','/').lstrip('/').lower()
+                  if not archive or not plugin_file or plugin_file in seen_plugins:
+                      raise SystemExit(f'{family}: invalid/duplicate identity component')
+                  seen_plugins.add(plugin_file)
+                  artifact=evidence_artifacts.get(archive)
+                  if not artifact:
+                      raise SystemExit(f'{family}: identity component artifact missing from evidence: {archive}')
+                  basename=plugin_file.rsplit('/',1)[-1]
+                  headers=[
+                      h for h in artifact.get('plugin_headers',[])
+                      if str(h.get('file','')).replace('\\','/').rsplit('/',1)[-1].lower()==basename
+                      and str(h.get('version','')).strip()
+                  ]
+                  if len(headers)!=1:
+                      raise SystemExit(f'{family}: identity component header ambiguous: {plugin_file}')
           print('functional-gap evidence boundaries: PASS')
           PY
 
