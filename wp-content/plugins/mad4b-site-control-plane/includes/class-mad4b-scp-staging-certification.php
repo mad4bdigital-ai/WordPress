@@ -93,6 +93,7 @@ final class MAD4B_SCP_Staging_Certification {
 				isset( $oauth_authority_projection['contract'] ) && 'mad4b.oauth-consent-grant-projection.v3' === (string) $oauth_authority_projection['contract']
 				&& ! empty( $oauth_authority_projection['read_only'] )
 				&& ! empty( $oauth_authority_projection['projection_consistent'] )
+				&& isset( $oauth_authority_projection['grant_lookup_strategy'] ) && 'bulk_agent_grant_snapshot' === (string) $oauth_authority_projection['grant_lookup_strategy']
 				&& empty( $oauth_authority_projection['mutation_performed'] )
 				&& empty( $oauth_authority_projection['oauth_scope_changed'] )
 				&& empty( $oauth_authority_projection['write_authority_granted_by_consent'] ),
