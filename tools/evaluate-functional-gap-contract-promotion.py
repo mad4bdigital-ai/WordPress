@@ -55,6 +55,79 @@ def tree_matches(repo_family, runtime_rows):
         })
     return matches
 
+def normalize_plugin_file(value):
+    return str(value or "").replace("\\", "/").lstrip("/").lower()
+
+def runtime_tree_evidence(rows):
+    out = []
+    for row in rows:
+        tree = row.get("plugin_tree", {}) if isinstance(row, dict) else {}
+        out.append({
+            "plugin_file": normalize_plugin_file(row.get("plugin_file", "")),
+            "version": str(row.get("version", "")),
+            "tree_sha256": str(tree.get("tree_sha256", "")),
+            "file_count": int(tree.get("file_count", 0) or 0),
+            "total_bytes": int(tree.get("total_bytes", 0) or 0),
+            "scan_stable": bool(tree.get("scan_stable")),
+            "comparison": str(tree.get("comparison", "")),
+        })
+    return sorted(out, key=lambda row: row["plugin_file"])
+
+def runtime_evidence_fingerprint(runtime):
+    families = {}
+    for family, rows in sorted((runtime.get("families") or {}).items()):
+        normalized = []
+        for row in rows if isinstance(rows, list) else []:
+            tree = row.get("plugin_tree", {}) if isinstance(row, dict) else {}
+            normalized.append({
+                "plugin_file": normalize_plugin_file(row.get("plugin_file", "")),
+                "version": str(row.get("version", "")),
+                "active": bool(row.get("active")),
+                "tree_sha256": str(tree.get("tree_sha256", "")).lower(),
+                "file_count": int(tree.get("file_count", 0) or 0),
+                "total_bytes": int(tree.get("total_bytes", 0) or 0),
+                "scan_stable": bool(tree.get("scan_stable")),
+                "comparison": str(tree.get("comparison", "")),
+                "error": str(tree.get("error", "")),
+            })
+        families[str(family)] = sorted(normalized, key=lambda row: row["plugin_file"])
+
+    routes = []
+    for row in runtime.get("rest_routes", []) or []:
+        if not isinstance(row, dict) or not row.get("route"):
+            continue
+        routes.append({
+            "route": str(row.get("route", "")),
+            "methods": sorted({str(method).upper() for method in row.get("methods", [])}),
+        })
+    routes.sort(key=lambda row: row["route"])
+
+    ajax = sorted({str(item) for item in (runtime.get("ajax_hooks") or [])})
+    options = dict(sorted((runtime.get("option_presence") or {}).items()))
+    constants = dict(sorted((runtime.get("constants") or {}).items()))
+
+    cron = []
+    for row in runtime.get("cron_hooks", []) or []:
+        if not isinstance(row, dict) or not row.get("hook"):
+            continue
+        cron.append({
+            "hook": str(row.get("hook", "")),
+            "event_count": int(row.get("event_count", 0) or 0),
+        })
+    cron.sort(key=lambda row: (row["hook"], row["event_count"]))
+
+    payload = {
+        "contract": "mad4b.runtime-functional-gap-evidence.v2",
+        "families": families,
+        "rest_routes": routes,
+        "ajax_hooks": ajax,
+        "option_presence": options,
+        "cron_hooks": cron,
+        "constants": constants,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
 def route_methods(runtime):
     return {row.get("route", ""): set(row.get("methods", [])) for row in runtime.get("rest_routes", [])}
 
@@ -111,13 +184,20 @@ def main():
     repo_families = repo.get("families", {})
     decisions = []
     blockers = []
+    runtime_fingerprint = runtime_evidence_fingerprint(runtime)
+    if len(runtime_fingerprint) != 64:
+        blockers.append("runtime_evidence_fingerprint_unavailable")
 
     for family, rule in sorted(policy.get("families", {}).items()):
         mode = str(rule.get("evaluation_mode", ""))
         rows = active_plugins(runtime, family)
         versions = plugin_versions(runtime, family)
         matches = tree_matches(repo_families.get(family, {}), rows)
-        base = {"runtime_versions": versions, "exact_tree_matches": matches}
+        base = {
+            "runtime_versions": versions,
+            "runtime_tree_evidence": runtime_tree_evidence(rows),
+            "exact_tree_matches": matches,
+        }
 
         if not rows:
             decisions.append(decision(family, "not_active", "provider_not_active", mode, **base))
@@ -208,6 +288,7 @@ def main():
         "policy_sha256": policy_sha,
         "repository_evidence_sha256": sha256_file(args.repository_evidence),
         "repository_source_commit_sha": repo.get("source_commit_sha", ""),
+        "runtime_evidence_fingerprint": runtime_fingerprint,
         "decisions": decisions,
     }
     fingerprint_json = json.dumps(
@@ -226,6 +307,7 @@ def main():
         "contract": "mad4b.functional-gap-promotion-evaluation.v2",
         "policy_contract": policy["contract"],
         "policy_sha256": policy_sha,
+        "runtime_evidence_fingerprint": runtime_fingerprint,
         "decision_fingerprint": decision_fingerprint,
         "repository_source_commit_sha": repo.get("source_commit_sha", ""),
         "runtime_generated_at": runtime.get("generated_at", ""),
