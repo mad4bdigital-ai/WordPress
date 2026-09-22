@@ -82,6 +82,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				if ( 'bounded_read_routes' === $mode ) {
 					if ( empty( $row['required_get_routes'] ) || ! is_array( $row['required_get_routes'] ) ) $blockers[] = 'functional_gap_policy_required_routes_missing_' . $family;
 					if ( empty( $row['safe_now'] ) || ! is_array( $row['safe_now'] ) || empty( $row['blocked'] ) || ! is_array( $row['blocked'] ) ) $blockers[] = 'functional_gap_policy_read_boundary_missing_' . $family;
+					if ( ! array_key_exists( 'require_non_public_permissions', $row ) || true !== $row['require_non_public_permissions'] ) $blockers[] = 'functional_gap_policy_read_permission_boundary_missing_' . $family;
 				}
 				if ( 'redacted_status' === $mode ) {
 					if ( empty( $row['redacted_secret_option_keys'] ) || ! is_array( $row['redacted_secret_option_keys'] ) ) $blockers[] = 'functional_gap_policy_redaction_keys_missing_' . $family;
@@ -138,6 +139,17 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 	private static function normalize_plugin_file( $value ) {
 		return strtolower( ltrim( str_replace( '\\', '/', (string) $value ), '/' ) );
+	}
+
+	private static function callback_descriptor( $callback ) {
+		if ( is_string( $callback ) ) return sanitize_text_field( $callback );
+		if ( is_array( $callback ) && isset( $callback[0], $callback[1] ) ) {
+			$owner = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0];
+			return sanitize_text_field( $owner . '::' . (string) $callback[1] );
+		}
+		if ( $callback instanceof Closure ) return 'closure';
+		if ( is_object( $callback ) ) return sanitize_text_field( get_class( $callback ) . '::__invoke' );
+		return '';
 	}
 
 	private static function runtime_identity_key() {
@@ -467,6 +479,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$started = microtime( true );
 		$canonical = array();
 		$declared = array();
+		$verified_stats = array();
 		$total_bytes = 0;
 		$verified_files = 0;
 		$blockers = array();
@@ -485,10 +498,24 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			}
 			$path = MAD4B_SCP_DIR . $rel;
 			if ( ! is_file( $path ) || ! is_readable( $path ) ) { $blockers[] = 'build_provenance_package_file_missing'; continue; }
-			$actual_bytes = @filesize( $path );
+			clearstatcache( true, $path );
+			$before_bytes = @filesize( $path );
+			$before_mtime = @filemtime( $path );
+			$before_ctime = @filectime( $path );
+			$before_inode = @fileinode( $path );
 			$actual_sha = @hash_file( 'sha256', $path );
-			if ( false === $actual_bytes || (int) $actual_bytes !== $expected_bytes ) $blockers[] = 'build_provenance_package_file_bytes_mismatch';
+			clearstatcache( true, $path );
+			$after_bytes = @filesize( $path );
+			$after_mtime = @filemtime( $path );
+			$after_ctime = @filectime( $path );
+			$after_inode = @fileinode( $path );
+			if ( false === $before_bytes || (int) $before_bytes !== $expected_bytes ) $blockers[] = 'build_provenance_package_file_bytes_mismatch';
 			if ( false === $actual_sha || ! hash_equals( $expected_sha, strtolower( (string) $actual_sha ) ) ) $blockers[] = 'build_provenance_package_file_sha256_mismatch';
+			if ( false === $after_bytes || false === $before_mtime || false === $after_mtime || false === $before_ctime || false === $after_ctime || false === $before_inode || false === $after_inode
+				|| (int) $before_bytes !== (int) $after_bytes || (int) $before_mtime !== (int) $after_mtime || (int) $before_ctime !== (int) $after_ctime || (int) $before_inode !== (int) $after_inode ) {
+				$blockers[] = 'build_provenance_package_file_changed_during_hash';
+			}
+			$verified_stats[ $rel ] = array( 'bytes'=>(int) $after_bytes, 'mtime'=>(int) $after_mtime, 'ctime'=>(int) $after_ctime, 'inode'=>(int) $after_inode );
 			$declared[ $rel ] = true;
 			++$verified_files;
 			$total_bytes += max( 0, $expected_bytes );
@@ -509,6 +536,17 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$rel = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : '';
 				if ( '' === $rel || 'MAD4B-BUILD-PROVENANCE.json' === $rel ) continue;
 				$actual_files[ $rel ] = true;
+				if ( isset( $verified_stats[ $rel ] ) ) {
+					clearstatcache( true, $file->getPathname() );
+					$current = array(
+						'bytes'=>(int) @filesize( $file->getPathname() ),
+						'mtime'=>(int) @filemtime( $file->getPathname() ),
+						'ctime'=>(int) @filectime( $file->getPathname() ),
+						'inode'=>(int) @fileinode( $file->getPathname() ),
+					);
+					if ( $current !== $verified_stats[ $rel ] ) $blockers[] = 'build_provenance_package_file_changed_after_hash';
+				}
+				if ( microtime( true ) - $started > self::MAX_PROVENANCE_VERIFY_SECONDS ) { $blockers[] = 'build_provenance_verification_budget_exceeded'; break; }
 				if ( count( $actual_files ) > self::MAX_PROVENANCE_VERIFY_FILES ) { $blockers[] = 'build_provenance_actual_file_budget_exceeded'; break; }
 			}
 		} catch ( Exception $e ) {
@@ -722,16 +760,39 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				foreach ( $server->get_routes() as $route => $handlers ) {
 					if ( '' === $rest_pattern || 1 !== preg_match( $rest_pattern, (string) $route ) ) continue;
 					$methods = array();
+					$get_permissions = array();
+					$get_permission_missing = false;
+					$get_permission_public = false;
 					foreach ( (array) $handlers as $handler ) {
 						if ( ! is_array( $handler ) || empty( $handler['methods'] ) ) continue;
+						$handler_methods = array();
 						foreach ( (array) $handler['methods'] as $method => $enabled ) {
 							if ( is_int( $method ) ) $method = $enabled;
-							if ( $enabled ) $methods[] = strtoupper( (string) $method );
+							if ( $enabled ) {
+								$method = strtoupper( (string) $method );
+								$methods[] = $method;
+								$handler_methods[] = $method;
+							}
+						}
+						if ( in_array( 'GET', $handler_methods, true ) ) {
+							$has_permission = array_key_exists( 'permission_callback', $handler ) && null !== $handler['permission_callback'] && false !== $handler['permission_callback'] && '' !== $handler['permission_callback'];
+							$descriptor = $has_permission ? self::callback_descriptor( $handler['permission_callback'] ) : '';
+							if ( ! $has_permission || '' === $descriptor ) $get_permission_missing = true;
+							if ( '__return_true' === $descriptor ) $get_permission_public = true;
+							$get_permissions[] = '' !== $descriptor ? $descriptor : 'missing';
 						}
 					}
 					$methods = array_values( array_unique( $methods ) );
 					sort( $methods, SORT_STRING );
-					$routes[] = array( 'route' => (string) $route, 'methods' => $methods );
+					$get_permissions = array_values( array_unique( $get_permissions ) );
+					sort( $get_permissions, SORT_STRING );
+					$routes[] = array(
+						'route' => (string) $route,
+						'methods' => $methods,
+						'get_permission_callbacks' => $get_permissions,
+						'get_permission_missing' => $get_permission_missing,
+						'get_permission_public' => $get_permission_public,
+					);
 				}
 			}
 		}
@@ -866,6 +927,22 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return $out;
 	}
 
+	private static function route_security( array $runtime ) {
+		$out = array();
+		foreach ( isset( $runtime['rest_routes'] ) && is_array( $runtime['rest_routes'] ) ? $runtime['rest_routes'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['route'] ) ) continue;
+			$route = (string) $row['route'];
+			$callbacks = isset( $row['get_permission_callbacks'] ) && is_array( $row['get_permission_callbacks'] ) ? array_values( array_unique( array_map( 'strval', $row['get_permission_callbacks'] ) ) ) : array();
+			sort( $callbacks, SORT_STRING );
+			$out[ $route ] = array(
+				'callbacks' => $callbacks,
+				'missing' => ! empty( $row['get_permission_missing'] ),
+				'public' => ! empty( $row['get_permission_public'] ),
+			);
+		}
+		return $out;
+	}
+
 	private static function decision( $family, $state, $reason, array $extra = array() ) {
 		return array_merge( array( 'family' => $family, 'state' => $state, 'reason' => $reason ), $extra );
 	}
@@ -936,7 +1013,15 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			if ( ! is_array( $row ) || empty( $row['route'] ) ) continue;
 			$methods = isset( $row['methods'] ) && is_array( $row['methods'] ) ? array_values( array_unique( array_map( 'strtoupper', $row['methods'] ) ) ) : array();
 			sort( $methods, SORT_STRING );
-			$routes[] = array( 'route'=>(string) $row['route'], 'methods'=>$methods );
+			$permissions = isset( $row['get_permission_callbacks'] ) && is_array( $row['get_permission_callbacks'] ) ? array_values( array_unique( array_map( 'strval', $row['get_permission_callbacks'] ) ) ) : array();
+			sort( $permissions, SORT_STRING );
+			$routes[] = array(
+				'route'=>(string) $row['route'],
+				'methods'=>$methods,
+				'get_permission_callbacks'=>$permissions,
+				'get_permission_missing'=>! empty( $row['get_permission_missing'] ),
+				'get_permission_public'=>! empty( $row['get_permission_public'] ),
+			);
 		}
 		usort( $routes, static function ( $a, $b ) { return strcmp( (string) $a['route'], (string) $b['route'] ); } );
 
@@ -1015,6 +1100,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		}
 
 		$routes = self::route_methods( $runtime );
+		$route_security = self::route_security( $runtime );
 		$options = isset( $runtime['option_presence'] ) && is_array( $runtime['option_presence'] ) ? $runtime['option_presence'] : array();
 		$runtime_evidence_fingerprint = self::runtime_evidence_fingerprint( $runtime );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $runtime_evidence_fingerprint ) ) $evaluation_blockers[] = 'runtime_evidence_fingerprint_unavailable';
@@ -1055,14 +1141,25 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				case 'bounded_read_routes':
 					$required = isset( $rule['required_get_routes'] ) && is_array( $rule['required_get_routes'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $rule['required_get_routes'] ) ) ) : array();
 					$missing = array();
-					foreach ( $required as $route ) if ( ! isset( $routes[ $route ] ) || ! in_array( 'GET', $routes[ $route ], true ) ) $missing[] = $route;
+					$insecure = array();
+					$permission_evidence = array();
+					$require_non_public = ! empty( $rule['require_non_public_permissions'] );
+					foreach ( $required as $route ) {
+						if ( ! isset( $routes[ $route ] ) || ! in_array( 'GET', $routes[ $route ], true ) ) { $missing[] = $route; continue; }
+						$security = isset( $route_security[ $route ] ) && is_array( $route_security[ $route ] ) ? $route_security[ $route ] : array( 'callbacks'=>array(), 'missing'=>true, 'public'=>false );
+						$permission_evidence[ $route ] = $security;
+						if ( $require_non_public && ( ! empty( $security['missing'] ) || ! empty( $security['public'] ) || empty( $security['callbacks'] ) ) ) $insecure[] = $route;
+					}
+					ksort( $permission_evidence, SORT_STRING );
 					$extra = array_merge( $base_extra, array(
 						'missing_get_routes'=>$missing,
+						'insecure_get_routes'=>$insecure,
+						'route_permission_evidence'=>$permission_evidence,
 						'safe_now'=>isset( $rule['safe_now'] ) && is_array( $rule['safe_now'] ) ? array_values( $rule['safe_now'] ) : array(),
 						'blocked'=>isset( $rule['blocked'] ) && is_array( $rule['blocked'] ) ? array_values( $rule['blocked'] ) : array(),
 					) );
-					if ( count( $matches ) === count( $rows ) && empty( $missing ) ) $decisions[] = self::decision( $family, 'read_contract_candidate', 'exact_runtime_tree_and_required_get_routes_verified', $extra );
-					else $decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_or_required_get_routes_unverified', $extra );
+					if ( count( $matches ) === count( $rows ) && empty( $missing ) && empty( $insecure ) ) $decisions[] = self::decision( $family, 'read_contract_candidate', 'exact_runtime_tree_required_get_routes_and_permissions_verified', $extra );
+					else $decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_routes_or_permission_boundary_unverified', $extra );
 					break;
 
 				case 'redacted_status':
@@ -1071,7 +1168,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					$secret_ok = ! empty( $secret_keys );
 					foreach ( $secret_keys as $key ) if ( ! isset( $options[ $key ]['redacted'] ) || true !== $options[ $key ]['redacted'] ) $secret_ok = false;
 					$status_model = ! empty( $status_keys );
-					foreach ( $status_keys as $key ) if ( ! array_key_exists( $key, $options ) ) $status_model = false;
+					foreach ( $status_keys as $key ) {
+						if ( ! array_key_exists( $key, $options ) || empty( $options[ $key ]['exists'] ) ) $status_model = false;
+					}
 					$extra = array_merge( $base_extra, array(
 						'secret_redaction_verified'=>$secret_ok,
 						'status_model_verified'=>$status_model,
