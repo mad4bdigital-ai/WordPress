@@ -542,15 +542,34 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return self::$snapshot;
 	}
 
+	public static function decision_map() {
+		$snapshot = self::snapshot();
+		$evaluation = isset( $snapshot['evaluation'] ) && is_array( $snapshot['evaluation'] ) ? $snapshot['evaluation'] : array();
+		$map = array();
+		foreach ( isset( $evaluation['decisions'] ) && is_array( $evaluation['decisions'] ) ? $evaluation['decisions'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['family'] ) ) continue;
+			$map[ sanitize_key( (string) $row['family'] ) ] = $row;
+		}
+		ksort( $map, SORT_STRING );
+		return $map;
+	}
+
 	public static function summary() {
 		$snapshot = self::snapshot();
 		$evaluation = isset( $snapshot['evaluation'] ) && is_array( $snapshot['evaluation'] ) ? $snapshot['evaluation'] : array();
+		$repository = isset( $snapshot['repository_evidence'] ) && is_array( $snapshot['repository_evidence'] ) ? $snapshot['repository_evidence'] : array();
+		$counts = isset( $evaluation['counts'] ) && is_array( $evaluation['counts'] ) ? $evaluation['counts'] : array();
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => ! empty( $evaluation['ready'] ),
-			'repository_evidence_valid' => ! empty( $snapshot['repository_evidence']['valid'] ),
+			'repository_evidence_valid' => ! empty( $repository['valid'] ),
+			'evidence_integrity_bound' => ! empty( $repository['valid'] ) && ! empty( $repository['evidence_sha256'] ) && ! empty( $repository['build_fingerprint'] ) && ! empty( $repository['package_manifest_digest'] ),
+			'evidence_sha256' => isset( $repository['evidence_sha256'] ) ? $repository['evidence_sha256'] : '',
+			'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? $repository['build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? $repository['package_manifest_digest'] : '',
 			'promotion_authorized' => false,
-			'counts' => isset( $evaluation['counts'] ) ? $evaluation['counts'] : array(),
+			'counts' => $counts,
+			'unstable_family_count' => isset( $counts['runtime_evidence_unstable'] ) ? (int) $counts['runtime_evidence_unstable'] : 0,
 			'blockers' => isset( $evaluation['blockers'] ) ? $evaluation['blockers'] : array(),
 		);
 	}
