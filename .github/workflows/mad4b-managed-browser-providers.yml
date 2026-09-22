@@ -63,6 +63,7 @@ jobs:
         run: |
           node tools/browser-acceptance/test-provider-selection.mjs
           node tools/browser-acceptance/test-scheduler.mjs
+          node tools/browser-acceptance/test-network-policy.mjs
           node tools/browser-acceptance/test-mcp-bridge.mjs
           node tools/browser-acceptance/test-receipt.mjs
           node tools/browser-acceptance/test-evidence-envelope.mjs
@@ -70,6 +71,7 @@ jobs:
         run: |
           node --check tools/browser-acceptance/providers.mjs
           node --check tools/browser-acceptance/scheduler.mjs
+          node --check tools/browser-acceptance/network-policy.mjs
           node --check tools/browser-acceptance/mcp-bridge.mjs
           node --check tools/browser-acceptance/etg-driver.mjs
           node --check tools/browser-acceptance/run-etg-browser-acceptance.mjs
