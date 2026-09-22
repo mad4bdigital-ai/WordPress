@@ -37,6 +37,37 @@ $normalize = static function ( $value ) {
 	return strtolower( ltrim( str_replace( '\\', '/', (string) $value ), '/' ) );
 };
 
+$plugin_tree = static function ( $plugin_file ) {
+	$plugin_file = ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
+	$dirname = dirname( $plugin_file );
+	$root = '.' === $dirname ? WP_PLUGIN_DIR : WP_PLUGIN_DIR . '/' . $dirname;
+	if ( ! is_dir( $root ) ) return array( 'file_count' => 0, 'total_bytes' => 0, 'tree_sha256' => '' );
+
+	$rows = array();
+	$total = 0;
+	$iterator = new RecursiveIteratorIterator(
+		new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ),
+		RecursiveIteratorIterator::LEAVES_ONLY
+	);
+	foreach ( $iterator as $file ) {
+		if ( ! $file->isFile() || $file->isLink() ) continue;
+		$path = str_replace( '\\', '/', $file->getPathname() );
+		$base = rtrim( str_replace( '\\', '/', $root ), '/' ) . '/';
+		$relative = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path );
+		$size = (int) $file->getSize();
+		$digest = hash_file( 'sha256', $file->getPathname() );
+		if ( false === $digest ) continue;
+		$total += $size;
+		$rows[] = $relative . "\0" . $size . "\0" . $digest;
+	}
+	sort( $rows, SORT_STRING );
+	return array(
+		'file_count' => count( $rows ),
+		'total_bytes' => $total,
+		'tree_sha256' => hash( 'sha256', implode( "\n", $rows ) ),
+	);
+};
+
 $plugin_map = get_plugins();
 $active = (array) get_option( 'active_plugins', array() );
 $network_active = is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) : array();
@@ -58,6 +89,7 @@ foreach ( $targets as $family => $prefixes ) {
 			'name' => isset( $headers['Name'] ) ? (string) $headers['Name'] : '',
 			'version' => isset( $headers['Version'] ) ? (string) $headers['Version'] : '',
 			'active' => isset( $active_set[ $normalized ] ),
+			'plugin_tree' => $plugin_tree( $plugin_file ),
 		);
 	}
 	usort( $family_plugins[ $family ], static function ( $a, $b ) { return strcmp( $a['plugin_file'], $b['plugin_file'] ); } );
