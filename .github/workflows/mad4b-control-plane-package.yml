@@ -302,10 +302,15 @@ jobs:
 
           export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest"
           python3 - "$stage" "$version" <<'PY'
-          import json, os, sys
+          import hashlib, json, os, sys
           from pathlib import Path
           stage = Path(sys.argv[1])
           version = sys.argv[2]
+          config_root = stage / 'package' / 'mad4b-site-control-plane' / 'config'
+          policy_raw = (config_root / 'functional-gap-policy.json').read_bytes()
+          evidence_raw = (config_root / 'functional-gap-contract-evidence.generated.json').read_bytes()
+          policy = json.loads(policy_raw)
+          evidence = json.loads(evidence_raw)
           data = {
               'contract': 'mad4b.site-control-plane.general-distribution-kit.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
@@ -327,6 +332,15 @@ jobs:
                   'archive': 'mcp-adapter-0.6.1.zip',
                   'sha256': os.environ['ADAPTER_SHA'],
                   'official_release_sha256': '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676',
+              },
+              'functional_gap_zero_touch': {
+                  'contract': 'mad4b.functional-gap-zero-touch.v1',
+                  'policy_contract': policy.get('contract', ''),
+                  'policy_sha256': hashlib.sha256(policy_raw).hexdigest(),
+                  'evidence_contract': evidence.get('contract', ''),
+                  'evidence_sha256': hashlib.sha256(evidence_raw).hexdigest(),
+                  'promotion_authorized': False,
+                  'runtime_shell_required': False,
               },
               'install_order': ['mcp-adapter-0.6.1.zip', f'mad4b-site-control-plane-{version}.zip'],
               'reviewed_invariants': {
@@ -495,6 +509,9 @@ jobs:
           grep -Fq '"explicit_site_profile_enrollment_required": true' "$stage/install-manifest.json"
           grep -Fq '"functional_gap_repository_evidence_embedded": true' "$stage/install-manifest.json"
           grep -Fq '"functional_gap_policy_bound_to_build_provenance": true' "$stage/install-manifest.json"
+          grep -Fq '"contract": "mad4b.functional-gap-zero-touch.v1"' "$stage/install-manifest.json"
+          grep -Fq '"promotion_authorized": false' "$stage/install-manifest.json"
+          grep -Fq '"runtime_shell_required": false' "$stage/install-manifest.json"
           grep -Fq '"functional_gap_runtime_evidence_requires_no_shell": true' "$stage/install-manifest.json"
           grep -Fq '"all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write": true' "$stage/install-manifest.json"
           grep -Fq '"provider_uncertified_write_actions_excluded_from_governed_write_surfaces": true' "$stage/install-manifest.json"
