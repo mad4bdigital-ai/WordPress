@@ -164,11 +164,21 @@ namespace {
 	$performance = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
 	mad4b_assert( ! empty( $performance['ready'] ), 'Current-build front-end performance sample must become ready.' );
 	mad4b_assert( 'ready' === (string) $performance['state'], 'Current-build front-end performance state must be ready.' );
-	mad4b_assert( ! empty( $performance['baseline_only'] ) && empty( $performance['budget_evaluated'] ), 'Front-end performance evidence must remain a baseline, not a synthetic budget verdict.' );
+	mad4b_assert( empty( $performance['baseline_only'] ) && ! empty( $performance['budget_evaluated'] ) && ! empty( $performance['budget_pass'] ), 'Front-end performance evidence must evaluate and pass the bounded regression budget.' );
 	mad4b_assert( empty( $performance['ttfb_claimed'] ), 'Server elapsed evidence must not self-claim TTFB.' );
 	mad4b_assert( 125.0 === (float) $performance['metrics']['server_elapsed_ms'], 'Front-end server elapsed sample drifted.' );
 	mad4b_assert( 37 === (int) $performance['metrics']['db_queries'], 'Front-end DB query sample drifted.' );
 	mad4b_assert( 16777216 === (int) $performance['metrics']['peak_memory_bytes'], 'Front-end peak memory sample drifted.' );
+
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 5000.0;
+	$telemetry_property = $observer_reflection->getProperty( 'telemetry' );
+	$telemetry_property->setAccessible( true );
+	$telemetry_property->setValue( null, null );
+	$over_budget = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( empty( $over_budget['ready'] ) && 'performance_budget_exceeded' === (string) $over_budget['state'], 'Over-budget front-end performance must fail closed.' );
+	mad4b_assert( in_array( 'server_elapsed_ms_budget_exceeded', (array) $over_budget['budget_failures'], true ), 'Performance budget failure reason must identify server elapsed regression.' );
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 125.0;
+	$telemetry_property->setValue( null, null );
 
 	$match = MAD4B_SCP_Live_Acceptance_Observer::snapshot_verify( array( 'client_snapshot_token' => 'sha256:' . str_repeat( 'a', 64 ) ) );
 	mad4b_assert( ! empty( $match['exact_match'] ), 'Matching snapshot token must compare true.' );
