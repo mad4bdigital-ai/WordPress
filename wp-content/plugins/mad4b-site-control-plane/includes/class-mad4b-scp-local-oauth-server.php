@@ -48,6 +48,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		add_action( 'init', array( __CLASS__, 'ensure_runtime' ), 1 );
 		add_action( 'parse_request', array( __CLASS__, 'serve_protocol_paths' ), -10 );
 		add_filter( 'pre_http_request', array( __CLASS__, 'intercept_local_discovery' ), 1, 3 );
+		add_action( 'wp_ajax_mad4b_oauth_grant_projection', array( __CLASS__, 'ajax_grant_projection' ) );
 	}
 
 	public static function ensure_runtime() {
@@ -361,16 +362,27 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		usort( $grants, static function ( $a, $b ) {
 			return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] );
 		} );
+
+		$catalog = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::external_write_tools() : array();
+		$runtime = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
+		$blocked = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
 		$binding = isset( $plan['candidate_binding'] ) && is_array( $plan['candidate_binding'] ) ? $plan['candidate_binding'] : array();
 		$missing = isset( $plan['exact_grants_missing_count'] ) ? (int) $plan['exact_grants_missing_count'] : 0;
 		$stale = isset( $plan['stale_allow_grants_count'] ) ? (int) $plan['stale_allow_grants_count'] : 0;
 		$wildcards = isset( $plan['wildcard_grants'] ) ? (int) $plan['wildcard_grants'] : 0;
-		$write_tool_count = isset( $plan['write_tool_count'] ) ? (int) $plan['write_tool_count'] : 0;
+		$write_tool_count = isset( $plan['write_tool_count'] ) ? (int) $plan['write_tool_count'] : count( $runtime );
 		$binding_required = ! empty( $binding['required'] );
 		$binding_match = ! $binding_required || ! empty( $binding['match'] );
-		$ready = ! empty( $plan['current_ready'] ) && $write_tool_count > 0 && count( $grants ) === $write_tool_count && 0 === $missing && 0 === $stale && 0 === $wildcards && $binding_match;
+		$blocking_conditions = array();
+		if ( $missing > 0 ) $blocking_conditions[] = array( 'code' => 'exact_grants_missing', 'count' => $missing );
+		if ( $stale > 0 ) $blocking_conditions[] = array( 'code' => 'stale_allow_grants', 'count' => $stale );
+		if ( $wildcards > 0 ) $blocking_conditions[] = array( 'code' => 'wildcard_grants', 'count' => $wildcards );
+		if ( ! $binding_match ) $blocking_conditions[] = array( 'code' => 'candidate_binding_mismatch', 'count' => 1 );
+		if ( empty( $plan['current_ready'] ) && empty( $blocking_conditions ) ) $blocking_conditions[] = array( 'code' => 'write_authority_not_ready', 'count' => 1 );
+		$ready = ! empty( $plan['current_ready'] ) && $write_tool_count > 0 && count( $grants ) === $write_tool_count && empty( $blocking_conditions );
+
 		return array(
-			'contract' => 'mad4b.oauth-consent-grant-projection.v1',
+			'contract' => 'mad4b.oauth-consent-grant-projection.v2',
 			'read_only' => true,
 			'mutation_performed' => false,
 			'oauth_scope_changed' => false,
@@ -378,7 +390,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'eligible' => ! empty( $plan['eligible'] ),
 			'current_ready' => ! empty( $plan['current_ready'] ),
 			'ready' => $ready,
+			'state' => $ready ? 'ready' : ( ! empty( $blocking_conditions ) ? 'authority_blocked' : 'read_only_only' ),
 			'environment' => isset( $plan['environment'] ) ? (string) $plan['environment'] : '',
+			'catalog_write_tool_count' => count( array_values( array_unique( array_map( 'strval', is_array( $catalog ) ? $catalog : array() ) ) ) ),
+			'runtime_eligible_write_tool_count' => count( array_values( array_unique( array_map( 'strval', is_array( $runtime ) ? $runtime : array() ) ) ) ),
+			'provider_gated_write_tool_count' => count( is_array( $blocked ) ? $blocked : array() ),
 			'write_tool_count' => $write_tool_count,
 			'exact_grants_existing' => count( $grants ),
 			'exact_grants_missing_count' => $missing,
@@ -387,8 +403,33 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'candidate_binding_required' => $binding_required,
 			'candidate_binding_match' => $binding_match,
 			'normal_remote_writes_require_exact_approval' => true,
+			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
+			'blocked_catalog_abilities' => array_values( is_array( $blocked ) ? $blocked : array() ),
 		);
+	}
+
+	public static function consent_user_identity( $user_id ) {
+		$user_id = (int) $user_id;
+		$user = $user_id > 0 && function_exists( 'get_userdata' ) ? get_userdata( $user_id ) : false;
+		$display = $user && isset( $user->display_name ) && '' !== trim( (string) $user->display_name ) ? (string) $user->display_name : ( $user && isset( $user->user_login ) ? (string) $user->user_login : '' );
+		return array(
+			'contract' => 'mad4b.oauth-consent-user-identity.v1',
+			'user_id' => $user_id,
+			'display_name' => $display,
+			'display_label' => '' !== $display ? $display : __( 'WordPress account', 'mad4b-site-control-plane' ),
+			'id_exposed_in_primary_ui' => false,
+		);
+	}
+
+	public static function ajax_grant_projection() {
+		if ( ! is_user_logged_in() ) wp_send_json_error( array( 'code' => 'authentication_required' ), 401 );
+		check_ajax_referer( 'mad4b_oauth_grant_projection', 'nonce' );
+		wp_send_json_success( array(
+			'projection' => self::consent_grant_projection(),
+			'user' => self::consent_user_identity( get_current_user_id() ),
+			'observed_at' => gmdate( 'c' ),
+		) );
 	}
 
 	private static function render_consent( array $validated, $user_id ) {
@@ -397,7 +438,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		status_header( 200 );
 		header( 'Content-Type: text/html; charset=utf-8' );
 		header( 'X-Frame-Options: DENY' );
-		header( "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" );
+		$script_nonce = rtrim( strtr( base64_encode( random_bytes( 18 ) ), '+/', '-_' ), '=' );
+		header( "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-" . $script_nonce . "'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" );
 		header( 'Referrer-Policy: no-referrer' );
 		header( 'X-Content-Type-Options: nosniff' );
 		$hidden = array(
@@ -414,30 +456,39 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<main style="max-width:720px;margin:40px auto;font-family:system-ui,sans-serif;padding:0 20px">';
 		echo '<h1>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html__( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<p>' . esc_html__( 'Signed in WordPress user:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( (string) $user_id ) . '</code></p>';
-		echo '<p>' . esc_html__( 'Scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
+		$user_identity = self::consent_user_identity( $user_id );
+		echo '<p>' . esc_html__( 'Signed in as:', 'mad4b-site-control-plane' ) . ' <strong id="mad4b-oauth-user-label">' . esc_html( (string) $user_identity['display_label'] ) . '</strong></p>';
+		echo '<p>' . esc_html__( 'OAuth scopes:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( implode( ' ', $validated['scopes'] ) ) . '</code></p>';
 		$grant_projection = self::consent_grant_projection();
 		$grant_count = isset( $grant_projection['exact_grants_existing'] ) ? (int) $grant_projection['exact_grants_existing'] : 0;
 		$grant_total = isset( $grant_projection['write_tool_count'] ) ? (int) $grant_projection['write_tool_count'] : 0;
-		echo '<section class="mad4b-live-grants" aria-label="' . esc_attr__( 'Governed write grants', 'mad4b-site-control-plane' ) . '">';
-		echo '<h2>' . esc_html__( 'Governed write grants', 'mad4b-site-control-plane' ) . '</h2>';
-		if ( ! empty( $grant_projection['eligible'] ) ) {
-			echo '<p><strong>' . esc_html( sprintf( '%d/%d', $grant_count, $grant_total ) ) . '</strong> ' . esc_html__( 'exact runtime grants are currently present.', 'mad4b-site-control-plane' ) . '</p>';
-			echo '<p class="mad4b-grant-note">' . esc_html__( 'These grants are live governance state, not OAuth scopes. Approving this connection does not create or widen them; each normal remote write still requires the exact grant and a one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
-			if ( ! empty( $grant_projection['grants'] ) ) {
-				echo '<details><summary>' . esc_html__( 'Show exact granted abilities', 'mad4b-site-control-plane' ) . '</summary><ul>';
-				foreach ( $grant_projection['grants'] as $grant ) {
-					echo '<li><code>' . esc_html( (string) $grant['ability'] ) . '</code> <span>· ' . esc_html( (string) $grant['provider'] ) . '</span></li>';
-				}
-				echo '</ul></details>';
-			}
-			if ( ! empty( $grant_projection['exact_grants_missing_count'] ) || ! empty( $grant_projection['stale_allow_grants_count'] ) || ! empty( $grant_projection['wildcard_grants'] ) || empty( $grant_projection['candidate_binding_match'] ) ) {
-				echo '<p class="mad4b-grant-warning">' . esc_html__( 'Write governance is not fully converged; execution remains fail-closed until the missing/stale/binding conditions are resolved.', 'mad4b-site-control-plane' ) . '</p>';
-			}
-		} else {
-			echo '<p>' . esc_html__( 'Governed write authority is not enabled for this site profile. This OAuth approval remains read-scope authentication only.', 'mad4b-site-control-plane' ) . '</p>';
+		$catalog_count = isset( $grant_projection['catalog_write_tool_count'] ) ? (int) $grant_projection['catalog_write_tool_count'] : 0;
+		$runtime_count = isset( $grant_projection['runtime_eligible_write_tool_count'] ) ? (int) $grant_projection['runtime_eligible_write_tool_count'] : $grant_total;
+		$blocked_count = isset( $grant_projection['provider_gated_write_tool_count'] ) ? (int) $grant_projection['provider_gated_write_tool_count'] : 0;
+		echo '<section class="mad4b-live-grants" id="mad4b-live-authority" aria-label="' . esc_attr__( 'Live governed write authority', 'mad4b-site-control-plane' ) . '">';
+		echo '<div class="mad4b-grant-head"><h2>' . esc_html__( 'Live governed write authority', 'mad4b-site-control-plane' ) . '</h2><span id="mad4b-grant-state" class="mad4b-state">' . esc_html( ! empty( $grant_projection['ready'] ) ? __( 'Converged', 'mad4b-site-control-plane' ) : __( 'Fail-closed', 'mad4b-site-control-plane' ) ) . '</span></div>';
+		echo '<div class="mad4b-grant-metrics">';
+		echo '<div><strong id="mad4b-exact-count">' . esc_html( sprintf( '%d/%d', $grant_count, $runtime_count ) ) . '</strong><span>' . esc_html__( 'exact / runtime eligible', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-catalog-count">' . esc_html( (string) $catalog_count ) . '</strong><span>' . esc_html__( 'governed catalog', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-blocked-count">' . esc_html( (string) $blocked_count ) . '</strong><span>' . esc_html__( 'provider gated', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '</div>';
+		echo '<p class="mad4b-grant-note">' . esc_html__( 'This panel is live governance evidence, not an OAuth permission request. OAuth approval cannot create or widen write grants. Every normal remote write still requires a runtime-eligible ability, its exact grant, and a one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div id="mad4b-grant-blockers" class="mad4b-grant-blockers" aria-live="polite"></div>';
+		echo '<details><summary>' . esc_html__( 'Exact granted abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-grant-list">';
+		foreach ( (array) $grant_projection['grants'] as $grant ) echo '<li><code>' . esc_html( (string) $grant['ability'] ) . '</code> <span>· ' . esc_html( (string) $grant['provider'] ) . '</span></li>';
+		echo '</ul></details>';
+		echo '<details><summary>' . esc_html__( 'Provider-gated catalog abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-blocked-list">';
+		foreach ( (array) $grant_projection['blocked_catalog_abilities'] as $entry ) {
+			$ability = isset( $entry['ability'] ) ? (string) $entry['ability'] : '';
+			$provider = isset( $entry['provider'] ) ? (string) $entry['provider'] : '';
+			$reason = isset( $entry['reason'] ) ? (string) $entry['reason'] : 'provider_gated';
+			echo '<li><code>' . esc_html( $ability ) . '</code> <span>· ' . esc_html( $provider . ' · ' . $reason ) . '</span></li>';
 		}
+		echo '</ul></details>';
+		echo '<p class="mad4b-live-stamp">' . esc_html__( 'Auto-refreshing read-only authority state every 5 seconds.', 'mad4b-site-control-plane' ) . ' <span id="mad4b-observed-at"></span></p>';
 		echo '</section>';
+		$projection_url = add_query_arg( array( 'action' => 'mad4b_oauth_grant_projection', 'nonce' => wp_create_nonce( 'mad4b_oauth_grant_projection' ) ), admin_url( 'admin-ajax.php' ) );
+		echo '<script nonce="' . esc_attr( $script_nonce ) . '">(function(){const u=' . wp_json_encode( $projection_url ) . ';const q=(s)=>document.querySelector(s);const clear=(el)=>{while(el&&el.firstChild)el.removeChild(el.firstChild)};const li=(a,p,r)=>{const n=document.createElement("li"),c=document.createElement("code"),s=document.createElement("span");c.textContent=a||"";s.textContent=" · "+(p||"")+(r?" · "+r:"");n.append(c,s);return n};const blockers=(p)=>{const el=q("#mad4b-grant-blockers");clear(el);const b=Array.isArray(p.blocking_conditions)?p.blocking_conditions:[];if(!b.length){el.className="mad4b-grant-blockers mad4b-ok";el.textContent=p.ready?"Write authority is fully converged for the runtime-eligible surface.":"No grant drift detected; write authority remains unavailable for another governed condition.";return}el.className="mad4b-grant-blockers mad4b-warn";const ul=document.createElement("ul");b.forEach(x=>{const n=document.createElement("li");n.textContent=(x.code||"governance_blocker")+(x.count?" ("+x.count+")":"");ul.appendChild(n)});el.append("Execution remains fail-closed: ",ul)};const paint=(d)=>{if(!d||!d.projection)return;const p=d.projection;q("#mad4b-exact-count").textContent=(p.exact_grants_existing||0)+"/"+(p.runtime_eligible_write_tool_count||0);q("#mad4b-catalog-count").textContent=p.catalog_write_tool_count||0;q("#mad4b-blocked-count").textContent=p.provider_gated_write_tool_count||0;const st=q("#mad4b-grant-state");st.textContent=p.ready?"Converged":"Fail-closed";st.className="mad4b-state "+(p.ready?"mad4b-ok-state":"mad4b-block-state");blockers(p);const gl=q("#mad4b-grant-list");clear(gl);(p.grants||[]).forEach(x=>gl.appendChild(li(x.ability,x.provider,"")));const bl=q("#mad4b-blocked-list");clear(bl);(p.blocked_catalog_abilities||[]).forEach(x=>bl.appendChild(li(x.ability,x.provider,x.reason||"provider_gated")));if(d.user&&d.user.display_label)q("#mad4b-oauth-user-label").textContent=d.user.display_label;if(d.observed_at)q("#mad4b-observed-at").textContent=d.observed_at};const run=()=>fetch(u,{credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json"}}).then(r=>r.ok?r.json():Promise.reject()).then(x=>{if(x&&x.success&&x.data)paint(x.data)}).catch(()=>{});run();setInterval(run,5000)})();</script>';
 		echo '<form method="post" action="' . esc_url( self::authorize_url() ) . '">';
 		foreach ( $hidden as $name => $value ) echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '">';
 		wp_nonce_field( 'mad4b_local_oauth_consent', '_mad4b_oauth_nonce' );
