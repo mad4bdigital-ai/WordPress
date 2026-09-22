@@ -54,6 +54,19 @@ def remove_route(runtime, route):
 def wpl_redaction_fail(runtime):
     runtime.setdefault('option_presence', {}).setdefault('wpl_access_token', {})['redacted'] = False
 
+def make_route_public(runtime, route):
+    for row in runtime.get('rest_routes', []):
+        if row.get('route') == route:
+            row['get_permission_callbacks'] = ['__return_true']
+            row['get_permission_missing'] = False
+            row['get_permission_public'] = True
+            return
+    raise SystemExit(f'route fixture missing: {route}')
+
+def make_status_option_missing(runtime, key):
+    row = runtime.setdefault('option_presence', {}).setdefault(key, {})
+    row['exists'] = False
+
 def cases(base):
     out = []
 
@@ -75,9 +88,17 @@ def cases(base):
     set_tree_drift(bulk_drift, 'bulk-taxonomy-editor', 'a')
     out.append(('bulk-tree-drift', bulk_drift, {'bulk-taxonomy-editor': 'contract_discovery_required'}))
 
+    bulk_public = copy.deepcopy(base)
+    make_route_public(bulk_public, '/bulk-taxonomy-editor/v1/posts')
+    out.append(('bulk-public-permission', bulk_public, {'bulk-taxonomy-editor': 'contract_discovery_required'}))
+
     wpl_redaction = copy.deepcopy(base)
     wpl_redaction_fail(wpl_redaction)
     out.append(('wpl-redaction-failure', wpl_redaction, {'wpl-client': 'contract_discovery_required'}))
+
+    wpl_status_missing = copy.deepcopy(base)
+    make_status_option_missing(wpl_status_missing, 'wpl_serial_verified')
+    out.append(('wpl-status-option-missing', wpl_status_missing, {'wpl-client': 'contract_discovery_required'}))
 
     rank_drift = copy.deepcopy(base)
     set_tree_drift(rank_drift, 'rank-math', 'b')
