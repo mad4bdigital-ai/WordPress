@@ -625,6 +625,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$counts = isset( $evaluation['counts'] ) && is_array( $evaluation['counts'] ) ? $evaluation['counts'] : array();
 		return array(
 			'contract' => self::CONTRACT,
+			'snapshot_identity_sha256' => isset( $snapshot['snapshot_identity_sha256'] ) ? $snapshot['snapshot_identity_sha256'] : '',
 			'ready' => ! empty( $evaluation['ready'] ),
 			'repository_evidence_valid' => ! empty( $repository['valid'] ),
 			'evidence_integrity_bound' => ! empty( $repository['valid'] ) && ! empty( $repository['evidence_sha256'] ) && ! empty( $repository['build_fingerprint'] ) && ! empty( $repository['package_manifest_digest'] ),
