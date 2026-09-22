@@ -120,6 +120,10 @@ $normalize_decisions = static function ( $rows ) use ( $semantic_normalize ) {
 			'runtime_versions' => isset( $row['runtime_versions'] ) && is_array( $row['runtime_versions'] ) ? array_values( $row['runtime_versions'] ) : array(),
 			'runtime_tree_evidence' => isset( $row['runtime_tree_evidence'] ) && is_array( $row['runtime_tree_evidence'] ) ? $row['runtime_tree_evidence'] : array(),
 			'exact_tree_matches' => isset( $row['exact_tree_matches'] ) && is_array( $row['exact_tree_matches'] ) ? $row['exact_tree_matches'] : array(),
+			'missing_get_routes' => isset( $row['missing_get_routes'] ) && is_array( $row['missing_get_routes'] ) ? array_values( $row['missing_get_routes'] ) : array(),
+			'insecure_get_routes' => isset( $row['insecure_get_routes'] ) && is_array( $row['insecure_get_routes'] ) ? array_values( $row['insecure_get_routes'] ) : array(),
+			'permission_callback_mismatch' => isset( $row['permission_callback_mismatch'] ) && is_array( $row['permission_callback_mismatch'] ) ? array_values( $row['permission_callback_mismatch'] ) : array(),
+			'route_permission_evidence' => isset( $row['route_permission_evidence'] ) && is_array( $row['route_permission_evidence'] ) ? $row['route_permission_evidence'] : array(),
 		) );
 	}
 	ksort( $out, SORT_STRING );
