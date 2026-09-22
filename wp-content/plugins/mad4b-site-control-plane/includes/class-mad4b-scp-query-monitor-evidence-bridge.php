@@ -72,8 +72,8 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
 			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$file_mods_allowed = ! ( defined( 'DISALLOW_FILE_MODS' ) && DISALLOW_FILE_MODS );
-		$symlink_available = function_exists( 'symlink' );
-		$loader_available = function_exists( 'fopen' ) && function_exists( 'fwrite' );
+		$symlink_available = function_exists( 'symlink' ) && ( ! function_exists( 'apply_filters' ) || (bool) apply_filters( 'mad4b_qm_symlink_available', true ) );
+		$loader_available = function_exists( 'fopen' ) && function_exists( 'fwrite' ) && ( ! function_exists( 'apply_filters' ) || (bool) apply_filters( 'mad4b_qm_bounded_loader_available', true ) );
 		$writable = defined( 'WP_CONTENT_DIR' ) && is_dir( WP_CONTENT_DIR ) && is_writable( WP_CONTENT_DIR );
 		$ready = class_exists( 'QM_DB', false );
 		$bootstrap_available = $symlink_available || $loader_available;
