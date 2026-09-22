@@ -21,6 +21,10 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 
 	private static $booted = false;
 	private static $captured = false;
+	private static $request_sample_id = '';
+	private static $last_capture_telemetry = null;
+	private static $last_capture_build = '';
+	private static $last_capture_class = '';
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
@@ -39,6 +43,10 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		// overwritten later by the legacy shutdown flush.
 		remove_action( 'shutdown', array( 'MAD4B_SCP_Live_Acceptance_Observer', 'flush_observation' ), PHP_INT_MAX );
 		add_action( 'shutdown', array( __CLASS__, 'capture_and_flush' ), 8 );
+		// Query Monitor's HTML dispatcher processes all collectors on shutdown priority 9
+		// before applying qm/outputter/html. Complete only the HTTP profile there so
+		// MAD4B never forces QM_Collectors::process() or changes Query Monitor lifecycle.
+		add_filter( 'qm/outputter/html', array( __CLASS__, 'capture_processed_http_profile' ), PHP_INT_MAX, 2 );
 		add_action( 'admin_init', array( __CLASS__, 'maybe_enable_db_attribution' ), 1 );
 	}
 
@@ -198,6 +206,9 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$telemetry['performance']['samples'][] = $sample;
 		$telemetry['performance']['samples'] = array_slice( $telemetry['performance']['samples'], -32 );
 		$telemetry['performance']['last_by_class'][ $class ] = $sample;
+		self::$last_capture_telemetry = $telemetry;
+		self::$last_capture_build = $build;
+		self::$last_capture_class = $class;
 		if ( 'frontend' === $class ) $telemetry['performance']['frontend_observed'] = true;
 		if ( 'rest' === $class ) $telemetry['performance']['rest_observed'] = true;
 
@@ -371,9 +382,10 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'server_elapsed_ms' => round( $elapsed, 3 ),
 			'db_queries' => $queries,
 			'peak_memory_bytes' => $peak,
+			'sample_id' => self::request_sample_id(),
 			'current_memory_bytes' => $current_memory,
 			'db_profile' => self::query_performance_profile(),
-			'http_api_profile' => self::http_api_profile(),
+			'http_api_profile' => self::empty_http_api_profile(),
 			'observed_at' => gmdate( 'Y-m-d H:i:s' ),
 		);
 	}
@@ -519,15 +531,21 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	}
 
 
-	/** @internal Pure runtime seam for bounded HTTP API profile tests. */
-	public static function http_api_profile_for_test() {
-		return self::http_api_profile();
+
+	private static function request_sample_id() {
+		if ( '' !== self::$request_sample_id ) return self::$request_sample_id;
+		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) && is_numeric( $_SERVER['REQUEST_TIME_FLOAT'] ) ? sprintf( '%.6F', (float) $_SERVER['REQUEST_TIME_FLOAT'] ) : '0';
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+		$pid = function_exists( 'getmypid' ) ? (string) getmypid() : '0';
+		self::$request_sample_id = hash( 'sha256', $started . "\0" . $pid . "\0" . $uri );
+		return self::$request_sample_id;
 	}
 
-	private static function http_api_profile() {
-		$profile = array(
+	private static function empty_http_api_profile() {
+		return array(
 			'contract' => 'mad4b.http-api-performance-profile.v1',
 			'available' => false,
+			'state' => 'awaiting_query_monitor_collector_processing',
 			'request_count' => 0,
 			'total_time_ms' => 0.0,
 			'error_count' => 0,
@@ -543,6 +561,52 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'response_headers_returned' => false,
 			'response_bodies_returned' => false,
 		);
+	}
+
+	public static function capture_processed_http_profile( $outputters, $collectors = null ) {
+		if ( ! is_array( self::$last_capture_telemetry ) || '' === self::$last_capture_build || '' === self::$last_capture_class ) return $outputters;
+		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed() ) return $outputters;
+		$profile = self::http_api_profile();
+		if ( empty( $profile['available'] ) ) return $outputters;
+
+		$telemetry = self::$last_capture_telemetry;
+		$sample_id = self::request_sample_id();
+		$updated = false;
+		if ( isset( $telemetry['performance']['samples'] ) && is_array( $telemetry['performance']['samples'] ) ) {
+			for ( $i = count( $telemetry['performance']['samples'] ) - 1; $i >= 0; --$i ) {
+				$sample = $telemetry['performance']['samples'][ $i ];
+				if ( ! is_array( $sample ) || ! isset( $sample['sample_id'] ) || ! hash_equals( $sample_id, (string) $sample['sample_id'] ) ) continue;
+				$telemetry['performance']['samples'][ $i ]['http_api_profile'] = $profile;
+				$updated = true;
+				break;
+			}
+		}
+		$class = self::$last_capture_class;
+		if ( isset( $telemetry['performance']['last_by_class'][ $class ] )
+			&& is_array( $telemetry['performance']['last_by_class'][ $class ] )
+			&& isset( $telemetry['performance']['last_by_class'][ $class ]['sample_id'] )
+			&& hash_equals( $sample_id, (string) $telemetry['performance']['last_by_class'][ $class ]['sample_id'] ) ) {
+			$telemetry['performance']['last_by_class'][ $class ]['http_api_profile'] = $profile;
+			$updated = true;
+		}
+		if ( $updated ) {
+			$telemetry['performance']['last_http_api_profile'] = $profile;
+			$telemetry['performance']['last_http_api_profile_sample_id'] = $sample_id;
+			$telemetry['performance']['last_http_api_profile_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+			update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, $telemetry, false );
+			self::$last_capture_telemetry = $telemetry;
+		}
+		return $outputters;
+	}
+
+	/** @internal Pure runtime seam for bounded HTTP API profile tests. */
+	public static function http_api_profile_for_test() {
+		return self::http_api_profile();
+	}
+
+	private static function http_api_profile() {
+		$profile = self::empty_http_api_profile();
+		$profile['state'] = 'query_monitor_http_collector_unavailable';
 		if ( ! defined( 'QM_VERSION' ) || ! class_exists( 'QM_Collectors' ) || ! method_exists( 'QM_Collectors', 'get' ) ) return $profile;
 		$collector = QM_Collectors::get( 'http' );
 		if ( ! is_object( $collector ) || ! method_exists( $collector, 'get_data' ) ) return $profile;
@@ -652,6 +716,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		unset( $bucket );
 
 		$profile['available'] = true;
+		$profile['state'] = 'ready';
 		$profile['request_count'] = count( $calls );
 		$profile['total_time_ms'] = round( $total_ms, 3 );
 		$profile['error_count'] = $error_count;
