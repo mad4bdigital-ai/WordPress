@@ -841,17 +841,22 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 		$options = array();
 		foreach ( $option_candidates as $key ) {
-			$value = get_option( $key, null );
-			$row = array( 'exists' => null !== $value );
-			if ( '' !== $secret_pattern && 1 === preg_match( $secret_pattern, $key ) ) {
-				$row['redacted'] = true;
-				$row['configured'] = null !== $value && '' !== (string) $value;
-			} else {
-				$row['redacted'] = false;
-				$row['type'] = gettype( $value );
-				if ( is_array( $value ) ) $row['item_count'] = count( $value );
-				elseif ( is_scalar( $value ) || null === $value ) $row['empty'] = '' === (string) $value;
+			$is_secret = '' !== $secret_pattern && 1 === preg_match( $secret_pattern, $key );
+			if ( $is_secret ) {
+				$options[ $key ] = array(
+					'exists' => null,
+					'redacted' => true,
+					'configured' => null,
+					'value_read' => false,
+					'probe' => 'omitted_secret_value',
+				);
+				continue;
 			}
+			$value = get_option( $key, null );
+			$row = array( 'exists' => null !== $value, 'redacted' => false, 'value_read' => true );
+			$row['type'] = gettype( $value );
+			if ( is_array( $value ) ) $row['item_count'] = count( $value );
+			elseif ( is_scalar( $value ) || null === $value ) $row['empty'] = '' === (string) $value;
 			$options[ $key ] = $row;
 		}
 
@@ -893,6 +898,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				'mutation_performed' => false,
 				'remote_request_performed' => false,
 				'secret_values_returned' => false,
+				'secret_option_values_read' => false,
 				'raw_sql_performed' => false,
 			),
 		);
@@ -1197,7 +1203,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					$secret_keys = isset( $rule['redacted_secret_option_keys'] ) && is_array( $rule['redacted_secret_option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $rule['redacted_secret_option_keys'] ) ) ) : array();
 					$status_keys = isset( $rule['required_status_option_keys'] ) && is_array( $rule['required_status_option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $rule['required_status_option_keys'] ) ) ) : array();
 					$secret_ok = ! empty( $secret_keys );
-					foreach ( $secret_keys as $key ) if ( ! isset( $options[ $key ]['redacted'] ) || true !== $options[ $key ]['redacted'] ) $secret_ok = false;
+					foreach ( $secret_keys as $key ) {
+						if ( ! isset( $options[ $key ] ) || true !== ( $options[ $key ]['redacted'] ?? false ) || false !== ( $options[ $key ]['value_read'] ?? null ) || 'omitted_secret_value' !== (string) ( $options[ $key ]['probe'] ?? '' ) ) $secret_ok = false;
+					}
 					$status_model = ! empty( $status_keys );
 					foreach ( $status_keys as $key ) {
 						if ( ! array_key_exists( $key, $options ) || empty( $options[ $key ]['exists'] ) ) $status_model = false;
@@ -1208,7 +1216,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 						'safe_now'=>isset( $rule['safe_now'] ) && is_array( $rule['safe_now'] ) ? array_values( $rule['safe_now'] ) : array(),
 						'blocked'=>isset( $rule['blocked'] ) && is_array( $rule['blocked'] ) ? array_values( $rule['blocked'] ) : array(),
 					) );
-					if ( count( $matches ) === count( $rows ) && $secret_ok && $status_model ) $decisions[] = self::decision( $family, 'redacted_read_contract_candidate', 'exact_runtime_tree_and_secret_redaction_verified', $extra );
+					if ( count( $matches ) === count( $rows ) && $secret_ok && $status_model ) $decisions[] = self::decision( $family, 'redacted_read_contract_candidate', 'exact_runtime_tree_and_secret_values_unread', $extra );
 					else $decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_or_redacted_status_model_unverified', $extra );
 					break;
 
