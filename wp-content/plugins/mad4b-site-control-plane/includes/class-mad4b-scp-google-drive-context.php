@@ -2891,41 +2891,46 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return serialize( $left ) === serialize( $right );
 	}
 
-	private static function clear_option_read_cache( $name ) {
+	private static function clear_option_read_cache( $name, $aggressive = false ) {
 		if ( ! function_exists( 'wp_cache_delete' ) ) return;
 		wp_cache_delete( $name, 'options' );
 		wp_cache_delete( 'notoptions', 'options' );
 		wp_cache_delete( 'alloptions', 'options' );
+
+		// Some persistent-cache drop-ins can retain a stale negative index even
+		// after point deletion. Repair only the Options cache group and never
+		// flush unrelated application caches.
+		if ( $aggressive && function_exists( 'wp_cache_flush_group' ) ) {
+			wp_cache_flush_group( 'options' );
+		}
 	}
 
 	private static function write_option( $name, $value ) {
+		// Invalidate before the first read. The previous implementation made its
+		// add-vs-update decision from a potentially stale notoptions/alloptions
+		// entry and only repaired cache state after the first failed write.
+		self::clear_option_read_cache( $name, true );
 		$current = get_option( $name, false );
 		if ( false !== $current && self::option_values_equal( $current, $value ) ) return true;
 
-		$result = false === $current ? add_option( $name, $value, '', 'no' ) : update_option( $name, $value );
+		false === $current
+			? add_option( $name, $value, '', 'no' )
+			: update_option( $name, $value );
+
 		self::clear_option_read_cache( $name );
 		$readback = get_option( $name, false );
 		if ( self::option_values_equal( $readback, $value ) ) return true;
 
-		// Persistent object caches can retain a stale notoptions entry. In that
-		// state get_option() reports "missing", add_option() loses the database
-		// uniqueness race because the row already exists, and a naive writer
-		// returns a false persistence failure. After invalidation, update the
-		// revealed row through the WordPress Options API and verify exact readback.
-		if ( false !== $readback ) {
-			update_option( $name, $value );
-			self::clear_option_read_cache( $name );
-			return self::option_values_equal( get_option( $name, false ), $value );
-		}
+		// A concurrent insert or a cache drop-in may have changed existence after
+		// the first attempt. Re-resolve existence from a freshly flushed Options
+		// group, retry through the public Options API, then require exact readback.
+		self::clear_option_read_cache( $name, true );
+		$current = get_option( $name, false );
+		if ( false === $current ) add_option( $name, $value, '', 'no' );
+		else update_option( $name, $value );
 
-		// Genuine absence: retry add once after clearing the negative cache.
-		if ( false === $current && false === $result ) {
-			add_option( $name, $value, '', 'no' );
-			self::clear_option_read_cache( $name );
-			return self::option_values_equal( get_option( $name, false ), $value );
-		}
-
-		return false;
+		self::clear_option_read_cache( $name, true );
+		return self::option_values_equal( get_option( $name, false ), $value );
 	}
 
 	private static function delete_option_verified( $name ) {
