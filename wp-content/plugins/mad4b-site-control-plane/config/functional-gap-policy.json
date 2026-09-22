@@ -57,7 +57,18 @@
         "term_relationship_mutation",
         "taxonomy_delete_or_merge"
       ],
-      "require_non_public_permissions": true
+      "require_non_public_permissions": true,
+      "required_get_permission_callbacks": {
+        "/bulk-taxonomy-editor/v1/posts": [
+          "bte_rest_check_permissions"
+        ],
+        "/bulk-taxonomy-editor/v1/taxonomies": [
+          "bte_rest_check_permissions"
+        ],
+        "/bulk-taxonomy-editor/v1/terms": [
+          "bte_rest_check_permissions"
+        ]
+      }
     },
     "custom-mega-menu": {
       "match": [
