@@ -65,6 +65,7 @@ jobs:
           node tools/browser-acceptance/test-scheduler.mjs
           node tools/browser-acceptance/test-network-policy.mjs
           node tools/browser-acceptance/test-plan-boundary.mjs
+          node tools/browser-acceptance/test-pagination.mjs
           node tools/browser-acceptance/test-provider-preflight.mjs
           node tools/browser-acceptance/test-mcp-bridge.mjs
           node tools/browser-acceptance/test-receipt.mjs
