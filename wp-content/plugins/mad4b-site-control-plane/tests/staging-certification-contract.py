@@ -103,6 +103,16 @@ for marker in [
 ]:
     require(cert, marker, "Brand Core coverage invariant")
 
+require(cert, "'client_snapshot_token'", "external evidence boundary")
+
+require(cert, "'rollback_artifact_sha256'", "external evidence boundary")
+
+require(cert, "'artifact_retention_verified'", "external evidence boundary")
+
+require(cert, "'external_facts_self_certified' => false", "external evidence boundary")
+
+require(cert, "candidate_identity_ready'] ) && ! empty( $rollback['artifact_retention_verified", "rollback gate requires retained artifact evidence")
+
 # Browser view may reduce existing/fresh evidence but cannot create an executor
 # or claim browser parity by itself.
 require(cert, "browser_runtime_not_observed", "browser observation gap")
