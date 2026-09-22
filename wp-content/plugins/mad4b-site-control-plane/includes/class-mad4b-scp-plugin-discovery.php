@@ -30,6 +30,14 @@ final class MAD4B_SCP_Plugin_Discovery {
 	}
 
 	public static function coverage() {
+		// Coverage is a read-only runtime projection, but it depends on the deterministic
+		// in-memory adapter registry being populated. Ordinary wp-admin requests do not
+		// necessarily pass through the MCP/WP-CLI reconciliation path, so initialize the
+		// registry here before classifying installed plugins. This creates no persisted
+		// authority, grants, approvals, provider side effects, or database mutation.
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
+		}
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
 		if ( ! is_array( $plugins ) ) $plugins = array();
