@@ -247,6 +247,20 @@ for marker in [
     if marker not in write:
         raise SystemExit(f'missing rollback-safe exact-authority finalization invariant: {marker}')
 
+finalizer_body = write.split("public static function finalize_exact_existing_authority()", 1)[1].split("public static function reconcile()", 1)[0]
+for forbidden in [
+    "create_agent(",
+    "update_agent(",
+    "disable_agent(",
+    "bind_subject(",
+    "set_subject_status(",
+    "grant_ability(",
+    "revoke_allow_grant_by_id(",
+    "deprovision_managed_authority(",
+]:
+    if forbidden in finalizer_body:
+        raise SystemExit(f'exact existing-authority finalizer must remain non-mutating for identity/grants: {forbidden}')
+
 for forbidden in [
     "const STAGING_HOST = 'staging.egypttourgates.com'",
     "const AGENT_SLUG = 'chatgpt-staging-write'",
