@@ -9,7 +9,7 @@ define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', 'managed-google-site-signing-s
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) define( 'MINUTE_IN_SECONDS', 60 );
 
 $GLOBALS['mad4b_context_options'] = array();
-$GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array() );
+$GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array(), 'ignore_point_deletes' => false );
 $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
@@ -66,7 +66,12 @@ function delete_option( $name ) {
 }
 function wp_cache_delete( $key, $group = '' ) {
 	if ( 'options' !== $group ) return true;
+	if ( ! empty( $GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] ) ) return true;
 	if ( 'notoptions' === $key ) $GLOBALS['mad4b_context_option_cache']['notoptions'] = array();
+	return true;
+}
+function wp_cache_flush_group( $group ) {
+	if ( 'options' === $group ) $GLOBALS['mad4b_context_option_cache']['notoptions'] = array();
 	return true;
 }
 function wp_remote_retrieve_response_code( $response ) { return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0; }
@@ -356,7 +361,9 @@ mad4b_oauth_assert( ! is_wp_error( $managed_disconnected ) && empty( $managed_di
 // row still exists. A correct writer clears notoptions, discovers the row,
 // updates it through the Options API, and verifies exact readback.
 $GLOBALS['mad4b_context_option_cache']['notoptions'][ MAD4B_SCP_Google_Drive_Context::AUTH_MODE_OPTION ] = true;
+$GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] = true;
 $dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
+$GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] = false;
 mad4b_oauth_assert( ! is_wp_error( $dedicated_mode ), 'Authentication mode must switch to Dedicated Site OAuth after managed grant revocation.', $dedicated_mode );
 mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $dedicated_mode['mode'], 'Dedicated Site OAuth mode must become active.', $dedicated_mode );
 
@@ -446,4 +453,4 @@ mad4b_oauth_assert( is_wp_error( $blocked_grant_change ) && 'mad4b_google_worksp
 delete_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION );
 
 mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v9: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v10: PASS\n";
