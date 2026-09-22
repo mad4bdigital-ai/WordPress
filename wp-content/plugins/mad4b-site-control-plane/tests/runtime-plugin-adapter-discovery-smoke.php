@@ -91,26 +91,30 @@ $unknown_dir = WP_PLUGIN_DIR . '/ci-unknown-adapter-target';
 $risky_dir = WP_PLUGIN_DIR . '/code-snippets';
 $menu_dir = WP_PLUGIN_DIR . '/custom-mega-menu-v49';
 $runtime_only_dir = WP_PLUGIN_DIR . '/duplicator';
+$lookalike_dir = WP_PLUGIN_DIR . '/custom-mega-menu-villain';
 wp_mkdir_p( $unknown_dir );
 wp_mkdir_p( $risky_dir );
 wp_mkdir_p( $menu_dir );
 wp_mkdir_p( $runtime_only_dir );
+wp_mkdir_p( $lookalike_dir );
 file_put_contents( $unknown_dir . '/ci-unknown.php', "<?php\n/*\nPlugin Name: CI Unknown Adapter Target\nVersion: 9.9.9\n*/\n" );
 file_put_contents( $risky_dir . '/code-snippets.php', "<?php\n/*\nPlugin Name: Code Snippets CI Fixture\nVersion: 9.9.9\n*/\n" );
 file_put_contents( $menu_dir . '/custom-mega-menu.php', "<?php\n/*\nPlugin Name: Custom Mega Menu Widgets (All Styles)\nVersion: 1.1.49\n*/\n" );
 file_put_contents( $runtime_only_dir . '/duplicator.php', "<?php\n/*\nPlugin Name: Duplicator\nVersion: 5.0.3\n*/\n" );
-update_option( 'active_plugins', array_values( array_unique( array_merge( (array) $original_active, array( 'ci-unknown-adapter-target/ci-unknown.php', 'code-snippets/code-snippets.php', 'custom-mega-menu-v49/custom-mega-menu.php', 'duplicator/duplicator.php' ) ) ) ) );
+file_put_contents( $lookalike_dir . '/custom-mega-menu.php', "<?php\n/*\nPlugin Name: Custom Mega Menu Lookalike CI Fixture\nVersion: 9.9.9\n*/\n" );
+update_option( 'active_plugins', array_values( array_unique( array_merge( (array) $original_active, array( 'ci-unknown-adapter-target/ci-unknown.php', 'code-snippets/code-snippets.php', 'custom-mega-menu-v49/custom-mega-menu.php', 'duplicator/duplicator.php', 'custom-mega-menu-villain/custom-mega-menu.php' ) ) ) ) );
 if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true );
 
 try {
 	$discovered = $coverage_ability->execute();
 	$check( ! is_wp_error( $discovered ), 'Plugin discovery failed with CI fixtures.' );
-	$unknown = null; $risky = null; $menu = null; $runtime_only = null;
+	$unknown = null; $risky = null; $menu = null; $runtime_only = null; $lookalike = null;
 	foreach ( $discovered['plugins'] as $item ) {
 		if ( 'ci-unknown-adapter-target/ci-unknown.php' === $item['plugin_file'] ) $unknown = $item;
 		if ( 'code-snippets/code-snippets.php' === $item['plugin_file'] ) $risky = $item;
 		if ( 'custom-mega-menu-v49/custom-mega-menu.php' === $item['plugin_file'] ) $menu = $item;
 		if ( 'duplicator/duplicator.php' === $item['plugin_file'] ) $runtime_only = $item;
+		if ( 'custom-mega-menu-villain/custom-mega-menu.php' === $item['plugin_file'] ) $lookalike = $item;
 	}
 	$check( is_array( $unknown ) && ! empty( $unknown['active'] ), 'Unknown active plugin fixture was not discovered.' );
 	$check( 'adapter_required' === $unknown['coverage_state'], 'Unknown plugin did not fail closed to adapter_required.' );
@@ -135,6 +139,9 @@ try {
 	$check( 0 === (int) ( $runtime_only_status['repository_artifact_count'] ?? -1 ), 'Runtime-only family fabricated a repository artifact.' );
 	$check( 'runtime_match_only' === (string) ( $runtime_only_status['runtime_source'] ?? '' ), 'Runtime-only family source mode drifted.' );
 	$check( empty( $runtime_only_status['mutation_exposed'] ) && 'none' === (string) ( $runtime_only_status['mutation_scope'] ?? '' ), 'Runtime-only family opened mutation scope.' );
+	$check( is_array( $lookalike ) && ! empty( $lookalike['active'] ), 'Versioned-family lookalike fixture was not discovered.' );
+	$check( 'unknown' === $lookalike['family'] && '' === $lookalike['adapter_id'], 'Non-numeric versioned-family lookalike was incorrectly classified.' );
+	$check( 'adapter_required' === $lookalike['coverage_state'], 'Non-numeric versioned-family lookalike did not fail closed.' );
 
 	$requests_ability = wp_get_ability( 'mad4b/adapter-support-requests' );
 	$requests_one = $requests_ability->execute();
@@ -157,6 +164,8 @@ try {
 	@rmdir( $menu_dir );
 	@unlink( $runtime_only_dir . '/duplicator.php' );
 	@rmdir( $runtime_only_dir );
+	@unlink( $lookalike_dir . '/custom-mega-menu.php' );
+	@rmdir( $lookalike_dir );
 	if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true );
 }
 
