@@ -64,7 +64,8 @@ jobs:
               "ADD INDEX",
               "'staging' !== self::environment()",
               "'production_changed' => false",
-              "exactly two bounded ALTER TABLE statements are expected",
+              "postmeta(post_id,meta_key)",
+              "termmeta(term_id,meta_key)",
           ]:
               if marker_text not in query_perf:
                   raise SystemExit('Missing bounded admin-query performance invariant: ' + marker_text)
