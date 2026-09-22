@@ -473,7 +473,22 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<div><strong id="mad4b-blocked-count">' . esc_html( (string) $blocked_count ) . '</strong><span>' . esc_html__( 'provider gated', 'mad4b-site-control-plane' ) . '</span></div>';
 		echo '</div>';
 		echo '<p class="mad4b-grant-note">' . esc_html__( 'This panel is live governance evidence, not an OAuth permission request. OAuth approval cannot create or widen write grants. Every normal remote write still requires a runtime-eligible ability, its exact grant, and a one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<div id="mad4b-grant-blockers" class="mad4b-grant-blockers" aria-live="polite"></div>';
+		$blocking_conditions = isset( $grant_projection['blocking_conditions'] ) && is_array( $grant_projection['blocking_conditions'] ) ? $grant_projection['blocking_conditions'] : array();
+		$blocker_class = empty( $blocking_conditions ) && ! empty( $grant_projection['ready'] ) ? 'mad4b-grant-blockers mad4b-ok' : 'mad4b-grant-blockers mad4b-warn';
+		echo '<div id="mad4b-grant-blockers" class="' . esc_attr( $blocker_class ) . '" aria-live="polite">';
+		if ( empty( $blocking_conditions ) ) {
+			echo esc_html( ! empty( $grant_projection['ready'] ) ? __( 'Write authority is fully converged for the runtime-eligible surface.', 'mad4b-site-control-plane' ) : __( 'No grant drift detected; write authority remains unavailable for another governed condition.', 'mad4b-site-control-plane' ) );
+		} else {
+			echo esc_html__( 'Execution remains fail-closed:', 'mad4b-site-control-plane' );
+			echo '<ul>';
+			foreach ( $blocking_conditions as $condition ) {
+				$code = isset( $condition['code'] ) ? sanitize_key( (string) $condition['code'] ) : 'governance_blocker';
+				$count = isset( $condition['count'] ) ? (int) $condition['count'] : 0;
+				echo '<li><code>' . esc_html( $code ) . '</code>' . ( $count > 0 ? ' (' . esc_html( (string) $count ) . ')' : '' ) . '</li>';
+			}
+			echo '</ul>';
+		}
+		echo '</div>';
 		echo '<details><summary>' . esc_html__( 'Exact granted abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-grant-list">';
 		foreach ( (array) $grant_projection['grants'] as $grant ) echo '<li><code>' . esc_html( (string) $grant['ability'] ) . '</code> <span>· ' . esc_html( (string) $grant['provider'] ) . '</span></li>';
 		echo '</ul></details>';
