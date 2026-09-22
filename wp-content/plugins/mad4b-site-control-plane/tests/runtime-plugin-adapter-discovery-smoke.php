@@ -11,7 +11,7 @@ $check( class_exists( 'MAD4B_SCP_Adapter_Coverage_Admin_UI' ), 'Adapter Coverage
 $check( class_exists( 'MAD4B_SCP_Repository_Artifact_Catalog' ), 'Repository artifact catalog is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Family_Adapter' ), 'Repository family adapter class is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Plugins_Adapter' ), 'Repository inventory adapter class is unavailable.' );
-foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
+foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/functional-gap-runtime-evidence', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
 	$check( wp_has_ability( $ability_name ), 'Missing discovery ability: ' . $ability_name );
 	$ability = wp_get_ability( $ability_name );
 	$meta = $ability->get_meta();
@@ -19,6 +19,19 @@ foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-request
 	$check( ! empty( $meta['annotations']['readonly'] ), 'Discovery ability is not annotated readonly: ' . $ability_name );
 	$check( empty( $meta['annotations']['destructive'] ), 'Discovery ability is destructive: ' . $ability_name );
 	$check( 'read' === (string) ( $meta['mcp']['surface'] ?? '' ), 'Repository discovery ability escaped mad4b-read: ' . $ability_name );
+}
+
+$zero_touch_ability = wp_get_ability( 'mad4b/functional-gap-runtime-evidence' );
+$zero_touch = $zero_touch_ability->execute();
+$check( ! is_wp_error( $zero_touch ) && 'mad4b.functional-gap-zero-touch.v1' === (string) ( $zero_touch['contract'] ?? '' ), 'Zero-touch functional-gap evidence contract failed.' );
+$check( ! empty( $zero_touch['read_only'] ) && empty( $zero_touch['authority_created'] ) && empty( $zero_touch['mutation_performed'] ) && empty( $zero_touch['remote_request_performed'] ) && empty( $zero_touch['secret_values_returned'] ), 'Zero-touch functional-gap evidence escaped read-only boundary.' );
+$check( 'mad4b.runtime-functional-gap-evidence.v2' === (string) ( $zero_touch['runtime']['contract'] ?? '' ), 'Zero-touch runtime evidence contract drifted.' );
+$check( 'mad4b.functional-gap-promotion-evaluation.v2' === (string) ( $zero_touch['evaluation']['contract'] ?? '' ), 'Zero-touch promotion evaluation contract drifted.' );
+$check( empty( $zero_touch['evaluation']['promotion_authorized'] ), 'Zero-touch evaluator must never authorize promotion by itself.' );
+if ( ! empty( $zero_touch['repository_evidence']['present'] ) ) {
+	$check( ! empty( $zero_touch['repository_evidence']['valid'] ), 'Present build-embedded repository evidence must validate against build provenance.' );
+} else {
+	$check( empty( $zero_touch['evaluation']['ready'] ), 'Source/runtime without build-embedded repository evidence must fail closed.' );
 }
 
 $registry = MAD4B_SCP_Adapter_Registry::instance();
