@@ -134,6 +134,9 @@ try {
 	$check( ! empty( $runtime_only['adapter_registered'] ) && ! empty( $runtime_only['adapter_runtime_available'] ), 'Runtime-only family adapter was not available.' );
 	$check( 'read_only_supported' === $runtime_only['coverage_state'], 'Runtime-only family did not remain read-only supported.' );
 	$check( 'contract_discovery_required' === (string) ( $runtime_only['functional_coverage']['state'] ?? '' ), 'Runtime-only family must remain contract-discovery-only.' );
+	$check( 'mad4b.runtime-family-read-adapter.v1' === (string) ( $runtime_only['adapter_contract'] ?? '' ), 'Runtime-only plugin item did not expose its adapter contract.' );
+	$check( 'runtime_match_only' === (string) ( $runtime_only['adapter_runtime_source'] ?? '' ), 'Runtime-only plugin item did not expose runtime provenance.' );
+	$check( 0 === (int) ( $runtime_only['repository_artifact_count'] ?? -1 ), 'Runtime-only plugin item falsely reported a repository artifact.' );
 	$runtime_only_status = $registry->get( 'duplicator' )->status();
 	$check( 'mad4b.runtime-family-read-adapter.v1' === (string) ( $runtime_only_status['contract'] ?? '' ), 'Runtime-only adapter contract drifted.' );
 	$check( 0 === (int) ( $runtime_only_status['repository_artifact_count'] ?? -1 ), 'Runtime-only family fabricated a repository artifact.' );
