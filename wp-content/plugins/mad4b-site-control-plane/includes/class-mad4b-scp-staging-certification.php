@@ -68,6 +68,7 @@ final class MAD4B_SCP_Staging_Certification {
 		$performance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status() : array();
 		$admin_query_performance = class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) ? MAD4B_SCP_Admin_Query_Performance::status() : array();
 		$qm_db_attribution = class_exists( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge' ) ? MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status() : array();
+		$oauth_authority_projection = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'consent_grant_projection' ) ? MAD4B_SCP_Local_OAuth_Server::consent_grant_projection() : array();
 		$rollback = self::rollback_status( $rollback_artifact_sha256, $rollback_artifact_name );
 		$browser = self::browser_status();
 		$provider_inventory = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ? MAD4B_SCP_Provider_Compatibility_Certification::inventory() : array();
@@ -88,6 +89,16 @@ final class MAD4B_SCP_Staging_Certification {
 			'performance_budget' => self::gate( ! empty( $performance['ready'] ) && ! empty( $performance['budget_evaluated'] ) && ! empty( $performance['budget_pass'] ), 'frontend_performance', $performance, 'runtime_observation' ),
 			'admin_query_performance' => self::gate( ! empty( $admin_query_performance['ready'] ), 'admin_query_performance', $admin_query_performance, 'staging_schema' ),
 			'query_monitor_db_attribution' => self::gate( ! empty( $qm_db_attribution['ready'] ) && ! empty( $qm_db_attribution['caller_component_trace_expected'] ), 'query_monitor_db_attribution', $qm_db_attribution, 'query_monitor_dropin' ),
+			'oauth_live_authority_projection' => self::gate(
+				isset( $oauth_authority_projection['contract'] ) && 'mad4b.oauth-consent-grant-projection.v2' === (string) $oauth_authority_projection['contract']
+				&& ! empty( $oauth_authority_projection['read_only'] )
+				&& empty( $oauth_authority_projection['mutation_performed'] )
+				&& empty( $oauth_authority_projection['oauth_scope_changed'] )
+				&& empty( $oauth_authority_projection['write_authority_granted_by_consent'] ),
+				'oauth_live_authority_projection',
+				$oauth_authority_projection,
+				'oauth_consent_ui'
+			),
 			'rollback_candidate' => self::gate( ! empty( $rollback['candidate_identity_ready'] ) && ! empty( $rollback['artifact_retention_verified'] ), 'rollback_candidate', $rollback, 'release_operator' ),
 			'wp_import_export_exact_artifact' => self::gate( ! empty( $wp_import_export['ready'] ), 'wp_import_export_exact_artifact', $wp_import_export, 'provider_operator' ),
 		);
@@ -113,6 +124,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'managed_google_broker_status' => $managed,
 			'admin_query_performance_status' => $admin_query_performance,
 			'query_monitor_db_attribution_status' => $qm_db_attribution,
+			'oauth_live_authority_projection' => $oauth_authority_projection,
 			'seo_publication_authorized' => false,
 			'production_activation_authorized' => false,
 			'external_facts_self_certified' => false,
