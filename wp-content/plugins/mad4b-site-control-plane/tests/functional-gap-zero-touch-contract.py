@@ -9,6 +9,8 @@ repo=ROOT.parents[2]
 control=(repo/'.github/workflows/mad4b-control-plane-package.yml').read_text('utf-8')
 plugin=(repo/'.github/workflows/mad4b-plugin-package.yml').read_text('utf-8')
 capture=(repo/'tools/capture-functional-gap-contract-evidence.py').read_text('utf-8')
+offline=(repo/'tools/evaluate-functional-gap-contract-promotion.py').read_text('utf-8')
+policy=(ROOT/'config/functional-gap-policy.json').read_text('utf-8')
 discovery=(ROOT/'includes/class-mad4b-scp-plugin-discovery.php').read_text('utf-8')
 ui=(ROOT/'includes/class-mad4b-scp-adapter-coverage-admin-ui.php').read_text('utf-8')
 
@@ -38,6 +40,15 @@ for marker in [
     "tree_file_hash_failed",
     "scan_attempts",
     "evidence_integrity_bound",
+    "mad4b.functional-gap-policy.v1",
+    "functional-gap-policy.json",
+    "repository_evidence_policy_sha256_mismatch",
+    "functional_gap_policy_not_bound_in_build_provenance",
+    "functional_gap_policy_sha256_mismatch",
+    "functional_gap_policy_bytes_mismatch",
+    "unsupported_evaluation_mode_",
+    "runtime_identity_key",
+    "snapshot_identity_sha256",
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
@@ -97,6 +108,7 @@ for workflow_name,workflow in [('control-plane',control),('plugin-package',plugi
         "capture-functional-gap-contract-evidence.py",
         "functional-gap-contract-evidence.generated.json",
         "mad4b.functional-gap-contract-evidence.v1",
+        "functional-gap-policy.json",
         "SOURCE_SHA",
     ]:
         if marker not in workflow:
@@ -107,8 +119,36 @@ for marker in [
     '"promotion_authorized":False',
     '"evidence_only":True',
     '"package_tree":tree',
+    'POLICY_PATH',
+    '"policy_contract":POLICY["contract"]',
+    '"policy_sha256":sha256(POLICY_RAW)',
 ]:
     if marker not in capture:
         raise SystemExit(f'repository evidence capture invariant missing: {marker}')
+
+import json
+policy_data=json.loads(policy)
+if policy_data.get('contract')!='mad4b.functional-gap-policy.v1':
+    raise SystemExit('canonical functional-gap policy contract mismatch')
+if policy_data.get('default_mutation')!='deny' or policy_data.get('promotion_authorized') is not False:
+    raise SystemExit('canonical functional-gap policy weakened mutation/promotion defaults')
+
+for marker in [
+    'POLICY_PATH',
+    'mad4b.functional-gap-policy.v1',
+    'policy_sha256',
+    'evaluation_mode',
+    'promotion_authorized',
+]:
+    if marker not in offline:
+        raise SystemExit(f'offline evaluator is not policy-driven: {marker}')
+
+for forbidden in [
+    'FAMILIES = {\n    "bulk-taxonomy-editor"',
+    "foreach ( array( 'custom-mega-menu','google-tag-manager'",
+    "foreach ( array( 'duplicator','elementskit'",
+]:
+    if forbidden in capture or forbidden in runtime or forbidden in offline:
+        raise SystemExit(f'functional-gap implementation retained hardcoded family policy: {forbidden}')
 
 print('mad4b.functional-gap-zero-touch.contract.v1: PASS')
