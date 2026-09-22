@@ -373,6 +373,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'peak_memory_bytes' => $peak,
 			'current_memory_bytes' => $current_memory,
 			'db_profile' => self::query_performance_profile(),
+			'http_api_profile' => self::http_api_profile(),
 			'observed_at' => gmdate( 'Y-m-d H:i:s' ),
 		);
 	}
@@ -514,6 +515,147 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$profile['top_components'] = array_slice( $components, 0, 8 );
 		$profile['slow_queries'] = array_slice( $slow, 0, 12 );
 		$profile['duplicate_groups'] = array_slice( $duplicates, 0, 12 );
+		return $profile;
+	}
+
+
+	private static function http_api_profile() {
+		$profile = array(
+			'contract' => 'mad4b.http-api-performance-profile.v1',
+			'available' => false,
+			'request_count' => 0,
+			'total_time_ms' => 0.0,
+			'error_count' => 0,
+			'local_count' => 0,
+			'remote_count' => 0,
+			'top_hosts' => array(),
+			'top_callers' => array(),
+			'top_components' => array(),
+			'slowest_calls' => array(),
+			'raw_urls_returned' => false,
+			'request_headers_returned' => false,
+			'request_bodies_returned' => false,
+			'response_headers_returned' => false,
+			'response_bodies_returned' => false,
+		);
+		if ( ! defined( 'QM_VERSION' ) || ! class_exists( 'QM_Collectors' ) || ! method_exists( 'QM_Collectors', 'get' ) ) return $profile;
+		$collector = QM_Collectors::get( 'http' );
+		if ( ! is_object( $collector ) || ! method_exists( $collector, 'get_data' ) ) return $profile;
+		$data = $collector->get_data();
+		$requests = is_object( $data ) && isset( $data->http ) && is_array( $data->http ) ? $data->http : array();
+		if ( empty( $requests ) ) return $profile;
+
+		$hosts = array();
+		$callers = array();
+		$components = array();
+		$calls = array();
+		$total_ms = 0.0;
+		$error_count = 0;
+		$local_count = 0;
+		$remote_count = 0;
+
+		foreach ( array_slice( $requests, 0, 256 ) as $request ) {
+			if ( ! is_object( $request ) ) continue;
+			$host = isset( $request->host ) ? strtolower( sanitize_text_field( (string) $request->host ) ) : '';
+			$host = preg_replace( '/[^a-z0-9\.\-:\[\]]/i', '', $host );
+			if ( '' === $host ) $host = 'unknown';
+			$method = isset( $request->args ) && is_array( $request->args ) && isset( $request->args['method'] )
+				? strtoupper( sanitize_key( (string) $request->args['method'] ) )
+				: 'UNKNOWN';
+			$elapsed_ms = isset( $request->ltime ) && is_numeric( $request->ltime ) ? max( 0.0, (float) $request->ltime * 1000.0 ) : 0.0;
+			$total_ms += $elapsed_ms;
+			$local = ! empty( $request->local );
+			if ( $local ) ++$local_count; else ++$remote_count;
+
+			$status = '';
+			$is_error = false;
+			if ( isset( $request->result ) && is_wp_error( $request->result ) ) {
+				$status = 'error:' . sanitize_key( (string) $request->result->get_error_code() );
+				$is_error = true;
+			} elseif ( isset( $request->result ) && is_object( $request->result ) && isset( $request->result->code ) ) {
+				$status = 'http:' . max( 0, (int) $request->result->code );
+				$is_error = (int) $request->result->code >= 400;
+			} elseif ( isset( $request->type ) ) {
+				$status = strtolower( sanitize_text_field( (string) $request->type ) );
+				$is_error = false !== strpos( $status, 'error' );
+			}
+			if ( $is_error ) ++$error_count;
+
+			$caller = 'unknown';
+			$component = 'unknown';
+			$trace = isset( $request->trace ) && is_object( $request->trace ) ? $request->trace : null;
+			if ( $trace ) {
+				if ( method_exists( $trace, 'get_caller' ) ) {
+					try {
+						$frame = $trace->get_caller();
+						if ( is_object( $frame ) && isset( $frame->id ) ) {
+							$value = self::safe_identifier( self::strip_call_syntax( (string) $frame->id ) );
+							if ( '' !== $value ) $caller = $value;
+						}
+					} catch ( Throwable $ignored ) {}
+				}
+				if ( method_exists( $trace, 'get_component' ) ) {
+					try {
+						$obj = $trace->get_component();
+						if ( is_object( $obj ) ) {
+							$type = isset( $obj->type ) ? sanitize_key( (string) $obj->type ) : '';
+							$name = method_exists( $obj, 'get_name' ) ? sanitize_text_field( (string) $obj->get_name() ) : '';
+							$value = trim( $type . ( '' !== $name ? ':' . $name : '' ), ':' );
+							if ( '' !== $value ) $component = strlen( $value ) > 120 ? substr( $value, 0, 120 ) : $value;
+						}
+					} catch ( Throwable $ignored ) {}
+				}
+			}
+
+			if ( ! isset( $hosts[ $host ] ) ) $hosts[ $host ] = array( 'host' => $host, 'count' => 0, 'time_ms' => 0.0 );
+			$hosts[ $host ]['count']++;
+			$hosts[ $host ]['time_ms'] += $elapsed_ms;
+			if ( ! isset( $callers[ $caller ] ) ) $callers[ $caller ] = array( 'caller' => $caller, 'count' => 0, 'time_ms' => 0.0 );
+			$callers[ $caller ]['count']++;
+			$callers[ $caller ]['time_ms'] += $elapsed_ms;
+			if ( ! isset( $components[ $component ] ) ) $components[ $component ] = array( 'component' => $component, 'count' => 0, 'time_ms' => 0.0 );
+			$components[ $component ]['count']++;
+			$components[ $component ]['time_ms'] += $elapsed_ms;
+
+			$calls[] = array(
+				'host' => $host,
+				'method' => $method,
+				'status' => $status,
+				'elapsed_ms' => round( $elapsed_ms, 3 ),
+				'local' => $local,
+				'caller' => $caller,
+				'component' => $component,
+				'call_fingerprint' => hash( 'sha256', implode( "\0", array( $host, $method, $status, $caller, $component ) ) ),
+			);
+		}
+
+		$rank = static function ( $a, $b ) {
+			if ( $a['count'] === $b['count'] ) return $b['time_ms'] <=> $a['time_ms'];
+			return $b['count'] <=> $a['count'];
+		};
+		$hosts = array_values( $hosts );
+		$callers = array_values( $callers );
+		$components = array_values( $components );
+		usort( $hosts, $rank );
+		usort( $callers, $rank );
+		usort( $components, $rank );
+		usort( $calls, static function ( $a, $b ) { return $b['elapsed_ms'] <=> $a['elapsed_ms']; } );
+		foreach ( array( &$hosts, &$callers, &$components ) as &$bucket ) {
+			foreach ( $bucket as &$entry ) $entry['time_ms'] = round( (float) $entry['time_ms'], 3 );
+			unset( $entry );
+		}
+		unset( $bucket );
+
+		$profile['available'] = true;
+		$profile['request_count'] = count( $calls );
+		$profile['total_time_ms'] = round( $total_ms, 3 );
+		$profile['error_count'] = $error_count;
+		$profile['local_count'] = $local_count;
+		$profile['remote_count'] = $remote_count;
+		$profile['top_hosts'] = array_slice( $hosts, 0, 12 );
+		$profile['top_callers'] = array_slice( $callers, 0, 12 );
+		$profile['top_components'] = array_slice( $components, 0, 12 );
+		$profile['slowest_calls'] = array_slice( $calls, 0, 16 );
 		return $profile;
 	}
 
