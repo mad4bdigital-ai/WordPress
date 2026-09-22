@@ -80,6 +80,19 @@ final class MAD4B_SCP_Plugin_Discovery {
 			if ( ! empty( $item['support_request'] ) ) $requests[] = $item['support_request'];
 		}
 
+		$zero_touch = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? MAD4B_SCP_Functional_Gap_Evidence::summary() : array( 'contract'=>'mad4b.functional-gap-zero-touch.v1', 'ready'=>false, 'promotion_authorized'=>false, 'blockers'=>array( 'functional_gap_evidence_unavailable' ) );
+		$zero_touch_map = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? MAD4B_SCP_Functional_Gap_Evidence::decision_map() : array();
+		foreach ( $items as &$coverage_item ) {
+			$family = isset( $coverage_item['family'] ) ? sanitize_key( (string) $coverage_item['family'] ) : '';
+			if ( '' === $family || ! isset( $zero_touch_map[ $family ] ) ) continue;
+			$coverage_item['zero_touch_decision'] = $zero_touch_map[ $family ];
+			if ( isset( $coverage_item['functional_coverage'] ) && is_array( $coverage_item['functional_coverage'] ) ) {
+				$coverage_item['functional_coverage']['zero_touch_state'] = isset( $zero_touch_map[ $family ]['state'] ) ? sanitize_key( (string) $zero_touch_map[ $family ]['state'] ) : '';
+				$coverage_item['functional_coverage']['zero_touch_reason'] = isset( $zero_touch_map[ $family ]['reason'] ) ? sanitize_key( (string) $zero_touch_map[ $family ]['reason'] ) : '';
+			}
+		}
+		unset( $coverage_item );
+
 		$priority = self::priority_external_items( $plugins );
 		foreach ( $priority as $item ) {
 			if ( 'priority_external_missing' === $item['coverage_state'] ) ++$counts['priority_external_missing'];
@@ -100,6 +113,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'functional_counts' => $functional_counts,
 			'functional_family_counts' => self::functional_state_counts( $functional_family_states ),
 			'functional_family_states' => $functional_family_states,
+			'zero_touch' => $zero_touch,
 			'truncated' => count( $plugins ) > self::MAX_PLUGINS,
 		);
 	}
@@ -128,6 +142,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'adapter_contract' => isset( $plugin['adapter_contract'] ) ? $plugin['adapter_contract'] : '',
 				'adapter_runtime_source' => isset( $plugin['adapter_runtime_source'] ) ? $plugin['adapter_runtime_source'] : '',
 				'repository_artifact_count' => isset( $plugin['repository_artifact_count'] ) ? (int) $plugin['repository_artifact_count'] : 0,
+				'zero_touch_decision' => isset( $plugin['zero_touch_decision'] ) && is_array( $plugin['zero_touch_decision'] ) ? $plugin['zero_touch_decision'] : array(),
 				'functional_coverage' => $plugin['functional_coverage'],
 			);
 		}
@@ -138,6 +153,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'counts' => isset( $coverage['functional_family_counts'] ) ? $coverage['functional_family_counts'] : ( isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array() ),
 			'plugin_counts' => isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array(),
 			'family_states' => isset( $coverage['functional_family_states'] ) ? $coverage['functional_family_states'] : array(),
+			'zero_touch' => isset( $coverage['zero_touch'] ) && is_array( $coverage['zero_touch'] ) ? $coverage['zero_touch'] : array(),
 			'items' => $items,
 			'count' => count( $items ),
 		);
@@ -167,6 +183,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 					'plugin_files' => array(),
 					'plugin_names' => array(),
 					'runtime_identities' => array(),
+					'zero_touch_decision' => isset( $plugin['zero_touch_decision'] ) && is_array( $plugin['zero_touch_decision'] ) ? $plugin['zero_touch_decision'] : array(),
 				);
 			}
 			if ( ! empty( $plugin['plugin_file'] ) ) {
@@ -195,6 +212,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'network_request_sent' => false,
 			'credential_material_exposed' => false,
 			'authority_created' => false,
+			'zero_touch' => isset( $coverage['zero_touch'] ) && is_array( $coverage['zero_touch'] ) ? $coverage['zero_touch'] : array(),
 			'mutation_default' => 'deny',
 			'items' => array_values( $families ),
 			'count' => count( $families ),
