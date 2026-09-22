@@ -54,6 +54,12 @@ def remove_route(runtime, route):
 def wpl_redaction_fail(runtime):
     runtime.setdefault('option_presence', {}).setdefault('wpl_access_token', {})['redacted'] = False
 
+def wpl_secret_read_fail(runtime):
+    row = runtime.setdefault('option_presence', {}).setdefault('wpl_access_token', {})
+    row['redacted'] = True
+    row['value_read'] = True
+    row['probe'] = 'omitted_secret_value'
+
 def make_route_public(runtime, route):
     for row in runtime.get('rest_routes', []):
         if row.get('route') == route:
@@ -95,6 +101,10 @@ def cases(base):
     wpl_redaction = copy.deepcopy(base)
     wpl_redaction_fail(wpl_redaction)
     out.append(('wpl-redaction-failure', wpl_redaction, {'wpl-client': 'contract_discovery_required'}))
+
+    wpl_secret_read = copy.deepcopy(base)
+    wpl_secret_read_fail(wpl_secret_read)
+    out.append(('wpl-secret-value-read', wpl_secret_read, {'wpl-client': 'contract_discovery_required'}))
 
     wpl_status_missing = copy.deepcopy(base)
     make_status_option_missing(wpl_status_missing, 'wpl_serial_verified')
