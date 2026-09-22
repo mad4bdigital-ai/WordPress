@@ -482,8 +482,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		);
 	}
 
-	private static function runtime_only_metadata_identity( $plugin_file ) {
-		$budget = array( 'files'=>0, 'bytes'=>0, 'started_at'=>microtime( true ) );
+	private static function runtime_only_metadata_identity( $plugin_file, array &$budget ) {
 		$census = self::plugin_census_once( $plugin_file, $budget );
 		$blockers = isset( $census['blockers'] ) && is_array( $census['blockers'] ) ? array_values( $census['blockers'] ) : array();
 		$valid = ! empty( $census['valid'] ) && empty( $blockers );
@@ -940,6 +939,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$constant_candidates = isset( $probes['constants'] ) && is_array( $probes['constants'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $probes['constants'] ) ) ) : array();
 
 		$deep_scan = ! empty( $repository['valid'] );
+		$runtime_only_metadata_budget = array( 'files'=>0, 'bytes'=>0, 'started_at'=>microtime( true ) );
 		$plugin_map = get_plugins();
 		$active = (array) get_option( 'active_plugins', array() );
 		$network_active = is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) : array();
@@ -964,7 +964,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				} elseif ( ! $deep_scan ) {
 					$tree = array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'repository_evidence_invalid_not_scanned', 'scan_strategy'=>'none' );
 				} elseif ( 'runtime_only' === $mode ) {
-					$tree = self::runtime_only_metadata_identity( $plugin_file );
+					$tree = self::runtime_only_metadata_identity( $plugin_file, $runtime_only_metadata_budget );
 				} elseif ( $version_preflight_mismatch ) {
 					$tree = self::version_preflight_tree( $plugin_file, $version, $component );
 				} else {
@@ -1079,6 +1079,14 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 		return array(
 			'contract' => self::RUNTIME_CONTRACT,
+			'runtime_only_metadata_budget' => array(
+				'files_scanned' => (int) $runtime_only_metadata_budget['files'],
+				'bytes_scanned' => (int) $runtime_only_metadata_budget['bytes'],
+				'elapsed_ms' => (int) round( ( microtime( true ) - (float) $runtime_only_metadata_budget['started_at'] ) * 1000 ),
+				'max_files' => self::MAX_CENSUS_FILES,
+				'max_bytes' => self::MAX_CENSUS_BYTES,
+				'max_seconds' => self::MAX_CENSUS_SCAN_SECONDS,
+			),
 			'generated_at' => gmdate( 'c' ),
 			'deep_scan_performed' => $deep_scan,
 			'scan_budget' => array(
