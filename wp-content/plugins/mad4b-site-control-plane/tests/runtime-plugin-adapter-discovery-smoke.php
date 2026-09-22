@@ -22,6 +22,25 @@ foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-request
 }
 
 $registry = MAD4B_SCP_Adapter_Registry::instance();
+
+// Reproduce an ordinary wp-admin coverage read that arrives before MCP/WP-CLI
+// reconciliation has populated the in-memory registry. Discovery must bootstrap
+// deterministic adapters itself without persisting grants, approvals or mutation
+// authority.
+$registry_reflection = new ReflectionClass( $registry );
+$adapters_property = $registry_reflection->getProperty( 'adapters' );
+$defaults_property = $registry_reflection->getProperty( 'defaults_registered' );
+$adapters_property->setAccessible( true );
+$defaults_property->setAccessible( true );
+$adapters_property->setValue( $registry, array() );
+$defaults_property->setValue( $registry, false );
+
+$early_admin_coverage = MAD4B_SCP_Plugin_Discovery::coverage();
+$check( 'mad4b.plugin-adapter-discovery.v1' === (string) ( $early_admin_coverage['contract'] ?? '' ), 'Early admin coverage contract failed.' );
+foreach ( array( 'elementor', 'jetengine', 'fluentforms', 'etg-dfsb', 'admin-utilities', 'astra', 'hostinger', 'jet-ecosystem', 'repository-plugins' ) as $adapter_id ) {
+	$check( is_object( $registry->get( $adapter_id ) ), 'Coverage discovery did not bootstrap adapter registry: ' . $adapter_id );
+}
+
 foreach ( array( 'admin-utilities', 'astra', 'dangerous-code-execution', 'bulk-taxonomy-editor', 'custom-mega-menu', 'meta-catalog-feed-mapper', 'jet-ecosystem', 'google-tag-manager', 'fluentforms', 'hostinger', 'jetformbuilder', 'mad4b-platform', 'wpml', 'reviews', 'identity-admin', 'wp-import-export', 'wpl-client', 'repository-plugins' ) as $adapter_id ) {
 	$adapter = $registry->get( $adapter_id );
 	$check( is_object( $adapter ), 'Repository family adapter was not registered: ' . $adapter_id );
