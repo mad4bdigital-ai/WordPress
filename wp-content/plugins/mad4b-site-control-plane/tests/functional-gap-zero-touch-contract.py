@@ -11,6 +11,8 @@ plugin=(repo/'.github/workflows/mad4b-plugin-package.yml').read_text('utf-8')
 capture=(repo/'tools/capture-functional-gap-contract-evidence.py').read_text('utf-8')
 offline=(repo/'tools/evaluate-functional-gap-contract-promotion.py').read_text('utf-8')
 policy=(ROOT/'config/functional-gap-policy.json').read_text('utf-8')
+adapter_catalog=(ROOT/'config/adapter-support-catalog.json').read_text('utf-8')
+repository_artifacts=(ROOT/'config/repository-plugin-artifacts.json').read_text('utf-8')
 discovery=(ROOT/'includes/class-mad4b-scp-plugin-discovery.php').read_text('utf-8')
 ui=(ROOT/'includes/class-mad4b-scp-adapter-coverage-admin-ui.php').read_text('utf-8')
 
@@ -64,7 +66,17 @@ for marker in [
     "functional_gap_policy_promotion_not_false",
     "functional_gap_policy_match_overlap_",
     "functional_gap_policy_probe_regex_invalid_",
+    "functional_gap_policy_read_permission_boundary_missing_",
     "plugin_matches_policy_family",
+    "callback_descriptor",
+    "get_permission_callbacks",
+    "get_permission_missing",
+    "get_permission_public",
+    "route_security",
+    "insecure_get_routes",
+    "exact_runtime_tree_required_get_routes_and_permissions_verified",
+    "build_provenance_package_file_changed_during_hash",
+    "build_provenance_package_file_changed_after_hash",
     "'versioned_match'",
     "unsupported_evaluation_mode_",
     "runtime_identity_key",
@@ -251,6 +263,30 @@ for rejected in ('custom-mega-menu-villain/custom-mega-menu.php','custom-mega-me
 if policy_data.get('default_mutation')!='deny' or policy_data.get('promotion_authorized') is not False:
     raise SystemExit('canonical functional-gap policy weakened mutation/promotion defaults')
 
+catalog_data=json.loads(adapter_catalog)
+artifact_data=json.loads(repository_artifacts)
+catalog_families={row.get('id'):row for row in catalog_data.get('families',[]) if isinstance(row,dict) and row.get('id')}
+artifact_families=artifact_data.get('families',{}) if isinstance(artifact_data.get('families',{}),dict) else {}
+for family,rule in policy_data.get('families',{}).items():
+    catalog=catalog_families.get(family)
+    if not isinstance(catalog,dict):
+        raise SystemExit(f'functional-gap policy family missing from adapter catalog: {family}')
+    policy_match=set(rule.get('match',[]) or [])
+    catalog_match=set(catalog.get('match',[]) or [])
+    if not policy_match.issubset(catalog_match):
+        raise SystemExit(f'functional-gap policy match escapes adapter catalog identity: {family}: {sorted(policy_match-catalog_match)}')
+    policy_versioned=set(rule.get('versioned_match',[]) or [])
+    catalog_versioned=set(catalog.get('versioned_match',[]) or [])
+    if not policy_versioned.issubset(catalog_versioned):
+        raise SystemExit(f'functional-gap policy versioned identity escapes adapter catalog: {family}: {sorted(policy_versioned-catalog_versioned)}')
+    if rule.get('evaluation_mode')=='bounded_read_routes' and rule.get('require_non_public_permissions') is not True:
+        raise SystemExit(f'bounded read family lost non-public permission requirement: {family}')
+    if rule.get('repository_evidence'):
+        artifacts=artifact_families.get(family,{}).get('artifacts',[]) if isinstance(artifact_families.get(family,{}),dict) else []
+        missing=set(rule.get('repository_artifacts',[]) or [])-set(artifacts)
+        if missing:
+            raise SystemExit(f'functional-gap policy repository artifacts escape canonical artifact map: {family}: {sorted(missing)}')
+
 for marker in [
     'POLICY_PATH',
     'mad4b.functional-gap-policy.v1',
@@ -291,6 +327,11 @@ if "array( 'runtime_only','premium_semantic','composite_behavioral' )" not in ru
     raise SystemExit('single-pass optimization escaped its non-authorizing modes')
 if "double_pass_drift_confirmation" not in runtime:
     raise SystemExit('repository-backed drift confirmation lost its second pass')
+
+if "empty( $options[ $key ]['exists'] )" not in runtime:
+    raise SystemExit('redacted-status model no longer requires status options to exist at runtime')
+if "status_ok = bool(status_keys) and all(key in options and options.get(key, {}).get(\"exists\") is True for key in status_keys)" not in offline:
+    raise SystemExit('offline evaluator no longer requires WPL status options to exist')
 
 # Decision identity must include canonical runtime evidence, not only the resulting state.
 if "self::decision_fingerprint( $repository, $policy, $decisions, $runtime_evidence_fingerprint )" not in runtime:
