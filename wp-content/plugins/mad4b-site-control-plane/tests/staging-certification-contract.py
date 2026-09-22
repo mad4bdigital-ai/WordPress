@@ -48,11 +48,15 @@ for marker in [
 # Grant drift is inspectable before any operator-authorized reconciliation.
 plan = authority.split("public static function reconciliation_plan", 1)[1].split("public static function reconcile", 1)[0]
 for marker in [
-    "mad4b.governed-write-authority-reconciliation-plan.v1",
+    "mad4b.governed-write-authority-reconciliation-plan.v2",
     "'read_only' => true",
     "'mutation_performed' => false",
     "'exact_grants_missing_count'",
     "'stale_allow_grants_count'",
+    "'duplicate_exact_allow_grants_count'",
+    "'current_agent_wildcard_grants'",
+    "'global_registry_wildcard_grants'",
+    "'grant_lookup_strategy' => 'bulk_agent_grant_snapshot'",
     "'apply_requires_explicit_operator_action' => true",
 ]:
     require(plan, marker, "read-only reconciliation plan")
@@ -95,9 +99,10 @@ for marker in [
     "MAD4B_SCP_Admin_Query_Performance::status()",
     "MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status()",
     "MAD4B_SCP_Local_OAuth_Server::consent_grant_projection()",
-    "mad4b.oauth-consent-grant-projection.v2",
+    "mad4b.oauth-consent-grant-projection.v3",
     "'oauth_scope_changed'",
     "'write_authority_granted_by_consent'",
+    "'projection_consistent'",
     "'caller_component_trace_expected'",
 ]:
     require(cert, marker, "Staging query-performance/attribution evidence")
