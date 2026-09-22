@@ -17,6 +17,7 @@ if ( ! mkdir( $tmp, 0700, true ) && ! is_dir( $tmp ) ) {
 define( 'MAD4B_SCP_DIR', rtrim( $tmp, '/\\' ) . DIRECTORY_SEPARATOR );
 
 $GLOBALS['mad4b_test_options'] = array();
+$GLOBALS['mad4b_test_corrupt_next_update'] = false;
 
 class WP_Error {
 	private $code;
@@ -27,7 +28,15 @@ class WP_Error {
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function get_option( $key, $default = false ) { return array_key_exists( $key, $GLOBALS['mad4b_test_options'] ) ? $GLOBALS['mad4b_test_options'][ $key ] : $default; }
-function update_option( $key, $value, $autoload = null ) { $GLOBALS['mad4b_test_options'][ $key ] = $value; return true; }
+function update_option( $key, $value, $autoload = null ) {
+	if ( ! empty( $GLOBALS['mad4b_test_corrupt_next_update'] ) ) {
+		$GLOBALS['mad4b_test_corrupt_next_update'] = false;
+		if ( is_array( $value ) ) $value['source_commit_sha'] = str_repeat( '0', 40 );
+	}
+	$GLOBALS['mad4b_test_options'][ $key ] = $value;
+	return true;
+}
+function delete_option( $key ) { unset( $GLOBALS['mad4b_test_options'][ $key ] ); return true; }
 function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
 
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-authority.php';
@@ -110,6 +119,19 @@ $reset_candidate_cache();
 $binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 $ok( ! empty( $binding['required'] ) && empty( $binding['match'] ), 'Same-version candidate drift was not detected.' );
 $ok( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'Stale candidate retained effective write authority after same-version redeploy.' );
+
+// A failed persistence verification during rebind must restore the exact previous
+// persisted authority snapshot, not leave a half-bound candidate behind.
+$before_failed_rebind = $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Staging_Write_Authority::OPTION ];
+$checkpoint = MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint();
+$ok( ! empty( $checkpoint['exists'] ), 'Candidate-binding checkpoint did not capture existing persisted authority.' );
+$GLOBALS['mad4b_test_corrupt_next_update'] = true;
+$failed_rebind = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $source_b, $build_b );
+$ok( is_wp_error( $failed_rebind ) && 'mad4b_write_authority_candidate_persist_failed' === $failed_rebind->get_error_code(), 'Synthetic candidate persistence failure did not fail closed.' );
+$after_failed_rebind = $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Staging_Write_Authority::OPTION ];
+$ok( serialize( $before_failed_rebind ) === serialize( $after_failed_rebind ), 'Failed candidate rebind did not restore the exact persisted authority snapshot.' );
+$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+$ok( empty( $binding['match'] ), 'Failed candidate rebind unexpectedly became effective.' );
 
 $rebound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $source_b, $build_b );
 $ok( ! is_wp_error( $rebound ), 'Same-inventory candidate rebind failed.' );
