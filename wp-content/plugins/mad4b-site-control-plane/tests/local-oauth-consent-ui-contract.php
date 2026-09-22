@@ -25,6 +25,8 @@ if ( false === strpos( $enhanced, 'This consent authenticates the client and gra
 if ( false === strpos( $enhanced, 'Governed write actions, when available, require separate governed write authority and a one-time approval.' ) ) $fail( 'Governed write separation statement is missing.' );
 if ( false === strpos( $enhanced, 'OAuth identity/read scope · write authority separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
 if ( false === strpos( $enhanced, '.mad4b-live-grants' ) ) $fail( 'Live governed grant projection styling is missing.' );
+if ( false === strpos( $enhanced, '.mad4b-grant-metrics' ) ) $fail( 'Live authority metrics styling is missing.' );
+if ( false === strpos( $enhanced, '.mad4b-grant-blockers' ) ) $fail( 'Live authority blocker styling is missing.' );
 if ( false === strpos( $enhanced, '<section class="mad4b-live-grants">' ) ) $fail( 'Live governed grant projection content was not preserved.' );
 if ( false !== strpos( $enhanced, 'Read-only access · OAuth 2.1 · PKCE S256' ) ) $fail( 'Legacy whole-plugin read-only claim remains visible.' );
 if ( false !== strpos( $enhanced, 'mad4b:write' ) ) $fail( 'Consent presentation must not advertise or create a write OAuth scope.' );
