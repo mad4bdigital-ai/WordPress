@@ -5,6 +5,7 @@ $GLOBALS['mad4b_projection_write_tool_count'] = 2;
 $GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b' );
 $GLOBALS['mad4b_projection_global_wildcards'] = 0;
 $GLOBALS['mad4b_projection_current_agent_wildcards'] = 0;
+$GLOBALS['mad4b_projection_broad_environment'] = 0;
 
 final class MAD4B_SCP_Staging_Write_Authority {
 	public static function reconciliation_plan() {
@@ -18,7 +19,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'exact_grants_missing' => array(),
 			'stale_allow_grants_count' => 0,
 			'stale_allow_grants' => array(),
-			'broad_environment_grants_count' => 0,
+			'broad_environment_grants_count' => (int) $GLOBALS['mad4b_projection_broad_environment'],
+			'broad_environment_grants' => $GLOBALS['mad4b_projection_broad_environment'] > 0 ? array( array( 'ability' => 'core/update-a', 'provider' => 'core', 'environment' => 'all' ) ) : array(),
 			'duplicate_exact_allow_grants_count' => 0,
 			'duplicate_exact_allow_grants' => array(),
 			'current_agent_wildcard_grants' => (int) $GLOBALS['mad4b_projection_current_agent_wildcards'],
@@ -115,6 +117,16 @@ $wildcard = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
 $codes = array_map( static function ( $item ) { return isset( $item['code'] ) ? (string) $item['code'] : ''; }, $wildcard['blocking_conditions'] );
 mad4b_projection_assert( in_array( 'global_registry_wildcard_grants', $codes, true ), 'global wildcard security invariant missing', $wildcard );
 mad4b_projection_assert( 0 === (int) $wildcard['current_agent_wildcard_grants'] && 2 === (int) $wildcard['global_registry_wildcard_grants'], 'agent/global wildcard scopes were conflated', $wildcard );
+
+// Case 5: broad environment authority is distinct from stale runtime drift.
+$GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b' );
+$GLOBALS['mad4b_projection_write_tool_count'] = 2;
+$GLOBALS['mad4b_projection_broad_environment'] = 1;
+$broad = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
+$broad_codes = array_map( static function ( $item ) { return isset( $item['code'] ) ? (string) $item['code'] : ''; }, $broad['blocking_conditions'] );
+mad4b_projection_assert( in_array( 'broad_environment_grants', $broad_codes, true ), 'broad environment grant blocker missing', $broad );
+mad4b_projection_assert( 0 === (int) $broad['stale_allow_grants_count'], 'broad environment grant must not be double-counted as stale', $broad );
+$GLOBALS['mad4b_projection_broad_environment'] = 0;
 
 // Case 4: a provider-gated ability may never leak into runtime eligibility.
 $GLOBALS['mad4b_projection_global_wildcards'] = 0;
