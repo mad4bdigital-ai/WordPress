@@ -104,11 +104,11 @@ for marker in [
     "'runtime_evidence_fingerprint' => (string) $runtime_evidence_fingerprint",
     "canonical_digest_lines",
     "base64_encode",
-    "\\tb:",
-    "\\ti:",
-    "\\ts:",
-    "\\tl:",
-    "\\tm:",
+    "$token = 'b:'",
+    "$token = 'i:'",
+    "$token = 's:'",
+    '"\\tl:" . count( $value )',
+    '"\\tm:" . count( $ordered )',
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
