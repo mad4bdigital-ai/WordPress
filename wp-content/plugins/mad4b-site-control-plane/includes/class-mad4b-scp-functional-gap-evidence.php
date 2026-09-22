@@ -497,115 +497,113 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 	private static function evaluate( array $repository, array $runtime ) {
 		$decisions = array();
+		$evaluation_blockers = array();
 		$repo_families = isset( $repository['families'] ) && is_array( $repository['families'] ) ? $repository['families'] : array();
+		$policy = self::policy();
+		$policy_families = isset( $policy['data']['families'] ) && is_array( $policy['data']['families'] ) ? $policy['data']['families'] : array();
 
-		if ( empty( $repository['valid'] ) ) {
-			foreach ( array_keys( self::targets() ) as $family ) {
-				$decisions[] = self::decision( $family, 'evidence_unavailable', 'repository_evidence_missing_or_stale' );
+		if ( empty( $repository['valid'] ) || empty( $policy['valid'] ) ) {
+			foreach ( array_keys( $policy_families ) as $family ) {
+				$decisions[] = self::decision( sanitize_key( (string) $family ), 'evidence_unavailable', 'repository_evidence_or_policy_missing_or_stale' );
 			}
+			$blockers = array_merge(
+				isset( $repository['blockers'] ) ? (array) $repository['blockers'] : array(),
+				isset( $policy['blockers'] ) ? (array) $policy['blockers'] : array()
+			);
+			$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 			return array(
 				'contract' => self::EVALUATION_CONTRACT,
 				'ready' => false,
 				'promotion_authorized' => false,
+				'production_mutation' => false,
+				'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
+				'policy_sha256' => isset( $policy['sha256'] ) ? $policy['sha256'] : '',
 				'decisions' => $decisions,
-				'blockers' => isset( $repository['blockers'] ) ? $repository['blockers'] : array( 'repository_evidence_unavailable' ),
+				'blockers' => $blockers,
 			);
 		}
 
 		$routes = self::route_methods( $runtime );
-
-		$family = 'bulk-taxonomy-editor';
-		$rows = self::active_plugins( $runtime, $family );
-		$matches = self::tree_matches( isset( $repo_families[ $family ] ) ? $repo_families[ $family ] : array(), $rows );
-		$required = array( '/bulk-taxonomy-editor/v1/posts', '/bulk-taxonomy-editor/v1/taxonomies', '/bulk-taxonomy-editor/v1/terms' );
-		$missing = array();
-		foreach ( $required as $route ) if ( ! isset( $routes[ $route ] ) || ! in_array( 'GET', $routes[ $route ], true ) ) $missing[] = $route;
-		if ( empty( $rows ) ) {
-			$decisions[] = self::decision( $family, 'not_active', 'provider_not_active' );
-		} elseif ( ! self::runtime_rows_stable( $rows ) ) {
-			$decisions[] = self::decision( $family, 'runtime_evidence_unstable', 'runtime_tree_changed_during_scan', array( 'missing_get_routes' => $missing ) );
-		} elseif ( count( $matches ) === count( $rows ) && empty( $missing ) ) {
-			$decisions[] = self::decision( $family, 'read_contract_candidate', 'exact_runtime_tree_and_required_get_routes_verified', array(
-				'exact_tree_matches' => $matches,
-				'safe_now' => array( 'plugin_status_read','posts_read','taxonomies_read','terms_read' ),
-				'blocked' => array( 'post_create_or_update','bulk_taxonomy_write','term_relationship_mutation','taxonomy_delete_or_merge' ),
-			) );
-		} else {
-			$decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_or_required_get_routes_unverified', array( 'exact_tree_matches' => $matches, 'missing_get_routes' => $missing ) );
-		}
-
-		$family = 'wpl-client';
-		$rows = self::active_plugins( $runtime, $family );
-		$matches = self::tree_matches( isset( $repo_families[ $family ] ) ? $repo_families[ $family ] : array(), $rows );
 		$options = isset( $runtime['option_presence'] ) && is_array( $runtime['option_presence'] ) ? $runtime['option_presence'] : array();
-		$secret_ok = isset( $options['wpl_access_token']['redacted'], $options['wpl_api_key']['redacted'] ) && true === $options['wpl_access_token']['redacted'] && true === $options['wpl_api_key']['redacted'];
-		$status_keys = array( 'wpl_serial_verified','wpl_verified_order_number','wpl_verified_order_numbers','wpl_verified_wpl_ids' );
-		$status_model = true;
-		foreach ( $status_keys as $key ) if ( ! array_key_exists( $key, $options ) ) $status_model = false;
-		if ( empty( $rows ) ) {
-			$decisions[] = self::decision( $family, 'not_active', 'provider_not_active' );
-		} elseif ( ! self::runtime_rows_stable( $rows ) ) {
-			$decisions[] = self::decision( $family, 'runtime_evidence_unstable', 'runtime_tree_changed_during_scan', array( 'secret_redaction_verified' => $secret_ok ) );
-		} elseif ( count( $matches ) === count( $rows ) && $secret_ok && $status_model ) {
-			$decisions[] = self::decision( $family, 'redacted_read_contract_candidate', 'exact_runtime_tree_and_secret_redaction_verified', array(
-				'exact_tree_matches' => $matches,
-				'safe_now' => array( 'plugin_status_read','license_verification_state_read_redacted' ),
-				'blocked' => array( 'credential_read','remote_execution','plugin_or_theme_install','plugin_toggle','filesystem_write','external_write' ),
-			) );
-		} else {
-			$decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_or_redacted_status_model_unverified', array( 'exact_tree_matches' => $matches, 'secret_redaction_verified' => $secret_ok ) );
-		}
 
-		foreach ( array( 'custom-mega-menu','google-tag-manager','meta-catalog-feed-mapper','rank-math' ) as $family ) {
+		foreach ( $policy_families as $family_id => $rule ) {
+			$family = sanitize_key( (string) $family_id );
+			if ( '' === $family || ! is_array( $rule ) ) continue;
+			$mode = isset( $rule['evaluation_mode'] ) ? sanitize_key( (string) $rule['evaluation_mode'] ) : '';
 			$rows = self::active_plugins( $runtime, $family );
+			$versions = self::plugin_versions( $runtime, $family );
 			$matches = self::tree_matches( isset( $repo_families[ $family ] ) ? $repo_families[ $family ] : array(), $rows );
+			$base_extra = array( 'evaluation_mode'=>$mode, 'runtime_versions'=>$versions, 'exact_tree_matches'=>$matches );
+
 			if ( empty( $rows ) ) {
-				$state = 'not_active';
-				$reason = 'provider_not_active';
-			} elseif ( ! self::runtime_rows_stable( $rows ) ) {
-				$state = 'runtime_evidence_unstable';
-				$reason = 'runtime_tree_changed_during_scan';
-			} else {
-				$state = count( $matches ) === count( $rows ) ? 'contract_evidence_review' : 'runtime_alignment_required';
-				$reason = 'contract_evidence_review' === $state ? 'exact_runtime_tree_verified_but_semantic_contract_not_yet_promoted' : 'live_runtime_tree_does_not_match_repository_evidence';
+				$decisions[] = self::decision( $family, 'not_active', 'provider_not_active', $base_extra );
+				continue;
 			}
-			$decisions[] = self::decision( $family, $state, $reason, array( 'runtime_versions' => self::plugin_versions( $runtime, $family ), 'exact_tree_matches' => $matches ) );
-		}
-
-		foreach ( array( 'duplicator','elementskit','heic-support','hostinger-ai','hostinger-onboarding','hostinger-reach','wordpress-importer' ) as $family ) {
-			$rows = self::active_plugins( $runtime, $family );
-			$tree_hashes = array();
-			$plugin_files = array();
-			foreach ( $rows as $row ) {
-				$plugin_files[] = isset( $row['plugin_file'] ) ? (string) $row['plugin_file'] : '';
-				$tree_hashes[] = isset( $row['plugin_tree']['tree_sha256'] ) ? (string) $row['plugin_tree']['tree_sha256'] : '';
+			if ( ! self::runtime_rows_stable( $rows ) ) {
+				$decisions[] = self::decision( $family, 'runtime_evidence_unstable', 'runtime_tree_changed_or_scan_failed', $base_extra );
+				continue;
 			}
-			$state = empty( $rows ) ? 'not_active' : ( self::runtime_rows_stable( $rows ) ? 'runtime_contract_evidence_captured' : 'runtime_evidence_unstable' );
-			$reason = 'runtime_evidence_unstable' === $state ? 'runtime_tree_changed_during_scan' : 'runtime_only_provider_requires_semantic_contract_before_specialized_surface';
-			$decisions[] = self::decision( $family, $state, $reason, array(
-				'runtime_versions' => self::plugin_versions( $runtime, $family ),
-				'plugin_files' => $plugin_files,
-				'tree_sha256' => $tree_hashes,
-			) );
-		}
 
-		foreach ( array( 'jetengine','jetsmartfilters' ) as $family ) {
-			$rows = self::active_plugins( $runtime, $family );
-			$decisions[] = self::decision(
-				$family,
-				empty( $rows ) ? 'not_active' : 'semantic_attestation_required',
-				empty( $rows ) ? 'provider_not_active' : 'premium_provider_exact_runtime_and_semantic_review_gate_remains_authoritative',
-				array( 'runtime_versions' => self::plugin_versions( $runtime, $family ) )
-			);
-		}
+			switch ( $mode ) {
+				case 'bounded_read_routes':
+					$required = isset( $rule['required_get_routes'] ) && is_array( $rule['required_get_routes'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $rule['required_get_routes'] ) ) ) : array();
+					$missing = array();
+					foreach ( $required as $route ) if ( ! isset( $routes[ $route ] ) || ! in_array( 'GET', $routes[ $route ], true ) ) $missing[] = $route;
+					$extra = array_merge( $base_extra, array(
+						'missing_get_routes'=>$missing,
+						'safe_now'=>isset( $rule['safe_now'] ) && is_array( $rule['safe_now'] ) ? array_values( $rule['safe_now'] ) : array(),
+						'blocked'=>isset( $rule['blocked'] ) && is_array( $rule['blocked'] ) ? array_values( $rule['blocked'] ) : array(),
+					) );
+					if ( count( $matches ) === count( $rows ) && empty( $missing ) ) $decisions[] = self::decision( $family, 'read_contract_candidate', 'exact_runtime_tree_and_required_get_routes_verified', $extra );
+					else $decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_or_required_get_routes_unverified', $extra );
+					break;
 
-		$wp_import_rows = self::active_plugins( $runtime, 'wp-import-export' );
-		$decisions[] = self::decision(
-			'wp-import-export',
-			empty( $wp_import_rows ) ? 'not_active' : 'runtime_alignment_or_behavioral_recertification_required',
-			empty( $wp_import_rows ) ? 'provider_not_active' : 'composite_provider_requires_exact_component_versions_and_behavioral_execution_contract',
-			array( 'runtime_versions' => self::plugin_versions( $runtime, 'wp-import-export' ) )
-		);
+				case 'redacted_status':
+					$secret_keys = isset( $rule['redacted_secret_option_keys'] ) && is_array( $rule['redacted_secret_option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $rule['redacted_secret_option_keys'] ) ) ) : array();
+					$status_keys = isset( $rule['required_status_option_keys'] ) && is_array( $rule['required_status_option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $rule['required_status_option_keys'] ) ) ) : array();
+					$secret_ok = ! empty( $secret_keys );
+					foreach ( $secret_keys as $key ) if ( ! isset( $options[ $key ]['redacted'] ) || true !== $options[ $key ]['redacted'] ) $secret_ok = false;
+					$status_model = ! empty( $status_keys );
+					foreach ( $status_keys as $key ) if ( ! array_key_exists( $key, $options ) ) $status_model = false;
+					$extra = array_merge( $base_extra, array(
+						'secret_redaction_verified'=>$secret_ok,
+						'status_model_verified'=>$status_model,
+						'safe_now'=>isset( $rule['safe_now'] ) && is_array( $rule['safe_now'] ) ? array_values( $rule['safe_now'] ) : array(),
+						'blocked'=>isset( $rule['blocked'] ) && is_array( $rule['blocked'] ) ? array_values( $rule['blocked'] ) : array(),
+					) );
+					if ( count( $matches ) === count( $rows ) && $secret_ok && $status_model ) $decisions[] = self::decision( $family, 'redacted_read_contract_candidate', 'exact_runtime_tree_and_secret_redaction_verified', $extra );
+					else $decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_or_redacted_status_model_unverified', $extra );
+					break;
+
+				case 'exact_tree_review':
+					if ( count( $matches ) === count( $rows ) ) $decisions[] = self::decision( $family, 'contract_evidence_review', 'exact_runtime_tree_verified_but_semantic_contract_not_yet_promoted', $base_extra );
+					else $decisions[] = self::decision( $family, 'runtime_alignment_required', 'live_runtime_tree_does_not_match_repository_evidence', $base_extra );
+					break;
+
+				case 'runtime_only':
+					$plugin_files = array();
+					$tree_hashes = array();
+					foreach ( $rows as $row ) {
+						$plugin_files[] = isset( $row['plugin_file'] ) ? (string) $row['plugin_file'] : '';
+						$tree_hashes[] = isset( $row['plugin_tree']['tree_sha256'] ) ? (string) $row['plugin_tree']['tree_sha256'] : '';
+					}
+					$decisions[] = self::decision( $family, 'runtime_contract_evidence_captured', 'runtime_only_provider_requires_semantic_contract_before_specialized_surface', array_merge( $base_extra, array( 'plugin_files'=>$plugin_files, 'tree_sha256'=>$tree_hashes ) ) );
+					break;
+
+				case 'premium_semantic':
+					$decisions[] = self::decision( $family, 'semantic_attestation_required', 'premium_provider_exact_runtime_and_semantic_review_gate_remains_authoritative', $base_extra );
+					break;
+
+				case 'composite_behavioral':
+					$decisions[] = self::decision( $family, 'runtime_alignment_or_behavioral_recertification_required', 'composite_provider_requires_exact_component_versions_and_behavioral_execution_contract', $base_extra );
+					break;
+
+				default:
+					$evaluation_blockers[] = 'unsupported_evaluation_mode_' . ( '' !== $mode ? $mode : 'missing' );
+					$decisions[] = self::decision( $family, 'evidence_unavailable', 'functional_gap_policy_evaluation_mode_unsupported', $base_extra );
+					break;
+			}
+		}
 
 		$counts = array();
 		foreach ( $decisions as $row ) {
@@ -613,16 +611,19 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			$counts[ $state ] = isset( $counts[ $state ] ) ? $counts[ $state ] + 1 : 1;
 		}
 		ksort( $counts, SORT_STRING );
+		$evaluation_blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $evaluation_blockers ) ) ) );
 
 		return array(
 			'contract' => self::EVALUATION_CONTRACT,
-			'ready' => true,
+			'ready' => empty( $evaluation_blockers ),
 			'promotion_authorized' => false,
 			'production_mutation' => false,
+			'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
+			'policy_sha256' => isset( $policy['sha256'] ) ? $policy['sha256'] : '',
 			'repository_source_commit_sha' => isset( $repository['source_commit_sha'] ) ? $repository['source_commit_sha'] : '',
 			'counts' => $counts,
 			'decisions' => $decisions,
-			'blockers' => array(),
+			'blockers' => $evaluation_blockers,
 		);
 	}
 
