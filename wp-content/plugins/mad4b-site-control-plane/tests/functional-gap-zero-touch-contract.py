@@ -70,6 +70,12 @@ for marker in [
     "functional_gap_policy_promotion_not_false",
     "functional_gap_policy_match_overlap_",
     "functional_gap_policy_probe_regex_invalid_",
+    "private static function probe_regex_is_bounded",
+    "functional_gap_policy_probe_regex_overbroad_",
+    "functional_gap_policy_redacted_key_not_probed_",
+    "functional_gap_policy_redacted_key_not_secret_classified_",
+    "functional_gap_policy_constant_probe_identity_invalid",
+    "functional_gap_policy_constant_probe_secret_forbidden",
     "functional_gap_adapter_catalog_invalid",
     "functional_gap_repository_artifact_catalog_invalid",
     "functional_gap_policy_family_missing_from_adapter_catalog_",
@@ -283,6 +289,11 @@ for marker in [
     'repository_evidence',
     'repository_artifacts',
     'evaluation_mode',
+    'def probe_regex_is_bounded',
+    'functional_gap_policy_probe_regex_overbroad_',
+    'functional_gap_policy_redacted_key_not_probed_',
+    'functional_gap_policy_redacted_key_not_secret_classified_',
+    'functional_gap_policy_constant_probe_secret_forbidden',
 ]:
     if marker not in capture:
         raise SystemExit(f'repository evidence capture invariant missing: {marker}')
@@ -307,6 +318,21 @@ for rejected in ('custom-mega-menu-villain/custom-mega-menu.php','custom-mega-me
         raise SystemExit(f'lookalike versioned identity accepted: {rejected}')
 if policy_data.get('default_mutation')!='deny' or policy_data.get('promotion_authorized') is not False:
     raise SystemExit('canonical functional-gap policy weakened mutation/promotion defaults')
+
+probe_config=policy_data.get('probes',{}) if isinstance(policy_data.get('probes',{}),dict) else {}
+secret_re=re.compile(str(probe_config.get('secret_key_regex','')),re.I)
+option_probe_keys=set(str(x) for x in probe_config.get('option_keys',[]) if str(x))
+for family,rule in policy_data.get('families',{}).items():
+    if rule.get('evaluation_mode')!='redacted_status':
+        continue
+    for key in rule.get('redacted_secret_option_keys',[]) or []:
+        if key not in option_probe_keys:
+            raise SystemExit(f'redacted secret key is not included in option probes: {family}:{key}')
+        if secret_re.search(str(key)) is None:
+            raise SystemExit(f'redacted secret key escapes secret classifier: {family}:{key}')
+for constant_name in probe_config.get('constants',[]) or []:
+    if secret_re.search(str(constant_name)):
+        raise SystemExit(f'secret-like constant probe is forbidden: {constant_name}')
 
 catalog_data=json.loads(adapter_catalog)
 artifact_data=json.loads(repository_artifacts)
