@@ -114,6 +114,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					if ( empty( $row['required_get_routes'] ) || ! is_array( $row['required_get_routes'] ) ) $blockers[] = 'functional_gap_policy_required_routes_missing_' . $family;
 					if ( empty( $row['safe_now'] ) || ! is_array( $row['safe_now'] ) || empty( $row['blocked'] ) || ! is_array( $row['blocked'] ) ) $blockers[] = 'functional_gap_policy_read_boundary_missing_' . $family;
 					if ( ! array_key_exists( 'require_non_public_permissions', $row ) || true !== $row['require_non_public_permissions'] ) $blockers[] = 'functional_gap_policy_read_permission_boundary_missing_' . $family;
+					$required_callbacks = isset( $row['required_get_permission_callbacks'] ) && is_array( $row['required_get_permission_callbacks'] ) ? $row['required_get_permission_callbacks'] : array();
+					foreach ( isset( $row['required_get_routes'] ) && is_array( $row['required_get_routes'] ) ? $row['required_get_routes'] : array() as $required_route ) {
+						$required_route = sanitize_text_field( (string) $required_route );
+						$callbacks = isset( $required_callbacks[ $required_route ] ) && is_array( $required_callbacks[ $required_route ] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $required_callbacks[ $required_route ] ) ) ) : array();
+						if ( empty( $callbacks ) ) $blockers[] = 'functional_gap_policy_read_permission_callbacks_missing_' . $family;
+					}
 				}
 				if ( in_array( $mode, array( 'premium_semantic','composite_behavioral' ), true ) ) {
 					if ( empty( $row['repository_evidence'] ) ) $blockers[] = 'functional_gap_policy_identity_evidence_required_' . $family;
@@ -1308,24 +1314,34 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					$required = isset( $rule['required_get_routes'] ) && is_array( $rule['required_get_routes'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $rule['required_get_routes'] ) ) ) : array();
 					$missing = array();
 					$insecure = array();
+					$permission_callback_mismatch = array();
 					$permission_evidence = array();
 					$require_non_public = ! empty( $rule['require_non_public_permissions'] );
+					$required_callbacks = isset( $rule['required_get_permission_callbacks'] ) && is_array( $rule['required_get_permission_callbacks'] ) ? $rule['required_get_permission_callbacks'] : array();
 					foreach ( $required as $route ) {
 						if ( ! isset( $routes[ $route ] ) || ! in_array( 'GET', $routes[ $route ], true ) ) { $missing[] = $route; continue; }
 						$security = isset( $route_security[ $route ] ) && is_array( $route_security[ $route ] ) ? $route_security[ $route ] : array( 'callbacks'=>array(), 'missing'=>true, 'public'=>false );
+						$actual_callbacks = isset( $security['callbacks'] ) && is_array( $security['callbacks'] ) ? array_values( array_unique( array_map( 'strtolower', array_map( 'strval', $security['callbacks'] ) ) ) ) : array();
+						$expected_callbacks = isset( $required_callbacks[ $route ] ) && is_array( $required_callbacks[ $route ] ) ? array_values( array_unique( array_map( 'strtolower', array_map( 'strval', $required_callbacks[ $route ] ) ) ) ) : array();
+						sort( $actual_callbacks, SORT_STRING );
+						sort( $expected_callbacks, SORT_STRING );
+						$security['expected_callbacks'] = $expected_callbacks;
+						$security['callback_identity_match'] = ! empty( $expected_callbacks ) && $actual_callbacks === $expected_callbacks;
 						$permission_evidence[ $route ] = $security;
-						if ( $require_non_public && ( ! empty( $security['missing'] ) || ! empty( $security['public'] ) || empty( $security['callbacks'] ) ) ) $insecure[] = $route;
+						if ( $require_non_public && ( ! empty( $security['missing'] ) || ! empty( $security['public'] ) || empty( $actual_callbacks ) ) ) $insecure[] = $route;
+						if ( empty( $expected_callbacks ) || $actual_callbacks !== $expected_callbacks ) $permission_callback_mismatch[] = $route;
 					}
 					ksort( $permission_evidence, SORT_STRING );
 					$extra = array_merge( $base_extra, array(
 						'missing_get_routes'=>$missing,
 						'insecure_get_routes'=>$insecure,
+						'permission_callback_mismatch'=>$permission_callback_mismatch,
 						'route_permission_evidence'=>$permission_evidence,
 						'safe_now'=>isset( $rule['safe_now'] ) && is_array( $rule['safe_now'] ) ? array_values( $rule['safe_now'] ) : array(),
 						'blocked'=>isset( $rule['blocked'] ) && is_array( $rule['blocked'] ) ? array_values( $rule['blocked'] ) : array(),
 					) );
-					if ( count( $matches ) === count( $rows ) && empty( $missing ) && empty( $insecure ) ) $decisions[] = self::decision( $family, 'read_contract_candidate', 'exact_runtime_tree_required_get_routes_and_permissions_verified', $extra );
-					else $decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_routes_or_permission_boundary_unverified', $extra );
+					if ( count( $matches ) === count( $rows ) && empty( $missing ) && empty( $insecure ) && empty( $permission_callback_mismatch ) ) $decisions[] = self::decision( $family, 'read_contract_candidate', 'exact_runtime_tree_required_get_routes_and_permission_callbacks_verified', $extra );
+					else $decisions[] = self::decision( $family, 'contract_discovery_required', 'exact_runtime_tree_routes_or_permission_callback_boundary_unverified', $extra );
 					break;
 
 				case 'redacted_status':
