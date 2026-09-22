@@ -119,6 +119,39 @@ $escape = MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::execute( array( 'family' 
 mad4b_gap_assert( ! is_wp_error( $escape ) && empty( $escape['complete'] ), 'escaped plugin path must produce incomplete fail-closed evidence', $escape );
 mad4b_gap_assert( 'mad4b_functional_gap_plugin_file_invalid' === $escape['families'][0]['errors'][0]['error'], 'escaped plugin path blocker code missing', $escape );
 
+$GLOBALS['mad4b_gap_items'] = array(
+	array(
+		'plugin_file' => 'top-level.php',
+		'plugin_name' => 'Top Level Provider',
+		'family' => 'top-level',
+		'functional_family_key' => 'top-level',
+		'functional_coverage' => array( 'state' => 'contract_discovery_required' ),
+	),
+);
+file_put_contents( $plugins . '/top-level.php', "<?php\n/* top level */\n" );
+$top = MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::execute( array( 'family' => 'top-level' ) );
+mad4b_gap_assert( ! is_wp_error( $top ) && empty( $top['complete'] ), 'top-level plugin must never cause whole plugins directory scan', $top );
+mad4b_gap_assert( 'mad4b_functional_gap_top_level_plugin_unbounded' === $top['families'][0]['errors'][0]['error'], 'top-level plugin bound blocker missing', $top );
+@unlink( $plugins . '/top-level.php' );
+
+if ( function_exists( 'symlink' ) ) {
+	$GLOBALS['mad4b_gap_items'] = array(
+		array(
+			'plugin_file' => 'alpha/alpha.php',
+			'plugin_name' => 'Alpha Provider',
+			'family' => 'alpha',
+			'functional_family_key' => 'alpha',
+			'functional_coverage' => array( 'state' => 'safety_blocked' ),
+		),
+	);
+	@symlink( $plugins . '/alpha/readme.txt', $plugins . '/alpha/readme-link.txt' );
+	$linked = MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::execute( array( 'family' => 'alpha' ) );
+	if ( is_link( $plugins . '/alpha/readme-link.txt' ) ) {
+		mad4b_gap_assert( empty( $linked['complete'] ) && (int) $linked['families'][0]['symlink_count'] > 0, 'symlinked plugin tree must remain incomplete', $linked );
+		@unlink( $plugins . '/alpha/readme-link.txt' );
+	}
+}
+
 foreach ( array( $plugins . '/alpha/alpha.php', $plugins . '/alpha/readme.txt', $plugins . '/beta/beta.php', $plugins . '/beta/sub/data.json' ) as $file ) @unlink( $file );
 @rmdir( $plugins . '/beta/sub' ); @rmdir( $plugins . '/beta' ); @rmdir( $plugins . '/alpha' ); @rmdir( $plugins ); @rmdir( $root );
 
