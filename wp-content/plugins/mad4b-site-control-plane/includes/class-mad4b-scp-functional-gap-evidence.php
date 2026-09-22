@@ -44,7 +44,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return strtolower( ltrim( str_replace( '\\', '/', (string) $value ), '/' ) );
 	}
 
-	private static function plugin_tree( $plugin_file ) {
+	private static function plugin_tree_once( $plugin_file ) {
 		$plugin_file = ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
 		$dirname = dirname( $plugin_file );
 		$root = '.' === $dirname ? WP_PLUGIN_DIR : WP_PLUGIN_DIR . '/' . $dirname;
@@ -77,6 +77,43 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'total_bytes' => $total,
 			'tree_sha256' => hash( 'sha256', implode( "\n", $rows ) ),
 		);
+	}
+
+	private static function plugin_tree( $plugin_file, array $expected_hashes = array() ) {
+		$expected = array();
+		foreach ( $expected_hashes as $digest ) {
+			$digest = strtolower( trim( (string) $digest ) );
+			if ( preg_match( '/^[a-f0-9]{64}$/', $digest ) ) $expected[ $digest ] = true;
+		}
+		$first = self::plugin_tree_once( $plugin_file );
+		$first_hash = isset( $first['tree_sha256'] ) ? strtolower( (string) $first['tree_sha256'] ) : '';
+		if ( '' !== $first_hash && isset( $expected[ $first_hash ] ) ) {
+			$first['scan_stable'] = true;
+			$first['scan_attempts'] = 1;
+			$first['comparison'] = 'exact_repository_match';
+			return $first;
+		}
+		$second = self::plugin_tree_once( $plugin_file );
+		$second_hash = isset( $second['tree_sha256'] ) ? strtolower( (string) $second['tree_sha256'] ) : '';
+		$stable = '' !== $first_hash && '' !== $second_hash && hash_equals( $first_hash, $second_hash )
+			&& (int) ( isset( $first['file_count'] ) ? $first['file_count'] : -1 ) === (int) ( isset( $second['file_count'] ) ? $second['file_count'] : -2 )
+			&& (int) ( isset( $first['total_bytes'] ) ? $first['total_bytes'] : -1 ) === (int) ( isset( $second['total_bytes'] ) ? $second['total_bytes'] : -2 );
+		$second['scan_stable'] = $stable;
+		$second['scan_attempts'] = 2;
+		$second['first_tree_sha256'] = $first_hash;
+		$second['comparison'] = $stable ? ( isset( $expected[ $second_hash ] ) ? 'exact_repository_match' : 'stable_runtime_drift' ) : 'runtime_tree_changed_during_scan';
+		if ( ! $stable ) $second['error'] = 'runtime_tree_unstable';
+		return $second;
+	}
+
+	private static function repository_tree_hashes( array $repository, $family ) {
+		$out = array();
+		$family_row = isset( $repository['families'][ $family ] ) && is_array( $repository['families'][ $family ] ) ? $repository['families'][ $family ] : array();
+		foreach ( isset( $family_row['artifacts'] ) && is_array( $family_row['artifacts'] ) ? $family_row['artifacts'] : array() as $artifact ) {
+			$digest = isset( $artifact['package_tree']['tree_sha256'] ) ? strtolower( trim( (string) $artifact['package_tree']['tree_sha256'] ) ) : '';
+			if ( preg_match( '/^[a-f0-9]{64}$/', $digest ) ) $out[ $digest ] = true;
+		}
+		return array_keys( $out );
 	}
 
 	private static function build_provenance() {
@@ -175,7 +212,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return preg_match( '/^[a-f0-9]{40}$/', $sha ) ? $sha : '';
 	}
 
-	private static function runtime_evidence() {
+	private static function runtime_evidence( array $repository = array() ) {
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
 		$plugin_map = get_plugins();
@@ -200,7 +237,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					'name' => isset( $headers['Name'] ) ? sanitize_text_field( (string) $headers['Name'] ) : '',
 					'version' => isset( $headers['Version'] ) ? sanitize_text_field( (string) $headers['Version'] ) : '',
 					'active' => isset( $active_set[ $normalized ] ),
-					'plugin_tree' => self::plugin_tree( $plugin_file ),
+					'plugin_tree' => self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ) ),
 				);
 			}
 			usort( $families[ $family ], static function ( $a, $b ) { return strcmp( $a['plugin_file'], $b['plugin_file'] ); } );
@@ -323,6 +360,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		}
 		$matches = array();
 		foreach ( $runtime_rows as $plugin ) {
+			if ( empty( $plugin['plugin_tree']['scan_stable'] ) ) continue;
 			$digest = isset( $plugin['plugin_tree']['tree_sha256'] ) ? strtolower( (string) $plugin['plugin_tree']['tree_sha256'] ) : '';
 			if ( ! isset( $trees[ $digest ] ) ) continue;
 			$matches[] = array(
@@ -457,7 +495,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	public static function snapshot() {
 		if ( null !== self::$snapshot ) return self::$snapshot;
 		$repository = self::repository_evidence();
-		$runtime = self::runtime_evidence();
+		$runtime = self::runtime_evidence( $repository );
 		$evaluation = self::evaluate( $repository, $runtime );
 		self::$snapshot = array(
 			'contract' => self::CONTRACT,
