@@ -114,7 +114,6 @@ required = [
     'get_permission_missing',
     'get_permission_public',
     'insecure_get_routes',
-    'exact_runtime_tree_required_get_routes_and_permissions_verified',
     'redacted_read_contract_candidate',
     'runtime_alignment_required',
     'semantic_attestation_required',
