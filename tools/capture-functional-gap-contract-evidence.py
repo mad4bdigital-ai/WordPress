@@ -20,6 +20,18 @@ ARTIFACT_MAP = json.loads(ARTIFACT_MAP_PATH.read_text("utf-8"))
 def normalize_plugin_file(value):
     return str(value or "").replace("\\", "/").lstrip("/").lower()
 
+def probe_regex_is_bounded(value):
+    value=str(value or "").strip()
+    if not value or len(value)>512:
+        return False
+    for token in (".*", ".+", ".{", "(?=", "(?!", "(?<=", "(?<!", "||", "(|", "|)"):
+        if token in value:
+            return False
+    if re.search(r"\\[1-9]", value):
+        return False
+    literal=re.sub(r"\\.", "", value)
+    return re.search(r"[A-Za-z0-9_]{3,}", literal) is not None
+
 def validate_policy():
     blockers=[]
     if CATALOG.get("contract") != "mad4b.adapter-support-catalog.v1":
@@ -39,6 +51,21 @@ def validate_policy():
     artifact_families=ARTIFACT_MAP.get("families",{}) if isinstance(ARTIFACT_MAP.get("families",{}),dict) else {}
     supported={"bounded_read_routes","redacted_status","exact_tree_review","runtime_only","premium_semantic","composite_behavioral"}
     prefix_owners={}
+
+    probes=POLICY.get("probes") if isinstance(POLICY.get("probes"),dict) else {}
+    for regex_key in ("rest_route_regex","ajax_hook_regex","cron_hook_regex","secret_key_regex"):
+        value=str(probes.get(regex_key,"")).strip()
+        try:
+            re.compile(value, re.I)
+        except re.error:
+            blockers.append(f"functional_gap_policy_probe_regex_invalid_{regex_key}")
+            continue
+        if not probe_regex_is_bounded(value):
+            blockers.append(f"functional_gap_policy_probe_regex_overbroad_{regex_key}")
+    if not isinstance(probes.get("option_keys"),list) or not probes.get("option_keys"):
+        blockers.append("functional_gap_policy_option_probe_set_missing")
+    if not isinstance(probes.get("constants"),list) or not probes.get("constants"):
+        blockers.append("functional_gap_policy_constant_probe_set_missing")
 
     for family,row in sorted((POLICY.get("families") or {}).items()):
         if not family or not isinstance(row,dict):
