@@ -115,6 +115,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					if ( empty( $row['safe_now'] ) || ! is_array( $row['safe_now'] ) || empty( $row['blocked'] ) || ! is_array( $row['blocked'] ) ) $blockers[] = 'functional_gap_policy_read_boundary_missing_' . $family;
 					if ( ! array_key_exists( 'require_non_public_permissions', $row ) || true !== $row['require_non_public_permissions'] ) $blockers[] = 'functional_gap_policy_read_permission_boundary_missing_' . $family;
 				}
+				if ( in_array( $mode, array( 'premium_semantic','composite_behavioral' ), true ) ) {
+					if ( empty( $row['repository_evidence'] ) ) $blockers[] = 'functional_gap_policy_identity_evidence_required_' . $family;
+					if ( empty( $row['repository_artifacts'] ) || ! is_array( $row['repository_artifacts'] ) ) $blockers[] = 'functional_gap_policy_identity_artifacts_required_' . $family;
+				}
 				if ( 'redacted_status' === $mode ) {
 					if ( empty( $row['redacted_secret_option_keys'] ) || ! is_array( $row['redacted_secret_option_keys'] ) ) $blockers[] = 'functional_gap_policy_redaction_keys_missing_' . $family;
 					if ( empty( $row['required_status_option_keys'] ) || ! is_array( $row['required_status_option_keys'] ) ) $blockers[] = 'functional_gap_policy_status_keys_missing_' . $family;
@@ -211,7 +215,13 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				false !== $main_sha ? (string) $main_sha : '',
 			) );
 		}
-		foreach ( array( MAD4B_SCP_DIR . self::REPOSITORY_FILE, MAD4B_SCP_DIR . self::POLICY_FILE, MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ) as $path ) {
+		foreach ( array(
+			MAD4B_SCP_DIR . self::REPOSITORY_FILE,
+			MAD4B_SCP_DIR . self::POLICY_FILE,
+			MAD4B_SCP_DIR . 'config/adapter-support-catalog.json',
+			MAD4B_SCP_DIR . 'config/repository-plugin-artifacts.json',
+			MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json'
+		) as $path ) {
 			$file_sha = is_file( $path ) ? @hash_file( 'sha256', $path ) : false;
 			$rows[] = implode( "\0", array(
 				basename( $path ),
@@ -772,7 +782,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				if ( ! is_array( $rule ) || ! self::plugin_matches_policy_family( $normalized, $rule ) ) continue;
 				$is_active = isset( $active_set[ $normalized ] );
 				$mode = isset( $rule['evaluation_mode'] ) ? sanitize_key( (string) $rule['evaluation_mode'] ) : '';
-				$repeat_on_mismatch = ! in_array( $mode, array( 'runtime_only','premium_semantic','composite_behavioral' ), true );
+				$repeat_on_mismatch = ! empty( $rule['repository_evidence'] );
 				$families[ $family ][] = array(
 					'plugin_file' => (string) $plugin_file,
 					'name' => isset( $headers['Name'] ) ? sanitize_text_field( (string) $headers['Name'] ) : '',
@@ -1236,11 +1246,31 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					break;
 
 				case 'premium_semantic':
-					$decisions[] = self::decision( $family, 'semantic_attestation_required', 'premium_provider_exact_runtime_and_semantic_review_gate_remains_authoritative', $base_extra );
+					if ( count( $matches ) !== count( $rows ) ) {
+						$decisions[] = self::decision( $family, 'runtime_alignment_required', 'premium_provider_runtime_tree_does_not_match_repository_identity', $base_extra );
+					} else {
+						$decisions[] = self::decision( $family, 'semantic_attestation_required', 'premium_provider_exact_repository_identity_verified_semantic_review_still_required', $base_extra );
+					}
 					break;
 
 				case 'composite_behavioral':
-					$decisions[] = self::decision( $family, 'runtime_alignment_or_behavioral_recertification_required', 'composite_provider_requires_exact_component_versions_and_behavioral_execution_contract', $base_extra );
+					$expected_artifacts = isset( $rule['repository_artifacts'] ) && is_array( $rule['repository_artifacts'] ) ? array_values( array_unique( array_map( 'sanitize_text_field', $rule['repository_artifacts'] ) ) ) : array();
+					$matched_artifacts = array();
+					foreach ( $matches as $match ) if ( ! empty( $match['repository_archive'] ) ) $matched_artifacts[] = sanitize_text_field( (string) $match['repository_archive'] );
+					$matched_artifacts = array_values( array_unique( $matched_artifacts ) );
+					sort( $expected_artifacts, SORT_STRING );
+					sort( $matched_artifacts, SORT_STRING );
+					$component_identity_exact = count( $matches ) === count( $rows ) && $matched_artifacts === $expected_artifacts;
+					$composite_extra = array_merge( $base_extra, array(
+						'expected_repository_artifacts' => $expected_artifacts,
+						'matched_repository_artifacts' => $matched_artifacts,
+						'component_identity_exact' => $component_identity_exact,
+					) );
+					if ( ! $component_identity_exact ) {
+						$decisions[] = self::decision( $family, 'runtime_alignment_required', 'composite_provider_runtime_components_do_not_match_repository_identity', $composite_extra );
+					} else {
+						$decisions[] = self::decision( $family, 'behavioral_recertification_required', 'composite_provider_exact_component_identity_verified_behavioral_execution_contract_still_required', $composite_extra );
+					}
 					break;
 
 				default:
