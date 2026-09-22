@@ -211,8 +211,17 @@ def main():
     for family, rule in sorted((policy.get("families") or {}).items()):
         if not isinstance(rule, dict) or str(rule.get("evaluation_mode", "")) not in supported_modes:
             raise SystemExit(f"{family}: unsupported functional-gap evaluation mode")
-        if rule.get("evaluation_mode") == "bounded_read_routes" and rule.get("require_non_public_permissions") is not True:
-            raise SystemExit(f"{family}: bounded read permission boundary missing")
+        if rule.get("evaluation_mode") == "bounded_read_routes":
+            if rule.get("require_non_public_permissions") is not True:
+                raise SystemExit(f"{family}: bounded read permission boundary missing")
+            required_routes = list(rule.get("required_get_routes", []))
+            callback_map = rule.get("required_get_permission_callbacks") or {}
+            if not required_routes or not isinstance(callback_map, dict):
+                raise SystemExit(f"{family}: bounded read callback identity policy missing")
+            for route in required_routes:
+                callbacks = callback_map.get(route) or []
+                if not isinstance(callbacks, list) or not [str(x).strip() for x in callbacks if str(x).strip()]:
+                    raise SystemExit(f"{family}: bounded read callback identity missing for {route}")
         if rule.get("evaluation_mode") in {"premium_semantic","composite_behavioral"}:
             if rule.get("repository_evidence") is not True or not rule.get("repository_artifacts"):
                 raise SystemExit(f"{family}: identity-first provider gate requires repository evidence")
@@ -273,27 +282,36 @@ def main():
             required = list(rule.get("required_get_routes", []))
             missing = sorted(route for route in required if "GET" not in routes.get(route, set()))
             require_non_public = rule.get("require_non_public_permissions") is True
+            callback_map = rule.get("required_get_permission_callbacks") or {}
             insecure = []
+            callback_mismatch = []
             permission_evidence = {}
             for route in required:
                 if route in missing:
                     continue
-                security = route_permissions.get(route, {"callbacks": [], "missing": True, "public": False})
+                security = dict(route_permissions.get(route, {"callbacks": [], "missing": True, "public": False}))
+                actual_callbacks = sorted({str(x).strip().lower() for x in security.get("callbacks", []) if str(x).strip()})
+                expected_callbacks = sorted({str(x).strip().lower() for x in callback_map.get(route, []) if str(x).strip()})
+                security["expected_callbacks"] = expected_callbacks
+                security["callback_identity_match"] = bool(expected_callbacks) and actual_callbacks == expected_callbacks
                 permission_evidence[route] = security
-                if require_non_public and (security.get("missing") or security.get("public") or not security.get("callbacks")):
+                if require_non_public and (security.get("missing") or security.get("public") or not actual_callbacks):
                     insecure.append(route)
+                if not expected_callbacks or actual_callbacks != expected_callbacks:
+                    callback_mismatch.append(route)
             extra = dict(base)
             extra.update({
                 "missing_get_routes": missing,
                 "insecure_get_routes": sorted(insecure),
+                "permission_callback_mismatch": sorted(callback_mismatch),
                 "route_permission_evidence": dict(sorted(permission_evidence.items())),
                 "safe_now": list(rule.get("safe_now", [])),
                 "blocked": list(rule.get("blocked", [])),
             })
-            if len(matches) == len(rows) and not missing and not insecure:
-                decisions.append(decision(family, "read_contract_candidate", "exact_runtime_tree_required_get_routes_and_permissions_verified", mode, **extra))
+            if len(matches) == len(rows) and not missing and not insecure and not callback_mismatch:
+                decisions.append(decision(family, "read_contract_candidate", "exact_runtime_tree_required_get_routes_and_permission_callbacks_verified", mode, **extra))
             else:
-                decisions.append(decision(family, "contract_discovery_required", "exact_runtime_tree_routes_or_permission_boundary_unverified", mode, **extra))
+                decisions.append(decision(family, "contract_discovery_required", "exact_runtime_tree_routes_or_permission_callback_boundary_unverified", mode, **extra))
 
         elif mode == "redacted_status":
             secret_keys = list(rule.get("redacted_secret_option_keys", []))
