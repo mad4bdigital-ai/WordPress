@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import hashlib, json, re, sys, zipfile
+import hashlib, json, os, re, sys, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -124,7 +124,7 @@ def inspect(path: Path):
 
 report={
     "contract":"mad4b.functional-gap-contract-evidence.v1",
-    "source_commit_sha":"",
+    "source_commit_sha":os.environ.get("SOURCE_SHA",""),
     "families":{},
 }
 for family,archives in FAMILIES.items():
