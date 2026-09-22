@@ -14,6 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	const CONTRACT = 'mad4b.query-monitor-collector-bridge.v1';
+	const ATTRIBUTION_CONTRACT = 'mad4b.query-monitor-db-attribution.v1';
+	const ATTRIBUTION_OPTION = 'mad4b_scp_qm_db_attribution_v1';
 	const COLLECTOR_ID = 'doing_it_wrong';
 
 	private static $booted = false;
@@ -36,6 +38,84 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		// overwritten later by the legacy shutdown flush.
 		remove_action( 'shutdown', array( 'MAD4B_SCP_Live_Acceptance_Observer', 'flush_observation' ), PHP_INT_MAX );
 		add_action( 'shutdown', array( __CLASS__, 'capture_and_flush' ), 8 );
+		add_action( 'admin_init', array( __CLASS__, 'maybe_enable_db_attribution' ), 1 );
+	}
+
+
+	public static function db_attribution_status() {
+		$dropin = defined( 'WP_CONTENT_DIR' ) ? trailingslashit( WP_CONTENT_DIR ) . 'db.php' : '';
+		$source = defined( 'WP_PLUGIN_DIR' ) ? trailingslashit( WP_PLUGIN_DIR ) . 'query-monitor/wp-content/db.php' : '';
+		$dropin_exists = '' !== $dropin && ( file_exists( $dropin ) || is_link( $dropin ) );
+		$source_exists = '' !== $source && is_readable( $source );
+		$owned = false;
+		if ( $dropin_exists && $source_exists ) {
+			$dropin_real = realpath( $dropin );
+			$source_real = realpath( $source );
+			$owned = false !== $dropin_real && false !== $source_real && hash_equals( wp_normalize_path( $source_real ), wp_normalize_path( $dropin_real ) );
+		}
+		if ( $dropin_exists && ! $owned && is_readable( $dropin ) ) {
+			$prefix = file_get_contents( $dropin, false, null, 0, 32768 );
+			$owned = is_string( $prefix ) && false !== strpos( $prefix, 'QM_DB' ) && false !== strpos( $prefix, 'Query Monitor' );
+		}
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		$file_mods_allowed = ! ( defined( 'DISALLOW_FILE_MODS' ) && DISALLOW_FILE_MODS );
+		$symlink_available = function_exists( 'symlink' );
+		$writable = defined( 'WP_CONTENT_DIR' ) && is_dir( WP_CONTENT_DIR ) && is_writable( WP_CONTENT_DIR );
+		$ready = class_exists( 'QM_DB', false );
+		$state = $ready ? 'ready'
+			: ( $dropin_exists && ! $owned ? 'conflicting_db_dropin'
+			: ( $dropin_exists && $owned ? 'query_monitor_dropin_reload_required'
+			: ( ! defined( 'QM_VERSION' ) ? 'query_monitor_inactive'
+			: ( ! $source_exists ? 'query_monitor_dropin_source_missing'
+			: ( ! $file_mods_allowed ? 'file_modifications_disabled'
+			: ( ! $symlink_available ? 'symlink_unavailable'
+			: ( ! $writable ? 'wp_content_not_writable' : 'enablement_available' ) ) ) ) ) ) );
+		return array(
+			'contract' => self::ATTRIBUTION_CONTRACT,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'environment' => $environment,
+			'query_monitor_active' => defined( 'QM_VERSION' ),
+			'qm_db_active' => $ready,
+			'dropin_exists' => $dropin_exists,
+			'dropin_owned_by_query_monitor' => $owned,
+			'dropin_conflict' => $dropin_exists && ! $owned,
+			'dropin_source_exists' => $source_exists,
+			'file_modifications_allowed' => $file_mods_allowed,
+			'symlink_available' => $symlink_available,
+			'wp_content_writable' => $writable,
+			'safe_to_enable' => 'staging' === $environment && defined( 'QM_VERSION' ) && $source_exists && ! $dropin_exists && $file_mods_allowed && $symlink_available && $writable,
+			'ready' => $ready,
+			'state' => $state,
+			'caller_component_trace_expected' => $ready,
+			'production_changed' => false,
+		);
+	}
+
+	public static function maybe_enable_db_attribution() {
+		$status = self::db_attribution_status();
+		if ( 'staging' !== (string) $status['environment'] || ! is_admin() || ! current_user_can( 'manage_options' ) ) return $status;
+		if ( ! empty( $status['ready'] ) || empty( $status['safe_to_enable'] ) ) return $status;
+		if ( ! defined( 'WP_CONTENT_DIR' ) || ! defined( 'WP_PLUGIN_DIR' ) ) return $status;
+		$dropin = trailingslashit( WP_CONTENT_DIR ) . 'db.php';
+		$source = trailingslashit( WP_PLUGIN_DIR ) . 'query-monitor/wp-content/db.php';
+		if ( file_exists( $dropin ) || is_link( $dropin ) || ! is_readable( $source ) ) return self::db_attribution_status();
+		$created = @symlink( $source, $dropin ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded best-effort Staging bootstrap.
+		clearstatcache( true, $dropin );
+		$record = array(
+			'contract' => 'mad4b.query-monitor-db-attribution-bootstrap.v1',
+			'environment' => 'staging',
+			'created' => (bool) $created,
+			'created_at' => gmdate( 'c' ),
+			'reload_required' => (bool) $created,
+			'production_changed' => false,
+		);
+		update_option( self::ATTRIBUTION_OPTION, $record, false );
+		$status = self::db_attribution_status();
+		$status['bootstrap'] = $record;
+		return $status;
 	}
 
 	/** @internal Pure wiring map used by regression tests. */
