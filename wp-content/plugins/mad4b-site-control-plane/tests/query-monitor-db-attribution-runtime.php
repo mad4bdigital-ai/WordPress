@@ -64,6 +64,12 @@ mad4b_qm_assert( ! empty( $enabled['bootstrap']['created'] ) && 'bounded_loader'
 mad4b_qm_assert( empty( $enabled['production_changed'] ), 'Staging attribution bootstrap must never claim Production mutation' );
 
 @unlink( WP_CONTENT_DIR . '/db.php' );
+file_put_contents( WP_CONTENT_DIR . '/db.php', "<?php\n/* " . MAD4B_SCP_Query_Monitor_Evidence_Bridge::ATTRIBUTION_LOADER_MARKER . " */\n/* foreign spoof */\n" );
+$spoof = MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status();
+mad4b_qm_assert( 'conflicting_db_dropin' === $spoof['state'], 'marker-only foreign db.php must not be treated as MAD4B-owned loader' );
+mad4b_qm_assert( empty( $spoof['dropin_owned_by_query_monitor'] ), 'marker-only spoof must remain unowned' );
+
+@unlink( WP_CONTENT_DIR . '/db.php' );
 file_put_contents( WP_CONTENT_DIR . '/db.php', "<?php\n/* foreign database drop-in */\n" );
 $foreign_before = hash_file( 'sha256', WP_CONTENT_DIR . '/db.php' );
 $conflict = MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status();
