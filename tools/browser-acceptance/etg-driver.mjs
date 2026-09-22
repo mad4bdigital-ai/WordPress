@@ -113,37 +113,73 @@ async function loadObserver(page, origin) {
   if (contract !== "etg.dfsb.browser-acceptance-observer.v1") throw new Error("browser_observer_unavailable");
 }
 
+export function chooseGovernedTermIndex(items, planCase) {
+  const slug = String(planCase?.term_slug || "").toLowerCase();
+  const id = String(planCase?.term_id || "");
+  const taxonomy = String(planCase?.taxonomy || "").toLowerCase();
+  let best = { index: -1, score: -1 };
+
+  (Array.isArray(items) ? items : []).forEach((item, index) => {
+    if (!item || item.visible === false) return;
+    const attrs = Array.isArray(item.attrs) ? item.attrs.map((x) => String(x)) : [];
+    const lowerAttrs = attrs.map((x) => x.toLowerCase());
+    const text = String(item.text || "").trim().toLowerCase();
+    const name = String(item.name || "").toLowerCase();
+    const queryId = String(item.queryId || "");
+
+    const exactId = attrs.includes(id);
+    const exactSlug = lowerAttrs.includes(slug);
+    const exactLabel = text === slug.replace(/-/g, " ");
+    const taxonomyContext = taxonomy && name.includes(taxonomy);
+    const queryContext = queryId === "tours_query_archive";
+
+    const strongIdentity =
+      exactId ||
+      exactSlug ||
+      (exactLabel && (taxonomyContext || queryContext));
+
+    if (!strongIdentity) return;
+
+    let score = 0;
+    if (exactId) score += 120;
+    if (exactSlug) score += 100;
+    if (exactLabel) score += 70;
+    if (taxonomyContext) score += 30;
+    if (queryContext) score += 30;
+    if (String(item.tagName || "").toLowerCase() === "input") score += 5;
+
+    if (score > best.score) best = { index, score };
+  });
+
+  return best.index;
+}
+
 async function resolveTermIndex(page, planCase) {
-  return page.locator(
+  const items = await page.locator(
     ".jet-smart-filters input, .jet-smart-filters button, .jet-smart-filters [data-value], " +
     ".jet-filter input, .jet-filter button, .jet-filter [data-value], " +
     "[class*='jet-smart-filter'] input, [class*='jet-smart-filter'] button, [class*='jet-smart-filter'] [data-value]"
-  ).evaluateAll((nodes, input) => {
-    const slug = String(input.slug || "").toLowerCase();
-    const id = String(input.id || "");
-    const tax = String(input.taxonomy || "").toLowerCase();
-    let best = { index: -1, score: 0 };
-    nodes.forEach((node, index) => {
-      if (!(node instanceof HTMLElement)) return;
-      const style = window.getComputedStyle(node);
-      if (style.display === "none" || style.visibility === "hidden") return;
-      const attrs = [
-        node.getAttribute("value"), node.getAttribute("data-value"), node.getAttribute("data-term-id"),
-        node.getAttribute("data-id"), node.getAttribute("data-term-slug"), node.getAttribute("data-slug")
-      ].filter(Boolean).map(String);
-      const text = String(node.textContent || "").trim().toLowerCase();
-      const name = String(node.getAttribute("name") || "").toLowerCase();
-      let score = 0;
-      if (attrs.includes(id)) score += 100;
-      if (attrs.some((x) => x.toLowerCase() === slug)) score += 90;
-      if (text === slug.replace(/-/g, " ")) score += 70;
-      if (text.includes(slug.replace(/-/g, " "))) score += 35;
-      if (name.includes(tax)) score += 20;
-      if (String(node.closest("[data-query-id]")?.getAttribute("data-query-id") || "") === "tours_query_archive") score += 20;
-      if (score > best.score) best = { index, score };
-    });
-    return best.index;
-  }, { slug: planCase.term_slug, id: planCase.term_id, taxonomy: planCase.taxonomy });
+  ).evaluateAll((nodes) => nodes.map((node) => {
+    if (!(node instanceof HTMLElement)) return null;
+    const style = window.getComputedStyle(node);
+    return {
+      visible: style.display !== "none" && style.visibility !== "hidden",
+      tagName: node.tagName,
+      attrs: [
+        node.getAttribute("value"),
+        node.getAttribute("data-value"),
+        node.getAttribute("data-term-id"),
+        node.getAttribute("data-id"),
+        node.getAttribute("data-term-slug"),
+        node.getAttribute("data-slug")
+      ].filter(Boolean),
+      text: String(node.textContent || ""),
+      name: String(node.getAttribute("name") || ""),
+      queryId: String(node.closest("[data-query-id]")?.getAttribute("data-query-id") || "")
+    };
+  }));
+
+  return chooseGovernedTermIndex(items, planCase);
 }
 
 async function clickGovernedTerm(page, planCase) {
