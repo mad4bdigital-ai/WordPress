@@ -77,6 +77,7 @@ for marker in [
     "'browser_runtime'",
     "'performance_budget'",
     "'rollback_candidate'",
+    "'wp_import_export_exact_artifact'",
 ]:
     require(cert, marker, "staging certification invariant")
 for forbidden in [
@@ -89,6 +90,16 @@ for forbidden in [
 ]:
     if forbidden in cert:
         raise SystemExit(f"staging certification must remain observation-only: {forbidden}")
+
+for marker in [
+    "mad4b.wp-import-export-exact-remediation.v1",
+    "wp-all-import-pro.zip",
+    "archive_sha256",
+    "install_exact_repository_import_artifact",
+    "'automatic_install_performed' => false",
+    "'production_mutation_performed' => false",
+]:
+    require(cert, marker, "WP Import/Export remediation invariant")
 
 # Brand Core coverage must be explicit and based on approved governed assets.
 for marker in [
