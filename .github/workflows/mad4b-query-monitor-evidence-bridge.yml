@@ -5,6 +5,7 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-evidence-bridge-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-db-attribution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-query-monitor-evidence-bridge.yml'
   workflow_dispatch:
@@ -64,8 +65,16 @@ jobs:
           grep -Fq "public static function maybe_enable_db_attribution()" "$bridge"
           grep -Fq "'conflicting_db_dropin'" "$bridge"
           grep -Fq "@symlink( \$source, \$dropin )" "$bridge"
-          if grep -Eq 'unlink\(|rename\(|copy\(' "$bridge"; then
-            echo 'Query Monitor attribution bootstrap must never replace or delete an existing db.php.' >&2
+          grep -Fq "ATTRIBUTION_LOADER_MARKER" "$bridge"
+          grep -Fq "@fopen( \$dropin, 'x' )" "$bridge"
+          grep -Fq "'foreign_dropin_replaced' => false" "$bridge"
+          if grep -Eq 'rename\(|copy\(' "$bridge"; then
+            echo 'Query Monitor attribution bootstrap must never replace an existing db.php.' >&2
+            exit 1
+          fi
+          unlink_count="$(grep -Ec '@?unlink\(' "$bridge" || true)"
+          if [ "$unlink_count" -gt 1 ] || ! grep -Fq "if ( ! \$created && file_exists( \$dropin ) ) @unlink( \$dropin )" "$bridge"; then
+            echo 'Query Monitor loader cleanup must be limited to the incomplete file exclusively created by this bootstrap.' >&2
             exit 1
           fi
           if grep -Eq 'grant_ability|authorize_mutation|wp_remote_(get|post|request)|rest_do_request|wp_insert_post|wp_update_post|database-raw-query' "$bridge"; then
