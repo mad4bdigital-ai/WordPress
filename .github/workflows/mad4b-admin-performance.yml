@@ -36,6 +36,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-request-scope.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
           php -l wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
 
       - name: Prove expensive governance work is scoped
         shell: python
@@ -51,7 +54,25 @@ jobs:
           metadata_bridge = (root / 'includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php').read_text(encoding='utf-8')
           mu_bootstrap = (root / 'bootstrap/mad4b-mcp-adapter-mu-bootstrap.php').read_text(encoding='utf-8')
           main = (root / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
+          query_perf = (root / 'includes/class-mad4b-scp-admin-query-performance.php').read_text(encoding='utf-8')
           marker = (root / 'MAD4B-RUNTIME-BUILD.txt').read_text(encoding='utf-8')
+
+          for marker_text in [
+              "const CONTRACT = 'mad4b.admin-query-performance.v1'",
+              "mad4b_post_id_meta_key",
+              "mad4b_term_id_meta_key",
+              "ADD INDEX",
+              "'staging' !== self::environment()",
+              "'production_changed' => false",
+              "exactly two bounded ALTER TABLE statements are expected",
+          ]:
+              if marker_text not in query_perf:
+                  raise SystemExit('Missing bounded admin-query performance invariant: ' + marker_text)
+          for forbidden in ["DROP INDEX", "DROP KEY", "DROP TABLE", "DELETE FROM", "UPDATE wp_"]:
+              if forbidden in query_perf:
+                  raise SystemExit('Admin-query performance hardening contains forbidden destructive SQL: ' + forbidden)
+          if "class-mad4b-scp-admin-query-performance.php" not in main or "MAD4B_SCP_Admin_Query_Performance::boot();" not in main:
+              raise SystemExit('Admin-query performance hardening is not wired into the Control Plane')
 
           required = [
               "remove_action( 'admin_init', array( 'MAD4B_SCP_Staging_Write_Authority', 'reconcile' ), 20 );",
