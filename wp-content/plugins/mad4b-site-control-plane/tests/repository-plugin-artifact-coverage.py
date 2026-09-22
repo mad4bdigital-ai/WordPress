@@ -23,7 +23,7 @@ def family_for_archive(name, catalog):
         matched = any(synthetic.startswith(prefix) for prefix in family.get("match", []))
         if not matched:
             for base in family.get("versioned_match", []) or []:
-                if re.match(r'^' + re.escape(str(base).strip('/')) + r'-v[0-9]+(?:\\.[0-9]+)*/', synthetic):
+                if re.match(r'^' + re.escape(str(base).strip('/')) + r'-v[0-9]+(?:[.][0-9]+)*/', synthetic):
                     matched = True
                     break
         if matched:
