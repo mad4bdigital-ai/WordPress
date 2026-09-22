@@ -23,6 +23,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	const WPML_OPTION = 'mad4b_scp_external_wpml_receipt_v1';
 	const PENDING_PREFIX = 'mad4b_lae_hs_';
 	const MAX_EVENTS = 32;
+	const PERFORMANCE_WINDOW_MAX = 5;
+	const PERFORMANCE_MIN_FRONTEND_SAMPLES = 3;
 	const TELEMETRY_TTL = 21600;
 	const EXTERNAL_TTL = 2592000;
 	const PENDING_TTL = 900;
@@ -178,20 +180,63 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 
 
-	public static function frontend_performance_status() {
-		$telemetry = self::telemetry();
-		$current_build = self::current_build_fingerprint();
-		$current_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] );
-		$performance = isset( $telemetry['performance'] ) && is_array( $telemetry['performance'] ) ? $telemetry['performance'] : array();
-		$sample = isset( $performance['last_by_class']['frontend'] ) && is_array( $performance['last_by_class']['frontend'] ) ? $performance['last_by_class']['frontend'] : array();
-		$frontend_observed = ! empty( $performance['frontend_observed'] );
-		$sample_valid = isset( $sample['server_elapsed_ms'], $sample['db_queries'], $sample['peak_memory_bytes'] )
+	private static function valid_performance_sample( $sample ) {
+		return is_array( $sample )
+			&& isset( $sample['server_elapsed_ms'], $sample['db_queries'], $sample['peak_memory_bytes'] )
 			&& is_numeric( $sample['server_elapsed_ms'] )
 			&& (float) $sample['server_elapsed_ms'] >= 0
 			&& is_numeric( $sample['db_queries'] )
 			&& (int) $sample['db_queries'] >= 0
 			&& is_numeric( $sample['peak_memory_bytes'] )
 			&& (int) $sample['peak_memory_bytes'] > 0;
+	}
+
+	private static function frontend_performance_window( array $performance ) {
+		$window = array();
+		$samples = isset( $performance['samples'] ) && is_array( $performance['samples'] ) ? $performance['samples'] : array();
+		foreach ( $samples as $sample ) {
+			if ( ! self::valid_performance_sample( $sample ) ) continue;
+			if ( 'frontend' !== ( isset( $sample['request_class'] ) ? (string) $sample['request_class'] : '' ) ) continue;
+			$window[] = $sample;
+		}
+		if ( empty( $window ) && isset( $performance['last_by_class']['frontend'] ) && self::valid_performance_sample( $performance['last_by_class']['frontend'] ) ) {
+			$window[] = $performance['last_by_class']['frontend'];
+		}
+		return array_slice( $window, -1 * self::PERFORMANCE_WINDOW_MAX );
+	}
+
+	private static function median( array $values ) {
+		$values = array_values( array_map( 'floatval', $values ) );
+		if ( empty( $values ) ) return null;
+		sort( $values, SORT_NUMERIC );
+		$count = count( $values );
+		$mid = (int) floor( $count / 2 );
+		return 1 === $count % 2 ? (float) $values[ $mid ] : ( (float) $values[ $mid - 1 ] + (float) $values[ $mid ] ) / 2.0;
+	}
+
+	public static function frontend_performance_status() {
+		$telemetry = self::telemetry();
+		$current_build = self::current_build_fingerprint();
+		$current_match = isset( $telemetry['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $telemetry['build_fingerprint'] );
+		$performance = isset( $telemetry['performance'] ) && is_array( $telemetry['performance'] ) ? $telemetry['performance'] : array();
+		$latest = isset( $performance['last_by_class']['frontend'] ) && is_array( $performance['last_by_class']['frontend'] ) ? $performance['last_by_class']['frontend'] : array();
+		$frontend_observed = ! empty( $performance['frontend_observed'] );
+		$window = self::frontend_performance_window( $performance );
+		$sample_count = count( $window );
+		$minimum_samples_met = $sample_count >= self::PERFORMANCE_MIN_FRONTEND_SAMPLES;
+		$elapsed_values = array();
+		$query_values = array();
+		$memory_values = array();
+		foreach ( $window as $sample ) {
+			$elapsed_values[] = (float) $sample['server_elapsed_ms'];
+			$query_values[] = (int) $sample['db_queries'];
+			$memory_values[] = (int) $sample['peak_memory_bytes'];
+		}
+		$aggregate = array(
+			'server_elapsed_ms' => $minimum_samples_met ? self::median( $elapsed_values ) : null,
+			'db_queries' => $minimum_samples_met && ! empty( $query_values ) ? max( $query_values ) : null,
+			'peak_memory_bytes' => $minimum_samples_met && ! empty( $memory_values ) ? max( $memory_values ) : null,
+		);
 
 		// Reference baseline captured on the exact rc.38 staging build.
 		$reference = array(
@@ -207,24 +252,24 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'peak_memory_bytes_max' => max( 134217728, 2 * (int) $reference['peak_memory_bytes'] ),
 		);
 		$budget_failures = array();
-		if ( $sample_valid ) {
-			if ( (float) $sample['server_elapsed_ms'] > (float) $budget['server_elapsed_ms_max'] ) $budget_failures[] = 'server_elapsed_ms_budget_exceeded';
-			if ( (int) $sample['db_queries'] > (int) $budget['db_queries_max'] ) $budget_failures[] = 'db_queries_budget_exceeded';
-			if ( (int) $sample['peak_memory_bytes'] > (int) $budget['peak_memory_bytes_max'] ) $budget_failures[] = 'peak_memory_budget_exceeded';
+		if ( $minimum_samples_met ) {
+			if ( (float) $aggregate['server_elapsed_ms'] > (float) $budget['server_elapsed_ms_max'] ) $budget_failures[] = 'server_elapsed_ms_budget_exceeded';
+			if ( (int) $aggregate['db_queries'] > (int) $budget['db_queries_max'] ) $budget_failures[] = 'db_queries_budget_exceeded';
+			if ( (int) $aggregate['peak_memory_bytes'] > (int) $budget['peak_memory_bytes_max'] ) $budget_failures[] = 'peak_memory_budget_exceeded';
 		}
-		$budget_pass = $sample_valid && empty( $budget_failures );
+		$budget_pass = $minimum_samples_met && empty( $budget_failures );
 		$fresh = self::staging_capture_allowed() && $current_match && $frontend_observed;
-		$ready = $fresh && $sample_valid && $budget_pass;
+		$ready = $fresh && $minimum_samples_met && $budget_pass;
 		$state = ! $current_match ? 'stale_build_evidence'
 			: ( ! $frontend_observed ? 'frontend_not_observed'
-			: ( ! $sample_valid ? 'frontend_sample_invalid'
+			: ( ! $minimum_samples_met ? 'insufficient_frontend_samples'
 			: ( $budget_pass ? 'ready' : 'performance_budget_exceeded' ) ) );
 		return array(
-			'contract' => 'mad4b.frontend-performance-evidence.v2',
+			'contract' => 'mad4b.frontend-performance-evidence.v3',
 			'ready' => $ready,
 			'state' => $state,
 			'baseline_only' => false,
-			'budget_evaluated' => $sample_valid,
+			'budget_evaluated' => $minimum_samples_met,
 			'budget_pass' => $budget_pass,
 			'budget_failures' => $budget_failures,
 			'budget' => $budget,
@@ -233,12 +278,17 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'frontend_observed' => $frontend_observed,
 			'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? (string) $telemetry['capture_started_at'] : '',
 			'last_observed_at' => isset( $telemetry['last_observed_at'] ) ? (string) $telemetry['last_observed_at'] : '',
-			'latest_frontend_sample' => $sample,
-			'metrics' => array(
-				'server_elapsed_ms' => isset( $sample['server_elapsed_ms'] ) ? (float) $sample['server_elapsed_ms'] : null,
-				'db_queries' => isset( $sample['db_queries'] ) ? (int) $sample['db_queries'] : null,
-				'peak_memory_bytes' => isset( $sample['peak_memory_bytes'] ) ? (int) $sample['peak_memory_bytes'] : null,
+			'latest_frontend_sample' => $latest,
+			'evaluation_window' => array(
+				'max_samples' => self::PERFORMANCE_WINDOW_MAX,
+				'min_samples' => self::PERFORMANCE_MIN_FRONTEND_SAMPLES,
+				'sample_count' => $sample_count,
+				'samples' => $window,
+				'server_elapsed_strategy' => 'median',
+				'db_queries_strategy' => 'max',
+				'peak_memory_strategy' => 'max',
 			),
+			'metrics' => $aggregate,
 			'ttfb_claimed' => false,
 			'production_capture_persistence_enabled' => false,
 		);
@@ -314,7 +364,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			'build_provenance' => self::gate( ! empty( $provenance['runtime_manifest_match'] ), ! empty( $provenance['runtime_manifest_match'] ) ? 'ready' : 'stale_or_missing', empty( $provenance['stale'] ), self::PROVENANCE_CONTRACT, isset( $provenance['provenance_mismatch'] ) ? $provenance['provenance_mismatch'] : array() ),
 			'ability_registration' => self::gate( function_exists( 'wp_get_ability' ), function_exists( 'wp_get_ability' ) ? 'ready' : 'not_materialized', true, 'wordpress-abilities-api', function_exists( 'wp_get_ability' ) ? array() : array( 'wp_get_ability_unavailable' ) ),
 			'query_monitor_regression' => self::gate( ! empty( $qm['ready'] ), isset( $qm['state'] ) ? $qm['state'] : 'unknown', ! empty( $qm['evidence']['fresh'] ), self::QUERY_MONITOR_CONTRACT, ! empty( $qm['ready'] ) ? array() : array( isset( $qm['state'] ) ? $qm['state'] : 'not_ready' ) ),
-			'frontend_performance_baseline' => self::gate( ! empty( $performance['ready'] ), isset( $performance['state'] ) ? $performance['state'] : 'unknown', ! empty( $performance['current_build_match'] ), 'mad4b.frontend-performance-evidence.v1', ! empty( $performance['ready'] ) ? array() : array( isset( $performance['state'] ) ? $performance['state'] : 'frontend_performance_not_ready' ) ),
+			'frontend_performance_baseline' => self::gate( ! empty( $performance['ready'] ), isset( $performance['state'] ) ? $performance['state'] : 'unknown', ! empty( $performance['current_build_match'] ), 'mad4b.frontend-performance-evidence.v3', ! empty( $performance['ready'] ) ? array() : array( isset( $performance['state'] ) ? $performance['state'] : 'frontend_performance_not_ready' ) ),
 			'local_rest_isolation' => self::gate( ! empty( $rest['ready'] ), ! empty( $rest['ready'] ) ? 'ready' : 'blocked', true, isset( $rest['contract'] ) ? $rest['contract'] : 'mad4b.rest-compatibility.v2', ! empty( $rest['ready'] ) ? array() : array( 'local_rest_isolation_not_ready' ) ),
 			'external_wpml' => self::gate( ! empty( $wpml['verified'] ), isset( $wpml['state'] ) ? $wpml['state'] : 'pending_external_evidence', empty( $wpml['stale'] ), self::WPML_RECEIPT_CONTRACT, ! empty( $wpml['verified'] ) ? array() : array( 'external_wpml_evidence_required' ) ),
 			'skills_runtime' => self::gate( ! empty( $skills['ready'] ), ! empty( $skills['ready'] ) ? 'ready' : 'blocked', true, isset( $skills['contract'] ) ? $skills['contract'] : 'mad4b.skill-runtime-certification.v2', ! empty( $skills['ready'] ) ? array() : array( 'skills_runtime_not_ready' ) ),
