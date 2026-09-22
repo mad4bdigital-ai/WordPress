@@ -87,5 +87,5 @@ print('tenant-profile local oauth + explicit production read-only contract v3: P
 
 # rc.46 local HTTP issuer must be loopback-bounded.
 for marker in ["127.0.0.1", "::1", "localhost", "$local_loopback"]:
-    if marker not in autoconfig:
+    if marker not in auto:
         raise SystemExit(f'missing local loopback OAuth autoconfig boundary: {marker}')
