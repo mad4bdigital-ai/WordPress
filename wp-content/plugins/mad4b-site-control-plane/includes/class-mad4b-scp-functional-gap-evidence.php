@@ -1300,13 +1300,23 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$evaluation = self::evaluate( $repository, $runtime );
 		$runtime_census = self::runtime_census_from_runtime( $runtime );
 		$end_key = self::runtime_identity_key();
-		$end_census = self::current_runtime_census_status();
+		$census_required = ! empty( $repository['valid'] );
+		$end_census = $census_required ? self::current_runtime_census_status() : array(
+			'contract' => 'mad4b.functional-gap-runtime-census.v1',
+			'valid' => true,
+			'census_sha256' => '',
+			'metadata_only' => true,
+			'content_rehashed' => false,
+			'blockers' => array(),
+		);
 		$identity_stable = '' !== $key && '' !== $end_key && hash_equals( $key, $end_key );
 		$start_census_sha = isset( $runtime_census['census_sha256'] ) ? strtolower( (string) $runtime_census['census_sha256'] ) : '';
 		$end_census_sha = isset( $end_census['census_sha256'] ) ? strtolower( (string) $end_census['census_sha256'] ) : '';
-		$census_stable = ! empty( $runtime_census['valid'] ) && ! empty( $end_census['valid'] )
+		$census_stable = ! $census_required || (
+			! empty( $runtime_census['valid'] ) && ! empty( $end_census['valid'] )
 			&& preg_match( '/^[a-f0-9]{64}$/', $start_census_sha ) && preg_match( '/^[a-f0-9]{64}$/', $end_census_sha )
-			&& hash_equals( $start_census_sha, $end_census_sha );
+			&& hash_equals( $start_census_sha, $end_census_sha )
+		);
 		$fixed_point_stable = $identity_stable && $census_stable;
 		if ( ! $fixed_point_stable && self::$fixed_point_retry_depth < 1 ) {
 			++self::$fixed_point_retry_depth;
@@ -1341,6 +1351,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_end_identity_sha256' => $end_key,
 			'snapshot_fixed_point_stable' => $fixed_point_stable,
 			'snapshot_fixed_point_attempts' => self::$fixed_point_retry_depth + 1,
+			'snapshot_census_required' => $census_required,
 			'snapshot_end_census_sha256' => $end_census_sha,
 			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? (string) $evaluation['runtime_evidence_fingerprint'] : '',
 			'runtime_census_sha256' => isset( $runtime_census['census_sha256'] ) ? (string) $runtime_census['census_sha256'] : '',
@@ -1360,6 +1371,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_end_identity_sha256' => $end_key,
 			'snapshot_fixed_point_stable' => $fixed_point_stable,
 			'snapshot_fixed_point_attempts' => self::$fixed_point_retry_depth + 1,
+			'snapshot_census_required' => $census_required,
 			'snapshot_end_census' => $end_census,
 			'read_only' => true,
 			'authority_created' => false,
@@ -1435,6 +1447,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_end_identity_sha256' => isset( $snapshot['snapshot_end_identity_sha256'] ) ? $snapshot['snapshot_end_identity_sha256'] : '',
 			'snapshot_fixed_point_stable' => ! empty( $snapshot['snapshot_fixed_point_stable'] ),
 			'snapshot_fixed_point_attempts' => isset( $snapshot['snapshot_fixed_point_attempts'] ) ? (int) $snapshot['snapshot_fixed_point_attempts'] : 0,
+			'snapshot_census_required' => ! empty( $snapshot['snapshot_census_required'] ),
 			'ready' => ! empty( $evaluation['ready'] ) && ! empty( $snapshot['snapshot_fixed_point_stable'] ),
 			'repository_evidence_valid' => ! empty( $repository['valid'] ),
 			'evidence_integrity_bound' => ! empty( $repository['valid'] ) && ! empty( $repository['evidence_sha256'] ) && ! empty( $repository['policy_sha256'] ) && ! empty( $repository['build_fingerprint'] ) && ! empty( $repository['package_manifest_digest'] ),
@@ -1475,6 +1488,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_end_identity_sha256' => isset( $snapshot['snapshot_end_identity_sha256'] ) ? (string) $snapshot['snapshot_end_identity_sha256'] : '',
 			'snapshot_fixed_point_stable' => ! empty( $snapshot['snapshot_fixed_point_stable'] ),
 			'snapshot_fixed_point_attempts' => isset( $snapshot['snapshot_fixed_point_attempts'] ) ? (int) $snapshot['snapshot_fixed_point_attempts'] : 0,
+			'snapshot_census_required' => ! empty( $snapshot['snapshot_census_required'] ),
 			'runtime_census' => isset( $snapshot['runtime_census'] ) && is_array( $snapshot['runtime_census'] ) ? $snapshot['runtime_census'] : array(),
 			'summary' => self::summary_from_snapshot( $snapshot ),
 			'decisions' => self::decision_map_from_snapshot( $snapshot ),
