@@ -2946,11 +2946,18 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return serialize( $left ) === serialize( $right );
 	}
 
-	private static function clear_option_read_cache( $name ) {
+	private static function clear_option_read_cache( $name, $aggressive = false ) {
 		if ( ! function_exists( 'wp_cache_delete' ) ) return;
 		wp_cache_delete( $name, 'options' );
 		wp_cache_delete( 'notoptions', 'options' );
 		wp_cache_delete( 'alloptions', 'options' );
+
+		// Some persistent-cache drop-ins can retain a stale negative index even
+		// after point deletion. Repair only the Options cache group and never
+		// flush unrelated application caches.
+		if ( $aggressive && function_exists( 'wp_cache_flush_group' ) ) {
+			wp_cache_flush_group( 'options' );
+		}
 	}
 
 	private static function write_option( $name, $value ) {
