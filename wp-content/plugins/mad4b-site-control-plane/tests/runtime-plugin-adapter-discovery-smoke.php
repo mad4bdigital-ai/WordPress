@@ -175,6 +175,12 @@ try {
 	$check( 'runtime_match_only' === (string) ( $duplicator_discovery['adapter_runtime_source'] ?? '' ), 'Contract discovery lost runtime-only provenance.' );
 	$check( empty( $duplicator_discovery['repository_artifact_backed'] ), 'Contract discovery falsely marked runtime-only family as repository-backed.' );
 	$check( in_array( 'duplicator/duplicator.php', (array) ( $duplicator_discovery['plugin_files'] ?? array() ), true ), 'Contract discovery did not retain exact runtime plugin identity.' );
+	$duplicator_runtime_identity = null;
+	foreach ( (array) ( $duplicator_discovery['runtime_identities'] ?? array() ) as $runtime_identity ) {
+		if ( 'duplicator/duplicator.php' === (string) ( $runtime_identity['plugin_file'] ?? '' ) ) $duplicator_runtime_identity = $runtime_identity;
+	}
+	$check( is_array( $duplicator_runtime_identity ), 'Contract discovery runtime identity record is missing.' );
+	$check( '5.0.3' === (string) ( $duplicator_runtime_identity['plugin_version'] ?? '' ), 'Contract discovery lost exact runtime version.' );
 
 	$ui_snapshot = MAD4B_SCP_Adapter_Coverage_Admin_UI::snapshot();
 	$check( ! is_wp_error( $ui_snapshot ) && 'mad4b.plugin-adapter-discovery.v1' === $ui_snapshot['contract'], 'Adapter Coverage Admin snapshot failed.' );
