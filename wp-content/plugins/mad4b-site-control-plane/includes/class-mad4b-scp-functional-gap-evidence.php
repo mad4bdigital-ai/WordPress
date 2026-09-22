@@ -628,6 +628,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				isset( $policy['blockers'] ) ? (array) $policy['blockers'] : array()
 			);
 			$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+			usort( $decisions, static function ( $a, $b ) { return strcmp( isset( $a['family'] ) ? (string) $a['family'] : '', isset( $b['family'] ) ? (string) $b['family'] : '' ); } );
+			$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions );
 			return array(
 				'contract' => self::EVALUATION_CONTRACT,
 				'ready' => false,
@@ -635,6 +637,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				'production_mutation' => false,
 				'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
 				'policy_sha256' => isset( $policy['sha256'] ) ? $policy['sha256'] : '',
+				'decision_fingerprint' => $decision_fingerprint,
 				'decisions' => $decisions,
 				'blockers' => $blockers,
 			);
