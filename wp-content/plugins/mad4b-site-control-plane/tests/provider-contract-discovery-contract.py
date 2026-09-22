@@ -62,6 +62,8 @@ for marker in [
     "'adapter_contract'",
     "'adapter_runtime_source'",
     "'repository_artifact_backed'",
+    "'runtime_identities'",
+    "'plugin_version'",
 ]:
     assert marker in discovery, marker
 
