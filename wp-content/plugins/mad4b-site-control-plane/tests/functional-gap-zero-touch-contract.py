@@ -164,6 +164,9 @@ for marker in [
     "runtime_evidence_fingerprint",
     "private static function runtime_only_metadata_identity",
     "runtime_only_metadata_identity",
+    "$runtime_only_metadata_budget = array( 'files'=>0, 'bytes'=>0, 'started_at'=>microtime( true ) );",
+    "runtime_only_metadata_identity( $plugin_file, $runtime_only_metadata_budget )",
+    "'runtime_only_metadata_budget' => array(",
     "metadata_only_runtime_identity",
     "'metadata_only' => true",
     "'content_rehashed' => false",
@@ -214,6 +217,12 @@ for forbidden in [
 ]:
     if forbidden in runtime:
         raise SystemExit(f'zero-touch runtime must remain read-only: {forbidden}')
+
+runtime_evidence_body = runtime.split("private static function runtime_evidence", 1)[1].split("private static function route_methods", 1)[0]
+if runtime_evidence_body.count("$runtime_only_metadata_budget = array(") != 1:
+    raise SystemExit('runtime-only metadata budget must be initialized exactly once per runtime evidence snapshot')
+if "runtime_only_metadata_identity( $plugin_file, $runtime_only_metadata_budget )" not in runtime_evidence_body:
+    raise SystemExit('runtime-only metadata identity is not bound to the shared snapshot budget')
 
 runtime_only_body = runtime.split("private static function runtime_only_metadata_identity", 1)[1].split("private static function runtime_census_from_runtime", 1)[0]
 if "hash_file(" in runtime_only_body:
