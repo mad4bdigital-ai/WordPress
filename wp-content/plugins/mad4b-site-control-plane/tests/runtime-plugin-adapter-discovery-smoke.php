@@ -41,7 +41,7 @@ foreach ( array( 'elementor', 'jetengine', 'fluentforms', 'etg-dfsb', 'admin-uti
 	$check( is_object( $registry->get( $adapter_id ) ), 'Coverage discovery did not bootstrap adapter registry: ' . $adapter_id );
 }
 
-foreach ( array( 'admin-utilities', 'astra', 'dangerous-code-execution', 'bulk-taxonomy-editor', 'custom-mega-menu', 'meta-catalog-feed-mapper', 'jet-ecosystem', 'google-tag-manager', 'fluentforms', 'hostinger', 'jetformbuilder', 'mad4b-platform', 'wpml', 'reviews', 'identity-admin', 'wp-import-export', 'wpl-client', 'repository-plugins', 'hostinger-extensions', 'duplicator', 'elementskit', 'heic-support', 'wordpress-importer', 'ai-engine', 'external-mcp-server' ) as $adapter_id ) {
+foreach ( array( 'admin-utilities', 'astra', 'dangerous-code-execution', 'bulk-taxonomy-editor', 'custom-mega-menu', 'meta-catalog-feed-mapper', 'jet-ecosystem', 'google-tag-manager', 'fluentforms', 'hostinger', 'jetformbuilder', 'mad4b-platform', 'wpml', 'reviews', 'identity-admin', 'wp-import-export', 'wpl-client', 'repository-plugins', 'hostinger-onboarding', 'hostinger-ai', 'hostinger-reach', 'duplicator', 'elementskit', 'heic-support', 'wordpress-importer', 'ai-engine', 'external-mcp-server' ) as $adapter_id ) {
 	$adapter = $registry->get( $adapter_id );
 	$check( is_object( $adapter ), 'Repository family adapter was not registered: ' . $adapter_id );
 	$map = $adapter->ability_names();
