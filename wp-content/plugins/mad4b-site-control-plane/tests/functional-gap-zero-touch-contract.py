@@ -158,6 +158,16 @@ for marker in [
     "functional_gap_policy_identity_artifacts_required_",
     "runtime_evidence_fingerprint",
     "private static function runtime_evidence_fingerprint( array $runtime )",
+    "runtime_dynamic_surface_fingerprint",
+    "public static function current_dynamic_surface_fingerprint()",
+    "snapshot_dynamic_surface_stable",
+    "snapshot_end_dynamic_surface_sha256",
+    "snapshot_dynamic_surface_changed_during_evaluation",
+    "coverage_projection_dynamic_surface_changed",
+    "required_get_permission_callbacks",
+    "permission_callback_mismatch",
+    "callback_identity_match",
+    "functional_gap_policy_read_permission_callback_identity_invalid_",
     "mad4b.functional-gap-decision-handoff.v1",
     "'mutation_authorized' => false",
     "'must_revalidate_before_mutation' => true",
@@ -400,6 +410,30 @@ for marker in [
 ]:
     if marker not in runtime:
         raise SystemExit(f'canonical runtime evidence fingerprint missing input: {marker}')
+
+# Bounded-read route security must pin callback identity, not merely require a non-public callback.
+for marker in [
+    "required_get_permission_callbacks",
+    "permission_callback_mismatch",
+    "callback_identity_match",
+    "exact_runtime_tree_required_get_routes_and_permission_callbacks_verified",
+    "exact_runtime_tree_routes_or_permission_callback_boundary_unverified",
+]:
+    if marker not in runtime or marker not in offline:
+        raise SystemExit(f'bounded-read callback identity contract missing across evaluators: {marker}')
+
+if "if ( '__return_true' === strtolower( $descriptor ) )" not in runtime:
+    raise SystemExit('public permission callback detection must be case-insensitive')
+
+# Request-local snapshots must revalidate dynamic route/option/cron state before reuse.
+cache_body=runtime.split("public static function snapshot()",1)[1].split("public static function decision_handoff()",1)[0]
+for marker in [
+    "current_dynamic_surface_fingerprint()",
+    "snapshot_end_dynamic_surface_sha256",
+    "snapshot_dynamic_surface_changed_during_evaluation",
+]:
+    if marker not in cache_body:
+        raise SystemExit(f'dynamic surface fixed-point/cache invalidation missing: {marker}')
 
 census_body=runtime.split("private static function plugin_census_once",1)[1].split("private static function runtime_census_from_runtime",1)[0]
 if "hash_file(" in census_body:
