@@ -138,6 +138,8 @@ jobs:
             includes/class-mad4b-scp-adapter-registry.php \
             includes/class-mad4b-scp-staging-write-authority.php \
             includes/class-mad4b-scp-staging-certification.php \
+            includes/class-mad4b-scp-admin-query-performance.php \
+            includes/class-mad4b-scp-query-monitor-evidence-bridge.php \
             includes/class-mad4b-scp-write-runtime-certification.php \
             includes/class-mad4b-scp-rest-compatibility.php \
             includes/adapters/class-mad4b-scp-adapter-base.php \
