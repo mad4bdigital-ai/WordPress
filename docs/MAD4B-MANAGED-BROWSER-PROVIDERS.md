@@ -337,3 +337,63 @@ It does not authorize:
 - content/database/filesystem mutation;
 - Breakglass;
 - any other MAD4B release gate.
+
+
+## Provider-neutral network boundary
+
+Every managed provider now receives the same client-side active-request boundary in addition to provider-specific controls.
+
+Default behavior:
+
+```text
+signed plan origin        allowed
+explicit deployment host allowed
+
+cross-origin document     denied
+cross-origin script       denied
+cross-origin XHR/fetch    denied
+cross-origin WebSocket    denied
+cross-origin EventSource  denied
+cross-origin manifest     denied
+
+HTTPS passive image/font/style/media resources may load
+```
+
+Additional active asset hosts are deployment configuration only:
+
+```text
+MAD4B_BROWSER_ALLOWED_ASSET_DOMAINS
+```
+
+The value is a comma-separated hostname list such as:
+
+```text
+cdn.example.com,static.example.net
+```
+
+Wildcards, schemes, ports, paths, URLs, and malformed hostnames are rejected. The value is not exposed as a workflow input or Browser Acceptance plan field.
+
+Cloudflare uses the same validated host set for provider-side Session Guardrails, so Cloudflare receives defense in depth:
+
+```text
+MAD4B plan boundary
++
+Playwright request boundary
++
+Cloudflare server-side guardrails
+```
+
+Other providers still receive the Playwright request boundary even when they do not expose an equivalent server-side guardrail.
+
+## Evidence preflight
+
+Before browser evidence is submitted to `mad4b/browser-acceptance-result`, the external bridge applies the same bounded shape used by the WordPress reducer:
+
+```text
+max encoded payload = 131072 bytes
+max depth           = 8
+max nodes           = 1024
+contract            = etg.dfsb.browser-acceptance-evidence.v1
+```
+
+Oversized or structurally excessive evidence fails locally before another MCP round trip. WordPress remains authoritative and validates the payload again.
