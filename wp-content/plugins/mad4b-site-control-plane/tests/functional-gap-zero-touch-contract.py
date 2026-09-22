@@ -25,6 +25,10 @@ for marker in [
     "'mutation_performed' => false",
     "'remote_request_performed' => false",
     "'secret_values_returned' => false",
+    "'secret_option_values_read' => false",
+    "'probe' => 'omitted_secret_value'",
+    "'value_read' => false",
+    "exact_runtime_tree_and_secret_values_unread",
     "'raw_sql_performed' => false",
     "repository_evidence_build_source_mismatch",
     "read_contract_candidate",
@@ -348,6 +352,19 @@ if "empty( $options[ $key ]['exists'] )" not in runtime:
     raise SystemExit('redacted-status model no longer requires status options to exist at runtime')
 if "status_ok = bool(status_keys) and all(key in options and options.get(key, {}).get(\"exists\") is True for key in status_keys)" not in offline:
     raise SystemExit('offline evaluator no longer requires WPL status options to exist')
+
+option_loop = runtime.split("foreach ( $option_candidates as $key )", 1)[1].split("$cron = array();", 1)[0]
+secret_continue = option_loop.find("'probe' => 'omitted_secret_value'")
+secret_get = option_loop.find("$value = get_option( $key, null );")
+if secret_continue < 0 or secret_get < 0 or secret_continue > secret_get:
+    raise SystemExit('secret option probe must short-circuit before get_option reads any secret value')
+for marker in [
+    'options.get(key, {}).get("value_read") is False',
+    'options.get(key, {}).get("probe") == "omitted_secret_value"',
+    'exact_runtime_tree_and_secret_values_unread',
+]:
+    if marker not in offline:
+        raise SystemExit(f'offline evaluator lost never-read secret contract: {marker}')
 
 # Decision identity must include canonical runtime evidence, not only the resulting state.
 if "self::decision_fingerprint( $repository, $policy, $decisions, $runtime_evidence_fingerprint )" not in runtime:
