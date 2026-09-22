@@ -89,16 +89,25 @@ final class MAD4B_SCP_Google_Drive_Context {
 			if ( in_array( $mode, array( self::AUTH_MODE_CUSTOM, self::AUTH_MODE_MANAGED, self::AUTH_MODE_DEDICATED ), true ) ) return $mode;
 		}
 
-		// Preserve any previously configured site-local OAuth path. New sites default
-		// to Managed Google Sign-In so the normal UX never starts with Client ID/Secret.
+		// Preserve any previously configured site-local OAuth path, including
+		// installations whose credentials are supplied only through wp-config.
+		// Only genuinely new/unconfigured sites default to Managed Google Sign-In.
+		$dedicated_constants = defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DEDICATED_CLIENT_ID' ) )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DEDICATED_CLIENT_SECRET' ) );
 		$dedicated = get_option( self::DEDICATED_CONFIG_OPTION, array() );
-		if ( is_array( $dedicated ) && self::CONTRACT === ( isset( $dedicated['contract'] ) ? (string) $dedicated['contract'] : '' ) && ! empty( $dedicated['client_id'] ) && ! empty( $dedicated['client_secret'] ) ) {
+		if ( $dedicated_constants || ( is_array( $dedicated ) && self::CONTRACT === ( isset( $dedicated['contract'] ) ? (string) $dedicated['contract'] : '' ) && ! empty( $dedicated['client_id'] ) && ! empty( $dedicated['client_secret'] ) ) ) {
 			return self::AUTH_MODE_DEDICATED;
 		}
+
+		$custom_constants = defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) && defined( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DRIVE_CLIENT_ID' ) )
+			&& '' !== trim( (string) constant( 'MAD4B_GOOGLE_DRIVE_CLIENT_SECRET' ) );
 		$custom = get_option( self::CONFIG_OPTION, array() );
-		if ( is_array( $custom ) && self::CONTRACT === ( isset( $custom['contract'] ) ? (string) $custom['contract'] : '' ) && ! empty( $custom['client_id'] ) && ! empty( $custom['client_secret'] ) ) {
+		if ( $custom_constants || ( is_array( $custom ) && self::CONTRACT === ( isset( $custom['contract'] ) ? (string) $custom['contract'] : '' ) && ! empty( $custom['client_id'] ) && ! empty( $custom['client_secret'] ) ) ) {
 			return self::AUTH_MODE_CUSTOM;
 		}
+
 		return self::AUTH_MODE_MANAGED;
 	}
 
