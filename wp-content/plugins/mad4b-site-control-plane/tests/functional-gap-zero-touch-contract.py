@@ -62,7 +62,6 @@ for marker in [
     "functional_gap_policy_probe_regex_invalid_",
     "plugin_matches_policy_family",
     "'versioned_match'",
-    "-v[0-9]+(?:\\.[0-9]+)*/",
     "unsupported_evaluation_mode_",
     "runtime_identity_key",
     "snapshot_identity_sha256",
@@ -159,6 +158,20 @@ import json
 policy_data=json.loads(policy)
 if policy_data.get('contract')!='mad4b.functional-gap-policy.v1':
     raise SystemExit('canonical functional-gap policy contract mismatch')
+
+import re
+menu_policy=policy_data.get('families',{}).get('custom-mega-menu',{})
+versioned=list(menu_policy.get('versioned_match',[]))
+if versioned != ['custom-mega-menu']:
+    raise SystemExit('Custom Mega Menu versioned identity policy drifted')
+base=re.escape(versioned[0])
+numeric=re.compile(r'^'+base+r'-v[0-9]+(?:[.][0-9]+)*/')
+for accepted in ('custom-mega-menu-v49/custom-mega-menu.php','custom-mega-menu-v1.2/custom-mega-menu.php'):
+    if not numeric.match(accepted):
+        raise SystemExit(f'numeric versioned identity rejected: {accepted}')
+for rejected in ('custom-mega-menu-villain/custom-mega-menu.php','custom-mega-menu-v/custom-mega-menu.php'):
+    if numeric.match(rejected):
+        raise SystemExit(f'lookalike versioned identity accepted: {rejected}')
 if policy_data.get('default_mutation')!='deny' or policy_data.get('promotion_authorized') is not False:
     raise SystemExit('canonical functional-gap policy weakened mutation/promotion defaults')
 
