@@ -65,6 +65,22 @@ for marker in [
     "unsupported_evaluation_mode_",
     "runtime_identity_key",
     "snapshot_identity_sha256",
+    "verify_build_provenance_package",
+    "MAX_PROVENANCE_VERIFY_FILES",
+    "MAX_PROVENANCE_VERIFY_BYTES",
+    "MAX_PROVENANCE_VERIFY_SECONDS",
+    "build_provenance_package_path_invalid",
+    "build_provenance_package_path_duplicate",
+    "build_provenance_package_file_missing",
+    "build_provenance_package_file_sha256_mismatch",
+    "build_provenance_untracked_runtime_files",
+    "build_provenance_declared_files_missing",
+    "build_provenance_manifest_recompute_mismatch",
+    "build_provenance_fingerprint_recompute_mismatch",
+    "build_provenance_adapter_sha_mismatch",
+    "'integrity_level' => empty( $blockers ) ? 'self_consistent_package' : 'failed_closed'",
+    "'external_cryptographic_attestation' => false",
+    "'package_self_consistent' => ! empty( $repository['package_integrity']['valid'] )",
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
@@ -115,6 +131,9 @@ for marker in [
     "Unstable scans",
     "zero_touch_decision",
     "zero_touch_state",
+    "Package integrity",
+    "package_self_consistent",
+    "package_integrity_level",
 ]:
     if marker not in ui:
         raise SystemExit(f'coverage UI missing zero-touch projection: {marker}')
@@ -192,5 +211,12 @@ for forbidden in [
 ]:
     if forbidden in capture or forbidden in runtime or forbidden in offline:
         raise SystemExit(f'functional-gap implementation retained hardcoded family policy: {forbidden}')
+
+# Runtime provenance verification must remain self-consistency evidence only;
+# it must never pretend to be an external signature/attestation.
+if "'external_cryptographic_attestation' => true" in runtime:
+    raise SystemExit('zero-touch runtime must not claim external cryptographic attestation without an external trust root')
+if "self_consistent_package" not in runtime or "failed_closed" not in runtime:
+    raise SystemExit('runtime package integrity states are incomplete')
 
 print('mad4b.functional-gap-zero-touch.contract.v1: PASS')
