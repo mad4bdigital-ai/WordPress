@@ -37,6 +37,17 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	private static $scan_started_at = 0.0;
 	private static $fixed_point_retry_depth = 0;
 
+	private static function probe_regex_is_bounded( $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value || strlen( $value ) > 512 ) return false;
+		foreach ( array( '.*','.+','.{','(?=','(?!','(?<=','(?<!','||','(|','|)' ) as $token ) {
+			if ( false !== strpos( $value, $token ) ) return false;
+		}
+		if ( preg_match( '/\\\\[1-9]/', $value ) ) return false;
+		$literal = preg_replace( '/\\\\./', '', $value );
+		return is_string( $literal ) && 1 === preg_match( '/[a-z0-9_]{3,}/i', $literal );
+	}
+
 	private static function policy() {
 		$path = MAD4B_SCP_DIR . self::POLICY_FILE;
 		$raw = is_file( $path ) && is_readable( $path ) ? file_get_contents( $path ) : false;
@@ -163,6 +174,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$value = isset( $probes[ $regex_key ] ) ? trim( (string) $probes[ $regex_key ] ) : '';
 				$pattern = '' === $value ? '' : '~' . str_replace( '~', '\\~', $value ) . '~i';
 				if ( '' === $pattern || false === @preg_match( $pattern, '' ) ) $blockers[] = 'functional_gap_policy_probe_regex_invalid_' . $regex_key;
+				elseif ( ! self::probe_regex_is_bounded( $value ) ) $blockers[] = 'functional_gap_policy_probe_regex_overbroad_' . $regex_key;
 			}
 			if ( empty( $probes['option_keys'] ) || ! is_array( $probes['option_keys'] ) ) $blockers[] = 'functional_gap_policy_option_probe_set_missing';
 			if ( empty( $probes['constants'] ) || ! is_array( $probes['constants'] ) ) $blockers[] = 'functional_gap_policy_constant_probe_set_missing';
