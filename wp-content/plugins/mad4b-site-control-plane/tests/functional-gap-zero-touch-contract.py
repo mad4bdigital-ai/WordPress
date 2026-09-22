@@ -36,6 +36,12 @@ for marker in [
     "runtime_tree_changed_during_scan",
     "MAX_TREE_FILES",
     "MAX_TREE_BYTES",
+    "MAX_SNAPSHOT_TREE_FILES",
+    "MAX_SNAPSHOT_TREE_BYTES",
+    "MAX_SNAPSHOT_SCAN_SECONDS",
+    "snapshot_scan_budget_exceeded",
+    "snapshot_scan_time_budget_exceeded",
+    "'scan_budget' => array(",
     "tree_scan_budget_exceeded",
     "tree_file_hash_failed",
     "scan_attempts",
@@ -46,6 +52,12 @@ for marker in [
     "functional_gap_policy_not_bound_in_build_provenance",
     "functional_gap_policy_sha256_mismatch",
     "functional_gap_policy_bytes_mismatch",
+    "functional_gap_policy_mutation_default_not_deny",
+    "functional_gap_policy_promotion_not_false",
+    "functional_gap_policy_match_overlap_",
+    "functional_gap_policy_probe_regex_invalid_",
+    "plugin_matches_policy_family",
+    "-v[0-9]+(?:\\.[0-9]+)*/",
     "unsupported_evaluation_mode_",
     "runtime_identity_key",
     "snapshot_identity_sha256",
@@ -110,9 +122,18 @@ for workflow_name,workflow in [('control-plane',control),('plugin-package',plugi
         "mad4b.functional-gap-contract-evidence.v1",
         "functional-gap-policy.json",
         "SOURCE_SHA",
+        "wp-content/plugins/*.zip",
     ]:
         if marker not in workflow:
             raise SystemExit(f'{workflow_name}: missing build-embedded evidence invariant: {marker}')
+
+for marker in [
+    "functional_gap_policy_bound_to_build_provenance",
+    "config/functional-gap-policy.json",
+    "embedded evidence policy SHA mismatch",
+]:
+    if marker not in control:
+        raise SystemExit(f'control-plane package missing policy provenance invariant: {marker}')
 
 for marker in [
     'os.environ.get("SOURCE_SHA","")',
@@ -122,6 +143,9 @@ for marker in [
     'POLICY_PATH',
     '"policy_contract":POLICY["contract"]',
     '"policy_sha256":sha256(POLICY_RAW)',
+    'repository_evidence',
+    'repository_artifacts',
+    'evaluation_mode',
 ]:
     if marker not in capture:
         raise SystemExit(f'repository evidence capture invariant missing: {marker}')
