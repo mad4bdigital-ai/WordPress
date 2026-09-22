@@ -397,3 +397,42 @@ contract            = etg.dfsb.browser-acceptance-evidence.v1
 ```
 
 Oversized or structurally excessive evidence fails locally before another MCP round trip. WordPress remains authoritative and validates the payload again.
+
+
+## Provider preflight report
+
+Before consuming any managed-browser quota, operators can generate a non-secret readiness report:
+
+```bash
+node tools/browser-acceptance/provider-preflight.mjs
+```
+
+Without a signed plan, the diagnostic evaluates the maximum governed Browser Acceptance envelope of eight cases. With a fresh signed plan:
+
+```bash
+node tools/browser-acceptance/provider-preflight.mjs --plan /path/to/signed-plan.json
+```
+
+The report exposes only:
+
+```text
+credential_state = configured | missing
+missing credential variable names
+recurring/free billing class
+session fit
+estimated runtime
+browser sessions required
+spend eligibility
+selection blocker
+provider rank
+```
+
+It never opens a browser, performs a network request, or prints credential values.
+
+Contract:
+
+```text
+mad4b.browser-provider-preflight.v1
+```
+
+PR CI stores the result as a bounded artifact so provider scheduling state can be inspected independently from live Browser Acceptance evidence.
