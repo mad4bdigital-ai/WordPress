@@ -118,6 +118,24 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				if ( in_array( $mode, array( 'premium_semantic','composite_behavioral' ), true ) ) {
 					if ( empty( $row['repository_evidence'] ) ) $blockers[] = 'functional_gap_policy_identity_evidence_required_' . $family;
 					if ( empty( $row['repository_artifacts'] ) || ! is_array( $row['repository_artifacts'] ) ) $blockers[] = 'functional_gap_policy_identity_artifacts_required_' . $family;
+					$components = isset( $row['identity_components'] ) && is_array( $row['identity_components'] ) ? $row['identity_components'] : array();
+					if ( empty( $components ) ) $blockers[] = 'functional_gap_policy_identity_components_missing_' . $family;
+					$component_artifacts = array();
+					$component_plugins = array();
+					foreach ( $components as $component ) {
+						if ( ! is_array( $component ) ) { $blockers[] = 'functional_gap_policy_identity_component_invalid_' . $family; continue; }
+						$component_artifact = isset( $component['artifact'] ) ? sanitize_text_field( (string) $component['artifact'] ) : '';
+						$component_plugin = isset( $component['plugin_file'] ) ? self::normalize_plugin_file( $component['plugin_file'] ) : '';
+						if ( '' === $component_artifact || '' === $component_plugin || ! self::plugin_matches_policy_family( $component_plugin, $row ) ) $blockers[] = 'functional_gap_policy_identity_component_invalid_' . $family;
+						if ( isset( $component_artifacts[ $component_artifact ] ) || isset( $component_plugins[ $component_plugin ] ) ) $blockers[] = 'functional_gap_policy_identity_component_duplicate_' . $family;
+						$component_artifacts[ $component_artifact ] = true;
+						$component_plugins[ $component_plugin ] = true;
+					}
+					$expected_component_artifacts = array_values( array_unique( array_map( 'sanitize_text_field', (array) $row['repository_artifacts'] ) ) );
+					$actual_component_artifacts = array_keys( $component_artifacts );
+					sort( $expected_component_artifacts, SORT_STRING );
+					sort( $actual_component_artifacts, SORT_STRING );
+					if ( $expected_component_artifacts !== $actual_component_artifacts ) $blockers[] = 'functional_gap_policy_identity_component_artifact_set_mismatch_' . $family;
 				}
 				if ( 'redacted_status' === $mode ) {
 					if ( empty( $row['redacted_secret_option_keys'] ) || ! is_array( $row['redacted_secret_option_keys'] ) ) $blockers[] = 'functional_gap_policy_redaction_keys_missing_' . $family;
@@ -514,6 +532,88 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array_keys( $out );
 	}
 
+	private static function repository_identity_components( array $repository, $family, array $rule ) {
+		$components = array();
+		$blockers = array();
+		$family_row = isset( $repository['families'][ $family ] ) && is_array( $repository['families'][ $family ] ) ? $repository['families'][ $family ] : array();
+		$artifacts = isset( $family_row['artifacts'] ) && is_array( $family_row['artifacts'] ) ? $family_row['artifacts'] : array();
+		$artifact_by_name = array();
+		foreach ( $artifacts as $artifact ) {
+			if ( ! is_array( $artifact ) || empty( $artifact['archive'] ) ) continue;
+			$artifact_by_name[ sanitize_text_field( (string) $artifact['archive'] ) ] = $artifact;
+		}
+		$seen_plugins = array();
+		$seen_artifacts = array();
+		foreach ( isset( $rule['identity_components'] ) && is_array( $rule['identity_components'] ) ? $rule['identity_components'] : array() as $component ) {
+			if ( ! is_array( $component ) ) { $blockers[] = 'identity_component_invalid_' . $family; continue; }
+			$plugin_file = isset( $component['plugin_file'] ) ? self::normalize_plugin_file( $component['plugin_file'] ) : '';
+			$archive = isset( $component['artifact'] ) ? sanitize_text_field( (string) $component['artifact'] ) : '';
+			if ( '' === $plugin_file || '' === $archive || isset( $seen_plugins[ $plugin_file ] ) || isset( $seen_artifacts[ $archive ] ) ) {
+				$blockers[] = 'identity_component_duplicate_or_missing_' . $family;
+				continue;
+			}
+			$seen_plugins[ $plugin_file ] = true;
+			$seen_artifacts[ $archive ] = true;
+			if ( ! self::plugin_matches_policy_family( $plugin_file, $rule ) ) { $blockers[] = 'identity_component_plugin_escapes_family_' . $family; continue; }
+			$artifact = isset( $artifact_by_name[ $archive ] ) ? $artifact_by_name[ $archive ] : null;
+			if ( ! is_array( $artifact ) ) { $blockers[] = 'identity_component_artifact_missing_' . $family; continue; }
+			$basename = basename( $plugin_file );
+			$candidates = array();
+			foreach ( isset( $artifact['plugin_headers'] ) && is_array( $artifact['plugin_headers'] ) ? $artifact['plugin_headers'] : array() as $header ) {
+				if ( ! is_array( $header ) || empty( $header['file'] ) || empty( $header['version'] ) ) continue;
+				$header_file = self::normalize_plugin_file( $header['file'] );
+				if ( basename( $header_file ) === $basename ) $candidates[] = $header;
+			}
+			if ( 1 !== count( $candidates ) ) { $blockers[] = 'identity_component_header_ambiguous_' . $family; continue; }
+			$version = sanitize_text_field( (string) $candidates[0]['version'] );
+			$tree_sha = isset( $artifact['package_tree']['tree_sha256'] ) ? strtolower( trim( (string) $artifact['package_tree']['tree_sha256'] ) ) : '';
+			if ( '' === $version || ! preg_match( '/^[a-f0-9]{64}$/', $tree_sha ) ) { $blockers[] = 'identity_component_repository_identity_invalid_' . $family; continue; }
+			$components[ $plugin_file ] = array(
+				'plugin_file' => $plugin_file,
+				'artifact' => $archive,
+				'expected_version' => $version,
+				'expected_tree_sha256' => $tree_sha,
+			);
+		}
+		ksort( $components, SORT_STRING );
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		return array( 'valid'=>empty( $blockers ), 'components'=>$components, 'blockers'=>$blockers );
+	}
+
+	private static function version_preflight_tree( $plugin_file, $actual_version, array $component ) {
+		$budget = array( 'started_at'=>microtime( true ), 'files'=>0, 'bytes'=>0 );
+		$census = self::plugin_census_once( $plugin_file, $budget );
+		if ( empty( $census['valid'] ) ) {
+			return array(
+				'file_count'=>isset( $census['file_count'] ) ? (int) $census['file_count'] : 0,
+				'total_bytes'=>isset( $census['total_bytes'] ) ? (int) $census['total_bytes'] : 0,
+				'tree_sha256'=>'',
+				'census_sha256'=>'',
+				'scan_stable'=>false,
+				'scan_attempts'=>0,
+				'scan_strategy'=>'version_preflight_metadata_only',
+				'comparison'=>'repository_version_mismatch_census_failed',
+				'expected_version'=>isset( $component['expected_version'] ) ? (string) $component['expected_version'] : '',
+				'actual_version'=>(string) $actual_version,
+				'expected_repository_artifact'=>isset( $component['artifact'] ) ? (string) $component['artifact'] : '',
+				'error'=>'runtime_census_failed',
+			);
+		}
+		return array(
+			'file_count'=>(int) $census['file_count'],
+			'total_bytes'=>(int) $census['total_bytes'],
+			'tree_sha256'=>'',
+			'census_sha256'=>(string) $census['census_sha256'],
+			'scan_stable'=>true,
+			'scan_attempts'=>0,
+			'scan_strategy'=>'version_preflight_metadata_only',
+			'comparison'=>'repository_version_mismatch',
+			'expected_version'=>isset( $component['expected_version'] ) ? (string) $component['expected_version'] : '',
+			'actual_version'=>(string) $actual_version,
+			'expected_repository_artifact'=>isset( $component['artifact'] ) ? (string) $component['artifact'] : '',
+		);
+	}
+
 	private static function verify_build_provenance_package( array $data ) {
 		$entries = isset( $data['package_files'] ) && is_array( $data['package_files'] ) ? $data['package_files'] : array();
 		if ( empty( $entries ) ) return array( 'valid'=>false, 'blockers'=>array( 'build_provenance_package_files_missing' ) );
@@ -698,6 +798,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$build_source = ! empty( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : self::build_source_commit_sha();
 		if ( '' === $source || ! preg_match( '/^[a-f0-9]{40}$/', $source ) ) $blockers[] = 'repository_evidence_source_missing';
 		if ( empty( $policy['valid'] ) ) $blockers = array_merge( $blockers, isset( $policy['blockers'] ) ? (array) $policy['blockers'] : array( 'functional_gap_policy_invalid' ) );
+		foreach ( isset( $policy['data']['families'] ) && is_array( $policy['data']['families'] ) ? $policy['data']['families'] : array() as $family_id => $rule ) {
+			$mode = is_array( $rule ) && isset( $rule['evaluation_mode'] ) ? sanitize_key( (string) $rule['evaluation_mode'] ) : '';
+			if ( ! in_array( $mode, array( 'premium_semantic','composite_behavioral' ), true ) ) continue;
+			$identity = self::repository_identity_components( array( 'families'=>isset( $data['families'] ) && is_array( $data['families'] ) ? $data['families'] : array() ), sanitize_key( (string) $family_id ), is_array( $rule ) ? $rule : array() );
+			if ( empty( $identity['valid'] ) ) $blockers = array_merge( $blockers, isset( $identity['blockers'] ) ? (array) $identity['blockers'] : array( 'identity_component_evidence_invalid' ) );
+		}
 		if ( self::POLICY_CONTRACT !== ( isset( $data['policy_contract'] ) ? (string) $data['policy_contract'] : '' ) ) $blockers[] = 'repository_evidence_policy_contract_mismatch';
 		$embedded_policy_sha = isset( $data['policy_sha256'] ) ? strtolower( trim( (string) $data['policy_sha256'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $embedded_policy_sha ) || empty( $policy['sha256'] ) || ! hash_equals( (string) $policy['sha256'], $embedded_policy_sha ) ) $blockers[] = 'repository_evidence_policy_sha256_mismatch';
@@ -777,18 +883,31 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$families = array();
 		foreach ( self::targets() as $family => $rule ) {
 			$families[ $family ] = array();
+			$identity_components = self::repository_identity_components( $repository, $family, $rule );
 			foreach ( $plugin_map as $plugin_file => $headers ) {
 				$normalized = self::normalize_plugin_file( $plugin_file );
 				if ( ! is_array( $rule ) || ! self::plugin_matches_policy_family( $normalized, $rule ) ) continue;
 				$is_active = isset( $active_set[ $normalized ] );
 				$mode = isset( $rule['evaluation_mode'] ) ? sanitize_key( (string) $rule['evaluation_mode'] ) : '';
 				$repeat_on_mismatch = ! empty( $rule['repository_evidence'] );
+				$version = isset( $headers['Version'] ) ? sanitize_text_field( (string) $headers['Version'] ) : '';
+				$component = isset( $identity_components['components'][ $normalized ] ) && is_array( $identity_components['components'][ $normalized ] ) ? $identity_components['components'][ $normalized ] : null;
+				$version_preflight_mismatch = $is_active && $deep_scan && is_array( $component ) && isset( $component['expected_version'] ) && '' !== (string) $component['expected_version'] && ! hash_equals( (string) $component['expected_version'], $version );
+				if ( ! $is_active ) {
+					$tree = array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned', 'scan_strategy'=>'none' );
+				} elseif ( ! $deep_scan ) {
+					$tree = array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'repository_evidence_invalid_not_scanned', 'scan_strategy'=>'none' );
+				} elseif ( $version_preflight_mismatch ) {
+					$tree = self::version_preflight_tree( $plugin_file, $version, $component );
+				} else {
+					$tree = self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ), $repeat_on_mismatch );
+				}
 				$families[ $family ][] = array(
 					'plugin_file' => (string) $plugin_file,
 					'name' => isset( $headers['Name'] ) ? sanitize_text_field( (string) $headers['Name'] ) : '',
-					'version' => isset( $headers['Version'] ) ? sanitize_text_field( (string) $headers['Version'] ) : '',
+					'version' => $version,
 					'active' => $is_active,
-					'plugin_tree' => ! $is_active ? array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned', 'scan_strategy'=>'none' ) : ( $deep_scan ? self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ), $repeat_on_mismatch ) : array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'repository_evidence_invalid_not_scanned', 'scan_strategy'=>'none' ) ),
+					'plugin_tree' => $tree,
 				);
 			}
 			usort( $families[ $family ], static function ( $a, $b ) { return strcmp( $a['plugin_file'], $b['plugin_file'] ); } );
