@@ -83,7 +83,8 @@ def cases(base):
         'rank-math': 'contract_evidence_review',
         'duplicator': 'runtime_contract_evidence_captured',
         'jetengine': 'semantic_attestation_required',
-        'wp-import-export': 'runtime_alignment_or_behavioral_recertification_required',
+        'jetsmartfilters': 'semantic_attestation_required',
+        'wp-import-export': 'behavioral_recertification_required',
     }))
 
     route_missing = copy.deepcopy(base)
@@ -125,6 +126,18 @@ def cases(base):
     premium_unstable = copy.deepcopy(base)
     set_unstable(premium_unstable, 'jetengine')
     out.append(('premium-tree-unstable', premium_unstable, {'jetengine': 'runtime_evidence_unstable'}))
+
+    premium_drift = copy.deepcopy(base)
+    set_tree_drift(premium_drift, 'jetengine', 'c')
+    out.append(('premium-tree-drift', premium_drift, {'jetengine': 'runtime_alignment_required'}))
+
+    jetsmart_drift = copy.deepcopy(base)
+    set_tree_drift(jetsmart_drift, 'jetsmartfilters', 'd')
+    out.append(('jetsmartfilters-tree-drift', jetsmart_drift, {'jetsmartfilters': 'runtime_alignment_required'}))
+
+    composite_drift = copy.deepcopy(base)
+    set_tree_drift(composite_drift, 'wp-import-export', 'e')
+    out.append(('composite-component-drift', composite_drift, {'wp-import-export': 'runtime_alignment_required'}))
 
     composite_inactive = copy.deepcopy(base)
     set_inactive(composite_inactive, 'wp-import-export')
