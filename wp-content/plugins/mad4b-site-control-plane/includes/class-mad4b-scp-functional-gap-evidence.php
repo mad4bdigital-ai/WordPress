@@ -1086,8 +1086,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		);
 	}
 
-	public static function decision_map() {
-		$snapshot = self::snapshot();
+	private static function decision_map_from_snapshot( array $snapshot ) {
 		$evaluation = isset( $snapshot['evaluation'] ) && is_array( $snapshot['evaluation'] ) ? $snapshot['evaluation'] : array();
 		$map = array();
 		foreach ( isset( $evaluation['decisions'] ) && is_array( $evaluation['decisions'] ) ? $evaluation['decisions'] : array() as $row ) {
@@ -1098,8 +1097,15 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return $map;
 	}
 
-	public static function summary() {
-		$snapshot = self::snapshot();
+	public static function decision_map() {
+		return self::decision_map_from_snapshot( self::snapshot() );
+	}
+
+	public static function current_runtime_identity_sha256() {
+		return self::runtime_identity_key();
+	}
+
+	private static function summary_from_snapshot( array $snapshot ) {
 		$evaluation = isset( $snapshot['evaluation'] ) && is_array( $snapshot['evaluation'] ) ? $snapshot['evaluation'] : array();
 		$repository = isset( $snapshot['repository_evidence'] ) && is_array( $snapshot['repository_evidence'] ) ? $snapshot['repository_evidence'] : array();
 		$counts = isset( $evaluation['counts'] ) && is_array( $evaluation['counts'] ) ? $evaluation['counts'] : array();
@@ -1132,6 +1138,22 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'counts' => $counts,
 			'unstable_family_count' => isset( $counts['runtime_evidence_unstable'] ) ? (int) $counts['runtime_evidence_unstable'] : 0,
 			'blockers' => isset( $evaluation['blockers'] ) ? $evaluation['blockers'] : array(),
+		);
+	}
+
+	public static function summary() {
+		return self::summary_from_snapshot( self::snapshot() );
+	}
+
+	public static function coverage_projection() {
+		$snapshot = self::snapshot();
+		return array(
+			'contract' => 'mad4b.functional-gap-coverage-projection.v1',
+			'snapshot_identity_sha256' => isset( $snapshot['snapshot_identity_sha256'] ) ? (string) $snapshot['snapshot_identity_sha256'] : '',
+			'summary' => self::summary_from_snapshot( $snapshot ),
+			'decisions' => self::decision_map_from_snapshot( $snapshot ),
+			'promotion_authorized' => false,
+			'mutation_authorized' => false,
 		);
 	}
 }
