@@ -89,20 +89,24 @@ $governance_before = array(
 $original_active = get_option( 'active_plugins', array() );
 $unknown_dir = WP_PLUGIN_DIR . '/ci-unknown-adapter-target';
 $risky_dir = WP_PLUGIN_DIR . '/code-snippets';
+$menu_dir = WP_PLUGIN_DIR . '/custom-mega-menu';
 wp_mkdir_p( $unknown_dir );
 wp_mkdir_p( $risky_dir );
+wp_mkdir_p( $menu_dir );
 file_put_contents( $unknown_dir . '/ci-unknown.php', "<?php\n/*\nPlugin Name: CI Unknown Adapter Target\nVersion: 9.9.9\n*/\n" );
 file_put_contents( $risky_dir . '/code-snippets.php', "<?php\n/*\nPlugin Name: Code Snippets CI Fixture\nVersion: 9.9.9\n*/\n" );
-update_option( 'active_plugins', array_values( array_unique( array_merge( (array) $original_active, array( 'ci-unknown-adapter-target/ci-unknown.php', 'code-snippets/code-snippets.php' ) ) ) ) );
+file_put_contents( $menu_dir . '/custom-mega-menu.php', "<?php\n/*\nPlugin Name: Custom Mega Menu Widgets (All Styles)\nVersion: 4.3.0\n*/\n" );
+update_option( 'active_plugins', array_values( array_unique( array_merge( (array) $original_active, array( 'ci-unknown-adapter-target/ci-unknown.php', 'code-snippets/code-snippets.php', 'custom-mega-menu/custom-mega-menu.php' ) ) ) ) );
 if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true );
 
 try {
 	$discovered = $coverage_ability->execute();
 	$check( ! is_wp_error( $discovered ), 'Plugin discovery failed with CI fixtures.' );
-	$unknown = null; $risky = null;
+	$unknown = null; $risky = null; $menu = null;
 	foreach ( $discovered['plugins'] as $item ) {
 		if ( 'ci-unknown-adapter-target/ci-unknown.php' === $item['plugin_file'] ) $unknown = $item;
 		if ( 'code-snippets/code-snippets.php' === $item['plugin_file'] ) $risky = $item;
+		if ( 'custom-mega-menu/custom-mega-menu.php' === $item['plugin_file'] ) $menu = $item;
 	}
 	$check( is_array( $unknown ) && ! empty( $unknown['active'] ), 'Unknown active plugin fixture was not discovered.' );
 	$check( 'adapter_required' === $unknown['coverage_state'], 'Unknown plugin did not fail closed to adapter_required.' );
@@ -111,6 +115,12 @@ try {
 	$check( is_array( $risky ) && 'excluded_high_risk' === $risky['coverage_state'], 'High-risk code execution plugin was not excluded from normal writer support.' );
 	$check( 'normal_writer_excluded_by_risk' === $risky['support_request']['reason_code'], 'High-risk support request reason is incorrect.' );
 	$check( 'dangerous-code-execution' === $risky['adapter_id'] && ! empty( $risky['adapter_registered'] ), 'High-risk plugin lost its read-only inspection adapter.' );
+	$check( is_array( $menu ) && ! empty( $menu['active'] ), 'Normalized Custom Mega Menu runtime fixture was not discovered.' );
+	$check( 'custom-mega-menu' === $menu['family'] && 'custom-mega-menu' === $menu['adapter_id'], 'Normalized Custom Mega Menu runtime slug did not resolve to its governed family.' );
+	$check( ! empty( $menu['adapter_registered'] ), 'Custom Mega Menu family adapter was not registered.' );
+	$check( 'contract_discovery_required' === (string) ( $menu['functional_coverage']['state'] ?? '' ), 'Custom Mega Menu must remain contract-discovery-only rather than adapter-missing or functionally ready.' );
+	$check( 'plugin_status_read' === (string) ( $menu['functional_coverage']['safe_now'][0] ?? '' ), 'Custom Mega Menu safe-now scope drifted.' );
+	$check( in_array( 'menu_structure_write', (array) ( $menu['functional_coverage']['prohibited_until_certified'] ?? array() ), true ), 'Custom Mega Menu write boundary was not preserved.' );
 
 	$requests_ability = wp_get_ability( 'mad4b/adapter-support-requests' );
 	$requests_one = $requests_ability->execute();
@@ -129,6 +139,8 @@ try {
 	@rmdir( $unknown_dir );
 	@unlink( $risky_dir . '/code-snippets.php' );
 	@rmdir( $risky_dir );
+	@unlink( $menu_dir . '/custom-mega-menu.php' );
+	@rmdir( $menu_dir );
 	if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true );
 }
 
