@@ -89,6 +89,8 @@ for marker in [
     "'elementor/delete-element' => 'elementor'",
     "'elementor/set-dynamic-tag' => 'elementor'",
     "'elementor/set-etg-dynamic-tag' => 'elementor'",
+    "'context/update-drive-asset' => 'google_drive_context'",
+    "'context/recreate-drive-asset' => 'google_drive_context'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
     "MAD4B_SCP_Agent_Registry::resolve_agent",
@@ -120,6 +122,8 @@ for required_pair in [
     "'elementor/delete-element' => 'elementor'",
     "'elementor/set-dynamic-tag' => 'elementor'",
     "'elementor/set-etg-dynamic-tag' => 'elementor'",
+    "'context/update-drive-asset' => 'google_drive_context'",
+    "'context/recreate-drive-asset' => 'google_drive_context'",
 ]:
     if required_pair not in allowlist:
         raise SystemExit(f'exact grant-reconciliation provider pair missing: {required_pair}')
@@ -127,6 +131,7 @@ for required_pair in [
 for forbidden_grant in [
     "'jetengine/import-configuration'",
     "'jetengine/export-configuration'",
+    "'context/create-drive-asset'",
     "'mad4b/database-raw-query'",
 ]:
     if forbidden_grant in allowlist:
