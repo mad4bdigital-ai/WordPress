@@ -46,6 +46,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-query-monitor-evidence-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-query-performance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-finalizer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-unchanged-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wpml-response-contract.php';
@@ -148,6 +149,7 @@ MAD4B_SCP_OAuth_Subject_User_Bridge::boot();
 
 MAD4B_SCP_Live_Acceptance_Observer::boot_early();
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::boot_early();
+MAD4B_SCP_Admin_Query_Performance::boot();
 MAD4B_SCP_Live_Acceptance_Finalizer::boot_early();
 MAD4B_SCP_Production_Unchanged_Attestation::boot_early();
 MAD4B_SCP_WPML_Response_Contract::boot_early();
