@@ -102,7 +102,7 @@ for forbidden in [
         raise SystemExit(f'reconciliation plan must remain non-authorizing/read-only: {forbidden}')
 
 for marker in [
-    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v1'",
+    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v2'",
     "const ABILITY = 'mad4b/staging-write-grant-reconcile'",
     "const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE GRANTS'",
     "'jetengine/create-cct'",
