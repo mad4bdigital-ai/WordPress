@@ -235,6 +235,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'evidence_runtime_fingerprint' => isset( $coverage['zero_touch']['runtime_evidence_fingerprint'] ) ? (string) $coverage['zero_touch']['runtime_evidence_fingerprint'] : '',
 			'evidence_decision_fingerprint' => isset( $coverage['zero_touch']['decision_fingerprint'] ) ? (string) $coverage['zero_touch']['decision_fingerprint'] : '',
 			'evidence_projection_identity_match' => ! empty( $coverage['zero_touch_projection']['identity_match'] ),
+			'evidence_projection_dynamic_surface_match' => ! empty( $coverage['zero_touch_projection']['dynamic_surface_match'] ),
+			'evidence_projection_census_match' => ! empty( $coverage['zero_touch_projection']['census_match'] ),
 			'items' => $items,
 			'count' => count( $items ),
 		);
@@ -297,6 +299,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'evidence_counts' => isset( $coverage['zero_touch']['counts'] ) && is_array( $coverage['zero_touch']['counts'] ) ? $coverage['zero_touch']['counts'] : array(),
 			'evidence_decision_fingerprint' => isset( $coverage['zero_touch']['decision_fingerprint'] ) ? (string) $coverage['zero_touch']['decision_fingerprint'] : '',
 			'evidence_projection_identity_match' => ! empty( $coverage['zero_touch_projection']['identity_match'] ),
+			'evidence_projection_dynamic_surface_match' => ! empty( $coverage['zero_touch_projection']['dynamic_surface_match'] ),
+			'evidence_projection_census_match' => ! empty( $coverage['zero_touch_projection']['census_match'] ),
 			'mutation_default' => 'deny',
 			'items' => array_values( $families ),
 			'count' => count( $families ),
