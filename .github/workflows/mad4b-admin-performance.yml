@@ -125,6 +125,14 @@ jobs:
               "const MAX_PROVENANCE_VERIFY_FILES = 2500;",
               "const MAX_PROVENANCE_VERIFY_BYTES = 268435456;",
               "const MAX_PROVENANCE_VERIFY_SECONDS = 8.0;",
+              "const MAX_CENSUS_FILES = 30000;",
+              "const MAX_CENSUS_BYTES = 1610612736;",
+              "const MAX_CENSUS_SCAN_SECONDS = 5.0;",
+              "public static function current_runtime_census_status()",
+              "'metadata_only' => true",
+              "'content_rehashed' => false",
+              "runtime_census_time_budget_exceeded",
+              "runtime_census_snapshot_budget_exceeded",
               "private static $snapshot = null;",
               "private static $snapshot_key = '';",
               "if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) return self::$snapshot;",
@@ -138,6 +146,13 @@ jobs:
           ]:
               if marker_text not in functional_gap:
                   raise SystemExit('Missing zero-touch performance invariant: ' + marker_text)
+
+          census_body = functional_gap.split("private static function plugin_census_once", 1)[1].split("private static function runtime_census_from_runtime", 1)[0]
+          if "hash_file(" in census_body:
+              raise SystemExit('Metadata-only fixed-point census unexpectedly re-hashes provider file content')
+          for marker_text in ["filesize(", "filemtime(", "census_sha256"]:
+              if marker_text not in census_body:
+                  raise SystemExit('Metadata census implementation missing: ' + marker_text)
 
           for forbidden in [
               "add_action( 'admin_init'",
