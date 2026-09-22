@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { installContextNetworkBoundary } from "./network-policy.mjs";
 
 const OBSERVER_PATH = "/wp-content/plugins/etg-dynamic-filter-seo-bridge/assets/js/browser-acceptance-observer.js";
 
@@ -282,7 +283,8 @@ export function buildEvidenceEnvelope({ plan, providerId, browserEngine, cases }
 
 export async function runBrowserPlan({ browser, providerId, plan }) {
   plan = validatePlan(plan);
-  const { page } = await getPage(browser);
+  const { context, page } = await getPage(browser);
+  await installContextNetworkBoundary(context, plan.origin, process.env);
   await enforceTopLevelOrigin(page, plan.origin);
   const browserEngine = await browser.version().catch(() => "Chromium/CDP");
   const cases = [];
