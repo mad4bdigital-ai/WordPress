@@ -118,7 +118,16 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					foreach ( isset( $row['required_get_routes'] ) && is_array( $row['required_get_routes'] ) ? $row['required_get_routes'] : array() as $required_route ) {
 						$required_route = sanitize_text_field( (string) $required_route );
 						$callbacks = isset( $required_callbacks[ $required_route ] ) && is_array( $required_callbacks[ $required_route ] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $required_callbacks[ $required_route ] ) ) ) : array();
-						if ( empty( $callbacks ) ) $blockers[] = 'functional_gap_policy_read_permission_callbacks_missing_' . $family;
+						if ( empty( $callbacks ) ) {
+							$blockers[] = 'functional_gap_policy_read_permission_callbacks_missing_' . $family;
+						} else {
+							foreach ( $callbacks as $callback_descriptor ) {
+								$normalized_callback = strtolower( trim( (string) $callback_descriptor ) );
+								if ( in_array( $normalized_callback, array( '__return_true','closure' ), true ) || ! preg_match( '/^[a-z_\\\\][a-z0-9_\\\\]*(?:::[a-z_][a-z0-9_]*)?$/i', $normalized_callback ) ) {
+									$blockers[] = 'functional_gap_policy_read_permission_callback_identity_invalid_' . $family;
+								}
+							}
+						}
 					}
 				}
 				if ( in_array( $mode, array( 'premium_semantic','composite_behavioral' ), true ) ) {
@@ -944,7 +953,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 							$has_permission = array_key_exists( 'permission_callback', $handler ) && null !== $handler['permission_callback'] && false !== $handler['permission_callback'] && '' !== $handler['permission_callback'];
 							$descriptor = $has_permission ? self::callback_descriptor( $handler['permission_callback'] ) : '';
 							if ( ! $has_permission || '' === $descriptor ) $get_permission_missing = true;
-							if ( '__return_true' === $descriptor ) $get_permission_public = true;
+							if ( '__return_true' === strtolower( $descriptor ) ) $get_permission_public = true;
 							$get_permissions[] = '' !== $descriptor ? $descriptor : 'missing';
 						}
 					}
