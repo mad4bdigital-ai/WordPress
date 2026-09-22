@@ -9,6 +9,8 @@ repo=ROOT.parents[2]
 control=(repo/'.github/workflows/mad4b-control-plane-package.yml').read_text('utf-8')
 plugin=(repo/'.github/workflows/mad4b-plugin-package.yml').read_text('utf-8')
 capture=(repo/'tools/capture-functional-gap-contract-evidence.py').read_text('utf-8')
+discovery=(ROOT/'includes/class-mad4b-scp-plugin-discovery.php').read_text('utf-8')
+ui=(ROOT/'includes/class-mad4b-scp-adapter-coverage-admin-ui.php').read_text('utf-8')
 
 for marker in [
     "mad4b.functional-gap-zero-touch.v1",
@@ -25,6 +27,17 @@ for marker in [
     "redacted_read_contract_candidate",
     "runtime_alignment_required",
     "semantic_attestation_required",
+    "repository_evidence_sha256_mismatch",
+    "repository_evidence_bytes_mismatch",
+    "repository_evidence_not_bound_in_build_provenance",
+    "runtime_evidence_unstable",
+    "runtime_tree_changed_during_scan",
+    "MAX_TREE_FILES",
+    "MAX_TREE_BYTES",
+    "tree_scan_budget_exceeded",
+    "tree_file_hash_failed",
+    "scan_attempts",
+    "evidence_integrity_bound",
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
@@ -59,6 +72,25 @@ for marker in [
 ]:
     if marker not in registry:
         raise SystemExit(f'zero-touch ability/summary not wired: {marker}')
+
+for marker in [
+    "'zero_touch' => $zero_touch",
+    "'zero_touch_decision'",
+    "'zero_touch_state'",
+    "'zero_touch_reason'",
+    "MAD4B_SCP_Functional_Gap_Evidence::decision_map()",
+]:
+    if marker not in discovery:
+        raise SystemExit(f'standard coverage report missing zero-touch projection: {marker}')
+
+for marker in [
+    "Zero-touch evidence",
+    "Unstable scans",
+    "zero_touch_decision",
+    "zero_touch_state",
+]:
+    if marker not in ui:
+        raise SystemExit(f'coverage UI missing zero-touch projection: {marker}')
 
 for workflow_name,workflow in [('control-plane',control),('plugin-package',plugin)]:
     for marker in [
