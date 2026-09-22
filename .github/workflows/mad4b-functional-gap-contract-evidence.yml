@@ -12,6 +12,10 @@ on:
       - 'wp-content/plugins/seo-by-rank-math.zip'
       - 'wp-content/plugins/seo-by-rank-math-pro.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'tools/evaluate-functional-gap-contract-promotion.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py'
       - '.github/workflows/mad4b-functional-gap-contract-evidence.yml'
   workflow_dispatch:
 
