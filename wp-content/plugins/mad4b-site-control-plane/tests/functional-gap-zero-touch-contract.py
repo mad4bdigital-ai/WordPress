@@ -162,6 +162,12 @@ for marker in [
     "functional_gap_policy_identity_evidence_required_",
     "functional_gap_policy_identity_artifacts_required_",
     "runtime_evidence_fingerprint",
+    "private static function runtime_only_metadata_identity",
+    "runtime_only_metadata_identity",
+    "metadata_only_runtime_identity",
+    "'metadata_only' => true",
+    "'content_rehashed' => false",
+    "'census_sha256'",
     "private static function runtime_evidence_fingerprint( array $runtime )",
     "runtime_dynamic_surface_fingerprint",
     "public static function current_dynamic_surface_fingerprint()",
@@ -208,6 +214,18 @@ for forbidden in [
 ]:
     if forbidden in runtime:
         raise SystemExit(f'zero-touch runtime must remain read-only: {forbidden}')
+
+runtime_only_body = runtime.split("private static function runtime_only_metadata_identity", 1)[1].split("private static function runtime_census_from_runtime", 1)[0]
+if "hash_file(" in runtime_only_body:
+    raise SystemExit('runtime-only metadata identity unexpectedly hashes provider file content')
+for marker in ["plugin_census_once(", "'metadata_only' => true", "'content_rehashed' => false", "'census_sha256'"]:
+    if marker not in runtime_only_body:
+        raise SystemExit(f'runtime-only metadata identity missing invariant: {marker}')
+
+fingerprint_body = runtime.split("private static function runtime_evidence_fingerprint", 1)[1].split("private static function runtime_dynamic_surface_fingerprint", 1)[0]
+for marker in ["'census_sha256'", "'metadata_only'", "'content_rehashed'"]:
+    if marker not in fingerprint_body:
+        raise SystemExit(f'runtime evidence fingerprint missing metadata identity field: {marker}')
 
 if "class-mad4b-scp-functional-gap-evidence.php" not in main:
     raise SystemExit('zero-touch runtime class is not loaded')
