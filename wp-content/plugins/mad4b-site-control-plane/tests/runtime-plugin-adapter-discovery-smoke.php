@@ -39,6 +39,20 @@ $check( ! empty( $zero_touch['snapshot_fixed_point_stable'] ), 'Zero-touch sourc
 $check( 1 <= (int) ( $zero_touch['snapshot_fixed_point_attempts'] ?? 0 ) && 2 >= (int) ( $zero_touch['snapshot_fixed_point_attempts'] ?? 0 ), 'Zero-touch fixed-point attempts escaped the bounded retry contract.' );
 $check( empty( $zero_touch['snapshot_census_required'] ), 'Source-mode zero-touch snapshot incorrectly required deep census evidence.' );
 $check( hash_equals( $initial_zero_touch_identity, (string) ( $zero_touch['snapshot_end_identity_sha256'] ?? '' ) ), 'Zero-touch source-mode snapshot start/end identity diverged.' );
+$initial_dynamic_surface = (string) ( $zero_touch['snapshot_end_dynamic_surface_sha256'] ?? '' );
+$check( 64 === strlen( $initial_dynamic_surface ) && ! empty( $zero_touch['snapshot_dynamic_surface_stable'] ), 'Zero-touch dynamic surface fixed point was not exposed.' );
+
+$dynamic_probe_callback = static function () {};
+add_action( 'wp_ajax_bte_zero_touch_dynamic_probe', $dynamic_probe_callback );
+$zero_touch_dynamic = $zero_touch_ability->execute();
+$check( ! is_wp_error( $zero_touch_dynamic ), 'Zero-touch evidence failed after in-memory dynamic surface changed.' );
+$changed_dynamic_surface = (string) ( $zero_touch_dynamic['snapshot_end_dynamic_surface_sha256'] ?? '' );
+$check( 64 === strlen( $changed_dynamic_surface ) && ! hash_equals( $initial_dynamic_surface, $changed_dynamic_surface ), 'Zero-touch cache did not invalidate after dynamic hook state changed.' );
+$check( ! empty( $zero_touch_dynamic['snapshot_dynamic_surface_stable'] ) && ! empty( $zero_touch_dynamic['snapshot_fixed_point_stable'] ), 'Zero-touch dynamic re-evaluation did not reach a stable fixed point.' );
+remove_action( 'wp_ajax_bte_zero_touch_dynamic_probe', $dynamic_probe_callback );
+$zero_touch_dynamic_restored = $zero_touch_ability->execute();
+$restored_dynamic_surface = (string) ( $zero_touch_dynamic_restored['snapshot_end_dynamic_surface_sha256'] ?? '' );
+$check( hash_equals( $initial_dynamic_surface, $restored_dynamic_surface ), 'Zero-touch dynamic surface fingerprint did not return to baseline after in-memory hook removal.' );
 
 $registry = MAD4B_SCP_Adapter_Registry::instance();
 
@@ -92,6 +106,7 @@ $check( ! empty( $initial['discovery_only'] ) && empty( $initial['auto_install']
 $check( 'deny' === $initial['unknown_plugin_write_default'], 'Unknown plugin write default is not deny.' );
 $check( isset( $initial['zero_touch_projection'] ) && is_array( $initial['zero_touch_projection'] ), 'Initial coverage did not expose atomic zero-touch projection metadata.' );
 $check( ! empty( $initial['zero_touch_projection']['identity_match'] ), 'Stable initial coverage projection did not preserve runtime identity.' );
+$check( ! empty( $initial['zero_touch_projection']['dynamic_surface_match'] ), 'Stable initial coverage projection did not preserve dynamic decision surface.' );
 $check( 64 === strlen( (string) ( $initial['zero_touch_projection']['snapshot_identity_sha256'] ?? '' ) ), 'Initial projection snapshot identity is missing.' );
 $check( hash_equals( (string) $initial['zero_touch_projection']['snapshot_identity_sha256'], (string) ( $initial['zero_touch_projection']['current_identity_sha256'] ?? '' ) ), 'Initial projection mixed different runtime identities.' );
 $check( empty( $initial['zero_touch_projection']['census_required'] ), 'Source-mode coverage incorrectly required deep census without embedded evidence.' );
@@ -227,6 +242,7 @@ try {
 	$check( isset( $contract_discovery['zero_touch'] ) && empty( $contract_discovery['zero_touch']['promotion_authorized'] ), 'Contract discovery zero-touch summary is missing or authorizing.' );
 	$check( isset( $contract_discovery['evidence_counts'] ) && is_array( $contract_discovery['evidence_counts'] ), 'Contract discovery report did not expose evidence closure counts.' );
 	$check( ! empty( $contract_discovery['evidence_projection_identity_match'] ), 'Contract discovery report did not preserve atomic evidence projection identity.' );
+$check( ! empty( $contract_discovery['evidence_projection_dynamic_surface_match'] ), 'Contract discovery report did not preserve dynamic evidence projection freshness.' );
 	$duplicator_runtime_identity = null;
 	foreach ( (array) ( $duplicator_discovery['runtime_identities'] ?? array() ) as $runtime_identity ) {
 		if ( 'duplicator/duplicator.php' === (string) ( $runtime_identity['plugin_file'] ?? '' ) ) $duplicator_runtime_identity = $runtime_identity;
@@ -240,6 +256,7 @@ try {
 	$check( isset( $functional_report['zero_touch'] ) && empty( $functional_report['zero_touch']['promotion_authorized'] ), 'Functional coverage report did not project non-authorizing zero-touch summary.' );
 	$check( isset( $functional_report['evidence_counts'] ) && is_array( $functional_report['evidence_counts'] ), 'Functional coverage report did not expose evidence closure counts.' );
 	$check( ! empty( $functional_report['evidence_projection_identity_match'] ), 'Functional coverage report did not preserve atomic evidence projection identity.' );
+$check( ! empty( $functional_report['evidence_projection_dynamic_surface_match'] ), 'Functional coverage report did not preserve dynamic evidence projection freshness.' );
 	$check( 64 === strlen( (string) ( $functional_report['evidence_snapshot_identity_sha256'] ?? '' ) ), 'Functional coverage report evidence snapshot identity is missing.' );
 	$check( 64 === strlen( (string) ( $functional_report['evidence_runtime_fingerprint'] ?? '' ) ) || empty( $functional_report['zero_touch']['ready'] ), 'Functional coverage runtime evidence fingerprint is missing for a ready snapshot.' );
 	$check( 64 === strlen( (string) ( $functional_report['evidence_decision_fingerprint'] ?? '' ) ) || empty( $functional_report['zero_touch']['ready'] ), 'Functional coverage decision fingerprint is missing for a ready snapshot.' );
