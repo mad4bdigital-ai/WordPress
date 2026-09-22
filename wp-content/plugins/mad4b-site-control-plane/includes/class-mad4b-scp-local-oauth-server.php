@@ -368,16 +368,27 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$blocked = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
 		$binding = isset( $plan['candidate_binding'] ) && is_array( $plan['candidate_binding'] ) ? $plan['candidate_binding'] : array();
 		$missing = isset( $plan['exact_grants_missing_count'] ) ? (int) $plan['exact_grants_missing_count'] : 0;
+		$missing_items = isset( $plan['exact_grants_missing'] ) && is_array( $plan['exact_grants_missing'] ) ? array_values( $plan['exact_grants_missing'] ) : array();
 		$stale = isset( $plan['stale_allow_grants_count'] ) ? (int) $plan['stale_allow_grants_count'] : 0;
+		$stale_items = isset( $plan['stale_allow_grants'] ) && is_array( $plan['stale_allow_grants'] ) ? array_values( $plan['stale_allow_grants'] ) : array();
 		$wildcards = isset( $plan['wildcard_grants'] ) ? (int) $plan['wildcard_grants'] : 0;
 		$write_tool_count = isset( $plan['write_tool_count'] ) ? (int) $plan['write_tool_count'] : count( $runtime );
 		$binding_required = ! empty( $binding['required'] );
 		$binding_match = ! $binding_required || ! empty( $binding['match'] );
 		$blocking_conditions = array();
-		if ( $missing > 0 ) $blocking_conditions[] = array( 'code' => 'exact_grants_missing', 'count' => $missing );
-		if ( $stale > 0 ) $blocking_conditions[] = array( 'code' => 'stale_allow_grants', 'count' => $stale );
+		if ( $missing > 0 ) $blocking_conditions[] = array( 'code' => 'exact_grants_missing', 'count' => $missing, 'items' => array_slice( $missing_items, 0, 20 ) );
+		if ( $stale > 0 ) $blocking_conditions[] = array( 'code' => 'stale_allow_grants', 'count' => $stale, 'items' => array_slice( $stale_items, 0, 20 ) );
 		if ( $wildcards > 0 ) $blocking_conditions[] = array( 'code' => 'wildcard_grants', 'count' => $wildcards );
-		if ( ! $binding_match ) $blocking_conditions[] = array( 'code' => 'candidate_binding_mismatch', 'count' => 1 );
+		if ( ! $binding_match ) $blocking_conditions[] = array(
+			'code' => 'candidate_binding_mismatch',
+			'count' => 1,
+			'binding' => array(
+				'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
+				'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+				'stored_build_fingerprint' => isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : '',
+				'current_build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
+			),
+		);
 		if ( empty( $plan['current_ready'] ) && empty( $blocking_conditions ) ) $blocking_conditions[] = array( 'code' => 'write_authority_not_ready', 'count' => 1 );
 		$ready = ! empty( $plan['current_ready'] ) && $write_tool_count > 0 && count( $grants ) === $write_tool_count && empty( $blocking_conditions );
 
@@ -402,6 +413,14 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'wildcard_grants' => $wildcards,
 			'candidate_binding_required' => $binding_required,
 			'candidate_binding_match' => $binding_match,
+			'candidate_binding' => array(
+				'required' => $binding_required,
+				'match' => $binding_match,
+				'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
+				'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+				'stored_build_fingerprint' => isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : '',
+				'current_build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
+			),
 			'normal_remote_writes_require_exact_approval' => true,
 			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
@@ -504,7 +523,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<p class="mad4b-live-stamp">' . esc_html__( 'Auto-refreshing read-only authority state every 5 seconds.', 'mad4b-site-control-plane' ) . ' <span id="mad4b-observed-at"></span></p>';
 		echo '</section>';
 		$projection_url = add_query_arg( array( 'action' => 'mad4b_oauth_grant_projection', 'nonce' => wp_create_nonce( 'mad4b_oauth_grant_projection' ) ), admin_url( 'admin-ajax.php' ) );
-		echo '<script nonce="' . esc_attr( $script_nonce ) . '">(function(){const u=' . wp_json_encode( $projection_url ) . ';const q=(s)=>document.querySelector(s);const clear=(el)=>{while(el&&el.firstChild)el.removeChild(el.firstChild)};const li=(a,p,r)=>{const n=document.createElement("li"),c=document.createElement("code"),s=document.createElement("span");c.textContent=a||"";s.textContent=" · "+(p||"")+(r?" · "+r:"");n.append(c,s);return n};const blockers=(p)=>{const el=q("#mad4b-grant-blockers");clear(el);const b=Array.isArray(p.blocking_conditions)?p.blocking_conditions:[];if(!b.length){el.className="mad4b-grant-blockers mad4b-ok";el.textContent=p.ready?"Write authority is fully converged for the runtime-eligible surface.":"No grant drift detected; write authority remains unavailable for another governed condition.";return}el.className="mad4b-grant-blockers mad4b-warn";const ul=document.createElement("ul");b.forEach(x=>{const n=document.createElement("li");n.textContent=(x.code||"governance_blocker")+(x.count?" ("+x.count+")":"");ul.appendChild(n)});el.append("Execution remains fail-closed: ",ul)};const paint=(d)=>{if(!d||!d.projection)return;const p=d.projection;q("#mad4b-exact-count").textContent=(p.exact_grants_existing||0)+"/"+(p.runtime_eligible_write_tool_count||0);q("#mad4b-catalog-count").textContent=p.catalog_write_tool_count||0;q("#mad4b-blocked-count").textContent=p.provider_gated_write_tool_count||0;const st=q("#mad4b-grant-state");st.textContent=p.ready?"Converged":"Fail-closed";st.className="mad4b-state "+(p.ready?"mad4b-ok-state":"mad4b-block-state");blockers(p);const gl=q("#mad4b-grant-list");clear(gl);(p.grants||[]).forEach(x=>gl.appendChild(li(x.ability,x.provider,"")));const bl=q("#mad4b-blocked-list");clear(bl);(p.blocked_catalog_abilities||[]).forEach(x=>bl.appendChild(li(x.ability,x.provider,x.reason||"provider_gated")));if(d.user&&d.user.display_label)q("#mad4b-oauth-user-label").textContent=d.user.display_label;if(d.observed_at)q("#mad4b-observed-at").textContent=d.observed_at};const run=()=>fetch(u,{credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json"}}).then(r=>r.ok?r.json():Promise.reject()).then(x=>{if(x&&x.success&&x.data)paint(x.data)}).catch(()=>{});run();setInterval(run,5000)})();</script>';
+		echo '<script nonce="' . esc_attr( $script_nonce ) . '">(function(){const u=' . wp_json_encode( $projection_url ) . ';const q=(s)=>document.querySelector(s);const clear=(el)=>{while(el&&el.firstChild)el.removeChild(el.firstChild)};const li=(a,p,r)=>{const n=document.createElement("li"),c=document.createElement("code"),s=document.createElement("span");c.textContent=a||"";s.textContent=" · "+(p||"")+(r?" · "+r:"");n.append(c,s);return n};const blockers=(p)=>{const el=q("#mad4b-grant-blockers");clear(el);const b=Array.isArray(p.blocking_conditions)?p.blocking_conditions:[];if(!b.length){el.className="mad4b-grant-blockers mad4b-ok";el.textContent=p.ready?"Write authority is fully converged for the runtime-eligible surface.":"No grant drift detected; write authority remains unavailable for another governed condition.";return}el.className="mad4b-grant-blockers mad4b-warn";const ul=document.createElement("ul");b.forEach(x=>{const n=document.createElement("li");let t=(x.code||"governance_blocker")+(x.count?" ("+x.count+")":"");if(Array.isArray(x.items)&&x.items.length){const names=x.items.slice(0,4).map(i=>i&&i.ability?i.ability:"").filter(Boolean);if(names.length)t+=" · "+names.join(", ")+(x.items.length>4?" …":"")}if(x.binding){const s=(x.binding.stored_source_commit_sha||"").slice(0,8),c=(x.binding.current_source_commit_sha||"").slice(0,8);if(s||c)t+=" · "+(s||"unbound")+" → "+(c||"unknown")}n.textContent=t;ul.appendChild(n)});el.append("Execution remains fail-closed: ",ul)};const paint=(d)=>{if(!d||!d.projection)return;const p=d.projection;q("#mad4b-exact-count").textContent=(p.exact_grants_existing||0)+"/"+(p.runtime_eligible_write_tool_count||0);q("#mad4b-catalog-count").textContent=p.catalog_write_tool_count||0;q("#mad4b-blocked-count").textContent=p.provider_gated_write_tool_count||0;const st=q("#mad4b-grant-state");st.textContent=p.ready?"Converged":"Fail-closed";st.className="mad4b-state "+(p.ready?"mad4b-ok-state":"mad4b-block-state");blockers(p);const gl=q("#mad4b-grant-list");clear(gl);(p.grants||[]).forEach(x=>gl.appendChild(li(x.ability,x.provider,"")));const bl=q("#mad4b-blocked-list");clear(bl);(p.blocked_catalog_abilities||[]).forEach(x=>bl.appendChild(li(x.ability,x.provider,x.reason||"provider_gated")));if(d.user&&d.user.display_label)q("#mad4b-oauth-user-label").textContent=d.user.display_label;if(d.observed_at)q("#mad4b-observed-at").textContent=d.observed_at};const run=()=>fetch(u,{credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json"}}).then(r=>r.ok?r.json():Promise.reject()).then(x=>{if(x&&x.success&&x.data)paint(x.data)}).catch(()=>{});run();setInterval(run,5000)})();</script>';
 		echo '<form method="post" action="' . esc_url( self::authorize_url() ) . '">';
 		foreach ( $hidden as $name => $value ) echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '">';
 		wp_nonce_field( 'mad4b_local_oauth_consent', '_mad4b_oauth_nonce' );
