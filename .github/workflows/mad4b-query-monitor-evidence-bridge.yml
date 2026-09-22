@@ -45,8 +45,10 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-query-monitor-evidence-bridge.php"
           php -l "$root/tests/query-monitor-evidence-bridge-runtime.php"
           php -l "$root/tests/query-monitor-db-attribution-runtime.php"
+          php -l "$root/tests/query-monitor-http-api-profile-runtime.php"
           php "$root/tests/query-monitor-evidence-bridge-runtime.php"
           php "$root/tests/query-monitor-db-attribution-runtime.php"
+          php "$root/tests/query-monitor-http-api-profile-runtime.php"
 
       - name: Verify runtime wiring and no authority widening
         shell: bash
@@ -63,6 +65,11 @@ jobs:
           grep -Fq "update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, \$telemetry, false )" "$bridge"
           grep -Fq "public static function db_attribution_status()" "$bridge"
           grep -Fq "public static function maybe_enable_db_attribution()" "$bridge"
+          grep -Fq "mad4b.http-api-performance-profile.v1" "$bridge"
+          grep -Fq "'raw_urls_returned' => false" "$bridge"
+          grep -Fq "'request_headers_returned' => false" "$bridge"
+          grep -Fq "'request_bodies_returned' => false" "$bridge"
+          grep -Fq "'response_bodies_returned' => false" "$bridge"
           grep -Fq "'conflicting_db_dropin'" "$bridge"
           grep -Fq "@symlink( \$source, \$dropin )" "$bridge"
           grep -Fq "ATTRIBUTION_LOADER_MARKER" "$bridge"
