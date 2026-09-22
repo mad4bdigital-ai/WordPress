@@ -1,0 +1,98 @@
+name: MAD4B RC40 Provider Recertification Evidence
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - 'wp-content/plugins/bit-pi.zip'
+      - 'wp-content/plugins/wp-all-import-pro.zip'
+      - 'wp-content/plugins/wp-all-export-pro.zip'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json'
+      - 'tools/capture-provider-recertification-evidence.py'
+      - '.github/workflows/mad4b-rc40-provider-recertification-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-rc40-provider-recertification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Exact RC40 provider recertification evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Capture exact repository provider evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mad4b-provider-recertification
+          python3 tools/capture-provider-recertification-evidence.py             /tmp/mad4b-provider-recertification/provider-recertification-evidence.json
+
+      - name: Validate fail-closed recertification boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          p = Path('/tmp/mad4b-provider-recertification/provider-recertification-evidence.json')
+          data = json.loads(p.read_text())
+          if data.get('contract') != 'mad4b.provider-recertification-evidence.v1':
+              raise SystemExit('recertification evidence contract mismatch')
+          if data.get('source_commit_sha') != os.environ['SOURCE_SHA']:
+              raise SystemExit('recertification evidence exact-head mismatch')
+
+          expected = {'jetengine', 'jetsmartfilters', 'bit_pi', 'wp-import-export'}
+          if set(data.get('providers', {})) != expected:
+              raise SystemExit('provider evidence set mismatch')
+
+          for provider in ('jetengine', 'jetsmartfilters', 'bit_pi'):
+              row = data['providers'][provider]
+              if not row.get('critical_manifest_complete'):
+                  raise SystemExit(f'{provider}: critical manifest incomplete')
+              if not row.get('archive_sha256') or len(row['archive_sha256']) != 64:
+                  raise SystemExit(f'{provider}: archive SHA missing')
+              if provider in ('jetengine', 'jetsmartfilters'):
+                  if row.get('authority_gate') != 'premium_semantic_attestation_required':
+                      raise SystemExit(f'{provider}: premium attestation gate weakened')
+              elif row.get('authority_gate') != 'behavioral_recertification_required':
+                  raise SystemExit('bit_pi behavioral recertification gate weakened')
+
+          composite = data['providers']['wp-import-export']
+          if composite.get('authority_gate') != 'composite_behavioral_recertification_required':
+              raise SystemExit('wp-import-export composite gate weakened')
+          if set(composite.get('components', {})) != {'import', 'export'}:
+              raise SystemExit('wp-import-export component set mismatch')
+          for component, row in composite['components'].items():
+              if not row.get('critical_manifest_complete'):
+                  raise SystemExit(f'wp-import-export:{component}: critical manifest incomplete')
+
+          print('mad4b.provider-recertification-evidence.v1: PASS')
+          PY
+
+      - name: Upload exact recertification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-rc40-provider-recertification-evidence-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-provider-recertification/provider-recertification-evidence.json
+          if-no-files-found: error
+          retention-days: 30
