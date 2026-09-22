@@ -711,12 +711,78 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return $value;
 	}
 
-	private static function decision_fingerprint( array $repository, array $policy, array $decisions ) {
+	private static function runtime_evidence_fingerprint( array $runtime ) {
+		$families = array();
+		foreach ( isset( $runtime['families'] ) && is_array( $runtime['families'] ) ? $runtime['families'] : array() as $family => $rows ) {
+			$family = sanitize_key( (string) $family );
+			if ( '' === $family ) continue;
+			$normalized_rows = array();
+			foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+				if ( ! is_array( $row ) ) continue;
+				$tree = isset( $row['plugin_tree'] ) && is_array( $row['plugin_tree'] ) ? $row['plugin_tree'] : array();
+				$normalized_rows[] = array(
+					'plugin_file' => isset( $row['plugin_file'] ) ? self::normalize_plugin_file( (string) $row['plugin_file'] ) : '',
+					'version' => isset( $row['version'] ) ? (string) $row['version'] : '',
+					'active' => ! empty( $row['active'] ),
+					'tree_sha256' => isset( $tree['tree_sha256'] ) ? strtolower( (string) $tree['tree_sha256'] ) : '',
+					'file_count' => isset( $tree['file_count'] ) ? (int) $tree['file_count'] : 0,
+					'total_bytes' => isset( $tree['total_bytes'] ) ? (int) $tree['total_bytes'] : 0,
+					'scan_stable' => ! empty( $tree['scan_stable'] ),
+					'comparison' => isset( $tree['comparison'] ) ? sanitize_key( (string) $tree['comparison'] ) : '',
+					'error' => isset( $tree['error'] ) ? sanitize_key( (string) $tree['error'] ) : '',
+				);
+			}
+			usort( $normalized_rows, static function ( $a, $b ) { return strcmp( (string) $a['plugin_file'], (string) $b['plugin_file'] ); } );
+			$families[ $family ] = $normalized_rows;
+		}
+		ksort( $families, SORT_STRING );
+
+		$routes = array();
+		foreach ( isset( $runtime['rest_routes'] ) && is_array( $runtime['rest_routes'] ) ? $runtime['rest_routes'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['route'] ) ) continue;
+			$methods = isset( $row['methods'] ) && is_array( $row['methods'] ) ? array_values( array_unique( array_map( 'strtoupper', $row['methods'] ) ) ) : array();
+			sort( $methods, SORT_STRING );
+			$routes[] = array( 'route'=>(string) $row['route'], 'methods'=>$methods );
+		}
+		usort( $routes, static function ( $a, $b ) { return strcmp( (string) $a['route'], (string) $b['route'] ); } );
+
+		$options = isset( $runtime['option_presence'] ) && is_array( $runtime['option_presence'] ) ? $runtime['option_presence'] : array();
+		ksort( $options, SORT_STRING );
+		$constants = isset( $runtime['constants'] ) && is_array( $runtime['constants'] ) ? $runtime['constants'] : array();
+		ksort( $constants, SORT_STRING );
+		$ajax = isset( $runtime['ajax_hooks'] ) && is_array( $runtime['ajax_hooks'] ) ? array_values( array_unique( array_map( 'strval', $runtime['ajax_hooks'] ) ) ) : array();
+		sort( $ajax, SORT_STRING );
+
+		$cron = array();
+		foreach ( isset( $runtime['cron_hooks'] ) && is_array( $runtime['cron_hooks'] ) ? $runtime['cron_hooks'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['hook'] ) ) continue;
+			$cron[] = array( 'hook'=>(string) $row['hook'], 'event_count'=>isset( $row['event_count'] ) ? (int) $row['event_count'] : 0 );
+		}
+		usort( $cron, static function ( $a, $b ) {
+			$cmp = strcmp( (string) $a['hook'], (string) $b['hook'] );
+			return 0 !== $cmp ? $cmp : ( (int) $a['event_count'] <=> (int) $b['event_count'] );
+		} );
+
+		$payload = self::canonicalize( array(
+			'contract' => self::RUNTIME_CONTRACT,
+			'families' => $families,
+			'rest_routes' => $routes,
+			'ajax_hooks' => $ajax,
+			'option_presence' => $options,
+			'cron_hooks' => $cron,
+			'constants' => $constants,
+		) );
+		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return false === $json ? '' : hash( 'sha256', $json );
+	}
+
+	private static function decision_fingerprint( array $repository, array $policy, array $decisions, $runtime_evidence_fingerprint = '' ) {
 		$payload = self::canonicalize( array(
 			'contract' => self::EVALUATION_CONTRACT,
 			'policy_sha256' => isset( $policy['sha256'] ) ? (string) $policy['sha256'] : '',
 			'repository_evidence_sha256' => isset( $repository['evidence_sha256'] ) ? (string) $repository['evidence_sha256'] : '',
 			'repository_source_commit_sha' => isset( $repository['source_commit_sha'] ) ? (string) $repository['source_commit_sha'] : '',
+			'runtime_evidence_fingerprint' => (string) $runtime_evidence_fingerprint,
 			'decisions' => $decisions,
 		) );
 		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -740,7 +806,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			);
 			$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 			usort( $decisions, static function ( $a, $b ) { return strcmp( isset( $a['family'] ) ? (string) $a['family'] : '', isset( $b['family'] ) ? (string) $b['family'] : '' ); } );
-			$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions );
+			$runtime_evidence_fingerprint = self::runtime_evidence_fingerprint( $runtime );
+			$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions, $runtime_evidence_fingerprint );
 			return array(
 				'contract' => self::EVALUATION_CONTRACT,
 				'ready' => false,
@@ -748,6 +815,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				'production_mutation' => false,
 				'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
 				'policy_sha256' => isset( $policy['sha256'] ) ? $policy['sha256'] : '',
+				'runtime_evidence_fingerprint' => $runtime_evidence_fingerprint,
 				'decision_fingerprint' => $decision_fingerprint,
 				'decisions' => $decisions,
 				'blockers' => $blockers,
@@ -756,6 +824,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 		$routes = self::route_methods( $runtime );
 		$options = isset( $runtime['option_presence'] ) && is_array( $runtime['option_presence'] ) ? $runtime['option_presence'] : array();
+		$runtime_evidence_fingerprint = self::runtime_evidence_fingerprint( $runtime );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $runtime_evidence_fingerprint ) ) $evaluation_blockers[] = 'runtime_evidence_fingerprint_unavailable';
 
 		foreach ( $policy_families as $family_id => $rule ) {
 			$family = sanitize_key( (string) $family_id );
@@ -764,7 +834,21 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			$rows = self::active_plugins( $runtime, $family );
 			$versions = self::plugin_versions( $runtime, $family );
 			$matches = self::tree_matches( isset( $repo_families[ $family ] ) ? $repo_families[ $family ] : array(), $rows );
-			$base_extra = array( 'evaluation_mode'=>$mode, 'runtime_versions'=>$versions, 'exact_tree_matches'=>$matches );
+			$runtime_tree_evidence = array();
+			foreach ( $rows as $row ) {
+				$tree = isset( $row['plugin_tree'] ) && is_array( $row['plugin_tree'] ) ? $row['plugin_tree'] : array();
+				$runtime_tree_evidence[] = array(
+					'plugin_file'=>isset( $row['plugin_file'] ) ? self::normalize_plugin_file( (string) $row['plugin_file'] ) : '',
+					'version'=>isset( $row['version'] ) ? (string) $row['version'] : '',
+					'tree_sha256'=>isset( $tree['tree_sha256'] ) ? (string) $tree['tree_sha256'] : '',
+					'file_count'=>isset( $tree['file_count'] ) ? (int) $tree['file_count'] : 0,
+					'total_bytes'=>isset( $tree['total_bytes'] ) ? (int) $tree['total_bytes'] : 0,
+					'scan_stable'=>! empty( $tree['scan_stable'] ),
+					'comparison'=>isset( $tree['comparison'] ) ? sanitize_key( (string) $tree['comparison'] ) : '',
+				);
+			}
+			usort( $runtime_tree_evidence, static function ( $a, $b ) { return strcmp( (string) $a['plugin_file'], (string) $b['plugin_file'] ); } );
+			$base_extra = array( 'evaluation_mode'=>$mode, 'runtime_versions'=>$versions, 'runtime_tree_evidence'=>$runtime_tree_evidence, 'exact_tree_matches'=>$matches );
 
 			if ( empty( $rows ) ) {
 				$decisions[] = self::decision( $family, 'not_active', 'provider_not_active', $base_extra );
@@ -837,7 +921,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		}
 
 		usort( $decisions, static function ( $a, $b ) { return strcmp( isset( $a['family'] ) ? (string) $a['family'] : '', isset( $b['family'] ) ? (string) $b['family'] : '' ); } );
-		$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions );
+		$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions, $runtime_evidence_fingerprint );
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $decision_fingerprint ) ) $evaluation_blockers[] = 'decision_fingerprint_unavailable';
 
 		$counts = array();
@@ -855,6 +939,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'production_mutation' => false,
 			'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
 			'policy_sha256' => isset( $policy['sha256'] ) ? $policy['sha256'] : '',
+			'runtime_evidence_fingerprint' => $runtime_evidence_fingerprint,
 			'decision_fingerprint' => $decision_fingerprint,
 			'repository_source_commit_sha' => isset( $repository['source_commit_sha'] ) ? $repository['source_commit_sha'] : '',
 			'counts' => $counts,
@@ -961,6 +1046,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'evidence_sha256' => isset( $repository['evidence_sha256'] ) ? $repository['evidence_sha256'] : '',
 			'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? $repository['build_fingerprint'] : '',
 			'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? $repository['package_manifest_digest'] : '',
+			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? $evaluation['runtime_evidence_fingerprint'] : '',
 			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? $evaluation['decision_fingerprint'] : '',
 			'promotion_authorized' => false,
 			'counts' => $counts,
