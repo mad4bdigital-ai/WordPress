@@ -140,6 +140,9 @@ jobs:
             includes/class-mad4b-scp-staging-certification.php \
             includes/class-mad4b-scp-admin-query-performance.php \
             includes/class-mad4b-scp-query-monitor-evidence-bridge.php \
+            includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php \
+            MAD4B-ROLLBACK-CANDIDATE.json \
+            MAD4B-ROLLBACK-RETENTION-RECEIPT.json \
             includes/class-mad4b-scp-write-runtime-certification.php \
             includes/class-mad4b-scp-rest-compatibility.php \
             includes/adapters/class-mad4b-scp-adapter-base.php \
