@@ -355,10 +355,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$source = isset( $data['source_commit_sha'] ) ? strtolower( trim( (string) $data['source_commit_sha'] ) ) : '';
 		$adapter_version = isset( $data['mcp_adapter_version'] ) ? trim( (string) $data['mcp_adapter_version'] ) : '';
 		$adapter_sha = isset( $data['mcp_adapter_sha256'] ) ? strtolower( trim( (string) $data['mcp_adapter_sha256'] ) ) : '';
-		$adapter_rel = 'dependencies/mcp-adapter.zip';
-		$adapter_row = null;
-		foreach ( $entries as $row ) if ( is_array( $row ) && isset( $row['path'] ) && $adapter_rel === str_replace( '\\', '/', ltrim( (string) $row['path'], '/' ) ) ) { $adapter_row = $row; break; }
-		if ( ! is_array( $adapter_row ) || ! isset( $adapter_row['sha256'] ) || ! hash_equals( $adapter_sha, strtolower( (string) $adapter_row['sha256'] ) ) ) $blockers[] = 'build_provenance_adapter_sha_mismatch';
+		if ( '' === $adapter_version || ! preg_match( '/^[a-f0-9]{64}$/', $adapter_sha ) ) $blockers[] = 'build_provenance_adapter_identity_invalid';
+		// MCP Adapter is a sibling General Distribution artifact, not a file inside
+		// the Control Plane ZIP. Its bytes are verified by the package workflow and
+		// its declared identity is cryptographically bound into build_fingerprint.
 
 		$payload = "mad4b.build-fingerprint.v1\n" . $version . "\n" . $source . "\n" . $manifest . "\n" . $adapter_version . "\n" . $adapter_sha . "\n";
 		$fingerprint = hash( 'sha256', $payload );
@@ -697,18 +697,39 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array_merge( array( 'family' => $family, 'state' => $state, 'reason' => $reason ), $extra );
 	}
 
-	private static function canonicalize( $value ) {
-		if ( ! is_array( $value ) ) return $value;
+	private static function canonical_digest_lines( $value, $path = '' ) {
+		$lines = array();
+		if ( ! is_array( $value ) ) {
+			if ( null === $value ) $token = 'n:';
+			elseif ( is_bool( $value ) ) $token = 'b:' . ( $value ? '1' : '0' );
+			elseif ( is_int( $value ) ) $token = 'i:' . (string) $value;
+			elseif ( is_float( $value ) ) $token = 'f:' . sprintf( '%.17g', $value );
+			else $token = 's:' . base64_encode( (string) $value );
+			$lines[] = $path . "\t" . $token;
+			return $lines;
+		}
 		$keys = array_keys( $value );
 		$is_list = empty( $keys ) || $keys === range( 0, count( $keys ) - 1 );
 		if ( $is_list ) {
-			$out = array();
-			foreach ( $value as $item ) $out[] = self::canonicalize( $item );
-			return $out;
+			$lines[] = $path . "\tl:" . count( $value );
+			foreach ( array_values( $value ) as $index => $item ) {
+				$lines = array_merge( $lines, self::canonical_digest_lines( $item, $path . '/i:' . $index ) );
+			}
+			return $lines;
 		}
-		ksort( $value, SORT_STRING );
-		foreach ( $value as $key => $item ) $value[ $key ] = self::canonicalize( $item );
-		return $value;
+		$ordered = array();
+		foreach ( $value as $key => $item ) $ordered[ (string) $key ] = $item;
+		ksort( $ordered, SORT_STRING );
+		$lines[] = $path . "\tm:" . count( $ordered );
+		foreach ( $ordered as $key => $item ) {
+			$lines = array_merge( $lines, self::canonical_digest_lines( $item, $path . '/k:' . base64_encode( (string) $key ) ) );
+		}
+		return $lines;
+	}
+
+	private static function canonical_digest( $value ) {
+		$lines = self::canonical_digest_lines( $value );
+		return hash( 'sha256', implode( "\n", $lines ) . "\n" );
 	}
 
 	private static function runtime_evidence_fingerprint( array $runtime ) {
@@ -763,7 +784,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			return 0 !== $cmp ? $cmp : ( (int) $a['event_count'] <=> (int) $b['event_count'] );
 		} );
 
-		$payload = self::canonicalize( array(
+		$payload = array(
 			'contract' => self::RUNTIME_CONTRACT,
 			'families' => $families,
 			'rest_routes' => $routes,
@@ -771,22 +792,20 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'option_presence' => $options,
 			'cron_hooks' => $cron,
 			'constants' => $constants,
-		) );
-		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		return false === $json ? '' : hash( 'sha256', $json );
+		);
+		return self::canonical_digest( $payload );
 	}
 
 	private static function decision_fingerprint( array $repository, array $policy, array $decisions, $runtime_evidence_fingerprint = '' ) {
-		$payload = self::canonicalize( array(
+		$payload = array(
 			'contract' => self::EVALUATION_CONTRACT,
 			'policy_sha256' => isset( $policy['sha256'] ) ? (string) $policy['sha256'] : '',
 			'repository_evidence_sha256' => isset( $repository['evidence_sha256'] ) ? (string) $repository['evidence_sha256'] : '',
 			'repository_source_commit_sha' => isset( $repository['source_commit_sha'] ) ? (string) $repository['source_commit_sha'] : '',
 			'runtime_evidence_fingerprint' => (string) $runtime_evidence_fingerprint,
 			'decisions' => $decisions,
-		) );
-		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		return false === $json ? '' : hash( 'sha256', $json );
+		);
+		return self::canonical_digest( $payload );
 	}
 
 	private static function evaluate( array $repository, array $runtime ) {
