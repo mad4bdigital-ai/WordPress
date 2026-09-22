@@ -35,6 +35,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	private static $scan_files = 0;
 	private static $scan_bytes = 0;
 	private static $scan_started_at = 0.0;
+	private static $fixed_point_retry_depth = 0;
 
 	private static function policy() {
 		$path = MAD4B_SCP_DIR . self::POLICY_FILE;
@@ -1298,6 +1299,37 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$runtime = self::runtime_evidence( $repository );
 		$evaluation = self::evaluate( $repository, $runtime );
 		$runtime_census = self::runtime_census_from_runtime( $runtime );
+		$end_key = self::runtime_identity_key();
+		$end_census = self::current_runtime_census_status();
+		$identity_stable = '' !== $key && '' !== $end_key && hash_equals( $key, $end_key );
+		$start_census_sha = isset( $runtime_census['census_sha256'] ) ? strtolower( (string) $runtime_census['census_sha256'] ) : '';
+		$end_census_sha = isset( $end_census['census_sha256'] ) ? strtolower( (string) $end_census['census_sha256'] ) : '';
+		$census_stable = ! empty( $runtime_census['valid'] ) && ! empty( $end_census['valid'] )
+			&& preg_match( '/^[a-f0-9]{64}$/', $start_census_sha ) && preg_match( '/^[a-f0-9]{64}$/', $end_census_sha )
+			&& hash_equals( $start_census_sha, $end_census_sha );
+		$fixed_point_stable = $identity_stable && $census_stable;
+		if ( ! $fixed_point_stable && self::$fixed_point_retry_depth < 1 ) {
+			++self::$fixed_point_retry_depth;
+			self::$snapshot = null;
+			self::$snapshot_key = '';
+			$retry = self::snapshot();
+			--self::$fixed_point_retry_depth;
+			return $retry;
+		}
+		if ( ! $fixed_point_stable ) {
+			$evaluation['ready'] = false;
+			$evaluation['promotion_authorized'] = false;
+			$evaluation['production_mutation'] = false;
+			$evaluation['decisions'] = array();
+			$evaluation['counts'] = array();
+			$evaluation['blockers'] = isset( $evaluation['blockers'] ) && is_array( $evaluation['blockers'] ) ? $evaluation['blockers'] : array();
+			if ( ! $identity_stable ) $evaluation['blockers'][] = 'snapshot_runtime_identity_changed_during_evaluation';
+			if ( ! $census_stable ) {
+				$evaluation['blockers'][] = 'snapshot_runtime_census_changed_during_evaluation';
+				$evaluation['blockers'] = array_merge( $evaluation['blockers'], isset( $end_census['blockers'] ) ? (array) $end_census['blockers'] : array() );
+			}
+			$evaluation['blockers'] = array_values( array_unique( array_filter( array_map( 'sanitize_key', $evaluation['blockers'] ) ) ) );
+		}
 		$handoff = array(
 			'contract' => 'mad4b.functional-gap-decision-handoff.v1',
 			'source_commit_sha' => isset( $repository['source_commit_sha'] ) ? (string) $repository['source_commit_sha'] : '',
@@ -1306,6 +1338,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'repository_evidence_sha256' => isset( $repository['evidence_sha256'] ) ? (string) $repository['evidence_sha256'] : '',
 			'policy_sha256' => isset( $repository['policy_sha256'] ) ? (string) $repository['policy_sha256'] : '',
 			'snapshot_identity_sha256' => $key,
+			'snapshot_end_identity_sha256' => $end_key,
+			'snapshot_fixed_point_stable' => $fixed_point_stable,
+			'snapshot_fixed_point_attempts' => self::$fixed_point_retry_depth + 1,
+			'snapshot_end_census_sha256' => $end_census_sha,
 			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? (string) $evaluation['runtime_evidence_fingerprint'] : '',
 			'runtime_census_sha256' => isset( $runtime_census['census_sha256'] ) ? (string) $runtime_census['census_sha256'] : '',
 			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? (string) $evaluation['decision_fingerprint'] : '',
@@ -1321,6 +1357,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		self::$snapshot = array(
 			'contract' => self::CONTRACT,
 			'snapshot_identity_sha256' => $key,
+			'snapshot_end_identity_sha256' => $end_key,
+			'snapshot_fixed_point_stable' => $fixed_point_stable,
+			'snapshot_fixed_point_attempts' => self::$fixed_point_retry_depth + 1,
+			'snapshot_end_census' => $end_census,
 			'read_only' => true,
 			'authority_created' => false,
 			'mutation_performed' => false,
@@ -1392,7 +1432,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array(
 			'contract' => self::CONTRACT,
 			'snapshot_identity_sha256' => isset( $snapshot['snapshot_identity_sha256'] ) ? $snapshot['snapshot_identity_sha256'] : '',
-			'ready' => ! empty( $evaluation['ready'] ),
+			'snapshot_end_identity_sha256' => isset( $snapshot['snapshot_end_identity_sha256'] ) ? $snapshot['snapshot_end_identity_sha256'] : '',
+			'snapshot_fixed_point_stable' => ! empty( $snapshot['snapshot_fixed_point_stable'] ),
+			'snapshot_fixed_point_attempts' => isset( $snapshot['snapshot_fixed_point_attempts'] ) ? (int) $snapshot['snapshot_fixed_point_attempts'] : 0,
+			'ready' => ! empty( $evaluation['ready'] ) && ! empty( $snapshot['snapshot_fixed_point_stable'] ),
 			'repository_evidence_valid' => ! empty( $repository['valid'] ),
 			'evidence_integrity_bound' => ! empty( $repository['valid'] ) && ! empty( $repository['evidence_sha256'] ) && ! empty( $repository['policy_sha256'] ) && ! empty( $repository['build_fingerprint'] ) && ! empty( $repository['package_manifest_digest'] ),
 			'package_self_consistent' => ! empty( $repository['package_integrity']['valid'] ),
@@ -1429,6 +1472,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array(
 			'contract' => 'mad4b.functional-gap-coverage-projection.v1',
 			'snapshot_identity_sha256' => isset( $snapshot['snapshot_identity_sha256'] ) ? (string) $snapshot['snapshot_identity_sha256'] : '',
+			'snapshot_end_identity_sha256' => isset( $snapshot['snapshot_end_identity_sha256'] ) ? (string) $snapshot['snapshot_end_identity_sha256'] : '',
+			'snapshot_fixed_point_stable' => ! empty( $snapshot['snapshot_fixed_point_stable'] ),
+			'snapshot_fixed_point_attempts' => isset( $snapshot['snapshot_fixed_point_attempts'] ) ? (int) $snapshot['snapshot_fixed_point_attempts'] : 0,
 			'runtime_census' => isset( $snapshot['runtime_census'] ) && is_array( $snapshot['runtime_census'] ) ? $snapshot['runtime_census'] : array(),
 			'summary' => self::summary_from_snapshot( $snapshot ),
 			'decisions' => self::decision_map_from_snapshot( $snapshot ),
