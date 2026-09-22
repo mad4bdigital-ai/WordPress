@@ -519,6 +519,11 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	}
 
 
+	/** @internal Pure runtime seam for bounded HTTP API profile tests. */
+	public static function http_api_profile_for_test() {
+		return self::http_api_profile();
+	}
+
 	private static function http_api_profile() {
 		$profile = array(
 			'contract' => 'mad4b.http-api-performance-profile.v1',
