@@ -18,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-functional-gap-contract-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   capture:
     name: Repository-backed functional-gap evidence
