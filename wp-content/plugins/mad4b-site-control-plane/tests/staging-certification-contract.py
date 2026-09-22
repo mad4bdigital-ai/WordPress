@@ -201,7 +201,7 @@ for key, value in expected_rollback.items():
 if rollback.get("artifact_retention_verified_by_package") is not True:
     raise SystemExit("rc.47 rollback candidate must be bound to the CI-verifiable rc.46 retention receipt")
 
-receipt_path = root / "MAD4B-ROLLBACK-RETENTION-RECEIPT.json"
+receipt_path = ROOT / "MAD4B-ROLLBACK-RETENTION-RECEIPT.json"
 if not receipt_path.is_file():
     raise SystemExit("rollback retention receipt missing")
 receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
