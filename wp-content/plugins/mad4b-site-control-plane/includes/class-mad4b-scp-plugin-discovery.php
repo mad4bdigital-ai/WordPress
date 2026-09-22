@@ -166,14 +166,26 @@ final class MAD4B_SCP_Plugin_Discovery {
 					'next_action' => isset( $f['next_action'] ) ? sanitize_key( (string) $f['next_action'] ) : '',
 					'plugin_files' => array(),
 					'plugin_names' => array(),
+					'runtime_identities' => array(),
 				);
 			}
-			if ( ! empty( $plugin['plugin_file'] ) ) $families[ $family ]['plugin_files'][] = self::normalize_plugin_file( (string) $plugin['plugin_file'] );
+			if ( ! empty( $plugin['plugin_file'] ) ) {
+				$plugin_file = self::normalize_plugin_file( (string) $plugin['plugin_file'] );
+				$families[ $family ]['plugin_files'][] = $plugin_file;
+				$families[ $family ]['runtime_identities'][ $plugin_file ] = array(
+					'plugin_file' => $plugin_file,
+					'plugin_name' => isset( $plugin['name'] ) ? sanitize_text_field( (string) $plugin['name'] ) : '',
+					'plugin_version' => isset( $plugin['version'] ) ? sanitize_text_field( (string) $plugin['version'] ) : '',
+				);
+			}
 			if ( ! empty( $plugin['name'] ) ) $families[ $family ]['plugin_names'][] = sanitize_text_field( (string) $plugin['name'] );
 		}
 		foreach ( $families as $family => $item ) {
 			$families[ $family ]['plugin_files'] = array_values( array_unique( $item['plugin_files'] ) );
 			$families[ $family ]['plugin_names'] = array_values( array_unique( $item['plugin_names'] ) );
+			$runtime_identities = isset( $item['runtime_identities'] ) && is_array( $item['runtime_identities'] ) ? $item['runtime_identities'] : array();
+			ksort( $runtime_identities, SORT_STRING );
+			$families[ $family ]['runtime_identities'] = array_values( $runtime_identities );
 		}
 		ksort( $families, SORT_STRING );
 		return array(
