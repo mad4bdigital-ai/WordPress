@@ -116,6 +116,14 @@ $codes = array_map( static function ( $item ) { return isset( $item['code'] ) ? 
 mad4b_projection_assert( in_array( 'global_registry_wildcard_grants', $codes, true ), 'global wildcard security invariant missing', $wildcard );
 mad4b_projection_assert( 0 === (int) $wildcard['current_agent_wildcard_grants'] && 2 === (int) $wildcard['global_registry_wildcard_grants'], 'agent/global wildcard scopes were conflated', $wildcard );
 
+// Case 4: a provider-gated ability may never leak into runtime eligibility.
+$GLOBALS['mad4b_projection_global_wildcards'] = 0;
+$GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b', 'elementor/gated-c' );
+$GLOBALS['mad4b_projection_write_tool_count'] = 3;
+$overlap = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
+mad4b_projection_assert( in_array( 'provider_gated_runtime_overlap', $overlap['consistency_violations'], true ), 'provider-gated/runtime overlap was not detected', $overlap );
+mad4b_projection_assert( 'projection_inconsistent' === $overlap['state'], 'provider-gated/runtime overlap must fail closed', $overlap );
+
 $user = MAD4B_SCP_Local_OAuth_Server::consent_user_identity( 1 );
 mad4b_projection_assert( 'Dream Desert Tours' === $user['display_label'], 'primary consent identity should use WordPress display name', $user );
 mad4b_projection_assert( empty( $user['id_exposed_in_primary_ui'] ), 'numeric WordPress user ID must not be the primary UI identity', $user );
