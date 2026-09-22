@@ -89,14 +89,14 @@ $governance_before = array(
 $original_active = get_option( 'active_plugins', array() );
 $unknown_dir = WP_PLUGIN_DIR . '/ci-unknown-adapter-target';
 $risky_dir = WP_PLUGIN_DIR . '/code-snippets';
-$menu_dir = WP_PLUGIN_DIR . '/custom-mega-menu';
+$menu_dir = WP_PLUGIN_DIR . '/custom-mega-menu-v49';
 wp_mkdir_p( $unknown_dir );
 wp_mkdir_p( $risky_dir );
 wp_mkdir_p( $menu_dir );
 file_put_contents( $unknown_dir . '/ci-unknown.php', "<?php\n/*\nPlugin Name: CI Unknown Adapter Target\nVersion: 9.9.9\n*/\n" );
 file_put_contents( $risky_dir . '/code-snippets.php', "<?php\n/*\nPlugin Name: Code Snippets CI Fixture\nVersion: 9.9.9\n*/\n" );
-file_put_contents( $menu_dir . '/custom-mega-menu.php', "<?php\n/*\nPlugin Name: Custom Mega Menu Widgets (All Styles)\nVersion: 4.3.0\n*/\n" );
-update_option( 'active_plugins', array_values( array_unique( array_merge( (array) $original_active, array( 'ci-unknown-adapter-target/ci-unknown.php', 'code-snippets/code-snippets.php', 'custom-mega-menu/custom-mega-menu.php' ) ) ) ) );
+file_put_contents( $menu_dir . '/custom-mega-menu.php', "<?php\n/*\nPlugin Name: Custom Mega Menu Widgets (All Styles)\nVersion: 1.1.49\n*/\n" );
+update_option( 'active_plugins', array_values( array_unique( array_merge( (array) $original_active, array( 'ci-unknown-adapter-target/ci-unknown.php', 'code-snippets/code-snippets.php', 'custom-mega-menu-v49/custom-mega-menu.php' ) ) ) ) );
 if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true );
 
 try {
@@ -106,7 +106,7 @@ try {
 	foreach ( $discovered['plugins'] as $item ) {
 		if ( 'ci-unknown-adapter-target/ci-unknown.php' === $item['plugin_file'] ) $unknown = $item;
 		if ( 'code-snippets/code-snippets.php' === $item['plugin_file'] ) $risky = $item;
-		if ( 'custom-mega-menu/custom-mega-menu.php' === $item['plugin_file'] ) $menu = $item;
+		if ( 'custom-mega-menu-v49/custom-mega-menu.php' === $item['plugin_file'] ) $menu = $item;
 	}
 	$check( is_array( $unknown ) && ! empty( $unknown['active'] ), 'Unknown active plugin fixture was not discovered.' );
 	$check( 'adapter_required' === $unknown['coverage_state'], 'Unknown plugin did not fail closed to adapter_required.' );
