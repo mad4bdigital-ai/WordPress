@@ -112,6 +112,7 @@ required_server = [
     "'projection_fingerprint'",
     "'grant_lookup_strategy'",
     "authority_projection_inconsistent",
+    "provider_gated_runtime_overlap",
     "method:\"POST\"",
     "new URLSearchParams()",
     "body.set(\"nonce\",nonce)",
