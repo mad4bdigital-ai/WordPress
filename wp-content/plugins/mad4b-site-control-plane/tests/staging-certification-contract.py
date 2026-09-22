@@ -92,6 +92,24 @@ for forbidden in [
     if forbidden in cert:
         raise SystemExit(f"staging certification must remain observation-only: {forbidden}")
 
+
+# Managed Google is an optional auth mode, not a universal Staging requirement.
+# Dedicated/custom connections must not be blocked merely because the managed
+# broker is intentionally unconfigured.
+for marker in [
+    "MAD4B_SCP_Google_Drive_Context::auth_mode_status()",
+    "private static function managed_google_gate_evidence",
+    "'managed_google' === $mode",
+    "$ready = ! $applicable ||",
+    "'selected_auth_mode' => $mode",
+    "'applicable' => $applicable",
+    "'managed_broker_status' => $managed",
+    "'authorizing' => false",
+    "'mutation_performed' => false",
+    "'managed_google_broker_status' => $managed",
+]:
+    require(cert, marker, "mode-aware Managed Google certification")
+
 for marker in [
     "mad4b.wp-import-export-exact-remediation.v1",
     "config/certified-providers.json",
