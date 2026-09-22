@@ -359,13 +359,156 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$elapsed = $started > 0 ? max( 0.0, ( microtime( true ) - $started ) * 1000.0 ) : 0.0;
 		$queries = function_exists( 'get_num_queries' ) ? max( 0, (int) get_num_queries() ) : 0;
 		$peak = function_exists( 'memory_get_peak_usage' ) ? max( 0, (int) memory_get_peak_usage( true ) ) : 0;
+		$current_memory = function_exists( 'memory_get_usage' ) ? max( 0, (int) memory_get_usage( true ) ) : 0;
 		return array(
 			'request_class' => (string) $class,
 			'server_elapsed_ms' => round( $elapsed, 3 ),
 			'db_queries' => $queries,
 			'peak_memory_bytes' => $peak,
+			'current_memory_bytes' => $current_memory,
+			'db_profile' => self::query_performance_profile(),
 			'observed_at' => gmdate( 'Y-m-d H:i:s' ),
 		);
+	}
+
+	private static function query_performance_profile() {
+		global $wpdb;
+		$profile = array(
+			'contract' => 'mad4b.query-performance-profile.v1',
+			'available' => false,
+			'query_rows_observed' => 0,
+			'total_db_time_ms' => 0.0,
+			'slow_query_threshold_ms' => 50.0,
+			'slow_query_count' => 0,
+			'duplicate_query_count' => 0,
+			'duplicate_group_count' => 0,
+			'extended_trace_count' => 0,
+			'top_callers' => array(),
+			'top_components' => array(),
+			'slow_queries' => array(),
+			'duplicate_groups' => array(),
+			'raw_sql_returned' => false,
+		);
+		if ( ! is_object( $wpdb ) || ! isset( $wpdb->queries ) || ! is_array( $wpdb->queries ) || empty( $wpdb->queries ) ) return $profile;
+
+		$callers = array();
+		$components = array();
+		$fingerprints = array();
+		$slow = array();
+		$total_time = 0.0;
+		$observed = 0;
+		$extended = 0;
+
+		foreach ( $wpdb->queries as $query ) {
+			$sql = '';
+			$seconds = 0.0;
+			$stack = '';
+			$trace = null;
+			if ( is_array( $query ) && isset( $query[0], $query[1], $query[2] ) ) {
+				$sql = (string) $query[0];
+				$seconds = is_numeric( $query[1] ) ? max( 0.0, (float) $query[1] ) : 0.0;
+				$stack = (string) $query[2];
+				if ( isset( $query['trace'] ) && is_object( $query['trace'] ) ) $trace = $query['trace'];
+			} elseif ( is_array( $query ) && isset( $query['query'], $query['elapsed'] ) ) {
+				$sql = (string) $query['query'];
+				$seconds = is_numeric( $query['elapsed'] ) ? max( 0.0, (float) $query['elapsed'] ) : 0.0;
+				$stack = isset( $query['debug'] ) ? (string) $query['debug'] : '';
+			} else {
+				continue;
+			}
+			++$observed;
+			$total_time += $seconds;
+			$fingerprint = hash( 'sha256', trim( $sql ) );
+			if ( ! isset( $fingerprints[ $fingerprint ] ) ) $fingerprints[ $fingerprint ] = array( 'count' => 0, 'time_ms' => 0.0 );
+			$fingerprints[ $fingerprint ]['count']++;
+			$fingerprints[ $fingerprint ]['time_ms'] += $seconds * 1000.0;
+
+			$caller = '';
+			$component = '';
+			if ( is_object( $trace ) ) {
+				++$extended;
+				if ( method_exists( $trace, 'get_caller' ) ) {
+					$caller_frame = $trace->get_caller();
+					if ( is_object( $caller_frame ) && isset( $caller_frame->id ) ) $caller = self::safe_identifier( self::strip_call_syntax( (string) $caller_frame->id ) );
+				}
+				if ( method_exists( $trace, 'get_component' ) ) {
+					try {
+						$component_object = $trace->get_component();
+						if ( is_object( $component_object ) ) {
+							$type = isset( $component_object->type ) ? sanitize_key( (string) $component_object->type ) : '';
+							$name = method_exists( $component_object, 'get_name' ) ? sanitize_text_field( (string) $component_object->get_name() ) : '';
+							$component = trim( $type . ( '' !== $name ? ':' . $name : '' ), ':' );
+						}
+					} catch ( Throwable $e ) {
+						$component = '';
+					}
+				}
+			}
+			if ( '' === $caller && '' !== $stack ) {
+				$parts = array_values( array_filter( array_map( 'trim', explode( ',', $stack ) ) ) );
+				if ( ! empty( $parts ) ) $caller = self::safe_identifier( self::strip_call_syntax( (string) end( $parts ) ) );
+			}
+			if ( '' === $caller ) $caller = 'unknown';
+			if ( '' === $component ) $component = 'unknown';
+
+			if ( ! isset( $callers[ $caller ] ) ) $callers[ $caller ] = array( 'caller' => $caller, 'count' => 0, 'time_ms' => 0.0 );
+			$callers[ $caller ]['count']++;
+			$callers[ $caller ]['time_ms'] += $seconds * 1000.0;
+			if ( ! isset( $components[ $component ] ) ) $components[ $component ] = array( 'component' => $component, 'count' => 0, 'time_ms' => 0.0 );
+			$components[ $component ]['count']++;
+			$components[ $component ]['time_ms'] += $seconds * 1000.0;
+
+			if ( $seconds >= 0.05 ) {
+				$slow[] = array(
+					'query_fingerprint' => $fingerprint,
+					'elapsed_ms' => round( $seconds * 1000.0, 3 ),
+					'caller' => $caller,
+					'component' => $component,
+				);
+			}
+		}
+
+		$duplicates = array();
+		$duplicate_count = 0;
+		foreach ( $fingerprints as $fingerprint => $entry ) {
+			if ( $entry['count'] <= 1 ) continue;
+			$duplicate_count += (int) $entry['count'] - 1;
+			$duplicates[] = array(
+				'query_fingerprint' => $fingerprint,
+				'count' => (int) $entry['count'],
+				'total_time_ms' => round( (float) $entry['time_ms'], 3 ),
+			);
+		}
+		usort( $duplicates, static function ( $a, $b ) {
+			if ( $a['count'] === $b['count'] ) return $b['total_time_ms'] <=> $a['total_time_ms'];
+			return $b['count'] <=> $a['count'];
+		} );
+		usort( $slow, static function ( $a, $b ) { return $b['elapsed_ms'] <=> $a['elapsed_ms']; } );
+		$sort_rank = static function ( $a, $b ) {
+			if ( $a['count'] === $b['count'] ) return $b['time_ms'] <=> $a['time_ms'];
+			return $b['count'] <=> $a['count'];
+		};
+		$callers = array_values( $callers );
+		$components = array_values( $components );
+		usort( $callers, $sort_rank );
+		usort( $components, $sort_rank );
+		foreach ( $callers as &$entry ) $entry['time_ms'] = round( (float) $entry['time_ms'], 3 );
+		unset( $entry );
+		foreach ( $components as &$entry ) $entry['time_ms'] = round( (float) $entry['time_ms'], 3 );
+		unset( $entry );
+
+		$profile['available'] = true;
+		$profile['query_rows_observed'] = $observed;
+		$profile['total_db_time_ms'] = round( $total_time * 1000.0, 3 );
+		$profile['slow_query_count'] = count( $slow );
+		$profile['duplicate_query_count'] = $duplicate_count;
+		$profile['duplicate_group_count'] = count( $duplicates );
+		$profile['extended_trace_count'] = $extended;
+		$profile['top_callers'] = array_slice( $callers, 0, 8 );
+		$profile['top_components'] = array_slice( $components, 0, 8 );
+		$profile['slow_queries'] = array_slice( $slow, 0, 12 );
+		$profile['duplicate_groups'] = array_slice( $duplicates, 0, 12 );
+		return $profile;
 	}
 
 	private static function increment_counter( array &$telemetry, $bucket, $key ) {
