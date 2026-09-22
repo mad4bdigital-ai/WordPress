@@ -43,7 +43,9 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-query-monitor-evidence-bridge.php"
           php -l "$root/tests/query-monitor-evidence-bridge-runtime.php"
+          php -l "$root/tests/query-monitor-db-attribution-runtime.php"
           php "$root/tests/query-monitor-evidence-bridge-runtime.php"
+          php "$root/tests/query-monitor-db-attribution-runtime.php"
 
       - name: Verify runtime wiring and no authority widening
         shell: bash
@@ -58,6 +60,14 @@ jobs:
           grep -Fq "remove_action( 'shutdown', array( 'MAD4B_SCP_Live_Acceptance_Observer', 'flush_observation' ), PHP_INT_MAX )" "$bridge"
           grep -Fq "add_action( 'shutdown', array( __CLASS__, 'capture_and_flush' ), 8 )" "$bridge"
           grep -Fq "update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, \$telemetry, false )" "$bridge"
+          grep -Fq "public static function db_attribution_status()" "$bridge"
+          grep -Fq "public static function maybe_enable_db_attribution()" "$bridge"
+          grep -Fq "'conflicting_db_dropin'" "$bridge"
+          grep -Fq "@symlink( \$source, \$dropin )" "$bridge"
+          if grep -Eq 'unlink\(|rename\(|copy\(' "$bridge"; then
+            echo 'Query Monitor attribution bootstrap must never replace or delete an existing db.php.' >&2
+            exit 1
+          fi
           if grep -Eq 'grant_ability|authorize_mutation|wp_remote_(get|post|request)|rest_do_request|wp_insert_post|wp_update_post|database-raw-query' "$bridge"; then
             echo 'Query Monitor bridge must remain evidence-only.' >&2
             exit 1
