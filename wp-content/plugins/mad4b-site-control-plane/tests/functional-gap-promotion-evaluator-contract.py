@@ -10,6 +10,21 @@ policy = json.loads((ROOT / 'config/functional-gap-policy.json').read_text('utf-
 if policy.get('contract') != 'mad4b.functional-gap-policy.v1':
     raise SystemExit('functional-gap policy contract mismatch')
 
+import importlib.util
+spec = importlib.util.spec_from_file_location('mad4b_functional_gap_eval', repo / 'tools/evaluate-functional-gap-contract-promotion.py')
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+vectors = [
+    ([], '75ba621010ccaf63e7ef664ef0ecbbf26ca60506903cc05e68cba6011d8d692b'),
+    ({'a': True, 'b': [], 'c': '✓'}, '859b873c5b7837892deb70de68ea0fb70bc74d09c294f08d689265645b339d9b'),
+    ([1, False, None, 'x'], '8ffca4dff324e9febf88bc81127a38695e5746f1d8abffd8487d911bdeb26ca3'),
+    ({'empty': {}, 'list': []}, '2b6c715a39a7f4840cda82a57b503fc3284d34b65ae100e3ae103a1f74de084b'),
+]
+for value, expected in vectors:
+    actual = module.canonical_digest(value)
+    if actual != expected:
+        raise SystemExit(f'canonical digest known-answer mismatch: expected {expected} got {actual}')
+
 supported_modes = {
     'bounded_read_routes',
     'redacted_status',
