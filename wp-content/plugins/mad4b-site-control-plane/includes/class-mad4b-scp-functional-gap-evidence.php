@@ -95,11 +95,25 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$out = array();
 		foreach ( isset( $policy['data']['families'] ) && is_array( $policy['data']['families'] ) ? $policy['data']['families'] : array() as $family => $row ) {
 			if ( ! is_array( $row ) ) continue;
-			$matches = isset( $row['match'] ) && is_array( $row['match'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['match'] ) ) ) : array();
-			if ( ! empty( $matches ) ) $out[ sanitize_key( (string) $family ) ] = $matches;
+			$family = sanitize_key( (string) $family );
+			if ( '' !== $family ) $out[ $family ] = $row;
 		}
 		ksort( $out, SORT_STRING );
 		return $out;
+	}
+
+	private static function plugin_matches_policy_family( $plugin_file, array $rule ) {
+		$plugin_file = self::normalize_plugin_file( $plugin_file );
+		foreach ( isset( $rule['match'] ) && is_array( $rule['match'] ) ? $rule['match'] : array() as $prefix ) {
+			$prefix = self::normalize_plugin_file( $prefix );
+			if ( '' !== $prefix && 0 === strpos( $plugin_file, $prefix ) ) return true;
+		}
+		foreach ( isset( $rule['versioned_match'] ) && is_array( $rule['versioned_match'] ) ? $rule['versioned_match'] : array() as $base ) {
+			$base = trim( self::normalize_plugin_file( $base ), '/' );
+			if ( '' === $base ) continue;
+			if ( 1 === preg_match( '#^' . preg_quote( $base, '#' ) . '-v[0-9]+(?:\\.[0-9]+)*/#', $plugin_file ) ) return true;
+		}
+		return false;
 	}
 
 
@@ -121,11 +135,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		foreach ( $plugins as $plugin_file => $headers ) {
 			$normalized = self::normalize_plugin_file( $plugin_file );
 			$matched = false;
-			foreach ( $targets as $prefixes ) {
-				foreach ( $prefixes as $prefix ) {
-					$prefix = self::normalize_plugin_file( $prefix );
-					if ( '' !== $prefix && 0 === strpos( $normalized, $prefix ) ) { $matched = true; break 2; }
-				}
+			foreach ( $targets as $rule ) {
+				if ( is_array( $rule ) && self::plugin_matches_policy_family( $normalized, $rule ) ) { $matched = true; break; }
 			}
 			if ( ! $matched ) continue;
 			$main = WP_PLUGIN_DIR . '/' . ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
@@ -373,16 +384,11 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		foreach ( array_merge( $active, $network_active ) as $plugin_file ) $active_set[ self::normalize_plugin_file( $plugin_file ) ] = true;
 
 		$families = array();
-		foreach ( self::targets() as $family => $prefixes ) {
+		foreach ( self::targets() as $family => $rule ) {
 			$families[ $family ] = array();
 			foreach ( $plugin_map as $plugin_file => $headers ) {
 				$normalized = self::normalize_plugin_file( $plugin_file );
-				$matched = false;
-				foreach ( $prefixes as $prefix ) {
-					$prefix = self::normalize_plugin_file( $prefix );
-					if ( '' !== $prefix && 0 === strpos( $normalized, $prefix ) ) { $matched = true; break; }
-				}
-				if ( ! $matched ) continue;
+				if ( ! is_array( $rule ) || ! self::plugin_matches_policy_family( $normalized, $rule ) ) continue;
 				$is_active = isset( $active_set[ $normalized ] );
 				$families[ $family ][] = array(
 					'plugin_file' => (string) $plugin_file,
