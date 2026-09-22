@@ -73,6 +73,16 @@ for marker in [
     "MAX_PROVENANCE_VERIFY_FILES",
     "MAX_PROVENANCE_VERIFY_BYTES",
     "MAX_PROVENANCE_VERIFY_SECONDS",
+    "MAX_CENSUS_FILES",
+    "MAX_CENSUS_BYTES",
+    "MAX_CENSUS_SCAN_SECONDS",
+    "mad4b.functional-gap-runtime-census.v1",
+    "private static function plugin_census_once",
+    "private static function runtime_census_from_runtime",
+    "public static function current_runtime_census_status()",
+    "'metadata_only' => true",
+    "'content_rehashed' => false",
+    "runtime_census_sha256",
     "build_provenance_package_path_invalid",
     "build_provenance_package_path_duplicate",
     "build_provenance_package_file_missing",
@@ -157,6 +167,10 @@ for marker in [
     "MAD4B_SCP_Functional_Gap_Evidence::coverage_projection()",
     "MAD4B_SCP_Functional_Gap_Evidence::current_runtime_identity_sha256()",
     "coverage_projection_runtime_identity_changed",
+    "coverage_projection_runtime_census_changed",
+    "'census_required' => $projection_census_required",
+    "'census_match' => $projection_census_match",
+    "current_runtime_census_status()",
     "'identity_match' => $projection_identity_match",
     "'decision_count' => count( $zero_touch_map )",
 ]:
@@ -291,5 +305,12 @@ for marker in [
 ]:
     if marker not in runtime:
         raise SystemExit(f'canonical runtime evidence fingerprint missing input: {marker}')
+
+census_body=runtime.split("private static function plugin_census_once",1)[1].split("private static function runtime_census_from_runtime",1)[0]
+if "hash_file(" in census_body:
+    raise SystemExit('metadata-only runtime census must not re-hash file content')
+for marker in ["filesize(", "filemtime(", "census_sha256", "runtime_census_time_budget_exceeded", "runtime_census_snapshot_budget_exceeded"]:
+    if marker not in census_body:
+        raise SystemExit(f'metadata census invariant missing: {marker}')
 
 print('mad4b.functional-gap-zero-touch.contract.v1: PASS')
