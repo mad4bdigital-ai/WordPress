@@ -181,7 +181,7 @@ jobs:
           option_presence={}
           for family,rule in sorted(policy.get('families',{}).items()):
               for key in rule.get('redacted_secret_option_keys',[]) or []:
-                  option_presence[key]={'exists':True,'redacted':True,'configured':True}
+                  option_presence[key]={'exists':None,'redacted':True,'configured':None,'value_read':False,'probe':'omitted_secret_value'}
               for key in rule.get('required_status_option_keys',[]) or []:
                   option_presence[key]={'exists':True,'redacted':False,'type':'boolean','empty':False}
 
