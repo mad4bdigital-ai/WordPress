@@ -122,9 +122,12 @@ def runtime_evidence_fingerprint(runtime):
                 "version": str(row.get("version", "")),
                 "active": bool(row.get("active")),
                 "tree_sha256": str(tree.get("tree_sha256", "")).lower(),
+                "census_sha256": str(tree.get("census_sha256", "")).lower(),
                 "file_count": int(tree.get("file_count", 0) or 0),
                 "total_bytes": int(tree.get("total_bytes", 0) or 0),
                 "scan_stable": bool(tree.get("scan_stable")),
+                "metadata_only": bool(tree.get("metadata_only")),
+                "content_rehashed": bool(tree.get("content_rehashed", True)),
                 "comparison": str(tree.get("comparison", "")),
                 "error": str(tree.get("error", "")),
             })
