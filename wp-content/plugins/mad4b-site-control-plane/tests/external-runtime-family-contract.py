@@ -48,6 +48,7 @@ for marker in (
     "'runtime_family_read'",
     "'runtime_match_only'",
     "'mad4b.runtime-family-read-adapter.v1'",
+    "'Runtime Family Status'",
     "$family_id !== $adapter_id",
     "'none_read_only' !== $mutation_scope",
     "'contract_discovery', 'intentionally_restricted'",
