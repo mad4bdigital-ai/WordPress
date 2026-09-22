@@ -97,10 +97,20 @@ jobs:
                       raise SystemExit(f'{family}: package tree fingerprint missing')
           print('functional-gap evidence boundaries: PASS')
           PY
-      - name: Upload evidence
+
+          cp wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json \
+            /tmp/mad4b-functional-gap/functional-gap-policy.json
+          printf '%s\n' "$SOURCE_SHA" > /tmp/mad4b-functional-gap/SOURCE_HEAD.txt
+          (
+            cd /tmp/mad4b-functional-gap
+            sha256sum functional-gap-contract-evidence.json functional-gap-policy.json SOURCE_HEAD.txt > SHA256SUMS
+            sha256sum --check --strict SHA256SUMS
+          )
+
+      - name: Upload self-contained evidence bundle
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-functional-gap-contract-evidence-${{ env.SOURCE_SHA }}
-          path: /tmp/mad4b-functional-gap/functional-gap-contract-evidence.json
+          path: /tmp/mad4b-functional-gap/
           if-no-files-found: error
           retention-days: 30
