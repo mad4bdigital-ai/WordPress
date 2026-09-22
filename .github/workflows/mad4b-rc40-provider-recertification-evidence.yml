@@ -36,6 +36,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
 
       - name: Verify exact source checkout
         shell: bash
@@ -69,6 +70,24 @@ jobs:
             --output "$out/jet-smart-filters.zip" \
             --expected-version 3.8.5 \
             --report "$out/jetsmartfilters-normalization.json"
+
+      - name: Capture history-bound premium semantic deltas
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=/tmp/mad4b-provider-recertification
+          python3 tools/provider-semantic-delta.py \
+            --provider jetengine \
+            --archive-path wp-content/plugins/jet-engine.zip \
+            --baseline-sha256 ecfa59150f328841f756826215902da2a68f4397c170d56b6ae2d24991263904 \
+            --expected-current-version 3.8.15 \
+            --output "$root/jetengine-semantic-delta.json"
+          python3 tools/provider-semantic-delta.py \
+            --provider jetsmartfilters \
+            --archive-path wp-content/plugins/jet-smart-filters.zip \
+            --baseline-sha256 edcf551c3bf6265968b41e5ab72be7c65dac59c34352b07226044c8b68bda212 \
+            --expected-current-version 3.8.5 \
+            --output "$root/jetsmartfilters-semantic-delta.json"
 
       - name: Build non-authorizing premium attestation candidates
         shell: bash
@@ -152,6 +171,10 @@ jobs:
 
           candidates = json.loads((root / 'premium-attestation-candidates.json').read_text())
           profiles = json.loads(Path('wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json').read_text())
+          semantic = {
+              'jetengine': json.loads((root / 'jetengine-semantic-delta.json').read_text()),
+              'jetsmartfilters': json.loads((root / 'jetsmartfilters-semantic-delta.json').read_text()),
+          }
           if candidates.get('contract') != 'mad4b.premium-provider-attestation-candidates.v1':
               raise SystemExit('premium candidate contract mismatch')
           if candidates.get('non_authorizing') is not True:
@@ -170,6 +193,17 @@ jobs:
                   raise SystemExit(f'{provider}: normalized archive byte count mismatch')
               if profiles['providers'][provider]:
                   raise SystemExit(f'{provider}: certified profile appeared before semantic review')
+              delta = semantic[provider]
+              if delta.get('contract') != 'mad4b.premium-provider-semantic-delta.v1':
+                  raise SystemExit(f'{provider}: semantic delta contract mismatch')
+              if delta.get('non_authorizing') is not True or delta.get('promotion_authorized') is not False:
+                  raise SystemExit(f'{provider}: semantic delta became authorizing')
+              if delta.get('semantic_review_required') is not True:
+                  raise SystemExit(f'{provider}: semantic review gate weakened')
+              if delta.get('changed_critical_file_count', 0) <= 0:
+                  raise SystemExit(f'{provider}: expected critical semantic delta missing')
+              if delta.get('source_code_included') is not False:
+                  raise SystemExit(f'{provider}: semantic delta must not package provider source code')
 
           print('mad4b.provider-recertification-evidence.v1: PASS')
           print('premium attestation candidates: PASS (non-authorizing)')
@@ -185,5 +219,7 @@ jobs:
             /tmp/mad4b-provider-recertification/jetengine-attestation-candidate.json
             /tmp/mad4b-provider-recertification/jetsmartfilters-attestation-candidate.json
             /tmp/mad4b-provider-recertification/normalized/*-normalization.json
+            /tmp/mad4b-provider-recertification/jetengine-semantic-delta.json
+            /tmp/mad4b-provider-recertification/jetsmartfilters-semantic-delta.json
           if-no-files-found: error
           retention-days: 30
