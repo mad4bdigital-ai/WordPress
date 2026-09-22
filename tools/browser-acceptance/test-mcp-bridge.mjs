@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import {
   createMad4bMcpSession,
   requestBrowserPlan,
-  submitBrowserEvidence
+  submitBrowserEvidence,
+  validateEvidencePayload
 } from "./mcp-bridge.mjs";
 
 const now = Math.floor(Date.now() / 1000);
@@ -101,6 +102,29 @@ assert.deepEqual(planCall.params.arguments, {
 const evidence = { contract: "etg.dfsb.browser-acceptance-evidence.v1", cases: [] };
 const result = await submitBrowserEvidence(session, livePlan, evidence);
 assert.equal(result.verdict, "PASS");
+
+const evidenceShape = validateEvidencePayload(evidence);
+assert.equal(evidenceShape.contract, "etg.dfsb.browser-acceptance-evidence.v1");
+assert.ok(evidenceShape.bytes > 0);
+assert.ok(evidenceShape.nodes >= 2);
+
+assert.throws(
+  () => validateEvidencePayload({ ...evidence, payload: "x".repeat(140000) }),
+  /browser_evidence_size_limit_exceeded/
+);
+
+let deep = { contract: "etg.dfsb.browser-acceptance-evidence.v1" };
+let cursor = deep;
+for (let i = 0; i < 9; i += 1) {
+  cursor.next = {};
+  cursor = cursor.next;
+}
+assert.throws(() => validateEvidencePayload(deep), /browser_evidence_depth_limit_exceeded/);
+
+const many = { contract: "etg.dfsb.browser-acceptance-evidence.v1", items: [] };
+for (let i = 0; i < 1100; i += 1) many.items.push(i);
+assert.throws(() => validateEvidencePayload(many), /browser_evidence_node_limit_exceeded/);
+
 const resultCall = JSON.parse(calls[4].options.body);
 assert.equal(resultCall.params.name, "mad4b-browser-acceptance-result");
 assert.equal(resultCall.params.arguments.plan_digest, plan.plan_digest);
