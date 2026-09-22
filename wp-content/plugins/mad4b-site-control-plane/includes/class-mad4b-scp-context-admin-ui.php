@@ -358,9 +358,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</div>';
 			if ( ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is waiting for the server-side MAD4B broker site binding. This is an operator configuration; no Google Client ID or Client Secret is required here.', 'mad4b-site-control-plane' ) . '</p></div>';
 			if ( ! $dedicated_origin_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Dedicated Site OAuth requires an enrolled Site Profile whose canonical origin matches the current WordPress Home URL and Site URL.', 'mad4b-site-control-plane' ) . '</p></div>';
-			echo '<noscript>';
-			submit_button( __( 'Save Connection Method', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-			echo '</noscript></form>';
+			echo '</form>';
 		}
 		echo '</div>';
 
