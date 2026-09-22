@@ -86,13 +86,27 @@ required_server = [
     "rest_url( 'mcp/mad4b-chatgpt' )",
     "public static function consent_grant_projection()",
     "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
-    "'mad4b.oauth-consent-grant-projection.v1'",
+    "'mad4b.oauth-consent-grant-projection.v2'",
     "'write_authority_granted_by_consent' => false",
     "'oauth_scope_changed' => false",
     "'normal_remote_writes_require_exact_approval' => true",
     "'exact_grant_present'",
     "Governed write grants",
     "live governance state, not OAuth scopes",
+    "wp_ajax_mad4b_oauth_grant_projection",
+    "public static function ajax_grant_projection()",
+    "check_ajax_referer( 'mad4b_oauth_grant_projection', 'nonce' )",
+    "'catalog_write_tool_count'",
+    "'runtime_eligible_write_tool_count'",
+    "'provider_gated_write_tool_count'",
+    "'blocking_conditions'",
+    "'blocked_catalog_abilities'",
+    "public static function consent_user_identity",
+    "'id_exposed_in_primary_ui' => false",
+    "Signed in as:",
+    "script-src 'nonce-",
+    "connect-src 'self'",
+    "Auto-refreshing read-only authority state every 5 seconds.",
 ]
 for marker in required_server:
     if marker not in server:
@@ -110,6 +124,7 @@ for forbidden in [
     'self::TOKEN_PATH === $path',
     'self::REVOCATION_PATH === $path',
     "'mad4b:write'",
+    "Signed in WordPress user:",
 ]:
     if forbidden in server:
         raise SystemExit(f'forbidden local OAuth server primitive: {forbidden}')
