@@ -35,6 +35,10 @@ if ( ! empty( $zero_touch['repository_evidence']['present'] ) ) {
 }
 $initial_zero_touch_identity = (string) ( $zero_touch['snapshot_identity_sha256'] ?? '' );
 $check( 64 === strlen( $initial_zero_touch_identity ), 'Zero-touch snapshot identity was not exposed.' );
+$check( ! empty( $zero_touch['snapshot_fixed_point_stable'] ), 'Zero-touch source-mode snapshot did not reach an identity fixed point.' );
+$check( 1 <= (int) ( $zero_touch['snapshot_fixed_point_attempts'] ?? 0 ) && 2 >= (int) ( $zero_touch['snapshot_fixed_point_attempts'] ?? 0 ), 'Zero-touch fixed-point attempts escaped the bounded retry contract.' );
+$check( empty( $zero_touch['snapshot_census_required'] ), 'Source-mode zero-touch snapshot incorrectly required deep census evidence.' );
+$check( hash_equals( $initial_zero_touch_identity, (string) ( $zero_touch['snapshot_end_identity_sha256'] ?? '' ) ), 'Zero-touch source-mode snapshot start/end identity diverged.' );
 
 $registry = MAD4B_SCP_Adapter_Registry::instance();
 
@@ -192,6 +196,9 @@ try {
 	$check( in_array( 'custom-mega-menu-v49/custom-mega-menu.php', $menu_runtime_files, true ), 'Numeric versioned Custom Mega Menu identity was not captured by zero-touch policy.' );
 	$check( ! in_array( 'custom-mega-menu-villain/custom-mega-menu.php', $menu_runtime_files, true ), 'Versioned-family lookalike leaked into zero-touch Custom Mega Menu identity.' );
 	$check( ! hash_equals( $initial_zero_touch_identity, (string) ( $zero_touch_after['snapshot_identity_sha256'] ?? '' ) ), 'Zero-touch direct ability cache did not invalidate after runtime identity changed.' );
+	$check( ! empty( $zero_touch_after['snapshot_fixed_point_stable'] ), 'Zero-touch direct ability did not reach a new fixed point after runtime identity changed.' );
+	$check( hash_equals( (string) ( $zero_touch_after['snapshot_identity_sha256'] ?? '' ), (string) ( $zero_touch_after['snapshot_end_identity_sha256'] ?? '' ) ), 'Zero-touch direct ability returned a mixed start/end runtime identity.' );
+	$check( 1 <= (int) ( $zero_touch_after['snapshot_fixed_point_attempts'] ?? 0 ) && 2 >= (int) ( $zero_touch_after['snapshot_fixed_point_attempts'] ?? 0 ), 'Zero-touch retry count exceeded the fixed-point bound.' );
 
 	$requests_ability = wp_get_ability( 'mad4b/adapter-support-requests' );
 	$requests_one = $requests_ability->execute();
