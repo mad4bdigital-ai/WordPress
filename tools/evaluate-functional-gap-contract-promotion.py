@@ -32,6 +32,11 @@ def canonical_digest_lines(value, path=""):
             lines.extend(canonical_digest_lines(item, f"{path}/i:{index}"))
         return lines
     if isinstance(value, dict):
+        if not value:
+            # PHP associative decoding cannot distinguish {} from [] once both
+            # become an empty array. The cross-language protocol therefore
+            # canonicalizes every empty container to the list token l:0.
+            return [f"{path}\tl:0"]
         ordered = sorted(((str(key), item) for key, item in value.items()), key=lambda item: item[0])
         lines = [f"{path}\tm:{len(ordered)}"]
         for key, item in ordered:
