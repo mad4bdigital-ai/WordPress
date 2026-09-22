@@ -348,7 +348,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice notice-info inline"><p><strong>' . esc_html( $mode_label ) . '</strong> · ' . esc_html__( 'Disconnect and revoke the current Google grant before changing authentication mode.', 'mad4b-site-control-plane' ) . '</p></div>';
 		} else {
 			echo '<p>' . esc_html__( 'Choose how this site authenticates with Google. Managed Sign-In uses the central MAD4B broker; Dedicated Site OAuth stays entirely on this site primary domain; Custom OAuth keeps the legacy manual setup.', 'mad4b-site-control-plane' ) . '</p>';
-			echo '<form class="mad4b-context-ajax-form mad4b-context-auth-mode-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<form class="mad4b-context-ajax-form mad4b-context-auth-mode-form" data-mad4b-autosave="auth-mode" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SAVE_GOOGLE_AUTH_MODE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_GOOGLE_AUTH_MODE ) . '">';
 			echo '<div class="mad4b-context-source-mode">';
