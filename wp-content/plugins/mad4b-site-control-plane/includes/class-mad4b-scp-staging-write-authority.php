@@ -774,15 +774,27 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		}
 
 		$grants_revoked = 0;
+		$duplicate_grants_revoked = 0;
 		$existing_grants = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
+		$seen_current_exact_allow = array();
 		foreach ( $existing_grants as $grant ) {
 			if ( 'allow' !== (string) $grant['effect'] ) continue;
 			$key = (string) $grant['ability_name'] . "\0" . (string) $grant['provider'];
-			$stale = ! isset( $desired_grants[ $key ] ) || $environment !== (string) $grant['environment'];
-			if ( ! $stale ) continue;
+			$grant_environment = isset( $grant['environment'] ) ? (string) $grant['environment'] : '';
+			$stale = ! isset( $desired_grants[ $key ] ) || $environment !== $grant_environment;
+			$duplicate = false;
+			if ( ! $stale ) {
+				if ( isset( $seen_current_exact_allow[ $key ] ) ) $duplicate = true;
+				else $seen_current_exact_allow[ $key ] = true;
+			}
+			if ( ! $stale && ! $duplicate ) continue;
 			$revoked = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $agent['public_id'], (int) $grant['id'], 'mad4b-write' );
-			if ( is_wp_error( $revoked ) ) $grant_blockers[] = $revoked->get_error_code() . ':stale_grant';
-			else ++$grants_revoked;
+			if ( is_wp_error( $revoked ) ) {
+				$grant_blockers[] = $revoked->get_error_code() . ( $duplicate ? ':duplicate_grant' : ':stale_grant' );
+			} else {
+				++$grants_revoked;
+				if ( $duplicate ) ++$duplicate_grants_revoked;
+			}
 		}
 
 		$granted = 0;
@@ -817,7 +829,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status['write_inventory_fingerprint'] = hash( 'sha256', wp_json_encode( $inventory_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$status['exact_grants_existing'] = $existing;
 		$status['exact_grants_created'] = $granted;
-		$status['stale_allow_grants_revoked'] = $grants_revoked;
+		$status['stale_allow_grants_revoked'] = max( 0, $grants_revoked - $duplicate_grants_revoked );
+		$status['duplicate_exact_allow_grants_revoked'] = $duplicate_grants_revoked;
 		$status['grant_blockers'] = $all_blockers;
 		$status['all_remote_writes_require_exact_approval'] = false;
 		$status['normal_remote_writes_require_exact_approval'] = true;
