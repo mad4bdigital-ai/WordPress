@@ -108,20 +108,22 @@ $post_id = wp_insert_post(
 );
 $check( ! is_wp_error( $post_id ) && $post_id > 0, 'Unable to create disposable post.' );
 
-// 1. Execute the real WordPress Ability path. Draft->draft title/content edit is low impact and requires no approval by default.
+// 1. Execute the real WordPress Ability path with a non-copy draft->pending
+// transition. This remains low impact and intentionally does not require a
+// Brand Context Receipt, keeping this rollback smoke independent from Context.
 $before = get_post( $post_id );
 $first_input = array(
 	'post_id' => $post_id,
 	'expected_modified_gmt' => $before->post_modified_gmt,
-	'post_title' => 'MAD4B reversible after one',
-	'post_content' => 'after-content-one',
+	'post_status' => 'pending',
 );
 $first = $post_update->execute( $first_input );
 $check( ! is_wp_error( $first ), 'Governed post mutation failed: ' . ( is_wp_error( $first ) ? $first->get_error_message() : '' ) );
 $check( ! empty( $first['verified'] ) && ! empty( $first['reversible'] ) && ! empty( $first['mutation_id'] ), 'Governed post mutation did not return verified reversible evidence.' );
 $check( ! empty( $first['before_sha256'] ) && ! empty( $first['after_sha256'] ) && ! hash_equals( $first['before_sha256'], $first['after_sha256'] ), 'Mutation before/after hashes were not distinct.' );
 $after_one = get_post( $post_id );
-$check( 'MAD4B reversible after one' === $after_one->post_title && 'after-content-one' === $after_one->post_content, 'Readback does not contain the governed mutation.' );
+$check( 'pending' === $after_one->post_status, 'Readback does not contain the governed non-copy status mutation.' );
+$check( 'MAD4B reversible before' === $after_one->post_title && 'before-content' === $after_one->post_content, 'Non-copy rollback smoke unexpectedly changed Brand-facing post text.' );
 
 // 2. Read bounded mutation evidence; rollback payload must never be returned through the normal inspection ability.
 $mutation_get = wp_get_ability( 'mad4b/mutation-get' );
@@ -180,7 +182,8 @@ $check( isset( $undone['status'] ) && 'undone' === $undone['status'] && ! empty(
 $used_ticket = MAD4B_SCP_Approval_Tickets::get( $ticket_one['ticket_id'] );
 $check( is_array( $used_ticket ) && 'used' === $used_ticket['status'], 'Successful MCP-tool execution did not terminalize the exact ticket as used.' );
 $restored = get_post( $post_id );
-$check( 'MAD4B reversible before' === $restored->post_title && 'before-content' === $restored->post_content, 'Undo did not restore the exact before-state.' );
+$check( 'draft' === $restored->post_status, 'Undo did not restore the exact pre-mutation post status.' );
+$check( 'MAD4B reversible before' === $restored->post_title && 'before-content' === $restored->post_content, 'Undo unexpectedly changed stable Brand-facing post text.' );
 $original_record = MAD4B_SCP_Mutation_Manager::get( $first['mutation_id'] );
 $check( is_array( $original_record ) && 'undone' === $original_record['status'], 'Original mutation was not marked undone.' );
 $check( ! empty( $undone['recovery_mutation_id'] ), 'Undo did not create child recovery evidence.' );
@@ -194,7 +197,7 @@ $current = get_post( $post_id );
 $second_input = array(
 	'post_id' => $post_id,
 	'expected_modified_gmt' => $current->post_modified_gmt,
-	'post_title' => 'MAD4B reversible after two',
+	'post_status' => 'pending',
 );
 $second = $post_update->execute( $second_input );
 $check( ! is_wp_error( $second ) && ! empty( $second['mutation_id'] ), 'Second governed mutation failed.' );
@@ -231,4 +234,4 @@ $check( is_array( $failed_ticket ) && 'failed' === $failed_ticket['status'], 'Re
 
 wp_delete_post( $post_id, true );
 
-echo "mad4b.site-control-plane.runtime-reversible-mutation.v2: PASS\n";
+echo "mad4b.site-control-plane.runtime-reversible-mutation.v3: PASS\n";

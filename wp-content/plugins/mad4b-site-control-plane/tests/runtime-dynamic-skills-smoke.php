@@ -32,7 +32,7 @@ if ( empty( $registry['portable_app_id_configured'] ) ) $fail( 'Portable App map
 
 $seed = MAD4B_SCP_Skill_Seeder::status();
 if ( ! isset( $seed['state'] ) || 'ready' !== $seed['state'] ) $fail( 'Seed pack is not ready.' );
-if ( ! isset( $seed['seed_version'] ) || 2 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v2.' );
+if ( ! isset( $seed['seed_version'] ) || 3 !== (int) $seed['seed_version'] ) $fail( 'Canonical seed version is not v3.' );
 if ( ! empty( $seed['overwrites_user_owned'] ) ) $fail( 'Seeder must never overwrite user-owned Skills.' );
 if ( empty( $seed['refreshes_only_digest_clean_managed'] ) ) $fail( 'Managed seed refresh must remain digest-clean only.' );
 
@@ -48,6 +48,7 @@ $seed_identities = array(
 	array( 'provider', 'jet-engine', 'jetengine-content-modeling', false ),
 	array( 'workflow', 'archive-audit', 'wordpress-archive-audit', true ),
 	array( 'workflow', 'change-safety', 'wordpress-change-safety', true ),
+	array( 'workflow', 'content-authoring', 'wordpress-content-authoring', true ),
 );
 $workspace = getenv( 'GITHUB_WORKSPACE' );
 if ( ! is_string( $workspace ) || '' === $workspace ) $fail( 'GITHUB_WORKSPACE is unavailable for canonical seed parity proof.' );
@@ -63,6 +64,21 @@ foreach ( $seed_identities as $identity ) {
 	if ( ! is_string( $portable_content ) || ! hash_equals( hash( 'sha256', $portable_content ), hash( 'sha256', (string) $skill['content'] ) ) || $portable_content !== (string) $skill['content'] ) {
 		$fail( 'Runtime/portable canonical Skill byte drift: ' . $identity[2] );
 	}
+}
+
+$content_skill = MAD4B_SCP_Skill_Registry::get_skill( 'workflow', 'content-authoring', 'wordpress-content-authoring' );
+if ( is_wp_error( $content_skill ) ) $fail( 'Governed content-authoring Skill is unavailable.' );
+$context_policy = isset( $content_skill['context_policy'] ) && is_array( $content_skill['context_policy'] ) ? $content_skill['context_policy'] : array();
+if ( 'brand_core' !== ( isset( $context_policy['preset'] ) ? (string) $context_policy['preset'] : '' ) || empty( $context_policy['brand_context_required'] ) ) {
+	$fail( 'Content-authoring Skill must require the canonical Brand Core policy.' );
+}
+if ( empty( $content_skill['context_policy_sha256'] ) ) $fail( 'Content-authoring Skill must expose a Context policy digest.' );
+$expected_content_mutations = MAD4B_SCP_Context_Preflight::brand_bearing_mutation_abilities();
+$actual_content_mutations = isset( $context_policy['allowed_mutation_abilities'] ) && is_array( $context_policy['allowed_mutation_abilities'] ) ? $context_policy['allowed_mutation_abilities'] : array();
+sort( $expected_content_mutations, SORT_STRING );
+sort( $actual_content_mutations, SORT_STRING );
+if ( $expected_content_mutations !== $actual_content_mutations ) {
+	$fail( 'Content-authoring Skill mutation allowlist drifted from the central Brand-bearing mutation classifier.', array( 'expected' => $expected_content_mutations, 'actual' => $actual_content_mutations ) );
 }
 
 $required_read = array(
@@ -270,6 +286,18 @@ $meta = json_decode( (string) $meta_json, true );
 if ( ! is_array( $meta ) || empty( $meta['identity_token'] ) || ! hash_equals( $token_file, (string) $meta['identity_token'] ) ) $fail( 'MAD4B-SNAPSHOT.json identity token mismatch.' );
 if ( empty( $meta['governed_write_ready'] ) || empty( $meta['write_certification_ready'] ) ) $fail( 'MAD4B-SNAPSHOT.json is missing governed Write certification.' );
 if ( ! isset( $meta['resource_count'], $meta['uncompressed_payload_bytes'], $meta['export_limits'] ) ) $fail( 'MAD4B-SNAPSHOT.json is missing bounded export evidence.' );
+if ( empty( $meta['context_enforcement']['context_required_skills_require_policy_digest'] ) || empty( $meta['context_enforcement']['context_required_skills_require_server_preflight'] ) || empty( $meta['context_enforcement']['brand_bearing_writes_require_exact_context_receipt'] ) || empty( $meta['context_enforcement']['portable_skill_does_not_grant_write_authority'] ) ) {
+	$fail( 'MAD4B-SNAPSHOT.json is missing portable Context enforcement evidence.' );
+}
+$exported_content_skill = null;
+foreach ( isset( $meta['skills'] ) && is_array( $meta['skills'] ) ? $meta['skills'] : array() as $exported_skill ) {
+	if ( isset( $exported_skill['name'] ) && 'wordpress-content-authoring' === (string) $exported_skill['name'] ) { $exported_content_skill = $exported_skill; break; }
+}
+if ( ! is_array( $exported_content_skill ) || empty( $exported_content_skill['context_required'] ) ) $fail( 'Portable snapshot is missing the governed content-authoring Skill.' );
+if ( empty( $exported_content_skill['context_policy_sha256'] ) || ! hash_equals( (string) $content_skill['context_policy_sha256'], (string) $exported_content_skill['context_policy_sha256'] ) ) $fail( 'Portable content-authoring policy digest drifted.' );
+if ( 'brand_core' !== ( isset( $exported_content_skill['context_policy']['preset'] ) ? (string) $exported_content_skill['context_policy']['preset'] : '' ) ) $fail( 'Portable content-authoring Skill lost Brand Core policy.' );
+if ( 'mad4b.context-preflight.v1' !== ( isset( $exported_content_skill['context_preflight_contract'] ) ? (string) $exported_content_skill['context_preflight_contract'] : '' ) ) $fail( 'Portable content-authoring Skill lost Context Preflight contract.' );
+if ( 'mad4b.content-context-receipt.v1' !== ( isset( $exported_content_skill['context_receipt_contract'] ) ? (string) $exported_content_skill['context_receipt_contract'] : '' ) ) $fail( 'Portable content-authoring Skill lost Context Receipt contract.' );
 if ( (int) $meta['resource_count'] !== (int) $export['resource_count'] || (int) $meta['uncompressed_payload_bytes'] !== (int) $export['uncompressed_payload_bytes'] ) $fail( 'Export result and embedded payload counters disagree.' );
 $app = json_decode( (string) $app_json, true );
 $zip_app_id = is_array( $app ) && isset( $app['apps']['mad4b-wordpress']['id'] ) ? (string) $app['apps']['mad4b-wordpress']['id'] : '';

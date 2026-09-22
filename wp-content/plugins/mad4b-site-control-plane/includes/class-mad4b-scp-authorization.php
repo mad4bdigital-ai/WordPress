@@ -91,6 +91,12 @@ final class MAD4B_SCP_Authorization {
 		if ( is_wp_error( $grant ) ) return $grant;
 
 		$authorization_input = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::authorization_input( $input ) : $input;
+		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
+			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $ability_name, $authorization_input );
+			if ( is_wp_error( $context_guard ) ) return $context_guard;
+		} elseif ( 'mad4b/content-update-post' === (string) $ability_name && is_array( $authorization_input ) && array_intersect( array( 'post_title', 'post_content', 'post_excerpt' ), array_keys( $authorization_input ) ) ) {
+			return self::error( 'mad4b_context_preflight_unavailable', 'Brand-bearing content mutation is denied because Context Preflight is unavailable.' );
+		}
 		$identity_ticket = isset( $identity['approval_ticket_id'] ) ? strtolower( trim( (string) $identity['approval_ticket_id'] ) ) : '';
 		$input_ticket = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $input ) : '';
 		if ( '' !== $identity_ticket && '' !== $input_ticket && $identity_ticket !== $input_ticket ) return self::error( 'mad4b_approval_request_binding_conflict', 'Identity and governance input reference different approval tickets.' );
@@ -155,6 +161,7 @@ final class MAD4B_SCP_Authorization {
 			'ticket_class' => $ticket_class,
 			'target_fingerprint' => $target_fingerprint,
 			'budget_costs' => $costs,
+			'context_receipt_sha256' => is_array( $authorization_input ) && isset( $authorization_input['_mad4b_context_receipt']['receipt_sha256'] ) ? (string) $authorization_input['_mad4b_context_receipt']['receipt_sha256'] : '',
 			'execution_side_effects' => false,
 		);
 	}
@@ -187,6 +194,36 @@ final class MAD4B_SCP_Authorization {
 				}
 				return self::deny( $claim->get_error_code(), $claim->get_error_message(), $ability_name );
 			}
+		}
+
+		$context_receipt = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			? MAD4B_SCP_Staging_Write_Authority::context_receipt_from_input( $authorization_input )
+			: ( is_array( $authorization_input ) && isset( $authorization_input['_mad4b_context_receipt'] ) && is_array( $authorization_input['_mad4b_context_receipt'] ) ? $authorization_input['_mad4b_context_receipt'] : array() );
+		if ( $context_receipt ) {
+			if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
+				MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				if ( ! empty( $decision['approval_required'] ) ) MAD4B_SCP_Approval_Tickets::finalize_claim( $decision['approval_ticket_id'], 'failed' );
+				return self::deny( 'mad4b_context_preflight_unavailable', 'Context Receipt evidence cannot be committed because Context Preflight is unavailable.', $ability_name );
+			}
+			$receipt_evidence = MAD4B_SCP_Context_Preflight::commit_receipt_evidence(
+				$context_receipt,
+				array(
+					'ability' => $ability_name,
+					'provider' => $decision['provider'],
+					'target_fingerprint' => $decision['target_fingerprint'],
+					'approval_ticket_id' => ! empty( $decision['approval_required'] ) ? $decision['approval_ticket_id'] : '',
+					'request_id' => isset( $decision['request_id'] ) ? $decision['request_id'] : '',
+				)
+			);
+			if ( is_wp_error( $receipt_evidence ) ) {
+				MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				if ( ! empty( $decision['approval_required'] ) ) MAD4B_SCP_Approval_Tickets::finalize_claim( $decision['approval_ticket_id'], 'failed' );
+				return self::deny( $receipt_evidence->get_error_code(), $receipt_evidence->get_error_message(), $ability_name );
+			}
+			$decision['context_receipt_sha256'] = isset( $receipt_evidence['receipt_sha256'] ) ? (string) $receipt_evidence['receipt_sha256'] : '';
+			$decision['context_receipt_bound'] = true;
+		} else {
+			$decision['context_receipt_bound'] = false;
 		}
 
 		$budget_commit = MAD4B_SCP_Budgets::commit( $budget_reservation );

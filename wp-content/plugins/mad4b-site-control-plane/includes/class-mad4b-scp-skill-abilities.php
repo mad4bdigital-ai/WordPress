@@ -55,6 +55,8 @@ final class MAD4B_SCP_Skill_Abilities {
 					'level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Skill_Registry::levels() ),
 					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
 					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*$' ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
 				),
 				'required' => array( 'level', 'name' ),
 				'additionalProperties' => false,
@@ -127,9 +129,32 @@ final class MAD4B_SCP_Skill_Abilities {
 		$level = isset( $input['level'] ) ? $input['level'] : '';
 		$target = isset( $input['target'] ) ? $input['target'] : '';
 		$name = isset( $input['name'] ) ? $input['name'] : '';
+		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
+		$intended_ability = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
 		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
 		if ( is_wp_error( $skill ) ) return $skill;
-		return array( 'contract' => 'mad4b.skill-get.v1', 'skill' => $skill );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Skill exposure is denied because Context Preflight is unavailable.' );
+
+		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended_ability );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		if ( empty( $preflight['ready'] ) ) {
+			return new WP_Error(
+				'mad4b_required_brand_context_unavailable',
+				'This Skill requires governed Brand Context that is not currently ready.',
+				array(
+					'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
+					'context_preflight' => $preflight,
+				)
+			);
+		}
+
+		return array(
+			'contract' => 'mad4b.skill-get.v3',
+			'skill' => $skill,
+			'context_preflight' => $preflight,
+			'context_envelope' => isset( $preflight['envelope'] ) ? $preflight['envelope'] : array(),
+			'context_receipt' => isset( $preflight['receipt'] ) ? $preflight['receipt'] : array(),
+		);
 	}
 
 	public static function skills_export_status() {

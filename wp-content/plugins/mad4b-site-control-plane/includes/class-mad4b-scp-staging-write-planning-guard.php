@@ -272,6 +272,12 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 		if ( isset( $input['provider'] ) && '' !== trim( (string) $input['provider'] ) && sanitize_key( (string) $input['provider'] ) !== $expected_provider ) return new WP_Error( 'mad4b_remote_plan_provider_mismatch', 'Remote approval target provider does not match the certified mad4b-write mount.' );
 
 		$operation_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
+		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
+			$context_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard( $target_ability, $operation_input );
+			if ( is_wp_error( $context_guard ) ) return $context_guard;
+		} elseif ( 'mad4b/content-update-post' === $target_ability && array_intersect( array( 'post_title', 'post_content', 'post_excerpt' ), array_keys( $operation_input ) ) ) {
+			return new WP_Error( 'mad4b_context_preflight_unavailable', 'Brand-bearing content approval planning is denied because Context Preflight is unavailable.' );
+		}
 		if ( self::UNDO_ABILITY === $target_ability ) {
 			$undo_guard = self::validate_undo_plan_target( $operation_input );
 			if ( is_wp_error( $undo_guard ) ) return $undo_guard;

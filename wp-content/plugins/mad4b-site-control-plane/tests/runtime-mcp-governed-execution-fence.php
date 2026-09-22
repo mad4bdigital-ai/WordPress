@@ -59,7 +59,7 @@ $check(
 rest_get_server();
 $registration = MAD4B_SCP_Servers::registration_status();
 $check( ! empty( $registration['mad4b-write']['registered'] ), 'mad4b-write server is not registered' );
-$check( in_array( 'media/update-metadata', MAD4B_SCP_Servers::write_tools(), true ), 'Media mutation is not projected on mad4b-write' );
+$check( in_array( 'media/set-featured', MAD4B_SCP_Servers::write_tools(), true ), 'Media mutation is not projected on mad4b-write' );
 
 $subject_type = 'ci-mcp-fence';
 $subject_identifier = 'ci-mcp-fence-subject';
@@ -75,7 +75,7 @@ $agent = MAD4B_SCP_Agent_Registry::create_agent( array(
 ) );
 $check( is_array( $agent ) && ! empty( $agent['public_id'] ), 'unable to create CI fence agent' );
 $check( true === MAD4B_SCP_Agent_Registry::bind_subject( $agent['public_id'], $subject_type, $subject_fingerprint, 'CI real MCP execution fence' ), 'unable to bind CI fence subject' );
-$check( true === MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-write', 'media/update-metadata', 'media', array(), 'allow', 'staging' ), 'unable to grant Media write authority' );
+$check( true === MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-write', 'media/set-featured', 'media', array(), 'allow', 'staging' ), 'unable to grant Media write authority' );
 $check( true === MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-write', 'mad4b/mutation-undo', 'core', array(), 'allow', 'staging' ), 'unable to grant undo authority' );
 
 add_filter( 'mad4b_scp_authenticated_subject_context', static function () use ( $subject_type, $subject_identifier, &$request_id, &$approval_ticket_id ) {
@@ -97,7 +97,7 @@ add_filter( 'mad4b_scp_authenticated_subject_context', static function () use ( 
 // reproduces that mandatory-approval property without pretending the CI subject
 // is an external OAuth bearer or weakening candidate binding.
 add_filter( 'mad4b_scp_low_impact_requires_approval', static function ( $required, $ability_name, $provider, $input ) {
-	if ( 'media/update-metadata' === (string) $ability_name && 'media' === sanitize_key( (string) $provider ) ) return true;
+	if ( 'media/set-featured' === (string) $ability_name && 'media' === sanitize_key( (string) $provider ) ) return true;
 	return $required;
 }, PHP_INT_MAX, 4 );
 
@@ -144,29 +144,47 @@ $initialized = $dispatch( array( 'jsonrpc' => '2.0', 'method' => 'notifications/
 $check( $initialized instanceof WP_REST_Response && in_array( $initialized->get_status(), array( 200, 202 ), true ), 'initialized notification failed' );
 $list = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list', 'params' => array() ), $session_id );
 $check( $list instanceof WP_REST_Response && 200 === $list->get_status(), 'tools/list failed' );
-$check( false !== strpos( wp_json_encode( $list->get_data() ), 'media-update-metadata' ), 'real MCP tool inventory does not contain media-update-metadata' );
+$check( false !== strpos( wp_json_encode( $list->get_data() ), 'media-set-featured' ), 'real MCP tool inventory does not contain media-set-featured' );
 
+$post_id = wp_insert_post( array(
+	'post_type' => 'post',
+	'post_status' => 'draft',
+	'post_title' => 'MAD4B Execution Fence Relationship Fixture',
+), true );
+$check( ! is_wp_error( $post_id ) && $post_id > 0, 'unable to create disposable featured-image post' );
+
+$upload = wp_upload_bits(
+	'mad4b-execution-fence.png',
+	null,
+	base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlW9pAAAAAASUVORK5CYII=' )
+);
+$check( empty( $upload['error'] ) && ! empty( $upload['file'] ) && ! empty( $upload['url'] ), 'unable to create disposable image file' );
 $attachment_id = wp_insert_attachment( array(
-	'post_title' => 'MAD4B Fence Before',
-	'post_excerpt' => 'before',
-	'post_content' => 'before',
-	'post_mime_type' => 'image/jpeg',
+	'post_title' => 'MAD4B Execution Fence Image',
+	'post_mime_type' => 'image/png',
 	'post_status' => 'inherit',
-), false, 0, true );
-$check( ! is_wp_error( $attachment_id ) && $attachment_id > 0, 'unable to create disposable attachment' );
-update_post_meta( $attachment_id, '_wp_attachment_image_alt', 'before alt' );
-$media_get = wp_get_ability( 'media/get' );
-$before = $media_get->execute( array( 'attachment_id' => $attachment_id ) );
-$check( ! is_wp_error( $before ) && ! empty( $before['sha256'] ), 'unable to read disposable Media state' );
+	'guid' => $upload['url'],
+), $upload['file'], 0, true );
+$check( ! is_wp_error( $attachment_id ) && $attachment_id > 0, 'unable to create disposable image attachment' );
+update_attached_file( $attachment_id, $upload['file'] );
+wp_update_attachment_metadata( $attachment_id, array(
+	'width' => 1,
+	'height' => 1,
+	'file' => basename( $upload['file'] ),
+	'sizes' => array(),
+	'image_meta' => array(),
+) );
+$check( wp_attachment_is_image( $attachment_id ), 'disposable featured-image attachment is not recognized as an image' );
+$check( 0 === (int) get_post_thumbnail_id( $post_id ), 'disposable post unexpectedly started with a featured image' );
 
 $clean_input = array(
+	'post_id' => $post_id,
 	'attachment_id' => $attachment_id,
-	'expected_sha256' => $before['sha256'],
-	'alt' => 'after fence alt',
+	'expected_thumbnail_id' => 0,
 );
-$target = MAD4B_SCP_Authorization::target_fingerprint( 'media/update-metadata', 'media', $clean_input );
+$target = MAD4B_SCP_Authorization::target_fingerprint( 'media/set-featured', 'media', $clean_input );
 $check( is_string( $target ) && preg_match( '/^[a-f0-9]{64}$/', $target ), 'unable to resolve Media target fingerprint' );
-$ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-write', 'media/update-metadata', 'media', $target, $clean_input, 'mutation', 'CI real MCP fence approval', 600 );
+$ticket = MAD4B_SCP_Approval_Tickets::create_pending( $agent['public_id'], 'mad4b-write', 'media/set-featured', 'media', $target, $clean_input, 'mutation', 'CI real MCP fence approval', 600 );
 $check( is_array( $ticket ) && 'pending' === $ticket['status'], 'unable to create execution approval' );
 $candidate_binding = MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate( $ticket['ticket_id'] );
 $check(
@@ -183,13 +201,13 @@ $check( is_array( $approved ) && 'approved' === $approved['status'], 'unable to 
 $approval_ticket_id = $ticket['ticket_id'];
 $call_input = $clean_input;
 $call_input[ MAD4B_SCP_Staging_Write_Authority::APPROVAL_INPUT_KEY ] = $approval_ticket_id;
-$call_payload = array( 'jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 'params' => array( 'name' => 'media-update-metadata', 'arguments' => $call_input ) );
+$call_payload = array( 'jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 'params' => array( 'name' => 'media-set-featured', 'arguments' => $call_input ) );
 
 $provider_invocations = 0;
 $nested_response = null;
 $inside_nested = false;
-$provider_probe = static function ( $check_value, $object_id, $meta_key, $meta_value, $prev_value ) use ( $attachment_id, &$provider_invocations, &$nested_response, &$inside_nested, $dispatch, $session_id, $call_payload ) {
-	if ( (int) $object_id !== (int) $attachment_id || '_wp_attachment_image_alt' !== $meta_key ) return $check_value;
+$provider_probe = static function ( $check_value, $object_id, $meta_key, $meta_value, $prev_value ) use ( $post_id, $attachment_id, &$provider_invocations, &$nested_response, &$inside_nested, $dispatch, $session_id, $call_payload ) {
+	if ( (int) $object_id !== (int) $post_id || '_thumbnail_id' !== $meta_key || (int) $meta_value !== (int) $attachment_id ) return $check_value;
 	++$provider_invocations;
 	if ( ! $inside_nested ) {
 		$inside_nested = true;
@@ -225,7 +243,7 @@ $used = MAD4B_SCP_Approval_Tickets::get( $approval_ticket_id );
 $check( is_array( $used ) && 'used' === $used['status'], 'execution ticket did not terminalize as used: ' . wp_json_encode( $used ) );
 
 // Same logical request + same exact operation must reuse the first completed result.
-$completed_duplicate = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => array( 'name' => 'media-update-metadata', 'arguments' => $call_input ) ), $session_id );
+$completed_duplicate = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => array( 'name' => 'media-set-featured', 'arguments' => $call_input ) ), $session_id );
 $completed_json = wp_json_encode( $completed_duplicate->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 $check( false !== strpos( $completed_json, (string) $mutation['mutation_id'] ), 'completed same-request duplicate did not return cached verified result' );
 $check( 1 === $provider_invocations, 'completed same-request duplicate re-ran provider side effect' );
@@ -237,7 +255,7 @@ foreach ( $audit_before_replay as $audit_event ) {
 	if ( is_array( $audit_event ) && isset( $audit_event['sequence'] ) ) $replay_sequence_floor = max( $replay_sequence_floor, (int) $audit_event['sequence'] );
 }
 $request_id = 'ci-mcp-fence-request-2';
-$replay = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/call', 'params' => array( 'name' => 'media-update-metadata', 'arguments' => $call_input ) ), $session_id );
+$replay = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/call', 'params' => array( 'name' => 'media-set-featured', 'arguments' => $call_input ) ), $session_id );
 $replay_json = wp_json_encode( $replay->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 $check( false !== strpos( $replay_json, 'replay' ) || false !== strpos( $replay_json, 'terminal or already claimed' ), 'independent tools/call did not hit replay denial: ' . $replay_json );
 $check( 1 === $provider_invocations, 'independent replay reached provider' );
@@ -245,7 +263,7 @@ $replay_denials = array();
 foreach ( MAD4B_SCP_Audit::tail( 100 ) as $audit_event ) {
 	if ( ! is_array( $audit_event ) || ( isset( $audit_event['sequence'] ) ? (int) $audit_event['sequence'] : 0 ) <= $replay_sequence_floor ) continue;
 	if ( 'denied' !== ( isset( $audit_event['status'] ) ? (string) $audit_event['status'] : '' ) ) continue;
-	if ( 'mad4b/authorization:media/update-metadata' !== ( isset( $audit_event['ability'] ) ? (string) $audit_event['ability'] : '' ) ) continue;
+	if ( 'mad4b/authorization:media/set-featured' !== ( isset( $audit_event['ability'] ) ? (string) $audit_event['ability'] : '' ) ) continue;
 	$summary = isset( $audit_event['summary'] ) && is_array( $audit_event['summary'] ) ? $audit_event['summary'] : array();
 	if ( 'mad4b_approval_replay_denied' !== ( isset( $summary['reason_code'] ) ? (string) $summary['reason_code'] : '' ) ) continue;
 	$replay_denials[] = $audit_event;
@@ -293,10 +311,11 @@ $undo_args[ MAD4B_SCP_Staging_Write_Authority::APPROVAL_INPUT_KEY ] = $approval_
 $undo = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 6, 'method' => 'tools/call', 'params' => array( 'name' => 'mad4b-mutation-undo', 'arguments' => $undo_args ) ), $session_id );
 $undo_json = wp_json_encode( $undo->get_data(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 $check( false !== strpos( $undo_json, 'undone' ), 'real MCP undo did not complete: ' . $undo_json );
-$restored = $media_get->execute( array( 'attachment_id' => $attachment_id ) );
-$check( ! is_wp_error( $restored ) && hash_equals( $before['sha256'], $restored['sha256'] ), 'undo did not restore exact initial Media SHA' );
+$check( 0 === (int) get_post_thumbnail_id( $post_id ), 'undo did not restore the exact initial featured-image relationship' );
 $undo_used = MAD4B_SCP_Approval_Tickets::get( $approval_ticket_id );
 $check( is_array( $undo_used ) && 'used' === $undo_used['status'], 'undo ticket did not terminalize as used: ' . wp_json_encode( $undo_used ) );
 
 wp_delete_attachment( $attachment_id, true );
-echo "mad4b.site-control-plane.mcp-governed-execution-fence.v2: PASS\n";
+wp_delete_post( $post_id, true );
+if ( ! empty( $upload['file'] ) && file_exists( $upload['file'] ) ) @unlink( $upload['file'] );
+echo "mad4b.site-control-plane.mcp-governed-execution-fence.v3: PASS\n";

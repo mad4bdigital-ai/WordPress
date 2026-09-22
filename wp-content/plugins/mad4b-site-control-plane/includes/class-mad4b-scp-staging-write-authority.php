@@ -18,6 +18,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
 	const VERSION = 2;
 	const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id';
+	const CONTEXT_RECEIPT_INPUT_KEY = '_mad4b_context_receipt';
 
 	private static $booted = false;
 	private static $reconciling = false;
@@ -125,10 +126,21 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return preg_match( '/^[a-f0-9-]{36}$/', $value ) ? $value : '';
 	}
 
+	public static function context_receipt_from_input( $input ) {
+		if ( ! is_array( $input ) || ! isset( $input[ self::CONTEXT_RECEIPT_INPUT_KEY ] ) || ! is_array( $input[ self::CONTEXT_RECEIPT_INPUT_KEY ] ) ) return array();
+		return $input[ self::CONTEXT_RECEIPT_INPUT_KEY ];
+	}
+
 	public static function authorization_input( $input ) {
 		if ( ! is_array( $input ) ) return $input;
 		$clean = $input;
 		unset( $clean[ self::APPROVAL_INPUT_KEY ] );
+		return $clean;
+	}
+
+	public static function provider_input( $input ) {
+		$clean = self::authorization_input( $input );
+		if ( is_array( $clean ) ) unset( $clean[ self::CONTEXT_RECEIPT_INPUT_KEY ] );
 		return $clean;
 	}
 
@@ -163,12 +175,17 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				'pattern' => '^[A-Fa-f0-9-]{36}$',
 				'description' => 'One-time exact MAD4B approval ticket required for remote governed writes.',
 			);
+			$args['input_schema']['properties'][ self::CONTEXT_RECEIPT_INPUT_KEY ] = array(
+				'type' => 'object',
+				'additionalProperties' => true,
+				'description' => 'Governed Context Receipt returned by mad4b/skill-get. Required automatically for brand-bearing content text mutations and bound into the exact approval payload.',
+			);
 		}
 
 		if ( isset( $args['execute_callback'] ) && is_callable( $args['execute_callback'] ) ) {
 			$original = $args['execute_callback'];
 			$args['execute_callback'] = static function ( $input = null ) use ( $original ) {
-				$clean = MAD4B_SCP_Staging_Write_Authority::authorization_input( $input );
+				$clean = MAD4B_SCP_Staging_Write_Authority::provider_input( $input );
 				return call_user_func( $original, $clean );
 			};
 		}

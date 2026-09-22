@@ -23,6 +23,7 @@ final class MAD4B_SCP_Skill_Snapshot_Identity {
 				'name' => isset( $skill['name'] ) ? (string) $skill['name'] : '',
 				'sha256' => isset( $skill['sha256'] ) ? (string) $skill['sha256'] : '',
 				'bytes' => isset( $skill['bytes'] ) ? (int) $skill['bytes'] : 0,
+				'context_policy_sha256' => isset( $skill['context_policy_sha256'] ) ? (string) $skill['context_policy_sha256'] : '',
 				'resources' => isset( $skill['resources'] ) && is_array( $skill['resources'] ) ? $skill['resources'] : array(),
 			);
 		}
@@ -57,6 +58,8 @@ final class MAD4B_SCP_Skill_Snapshot_Identity {
 			$name = isset( $entry['name'] ) ? trim( (string) $entry['name'] ) : '';
 			$sha = isset( $entry['sha256'] ) ? strtolower( trim( (string) $entry['sha256'] ) ) : '';
 			$bytes = isset( $entry['bytes'] ) ? (int) $entry['bytes'] : -1;
+			$context_policy_sha256 = isset( $entry['context_policy_sha256'] ) ? strtolower( trim( (string) $entry['context_policy_sha256'] ) ) : '';
+			if ( '' !== $context_policy_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $context_policy_sha256 ) ) return self::empty_identity( 'context_policy_digest_invalid' );
 			if ( '' === $logical_id || '' === $name || ! preg_match( '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name ) || ! preg_match( '/^[a-f0-9]{64}$/', $sha ) || $bytes < 1 ) {
 				return self::empty_identity( 'entry_fields_invalid' );
 			}
@@ -83,6 +86,7 @@ final class MAD4B_SCP_Skill_Snapshot_Identity {
 				'name' => $name,
 				'sha256' => $sha,
 				'bytes' => $bytes,
+				'context_policy_sha256' => $context_policy_sha256,
 				'resources' => $resources,
 			);
 		}
@@ -108,7 +112,7 @@ final class MAD4B_SCP_Skill_Snapshot_Identity {
 			'skill_count' => count( $canonical ),
 			'app_id' => $app_id,
 			'entries' => $canonical,
-			'comparison_semantics' => 'Exact token match proves the enabled Skill contents/resources and App mapping match this WordPress snapshot identity.',
+			'comparison_semantics' => 'Exact token match proves the enabled Skill contents/resources, governed Context policies and App mapping match this WordPress snapshot identity.',
 		);
 	}
 

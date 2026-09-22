@@ -96,6 +96,24 @@ final class MAD4B_SCP_Skill_Exporter {
 		foreach ( $skills as $summary ) {
 			$skill = MAD4B_SCP_Skill_Registry::get_skill( $summary['level'], $summary['target'], $summary['name'] );
 			if ( is_wp_error( $skill ) ) { $zip->close(); @unlink( $tmp ); return $skill; }
+			$context_required = ! empty( $skill['context_policy']['brand_context_required'] );
+			$context_policy_sha256 = isset( $skill['context_policy_sha256'] ) ? strtolower( trim( (string) $skill['context_policy_sha256'] ) ) : '';
+			if ( $context_required && ! preg_match( '/^[a-f0-9]{64}$/', $context_policy_sha256 ) ) {
+				return self::abort_zip(
+					$zip,
+					$tmp,
+					'mad4b_context_required_skill_policy_identity_missing',
+					'Portable export is denied because a Context-required Skill is missing its exact Context policy digest.'
+				);
+			}
+			if ( $context_required && ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
+				return self::abort_zip(
+					$zip,
+					$tmp,
+					'mad4b_context_required_skill_preflight_unavailable',
+					'Portable export is denied because the governed Context Preflight runtime is unavailable.'
+				);
+			}
 			$name = (string) $skill['name'];
 			$content = (string) $skill['content'];
 			$skill_sha = hash( 'sha256', $content );
@@ -128,6 +146,7 @@ final class MAD4B_SCP_Skill_Exporter {
 				'name' => $name,
 				'sha256' => $skill_sha,
 				'bytes' => $skill_bytes,
+				'context_policy_sha256' => $context_policy_sha256,
 				'resources' => $observed_resources,
 			);
 			$index[] = array(
@@ -135,6 +154,11 @@ final class MAD4B_SCP_Skill_Exporter {
 				'logical_id' => (string) $skill['logical_id'],
 				'sha256' => $skill_sha,
 				'bytes' => $skill_bytes,
+				'context_policy_sha256' => $context_policy_sha256,
+				'context_required' => $context_required,
+				'context_policy' => isset( $skill['context_policy'] ) && is_array( $skill['context_policy'] ) ? $skill['context_policy'] : array(),
+				'context_preflight_contract' => $context_required ? 'mad4b.context-preflight.v1' : '',
+				'context_receipt_contract' => $context_required ? 'mad4b.content-context-receipt.v1' : '',
 			);
 		}
 
@@ -173,6 +197,12 @@ final class MAD4B_SCP_Skill_Exporter {
 			),
 			'skills' => $index,
 			'publication_semantics' => 'snapshot',
+			'context_enforcement' => array(
+				'context_required_skills_require_policy_digest' => true,
+				'context_required_skills_require_server_preflight' => true,
+				'brand_bearing_writes_require_exact_context_receipt' => true,
+				'portable_skill_does_not_grant_write_authority' => true,
+			),
 			'snapshot_identity_contract' => isset( $identity['contract'] ) ? $identity['contract'] : '',
 			'snapshot_digest' => isset( $identity['snapshot_digest'] ) ? $identity['snapshot_digest'] : '',
 			'identity_token' => isset( $identity['identity_token'] ) ? $identity['identity_token'] : '',

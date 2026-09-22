@@ -184,6 +184,13 @@ final class MAD4B_SCP_Skills_Admin_UI {
 			$body = trim( (string) $body );
 		}
 		$enabled = ! $editing || ! empty( $selected['enabled'] );
+		$context_policy = $editing && isset( $selected['context_policy'] ) && is_array( $selected['context_policy'] )
+			? $selected['context_policy']
+			: ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ? MAD4B_SCP_Context_Preflight::default_policy() : array( 'preset' => 'none' ) );
+		$context_preset = isset( $context_policy['preset'] ) ? (string) $context_policy['preset'] : 'none';
+		$context_required_sets = isset( $context_policy['required_context_sets'] ) && is_array( $context_policy['required_context_sets'] ) ? $context_policy['required_context_sets'] : array();
+		$context_optional_sets = isset( $context_policy['optional_context_sets'] ) && is_array( $context_policy['optional_context_sets'] ) ? $context_policy['optional_context_sets'] : array();
+		$allowed_mutations = isset( $context_policy['allowed_mutation_abilities'] ) && is_array( $context_policy['allowed_mutation_abilities'] ) ? $context_policy['allowed_mutation_abilities'] : array();
 
 		echo '<h2>' . esc_html( $editing ? __( 'Edit Skill', 'mad4b-site-control-plane' ) : __( 'Create Skill', 'mad4b-site-control-plane' ) ) . '</h2>';
 		echo '<form method="post" style="max-width:1000px">';
@@ -204,6 +211,25 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		}
 		echo '<tr><th><label for="mad4b_skill_description">Description</label></th><td><textarea class="large-text" rows="3" required id="mad4b_skill_description" name="description">' . esc_textarea( $description ) . '</textarea><p class="description">Trigger-focused description that tells the model when to consider this workflow.</p></td></tr>';
 		echo '<tr><th><label for="mad4b_skill_body">Workflow</label></th><td><textarea class="large-text code" rows="18" required id="mad4b_skill_body" name="body">' . esc_textarea( $body ) . '</textarea><p class="description">Instructions only. MAD4B writes the required YAML frontmatter automatically.</p></td></tr>';
+		echo '<tr><th>' . esc_html__( 'Brand Context', 'mad4b-site-control-plane' ) . '</th><td>';
+		echo '<label for="mad4b_skill_context_preset"><strong>' . esc_html__( 'Context preset', 'mad4b-site-control-plane' ) . '</strong></label><br><select id="mad4b_skill_context_preset" name="context_preset">';
+		foreach ( array( 'none' => 'No governed context', 'brand_core' => 'Brand Core required', 'custom' => 'Custom required context' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '"' . selected( $context_preset, $value, false ) . '>' . esc_html( $label ) . '</option>';
+		echo '</select><p class="description">' . esc_html__( 'Reading and generation do not need a write binding. Brand-bearing writes require an exact intended ability selected at Skill retrieval time and allowed below.', 'mad4b-site-control-plane' ) . '</p>';
+		$categories = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::categories() : array();
+		echo '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:12px">';
+		echo '<label><strong>' . esc_html__( 'Custom required sets', 'mad4b-site-control-plane' ) . '</strong><br><select name="context_required_sets[]" multiple size="7" style="width:100%">';
+		foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( in_array( $key, $context_required_sets, true ), true, false ) . '>' . esc_html( $label ) . '</option>';
+		echo '</select><span class="description">' . esc_html__( 'Used only by Custom preset.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><strong>' . esc_html__( 'Custom optional sets', 'mad4b-site-control-plane' ) . '</strong><br><select name="context_optional_sets[]" multiple size="7" style="width:100%">';
+		foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( in_array( $key, $context_optional_sets, true ), true, false ) . '>' . esc_html( $label ) . '</option>';
+		echo '</select><span class="description">' . esc_html__( 'Optional context never replaces required Brand Core.', 'mad4b-site-control-plane' ) . '</span></label></div>';
+		echo '<p><label><input type="checkbox" name="context_allow_task" value="1"' . checked( ! empty( $context_policy['allow_task_context'] ), true, false ) . '> ' . esc_html__( 'Allow task-scoped Context sources', 'mad4b-site-control-plane' ) . '</label></p>';
+		echo '<label><strong>' . esc_html__( 'Allowed Brand-bearing write abilities', 'mad4b-site-control-plane' ) . '</strong></label><br>';
+		echo '<select name="context_allowed_mutations[]" multiple size="9" style="width:100%;max-width:720px">';
+		$mutation_options = class_exists( 'MAD4B_SCP_Context_Preflight' ) ? MAD4B_SCP_Context_Preflight::brand_bearing_mutation_abilities() : array();
+		foreach ( $mutation_options as $ability ) echo '<option value="' . esc_attr( $ability ) . '"' . selected( in_array( $ability, $allowed_mutations, true ), true, false ) . '>' . esc_html( $ability ) . '</option>';
+		echo '</select><p class="description">' . esc_html__( 'Leave empty for a read/generation-only Skill. A mutation Context Receipt is bound to one exact intended ability and cannot be replayed horizontally against another tool.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '</td></tr>';
 		echo '<tr><th>Enabled</th><td><label><input type="checkbox" name="enabled" value="1" ' . checked( $enabled, true, false ) . '> Include in the next portable snapshot</label></td></tr>';
 		echo '</tbody></table>';
 		submit_button( $editing ? __( 'Save Skill', 'mad4b-site-control-plane' ) : __( 'Create Skill', 'mad4b-site-control-plane' ), 'primary', 'submit', true, array( 'disabled' => empty( $status['editor_enabled'] ) ? 'disabled' : null ) );
@@ -248,6 +274,13 @@ final class MAD4B_SCP_Skills_Admin_UI {
 				'description' => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
 				'body' => isset( $_POST['body'] ) ? wp_unslash( $_POST['body'] ) : '',
 				'enabled' => isset( $_POST['enabled'] ),
+				'context_policy' => array(
+					'preset' => isset( $_POST['context_preset'] ) ? sanitize_key( wp_unslash( $_POST['context_preset'] ) ) : 'none',
+					'required_context_sets' => isset( $_POST['context_required_sets'] ) && is_array( $_POST['context_required_sets'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['context_required_sets'] ) ) : array(),
+					'optional_context_sets' => isset( $_POST['context_optional_sets'] ) && is_array( $_POST['context_optional_sets'] ) ? array_map( 'sanitize_key', wp_unslash( $_POST['context_optional_sets'] ) ) : array(),
+					'allow_task_context' => isset( $_POST['context_allow_task'] ),
+					'allowed_mutation_abilities' => isset( $_POST['context_allowed_mutations'] ) && is_array( $_POST['context_allowed_mutations'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['context_allowed_mutations'] ) ) : array(),
+				),
 			)
 		);
 		return is_wp_error( $result ) ? $result : __( 'Skill file saved and audit evidence committed.', 'mad4b-site-control-plane' );
