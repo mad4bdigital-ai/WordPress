@@ -39,6 +39,7 @@ final class MAD4B_SCP_Staging_Certification {
 		$provenance = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
 		$connection = class_exists( 'MAD4B_SCP_Connection_Status' ) ? MAD4B_SCP_Connection_Status::status() : array();
 		$context = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::status() : array();
+		$context_coverage = self::brand_core_context_coverage();
 		$google = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::connection_status() : array();
 		$managed = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::managed_broker_status() : array();
 		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array();
@@ -55,6 +56,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'exact_build' => self::gate( ! empty( $provenance['runtime_manifest_match'] ), 'runtime_build_provenance', $provenance, 'package' ),
 			'safe_boot' => self::gate( ! empty( $connection['connection_certified'] ) || ! empty( $connection['ready'] ), 'connection_runtime', $connection, 'runtime' ),
 			'context_authority' => self::gate( ! empty( $context['ready'] ), 'context_authority', $context, 'human_review' ),
+			'brand_core_context_coverage' => self::gate( ! empty( $context_coverage['ready'] ), 'brand_core_context_coverage', $context_coverage, 'human_review' ),
 			'google_provider_connection' => self::gate( ! empty( $google['connected'] ) && ! empty( $google['read_available'] ), 'google_provider_connection', $google, 'operator' ),
 			'managed_google_broker' => self::gate( ! empty( $managed['configured'] ) && ! empty( $managed['one_click_sign_in_ready'] ), 'managed_google_broker', $managed, 'server_secret' ),
 			'skills_runtime' => self::gate( ! empty( $skills['ready'] ), 'skills_runtime', $skills, 'runtime' ),
@@ -102,6 +104,56 @@ final class MAD4B_SCP_Staging_Certification {
 			'remediation_owner' => (string) $owner,
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'evidence' => $evidence,
+		);
+	}
+
+	private static function brand_core_context_coverage() {
+		$required = array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' );
+		if ( class_exists( 'MAD4B_SCP_Context_Preflight' ) ) {
+			$presets = MAD4B_SCP_Context_Preflight::presets();
+			if ( isset( $presets['brand_core']['required_context_sets'] ) && is_array( $presets['brand_core']['required_context_sets'] ) ) {
+				$required = array_values( array_map( 'sanitize_key', $presets['brand_core']['required_context_sets'] ) );
+			}
+		}
+		$assets = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::assets() : array();
+		$coverage = array();
+		$pending_review = array();
+		foreach ( $required as $set ) $coverage[ $set ] = array();
+
+		foreach ( $assets as $asset ) {
+			if ( ! is_array( $asset ) ) continue;
+			$category = isset( $asset['category'] ) ? sanitize_key( (string) $asset['category'] ) : '';
+			if ( ! in_array( $category, $required, true ) ) continue;
+			$summary = array(
+				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
+				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
+				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed',
+				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
+				'source_mode' => isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '',
+				'content_complete' => ! empty( $asset['content_complete'] ),
+			);
+			$eligible = 'governed' === $summary['source_mode']
+				&& 'ready' === $summary['status']
+				&& 'approved' === $summary['review_status']
+				&& 'brand_authority' === $summary['authority_class']
+				&& $summary['content_complete'];
+			if ( $eligible ) $coverage[ $category ][] = $summary;
+			elseif ( 'ready' === $summary['status'] && 'approved' !== $summary['review_status'] ) $pending_review[] = $summary;
+		}
+
+		$missing = array();
+		foreach ( $required as $set ) if ( empty( $coverage[ $set ] ) ) $missing[] = $set;
+		return array(
+			'contract' => 'mad4b.brand-core-context-coverage.v1',
+			'read_only' => true,
+			'required_context_sets' => $required,
+			'coverage' => $coverage,
+			'missing_required_context_sets' => $missing,
+			'pending_review_assets' => $pending_review,
+			'ready' => empty( $missing ),
+			'state' => empty( $missing ) ? 'ready' : 'blocked',
+			'blockers' => array_map( static function ( $set ) { return 'required_context_set_missing:' . $set; }, $missing ),
 		);
 	}
 
