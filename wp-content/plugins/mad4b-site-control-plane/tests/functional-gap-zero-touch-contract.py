@@ -89,6 +89,11 @@ for marker in [
     "'runtime_scan_elapsed_ms'",
     "'runtime_scan_files_hashed'",
     "'runtime_scan_bytes_hashed'",
+    "single_pass_exact_match",
+    "single_pass_non_authorizing_identity",
+    "double_pass_drift_confirmation",
+    "runtime_identity_captured",
+    "$repeat_on_mismatch = ! in_array( $mode, array( 'runtime_only','premium_semantic','composite_behavioral' ), true );",
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
@@ -232,5 +237,13 @@ if "'external_cryptographic_attestation' => true" in runtime:
     raise SystemExit('zero-touch runtime must not claim external cryptographic attestation without an external trust root')
 if "self_consistent_package" not in runtime or "failed_closed" not in runtime:
     raise SystemExit('runtime package integrity states are incomplete')
+
+# Only non-authorizing families may skip the second full hash pass.
+if "single_pass_non_authorizing_identity" not in runtime:
+    raise SystemExit('non-authorizing single-pass scan strategy missing')
+if "array( 'runtime_only','premium_semantic','composite_behavioral' )" not in runtime:
+    raise SystemExit('single-pass optimization escaped its non-authorizing modes')
+if "double_pass_drift_confirmation" not in runtime:
+    raise SystemExit('repository-backed drift confirmation lost its second pass')
 
 print('mad4b.functional-gap-zero-touch.contract.v1: PASS')
