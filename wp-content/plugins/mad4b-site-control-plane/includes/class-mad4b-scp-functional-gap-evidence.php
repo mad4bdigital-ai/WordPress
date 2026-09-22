@@ -189,12 +189,14 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				RecursiveIteratorIterator::LEAVES_ONLY
 			);
 			foreach ( $iterator as $file ) {
-				if ( ! $file->isFile() || $file->isLink() ) continue;
+				if ( $file->isLink() ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_symlink_detected' );
+				if ( ! $file->isFile() ) continue;
 				if ( self::$scan_started_at > 0 && microtime( true ) - self::$scan_started_at > self::MAX_SNAPSHOT_SCAN_SECONDS ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'snapshot_scan_time_budget_exceeded', 'scan_budget_exceeded'=>true );
 				$path = str_replace( '\\', '/', $file->getPathname() );
 				$base = rtrim( str_replace( '\\', '/', $root ), '/' ) . '/';
 				$relative = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path );
 				$size = (int) $file->getSize();
+				$mtime = (int) $file->getMTime();
 				if ( count( $rows ) + 1 > self::MAX_TREE_FILES || $total + $size > self::MAX_TREE_BYTES ) {
 					return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_scan_budget_exceeded', 'scan_budget_exceeded'=>true );
 				}
@@ -203,6 +205,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				}
 				$digest = hash_file( 'sha256', $file->getPathname() );
 				if ( false === $digest ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_file_hash_failed' );
+				clearstatcache( true, $file->getPathname() );
+				$after_size = @filesize( $file->getPathname() );
+				$after_mtime = @filemtime( $file->getPathname() );
+				if ( false === $after_size || false === $after_mtime || (int) $after_size !== $size || (int) $after_mtime !== $mtime ) {
+					return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_file_changed_during_hash' );
+				}
 				++self::$scan_files;
 				self::$scan_bytes += $size;
 				$total += $size;
@@ -399,6 +407,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$option_candidates = isset( $probes['option_keys'] ) && is_array( $probes['option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $probes['option_keys'] ) ) ) : array();
 		$constant_candidates = isset( $probes['constants'] ) && is_array( $probes['constants'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $probes['constants'] ) ) ) : array();
 
+		$deep_scan = ! empty( $repository['valid'] );
 		$plugin_map = get_plugins();
 		$active = (array) get_option( 'active_plugins', array() );
 		$network_active = is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) : array();
@@ -417,7 +426,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					'name' => isset( $headers['Name'] ) ? sanitize_text_field( (string) $headers['Name'] ) : '',
 					'version' => isset( $headers['Version'] ) ? sanitize_text_field( (string) $headers['Version'] ) : '',
 					'active' => $is_active,
-					'plugin_tree' => $is_active ? self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ) ) : array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned' ),
+					'plugin_tree' => ! $is_active ? array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned' ) : ( $deep_scan ? self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ) ) : array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'repository_evidence_invalid_not_scanned' ) ),
 				);
 			}
 			usort( $families[ $family ], static function ( $a, $b ) { return strcmp( $a['plugin_file'], $b['plugin_file'] ); } );
@@ -490,6 +499,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array(
 			'contract' => self::RUNTIME_CONTRACT,
 			'generated_at' => gmdate( 'c' ),
+			'deep_scan_performed' => $deep_scan,
 			'scan_budget' => array(
 				'files_hashed' => self::$scan_files,
 				'bytes_hashed' => self::$scan_bytes,
