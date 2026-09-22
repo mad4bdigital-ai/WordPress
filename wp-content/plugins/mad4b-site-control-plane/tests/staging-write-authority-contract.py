@@ -6,6 +6,7 @@ repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 
 write = (wp / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
+grant_plan = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation-plan.php').read_text(encoding='utf-8')
 grant_reconcile = (wp / 'includes' / 'class-mad4b-scp-staging-write-grant-reconciliation.php').read_text(encoding='utf-8')
 planning = (wp / 'includes' / 'class-mad4b-scp-staging-write-planning-guard.php').read_text(encoding='utf-8')
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
@@ -73,6 +74,34 @@ for marker in [
         raise SystemExit(f'missing tenant-bound governed write invariant: {marker}')
 
 for marker in [
+    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation-plan.v1'",
+    "const ABILITY = 'mad4b/staging-write-grant-reconciliation-plan'",
+    "'readonly_authority_plan' => true",
+    "'authorizes_mutation' => false",
+    "'annotations' => array( 'readonly' => true",
+    "MAD4B_SCP_Staging_Write_Authority::write_tools()",
+    "MAD4B_SCP_Agent_Registry::exact_grant",
+    "MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()",
+    "'expected_missing_abilities' => $missing",
+    "'plan_sha256'",
+    "'expected_plan_sha256'",
+    "'production_mutation' => false",
+    "'breakglass_included' => false",
+]:
+    if marker not in grant_plan:
+        raise SystemExit(f'missing read-only grant-reconciliation plan invariant: {marker}')
+
+for forbidden in [
+    "grant_ability(",
+    "revoke_allow_grant_by_id(",
+    "update_option(",
+    "MAD4B_SCP_Audit::record(",
+    "bind_candidate_identity(",
+]:
+    if forbidden in grant_plan:
+        raise SystemExit(f'reconciliation plan must remain non-authorizing/read-only: {forbidden}')
+
+for marker in [
     "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v1'",
     "const ABILITY = 'mad4b/staging-write-grant-reconcile'",
     "const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE GRANTS'",
@@ -100,6 +129,10 @@ for marker in [
     "candidate_rebound_without_grant_changes",
     "expected_write_inventory_fingerprint",
     "expected_missing_abilities",
+    "expected_plan_sha256",
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()",
+    "mad4b_grant_reconcile_plan_changed",
+    "'plan_sha256' => $current_plan_sha",
     "expected_agent_public_id",
     "Breakglass/raw SQL must never enter governed grant reconciliation",
     "'native-provider'",
@@ -132,13 +165,19 @@ for forbidden_grant in [
     if forbidden_grant in allowlist:
         raise SystemExit(f'forbidden ability leaked into exact grant-reconciliation allowlist: {forbidden_grant}')
 
+if "'mad4b/staging-write-grant-reconciliation-plan'" not in servers:
+    raise SystemExit('read-only grant reconciliation plan is missing from enrollment server catalog')
 if "'mad4b/staging-write-grant-reconcile'" not in servers:
     raise SystemExit('bounded grant reconciliation is missing from enrollment server catalog')
+if "'mad4b/staging-write-grant-reconciliation-plan'" in servers.split("$bounded_bootstrap = array(", 1)[1].split(';', 1)[0]:
+    raise SystemExit('read-only reconciliation plan must not be treated as a bounded mutation bootstrap')
 if "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );" not in servers:
     raise SystemExit('bounded grant reconciliation is not projected into the unified ChatGPT catalog')
 core_write = servers[servers.index('private static function core_write_candidates()'):servers.index('private static function registered_adapter_write_candidates()')]
 if "'mad4b/staging-write-grant-reconcile'" in core_write:
     raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
+if "'mad4b/staging-write-grant-reconciliation-plan'" in core_write:
+    raise SystemExit('read-only reconciliation plan must never become a mad4b-write candidate')
 
 
 # A package transition may expose one bootstrap write before the persisted candidate
