@@ -8,6 +8,7 @@ define( 'PHP_INT_MAX_TEST', PHP_INT_MAX );
 $GLOBALS['actions'] = array();
 $GLOBALS['option'] = array();
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['actions'][$hook][$priority][] = $callback; }
+function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['mad4b_qm_filters'][$hook][$priority][] = $callback; return true; }
 function remove_action( $hook, $callback, $priority = 10 ) {
     if ( empty( $GLOBALS['actions'][$hook][$priority] ) ) return false;
     foreach ( $GLOBALS['actions'][$hook][$priority] as $i => $registered ) {
