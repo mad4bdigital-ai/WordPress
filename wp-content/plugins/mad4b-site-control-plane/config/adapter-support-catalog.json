@@ -435,7 +435,6 @@
     {
       "id": "custom-mega-menu",
       "match": [
-        "custom-mega-menu-v",
         "custom-mega-menu/"
       ],
       "adapter_id": "custom-mega-menu",
@@ -463,6 +462,9 @@
         "menu_structure_write",
         "navigation_assignment_mutation",
         "menu_item_delete"
+      ],
+      "versioned_match": [
+        "custom-mega-menu"
       ]
     },
     {
