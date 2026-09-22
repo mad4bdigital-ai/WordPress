@@ -159,6 +159,12 @@ jobs:
               if marker_text not in functional_gap:
                   raise SystemExit('Missing zero-touch performance invariant: ' + marker_text)
 
+          runtime_evidence_body = functional_gap.split("private static function runtime_evidence", 1)[1].split("private static function route_methods", 1)[0]
+          if runtime_evidence_body.count("$runtime_only_metadata_budget = array(") != 1:
+              raise SystemExit('Runtime-only metadata budget is not snapshot-global')
+          if "runtime_only_metadata_identity( $plugin_file, $runtime_only_metadata_budget )" not in runtime_evidence_body:
+              raise SystemExit('Runtime-only metadata identity is not using the shared snapshot budget')
+
           runtime_only_body = functional_gap.split("private static function runtime_only_metadata_identity", 1)[1].split("private static function runtime_census_from_runtime", 1)[0]
           if "hash_file(" in runtime_only_body:
               raise SystemExit('Runtime-only evidence unexpectedly performs content hashing')
