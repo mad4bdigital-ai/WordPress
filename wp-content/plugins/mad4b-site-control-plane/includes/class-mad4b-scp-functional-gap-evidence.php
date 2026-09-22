@@ -551,14 +551,22 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		}
 
 		foreach ( array( 'jetengine','jetsmartfilters' ) as $family ) {
-			$decisions[] = self::decision( $family, 'semantic_attestation_required', 'premium_provider_exact_runtime_and_semantic_review_gate_remains_authoritative', array(
-				'runtime_versions' => self::plugin_versions( $runtime, $family ),
-			) );
+			$rows = self::active_plugins( $runtime, $family );
+			$decisions[] = self::decision(
+				$family,
+				empty( $rows ) ? 'not_active' : 'semantic_attestation_required',
+				empty( $rows ) ? 'provider_not_active' : 'premium_provider_exact_runtime_and_semantic_review_gate_remains_authoritative',
+				array( 'runtime_versions' => self::plugin_versions( $runtime, $family ) )
+			);
 		}
 
-		$decisions[] = self::decision( 'wp-import-export', 'runtime_alignment_or_behavioral_recertification_required', 'composite_provider_requires_exact_component_versions_and_behavioral_execution_contract', array(
-			'runtime_versions' => self::plugin_versions( $runtime, 'wp-import-export' ),
-		) );
+		$wp_import_rows = self::active_plugins( $runtime, 'wp-import-export' );
+		$decisions[] = self::decision(
+			'wp-import-export',
+			empty( $wp_import_rows ) ? 'not_active' : 'runtime_alignment_or_behavioral_recertification_required',
+			empty( $wp_import_rows ) ? 'provider_not_active' : 'composite_provider_requires_exact_component_versions_and_behavioral_execution_contract',
+			array( 'runtime_versions' => self::plugin_versions( $runtime, 'wp-import-export' ) )
+		);
 
 		$counts = array();
 		foreach ( $decisions as $row ) {
