@@ -1023,6 +1023,24 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		self::$scan_started_at = microtime( true );
 		$runtime = self::runtime_evidence( $repository );
 		$evaluation = self::evaluate( $repository, $runtime );
+		$handoff = array(
+			'contract' => 'mad4b.functional-gap-decision-handoff.v1',
+			'source_commit_sha' => isset( $repository['source_commit_sha'] ) ? (string) $repository['source_commit_sha'] : '',
+			'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? (string) $repository['build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? (string) $repository['package_manifest_digest'] : '',
+			'repository_evidence_sha256' => isset( $repository['evidence_sha256'] ) ? (string) $repository['evidence_sha256'] : '',
+			'policy_sha256' => isset( $repository['policy_sha256'] ) ? (string) $repository['policy_sha256'] : '',
+			'snapshot_identity_sha256' => $key,
+			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? (string) $evaluation['runtime_evidence_fingerprint'] : '',
+			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? (string) $evaluation['decision_fingerprint'] : '',
+			'runtime_generated_at' => isset( $runtime['generated_at'] ) ? (string) $runtime['generated_at'] : '',
+			'evidence_ready' => ! empty( $evaluation['ready'] ) && ! empty( $repository['valid'] ),
+			'promotion_authorized' => false,
+			'mutation_authorized' => false,
+			'must_revalidate_before_mutation' => true,
+			'revalidation_contract' => 'recompute_current_runtime_and_require_exact_fingerprint_match',
+			'blockers' => isset( $evaluation['blockers'] ) ? array_values( (array) $evaluation['blockers'] ) : array(),
+		);
 		self::$snapshot_key = $key;
 		self::$snapshot = array(
 			'contract' => self::CONTRACT,
@@ -1051,8 +1069,21 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			),
 			'runtime' => $runtime,
 			'evaluation' => $evaluation,
+			'decision_handoff' => $handoff,
 		);
 		return self::$snapshot;
+	}
+
+	public static function decision_handoff() {
+		$snapshot = self::snapshot();
+		return isset( $snapshot['decision_handoff'] ) && is_array( $snapshot['decision_handoff'] ) ? $snapshot['decision_handoff'] : array(
+			'contract' => 'mad4b.functional-gap-decision-handoff.v1',
+			'evidence_ready' => false,
+			'promotion_authorized' => false,
+			'mutation_authorized' => false,
+			'must_revalidate_before_mutation' => true,
+			'blockers' => array( 'functional_gap_decision_handoff_unavailable' ),
+		);
 	}
 
 	public static function decision_map() {
@@ -1074,6 +1105,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$counts = isset( $evaluation['counts'] ) && is_array( $evaluation['counts'] ) ? $evaluation['counts'] : array();
 		$package_integrity = isset( $repository['package_integrity'] ) && is_array( $repository['package_integrity'] ) ? $repository['package_integrity'] : array();
 		$runtime_budget = isset( $snapshot['runtime']['scan_budget'] ) && is_array( $snapshot['runtime']['scan_budget'] ) ? $snapshot['runtime']['scan_budget'] : array();
+		$handoff = isset( $snapshot['decision_handoff'] ) && is_array( $snapshot['decision_handoff'] ) ? $snapshot['decision_handoff'] : array();
 		return array(
 			'contract' => self::CONTRACT,
 			'snapshot_identity_sha256' => isset( $snapshot['snapshot_identity_sha256'] ) ? $snapshot['snapshot_identity_sha256'] : '',
@@ -1095,6 +1127,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? $repository['package_manifest_digest'] : '',
 			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? $evaluation['runtime_evidence_fingerprint'] : '',
 			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? $evaluation['decision_fingerprint'] : '',
+			'decision_handoff' => $handoff,
 			'promotion_authorized' => false,
 			'counts' => $counts,
 			'unstable_family_count' => isset( $counts['runtime_evidence_unstable'] ) ? (int) $counts['runtime_evidence_unstable'] : 0,
