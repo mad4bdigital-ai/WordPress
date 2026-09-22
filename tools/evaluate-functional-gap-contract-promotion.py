@@ -295,7 +295,12 @@ def main():
         elif mode == "redacted_status":
             secret_keys = list(rule.get("redacted_secret_option_keys", []))
             status_keys = list(rule.get("required_status_option_keys", []))
-            secret_ok = bool(secret_keys) and all(options.get(key, {}).get("redacted") is True for key in secret_keys)
+            secret_ok = bool(secret_keys) and all(
+                options.get(key, {}).get("redacted") is True
+                and options.get(key, {}).get("value_read") is False
+                and options.get(key, {}).get("probe") == "omitted_secret_value"
+                for key in secret_keys
+            )
             status_ok = bool(status_keys) and all(key in options and options.get(key, {}).get("exists") is True for key in status_keys)
             extra = dict(base)
             extra.update({
@@ -305,7 +310,7 @@ def main():
                 "blocked": list(rule.get("blocked", [])),
             })
             if len(matches) == len(rows) and secret_ok and status_ok:
-                decisions.append(decision(family, "redacted_read_contract_candidate", "exact_runtime_tree_and_secret_redaction_verified", mode, **extra))
+                decisions.append(decision(family, "redacted_read_contract_candidate", "exact_runtime_tree_and_secret_values_unread", mode, **extra))
             else:
                 decisions.append(decision(family, "contract_discovery_required", "exact_runtime_tree_or_redacted_status_model_unverified", mode, **extra))
 
