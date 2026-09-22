@@ -352,11 +352,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			: array();
 		$rows = isset( $plan['rows'] ) && is_array( $plan['rows'] ) ? $plan['rows'] : array();
 		$grants = array();
+		$plan_runtime = array();
 		foreach ( $rows as $row ) {
-			if ( ! is_array( $row ) || empty( $row['mounted'] ) || empty( $row['exact_grant_present'] ) ) continue;
+			if ( ! is_array( $row ) ) continue;
 			$ability = isset( $row['ability'] ) ? trim( (string) $row['ability'] ) : '';
 			$provider = isset( $row['provider'] ) ? trim( (string) $row['provider'] ) : '';
-			if ( '' === $ability || '' === $provider ) continue;
+			if ( '' !== $ability && ! empty( $row['mounted'] ) ) $plan_runtime[] = $ability;
+			if ( '' === $ability || '' === $provider || empty( $row['mounted'] ) || empty( $row['exact_grant_present'] ) ) continue;
 			$grants[] = array( 'ability' => $ability, 'provider' => $provider );
 		}
 		usort( $grants, static function ( $a, $b ) {
@@ -366,19 +368,54 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$catalog = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::external_write_tools() : array();
 		$runtime = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
 		$blocked = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
+		$catalog = array_values( array_unique( array_map( 'strval', is_array( $catalog ) ? $catalog : array() ) ) );
+		$runtime = array_values( array_unique( array_map( 'strval', is_array( $runtime ) ? $runtime : array() ) ) );
+		$plan_runtime = array_values( array_unique( array_map( 'strval', $plan_runtime ) ) );
+		sort( $catalog, SORT_STRING );
+		sort( $runtime, SORT_STRING );
+		sort( $plan_runtime, SORT_STRING );
+
+		$blocked_rows = array_values( is_array( $blocked ) ? $blocked : array() );
+		$blocked_abilities = array();
+		foreach ( $blocked_rows as $entry ) {
+			if ( is_array( $entry ) && ! empty( $entry['ability'] ) ) $blocked_abilities[] = (string) $entry['ability'];
+		}
+		$blocked_abilities = array_values( array_unique( $blocked_abilities ) );
+		sort( $blocked_abilities, SORT_STRING );
+		$reconstructed_catalog = array_values( array_unique( array_merge( $runtime, $blocked_abilities ) ) );
+		sort( $reconstructed_catalog, SORT_STRING );
+
 		$binding = isset( $plan['candidate_binding'] ) && is_array( $plan['candidate_binding'] ) ? $plan['candidate_binding'] : array();
 		$missing = isset( $plan['exact_grants_missing_count'] ) ? (int) $plan['exact_grants_missing_count'] : 0;
 		$missing_items = isset( $plan['exact_grants_missing'] ) && is_array( $plan['exact_grants_missing'] ) ? array_values( $plan['exact_grants_missing'] ) : array();
 		$stale = isset( $plan['stale_allow_grants_count'] ) ? (int) $plan['stale_allow_grants_count'] : 0;
 		$stale_items = isset( $plan['stale_allow_grants'] ) && is_array( $plan['stale_allow_grants'] ) ? array_values( $plan['stale_allow_grants'] ) : array();
-		$wildcards = isset( $plan['wildcard_grants'] ) ? (int) $plan['wildcard_grants'] : 0;
+		$global_wildcards = isset( $plan['global_registry_wildcard_grants'] ) ? (int) $plan['global_registry_wildcard_grants'] : ( isset( $plan['wildcard_grants'] ) ? (int) $plan['wildcard_grants'] : 0 );
+		$current_agent_wildcards = isset( $plan['current_agent_wildcard_grants'] ) ? (int) $plan['current_agent_wildcard_grants'] : 0;
+		$duplicates = isset( $plan['duplicate_exact_allow_grants_count'] ) ? (int) $plan['duplicate_exact_allow_grants_count'] : 0;
+		$duplicate_items = isset( $plan['duplicate_exact_allow_grants'] ) && is_array( $plan['duplicate_exact_allow_grants'] ) ? array_values( $plan['duplicate_exact_allow_grants'] ) : array();
+		$broad_environment = isset( $plan['broad_environment_grants_count'] ) ? (int) $plan['broad_environment_grants_count'] : 0;
 		$write_tool_count = isset( $plan['write_tool_count'] ) ? (int) $plan['write_tool_count'] : count( $runtime );
 		$binding_required = ! empty( $binding['required'] );
 		$binding_match = ! $binding_required || ! empty( $binding['match'] );
+
+		$consistency_violations = array();
+		if ( $write_tool_count !== count( $runtime ) ) $consistency_violations[] = 'plan_runtime_count_mismatch';
+		if ( $plan_runtime !== $runtime ) $consistency_violations[] = 'plan_runtime_inventory_mismatch';
+		if ( count( $grants ) > count( $runtime ) ) $consistency_violations[] = 'exact_grants_exceed_runtime_inventory';
+		$grant_abilities = array_values( array_unique( array_map( static function ( $grant ) { return isset( $grant['ability'] ) ? (string) $grant['ability'] : ''; }, $grants ) ) );
+		$grant_abilities = array_values( array_filter( $grant_abilities, static function ( $value ) { return '' !== $value; } ) );
+		sort( $grant_abilities, SORT_STRING );
+		if ( ! empty( array_diff( $grant_abilities, $runtime ) ) ) $consistency_violations[] = 'exact_grant_outside_runtime_inventory';
+		if ( $catalog !== $reconstructed_catalog ) $consistency_violations[] = 'catalog_runtime_provider_gate_partition_mismatch';
+		$projection_consistent = empty( $consistency_violations );
+
 		$blocking_conditions = array();
+		if ( ! $projection_consistent ) $blocking_conditions[] = array( 'code' => 'authority_projection_inconsistent', 'count' => count( $consistency_violations ), 'items' => $consistency_violations );
 		if ( $missing > 0 ) $blocking_conditions[] = array( 'code' => 'exact_grants_missing', 'count' => $missing, 'items' => array_slice( $missing_items, 0, 20 ) );
 		if ( $stale > 0 ) $blocking_conditions[] = array( 'code' => 'stale_allow_grants', 'count' => $stale, 'items' => array_slice( $stale_items, 0, 20 ) );
-		if ( $wildcards > 0 ) $blocking_conditions[] = array( 'code' => 'wildcard_grants', 'count' => $wildcards );
+		if ( $duplicates > 0 ) $blocking_conditions[] = array( 'code' => 'duplicate_exact_allow_grants', 'count' => $duplicates, 'items' => array_slice( $duplicate_items, 0, 20 ) );
+		if ( $global_wildcards > 0 ) $blocking_conditions[] = array( 'code' => 'global_registry_wildcard_grants', 'count' => $global_wildcards, 'current_agent_count' => $current_agent_wildcards );
 		if ( ! $binding_match ) $blocking_conditions[] = array(
 			'code' => 'candidate_binding_mismatch',
 			'count' => 1,
@@ -390,10 +427,33 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			),
 		);
 		if ( empty( $plan['current_ready'] ) && empty( $blocking_conditions ) ) $blocking_conditions[] = array( 'code' => 'write_authority_not_ready', 'count' => 1 );
-		$ready = ! empty( $plan['current_ready'] ) && $write_tool_count > 0 && count( $grants ) === $write_tool_count && empty( $blocking_conditions );
+
+		$catalog_fingerprint = hash( 'sha256', wp_json_encode( $catalog, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$runtime_inventory_fingerprint = hash( 'sha256', wp_json_encode( $plan_runtime, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$grant_set_fingerprint = hash( 'sha256', wp_json_encode( $grants, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$candidate_identity = array(
+			'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
+			'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
+			'stored_build_fingerprint' => isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : '',
+			'current_build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
+		);
+		$candidate_fingerprint = hash( 'sha256', wp_json_encode( $candidate_identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$authority_generation = hash( 'sha256', implode( "\0", array( $catalog_fingerprint, $runtime_inventory_fingerprint, $grant_set_fingerprint, $candidate_fingerprint ) ) );
+		$projection_fingerprint = hash( 'sha256', wp_json_encode( array(
+			'generation' => $authority_generation,
+			'blocking_conditions' => $blocking_conditions,
+			'provider_gated' => $blocked_rows,
+			'current_ready' => ! empty( $plan['current_ready'] ),
+		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+
+		$ready = ! empty( $plan['current_ready'] )
+			&& $projection_consistent
+			&& $write_tool_count > 0
+			&& count( $grants ) === count( $runtime )
+			&& empty( $blocking_conditions );
 
 		return array(
-			'contract' => 'mad4b.oauth-consent-grant-projection.v2',
+			'contract' => 'mad4b.oauth-consent-grant-projection.v3',
 			'read_only' => true,
 			'mutation_performed' => false,
 			'oauth_scope_changed' => false,
@@ -401,30 +461,36 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'eligible' => ! empty( $plan['eligible'] ),
 			'current_ready' => ! empty( $plan['current_ready'] ),
 			'ready' => $ready,
-			'state' => $ready ? 'ready' : ( ! empty( $blocking_conditions ) ? 'authority_blocked' : 'read_only_only' ),
+			'state' => $ready ? 'ready' : ( ! $projection_consistent ? 'projection_inconsistent' : ( ! empty( $blocking_conditions ) ? 'authority_blocked' : 'read_only_only' ) ),
 			'environment' => isset( $plan['environment'] ) ? (string) $plan['environment'] : '',
-			'catalog_write_tool_count' => count( array_values( array_unique( array_map( 'strval', is_array( $catalog ) ? $catalog : array() ) ) ) ),
-			'runtime_eligible_write_tool_count' => count( array_values( array_unique( array_map( 'strval', is_array( $runtime ) ? $runtime : array() ) ) ) ),
-			'provider_gated_write_tool_count' => count( is_array( $blocked ) ? $blocked : array() ),
+			'catalog_write_tool_count' => count( $catalog ),
+			'runtime_eligible_write_tool_count' => count( $runtime ),
+			'provider_gated_write_tool_count' => count( $blocked_rows ),
 			'write_tool_count' => $write_tool_count,
 			'exact_grants_existing' => count( $grants ),
 			'exact_grants_missing_count' => $missing,
 			'stale_allow_grants_count' => $stale,
-			'wildcard_grants' => $wildcards,
+			'broad_environment_grants_count' => $broad_environment,
+			'duplicate_exact_allow_grants_count' => $duplicates,
+			'current_agent_wildcard_grants' => $current_agent_wildcards,
+			'global_registry_wildcard_grants' => $global_wildcards,
 			'candidate_binding_required' => $binding_required,
 			'candidate_binding_match' => $binding_match,
-			'candidate_binding' => array(
-				'required' => $binding_required,
-				'match' => $binding_match,
-				'stored_source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
-				'current_source_commit_sha' => isset( $binding['current_source_commit_sha'] ) ? (string) $binding['current_source_commit_sha'] : '',
-				'stored_build_fingerprint' => isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : '',
-				'current_build_fingerprint' => isset( $binding['current_build_fingerprint'] ) ? (string) $binding['current_build_fingerprint'] : '',
-			),
+			'candidate_binding' => array_merge( array( 'required' => $binding_required, 'match' => $binding_match ), $candidate_identity ),
+			'projection_consistent' => $projection_consistent,
+			'consistency_violations' => $consistency_violations,
+			'catalog_fingerprint' => $catalog_fingerprint,
+			'runtime_inventory_fingerprint' => $runtime_inventory_fingerprint,
+			'grant_set_fingerprint' => $grant_set_fingerprint,
+			'candidate_fingerprint' => $candidate_fingerprint,
+			'authority_generation' => $authority_generation,
+			'projection_fingerprint' => $projection_fingerprint,
+			'observed_at' => gmdate( 'c' ),
+			'grant_lookup_strategy' => isset( $plan['grant_lookup_strategy'] ) ? (string) $plan['grant_lookup_strategy'] : '',
 			'normal_remote_writes_require_exact_approval' => true,
 			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
-			'blocked_catalog_abilities' => array_values( is_array( $blocked ) ? $blocked : array() ),
+			'blocked_catalog_abilities' => $blocked_rows,
 		);
 	}
 
