@@ -26,6 +26,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	const MAX_PROVENANCE_VERIFY_FILES = 2500;
 	const MAX_PROVENANCE_VERIFY_BYTES = 268435456;
 	const MAX_PROVENANCE_VERIFY_SECONDS = 8.0;
+	const MAX_CENSUS_FILES = 30000;
+	const MAX_CENSUS_BYTES = 1610612736;
+	const MAX_CENSUS_SCAN_SECONDS = 5.0;
 
 	private static $snapshot = null;
 	private static $snapshot_key = '';
@@ -304,6 +307,139 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$second['comparison'] = $stable ? ( isset( $expected[ $second_hash ] ) ? 'exact_repository_match' : 'stable_runtime_drift' ) : 'runtime_tree_changed_during_scan';
 		if ( ! $stable ) $second['error'] = 'runtime_tree_unstable';
 		return $second;
+	}
+
+	private static function plugin_census_once( $plugin_file, array &$budget ) {
+		$plugin_file = ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
+		$dirname = dirname( $plugin_file );
+		$root = '.' === $dirname ? WP_PLUGIN_DIR : WP_PLUGIN_DIR . '/' . $dirname;
+		if ( ! is_dir( $root ) ) return array( 'valid'=>false, 'file_count'=>0, 'total_bytes'=>0, 'census_sha256'=>'', 'blockers'=>array( 'runtime_census_plugin_root_missing' ) );
+
+		$rows = array();
+		$total = 0;
+		$blockers = array();
+		try {
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::LEAVES_ONLY
+			);
+			foreach ( $iterator as $file ) {
+				if ( microtime( true ) - (float) $budget['started_at'] > self::MAX_CENSUS_SCAN_SECONDS ) { $blockers[] = 'runtime_census_time_budget_exceeded'; break; }
+				if ( $file->isLink() ) { $blockers[] = 'runtime_census_symlink_detected'; break; }
+				if ( ! $file->isFile() ) continue;
+				$path = str_replace( '\\', '/', $file->getPathname() );
+				$base = rtrim( str_replace( '\\', '/', $root ), '/' ) . '/';
+				$relative = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path );
+				clearstatcache( true, $file->getPathname() );
+				$size = @filesize( $file->getPathname() );
+				$mtime = @filemtime( $file->getPathname() );
+				if ( false === $size || false === $mtime ) { $blockers[] = 'runtime_census_stat_failed'; break; }
+				$size = (int) $size;
+				if ( count( $rows ) + 1 > self::MAX_TREE_FILES || $total + $size > self::MAX_TREE_BYTES ) { $blockers[] = 'runtime_census_plugin_budget_exceeded'; break; }
+				if ( (int) $budget['files'] + 1 > self::MAX_CENSUS_FILES || (int) $budget['bytes'] + $size > self::MAX_CENSUS_BYTES ) { $blockers[] = 'runtime_census_snapshot_budget_exceeded'; break; }
+				++$budget['files'];
+				$budget['bytes'] += $size;
+				$total += $size;
+				$rows[] = $relative . "\0" . $size . "\0" . (int) $mtime;
+			}
+		} catch ( Exception $e ) {
+			$blockers[] = 'runtime_census_scan_failed';
+		}
+		sort( $rows, SORT_STRING );
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		return array(
+			'valid' => empty( $blockers ),
+			'file_count' => count( $rows ),
+			'total_bytes' => $total,
+			'census_sha256' => empty( $blockers ) ? hash( 'sha256', implode( "\n", $rows ) ) : '',
+			'blockers' => $blockers,
+		);
+	}
+
+	private static function runtime_census_from_runtime( array $runtime ) {
+		$rows = array();
+		$plugin_count = 0;
+		$file_count = 0;
+		$total_bytes = 0;
+		$blockers = array();
+		foreach ( isset( $runtime['families'] ) && is_array( $runtime['families'] ) ? $runtime['families'] : array() as $family => $plugins ) {
+			foreach ( is_array( $plugins ) ? $plugins : array() as $plugin ) {
+				if ( ! is_array( $plugin ) || empty( $plugin['active'] ) ) continue;
+				$tree = isset( $plugin['plugin_tree'] ) && is_array( $plugin['plugin_tree'] ) ? $plugin['plugin_tree'] : array();
+				$digest = isset( $tree['census_sha256'] ) ? strtolower( trim( (string) $tree['census_sha256'] ) ) : '';
+				$plugin_file = isset( $plugin['plugin_file'] ) ? self::normalize_plugin_file( $plugin['plugin_file'] ) : '';
+				$count = isset( $tree['file_count'] ) ? (int) $tree['file_count'] : -1;
+				$bytes = isset( $tree['total_bytes'] ) ? (int) $tree['total_bytes'] : -1;
+				if ( '' === $plugin_file || ! preg_match( '/^[a-f0-9]{64}$/', $digest ) || $count < 0 || $bytes < 0 || empty( $tree['scan_stable'] ) ) {
+					$blockers[] = 'runtime_census_baseline_unavailable_' . sanitize_key( (string) $family );
+					continue;
+				}
+				++$plugin_count;
+				$file_count += $count;
+				$total_bytes += $bytes;
+				$rows[] = $plugin_file . "\0" . $count . "\0" . $bytes . "\0" . $digest;
+			}
+		}
+		sort( $rows, SORT_STRING );
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		return array(
+			'contract' => 'mad4b.functional-gap-runtime-census.v1',
+			'valid' => empty( $blockers ) && $plugin_count > 0,
+			'census_sha256' => empty( $blockers ) && $plugin_count > 0 ? hash( 'sha256', implode( "\n", $rows ) ) : '',
+			'plugin_count' => $plugin_count,
+			'file_count' => $file_count,
+			'total_bytes' => $total_bytes,
+			'blockers' => $blockers,
+		);
+	}
+
+	public static function current_runtime_census_status() {
+		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$plugins = get_plugins();
+		if ( ! is_array( $plugins ) ) $plugins = array();
+		ksort( $plugins, SORT_STRING );
+		$active = array();
+		foreach ( array_merge( (array) get_option( 'active_plugins', array() ), is_multisite() ? array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) : array() ) as $plugin_file ) {
+			$active[ self::normalize_plugin_file( $plugin_file ) ] = true;
+		}
+		$targets = self::targets();
+		$budget = array( 'started_at'=>microtime( true ), 'files'=>0, 'bytes'=>0 );
+		$rows = array();
+		$plugin_count = 0;
+		$blockers = array();
+		foreach ( $plugins as $plugin_file => $headers ) {
+			$normalized = self::normalize_plugin_file( $plugin_file );
+			if ( ! isset( $active[ $normalized ] ) ) continue;
+			$matched = false;
+			foreach ( $targets as $rule ) {
+				if ( is_array( $rule ) && self::plugin_matches_policy_family( $normalized, $rule ) ) { $matched = true; break; }
+			}
+			if ( ! $matched ) continue;
+			$census = self::plugin_census_once( $plugin_file, $budget );
+			if ( empty( $census['valid'] ) ) {
+				$blockers = array_merge( $blockers, isset( $census['blockers'] ) ? (array) $census['blockers'] : array( 'runtime_census_invalid' ) );
+				continue;
+			}
+			++$plugin_count;
+			$rows[] = $normalized . "\0" . (int) $census['file_count'] . "\0" . (int) $census['total_bytes'] . "\0" . (string) $census['census_sha256'];
+		}
+		sort( $rows, SORT_STRING );
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		return array(
+			'contract' => 'mad4b.functional-gap-runtime-census.v1',
+			'valid' => empty( $blockers ) && $plugin_count > 0,
+			'census_sha256' => empty( $blockers ) && $plugin_count > 0 ? hash( 'sha256', implode( "\n", $rows ) ) : '',
+			'plugin_count' => $plugin_count,
+			'file_count' => (int) $budget['files'],
+			'total_bytes' => (int) $budget['bytes'],
+			'elapsed_ms' => (int) round( ( microtime( true ) - (float) $budget['started_at'] ) * 1000 ),
+			'max_files' => self::MAX_CENSUS_FILES,
+			'max_bytes' => self::MAX_CENSUS_BYTES,
+			'max_seconds' => self::MAX_CENSUS_SCAN_SECONDS,
+			'metadata_only' => true,
+			'content_rehashed' => false,
+			'blockers' => $blockers,
+		);
 	}
 
 	private static function repository_tree_hashes( array $repository, $family ) {
@@ -1023,6 +1159,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		self::$scan_started_at = microtime( true );
 		$runtime = self::runtime_evidence( $repository );
 		$evaluation = self::evaluate( $repository, $runtime );
+		$runtime_census = self::runtime_census_from_runtime( $runtime );
 		$handoff = array(
 			'contract' => 'mad4b.functional-gap-decision-handoff.v1',
 			'source_commit_sha' => isset( $repository['source_commit_sha'] ) ? (string) $repository['source_commit_sha'] : '',
@@ -1032,6 +1169,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'policy_sha256' => isset( $repository['policy_sha256'] ) ? (string) $repository['policy_sha256'] : '',
 			'snapshot_identity_sha256' => $key,
 			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? (string) $evaluation['runtime_evidence_fingerprint'] : '',
+			'runtime_census_sha256' => isset( $runtime_census['census_sha256'] ) ? (string) $runtime_census['census_sha256'] : '',
 			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? (string) $evaluation['decision_fingerprint'] : '',
 			'runtime_generated_at' => isset( $runtime['generated_at'] ) ? (string) $runtime['generated_at'] : '',
 			'evidence_ready' => ! empty( $evaluation['ready'] ) && ! empty( $repository['valid'] ),
@@ -1068,6 +1206,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				'blockers' => isset( $repository['blockers'] ) ? $repository['blockers'] : array(),
 			),
 			'runtime' => $runtime,
+			'runtime_census' => $runtime_census,
 			'evaluation' => $evaluation,
 			'decision_handoff' => $handoff,
 		);
@@ -1132,6 +1271,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? $repository['build_fingerprint'] : '',
 			'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? $repository['package_manifest_digest'] : '',
 			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? $evaluation['runtime_evidence_fingerprint'] : '',
+			'runtime_census_sha256' => isset( $snapshot['runtime_census']['census_sha256'] ) ? (string) $snapshot['runtime_census']['census_sha256'] : '',
+			'runtime_census_valid' => ! empty( $snapshot['runtime_census']['valid'] ),
 			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? $evaluation['decision_fingerprint'] : '',
 			'decision_handoff' => $handoff,
 			'promotion_authorized' => false,
@@ -1150,6 +1291,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array(
 			'contract' => 'mad4b.functional-gap-coverage-projection.v1',
 			'snapshot_identity_sha256' => isset( $snapshot['snapshot_identity_sha256'] ) ? (string) $snapshot['snapshot_identity_sha256'] : '',
+			'runtime_census' => isset( $snapshot['runtime_census'] ) && is_array( $snapshot['runtime_census'] ) ? $snapshot['runtime_census'] : array(),
 			'summary' => self::summary_from_snapshot( $snapshot ),
 			'decisions' => self::decision_map_from_snapshot( $snapshot ),
 			'promotion_authorized' => false,
