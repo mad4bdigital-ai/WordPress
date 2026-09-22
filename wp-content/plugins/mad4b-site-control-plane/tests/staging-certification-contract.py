@@ -147,6 +147,7 @@ expected_rollback = {
     "build_fingerprint": "ac16b9aa41e9cd44a360b981436dd7a459a8033476a54cf956afaed833a6a8b6",
     "package_manifest_digest": "2aad4f7adffa36447f8b8bcfc9b374cd263d1a5165cb14e217962c8e25fc4177",
     "artifact_sha256": "b029df8a47c8bd1ed87278347e21430becec3279e8510f038cfc65bd999c78d2",
+    "artifact_name": "mad4b-site-control-plane-0.4.0-rc.38.zip",
 }
 for key, value in expected_rollback.items():
     if rollback.get(key) != value:
