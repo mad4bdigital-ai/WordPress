@@ -213,6 +213,8 @@ try {
 	$check( in_array( 'duplicator/duplicator.php', (array) ( $duplicator_discovery['plugin_files'] ?? array() ), true ), 'Contract discovery did not retain exact runtime plugin identity.' );
 	$check( 'evidence_unavailable' === (string) ( $duplicator_discovery['zero_touch_decision']['state'] ?? '' ), 'Contract discovery did not project zero-touch decision.' );
 	$check( isset( $contract_discovery['zero_touch'] ) && empty( $contract_discovery['zero_touch']['promotion_authorized'] ), 'Contract discovery zero-touch summary is missing or authorizing.' );
+	$check( isset( $contract_discovery['evidence_counts'] ) && is_array( $contract_discovery['evidence_counts'] ), 'Contract discovery report did not expose evidence closure counts.' );
+	$check( ! empty( $contract_discovery['evidence_projection_identity_match'] ), 'Contract discovery report did not preserve atomic evidence projection identity.' );
 	$duplicator_runtime_identity = null;
 	foreach ( (array) ( $duplicator_discovery['runtime_identities'] ?? array() ) as $runtime_identity ) {
 		if ( 'duplicator/duplicator.php' === (string) ( $runtime_identity['plugin_file'] ?? '' ) ) $duplicator_runtime_identity = $runtime_identity;
@@ -224,6 +226,11 @@ try {
 	$functional_report = $functional_ability->execute();
 	$check( ! is_wp_error( $functional_report ) && 'mad4b.provider-functional-coverage.v1' === (string) ( $functional_report['contract'] ?? '' ), 'Functional coverage report failed.' );
 	$check( isset( $functional_report['zero_touch'] ) && empty( $functional_report['zero_touch']['promotion_authorized'] ), 'Functional coverage report did not project non-authorizing zero-touch summary.' );
+	$check( isset( $functional_report['evidence_counts'] ) && is_array( $functional_report['evidence_counts'] ), 'Functional coverage report did not expose evidence closure counts.' );
+	$check( ! empty( $functional_report['evidence_projection_identity_match'] ), 'Functional coverage report did not preserve atomic evidence projection identity.' );
+	$check( 64 === strlen( (string) ( $functional_report['evidence_snapshot_identity_sha256'] ?? '' ) ), 'Functional coverage report evidence snapshot identity is missing.' );
+	$check( 64 === strlen( (string) ( $functional_report['evidence_runtime_fingerprint'] ?? '' ) ) || empty( $functional_report['zero_touch']['ready'] ), 'Functional coverage runtime evidence fingerprint is missing for a ready snapshot.' );
+	$check( 64 === strlen( (string) ( $functional_report['evidence_decision_fingerprint'] ?? '' ) ) || empty( $functional_report['zero_touch']['ready'] ), 'Functional coverage decision fingerprint is missing for a ready snapshot.' );
 	$duplicator_functional = null;
 	foreach ( (array) ( $functional_report['items'] ?? array() ) as $functional_item ) {
 		if ( 'duplicator' === (string) ( $functional_item['family'] ?? '' ) ) $duplicator_functional = $functional_item;
