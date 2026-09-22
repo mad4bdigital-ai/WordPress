@@ -71,6 +71,13 @@ jobs:
           grep -Fq "'request_headers_returned' => false" "$bridge"
           grep -Fq "'request_bodies_returned' => false" "$bridge"
           grep -Fq "'response_bodies_returned' => false" "$bridge"
+          grep -Fq "add_filter( 'qm/outputter/html', array( __CLASS__, 'capture_processed_http_profile' ), PHP_INT_MAX, 2 )" "$bridge"
+          grep -Fq "public static function capture_processed_http_profile" "$bridge"
+          grep -Fq "'sample_id' => self::request_sample_id()" "$bridge"
+          if grep -Eq 'QM_Collectors::init\(\).*process|->process\(\).*QM_Collectors' "$bridge"; then
+            echo 'MAD4B must never force Query Monitor collector processing.' >&2
+            exit 1
+          fi
           grep -Fq "'conflicting_db_dropin'" "$bridge"
           grep -Fq "@symlink( \$source, \$dropin )" "$bridge"
           grep -Fq "ATTRIBUTION_LOADER_MARKER" "$bridge"
