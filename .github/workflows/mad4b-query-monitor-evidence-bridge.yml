@@ -6,6 +6,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-evidence-bridge-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-db-attribution-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/query-monitor-http-api-profile-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-query-monitor-evidence-bridge.yml'
   workflow_dispatch:
