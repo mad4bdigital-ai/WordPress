@@ -136,6 +136,9 @@ def runtime_evidence_fingerprint(runtime):
         routes.append({
             "route": str(row.get("route", "")),
             "methods": sorted({str(method).upper() for method in row.get("methods", [])}),
+            "get_permission_callbacks": sorted({str(item) for item in row.get("get_permission_callbacks", [])}),
+            "get_permission_missing": bool(row.get("get_permission_missing")),
+            "get_permission_public": bool(row.get("get_permission_public")),
         })
     routes.sort(key=lambda row: row["route"])
 
@@ -166,6 +169,18 @@ def runtime_evidence_fingerprint(runtime):
 
 def route_methods(runtime):
     return {row.get("route", ""): set(row.get("methods", [])) for row in runtime.get("rest_routes", [])}
+
+def route_security(runtime):
+    out = {}
+    for row in runtime.get("rest_routes", []) or []:
+        if not isinstance(row, dict) or not row.get("route"):
+            continue
+        out[str(row.get("route", ""))] = {
+            "callbacks": sorted({str(item) for item in row.get("get_permission_callbacks", [])}),
+            "missing": bool(row.get("get_permission_missing")),
+            "public": bool(row.get("get_permission_public")),
+        }
+    return out
 
 def decision(family, state, reason, mode, **extra):
     out = {
@@ -216,6 +231,7 @@ def main():
         raise SystemExit("runtime diagnostic safety declaration mismatch")
 
     routes = route_methods(runtime)
+    route_permissions = route_security(runtime)
     options = runtime.get("option_presence", {})
     repo_families = repo.get("families", {})
     decisions = []
@@ -245,22 +261,34 @@ def main():
         if mode == "bounded_read_routes":
             required = list(rule.get("required_get_routes", []))
             missing = sorted(route for route in required if "GET" not in routes.get(route, set()))
+            require_non_public = rule.get("require_non_public_permissions") is True
+            insecure = []
+            permission_evidence = {}
+            for route in required:
+                if route in missing:
+                    continue
+                security = route_permissions.get(route, {"callbacks": [], "missing": True, "public": False})
+                permission_evidence[route] = security
+                if require_non_public and (security.get("missing") or security.get("public") or not security.get("callbacks")):
+                    insecure.append(route)
             extra = dict(base)
             extra.update({
                 "missing_get_routes": missing,
+                "insecure_get_routes": sorted(insecure),
+                "route_permission_evidence": dict(sorted(permission_evidence.items())),
                 "safe_now": list(rule.get("safe_now", [])),
                 "blocked": list(rule.get("blocked", [])),
             })
-            if len(matches) == len(rows) and not missing:
-                decisions.append(decision(family, "read_contract_candidate", "exact_runtime_tree_and_required_get_routes_verified", mode, **extra))
+            if len(matches) == len(rows) and not missing and not insecure:
+                decisions.append(decision(family, "read_contract_candidate", "exact_runtime_tree_required_get_routes_and_permissions_verified", mode, **extra))
             else:
-                decisions.append(decision(family, "contract_discovery_required", "exact_runtime_tree_or_required_get_routes_unverified", mode, **extra))
+                decisions.append(decision(family, "contract_discovery_required", "exact_runtime_tree_routes_or_permission_boundary_unverified", mode, **extra))
 
         elif mode == "redacted_status":
             secret_keys = list(rule.get("redacted_secret_option_keys", []))
             status_keys = list(rule.get("required_status_option_keys", []))
             secret_ok = bool(secret_keys) and all(options.get(key, {}).get("redacted") is True for key in secret_keys)
-            status_ok = bool(status_keys) and all(key in options for key in status_keys)
+            status_ok = bool(status_keys) and all(key in options and options.get(key, {}).get("exists") is True for key in status_keys)
             extra = dict(base)
             extra.update({
                 "secret_redaction_verified": secret_ok,
