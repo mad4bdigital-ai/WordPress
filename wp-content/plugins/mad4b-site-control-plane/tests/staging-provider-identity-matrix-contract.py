@@ -14,7 +14,7 @@ def matches(plugin_file, row):
             out.append(('prefix', prefix))
     for base in row.get('versioned_match', []) or []:
         base = str(base).strip('/').replace('\\\\', '/')
-        if base and re.match(r'^' + re.escape(base) + r'-v\d+(?:\.\d+)*/', plugin_file):
+        if base and re.match(r'^' + re.escape(base) + r'-v[0-9]+(?:\.[0-9]+)*/', plugin_file):
             out.append(('versioned', base))
     return out
 
