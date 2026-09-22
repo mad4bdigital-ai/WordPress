@@ -16,6 +16,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	const CONTRACT = 'mad4b.query-monitor-collector-bridge.v1';
 	const ATTRIBUTION_CONTRACT = 'mad4b.query-monitor-db-attribution.v1';
 	const ATTRIBUTION_OPTION = 'mad4b_scp_qm_db_attribution_v1';
+	const ATTRIBUTION_LOADER_MARKER = 'MAD4B bounded Query Monitor db.php loader v1';
 	const COLLECTOR_ID = 'doing_it_wrong';
 
 	private static $booted = false;
@@ -47,30 +48,42 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$source = defined( 'WP_PLUGIN_DIR' ) ? trailingslashit( WP_PLUGIN_DIR ) . 'query-monitor/wp-content/db.php' : '';
 		$dropin_exists = '' !== $dropin && ( file_exists( $dropin ) || is_link( $dropin ) );
 		$source_exists = '' !== $source && is_readable( $source );
+		$ownership = 'none';
 		$owned = false;
 		if ( $dropin_exists && $source_exists ) {
 			$dropin_real = realpath( $dropin );
 			$source_real = realpath( $source );
-			$owned = false !== $dropin_real && false !== $source_real && hash_equals( wp_normalize_path( $source_real ), wp_normalize_path( $dropin_real ) );
+			if ( false !== $dropin_real && false !== $source_real && hash_equals( wp_normalize_path( $source_real ), wp_normalize_path( $dropin_real ) ) ) {
+				$owned = true;
+				$ownership = 'query_monitor_symlink';
+			}
 		}
 		if ( $dropin_exists && ! $owned && is_readable( $dropin ) ) {
 			$prefix = file_get_contents( $dropin, false, null, 0, 32768 );
-			$owned = is_string( $prefix ) && false !== strpos( $prefix, 'QM_DB' ) && false !== strpos( $prefix, 'Query Monitor' );
+			if ( is_string( $prefix ) && false !== strpos( $prefix, self::ATTRIBUTION_LOADER_MARKER ) ) {
+				$owned = true;
+				$ownership = 'mad4b_bounded_loader';
+			} elseif ( is_string( $prefix ) && false !== strpos( $prefix, 'QM_DB' ) && false !== strpos( $prefix, 'Query Monitor' ) ) {
+				$owned = true;
+				$ownership = 'query_monitor_native_dropin';
+			}
 		}
 		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )
 			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
 			: ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$file_mods_allowed = ! ( defined( 'DISALLOW_FILE_MODS' ) && DISALLOW_FILE_MODS );
 		$symlink_available = function_exists( 'symlink' );
+		$loader_available = function_exists( 'fopen' ) && function_exists( 'fwrite' );
 		$writable = defined( 'WP_CONTENT_DIR' ) && is_dir( WP_CONTENT_DIR ) && is_writable( WP_CONTENT_DIR );
 		$ready = class_exists( 'QM_DB', false );
+		$bootstrap_available = $symlink_available || $loader_available;
 		$state = $ready ? 'ready'
 			: ( $dropin_exists && ! $owned ? 'conflicting_db_dropin'
 			: ( $dropin_exists && $owned ? 'query_monitor_dropin_reload_required'
 			: ( ! defined( 'QM_VERSION' ) ? 'query_monitor_inactive'
 			: ( ! $source_exists ? 'query_monitor_dropin_source_missing'
 			: ( ! $file_mods_allowed ? 'file_modifications_disabled'
-			: ( ! $symlink_available ? 'symlink_unavailable'
+			: ( ! $bootstrap_available ? 'attribution_bootstrap_unavailable'
 			: ( ! $writable ? 'wp_content_not_writable' : 'enablement_available' ) ) ) ) ) ) );
 		return array(
 			'contract' => self::ATTRIBUTION_CONTRACT,
@@ -81,12 +94,15 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			'qm_db_active' => $ready,
 			'dropin_exists' => $dropin_exists,
 			'dropin_owned_by_query_monitor' => $owned,
+			'dropin_ownership' => $ownership,
 			'dropin_conflict' => $dropin_exists && ! $owned,
 			'dropin_source_exists' => $source_exists,
 			'file_modifications_allowed' => $file_mods_allowed,
 			'symlink_available' => $symlink_available,
+			'bounded_loader_available' => $loader_available,
+			'bootstrap_available' => $bootstrap_available,
 			'wp_content_writable' => $writable,
-			'safe_to_enable' => 'staging' === $environment && defined( 'QM_VERSION' ) && $source_exists && ! $dropin_exists && $file_mods_allowed && $symlink_available && $writable,
+			'safe_to_enable' => 'staging' === $environment && defined( 'QM_VERSION' ) && $source_exists && ! $dropin_exists && $file_mods_allowed && $bootstrap_available && $writable,
 			'ready' => $ready,
 			'state' => $state,
 			'caller_component_trace_expected' => $ready,
@@ -102,14 +118,40 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$dropin = trailingslashit( WP_CONTENT_DIR ) . 'db.php';
 		$source = trailingslashit( WP_PLUGIN_DIR ) . 'query-monitor/wp-content/db.php';
 		if ( file_exists( $dropin ) || is_link( $dropin ) || ! is_readable( $source ) ) return self::db_attribution_status();
-		$created = @symlink( $source, $dropin ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded best-effort Staging bootstrap.
+
+		$created = false;
+		$method = '';
+		$error = '';
+		if ( ! empty( $status['symlink_available'] ) ) {
+			$created = @symlink( $source, $dropin ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded best-effort Staging bootstrap.
+			if ( $created ) $method = 'symlink';
+		}
+		if ( ! $created && ! empty( $status['bounded_loader_available'] ) && ! file_exists( $dropin ) && ! is_link( $dropin ) ) {
+			$loader = "<?php\n/* " . self::ATTRIBUTION_LOADER_MARKER . " */\n"
+				. "\$mad4b_qm_dropin = __DIR__ . '/plugins/query-monitor/wp-content/db.php';\n"
+				. "if ( is_readable( \$mad4b_qm_dropin ) ) { require \$mad4b_qm_dropin; }\n";
+			$handle = @fopen( $dropin, 'x' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- exclusive create guarantees no existing db.php is replaced.
+			if ( false !== $handle ) {
+				$bytes = @fwrite( $handle, $loader ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded loader content only.
+				@fclose( $handle );
+				$created = is_int( $bytes ) && strlen( $loader ) === $bytes;
+				$method = $created ? 'bounded_loader' : '';
+				if ( ! $created && file_exists( $dropin ) ) @unlink( $dropin ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- remove only the incomplete file created by this call.
+			} else {
+				$error = 'exclusive_loader_create_failed';
+			}
+		}
+
 		clearstatcache( true, $dropin );
 		$record = array(
-			'contract' => 'mad4b.query-monitor-db-attribution-bootstrap.v1',
+			'contract' => 'mad4b.query-monitor-db-attribution-bootstrap.v2',
 			'environment' => 'staging',
 			'created' => (bool) $created,
+			'method' => $method,
+			'error' => $error,
 			'created_at' => gmdate( 'c' ),
 			'reload_required' => (bool) $created,
+			'foreign_dropin_replaced' => false,
 			'production_changed' => false,
 		);
 		update_option( self::ATTRIBUTION_OPTION, $record, false );
