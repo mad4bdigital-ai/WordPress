@@ -8,6 +8,7 @@ artifacts = json.loads((ROOT/'config/repository-plugin-artifacts.json').read_tex
 
 families = {row.get('id'): row for row in catalog.get('families', []) if isinstance(row, dict)}
 manifest = artifacts.get('families', {})
+family_adapter_src = (ROOT/'includes/adapters/class-mad4b-scp-repository-family-adapter.php').read_text('utf-8')
 
 support_rows = [row for row in catalog.get('families', []) if isinstance(row, dict)]
 support_ids = {row.get('id') for row in support_rows}
@@ -40,12 +41,18 @@ for family_id, archive in expected.items():
     assert row.get('functional_evidence_requirements'), f'evidence requirements missing: {family_id}'
     assert row.get('functional_safe_now') == ['plugin_status_read'], f'safe-now scope drift: {family_id}'
     assert row.get('functional_prohibited_until_certified'), f'blocked scope missing: {family_id}'
+    if family_id == 'custom-mega-menu':
+        assert row.get('match') == ['custom-mega-menu/'], 'normalized runtime slug alias drifted'
+        assert row.get('versioned_match') == ['custom-mega-menu'], 'numeric versioned runtime family matcher missing'
 
     descriptor = manifest.get(family_id)
     assert isinstance(descriptor, dict), f'artifact family missing: {family_id}'
     assert descriptor.get('support_mode') == 'family_read', f'support mode drift: {family_id}'
     assert descriptor.get('mutation_scope') == 'none', f'artifact mutation scope opened: {family_id}'
     assert descriptor.get('artifacts') == [archive], f'artifact mapping is not one-provider-one-family: {family_id}'
+
+assert "preg_quote( $base, '/' ) . '-v\\\\d+(?:\\\\.\\\\d+)*\\\\/'" in family_adapter_src, 'versioned runtime-directory normalization missing'
+assert "! preg_match( '/-v\\\\d+(?:\\\\.\\\\d+)*$/'" in family_adapter_src, 'versioned archive must not double-normalize an already versioned base'
 
 for removed in ('content-utilities', 'analytics'):
     assert removed not in families, f'ambiguous support family restored: {removed}'

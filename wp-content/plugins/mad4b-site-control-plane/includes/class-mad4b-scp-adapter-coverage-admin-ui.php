@@ -88,10 +88,18 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		$functional_blocked = isset( $functional_counts['safety_blocked'] ) ? (int) $functional_counts['safety_blocked'] : 0;
 		$contract_discovery = isset( $functional_counts['contract_discovery_required'] ) ? (int) $functional_counts['contract_discovery_required'] : 0;
 		$functional_review = $contract_discovery + ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
+		$runtime_only_families = array();
+		foreach ( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array() as $plugin ) {
+			if ( empty( $plugin['active'] ) || 'runtime_match_only' !== ( isset( $plugin['adapter_runtime_source'] ) ? sanitize_key( (string) $plugin['adapter_runtime_source'] ) : '' ) ) continue;
+			$family = isset( $plugin['family'] ) ? sanitize_key( (string) $plugin['family'] ) : '';
+			if ( '' !== $family ) $runtime_only_families[ $family ] = true;
+		}
+		$runtime_only_family_count = count( $runtime_only_families );
 
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Installed', 'value' => isset( $counts['installed'] ) ? (string) $counts['installed'] : '0', 'state' => ! empty( $counts['installed'] ) ? 'complete' : 'pending', 'help' => 'Plugins included in runtime discovery.' ),
-			array( 'label' => 'Supported', 'value' => (string) $supported, 'state' => 'complete', 'help' => 'Reversible, governed or read-only coverage.' ),
+			array( 'label' => 'Adapter covered', 'value' => (string) $supported, 'state' => 'complete', 'help' => 'A governed adapter surface exists. This does not by itself mean functional or execution certification is complete.' ),
+			array( 'label' => 'Runtime-only families', 'value' => (string) $runtime_only_family_count, 'state' => 0 === $runtime_only_family_count ? 'complete' : 'attention', 'help' => 'Known runtime families with read-only identity/status coverage but no packaged repository artifact.' ),
 			array( 'label' => 'Needs adapter', 'value' => (string) $needs_adapter, 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'help' => 'No silent fallback to write authority.' ),
 			array( 'label' => 'Needs certification', 'value' => (string) $needs_cert, 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'help' => 'Adapter exists but exact provider proof is missing.' ),
 			array( 'label' => 'Runtime blocked', 'value' => (string) $side_channel, 'state' => 0 === $side_channel ? 'complete' : 'blocked', 'help' => 'Parallel MCP/write-plane risk remains.' ),
@@ -173,10 +181,12 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			$f = $item['functional_coverage'];
 			$state = isset( $f['state'] ) ? sanitize_key( (string) $f['state'] ) : '';
 			if ( in_array( $state, array( 'functional_ready', 'inactive' ), true ) ) continue;
-			$key = ! empty( $item['family'] ) ? sanitize_key( (string) $item['family'] ) : sanitize_key( (string) ( isset( $item['plugin_file'] ) ? $item['plugin_file'] : '' ) );
+			$key = ! empty( $item['functional_family_key'] ) ? sanitize_key( (string) $item['functional_family_key'] ) : ( ! empty( $item['family'] ) && 'unknown' !== sanitize_key( (string) $item['family'] ) ? sanitize_key( (string) $item['family'] ) : sanitize_key( 'unknown-' . (string) ( isset( $item['slug'] ) ? $item['slug'] : '' ) ) );
 			if ( '' === $key ) $key = 'unknown-provider';
 			$member = trim( (string) ( isset( $item['name'] ) ? $item['name'] : '' ) );
 			if ( '' === $member ) $member = isset( $item['plugin_file'] ) ? (string) $item['plugin_file'] : $key;
+			$member_version = trim( (string) ( isset( $item['version'] ) ? $item['version'] : '' ) );
+			if ( '' !== $member_version ) $member .= ' v' . $member_version;
 			if ( ! isset( $groups[ $key ] ) ) {
 				$groups[ $key ] = array( 'item'=>$item, 'functional'=>$f, 'state'=>$state, 'members'=>array( $member ) );
 				continue;
@@ -207,12 +217,18 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			return strcmp( $left_family, $right_family );
 		} );
 
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Evidence needed</th><th>Safe now</th><th>Blocked scope</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>Source</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Evidence needed</th><th>Safe now</th><th>Blocked scope</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
 		foreach ( $groups as $family => $group ) {
 			$item = $group['item']; $f = $group['functional']; $members = array_values( array_unique( $group['members'] ) );
 			$visible = array_slice( $members, 0, 4 ); $member_text = implode( ' · ', $visible );
 			if ( count( $members ) > count( $visible ) ) $member_text .= ' · +' . ( count( $members ) - count( $visible ) ) . ' more';
-			echo '<tr><td><strong>' . esc_html( $family ) . '</strong></td><td>' . esc_html( $member_text ) . '</td><td><strong>' . esc_html( $group['state'] ) . '</strong></td>';
+			$runtime_source = isset( $item['adapter_runtime_source'] ) ? sanitize_key( (string) $item['adapter_runtime_source'] ) : '';
+			$artifact_count = isset( $item['repository_artifact_count'] ) ? max( 0, (int) $item['repository_artifact_count'] ) : 0;
+			if ( 'runtime_match_only' === $runtime_source ) $source = 'runtime-only';
+			elseif ( 'repository_artifact_plus_runtime_match' === $runtime_source || $artifact_count > 0 ) $source = 'repository-backed';
+			elseif ( ! empty( $item['adapter_registered'] ) ) $source = 'specialized';
+			else $source = 'unregistered';
+			echo '<tr><td><strong>' . esc_html( $family ) . '</strong></td><td>' . esc_html( $member_text ) . '</td><td><code>' . esc_html( $source ) . '</code></td><td><strong>' . esc_html( $group['state'] ) . '</strong></td>';
 			echo '<td>' . esc_html( isset( $f['read_ability_count'] ) ? (string) $f['read_ability_count'] : '0' ) . '</td><td>' . esc_html( isset( $f['write_ability_count'] ) ? (string) $f['write_ability_count'] : '0' ) . '</td>';
 			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td>';
 			echo '<td>' . esc_html( ! empty( $f['evidence_requirements'] ) && is_array( $f['evidence_requirements'] ) ? implode( ', ', $f['evidence_requirements'] ) : '' ) . '</td>';
@@ -220,7 +236,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			echo '<td><code>' . esc_html( ! empty( $f['prohibited_until_certified'] ) && is_array( $f['prohibited_until_certified'] ) ? implode( ', ', $f['prohibited_until_certified'] ) : '' ) . '</code></td>';
 			echo '<td><code>' . esc_html( ! empty( $f['blockers'] ) && is_array( $f['blockers'] ) ? implode( ', ', $f['blockers'] ) : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
 		}
-		if ( empty( $groups ) ) echo '<tr><td colspan="12">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
+		if ( empty( $groups ) ) echo '<tr><td colspan="13">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
 		echo '</tbody></table></div>';
 	}
 
