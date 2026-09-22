@@ -59,6 +59,7 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-contract-discovery-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-family-decomposition-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/external-runtime-family-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-provider-identity-matrix-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/form-provider-read-adapters-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-candidate-attestation-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/adapter-discovery-reversibility-contract.py \
