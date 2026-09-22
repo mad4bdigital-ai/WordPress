@@ -14,6 +14,7 @@ on:
       - 'wp-content/plugins/seo-by-rank-math.zip'
       - 'wp-content/plugins/seo-by-rank-math-pro.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
   push:
     branches:
@@ -30,6 +31,7 @@ on:
       - 'wp-content/plugins/seo-by-rank-math.zip'
       - 'wp-content/plugins/seo-by-rank-math-pro.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
   workflow_dispatch:
 
@@ -135,13 +137,24 @@ jobs:
           out='wp-content/plugins/mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json'
           python3 tools/capture-functional-gap-contract-evidence.py "$out"
           python3 - "$out" <<'PY'
-          import json, os, sys
+          import hashlib, json, os, sys
+          from pathlib import Path
           data=json.load(open(sys.argv[1],encoding='utf-8'))
+          policy_path=Path('wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json')
+          policy_raw=policy_path.read_bytes()
+          policy=json.loads(policy_raw)
+          expected={
+              family for family,row in policy.get('families',{}).items()
+              if row.get('repository_evidence') is True
+          }
           if data.get('contract')!='mad4b.functional-gap-contract-evidence.v1':
               raise SystemExit('functional-gap evidence contract mismatch')
           if data.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
               raise SystemExit('functional-gap evidence exact source mismatch')
-          expected={'bulk-taxonomy-editor','custom-mega-menu','google-tag-manager','meta-catalog-feed-mapper','wpl-client','rank-math'}
+          if data.get('policy_contract')!=policy.get('contract'):
+              raise SystemExit('functional-gap evidence policy contract mismatch')
+          if data.get('policy_sha256')!=hashlib.sha256(policy_raw).hexdigest():
+              raise SystemExit('functional-gap evidence policy SHA mismatch')
           if set(data.get('families',{}))!=expected:
               raise SystemExit('functional-gap evidence family set mismatch')
           for family,row in data['families'].items():
@@ -344,6 +357,7 @@ jobs:
                   'empty_tenant_presets': True,
                   'explicit_site_profile_enrollment_required': True,
                   'functional_gap_repository_evidence_embedded': True,
+                  'functional_gap_policy_bound_to_build_provenance': True,
                   'functional_gap_runtime_evidence_requires_no_shell': True,
                   'all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write': True,
                   'provider_uncertified_write_actions_excluded_from_governed_write_surfaces': True,
@@ -418,6 +432,7 @@ jobs:
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/site-profile-presets.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/functional-gap-policy.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
@@ -468,6 +483,18 @@ jobs:
               raise SystemExit('provenance build fingerprint mismatch')
           if (stage / 'BUILD-FINGERPRINT.txt').read_text().strip() != fingerprint:
               raise SystemExit('outer build fingerprint mismatch')
+          rows={entry['path']:entry for entry in p.get('package_files', [])}
+          for required in ('config/functional-gap-policy.json','config/functional-gap-contract-evidence.generated.json'):
+              if required not in rows:
+                  raise SystemExit(f'zero-touch provenance row missing: {required}')
+          policy_raw=(root/'config/functional-gap-policy.json').read_bytes()
+          evidence=json.loads((root/'config/functional-gap-contract-evidence.generated.json').read_text(encoding='utf-8'))
+          policy_sha=hashlib.sha256(policy_raw).hexdigest()
+          if evidence.get('policy_contract')!='mad4b.functional-gap-policy.v1':
+              raise SystemExit('embedded evidence policy contract mismatch')
+          if evidence.get('policy_sha256')!=policy_sha:
+              raise SystemExit('embedded evidence policy SHA mismatch')
+          print('provenance-bound zero-touch policy/evidence: PASS')
           print('provenance-bound General Distribution kit: PASS')
           PY
 
@@ -482,6 +509,7 @@ jobs:
           grep -Fq '"empty_tenant_presets": true' "$stage/install-manifest.json"
           grep -Fq '"explicit_site_profile_enrollment_required": true' "$stage/install-manifest.json"
           grep -Fq '"functional_gap_repository_evidence_embedded": true' "$stage/install-manifest.json"
+          grep -Fq '"functional_gap_policy_bound_to_build_provenance": true' "$stage/install-manifest.json"
           grep -Fq '"functional_gap_runtime_evidence_requires_no_shell": true' "$stage/install-manifest.json"
           grep -Fq '"all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write": true' "$stage/install-manifest.json"
           grep -Fq '"provider_uncertified_write_actions_excluded_from_governed_write_surfaces": true' "$stage/install-manifest.json"
