@@ -9,6 +9,8 @@ policy = json.loads((ROOT / 'config/functional-gap-policy.json').read_text('utf-
 
 if policy.get('contract') != 'mad4b.functional-gap-policy.v1':
     raise SystemExit('functional-gap policy contract mismatch')
+if policy.get('default_mutation') != 'deny' or policy.get('promotion_authorized') is not False:
+    raise SystemExit('functional-gap policy weakened mutation/promotion defaults')
 
 import importlib.util
 spec = importlib.util.spec_from_file_location('mad4b_functional_gap_eval', repo / 'tools/evaluate-functional-gap-contract-promotion.py')
@@ -63,6 +65,8 @@ for family, row in families.items():
     if mode == 'bounded_read_routes':
         if not row.get('required_get_routes') or not row.get('safe_now') or not row.get('blocked'):
             raise SystemExit(f'{family}: bounded read policy is incomplete')
+        if row.get('require_non_public_permissions') is not True:
+            raise SystemExit(f'{family}: bounded read permission boundary is not fail-closed')
     if mode == 'redacted_status':
         if not row.get('redacted_secret_option_keys') or not row.get('required_status_option_keys'):
             raise SystemExit(f'{family}: redacted status policy is incomplete')
@@ -92,6 +96,12 @@ required = [
     'premium_semantic',
     'composite_behavioral',
     'read_contract_candidate',
+    'route_security',
+    'get_permission_callbacks',
+    'get_permission_missing',
+    'get_permission_public',
+    'insecure_get_routes',
+    'exact_runtime_tree_required_get_routes_and_permissions_verified',
     'redacted_read_contract_candidate',
     'runtime_alignment_required',
     'semantic_attestation_required',
@@ -99,6 +109,7 @@ required = [
     'runtime_evidence_unstable',
     '"promotion_authorized": False',
     '"production_mutation": False',
+    'options.get(key, {}).get("exists") is True',
 ]
 for marker in required:
     if marker not in script:
