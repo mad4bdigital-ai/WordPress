@@ -51,10 +51,10 @@ final class MAD4B_SCP_Repository_Artifact_Catalog {
 		);
 	}
 
-	public static function runtime_plugins_for_family( $family_id ) {
+	public static function runtime_plugins_for_family( $family_id, array $runtime_match = array() ) {
 		$families = self::families();
 		$descriptor = isset( $families[ $family_id ] ) && is_array( $families[ $family_id ] ) ? $families[ $family_id ] : array();
-		if ( ! $descriptor ) return array();
+		if ( ! $descriptor && empty( $runtime_match ) ) return array();
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
 		if ( ! is_array( $plugins ) ) $plugins = array();
@@ -83,6 +83,42 @@ final class MAD4B_SCP_Repository_Artifact_Catalog {
 						'repository_artifact' => (string) $artifact,
 					);
 				}
+			}
+		}
+		foreach ( self::runtime_plugins_for_matches( $runtime_match ) as $plugin ) {
+			if ( empty( $plugin['plugin_file'] ) ) continue;
+			$file = (string) $plugin['plugin_file'];
+			if ( isset( $matches[ $file ] ) ) {
+				$matches[ $file ]['runtime_match'] = isset( $plugin['runtime_match'] ) ? $plugin['runtime_match'] : '';
+				continue;
+			}
+			$matches[ $file ] = $plugin;
+		}
+		ksort( $matches, SORT_STRING );
+		return array_values( $matches );
+	}
+
+	public static function runtime_plugins_for_matches( array $patterns ) {
+		if ( empty( $patterns ) ) return array();
+		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$plugins = get_plugins();
+		if ( ! is_array( $plugins ) ) $plugins = array();
+		$matches = array();
+		foreach ( $plugins as $plugin_file => $headers ) {
+			$normalized = strtolower( ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' ) );
+			foreach ( $patterns as $pattern ) {
+				$pattern = strtolower( ltrim( str_replace( '\\', '/', sanitize_text_field( (string) $pattern ) ), '/' ) );
+				if ( '' === $pattern || 0 !== strpos( $normalized, $pattern ) ) continue;
+				$matches[ $plugin_file ] = array(
+					'plugin_file' => (string) $plugin_file,
+					'name' => sanitize_text_field( (string) ( $headers['Name'] ?? '' ) ),
+					'version' => sanitize_text_field( (string) ( $headers['Version'] ?? '' ) ),
+					'active' => function_exists( 'is_plugin_active' ) ? is_plugin_active( $plugin_file ) : false,
+					'network_active' => function_exists( 'is_plugin_active_for_network' ) ? is_plugin_active_for_network( $plugin_file ) : false,
+					'repository_artifact' => '',
+					'runtime_match' => $pattern,
+				);
+				break;
 			}
 		}
 		ksort( $matches, SORT_STRING );
@@ -116,6 +152,10 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 		$this->family_id = sanitize_key( (string) $family_id );
 		$this->descriptor = $descriptor;
 	}
+	private function runtime_plugins() {
+		$runtime_match = isset( $this->descriptor['runtime_match'] ) && is_array( $this->descriptor['runtime_match'] ) ? $this->descriptor['runtime_match'] : array();
+		return MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family( $this->family_id, $runtime_match );
+	}
 	public function id() { return $this->family_id; }
 	public function label() {
 		$labels = array(
@@ -126,12 +166,12 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 		);
 		return isset( $labels[ $this->family_id ] ) ? $labels[ $this->family_id ] : ucwords( str_replace( '-', ' ', $this->family_id ) );
 	}
-	public function is_available() { return ! empty( MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family( $this->family_id ) ); }
+	public function is_available() { return ! empty( $this->runtime_plugins() ); }
 	public function ability_names() { return array( 'read'=>array( $this->family_id . '/status' ), 'content'=>array(), 'admin'=>array() ); }
 	protected function mutation_requires_certification() { return false; }
 	protected function provider_certification( $available ) { return null; }
 	protected function detect_plugin_version() {
-		$plugins = MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family( $this->family_id );
+		$plugins = $this->runtime_plugins();
 		return ! empty( $plugins[0]['version'] ) ? (string) $plugins[0]['version'] : '';
 	}
 	public function register_abilities() {
@@ -139,16 +179,18 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 	public function family_status() { return $this->status(); }
 	public function status() {
-		$runtime = MAD4B_SCP_Repository_Artifact_Catalog::runtime_plugins_for_family( $this->family_id );
+		$runtime = $this->runtime_plugins();
 		$active = 0; foreach ( $runtime as $plugin ) if ( ! empty( $plugin['active'] ) || ! empty( $plugin['network_active'] ) ) ++$active;
 		return array(
 			'id'=>$this->family_id,'label'=>$this->label(),'available'=>!empty($runtime),'version'=>$this->detect_plugin_version(),'abilities'=>$this->ability_names(),
-			'contract'=>'mad4b.repository-family-read-adapter.v1','authority_mode'=>'read_only_non_authorizing','mutation_master_enabled'=>false,
+			'contract'=>!empty($this->descriptor['artifacts'])?'mad4b.repository-family-read-adapter.v1':'mad4b.runtime-family-read-adapter.v1','authority_mode'=>'read_only_non_authorizing','mutation_master_enabled'=>false,
 			'mutation_requires_certification'=>false,'mutation_exposed'=>false,'reversible_contracts'=>array(),
 			'support_mode'=>sanitize_key((string)($this->descriptor['support_mode']??'inventory_read')),
 			'mutation_scope'=>sanitize_key((string)($this->descriptor['mutation_scope']??'none')),
 			'repository_artifacts'=>array_values((array)($this->descriptor['artifacts']??array())),
 			'repository_artifact_count'=>count((array)($this->descriptor['artifacts']??array())),
+			'runtime_match'=>array_values((array)($this->descriptor['runtime_match']??array())),
+			'runtime_source'=>!empty($this->descriptor['artifacts'])?'repository_artifact_plus_runtime_match':'runtime_match_only',
 			'runtime_plugins'=>$runtime,'runtime_plugin_count'=>count($runtime),'active_runtime_plugin_count'=>$active,
 		);
 	}
@@ -202,9 +244,45 @@ final class MAD4B_SCP_Repository_Plugins_Adapter extends MAD4B_SCP_Adapter_Base 
 add_action( 'mad4b_scp_register_adapters', static function ( $registry ) {
 	if ( ! is_object( $registry ) || ! method_exists( $registry, 'register' ) || ! method_exists( $registry, 'get' ) ) return;
 	if ( ! $registry->get( 'repository-plugins' ) ) $registry->register( new MAD4B_SCP_Repository_Plugins_Adapter() );
+
+	$support_catalog = class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::catalog() : array();
+	$support_rows = isset( $support_catalog['families'] ) && is_array( $support_catalog['families'] ) ? $support_catalog['families'] : array();
+	$support_by_id = array();
+	foreach ( $support_rows as $row ) {
+		if ( ! is_array( $row ) || empty( $row['id'] ) ) continue;
+		$support_by_id[ sanitize_key( (string) $row['id'] ) ] = $row;
+	}
+
 	foreach ( MAD4B_SCP_Repository_Artifact_Catalog::families() as $family_id => $descriptor ) {
 		$family_id = sanitize_key( (string) $family_id );
 		if ( '' === $family_id || $registry->get( $family_id ) ) continue;
-		$registry->register( new MAD4B_SCP_Repository_Family_Adapter( $family_id, is_array( $descriptor ) ? $descriptor : array() ) );
+		$descriptor = is_array( $descriptor ) ? $descriptor : array();
+		if ( isset( $support_by_id[ $family_id ]['match'] ) && is_array( $support_by_id[ $family_id ]['match'] ) ) {
+			$descriptor['runtime_match'] = array_values( $support_by_id[ $family_id ]['match'] );
+		}
+		$registry->register( new MAD4B_SCP_Repository_Family_Adapter( $family_id, $descriptor ) );
+	}
+
+	// Runtime-only providers must not require a fake repository artifact merely to
+	// receive a read-only contract-discovery adapter. Only explicitly cataloged,
+	// self-named, non-mutating families are eligible for this generic surface.
+	foreach ( $support_rows as $row ) {
+		if ( ! is_array( $row ) ) continue;
+		$family_id = sanitize_key( (string) ( $row['id'] ?? '' ) );
+		$adapter_id = sanitize_key( (string) ( $row['adapter_id'] ?? '' ) );
+		$mode = sanitize_key( (string) ( $row['functional_mode'] ?? '' ) );
+		$strategy = sanitize_key( (string) ( $row['strategy'] ?? '' ) );
+		$mutation_scope = sanitize_key( (string) ( $row['mutation_scope'] ?? '' ) );
+		if ( '' === $family_id || $family_id !== $adapter_id || $registry->get( $adapter_id ) ) continue;
+		if ( 'registered_adapter' !== $strategy || 'none_read_only' !== $mutation_scope ) continue;
+		if ( ! in_array( $mode, array( 'contract_discovery', 'intentionally_restricted' ), true ) ) continue;
+		$runtime_match = isset( $row['match'] ) && is_array( $row['match'] ) ? array_values( array_filter( array_map( 'strval', $row['match'] ) ) ) : array();
+		if ( empty( $runtime_match ) ) continue;
+		$registry->register( new MAD4B_SCP_Repository_Family_Adapter( $family_id, array(
+			'support_mode' => 'runtime_family_read',
+			'mutation_scope' => 'none',
+			'artifacts' => array(),
+			'runtime_match' => $runtime_match,
+		) ) );
 	}
 }, 30 );
