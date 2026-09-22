@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * pre-existing grants except grants created by the same failed invocation.
  */
 final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
-	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v1';
+	const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v2';
 	const ABILITY = 'mad4b/staging-write-grant-reconcile';
 	const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE GRANTS';
 
