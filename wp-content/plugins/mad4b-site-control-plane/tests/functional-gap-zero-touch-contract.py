@@ -94,6 +94,10 @@ for marker in [
     "double_pass_drift_confirmation",
     "runtime_identity_captured",
     "$repeat_on_mismatch = ! in_array( $mode, array( 'runtime_only','premium_semantic','composite_behavioral' ), true );",
+    "runtime_evidence_fingerprint",
+    "private static function runtime_evidence_fingerprint( array $runtime )",
+    "'runtime_tree_evidence'=>$runtime_tree_evidence",
+    "'runtime_evidence_fingerprint' => (string) $runtime_evidence_fingerprint",
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
@@ -245,5 +249,19 @@ if "array( 'runtime_only','premium_semantic','composite_behavioral' )" not in ru
     raise SystemExit('single-pass optimization escaped its non-authorizing modes')
 if "double_pass_drift_confirmation" not in runtime:
     raise SystemExit('repository-backed drift confirmation lost its second pass')
+
+# Decision identity must include canonical runtime evidence, not only the resulting state.
+if "self::decision_fingerprint( $repository, $policy, $decisions, $runtime_evidence_fingerprint )" not in runtime:
+    raise SystemExit('decision fingerprint is not bound to runtime evidence fingerprint')
+for marker in [
+    "'families' => $families",
+    "'rest_routes' => $routes",
+    "'ajax_hooks' => $ajax",
+    "'option_presence' => $options",
+    "'cron_hooks' => $cron",
+    "'constants' => $constants",
+]:
+    if marker not in runtime:
+        raise SystemExit(f'canonical runtime evidence fingerprint missing input: {marker}')
 
 print('mad4b.functional-gap-zero-touch.contract.v1: PASS')
