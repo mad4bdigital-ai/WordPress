@@ -88,10 +88,18 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		$functional_blocked = isset( $functional_counts['safety_blocked'] ) ? (int) $functional_counts['safety_blocked'] : 0;
 		$contract_discovery = isset( $functional_counts['contract_discovery_required'] ) ? (int) $functional_counts['contract_discovery_required'] : 0;
 		$functional_review = $contract_discovery + ( isset( $functional_counts['status_only_candidate'] ) ? (int) $functional_counts['status_only_candidate'] : 0 ) + ( isset( $functional_counts['adapter_missing'] ) ? (int) $functional_counts['adapter_missing'] : 0 );
+		$runtime_only_families = array();
+		foreach ( isset( $snapshot['plugins'] ) && is_array( $snapshot['plugins'] ) ? $snapshot['plugins'] : array() as $plugin ) {
+			if ( empty( $plugin['active'] ) || 'runtime_match_only' !== ( isset( $plugin['adapter_runtime_source'] ) ? sanitize_key( (string) $plugin['adapter_runtime_source'] ) : '' ) ) continue;
+			$family = isset( $plugin['family'] ) ? sanitize_key( (string) $plugin['family'] ) : '';
+			if ( '' !== $family ) $runtime_only_families[ $family ] = true;
+		}
+		$runtime_only_family_count = count( $runtime_only_families );
 
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Installed', 'value' => isset( $counts['installed'] ) ? (string) $counts['installed'] : '0', 'state' => ! empty( $counts['installed'] ) ? 'complete' : 'pending', 'help' => 'Plugins included in runtime discovery.' ),
-			array( 'label' => 'Supported', 'value' => (string) $supported, 'state' => 'complete', 'help' => 'Reversible, governed or read-only coverage.' ),
+			array( 'label' => 'Adapter covered', 'value' => (string) $supported, 'state' => 'complete', 'help' => 'A governed adapter surface exists. This does not by itself mean functional or execution certification is complete.' ),
+			array( 'label' => 'Runtime-only families', 'value' => (string) $runtime_only_family_count, 'state' => 0 === $runtime_only_family_count ? 'complete' : 'attention', 'help' => 'Known runtime families with read-only identity/status coverage but no packaged repository artifact.' ),
 			array( 'label' => 'Needs adapter', 'value' => (string) $needs_adapter, 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'help' => 'No silent fallback to write authority.' ),
 			array( 'label' => 'Needs certification', 'value' => (string) $needs_cert, 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'help' => 'Adapter exists but exact provider proof is missing.' ),
 			array( 'label' => 'Runtime blocked', 'value' => (string) $side_channel, 'state' => 0 === $side_channel ? 'complete' : 'blocked', 'help' => 'Parallel MCP/write-plane risk remains.' ),
