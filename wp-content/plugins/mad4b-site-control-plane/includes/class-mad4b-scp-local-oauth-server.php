@@ -397,6 +397,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$duplicates = isset( $plan['duplicate_exact_allow_grants_count'] ) ? (int) $plan['duplicate_exact_allow_grants_count'] : 0;
 		$duplicate_items = isset( $plan['duplicate_exact_allow_grants'] ) && is_array( $plan['duplicate_exact_allow_grants'] ) ? array_values( $plan['duplicate_exact_allow_grants'] ) : array();
 		$broad_environment = isset( $plan['broad_environment_grants_count'] ) ? (int) $plan['broad_environment_grants_count'] : 0;
+		$broad_environment_items = isset( $plan['broad_environment_grants'] ) && is_array( $plan['broad_environment_grants'] ) ? array_values( $plan['broad_environment_grants'] ) : array();
 		$write_tool_count = isset( $plan['write_tool_count'] ) ? (int) $plan['write_tool_count'] : count( $runtime );
 		$binding_required = ! empty( $binding['required'] );
 		$binding_match = ! $binding_required || ! empty( $binding['match'] );
@@ -417,6 +418,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! $projection_consistent ) $blocking_conditions[] = array( 'code' => 'authority_projection_inconsistent', 'count' => count( $consistency_violations ), 'items' => $consistency_violations );
 		if ( $missing > 0 ) $blocking_conditions[] = array( 'code' => 'exact_grants_missing', 'count' => $missing, 'items' => array_slice( $missing_items, 0, 20 ) );
 		if ( $stale > 0 ) $blocking_conditions[] = array( 'code' => 'stale_allow_grants', 'count' => $stale, 'items' => array_slice( $stale_items, 0, 20 ) );
+		if ( $broad_environment > 0 ) $blocking_conditions[] = array( 'code' => 'broad_environment_grants', 'count' => $broad_environment, 'items' => array_slice( $broad_environment_items, 0, 20 ) );
 		if ( $duplicates > 0 ) $blocking_conditions[] = array( 'code' => 'duplicate_exact_allow_grants', 'count' => $duplicates, 'items' => array_slice( $duplicate_items, 0, 20 ) );
 		if ( $global_wildcards > 0 ) $blocking_conditions[] = array( 'code' => 'global_registry_wildcard_grants', 'count' => $global_wildcards, 'current_agent_count' => $current_agent_wildcards );
 		if ( ! $binding_match ) $blocking_conditions[] = array(
