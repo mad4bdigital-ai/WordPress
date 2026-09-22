@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import hashlib
 import json
+import os
 import re
 import sys
 import zipfile
@@ -97,7 +98,7 @@ def inspect_archive(provider_id, archive_name, entry_suffix, baseline):
 
 evidence = {
     "contract": "mad4b.provider-recertification-evidence.v1",
-    "source_commit_sha": "",
+    "source_commit_sha": os.environ.get("SOURCE_SHA", ""),
     "providers": {},
 }
 
