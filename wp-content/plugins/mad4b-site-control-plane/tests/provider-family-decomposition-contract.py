@@ -40,6 +40,9 @@ for family_id, archive in expected.items():
     assert row.get('functional_evidence_requirements'), f'evidence requirements missing: {family_id}'
     assert row.get('functional_safe_now') == ['plugin_status_read'], f'safe-now scope drift: {family_id}'
     assert row.get('functional_prohibited_until_certified'), f'blocked scope missing: {family_id}'
+    if family_id == 'custom-mega-menu':
+        assert 'custom-mega-menu-v43/' in row.get('match', [])
+        assert 'custom-mega-menu/' in row.get('match', []), 'normalized runtime slug alias missing'
 
     descriptor = manifest.get(family_id)
     assert isinstance(descriptor, dict), f'artifact family missing: {family_id}'
