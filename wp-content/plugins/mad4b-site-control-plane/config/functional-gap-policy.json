@@ -201,7 +201,13 @@
       "repository_artifacts": [
         "jet-engine.zip"
       ],
-      "evaluation_mode": "premium_semantic"
+      "evaluation_mode": "premium_semantic",
+      "identity_components": [
+        {
+          "artifact": "jet-engine.zip",
+          "plugin_file": "jet-engine/jet-engine.php"
+        }
+      ]
     },
     "jetsmartfilters": {
       "match": [
@@ -211,7 +217,13 @@
       "repository_artifacts": [
         "jet-smart-filters.zip"
       ],
-      "evaluation_mode": "premium_semantic"
+      "evaluation_mode": "premium_semantic",
+      "identity_components": [
+        {
+          "artifact": "jet-smart-filters.zip",
+          "plugin_file": "jet-smart-filters/jet-smart-filters.php"
+        }
+      ]
     },
     "wp-import-export": {
       "match": [
@@ -223,7 +235,17 @@
         "wp-all-import-pro.zip",
         "wp-all-export-pro.zip"
       ],
-      "evaluation_mode": "composite_behavioral"
+      "evaluation_mode": "composite_behavioral",
+      "identity_components": [
+        {
+          "artifact": "wp-all-import-pro.zip",
+          "plugin_file": "wp-all-import-pro/wp-all-import-pro.php"
+        },
+        {
+          "artifact": "wp-all-export-pro.zip",
+          "plugin_file": "wp-all-export-pro/wp-all-export-pro.php"
+        }
+      ]
     }
   }
 }
