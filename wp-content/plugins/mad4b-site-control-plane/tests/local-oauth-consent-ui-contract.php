@@ -11,6 +11,7 @@ $fail = static function ( $message ) {
 $sample = '<!doctype html><html><head><meta charset="utf-8"><title>Authorize MCP access</title></head><body>'
 	. '<main style="max-width:720px;margin:40px auto;font-family:system-ui,sans-serif;padding:0 20px">'
 	. '<h1>Authorize MCP access</h1><p><strong>ChatGPT</strong> is requesting read access to this WordPress MCP resource.</p>'
+	. '<section class="mad4b-live-grants"><h2>Governed write grants</h2><p>40/40 exact runtime grants are currently present.</p></section>'
 	. '<form method="post" action="https://example.test/oauth/mcp/authorize">'
 	. '<input type="hidden" name="client_id" value="https://chatgpt.com/oauth/client.json">'
 	. '<input type="hidden" name="_mad4b_oauth_nonce" value="nonce-value">'
@@ -23,6 +24,8 @@ if ( false === strpos( $enhanced, 'id="mad4b-oauth-consent-ui"' ) ) $fail( 'Cons
 if ( false === strpos( $enhanced, 'This consent authenticates the client and grants the narrow read resource scope shown below; it does not grant write authority.' ) ) $fail( 'OAuth/read-scope separation statement is missing.' );
 if ( false === strpos( $enhanced, 'Governed write actions, when available, require separate governed write authority and a one-time approval.' ) ) $fail( 'Governed write separation statement is missing.' );
 if ( false === strpos( $enhanced, 'OAuth identity/read scope · write authority separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
+if ( false === strpos( $enhanced, '.mad4b-live-grants' ) ) $fail( 'Live governed grant projection styling is missing.' );
+if ( false === strpos( $enhanced, '<section class="mad4b-live-grants">' ) ) $fail( 'Live governed grant projection content was not preserved.' );
 if ( false !== strpos( $enhanced, 'Read-only access · OAuth 2.1 · PKCE S256' ) ) $fail( 'Legacy whole-plugin read-only claim remains visible.' );
 if ( false !== strpos( $enhanced, 'mad4b:write' ) ) $fail( 'Consent presentation must not advertise or create a write OAuth scope.' );
 if ( false === strpos( $enhanced, 'name="_mad4b_oauth_nonce" value="nonce-value"' ) ) $fail( 'Consent nonce field was changed.' );
