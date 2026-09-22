@@ -15,8 +15,8 @@ def require(text, marker, label):
     if marker not in text:
         raise SystemExit(f"missing {label}: {marker}")
 
-require(main, "Version: 0.4.0-rc.44", "rc.44 plugin header")
-require(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.44' );", "rc.44 runtime constant")
+require(main, "Version: 0.4.0-rc.45", "rc.45 plugin header")
+require(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.45' );", "rc.45 runtime constant")
 require(main, "class-mad4b-scp-staging-certification.php", "staging certification include")
 require(main, "MAD4B_SCP_Staging_Certification::boot();", "staging certification boot")
 
@@ -86,6 +86,7 @@ for marker in [
     "'query_monitor_db_attribution'",
     "'admin_query_performance_status'",
     "'query_monitor_db_attribution_status'",
+    "'oauth_live_authority_projection'",
     "'rollback_candidate'",
     "'wp_import_export_exact_artifact'",
 ]:
@@ -93,6 +94,10 @@ for marker in [
 for marker in [
     "MAD4B_SCP_Admin_Query_Performance::status()",
     "MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status()",
+    "MAD4B_SCP_Local_OAuth_Server::consent_grant_projection()",
+    "mad4b.oauth-consent-grant-projection.v2",
+    "'oauth_scope_changed'",
+    "'write_authority_granted_by_consent'",
     "'caller_component_trace_expected'",
 ]:
     require(cert, marker, "Staging query-performance/attribution evidence")
@@ -178,12 +183,12 @@ if "browser_runtime_parity_verified' => true" in cert:
 
 expected_rollback = {
     "contract": "mad4b.rollback-candidate.v1",
-    "source_commit_sha": "8b029d4ee5b0bd094fcfe6cec3cce3096b43599f",
-    "control_plane_version": "0.4.0-rc.43",
-    "build_fingerprint": "72a84b76218b56f8505ad150dc6ef7fd5c95d079a5337f56be87ef23378f25e9",
-    "package_manifest_digest": "f29853895fa56f4602dde852061facc629a83e75231f8acdb07354986c355ffc",
-    "artifact_sha256": "944144b10f7318b82cc7958e1a3924f37eb6c6bc456ead75bb045efa5bfe92e7",
-    "artifact_name": "mad4b-site-control-plane-0.4.0-rc.43.zip",
+    "source_commit_sha": "306ea6e957312eac762afec13b9ea0377b3ee61c",
+    "control_plane_version": "0.4.0-rc.44",
+    "build_fingerprint": "13f55dccf191abf53dba538e146a2eeb636666c97510de5940309160b92aeae8",
+    "package_manifest_digest": "ca53d8d405af69832320d6078f6de6f9c5392568e4083c6484e790a487582530",
+    "artifact_sha256": "7db9fd9faedd0984a71c87db87d28ebef5140d1bdfd7b3c9903fec4d021fa298",
+    "artifact_name": "mad4b-site-control-plane-0.4.0-rc.44.zip",
 }
 for key, value in expected_rollback.items():
     if rollback.get(key) != value:
