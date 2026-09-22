@@ -9,6 +9,10 @@ on:
       - '.github/workflows/mad4b-rollback-retention-receipt.yml'
   workflow_dispatch:
 
+concurrency:
+  group: mad4b-rollback-retention-receipt-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   actions: read
