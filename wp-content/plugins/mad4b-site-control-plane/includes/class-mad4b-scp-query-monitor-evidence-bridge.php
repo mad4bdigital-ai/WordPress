@@ -200,6 +200,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		if ( ! isset( $telemetry['request_coverage'][ $class ] ) ) $telemetry['request_coverage'][ $class ] = 0;
 		$telemetry['request_coverage'][ $class ]++;
 		$telemetry['last_observed_at'] = gmdate( 'Y-m-d H:i:s' );
+		self::finalize_query_monitor_collectors_for_capture();
 		$sample = self::performance_sample( $class );
 		if ( ! isset( $telemetry['performance'] ) || ! is_array( $telemetry['performance'] ) ) $telemetry['performance'] = self::empty_performance();
 		if ( ! isset( $telemetry['performance']['samples'] ) || ! is_array( $telemetry['performance']['samples'] ) ) $telemetry['performance']['samples'] = array();
