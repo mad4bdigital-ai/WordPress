@@ -65,6 +65,16 @@ for family, row in families.items():
     if mode in {'premium_semantic','composite_behavioral'}:
         if row.get('repository_evidence') is not True or not row.get('repository_artifacts'):
             raise SystemExit(f'{family}: identity-first premium/composite gate lacks repository evidence')
+        components=row.get('identity_components') or []
+        if not components:
+            raise SystemExit(f'{family}: identity-first gate lacks component map')
+        component_artifacts=sorted({str(component.get('artifact','')) for component in components if isinstance(component,dict)})
+        expected_artifacts=sorted(set(row.get('repository_artifacts') or []))
+        if component_artifacts!=expected_artifacts:
+            raise SystemExit(f'{family}: identity component artifact set mismatch')
+        component_plugins=[str(component.get('plugin_file','')).replace('\\','/').lstrip('/').lower() for component in components if isinstance(component,dict)]
+        if any(not item for item in component_plugins) or len(set(component_plugins))!=len(component_plugins):
+            raise SystemExit(f'{family}: identity component plugin map invalid')
     if mode == 'bounded_read_routes':
         if not row.get('required_get_routes') or not row.get('safe_now') or not row.get('blocked'):
             raise SystemExit(f'{family}: bounded read policy is incomplete')
