@@ -371,10 +371,17 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$catalog = self::catalog();
 		$families = isset( $catalog['families'] ) && is_array( $catalog['families'] ) ? $catalog['families'] : array();
 		foreach ( $families as $descriptor ) {
-			if ( ! is_array( $descriptor ) || empty( $descriptor['match'] ) || ! is_array( $descriptor['match'] ) ) continue;
-			foreach ( $descriptor['match'] as $prefix ) {
+			if ( ! is_array( $descriptor ) ) continue;
+			$prefixes = isset( $descriptor['match'] ) && is_array( $descriptor['match'] ) ? $descriptor['match'] : array();
+			foreach ( $prefixes as $prefix ) {
 				$prefix = self::normalize_plugin_file( $prefix );
 				if ( '' !== $prefix && 0 === strpos( $plugin_file, $prefix ) ) return $descriptor;
+			}
+			$versioned = isset( $descriptor['versioned_match'] ) && is_array( $descriptor['versioned_match'] ) ? $descriptor['versioned_match'] : array();
+			foreach ( $versioned as $base ) {
+				$base = rtrim( self::normalize_plugin_file( $base ), '/' );
+				if ( '' === $base ) continue;
+				if ( 1 === preg_match( '/^' . preg_quote( $base, '/' ) . '-v\\d+(?:\\.\\d+)*\\//', $plugin_file ) ) return $descriptor;
 			}
 		}
 		$default = isset( $catalog['default'] ) && is_array( $catalog['default'] ) ? $catalog['default'] : array();
