@@ -47,6 +47,7 @@ for marker in [
     "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint )",
     "public static function persistence_checkpoint()",
     "public static function restore_persistence_checkpoint( $checkpoint )",
+    "public static function fail_closed_persisted_authority( $blocker )",
     "public static function finalize_exact_existing_authority()",
     "private static function current_candidate_identity()",
     "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
@@ -185,6 +186,20 @@ if "finalize_exact_existing_authority()" not in grant_reconcile:
     raise SystemExit('bounded grant reconciliation must use the exact existing-authority finalizer')
 if "rollback_transaction( $agent, $created_ids, $authority_checkpoint )" not in grant_reconcile:
     raise SystemExit('bounded grant reconciliation must rollback grants and persisted authority together')
+
+rollback_body = grant_reconcile.split("private static function rollback_transaction", 1)[1].split("public static function reconcile", 1)[0]
+for marker in [
+    "if ( empty( $errors ) )",
+    "restore_persistence_checkpoint( $authority_checkpoint )",
+    "fail_closed_persisted_authority( 'authority_checkpoint_restore_failed' )",
+    "fail_closed_persisted_authority( 'grant_rollback_incomplete' )",
+    "mad4b/staging-write-grant-reconciliation-rolled-back",
+    "'authority_forced_blocked' => ! empty( $errors )",
+]:
+    if marker not in rollback_body:
+        raise SystemExit(f'transaction rollback fail-closed invariant missing: {marker}')
+if rollback_body.index("if ( empty( $errors ) )") > rollback_body.index("restore_persistence_checkpoint( $authority_checkpoint )"):
+    raise SystemExit('persisted authority must not be restored before grant rollback success is known')
 if "mad4b_grant_reconcile_completion_audit_failed" not in grant_reconcile:
     raise SystemExit('completion audit failure must fail closed and rollback the transaction')
 if "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );" not in servers:
