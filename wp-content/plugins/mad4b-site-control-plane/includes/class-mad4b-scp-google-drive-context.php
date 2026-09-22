@@ -2714,16 +2714,10 @@ final class MAD4B_SCP_Google_Drive_Context {
 			? (string) constant( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' )
 			: (string) ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) ? getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) : '' );
 
-		if ( '' === $key_id && class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
-			$status = MAD4B_SCP_Site_Profile::status();
-			$site_uuid = is_array( $status ) && isset( $status['site_uuid'] ) ? strtolower( trim( (string) $status['site_uuid'] ) ) : '';
-			if ( preg_match( '/^[a-f0-9-]{36}$/', $site_uuid ) ) $key_id = $site_uuid;
-		}
-
 		return array(
 			'key_id' => $key_id,
 			'secret' => $secret,
-			'key_source' => defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? 'constant' : ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? 'environment' : ( '' !== $key_id ? 'site_profile_uuid' : 'missing' ) ),
+			'key_source' => defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? 'constant' : ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_KEY_ID' ) ? 'environment' : 'missing' ),
 			'secret_source' => defined( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) ? 'constant' : ( false !== getenv( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET' ) ? 'environment' : 'missing' ),
 		);
 	}
