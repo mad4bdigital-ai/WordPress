@@ -97,16 +97,22 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$projection_identity_match = '' !== $projection_snapshot_identity && '' !== $projection_current_identity && hash_equals( $projection_snapshot_identity, $projection_current_identity );
 
 		$projection_snapshot_census = isset( $zero_touch_projection['runtime_census'] ) && is_array( $zero_touch_projection['runtime_census'] ) ? $zero_touch_projection['runtime_census'] : array();
-		$projection_current_census = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? MAD4B_SCP_Functional_Gap_Evidence::current_runtime_census_status() : array( 'contract'=>'mad4b.functional-gap-runtime-census.v1', 'valid'=>false, 'census_sha256'=>'', 'blockers'=>array( 'runtime_census_unavailable' ) );
+		$projection_census_required = ! empty( $projection_snapshot_census['valid'] );
+		$projection_current_census = $projection_census_required && class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' )
+			? MAD4B_SCP_Functional_Gap_Evidence::current_runtime_census_status()
+			: array( 'contract'=>'mad4b.functional-gap-runtime-census.v1', 'valid'=>false, 'census_sha256'=>'', 'metadata_only'=>true, 'content_rehashed'=>false, 'blockers'=>array() );
 		$projection_snapshot_census_sha = isset( $projection_snapshot_census['census_sha256'] ) ? strtolower( (string) $projection_snapshot_census['census_sha256'] ) : '';
 		$projection_current_census_sha = isset( $projection_current_census['census_sha256'] ) ? strtolower( (string) $projection_current_census['census_sha256'] ) : '';
-		$projection_census_match = ! empty( $projection_snapshot_census['valid'] ) && ! empty( $projection_current_census['valid'] )
+		$projection_census_match = ! $projection_census_required || (
+			! empty( $projection_current_census['valid'] )
 			&& '' !== $projection_snapshot_census_sha && '' !== $projection_current_census_sha
-			&& hash_equals( $projection_snapshot_census_sha, $projection_current_census_sha );
+			&& hash_equals( $projection_snapshot_census_sha, $projection_current_census_sha )
+		);
 
 		$zero_touch['projection_identity_match'] = $projection_identity_match;
 		$zero_touch['projection_snapshot_identity_sha256'] = $projection_snapshot_identity;
 		$zero_touch['projection_current_identity_sha256'] = $projection_current_identity;
+		$zero_touch['projection_census_required'] = $projection_census_required;
 		$zero_touch['projection_census_match'] = $projection_census_match;
 		$zero_touch['projection_snapshot_census_sha256'] = $projection_snapshot_census_sha;
 		$zero_touch['projection_current_census_sha256'] = $projection_current_census_sha;
@@ -163,6 +169,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'identity_match' => $projection_identity_match,
 				'snapshot_census_sha256' => $projection_snapshot_census_sha,
 				'current_census_sha256' => $projection_current_census_sha,
+				'census_required' => $projection_census_required,
 				'census_match' => $projection_census_match,
 				'census_file_count' => isset( $projection_current_census['file_count'] ) ? (int) $projection_current_census['file_count'] : 0,
 				'census_elapsed_ms' => isset( $projection_current_census['elapsed_ms'] ) ? (int) $projection_current_census['elapsed_ms'] : 0,
