@@ -192,14 +192,43 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			&& (int) $sample['db_queries'] >= 0
 			&& is_numeric( $sample['peak_memory_bytes'] )
 			&& (int) $sample['peak_memory_bytes'] > 0;
+
+		// Reference baseline captured on the exact rc.38 staging build.
+		$reference = array(
+			'contract' => 'mad4b.frontend-performance-reference.v1',
+			'source_commit_sha' => '67168b9dc0ed468f5ac44c649c24d4327c8a1162',
+			'server_elapsed_ms' => 810.392,
+			'db_queries' => 47,
+			'peak_memory_bytes' => 50331648,
+		);
+		$budget = array(
+			'server_elapsed_ms_max' => max( 2000.0, 2.0 * (float) $reference['server_elapsed_ms'] ),
+			'db_queries_max' => max( 100, 2 * (int) $reference['db_queries'] ),
+			'peak_memory_bytes_max' => max( 134217728, 2 * (int) $reference['peak_memory_bytes'] ),
+		);
+		$budget_failures = array();
+		if ( $sample_valid ) {
+			if ( (float) $sample['server_elapsed_ms'] > (float) $budget['server_elapsed_ms_max'] ) $budget_failures[] = 'server_elapsed_ms_budget_exceeded';
+			if ( (int) $sample['db_queries'] > (int) $budget['db_queries_max'] ) $budget_failures[] = 'db_queries_budget_exceeded';
+			if ( (int) $sample['peak_memory_bytes'] > (int) $budget['peak_memory_bytes_max'] ) $budget_failures[] = 'peak_memory_budget_exceeded';
+		}
+		$budget_pass = $sample_valid && empty( $budget_failures );
 		$fresh = self::staging_capture_allowed() && $current_match && $frontend_observed;
-		$ready = $fresh && $sample_valid;
+		$ready = $fresh && $sample_valid && $budget_pass;
+		$state = ! $current_match ? 'stale_build_evidence'
+			: ( ! $frontend_observed ? 'frontend_not_observed'
+			: ( ! $sample_valid ? 'frontend_sample_invalid'
+			: ( $budget_pass ? 'ready' : 'performance_budget_exceeded' ) ) );
 		return array(
-			'contract' => 'mad4b.frontend-performance-evidence.v1',
+			'contract' => 'mad4b.frontend-performance-evidence.v2',
 			'ready' => $ready,
-			'state' => $ready ? 'ready' : ( ! $current_match ? 'stale_build_evidence' : ( ! $frontend_observed ? 'frontend_not_observed' : 'frontend_sample_invalid' ) ),
-			'baseline_only' => true,
-			'budget_evaluated' => false,
+			'state' => $state,
+			'baseline_only' => false,
+			'budget_evaluated' => $sample_valid,
+			'budget_pass' => $budget_pass,
+			'budget_failures' => $budget_failures,
+			'budget' => $budget,
+			'reference_baseline' => $reference,
 			'current_build_match' => $current_match,
 			'frontend_observed' => $frontend_observed,
 			'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? (string) $telemetry['capture_started_at'] : '',
