@@ -201,7 +201,12 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			|| ! hash_equals( $source_commit_sha, (string) $stored['source_commit_sha'] )
 			|| ! hash_equals( $build_fingerprint, (string) $stored['build_fingerprint'] ) ) {
 			$rollback = self::restore_persistence_checkpoint( $checkpoint );
-			return new WP_Error( 'mad4b_write_authority_candidate_persist_failed', 'Exact package candidate binding could not be persisted and the previous authority snapshot was restored.', array( 'rollback_error' => is_wp_error( $rollback ) ? $rollback->get_error_code() : '' ) );
+			$rollback_error = is_wp_error( $rollback ) ? $rollback->get_error_code() : '';
+			if ( is_wp_error( $rollback ) ) {
+				$blocked = self::fail_closed_persisted_authority( 'candidate_binding_rollback_failed' );
+				if ( is_wp_error( $blocked ) ) $rollback_error .= '|' . $blocked->get_error_code();
+			}
+			return new WP_Error( 'mad4b_write_authority_candidate_persist_failed', 'Exact package candidate binding could not be persisted; the previous snapshot was restored or authority was forced blocked.', array( 'rollback_error' => $rollback_error ) );
 		}
 		self::$status = $stored;
 		return $stored;
@@ -234,6 +239,35 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		delete_option( self::OPTION );
 		if ( false !== get_option( self::OPTION, false ) ) return new WP_Error( 'mad4b_write_authority_checkpoint_delete_failed', 'Persisted authority checkpoint could not be cleared.' );
 		self::$status = self::base_status();
+		return true;
+	}
+
+	public static function fail_closed_persisted_authority( $blocker ) {
+		$blocker = sanitize_key( (string) $blocker );
+		if ( '' === $blocker ) $blocker = 'authority_transaction_failed';
+		$status = self::base_status();
+		$status['ready'] = false;
+		$status['state'] = 'blocked';
+		$status['blocker'] = $blocker;
+		$status['candidate_binding_contract'] = self::CANDIDATE_BINDING_CONTRACT;
+		$status['source_commit_sha'] = '';
+		$status['build_fingerprint'] = '';
+		$status['package_manifest_digest'] = '';
+		$status['artifact_identity'] = '';
+		$status['candidate_bound_at'] = '';
+		$status['updated_at'] = gmdate( 'c' );
+		update_option( self::OPTION, $status, false );
+		$stored = get_option( self::OPTION, false );
+		if ( ! is_array( $stored ) || ! empty( $stored['ready'] ) || 'blocked' !== ( isset( $stored['state'] ) ? (string) $stored['state'] : '' ) || $blocker !== ( isset( $stored['blocker'] ) ? (string) $stored['blocker'] : '' ) ) {
+			delete_option( self::OPTION );
+			if ( false !== get_option( self::OPTION, false ) ) {
+				self::$status = $status;
+				return new WP_Error( 'mad4b_write_authority_fail_closed_persist_failed', 'Unable to persist or clear blocked governed-write authority after transactional failure.' );
+			}
+			self::$status = $status;
+			return true;
+		}
+		self::$status = $stored;
 		return true;
 	}
 
