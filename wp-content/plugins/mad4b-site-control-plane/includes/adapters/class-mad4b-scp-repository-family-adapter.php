@@ -64,8 +64,15 @@ final class MAD4B_SCP_Repository_Artifact_Catalog {
 				foreach ( $plugins as $plugin_file => $headers ) {
 					$normalized = strtolower( str_replace( '\\', '/', (string) $plugin_file ) );
 					$match = false;
-					if ( substr( $candidate, -4 ) === '.php' ) $match = $normalized === $candidate;
-					else $match = 0 === strpos( $normalized, rtrim( $candidate, '/' ) . '/' );
+					if ( substr( $candidate, -4 ) === '.php' ) {
+						$match = $normalized === $candidate;
+					} else {
+						$base = rtrim( $candidate, '/' );
+						$match = 0 === strpos( $normalized, $base . '/' );
+						if ( ! $match && ! preg_match( '/-v\\d+(?:\\.\\d+)*$/', $base ) ) {
+							$match = 1 === preg_match( '/^' . preg_quote( $base, '/' ) . '-v\\d+(?:\\.\\d+)*\\//', $normalized );
+						}
+					}
 					if ( ! $match ) continue;
 					$matches[ $plugin_file ] = array(
 						'plugin_file' => (string) $plugin_file,
