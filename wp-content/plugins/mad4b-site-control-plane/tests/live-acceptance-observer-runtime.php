@@ -149,35 +149,90 @@ namespace {
 			'contract' => 'mad4b.frontend-performance-evidence.v1',
 			'frontend_observed' => true,
 			'rest_observed' => false,
-			'samples' => array(),
+			'samples' => array(
+				array( 'request_class' => 'frontend', 'server_elapsed_ms' => 120.0, 'db_queries' => 35, 'peak_memory_bytes' => 15728640, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+				array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+				array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 36, 'peak_memory_bytes' => 16000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+			),
 			'last_by_class' => array(
 				'frontend' => array(
 					'request_class' => 'frontend',
-					'server_elapsed_ms' => 125.0,
-					'db_queries' => 37,
-					'peak_memory_bytes' => 16777216,
+					'server_elapsed_ms' => 130.0,
+					'db_queries' => 36,
+					'peak_memory_bytes' => 16000000,
 					'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ),
 				),
 			),
 		),
 	);
 	$performance = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
-	mad4b_assert( ! empty( $performance['ready'] ), 'Current-build front-end performance sample must become ready.' );
+	mad4b_assert( ! empty( $performance['ready'] ), 'Current-build front-end performance window must become ready.' );
 	mad4b_assert( 'ready' === (string) $performance['state'], 'Current-build front-end performance state must be ready.' );
 	mad4b_assert( empty( $performance['baseline_only'] ) && ! empty( $performance['budget_evaluated'] ) && ! empty( $performance['budget_pass'] ), 'Front-end performance evidence must evaluate and pass the bounded regression budget.' );
 	mad4b_assert( empty( $performance['ttfb_claimed'] ), 'Server elapsed evidence must not self-claim TTFB.' );
-	mad4b_assert( 125.0 === (float) $performance['metrics']['server_elapsed_ms'], 'Front-end server elapsed sample drifted.' );
-	mad4b_assert( 37 === (int) $performance['metrics']['db_queries'], 'Front-end DB query sample drifted.' );
-	mad4b_assert( 16777216 === (int) $performance['metrics']['peak_memory_bytes'], 'Front-end peak memory sample drifted.' );
+	mad4b_assert( 3 === (int) $performance['evaluation_window']['sample_count'], 'Front-end performance must require a bounded multi-sample window.' );
+	mad4b_assert( 'median' === (string) $performance['evaluation_window']['server_elapsed_strategy'], 'Front-end elapsed evaluation must use the median.' );
+	mad4b_assert( 'max' === (string) $performance['evaluation_window']['db_queries_strategy'], 'DB query evaluation must preserve worst-case pressure.' );
+	mad4b_assert( 125.0 === (float) $performance['metrics']['server_elapsed_ms'], 'Front-end median server elapsed drifted.' );
+	mad4b_assert( 37 === (int) $performance['metrics']['db_queries'], 'Front-end max DB query sample drifted.' );
+	mad4b_assert( 16777216 === (int) $performance['metrics']['peak_memory_bytes'], 'Front-end max peak memory sample drifted.' );
 
-	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 5000.0;
 	$telemetry_property = $observer_reflection->getProperty( 'telemetry' );
 	$telemetry_property->setAccessible( true );
+
+	// A single elapsed-time outlier must be visible but must not fail a healthy
+	// bounded window. This prevents one noisy Staging request from flapping the
+	// release gate while keeping the exact 2000 ms budget unchanged.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 140.0, 'db_queries' => 38, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5000.0, 'db_queries' => 39, 'peak_memory_bytes' => 17500000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 5000.0;
+	$telemetry_property->setValue( null, null );
+	$isolated_spike = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( ! empty( $isolated_spike['ready'] ), 'A single elapsed-time outlier must not flap an otherwise healthy performance window.' );
+	mad4b_assert( 140.0 === (float) $isolated_spike['metrics']['server_elapsed_ms'], 'Elapsed-time median must remain robust to a single outlier.' );
+
+	// Persistent slowdown must still fail closed.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5000.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5100.0, 'db_queries' => 38, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 5200.0, 'db_queries' => 39, 'peak_memory_bytes' => 17500000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
 	$telemetry_property->setValue( null, null );
 	$over_budget = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
-	mad4b_assert( empty( $over_budget['ready'] ) && 'performance_budget_exceeded' === (string) $over_budget['state'], 'Over-budget front-end performance must fail closed.' );
-	mad4b_assert( in_array( 'server_elapsed_ms_budget_exceeded', (array) $over_budget['budget_failures'], true ), 'Performance budget failure reason must identify server elapsed regression.' );
-	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 125.0;
+	mad4b_assert( empty( $over_budget['ready'] ) && 'performance_budget_exceeded' === (string) $over_budget['state'], 'Persistent over-budget front-end performance must fail closed.' );
+	mad4b_assert( in_array( 'server_elapsed_ms_budget_exceeded', (array) $over_budget['budget_failures'], true ), 'Performance budget failure reason must identify persistent server elapsed regression.' );
+
+	// Query/memory pressure remains worst-case sensitive even when elapsed median
+	// is healthy.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 101, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 135.0, 'db_queries' => 39, 'peak_memory_bytes' => 17500000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$telemetry_property->setValue( null, null );
+	$query_spike = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( empty( $query_spike['ready'] ) && in_array( 'db_queries_budget_exceeded', (array) $query_spike['budget_failures'], true ), 'A DB query budget breach inside the bounded window must fail closed.' );
+
+	// Fewer than the minimum number of current-build frontend samples may not
+	// certify performance.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 38, 'peak_memory_bytes' => 17000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$telemetry_property->setValue( null, null );
+	$insufficient = MAD4B_SCP_Live_Acceptance_Observer::frontend_performance_status();
+	mad4b_assert( empty( $insufficient['ready'] ) && 'insufficient_frontend_samples' === (string) $insufficient['state'], 'Performance certification must require the minimum current-build frontend sample count.' );
+
+	// Restore a healthy window for the remaining aggregate tests.
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['samples'] = array(
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 120.0, 'db_queries' => 35, 'peak_memory_bytes' => 15728640, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 3 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 125.0, 'db_queries' => 37, 'peak_memory_bytes' => 16777216, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 2 ) ),
+		array( 'request_class' => 'frontend', 'server_elapsed_ms' => 130.0, 'db_queries' => 36, 'peak_memory_bytes' => 16000000, 'observed_at' => gmdate( 'Y-m-d H:i:s', time() - 1 ) ),
+	);
+	$GLOBALS['mad4b_test_options'][ MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION ]['performance']['last_by_class']['frontend']['server_elapsed_ms'] = 130.0;
 	$telemetry_property->setValue( null, null );
 
 	$match = MAD4B_SCP_Live_Acceptance_Observer::snapshot_verify( array( 'client_snapshot_token' => 'sha256:' . str_repeat( 'a', 64 ) ) );
