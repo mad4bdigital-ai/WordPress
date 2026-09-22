@@ -99,6 +99,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Prove candidate binding persistence rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/authority-candidate-binding-runtime.php
+
       - name: Verify required modules and core safety gates
         shell: bash
         run: |
