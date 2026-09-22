@@ -205,6 +205,14 @@ def main():
 
     if policy.get("contract") != "mad4b.functional-gap-policy.v1":
         raise SystemExit("functional-gap policy contract mismatch")
+    if policy.get("default_mutation") != "deny" or policy.get("promotion_authorized") is not False:
+        raise SystemExit("functional-gap policy mutation/promotion boundary weakened")
+    supported_modes = {"bounded_read_routes","redacted_status","exact_tree_review","runtime_only","premium_semantic","composite_behavioral"}
+    for family, rule in sorted((policy.get("families") or {}).items()):
+        if not isinstance(rule, dict) or str(rule.get("evaluation_mode", "")) not in supported_modes:
+            raise SystemExit(f"{family}: unsupported functional-gap evaluation mode")
+        if rule.get("evaluation_mode") == "bounded_read_routes" and rule.get("require_non_public_permissions") is not True:
+            raise SystemExit(f"{family}: bounded read permission boundary missing")
     policy_sha = sha256_file(POLICY_PATH)
 
     if repo.get("contract") != "mad4b.functional-gap-contract-evidence.v1":
