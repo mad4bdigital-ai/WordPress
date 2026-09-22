@@ -1014,6 +1014,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 				box.innerHTML="<p></p>";
 				box.querySelector("p").textContent=(code?code+" · ":"")+(message||"");
 			}
+			function clearStatusQuery(){
+				try{
+					var url=new URL(window.location.href);
+					var changed=false;
+					["mad4b_error","mad4b_notice"].forEach(function(key){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}});
+					if(changed&&window.history&&window.history.replaceState)window.history.replaceState({},document.title,url.toString());
+				}catch(error){}
+			}
 			async function refreshPanels(){
 				var response=await fetch(window.location.href,{credentials:"same-origin",headers:{"X-MAD4B-Fragment":"google-context","Cache-Control":"no-cache"}});
 				if(!response.ok)throw new Error("Updated settings were saved, but the Google setup panels could not be refreshed.");
@@ -1063,6 +1071,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 					}
 					form.querySelectorAll("input[type=password]").forEach(function(input){input.value="";});
 					if(payload.data&&payload.data.refresh)await refreshPanels();
+					clearStatusQuery();
 					feedback(payload.data&&payload.data.message?payload.data.message:"Saved.",true,"");
 				}catch(error){
 					try{await refreshPanels();}catch(refreshError){}
