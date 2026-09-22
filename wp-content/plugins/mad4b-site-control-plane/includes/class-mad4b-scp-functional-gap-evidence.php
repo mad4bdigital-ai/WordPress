@@ -84,8 +84,6 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		if ( ! is_file( $path ) || ! is_readable( $path ) ) return array( 'valid'=>false, 'blockers'=>array( 'build_provenance_missing' ) );
 		$raw = file_get_contents( $path );
 		$data = false === $raw ? null : json_decode( $raw, true );
-		$evidence_sha256 = false === $raw ? '' : hash( 'sha256', $raw );
-		$evidence_bytes = false === $raw ? 0 : strlen( $raw );
 		if ( ! is_array( $data ) || 'mad4b.build-provenance.v1' !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) return array( 'valid'=>false, 'blockers'=>array( 'build_provenance_invalid' ) );
 		$source = isset( $data['source_commit_sha'] ) ? strtolower( trim( (string) $data['source_commit_sha'] ) ) : '';
 		$fingerprint = isset( $data['build_fingerprint'] ) ? strtolower( trim( (string) $data['build_fingerprint'] ) ) : '';
@@ -123,6 +121,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		}
 		$raw = file_get_contents( $path );
 		$data = false === $raw ? null : json_decode( $raw, true );
+		$evidence_sha256 = false === $raw ? '' : hash( 'sha256', $raw );
+		$evidence_bytes = false === $raw ? 0 : strlen( $raw );
 		if ( ! is_array( $data ) || self::REPOSITORY_CONTRACT !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) {
 			return array(
 				'present' => true,
