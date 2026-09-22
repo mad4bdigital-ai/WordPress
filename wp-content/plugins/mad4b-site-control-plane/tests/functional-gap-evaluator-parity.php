@@ -81,19 +81,46 @@ foreach ( array( 'contract','policy_contract','policy_sha256','runtime_evidence_
 	if ( $left !== $right ) $fail( 'Cross-language evaluator mismatch: ' . $key, $left, $right );
 }
 
-$normalize_decisions = static function ( $rows ) {
+$is_list = static function ( array $value ) {
+	$expected = 0;
+	foreach ( array_keys( $value ) as $key ) {
+		if ( $key !== $expected++ ) return false;
+	}
+	return true;
+};
+$semantic_normalize = null;
+$semantic_normalize = static function ( $value ) use ( &$semantic_normalize, $is_list ) {
+	if ( ! is_array( $value ) ) return $value;
+	if ( $is_list( $value ) ) {
+		$out = array();
+		foreach ( $value as $item ) $out[] = $semantic_normalize( $item );
+		return $out;
+	}
+	ksort( $value, SORT_STRING );
+	foreach ( $value as $key => $item ) $value[ $key ] = $semantic_normalize( $item );
+	return $value;
+};
+
+$order_probe_a = array( 'b'=>array( 'y'=>2, 'x'=>1 ), 'a'=>3 );
+$order_probe_b = array( 'a'=>3, 'b'=>array( 'x'=>1, 'y'=>2 ) );
+if ( $semantic_normalize( $order_probe_a ) !== $semantic_normalize( $order_probe_b ) ) {
+	fwrite( STDERR, "Semantic normalization is not associative-key-order invariant.\n" );
+	exit( 4 );
+}
+
+$normalize_decisions = static function ( $rows ) use ( $semantic_normalize ) {
 	$out = array();
 	foreach ( is_array( $rows ) ? $rows : array() as $row ) {
 		if ( ! is_array( $row ) || empty( $row['family'] ) ) continue;
 		$family = (string) $row['family'];
-		$out[ $family ] = array(
+		$out[ $family ] = $semantic_normalize( array(
 			'state' => isset( $row['state'] ) ? (string) $row['state'] : '',
 			'reason' => isset( $row['reason'] ) ? (string) $row['reason'] : '',
 			'evaluation_mode' => isset( $row['evaluation_mode'] ) ? (string) $row['evaluation_mode'] : '',
 			'runtime_versions' => isset( $row['runtime_versions'] ) && is_array( $row['runtime_versions'] ) ? array_values( $row['runtime_versions'] ) : array(),
 			'runtime_tree_evidence' => isset( $row['runtime_tree_evidence'] ) && is_array( $row['runtime_tree_evidence'] ) ? $row['runtime_tree_evidence'] : array(),
 			'exact_tree_matches' => isset( $row['exact_tree_matches'] ) && is_array( $row['exact_tree_matches'] ) ? $row['exact_tree_matches'] : array(),
-		);
+		) );
 	}
 	ksort( $out, SORT_STRING );
 	return $out;
