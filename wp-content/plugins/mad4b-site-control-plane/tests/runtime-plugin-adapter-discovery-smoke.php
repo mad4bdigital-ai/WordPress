@@ -173,6 +173,14 @@ try {
 	$check( 'adapter_missing' === (string) $discovered['functional_family_states']['unknown-ci-unknown-adapter-target'], 'Unknown fixture family state drifted.' );
 	$check( 'adapter_missing' === (string) $discovered['functional_family_states']['unknown-custom-mega-menu-villain'], 'Lookalike fixture family state drifted.' );
 
+	$zero_touch_after = $zero_touch_ability->execute();
+	$check( ! is_wp_error( $zero_touch_after ), 'Zero-touch evidence failed after runtime identity changed.' );
+	$menu_runtime_rows = (array) ( $zero_touch_after['runtime']['families']['custom-mega-menu'] ?? array() );
+	$menu_runtime_files = wp_list_pluck( $menu_runtime_rows, 'plugin_file' );
+	$check( in_array( 'custom-mega-menu-v49/custom-mega-menu.php', $menu_runtime_files, true ), 'Numeric versioned Custom Mega Menu identity was not captured by zero-touch policy.' );
+	$check( ! in_array( 'custom-mega-menu-villain/custom-mega-menu.php', $menu_runtime_files, true ), 'Versioned-family lookalike leaked into zero-touch Custom Mega Menu identity.' );
+	$check( ! hash_equals( $initial_zero_touch_identity, (string) ( $zero_touch_after['snapshot_identity_sha256'] ?? '' ) ), 'Zero-touch direct ability cache did not invalidate after runtime identity changed.' );
+
 	$requests_ability = wp_get_ability( 'mad4b/adapter-support-requests' );
 	$requests_one = $requests_ability->execute();
 	$requests_two = $requests_ability->execute();
