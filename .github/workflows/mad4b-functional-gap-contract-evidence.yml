@@ -132,40 +132,50 @@ jobs:
           families={}
           for family,rule in sorted(policy.get('families',{}).items()):
               artifacts=repo_families.get(family,{}).get('artifacts',[])
-              if artifacts:
-                  artifact=artifacts[0]
-                  tree=artifact.get('package_tree',{})
-                  version=''
-                  for header in artifact.get('plugin_headers',[]):
-                      if header.get('version'):
-                          version=str(header['version'])
-                          break
-                  digest=str(tree.get('tree_sha256',''))
-                  comparison='exact_repository_match'
-                  count=int(tree.get('file_count',1) or 1)
-                  total=int(tree.get('total_bytes',1) or 1)
+              fixture_artifacts = artifacts if rule.get('evaluation_mode') == 'composite_behavioral' and artifacts else (artifacts[:1] if artifacts else [])
+              rows=[]
+              if fixture_artifacts:
+                  for index,artifact in enumerate(fixture_artifacts):
+                      tree=artifact.get('package_tree',{})
+                      headers=[h for h in artifact.get('plugin_headers',[]) if h.get('version')]
+                      version=str(headers[0]['version']) if headers else ''
+                      digest=str(tree.get('tree_sha256',''))
+                      count=int(tree.get('file_count',1) or 1)
+                      total=int(tree.get('total_bytes',1) or 1)
+                      header_file=str(headers[0].get('file','')) if headers else ''
+                      plugin_file=header_file or f"{family}/component-{index}.php"
+                      rows.append({
+                          'plugin_file':plugin_file,
+                          'name':family,
+                          'version':version,
+                          'active':True,
+                          'plugin_tree':{
+                              'file_count':count,
+                              'total_bytes':total,
+                              'tree_sha256':digest,
+                              'scan_stable':True,
+                              'scan_attempts':1,
+                              'comparison':'exact_repository_match',
+                              'scan_strategy':'fixture',
+                          },
+                      })
               else:
-                  version='fixture-1.0.0'
-                  digest=hashlib.sha256(family.encode()).hexdigest()
-                  comparison='runtime_identity_captured'
-                  count=1
-                  total=1
-              plugin_file=f"{family}/{family}.php"
-              families[family]=[{
-                  'plugin_file':plugin_file,
-                  'name':family,
-                  'version':version,
-                  'active':True,
-                  'plugin_tree':{
-                      'file_count':count,
-                      'total_bytes':total,
-                      'tree_sha256':digest,
-                      'scan_stable':True,
-                      'scan_attempts':1,
-                      'comparison':comparison,
-                      'scan_strategy':'fixture',
-                  },
-              }]
+                  rows=[{
+                      'plugin_file':f"{family}/{family}.php",
+                      'name':family,
+                      'version':'fixture-1.0.0',
+                      'active':True,
+                      'plugin_tree':{
+                          'file_count':1,
+                          'total_bytes':1,
+                          'tree_sha256':hashlib.sha256(family.encode()).hexdigest(),
+                          'scan_stable':True,
+                          'scan_attempts':1,
+                          'comparison':'runtime_identity_captured',
+                          'scan_strategy':'fixture',
+                      },
+                  }]
+              families[family]=rows
 
           rest_routes=[]
           for family,rule in sorted(policy.get('families',{}).items()):
