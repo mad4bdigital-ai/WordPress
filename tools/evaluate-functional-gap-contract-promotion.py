@@ -213,6 +213,9 @@ def main():
             raise SystemExit(f"{family}: unsupported functional-gap evaluation mode")
         if rule.get("evaluation_mode") == "bounded_read_routes" and rule.get("require_non_public_permissions") is not True:
             raise SystemExit(f"{family}: bounded read permission boundary missing")
+        if rule.get("evaluation_mode") in {"premium_semantic","composite_behavioral"}:
+            if rule.get("repository_evidence") is not True or not rule.get("repository_artifacts"):
+                raise SystemExit(f"{family}: identity-first provider gate requires repository evidence")
     policy_sha = sha256_file(POLICY_PATH)
 
     if repo.get("contract") != "mad4b.functional-gap-contract-evidence.v1":
@@ -332,22 +335,56 @@ def main():
             ))
 
         elif mode == "premium_semantic":
-            decisions.append(decision(
-                family,
-                "semantic_attestation_required",
-                "premium_provider_exact_runtime_and_semantic_review_gate_remains_authoritative",
-                mode,
-                **base,
-            ))
+            if len(matches) != len(rows):
+                decisions.append(decision(
+                    family,
+                    "runtime_alignment_required",
+                    "premium_provider_runtime_tree_does_not_match_repository_identity",
+                    mode,
+                    **base,
+                ))
+            else:
+                decisions.append(decision(
+                    family,
+                    "semantic_attestation_required",
+                    "premium_provider_exact_repository_identity_verified_semantic_review_still_required",
+                    mode,
+                    **base,
+                ))
 
         elif mode == "composite_behavioral":
-            decisions.append(decision(
-                family,
-                "runtime_alignment_or_behavioral_recertification_required",
-                "composite_provider_requires_exact_component_versions_and_behavioral_execution_contract",
-                mode,
-                **base,
+            expected_artifacts = sorted(set(str(x) for x in rule.get("repository_artifacts", []) if x))
+            matched_artifacts = sorted(set(
+                str(match.get("repository_archive", ""))
+                for match in matches
+                if match.get("repository_archive")
             ))
+            component_identity_exact = (
+                len(matches) == len(rows)
+                and matched_artifacts == expected_artifacts
+            )
+            extra = dict(base)
+            extra.update({
+                "expected_repository_artifacts": expected_artifacts,
+                "matched_repository_artifacts": matched_artifacts,
+                "component_identity_exact": component_identity_exact,
+            })
+            if not component_identity_exact:
+                decisions.append(decision(
+                    family,
+                    "runtime_alignment_required",
+                    "composite_provider_runtime_components_do_not_match_repository_identity",
+                    mode,
+                    **extra,
+                ))
+            else:
+                decisions.append(decision(
+                    family,
+                    "behavioral_recertification_required",
+                    "composite_provider_exact_component_identity_verified_behavioral_execution_contract_still_required",
+                    mode,
+                    **extra,
+                ))
 
         else:
             blockers.append("unsupported_evaluation_mode_" + (mode or "missing"))
