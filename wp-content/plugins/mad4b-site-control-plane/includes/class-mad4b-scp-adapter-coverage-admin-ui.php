@@ -181,7 +181,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			$f = $item['functional_coverage'];
 			$state = isset( $f['state'] ) ? sanitize_key( (string) $f['state'] ) : '';
 			if ( in_array( $state, array( 'functional_ready', 'inactive' ), true ) ) continue;
-			$key = ! empty( $item['family'] ) ? sanitize_key( (string) $item['family'] ) : sanitize_key( (string) ( isset( $item['plugin_file'] ) ? $item['plugin_file'] : '' ) );
+			$key = ! empty( $item['functional_family_key'] ) ? sanitize_key( (string) $item['functional_family_key'] ) : ( ! empty( $item['family'] ) && 'unknown' !== sanitize_key( (string) $item['family'] ) ? sanitize_key( (string) $item['family'] ) : sanitize_key( 'unknown-' . (string) ( isset( $item['slug'] ) ? $item['slug'] : '' ) ) );
 			if ( '' === $key ) $key = 'unknown-provider';
 			$member = trim( (string) ( isset( $item['name'] ) ? $item['name'] : '' ) );
 			if ( '' === $member ) $member = isset( $item['plugin_file'] ) ? (string) $item['plugin_file'] : $key;
