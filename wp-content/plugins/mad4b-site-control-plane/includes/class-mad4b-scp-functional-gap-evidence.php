@@ -164,9 +164,18 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					if ( $expected_component_artifacts !== $actual_component_artifacts ) $blockers[] = 'functional_gap_policy_identity_component_artifact_set_mismatch_' . $family;
 				}
 				if ( 'redacted_status' === $mode ) {
-					if ( empty( $row['redacted_secret_option_keys'] ) || ! is_array( $row['redacted_secret_option_keys'] ) ) $blockers[] = 'functional_gap_policy_redaction_keys_missing_' . $family;
+					$redacted_keys = isset( $row['redacted_secret_option_keys'] ) && is_array( $row['redacted_secret_option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['redacted_secret_option_keys'] ) ) ) : array();
+					if ( empty( $redacted_keys ) ) $blockers[] = 'functional_gap_policy_redaction_keys_missing_' . $family;
 					if ( empty( $row['required_status_option_keys'] ) || ! is_array( $row['required_status_option_keys'] ) ) $blockers[] = 'functional_gap_policy_status_keys_missing_' . $family;
 					if ( empty( $row['safe_now'] ) || ! is_array( $row['safe_now'] ) || empty( $row['blocked'] ) || ! is_array( $row['blocked'] ) ) $blockers[] = 'functional_gap_policy_redacted_boundary_missing_' . $family;
+					$probe_config = isset( $data['probes'] ) && is_array( $data['probes'] ) ? $data['probes'] : array();
+					$probe_options = isset( $probe_config['option_keys'] ) && is_array( $probe_config['option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $probe_config['option_keys'] ) ) ) : array();
+					$secret_value = isset( $probe_config['secret_key_regex'] ) ? trim( (string) $probe_config['secret_key_regex'] ) : '';
+					$secret_probe_pattern = '' === $secret_value ? '' : '~' . str_replace( '~', '\\~', $secret_value ) . '~i';
+					foreach ( $redacted_keys as $redacted_key ) {
+						if ( ! in_array( $redacted_key, $probe_options, true ) ) $blockers[] = 'functional_gap_policy_redacted_key_not_probed_' . $family;
+						if ( '' === $secret_probe_pattern || false === @preg_match( $secret_probe_pattern, $redacted_key ) || 1 !== preg_match( $secret_probe_pattern, $redacted_key ) ) $blockers[] = 'functional_gap_policy_redacted_key_not_secret_classified_' . $family;
+					}
 				}
 			}
 			$probes = isset( $data['probes'] ) && is_array( $data['probes'] ) ? $data['probes'] : array();
@@ -177,7 +186,17 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				elseif ( ! self::probe_regex_is_bounded( $value ) ) $blockers[] = 'functional_gap_policy_probe_regex_overbroad_' . $regex_key;
 			}
 			if ( empty( $probes['option_keys'] ) || ! is_array( $probes['option_keys'] ) ) $blockers[] = 'functional_gap_policy_option_probe_set_missing';
-			if ( empty( $probes['constants'] ) || ! is_array( $probes['constants'] ) ) $blockers[] = 'functional_gap_policy_constant_probe_set_missing';
+			if ( empty( $probes['constants'] ) || ! is_array( $probes['constants'] ) ) {
+				$blockers[] = 'functional_gap_policy_constant_probe_set_missing';
+			} else {
+				$secret_value = isset( $probes['secret_key_regex'] ) ? trim( (string) $probes['secret_key_regex'] ) : '';
+				$secret_probe_pattern = '' === $secret_value ? '' : '~' . str_replace( '~', '\\~', $secret_value ) . '~i';
+				foreach ( $probes['constants'] as $constant_name ) {
+					$constant_name = sanitize_text_field( (string) $constant_name );
+					if ( '' === $constant_name || 1 !== preg_match( '/^[A-Z][A-Z0-9_]{1,127}$/', $constant_name ) ) $blockers[] = 'functional_gap_policy_constant_probe_identity_invalid';
+					if ( '' !== $secret_probe_pattern && false !== @preg_match( $secret_probe_pattern, $constant_name ) && 1 === preg_match( $secret_probe_pattern, $constant_name ) ) $blockers[] = 'functional_gap_policy_constant_probe_secret_forbidden';
+				}
+			}
 		}
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 		return array(
@@ -1029,6 +1048,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 		$constants = array();
 		foreach ( $constant_candidates as $name ) {
+			if ( '' !== $secret_pattern && 1 === preg_match( $secret_pattern, $name ) ) {
+				$constants[ $name ] = null;
+				continue;
+			}
 			$constants[ $name ] = defined( $name ) ? sanitize_text_field( (string) constant( $name ) ) : null;
 		}
 
