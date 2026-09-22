@@ -52,10 +52,10 @@ try {
   await page.locator('#user_login').fill(username);
   await page.locator('#user_pass').fill(password);
   await Promise.all([
-    page.waitForLoadState('domcontentloaded'),
+    page.waitForURL(url => url.pathname.includes('/wp-admin/'), { timeout: 10000 }),
     page.locator('#wp-submit').click(),
   ]);
-  assert((await page.url()).includes('/wp-admin/'), 'WordPress browser login failed.', { url: page.url() });
+  assert(page.url().includes('/wp-admin/'), 'WordPress browser login failed.', { url: page.url() });
 
   const params = new URLSearchParams({
     response_type: 'code',
