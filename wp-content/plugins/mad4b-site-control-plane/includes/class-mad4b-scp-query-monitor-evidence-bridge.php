@@ -252,6 +252,24 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, $telemetry, false );
 	}
 
+
+	/**
+	 * Query Monitor's HTML dispatcher processes collectors at shutdown priority 9.
+	 * MAD4B persists evidence at priority 8 so it can survive hosts/plugins that
+	 * call fastcgi_finish_request() at the default priority 10. Process the
+	 * collector container once before reading it; Query Monitor's container is
+	 * explicitly idempotent and its priority-9 dispatch will reuse the same data.
+	 */
+	private static function finalize_query_monitor_collectors_for_capture() {
+		if ( ! defined( 'QM_VERSION' ) || ! class_exists( 'QM_Collectors' ) || ! method_exists( 'QM_Collectors', 'init' ) ) return;
+		try {
+			$collectors = QM_Collectors::init();
+			if ( is_object( $collectors ) && method_exists( $collectors, 'process' ) ) $collectors->process();
+		} catch ( Throwable $ignored ) {
+			// Evidence collection must never make the application request fail.
+		}
+	}
+
 	/** @internal Pure seam for runtime regressions. */
 	public static function normalize_qm_event_for_test( $wrong ) {
 		return self::normalize_qm_event( $wrong );
