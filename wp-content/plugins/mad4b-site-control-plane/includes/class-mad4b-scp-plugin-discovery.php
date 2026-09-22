@@ -30,6 +30,14 @@ final class MAD4B_SCP_Plugin_Discovery {
 	}
 
 	public static function coverage() {
+		// Coverage is a read-only runtime projection, but it depends on the deterministic
+		// in-memory adapter registry being populated. Ordinary wp-admin requests do not
+		// necessarily pass through the MCP/WP-CLI reconciliation path, so initialize the
+		// registry here before classifying installed plugins. This creates no persisted
+		// authority, grants, approvals, provider side effects, or database mutation.
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			MAD4B_SCP_Adapter_Registry::instance()->register_defaults();
+		}
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$plugins = get_plugins();
 		if ( ! is_array( $plugins ) ) $plugins = array();
@@ -59,7 +67,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$items[] = $item;
 			if ( isset( $item['functional_coverage']['state'] ) && isset( $functional_counts[ $item['functional_coverage']['state'] ] ) ) ++$functional_counts[ $item['functional_coverage']['state'] ];
 			if ( ! empty( $item['active'] ) && isset( $item['functional_coverage']['state'] ) ) {
-				$family_key = ! empty( $item['family'] ) ? sanitize_key( (string) $item['family'] ) : self::normalize_plugin_file( $plugin_file );
+				$family_key = isset( $item['functional_family_key'] ) ? sanitize_key( (string) $item['functional_family_key'] ) : self::functional_family_key( isset( $item['family'] ) ? $item['family'] : '', $plugin_file );
 				$family_state = sanitize_key( (string) $item['functional_coverage']['state'] );
 				$current_state = isset( $functional_family_states[ $family_key ] ) ? $functional_family_states[ $family_key ] : '';
 				$current_rank = isset( $functional_severity[ $current_state ] ) ? (int) $functional_severity[ $current_state ] : -1;
@@ -114,8 +122,12 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'plugin_file' => isset( $plugin['plugin_file'] ) ? $plugin['plugin_file'] : '',
 				'plugin_name' => isset( $plugin['name'] ) ? $plugin['name'] : '',
 				'family' => isset( $plugin['family'] ) ? $plugin['family'] : '',
+				'functional_family_key' => isset( $plugin['functional_family_key'] ) ? $plugin['functional_family_key'] : '',
 				'adapter_id' => isset( $plugin['adapter_id'] ) ? $plugin['adapter_id'] : '',
 				'risk' => isset( $plugin['risk'] ) ? $plugin['risk'] : '',
+				'adapter_contract' => isset( $plugin['adapter_contract'] ) ? $plugin['adapter_contract'] : '',
+				'adapter_runtime_source' => isset( $plugin['adapter_runtime_source'] ) ? $plugin['adapter_runtime_source'] : '',
+				'repository_artifact_count' => isset( $plugin['repository_artifact_count'] ) ? (int) $plugin['repository_artifact_count'] : 0,
 				'functional_coverage' => $plugin['functional_coverage'],
 			);
 		}
@@ -144,6 +156,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 					'family' => $family,
 					'adapter_id' => isset( $plugin['adapter_id'] ) ? sanitize_key( (string) $plugin['adapter_id'] ) : '',
 					'risk' => isset( $plugin['risk'] ) ? sanitize_key( (string) $plugin['risk'] ) : 'unknown',
+					'adapter_contract' => isset( $plugin['adapter_contract'] ) ? sanitize_text_field( (string) $plugin['adapter_contract'] ) : '',
+					'adapter_runtime_source' => isset( $plugin['adapter_runtime_source'] ) ? sanitize_key( (string) $plugin['adapter_runtime_source'] ) : '',
+					'repository_artifact_backed' => ! empty( $plugin['repository_artifact_count'] ),
 					'reason' => isset( $f['reason'] ) ? sanitize_text_field( (string) $f['reason'] ) : '',
 					'evidence_requirements' => isset( $f['evidence_requirements'] ) && is_array( $f['evidence_requirements'] ) ? array_values( $f['evidence_requirements'] ) : array(),
 					'safe_now' => isset( $f['safe_now'] ) && is_array( $f['safe_now'] ) ? array_values( $f['safe_now'] ) : array(),
@@ -151,14 +166,26 @@ final class MAD4B_SCP_Plugin_Discovery {
 					'next_action' => isset( $f['next_action'] ) ? sanitize_key( (string) $f['next_action'] ) : '',
 					'plugin_files' => array(),
 					'plugin_names' => array(),
+					'runtime_identities' => array(),
 				);
 			}
-			if ( ! empty( $plugin['plugin_file'] ) ) $families[ $family ]['plugin_files'][] = self::normalize_plugin_file( (string) $plugin['plugin_file'] );
+			if ( ! empty( $plugin['plugin_file'] ) ) {
+				$plugin_file = self::normalize_plugin_file( (string) $plugin['plugin_file'] );
+				$families[ $family ]['plugin_files'][] = $plugin_file;
+				$families[ $family ]['runtime_identities'][ $plugin_file ] = array(
+					'plugin_file' => $plugin_file,
+					'plugin_name' => isset( $plugin['name'] ) ? sanitize_text_field( (string) $plugin['name'] ) : '',
+					'plugin_version' => isset( $plugin['version'] ) ? sanitize_text_field( (string) $plugin['version'] ) : '',
+				);
+			}
 			if ( ! empty( $plugin['name'] ) ) $families[ $family ]['plugin_names'][] = sanitize_text_field( (string) $plugin['name'] );
 		}
 		foreach ( $families as $family => $item ) {
 			$families[ $family ]['plugin_files'] = array_values( array_unique( $item['plugin_files'] ) );
 			$families[ $family ]['plugin_names'] = array_values( array_unique( $item['plugin_names'] ) );
+			$runtime_identities = isset( $item['runtime_identities'] ) && is_array( $item['runtime_identities'] ) ? $item['runtime_identities'] : array();
+			ksort( $runtime_identities, SORT_STRING );
+			$families[ $family ]['runtime_identities'] = array_values( $runtime_identities );
 		}
 		ksort( $families, SORT_STRING );
 		return array(
@@ -223,6 +250,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'active' => $active,
 			'network_active' => $network_active,
 			'family' => isset( $descriptor['id'] ) ? sanitize_key( (string) $descriptor['id'] ) : 'unknown',
+			'functional_family_key' => self::functional_family_key( isset( $descriptor['id'] ) ? (string) $descriptor['id'] : 'unknown', $plugin_file ),
 			'adapter_id' => $adapter_id,
 			'adapter_registered' => is_object( $adapter ),
 			'adapter_runtime_available' => is_object( $adapter ) ? (bool) $adapter->is_available() : false,
@@ -232,6 +260,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'provider_certification_required' => ! empty( $status['mutation_requires_certification'] ),
 			'provider_certification_ok' => ! empty( $certification['runtime_contract_ok'] ),
 			'provider_status' => isset( $certification['status'] ) ? sanitize_key( (string) $certification['status'] ) : '',
+			'adapter_contract' => isset( $status['contract'] ) ? sanitize_text_field( (string) $status['contract'] ) : '',
+			'adapter_runtime_source' => isset( $status['runtime_source'] ) ? sanitize_key( (string) $status['runtime_source'] ) : '',
+			'repository_artifact_count' => isset( $status['repository_artifact_count'] ) ? max( 0, (int) $status['repository_artifact_count'] ) : 0,
 			'side_channel_blocker' => $side_channel_blocker,
 			'mutation_auto_enabled' => false,
 			'functional_coverage' => self::functional_coverage( $adapter, $status, $descriptor, $active, $state ),
@@ -266,6 +297,21 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$reason = 'adapter_status_unavailable';
 			$blockers = array( sanitize_key( (string) $status['_discovery_error'] ) );
 			$next = 'inspect_adapter_status_contract_before_treating_provider_as_ready';
+		} elseif ( 'adapter_registered_inactive' === $coverage_state ) {
+			$state = 'safety_blocked';
+			$reason = 'adapter_runtime_unavailable';
+			$blockers = array( 'adapter_runtime_unavailable' );
+			$next = 'restore_or_certify_exact_provider_runtime_before_functional_readiness';
+		} elseif ( 'adapter_present_certification_required' === $coverage_state ) {
+			$state = 'safety_blocked';
+			$reason = 'provider_certification_required';
+			$blockers = array( 'provider_certification_required' );
+			$next = 'complete_exact_provider_certification_before_write_readiness';
+		} elseif ( 'adapter_present_side_channel_blocked' === $coverage_state ) {
+			$state = 'safety_blocked';
+			$reason = 'parallel_mcp_write_plane_requires_isolation';
+			$blockers = array( 'parallel_mcp_write_plane_requires_isolation' );
+			$next = 'certify_provider_side_channel_isolation_before_functional_readiness';
 		} else {
 			$execution = isset( $status['execution'] ) && is_array( $status['execution'] ) ? $status['execution'] : array();
 			$desired = isset( $execution['desired_execution_abilities'] ) && is_array( $execution['desired_execution_abilities'] ) ? $execution['desired_execution_abilities'] : array();
@@ -348,10 +394,17 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$catalog = self::catalog();
 		$families = isset( $catalog['families'] ) && is_array( $catalog['families'] ) ? $catalog['families'] : array();
 		foreach ( $families as $descriptor ) {
-			if ( ! is_array( $descriptor ) || empty( $descriptor['match'] ) || ! is_array( $descriptor['match'] ) ) continue;
-			foreach ( $descriptor['match'] as $prefix ) {
+			if ( ! is_array( $descriptor ) ) continue;
+			$prefixes = isset( $descriptor['match'] ) && is_array( $descriptor['match'] ) ? $descriptor['match'] : array();
+			foreach ( $prefixes as $prefix ) {
 				$prefix = self::normalize_plugin_file( $prefix );
 				if ( '' !== $prefix && 0 === strpos( $plugin_file, $prefix ) ) return $descriptor;
+			}
+			$versioned = isset( $descriptor['versioned_match'] ) && is_array( $descriptor['versioned_match'] ) ? $descriptor['versioned_match'] : array();
+			foreach ( $versioned as $base ) {
+				$base = rtrim( self::normalize_plugin_file( $base ), '/' );
+				if ( '' === $base ) continue;
+				if ( 1 === preg_match( '/^' . preg_quote( $base, '/' ) . '-v\\d+(?:\\.\\d+)*\\//', $plugin_file ) ) return $descriptor;
 			}
 		}
 		$default = isset( $catalog['default'] ) && is_array( $catalog['default'] ) ? $catalog['default'] : array();
@@ -452,6 +505,13 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$plugin_file = self::normalize_plugin_file( $plugin_file );
 		$parts = explode( '/', $plugin_file );
 		return sanitize_key( isset( $parts[0] ) ? $parts[0] : $plugin_file );
+	}
+
+	private static function functional_family_key( $family, $plugin_file ) {
+		$family = sanitize_key( (string) $family );
+		if ( '' !== $family && 'unknown' !== $family ) return $family;
+		$slug = self::plugin_slug( $plugin_file );
+		return '' !== $slug ? sanitize_key( 'unknown-' . $slug ) : 'unknown-provider';
 	}
 
 	private static function is_active( $plugin_file ) {

@@ -59,6 +59,11 @@ for marker in [
     "'evidence_requirements'",
     "'safe_now'",
     "'prohibited_until_certified'",
+    "'adapter_contract'",
+    "'adapter_runtime_source'",
+    "'repository_artifact_backed'",
+    "'runtime_identities'",
+    "'plugin_version'",
 ]:
     assert marker in discovery, marker
 
