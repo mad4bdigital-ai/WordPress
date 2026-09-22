@@ -39,6 +39,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Verify read-only runtime diagnostic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php
+
       - name: Capture contract evidence
         shell: bash
         run: |
