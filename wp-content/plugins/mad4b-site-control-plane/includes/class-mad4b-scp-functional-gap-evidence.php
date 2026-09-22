@@ -45,10 +45,20 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$mode = isset( $row['evaluation_mode'] ) ? sanitize_key( (string) $row['evaluation_mode'] ) : '';
 				if ( ! in_array( $mode, $supported_modes, true ) ) $blockers[] = 'functional_gap_policy_mode_invalid_' . $family;
 				$matches = isset( $row['match'] ) && is_array( $row['match'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['match'] ) ) ) : array();
-				if ( empty( $matches ) ) $blockers[] = 'functional_gap_policy_match_missing_' . $family;
+				$versioned_matches = isset( $row['versioned_match'] ) && is_array( $row['versioned_match'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['versioned_match'] ) ) ) : array();
+				if ( empty( $matches ) && empty( $versioned_matches ) ) $blockers[] = 'functional_gap_policy_match_missing_' . $family;
+				$identity_prefixes = array();
 				foreach ( $matches as $match ) {
 					$prefix = self::normalize_plugin_file( $match );
 					if ( '' === $prefix ) { $blockers[] = 'functional_gap_policy_match_invalid_' . $family; continue; }
+					$identity_prefixes[] = $prefix;
+				}
+				foreach ( $versioned_matches as $base ) {
+					$base = trim( self::normalize_plugin_file( $base ), '/' );
+					if ( '' === $base || 1 === preg_match( '/[^a-z0-9._-]/', $base ) ) { $blockers[] = 'functional_gap_policy_versioned_match_invalid_' . $family; continue; }
+					$identity_prefixes[] = $base . '-v';
+				}
+				foreach ( $identity_prefixes as $prefix ) {
 					foreach ( $prefix_owners as $known_prefix => $known_family ) {
 						if ( $known_family === $family ) continue;
 						if ( 0 === strpos( $prefix, $known_prefix ) || 0 === strpos( $known_prefix, $prefix ) ) $blockers[] = 'functional_gap_policy_match_overlap_' . $known_family . '_' . $family;
