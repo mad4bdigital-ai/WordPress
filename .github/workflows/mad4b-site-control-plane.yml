@@ -99,6 +99,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify staging post-deployment certification contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-certification-contract.py
+
       - name: Verify required modules and core safety gates
         shell: bash
         run: |
@@ -131,6 +137,7 @@ jobs:
             includes/class-mad4b-scp-provider-contracts.php \
             includes/class-mad4b-scp-adapter-registry.php \
             includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-staging-certification.php \
             includes/class-mad4b-scp-write-runtime-certification.php \
             includes/class-mad4b-scp-rest-compatibility.php \
             includes/adapters/class-mad4b-scp-adapter-base.php \
