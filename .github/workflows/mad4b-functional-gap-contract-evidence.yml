@@ -1,0 +1,74 @@
+name: MAD4B Functional Gap Contract Evidence
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/bulk-taxonomy-editor.zip'
+      - 'wp-content/plugins/custom-mega-menu-v43.zip'
+      - 'wp-content/plugins/duracelltomi-google-tag-manager.zip'
+      - 'wp-content/plugins/meta-catalog-feed-mapper-pro.zip'
+      - 'wp-content/plugins/wpl-client-1238.zip'
+      - 'wp-content/plugins/wpl-client.zip'
+      - 'wp-content/plugins/seo-by-rank-math.zip'
+      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - '.github/workflows/mad4b-functional-gap-contract-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: Repository-backed functional-gap evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Verify exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Capture contract evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mad4b-functional-gap
+          python3 tools/capture-functional-gap-contract-evidence.py             /tmp/mad4b-functional-gap/functional-gap-contract-evidence.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('/tmp/mad4b-functional-gap/functional-gap-contract-evidence.json')
+          data=json.loads(p.read_text())
+          data['source_commit_sha']=os.environ['SOURCE_SHA']
+          p.write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
+          expected={'bulk-taxonomy-editor','custom-mega-menu','google-tag-manager','meta-catalog-feed-mapper','wpl-client','rank-math'}
+          if data.get('contract')!='mad4b.functional-gap-contract-evidence.v1':
+              raise SystemExit('contract mismatch')
+          if set(data.get('families',{}))!=expected:
+              raise SystemExit('family evidence set mismatch')
+          for family,row in data['families'].items():
+              if row.get('promotion_authorized') is not False or row.get('evidence_only') is not True:
+                  raise SystemExit(f'{family}: evidence became authorizing')
+              if not row.get('artifacts'):
+                  raise SystemExit(f'{family}: no artifacts')
+              for artifact in row['artifacts']:
+                  if len(artifact.get('archive_sha256',''))!=64:
+                      raise SystemExit(f'{family}: missing archive sha')
+                  if not artifact.get('plugin_headers'):
+                      raise SystemExit(f'{family}: no plugin headers found')
+          print('functional-gap evidence boundaries: PASS')
+          PY
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-functional-gap-contract-evidence-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-functional-gap/functional-gap-contract-evidence.json
+          if-no-files-found: error
+          retention-days: 30
