@@ -49,6 +49,19 @@ def set_inactive(runtime, family):
     for row in runtime.get('families', {}).get(family, []):
         row['active'] = False
 
+def set_metadata_census(runtime, family, digit):
+    row = first_active(runtime, family)
+    tree = row.setdefault('plugin_tree', {})
+    tree['tree_sha256'] = ''
+    tree['census_sha256'] = digit * 64
+    tree['scan_stable'] = True
+    tree['scan_attempts'] = 1
+    tree['metadata_only'] = True
+    tree['content_rehashed'] = False
+    tree['comparison'] = 'runtime_only_metadata_identity'
+    tree['scan_strategy'] = 'metadata_only_runtime_identity'
+    tree.pop('error', None)
+
 def remove_route(runtime, route):
     runtime['rest_routes'] = [row for row in runtime.get('rest_routes', []) if row.get('route') != route]
 
@@ -192,6 +205,14 @@ def cases(base, policy):
     set_inactive(composite_inactive, 'wp-import-export')
     out.append(('composite-inactive', composite_inactive, {'wp-import-export': 'not_active'}))
 
+    census_a = copy.deepcopy(base)
+    set_metadata_census(census_a, 'duplicator', '1')
+    out.append(('runtime-only-census-a', census_a, {'duplicator': 'runtime_contract_evidence_captured'}))
+
+    census_b = copy.deepcopy(base)
+    set_metadata_census(census_b, 'duplicator', '2')
+    out.append(('runtime-only-census-b', census_b, {'duplicator': 'runtime_contract_evidence_captured'}))
+
     return out
 
 def main():
@@ -241,6 +262,12 @@ def main():
             'runtime_evidence_fingerprint': result.get('runtime_evidence_fingerprint', ''),
             'parity': 'pass',
         })
+
+    by_name = {row['name']: row for row in manifest['cases']}
+    census_a = by_name.get('runtime-only-census-a', {}).get('decision_fingerprint', '')
+    census_b = by_name.get('runtime-only-census-b', {}).get('decision_fingerprint', '')
+    if len(census_a) != 64 or len(census_b) != 64 or census_a == census_b:
+        raise SystemExit('runtime-only metadata census drift did not change decision fingerprint')
 
     write(outdir / 'matrix.json', manifest)
     print(f"mad4b.functional-gap-evaluator-parity-matrix.v1: PASS cases={len(manifest['cases'])}")
