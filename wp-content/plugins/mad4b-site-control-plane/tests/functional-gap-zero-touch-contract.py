@@ -77,7 +77,7 @@ for marker in [
     "build_provenance_declared_files_missing",
     "build_provenance_manifest_recompute_mismatch",
     "build_provenance_fingerprint_recompute_mismatch",
-    "build_provenance_adapter_sha_mismatch",
+    "build_provenance_adapter_identity_invalid",
     "'integrity_level' => empty( $blockers ) ? 'self_consistent_package' : 'failed_closed'",
     "'external_cryptographic_attestation' => false",
     "'package_self_consistent' => ! empty( $repository['package_integrity']['valid'] )",
@@ -98,6 +98,13 @@ for marker in [
     "private static function runtime_evidence_fingerprint( array $runtime )",
     "'runtime_tree_evidence'=>$runtime_tree_evidence",
     "'runtime_evidence_fingerprint' => (string) $runtime_evidence_fingerprint",
+    "canonical_digest_lines",
+    "base64_encode",
+    "'b:'",
+    "'i:'",
+    "'s:'",
+    "'l:'",
+    "'m:'",
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
@@ -234,6 +241,14 @@ for forbidden in [
 ]:
     if forbidden in capture or forbidden in runtime or forbidden in offline:
         raise SystemExit(f'functional-gap implementation retained hardcoded family policy: {forbidden}')
+
+# MCP Adapter is a sibling distribution artifact. Runtime package verification
+# must validate the declared adapter identity and fingerprint binding without
+# pretending the adapter archive lives inside the Control Plane ZIP.
+if "dependencies/mcp-adapter.zip" in runtime:
+    raise SystemExit('Control Plane package verifier incorrectly requires sibling MCP Adapter bytes inside the plugin ZIP')
+if "build_provenance_adapter_identity_invalid" not in runtime:
+    raise SystemExit('Control Plane package verifier lost adapter identity validation')
 
 # Runtime provenance verification must remain self-consistency evidence only;
 # it must never pretend to be an external signature/attestation.
