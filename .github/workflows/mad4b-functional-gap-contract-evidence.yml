@@ -11,6 +11,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-authority-isolation-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
@@ -51,6 +52,7 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-authority-isolation-contract.py
           python3 -m py_compile tools/evaluate-functional-gap-contract-promotion.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php
