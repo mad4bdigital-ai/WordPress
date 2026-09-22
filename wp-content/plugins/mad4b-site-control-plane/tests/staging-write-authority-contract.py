@@ -57,6 +57,7 @@ for marker in [
     "MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $agent['id'], 'mad4b-write' )",
     "'grant_lookup_strategy' => 'bulk_agent_grant_snapshot'",
     "'duplicate_exact_allow_grants_count'",
+    "'duplicate_retention_policy' => 'lowest_grant_id'",
     "'current_agent_wildcard_grants'",
     "'global_registry_wildcard_grants'",
     "'broad_environment_grants_count'",
