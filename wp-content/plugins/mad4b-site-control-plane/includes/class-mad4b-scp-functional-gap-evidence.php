@@ -16,6 +16,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	const EVALUATION_CONTRACT = 'mad4b.functional-gap-promotion-evaluation.v2';
 	const REPOSITORY_CONTRACT = 'mad4b.functional-gap-contract-evidence.v1';
 	const REPOSITORY_FILE = 'config/functional-gap-contract-evidence.generated.json';
+	const MAX_TREE_FILES = 12000;
+	const MAX_TREE_BYTES = 805306368;
 
 	private static $snapshot = null;
 
@@ -63,8 +65,11 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$base = rtrim( str_replace( '\\', '/', $root ), '/' ) . '/';
 				$relative = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path );
 				$size = (int) $file->getSize();
+				if ( count( $rows ) + 1 > self::MAX_TREE_FILES || $total + $size > self::MAX_TREE_BYTES ) {
+					return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_scan_budget_exceeded', 'scan_budget_exceeded'=>true );
+				}
 				$digest = hash_file( 'sha256', $file->getPathname() );
-				if ( false === $digest ) continue;
+				if ( false === $digest ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_file_hash_failed' );
 				$total += $size;
 				$rows[] = $relative . "\0" . $size . "\0" . $digest;
 			}
@@ -86,6 +91,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			if ( preg_match( '/^[a-f0-9]{64}$/', $digest ) ) $expected[ $digest ] = true;
 		}
 		$first = self::plugin_tree_once( $plugin_file );
+		if ( ! empty( $first['error'] ) ) {
+			$first['scan_stable'] = false;
+			$first['scan_attempts'] = 1;
+			$first['comparison'] = sanitize_key( (string) $first['error'] );
+			return $first;
+		}
 		$first_hash = isset( $first['tree_sha256'] ) ? strtolower( (string) $first['tree_sha256'] ) : '';
 		if ( '' !== $first_hash && isset( $expected[ $first_hash ] ) ) {
 			$first['scan_stable'] = true;
@@ -94,6 +105,13 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			return $first;
 		}
 		$second = self::plugin_tree_once( $plugin_file );
+		if ( ! empty( $second['error'] ) ) {
+			$second['scan_stable'] = false;
+			$second['scan_attempts'] = 2;
+			$second['first_tree_sha256'] = $first_hash;
+			$second['comparison'] = sanitize_key( (string) $second['error'] );
+			return $second;
+		}
 		$second_hash = isset( $second['tree_sha256'] ) ? strtolower( (string) $second['tree_sha256'] ) : '';
 		$stable = '' !== $first_hash && '' !== $second_hash && hash_equals( $first_hash, $second_hash )
 			&& (int) ( isset( $first['file_count'] ) ? $first['file_count'] : -1 ) === (int) ( isset( $second['file_count'] ) ? $second['file_count'] : -2 )
@@ -232,12 +250,13 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					if ( '' !== $prefix && 0 === strpos( $normalized, $prefix ) ) { $matched = true; break; }
 				}
 				if ( ! $matched ) continue;
+				$is_active = isset( $active_set[ $normalized ] );
 				$families[ $family ][] = array(
 					'plugin_file' => (string) $plugin_file,
 					'name' => isset( $headers['Name'] ) ? sanitize_text_field( (string) $headers['Name'] ) : '',
 					'version' => isset( $headers['Version'] ) ? sanitize_text_field( (string) $headers['Version'] ) : '',
-					'active' => isset( $active_set[ $normalized ] ),
-					'plugin_tree' => self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ) ),
+					'active' => $is_active,
+					'plugin_tree' => $is_active ? self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ) ) : array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned' ),
 				);
 			}
 			usort( $families[ $family ], static function ( $a, $b ) { return strcmp( $a['plugin_file'], $b['plugin_file'] ); } );
