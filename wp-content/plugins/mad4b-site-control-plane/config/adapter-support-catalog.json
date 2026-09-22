@@ -435,7 +435,7 @@
     {
       "id": "custom-mega-menu",
       "match": [
-        "custom-mega-menu-v43/"
+        "custom-mega-menu/"
       ],
       "adapter_id": "custom-mega-menu",
       "strategy": "registered_adapter",
@@ -462,6 +462,9 @@
         "menu_structure_write",
         "navigation_assignment_mutation",
         "menu_item_delete"
+      ],
+      "versioned_match": [
+        "custom-mega-menu"
       ]
     },
     {
@@ -624,6 +627,333 @@
         "reversible_language_restore"
       ],
       "functional_mode": "specialized"
+    },
+    {
+      "id": "duplicator",
+      "match": [
+        "duplicator/"
+      ],
+      "adapter_id": "duplicator",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "Duplicator can package, restore and migrate database and filesystem state. Those operations are broad site mutations and require exact artifact, destination, rollback and reconciliation contracts before exposure.",
+      "functional_next_action": "capture_duplicator_runtime_contract_and_define_read_only_package_inventory_before_any_backup_restore_or_migration_execution",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "package_inventory_model",
+        "filesystem_scope_model",
+        "database_scope_model",
+        "destination_and_credential_boundary",
+        "rollback_strategy",
+        "post_operation_reconciliation"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "package_create",
+        "package_download_path_exposure",
+        "restore_execution",
+        "migration_execution",
+        "filesystem_mutation",
+        "database_mutation",
+        "remote_storage_credential_read"
+      ]
+    },
+    {
+      "id": "elementskit",
+      "match": [
+        "elementskit-lite/"
+      ],
+      "adapter_id": "elementskit",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "ElementsKit extends Elementor with site-wide widgets, templates and settings. Elementor compatibility does not imply that ElementsKit-specific models or mutation semantics are certified.",
+      "functional_next_action": "capture_elementskit_runtime_and_data_model_before_exposing_widget_template_or_global_setting_operations",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "elementor_integration_boundary",
+        "widget_and_template_model",
+        "global_setting_model",
+        "capability_requirements",
+        "write_impact_model",
+        "rollback_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "widget_configuration_write",
+        "template_mutation",
+        "global_setting_write",
+        "content_mutation",
+        "external_template_library_write"
+      ]
+    },
+    {
+      "id": "heic-support",
+      "match": [
+        "heic-support/"
+      ],
+      "adapter_id": "heic-support",
+      "strategy": "registered_adapter",
+      "risk": "medium",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "HEIC handling can alter upload validation, conversion behavior and generated media files. Media adapter availability does not certify this plugin's conversion pipeline.",
+      "functional_next_action": "capture_heic_support_runtime_conversion_contract_before_exposing_media_pipeline_operations",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "upload_pipeline_hooks",
+        "conversion_model",
+        "filesystem_effect_model",
+        "metadata_effect_model",
+        "failure_and_cleanup_semantics"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "file_conversion",
+        "filesystem_write",
+        "upload_pipeline_mutation",
+        "attachment_metadata_mutation",
+        "generated_file_cleanup"
+      ]
+    },
+    {
+      "id": "wordpress-importer",
+      "match": [
+        "wordpress-importer/"
+      ],
+      "adapter_id": "wordpress-importer",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "WordPress Importer has a distinct execution model from WP All Import and can create content, users, taxonomies and remote attachments. It must not inherit another import provider's certification.",
+      "functional_next_action": "capture_wordpress_importer_execution_and_rollback_contract_before_any_import_surface",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "source_format_contract",
+        "content_creation_model",
+        "author_mapping_model",
+        "taxonomy_effect_model",
+        "remote_attachment_fetch_model",
+        "rollback_or_compensating_strategy",
+        "post_import_reconciliation"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "import_execution",
+        "content_creation",
+        "author_creation_or_mapping",
+        "taxonomy_mutation",
+        "remote_attachment_fetch",
+        "filesystem_write",
+        "network_request"
+      ]
+    },
+    {
+      "id": "ai-engine",
+      "match": [
+        "ai-engine/"
+      ],
+      "adapter_id": "ai-engine",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "AI Engine may use external model providers, credentials and content-generation actions. Local plugin presence does not establish safe provider, data handling or publication boundaries.",
+      "functional_next_action": "capture_ai_engine_provider_credential_data_and_content_side_effect_contract_before_any_specialized_surface",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "provider_inventory",
+        "credential_boundary",
+        "data_classification",
+        "outbound_request_model",
+        "content_write_model",
+        "approval_and_reconciliation_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "credential_read",
+        "external_model_request",
+        "content_generation_write",
+        "publication",
+        "tool_or_function_execution",
+        "local_configuration_write"
+      ]
+    },
+    {
+      "id": "external-mcp-server",
+      "match": [
+        "miniorange-secure-mcp-server/"
+      ],
+      "adapter_id": "external-mcp-server",
+      "strategy": "registered_adapter",
+      "risk": "exceptional",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "intentionally_restricted",
+      "functional_rationale": "A second MCP server can create an independent transport or authority plane outside MAD4B governance. It remains restricted until peer transport, authentication and write isolation are explicitly certified.",
+      "functional_next_action": "retain_restricted_scope_until_external_mcp_peer_transport_authentication_and_write_plane_isolation_are_certified",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "transport_route_inventory",
+        "authentication_model",
+        "credential_boundary",
+        "tool_and_resource_catalog",
+        "write_plane_inventory",
+        "provider_isolation_proof"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "mcp_transport_enable",
+        "credential_read",
+        "external_model_authority",
+        "write_plane_exposure",
+        "remote_execution",
+        "tool_registration"
+      ]
+    },
+    {
+      "id": "hostinger-onboarding",
+      "match": [
+        "hostinger-easy-onboarding/"
+      ],
+      "adapter_id": "hostinger-onboarding",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "Hostinger Easy Onboarding can change site setup and connect onboarding flows to Hostinger services. Plugin presence does not define a safe bounded onboarding mutation contract.",
+      "functional_next_action": "capture_hostinger_onboarding_runtime_steps_external_calls_and_rollback_boundary_before_any_onboarding_operation",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "onboarding_step_model",
+        "local_setting_model",
+        "credential_boundary",
+        "outbound_endpoint_inventory",
+        "site_mutation_model",
+        "rollback_or_reconciliation_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "credential_read",
+        "onboarding_step_execution",
+        "site_setting_write",
+        "plugin_or_theme_mutation",
+        "external_service_write",
+        "redirect_or_provisioning_action"
+      ]
+    },
+    {
+      "id": "hostinger-ai",
+      "match": [
+        "hostinger-ai-assistant/"
+      ],
+      "adapter_id": "hostinger-ai",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "Hostinger AI can send site or user context to external AI services and may generate or modify content. A separate data, credential and publication boundary is required.",
+      "functional_next_action": "capture_hostinger_ai_provider_data_credential_and_content_side_effect_contract_before_any_ai_execution",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "model_provider_inventory",
+        "credential_boundary",
+        "data_classification",
+        "outbound_request_model",
+        "generated_content_model",
+        "content_write_model",
+        "approval_and_reconciliation_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "credential_read",
+        "external_ai_execution",
+        "site_context_export",
+        "generated_content_write",
+        "publication",
+        "local_configuration_write"
+      ]
+    },
+    {
+      "id": "hostinger-reach",
+      "match": [
+        "hostinger-reach/"
+      ],
+      "adapter_id": "hostinger-reach",
+      "strategy": "registered_adapter",
+      "risk": "high",
+      "requested_contracts": [
+        "plugin_status_read"
+      ],
+      "mutation_scope": "none_read_only",
+      "functional_mode": "contract_discovery",
+      "functional_rationale": "Hostinger Reach can interact with external marketing and audience services. Campaign, subscriber and credential operations require a dedicated external-side-effect contract.",
+      "functional_next_action": "capture_hostinger_reach_audience_campaign_credential_and_delivery_contract_before_any_marketing_operation",
+      "functional_evidence_requirements": [
+        "runtime_plugin_identity",
+        "audience_data_model",
+        "campaign_model",
+        "credential_boundary",
+        "outbound_endpoint_inventory",
+        "delivery_side_effect_model",
+        "consent_and_data_classification",
+        "reconciliation_strategy"
+      ],
+      "functional_safe_now": [
+        "plugin_status_read"
+      ],
+      "functional_prohibited_until_certified": [
+        "credential_read",
+        "subscriber_export",
+        "campaign_create_or_update",
+        "campaign_send",
+        "audience_mutation",
+        "external_service_write",
+        "local_configuration_write"
+      ]
     }
   ]
 }

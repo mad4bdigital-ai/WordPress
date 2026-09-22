@@ -184,6 +184,13 @@ final class MAD4B_SCP_Adapter_Registry {
 		$mcp_peer_governance_ok = ! empty( $mcp_peer_governance['inventory_ready'] ) && empty( $mcp_peer_governance['write_side_channel_detected'] );
 		$plugin_coverage = $this->plugin_coverage();
 		$support_requests = isset( $plugin_coverage['support_requests'] ) && is_array( $plugin_coverage['support_requests'] ) ? $plugin_coverage['support_requests'] : array();
+		$functional_family_counts = isset( $plugin_coverage['functional_family_counts'] ) && is_array( $plugin_coverage['functional_family_counts'] ) ? $plugin_coverage['functional_family_counts'] : array();
+		$functional_family_states = isset( $plugin_coverage['functional_family_states'] ) && is_array( $plugin_coverage['functional_family_states'] ) ? $plugin_coverage['functional_family_states'] : array();
+		$contract_discovery_families = array();
+		foreach ( $functional_family_states as $family_id => $functional_state ) {
+			if ( 'contract_discovery_required' === sanitize_key( (string) $functional_state ) ) $contract_discovery_families[] = sanitize_key( (string) $family_id );
+		}
+		sort( $contract_discovery_families, SORT_STRING );
 		$active_adapter_gaps = array();
 		$active_gap_reasons = array( 'no_registered_adapter', 'reversible_certification_incomplete', 'provider_certification_required', 'parallel_mcp_write_plane_requires_isolation' );
 		foreach ( $support_requests as $request ) {
@@ -219,6 +226,10 @@ final class MAD4B_SCP_Adapter_Registry {
 				'active_adapter_gap_request_ids' => array_values( array_unique( $active_adapter_gaps ) ),
 				'active_adapter_gap_reason_codes' => $active_gap_reasons,
 				'unknown_plugin_write_default' => 'deny',
+				'functional_family_counts' => $functional_family_counts,
+				'contract_discovery_family_count' => count( $contract_discovery_families ),
+				'contract_discovery_families' => $contract_discovery_families,
+				'contract_discovery_is_non_authorizing' => true,
 			),
 			'custom_server_isolation' => empty( $public_leaks ) && $mcp_peer_governance_ok,
 			'default_server_public_candidates' => $public_candidates,
