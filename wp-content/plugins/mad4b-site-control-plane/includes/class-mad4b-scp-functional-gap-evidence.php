@@ -1226,6 +1226,56 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return self::canonical_digest( $payload );
 	}
 
+	private static function runtime_dynamic_surface_fingerprint( array $runtime ) {
+		$routes = array();
+		foreach ( isset( $runtime['rest_routes'] ) && is_array( $runtime['rest_routes'] ) ? $runtime['rest_routes'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['route'] ) ) continue;
+			$methods = isset( $row['methods'] ) && is_array( $row['methods'] ) ? array_values( array_unique( array_map( 'strtoupper', $row['methods'] ) ) ) : array();
+			sort( $methods, SORT_STRING );
+			$permissions = isset( $row['get_permission_callbacks'] ) && is_array( $row['get_permission_callbacks'] ) ? array_values( array_unique( array_map( 'strval', $row['get_permission_callbacks'] ) ) ) : array();
+			sort( $permissions, SORT_STRING );
+			$routes[] = array(
+				'route'=>(string) $row['route'],
+				'methods'=>$methods,
+				'get_permission_callbacks'=>$permissions,
+				'get_permission_missing'=>! empty( $row['get_permission_missing'] ),
+				'get_permission_public'=>! empty( $row['get_permission_public'] ),
+			);
+		}
+		usort( $routes, static function ( $a, $b ) { return strcmp( (string) $a['route'], (string) $b['route'] ); } );
+
+		$options = isset( $runtime['option_presence'] ) && is_array( $runtime['option_presence'] ) ? $runtime['option_presence'] : array();
+		ksort( $options, SORT_STRING );
+		$constants = isset( $runtime['constants'] ) && is_array( $runtime['constants'] ) ? $runtime['constants'] : array();
+		ksort( $constants, SORT_STRING );
+		$ajax = isset( $runtime['ajax_hooks'] ) && is_array( $runtime['ajax_hooks'] ) ? array_values( array_unique( array_map( 'strval', $runtime['ajax_hooks'] ) ) ) : array();
+		sort( $ajax, SORT_STRING );
+
+		$cron = array();
+		foreach ( isset( $runtime['cron_hooks'] ) && is_array( $runtime['cron_hooks'] ) ? $runtime['cron_hooks'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['hook'] ) ) continue;
+			$cron[] = array( 'hook'=>(string) $row['hook'], 'event_count'=>isset( $row['event_count'] ) ? (int) $row['event_count'] : 0 );
+		}
+		usort( $cron, static function ( $a, $b ) {
+			$cmp = strcmp( (string) $a['hook'], (string) $b['hook'] );
+			return 0 !== $cmp ? $cmp : ( (int) $a['event_count'] <=> (int) $b['event_count'] );
+		} );
+
+		return self::canonical_digest( array(
+			'contract'=>'mad4b.functional-gap-dynamic-surface.v1',
+			'rest_routes'=>$routes,
+			'ajax_hooks'=>$ajax,
+			'option_presence'=>$options,
+			'cron_hooks'=>$cron,
+			'constants'=>$constants,
+		) );
+	}
+
+	public static function current_dynamic_surface_fingerprint() {
+		$runtime = self::runtime_evidence( array( 'valid'=>false, 'families'=>array() ) );
+		return self::runtime_dynamic_surface_fingerprint( $runtime );
+	}
+
 	private static function decision_fingerprint( array $repository, array $policy, array $decisions, $runtime_evidence_fingerprint = '' ) {
 		$payload = array(
 			'contract' => self::EVALUATION_CONTRACT,
@@ -1464,15 +1514,23 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 	public static function snapshot() {
 		$key = self::runtime_identity_key();
-		if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) return self::$snapshot;
+		if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) {
+			$cached_dynamic = isset( self::$snapshot['snapshot_end_dynamic_surface_sha256'] ) ? strtolower( (string) self::$snapshot['snapshot_end_dynamic_surface_sha256'] ) : '';
+			$current_dynamic = strtolower( (string) self::current_dynamic_surface_fingerprint() );
+			if ( preg_match( '/^[a-f0-9]{64}$/', $cached_dynamic ) && preg_match( '/^[a-f0-9]{64}$/', $current_dynamic ) && hash_equals( $cached_dynamic, $current_dynamic ) ) return self::$snapshot;
+			self::$snapshot = null;
+			self::$snapshot_key = '';
+		}
 		$repository = self::repository_evidence();
 		self::$scan_files = 0;
 		self::$scan_bytes = 0;
 		self::$scan_started_at = microtime( true );
 		$runtime = self::runtime_evidence( $repository );
+		$start_dynamic_surface = self::runtime_dynamic_surface_fingerprint( $runtime );
 		$evaluation = self::evaluate( $repository, $runtime );
 		$runtime_census = self::runtime_census_from_runtime( $runtime );
 		$end_key = self::runtime_identity_key();
+		$end_dynamic_surface = self::current_dynamic_surface_fingerprint();
 		$census_required = ! empty( $repository['valid'] );
 		$end_census = $census_required ? self::current_runtime_census_status() : array(
 			'contract' => 'mad4b.functional-gap-runtime-census.v1',
@@ -1490,7 +1548,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			&& preg_match( '/^[a-f0-9]{64}$/', $start_census_sha ) && preg_match( '/^[a-f0-9]{64}$/', $end_census_sha )
 			&& hash_equals( $start_census_sha, $end_census_sha )
 		);
-		$fixed_point_stable = $identity_stable && $census_stable;
+		$dynamic_surface_stable = preg_match( '/^[a-f0-9]{64}$/', (string) $start_dynamic_surface ) && preg_match( '/^[a-f0-9]{64}$/', (string) $end_dynamic_surface ) && hash_equals( (string) $start_dynamic_surface, (string) $end_dynamic_surface );
+		$fixed_point_stable = $identity_stable && $census_stable && $dynamic_surface_stable;
 		if ( ! $fixed_point_stable && self::$fixed_point_retry_depth < 1 ) {
 			++self::$fixed_point_retry_depth;
 			self::$snapshot = null;
@@ -1507,6 +1566,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			$evaluation['counts'] = array();
 			$evaluation['blockers'] = isset( $evaluation['blockers'] ) && is_array( $evaluation['blockers'] ) ? $evaluation['blockers'] : array();
 			if ( ! $identity_stable ) $evaluation['blockers'][] = 'snapshot_runtime_identity_changed_during_evaluation';
+			if ( ! $dynamic_surface_stable ) $evaluation['blockers'][] = 'snapshot_dynamic_surface_changed_during_evaluation';
 			if ( ! $census_stable ) {
 				$evaluation['blockers'][] = 'snapshot_runtime_census_changed_during_evaluation';
 				$evaluation['blockers'] = array_merge( $evaluation['blockers'], isset( $end_census['blockers'] ) ? (array) $end_census['blockers'] : array() );
@@ -1526,6 +1586,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_fixed_point_attempts' => self::$fixed_point_retry_depth + 1,
 			'snapshot_census_required' => $census_required,
 			'snapshot_end_census_sha256' => $end_census_sha,
+			'snapshot_start_dynamic_surface_sha256' => (string) $start_dynamic_surface,
+			'snapshot_end_dynamic_surface_sha256' => (string) $end_dynamic_surface,
+			'snapshot_dynamic_surface_stable' => $dynamic_surface_stable,
 			'runtime_evidence_fingerprint' => isset( $evaluation['runtime_evidence_fingerprint'] ) ? (string) $evaluation['runtime_evidence_fingerprint'] : '',
 			'runtime_census_sha256' => isset( $runtime_census['census_sha256'] ) ? (string) $runtime_census['census_sha256'] : '',
 			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? (string) $evaluation['decision_fingerprint'] : '',
@@ -1546,6 +1609,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_fixed_point_attempts' => self::$fixed_point_retry_depth + 1,
 			'snapshot_census_required' => $census_required,
 			'snapshot_end_census' => $end_census,
+			'snapshot_start_dynamic_surface_sha256' => (string) $start_dynamic_surface,
+			'snapshot_end_dynamic_surface_sha256' => (string) $end_dynamic_surface,
+			'snapshot_dynamic_surface_stable' => $dynamic_surface_stable,
 			'read_only' => true,
 			'authority_created' => false,
 			'mutation_performed' => false,
@@ -1621,6 +1687,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_fixed_point_stable' => ! empty( $snapshot['snapshot_fixed_point_stable'] ),
 			'snapshot_fixed_point_attempts' => isset( $snapshot['snapshot_fixed_point_attempts'] ) ? (int) $snapshot['snapshot_fixed_point_attempts'] : 0,
 			'snapshot_census_required' => ! empty( $snapshot['snapshot_census_required'] ),
+			'snapshot_dynamic_surface_stable' => ! empty( $snapshot['snapshot_dynamic_surface_stable'] ),
+			'snapshot_end_dynamic_surface_sha256' => isset( $snapshot['snapshot_end_dynamic_surface_sha256'] ) ? (string) $snapshot['snapshot_end_dynamic_surface_sha256'] : '',
 			'ready' => ! empty( $evaluation['ready'] ) && ! empty( $snapshot['snapshot_fixed_point_stable'] ),
 			'repository_evidence_valid' => ! empty( $repository['valid'] ),
 			'evidence_integrity_bound' => ! empty( $repository['valid'] ) && ! empty( $repository['evidence_sha256'] ) && ! empty( $repository['policy_sha256'] ) && ! empty( $repository['build_fingerprint'] ) && ! empty( $repository['package_manifest_digest'] ),
