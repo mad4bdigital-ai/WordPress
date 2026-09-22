@@ -5,10 +5,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';
+require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation-plan.php';
 require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation.php';
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
 MAD4B_SCP_Site_Profile_Write_Enablement::boot();
+MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::boot();
 MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
 
 final class MAD4B_SCP_Servers {
@@ -35,7 +37,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/plugin-lifecycle-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 			), $governed_status ),
-			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' ),
+			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/staging-write-grant-reconciliation-plan', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' ),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
