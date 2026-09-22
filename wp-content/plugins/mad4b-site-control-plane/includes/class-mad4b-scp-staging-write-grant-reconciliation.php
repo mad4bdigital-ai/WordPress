@@ -179,6 +179,13 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		return $errors;
 	}
 
+	private static function rollback_transaction( array $agent, array $grant_ids, $authority_checkpoint ) {
+		$errors = self::rollback_created( $agent, $grant_ids );
+		$restored = MAD4B_SCP_Staging_Write_Authority::restore_persistence_checkpoint( $authority_checkpoint );
+		if ( is_wp_error( $restored ) ) $errors[] = $restored->get_error_code() . ':authority_checkpoint';
+		return $errors;
+	}
+
 	public static function reconcile( $input ) {
 		if ( self::$running ) return new WP_Error( 'mad4b_grant_reconcile_reentry_denied', 'Grant reconciliation is already running in this request.' );
 		$permission = self::can_execute( $input );
@@ -286,6 +293,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'breakglass_included' => false,
 			), 'ok' );
 			if ( is_wp_error( $intent ) ) return new WP_Error( 'mad4b_grant_reconcile_intent_audit_failed', 'Authorization evidence could not be committed before grant mutation.' );
+			$authority_checkpoint = MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint();
 
 			$created_ids = array();
 			$created_abilities = array();
@@ -293,12 +301,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				$provider = $providers[ $ability ];
 				$created = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-write', $ability, $provider, array(), 'allow', 'staging' );
 				if ( is_wp_error( $created ) ) {
-					$rollback = self::rollback_created( $agent, $created_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 					return new WP_Error( 'mad4b_grant_reconcile_create_failed', 'Exact grant creation failed; newly-created grants were rolled back.', array( 'ability' => $ability, 'code' => $created->get_error_code(), 'rollback_errors' => $rollback ) );
 				}
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-write', $ability, $provider );
 				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] || 'staging' !== (string) $grant['environment'] ) {
-					$rollback = self::rollback_created( $agent, $created_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 					return new WP_Error( 'mad4b_grant_reconcile_postcondition_failed', 'New exact grant failed immediate postcondition verification.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 				$created_ids[] = (int) $grant['id'];
@@ -315,7 +323,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 					'write_inventory_fingerprint' => (string) $inventory['fingerprint'],
 				), 'ok' );
 				if ( is_wp_error( $grant_audit ) ) {
-					$rollback = self::rollback_created( $agent, $created_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 					return new WP_Error( 'mad4b_grant_reconcile_grant_audit_failed', 'Per-grant audit failed; newly-created grants were rolled back.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 			}
@@ -323,29 +331,29 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			foreach ( $missing as $ability ) {
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-write', $ability, $providers[ $ability ] );
 				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] || 'staging' !== (string) $grant['environment'] ) {
-					$rollback = self::rollback_created( $agent, $created_ids );
+					$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 					return new WP_Error( 'mad4b_grant_reconcile_final_grant_check_failed', 'Exact grant set did not converge after mutation; newly-created grants were rolled back.', array( 'ability' => $ability, 'rollback_errors' => $rollback ) );
 				}
 			}
 
-			$authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
+			$authority = MAD4B_SCP_Staging_Write_Authority::finalize_exact_existing_authority();
 			if ( ! is_array( $authority ) || empty( $authority['ready'] ) || 'ready' !== ( isset( $authority['state'] ) ? (string) $authority['state'] : '' ) || ! empty( $authority['grant_blockers'] ) || (int) ( isset( $authority['write_tool_count'] ) ? $authority['write_tool_count'] : 0 ) !== (int) $inventory['count'] || ! isset( $authority['write_inventory_fingerprint'] ) || ! hash_equals( (string) $inventory['fingerprint'], (string) $authority['write_inventory_fingerprint'] ) ) {
-				$rollback = self::rollback_created( $agent, $created_ids );
-				return new WP_Error( 'mad4b_grant_reconcile_authority_not_ready', 'Authority did not converge after exact grant reconciliation; newly-created grants were rolled back.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_authority_not_ready', 'Exact existing authority did not converge after grant reconciliation; newly-created grants and persisted authority state were rolled back.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
 			}
-			if ( ! empty( $authority['exact_grants_created'] ) || ! empty( $authority['stale_allow_grants_revoked'] ) ) {
-				$rollback = self::rollback_created( $agent, $created_ids );
-				return new WP_Error( 'mad4b_grant_reconcile_unexpected_authority_mutation', 'Authority reconciliation attempted mutations outside the explicitly created exact grant set.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
+			if ( ! empty( $authority['exact_grants_created'] ) || ! empty( $authority['stale_allow_grants_revoked'] ) || ! empty( $authority['stale_subjects_disabled'] ) ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_unexpected_authority_mutation', 'Exact authority finalization reported mutation outside the explicitly created exact grant set.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
 			}
 
 			$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint );
 			if ( is_wp_error( $bound ) ) {
-				$rollback = self::rollback_created( $agent, $created_ids );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 				return new WP_Error( 'mad4b_grant_reconcile_candidate_binding_failed', 'Exact package candidate could not be bound after grant reconciliation; newly-created grants were rolled back.', array( 'code' => $bound->get_error_code(), 'rollback_errors' => $rollback ) );
 			}
 			$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 			if ( empty( $binding['required'] ) || empty( $binding['match'] ) ) {
-				$rollback = self::rollback_created( $agent, $created_ids );
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
 				return new WP_Error( 'mad4b_grant_reconcile_candidate_not_effective', 'Exact package candidate binding is not effective after reconciliation.', array( 'binding' => $binding, 'rollback_errors' => $rollback ) );
 			}
 			$authority = $bound;
@@ -365,6 +373,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'authority_ready' => true,
 				'production_mutation' => false,
 			), 'ok' );
+			if ( is_wp_error( $completion ) ) {
+				$rollback = self::rollback_transaction( $agent, $created_ids, $authority_checkpoint );
+				return new WP_Error( 'mad4b_grant_reconcile_completion_audit_failed', 'Completion audit failed; newly-created grants and persisted authority state were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
 
 			return array(
 				'contract' => self::CONTRACT,
@@ -383,7 +395,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'candidate_rebound_without_grant_changes' => empty( $created_abilities ),
 				'runtime_reconciled' => true,
 				'authority_ready' => true,
-				'completion_audit_recorded' => ! is_wp_error( $completion ),
+				'completion_audit_recorded' => true,
 				'breakglass_included' => false,
 				'production_mutation' => false,
 			);
