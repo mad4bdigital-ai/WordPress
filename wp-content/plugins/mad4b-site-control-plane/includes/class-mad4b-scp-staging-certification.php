@@ -300,11 +300,14 @@ final class MAD4B_SCP_Staging_Certification {
 
 	public static function rollback_status( $observed_sha256 = '', $observed_name = '' ) {
 		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-ROLLBACK-CANDIDATE.json' : '';
+		$receipt_path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-ROLLBACK-RETENTION-RECEIPT.json' : '';
 		$base = array(
 			'contract' => self::ROLLBACK_CONTRACT,
 			'candidate_identity_ready' => false,
 			'artifact_retention_verified' => false,
+			'artifact_retention_evidence_source' => '',
 			'candidate' => array(),
+			'retention_receipt' => array(),
 			'blockers' => array( 'rollback_candidate_manifest_missing' ),
 		);
 		if ( '' === $path || ! is_readable( $path ) ) return $base;
@@ -319,16 +322,49 @@ final class MAD4B_SCP_Staging_Certification {
 			&& ! empty( $data['artifact_sha256'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $data['artifact_sha256'] );
 		$base['candidate_identity_ready'] = (bool) $valid;
 		$base['candidate'] = $data;
+
 		$observed_sha256 = strtolower( trim( (string) $observed_sha256 ) );
 		$observed_name = trim( (string) $observed_name );
 		$sha_match = $valid && 1 === preg_match( '/^[a-f0-9]{64}$/', $observed_sha256 ) && hash_equals( strtolower( (string) $data['artifact_sha256'] ), $observed_sha256 );
 		$name_match = '' === $observed_name || ( isset( $data['artifact_name'] ) && hash_equals( (string) $data['artifact_name'], $observed_name ) );
-		$base['artifact_retention_verified'] = $sha_match && $name_match;
+		$external_verified = $sha_match && $name_match;
+
+		$receipt_verified = false;
+		$receipt = array();
+		if ( $valid && '' !== $receipt_path && is_readable( $receipt_path ) ) {
+			$receipt = json_decode( (string) file_get_contents( $receipt_path ), true );
+			if ( ! is_array( $receipt ) ) $receipt = array();
+			$expires_at = ! empty( $receipt['artifact_expires_at'] ) ? strtotime( (string) $receipt['artifact_expires_at'] ) : false;
+			$time_valid = false !== $expires_at && $expires_at > ( time() + DAY_IN_SECONDS );
+			$receipt_verified =
+				'mad4b.rollback-retention-receipt.v1' === ( isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '' )
+				&& 'github_actions_artifact_api' === ( isset( $receipt['verification_source'] ) ? (string) $receipt['verification_source'] : '' )
+				&& empty( $receipt['expired'] )
+				&& $time_valid
+				&& isset( $receipt['rollback_source_commit_sha'] ) && hash_equals( (string) $data['source_commit_sha'], (string) $receipt['rollback_source_commit_sha'] )
+				&& isset( $receipt['rollback_control_plane_version'], $data['control_plane_version'] ) && hash_equals( (string) $data['control_plane_version'], (string) $receipt['rollback_control_plane_version'] )
+				&& isset( $receipt['plugin_artifact_name'], $data['artifact_name'] ) && hash_equals( (string) $data['artifact_name'], (string) $receipt['plugin_artifact_name'] )
+				&& isset( $receipt['plugin_artifact_sha256'] ) && hash_equals( strtolower( (string) $data['artifact_sha256'] ), strtolower( (string) $receipt['plugin_artifact_sha256'] ) )
+				&& isset( $receipt['distribution_artifact_id'], $data['distribution_artifact_id'] ) && (string) $data['distribution_artifact_id'] === (string) $receipt['distribution_artifact_id']
+				&& isset( $receipt['distribution_artifact_name'], $data['distribution_artifact_name'] ) && hash_equals( (string) $data['distribution_artifact_name'], (string) $receipt['distribution_artifact_name'] )
+				&& isset( $receipt['distribution_artifact_sha256'], $data['distribution_artifact_sha256'] ) && hash_equals( strtolower( (string) $data['distribution_artifact_sha256'] ), strtolower( (string) $receipt['distribution_artifact_sha256'] );
+			$base['retention_receipt'] = array(
+				'contract' => isset( $receipt['contract'] ) ? (string) $receipt['contract'] : '',
+				'verification_source' => isset( $receipt['verification_source'] ) ? (string) $receipt['verification_source'] : '',
+				'artifact_expires_at' => isset( $receipt['artifact_expires_at'] ) ? (string) $receipt['artifact_expires_at'] : '',
+				'verified_at' => isset( $receipt['verified_at'] ) ? (string) $receipt['verified_at'] : '',
+				'time_valid' => $time_valid,
+				'exact_match' => $receipt_verified,
+			);
+		}
+
+		$base['artifact_retention_verified'] = $external_verified || $receipt_verified;
+		$base['artifact_retention_evidence_source'] = $receipt_verified ? 'ci_verified_packaged_receipt' : ( $external_verified ? 'external_release_operator' : '' );
 		$base['observed_artifact_sha256'] = $sha_match ? $observed_sha256 : '';
 		$base['observed_artifact_name'] = $name_match ? $observed_name : '';
 		$base['blockers'] = ! $valid
 			? array( 'rollback_candidate_identity_invalid' )
-			: ( $base['artifact_retention_verified'] ? array() : array( 'external_rollback_artifact_retention_requires_release_operator_verification' ) );
+			: ( $base['artifact_retention_verified'] ? array() : array( 'rollback_artifact_retention_unverified' ) );
 		return $base;
 	}
 }
