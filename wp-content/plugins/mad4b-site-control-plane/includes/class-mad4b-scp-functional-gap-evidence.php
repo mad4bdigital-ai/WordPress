@@ -203,6 +203,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$relative = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path );
 				$size = (int) $file->getSize();
 				$mtime = (int) $file->getMTime();
+				$ctime = (int) $file->getCTime();
+				$inode = (int) $file->getInode();
 				if ( count( $rows ) + 1 > self::MAX_TREE_FILES || $total + $size > self::MAX_TREE_BYTES ) {
 					return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_scan_budget_exceeded', 'scan_budget_exceeded'=>true );
 				}
@@ -214,14 +216,17 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				clearstatcache( true, $file->getPathname() );
 				$after_size = @filesize( $file->getPathname() );
 				$after_mtime = @filemtime( $file->getPathname() );
-				if ( false === $after_size || false === $after_mtime || (int) $after_size !== $size || (int) $after_mtime !== $mtime ) {
+				$after_ctime = @filectime( $file->getPathname() );
+				$after_inode = @fileinode( $file->getPathname() );
+				if ( false === $after_size || false === $after_mtime || false === $after_ctime || false === $after_inode
+					|| (int) $after_size !== $size || (int) $after_mtime !== $mtime || (int) $after_ctime !== $ctime || (int) $after_inode !== $inode ) {
 					return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_file_changed_during_hash' );
 				}
 				++self::$scan_files;
 				self::$scan_bytes += $size;
 				$total += $size;
 				$rows[] = $relative . "\0" . $size . "\0" . $digest;
-				$census_rows[] = $relative . "\0" . $size . "\0" . $mtime;
+				$census_rows[] = $relative . "\0" . $size . "\0" . $mtime . "\0" . $ctime . "\0" . $inode;
 			}
 
 			// Lightweight post-hash census closes the directory-level TOCTOU window:
@@ -242,8 +247,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				clearstatcache( true, $file->getPathname() );
 				$size = @filesize( $file->getPathname() );
 				$mtime = @filemtime( $file->getPathname() );
-				if ( false === $size || false === $mtime ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_census_stat_failed' );
-				$after_census[] = $relative . "\0" . (int) $size . "\0" . (int) $mtime;
+				$ctime = @filectime( $file->getPathname() );
+				$inode = @fileinode( $file->getPathname() );
+				if ( false === $size || false === $mtime || false === $ctime || false === $inode ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_census_stat_failed' );
+				$after_census[] = $relative . "\0" . (int) $size . "\0" . (int) $mtime . "\0" . (int) $ctime . "\0" . (int) $inode;
 			}
 			sort( $census_rows, SORT_STRING );
 			sort( $after_census, SORT_STRING );
@@ -333,14 +340,16 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				clearstatcache( true, $file->getPathname() );
 				$size = @filesize( $file->getPathname() );
 				$mtime = @filemtime( $file->getPathname() );
-				if ( false === $size || false === $mtime ) { $blockers[] = 'runtime_census_stat_failed'; break; }
+				$ctime = @filectime( $file->getPathname() );
+				$inode = @fileinode( $file->getPathname() );
+				if ( false === $size || false === $mtime || false === $ctime || false === $inode ) { $blockers[] = 'runtime_census_stat_failed'; break; }
 				$size = (int) $size;
 				if ( count( $rows ) + 1 > self::MAX_TREE_FILES || $total + $size > self::MAX_TREE_BYTES ) { $blockers[] = 'runtime_census_plugin_budget_exceeded'; break; }
 				if ( (int) $budget['files'] + 1 > self::MAX_CENSUS_FILES || (int) $budget['bytes'] + $size > self::MAX_CENSUS_BYTES ) { $blockers[] = 'runtime_census_snapshot_budget_exceeded'; break; }
 				++$budget['files'];
 				$budget['bytes'] += $size;
 				$total += $size;
-				$rows[] = $relative . "\0" . $size . "\0" . (int) $mtime;
+				$rows[] = $relative . "\0" . $size . "\0" . (int) $mtime . "\0" . (int) $ctime . "\0" . (int) $inode;
 			}
 		} catch ( Exception $e ) {
 			$blockers[] = 'runtime_census_scan_failed';
