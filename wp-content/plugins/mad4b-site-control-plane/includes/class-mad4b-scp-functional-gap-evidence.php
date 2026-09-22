@@ -851,6 +851,24 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		);
 	}
 
+	public static function package_integrity_status() {
+		$provenance = self::build_provenance();
+		$verification = isset( $provenance['package_verification'] ) && is_array( $provenance['package_verification'] ) ? $provenance['package_verification'] : array();
+		return array(
+			'contract' => 'mad4b.functional-gap-package-integrity.v1',
+			'valid' => ! empty( $provenance['valid'] ) && ! empty( $verification['valid'] ),
+			'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
+			'build_fingerprint' => isset( $provenance['build_fingerprint'] ) ? (string) $provenance['build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $provenance['package_manifest_digest'] ) ? (string) $provenance['package_manifest_digest'] : '',
+			'integrity_level' => isset( $verification['integrity_level'] ) ? (string) $verification['integrity_level'] : 'unknown',
+			'verified_file_count' => isset( $verification['verified_file_count'] ) ? (int) $verification['verified_file_count'] : 0,
+			'verified_bytes' => isset( $verification['verified_bytes'] ) ? (int) $verification['verified_bytes'] : 0,
+			'actual_file_count' => isset( $verification['actual_file_count'] ) ? (int) $verification['actual_file_count'] : 0,
+			'external_cryptographic_attestation' => false,
+			'blockers' => isset( $provenance['blockers'] ) ? array_values( (array) $provenance['blockers'] ) : array(),
+		);
+	}
+
 	public static function snapshot() {
 		$key = self::runtime_identity_key();
 		if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) return self::$snapshot;
