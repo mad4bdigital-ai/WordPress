@@ -16,6 +16,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
@@ -67,15 +68,25 @@ jobs:
           mkdir -p /tmp/mad4b-functional-gap
           python3 tools/capture-functional-gap-contract-evidence.py             /tmp/mad4b-functional-gap/functional-gap-contract-evidence.json
           python3 - <<'PY'
-          import json, os
+          import hashlib, json, os
           from pathlib import Path
           p=Path('/tmp/mad4b-functional-gap/functional-gap-contract-evidence.json')
           data=json.loads(p.read_text())
-          data['source_commit_sha']=os.environ['SOURCE_SHA']
-          p.write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
-          expected={'bulk-taxonomy-editor','custom-mega-menu','google-tag-manager','meta-catalog-feed-mapper','wpl-client','rank-math'}
+          policy_path=Path('wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json')
+          policy_raw=policy_path.read_bytes()
+          policy=json.loads(policy_raw)
+          expected={
+              family for family,row in policy.get('families',{}).items()
+              if row.get('repository_evidence') is True
+          }
           if data.get('contract')!='mad4b.functional-gap-contract-evidence.v1':
               raise SystemExit('contract mismatch')
+          if data.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
+              raise SystemExit('evidence exact source mismatch')
+          if data.get('policy_contract')!=policy.get('contract'):
+              raise SystemExit('evidence policy contract mismatch')
+          if data.get('policy_sha256')!=hashlib.sha256(policy_raw).hexdigest():
+              raise SystemExit('evidence policy SHA mismatch')
           if set(data.get('families',{}))!=expected:
               raise SystemExit('family evidence set mismatch')
           for family,row in data['families'].items():
