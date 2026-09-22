@@ -44,6 +44,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py
+          python3 -m py_compile tools/evaluate-functional-gap-contract-promotion.py
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php
 
       - name: Capture contract evidence
