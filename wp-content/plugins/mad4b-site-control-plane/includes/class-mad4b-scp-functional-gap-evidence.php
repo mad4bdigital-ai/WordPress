@@ -31,8 +31,54 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$raw = is_file( $path ) && is_readable( $path ) ? file_get_contents( $path ) : false;
 		$data = false === $raw ? null : json_decode( $raw, true );
 		$blockers = array();
+		$supported_modes = array( 'bounded_read_routes','redacted_status','exact_tree_review','runtime_only','premium_semantic','composite_behavioral' );
 		if ( ! is_array( $data ) || self::POLICY_CONTRACT !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) $blockers[] = 'functional_gap_policy_invalid';
-		if ( is_array( $data ) && ( ! isset( $data['families'] ) || ! is_array( $data['families'] ) || empty( $data['families'] ) ) ) $blockers[] = 'functional_gap_policy_families_missing';
+		if ( is_array( $data ) ) {
+			if ( 'deny' !== ( isset( $data['default_mutation'] ) ? sanitize_key( (string) $data['default_mutation'] ) : '' ) ) $blockers[] = 'functional_gap_policy_mutation_default_not_deny';
+			if ( ! array_key_exists( 'promotion_authorized', $data ) || false !== $data['promotion_authorized'] ) $blockers[] = 'functional_gap_policy_promotion_not_false';
+			$families = isset( $data['families'] ) && is_array( $data['families'] ) ? $data['families'] : array();
+			if ( empty( $families ) ) $blockers[] = 'functional_gap_policy_families_missing';
+			$prefix_owners = array();
+			foreach ( $families as $family_id => $row ) {
+				$family = sanitize_key( (string) $family_id );
+				if ( '' === $family || $family !== (string) $family_id || ! is_array( $row ) ) { $blockers[] = 'functional_gap_policy_family_identity_invalid'; continue; }
+				$mode = isset( $row['evaluation_mode'] ) ? sanitize_key( (string) $row['evaluation_mode'] ) : '';
+				if ( ! in_array( $mode, $supported_modes, true ) ) $blockers[] = 'functional_gap_policy_mode_invalid_' . $family;
+				$matches = isset( $row['match'] ) && is_array( $row['match'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['match'] ) ) ) : array();
+				if ( empty( $matches ) ) $blockers[] = 'functional_gap_policy_match_missing_' . $family;
+				foreach ( $matches as $match ) {
+					$prefix = self::normalize_plugin_file( $match );
+					if ( '' === $prefix ) { $blockers[] = 'functional_gap_policy_match_invalid_' . $family; continue; }
+					foreach ( $prefix_owners as $known_prefix => $known_family ) {
+						if ( $known_family === $family ) continue;
+						if ( 0 === strpos( $prefix, $known_prefix ) || 0 === strpos( $known_prefix, $prefix ) ) $blockers[] = 'functional_gap_policy_match_overlap_' . $known_family . '_' . $family;
+					}
+					$prefix_owners[ $prefix ] = $family;
+				}
+				$repo_backed = ! empty( $row['repository_evidence'] );
+				$artifacts = isset( $row['repository_artifacts'] ) && is_array( $row['repository_artifacts'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['repository_artifacts'] ) ) ) : array();
+				if ( $repo_backed && empty( $artifacts ) ) $blockers[] = 'functional_gap_policy_repository_artifacts_missing_' . $family;
+				if ( ! $repo_backed && ! empty( $artifacts ) ) $blockers[] = 'functional_gap_policy_runtime_only_artifacts_present_' . $family;
+				if ( 'bounded_read_routes' === $mode ) {
+					if ( empty( $row['required_get_routes'] ) || ! is_array( $row['required_get_routes'] ) ) $blockers[] = 'functional_gap_policy_required_routes_missing_' . $family;
+					if ( empty( $row['safe_now'] ) || ! is_array( $row['safe_now'] ) || empty( $row['blocked'] ) || ! is_array( $row['blocked'] ) ) $blockers[] = 'functional_gap_policy_read_boundary_missing_' . $family;
+				}
+				if ( 'redacted_status' === $mode ) {
+					if ( empty( $row['redacted_secret_option_keys'] ) || ! is_array( $row['redacted_secret_option_keys'] ) ) $blockers[] = 'functional_gap_policy_redaction_keys_missing_' . $family;
+					if ( empty( $row['required_status_option_keys'] ) || ! is_array( $row['required_status_option_keys'] ) ) $blockers[] = 'functional_gap_policy_status_keys_missing_' . $family;
+					if ( empty( $row['safe_now'] ) || ! is_array( $row['safe_now'] ) || empty( $row['blocked'] ) || ! is_array( $row['blocked'] ) ) $blockers[] = 'functional_gap_policy_redacted_boundary_missing_' . $family;
+				}
+			}
+			$probes = isset( $data['probes'] ) && is_array( $data['probes'] ) ? $data['probes'] : array();
+			foreach ( array( 'rest_route_regex','ajax_hook_regex','cron_hook_regex','secret_key_regex' ) as $regex_key ) {
+				$value = isset( $probes[ $regex_key ] ) ? trim( (string) $probes[ $regex_key ] ) : '';
+				$pattern = '' === $value ? '' : '~' . str_replace( '~', '\\~', $value ) . '~i';
+				if ( '' === $pattern || false === @preg_match( $pattern, '' ) ) $blockers[] = 'functional_gap_policy_probe_regex_invalid_' . $regex_key;
+			}
+			if ( empty( $probes['option_keys'] ) || ! is_array( $probes['option_keys'] ) ) $blockers[] = 'functional_gap_policy_option_probe_set_missing';
+			if ( empty( $probes['constants'] ) || ! is_array( $probes['constants'] ) ) $blockers[] = 'functional_gap_policy_constant_probe_set_missing';
+		}
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 		self::$policy = array(
 			'valid' => empty( $blockers ),
 			'contract' => is_array( $data ) && isset( $data['contract'] ) ? (string) $data['contract'] : '',
