@@ -79,6 +79,36 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		);
 	}
 
+	private static function build_provenance() {
+		$path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
+		if ( ! is_file( $path ) || ! is_readable( $path ) ) return array( 'valid'=>false, 'blockers'=>array( 'build_provenance_missing' ) );
+		$raw = file_get_contents( $path );
+		$data = false === $raw ? null : json_decode( $raw, true );
+		$evidence_sha256 = false === $raw ? '' : hash( 'sha256', $raw );
+		$evidence_bytes = false === $raw ? 0 : strlen( $raw );
+		if ( ! is_array( $data ) || 'mad4b.build-provenance.v1' !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) return array( 'valid'=>false, 'blockers'=>array( 'build_provenance_invalid' ) );
+		$source = isset( $data['source_commit_sha'] ) ? strtolower( trim( (string) $data['source_commit_sha'] ) ) : '';
+		$fingerprint = isset( $data['build_fingerprint'] ) ? strtolower( trim( (string) $data['build_fingerprint'] ) ) : '';
+		$manifest = isset( $data['package_manifest_digest'] ) ? strtolower( trim( (string) $data['package_manifest_digest'] ) ) : '';
+		$blockers = array();
+		if ( ! preg_match( '/^[a-f0-9]{40}$/', $source ) ) $blockers[] = 'build_provenance_source_invalid';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) $blockers[] = 'build_provenance_fingerprint_invalid';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $manifest ) ) $blockers[] = 'build_provenance_manifest_invalid';
+		$files = array();
+		foreach ( isset( $data['package_files'] ) && is_array( $data['package_files'] ) ? $data['package_files'] : array() as $row ) {
+			if ( ! is_array( $row ) || empty( $row['path'] ) ) continue;
+			$files[ str_replace( '\\', '/', ltrim( (string) $row['path'], '/' ) ) ] = $row;
+		}
+		return array(
+			'valid' => empty( $blockers ),
+			'source_commit_sha' => $source,
+			'build_fingerprint' => $fingerprint,
+			'package_manifest_digest' => $manifest,
+			'package_files' => $files,
+			'blockers' => $blockers,
+		);
+	}
+
 	private static function repository_evidence() {
 		$path = MAD4B_SCP_DIR . self::REPOSITORY_FILE;
 		if ( ! is_file( $path ) || ! is_readable( $path ) ) {
@@ -106,15 +136,31 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 		$blockers = array();
 		$source = isset( $data['source_commit_sha'] ) ? strtolower( trim( (string) $data['source_commit_sha'] ) ) : '';
-		$build_source = self::build_source_commit_sha();
+		$provenance = self::build_provenance();
+		$build_source = ! empty( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : self::build_source_commit_sha();
 		if ( '' === $source || ! preg_match( '/^[a-f0-9]{40}$/', $source ) ) $blockers[] = 'repository_evidence_source_missing';
+		if ( empty( $provenance['valid'] ) ) $blockers = array_merge( $blockers, isset( $provenance['blockers'] ) ? (array) $provenance['blockers'] : array( 'build_provenance_invalid' ) );
 		if ( '' !== $build_source && '' !== $source && ! hash_equals( $build_source, $source ) ) $blockers[] = 'repository_evidence_build_source_mismatch';
+		$provenance_row = isset( $provenance['package_files'][ self::REPOSITORY_FILE ] ) && is_array( $provenance['package_files'][ self::REPOSITORY_FILE ] ) ? $provenance['package_files'][ self::REPOSITORY_FILE ] : null;
+		if ( ! is_array( $provenance_row ) ) {
+			$blockers[] = 'repository_evidence_not_bound_in_build_provenance';
+		} else {
+			$expected_sha = isset( $provenance_row['sha256'] ) ? strtolower( trim( (string) $provenance_row['sha256'] ) ) : '';
+			$expected_bytes = isset( $provenance_row['bytes'] ) ? (int) $provenance_row['bytes'] : -1;
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) || ! hash_equals( $expected_sha, $evidence_sha256 ) ) $blockers[] = 'repository_evidence_sha256_mismatch';
+			if ( $expected_bytes < 0 || $expected_bytes !== $evidence_bytes ) $blockers[] = 'repository_evidence_bytes_mismatch';
+		}
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 
 		return array(
 			'present' => true,
 			'valid' => empty( $blockers ),
 			'contract' => (string) $data['contract'],
 			'source_commit_sha' => $source,
+			'evidence_sha256' => $evidence_sha256,
+			'evidence_bytes' => $evidence_bytes,
+			'build_fingerprint' => isset( $provenance['build_fingerprint'] ) ? (string) $provenance['build_fingerprint'] : '',
+			'package_manifest_digest' => isset( $provenance['package_manifest_digest'] ) ? (string) $provenance['package_manifest_digest'] : '',
 			'families' => isset( $data['families'] ) && is_array( $data['families'] ) ? $data['families'] : array(),
 			'blockers' => $blockers,
 		);
@@ -426,6 +472,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				'valid' => ! empty( $repository['valid'] ),
 				'contract' => isset( $repository['contract'] ) ? $repository['contract'] : '',
 				'source_commit_sha' => isset( $repository['source_commit_sha'] ) ? $repository['source_commit_sha'] : '',
+				'evidence_sha256' => isset( $repository['evidence_sha256'] ) ? $repository['evidence_sha256'] : '',
+				'evidence_bytes' => isset( $repository['evidence_bytes'] ) ? (int) $repository['evidence_bytes'] : 0,
+				'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? $repository['build_fingerprint'] : '',
+				'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? $repository['package_manifest_digest'] : '',
 				'family_count' => isset( $repository['families'] ) && is_array( $repository['families'] ) ? count( $repository['families'] ) : 0,
 				'blockers' => isset( $repository['blockers'] ) ? $repository['blockers'] : array(),
 			),
