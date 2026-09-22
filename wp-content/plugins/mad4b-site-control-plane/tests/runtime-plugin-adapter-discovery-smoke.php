@@ -11,7 +11,7 @@ $check( class_exists( 'MAD4B_SCP_Adapter_Coverage_Admin_UI' ), 'Adapter Coverage
 $check( class_exists( 'MAD4B_SCP_Repository_Artifact_Catalog' ), 'Repository artifact catalog is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Family_Adapter' ), 'Repository family adapter class is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Plugins_Adapter' ), 'Repository inventory adapter class is unavailable.' );
-foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
+foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
 	$check( wp_has_ability( $ability_name ), 'Missing discovery ability: ' . $ability_name );
 	$ability = wp_get_ability( $ability_name );
 	$meta = $ability->get_meta();
@@ -154,6 +154,21 @@ try {
 	$ids_two = wp_list_pluck( $requests_two['requests'], 'support_request_id' );
 	$check( $ids_one === $ids_two, 'Adapter support request IDs are not deterministic.' );
 	$check( empty( $requests_one['network_request_sent'] ) && empty( $requests_one['authority_created'] ), 'Support request discovery performed an external/action mutation.' );
+	foreach ( $requests_one['requests'] as $request ) {
+		$check( 'duplicator/duplicator.php' !== (string) ( $request['plugin_file'] ?? '' ), 'Runtime-only known family incorrectly remained an adapter-support request.' );
+	}
+
+	$contract_discovery_ability = wp_get_ability( 'mad4b/provider-contract-discovery' );
+	$contract_discovery = $contract_discovery_ability->execute();
+	$check( ! is_wp_error( $contract_discovery ) && 'mad4b.provider-contract-discovery.v1' === (string) ( $contract_discovery['contract'] ?? '' ), 'Contract discovery report failed.' );
+	$duplicator_discovery = null;
+	foreach ( (array) ( $contract_discovery['items'] ?? array() ) as $family_item ) {
+		if ( 'duplicator' === (string) ( $family_item['family'] ?? '' ) ) $duplicator_discovery = $family_item;
+	}
+	$check( is_array( $duplicator_discovery ), 'Runtime-only Duplicator family did not move into contract discovery.' );
+	$check( 'runtime_match_only' === (string) ( $duplicator_discovery['adapter_runtime_source'] ?? '' ), 'Contract discovery lost runtime-only provenance.' );
+	$check( empty( $duplicator_discovery['repository_artifact_backed'] ), 'Contract discovery falsely marked runtime-only family as repository-backed.' );
+	$check( in_array( 'duplicator/duplicator.php', (array) ( $duplicator_discovery['plugin_files'] ?? array() ), true ), 'Contract discovery did not retain exact runtime plugin identity.' );
 
 	$ui_snapshot = MAD4B_SCP_Adapter_Coverage_Admin_UI::snapshot();
 	$check( ! is_wp_error( $ui_snapshot ) && 'mad4b.plugin-adapter-discovery.v1' === $ui_snapshot['contract'], 'Adapter Coverage Admin snapshot failed.' );
