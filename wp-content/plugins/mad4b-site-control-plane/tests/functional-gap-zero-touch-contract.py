@@ -138,6 +138,17 @@ for marker in [
     "single_pass_non_authorizing_identity",
     "double_pass_drift_confirmation",
     "runtime_identity_captured",
+    "identity_components",
+    "repository_identity_components",
+    "version_preflight_tree",
+    "version_preflight_metadata_only",
+    "repository_version_mismatch",
+    "identity_component_header_ambiguous_",
+    "identity_component_artifact_missing_",
+    "functional_gap_policy_identity_components_missing_",
+    "functional_gap_policy_identity_component_artifact_set_mismatch_",
+    "config/adapter-support-catalog.json",
+    "config/repository-plugin-artifacts.json",
     "$repeat_on_mismatch = ! empty( $rule['repository_evidence'] );",
     "premium_provider_runtime_tree_does_not_match_repository_identity",
     "premium_provider_exact_repository_identity_verified_semantic_review_still_required",
@@ -353,6 +364,10 @@ if "$repeat_on_mismatch = ! empty( $rule['repository_evidence'] );" not in runti
     raise SystemExit('repository-backed mismatch must receive drift-confirmation scan')
 if "double_pass_drift_confirmation" not in runtime:
     raise SystemExit('repository-backed drift confirmation lost its second pass')
+if "version_preflight_metadata_only" not in runtime or "repository_version_mismatch" not in runtime:
+    raise SystemExit('identity-first version mismatch no longer short-circuits content hashing')
+if "self::plugin_census_once( $plugin_file, $budget )" not in runtime:
+    raise SystemExit('version preflight must retain metadata-census fixed-point evidence')
 
 if "empty( $options[ $key ]['exists'] )" not in runtime:
     raise SystemExit('redacted-status model no longer requires status options to exist at runtime')
