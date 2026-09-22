@@ -274,6 +274,21 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$reason = 'adapter_status_unavailable';
 			$blockers = array( sanitize_key( (string) $status['_discovery_error'] ) );
 			$next = 'inspect_adapter_status_contract_before_treating_provider_as_ready';
+		} elseif ( 'adapter_registered_inactive' === $coverage_state ) {
+			$state = 'safety_blocked';
+			$reason = 'adapter_runtime_unavailable';
+			$blockers = array( 'adapter_runtime_unavailable' );
+			$next = 'restore_or_certify_exact_provider_runtime_before_functional_readiness';
+		} elseif ( 'adapter_present_certification_required' === $coverage_state ) {
+			$state = 'safety_blocked';
+			$reason = 'provider_certification_required';
+			$blockers = array( 'provider_certification_required' );
+			$next = 'complete_exact_provider_certification_before_write_readiness';
+		} elseif ( 'adapter_present_side_channel_blocked' === $coverage_state ) {
+			$state = 'safety_blocked';
+			$reason = 'parallel_mcp_write_plane_requires_isolation';
+			$blockers = array( 'parallel_mcp_write_plane_requires_isolation' );
+			$next = 'certify_provider_side_channel_isolation_before_functional_readiness';
 		} else {
 			$execution = isset( $status['execution'] ) && is_array( $status['execution'] ) ? $status['execution'] : array();
 			$desired = isset( $execution['desired_execution_abilities'] ) && is_array( $execution['desired_execution_abilities'] ) ? $execution['desired_execution_abilities'] : array();
