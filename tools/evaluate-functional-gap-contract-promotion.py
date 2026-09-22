@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -12,6 +13,37 @@ def load(path):
 
 def sha256_file(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+def canonical_digest_lines(value, path=""):
+    if value is None:
+        return [f"{path}\tn:"]
+    if isinstance(value, bool):
+        return [f"{path}\tb:{1 if value else 0}"]
+    if isinstance(value, int):
+        return [f"{path}\ti:{value}"]
+    if isinstance(value, float):
+        return [f"{path}\tf:{format(value, '.17g')}"]
+    if isinstance(value, str):
+        encoded = base64.b64encode(value.encode("utf-8")).decode("ascii")
+        return [f"{path}\ts:{encoded}"]
+    if isinstance(value, list):
+        lines = [f"{path}\tl:{len(value)}"]
+        for index, item in enumerate(value):
+            lines.extend(canonical_digest_lines(item, f"{path}/i:{index}"))
+        return lines
+    if isinstance(value, dict):
+        ordered = sorted(((str(key), item) for key, item in value.items()), key=lambda item: item[0])
+        lines = [f"{path}\tm:{len(ordered)}"]
+        for key, item in ordered:
+            encoded_key = base64.b64encode(key.encode("utf-8")).decode("ascii")
+            lines.extend(canonical_digest_lines(item, f"{path}/k:{encoded_key}"))
+        return lines
+    encoded = base64.b64encode(str(value).encode("utf-8")).decode("ascii")
+    return [f"{path}\ts:{encoded}"]
+
+def canonical_digest(value):
+    material = ("\n".join(canonical_digest_lines(value)) + "\n").encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
 
 def active_plugins(runtime, family):
     return [row for row in runtime.get("families", {}).get(family, []) if row.get("active")]
@@ -125,8 +157,7 @@ def runtime_evidence_fingerprint(runtime):
         "cron_hooks": cron,
         "constants": constants,
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
+    return canonical_digest(payload)
 
 def route_methods(runtime):
     return {row.get("route", ""): set(row.get("methods", [])) for row in runtime.get("rest_routes", [])}
@@ -291,13 +322,7 @@ def main():
         "runtime_evidence_fingerprint": runtime_fingerprint,
         "decisions": decisions,
     }
-    fingerprint_json = json.dumps(
-        fingerprint_payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-    decision_fingerprint = hashlib.sha256(fingerprint_json).hexdigest()
+    decision_fingerprint = canonical_digest(fingerprint_payload)
 
     counts = {}
     for row in decisions:
