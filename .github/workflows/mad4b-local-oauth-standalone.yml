@@ -50,6 +50,7 @@ jobs:
           php "$root/tests/local-oauth-consent-ui-contract.php"
           php "$root/tests/oauth-live-authority-projection-runtime.php"
           node --check "$root/assets/local-oauth-canary.js"
+          node --check "$root/tests/oauth-live-authority-browser-e2e.mjs"
           node --check "$root/assets/chatgpt-connection.js"
           python3 "$root/tests/staging-oauth-autoconfig-contract.py"
           python3 "$root/tests/local-oauth-standalone-contract.py"
@@ -176,6 +177,71 @@ jobs:
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Prove live authority dashboard in a real browser
+        if: matrix.wordpress == 'latest'
+        shell: bash
+        env:
+          MAD4B_BROWSER_BASE_URL: http://127.0.0.1:8088
+          MAD4B_BROWSER_USER: mad4b-ci-admin
+          MAD4B_BROWSER_PASSWORD: ci-only-not-a-secret
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+
+          # Browser proof uses an isolated loopback Local environment so the
+          # governed Site Profile can bind an HTTP loopback origin without
+          # weakening the Staging HTTPS requirement.
+          php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE local --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar option update home "$MAD4B_BROWSER_BASE_URL" --path="$WP_PATH"
+          php /tmp/wp-cli.phar option update siteurl "$MAD4B_BROWSER_BASE_URL" --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_LOCAL_OAUTH_CLIENTS "array( 'mad4b-browser-e2e' => array( 'client_name' => 'MAD4B Browser E2E', 'redirect_uris' => array( 'http://127.0.0.1:8088/callback' ), 'application_type' => 'native' ) )" --type=constant --raw --path="$WP_PATH"
+
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => MAD4B_SCP_Site_Profile::revision(),
+              "display_name" => "MAD4B Browser E2E",
+              "chatgpt_app_id" => "",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => false,
+              "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          if ( empty( $result["configured"] ) || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) ) {
+              throw new RuntimeException( "Browser E2E Site Profile did not bind the loopback Local origin." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
+          cat >/tmp/mad4b-wp-router.php <<'PHP'
+          <?php
+          $path = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
+          $file = rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . $path;
+          if ( '/' !== $path && is_file( $file ) ) return false;
+          require rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . '/index.php';
+          PHP
+
+          php -S 127.0.0.1:8088 -t "$WP_PATH" /tmp/mad4b-wp-router.php >/tmp/mad4b-browser-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true; cat /tmp/mad4b-browser-server.log || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null; then break; fi
+            sleep 0.25
+          done
+          curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null
+
+          rm -rf /tmp/mad4b-playwright
+          mkdir -p /tmp/mad4b-playwright
+          cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/oauth-live-authority-browser-e2e.mjs" /tmp/mad4b-playwright/test.mjs
+          cd /tmp/mad4b-playwright
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium
+          node ./test.mjs
 
       - name: Prove browser canary is unavailable in Production
         shell: bash
