@@ -60,14 +60,16 @@
     },
     "custom-mega-menu": {
       "match": [
-        "custom-mega-menu/",
-        "custom-mega-menu-v"
+        "custom-mega-menu/"
       ],
       "repository_evidence": true,
       "repository_artifacts": [
         "custom-mega-menu-v43.zip"
       ],
-      "evaluation_mode": "exact_tree_review"
+      "evaluation_mode": "exact_tree_review",
+      "versioned_match": [
+        "custom-mega-menu"
+      ]
     },
     "google-tag-manager": {
       "match": [
