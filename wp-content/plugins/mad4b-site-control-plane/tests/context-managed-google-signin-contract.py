@@ -42,15 +42,8 @@ require(ui, "requestSubmit", "radio change autosave")
 require(ui, 'form.setAttribute("aria-busy","true")', "busy-state protection")
 require(ui, 'controls.forEach(function(control){control.disabled=true;});', "duplicate-submit protection")
 require(ui, 'input[type=password]', "password-field clearing")
-require(ui, "<noscript>", "no-JavaScript save fallback")
-
-# No normal-path visible Save button should exist outside the noscript fallback.
-save_label = "Save Connection Method"
-assert ui.count(save_label) == 1, "Save Connection Method must exist only as the no-JavaScript fallback"
-noscript_start = ui.index("<noscript>")
-noscript_end = ui.index("</noscript>", noscript_start)
-save_index = ui.index(save_label)
-assert noscript_start < save_index < noscript_end, "Save Connection Method escaped the no-JavaScript fallback"
+# Connection Method is auto-save only; the legacy Save button must not exist.
+assert "Save Connection Method" not in ui, "Save Connection Method must be removed from the admin UI source"
 
 # One-click sign-in deliberately re-selects managed mode under the existing disconnect guard.
 require(ui, "set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED )", "one-click managed mode selection")
