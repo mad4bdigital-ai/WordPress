@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { allowedHostSet, originHostname } from "./network-policy.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CONTRACT_PATH = path.join(HERE, "provider-contracts.json");
@@ -63,25 +64,18 @@ export function classifyProviderError(error, definition = {}) {
   };
 }
 
-function normalizeOrigin(origin) {
-  const url = new URL(origin);
-  if (url.protocol !== "https:") throw new Error("browser_origin_must_be_https");
-  return url;
-}
-
 async function cloudflareSession(chromium, env, origin) {
   const account = env.CLOUDFLARE_ACCOUNT_ID;
   const token = env.CLOUDFLARE_BROWSER_RUN_API_TOKEN;
   const endpoint = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/browser-rendering/devtools/browser?keep_alive=600000`;
-  const host = normalizeOrigin(origin).hostname;
-  const extra = String(env.MAD4B_CLOUDFLARE_ALLOWED_DOMAINS || "")
-    .split(",").map((x) => x.trim()).filter(Boolean);
+  const host = originHostname(origin);
+  const guardedHosts = Array.from(allowedHostSet(origin, env));
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       guardrails: {
-        allowedDomains: Array.from(new Set([host, ...extra])).slice(0, 50),
+        allowedDomains: guardedHosts.slice(0, 50),
         allowedDomainSets: ["common-cdns"]
       }
     })
