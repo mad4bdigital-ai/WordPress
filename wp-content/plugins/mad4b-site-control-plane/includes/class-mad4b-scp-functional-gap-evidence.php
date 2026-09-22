@@ -20,10 +20,16 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	const POLICY_FILE = 'config/functional-gap-policy.json';
 	const MAX_TREE_FILES = 12000;
 	const MAX_TREE_BYTES = 805306368;
+	const MAX_SNAPSHOT_TREE_FILES = 30000;
+	const MAX_SNAPSHOT_TREE_BYTES = 1610612736;
+	const MAX_SNAPSHOT_SCAN_SECONDS = 20.0;
 
 	private static $snapshot = null;
 	private static $snapshot_key = '';
 	private static $policy = null;
+	private static $scan_files = 0;
+	private static $scan_bytes = 0;
+	private static $scan_started_at = 0.0;
 
 	private static function policy() {
 		if ( null !== self::$policy ) return self::$policy;
@@ -184,6 +190,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			);
 			foreach ( $iterator as $file ) {
 				if ( ! $file->isFile() || $file->isLink() ) continue;
+				if ( self::$scan_started_at > 0 && microtime( true ) - self::$scan_started_at > self::MAX_SNAPSHOT_SCAN_SECONDS ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'snapshot_scan_time_budget_exceeded', 'scan_budget_exceeded'=>true );
 				$path = str_replace( '\\', '/', $file->getPathname() );
 				$base = rtrim( str_replace( '\\', '/', $root ), '/' ) . '/';
 				$relative = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path );
@@ -191,8 +198,13 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				if ( count( $rows ) + 1 > self::MAX_TREE_FILES || $total + $size > self::MAX_TREE_BYTES ) {
 					return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_scan_budget_exceeded', 'scan_budget_exceeded'=>true );
 				}
+				if ( self::$scan_files + 1 > self::MAX_SNAPSHOT_TREE_FILES || self::$scan_bytes + $size > self::MAX_SNAPSHOT_TREE_BYTES ) {
+					return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'snapshot_scan_budget_exceeded', 'scan_budget_exceeded'=>true );
+				}
 				$digest = hash_file( 'sha256', $file->getPathname() );
 				if ( false === $digest ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_file_hash_failed' );
+				++self::$scan_files;
+				self::$scan_bytes += $size;
 				$total += $size;
 				$rows[] = $relative . "\0" . $size . "\0" . $digest;
 			}
@@ -478,6 +490,14 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array(
 			'contract' => self::RUNTIME_CONTRACT,
 			'generated_at' => gmdate( 'c' ),
+			'scan_budget' => array(
+				'files_hashed' => self::$scan_files,
+				'bytes_hashed' => self::$scan_bytes,
+				'elapsed_ms' => self::$scan_started_at > 0 ? (int) round( ( microtime( true ) - self::$scan_started_at ) * 1000 ) : 0,
+				'max_files' => self::MAX_SNAPSHOT_TREE_FILES,
+				'max_bytes' => self::MAX_SNAPSHOT_TREE_BYTES,
+				'max_seconds' => self::MAX_SNAPSHOT_SCAN_SECONDS,
+			),
 			'families' => $families,
 			'constants' => $constants,
 			'rest_routes' => $routes,
@@ -693,6 +713,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$key = self::runtime_identity_key();
 		if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) return self::$snapshot;
 		$repository = self::repository_evidence();
+		self::$scan_files = 0;
+		self::$scan_bytes = 0;
+		self::$scan_started_at = microtime( true );
 		$runtime = self::runtime_evidence( $repository );
 		$evaluation = self::evaluate( $repository, $runtime );
 		self::$snapshot_key = $key;
