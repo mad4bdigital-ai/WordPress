@@ -73,34 +73,42 @@ jobs:
 
           WPML_URL="$WPML_URL_BASE&mad4b_probe=$SOURCE_SHA"
           export WPML_URL
-          capture wpml "$WPML_URL"
-          capture rest-index "$REST_INDEX_URL?mad4b_probe=$SOURCE_SHA"
 
-          python3 - <<'PY'
+          selected_attempt=0
+          for attempt in 1 2 3; do
+            wpml_name="wpml-attempt-${attempt}"
+            rest_name="rest-index-attempt-${attempt}"
+            capture "$wpml_name" "$WPML_URL&mad4b_attempt=$attempt"
+            capture "$rest_name" "$REST_INDEX_URL?mad4b_probe=$SOURCE_SHA&mad4b_attempt=$attempt"
+
+            ATTEMPT="$attempt" WPML_NAME="$wpml_name" REST_NAME="$rest_name" python3 - <<'PY'
           import json
           import os
           from pathlib import Path
 
           root = Path('/tmp/mad4b-wpml-external')
-          body_path = root / 'rest-index.body'
+          attempt = int(os.environ['ATTEMPT'])
+          wpml_name = os.environ['WPML_NAME']
+          rest_name = os.environ['REST_NAME']
+
           namespace_present = False
           route_present = False
-          parse_error = ''
+          rest_index_parse_error = ''
           try:
-              data = json.loads(body_path.read_text(encoding='utf-8', errors='replace'))
+              data = json.loads((root / f'{rest_name}.body').read_text(encoding='utf-8', errors='replace'))
               namespaces = data.get('namespaces', []) if isinstance(data, dict) else []
               routes = data.get('routes', {}) if isinstance(data, dict) else {}
               namespace_present = 'wpml/v1' in namespaces
               route_present = '/wpml/v1/rest/status' in routes
           except Exception as exc:
-              parse_error = f'{type(exc).__name__}: {exc}'
+              rest_index_parse_error = f'{type(exc).__name__}: {exc}'
 
           wpml_parse_error = ''
           wpml_status = ''
           wpml_get_parameters = ''
           wpml_success_envelope = False
           try:
-              wpml = json.loads((root / 'wpml.body').read_text(encoding='utf-8', errors='replace'))
+              wpml = json.loads((root / f'{wpml_name}.body').read_text(encoding='utf-8', errors='replace'))
               payload = wpml
               if isinstance(wpml, dict) and wpml.get('success') is True and isinstance(wpml.get('data'), dict):
                   payload = wpml['data']
@@ -112,13 +120,14 @@ jobs:
               wpml_parse_error = f'{type(exc).__name__}: {exc}'
 
           evidence = {
-              'contract': 'mad4b.wpml-external-http-diagnostic.v2',
-              'source_sha': '${{ env.SOURCE_SHA }}',
+              'contract': 'mad4b.wpml-external-http-diagnostic.v3',
+              'source_sha': os.environ.get('SOURCE_SHA', ''),
+              'attempt': attempt,
               'target_url': os.environ.get('WPML_URL', ''),
-              'rest_index_url': '${{ env.REST_INDEX_URL }}',
+              'rest_index_url': os.environ.get('REST_INDEX_URL', ''),
               'namespace_present': namespace_present,
               'route_present': route_present,
-              'rest_index_parse_error': parse_error,
+              'rest_index_parse_error': rest_index_parse_error,
               'wpml_parse_error': wpml_parse_error,
               'wpml_success_envelope': wpml_success_envelope,
               'wpml_status': wpml_status,
@@ -126,58 +135,76 @@ jobs:
               'wpml_contract_compatible': wpml_status == 'valid' and wpml_get_parameters == 'valid',
               'mutation_performed': False,
           }
-          (root / 'diagnostic.json').write_text(json.dumps(evidence, indent=2, sort_keys=True) + '\n')
+          evidence['accepted'] = (
+              evidence['namespace_present']
+              and evidence['route_present']
+              and evidence['wpml_contract_compatible']
+          )
+          (root / f'diagnostic-attempt-{attempt}.json').write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
           PY
+
+            if python3 - "$out/diagnostic-attempt-${attempt}.json" <<'PY'
+          import json, sys
+          d=json.load(open(sys.argv[1],encoding='utf-8'))
+          raise SystemExit(0 if d.get('accepted') else 1)
+          PY
+            then
+              selected_attempt="$attempt"
+              break
+            fi
+
+            if [ "$attempt" -lt 3 ]; then sleep 5; fi
+          done
+
+          if [ "$selected_attempt" -eq 0 ]; then selected_attempt=3; fi
+          printf '%s\n' "$selected_attempt" > "$out/selected-attempt.txt"
+          cp "$out/diagnostic-attempt-${selected_attempt}.json" "$out/diagnostic.json"
+          for suffix in headers body stderr http-status curl-exit; do
+            cp "$out/wpml-attempt-${selected_attempt}.${suffix}" "$out/wpml.${suffix}"
+            cp "$out/rest-index-attempt-${selected_attempt}.${suffix}" "$out/rest-index.${suffix}"
+          done
 
           {
             echo '## External WPML raw diagnostic (read-only)'
             echo
             echo "- source HEAD: \`$SOURCE_SHA\`"
             echo "- target: \`$WPML_URL\`"
+            echo "- selected attempt: \`$selected_attempt/3\`"
             echo "- curl exit: \`$(cat "$out/wpml.curl-exit")\`"
             echo "- HTTP status: \`$(cat "$out/wpml.http-status")\`"
-            content_type="$(awk 'BEGIN{IGNORECASE=1} /^Content-Type:/ {sub(/\r$/,""); print substr($0,index($0,":")+2)}' "$out/wpml.headers" | tail -n1)"
-            location="$(awk 'BEGIN{IGNORECASE=1} /^Location:/ {sub(/\r$/,""); print substr($0,index($0,":")+2)}' "$out/wpml.headers" | tail -n1)"
-            echo "- Content-Type: \`${content_type:-<absent>}\`"
-            echo "- Location: \`${location:-<absent>}\`"
             echo "- namespace wpml/v1 present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["namespace_present"]).lower())')\`"
             echo "- route /wpml/v1/rest/status present: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["route_present"]).lower())')\`"
             echo "- compatible WPML contract: \`$(python3 -c 'import json; print(str(json.load(open("/tmp/mad4b-wpml-external/diagnostic.json"))["wpml_contract_compatible"]).lower())')\`"
-            echo
-            echo '### Raw response headers'
-            echo '```text'
-            cat "$out/wpml.headers"
-            echo '```'
-            echo
-            echo '### Raw response body'
-            echo '```text'
-            cat "$out/wpml.body"
-            echo
-            echo '```'
-            if [ -s "$out/wpml.stderr" ]; then
-              echo
-              echo '### curl stderr'
-              echo '```text'
-              cat "$out/wpml.stderr"
-              echo '```'
-            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          evidence = json.loads(Path('/tmp/mad4b-wpml-external/diagnostic.json').read_text(encoding='utf-8'))
-          if not evidence.get('namespace_present') or not evidence.get('route_present'):
-              raise SystemExit('WPML REST namespace/route is not externally discoverable')
-          if not evidence.get('wpml_contract_compatible'):
-              raise SystemExit('WPML external contract failed: status/get_parameters must both be valid')
-          print('mad4b.wpml-external-http-acceptance.v3: PASS')
-          PY
-
       - name: Upload raw read-only HTTP evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-wpml-external-http-${{ env.SOURCE_SHA }}
           path: /tmp/mad4b-wpml-external/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Validate external WPML contract after retained evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          evidence = json.loads(Path('/tmp/mad4b-wpml-external/diagnostic.json').read_text(encoding='utf-8'))
+          if evidence.get('contract') != 'mad4b.wpml-external-http-diagnostic.v3':
+              raise SystemExit('WPML external diagnostic contract mismatch')
+          if evidence.get('mutation_performed') is not False:
+              raise SystemExit('WPML external diagnostic violated read-only boundary')
+          if not evidence.get('namespace_present') or not evidence.get('route_present'):
+              raise SystemExit('WPML REST namespace/route is not externally discoverable after 3 attempts')
+          if not evidence.get('wpml_contract_compatible'):
+              raise SystemExit('WPML external contract failed after 3 attempts: status/get_parameters must both be valid')
+          print('mad4b.wpml-external-http-acceptance.v4: PASS')
+          PY
+
