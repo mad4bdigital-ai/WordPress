@@ -23,6 +23,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	const MAX_SNAPSHOT_TREE_FILES = 30000;
 	const MAX_SNAPSHOT_TREE_BYTES = 1610612736;
 	const MAX_SNAPSHOT_SCAN_SECONDS = 20.0;
+	const MAX_PROVENANCE_VERIFY_FILES = 2500;
+	const MAX_PROVENANCE_VERIFY_BYTES = 268435456;
+	const MAX_PROVENANCE_VERIFY_SECONDS = 8.0;
 
 	private static $snapshot = null;
 	private static $snapshot_key = '';
@@ -276,6 +279,97 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array_keys( $out );
 	}
 
+	private static function verify_build_provenance_package( array $data ) {
+		$entries = isset( $data['package_files'] ) && is_array( $data['package_files'] ) ? $data['package_files'] : array();
+		if ( empty( $entries ) ) return array( 'valid'=>false, 'blockers'=>array( 'build_provenance_package_files_missing' ) );
+		$started = microtime( true );
+		$canonical = array();
+		$declared = array();
+		$total_bytes = 0;
+		$verified_files = 0;
+		$blockers = array();
+
+		foreach ( $entries as $row ) {
+			if ( ! is_array( $row ) ) { $blockers[] = 'build_provenance_package_file_row_invalid'; continue; }
+			$rel = isset( $row['path'] ) ? str_replace( '\\', '/', ltrim( trim( (string) $row['path'] ), '/' ) ) : '';
+			$expected_bytes = isset( $row['bytes'] ) ? (int) $row['bytes'] : -1;
+			$expected_sha = isset( $row['sha256'] ) ? strtolower( trim( (string) $row['sha256'] ) ) : '';
+			if ( '' === $rel || false !== strpos( $rel, "\0" ) || preg_match( '#(^|/)\.\.?(/|$)#', $rel ) ) { $blockers[] = 'build_provenance_package_path_invalid'; continue; }
+			if ( isset( $declared[ $rel ] ) ) { $blockers[] = 'build_provenance_package_path_duplicate'; continue; }
+			if ( $expected_bytes < 0 || ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha ) ) { $blockers[] = 'build_provenance_package_file_identity_invalid'; continue; }
+			if ( $verified_files + 1 > self::MAX_PROVENANCE_VERIFY_FILES || $total_bytes + $expected_bytes > self::MAX_PROVENANCE_VERIFY_BYTES || microtime( true ) - $started > self::MAX_PROVENANCE_VERIFY_SECONDS ) {
+				$blockers[] = 'build_provenance_verification_budget_exceeded';
+				break;
+			}
+			$path = MAD4B_SCP_DIR . $rel;
+			if ( ! is_file( $path ) || ! is_readable( $path ) ) { $blockers[] = 'build_provenance_package_file_missing'; continue; }
+			$actual_bytes = @filesize( $path );
+			$actual_sha = @hash_file( 'sha256', $path );
+			if ( false === $actual_bytes || (int) $actual_bytes !== $expected_bytes ) $blockers[] = 'build_provenance_package_file_bytes_mismatch';
+			if ( false === $actual_sha || ! hash_equals( $expected_sha, strtolower( (string) $actual_sha ) ) ) $blockers[] = 'build_provenance_package_file_sha256_mismatch';
+			$declared[ $rel ] = true;
+			++$verified_files;
+			$total_bytes += max( 0, $expected_bytes );
+			$canonical[] = $rel . "\0" . $expected_bytes . "\0" . $expected_sha . "\n";
+		}
+
+		$actual_files = array();
+		try {
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( MAD4B_SCP_DIR, FilesystemIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::LEAVES_ONLY
+			);
+			foreach ( $iterator as $file ) {
+				if ( $file->isLink() ) { $blockers[] = 'build_provenance_package_symlink_detected'; continue; }
+				if ( ! $file->isFile() ) continue;
+				$path = str_replace( '\\', '/', $file->getPathname() );
+				$base = rtrim( str_replace( '\\', '/', MAD4B_SCP_DIR ), '/' ) . '/';
+				$rel = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : '';
+				if ( '' === $rel || 'MAD4B-BUILD-PROVENANCE.json' === $rel ) continue;
+				$actual_files[ $rel ] = true;
+				if ( count( $actual_files ) > self::MAX_PROVENANCE_VERIFY_FILES ) { $blockers[] = 'build_provenance_actual_file_budget_exceeded'; break; }
+			}
+		} catch ( Exception $e ) {
+			$blockers[] = 'build_provenance_actual_file_enumeration_failed';
+		}
+		$missing_from_manifest = array_diff_key( $actual_files, $declared );
+		$missing_from_runtime = array_diff_key( $declared, $actual_files );
+		if ( ! empty( $missing_from_manifest ) ) $blockers[] = 'build_provenance_untracked_runtime_files';
+		if ( ! empty( $missing_from_runtime ) ) $blockers[] = 'build_provenance_declared_files_missing';
+
+		sort( $canonical, SORT_STRING );
+		$manifest = hash( 'sha256', implode( '', $canonical ) );
+		$declared_manifest = isset( $data['package_manifest_digest'] ) ? strtolower( trim( (string) $data['package_manifest_digest'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $declared_manifest ) || ! hash_equals( $declared_manifest, $manifest ) ) $blockers[] = 'build_provenance_manifest_recompute_mismatch';
+
+		$version = isset( $data['control_plane_version'] ) ? trim( (string) $data['control_plane_version'] ) : '';
+		$source = isset( $data['source_commit_sha'] ) ? strtolower( trim( (string) $data['source_commit_sha'] ) ) : '';
+		$adapter_version = isset( $data['mcp_adapter_version'] ) ? trim( (string) $data['mcp_adapter_version'] ) : '';
+		$adapter_sha = isset( $data['mcp_adapter_sha256'] ) ? strtolower( trim( (string) $data['mcp_adapter_sha256'] ) ) : '';
+		$adapter_rel = 'dependencies/mcp-adapter.zip';
+		$adapter_row = null;
+		foreach ( $entries as $row ) if ( is_array( $row ) && isset( $row['path'] ) && $adapter_rel === str_replace( '\\', '/', ltrim( (string) $row['path'], '/' ) ) ) { $adapter_row = $row; break; }
+		if ( ! is_array( $adapter_row ) || ! isset( $adapter_row['sha256'] ) || ! hash_equals( $adapter_sha, strtolower( (string) $adapter_row['sha256'] ) ) ) $blockers[] = 'build_provenance_adapter_sha_mismatch';
+
+		$payload = "mad4b.build-fingerprint.v1\n" . $version . "\n" . $source . "\n" . $manifest . "\n" . $adapter_version . "\n" . $adapter_sha . "\n";
+		$fingerprint = hash( 'sha256', $payload );
+		$declared_fingerprint = isset( $data['build_fingerprint'] ) ? strtolower( trim( (string) $data['build_fingerprint'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $declared_fingerprint ) || ! hash_equals( $declared_fingerprint, $fingerprint ) ) $blockers[] = 'build_provenance_fingerprint_recompute_mismatch';
+
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
+		return array(
+			'valid' => empty( $blockers ),
+			'blockers' => $blockers,
+			'verified_file_count' => $verified_files,
+			'verified_bytes' => $total_bytes,
+			'actual_file_count' => count( $actual_files ),
+			'recomputed_package_manifest_digest' => $manifest,
+			'recomputed_build_fingerprint' => $fingerprint,
+			'integrity_level' => empty( $blockers ) ? 'self_consistent_package' : 'failed_closed',
+			'external_cryptographic_attestation' => false,
+		);
+	}
+
 	private static function build_provenance() {
 		$path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
 		if ( ! is_file( $path ) || ! is_readable( $path ) ) return array( 'valid'=>false, 'blockers'=>array( 'build_provenance_missing' ) );
@@ -294,12 +388,16 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			if ( ! is_array( $row ) || empty( $row['path'] ) ) continue;
 			$files[ str_replace( '\\', '/', ltrim( (string) $row['path'], '/' ) ) ] = $row;
 		}
+		$package_verification = self::verify_build_provenance_package( $data );
+		if ( empty( $package_verification['valid'] ) ) $blockers = array_merge( $blockers, isset( $package_verification['blockers'] ) ? (array) $package_verification['blockers'] : array( 'build_provenance_package_verification_failed' ) );
+		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 		return array(
 			'valid' => empty( $blockers ),
 			'source_commit_sha' => $source,
 			'build_fingerprint' => $fingerprint,
 			'package_manifest_digest' => $manifest,
 			'package_files' => $files,
+			'package_verification' => $package_verification,
 			'blockers' => $blockers,
 		);
 	}
@@ -375,6 +473,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'policy_bytes' => isset( $policy['bytes'] ) ? (int) $policy['bytes'] : 0,
 			'build_fingerprint' => isset( $provenance['build_fingerprint'] ) ? (string) $provenance['build_fingerprint'] : '',
 			'package_manifest_digest' => isset( $provenance['package_manifest_digest'] ) ? (string) $provenance['package_manifest_digest'] : '',
+			'package_integrity' => isset( $provenance['package_verification'] ) && is_array( $provenance['package_verification'] ) ? $provenance['package_verification'] : array(),
 			'families' => isset( $data['families'] ) && is_array( $data['families'] ) ? $data['families'] : array(),
 			'blockers' => $blockers,
 		);
@@ -783,6 +882,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				'policy_bytes' => isset( $repository['policy_bytes'] ) ? (int) $repository['policy_bytes'] : 0,
 				'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? $repository['build_fingerprint'] : '',
 				'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? $repository['package_manifest_digest'] : '',
+				'package_integrity' => isset( $repository['package_integrity'] ) && is_array( $repository['package_integrity'] ) ? $repository['package_integrity'] : array(),
 				'family_count' => isset( $repository['families'] ) && is_array( $repository['families'] ) ? count( $repository['families'] ) : 0,
 				'blockers' => isset( $repository['blockers'] ) ? $repository['blockers'] : array(),
 			),
@@ -815,6 +915,9 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'ready' => ! empty( $evaluation['ready'] ),
 			'repository_evidence_valid' => ! empty( $repository['valid'] ),
 			'evidence_integrity_bound' => ! empty( $repository['valid'] ) && ! empty( $repository['evidence_sha256'] ) && ! empty( $repository['policy_sha256'] ) && ! empty( $repository['build_fingerprint'] ) && ! empty( $repository['package_manifest_digest'] ),
+			'package_self_consistent' => ! empty( $repository['package_integrity']['valid'] ),
+			'package_integrity_level' => isset( $repository['package_integrity']['integrity_level'] ) ? $repository['package_integrity']['integrity_level'] : 'unknown',
+			'external_cryptographic_attestation' => false,
 			'policy_sha256' => isset( $repository['policy_sha256'] ) ? $repository['policy_sha256'] : '',
 			'evidence_sha256' => isset( $repository['evidence_sha256'] ) ? $repository['evidence_sha256'] : '',
 			'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? $repository['build_fingerprint'] : '',
