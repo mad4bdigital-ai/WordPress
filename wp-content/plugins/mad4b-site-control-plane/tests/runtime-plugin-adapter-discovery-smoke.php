@@ -86,6 +86,10 @@ $initial = $coverage_ability->execute();
 $check( ! is_wp_error( $initial ) && 'mad4b.plugin-adapter-discovery.v1' === $initial['contract'], 'Initial plugin discovery contract failed.' );
 $check( ! empty( $initial['discovery_only'] ) && empty( $initial['auto_install'] ) && empty( $initial['auto_generate_adapter'] ) && empty( $initial['auto_create_authority'] ), 'Discovery can create authority/code/install plugins.' );
 $check( 'deny' === $initial['unknown_plugin_write_default'], 'Unknown plugin write default is not deny.' );
+$check( isset( $initial['zero_touch_projection'] ) && is_array( $initial['zero_touch_projection'] ), 'Initial coverage did not expose atomic zero-touch projection metadata.' );
+$check( ! empty( $initial['zero_touch_projection']['identity_match'] ), 'Stable initial coverage projection did not preserve runtime identity.' );
+$check( 64 === strlen( (string) ( $initial['zero_touch_projection']['snapshot_identity_sha256'] ?? '' ) ), 'Initial projection snapshot identity is missing.' );
+$check( hash_equals( (string) $initial['zero_touch_projection']['snapshot_identity_sha256'], (string) ( $initial['zero_touch_projection']['current_identity_sha256'] ?? '' ) ), 'Initial projection mixed different runtime identities.' );
 
 $priority_ids = array();
 foreach ( $initial['priority_external'] as $item ) if ( isset( $item['id'] ) ) $priority_ids[] = $item['id'];
@@ -127,6 +131,9 @@ try {
 	$check( empty( $discovered['zero_touch']['promotion_authorized'] ), 'Standard plugin coverage projected authorizing zero-touch state.' );
 	$check( 64 === strlen( (string) ( $discovered['zero_touch']['snapshot_identity_sha256'] ?? '' ) ), 'Coverage zero-touch snapshot identity is missing.' );
 	$check( ! hash_equals( $initial_zero_touch_identity, (string) $discovered['zero_touch']['snapshot_identity_sha256'] ), 'Zero-touch request cache did not invalidate after runtime plugin identity changed.' );
+	$check( ! empty( $discovered['zero_touch_projection']['identity_match'] ), 'Stable fixture coverage projection reported an identity mismatch.' );
+	$check( hash_equals( (string) ( $discovered['zero_touch_projection']['snapshot_identity_sha256'] ?? '' ), (string) ( $discovered['zero_touch_projection']['current_identity_sha256'] ?? '' ) ), 'Fixture coverage projection mixed snapshot/current runtime identities.' );
+	$check( (int) ( $discovered['zero_touch_projection']['decision_count'] ?? -1 ) >= 1, 'Stable fixture coverage projection unexpectedly discarded all decisions.' );
 	$unknown = null; $risky = null; $menu = null; $runtime_only = null; $lookalike = null;
 	foreach ( $discovered['plugins'] as $item ) {
 		if ( 'ci-unknown-adapter-target/ci-unknown.php' === $item['plugin_file'] ) $unknown = $item;
