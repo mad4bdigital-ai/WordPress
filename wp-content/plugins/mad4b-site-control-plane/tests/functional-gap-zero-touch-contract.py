@@ -154,7 +154,11 @@ for marker in [
     "'zero_touch_decision'",
     "'zero_touch_state'",
     "'zero_touch_reason'",
-    "MAD4B_SCP_Functional_Gap_Evidence::decision_map()",
+    "MAD4B_SCP_Functional_Gap_Evidence::coverage_projection()",
+    "MAD4B_SCP_Functional_Gap_Evidence::current_runtime_identity_sha256()",
+    "coverage_projection_runtime_identity_changed",
+    "'identity_match' => $projection_identity_match",
+    "'decision_count' => count( $zero_touch_map )",
 ]:
     if marker not in discovery:
         raise SystemExit(f'standard coverage report missing zero-touch projection: {marker}')
