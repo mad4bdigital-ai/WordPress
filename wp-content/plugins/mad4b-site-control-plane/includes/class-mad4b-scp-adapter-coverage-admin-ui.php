@@ -185,6 +185,8 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			if ( '' === $key ) $key = 'unknown-provider';
 			$member = trim( (string) ( isset( $item['name'] ) ? $item['name'] : '' ) );
 			if ( '' === $member ) $member = isset( $item['plugin_file'] ) ? (string) $item['plugin_file'] : $key;
+			$member_version = trim( (string) ( isset( $item['version'] ) ? $item['version'] : '' ) );
+			if ( '' !== $member_version ) $member .= ' v' . $member_version;
 			if ( ! isset( $groups[ $key ] ) ) {
 				$groups[ $key ] = array( 'item'=>$item, 'functional'=>$f, 'state'=>$state, 'members'=>array( $member ) );
 				continue;
