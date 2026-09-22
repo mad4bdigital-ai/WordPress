@@ -22,12 +22,27 @@ families = policy.get('families', {})
 if not families:
     raise SystemExit('functional-gap policy family set is empty')
 
+identity_prefixes = {}
 for family, row in families.items():
     mode = row.get('evaluation_mode', '')
     if mode not in supported_modes:
         raise SystemExit(f'{family}: unsupported policy evaluation mode: {mode}')
-    if not row.get('match'):
+    matches = list(row.get('match', []))
+    versioned = list(row.get('versioned_match', []))
+    if not matches and not versioned:
         raise SystemExit(f'{family}: runtime identity match set is empty')
+    prefixes = [str(x).lstrip('/').replace('\\\\','/') for x in matches]
+    for base in versioned:
+        base = str(base).strip('/').replace('\\\\','/')
+        if not base or any(ch not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-' for ch in base):
+            raise SystemExit(f'{family}: invalid versioned identity base: {base}')
+        prefixes.append(base.lower() + '-v')
+    for prefix in prefixes:
+        prefix = prefix.lower()
+        for known, owner in identity_prefixes.items():
+            if owner != family and (prefix.startswith(known) or known.startswith(prefix)):
+                raise SystemExit(f'{family}: policy identity overlaps {owner}: {prefix} vs {known}')
+        identity_prefixes[prefix] = family
     if row.get('repository_evidence') is True and not row.get('repository_artifacts'):
         raise SystemExit(f'{family}: repository evidence family has no artifacts')
     if mode == 'bounded_read_routes':
