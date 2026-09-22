@@ -90,6 +90,9 @@ $check( isset( $initial['zero_touch_projection'] ) && is_array( $initial['zero_t
 $check( ! empty( $initial['zero_touch_projection']['identity_match'] ), 'Stable initial coverage projection did not preserve runtime identity.' );
 $check( 64 === strlen( (string) ( $initial['zero_touch_projection']['snapshot_identity_sha256'] ?? '' ) ), 'Initial projection snapshot identity is missing.' );
 $check( hash_equals( (string) $initial['zero_touch_projection']['snapshot_identity_sha256'], (string) ( $initial['zero_touch_projection']['current_identity_sha256'] ?? '' ) ), 'Initial projection mixed different runtime identities.' );
+$check( empty( $initial['zero_touch_projection']['census_required'] ), 'Source-mode coverage incorrectly required deep census without embedded evidence.' );
+$check( ! empty( $initial['zero_touch_projection']['census_match'] ), 'Source-mode coverage census gate did not remain neutral when deep evidence was unavailable.' );
+$check( empty( $initial['zero_touch_projection']['census_content_rehashed'] ), 'Coverage census unexpectedly re-hashed content.' );
 
 $priority_ids = array();
 foreach ( $initial['priority_external'] as $item ) if ( isset( $item['id'] ) ) $priority_ids[] = $item['id'];
@@ -134,6 +137,8 @@ try {
 	$check( ! empty( $discovered['zero_touch_projection']['identity_match'] ), 'Stable fixture coverage projection reported an identity mismatch.' );
 	$check( hash_equals( (string) ( $discovered['zero_touch_projection']['snapshot_identity_sha256'] ?? '' ), (string) ( $discovered['zero_touch_projection']['current_identity_sha256'] ?? '' ) ), 'Fixture coverage projection mixed snapshot/current runtime identities.' );
 	$check( (int) ( $discovered['zero_touch_projection']['decision_count'] ?? -1 ) >= 1, 'Stable fixture coverage projection unexpectedly discarded all decisions.' );
+	$check( empty( $discovered['zero_touch_projection']['census_required'] ), 'Source-mode fixture coverage incorrectly enabled deep census guard.' );
+	$check( ! empty( $discovered['zero_touch_projection']['census_match'] ), 'Source-mode fixture census gate did not remain neutral.' );
 	$unknown = null; $risky = null; $menu = null; $runtime_only = null; $lookalike = null;
 	foreach ( $discovered['plugins'] as $item ) {
 		if ( 'ci-unknown-adapter-target/ci-unknown.php' === $item['plugin_file'] ) $unknown = $item;
