@@ -314,7 +314,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice notice-info inline"><p><strong>' . esc_html( $mode_label ) . '</strong> · ' . esc_html__( 'Disconnect and revoke the current Google grant before changing authentication mode.', 'mad4b-site-control-plane' ) . '</p></div>';
 		} else {
 			echo '<p>' . esc_html__( 'Choose how this site authenticates with Google. Managed Sign-In uses the central MAD4B broker; Dedicated Site OAuth stays entirely on this site primary domain; Custom OAuth keeps the legacy manual setup.', 'mad4b-site-control-plane' ) . '</p>';
-			echo '<form class="mad4b-context-ajax-form mad4b-context-auth-mode-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<form class="mad4b-context-ajax-form mad4b-context-auth-mode-form" data-mad4b-autosave="auth-mode" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_SAVE_GOOGLE_AUTH_MODE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SAVE_GOOGLE_AUTH_MODE ) . '">';
 			echo '<div class="mad4b-context-source-mode">';
@@ -324,9 +324,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</div>';
 			if ( ! $managed_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Managed Google Sign-In is unavailable until the broker URL and the per-site request-signing key ID/secret are configured on the server.', 'mad4b-site-control-plane' ) . '</p></div>';
 			if ( ! $dedicated_origin_ready ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Dedicated Site OAuth requires an enrolled Site Profile whose canonical origin matches the current WordPress Home URL and Site URL.', 'mad4b-site-control-plane' ) . '</p></div>';
-			echo '<noscript>';
-			submit_button( __( 'Save Connection Method', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-			echo '</noscript></form>';
+			echo '<p class="description mad4b-context-autosave-note">' . esc_html__( 'Changes save automatically when you choose a connection method.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '</form>';
 		}
 		echo '</div>';
 
@@ -1060,7 +1059,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				var controls=Array.prototype.slice.call(form.querySelectorAll("button,input,select,textarea"));
 				var priorDisabled=controls.map(function(control){return control.disabled;});
 				controls.forEach(function(control){control.disabled=true;});
-				feedback("Saving…",true,"");
+				feedback(form.dataset.mad4bAutosave==="auth-mode"?"Saving connection method…":"Saving…",true,"");
 				try{
 					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","X-Requested-With":"XMLHttpRequest"},body:body.toString()});
 					var payload=await response.json();
