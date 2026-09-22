@@ -1730,6 +1730,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'snapshot_fixed_point_stable' => ! empty( $snapshot['snapshot_fixed_point_stable'] ),
 			'snapshot_fixed_point_attempts' => isset( $snapshot['snapshot_fixed_point_attempts'] ) ? (int) $snapshot['snapshot_fixed_point_attempts'] : 0,
 			'snapshot_census_required' => ! empty( $snapshot['snapshot_census_required'] ),
+			'snapshot_dynamic_surface_stable' => ! empty( $snapshot['snapshot_dynamic_surface_stable'] ),
+			'snapshot_end_dynamic_surface_sha256' => isset( $snapshot['snapshot_end_dynamic_surface_sha256'] ) ? (string) $snapshot['snapshot_end_dynamic_surface_sha256'] : '',
 			'runtime_census' => isset( $snapshot['runtime_census'] ) && is_array( $snapshot['runtime_census'] ) ? $snapshot['runtime_census'] : array(),
 			'summary' => self::summary_from_snapshot( $snapshot ),
 			'decisions' => self::decision_map_from_snapshot( $snapshot ),
