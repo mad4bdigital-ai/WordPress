@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/code-snippets-rest-bootstrap-diagnostic-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-functional-gap-runtime-diagnostic.yml'
   workflow_dispatch:
@@ -42,8 +44,11 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php"
+          php -l "$root/includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php"
           php -l "$root/tests/functional-gap-runtime-diagnostic.php"
+          php -l "$root/tests/code-snippets-rest-bootstrap-diagnostic-runtime.php"
           php "$root/tests/functional-gap-runtime-diagnostic.php"
+          php "$root/tests/code-snippets-rest-bootstrap-diagnostic-runtime.php"
 
       - name: Verify bounded read-only contract
         shell: bash
@@ -51,6 +56,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           diag="$root/includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php"
+          snippets="$root/includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php"
           main="$root/mad4b-site-control-plane.php"
           servers="$root/includes/class-mad4b-scp-servers.php"
 
@@ -66,10 +72,28 @@ jobs:
 
           grep -Fq "require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php'" "$main"
           grep -Fq "MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::boot();" "$main"
+          grep -Fq "const CONTRACT = 'mad4b.code-snippets-rest-bootstrap-diagnostic.v1'" "$snippets"
+          grep -Fq "const ABILITY = 'mad4b/code-snippets-rest-bootstrap-diagnostic'" "$snippets"
+          grep -Fq "'snippet_source_returned' => false" "$snippets"
+          grep -Fq "'secret_values_returned' => false" "$snippets"
+          grep -Fq "token_get_all" "$snippets"
+          grep -Fq "do_action(rest_api_init)" "$snippets"
+          grep -Fq "MAD4B_SCP_Code_Snippets_Runtime_Diagnostic::boot();" "$main"
+
+          if grep -Eq 'INSERT[[:space:]]|UPDATE[[:space:]]|DELETE[[:space:]]|REPLACE[[:space:]]|wp_remote_|curl_|file_put_contents|fwrite\(|fopen\(' "$snippets"; then
+            echo 'Code Snippets diagnostic widened beyond purpose-specific read-only inspection.' >&2
+            exit 1
+          fi
 
           count="$(grep -o "mad4b/runtime-functional-gap-diagnostic" "$servers" | wc -l | tr -d ' ')"
           if [ "$count" -lt 2 ]; then
             echo 'Functional gap diagnostic must be exposed on both read and unified ChatGPT catalogs.' >&2
+            exit 1
+          fi
+
+          snippet_count="$(grep -o "mad4b/code-snippets-rest-bootstrap-diagnostic" "$servers" | wc -l | tr -d ' ')"
+          if [ "$snippet_count" -lt 2 ]; then
+            echo 'Code Snippets diagnostic must be exposed on both read and unified ChatGPT catalogs.' >&2
             exit 1
           fi
 
