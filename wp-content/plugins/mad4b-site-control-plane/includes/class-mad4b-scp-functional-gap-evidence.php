@@ -586,6 +586,32 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return array_merge( array( 'family' => $family, 'state' => $state, 'reason' => $reason ), $extra );
 	}
 
+	private static function canonicalize( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		$keys = array_keys( $value );
+		$is_list = empty( $keys ) || $keys === range( 0, count( $keys ) - 1 );
+		if ( $is_list ) {
+			$out = array();
+			foreach ( $value as $item ) $out[] = self::canonicalize( $item );
+			return $out;
+		}
+		ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) $value[ $key ] = self::canonicalize( $item );
+		return $value;
+	}
+
+	private static function decision_fingerprint( array $repository, array $policy, array $decisions ) {
+		$payload = self::canonicalize( array(
+			'contract' => self::EVALUATION_CONTRACT,
+			'policy_sha256' => isset( $policy['sha256'] ) ? (string) $policy['sha256'] : '',
+			'repository_evidence_sha256' => isset( $repository['evidence_sha256'] ) ? (string) $repository['evidence_sha256'] : '',
+			'repository_source_commit_sha' => isset( $repository['source_commit_sha'] ) ? (string) $repository['source_commit_sha'] : '',
+			'decisions' => $decisions,
+		) );
+		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return false === $json ? '' : hash( 'sha256', $json );
+	}
+
 	private static function evaluate( array $repository, array $runtime ) {
 		$decisions = array();
 		$evaluation_blockers = array();
@@ -696,6 +722,10 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			}
 		}
 
+		usort( $decisions, static function ( $a, $b ) { return strcmp( isset( $a['family'] ) ? (string) $a['family'] : '', isset( $b['family'] ) ? (string) $b['family'] : '' ); } );
+		$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $decision_fingerprint ) ) $evaluation_blockers[] = 'decision_fingerprint_unavailable';
+
 		$counts = array();
 		foreach ( $decisions as $row ) {
 			$state = isset( $row['state'] ) ? (string) $row['state'] : 'unknown';
@@ -711,6 +741,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'production_mutation' => false,
 			'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
 			'policy_sha256' => isset( $policy['sha256'] ) ? $policy['sha256'] : '',
+			'decision_fingerprint' => $decision_fingerprint,
 			'repository_source_commit_sha' => isset( $repository['source_commit_sha'] ) ? $repository['source_commit_sha'] : '',
 			'counts' => $counts,
 			'decisions' => $decisions,
@@ -785,6 +816,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'evidence_sha256' => isset( $repository['evidence_sha256'] ) ? $repository['evidence_sha256'] : '',
 			'build_fingerprint' => isset( $repository['build_fingerprint'] ) ? $repository['build_fingerprint'] : '',
 			'package_manifest_digest' => isset( $repository['package_manifest_digest'] ) ? $repository['package_manifest_digest'] : '',
+			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? $evaluation['decision_fingerprint'] : '',
 			'promotion_authorized' => false,
 			'counts' => $counts,
 			'unstable_family_count' => isset( $counts['runtime_evidence_unstable'] ) ? (int) $counts['runtime_evidence_unstable'] : 0,
