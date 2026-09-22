@@ -9,6 +9,7 @@ define( 'MAD4B_GOOGLE_MANAGED_OAUTH_SITE_SECRET', 'managed-google-site-signing-s
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) define( 'MINUTE_IN_SECONDS', 60 );
 
 $GLOBALS['mad4b_context_options'] = array();
+$GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array(), 'ignore_point_deletes' => false );
 $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
@@ -44,7 +45,10 @@ function add_query_arg( $args, $url ) { return $url . '?' . http_build_query( $a
 function set_transient( $name, $value ) { $GLOBALS['mad4b_context_transients'][ $name ] = $value; return true; }
 function get_transient( $name ) { return isset( $GLOBALS['mad4b_context_transients'][ $name ] ) ? $GLOBALS['mad4b_context_transients'][ $name ] : false; }
 function delete_transient( $name ) { unset( $GLOBALS['mad4b_context_transients'][ $name ] ); return true; }
-function get_option( $name, $default = false ) { return array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ? $GLOBALS['mad4b_context_options'][ $name ] : $default; }
+function get_option( $name, $default = false ) {
+	if ( ! empty( $GLOBALS['mad4b_context_option_cache']['notoptions'][ $name ] ) ) return $default;
+	return array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ? $GLOBALS['mad4b_context_options'][ $name ] : $default;
+}
 function add_option( $name, $value ) {
 	if ( array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ) return false;
 	$GLOBALS['mad4b_context_options'][ $name ] = $value;
@@ -58,6 +62,16 @@ function update_option( $name, $value ) {
 function delete_option( $name ) {
 	if ( ! array_key_exists( $name, $GLOBALS['mad4b_context_options'] ) ) return false;
 	unset( $GLOBALS['mad4b_context_options'][ $name ] );
+	return true;
+}
+function wp_cache_delete( $key, $group = '' ) {
+	if ( 'options' !== $group ) return true;
+	if ( ! empty( $GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] ) ) return true;
+	if ( 'notoptions' === $key ) $GLOBALS['mad4b_context_option_cache']['notoptions'] = array();
+	return true;
+}
+function wp_cache_flush_group( $group ) {
+	if ( 'options' === $group ) $GLOBALS['mad4b_context_option_cache']['notoptions'] = array();
 	return true;
 }
 function wp_remote_retrieve_response_code( $response ) { return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0; }
@@ -343,7 +357,13 @@ foreach ( array( 'managed-refresh-token', 'managed-access-short', 'managed-acces
 $managed_disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
 mad4b_oauth_assert( ! is_wp_error( $managed_disconnected ) && empty( $managed_disconnected['connected'] ), 'Managed Google grant must revoke and disconnect cleanly.', $managed_disconnected );
 
+// Reproduce stale persistent-object-cache negative state while the auth-mode
+// row still exists. A correct writer clears notoptions, discovers the row,
+// updates it through the Options API, and verifies exact readback.
+$GLOBALS['mad4b_context_option_cache']['notoptions'][ MAD4B_SCP_Google_Drive_Context::AUTH_MODE_OPTION ] = true;
+$GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] = true;
 $dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
+$GLOBALS['mad4b_context_option_cache']['ignore_point_deletes'] = false;
 mad4b_oauth_assert( ! is_wp_error( $dedicated_mode ), 'Authentication mode must switch to Dedicated Site OAuth after managed grant revocation.', $dedicated_mode );
 mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $dedicated_mode['mode'], 'Dedicated Site OAuth mode must become active.', $dedicated_mode );
 
@@ -394,5 +414,43 @@ foreach ( array( 'dedicated-client-secret-fixture', 'dedicated-access-short', 'd
 $dedicated_disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
 mad4b_oauth_assert( ! is_wp_error( $dedicated_disconnected ) && empty( $dedicated_disconnected['connected'] ), 'Dedicated Google grant must revoke and disconnect cleanly.', $dedicated_disconnected );
 
+$same_dedicated_mode = MAD4B_SCP_Google_Drive_Context::set_auth_mode( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED );
+mad4b_oauth_assert( ! is_wp_error( $same_dedicated_mode ) && MAD4B_SCP_Google_Drive_Context::AUTH_MODE_DEDICATED === $same_dedicated_mode['mode'], 'Saving the already-effective auth mode must be idempotent instead of reporting persistence failure.', $same_dedicated_mode );
+
+$full_suite_selection = MAD4B_SCP_Google_Drive_Context::full_suite_grant_selection();
+$full_suite = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( $full_suite_selection );
+mad4b_oauth_assert( ! is_wp_error( $full_suite ), 'Full Apps Suite grant selection must persist.', $full_suite );
+mad4b_oauth_assert( ! empty( $full_suite['full_suite_selected'] ), 'Full Apps Suite selection must be reported explicitly.', $full_suite );
+mad4b_oauth_assert( 14 === (int) $full_suite['scope_count'], 'Full Apps Suite must resolve to the expected deduplicated OAuth scope count.', $full_suite );
+
+$full_suite_url = MAD4B_SCP_Google_Drive_Context::authorization_url( 'read_write' );
+mad4b_oauth_assert( ! is_wp_error( $full_suite_url ), 'Full Apps Suite OAuth authorization URL must be created.', $full_suite_url );
+parse_str( (string) parse_url( $full_suite_url, PHP_URL_QUERY ), $full_suite_query );
+$full_suite_scopes = preg_split( '/\s+/', isset( $full_suite_query['scope'] ) ? (string) $full_suite_query['scope'] : '' );
+$full_suite_scopes = array_values( array_unique( array_filter( is_array( $full_suite_scopes ) ? $full_suite_scopes : array() ) ) );
+foreach ( array(
+	MAD4B_SCP_Google_Drive_Context::WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::DOCS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SHEETS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_PROJECTS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_DEPLOYMENTS_WRITE_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_PROCESSES_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::SCRIPT_METRICS_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::DRIVE_SCRIPTS_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GEMINI_CLOUD_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GEMINI_RETRIEVER_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GMAIL_FULL_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GMAIL_SETTINGS_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::GMAIL_SHARING_SCOPE,
+	MAD4B_SCP_Google_Drive_Context::CALENDAR_FULL_SCOPE,
+) as $required_scope ) {
+	mad4b_oauth_assert( in_array( $required_scope, $full_suite_scopes, true ), 'Full Apps Suite OAuth request is missing required scope: ' . $required_scope, $full_suite_scopes );
+}
+
+update_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, array( 'contract' => MAD4B_SCP_Google_Drive_Context::CONTRACT, 'refresh_token' => 'sealed-fixture' ), false );
+$blocked_grant_change = MAD4B_SCP_Google_Drive_Context::save_workspace_grants( array( 'drive' => 'read' ) );
+mad4b_oauth_assert( is_wp_error( $blocked_grant_change ) && 'mad4b_google_workspace_grants_change_requires_disconnect' === $blocked_grant_change->get_error_code(), 'Workspace grants must not change while a Google token exists.', $blocked_grant_change );
+delete_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION );
+
 mad4b_oauth_assert( count( $GLOBALS['mad4b_managed_site_nonces'] ) >= 3, 'Managed session/redeem/refresh must each use a fresh request nonce.', $GLOBALS['mad4b_managed_site_nonces'] );
-echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v7: PASS\n";
+echo "mad4b.site-control-plane.context-oauth-lifecycle.runtime.v10: PASS\n";
