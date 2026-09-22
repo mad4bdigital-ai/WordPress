@@ -384,8 +384,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 		return array(
 			'contract' => 'mad4b.functional-gap-runtime-census.v1',
-			'valid' => empty( $blockers ) && $plugin_count > 0,
-			'census_sha256' => empty( $blockers ) && $plugin_count > 0 ? hash( 'sha256', implode( "\n", $rows ) ) : '',
+			'valid' => empty( $blockers ),
+			'census_sha256' => empty( $blockers ) ? hash( 'sha256', implode( "\n", $rows ) ) : '',
 			'plugin_count' => $plugin_count,
 			'file_count' => $file_count,
 			'total_bytes' => $total_bytes,
@@ -427,8 +427,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
 		return array(
 			'contract' => 'mad4b.functional-gap-runtime-census.v1',
-			'valid' => empty( $blockers ) && $plugin_count > 0,
-			'census_sha256' => empty( $blockers ) && $plugin_count > 0 ? hash( 'sha256', implode( "\n", $rows ) ) : '',
+			'valid' => empty( $blockers ),
+			'census_sha256' => empty( $blockers ) ? hash( 'sha256', implode( "\n", $rows ) ) : '',
 			'plugin_count' => $plugin_count,
 			'file_count' => (int) $budget['files'],
 			'total_bytes' => (int) $budget['bytes'],
