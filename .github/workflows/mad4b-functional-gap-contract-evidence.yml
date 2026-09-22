@@ -3,14 +3,7 @@ name: MAD4B Functional Gap Contract Evidence
 on:
   pull_request:
     paths:
-      - 'wp-content/plugins/bulk-taxonomy-editor.zip'
-      - 'wp-content/plugins/custom-mega-menu-v43.zip'
-      - 'wp-content/plugins/duracelltomi-google-tag-manager.zip'
-      - 'wp-content/plugins/meta-catalog-feed-mapper-pro.zip'
-      - 'wp-content/plugins/wpl-client-1238.zip'
-      - 'wp-content/plugins/wpl-client.zip'
-      - 'wp-content/plugins/seo-by-rank-math.zip'
-      - 'wp-content/plugins/seo-by-rank-math-pro.zip'
+      - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
       - 'tools/evaluate-functional-gap-contract-promotion.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php'
