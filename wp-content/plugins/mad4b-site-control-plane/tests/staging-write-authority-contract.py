@@ -29,6 +29,16 @@ for signature in [
 ]:
     if write.count(signature) != 1:
         raise SystemExit(f'write authority implementation duplicated or missing: {signature}')
+plan_body = write.split("public static function reconciliation_plan", 1)[1].split("public static function reconcile", 1)[0]
+if "MAD4B_SCP_Agent_Registry::exact_grant(" in plan_body:
+    raise SystemExit("read-only reconciliation plan regressed to N+1 exact_grant lookups")
+if plan_body.count("MAD4B_SCP_Agent_Registry::grants_for_agent") != 1:
+    raise SystemExit("read-only reconciliation plan must use one bulk agent grant snapshot")
+reconcile_body = write.split("public static function reconcile()", 1)[1]
+for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":duplicate_grant"]:
+    if marker_text not in reconcile_body:
+        raise SystemExit("explicit reconcile lost deterministic duplicate-grant cleanup: " + marker_text)
+
 if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
 
@@ -43,6 +53,14 @@ for marker in [
     "public static function candidate_bootstrap_allowed( $ability_name, $input = null )",
     "const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id'",
     "public static function candidate_binding_status()",
+    "mad4b.governed-write-authority-reconciliation-plan.v2",
+    "MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $agent['id'], 'mad4b-write' )",
+    "'grant_lookup_strategy' => 'bulk_agent_grant_snapshot'",
+    "'duplicate_exact_allow_grants_count'",
+    "'current_agent_wildcard_grants'",
+    "'global_registry_wildcard_grants'",
+    "'broad_environment_grants_count'",
+    "'duplicate_exact_allow_grants_revoked'",
     "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint )",
     "private static function current_candidate_identity()",
     "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
