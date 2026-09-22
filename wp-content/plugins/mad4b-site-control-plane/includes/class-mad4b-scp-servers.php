@@ -21,7 +21,7 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function core_tools( $server_id ) {
-		$governed_status = array( 'mad4b/write-authority-status', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status' );
+		$governed_status = array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status' );
 		$map = array(
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
