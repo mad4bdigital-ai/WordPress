@@ -63,6 +63,7 @@ final class MAD4B_SCP_Staging_Certification {
 		$rollback = self::rollback_status( $rollback_artifact_sha256, $rollback_artifact_name );
 		$browser = self::browser_status();
 		$provider_inventory = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ? MAD4B_SCP_Provider_Compatibility_Certification::inventory() : array();
+		$wp_import_export = self::wp_import_export_remediation( $provider_inventory );
 
 		$gates = array(
 			'exact_build' => self::gate( ! empty( $provenance['runtime_manifest_match'] ), 'runtime_build_provenance', $provenance, 'package' ),
@@ -78,6 +79,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'browser_runtime' => self::gate( ! empty( $browser['browser_runtime_parity_verified'] ), 'browser_acceptance', $browser, 'external_browser' ),
 			'performance_budget' => self::gate( ! empty( $performance['ready'] ) && ! empty( $performance['budget_evaluated'] ) && ! empty( $performance['budget_pass'] ), 'frontend_performance', $performance, 'runtime_observation' ),
 			'rollback_candidate' => self::gate( ! empty( $rollback['candidate_identity_ready'] ) && ! empty( $rollback['artifact_retention_verified'] ), 'rollback_candidate', $rollback, 'release_operator' ),
+			'wp_import_export_exact_artifact' => self::gate( ! empty( $wp_import_export['ready'] ), 'wp_import_export_exact_artifact', $wp_import_export, 'provider_operator' ),
 		);
 
 		$blocking = array();
@@ -96,6 +98,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'gates' => $gates,
 			'write_authority_reconciliation_plan' => $reconciliation,
 			'provider_certification_inventory' => $provider_inventory,
+			'wp_import_export_remediation' => $wp_import_export,
 			'seo_publication_authorized' => false,
 			'production_activation_authorized' => false,
 			'external_facts_self_certified' => false,
@@ -117,6 +120,53 @@ final class MAD4B_SCP_Staging_Certification {
 			'remediation_owner' => (string) $owner,
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'evidence' => $evidence,
+		);
+	}
+
+	private static function wp_import_export_remediation( array $inventory ) {
+		$catalog_path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/certified-providers.json' : '';
+		$catalog = array();
+		if ( $catalog_path && is_readable( $catalog_path ) ) {
+			$decoded = json_decode( (string) file_get_contents( $catalog_path ), true );
+			if ( is_array( $decoded ) ) $catalog = $decoded;
+		}
+		$expected = isset( $catalog['providers']['wp-import-export']['components'] ) && is_array( $catalog['providers']['wp-import-export']['components'] )
+			? $catalog['providers']['wp-import-export']['components']
+			: array();
+		$assessment = isset( $inventory['providers']['wp-import-export'] ) && is_array( $inventory['providers']['wp-import-export'] )
+			? $inventory['providers']['wp-import-export']
+			: array();
+		$state = isset( $assessment['compatibility_state'] ) ? (string) $assessment['compatibility_state'] : 'unknown';
+		$ready = 'certified' === $state;
+		$import = isset( $expected['import'] ) && is_array( $expected['import'] ) ? $expected['import'] : array();
+		$export = isset( $expected['export'] ) && is_array( $expected['export'] ) ? $expected['export'] : array();
+		return array(
+			'contract' => 'mad4b.wp-import-export-exact-remediation.v1',
+			'read_only' => true,
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : 'blocked',
+			'compatibility_state' => $state,
+			'runtime_assessment' => $assessment,
+			'expected_import' => array(
+				'version' => isset( $import['version'] ) ? (string) $import['version'] : '',
+				'archive' => isset( $import['archive'] ) ? (string) $import['archive'] : '',
+				'archive_sha256' => isset( $import['archive_sha256'] ) ? (string) $import['archive_sha256'] : '',
+				'certification_authority' => isset( $import['certification_authority'] ) ? (string) $import['certification_authority'] : '',
+			),
+			'expected_export' => array(
+				'version' => isset( $export['version'] ) ? (string) $export['version'] : '',
+				'archive' => isset( $export['archive'] ) ? (string) $export['archive'] : '',
+				'archive_sha256' => isset( $export['archive_sha256'] ) ? (string) $export['archive_sha256'] : '',
+			),
+			'remediation' => $ready ? array() : array(
+				'install_exact_repository_import_artifact',
+				'run_exact_package_readback',
+				'run_disposable_behavioral_and_rollback_probe',
+				'recheck_composite_provider_mount_plan',
+			),
+			'automatic_install_performed' => false,
+			'production_mutation_performed' => false,
+			'blockers' => $ready ? array() : array( 'wp_import_export_exact_artifact_not_certified' ),
 		);
 	}
 
