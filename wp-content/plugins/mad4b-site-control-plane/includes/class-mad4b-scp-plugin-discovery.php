@@ -95,14 +95,33 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$projection_snapshot_identity = isset( $zero_touch_projection['snapshot_identity_sha256'] ) ? strtolower( (string) $zero_touch_projection['snapshot_identity_sha256'] ) : '';
 		$projection_current_identity = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? strtolower( (string) MAD4B_SCP_Functional_Gap_Evidence::current_runtime_identity_sha256() ) : '';
 		$projection_identity_match = '' !== $projection_snapshot_identity && '' !== $projection_current_identity && hash_equals( $projection_snapshot_identity, $projection_current_identity );
+
+		$projection_snapshot_census = isset( $zero_touch_projection['runtime_census'] ) && is_array( $zero_touch_projection['runtime_census'] ) ? $zero_touch_projection['runtime_census'] : array();
+		$projection_current_census = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? MAD4B_SCP_Functional_Gap_Evidence::current_runtime_census_status() : array( 'contract'=>'mad4b.functional-gap-runtime-census.v1', 'valid'=>false, 'census_sha256'=>'', 'blockers'=>array( 'runtime_census_unavailable' ) );
+		$projection_snapshot_census_sha = isset( $projection_snapshot_census['census_sha256'] ) ? strtolower( (string) $projection_snapshot_census['census_sha256'] ) : '';
+		$projection_current_census_sha = isset( $projection_current_census['census_sha256'] ) ? strtolower( (string) $projection_current_census['census_sha256'] ) : '';
+		$projection_census_match = ! empty( $projection_snapshot_census['valid'] ) && ! empty( $projection_current_census['valid'] )
+			&& '' !== $projection_snapshot_census_sha && '' !== $projection_current_census_sha
+			&& hash_equals( $projection_snapshot_census_sha, $projection_current_census_sha );
+
 		$zero_touch['projection_identity_match'] = $projection_identity_match;
 		$zero_touch['projection_snapshot_identity_sha256'] = $projection_snapshot_identity;
 		$zero_touch['projection_current_identity_sha256'] = $projection_current_identity;
-		if ( ! $projection_identity_match ) {
+		$zero_touch['projection_census_match'] = $projection_census_match;
+		$zero_touch['projection_snapshot_census_sha256'] = $projection_snapshot_census_sha;
+		$zero_touch['projection_current_census_sha256'] = $projection_current_census_sha;
+		$zero_touch['projection_census_elapsed_ms'] = isset( $projection_current_census['elapsed_ms'] ) ? (int) $projection_current_census['elapsed_ms'] : 0;
+		$zero_touch['projection_census_file_count'] = isset( $projection_current_census['file_count'] ) ? (int) $projection_current_census['file_count'] : 0;
+
+		if ( ! $projection_identity_match || ! $projection_census_match ) {
 			$zero_touch_map = array();
 			$zero_touch['ready'] = false;
 			$zero_touch['blockers'] = isset( $zero_touch['blockers'] ) && is_array( $zero_touch['blockers'] ) ? $zero_touch['blockers'] : array();
-			$zero_touch['blockers'][] = 'coverage_projection_runtime_identity_changed';
+			if ( ! $projection_identity_match ) $zero_touch['blockers'][] = 'coverage_projection_runtime_identity_changed';
+			if ( ! $projection_census_match ) {
+				$zero_touch['blockers'][] = 'coverage_projection_runtime_census_changed';
+				$zero_touch['blockers'] = array_merge( $zero_touch['blockers'], isset( $projection_current_census['blockers'] ) ? (array) $projection_current_census['blockers'] : array() );
+			}
 			$zero_touch['blockers'] = array_values( array_unique( array_filter( array_map( 'sanitize_key', $zero_touch['blockers'] ) ) ) );
 		}
 		foreach ( $items as &$coverage_item ) {
@@ -142,6 +161,13 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'snapshot_identity_sha256' => $projection_snapshot_identity,
 				'current_identity_sha256' => $projection_current_identity,
 				'identity_match' => $projection_identity_match,
+				'snapshot_census_sha256' => $projection_snapshot_census_sha,
+				'current_census_sha256' => $projection_current_census_sha,
+				'census_match' => $projection_census_match,
+				'census_file_count' => isset( $projection_current_census['file_count'] ) ? (int) $projection_current_census['file_count'] : 0,
+				'census_elapsed_ms' => isset( $projection_current_census['elapsed_ms'] ) ? (int) $projection_current_census['elapsed_ms'] : 0,
+				'census_metadata_only' => ! empty( $projection_current_census['metadata_only'] ),
+				'census_content_rehashed' => ! empty( $projection_current_census['content_rehashed'] ),
 				'decision_count' => count( $zero_touch_map ),
 				'promotion_authorized' => false,
 				'mutation_authorized' => false,
