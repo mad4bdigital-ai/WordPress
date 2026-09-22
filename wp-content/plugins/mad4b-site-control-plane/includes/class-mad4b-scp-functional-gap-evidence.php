@@ -16,32 +16,46 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 	const EVALUATION_CONTRACT = 'mad4b.functional-gap-promotion-evaluation.v2';
 	const REPOSITORY_CONTRACT = 'mad4b.functional-gap-contract-evidence.v1';
 	const REPOSITORY_FILE = 'config/functional-gap-contract-evidence.generated.json';
+	const POLICY_CONTRACT = 'mad4b.functional-gap-policy.v1';
+	const POLICY_FILE = 'config/functional-gap-policy.json';
 	const MAX_TREE_FILES = 12000;
 	const MAX_TREE_BYTES = 805306368;
 
 	private static $snapshot = null;
 	private static $snapshot_key = '';
+	private static $policy = null;
+
+	private static function policy() {
+		if ( null !== self::$policy ) return self::$policy;
+		$path = MAD4B_SCP_DIR . self::POLICY_FILE;
+		$raw = is_file( $path ) && is_readable( $path ) ? file_get_contents( $path ) : false;
+		$data = false === $raw ? null : json_decode( $raw, true );
+		$blockers = array();
+		if ( ! is_array( $data ) || self::POLICY_CONTRACT !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) $blockers[] = 'functional_gap_policy_invalid';
+		if ( is_array( $data ) && ( ! isset( $data['families'] ) || ! is_array( $data['families'] ) || empty( $data['families'] ) ) ) $blockers[] = 'functional_gap_policy_families_missing';
+		self::$policy = array(
+			'valid' => empty( $blockers ),
+			'contract' => is_array( $data ) && isset( $data['contract'] ) ? (string) $data['contract'] : '',
+			'sha256' => false === $raw ? '' : hash( 'sha256', $raw ),
+			'bytes' => false === $raw ? 0 : strlen( $raw ),
+			'data' => is_array( $data ) ? $data : array(),
+			'blockers' => $blockers,
+		);
+		return self::$policy;
+	}
 
 	private static function targets() {
-		return array(
-			'jetengine' => array( 'jet-engine/' ),
-			'jetsmartfilters' => array( 'jet-smart-filters/' ),
-			'rank-math' => array( 'seo-by-rank-math/', 'seo-by-rank-math-pro/' ),
-			'wp-import-export' => array( 'wp-all-import-pro/', 'wp-all-export-pro/' ),
-			'bulk-taxonomy-editor' => array( 'bulk-taxonomy-editor/' ),
-			'custom-mega-menu' => array( 'custom-mega-menu/', 'custom-mega-menu-v' ),
-			'duplicator' => array( 'duplicator/' ),
-			'elementskit' => array( 'elementskit-lite/' ),
-			'google-tag-manager' => array( 'duracelltomi-google-tag-manager/' ),
-			'heic-support' => array( 'heic-support/' ),
-			'hostinger-ai' => array( 'hostinger-ai-assistant/' ),
-			'hostinger-onboarding' => array( 'hostinger-easy-onboarding/' ),
-			'hostinger-reach' => array( 'hostinger-reach/' ),
-			'meta-catalog-feed-mapper' => array( 'meta-catalog-feed-mapper-pro/' ),
-			'wordpress-importer' => array( 'wordpress-importer/' ),
-			'wpl-client' => array( 'wpl-client/' ),
-		);
+		$policy = self::policy();
+		$out = array();
+		foreach ( isset( $policy['data']['families'] ) && is_array( $policy['data']['families'] ) ? $policy['data']['families'] : array() as $family => $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$matches = isset( $row['match'] ) && is_array( $row['match'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['match'] ) ) ) : array();
+			if ( ! empty( $matches ) ) $out[ sanitize_key( (string) $family ) ] = $matches;
+		}
+		ksort( $out, SORT_STRING );
+		return $out;
 	}
+
 
 	private static function normalize_plugin_file( $value ) {
 		return strtolower( ltrim( str_replace( '\\', '/', (string) $value ), '/' ) );
@@ -77,7 +91,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				is_file( $main ) ? (string) @filemtime( $main ) : '-1',
 			) );
 		}
-		foreach ( array( MAD4B_SCP_DIR . self::REPOSITORY_FILE, MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ) as $path ) {
+		foreach ( array( MAD4B_SCP_DIR . self::REPOSITORY_FILE, MAD4B_SCP_DIR . self::POLICY_FILE, MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ) as $path ) {
 			$rows[] = implode( "\0", array(
 				basename( $path ),
 				is_file( $path ) ? (string) @filesize( $path ) : '-1',
