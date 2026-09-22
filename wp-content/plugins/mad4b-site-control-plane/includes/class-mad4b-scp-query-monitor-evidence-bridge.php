@@ -60,7 +60,8 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		}
 		if ( $dropin_exists && ! $owned && is_readable( $dropin ) ) {
 			$prefix = file_get_contents( $dropin, false, null, 0, 32768 );
-			if ( is_string( $prefix ) && false !== strpos( $prefix, self::ATTRIBUTION_LOADER_MARKER ) ) {
+			$loader = self::bounded_loader_contents();
+			if ( is_string( $prefix ) && hash_equals( hash( 'sha256', $loader ), hash( 'sha256', $prefix ) ) ) {
 				$owned = true;
 				$ownership = 'mad4b_bounded_loader';
 			} elseif ( is_string( $prefix ) && false !== strpos( $prefix, 'QM_DB' ) && false !== strpos( $prefix, 'Query Monitor' ) ) {
@@ -127,9 +128,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			if ( $created ) $method = 'symlink';
 		}
 		if ( ! $created && ! empty( $status['bounded_loader_available'] ) && ! file_exists( $dropin ) && ! is_link( $dropin ) ) {
-			$loader = "<?php\n/* " . self::ATTRIBUTION_LOADER_MARKER . " */\n"
-				. "\$mad4b_qm_dropin = __DIR__ . '/plugins/query-monitor/wp-content/db.php';\n"
-				. "if ( is_readable( \$mad4b_qm_dropin ) ) { require \$mad4b_qm_dropin; }\n";
+			$loader = self::bounded_loader_contents();
 			$handle = @fopen( $dropin, 'x' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- exclusive create guarantees no existing db.php is replaced.
 			if ( false !== $handle ) {
 				$bytes = @fwrite( $handle, $loader ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded loader content only.
@@ -158,6 +157,13 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$status = self::db_attribution_status();
 		$status['bootstrap'] = $record;
 		return $status;
+	}
+
+
+	private static function bounded_loader_contents() {
+		return "<?php\n/* " . self::ATTRIBUTION_LOADER_MARKER . " */\n"
+			. "\$mad4b_qm_dropin = __DIR__ . '/plugins/query-monitor/wp-content/db.php';\n"
+			. "if ( is_readable( \$mad4b_qm_dropin ) ) { require \$mad4b_qm_dropin; }\n";
 	}
 
 	/** @internal Pure wiring map used by regression tests. */
