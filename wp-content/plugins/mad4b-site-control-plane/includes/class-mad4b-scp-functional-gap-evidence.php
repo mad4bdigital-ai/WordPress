@@ -363,6 +363,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'verified_file_count' => $verified_files,
 			'verified_bytes' => $total_bytes,
 			'actual_file_count' => count( $actual_files ),
+			'elapsed_ms' => (int) round( ( microtime( true ) - $started ) * 1000 ),
 			'recomputed_package_manifest_digest' => $manifest,
 			'recomputed_build_fingerprint' => $fingerprint,
 			'integrity_level' => empty( $blockers ) ? 'self_consistent_package' : 'failed_closed',
@@ -864,6 +865,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'verified_file_count' => isset( $verification['verified_file_count'] ) ? (int) $verification['verified_file_count'] : 0,
 			'verified_bytes' => isset( $verification['verified_bytes'] ) ? (int) $verification['verified_bytes'] : 0,
 			'actual_file_count' => isset( $verification['actual_file_count'] ) ? (int) $verification['actual_file_count'] : 0,
+			'elapsed_ms' => isset( $verification['elapsed_ms'] ) ? (int) $verification['elapsed_ms'] : 0,
 			'external_cryptographic_attestation' => false,
 			'blockers' => isset( $provenance['blockers'] ) ? array_values( (array) $provenance['blockers'] ) : array(),
 		);
@@ -927,6 +929,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$evaluation = isset( $snapshot['evaluation'] ) && is_array( $snapshot['evaluation'] ) ? $snapshot['evaluation'] : array();
 		$repository = isset( $snapshot['repository_evidence'] ) && is_array( $snapshot['repository_evidence'] ) ? $snapshot['repository_evidence'] : array();
 		$counts = isset( $evaluation['counts'] ) && is_array( $evaluation['counts'] ) ? $evaluation['counts'] : array();
+		$package_integrity = isset( $repository['package_integrity'] ) && is_array( $repository['package_integrity'] ) ? $repository['package_integrity'] : array();
+		$runtime_budget = isset( $snapshot['runtime']['scan_budget'] ) && is_array( $snapshot['runtime']['scan_budget'] ) ? $snapshot['runtime']['scan_budget'] : array();
 		return array(
 			'contract' => self::CONTRACT,
 			'snapshot_identity_sha256' => isset( $snapshot['snapshot_identity_sha256'] ) ? $snapshot['snapshot_identity_sha256'] : '',
@@ -935,6 +939,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'evidence_integrity_bound' => ! empty( $repository['valid'] ) && ! empty( $repository['evidence_sha256'] ) && ! empty( $repository['policy_sha256'] ) && ! empty( $repository['build_fingerprint'] ) && ! empty( $repository['package_manifest_digest'] ),
 			'package_self_consistent' => ! empty( $repository['package_integrity']['valid'] ),
 			'package_integrity_level' => isset( $repository['package_integrity']['integrity_level'] ) ? $repository['package_integrity']['integrity_level'] : 'unknown',
+			'package_integrity_elapsed_ms' => isset( $package_integrity['elapsed_ms'] ) ? (int) $package_integrity['elapsed_ms'] : 0,
+			'package_verified_file_count' => isset( $package_integrity['verified_file_count'] ) ? (int) $package_integrity['verified_file_count'] : 0,
+			'package_verified_bytes' => isset( $package_integrity['verified_bytes'] ) ? (int) $package_integrity['verified_bytes'] : 0,
+			'runtime_scan_elapsed_ms' => isset( $runtime_budget['elapsed_ms'] ) ? (int) $runtime_budget['elapsed_ms'] : 0,
+			'runtime_scan_files_hashed' => isset( $runtime_budget['files_hashed'] ) ? (int) $runtime_budget['files_hashed'] : 0,
+			'runtime_scan_bytes_hashed' => isset( $runtime_budget['bytes_hashed'] ) ? (int) $runtime_budget['bytes_hashed'] : 0,
 			'external_cryptographic_attestation' => false,
 			'policy_sha256' => isset( $repository['policy_sha256'] ) ? $repository['policy_sha256'] : '',
 			'evidence_sha256' => isset( $repository['evidence_sha256'] ) ? $repository['evidence_sha256'] : '',
