@@ -11,7 +11,9 @@ families = {row.get('id'): row for row in catalog.get('families', []) if isinsta
 artifact_families = artifacts.get('families', {})
 
 expected = {
-    'hostinger-extensions': ['hostinger-easy-onboarding/', 'hostinger-ai-assistant/', 'hostinger-reach/'],
+    'hostinger-onboarding': ['hostinger-easy-onboarding/'],
+    'hostinger-ai': ['hostinger-ai-assistant/'],
+    'hostinger-reach': ['hostinger-reach/'],
     'duplicator': ['duplicator/'],
     'elementskit': ['elementskit-lite/'],
     'heic-support': ['heic-support/'],
@@ -33,7 +35,7 @@ for family_id, exact_matches in expected.items():
     assert row.get('functional_next_action'), f'next action missing: {family_id}'
     assert family_id not in artifact_families, f'runtime-only family must not fabricate repository artifacts: {family_id}'
 
-for family_id in ('hostinger-extensions', 'duplicator', 'elementskit', 'heic-support', 'wordpress-importer', 'ai-engine'):
+for family_id in ('hostinger-onboarding', 'hostinger-ai', 'hostinger-reach', 'duplicator', 'elementskit', 'heic-support', 'wordpress-importer', 'ai-engine'):
     assert families[family_id].get('functional_mode') == 'contract_discovery', family_id
 
 assert families['external-mcp-server'].get('functional_mode') == 'intentionally_restricted'
