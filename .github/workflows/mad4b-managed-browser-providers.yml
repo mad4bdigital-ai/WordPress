@@ -64,6 +64,7 @@ jobs:
           node tools/browser-acceptance/test-provider-selection.mjs
           node tools/browser-acceptance/test-scheduler.mjs
           node tools/browser-acceptance/test-network-policy.mjs
+          node tools/browser-acceptance/test-provider-preflight.mjs
           node tools/browser-acceptance/test-mcp-bridge.mjs
           node tools/browser-acceptance/test-receipt.mjs
           node tools/browser-acceptance/test-evidence-envelope.mjs
@@ -72,11 +73,19 @@ jobs:
           node --check tools/browser-acceptance/providers.mjs
           node --check tools/browser-acceptance/scheduler.mjs
           node --check tools/browser-acceptance/network-policy.mjs
+          node --check tools/browser-acceptance/provider-preflight.mjs
           node --check tools/browser-acceptance/mcp-bridge.mjs
           node --check tools/browser-acceptance/etg-driver.mjs
           node --check tools/browser-acceptance/run-etg-browser-acceptance.mjs
           node --check tools/browser-acceptance/run-live-etg-browser-acceptance.mjs
           node --check tools/browser-acceptance/receipt.mjs
+      - name: Generate non-secret provider preflight
+        run: node tools/browser-acceptance/provider-preflight.mjs > browser-provider-preflight.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-browser-provider-preflight-${{ github.sha }}
+          path: browser-provider-preflight.json
+          retention-days: 14
       - name: Deny arbitrary execution inputs and long-lived OAuth shortcuts
         shell: bash
         run: |
