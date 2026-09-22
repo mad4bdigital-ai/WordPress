@@ -15,6 +15,7 @@ on:
       - 'wp-content/plugins/seo-by-rank-math.zip'
       - 'wp-content/plugins/seo-by-rank-math-pro.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
   workflow_dispatch:
 
 permissions:
@@ -91,12 +92,26 @@ jobs:
           out='wp-content/plugins/mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json'
           python3 tools/capture-functional-gap-contract-evidence.py "$out"
           python3 - "$out" <<'PY'
-          import json, os, sys
+          import hashlib, json, os, sys
+          from pathlib import Path
           data=json.load(open(sys.argv[1],encoding='utf-8'))
+          policy_path=Path('wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json')
+          policy_raw=policy_path.read_bytes()
+          policy=json.loads(policy_raw)
+          expected={
+              family for family,row in policy.get('families',{}).items()
+              if row.get('repository_evidence') is True
+          }
           if data.get('contract')!='mad4b.functional-gap-contract-evidence.v1':
               raise SystemExit('functional-gap evidence contract mismatch')
           if data.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
               raise SystemExit('functional-gap evidence exact source mismatch')
+          if data.get('policy_contract')!=policy.get('contract'):
+              raise SystemExit('functional-gap evidence policy contract mismatch')
+          if data.get('policy_sha256')!=hashlib.sha256(policy_raw).hexdigest():
+              raise SystemExit('functional-gap evidence policy SHA mismatch')
+          if set(data.get('families',{}))!=expected:
+              raise SystemExit('functional-gap evidence family set mismatch')
           if any(row.get('promotion_authorized') is not False for row in data.get('families',{}).values()):
               raise SystemExit('functional-gap evidence became authorizing')
           print('plugin package embedded functional-gap evidence: PASS')
@@ -117,8 +132,20 @@ jobs:
           embedded_sha="$(sha256sum dist/stage/mad4b-site-control-plane/dependencies/mcp-adapter.zip | awk '{print $1}')"
           test "$expected_sha" = "$embedded_sha"
           test -f dist/stage/mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json
+          test -f dist/stage/mad4b-site-control-plane/config/functional-gap-policy.json
           grep -Fq '"contract": "mad4b.functional-gap-contract-evidence.v1"' dist/stage/mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json
+          grep -Fq '"contract": "mad4b.functional-gap-policy.v1"' dist/stage/mad4b-site-control-plane/config/functional-gap-policy.json
           grep -Fq "$SOURCE_SHA" dist/stage/mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('dist/stage/mad4b-site-control-plane/config')
+          policy_raw=(root/'functional-gap-policy.json').read_bytes()
+          evidence=json.loads((root/'functional-gap-contract-evidence.generated.json').read_text(encoding='utf-8'))
+          if evidence.get('policy_sha256')!=hashlib.sha256(policy_raw).hexdigest():
+              raise SystemExit('packaged functional-gap policy/evidence SHA mismatch')
+          print('packaged functional-gap policy/evidence linkage: PASS')
+          PY
 
           (
             cd dist/stage
