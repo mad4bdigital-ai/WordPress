@@ -184,6 +184,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		if ( ! is_dir( $root ) ) return array( 'file_count' => 0, 'total_bytes' => 0, 'tree_sha256' => '' );
 
 		$rows = array();
+		$census_rows = array();
 		$total = 0;
 		try {
 			$iterator = new RecursiveIteratorIterator(
@@ -217,7 +218,33 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				self::$scan_bytes += $size;
 				$total += $size;
 				$rows[] = $relative . "\0" . $size . "\0" . $digest;
+				$census_rows[] = $relative . "\0" . $size . "\0" . $mtime;
 			}
+
+			// Lightweight post-hash census closes the directory-level TOCTOU window:
+			// additions/removals or stat changes that occur after an iterator already
+			// passed a path invalidate the snapshot without re-hashing every file.
+			$after_census = array();
+			$census_iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::LEAVES_ONLY
+			);
+			foreach ( $census_iterator as $file ) {
+				if ( $file->isLink() ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_symlink_detected' );
+				if ( ! $file->isFile() ) continue;
+				if ( self::$scan_started_at > 0 && microtime( true ) - self::$scan_started_at > self::MAX_SNAPSHOT_SCAN_SECONDS ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'snapshot_scan_time_budget_exceeded', 'scan_budget_exceeded'=>true );
+				$path = str_replace( '\\', '/', $file->getPathname() );
+				$base = rtrim( str_replace( '\\', '/', $root ), '/' ) . '/';
+				$relative = 0 === strpos( $path, $base ) ? substr( $path, strlen( $base ) ) : basename( $path );
+				clearstatcache( true, $file->getPathname() );
+				$size = @filesize( $file->getPathname() );
+				$mtime = @filemtime( $file->getPathname() );
+				if ( false === $size || false === $mtime ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_census_stat_failed' );
+				$after_census[] = $relative . "\0" . (int) $size . "\0" . (int) $mtime;
+			}
+			sort( $census_rows, SORT_STRING );
+			sort( $after_census, SORT_STRING );
+			if ( $census_rows !== $after_census ) return array( 'file_count'=>count( $rows ), 'total_bytes'=>$total, 'tree_sha256'=>'', 'error'=>'tree_census_changed_during_hash' );
 		} catch ( Exception $e ) {
 			return array( 'file_count' => 0, 'total_bytes' => 0, 'tree_sha256' => '', 'error' => 'tree_scan_failed' );
 		}
@@ -226,6 +253,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'file_count' => count( $rows ),
 			'total_bytes' => $total,
 			'tree_sha256' => hash( 'sha256', implode( "\n", $rows ) ),
+			'census_sha256' => hash( 'sha256', implode( "\n", $census_rows ) ),
 		);
 	}
 
