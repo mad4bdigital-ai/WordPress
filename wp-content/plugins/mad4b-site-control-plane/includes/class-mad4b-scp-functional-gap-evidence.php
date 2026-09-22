@@ -40,7 +40,21 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		$path = MAD4B_SCP_DIR . self::POLICY_FILE;
 		$raw = is_file( $path ) && is_readable( $path ) ? file_get_contents( $path ) : false;
 		$data = false === $raw ? null : json_decode( $raw, true );
+		$catalog_path = MAD4B_SCP_DIR . 'config/adapter-support-catalog.json';
+		$artifact_path = MAD4B_SCP_DIR . 'config/repository-plugin-artifacts.json';
+		$catalog_raw = is_file( $catalog_path ) && is_readable( $catalog_path ) ? file_get_contents( $catalog_path ) : false;
+		$artifact_raw = is_file( $artifact_path ) && is_readable( $artifact_path ) ? file_get_contents( $artifact_path ) : false;
+		$catalog_data = false === $catalog_raw ? null : json_decode( $catalog_raw, true );
+		$artifact_data = false === $artifact_raw ? null : json_decode( $artifact_raw, true );
 		$blockers = array();
+		if ( ! is_array( $catalog_data ) || 'mad4b.adapter-support-catalog.v1' !== ( isset( $catalog_data['contract'] ) ? (string) $catalog_data['contract'] : '' ) ) $blockers[] = 'functional_gap_adapter_catalog_invalid';
+		if ( ! is_array( $artifact_data ) || 'mad4b.repository-plugin-artifacts.v1' !== ( isset( $artifact_data['contract'] ) ? (string) $artifact_data['contract'] : '' ) ) $blockers[] = 'functional_gap_repository_artifact_catalog_invalid';
+		$catalog_by_family = array();
+		foreach ( is_array( $catalog_data ) && isset( $catalog_data['families'] ) && is_array( $catalog_data['families'] ) ? $catalog_data['families'] : array() as $catalog_row ) {
+			if ( ! is_array( $catalog_row ) || empty( $catalog_row['id'] ) ) continue;
+			$catalog_by_family[ sanitize_key( (string) $catalog_row['id'] ) ] = $catalog_row;
+		}
+		$artifact_families = is_array( $artifact_data ) && isset( $artifact_data['families'] ) && is_array( $artifact_data['families'] ) ? $artifact_data['families'] : array();
 		$supported_modes = array( 'bounded_read_routes','redacted_status','exact_tree_review','runtime_only','premium_semantic','composite_behavioral' );
 		if ( ! is_array( $data ) || self::POLICY_CONTRACT !== ( isset( $data['contract'] ) ? (string) $data['contract'] : '' ) ) $blockers[] = 'functional_gap_policy_invalid';
 		if ( is_array( $data ) ) {
@@ -57,6 +71,15 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$matches = isset( $row['match'] ) && is_array( $row['match'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['match'] ) ) ) : array();
 				$versioned_matches = isset( $row['versioned_match'] ) && is_array( $row['versioned_match'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['versioned_match'] ) ) ) : array();
 				if ( empty( $matches ) && empty( $versioned_matches ) ) $blockers[] = 'functional_gap_policy_match_missing_' . $family;
+				$catalog_row = isset( $catalog_by_family[ $family ] ) && is_array( $catalog_by_family[ $family ] ) ? $catalog_by_family[ $family ] : array();
+				if ( empty( $catalog_row ) ) {
+					$blockers[] = 'functional_gap_policy_family_missing_from_adapter_catalog_' . $family;
+				} else {
+					$catalog_matches = isset( $catalog_row['match'] ) && is_array( $catalog_row['match'] ) ? array_map( array( __CLASS__, 'normalize_plugin_file' ), $catalog_row['match'] ) : array();
+					$catalog_versioned = isset( $catalog_row['versioned_match'] ) && is_array( $catalog_row['versioned_match'] ) ? array_map( static function ( $value ) { return trim( MAD4B_SCP_Functional_Gap_Evidence::normalize_plugin_file( $value ), '/' ); }, $catalog_row['versioned_match'] ) : array();
+					foreach ( $matches as $match ) if ( ! in_array( self::normalize_plugin_file( $match ), $catalog_matches, true ) ) $blockers[] = 'functional_gap_policy_match_escapes_adapter_catalog_' . $family;
+					foreach ( $versioned_matches as $base ) if ( ! in_array( trim( self::normalize_plugin_file( $base ), '/' ), $catalog_versioned, true ) ) $blockers[] = 'functional_gap_policy_versioned_match_escapes_adapter_catalog_' . $family;
+				}
 				$identity_prefixes = array();
 				foreach ( $matches as $match ) {
 					$prefix = self::normalize_plugin_file( $match );
@@ -79,6 +102,13 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$artifacts = isset( $row['repository_artifacts'] ) && is_array( $row['repository_artifacts'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $row['repository_artifacts'] ) ) ) : array();
 				if ( $repo_backed && empty( $artifacts ) ) $blockers[] = 'functional_gap_policy_repository_artifacts_missing_' . $family;
 				if ( ! $repo_backed && ! empty( $artifacts ) ) $blockers[] = 'functional_gap_policy_runtime_only_artifacts_present_' . $family;
+				if ( $repo_backed && ! empty( $catalog_row ) ) {
+					$artifact_family = sanitize_key( isset( $catalog_row['adapter_id'] ) ? (string) $catalog_row['adapter_id'] : $family );
+					if ( '' === $artifact_family ) $artifact_family = $family;
+					$canonical_artifacts = isset( $artifact_families[ $artifact_family ]['artifacts'] ) && is_array( $artifact_families[ $artifact_family ]['artifacts'] ) ? array_map( 'sanitize_text_field', $artifact_families[ $artifact_family ]['artifacts'] ) : array();
+					if ( empty( $canonical_artifacts ) ) $blockers[] = 'functional_gap_policy_repository_authority_family_missing_' . $family;
+					foreach ( $artifacts as $artifact ) if ( ! in_array( $artifact, $canonical_artifacts, true ) ) $blockers[] = 'functional_gap_policy_artifact_escapes_canonical_map_' . $family;
+				}
 				if ( 'bounded_read_routes' === $mode ) {
 					if ( empty( $row['required_get_routes'] ) || ! is_array( $row['required_get_routes'] ) ) $blockers[] = 'functional_gap_policy_required_routes_missing_' . $family;
 					if ( empty( $row['safe_now'] ) || ! is_array( $row['safe_now'] ) || empty( $row['blocked'] ) || ! is_array( $row['blocked'] ) ) $blockers[] = 'functional_gap_policy_read_boundary_missing_' . $family;
