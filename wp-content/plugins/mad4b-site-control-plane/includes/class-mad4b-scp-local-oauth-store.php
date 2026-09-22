@@ -12,6 +12,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 	const VERSION = 1;
 	const OPTION = 'mad4b_scp_local_oauth_store_version';
 	const MAX_CLIENT_ID_BYTES = 191;
+	private static $readiness_cache = null;
 
 	public static function tables() {
 		global $wpdb;
@@ -23,6 +24,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 
 	public static function install_or_upgrade() {
 		global $wpdb;
+		self::$readiness_cache = null;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		$charset = $wpdb->get_charset_collate();
 		$t = self::tables();
@@ -67,6 +69,7 @@ final class MAD4B_SCP_Local_OAuth_Store {
 		) $charset;";
 
 		foreach ( $sql as $statement ) dbDelta( $statement );
+		self::$readiness_cache = null;
 		if ( ! self::is_ready() ) {
 			return new WP_Error( 'mad4b_local_oauth_store_unavailable', 'Local OAuth store is incomplete after migration.' );
 		}
@@ -75,12 +78,20 @@ final class MAD4B_SCP_Local_OAuth_Store {
 	}
 
 	public static function is_ready() {
+		if ( null !== self::$readiness_cache ) return (bool) self::$readiness_cache;
 		global $wpdb;
+		$ready = true;
 		foreach ( self::tables() as $table ) {
 			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			if ( $found !== $table ) return false;
+			if ( $found !== $table ) { $ready = false; break; }
 		}
-		return true;
+		self::$readiness_cache = (bool) $ready;
+		return (bool) self::$readiness_cache;
+	}
+
+	/** @internal Runtime/test cache reset after schema mutation only. */
+	public static function reset_readiness_cache() {
+		self::$readiness_cache = null;
 	}
 
 	public static function status() {
