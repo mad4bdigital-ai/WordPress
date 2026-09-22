@@ -96,6 +96,7 @@ required_server = [
     "wp_ajax_mad4b_oauth_grant_projection",
     "public static function ajax_grant_projection()",
     "check_ajax_referer( 'mad4b_oauth_grant_projection', 'nonce' )",
+    "self::user_authorized( get_current_user_id() )",
     "'catalog_write_tool_count'",
     "'runtime_eligible_write_tool_count'",
     "'provider_gated_write_tool_count'",
