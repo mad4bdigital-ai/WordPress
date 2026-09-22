@@ -45,6 +45,9 @@ for marker in [
     "const APPROVAL_INPUT_KEY = '_mad4b_approval_ticket_id'",
     "public static function candidate_binding_status()",
     "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint )",
+    "public static function persistence_checkpoint()",
+    "public static function restore_persistence_checkpoint( $checkpoint )",
+    "public static function finalize_exact_existing_authority()",
     "private static function current_candidate_identity()",
     "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
@@ -124,7 +127,11 @@ for marker in [
     "MAD4B_SCP_Agent_Registry::grant_ability",
     "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id",
     "MAD4B_SCP_Staging_Write_Authority::write_tools()",
-    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
+    "MAD4B_SCP_Staging_Write_Authority::finalize_exact_existing_authority()",
+    "MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint()",
+    "MAD4B_SCP_Staging_Write_Authority::restore_persistence_checkpoint( $authority_checkpoint )",
+    "rollback_transaction( $agent, $created_ids, $authority_checkpoint )",
+    "mad4b_grant_reconcile_completion_audit_failed",
     "MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint )",
     "candidate_rebound_without_grant_changes",
     "expected_write_inventory_fingerprint",
@@ -171,6 +178,15 @@ if "'mad4b/staging-write-grant-reconcile'" not in servers:
     raise SystemExit('bounded grant reconciliation is missing from enrollment server catalog')
 if "'mad4b/staging-write-grant-reconciliation-plan'" in servers.split("$bounded_bootstrap = array(", 1)[1].split(';', 1)[0]:
     raise SystemExit('read-only reconciliation plan must not be treated as a bounded mutation bootstrap')
+
+if "MAD4B_SCP_Staging_Write_Authority::reconcile()" in grant_reconcile:
+    raise SystemExit('bounded grant reconciliation must not call the general mutating authority reconcile lifecycle')
+if "finalize_exact_existing_authority()" not in grant_reconcile:
+    raise SystemExit('bounded grant reconciliation must use the exact existing-authority finalizer')
+if "rollback_transaction( $agent, $created_ids, $authority_checkpoint )" not in grant_reconcile:
+    raise SystemExit('bounded grant reconciliation must rollback grants and persisted authority together')
+if "mad4b_grant_reconcile_completion_audit_failed" not in grant_reconcile:
+    raise SystemExit('completion audit failure must fail closed and rollback the transaction')
 if "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );" not in servers:
     raise SystemExit('bounded grant reconciliation is not projected into the unified ChatGPT catalog')
 core_write = servers[servers.index('private static function core_write_candidates()'):servers.index('private static function registered_adapter_write_candidates()')]
@@ -218,6 +234,18 @@ if "if ( $bootstrap ) return true;" not in scope_body:
     raise SystemExit('candidate bootstrap must have one explicit no-prior-ticket scope delegation branch')
 if "mad4b:read" not in scope_body or "oauth2_bearer" not in scope_body:
     raise SystemExit('candidate bootstrap scope delegation must retain verified OAuth read identity')
+
+for marker in [
+    "mad4b.governed-write-authority-persistence-checkpoint.v1",
+    "public static function persistence_checkpoint()",
+    "public static function restore_persistence_checkpoint( $checkpoint )",
+    "public static function finalize_exact_existing_authority()",
+    "'exact_grants_created'] = 0",
+    "'stale_allow_grants_revoked'] = 0",
+    "'stale_subjects_disabled'] = 0",
+]:
+    if marker not in write:
+        raise SystemExit(f'missing rollback-safe exact-authority finalization invariant: {marker}')
 
 for forbidden in [
     "const STAGING_HOST = 'staging.egypttourgates.com'",
