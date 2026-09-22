@@ -90,8 +90,9 @@ final class MAD4B_SCP_Staging_Certification {
 			'admin_query_performance' => self::gate( ! empty( $admin_query_performance['ready'] ), 'admin_query_performance', $admin_query_performance, 'staging_schema' ),
 			'query_monitor_db_attribution' => self::gate( ! empty( $qm_db_attribution['ready'] ) && ! empty( $qm_db_attribution['caller_component_trace_expected'] ), 'query_monitor_db_attribution', $qm_db_attribution, 'query_monitor_dropin' ),
 			'oauth_live_authority_projection' => self::gate(
-				isset( $oauth_authority_projection['contract'] ) && 'mad4b.oauth-consent-grant-projection.v2' === (string) $oauth_authority_projection['contract']
+				isset( $oauth_authority_projection['contract'] ) && 'mad4b.oauth-consent-grant-projection.v3' === (string) $oauth_authority_projection['contract']
 				&& ! empty( $oauth_authority_projection['read_only'] )
+				&& ! empty( $oauth_authority_projection['projection_consistent'] )
 				&& empty( $oauth_authority_projection['mutation_performed'] )
 				&& empty( $oauth_authority_projection['oauth_scope_changed'] )
 				&& empty( $oauth_authority_projection['write_authority_granted_by_consent'] ),
