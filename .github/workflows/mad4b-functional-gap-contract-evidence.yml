@@ -16,6 +16,12 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-plugin-package.yml'
       - '.github/workflows/mad4b-functional-gap-contract-evidence.yml'
   workflow_dispatch:
 
@@ -49,7 +55,9 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-runtime-diagnostic-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-promotion-evaluator-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py
           python3 -m py_compile tools/evaluate-functional-gap-contract-promotion.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php
 
       - name: Capture contract evidence
