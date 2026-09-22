@@ -13,6 +13,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-zero-touch-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-authority-isolation-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity-matrix.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
@@ -57,6 +58,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-functional-gap-evidence.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-functional-gap-diagnostic.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity.php
+          python3 -m py_compile wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity-matrix.py
 
       - name: Capture contract evidence
         shell: bash
@@ -201,6 +203,11 @@ jobs:
           python3 tools/evaluate-functional-gap-contract-promotion.py             --repository-evidence "$repo_evidence"             --runtime-diagnostic "$runtime_fixture"             --output "$python_output"
 
           php wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity.php             "$repo_evidence" "$runtime_fixture" "$python_output"
+
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/functional-gap-evaluator-parity-matrix.py \
+            --repository-evidence "$repo_evidence" \
+            --runtime-fixture "$runtime_fixture" \
+            --output-dir /tmp/mad4b-functional-gap/parity-matrix
 
       - name: Upload self-contained evidence bundle
         uses: actions/upload-artifact@v4
