@@ -48,6 +48,22 @@ $repository['blockers'] = array();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-evidence.php';
 
 $reflection = new ReflectionClass( 'MAD4B_SCP_Functional_Gap_Evidence' );
+$digest_method = $reflection->getMethod( 'canonical_digest' );
+$digest_method->setAccessible( true );
+$canonical_vectors = array(
+	array( array(), '75ba621010ccaf63e7ef664ef0ecbbf26ca60506903cc05e68cba6011d8d692b' ),
+	array( array( 'a'=>true, 'b'=>array(), 'c'=>'✓' ), '859b873c5b7837892deb70de68ea0fb70bc74d09c294f08d689265645b339d9b' ),
+	array( array( 1, false, null, 'x' ), '8ffca4dff324e9febf88bc81127a38695e5746f1d8abffd8487d911bdeb26ca3' ),
+	array( array( 'empty'=>array(), 'list'=>array() ), '2b6c715a39a7f4840cda82a57b503fc3284d34b65ae100e3ae103a1f74de084b' ),
+);
+foreach ( $canonical_vectors as $vector ) {
+	$actual = $digest_method->invoke( null, $vector[0] );
+	if ( ! hash_equals( $vector[1], (string) $actual ) ) {
+		fwrite( STDERR, "Canonical digest known-answer mismatch: expected {$vector[1]} got {$actual}\n" );
+		exit( 4 );
+	}
+}
+
 $method = $reflection->getMethod( 'evaluate' );
 $method->setAccessible( true );
 $php = $method->invoke( null, $repository, $runtime );
