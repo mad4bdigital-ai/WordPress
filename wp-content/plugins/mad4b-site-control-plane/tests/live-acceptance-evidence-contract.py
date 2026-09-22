@@ -293,7 +293,11 @@ for marker in [
 
 # Positive reachability is a mandatory regression, not only false-pass checks.
 for marker in [
-    'Current-build front-end performance sample must become ready.',
+    'Current-build front-end performance window must become ready.',
+    'A single elapsed-time outlier must not flap an otherwise healthy performance window.',
+    'Persistent over-budget front-end performance must fail closed.',
+    'A DB query budget breach inside the bounded window must fail closed.',
+    'Performance certification must require the minimum current-build frontend sample count.',
     'Server elapsed evidence must not self-claim TTFB.',
     'Valid authoritative mutation receipt must become ready.',
     'Wrong mutation SHA must fail closed.',
