@@ -305,6 +305,20 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 	private static function runtime_evidence( array $repository = array() ) {
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$policy = self::policy();
+		$probes = isset( $policy['data']['probes'] ) && is_array( $policy['data']['probes'] ) ? $policy['data']['probes'] : array();
+		$make_pattern = static function ( $value ) {
+			$value = trim( (string) $value );
+			if ( '' === $value ) return '';
+			$pattern = '~' . str_replace( '~', '\\~', $value ) . '~i';
+			return false === @preg_match( $pattern, '' ) ? '' : $pattern;
+		};
+		$rest_pattern = $make_pattern( isset( $probes['rest_route_regex'] ) ? $probes['rest_route_regex'] : '' );
+		$ajax_pattern = $make_pattern( isset( $probes['ajax_hook_regex'] ) ? $probes['ajax_hook_regex'] : '' );
+		$cron_pattern = $make_pattern( isset( $probes['cron_hook_regex'] ) ? $probes['cron_hook_regex'] : '' );
+		$secret_pattern = $make_pattern( isset( $probes['secret_key_regex'] ) ? $probes['secret_key_regex'] : '' );
+		$option_candidates = isset( $probes['option_keys'] ) && is_array( $probes['option_keys'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $probes['option_keys'] ) ) ) : array();
+		$constant_candidates = isset( $probes['constants'] ) && is_array( $probes['constants'] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $probes['constants'] ) ) ) : array();
 
 		$plugin_map = get_plugins();
 		$active = (array) get_option( 'active_plugins', array() );
@@ -340,7 +354,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			$server = rest_get_server();
 			if ( is_object( $server ) && method_exists( $server, 'get_routes' ) ) {
 				foreach ( $server->get_routes() as $route => $handlers ) {
-					if ( ! preg_match( '#(?:bulk-taxonomy-editor|wpl-client|rank-math|rankmath|gtm|meta|duplicator|elementskit|hostinger)#i', (string) $route ) ) continue;
+					if ( '' === $rest_pattern || 1 !== preg_match( $rest_pattern, (string) $route ) ) continue;
 					$methods = array();
 					foreach ( (array) $handlers as $handler ) {
 						if ( ! is_array( $handler ) || empty( $handler['methods'] ) ) continue;
@@ -361,23 +375,17 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		global $wp_filter;
 		foreach ( (array) $wp_filter as $hook => $hook_obj ) {
 			if ( 0 !== strpos( (string) $hook, 'wp_ajax_' ) && 0 !== strpos( (string) $hook, 'wp_ajax_nopriv_' ) ) continue;
-			if ( ! preg_match( '/(?:bte_|wpl_|gtm|rank_math|duplicator|elementskit|hostinger|meta)/i', (string) $hook ) ) continue;
+			if ( '' === $ajax_pattern || 1 !== preg_match( $ajax_pattern, (string) $hook ) ) continue;
 			$ajax[] = (string) $hook;
 		}
 		$ajax = array_values( array_unique( $ajax ) );
 		sort( $ajax, SORT_STRING );
 
 		$options = array();
-		$secret_pattern = '/(?:secret|token|password|passwd|api[_-]?key|license[_-]?key|access[_-]?key|client[_-]?secret)/i';
-		$option_candidates = array(
-			'bte_api_enabled','bte_api_allowed_roles','bte_api_allowed_post_types',
-			'wpl_access_token','wpl_api_key','wpl_serial_verified','wpl_verified_order_number','wpl_verified_order_numbers','wpl_verified_wpl_ids',
-			'rank-math-options-general','rank-math-options-titles','rank-math-options-sitemap',
-		);
 		foreach ( $option_candidates as $key ) {
 			$value = get_option( $key, null );
 			$row = array( 'exists' => null !== $value );
-			if ( preg_match( $secret_pattern, $key ) ) {
+			if ( '' !== $secret_pattern && 1 === preg_match( $secret_pattern, $key ) ) {
 				$row['redacted'] = true;
 				$row['configured'] = null !== $value && '' !== (string) $value;
 			} else {
@@ -393,7 +401,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		if ( function_exists( '_get_cron_array' ) ) {
 			foreach ( (array) _get_cron_array() as $timestamp => $hooks ) {
 				foreach ( (array) $hooks as $hook => $events ) {
-					if ( ! preg_match( '/(?:wpl|gtm|rank_math|duplicator|elementskit|hostinger|meta_catalog|feed)/i', (string) $hook ) ) continue;
+					if ( '' === $cron_pattern || 1 !== preg_match( $cron_pattern, (string) $hook ) ) continue;
 					$cron[] = array( 'hook' => (string) $hook, 'timestamp' => (int) $timestamp, 'event_count' => is_array( $events ) ? count( $events ) : 0 );
 				}
 			}
@@ -401,7 +409,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		usort( $cron, static function ( $a, $b ) { return strcmp( $a['hook'], $b['hook'] ) ?: ( $a['timestamp'] <=> $b['timestamp'] ); } );
 
 		$constants = array();
-		foreach ( array( 'JET_ENGINE_VERSION','JET_SMART_FILTERS_VERSION','RANK_MATH_VERSION','RANK_MATH_PRO_VERSION','PMXI_VERSION','PMXE_VERSION' ) as $name ) {
+		foreach ( $constant_candidates as $name ) {
 			$constants[ $name ] = defined( $name ) ? sanitize_text_field( (string) constant( $name ) ) : null;
 		}
 
