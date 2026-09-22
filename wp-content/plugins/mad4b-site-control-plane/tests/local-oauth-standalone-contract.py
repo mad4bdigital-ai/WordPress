@@ -84,6 +84,15 @@ required_server = [
     'OAuth parameter must be scalar',
     'OAuth parameter exceeds its size limit',
     "rest_url( 'mcp/mad4b-chatgpt' )",
+    "public static function consent_grant_projection()",
+    "MAD4B_SCP_Staging_Write_Authority::reconciliation_plan()",
+    "'mad4b.oauth-consent-grant-projection.v1'",
+    "'write_authority_granted_by_consent' => false",
+    "'oauth_scope_changed' => false",
+    "'normal_remote_writes_require_exact_approval' => true",
+    "'exact_grant_present'",
+    "Governed write grants",
+    "live governance state, not OAuth scopes",
 ]
 for marker in required_server:
     if marker not in server:
@@ -100,6 +109,7 @@ for forbidden in [
     'self::AUTHORIZE_PATH === $path',
     'self::TOKEN_PATH === $path',
     'self::REVOCATION_PATH === $path',
+    "'mad4b:write'",
 ]:
     if forbidden in server:
         raise SystemExit(f'forbidden local OAuth server primitive: {forbidden}')
