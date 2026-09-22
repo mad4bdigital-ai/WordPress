@@ -40,12 +40,15 @@ if ( ! in_array( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), $metadata[
 if ( isset( $metadata['registration_endpoint'] ) ) mad4b_local_oauth_fail( 'Local OAuth unexpectedly exposed DCR.', $metadata );
 if ( false === strpos( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), '/wp-json/mcp/mad4b-chatgpt' ) ) mad4b_local_oauth_fail( 'Local OAuth resource is not the ChatGPT gateway.', MAD4B_SCP_Local_OAuth_Server::resource_identifier() );
 $grant_projection = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
-if ( 'mad4b.oauth-consent-grant-projection.v2' !== (string) $grant_projection['contract'] || empty( $grant_projection['read_only'] ) || ! empty( $grant_projection['mutation_performed'] ) ) mad4b_local_oauth_fail( 'OAuth consent grant projection must remain read-only.', $grant_projection );
+if ( 'mad4b.oauth-consent-grant-projection.v3' !== (string) $grant_projection['contract'] || empty( $grant_projection['read_only'] ) || ! empty( $grant_projection['mutation_performed'] ) ) mad4b_local_oauth_fail( 'OAuth consent grant projection must remain read-only.', $grant_projection );
 if ( ! empty( $grant_projection['write_authority_granted_by_consent'] ) || ! empty( $grant_projection['oauth_scope_changed'] ) ) mad4b_local_oauth_fail( 'OAuth consent must not grant or widen write authority.', $grant_projection );
 if ( ! empty( $grant_projection['eligible'] ) ) mad4b_local_oauth_fail( 'OAuth-only generic site unexpectedly projected governed write authority.', $grant_projection );
 if ( empty( $grant_projection['normal_remote_writes_require_exact_approval'] ) ) mad4b_local_oauth_fail( 'OAuth consent projection lost one-time approval truth.', $grant_projection );
 if ( ! array_key_exists( 'catalog_write_tool_count', $grant_projection ) || ! array_key_exists( 'runtime_eligible_write_tool_count', $grant_projection ) || ! array_key_exists( 'provider_gated_write_tool_count', $grant_projection ) ) mad4b_local_oauth_fail( 'OAuth live authority tiers are incomplete.', $grant_projection );
 if ( ! isset( $grant_projection['blocking_conditions'] ) || ! is_array( $grant_projection['blocking_conditions'] ) || ! isset( $grant_projection['blocked_catalog_abilities'] ) || ! is_array( $grant_projection['blocked_catalog_abilities'] ) ) mad4b_local_oauth_fail( 'OAuth live authority diagnostics are incomplete.', $grant_projection );
+if ( empty( $grant_projection['projection_consistent'] ) || ! empty( $grant_projection['consistency_violations'] ) ) mad4b_local_oauth_fail( 'OAuth live authority projection is internally inconsistent.', $grant_projection );
+if ( 'bulk_agent_grant_snapshot' !== (string) $grant_projection['grant_lookup_strategy'] ) mad4b_local_oauth_fail( 'OAuth live authority projection regressed from bulk grant lookup.', $grant_projection );
+if ( empty( $grant_projection['projection_fingerprint'] ) || 64 !== strlen( (string) $grant_projection['projection_fingerprint'] ) ) mad4b_local_oauth_fail( 'OAuth live authority projection fingerprint is invalid.', $grant_projection );
 $user_identity = MAD4B_SCP_Local_OAuth_Server::consent_user_identity( get_current_user_id() );
 if ( empty( $user_identity['display_label'] ) || ! empty( $user_identity['id_exposed_in_primary_ui'] ) ) mad4b_local_oauth_fail( 'OAuth consent user identity presentation is unsafe or incomplete.', $user_identity );
 
