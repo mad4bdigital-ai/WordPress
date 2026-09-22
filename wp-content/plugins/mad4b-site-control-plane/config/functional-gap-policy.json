@@ -197,16 +197,20 @@
       "match": [
         "jet-engine/"
       ],
-      "repository_evidence": false,
-      "repository_artifacts": [],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "jet-engine.zip"
+      ],
       "evaluation_mode": "premium_semantic"
     },
     "jetsmartfilters": {
       "match": [
         "jet-smart-filters/"
       ],
-      "repository_evidence": false,
-      "repository_artifacts": [],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "jet-smart-filters.zip"
+      ],
       "evaluation_mode": "premium_semantic"
     },
     "wp-import-export": {
@@ -214,8 +218,11 @@
         "wp-all-import-pro/",
         "wp-all-export-pro/"
       ],
-      "repository_evidence": false,
-      "repository_artifacts": [],
+      "repository_evidence": true,
+      "repository_artifacts": [
+        "wp-all-import-pro.zip",
+        "wp-all-export-pro.zip"
+      ],
       "evaluation_mode": "composite_behavioral"
     }
   }
