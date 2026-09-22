@@ -527,6 +527,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			}
 		}
 
+		$registry_counts = is_array( $agent ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array();
+		$wildcard_grants = isset( $registry_counts['wildcard_grants'] ) ? (int) $registry_counts['wildcard_grants'] : 0;
+
 		return array(
 			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v1',
 			'read_only' => true,
@@ -542,7 +545,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'exact_grants_missing' => $missing,
 			'stale_allow_grants_count' => count( $stale ),
 			'stale_allow_grants' => $stale,
-			'wildcard_grants' => is_array( $agent ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? (int) MAD4B_SCP_Agent_Registry::counts()['wildcard_grants'] : 0,
+			'wildcard_grants' => $wildcard_grants,
 			'breakglass_included' => in_array( 'mad4b/database-raw-query', $tools, true ),
 			'candidate_binding' => self::candidate_binding_status(),
 			'rows' => $rows,
