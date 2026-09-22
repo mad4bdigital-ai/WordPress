@@ -284,6 +284,29 @@ jobs:
           (stage / 'PACKAGE-MANIFEST-DIGEST.txt').write_text(manifest_digest + '\n', encoding='utf-8')
           PY
 
+          php -r '
+          define("ABSPATH", rtrim($argv[1], "/") . "/");
+          define("MAD4B_SCP_DIR", rtrim($argv[1], "/") . "/");
+          if (!function_exists("sanitize_key")) {
+              function sanitize_key($key) {
+                  $key = strtolower((string) $key);
+                  $key = preg_replace("/[^a-z0-9_\\-]/", "", $key);
+                  return (string) $key;
+              }
+          }
+          require MAD4B_SCP_DIR . "includes/class-mad4b-scp-functional-gap-evidence.php";
+          $status = MAD4B_SCP_Functional_Gap_Evidence::package_integrity_status();
+          if (empty($status["valid"])) {
+              fwrite(STDERR, "Packaged runtime provenance verifier failed: " . json_encode($status, JSON_UNESCAPED_SLASHES) . PHP_EOL);
+              exit(1);
+          }
+          if (($status["integrity_level"] ?? "") !== "self_consistent_package") {
+              fwrite(STDERR, "Packaged runtime integrity level mismatch." . PHP_EOL);
+              exit(2);
+          }
+          echo "mad4b.functional-gap-package-integrity.v1: PASS files=" . (int)($status["verified_file_count"] ?? 0) . " bytes=" . (int)($status["verified_bytes"] ?? 0) . PHP_EOL;
+          ' "$MAD4B_CONTROL_STAGE"
+
           (
             cd "$stage/package"
             zip -qr "$stage/mad4b-site-control-plane-${version}.zip" mad4b-site-control-plane
