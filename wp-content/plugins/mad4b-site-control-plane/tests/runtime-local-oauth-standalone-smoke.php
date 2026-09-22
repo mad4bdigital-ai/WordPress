@@ -39,6 +39,12 @@ if ( ! in_array( 'S256', $metadata['code_challenge_methods_supported'], true ) )
 if ( ! in_array( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), $metadata['protected_resources'], true ) ) mad4b_local_oauth_fail( 'Authorization-server metadata resource mismatch.', $metadata );
 if ( isset( $metadata['registration_endpoint'] ) ) mad4b_local_oauth_fail( 'Local OAuth unexpectedly exposed DCR.', $metadata );
 if ( false === strpos( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), '/wp-json/mcp/mad4b-chatgpt' ) ) mad4b_local_oauth_fail( 'Local OAuth resource is not the ChatGPT gateway.', MAD4B_SCP_Local_OAuth_Server::resource_identifier() );
+$grant_projection = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
+if ( empty( $grant_projection['read_only'] ) || ! empty( $grant_projection['mutation_performed'] ) ) mad4b_local_oauth_fail( 'OAuth consent grant projection must remain read-only.', $grant_projection );
+if ( ! empty( $grant_projection['write_authority_granted_by_consent'] ) || ! empty( $grant_projection['oauth_scope_changed'] ) ) mad4b_local_oauth_fail( 'OAuth consent must not grant or widen write authority.', $grant_projection );
+if ( ! empty( $grant_projection['eligible'] ) ) mad4b_local_oauth_fail( 'OAuth-only generic site unexpectedly projected governed write authority.', $grant_projection );
+if ( empty( $grant_projection['normal_remote_writes_require_exact_approval'] ) ) mad4b_local_oauth_fail( 'OAuth consent projection lost one-time approval truth.', $grant_projection );
+
 
 // General Distribution must preserve the WordPress home path. A root-only
 // endpoint builder works on ETG but breaks valid subdirectory installations.
