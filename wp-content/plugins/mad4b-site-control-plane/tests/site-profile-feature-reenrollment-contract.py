@@ -12,6 +12,7 @@ for marker in (
     "'mad4b/site-profile-status'",
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconciliation-plan'",
     "'mad4b/staging-write-grant-reconcile'",
     "can_enrollment_transport",
     "MAD4B Enrollment MCP",
@@ -19,7 +20,7 @@ for marker in (
     if marker not in servers:
         raise SystemExit('missing enrollment server contract: ' + marker)
 
-entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' )"
+entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/staging-write-grant-reconciliation-plan', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' )"
 if entry not in servers:
     raise SystemExit('enrollment inventory is not exact/bounded')
 for forbidden in ('mad4b/database-update', 'mad4b/database-raw-query', 'mad4b/filesystem-write', 'mad4b/plugin-activate', 'mad4b/approval-plan'):
@@ -30,6 +31,11 @@ write_candidates = servers[servers.index('private static function core_write_can
 for bounded in ('mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile'):
     if bounded in write_candidates:
         raise SystemExit('bounded enrollment ability leaked into normal write candidates: ' + bounded)
+if 'mad4b/staging-write-grant-reconciliation-plan' in write_candidates:
+    raise SystemExit('read-only grant reconciliation plan leaked into normal write candidates')
+bounded_bootstrap = servers.split("$bounded_bootstrap = array(", 1)[1].split(';', 1)[0]
+if 'mad4b/staging-write-grant-reconciliation-plan' in bounded_bootstrap:
+    raise SystemExit('read-only grant reconciliation plan was misclassified as a mutation bootstrap')
 
 for marker in (
     "expected_revision",
