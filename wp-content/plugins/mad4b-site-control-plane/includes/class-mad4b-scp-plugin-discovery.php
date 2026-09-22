@@ -97,7 +97,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$projection_identity_match = '' !== $projection_snapshot_identity && '' !== $projection_current_identity && hash_equals( $projection_snapshot_identity, $projection_current_identity );
 
 		$projection_snapshot_census = isset( $zero_touch_projection['runtime_census'] ) && is_array( $zero_touch_projection['runtime_census'] ) ? $zero_touch_projection['runtime_census'] : array();
-		$projection_census_required = ! empty( $projection_snapshot_census['valid'] );
+		$projection_census_required = ! empty( $zero_touch['repository_evidence_valid'] );
 		$projection_current_census = $projection_census_required && class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' )
 			? MAD4B_SCP_Functional_Gap_Evidence::current_runtime_census_status()
 			: array( 'contract'=>'mad4b.functional-gap-runtime-census.v1', 'valid'=>false, 'census_sha256'=>'', 'metadata_only'=>true, 'content_rehashed'=>false, 'blockers'=>array() );
