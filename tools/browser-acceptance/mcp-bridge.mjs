@@ -179,7 +179,49 @@ export async function requestBrowserPlan(session, {
   return plan;
 }
 
+export function validateEvidencePayload(evidence, {
+  maxBytes = 131072,
+  maxDepth = 8,
+  maxNodes = 1024
+} = {}) {
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+    throw new Error("browser_evidence_invalid");
+  }
+  if (evidence.contract !== "etg.dfsb.browser-acceptance-evidence.v1") {
+    throw new Error("browser_evidence_contract_invalid");
+  }
+
+  const encoded = JSON.stringify(evidence);
+  const bytes = Buffer.byteLength(encoded, "utf8");
+  if (bytes > maxBytes) throw new Error("browser_evidence_size_limit_exceeded");
+
+  let nodes = 1;
+  let observedMaxDepth = 1;
+  const stack = [[evidence, 1]];
+  while (stack.length) {
+    const [value, depth] = stack.pop();
+    for (const item of Object.values(value)) {
+      nodes += 1;
+      if (nodes > maxNodes) throw new Error("browser_evidence_node_limit_exceeded");
+      if (item && typeof item === "object") {
+        const nextDepth = depth + 1;
+        if (nextDepth > observedMaxDepth) observedMaxDepth = nextDepth;
+        if (observedMaxDepth > maxDepth) throw new Error("browser_evidence_depth_limit_exceeded");
+        stack.push([item, nextDepth]);
+      }
+    }
+  }
+
+  return {
+    contract: evidence.contract,
+    bytes,
+    nodes,
+    max_depth: observedMaxDepth
+  };
+}
+
 export async function submitBrowserEvidence(session, plan, evidence) {
+  validateEvidencePayload(evidence);
   const result = await session.callAbility("mad4b/browser-acceptance-result", {
     provider_id: String(plan.provider_id || "etg-dfsb"),
     profile_id: String(plan.profile_id || "tours"),
