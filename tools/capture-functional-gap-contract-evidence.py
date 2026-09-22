@@ -45,6 +45,27 @@ def text_files(zf):
             continue
         yield name, raw.decode("utf-8", errors="replace")
 
+def canonical_zip_tree(zf):
+    names=[n for n in zf.namelist() if not n.endswith("/") and "__MACOSX/" not in n]
+    roots={n.split("/",1)[0] for n in names if "/" in n}
+    common_root=(next(iter(roots)) + "/") if len(roots)==1 else ""
+    rows=[]
+    total=0
+    for name in sorted(names):
+        raw=zf.read(name)
+        rel=name[len(common_root):] if common_root and name.startswith(common_root) else name
+        digest=sha256(raw)
+        size=len(raw)
+        total+=size
+        rows.append(f"{rel}\0{size}\0{digest}")
+    material="\n".join(rows).encode("utf-8")
+    return {
+        "root_prefix": common_root,
+        "file_count": len(rows),
+        "total_bytes": total,
+        "tree_sha256": sha256(material),
+    }
+
 def plugin_headers(zf):
     out=[]
     for name,text in text_files(zf):
@@ -64,6 +85,7 @@ def inspect(path: Path):
     php_files=0
     with zipfile.ZipFile(path) as zf:
         headers=plugin_headers(zf)
+        tree=canonical_zip_tree(zf)
         for name,text in text_files(zf):
             if not name.lower().endswith(".php"):
                 continue
@@ -83,6 +105,7 @@ def inspect(path: Path):
         "archive_sha256":sha256(raw),
         "archive_bytes":len(raw),
         "plugin_headers":headers,
+        "package_tree":tree,
         "php_file_count":php_files,
         "surfaces":{
             "rest_route_evidence":sorted(found["rest_route"])[:200],
