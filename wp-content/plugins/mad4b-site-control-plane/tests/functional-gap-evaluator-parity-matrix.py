@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parents[2]
 PY_EVALUATOR = REPO / 'tools/evaluate-functional-gap-contract-promotion.py'
 PHP_PARITY = ROOT / 'tests/functional-gap-evaluator-parity.php'
+POLICY_PATH = ROOT / 'config/functional-gap-policy.json'
 
 def load(path):
     return json.loads(Path(path).read_text('utf-8'))
@@ -82,19 +83,54 @@ def make_status_option_missing(runtime, key):
     row = runtime.setdefault('option_presence', {}).setdefault(key, {})
     row['exists'] = False
 
-def cases(base):
+def expected_happy_state(mode):
+    return {
+        'bounded_read_routes': 'read_contract_candidate',
+        'redacted_status': 'redacted_read_contract_candidate',
+        'exact_tree_review': 'contract_evidence_review',
+        'runtime_only': 'runtime_contract_evidence_captured',
+        'premium_semantic': 'semantic_attestation_required',
+        'composite_behavioral': 'behavioral_recertification_required',
+    }.get(str(mode), 'evidence_unavailable')
+
+def expected_drift_state(mode):
+    return {
+        'bounded_read_routes': 'contract_discovery_required',
+        'redacted_status': 'contract_discovery_required',
+        'exact_tree_review': 'runtime_alignment_required',
+        'premium_semantic': 'runtime_alignment_required',
+        'composite_behavioral': 'runtime_alignment_required',
+    }.get(str(mode), '')
+
+def cases(base, policy):
     out = []
 
+    families = policy.get('families', {}) if isinstance(policy.get('families', {}), dict) else {}
+    happy_expected = {
+        family: expected_happy_state(rule.get('evaluation_mode', ''))
+        for family, rule in sorted(families.items())
+    }
+    if not happy_expected or any(state == 'evidence_unavailable' for state in happy_expected.values()):
+        raise SystemExit('policy-driven happy-state map is incomplete')
     happy = copy.deepcopy(base)
-    out.append(('happy', happy, {
-        'bulk-taxonomy-editor': 'read_contract_candidate',
-        'wpl-client': 'redacted_read_contract_candidate',
-        'rank-math': 'contract_evidence_review',
-        'duplicator': 'runtime_contract_evidence_captured',
-        'jetengine': 'semantic_attestation_required',
-        'jetsmartfilters': 'semantic_attestation_required',
-        'wp-import-export': 'behavioral_recertification_required',
-    }))
+    out.append(('happy-all-policy-families', happy, happy_expected))
+
+    for family, rule in sorted(families.items()):
+        inactive = copy.deepcopy(base)
+        set_inactive(inactive, family)
+        out.append((f'policy-{family}-inactive', inactive, {family: 'not_active'}))
+
+        unstable = copy.deepcopy(base)
+        set_unstable(unstable, family)
+        out.append((f'policy-{family}-unstable', unstable, {family: 'runtime_evidence_unstable'}))
+
+        if rule.get('repository_evidence') is True:
+            expected = expected_drift_state(rule.get('evaluation_mode', ''))
+            if not expected:
+                raise SystemExit(f'{family}: repository-backed policy mode has no drift expectation')
+            drift = copy.deepcopy(base)
+            set_tree_drift(drift, family, 'f')
+            out.append((f'policy-{family}-tree-drift', drift, {family: expected}))
 
     route_missing = copy.deepcopy(base)
     remove_route(route_missing, '/bulk-taxonomy-editor/v1/posts')
@@ -167,12 +203,15 @@ def main():
 
     repo_evidence = Path(args.repository_evidence)
     base = load(args.runtime_fixture)
+    policy = load(POLICY_PATH)
+    if policy.get('contract') != 'mad4b.functional-gap-policy.v1':
+        raise SystemExit('functional-gap parity policy contract mismatch')
     outdir = Path(args.output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
 
     manifest = {'contract': 'mad4b.functional-gap-evaluator-parity-matrix.v1', 'cases': []}
 
-    for name, runtime, expected in cases(base):
+    for name, runtime, expected in cases(base, policy):
         runtime_path = outdir / f'{name}.runtime.json'
         python_path = outdir / f'{name}.python.json'
         write(runtime_path, runtime)
