@@ -170,7 +170,13 @@ jobs:
           rest_routes=[]
           for family,rule in sorted(policy.get('families',{}).items()):
               for route in rule.get('required_get_routes',[]) or []:
-                  rest_routes.append({'route':route,'methods':['GET']})
+                  rest_routes.append({
+                      'route':route,
+                      'methods':['GET'],
+                      'get_permission_callbacks':['fixture_non_public_permission'],
+                      'get_permission_missing':False,
+                      'get_permission_public':False,
+                  })
 
           option_presence={}
           for family,rule in sorted(policy.get('families',{}).items()):
