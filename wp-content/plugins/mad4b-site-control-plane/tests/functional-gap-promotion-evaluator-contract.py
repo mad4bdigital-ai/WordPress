@@ -1,44 +1,77 @@
 #!/usr/bin/env python3
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-script = (ROOT.parents[2] / 'tools/evaluate-functional-gap-contract-promotion.py').read_text('utf-8')
+repo = ROOT.parents[2]
+script = (repo / 'tools/evaluate-functional-gap-contract-promotion.py').read_text('utf-8')
+policy = json.loads((ROOT / 'config/functional-gap-policy.json').read_text('utf-8'))
+
+if policy.get('contract') != 'mad4b.functional-gap-policy.v1':
+    raise SystemExit('functional-gap policy contract mismatch')
+
+supported_modes = {
+    'bounded_read_routes',
+    'redacted_status',
+    'exact_tree_review',
+    'runtime_only',
+    'premium_semantic',
+    'composite_behavioral',
+}
+families = policy.get('families', {})
+if not families:
+    raise SystemExit('functional-gap policy family set is empty')
+
+for family, row in families.items():
+    mode = row.get('evaluation_mode', '')
+    if mode not in supported_modes:
+        raise SystemExit(f'{family}: unsupported policy evaluation mode: {mode}')
+    if not row.get('match'):
+        raise SystemExit(f'{family}: runtime identity match set is empty')
+    if row.get('repository_evidence') is True and not row.get('repository_artifacts'):
+        raise SystemExit(f'{family}: repository evidence family has no artifacts')
+    if mode == 'bounded_read_routes':
+        if not row.get('required_get_routes') or not row.get('safe_now') or not row.get('blocked'):
+            raise SystemExit(f'{family}: bounded read policy is incomplete')
+    if mode == 'redacted_status':
+        if not row.get('redacted_secret_option_keys') or not row.get('required_status_option_keys'):
+            raise SystemExit(f'{family}: redacted status policy is incomplete')
 
 required = [
-    "mad4b.functional-gap-promotion-evaluation.v1",
-    '"promotion_authorized":False',
-    '"production_mutation":False',
-    '"read_contract_candidate"',
-    '"redacted_read_contract_candidate"',
-    '"runtime_alignment_required"',
-    '"semantic_attestation_required"',
-    '"behavioral_recertification_required"',
-    '"runtime_contract_evidence_captured"',
-    "exact_runtime_tree_and_required_get_routes_verified",
-    "exact_runtime_tree_and_secret_redaction_verified",
-    "live_runtime_tree_does_not_match_repository_evidence",
+    'mad4b.functional-gap-promotion-evaluation.v2',
+    'mad4b.functional-gap-policy.v1',
+    'POLICY_PATH',
+    'policy_sha256',
+    'evaluation_mode',
+    'bounded_read_routes',
+    'redacted_status',
+    'exact_tree_review',
+    'runtime_only',
+    'premium_semantic',
+    'composite_behavioral',
+    'read_contract_candidate',
+    'redacted_read_contract_candidate',
+    'runtime_alignment_required',
+    'semantic_attestation_required',
+    'runtime_alignment_or_behavioral_recertification_required',
+    'runtime_evidence_unstable',
+    '"promotion_authorized": False',
+    '"production_mutation": False',
 ]
 for marker in required:
     if marker not in script:
-        raise SystemExit(f'missing promotion evaluator invariant: {marker}')
+        raise SystemExit(f'missing policy-driven evaluator invariant: {marker}')
 
 for forbidden in [
+    'family="bulk-taxonomy-editor"',
+    'family="wpl-client"',
+    'for family in ("custom-mega-menu"',
+    'for family in ("duplicator"',
     '"functional_ready"',
-    '"promotion_authorized":True',
-    '"production_mutation":True',
+    '"promotion_authorized": True',
+    '"production_mutation": True',
 ]:
     if forbidden in script:
-        raise SystemExit(f'promotion evaluator must not auto-authorize functional/write readiness: {forbidden}')
+        raise SystemExit(f'offline evaluator retained hardcoded/authorizing behavior: {forbidden}')
 
-# The two candidates that may graduate are intentionally read-only only.
-bulk = script.split('family="bulk-taxonomy-editor"', 1)[1].split('# WPL', 1)[0]
-for marker in ['posts_read', 'taxonomies_read', 'terms_read', 'post_create_or_update', 'bulk_taxonomy_write']:
-    if marker not in bulk:
-        raise SystemExit(f'bulk-taxonomy read-only boundary missing: {marker}')
-
-wpl = script.split('family="wpl-client"', 1)[1].split('# Exact package identity', 1)[0]
-for marker in ['license_verification_state_read_redacted', 'credential_read', 'plugin_or_theme_install', 'external_write']:
-    if marker not in wpl:
-        raise SystemExit(f'wpl redacted-read boundary missing: {marker}')
-
-print('mad4b.functional-gap-promotion-evaluator.contract.v1: PASS')
+print(f'mad4b.functional-gap-promotion-evaluator.contract.v2: PASS families={len(families)}')
