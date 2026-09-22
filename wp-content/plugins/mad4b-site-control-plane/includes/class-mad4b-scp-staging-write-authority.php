@@ -482,56 +482,113 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$rows = array();
 		$missing = array();
 		$stale = array();
+		$duplicates = array();
+		$broad_environment = array();
 		$existing_count = 0;
 		$agent = self::agent_by_slug( self::agent_slug() );
 		$environment = self::current_environment();
+		$grants = array();
 
 		if ( is_array( $agent ) && ! empty( $agent['id'] ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
-			$desired = array();
-			foreach ( $tools as $ability ) {
-				$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
-				$row = array(
-					'ability' => (string) $ability,
-					'provider' => null === $provider ? '' : (string) $provider,
-					'mounted' => null !== $provider,
-					'exact_grant_present' => false,
-				);
-				if ( null !== $provider ) {
-					$key = (string) $ability . "\0" . (string) $provider;
-					$desired[ $key ] = true;
-					$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', $ability, $provider );
-					if ( ! is_wp_error( $grant ) && $environment === (string) $grant['environment'] ) {
-						$row['exact_grant_present'] = true;
-						++$existing_count;
-					} else {
-						$missing[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider );
-					}
-				} else {
-					$missing[] = array( 'ability' => (string) $ability, 'provider' => '', 'reason' => 'write_provider_unmounted' );
-				}
-				$rows[] = $row;
-			}
-
 			$grants = MAD4B_SCP_Agent_Registry::grants_for_agent( (int) $agent['id'], 'mad4b-write' );
-			foreach ( $grants as $grant ) {
-				if ( ! is_array( $grant ) || 'allow' !== (string) $grant['effect'] ) continue;
-				$key = (string) $grant['ability_name'] . "\0" . (string) $grant['provider'];
-				if ( ! isset( $desired[ $key ] ) || $environment !== (string) $grant['environment'] ) {
-					$stale[] = array(
-						'id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
-						'ability' => isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '',
-						'provider' => isset( $grant['provider'] ) ? (string) $grant['provider'] : '',
-						'environment' => isset( $grant['environment'] ) ? (string) $grant['environment'] : '',
-					);
+		}
+		$grants = is_array( $grants ) ? $grants : array();
+
+		// Build one in-memory grant snapshot for the whole projection. This keeps
+		// consent/dashboard reads O(1) in database lookups instead of one
+		// exact_grant() query per runtime write ability.
+		$allow_current = array();
+		$allow_all = array();
+		$deny_effective = array();
+		$current_agent_wildcards = 0;
+		foreach ( $grants as $grant ) {
+			if ( ! is_array( $grant ) ) continue;
+			$ability = isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '';
+			$provider = isset( $grant['provider'] ) ? (string) $grant['provider'] : '';
+			$grant_environment = isset( $grant['environment'] ) ? (string) $grant['environment'] : '';
+			$effect = isset( $grant['effect'] ) ? (string) $grant['effect'] : '';
+			$key = $ability . "\0" . $provider;
+			if ( false !== strpos( $ability, '*' ) || false !== strpos( $ability, '?' ) ) ++$current_agent_wildcards;
+			if ( 'deny' === $effect && in_array( $grant_environment, array( 'all', $environment ), true ) ) {
+				if ( ! isset( $deny_effective[ $key ] ) ) $deny_effective[ $key ] = array();
+				$deny_effective[ $key ][] = $grant;
+				continue;
+			}
+			if ( 'allow' !== $effect ) continue;
+			if ( $environment === $grant_environment ) {
+				if ( ! isset( $allow_current[ $key ] ) ) $allow_current[ $key ] = array();
+				$allow_current[ $key ][] = $grant;
+			} elseif ( 'all' === $grant_environment ) {
+				if ( ! isset( $allow_all[ $key ] ) ) $allow_all[ $key ] = array();
+				$allow_all[ $key ][] = $grant;
+			}
+		}
+
+		$desired = array();
+		foreach ( $tools as $ability ) {
+			$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
+			$row = array(
+				'ability' => (string) $ability,
+				'provider' => null === $provider ? '' : (string) $provider,
+				'mounted' => null !== $provider,
+				'exact_grant_present' => false,
+				'grant_state' => 'unmounted',
+			);
+			if ( null !== $provider ) {
+				$key = (string) $ability . "\0" . (string) $provider;
+				$desired[ $key ] = true;
+				if ( ! empty( $deny_effective[ $key ] ) ) {
+					$row['grant_state'] = 'explicit_deny';
+					$missing[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider, 'reason' => 'explicit_deny' );
+				} elseif ( ! empty( $allow_current[ $key ] ) ) {
+					$row['exact_grant_present'] = true;
+					$row['grant_state'] = 'exact_current_environment';
+					++$existing_count;
+					if ( count( $allow_current[ $key ] ) > 1 ) {
+						$duplicates[] = array(
+							'ability' => (string) $ability,
+							'provider' => (string) $provider,
+							'environment' => $environment,
+							'count' => count( $allow_current[ $key ] ),
+							'excess_count' => count( $allow_current[ $key ] ) - 1,
+						);
+					}
+				} elseif ( ! empty( $allow_all[ $key ] ) ) {
+					$row['grant_state'] = 'broad_environment_grant';
+					$broad_environment[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider, 'environment' => 'all' );
+					$missing[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider, 'reason' => 'broad_environment_grant' );
+				} else {
+					$row['grant_state'] = 'missing_exact_grant';
+					$missing[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider, 'reason' => 'missing_exact_grant' );
 				}
+			} else {
+				$missing[] = array( 'ability' => (string) $ability, 'provider' => '', 'reason' => 'write_provider_unmounted' );
+			}
+			$rows[] = $row;
+		}
+
+		foreach ( $grants as $grant ) {
+			if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) ) continue;
+			$key = ( isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '' ) . "\0" . ( isset( $grant['provider'] ) ? (string) $grant['provider'] : '' );
+			$grant_environment = isset( $grant['environment'] ) ? (string) $grant['environment'] : '';
+			if ( ! isset( $desired[ $key ] ) || $environment !== $grant_environment ) {
+				$stale[] = array(
+					'id' => isset( $grant['id'] ) ? (int) $grant['id'] : 0,
+					'ability' => isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '',
+					'provider' => isset( $grant['provider'] ) ? (string) $grant['provider'] : '',
+					'environment' => $grant_environment,
+					'reason' => isset( $desired[ $key ] ) && 'all' === $grant_environment ? 'broad_environment_grant' : 'not_in_current_runtime_inventory',
+				);
 			}
 		}
 
 		$registry_counts = is_array( $agent ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array();
-		$wildcard_grants = isset( $registry_counts['wildcard_grants'] ) ? (int) $registry_counts['wildcard_grants'] : 0;
+		$global_wildcards = isset( $registry_counts['wildcard_grants'] ) ? (int) $registry_counts['wildcard_grants'] : 0;
+		$duplicate_excess = 0;
+		foreach ( $duplicates as $duplicate ) $duplicate_excess += isset( $duplicate['excess_count'] ) ? (int) $duplicate['excess_count'] : 0;
 
 		return array(
-			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v1',
+			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v2',
 			'read_only' => true,
 			'mutation_performed' => false,
 			'eligible' => ! empty( $status['eligible'] ),
@@ -545,7 +602,15 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'exact_grants_missing' => $missing,
 			'stale_allow_grants_count' => count( $stale ),
 			'stale_allow_grants' => $stale,
-			'wildcard_grants' => $wildcard_grants,
+			'broad_environment_grants_count' => count( $broad_environment ),
+			'broad_environment_grants' => $broad_environment,
+			'duplicate_exact_allow_grants_count' => $duplicate_excess,
+			'duplicate_exact_allow_grants' => $duplicates,
+			'current_agent_wildcard_grants' => $current_agent_wildcards,
+			'global_registry_wildcard_grants' => $global_wildcards,
+			'wildcard_grants' => $global_wildcards,
+			'grant_lookup_strategy' => 'bulk_agent_grant_snapshot',
+			'bulk_agent_grant_rows' => count( $grants ),
 			'breakglass_included' => in_array( 'mad4b/database-raw-query', $tools, true ),
 			'candidate_binding' => self::candidate_binding_status(),
 			'rows' => $rows,
