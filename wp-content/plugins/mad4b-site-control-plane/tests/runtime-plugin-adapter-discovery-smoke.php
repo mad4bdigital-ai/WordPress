@@ -145,6 +145,12 @@ try {
 	$check( is_array( $lookalike ) && ! empty( $lookalike['active'] ), 'Versioned-family lookalike fixture was not discovered.' );
 	$check( 'unknown' === $lookalike['family'] && '' === $lookalike['adapter_id'], 'Non-numeric versioned-family lookalike was incorrectly classified.' );
 	$check( 'adapter_required' === $lookalike['coverage_state'], 'Non-numeric versioned-family lookalike did not fail closed.' );
+	$check( 'unknown-ci-unknown-adapter-target' === (string) ( $unknown['functional_family_key'] ?? '' ), 'Unknown plugin family key was not isolated by plugin root.' );
+	$check( 'unknown-custom-mega-menu-villain' === (string) ( $lookalike['functional_family_key'] ?? '' ), 'Lookalike unknown family key was not isolated by plugin root.' );
+	$check( isset( $discovered['functional_family_states']['unknown-ci-unknown-adapter-target'] ), 'Unknown fixture missing from family-state projection.' );
+	$check( isset( $discovered['functional_family_states']['unknown-custom-mega-menu-villain'] ), 'Lookalike fixture missing from family-state projection.' );
+	$check( 'adapter_missing' === (string) $discovered['functional_family_states']['unknown-ci-unknown-adapter-target'], 'Unknown fixture family state drifted.' );
+	$check( 'adapter_missing' === (string) $discovered['functional_family_states']['unknown-custom-mega-menu-villain'], 'Lookalike fixture family state drifted.' );
 
 	$requests_ability = wp_get_ability( 'mad4b/adapter-support-requests' );
 	$requests_one = $requests_ability->execute();
