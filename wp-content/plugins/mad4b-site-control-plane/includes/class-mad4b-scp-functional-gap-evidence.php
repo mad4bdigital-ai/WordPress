@@ -26,13 +26,11 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 
 	private static $snapshot = null;
 	private static $snapshot_key = '';
-	private static $policy = null;
 	private static $scan_files = 0;
 	private static $scan_bytes = 0;
 	private static $scan_started_at = 0.0;
 
 	private static function policy() {
-		if ( null !== self::$policy ) return self::$policy;
 		$path = MAD4B_SCP_DIR . self::POLICY_FILE;
 		$raw = is_file( $path ) && is_readable( $path ) ? file_get_contents( $path ) : false;
 		$data = false === $raw ? null : json_decode( $raw, true );
@@ -95,7 +93,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			if ( empty( $probes['constants'] ) || ! is_array( $probes['constants'] ) ) $blockers[] = 'functional_gap_policy_constant_probe_set_missing';
 		}
 		$blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $blockers ) ) ) );
-		self::$policy = array(
+		return array(
 			'valid' => empty( $blockers ),
 			'contract' => is_array( $data ) && isset( $data['contract'] ) ? (string) $data['contract'] : '',
 			'sha256' => false === $raw ? '' : hash( 'sha256', $raw ),
@@ -103,7 +101,6 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'data' => is_array( $data ) ? $data : array(),
 			'blockers' => $blockers,
 		);
-		return self::$policy;
 	}
 
 	private static function targets() {
@@ -156,19 +153,21 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			}
 			if ( ! $matched ) continue;
 			$main = WP_PLUGIN_DIR . '/' . ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
+			$main_sha = is_file( $main ) ? @hash_file( 'sha256', $main ) : false;
 			$rows[] = implode( "\0", array(
 				$normalized,
 				isset( $headers['Version'] ) ? (string) $headers['Version'] : '',
 				isset( $active[ $normalized ] ) ? '1' : '0',
 				is_file( $main ) ? (string) @filesize( $main ) : '-1',
-				is_file( $main ) ? (string) @filemtime( $main ) : '-1',
+				false !== $main_sha ? (string) $main_sha : '',
 			) );
 		}
 		foreach ( array( MAD4B_SCP_DIR . self::REPOSITORY_FILE, MAD4B_SCP_DIR . self::POLICY_FILE, MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' ) as $path ) {
+			$file_sha = is_file( $path ) ? @hash_file( 'sha256', $path ) : false;
 			$rows[] = implode( "\0", array(
 				basename( $path ),
 				is_file( $path ) ? (string) @filesize( $path ) : '-1',
-				is_file( $path ) ? (string) @filemtime( $path ) : '-1',
+				false !== $file_sha ? (string) $file_sha : '',
 			) );
 		}
 		sort( $rows, SORT_STRING );
