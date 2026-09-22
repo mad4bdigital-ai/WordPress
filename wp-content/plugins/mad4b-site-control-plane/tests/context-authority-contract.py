@@ -298,6 +298,10 @@ write_capability = drive.split("public static function write_capability_status()
 require(write_capability, "'allowed_operations' => array( 'update', 'recreate' )", "only certified Drive operations are advertised")
 require(write_capability, "'create' => 'mad4b_google_drive_create_rollback_not_certified'", "create capability advertises rollback blocker")
 require(adapter, "mad4b_google_drive_create_rollback_not_certified", "arbitrary create denied until exact rollback certification")
+require(grant_reconcile, "'context/update-drive-asset' => 'google_drive_context'", "Context update exact-grant reconciliation provider binding")
+require(grant_reconcile, "'context/recreate-drive-asset' => 'google_drive_context'", "Context recreate exact-grant reconciliation provider binding")
+allowlist = grant_reconcile.split('public static function allowed_ability_providers()', 1)[1].split('public static function boot()', 1)[0]
+assert "'context/create-drive-asset'" not in allowlist, "Context create must remain outside exact-grant reconciliation until rollback is certified"
 require(adapter, "google_drive_write_scope_required", "write mount requires OAuth write capability")
 require(adapter, "source_required_for_write", "write mount requires selected Context source")
 require(adapter, "context_provider_contract_status", "first-party Context provider certification")
