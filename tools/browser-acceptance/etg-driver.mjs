@@ -26,10 +26,55 @@ export function validatePlan(plan) {
   if (!(Number(challenge.issued_at) > 0 && Number(challenge.expires_at) > now && Number(challenge.expires_at) - Number(challenge.issued_at) <= 900)) {
     throw new Error("browser_plan_challenge_expired_or_invalid");
   }
+  if (Object.prototype.hasOwnProperty.call(plan, "case_count") && Number(plan.case_count) !== plan.cases.length) {
+    throw new Error("browser_plan_case_count_mismatch");
+  }
+
+  const seenCaseIds = new Set();
   for (const item of plan.cases) {
-    if (!item.case_id || item.provider !== "jet-engine" || item.query_id !== "tours_query_archive") throw new Error("browser_plan_case_binding_invalid");
-    if (!item.taxonomy || !item.term_slug || !Number(item.term_id)) throw new Error("browser_plan_case_term_invalid");
-    if (!item.archive_path || !String(item.archive_path).startsWith("/")) throw new Error("browser_plan_archive_path_invalid");
+    const caseId = String(item.case_id || "");
+    if (!caseId || seenCaseIds.has(caseId) || item.provider !== "jet-engine" || item.query_id !== "tours_query_archive") {
+      throw new Error("browser_plan_case_binding_invalid");
+    }
+    seenCaseIds.add(caseId);
+
+    if (!item.taxonomy || !item.term_slug || !Number.isInteger(Number(item.term_id)) || Number(item.term_id) <= 0) {
+      throw new Error("browser_plan_case_term_invalid");
+    }
+
+    const archivePath = String(item.archive_path || "");
+    if (
+      !archivePath.startsWith("/") ||
+      archivePath.startsWith("//") ||
+      archivePath.includes("\\") ||
+      /[\u0000-\u001f\u007f]/.test(archivePath)
+    ) {
+      throw new Error("browser_plan_archive_path_invalid");
+    }
+    const archiveUrl = new URL(archivePath, origin);
+    if (archiveUrl.origin !== origin.origin) throw new Error("browser_plan_archive_origin_mismatch");
+
+    const expected = item.expected || {};
+    const total = Number(expected.result_total);
+    const proofCount = Number(expected.proof_item_count ?? total);
+    const proofMode = String(expected.proof_mode || "");
+    if (!Number.isInteger(total) || total < 0 || total > 5000 || proofCount !== total) {
+      throw new Error("browser_plan_expected_total_invalid");
+    }
+    if (!["full_ids", "full_digest"].includes(proofMode)) {
+      throw new Error("browser_plan_expected_proof_mode_invalid");
+    }
+    if (proofMode === "full_ids") {
+      const ids = Array.isArray(expected.ids) ? expected.ids.map(Number) : [];
+      if (total > 100 || ids.length !== total || ids.some((id) => !Number.isInteger(id) || id <= 0)) {
+        throw new Error("browser_plan_expected_ids_invalid");
+      }
+    } else {
+      if (!/^[a-f0-9]{64}$/.test(String(expected.identity_digest || "")) ||
+          !/^[a-f0-9]{64}$/.test(String(expected.order_digest || ""))) {
+        throw new Error("browser_plan_expected_digest_invalid");
+      }
+    }
   }
   return { ...plan, origin: origin.toString() };
 }
