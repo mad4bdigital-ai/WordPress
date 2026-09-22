@@ -206,9 +206,6 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$telemetry['performance']['samples'][] = $sample;
 		$telemetry['performance']['samples'] = array_slice( $telemetry['performance']['samples'], -32 );
 		$telemetry['performance']['last_by_class'][ $class ] = $sample;
-		self::$last_capture_telemetry = $telemetry;
-		self::$last_capture_build = $build;
-		self::$last_capture_class = $class;
 		if ( 'frontend' === $class ) $telemetry['performance']['frontend_observed'] = true;
 		if ( 'rest' === $class ) $telemetry['performance']['rest_observed'] = true;
 
@@ -248,6 +245,9 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		}
 
 		$telemetry['events'] = array_slice( isset( $telemetry['events'] ) && is_array( $telemetry['events'] ) ? $telemetry['events'] : array(), -1 * MAD4B_SCP_Live_Acceptance_Observer::MAX_EVENTS );
+		self::$last_capture_telemetry = $telemetry;
+		self::$last_capture_build = $build;
+		self::$last_capture_class = $class;
 		update_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, $telemetry, false );
 	}
 
