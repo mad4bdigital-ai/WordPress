@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.40
+ * Version: 0.4.0-rc.41
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.40' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.41' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -117,6 +117,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-write-planning-gu
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-rest-compatibility.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-write-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
@@ -151,6 +152,7 @@ MAD4B_SCP_Live_Acceptance_Finalizer::boot_early();
 MAD4B_SCP_Production_Unchanged_Attestation::boot_early();
 MAD4B_SCP_WPML_Response_Contract::boot_early();
 MAD4B_SCP_Live_Truth::boot_early();
+MAD4B_SCP_Staging_Certification::boot();
 MAD4B_SCP_Acceptance_Core::boot_early();
 MAD4B_SCP_Connection_Ability::boot();
 MAD4B_SCP_Context_Authority::boot();
