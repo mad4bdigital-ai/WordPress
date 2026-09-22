@@ -62,10 +62,22 @@ def validate_policy():
             continue
         if not probe_regex_is_bounded(value):
             blockers.append(f"functional_gap_policy_probe_regex_overbroad_{regex_key}")
-    if not isinstance(probes.get("option_keys"),list) or not probes.get("option_keys"):
+    option_probe_keys=[str(x) for x in (probes.get("option_keys") or []) if str(x)]
+    if not isinstance(probes.get("option_keys"),list) or not option_probe_keys:
         blockers.append("functional_gap_policy_option_probe_set_missing")
-    if not isinstance(probes.get("constants"),list) or not probes.get("constants"):
+    constant_probe_names=[str(x) for x in (probes.get("constants") or []) if str(x)]
+    if not isinstance(probes.get("constants"),list) or not constant_probe_names:
         blockers.append("functional_gap_policy_constant_probe_set_missing")
+    secret_value=str(probes.get("secret_key_regex","")).strip()
+    try:
+        secret_probe=re.compile(secret_value,re.I) if secret_value else None
+    except re.error:
+        secret_probe=None
+    for constant_name in constant_probe_names:
+        if re.fullmatch(r"[A-Z][A-Z0-9_]{1,127}", constant_name) is None:
+            blockers.append("functional_gap_policy_constant_probe_identity_invalid")
+        if secret_probe is not None and secret_probe.search(constant_name):
+            blockers.append("functional_gap_policy_constant_probe_secret_forbidden")
 
     for family,row in sorted((POLICY.get("families") or {}).items()):
         if not family or not isinstance(row,dict):
@@ -134,6 +146,21 @@ def validate_policy():
             for artifact in artifacts:
                 if artifact not in canonical:
                     blockers.append(f"functional_gap_policy_artifact_escapes_canonical_map_{family}")
+
+        if mode == "redacted_status":
+            redacted_keys=[str(x) for x in (row.get("redacted_secret_option_keys") or []) if str(x)]
+            if not redacted_keys:
+                blockers.append(f"functional_gap_policy_redaction_keys_missing_{family}")
+            status_keys=[str(x) for x in (row.get("required_status_option_keys") or []) if str(x)]
+            if not status_keys:
+                blockers.append(f"functional_gap_policy_status_keys_missing_{family}")
+            if not isinstance(row.get("safe_now"),list) or not row.get("safe_now") or not isinstance(row.get("blocked"),list) or not row.get("blocked"):
+                blockers.append(f"functional_gap_policy_redacted_boundary_missing_{family}")
+            for redacted_key in redacted_keys:
+                if redacted_key not in option_probe_keys:
+                    blockers.append(f"functional_gap_policy_redacted_key_not_probed_{family}")
+                if secret_probe is None or secret_probe.search(redacted_key) is None:
+                    blockers.append(f"functional_gap_policy_redacted_key_not_secret_classified_{family}")
 
         if mode == "bounded_read_routes":
             routes=row.get("required_get_routes")
