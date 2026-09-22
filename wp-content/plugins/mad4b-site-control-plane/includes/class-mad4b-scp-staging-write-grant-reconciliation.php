@@ -181,8 +181,31 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 
 	private static function rollback_transaction( array $agent, array $grant_ids, $authority_checkpoint ) {
 		$errors = self::rollback_created( $agent, $grant_ids );
-		$restored = MAD4B_SCP_Staging_Write_Authority::restore_persistence_checkpoint( $authority_checkpoint );
-		if ( is_wp_error( $restored ) ) $errors[] = $restored->get_error_code() . ':authority_checkpoint';
+		if ( empty( $errors ) ) {
+			$restored = MAD4B_SCP_Staging_Write_Authority::restore_persistence_checkpoint( $authority_checkpoint );
+			if ( is_wp_error( $restored ) ) {
+				$errors[] = $restored->get_error_code() . ':authority_checkpoint';
+				$blocked = MAD4B_SCP_Staging_Write_Authority::fail_closed_persisted_authority( 'authority_checkpoint_restore_failed' );
+				if ( is_wp_error( $blocked ) ) $errors[] = $blocked->get_error_code() . ':authority_fail_closed';
+			}
+		} else {
+			// Never restore a previously-ready persisted snapshot while any newly-created
+			// grant could still exist. Force the hot path blocked across fresh requests.
+			$blocked = MAD4B_SCP_Staging_Write_Authority::fail_closed_persisted_authority( 'grant_rollback_incomplete' );
+			if ( is_wp_error( $blocked ) ) $errors[] = $blocked->get_error_code() . ':authority_fail_closed';
+		}
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			$audit = MAD4B_SCP_Audit::record( 'mad4b/staging-write-grant-reconciliation-rolled-back', array(
+				'contract' => self::CONTRACT,
+				'agent_public_id' => isset( $agent['public_id'] ) ? (string) $agent['public_id'] : '',
+				'created_grant_ids' => array_values( array_map( 'intval', $grant_ids ) ),
+				'rollback_complete' => empty( $errors ),
+				'rollback_errors' => array_values( $errors ),
+				'authority_forced_blocked' => ! empty( $errors ),
+				'production_mutation' => false,
+			), empty( $errors ) ? 'ok' : 'error' );
+			if ( is_wp_error( $audit ) ) $errors[] = $audit->get_error_code() . ':rollback_audit';
+		}
 		return $errors;
 	}
 
