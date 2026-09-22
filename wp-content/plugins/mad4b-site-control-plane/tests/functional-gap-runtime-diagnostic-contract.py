@@ -17,6 +17,9 @@ required = [
     "'ajax_hooks'",
     "'option_presence'",
     "'cron_hooks'",
+    "'plugin_tree'",
+    "hash_file( 'sha256'",
+    "RecursiveDirectoryIterator",
 ]
 for marker in required:
     if marker not in diag:
