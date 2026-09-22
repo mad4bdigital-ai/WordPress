@@ -81,6 +81,14 @@ for marker in [
     "'integrity_level' => empty( $blockers ) ? 'self_consistent_package' : 'failed_closed'",
     "'external_cryptographic_attestation' => false",
     "'package_self_consistent' => ! empty( $repository['package_integrity']['valid'] )",
+    "mad4b.functional-gap-package-integrity.v1",
+    "public static function package_integrity_status()",
+    "'package_integrity_elapsed_ms'",
+    "'package_verified_file_count'",
+    "'package_verified_bytes'",
+    "'runtime_scan_elapsed_ms'",
+    "'runtime_scan_files_hashed'",
+    "'runtime_scan_bytes_hashed'",
 ]:
     if marker not in runtime:
         raise SystemExit(f'missing zero-touch runtime invariant: {marker}')
@@ -134,6 +142,10 @@ for marker in [
     "Package integrity",
     "package_self_consistent",
     "package_integrity_level",
+    "Integrity verify cost",
+    "Runtime scan cost",
+    "package_integrity_elapsed_ms",
+    "runtime_scan_elapsed_ms",
 ]:
     if marker not in ui:
         raise SystemExit(f'coverage UI missing zero-touch projection: {marker}')
@@ -151,6 +163,8 @@ for workflow_name,workflow in [('control-plane',control),('plugin-package',plugi
             raise SystemExit(f'{workflow_name}: missing build-embedded evidence invariant: {marker}')
 
 for marker in [
+    "mad4b.functional-gap-package-integrity.v1: PASS",
+    "package_integrity_status",
     "functional_gap_policy_bound_to_build_provenance",
     "config/functional-gap-policy.json",
     "embedded evidence policy SHA mismatch",
