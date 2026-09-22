@@ -82,10 +82,21 @@ for marker in [
     "'write_authority'",
     "'browser_runtime'",
     "'performance_budget'",
+    "'admin_query_performance'",
+    "'query_monitor_db_attribution'",
+    "'admin_query_performance_status'",
+    "'query_monitor_db_attribution_status'",
     "'rollback_candidate'",
     "'wp_import_export_exact_artifact'",
 ]:
     require(cert, marker, "staging certification invariant")
+for marker in [
+    "MAD4B_SCP_Admin_Query_Performance::status()",
+    "MAD4B_SCP_Query_Monitor_Evidence_Bridge::db_attribution_status()",
+    "'caller_component_trace_expected'",
+]:
+    require(cert, marker, "Staging query-performance/attribution evidence")
+
 for forbidden in [
     "::reconcile(",
     "::review_asset(",
