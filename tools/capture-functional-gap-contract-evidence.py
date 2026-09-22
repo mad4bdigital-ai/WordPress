@@ -6,14 +6,19 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ROOT = ROOT / "wp-content/plugins"
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "functional-gap-contract-evidence.json"
 
+POLICY_PATH = PLUGIN_ROOT / "mad4b-site-control-plane/config/functional-gap-policy.json"
+POLICY_RAW = POLICY_PATH.read_bytes()
+POLICY = json.loads(POLICY_RAW.decode("utf-8"))
+if POLICY.get("contract") != "mad4b.functional-gap-policy.v1":
+    raise SystemExit("functional-gap policy contract mismatch")
+
 FAMILIES = {
-    "bulk-taxonomy-editor": ["bulk-taxonomy-editor.zip"],
-    "custom-mega-menu": ["custom-mega-menu-v43.zip"],
-    "google-tag-manager": ["duracelltomi-google-tag-manager.zip"],
-    "meta-catalog-feed-mapper": ["meta-catalog-feed-mapper-pro.zip"],
-    "wpl-client": ["wpl-client-1238.zip", "wpl-client.zip"],
-    "rank-math": ["seo-by-rank-math.zip", "seo-by-rank-math-pro.zip"],
+    family: list(row.get("repository_artifacts", []))
+    for family, row in POLICY.get("families", {}).items()
+    if row.get("repository_evidence") is True
 }
+if not FAMILIES or any(not archives for archives in FAMILIES.values()):
+    raise SystemExit("functional-gap policy repository evidence set is incomplete")
 
 PATTERNS = {
     "rest_route": re.compile(r"register_rest_route\s*\(([^;]{0,1000})", re.I | re.S),
@@ -28,7 +33,7 @@ PATTERNS = {
     "db_write": re.compile(r"\$wpdb->(?:insert|update|delete|replace|query)\s*\("),
 }
 
-SECRET_RE = re.compile(r"(secret|token|password|passwd|api[_-]?key|license[_-]?key|access[_-]?key|client[_-]?secret)", re.I)
+SECRET_RE = re.compile(str(POLICY.get("probes", {}).get("secret_key_regex", r"(?:secret|token|password|passwd|api[_-]?key|license[_-]?key|access[_-]?key|client[_-]?secret)")), re.I)
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -125,6 +130,8 @@ def inspect(path: Path):
 report={
     "contract":"mad4b.functional-gap-contract-evidence.v1",
     "source_commit_sha":os.environ.get("SOURCE_SHA",""),
+    "policy_contract":POLICY["contract"],
+    "policy_sha256":sha256(POLICY_RAW),
     "families":{},
 }
 for family,archives in FAMILIES.items():
@@ -134,8 +141,10 @@ for family,archives in FAMILIES.items():
         if not path.exists():
             raise SystemExit(f"missing repository artifact: {archive}")
         rows.append(inspect(path))
+    policy_row=POLICY["families"][family]
     report["families"][family]={
         "artifacts":rows,
+        "evaluation_mode":policy_row.get("evaluation_mode",""),
         "evidence_only":True,
         "promotion_authorized":False,
     }
