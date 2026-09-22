@@ -175,7 +175,8 @@ final class MAD4B_SCP_Repository_Family_Adapter extends MAD4B_SCP_Adapter_Base {
 		return ! empty( $plugins[0]['version'] ) ? (string) $plugins[0]['version'] : '';
 	}
 	public function register_abilities() {
-		$this->add_ability( $this->family_id . '/status', 'Read ' . $this->label() . ' Repository Adapter Status', 'family_status', array( 'MAD4B_SCP_Policy', 'can_read' ) );
+		$source_label = ! empty( $this->descriptor['artifacts'] ) ? 'Repository Adapter Status' : 'Runtime Family Status';
+		$this->add_ability( $this->family_id . '/status', 'Read ' . $this->label() . ' ' . $source_label, 'family_status', array( 'MAD4B_SCP_Policy', 'can_read' ) );
 	}
 	public function family_status() { return $this->status(); }
 	public function status() {
