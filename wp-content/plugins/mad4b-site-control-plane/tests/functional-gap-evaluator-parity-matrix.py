@@ -69,6 +69,15 @@ def make_route_public(runtime, route):
             return
     raise SystemExit(f'route fixture missing: {route}')
 
+def make_route_callback_drift(runtime, route):
+    for row in runtime.get('rest_routes', []):
+        if row.get('route') == route:
+            row['get_permission_callbacks'] = ['bte_other_non_public_permissions']
+            row['get_permission_missing'] = False
+            row['get_permission_public'] = False
+            return
+    raise SystemExit(f'route fixture missing: {route}')
+
 def make_status_option_missing(runtime, key):
     row = runtime.setdefault('option_presence', {}).setdefault(key, {})
     row['exists'] = False
@@ -98,6 +107,10 @@ def cases(base):
     bulk_public = copy.deepcopy(base)
     make_route_public(bulk_public, '/bulk-taxonomy-editor/v1/posts')
     out.append(('bulk-public-permission', bulk_public, {'bulk-taxonomy-editor': 'contract_discovery_required'}))
+
+    bulk_callback_drift = copy.deepcopy(base)
+    make_route_callback_drift(bulk_callback_drift, '/bulk-taxonomy-editor/v1/posts')
+    out.append(('bulk-permission-callback-drift', bulk_callback_drift, {'bulk-taxonomy-editor': 'contract_discovery_required'}))
 
     wpl_redaction = copy.deepcopy(base)
     wpl_redaction_fail(wpl_redaction)
