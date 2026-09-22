@@ -116,10 +116,13 @@ final class MAD4B_SCP_Staging_Certification {
 	private static function managed_google_gate_evidence( array $mode_status, array $managed ) {
 		$mode = isset( $mode_status['mode'] ) ? sanitize_key( (string) $mode_status['mode'] ) : '';
 		$applicable = 'managed_google' === $mode;
-		$ready = ! $applicable || ( ! empty( $managed['configured'] ) && ! empty( $managed['one_click_sign_in_ready'] ) );
+		$non_managed_ready = in_array( $mode, array( 'dedicated_google', 'custom_credentials' ), true );
+		$mode_known = $applicable || $non_managed_ready;
+		$ready = $non_managed_ready || ( $applicable && ! empty( $managed['configured'] ) && ! empty( $managed['one_click_sign_in_ready'] ) );
 		$blockers = array();
+		if ( ! $mode_known ) $blockers[] = 'google_auth_mode_unresolved';
 		if ( $applicable && isset( $managed['blockers'] ) && is_array( $managed['blockers'] ) ) {
-			$blockers = array_values( array_unique( array_filter( array_map( 'strval', $managed['blockers'] ) ) ) );
+			$blockers = array_values( array_unique( array_merge( $blockers, array_filter( array_map( 'strval', $managed['blockers'] ) ) ) ) );
 		}
 		if ( $applicable && ! $ready && empty( $blockers ) ) $blockers[] = 'managed_google_selected_but_not_ready';
 		return array(
