@@ -408,6 +408,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		sort( $grant_abilities, SORT_STRING );
 		if ( ! empty( array_diff( $grant_abilities, $runtime ) ) ) $consistency_violations[] = 'exact_grant_outside_runtime_inventory';
 		if ( $catalog !== $reconstructed_catalog ) $consistency_violations[] = 'catalog_runtime_provider_gate_partition_mismatch';
+		if ( ! empty( array_intersect( $runtime, $blocked_abilities ) ) ) $consistency_violations[] = 'provider_gated_runtime_overlap';
 		$projection_consistent = empty( $consistency_violations );
 
 		$blocking_conditions = array();
