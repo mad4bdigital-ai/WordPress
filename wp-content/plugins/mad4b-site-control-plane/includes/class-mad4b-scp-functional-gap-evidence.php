@@ -482,6 +482,26 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		);
 	}
 
+	private static function runtime_only_metadata_identity( $plugin_file ) {
+		$budget = array( 'files'=>0, 'bytes'=>0, 'started_at'=>microtime( true ) );
+		$census = self::plugin_census_once( $plugin_file, $budget );
+		$blockers = isset( $census['blockers'] ) && is_array( $census['blockers'] ) ? array_values( $census['blockers'] ) : array();
+		$valid = ! empty( $census['valid'] ) && empty( $blockers );
+		return array(
+			'file_count' => isset( $census['file_count'] ) ? (int) $census['file_count'] : 0,
+			'total_bytes' => isset( $census['total_bytes'] ) ? (int) $census['total_bytes'] : 0,
+			'tree_sha256' => '',
+			'census_sha256' => isset( $census['census_sha256'] ) ? (string) $census['census_sha256'] : '',
+			'scan_stable' => $valid,
+			'scan_attempts' => 1,
+			'comparison' => $valid ? 'runtime_only_metadata_identity' : 'runtime_only_metadata_unstable',
+			'scan_strategy' => 'metadata_only_runtime_identity',
+			'metadata_only' => true,
+			'content_rehashed' => false,
+			'error' => $valid ? '' : ( ! empty( $blockers ) ? sanitize_key( (string) reset( $blockers ) ) : 'runtime_only_metadata_unavailable' ),
+		);
+	}
+
 	private static function runtime_census_from_runtime( array $runtime ) {
 		$rows = array();
 		$plugin_count = 0;
@@ -943,6 +963,8 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					$tree = array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned', 'scan_strategy'=>'none' );
 				} elseif ( ! $deep_scan ) {
 					$tree = array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'repository_evidence_invalid_not_scanned', 'scan_strategy'=>'none' );
+				} elseif ( 'runtime_only' === $mode ) {
+					$tree = self::runtime_only_metadata_identity( $plugin_file );
 				} elseif ( $version_preflight_mismatch ) {
 					$tree = self::version_preflight_tree( $plugin_file, $version, $component );
 				} else {
