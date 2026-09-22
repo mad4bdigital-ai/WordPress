@@ -12,8 +12,9 @@ $adapter = $registry->get( 'etg-dfsb' );
 $check( $adapter instanceof MAD4B_SCP_ETG_DFSB_Adapter, 'ETG adapter was not registered.' );
 $check( $adapter->is_available(), 'ETG adapter did not accept the exact Alpha13 service contract.' );
 
-$read_abilities = array(
+$mad4b_owned_read_abilities = array(
 	'etg-dfsb/status',
+	'etg-dfsb/build-identity',
 	'etg-dfsb/configuration',
 	'etg-dfsb/runtime-inventory',
 	'etg-dfsb/profiles',
@@ -21,18 +22,51 @@ $read_abilities = array(
 	'etg-dfsb/profile-plan',
 	'etg-dfsb/content-catalog',
 );
-foreach ( $read_abilities as $name ) {
+foreach ( $mad4b_owned_read_abilities as $name ) {
 	$check( wp_has_ability( $name ), 'Missing ETG MCP ability: ' . $name );
 	$ability = wp_get_ability( $name );
 	$meta = $ability->get_meta();
 	$check( ! empty( $meta['annotations']['readonly'] ), 'ETG ability is not readonly: ' . $name );
 	$check( empty( $meta['annotations']['destructive'] ), 'ETG ability is marked destructive: ' . $name );
-	$check( empty( $meta['public'] ) && empty( $meta['mcp']['public'] ), 'ETG ability leaked to default/public MCP: ' . $name );
+	$check( empty( $meta['public'] ) && empty( $meta['mcp']['public'] ), 'MAD4B-owned ETG ability leaked to default/public MCP: ' . $name );
 	$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', $name ), 'ETG ability is not mounted on mad4b-read: ' . $name );
+	$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $name ), 'ETG ability is not mounted on mad4b-chatgpt: ' . $name );
 	foreach ( array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ) as $server ) {
 		$check( ! MAD4B_SCP_Servers::ability_is_mounted( $server, $name ), 'ETG read ability leaked to ' . $server . ': ' . $name );
 	}
 }
+
+$native_evidence_abilities = array( 'etg-dfsb/evidence-provider', 'etg-dfsb/evidence-query' );
+$chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
+$write_tools = MAD4B_SCP_Servers::write_tools();
+foreach ( $native_evidence_abilities as $name ) {
+	$check( wp_has_ability( $name ), 'Missing native ETG evidence ability: ' . $name );
+	$ability = wp_get_ability( $name );
+	$check( is_object( $ability ) && method_exists( $ability, 'execute' ), 'Native ETG evidence ability is not callable: ' . $name );
+	$meta = $ability->get_meta();
+	$check( true === ( isset( $meta['annotations']['readonly'] ) ? $meta['annotations']['readonly'] : null ), 'Native ETG evidence ability is not readonly: ' . $name );
+	$check( false === ( isset( $meta['annotations']['destructive'] ) ? $meta['annotations']['destructive'] : null ), 'Native ETG evidence ability is destructive or unbounded: ' . $name );
+	$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', $name ), 'Native ETG evidence ability is not mounted on mad4b-read: ' . $name );
+	$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $name ), 'Native ETG evidence ability is not mounted on mad4b-chatgpt: ' . $name );
+	$check( in_array( $name, $chatgpt_tools, true ), 'Canonical ChatGPT projection omitted native ETG evidence ability: ' . $name );
+	$check( ! in_array( $name, $write_tools, true ), 'Native ETG evidence ability leaked into write_tools(): ' . $name );
+	foreach ( array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ) as $server ) {
+		$check( ! MAD4B_SCP_Servers::ability_is_mounted( $server, $name ), 'Native ETG evidence ability leaked to ' . $server . ': ' . $name );
+	}
+}
+
+$descriptor = wp_get_ability( 'etg-dfsb/evidence-provider' )->execute();
+$check( ! is_wp_error( $descriptor ), 'Native ETG evidence-provider execution failed.' );
+$check( 'etg.dfsb.evidence-provider.v1' === (string) $descriptor['contract'], 'Unexpected native ETG evidence-provider contract.' );
+$check( 'etg-dfsb' === (string) $descriptor['provider_id'], 'Native ETG evidence-provider id drifted.' );
+$check( ! empty( $descriptor['read_only'] ) && empty( $descriptor['authorizing'] ) && empty( $descriptor['profile_mutation'] ), 'Native ETG evidence-provider authority boundary drifted.' );
+
+$query = wp_get_ability( 'etg-dfsb/evidence-query' )->execute( array( 'section' => 'summary' ) );
+$check( ! is_wp_error( $query ), 'Native ETG evidence-query execution failed.' );
+$check( 'etg.dfsb.evidence-provider.v1' === (string) $query['contract'], 'Unexpected native ETG evidence-query contract.' );
+$check( 'etg-dfsb' === (string) $query['provider_id'], 'Native ETG evidence-query provider id drifted.' );
+$check( 'summary' === (string) $query['section'], 'Native ETG evidence-query did not execute the bounded summary section.' );
+$check( ! empty( $query['read_only'] ) && empty( $query['authorizing'] ) && empty( $query['profile_mutation'] ), 'Native ETG evidence-query authority boundary drifted.' );
 
 $status = wp_get_ability( 'etg-dfsb/status' )->execute();
 $check( ! is_wp_error( $status ), 'ETG adapter status failed.' );
@@ -40,6 +74,20 @@ $check( 'mad4b.etg-dfsb-read-adapter.v1' === (string) $status['contract'], 'Unex
 $check( ! empty( $status['version_compatible'] ), 'ETG version compatibility was not proven.' );
 $check( 'read_only_non_authorizing' === (string) $status['authority_mode'], 'ETG authority mode drifted.' );
 $check( empty( $status['mutation_exposed'] ) && empty( $status['profile_mutation_exposed'] ) && empty( $status['seo_publication_mutation_exposed'] ) && empty( $status['ajax_proxy_exposed'] ), 'ETG adapter opened a mutation or side-channel surface.' );
+$projected_native = isset( $status['native_evidence_projection'] ) && is_array( $status['native_evidence_projection'] ) ? $status['native_evidence_projection'] : array();
+sort( $projected_native );
+$expected_native = $native_evidence_abilities;
+sort( $expected_native );
+$check( $expected_native === $projected_native, 'Adapter status did not report the exact native ETG evidence projection.' );
+
+$identity = wp_get_ability( 'etg-dfsb/build-identity' )->execute();
+$check( ! is_wp_error( $identity ), 'ETG exact build identity ability failed.' );
+$check( ! empty( $identity['valid'] ) && ! empty( $identity['embedded'] ), 'ETG exact build identity is not valid/embedded.' );
+$check( ! empty( $identity['read_only'] ) && empty( $identity['authorizing'] ) && empty( $identity['mutation_exposed'] ), 'ETG build identity authority boundary drifted.' );
+$check( 'etg.dfsb.embedded-build-identity.v1' === (string) $identity['contract'], 'Unexpected ETG build identity contract.' );
+$check( 'da80d11c0232a809f7b52c7809d881722964bd23' === (string) $identity['git_sha'], 'ETG build identity git SHA drifted.' );
+$check( '585e6447cb65c2a602f7a105447ad58daa83daa9' === (string) $identity['tree_sha'], 'ETG build identity tree SHA drifted.' );
+$check( '0.4.0-alpha.13' === (string) $identity['plugin_version'], 'ETG build identity plugin version drifted.' );
 
 $config = wp_get_ability( 'etg-dfsb/configuration' )->execute();
 $check( ! is_wp_error( $config ) && ! empty( $config['read_only'] ) && empty( $config['authorizing'] ), 'ETG configuration read contract failed.' );
@@ -80,5 +128,8 @@ $check( empty( $etg_plugin['support_request'] ), 'ETG plugin still emits an adap
 
 $all_maps = $adapter->ability_names();
 $check( empty( $all_maps['content'] ) && empty( $all_maps['admin'] ), 'ETG adapter declared a write/admin ability.' );
+foreach ( $native_evidence_abilities as $name ) {
+	$check( in_array( $name, $all_maps['read'], true ), 'ETG adapter read map omitted native evidence ability: ' . $name );
+}
 
-echo "mad4b.site-control-plane.runtime-etg-dfsb-mcp.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-etg-dfsb-mcp.v2: PASS\n";

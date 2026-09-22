@@ -16,7 +16,7 @@ if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS' ) ) {
 		'MAD4B_MCP_LOCAL_OAUTH_CLIENTS',
 		array(
 			MAD4B_SCP_Local_OAuth_Browser_Canary::CLIENT_ID => array(
-				'client_name' => 'MAD4B Staging Browser Canary',
+				'client_name' => 'MAD4B Governed Browser Canary',
 				'redirect_uris' => array( $redirect ),
 				'application_type' => 'web',
 			),
@@ -27,7 +27,7 @@ if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_CLIENTS' ) ) {
 MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
 $status = MAD4B_SCP_Local_OAuth_Browser_Canary::status();
 if ( 'mad4b.local-oauth-browser-canary.v1' !== $status['contract'] ) exit( 1 );
-if ( 'staging' !== $status['environment'] || empty( $status['staging_only'] ) ) exit( 1 );
+if ( 'staging' !== $status['environment'] || empty( $status['governed_nonproduction_only'] ) || empty( $status['target_eligible'] ) ) exit( 1 );
 if ( empty( $status['client_registered'] ) ) exit( 1 );
 if ( empty( $status['local_oauth_effective'] ) || empty( $status['resource_bridge_effective'] ) ) {
 	fwrite( STDERR, 'Canary prerequisites are not effective: ' . wp_json_encode( $status ) . "\n" );
@@ -43,7 +43,7 @@ if ( false === strpos( $redirect, 'page=mad4b-control-plane-oauth-canary' ) || f
 ob_start();
 MAD4B_SCP_Local_OAuth_Browser_Canary::render_page();
 $html = (string) ob_get_clean();
-foreach ( array( 'MAD4B Local OAuth Browser Canary', 'Run Local OAuth Browser Canary', 'mad4b-staging-browser-canary', 'External connection certified', 'tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1' ) as $marker ) {
+foreach ( array( 'MAD4B Local OAuth Browser Canary', 'Run Local OAuth Browser Canary', 'mad4b-governed-browser-canary', 'External connection certified', 'tools/Invoke-MAD4BLocalOAuthStagingCanary.ps1' ) as $marker ) {
 	if ( false === strpos( $html, $marker ) ) {
 		fwrite( STDERR, "Missing canary UI marker: {$marker}\n" );
 		exit( 1 );

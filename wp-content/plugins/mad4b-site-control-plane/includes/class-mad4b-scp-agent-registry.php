@@ -71,21 +71,43 @@ final class MAD4B_SCP_Agent_Registry {
 		$type = sanitize_key( (string) $subject_type );
 		$fingerprint = strtolower( trim( (string) $subject_fingerprint ) );
 		if ( '' === $type || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_subject_invalid', 'Subject type and SHA-256 fingerprint are required.' );
+		$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['subjects']} WHERE subject_type=%s AND subject_fingerprint=%s LIMIT 1", $type, $fingerprint ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$now = self::now();
+		if ( $existing ) {
+			if ( (int) $existing['agent_id'] !== (int) $agent['id'] ) return new WP_Error( 'mad4b_subject_bound_elsewhere', 'Authenticated subject is already bound to another MAD4B agent.' );
+			if ( 'enabled' === (string) $existing['status'] && sanitize_text_field( $label ) === (string) $existing['label'] ) return true;
+			$updated = $wpdb->update( $t['subjects'], array( 'status' => 'enabled', 'label' => sanitize_text_field( $label ), 'updated_at' => $now ), array( 'id' => (int) $existing['id'] ), array( '%s','%s','%s' ), array( '%d' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			return false === $updated ? new WP_Error( 'mad4b_subject_bind_failed', 'Existing subject binding could not be re-enabled.', array( 'db_error' => $wpdb->last_error ) ) : true;
+		}
 		$ok = $wpdb->insert( $t['subjects'], array( 'agent_id' => (int) $agent['id'], 'subject_type' => $type, 'subject_fingerprint' => $fingerprint, 'label' => sanitize_text_field( $label ), 'status' => 'enabled', 'created_at' => $now, 'updated_at' => $now ), array( '%d','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( false === $ok ) return new WP_Error( 'mad4b_subject_bind_failed', 'Subject binding failed; the subject may already be bound.', array( 'db_error' => $wpdb->last_error ) );
-		return true;
+		return false === $ok ? new WP_Error( 'mad4b_subject_bind_failed', 'Subject binding failed.', array( 'db_error' => $wpdb->last_error ) ) : true;
+	}
+
+	public static function subjects_for_agent( $agent_id, $subject_type = '' ) {
+		global $wpdb; $t = MAD4B_SCP_Schema::tables(); $agent_id = absint( $agent_id ); $type = sanitize_key( (string) $subject_type );
+		if ( $agent_id < 1 ) return array();
+		if ( '' !== $type ) $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['subjects']} WHERE agent_id=%d AND subject_type=%s ORDER BY id ASC", $agent_id, $type ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		else $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['subjects']} WHERE agent_id=%d ORDER BY id ASC", $agent_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	public static function set_subject_status( $agent_public_id, $subject_type, $subject_fingerprint, $status ) {
+		global $wpdb; $t = MAD4B_SCP_Schema::tables();
+		$agent = self::get_agent_by_public_id( $agent_public_id );
+		if ( ! $agent ) return new WP_Error( 'mad4b_agent_missing', 'Agent not found.' );
+		$status = sanitize_key( (string) $status );
+		if ( ! in_array( $status, array( 'enabled', 'disabled' ), true ) ) return new WP_Error( 'mad4b_subject_status_invalid', 'Subject status must be enabled or disabled.' );
+		$type = sanitize_key( (string) $subject_type ); $fingerprint = strtolower( trim( (string) $subject_fingerprint ) );
+		if ( '' === $type || ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_subject_invalid', 'Subject type and SHA-256 fingerprint are required.' );
+		$updated = $wpdb->update( $t['subjects'], array( 'status' => $status, 'updated_at' => self::now() ), array( 'agent_id' => (int) $agent['id'], 'subject_type' => $type, 'subject_fingerprint' => $fingerprint ), array( '%s','%s' ), array( '%d','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return false === $updated ? new WP_Error( 'mad4b_subject_status_update_failed', 'Subject status could not be updated.', array( 'db_error' => $wpdb->last_error ) ) : true;
 	}
 
 	public static function grant_ability( $agent_public_id, $server_id, $ability_name, $provider = 'core', array $constraints = array(), $effect = 'allow', $environment = 'all' ) {
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
 		$agent = self::get_agent_by_public_id( $agent_public_id );
 		if ( ! $agent ) return new WP_Error( 'mad4b_agent_missing', 'Agent not found.' );
-		$server_id = sanitize_key( $server_id );
-		$ability_name = trim( (string) $ability_name );
-		$provider = sanitize_key( $provider );
-		if ( '' === $provider ) $provider = 'core';
-		$environment = sanitize_key( $environment );
+		$server_id = sanitize_key( $server_id ); $ability_name = trim( (string) $ability_name ); $provider = sanitize_key( $provider ); if ( '' === $provider ) $provider = 'core'; $environment = sanitize_key( $environment );
 		if ( '' === $server_id || '' === $ability_name || strlen( $ability_name ) > 191 ) return new WP_Error( 'mad4b_grant_invalid', 'Exact server and ability are required.' );
 		if ( preg_match( '/[*?\[\]]/', $ability_name ) ) return new WP_Error( 'mad4b_wildcard_grant_denied', 'Wildcard ability grants are forbidden.' );
 		if ( ! in_array( $effect, array( 'allow', 'deny' ), true ) ) return new WP_Error( 'mad4b_grant_effect_invalid', 'Grant effect must be allow or deny.' );
@@ -94,31 +116,38 @@ final class MAD4B_SCP_Agent_Registry {
 		if ( class_exists( 'MAD4B_SCP_Servers' ) ) {
 			if ( ! in_array( $server_id, MAD4B_SCP_Servers::expected_server_ids(), true ) ) return new WP_Error( 'mad4b_grant_server_unknown', 'Cannot grant an unknown MAD4B MCP server.' );
 			$expected_provider = MAD4B_SCP_Servers::provider_for_ability( $server_id, $ability_name );
-			if ( null === $expected_provider ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a MAD4B MCP server that does not mount it.' );
-			if ( $provider !== $expected_provider ) return new WP_Error( 'mad4b_grant_provider_mismatch', 'Grant provider does not match the certified provider bound to this mounted ability.', array( 'expected_provider' => $expected_provider ) );
+			if ( null === $expected_provider ) return new WP_Error( 'mad4b_grant_server_ability_mismatch', 'Cannot grant an ability on a server that does not mount it.' );
+			if ( $provider !== $expected_provider ) return new WP_Error( 'mad4b_grant_provider_mismatch', 'Grant provider does not match the certified provider.', array( 'expected_provider' => $expected_provider ) );
 		}
-		if ( 'mad4b-breakglass' === $server_id && ! apply_filters( 'mad4b_scp_allow_breakglass_grant_creation', false, $agent, $ability_name, $provider, $environment ) ) {
-			return new WP_Error( 'mad4b_breakglass_grant_creation_denied', 'Breakglass grants require an explicit exceptional administration path.' );
-		}
-		$encoded = wp_json_encode( $constraints );
-		if ( false === $encoded || strlen( $encoded ) > 16384 ) return new WP_Error( 'mad4b_grant_constraints_invalid', 'Resource constraints are invalid or too large.' );
+		if ( 'mad4b-breakglass' === $server_id && ! apply_filters( 'mad4b_scp_allow_breakglass_grant_creation', false, $agent, $ability_name, $provider, $environment ) ) return new WP_Error( 'mad4b_breakglass_grant_creation_denied', 'Breakglass grants require an explicit exceptional administration path.' );
+		$encoded = wp_json_encode( $constraints ); if ( false === $encoded || strlen( $encoded ) > 16384 ) return new WP_Error( 'mad4b_grant_constraints_invalid', 'Resource constraints are invalid or too large.' );
 		$now = self::now();
-		$ok = $wpdb->insert( $t['grants'], array(
-			'agent_id' => (int) $agent['id'], 'effect' => $effect, 'server_id' => $server_id, 'ability_name' => $ability_name,
-			'provider' => $provider, 'resource_schema_version' => 'v1', 'resource_constraints' => $encoded,
-			'environment' => $environment, 'created_by' => get_current_user_id(), 'created_at' => $now, 'updated_at' => $now,
-		), array( '%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		if ( false === $ok ) return new WP_Error( 'mad4b_grant_create_failed', 'Exact grant could not be created.', array( 'db_error' => $wpdb->last_error ) );
-		return true;
+		$ok = $wpdb->insert( $t['grants'], array( 'agent_id' => (int) $agent['id'], 'effect' => $effect, 'server_id' => $server_id, 'ability_name' => $ability_name, 'provider' => $provider, 'resource_schema_version' => 'v1', 'resource_constraints' => $encoded, 'environment' => $environment, 'created_by' => get_current_user_id(), 'created_at' => $now, 'updated_at' => $now ), array( '%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return false === $ok ? new WP_Error( 'mad4b_grant_create_failed', 'Exact grant could not be created.', array( 'db_error' => $wpdb->last_error ) ) : true;
+	}
+
+	public static function grants_for_agent( $agent_id, $server_id = '' ) {
+		global $wpdb; $t = MAD4B_SCP_Schema::tables(); $agent_id = absint( $agent_id ); $server_id = sanitize_key( (string) $server_id );
+		if ( $agent_id < 1 ) return array();
+		if ( '' !== $server_id ) $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['grants']} WHERE agent_id=%d AND server_id=%s ORDER BY id ASC", $agent_id, $server_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		else $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['grants']} WHERE agent_id=%d ORDER BY id ASC", $agent_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	public static function revoke_allow_grant_by_id( $agent_public_id, $grant_id, $server_id = '' ) {
+		global $wpdb; $t = MAD4B_SCP_Schema::tables();
+		$agent = self::get_agent_by_public_id( $agent_public_id ); if ( ! $agent ) return new WP_Error( 'mad4b_agent_missing', 'Agent not found.' );
+		$grant_id = absint( $grant_id ); $server_id = sanitize_key( (string) $server_id ); if ( $grant_id < 1 ) return new WP_Error( 'mad4b_grant_invalid', 'Exact grant id is required.' );
+		$where = array( 'id' => $grant_id, 'agent_id' => (int) $agent['id'], 'effect' => 'allow' ); $formats = array( '%d','%d','%s' );
+		if ( '' !== $server_id ) { $where['server_id'] = $server_id; $formats[] = '%s'; }
+		$deleted = $wpdb->delete( $t['grants'], $where, $formats ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return false === $deleted ? new WP_Error( 'mad4b_grant_revoke_failed', 'Managed allow grant could not be revoked.', array( 'db_error' => $wpdb->last_error ) ) : true;
 	}
 
 	public static function resolve_agent( array $identity ) {
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
 		if ( empty( $identity['authenticated'] ) || empty( $identity['subject_type'] ) || empty( $identity['subject_fingerprint'] ) ) return new WP_Error( 'mad4b_nhi_identity_required', 'An authenticated MAD4B agent identity is required for mutation.' );
-		$row = $wpdb->get_row( $wpdb->prepare(
-			"SELECT a.* FROM {$t['subjects']} s INNER JOIN {$t['agents']} a ON a.id = s.agent_id WHERE s.subject_type = %s AND s.subject_fingerprint = %s AND s.status = 'enabled' LIMIT 1",
-			$identity['subject_type'], $identity['subject_fingerprint']
-		), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT a.* FROM {$t['subjects']} s INNER JOIN {$t['agents']} a ON a.id=s.agent_id WHERE s.subject_type=%s AND s.subject_fingerprint=%s AND s.status='enabled' LIMIT 1", $identity['subject_type'], $identity['subject_fingerprint'] ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( ! $row ) return new WP_Error( 'mad4b_nhi_subject_unbound', 'Authenticated subject is not bound to an enabled MAD4B agent.' );
 		if ( 'enabled' !== $row['status'] ) return new WP_Error( 'mad4b_nhi_agent_disabled', 'MAD4B agent is disabled.' );
 		$current = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
@@ -127,12 +156,8 @@ final class MAD4B_SCP_Agent_Registry {
 	}
 
 	public static function exact_grant( $agent_id, $server_id, $ability_name, $provider = 'core' ) {
-		global $wpdb; $t = MAD4B_SCP_Schema::tables();
-		$current = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
-		$rows = $wpdb->get_results( $wpdb->prepare(
-			"SELECT * FROM {$t['grants']} WHERE agent_id = %d AND server_id = %s AND ability_name = %s AND provider = %s AND environment IN ('all', %s) ORDER BY CASE effect WHEN 'deny' THEN 0 ELSE 1 END, id ASC",
-			absint( $agent_id ), (string) $server_id, (string) $ability_name, (string) $provider, $current
-		), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		global $wpdb; $t = MAD4B_SCP_Schema::tables(); $current = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown';
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['grants']} WHERE agent_id=%d AND server_id=%s AND ability_name=%s AND provider=%s AND environment IN ('all',%s) ORDER BY CASE effect WHEN 'deny' THEN 0 ELSE 1 END,id ASC", absint( $agent_id ), (string) $server_id, (string) $ability_name, (string) $provider, $current ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		foreach ( $rows as $row ) if ( 'deny' === $row['effect'] ) return new WP_Error( 'mad4b_nhi_grant_denied', 'Agent grant explicitly denies this ability.' );
 		foreach ( $rows as $row ) if ( 'allow' === $row['effect'] ) return $row;
 		return new WP_Error( 'mad4b_nhi_grant_missing', 'Agent does not have an exact grant for this ability.' );
@@ -141,8 +166,8 @@ final class MAD4B_SCP_Agent_Registry {
 	public static function counts() {
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
 		return array(
-			'enabled_agents' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['agents']} WHERE status = 'enabled'" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			'enabled_subjects' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['subjects']} WHERE status = 'enabled'" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			'enabled_agents' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['agents']} WHERE status='enabled'" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			'enabled_subjects' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['subjects']} WHERE status='enabled'" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			'grants' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['grants']}" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			'wildcard_grants' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$t['grants']} WHERE ability_name LIKE '%*%' OR ability_name LIKE '%?%'" ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		);

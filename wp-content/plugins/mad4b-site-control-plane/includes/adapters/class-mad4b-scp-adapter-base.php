@@ -2,6 +2,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+if ( ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-compatibility-certification.php';
+}
+
 abstract class MAD4B_SCP_Adapter_Base {
 	abstract public function id();
 	abstract public function label();
@@ -24,6 +28,15 @@ abstract class MAD4B_SCP_Adapter_Base {
 		);
 		if ( is_array( $certification ) ) $status['provider_certification'] = $certification;
 		$status['mutation_requires_certification'] = $this->mutation_requires_certification();
+		if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
+			// Keep provider_certification as immutable artifact/runtime truth. Capability
+			// certification is a separate authority and must never rewrite
+			// runtime_contract_ok, especially when a drifted capability is restored by
+			// bounded behavioral evidence.
+			$status['capability_certification'] = MAD4B_SCP_Provider_Compatibility_Certification::assess_provider( $this->provider_key(), $this );
+			$status['capability_mount_projection'] = MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection( $this->provider_key(), $this );
+			$status['capability_certification_mode'] = 'per_ability_separate_from_artifact_truth';
+		}
 		return $status;
 	}
 
@@ -51,9 +64,28 @@ abstract class MAD4B_SCP_Adapter_Base {
 	public function capture_reversible_state( $ability_name, array $input ) { return new WP_Error( 'mad4b_reversible_capture_unsupported', 'This adapter ability has no reversible capture implementation.' ); }
 	public function read_reversible_state( $ability_name, array $target ) { return new WP_Error( 'mad4b_reversible_readback_unsupported', 'This adapter ability has no reversible readback implementation.' ); }
 	public function restore_reversible_state( $ability_name, array $target, array $state, array $record ) { return new WP_Error( 'mad4b_reversible_restore_unsupported', 'This adapter ability has no reversible restore implementation.' ); }
+
+	/**
+	 * High-risk canary execution is opt-in per adapter and per exact ability.
+	 * The default is permanently fail-closed. The Control Plane wrapper owns NHI,
+	 * one-time approval, budgets and evidence binding; an adapter opt-in must still
+	 * re-run its native/runtime safety guards before producing any side effect.
+	 */
+	public function supports_canary_execution( $ability_name ) { return false; }
+	public function execute_canary( $ability_name, array $input ) {
+		return new WP_Error( 'mad4b_provider_canary_execution_unsupported', 'This adapter does not implement governed canary execution for the requested ability.' );
+	}
+
+	/**
+	 * Public canary responses never expose the raw provider result. Adapters may
+	 * explicitly opt into a bounded, non-sensitive summary. Empty is the safe
+	 * default; the wrapper still records a digest of the complete provider result.
+	 */
+	public function canary_result_summary( $ability_name, $result ) { return array(); }
+
 	public function declared_server_for_ability( $ability_name ) {
 		$map = $this->ability_names();
-		foreach ( array( 'content', 'admin', 'read' ) as $surface ) {
+		foreach ( array( 'content', 'write', 'admin', 'read' ) as $surface ) {
 			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return 'mad4b-' . $surface;
 		}
 		return '';
@@ -66,8 +98,12 @@ abstract class MAD4B_SCP_Adapter_Base {
 			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
 			if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled until the global mutation gate and a bound enabled NHI are both present.' );
 			if ( $this->mutation_requires_certification() ) {
-				if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_provider_contracts_unavailable', 'Provider mutation is denied because the certification authority is unavailable.' );
-				$provider_guard = MAD4B_SCP_Provider_Contracts::mutation_guard( $this->certified_provider_key(), (bool) $this->is_available() );
+				if ( class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $this->provider_key() ) ) {
+					$provider_guard = MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard( $this->provider_key(), $ability_name, (bool) $this->is_available(), $this );
+				} else {
+					if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) return new WP_Error( 'mad4b_provider_contracts_unavailable', 'Provider mutation is denied because the certification authority is unavailable.' );
+					$provider_guard = MAD4B_SCP_Provider_Contracts::mutation_guard( $this->certified_provider_key(), (bool) $this->is_available() );
+				}
 				if ( is_wp_error( $provider_guard ) || true !== $provider_guard ) return $provider_guard;
 			}
 			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
@@ -113,3 +149,22 @@ abstract class MAD4B_SCP_Adapter_Base {
 	protected function hash_value( $value ) { return hash( 'sha256', wp_json_encode( $value ) ); }
 	protected function detect_plugin_version() { return ''; }
 }
+
+// The canary subsystem is part of adapter governance, not a provider-specific
+// side channel. Load it immediately after the base contract exists so its
+// extension hook is registered before the first deterministic registry build.
+require_once dirname( __DIR__ ) . '/class-mad4b-scp-provider-canary-execution.php';
+require_once __DIR__ . '/class-mad4b-scp-provider-canary-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-acceptance-target-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-full-content-operations-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-translation-bridge-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-native-provider-bridge-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-jetengine-diagnostics-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-mutation-semantics-adapter.php';
+MAD4B_SCP_Provider_Canary_Execution::boot_early();
+MAD4B_SCP_Provider_Canary_Adapter::boot();
+MAD4B_SCP_Full_Content_Operations_Adapter::boot();
+MAD4B_SCP_Translation_Bridge_Adapter::boot();
+MAD4B_SCP_Native_Provider_Bridge_Adapter::boot();
+MAD4B_SCP_JetEngine_Diagnostics_Bootstrap::boot();
+MAD4B_SCP_Mutation_Semantics_Adapter::boot();

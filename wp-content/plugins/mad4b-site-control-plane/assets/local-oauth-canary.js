@@ -50,7 +50,7 @@
 
 	async function startCanary() {
 		if (!cfg.canRun) {
-			render('error', 'Canary is not ready.', 'Complete the explicit Staging configuration and reload this page.');
+			render('error', 'Canary is not ready.', 'Complete the explicit enrolled-site OAuth configuration and reload this page.');
 			return;
 		}
 		if (!window.crypto || !window.crypto.subtle || !window.sessionStorage) {

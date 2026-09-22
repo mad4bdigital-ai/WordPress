@@ -1,0 +1,119 @@
+name: MAD4B Provider Compatibility Engine
+
+on:
+  push:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php'
+      - '.github/workflows/mad4b-provider-compatibility-engine.yml'
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php'
+      - '.github/workflows/mad4b-provider-compatibility-engine.yml'
+
+permissions:
+  contents: read
+
+# Keep only the newest candidate for this PR/branch. Every synchronize event
+# re-evaluates pull_request path filters against the full PR diff, so browser-only
+# commits can otherwise leave stale exact-head compatibility jobs consuming
+# runners. Cancellation changes scheduling only; the surviving run still checks
+# out and verifies the exact current head before executing the full matrix.
+concurrency:
+  group: mad4b-provider-compatibility-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provider-compatibility-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact source checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+      - name: Validate capability catalog JSON
+        run: php -r '$d=json_decode(file_get_contents("wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json"),true); if(!is_array($d)||($d["contract"]??"")!=="mad4b.provider-capability-contracts.v1") exit(1);'
+      - name: Validate provider compatibility documentation contract
+        run: |
+          DOC=wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-COMPATIBILITY-CERTIFICATION.md
+          grep -Fq 'Behavioral evidence contract: `mad4b.provider-behavioral-evidence.v1`' "$DOC"
+          grep -Fq 'Canary execution contract: `mad4b.provider-canary-execution.v1`' "$DOC"
+          grep -Fq 'Canary execution evidence contract: `mad4b.provider-canary-execution-evidence.v1`' "$DOC"
+          grep -Fq '`mad4b/provider-canary-execute`' "$DOC"
+          grep -Fq 'dedicated adapter surface `write` only' "$DOC"
+          grep -Fq 'must not declare or mount the wrapper on `admin`, `content` or `read`' "$DOC"
+          grep -Fq 'no canary wrapper may be mounted on `mad4b-admin` or `mad4b-content`' "$DOC"
+          grep -Fq 'capability_certification_mode = per_ability_separate_from_artifact_truth' "$DOC"
+          grep -Fq 'behavioral evidence can advance `shadow -> canary` only' "$DOC"
+          grep -Fq '`promotion_granted=false`' "$DOC"
+          ! grep -Fq 'The existing server compiler still consumes one provider-level runtime boolean' "$DOC"
+          ! grep -Fq 'governed by a future evidence authority' "$DOC"
+          ! grep -Fq 'execution of high-risk canary mutations;' "$DOC"
+      - name: Lint compatibility engine and MCP compiler
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-bitflows-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php
+      - name: Capability-first certification regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-compatibility-engine-contract.php
+      - name: Trusted behavioral recertification regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-contract.php
+      - name: Governed provider canary execution regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-execution-contract.php
+      - name: Canary write-authority binding regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-surface-contract.php
+      - name: Canary authorization finalization regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-canary-authorization-finalization-contract.php
+      - name: Per-ability MCP write compiler regression
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-write-compiler-contract.php

@@ -113,7 +113,7 @@ jobs:
           php /tmp/wp-cli.phar option update siteurl 'https://mad4b-local-oauth.test' --path="$WP_PATH"
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
 
-      - name: Install exact MCP Adapter and control plane with zero-touch OAuth configuration
+      - name: Install exact MCP Adapter and control plane without implicit authority
         shell: bash
         run: |
           set -euo pipefail
@@ -123,6 +123,40 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+          php /tmp/wp-cli.phar eval '
+          $s = MAD4B_SCP_Site_Profile::status();
+          if ( ! empty( $s["configured"] ) || MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+              throw new RuntimeException( "Fresh generic install unexpectedly acquired site authority." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
+      - name: Explicitly enroll generic site for local OAuth only
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => 0,
+              "display_name" => "MAD4B Local OAuth",
+              "chatgpt_app_id" => "",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => false,
+              "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          if ( empty( $result["configured"] ) || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) ) {
+              throw new RuntimeException( "Explicit generic Site Profile enrollment did not bind the live tenant." );
+          }
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+              throw new RuntimeException( "OAuth-only enrollment unexpectedly enabled governed write authority." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
           test "$(php /tmp/wp-cli.phar option get mad4b_scp_staging_oauth_autoconfig_v1 --format=json --path="$WP_PATH" | php -r '$v=json_decode(stream_get_contents(STDIN),true); echo isset($v["wp_user_id"]) ? (int)$v["wp_user_id"] : 0;')" = "1"
 
       - name: Prove local key, metadata, JWT, token-ledger and Staging canary invariants

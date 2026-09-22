@@ -26,20 +26,39 @@ require("protected function mutation_requires_certification() { return false; }"
 
 for ability in (
     'etg-dfsb/status',
+    'etg-dfsb/build-identity',
     'etg-dfsb/configuration',
     'etg-dfsb/runtime-inventory',
     'etg-dfsb/profiles',
     'etg-dfsb/profile-blueprint',
     'etg-dfsb/profile-plan',
     'etg-dfsb/content-catalog',
+    'etg-dfsb/evidence-provider',
+    'etg-dfsb/evidence-query',
 ):
-    require(ability in adapter, 'missing MCP ability: ' + ability)
+    require(ability in adapter, 'missing MCP ability projection declaration: ' + ability)
+
+for native_ability in (
+    'etg-dfsb/evidence-provider',
+    'etg-dfsb/evidence-query',
+):
+    require(("$this->add_ability( '" + native_ability + "'") not in adapter, 'native ETG evidence ability must not be re-registered by MAD4B: ' + native_ability)
+
+for projection_guard in (
+    'native_evidence_read_abilities',
+    "wp_has_ability( $ability_name )",
+    "method_exists( $ability, 'execute' )",
+    "true !== $annotations['readonly']",
+    "false !== $annotations['destructive']",
+):
+    require(projection_guard in adapter, 'native ETG evidence fail-closed projection guard missing: ' + projection_guard)
 
 for service in (
     'ETG\\\\DynamicFilterSEOBridge\\\\Bootstrap',
     'ETG\\\\DynamicFilterSEOBridge\\\\Config\\\\Configuration',
     'ETG\\\\DynamicFilterSEOBridge\\\\Config\\\\ProfileRegistry',
     'ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\RuntimeInventory',
+    'ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\BuildIdentity',
     'ETG\\\\DynamicFilterSEOBridge\\\\Diagnostics\\\\InventoryProfilePlanner',
     'ETG\\\\DynamicFilterSEOBridge\\\\Presentation\\\\InventoryContentCatalog',
 ):
@@ -74,7 +93,7 @@ require(etg.get('strategy') == 'registered_adapter', 'ETG coverage strategy must
 require(etg.get('mutation_scope') == 'none_read_only_non_authorizing', 'ETG mutation scope must remain none')
 required_contracts = set(etg.get('requested_contracts', []))
 for contract in (
-    'status_read', 'configuration_read', 'runtime_inventory_read', 'profile_read',
+    'status_read', 'build_identity_read', 'configuration_read', 'runtime_inventory_read', 'profile_read',
     'profile_blueprint_plan_only', 'profile_inventory_plan_only', 'dynamic_content_catalog_read',
 ):
     require(contract in required_contracts, 'ETG requested contract missing: ' + contract)

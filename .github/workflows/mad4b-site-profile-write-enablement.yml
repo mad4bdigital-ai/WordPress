@@ -1,0 +1,57 @@
+name: MAD4B Site Profile Write Enablement
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-write-enablement.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-runtime.php'
+      - '.github/workflows/mad4b-site-profile-write-enablement.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-site-profile-write-enablement-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  certify:
+    name: Bounded write enablement contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          coverage: none
+
+      - name: PHP lint bounded implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-site-profile-write-enablement.php"
+          php -l "$root/includes/class-mad4b-scp-servers.php"
+          php -l "$root/tests/site-profile-write-enablement-runtime.php"
+
+      - name: Verify bounded source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-contract.py
+
+      - name: Prove bounded runtime transition and rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-runtime.php

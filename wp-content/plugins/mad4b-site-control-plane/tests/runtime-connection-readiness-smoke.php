@@ -35,11 +35,70 @@ $check( class_exists( 'MAD4B_SCP_Transport_Context' ), 'Transport context class 
 $check( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/connection-status' ), 'Connection status ability is not registered.' );
 $check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', 'mad4b/connection-status' ), 'Connection status ability is not mounted on mad4b-read.' );
 
+$check( class_exists( 'MAD4B_SCP_MCP_Registration_Bridge' ), 'MCP registration bridge class unavailable.' );
+$rest_server_present_before_bridge_status = isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] );
+$registration_before_bridge_status = MAD4B_SCP_Servers::registration_status();
+$mcp_init_count_before_bridge_status = did_action( 'mcp_adapter_init' );
+$rest_init_count_before_bridge_status = did_action( 'rest_api_init' );
+$bridge_status = MAD4B_SCP_MCP_Registration_Bridge::status();
+$check( is_array( $bridge_status ), 'MCP registration bridge status must be an array.' );
+$check( $rest_server_present_before_bridge_status === ( isset( $GLOBALS['wp_rest_server'] ) && is_object( $GLOBALS['wp_rest_server'] ) ), 'Reading MCP registration lifecycle created a REST server.' );
+$check( $registration_before_bridge_status === MAD4B_SCP_Servers::registration_status(), 'Reading MCP registration lifecycle changed MCP server registration state.' );
+$check( $mcp_init_count_before_bridge_status === did_action( 'mcp_adapter_init' ), 'Reading MCP registration lifecycle replayed MCP Adapter init.' );
+$check( $rest_init_count_before_bridge_status === did_action( 'rest_api_init' ), 'Reading MCP registration lifecycle replayed REST init.' );
+
 $status = MAD4B_SCP_Connection_Status::status();
+$bridge_status_after_connection_status = MAD4B_SCP_MCP_Registration_Bridge::status();
 $check( isset( $status['contract'] ) && 'mad4b.connection-readiness.v4' === $status['contract'], 'Unexpected connection readiness contract.' );
-$check( ! empty( $status['local_transport_ready'] ), 'Clean local transport should be ready: ' . wp_json_encode( $status['local_blockers'] ) );
+
+$check( isset( $status['mcp_registration_lifecycle'] ) && is_array( $status['mcp_registration_lifecycle'] ), 'MCP registration lifecycle projection missing from connection status.' );
+$lifecycle = $status['mcp_registration_lifecycle'];
+$lifecycle_boolean_fields = array(
+    'rest_init_seen_before_bridge_boot', 'adapter_init_seen_before_bridge_boot',
+    'missed_rest_recovery_scheduled', 'missed_rest_recovery_attempted', 'missed_rest_recovery_succeeded',
+    'first_rest_observed', 'doing_plugins_loaded_at_first_rest', 'doing_init_at_first_rest',
+    'jetengine_registry_class_loaded_at_first_rest', 'jetengine_registry_callback_present_at_first_rest',
+    'jetengine_rest_manager_class_loaded_at_first_rest', 'jetengine_rest_manager_callback_present_at_first_rest',
+    'mcp_adapter_callback_present_at_first_rest',
+);
+$lifecycle_integer_fields = array( 'mcp_adapter_init_count', 'rest_api_init_count', 'plugins_loaded_count_at_first_rest', 'init_count_at_first_rest', 'wp_loaded_count_at_first_rest' );
+$lifecycle_string_fields = array( 'missed_rest_recovery_state', 'missed_rest_recovery_blocker', 'first_rest_classification' );
+foreach ( $lifecycle_boolean_fields as $field ) {
+    $check( array_key_exists( $field, $lifecycle ) && is_bool( $lifecycle[ $field ] ), 'Lifecycle boolean field missing or mistyped: ' . $field );
+    $check( $lifecycle[ $field ] === ! empty( $bridge_status_after_connection_status[ $field ] ), 'Lifecycle boolean field did not project bridge status: ' . $field );
+}
+foreach ( $lifecycle_integer_fields as $field ) {
+    $check( array_key_exists( $field, $lifecycle ) && is_int( $lifecycle[ $field ] ), 'Lifecycle integer field missing or mistyped: ' . $field );
+    $check( $lifecycle[ $field ] === max( 0, (int) $bridge_status_after_connection_status[ $field ] ), 'Lifecycle integer field did not project bridge status: ' . $field );
+}
+foreach ( $lifecycle_string_fields as $field ) {
+    $check( array_key_exists( $field, $lifecycle ) && is_string( $lifecycle[ $field ] ), 'Lifecycle string field missing or mistyped: ' . $field );
+    $expected_lifecycle_string = isset( $bridge_status_after_connection_status[ $field ] ) ? sanitize_key( (string) $bridge_status_after_connection_status[ $field ] ) : '';
+    $check( $lifecycle[ $field ] === $expected_lifecycle_string, 'Lifecycle string field did not project bridge status: ' . $field );
+}
+$check( isset( $lifecycle['caller_trace'] ) && is_array( $lifecycle['caller_trace'] ), 'First REST caller trace missing or mistyped.' );
+$check( count( $lifecycle['caller_trace'] ) <= 16, 'First REST caller trace exceeded the bounded frame limit.' );
+foreach ( $lifecycle['caller_trace'] as $frame ) {
+    $check( is_array( $frame ), 'First REST caller trace frame is not an array.' );
+    $relative_file = isset( $frame['relative_file'] ) ? (string) $frame['relative_file'] : '';
+    $check( '' === $relative_file || ( '/' !== substr( $relative_file, 0, 1 ) && ! preg_match( '/^[A-Za-z]:[\\\\\/]/', $relative_file ) && false === strpos( $relative_file, '../' ) ), 'First REST caller trace exposed a non-relative path.' );
+}
+$check( ! empty( $lifecycle['first_rest_observed'] ), 'Connection status did not observe the first REST bootstrap.' );
+$check( in_array( $lifecycle['first_rest_classification'], array( 'rest_before_plugins_loaded', 'rest_during_plugins_loaded_before_jetengine_registration', 'jetengine_callbacks_present_at_first_rest', 'first_rest_phase_undetermined' ), true ), 'Unexpected first REST classification.' );
+
+$lifecycle_json = strtolower( (string) wp_json_encode( $lifecycle ) );
+foreach ( array( 'client_secret', 'access_token', 'refresh_token', 'authorization_header', 'raw_token', 'app_id', 'oauth_subject', 'nonce', 'password' ) as $secret ) {
+    $check( false === strpos( $lifecycle_json, $secret ), 'Lifecycle projection exposed forbidden material: ' . $secret );
+}
+$check(
+    ! empty( $status['local_transport_ready'] ),
+    'Clean local transport should be ready: blockers=' . wp_json_encode( $status['local_blockers'] )
+    . ' registrations=' . wp_json_encode( MAD4B_SCP_Servers::registration_status() )
+    . ' servers=' . wp_json_encode( $status['servers'] )
+);
 $check( empty( $status['remote_endpoint_preflight_ready'] ), 'Unconfigured OAuth resource server must not claim remote endpoint preflight readiness.' );
-$check( in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTP CI target did not report HTTPS remote blocker.' );
+$is_https_target = 'https' === strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_SCHEME ) );
+$check( $is_https_target ? ! in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ) : in_array( 'https_required_for_remote_mcp', $status['remote_preflight_blockers'], true ), 'HTTPS remote blocker did not match the disposable target scheme.' );
 $check( in_array( 'oauth_resource_bridge_not_configured', $status['remote_preflight_blockers'], true ), 'Unconfigured OAuth bridge did not block remote preflight.' );
 $check( in_array( 'oauth_issuer_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth issuer did not block remote preflight.' );
 $check( in_array( 'oauth_wp_subject_unconfigured', $status['remote_preflight_blockers'], true ), 'Missing OAuth WordPress subject did not block remote preflight.' );

@@ -1,0 +1,37 @@
+name: MAD4B Provider Behavioral Recertification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-provider-behavioral-recertification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint, contract and runtime rollback harness
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-provider-canary-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runner-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-behavioral-recertification-runtime.php

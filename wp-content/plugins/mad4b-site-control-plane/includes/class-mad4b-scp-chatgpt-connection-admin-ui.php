@@ -7,10 +7,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * This page does not create a ChatGPT connector, store OAuth credentials, or
  * certify an external connection. It presents the exact gateway/OAuth values
- * needed by ChatGPT and keeps the browser canary as a secondary diagnostic.
+ * needed by ChatGPT. On the exact governed Production origin it also exposes a
+ * deliberate administrator opt-in for the read-only OAuth profile; that opt-in
+ * never enables mutation, Skills authoring, write authority or Breakglass.
  */
 final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
-	const CONTRACT = 'mad4b.chatgpt-connection-ui.v2';
+	const CONTRACT = 'mad4b.chatgpt-connection-ui.v3';
 	const PAGE_SLUG = 'mad4b-control-plane-chatgpt';
 	const CHATGPT_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
 	const CHATGPT_REDIRECT_URI = 'https://chatgpt.com/connector_platform_oauth_redirect';
@@ -38,6 +40,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 
 	public static function status() {
 		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		$profile = class_exists( 'MAD4B_SCP_Staging_OAuth_Autoconfig' ) ? MAD4B_SCP_Staging_OAuth_Autoconfig::status() : array();
 		$local = class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ? MAD4B_SCP_Local_OAuth_Server::status() : array();
 		$bridge = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::status() : array();
 		$server_url = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() : untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
@@ -46,12 +49,24 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			&& is_string( $local['cimd_chatgpt_client_id'] )
 			&& hash_equals( self::CHATGPT_CLIENT_ID, $local['cimd_chatgpt_client_id'] );
 		$gateway_registered = class_exists( 'MAD4B_SCP_Servers' ) && in_array( 'mad4b-chatgpt', MAD4B_SCP_Servers::expected_server_ids(), true );
-		$ready = 'staging' === $environment && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_registered;
+		$production_readonly_enabled = 'production' === $environment && ! empty( $profile['production_readonly_enabled'] );
+		$profile_oauth_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
+		$environment_ready = $profile_oauth_ready && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || $production_readonly_enabled );
+		$oauth_canary_available = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' ) && MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$ready = $environment_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_registered;
 
 		return array(
 			'contract' => self::CONTRACT,
 			'environment' => $environment,
-			'staging_only_initially' => true,
+			'staging_only_initially' => false,
+			'production_readonly_profile_supported' => true,
+			'production_readonly_enabled' => $production_readonly_enabled,
+			'production_readonly_opt_in_required' => 'production' === $environment && ! $production_readonly_enabled,
+			'production_readonly_write_enabled' => false,
+			'production_readonly_breakglass_enabled' => false,
+			'profile_oauth_ready' => (bool) $profile_oauth_ready,
+			'environment_ready' => (bool) $environment_ready,
+			'oauth_canary_available' => (bool) $oauth_canary_available,
 			'server_url' => $server_url,
 			'authentication' => 'OAuth',
 			'client_registration' => 'client_id_metadata_document',
@@ -77,7 +92,7 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 
 	public static function enqueue_assets() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page selection.
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- page-scoped read-only selection.
 		if ( self::PAGE_SLUG !== $page ) return;
 		wp_enqueue_script(
 			'mad4b-scp-chatgpt-connection',
@@ -99,8 +114,22 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			<h1><?php echo esc_html__( 'Connect WordPress to ChatGPT', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Use the dedicated mad4b-chatgpt gateway. ChatGPT discovers OAuth and uses its Client ID Metadata Document automatically; no WordPress-side ChatGPT client secret or manual client registration is required.', 'mad4b-site-control-plane' ); ?></p>
 
+			<?php if ( 'production' === $status['environment'] ) : ?>
+				<div class="notice notice-<?php echo ! empty( $status['production_readonly_enabled'] ) ? 'success' : 'warning'; ?> inline"><p>
+					<strong><?php echo esc_html( ! empty( $status['production_readonly_enabled'] ) ? __( 'Production read-only OAuth profile is enabled.', 'mad4b-site-control-plane' ) : __( 'Production read-only OAuth requires explicit administrator opt-in.', 'mad4b-site-control-plane' ) ); ?></strong>
+					<?php echo esc_html__( ' This profile grants only the narrow OAuth read scope on the mad4b-chatgpt projection. It does not enable mutation, Skills authoring, write authority or Breakglass.', 'mad4b-site-control-plane' ); ?>
+				</p></div>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin:14px 0 20px">
+					<?php wp_nonce_field( 'mad4b_production_readonly_oauth' ); ?>
+					<input type="hidden" name="action" value="<?php echo esc_attr( ! empty( $status['production_readonly_enabled'] ) ? 'mad4b_disable_production_readonly_oauth' : 'mad4b_enable_production_readonly_oauth' ); ?>">
+					<button type="submit" class="button <?php echo empty( $status['production_readonly_enabled'] ) ? 'button-primary' : ''; ?>">
+						<?php echo esc_html( ! empty( $status['production_readonly_enabled'] ) ? __( 'Disable Production read-only OAuth', 'mad4b-site-control-plane' ) : __( 'Enable Production read-only OAuth', 'mad4b-site-control-plane' ) ); ?>
+					</button>
+				</form>
+			<?php endif; ?>
+
 			<div class="notice notice-<?php echo ! empty( $status['ready_for_chatgpt_draft'] ) ? 'success' : 'warning'; ?> inline"><p>
-				<strong><?php echo esc_html( ! empty( $status['ready_for_chatgpt_draft'] ) ? __( 'Ready to create a ChatGPT draft plugin.', 'mad4b-site-control-plane' ) : __( 'ChatGPT connection prerequisites are not complete yet.', 'mad4b-site-control-plane' ) ); ?></strong>
+				<strong><?php echo esc_html( ! empty( $status['ready_for_chatgpt_draft'] ) ? __( 'Ready to create or refresh a ChatGPT draft plugin.', 'mad4b-site-control-plane' ) : __( 'ChatGPT connection prerequisites are not complete yet.', 'mad4b-site-control-plane' ) ); ?></strong>
 			</p></div>
 
 			<table class="widefat striped" style="max-width:1100px;margin-top:16px">
@@ -120,7 +149,9 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 
 			<p style="margin-top:18px">
 				<a class="button button-primary" href="<?php echo esc_url( self::CHATGPT_CREATE_URL ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__( 'Open ChatGPT Plugin Builder', 'mad4b-site-control-plane' ); ?></a>
-				<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . MAD4B_SCP_Local_OAuth_Browser_Canary::PAGE_SLUG ) ); ?>"><?php echo esc_html__( 'Run OAuth Canary', 'mad4b-site-control-plane' ); ?></a>
+				<?php if ( ! empty( $status['oauth_canary_available'] ) ) : ?>
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . MAD4B_SCP_Local_OAuth_Browser_Canary::PAGE_SLUG ) ); ?>"><?php echo esc_html__( 'Run OAuth Canary', 'mad4b-site-control-plane' ); ?></a>
+				<?php endif; ?>
 			</p>
 
 			<h2><?php echo esc_html__( 'What to enter in ChatGPT', 'mad4b-site-control-plane' ); ?></h2>
@@ -128,16 +159,17 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 				<li><?php echo esc_html__( 'Open the ChatGPT plugin builder and enter the Name, Description and Server URL shown above.', 'mad4b-site-control-plane' ); ?></li>
 				<li><?php echo esc_html__( 'Choose OAuth authentication. Do not create or paste a WordPress-side ChatGPT client secret.', 'mad4b-site-control-plane' ); ?></li>
 				<li><?php echo esc_html__( 'ChatGPT discovers the authorization-server metadata, presents its HTTPS Client ID Metadata Document, and the server validates that document plus the exact redirect URI.', 'mad4b-site-control-plane' ); ?></li>
-				<li><?php echo esc_html__( 'Run the ChatGPT tool scan, complete WordPress login/consent, then create the draft plugin.', 'mad4b-site-control-plane' ); ?></li>
+				<li><?php echo esc_html__( 'Run the ChatGPT tool scan, complete WordPress login/consent, then create or refresh the draft plugin.', 'mad4b-site-control-plane' ); ?></li>
 			</ol>
 
 			<h2><?php echo esc_html__( 'Gateway safety boundary', 'mad4b-site-control-plane' ); ?></h2>
-			<p><?php echo esc_html__( 'The ChatGPT gateway excludes generic filesystem/database inspection and does not mount content mutation, mad4b-write, mad4b-admin, or mad4b-breakglass.', 'mad4b-site-control-plane' ); ?></p>
+			<p><?php echo esc_html__( 'The ChatGPT gateway excludes generic filesystem/database inspection. Production read-only mode never mounts content mutation, mad4b-write, mad4b-admin or mad4b-breakglass; governed writes remain a separate exact Site Profile authority.', 'mad4b-site-control-plane' ); ?></p>
 
 			<h2><?php echo esc_html__( 'Current readiness', 'mad4b-site-control-plane' ); ?></h2>
 			<table class="widefat striped" style="max-width:900px">
 				<tbody>
 					<tr><th>Environment</th><td><?php echo esc_html( $status['environment'] ); ?></td></tr>
+					<?php if ( 'production' === $status['environment'] ) : ?><tr><th>Production read-only profile</th><td><?php echo ! empty( $status['production_readonly_enabled'] ) ? 'enabled' : 'disabled'; ?></td></tr><?php endif; ?>
 					<tr><th>ChatGPT gateway registered</th><td><?php echo ! empty( $status['gateway_registered'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>Local OAuth effective</th><td><?php echo ! empty( $status['local_oauth_effective'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>OAuth resource bridge effective</th><td><?php echo ! empty( $status['bridge_effective'] ) ? 'yes' : 'no'; ?></td></tr>

@@ -13,6 +13,7 @@ on:
       - 'wp-includes/version.php'
       - 'wp-settings.php'
       - 'wp-admin/admin.php'
+      - 'tools/normalize-premium-provider-package.py'
       - '.github/workflows/mad4b-adapter-coverage.yml'
   push:
     branches:
@@ -28,6 +29,7 @@ on:
       - 'wp-includes/version.php'
       - 'wp-settings.php'
       - 'wp-admin/admin.php'
+      - 'tools/normalize-premium-provider-package.py'
       - '.github/workflows/mad4b-adapter-coverage.yml'
   workflow_dispatch:
 
@@ -47,18 +49,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
       - name: Verify discovery and reversible adapter contracts
         shell: bash
         run: |
           set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/jetengine-features-registration-diagnostics-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-candidate-attestation-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/adapter-discovery-reversibility-contract.py \
             --output /tmp/mad4b-repository-plugin-adapter-coverage.json
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-plugin-artifact-coverage.py \
             --output /tmp/mad4b-repository-plugin-artifact-coverage.json
           python3 wp-content/plugins/mad4b-site-control-plane/tests/repository-runtime-component-coverage.py \
             --output /tmp/mad4b-repository-runtime-component-coverage.json
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/provider-candidate-attestation-contract.py
           cat /tmp/mad4b-repository-plugin-adapter-coverage.json
           cat /tmp/mad4b-repository-plugin-artifact-coverage.json
           cat /tmp/mad4b-repository-runtime-component-coverage.json
@@ -101,7 +103,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -190,7 +191,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -218,13 +218,28 @@ jobs:
           php /tmp/wp-cli.phar config create --path="$WP_PATH" --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=127.0.0.1:3306 --skip-check
           php /tmp/wp-cli.phar core install --path="$WP_PATH" --url='http://mad4b-jetengine-runtime.test' --title='MAD4B JetEngine Runtime' --admin_user='mad4b-ci-admin' --admin_password='ci-only-not-a-secret' --admin_email='ci@example.invalid' --skip-email
 
+      - name: Normalize exact JetEngine package
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=/tmp/mad4b-jetengine-provider
+          rm -rf "$out"
+          mkdir -p "$out"
+          python3 tools/normalize-premium-provider-package.py \
+            --provider jetengine \
+            --input wp-content/plugins/jet-engine.zip \
+            --output "$out/jet-engine.zip" \
+            --expected-version 3.8.15 \
+            --report "$out/jetengine-normalization.json"
+          unzip -tqq "$out/jet-engine.zip"
+
       - name: Install exact MCP Adapter, packaged JetEngine and control plane
         shell: bash
         run: |
           set -euo pipefail
           WP_PATH=/tmp/mad4b-wordpress
           python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/mcp-adapter.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug mcp-adapter
-          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive wp-content/plugins/jet-engine.zip --plugins-dir "$WP_PATH/wp-content/plugins" --slug jet-engine
+          python3 "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/materialize-packaged-plugin.py" --archive "/tmp/mad4b-jetengine-provider/jet-engine.zip" --plugins-dir "$WP_PATH/wp-content/plugins" --slug jet-engine
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate jet-engine --path="$WP_PATH"
@@ -238,3 +253,12 @@ jobs:
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-jetengine-reversible-adapter-smoke.php" \
             --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
+      - name: Upload JetEngine normalization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-jetengine-adapter-normalization-${{ matrix.wordpress }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: /tmp/mad4b-jetengine-provider/jetengine-normalization.json
+          if-no-files-found: error
+          retention-days: 14

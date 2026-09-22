@@ -1,8 +1,9 @@
 [CmdletBinding()]
 param(
-    [string]$Issuer = 'https://staging.egypttourgates.com/oauth/mcp',
-    [string]$Resource = 'https://staging.egypttourgates.com/wp-json/mcp/mad4b-chatgpt',
-    [string]$ClientId = 'mad4b-staging-canary',
+    [string]$BaseUrl = '',
+    [string]$Issuer = '',
+    [string]$Resource = '',
+    [string]$ClientId = 'mad4b-governed-canary',
     [string]$RedirectUri = 'http://127.0.0.1:8765/callback',
     [string]$Scope = 'mad4b:read offline_access',
     [int]$TimeoutSeconds = 180,
@@ -71,6 +72,13 @@ if ($SelfTest) {
     exit 0
 }
 
+if ($BaseUrl) {
+    $siteBase = $BaseUrl.TrimEnd('/')
+    if (-not $Issuer) { $Issuer = "$siteBase/oauth/mcp" }
+    if (-not $Resource) { $Resource = "$siteBase/wp-json/mcp/mad4b-chatgpt" }
+}
+if (-not $Issuer -or -not $Resource) { throw 'Provide -BaseUrl, or provide both -Issuer and -Resource.' }
+
 $issuerUri = [Uri]$Issuer; $resourceUri = [Uri]$Resource; $redirect = [Uri]$RedirectUri
 if ($issuerUri.Scheme -ne 'https' -or $resourceUri.Scheme -ne 'https') { throw 'Issuer/resource must use HTTPS.' }
 if ($redirect.Scheme -ne 'http' -or $redirect.Host -notin @('127.0.0.1','localhost','::1')) { throw 'RedirectUri must use an HTTP loopback host.' }
@@ -107,7 +115,7 @@ if (-not $accessToken) { throw 'Token endpoint returned no access token.' }
 $status = Get-ProbeStatus $Resource $accessToken
 $accessToken = $null; $token = $null
 if ($status -in @(401,403,404,405,503) -or $status -ge 500) { throw "Authenticated MCP ingress failed with HTTP $status." }
-Write-Host 'MAD4B Local OAuth Staging Canary: PASS'
+Write-Host 'MAD4B Local OAuth Governed Canary: PASS'
 Write-Host 'OAuth browser round-trip: PASS'
 Write-Host 'PKCE S256: PASS'
 Write-Host 'Token exchange: PASS'

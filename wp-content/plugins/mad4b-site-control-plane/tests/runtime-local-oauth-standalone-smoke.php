@@ -40,6 +40,42 @@ if ( ! in_array( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), $metadata[
 if ( isset( $metadata['registration_endpoint'] ) ) mad4b_local_oauth_fail( 'Local OAuth unexpectedly exposed DCR.', $metadata );
 if ( false === strpos( MAD4B_SCP_Local_OAuth_Server::resource_identifier(), '/wp-json/mcp/mad4b-chatgpt' ) ) mad4b_local_oauth_fail( 'Local OAuth resource is not the ChatGPT gateway.', MAD4B_SCP_Local_OAuth_Server::resource_identifier() );
 
+// General Distribution must preserve the WordPress home path. A root-only
+// endpoint builder works on ETG but breaks valid subdirectory installations.
+$original_home = get_option( 'home' );
+$original_siteurl = get_option( 'siteurl' );
+update_option( 'home', 'https://mad4b-local-oauth.test/wordpress' );
+update_option( 'siteurl', 'https://mad4b-local-oauth.test/wordpress' );
+MAD4B_SCP_Site_Profile::reset_cache();
+$site_base_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'site_base_url' );
+$site_base_method->setAccessible( true );
+$protocol_path_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'protocol_path' );
+$protocol_path_method->setAccessible( true );
+$metadata_for_issuer_method = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'metadata_url_for_issuer' );
+$metadata_for_issuer_method->setAccessible( true );
+$subdir_base = $site_base_method->invoke( null );
+if ( 'https://mad4b-local-oauth.test/wordpress' !== $subdir_base ) mad4b_local_oauth_fail( 'Subdirectory site base was not preserved.', $subdir_base );
+$subdir_endpoints = array(
+	'authorize' => MAD4B_SCP_Local_OAuth_Server::authorize_url(),
+	'token' => MAD4B_SCP_Local_OAuth_Server::token_url(),
+	'jwks' => MAD4B_SCP_Local_OAuth_Server::jwks_url(),
+	'revoke' => MAD4B_SCP_Local_OAuth_Server::revocation_url(),
+);
+$expected_subdir_endpoints = array(
+	'authorize' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/authorize',
+	'token' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/token',
+	'jwks' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/jwks',
+	'revoke' => 'https://mad4b-local-oauth.test/wordpress/oauth/mcp/revoke',
+);
+if ( $expected_subdir_endpoints !== $subdir_endpoints ) mad4b_local_oauth_fail( 'Subdirectory OAuth endpoints drifted.', $subdir_endpoints );
+if ( '/wordpress/oauth/mcp/authorize' !== $protocol_path_method->invoke( null, $subdir_endpoints['authorize'] ) ) mad4b_local_oauth_fail( 'Subdirectory authorization dispatch path drifted.' );
+$subdir_metadata = $metadata_for_issuer_method->invoke( null, 'https://mad4b-local-oauth.test/wordpress/oauth/mcp' );
+if ( 'https://mad4b-local-oauth.test/.well-known/oauth-authorization-server/wordpress/oauth/mcp' !== $subdir_metadata ) mad4b_local_oauth_fail( 'RFC authorization-server metadata path drifted for subdirectory issuer.', $subdir_metadata );
+if ( '/.well-known/oauth-authorization-server/wordpress/oauth/mcp' !== $protocol_path_method->invoke( null, $subdir_metadata ) ) mad4b_local_oauth_fail( 'Subdirectory metadata dispatch path drifted.' );
+update_option( 'home', $original_home );
+update_option( 'siteurl', $original_siteurl );
+MAD4B_SCP_Site_Profile::reset_cache();
+
 // Resolve the exact ChatGPT CIMD client without internet access. The runtime
 // HTTP filter models ChatGPT's production metadata document and proves that an
 // arbitrary HTTPS client URL is rejected before any outbound request occurs.

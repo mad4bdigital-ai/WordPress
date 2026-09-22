@@ -12,7 +12,7 @@ required_gate_markers = (
     "allowed_subjects_for_issuer",
     "is_trusted_issuer",
     "subject_allowed",
-    "/mcp/mad4b-chatgpt",
+    "resource_for_route( $route )",
     "issuer+subject+aud+resource",
     "mad4b_oauth_subject_not_approved",
     "post_signature_subject_reauthorization",
@@ -25,11 +25,16 @@ for marker in required_gate_markers:
     assert marker in gate, f"missing subject-gate marker: {marker}"
 
 for marker in (
+    "resource_for_route",
+    "'/mcp/mad4b-chatgpt'",
+    "'/mcp/mad4b-enrollment'",
+    "resource_identifier( 'mad4b-chatgpt' )",
+    "resource_identifier( 'mad4b-enrollment' )",
     "subject_allowed( $issuer, $validated['subject'] )",
     "mad4b_oauth_subject_not_approved",
     "openssl_verify",
 ):
-    assert marker in bridge, f"bridge must cryptographically reauthorize subject: {marker}"
+    assert marker in bridge, f"bridge must preserve exact resource and cryptographic subject binding: {marker}"
 
 assert "class-mad4b-scp-oauth-subject-gate.php" in plugin, "subject gate must be loaded by the plugin entry point"
 assert "MAD4B_SCP_OAuth_Subject_Gate::boot()" in boot, "subject gate must boot with the control plane"

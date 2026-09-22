@@ -122,6 +122,34 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
+      - name: Explicitly enroll disposable OAuth bridge site
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => 0,
+              "display_name" => "MAD4B OAuth Bridge",
+              "chatgpt_app_id" => "",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => false,
+              "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          if ( empty( $result["configured"] ) || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) {
+              throw new RuntimeException( "Explicit OAuth-only Site Profile enrollment did not bind the bridge fixture." );
+          }
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+              throw new RuntimeException( "OAuth-only bridge enrollment unexpectedly enabled governed write authority." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
+
       - name: Prove OAuth resource bridge token verification and fail-closed behavior
         shell: bash
         run: |
@@ -204,6 +232,34 @@ jobs:
           cp -R wp-content/plugins/mad4b-site-control-plane "$WP_PATH/wp-content/plugins/mad4b-site-control-plane"
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Explicitly enroll disposable hybrid OAuth site
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-wordpress-hybrid
+          php /tmp/wp-cli.phar eval '
+          $result = MAD4B_SCP_Site_Profile::save_current_site( array(
+              "expected_revision" => 0,
+              "display_name" => "MAD4B Hybrid OAuth",
+              "chatgpt_app_id" => "",
+              "oauth_user_ids" => array( get_current_user_id() ),
+              "oauth_enabled" => true,
+              "skills_enabled" => false,
+              "write_enabled" => false,
+              "production_write_confirmed" => false,
+              "provider_isolation_enabled" => false,
+              "managed_runtime_enabled" => false,
+              "acceptance_enabled" => false,
+          ) );
+          if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
+          if ( empty( $result["configured"] ) || empty( $result["origin_match"] ) || empty( $result["environment_match"] ) || ! MAD4B_SCP_Site_Profile::oauth_enabled() ) {
+              throw new RuntimeException( "Explicit OAuth-only Site Profile enrollment did not bind the hybrid fixture." );
+          }
+          if ( MAD4B_SCP_Staging_Write_Authority::eligible() ) {
+              throw new RuntimeException( "OAuth-only hybrid enrollment unexpectedly enabled governed write authority." );
+          }
+          ' --path="$WP_PATH" --user=mad4b-ci-admin
 
       - name: Prove local plus external issuer isolation and remote-read blast radius
         shell: bash

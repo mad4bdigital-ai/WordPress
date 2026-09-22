@@ -1,0 +1,99 @@
+{
+  "contract": "mad4b.provider-capability-contracts.v1",
+  "providers": {
+    "jetengine": {
+      "adapter_id": "jetengine",
+      "capabilities": {
+        "post_meta.read": {
+          "risk": "read",
+          "abilities": ["jetengine/get-post-meta", "jetengine/list-post-meta"],
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["Jet_Engine"], "functions": ["jet_engine"]}
+          ]
+        },
+        "cpt.read": {
+          "risk": "read",
+          "abilities": ["jetengine/get-cpt-definition"],
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["Jet_Engine"], "functions": ["jet_engine"]}
+          ]
+        },
+        "query_builder.read": {
+          "risk": "read",
+          "abilities": [],
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "class_any", "values": ["Jet_Engine\\Query_Builder\\Manager"]}
+          ]
+        },
+        "post_meta.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": ["jetengine/update-post-meta"],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.jetengine-post-meta.v1",
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["Jet_Engine"], "functions": ["jet_engine"]}
+          ]
+        }
+      }
+    },
+    "jetsmartfilters": {
+      "adapter_id": "jetsmartfilters",
+      "capabilities": {
+        "filters.read": {
+          "risk": "read",
+          "abilities": ["jetsmartfilters/list-filters", "jetsmartfilters/get-filter"],
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["Jet_Smart_Filters"], "functions": ["jet_smart_filters"]}
+          ]
+        },
+        "query_binding.read": {
+          "risk": "read",
+          "abilities": ["jetsmartfilters/get-query-binding"],
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["Jet_Smart_Filters"], "functions": ["jet_smart_filters"]}
+          ]
+        },
+        "filter_meta.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": ["jetsmartfilters/update-filter-meta"],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.jetsmartfilters-filter-meta.v1",
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["Jet_Smart_Filters"], "functions": ["jet_smart_filters"]}
+          ]
+        }
+      }
+    },
+    "bit_pi": {
+      "adapter_id": "bitflows",
+      "capabilities": {
+        "flows.read": {
+          "risk": "read",
+          "abilities": ["bitflows/list-flows", "bitflows/get-flow", "bitflows/get-executions"],
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["BitApps\\Pi\\Model\\Flow"]},
+            {"type": "declared_class_suffix_any", "values": ["\\Model\\Flow"]}
+          ]
+        },
+        "flow.execute": {
+          "risk": "high_risk_write",
+          "abilities": ["bitflows/run-flow"],
+          "reversible": false,
+          "probes": [
+            {"type": "adapter_available"},
+            {"type": "symbol_any", "classes": ["BitApps\\Pi\\src\\Flow\\FlowExecutor"]},
+            {"type": "declared_class_suffix_any", "values": ["\\FlowExecutor"]}
+          ]
+        }
+      }
+    }
+  }
+}
