@@ -28,7 +28,11 @@ final class MAD4B_SCP_Staging_Certification {
 				'type' => 'object',
 				'properties' => array(
 					'client_snapshot_token' => array( 'type' => 'string', 'maxLength' => 80 ),
-					'rollback_artifact_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}
+					'rollback_artifact_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' ),
+					'rollback_artifact_name' => array( 'type' => 'string', 'maxLength' => 255 ),
+				),
+				'additionalProperties' => false,
+			),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
 				'public' => false,
