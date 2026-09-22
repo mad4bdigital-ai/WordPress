@@ -16,6 +16,7 @@ function remove_action( $hook, $callback, $priority = 10 ) {
     return false;
 }
 function sanitize_key( $v ) { return strtolower( preg_replace('/[^a-z0-9_\-]/i','',(string)$v) ); }
+function sanitize_text_field( $v ) { return trim( (string) $v ); }
 function get_option( $k, $d = false ) { return $GLOBALS['option'] ?: $d; }
 function update_option( $k, $v, $autoload = null ) { $GLOBALS['option'] = $v; return true; }
 function is_admin() { return false; }
@@ -55,10 +56,12 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 }
 
 class FakeFrame { public $id; public $file; public function __construct($id,$file){$this->id=$id;$this->file=$file;} }
+class FakeComponent { public $type; private $name; public function __construct($type,$name){$this->type=$type;$this->name=$name;} public function get_name(){return $this->name;} }
 class FakeTrace {
-    private $frames; public function __construct($frames){$this->frames=$frames;}
+    private $frames; private $component; public function __construct($frames,$component=null){$this->frames=$frames;$this->component=$component;}
     public function get_filtered_trace(){return $this->frames;}
     public function get_caller(){return $this->frames ? $this->frames[0] : false;}
+    public function get_component(){return $this->component ?: new FakeComponent('unknown','Unknown');}
 }
 class QM_Doing_It_Wrong_Run {
     private $m,$t; public function __construct($m,$t){$this->m=$m;$this->t=$t;}
@@ -68,6 +71,15 @@ class QM_Deprecated_Function_Run extends QM_Doing_It_Wrong_Run {}
 class FakeData { public $actions = array(); }
 class FakeCollector { private $data; public function __construct($d){$this->data=$d;} public function get_data(){return $this->data;} }
 class QM_Collectors { public static $collector; public static function get($id){ return 'doing_it_wrong'===$id ? self::$collector : null; } }
+
+$GLOBALS['wpdb'] = (object) array(
+    'queries' => array(
+        array( 'SELECT 1', 0.010, 'Core_A::run', 'trace' => new FakeTrace(array(new FakeFrame('Alpha\\Reader::load()', '/srv/wordpress/wp-content/plugins/alpha/read.php')), new FakeComponent('plugin','Alpha')) ),
+        array( 'SELECT 1', 0.012, 'Core_A::run', 'trace' => new FakeTrace(array(new FakeFrame('Alpha\\Reader::load()', '/srv/wordpress/wp-content/plugins/alpha/read.php')), new FakeComponent('plugin','Alpha')) ),
+        array( 'SELECT 2', 0.060, 'Core_B::run', 'trace' => new FakeTrace(array(new FakeFrame('Beta\\Query::load()', '/srv/wordpress/wp-content/plugins/beta/query.php')), new FakeComponent('plugin','Beta')) ),
+        array( 'SELECT 3', 0.020, 'Core_C::run' ),
+    ),
+);
 
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-query-monitor-evidence-bridge.php';
 
@@ -108,4 +120,15 @@ $perf = $t['performance']['last_by_class']['frontend'];
 $check(37 === $perf['db_queries'], 'frontend DB query count captured');
 $check($perf['peak_memory_bytes'] > 0, 'frontend peak memory captured');
 $check($perf['server_elapsed_ms'] >= 100, 'frontend server elapsed captured');
-echo "mad4b.query-monitor-collector-bridge.runtime.v1: PASS\n";
+$check(isset($perf['db_profile']) && !empty($perf['db_profile']['available']), 'DB performance profile available');
+$check(4 === $perf['db_profile']['query_rows_observed'], 'DB performance profile query rows');
+$check(1 === $perf['db_profile']['duplicate_query_count'], 'duplicate query count derived');
+$check(1 === $perf['db_profile']['duplicate_group_count'], 'duplicate query group derived');
+$check(1 === $perf['db_profile']['slow_query_count'], 'slow query count derived');
+$check($perf['db_profile']['total_db_time_ms'] >= 102, 'DB time aggregate derived');
+$check(3 === $perf['db_profile']['extended_trace_count'], 'extended trace count derived');
+$check('Alpha\\Reader::load' === $perf['db_profile']['top_callers'][0]['caller'], 'top caller attribution derived');
+$check('plugin:Alpha' === $perf['db_profile']['top_components'][0]['component'], 'top component attribution derived');
+$check(false === strpos(json_encode($perf['db_profile']), 'SELECT 1'), 'raw SQL must not be returned in profile');
+$check(empty($perf['db_profile']['raw_sql_returned']), 'raw SQL safety flag must remain false');
+echo "mad4b.query-monitor-collector-bridge.runtime.v2: PASS\n";
