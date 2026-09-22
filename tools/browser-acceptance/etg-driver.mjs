@@ -184,6 +184,30 @@ async function currentDomIds(page) {
   });
 }
 
+export function chooseNextPaginationIndex(items) {
+  const visible = (Array.isArray(items) ? items : [])
+    .map((item, index) => ({ ...item, index }))
+    .filter((item) => item.visible !== false);
+
+  const explicitNext = visible.find((item) =>
+    /\bnext\b/i.test(String(item.className || "")) ||
+    /next/i.test(String(item.ariaLabel || ""))
+  );
+  if (explicitNext) return explicitNext.index;
+
+  const active = visible.find((item) =>
+    item.ariaCurrent === "page" ||
+    /(?:^|\s)(?:active|current)(?:\s|$)/i.test(String(item.className || ""))
+  );
+  const currentValue = Number.isFinite(Number(active?.value)) ? Number(active.value) : 1;
+
+  const numeric = visible
+    .filter((item) => Number.isFinite(Number(item.value)) && Number(item.value) > currentValue)
+    .sort((a, b) => Number(a.value) - Number(b.value));
+
+  return numeric.length ? numeric[0].index : -1;
+}
+
 async function clickNextPagination(page) {
   const next = page.locator(
     ".jet-filters-pagination__item.next .jet-filters-pagination__link, " +
@@ -195,17 +219,18 @@ async function clickNextPagination(page) {
   const count = await next.count();
   if (!count) return false;
 
-  let chosen = -1;
-  let maxValue = -1;
+  const items = [];
   for (let i = 0; i < count; i += 1) {
     const loc = next.nth(i);
-    if (!await loc.isVisible().catch(() => false)) continue;
-    const cls = String(await loc.getAttribute("class").catch(() => "") || "");
-    const aria = String(await loc.getAttribute("aria-label").catch(() => "") || "");
-    const value = Number.parseInt(String(await loc.getAttribute("data-value").catch(() => "") || ""), 10);
-    if (/\bnext\b/i.test(cls) || /next/i.test(aria)) { chosen = i; break; }
-    if (Number.isFinite(value) && value > maxValue) { maxValue = value; chosen = i; }
+    items.push({
+      visible: await loc.isVisible().catch(() => false),
+      className: String(await loc.getAttribute("class").catch(() => "") || ""),
+      ariaLabel: String(await loc.getAttribute("aria-label").catch(() => "") || ""),
+      ariaCurrent: String(await loc.getAttribute("aria-current").catch(() => "") || ""),
+      value: Number.parseInt(String(await loc.getAttribute("data-value").catch(() => "") || ""), 10)
+    });
   }
+  const chosen = chooseNextPaginationIndex(items);
   if (chosen < 0) return false;
   const before = JSON.stringify(await currentDomIds(page));
   await next.nth(chosen).click({ timeout: 10000 });
