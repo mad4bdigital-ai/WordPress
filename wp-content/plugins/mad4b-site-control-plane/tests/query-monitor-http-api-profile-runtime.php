@@ -10,6 +10,8 @@ class WP_Error {
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function sanitize_text_field( $v ) { return trim( strip_tags( (string) $v ) ); }
 function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $v ) ); }
+$GLOBALS['mad4b_http_updated_option'] = null;
+function update_option( $key, $value, $autoload = false ) { $GLOBALS['mad4b_http_updated_option'] = array( 'key' => $key, 'value' => $value ); return true; }
 
 class MAD4B_HTTP_Component {
 	public $type;
@@ -72,6 +74,11 @@ $requests[] = $r;
 
 QM_Collectors::$collector = new MAD4B_HTTP_Collector( $requests );
 
+final class MAD4B_SCP_Live_Acceptance_Observer {
+	const TELEMETRY_OPTION = 'mad4b_http_profile_test_option';
+	public static function staging_capture_allowed() { return true; }
+}
+
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-query-monitor-evidence-bridge.php';
 
 function mad4b_http_assert( $condition, $message, $data = null ) {
@@ -101,4 +108,42 @@ foreach ( array( 'VERY_SECRET_TOKEN', 'SECOND_SECRET', 'LOCAL_SECRET', '/private
 	mad4b_http_assert( false === strpos( $encoded, $forbidden ), 'HTTP profile leaked forbidden request detail: ' . $forbidden, $p );
 }
 
-echo "mad4b.query-monitor-http-api-profile.runtime.v1: PASS\n";
+
+// Prove post-QM processing enrichment updates only the exact same request sample.
+$sample_id = str_repeat( 'a', 64 );
+$reflection = new ReflectionClass( 'MAD4B_SCP_Query_Monitor_Evidence_Bridge' );
+foreach ( array(
+	'request_sample_id' => $sample_id,
+	'last_capture_build' => str_repeat( 'b', 64 ),
+	'last_capture_class' => 'wp_admin',
+	'last_capture_telemetry' => array(
+		'events' => array( array( 'type' => 'preserve-me' ) ),
+		'performance' => array(
+			'samples' => array(
+				array( 'sample_id' => str_repeat( 'c', 64 ), 'request_class' => 'frontend', 'http_api_profile' => array( 'available' => false ) ),
+				array( 'sample_id' => $sample_id, 'request_class' => 'wp_admin', 'http_api_profile' => array( 'available' => false ) ),
+			),
+			'last_by_class' => array(
+				'wp_admin' => array( 'sample_id' => $sample_id, 'request_class' => 'wp_admin', 'http_api_profile' => array( 'available' => false ) ),
+			),
+		),
+	),
+) as $property => $value ) {
+	$p_ref = $reflection->getProperty( $property );
+	$p_ref->setAccessible( true );
+	$p_ref->setValue( null, $value );
+}
+
+$outputters = array( 'sentinel' => true );
+$returned = MAD4B_SCP_Query_Monitor_Evidence_Bridge::capture_processed_http_profile( $outputters, null );
+mad4b_http_assert( $outputters === $returned, 'QM outputter filter must be transparent', $returned );
+mad4b_http_assert( is_array( $GLOBALS['mad4b_http_updated_option'] ), 'processed HTTP profile was not persisted' );
+mad4b_http_assert( 'mad4b_http_profile_test_option' === $GLOBALS['mad4b_http_updated_option']['key'], 'telemetry option key drifted', $GLOBALS['mad4b_http_updated_option'] );
+$stored = $GLOBALS['mad4b_http_updated_option']['value'];
+mad4b_http_assert( 'preserve-me' === $stored['events'][0]['type'], 'HTTP enrichment overwrote already-collected telemetry events', $stored );
+mad4b_http_assert( empty( $stored['performance']['samples'][0]['http_api_profile']['available'] ), 'HTTP profile leaked into a different request sample', $stored );
+mad4b_http_assert( ! empty( $stored['performance']['samples'][1]['http_api_profile']['available'] ), 'matching request sample was not enriched', $stored );
+mad4b_http_assert( ! empty( $stored['performance']['last_by_class']['wp_admin']['http_api_profile']['available'] ), 'last_by_class was not enriched', $stored );
+mad4b_http_assert( $sample_id === $stored['performance']['last_http_api_profile_sample_id'], 'enriched sample identity drifted', $stored );
+
+echo "mad4b.query-monitor-http-api-profile.runtime.v2: PASS\n";
