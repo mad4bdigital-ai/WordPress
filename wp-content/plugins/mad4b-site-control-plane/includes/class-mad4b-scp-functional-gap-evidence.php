@@ -1234,9 +1234,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 					'version' => isset( $row['version'] ) ? (string) $row['version'] : '',
 					'active' => ! empty( $row['active'] ),
 					'tree_sha256' => isset( $tree['tree_sha256'] ) ? strtolower( (string) $tree['tree_sha256'] ) : '',
+					'census_sha256' => isset( $tree['census_sha256'] ) ? strtolower( (string) $tree['census_sha256'] ) : '',
 					'file_count' => isset( $tree['file_count'] ) ? (int) $tree['file_count'] : 0,
 					'total_bytes' => isset( $tree['total_bytes'] ) ? (int) $tree['total_bytes'] : 0,
 					'scan_stable' => ! empty( $tree['scan_stable'] ),
+					'metadata_only' => ! empty( $tree['metadata_only'] ),
+					'content_rehashed' => array_key_exists( 'content_rehashed', $tree ) ? (bool) $tree['content_rehashed'] : true,
 					'comparison' => isset( $tree['comparison'] ) ? sanitize_key( (string) $tree['comparison'] ) : '',
 					'error' => isset( $tree['error'] ) ? sanitize_key( (string) $tree['error'] ) : '',
 				);
