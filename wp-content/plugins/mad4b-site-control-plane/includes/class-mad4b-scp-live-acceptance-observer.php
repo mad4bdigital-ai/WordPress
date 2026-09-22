@@ -192,14 +192,43 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			&& (int) $sample['db_queries'] >= 0
 			&& is_numeric( $sample['peak_memory_bytes'] )
 			&& (int) $sample['peak_memory_bytes'] > 0;
+
+		// Reference baseline captured on the exact rc.38 staging build.
+		$reference = array(
+			'contract' => 'mad4b.frontend-performance-reference.v1',
+			'source_commit_sha' => '67168b9dc0ed468f5ac44c649c24d4327c8a1162',
+			'server_elapsed_ms' => 810.392,
+			'db_queries' => 47,
+			'peak_memory_bytes' => 50331648,
+		);
+		$budget = array(
+			'server_elapsed_ms_max' => max( 2000.0, 2.0 * (float) $reference['server_elapsed_ms'] ),
+			'db_queries_max' => max( 100, 2 * (int) $reference['db_queries'] ),
+			'peak_memory_bytes_max' => max( 134217728, 2 * (int) $reference['peak_memory_bytes'] ),
+		);
+		$budget_failures = array();
+		if ( $sample_valid ) {
+			if ( (float) $sample['server_elapsed_ms'] > (float) $budget['server_elapsed_ms_max'] ) $budget_failures[] = 'server_elapsed_ms_budget_exceeded';
+			if ( (int) $sample['db_queries'] > (int) $budget['db_queries_max'] ) $budget_failures[] = 'db_queries_budget_exceeded';
+			if ( (int) $sample['peak_memory_bytes'] > (int) $budget['peak_memory_bytes_max'] ) $budget_failures[] = 'peak_memory_budget_exceeded';
+		}
+		$budget_pass = $sample_valid && empty( $budget_failures );
 		$fresh = self::staging_capture_allowed() && $current_match && $frontend_observed;
-		$ready = $fresh && $sample_valid;
+		$ready = $fresh && $sample_valid && $budget_pass;
+		$state = ! $current_match ? 'stale_build_evidence'
+			: ( ! $frontend_observed ? 'frontend_not_observed'
+			: ( ! $sample_valid ? 'frontend_sample_invalid'
+			: ( $budget_pass ? 'ready' : 'performance_budget_exceeded' ) ) );
 		return array(
-			'contract' => 'mad4b.frontend-performance-evidence.v1',
+			'contract' => 'mad4b.frontend-performance-evidence.v2',
 			'ready' => $ready,
-			'state' => $ready ? 'ready' : ( ! $current_match ? 'stale_build_evidence' : ( ! $frontend_observed ? 'frontend_not_observed' : 'frontend_sample_invalid' ) ),
-			'baseline_only' => true,
-			'budget_evaluated' => false,
+			'state' => $state,
+			'baseline_only' => false,
+			'budget_evaluated' => $sample_valid,
+			'budget_pass' => $budget_pass,
+			'budget_failures' => $budget_failures,
+			'budget' => $budget,
+			'reference_baseline' => $reference,
 			'current_build_match' => $current_match,
 			'frontend_observed' => $frontend_observed,
 			'capture_started_at' => isset( $telemetry['capture_started_at'] ) ? (string) $telemetry['capture_started_at'] : '',
@@ -276,7 +305,9 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	public static function snapshot_verify( $input = array() ) { $input = is_array( $input ) ? $input : array(); $client = isset( $input['client_snapshot_token'] ) ? trim( (string) $input['client_snapshot_token'] ) : ''; $live = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array(); $token = isset( $live['identity_token'] ) ? (string) $live['identity_token'] : ''; $exact = preg_match( '/^sha256:[a-f0-9]{64}$/', $client ) && '' !== $token && hash_equals( $token, $client ); return array( 'contract' => self::SNAPSHOT_VERIFY_CONTRACT, 'live_snapshot_token' => $token, 'client_snapshot_token' => preg_match( '/^sha256:[a-f0-9]{64}$/', $client ) ? $client : '', 'exact_match' => (bool) $exact, 'skill_count' => isset( $live['skill_count'] ) ? (int) $live['skill_count'] : 0, 'app_id' => isset( $live['app_id'] ) ? (string) $live['app_id'] : '', 'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '' ); }
 
 	public static function live_acceptance_status( $input = array() ) {
-		$input = is_array( $input ) ? $input : array(); $provenance = self::build_provenance_status(); $qm = self::query_monitor_status(); $performance = self::frontend_performance_status(); $wpml = self::external_wpml_receipt_status(); $external = self::external_handshake_attestation_status(); $rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array(); $skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array(); $write_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array(); $write_runtime = self::write_runtime_certification_status(); $snapshot_local = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array(); $snapshot_external = ! empty( $input['client_snapshot_token'] ) ? self::snapshot_verify( $input ) : array( 'contract' => self::SNAPSHOT_VERIFY_CONTRACT, 'exact_match' => false, 'state' => 'pending_external_evidence' ); $provider_execution_leaks = isset( $external['provider_execution_mount_leaks'] ) ? $external['provider_execution_mount_leaks'] : array(); $environment_enrolled = self::nonproduction_profile_enrolled(); $acceptance_enabled = $environment_enrolled && class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::acceptance_enabled();
+		$input = is_array( $input ) ? $input : array(); $provenance = self::build_provenance_status(); $qm = self::query_monitor_status(); $performance = self::frontend_performance_status(); $wpml = self::external_wpml_receipt_status(); $external = self::external_handshake_attestation_status(); $rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array(); $skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array(); $write_authority = class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_authority_status' )
+			? MAD4B_SCP_Live_Truth::current_authority_status()
+			: ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array() ); $write_runtime = self::write_runtime_certification_status(); $snapshot_local = class_exists( 'MAD4B_SCP_Skill_Snapshot_Identity' ) ? MAD4B_SCP_Skill_Snapshot_Identity::build() : array(); $snapshot_external = ! empty( $input['client_snapshot_token'] ) ? self::snapshot_verify( $input ) : array( 'contract' => self::SNAPSHOT_VERIFY_CONTRACT, 'exact_match' => false, 'state' => 'pending_external_evidence' ); $provider_execution_leaks = isset( $external['provider_execution_mount_leaks'] ) ? $external['provider_execution_mount_leaks'] : array(); $environment_enrolled = self::nonproduction_profile_enrolled(); $acceptance_enabled = $environment_enrolled && class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::acceptance_enabled();
 		$gates = array(
 			'environment_guard' => self::gate( $environment_enrolled, $environment_enrolled ? 'ready' : 'blocked', true, 'mad4b.environment-guard', $environment_enrolled ? array() : array( 'not_enrolled_governed_nonproduction_origin' ) ),
 			'acceptance_capture' => self::gate( $acceptance_enabled, $acceptance_enabled ? 'ready' : 'blocked', true, 'mad4b.acceptance-capture', $acceptance_enabled ? array() : array( 'site_profile_acceptance_disabled' ) ),
