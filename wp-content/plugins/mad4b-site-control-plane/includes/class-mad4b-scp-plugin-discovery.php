@@ -80,8 +80,31 @@ final class MAD4B_SCP_Plugin_Discovery {
 			if ( ! empty( $item['support_request'] ) ) $requests[] = $item['support_request'];
 		}
 
-		$zero_touch = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? MAD4B_SCP_Functional_Gap_Evidence::summary() : array( 'contract'=>'mad4b.functional-gap-zero-touch.v1', 'ready'=>false, 'promotion_authorized'=>false, 'blockers'=>array( 'functional_gap_evidence_unavailable' ) );
-		$zero_touch_map = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? MAD4B_SCP_Functional_Gap_Evidence::decision_map() : array();
+		$zero_touch_projection = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' )
+			? MAD4B_SCP_Functional_Gap_Evidence::coverage_projection()
+			: array(
+				'contract'=>'mad4b.functional-gap-coverage-projection.v1',
+				'snapshot_identity_sha256'=>'',
+				'summary'=>array( 'contract'=>'mad4b.functional-gap-zero-touch.v1', 'ready'=>false, 'promotion_authorized'=>false, 'blockers'=>array( 'functional_gap_evidence_unavailable' ) ),
+				'decisions'=>array(),
+				'promotion_authorized'=>false,
+				'mutation_authorized'=>false,
+			);
+		$zero_touch = isset( $zero_touch_projection['summary'] ) && is_array( $zero_touch_projection['summary'] ) ? $zero_touch_projection['summary'] : array();
+		$zero_touch_map = isset( $zero_touch_projection['decisions'] ) && is_array( $zero_touch_projection['decisions'] ) ? $zero_touch_projection['decisions'] : array();
+		$projection_snapshot_identity = isset( $zero_touch_projection['snapshot_identity_sha256'] ) ? strtolower( (string) $zero_touch_projection['snapshot_identity_sha256'] ) : '';
+		$projection_current_identity = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? strtolower( (string) MAD4B_SCP_Functional_Gap_Evidence::current_runtime_identity_sha256() ) : '';
+		$projection_identity_match = '' !== $projection_snapshot_identity && '' !== $projection_current_identity && hash_equals( $projection_snapshot_identity, $projection_current_identity );
+		$zero_touch['projection_identity_match'] = $projection_identity_match;
+		$zero_touch['projection_snapshot_identity_sha256'] = $projection_snapshot_identity;
+		$zero_touch['projection_current_identity_sha256'] = $projection_current_identity;
+		if ( ! $projection_identity_match ) {
+			$zero_touch_map = array();
+			$zero_touch['ready'] = false;
+			$zero_touch['blockers'] = isset( $zero_touch['blockers'] ) && is_array( $zero_touch['blockers'] ) ? $zero_touch['blockers'] : array();
+			$zero_touch['blockers'][] = 'coverage_projection_runtime_identity_changed';
+			$zero_touch['blockers'] = array_values( array_unique( array_filter( array_map( 'sanitize_key', $zero_touch['blockers'] ) ) ) );
+		}
 		foreach ( $items as &$coverage_item ) {
 			$family = isset( $coverage_item['family'] ) ? sanitize_key( (string) $coverage_item['family'] ) : '';
 			if ( '' === $family || ! isset( $zero_touch_map[ $family ] ) ) continue;
@@ -114,6 +137,15 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'functional_family_counts' => self::functional_state_counts( $functional_family_states ),
 			'functional_family_states' => $functional_family_states,
 			'zero_touch' => $zero_touch,
+			'zero_touch_projection' => array(
+				'contract' => isset( $zero_touch_projection['contract'] ) ? (string) $zero_touch_projection['contract'] : 'mad4b.functional-gap-coverage-projection.v1',
+				'snapshot_identity_sha256' => $projection_snapshot_identity,
+				'current_identity_sha256' => $projection_current_identity,
+				'identity_match' => $projection_identity_match,
+				'decision_count' => count( $zero_touch_map ),
+				'promotion_authorized' => false,
+				'mutation_authorized' => false,
+			),
 			'truncated' => count( $plugins ) > self::MAX_PLUGINS,
 		);
 	}
