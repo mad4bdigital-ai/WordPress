@@ -15,8 +15,8 @@ def require(text, marker, label):
     if marker not in text:
         raise SystemExit(f"missing {label}: {marker}")
 
-require(main, "Version: 0.4.0-rc.45", "rc.45 plugin header")
-require(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.45' );", "rc.45 runtime constant")
+require(main, "Version: 0.4.0-rc.46", "rc.46 plugin header")
+require(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.46' );", "rc.46 runtime constant")
 require(main, "class-mad4b-scp-staging-certification.php", "staging certification include")
 require(main, "MAD4B_SCP_Staging_Certification::boot();", "staging certification boot")
 
@@ -188,12 +188,12 @@ if "browser_runtime_parity_verified' => true" in cert:
 
 expected_rollback = {
     "contract": "mad4b.rollback-candidate.v1",
-    "source_commit_sha": "306ea6e957312eac762afec13b9ea0377b3ee61c",
-    "control_plane_version": "0.4.0-rc.44",
-    "build_fingerprint": "13f55dccf191abf53dba538e146a2eeb636666c97510de5940309160b92aeae8",
-    "package_manifest_digest": "ca53d8d405af69832320d6078f6de6f9c5392568e4083c6484e790a487582530",
-    "artifact_sha256": "7db9fd9faedd0984a71c87db87d28ebef5140d1bdfd7b3c9903fec4d021fa298",
-    "artifact_name": "mad4b-site-control-plane-0.4.0-rc.44.zip",
+    "source_commit_sha": "b79412cf87a6d62740dbc22566a14a682553f553",
+    "control_plane_version": "0.4.0-rc.45",
+    "build_fingerprint": "26a76b8cfaac60e7b500a38e2da191118f60cd379b1afdf2872b28e9d30e7bb1",
+    "package_manifest_digest": "b44ab17cec07ad8dd4753da4d3a00b38f192551f4b2cc21c986b5d63a47a5dec",
+    "artifact_sha256": "2e9cee2320f704011c2ce9148031aa0aadbf3a6c8058d58a9ede5c5727f18c59",
+    "artifact_name": "mad4b-site-control-plane-0.4.0-rc.45.zip",
 }
 for key, value in expected_rollback.items():
     if rollback.get(key) != value:
