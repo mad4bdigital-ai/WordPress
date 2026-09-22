@@ -15,7 +15,7 @@ for marker in [
 assert 'mad4b/provider-functional-coverage' in registry
 for marker in ['functional_family_counts','contract_discovery_family_count','contract_discovery_families','contract_discovery_is_non_authorizing']:
     assert marker in registry, marker
-for marker in ['Functional Gaps','Functional coverage gaps','Provider-family summary','Adapter covered','Runtime-only families','runtime_only_family_count','ordered by blocking state and provider risk','deduplicated by family','Contract discovery','Contract discovery required','Evidence needed','Safe now','Blocked scope','Source</th>','runtime-only','repository-backed','specialized','unregistered','adapter_runtime_source','repository_artifact_count','risk_ranks','uasort( $groups','Next safe action','status_only_candidate','contract_discovery_required','safety_blocked']:
+for marker in ['Functional Gaps','Functional coverage gaps','Provider-family summary','Adapter covered','Runtime-only families','runtime_only_family_count','member_version','ordered by blocking state and provider risk','deduplicated by family','Contract discovery','Contract discovery required','Evidence needed','Safe now','Blocked scope','Source</th>','runtime-only','repository-backed','specialized','unregistered','adapter_runtime_source','repository_artifact_count','risk_ranks','uasort( $groups','Next safe action','status_only_candidate','contract_discovery_required','safety_blocked']:
     assert marker in ui, marker
 for forbidden in ['$_POST','admin_post_','$wpdb->insert','$wpdb->update','$wpdb->delete']:
     assert forbidden not in ui, forbidden
