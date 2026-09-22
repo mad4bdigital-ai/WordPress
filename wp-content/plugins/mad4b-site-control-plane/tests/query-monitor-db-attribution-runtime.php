@@ -15,6 +15,7 @@ $GLOBALS['mad4b_qm_actions'] = array();
 $GLOBALS['mad4b_qm_options'] = array();
 $GLOBALS['mad4b_qm_env'] = 'staging';
 $GLOBALS['mad4b_qm_admin'] = true;
+$GLOBALS['mad4b_qm_force_no_symlink'] = true;
 
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['mad4b_qm_actions'][$hook][$priority][] = $callback; }
 function remove_action() { return true; }
@@ -26,6 +27,7 @@ function is_admin() { return ! empty( $GLOBALS['mad4b_qm_admin'] ); }
 function current_user_can( $cap ) { return 'manage_options' === $cap; }
 function get_option( $key, $default = false ) { return array_key_exists( $key, $GLOBALS['mad4b_qm_options'] ) ? $GLOBALS['mad4b_qm_options'][$key] : $default; }
 function update_option( $key, $value, $autoload = false ) { $GLOBALS['mad4b_qm_options'][$key] = $value; return true; }
+function apply_filters( $hook, $value ) { if ( 'mad4b_qm_symlink_available' === $hook && ! empty( $GLOBALS['mad4b_qm_force_no_symlink'] ) ) return false; return $value; }
 
 final class MAD4B_SCP_Site_Profile {
 	public static function current_environment() { return $GLOBALS['mad4b_qm_env']; }
@@ -54,10 +56,11 @@ mad4b_qm_assert( 'enablement_available' === $status['state'], 'fresh Staging ins
 mad4b_qm_assert( ! empty( $status['safe_to_enable'] ), 'fresh Staging install must be safe to enable' );
 
 $enabled = MAD4B_SCP_Query_Monitor_Evidence_Bridge::maybe_enable_db_attribution();
-mad4b_qm_assert( is_link( WP_CONTENT_DIR . '/db.php' ), 'Query Monitor db.php symlink was not created' );
-mad4b_qm_assert( ! empty( $enabled['dropin_owned_by_query_monitor'] ), 'created drop-in must be recognized as Query Monitor owned' );
+mad4b_qm_assert( file_exists( WP_CONTENT_DIR . '/db.php' ) && ! is_link( WP_CONTENT_DIR . '/db.php' ), 'bounded Query Monitor loader was not created when symlink was unavailable' );
+mad4b_qm_assert( false !== strpos( (string) file_get_contents( WP_CONTENT_DIR . '/db.php' ), MAD4B_SCP_Query_Monitor_Evidence_Bridge::ATTRIBUTION_LOADER_MARKER ), 'bounded loader marker missing' );
+mad4b_qm_assert( ! empty( $enabled['dropin_owned_by_query_monitor'] ) && 'mad4b_bounded_loader' === $enabled['dropin_ownership'], 'created loader must be recognized as bounded Query Monitor ownership' );
 mad4b_qm_assert( 'query_monitor_dropin_reload_required' === $enabled['state'], 'newly created drop-in must require request reload before QM_DB can be active' );
-mad4b_qm_assert( ! empty( $enabled['bootstrap']['created'] ), 'bootstrap evidence must record creation' );
+mad4b_qm_assert( ! empty( $enabled['bootstrap']['created'] ) && 'bounded_loader' === $enabled['bootstrap']['method'], 'bootstrap evidence must record bounded-loader creation' );
 mad4b_qm_assert( empty( $enabled['production_changed'] ), 'Staging attribution bootstrap must never claim Production mutation' );
 
 @unlink( WP_CONTENT_DIR . '/db.php' );
@@ -84,4 +87,4 @@ mad4b_qm_assert( empty( $production['production_changed'] ), 'Production status 
 @rmdir( $content );
 @rmdir( $root );
 
-echo "mad4b.query-monitor-db-attribution.runtime.v1: PASS\n";
+echo "mad4b.query-monitor-db-attribution.runtime.v2: PASS\n";
