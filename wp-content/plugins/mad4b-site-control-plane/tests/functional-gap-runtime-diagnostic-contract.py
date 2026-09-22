@@ -5,27 +5,26 @@ ROOT = Path(__file__).resolve().parents[1]
 diag = (ROOT / 'tests/runtime-functional-gap-diagnostic.php').read_text('utf-8')
 
 required = [
-    "mad4b.runtime-functional-gap-diagnostic.v1",
-    "'mutation_performed' => false",
-    "'remote_request_performed' => false",
-    "'secret_values_returned' => false",
-    "'raw_sql_performed' => false",
-    "$secret_pattern",
-    "'wpl_access_token'",
-    "'wpl_api_key'",
-    "'rest_routes'",
-    "'ajax_hooks'",
-    "'option_presence'",
-    "'cron_hooks'",
-    "'plugin_tree'",
-    "hash_file( 'sha256'",
-    "RecursiveDirectoryIterator",
+    "Deprecated compatibility wrapper for zero-touch functional-gap evidence",
+    "mad4b/functional-gap-runtime-evidence",
+    "MAD4B_SCP_Functional_Gap_Evidence::snapshot()",
+    "mad4b.functional-gap-zero-touch.v1",
+    "mad4b.runtime-functional-gap-evidence.v2",
+    "'promotion_authorized'] = false",
+    "zero_touch_snapshot_identity_sha256",
+    "repository_evidence_valid",
 ]
 for marker in required:
     if marker not in diag:
-        raise SystemExit(f'missing diagnostic invariant: {marker}')
+        raise SystemExit(f'missing compatibility-wrapper invariant: {marker}')
 
 for forbidden in [
+    "get_plugins(",
+    "RecursiveDirectoryIterator",
+    "hash_file(",
+    "rest_get_server(",
+    "_get_cron_array(",
+    "get_option( 'wpl_",
     "update_option(",
     "add_option(",
     "delete_option(",
@@ -40,13 +39,8 @@ for forbidden in [
     "$wpdb->delete(",
     "activate_plugin(",
     "deactivate_plugins(",
-    "wp_schedule_event(",
-    "wp_clear_scheduled_hook(",
 ]:
     if forbidden in diag:
-        raise SystemExit(f'functional-gap runtime diagnostic must remain read-only: {forbidden}')
+        raise SystemExit(f'compatibility wrapper reintroduced independent runtime logic: {forbidden}')
 
-if "['value']" in diag and "secret_pattern" not in diag:
-    raise SystemExit('diagnostic may expose option values without redaction policy')
-
-print('mad4b.runtime-functional-gap-diagnostic.contract.v1: PASS')
+print('mad4b.runtime-functional-gap-diagnostic-wrapper.contract.v2: PASS')
