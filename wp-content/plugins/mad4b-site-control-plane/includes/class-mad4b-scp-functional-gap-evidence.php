@@ -229,7 +229,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		);
 	}
 
-	private static function plugin_tree( $plugin_file, array $expected_hashes = array() ) {
+	private static function plugin_tree( $plugin_file, array $expected_hashes = array(), $repeat_on_mismatch = true ) {
 		$expected = array();
 		foreach ( $expected_hashes as $digest ) {
 			$digest = strtolower( trim( (string) $digest ) );
@@ -247,6 +247,14 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			$first['scan_stable'] = true;
 			$first['scan_attempts'] = 1;
 			$first['comparison'] = 'exact_repository_match';
+			$first['scan_strategy'] = 'single_pass_exact_match';
+			return $first;
+		}
+		if ( ! $repeat_on_mismatch ) {
+			$first['scan_stable'] = true;
+			$first['scan_attempts'] = 1;
+			$first['comparison'] = 'runtime_identity_captured';
+			$first['scan_strategy'] = 'single_pass_non_authorizing_identity';
 			return $first;
 		}
 		$second = self::plugin_tree_once( $plugin_file );
@@ -263,6 +271,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			&& (int) ( isset( $first['total_bytes'] ) ? $first['total_bytes'] : -1 ) === (int) ( isset( $second['total_bytes'] ) ? $second['total_bytes'] : -2 );
 		$second['scan_stable'] = $stable;
 		$second['scan_attempts'] = 2;
+		$second['scan_strategy'] = 'double_pass_drift_confirmation';
 		$second['first_tree_sha256'] = $first_hash;
 		$second['comparison'] = $stable ? ( isset( $expected[ $second_hash ] ) ? 'exact_repository_match' : 'stable_runtime_drift' ) : 'runtime_tree_changed_during_scan';
 		if ( ! $stable ) $second['error'] = 'runtime_tree_unstable';
@@ -520,12 +529,14 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 				$normalized = self::normalize_plugin_file( $plugin_file );
 				if ( ! is_array( $rule ) || ! self::plugin_matches_policy_family( $normalized, $rule ) ) continue;
 				$is_active = isset( $active_set[ $normalized ] );
+				$mode = isset( $rule['evaluation_mode'] ) ? sanitize_key( (string) $rule['evaluation_mode'] ) : '';
+				$repeat_on_mismatch = ! in_array( $mode, array( 'runtime_only','premium_semantic','composite_behavioral' ), true );
 				$families[ $family ][] = array(
 					'plugin_file' => (string) $plugin_file,
 					'name' => isset( $headers['Name'] ) ? sanitize_text_field( (string) $headers['Name'] ) : '',
 					'version' => isset( $headers['Version'] ) ? sanitize_text_field( (string) $headers['Version'] ) : '',
 					'active' => $is_active,
-					'plugin_tree' => ! $is_active ? array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned' ) : ( $deep_scan ? self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ) ) : array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'repository_evidence_invalid_not_scanned' ) ),
+					'plugin_tree' => ! $is_active ? array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'inactive_not_scanned', 'scan_strategy'=>'none' ) : ( $deep_scan ? self::plugin_tree( $plugin_file, self::repository_tree_hashes( $repository, $family ), $repeat_on_mismatch ) : array( 'file_count'=>0, 'total_bytes'=>0, 'tree_sha256'=>'', 'scan_stable'=>false, 'scan_attempts'=>0, 'comparison'=>'repository_evidence_invalid_not_scanned', 'scan_strategy'=>'none' ) ),
 				);
 			}
 			usort( $families[ $family ], static function ( $a, $b ) { return strcmp( $a['plugin_file'], $b['plugin_file'] ); } );
