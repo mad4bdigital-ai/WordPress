@@ -62,6 +62,8 @@ required = [
     'canonical_digest',
     'canonical_digest_lines',
     'base64.b64encode',
+    'if not value:',
+    'return [f"{path}\\tl:0"]',
     '\\tb:',
     '\\ti:',
     '\\ts:',
