@@ -84,9 +84,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$clients = self::clients();
 		$issuer_validation = self::configured_issuer_validation();
 		$issuer_valid = ! is_wp_error( $issuer_validation );
-		$https = 'https' === strtolower( (string) wp_parse_url( self::issuer(), PHP_URL_SCHEME ) );
+		$transport_allowed = self::issuer_transport_allowed( self::issuer() );
 		$client_policy_ready = ! empty( $clients ) || self::cimd_supported();
-		$effective = self::enabled() && self::environment_allowed() && $https && $issuer_valid && $store_ready && $key_ready && $client_policy_ready && ! is_wp_error( self::$runtime_error );
+		$effective = self::enabled() && self::environment_allowed() && $transport_allowed && $issuer_valid && $store_ready && $key_ready && $client_policy_ready && ! is_wp_error( self::$runtime_error );
 		return array(
 			'contract' => self::CONTRACT,
 			'configured' => self::enabled(),
@@ -96,6 +96,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'issuer' => self::issuer(),
 			'issuer_same_origin_required' => true,
 			'issuer_configuration_valid' => $issuer_valid,
+			'issuer_transport_allowed' => $transport_allowed,
+			'http_loopback_local_only' => true,
 			'authorization_endpoint' => self::authorize_url(),
 			'token_endpoint' => self::token_url(),
 			'jwks_uri' => self::jwks_url(),
@@ -1043,7 +1045,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	private static function configured_issuer_validation() {
 		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ) return self::site_base_url() . self::ISSUER_PATH;
 		$configured = rtrim( trim( (string) constant( 'MAD4B_MCP_LOCAL_OAUTH_ISSUER' ) ), '/' );
-		if ( strlen( $configured ) > self::MAX_URI_BYTES || ! self::valid_https_url( $configured ) ) return new WP_Error( 'mad4b_local_oauth_issuer_invalid', 'Configured local OAuth issuer must be a bounded HTTPS URL without credentials, query or fragment.' );
+		if ( strlen( $configured ) > self::MAX_URI_BYTES || ! self::issuer_transport_allowed( $configured ) ) return new WP_Error( 'mad4b_local_oauth_issuer_invalid', 'Configured local OAuth issuer must be HTTPS, except bounded HTTP loopback in the local environment.' );
 		if ( ! self::same_origin( $configured, self::origin() ) ) return new WP_Error( 'mad4b_local_oauth_issuer_cross_origin', 'Configured local OAuth issuer must use the same origin as this WordPress site.' );
 		return $configured;
 	}
@@ -1059,6 +1061,17 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$port_a = isset( $a['port'] ) ? (int) $a['port'] : ( 'https' === $scheme_a ? 443 : 80 );
 		$port_b = isset( $b['port'] ) ? (int) $b['port'] : ( 'https' === $scheme_b ? 443 : 80 );
 		return '' !== $host_a && $scheme_a === $scheme_b && $host_a === $host_b && $port_a === $port_b;
+	}
+
+
+	private static function issuer_transport_allowed( $url ) {
+		$parts = wp_parse_url( (string) $url );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) || ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || ! empty( $parts['query'] ) || ! empty( $parts['fragment'] ) ) return false;
+		$scheme = strtolower( (string) $parts['scheme'] );
+		$host = strtolower( (string) $parts['host'] );
+		if ( 'https' === $scheme ) return true;
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
+		return 'local' === $environment && 'http' === $scheme && in_array( $host, array( '127.0.0.1', '::1', 'localhost' ), true );
 	}
 
 	private static function valid_https_url( $url ) {
