@@ -424,7 +424,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 	public static function ajax_grant_projection() {
 		if ( ! is_user_logged_in() ) wp_send_json_error( array( 'code' => 'authentication_required' ), 401 );
-		if ( class_exists( 'MAD4B_SCP_Policy' ) && ! MAD4B_SCP_Policy::can_read() ) wp_send_json_error( array( 'code' => 'read_policy_denied' ), 403 );
+		if ( ! self::user_authorized( get_current_user_id() ) ) wp_send_json_error( array( 'code' => 'access_denied' ), 403 );
 		check_ajax_referer( 'mad4b_oauth_grant_projection', 'nonce' );
 		wp_send_json_success( array(
 			'projection' => self::consent_grant_projection(),
