@@ -86,11 +86,31 @@ final class MAD4B_SCP_Admin_Query_Performance {
 	}
 
 	public static function maybe_ensure_staging_indexes() {
-		if ( 'staging' !== self::environment() ) return self::status();
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return self::status();
+		if ( 'staging' !== self::environment() ) return array( 'contract' => self::CONTRACT, 'environment' => self::environment(), 'state' => 'not_applicable', 'production_changed' => false );
+		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return array( 'contract' => self::CONTRACT, 'environment' => 'staging', 'state' => 'admin_required', 'production_changed' => false );
+
+		$stored = get_option( self::OPTION, array() );
+		if ( is_array( $stored ) && self::INDEX_VERSION === (int) ( isset( $stored['index_version'] ) ? $stored['index_version'] : 0 ) ) {
+			if ( ! empty( $stored['ready_after'] ) ) return array( 'contract' => self::CONTRACT, 'environment' => 'staging', 'state' => 'already_applied', 'index_version' => self::INDEX_VERSION, 'production_changed' => false );
+			$attempted = ! empty( $stored['applied_at'] ) ? strtotime( (string) $stored['applied_at'] ) : false;
+			if ( false !== $attempted && ( time() - $attempted ) < 600 ) return array( 'contract' => self::CONTRACT, 'environment' => 'staging', 'state' => 'retry_deferred', 'index_version' => self::INDEX_VERSION, 'production_changed' => false );
+		}
 
 		$before = self::status();
-		if ( ! empty( $before['ready'] ) ) return $before;
+		if ( ! empty( $before['ready'] ) ) {
+			$record = array(
+				'contract' => 'mad4b.admin-query-performance-apply.v1',
+				'index_version' => self::INDEX_VERSION,
+				'environment' => 'staging',
+				'changed' => false,
+				'results' => array(),
+				'ready_after' => true,
+				'applied_at' => gmdate( 'c' ),
+				'production_changed' => false,
+			);
+			update_option( self::OPTION, $record, false );
+			return array_merge( $before, array( 'last_apply' => $record ) );
+		}
 
 		$results = array();
 		$changed = false;
