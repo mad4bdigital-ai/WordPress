@@ -56,7 +56,8 @@
         "bulk_taxonomy_write",
         "term_relationship_mutation",
         "taxonomy_delete_or_merge"
-      ]
+      ],
+      "require_non_public_permissions": true
     },
     "custom-mega-menu": {
       "match": [
