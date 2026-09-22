@@ -53,7 +53,9 @@ final class MAD4B_SCP_Staging_Certification {
 		$context = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::status() : array();
 		$context_coverage = self::brand_core_context_coverage();
 		$google = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::connection_status() : array();
+		$google_mode = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::auth_mode_status() : array();
 		$managed = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ? MAD4B_SCP_Google_Drive_Context::managed_broker_status() : array();
+		$managed_gate = self::managed_google_gate_evidence( $google_mode, $managed );
 		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array();
 		$snapshot = class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' )
 			? ( '' !== $client_snapshot_token
@@ -75,7 +77,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'context_authority' => self::gate( ! empty( $context['ready'] ), 'context_authority', $context, 'human_review' ),
 			'brand_core_context_coverage' => self::gate( ! empty( $context_coverage['ready'] ), 'brand_core_context_coverage', $context_coverage, 'human_review' ),
 			'google_provider_connection' => self::gate( ! empty( $google['connected'] ) && ! empty( $google['read_available'] ), 'google_provider_connection', $google, 'operator' ),
-			'managed_google_broker' => self::gate( ! empty( $managed['configured'] ) && ! empty( $managed['one_click_sign_in_ready'] ), 'managed_google_broker', $managed, 'server_secret' ),
+			'managed_google_broker' => self::gate( ! empty( $managed_gate['ready'] ), 'managed_google_broker', $managed_gate, 'server_secret' ),
 			'skills_runtime' => self::gate( ! empty( $skills['ready'] ), 'skills_runtime', $skills, 'runtime' ),
 			'external_skill_snapshot' => self::gate( ! empty( $snapshot['verified'] ) || ! empty( $snapshot['exact_match'] ), 'external_skill_snapshot', $snapshot, 'external_client' ),
 			'write_authority' => self::gate( ! empty( $authority['ready'] ) && ! empty( $authority['runtime_reconciled'] ), 'write_authority', $authority, 'operator_reconcile' ),
@@ -103,9 +105,35 @@ final class MAD4B_SCP_Staging_Certification {
 			'write_authority_reconciliation_plan' => $reconciliation,
 			'provider_certification_inventory' => $provider_inventory,
 			'wp_import_export_remediation' => $wp_import_export,
+			'google_auth_mode_status' => $google_mode,
+			'managed_google_broker_status' => $managed,
 			'seo_publication_authorized' => false,
 			'production_activation_authorized' => false,
 			'external_facts_self_certified' => false,
+		);
+	}
+
+	private static function managed_google_gate_evidence( array $mode_status, array $managed ) {
+		$mode = isset( $mode_status['mode'] ) ? sanitize_key( (string) $mode_status['mode'] ) : '';
+		$applicable = 'managed_google' === $mode;
+		$ready = ! $applicable || ( ! empty( $managed['configured'] ) && ! empty( $managed['one_click_sign_in_ready'] ) );
+		$blockers = array();
+		if ( $applicable && isset( $managed['blockers'] ) && is_array( $managed['blockers'] ) ) {
+			$blockers = array_values( array_unique( array_filter( array_map( 'strval', $managed['blockers'] ) ) ) );
+		}
+		if ( $applicable && ! $ready && empty( $blockers ) ) $blockers[] = 'managed_google_selected_but_not_ready';
+		return array(
+			'contract' => 'mad4b.staging-managed-google-gate.v1',
+			'selected_auth_mode' => $mode,
+			'applicable' => $applicable,
+			'ready' => $ready,
+			'state' => $ready ? ( $applicable ? 'ready' : 'not_applicable' ) : 'blocked',
+			'configured' => ! empty( $managed['configured'] ),
+			'one_click_sign_in_ready' => ! empty( $managed['one_click_sign_in_ready'] ),
+			'blockers' => $blockers,
+			'managed_broker_status' => $managed,
+			'authorizing' => false,
+			'mutation_performed' => false,
 		);
 	}
 
