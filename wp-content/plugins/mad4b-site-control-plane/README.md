@@ -2,7 +2,7 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.4.0-rc.50**.
+Current plugin version: **0.4.0-rc.51**.
 
 > Repository CI certification is not live-site certification. The PR remains Draft until the exact target WordPress deployment passes the target acceptance contract.
 
