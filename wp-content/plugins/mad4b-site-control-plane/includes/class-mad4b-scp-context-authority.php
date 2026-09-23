@@ -454,7 +454,7 @@ final class MAD4B_SCP_Context_Authority {
 							$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
 							$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
 							$normalized['review_status'] = 'approved';
-							$normalized['reviewed_content_hash'] = isset( $prior['reviewed_content_hash'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $prior['reviewed_content_hash'] ) ? (string) $prior['reviewed_content_hash'] : (string) $normalized['content_hash'];
+							$normalized['reviewed_content_hash'] = isset( $prior['reviewed_content_hash'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $prior['reviewed_content_hash'] ) && hash_equals( (string) $prior['reviewed_content_hash'], (string) $normalized['content_hash'] ) ? (string) $prior['reviewed_content_hash'] : '';
 							if ( ! empty( $prior['quality']['human_override'] ) ) {
 								$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
 								$normalized['quality'] = $prior['quality'];
