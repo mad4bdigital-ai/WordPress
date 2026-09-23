@@ -4,10 +4,12 @@ $root = sys_get_temp_dir() . '/mad4b-functional-gap-' . getmypid();
 $plugins = $root . '/plugins';
 @mkdir( $plugins . '/alpha', 0777, true );
 @mkdir( $plugins . '/beta/sub', 0777, true );
+@mkdir( $plugins . '/gamma', 0777, true );
 file_put_contents( $plugins . '/alpha/alpha.php', "<?php\n/* alpha */\n" );
 file_put_contents( $plugins . '/alpha/readme.txt', "alpha-readme\n" );
 file_put_contents( $plugins . '/beta/beta.php', "<?php\n/* beta */\n" );
 file_put_contents( $plugins . '/beta/sub/data.json', "{\"beta\":true}\n" );
+file_put_contents( $plugins . '/gamma/gamma.php', "<?php\n/* gamma */\n" );
 define( 'WP_PLUGIN_DIR', $plugins );
 
 $GLOBALS['mad4b_gap_items'] = array(
@@ -24,6 +26,13 @@ $GLOBALS['mad4b_gap_items'] = array(
 		'family' => 'beta',
 		'functional_family_key' => 'beta',
 		'functional_coverage' => array( 'state' => 'safety_blocked' ),
+	),
+	array(
+		'plugin_file' => 'gamma/gamma.php',
+		'plugin_name' => 'Gamma Provider',
+		'family' => 'gamma',
+		'functional_family_key' => 'gamma',
+		'functional_coverage' => array( 'state' => 'read_ready_write_blocked' ),
 	),
 	array(
 		'plugin_file' => 'ready/ready.php',
@@ -87,14 +96,15 @@ function mad4b_expected_tree( $plugin_root, $plugins_root ) {
 $result = MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::execute();
 mad4b_gap_assert( ! is_wp_error( $result ), 'diagnostic unexpectedly failed', $result );
 mad4b_gap_assert( 'mad4b.runtime-functional-gap-diagnostic.v2' === $result['contract'], 'contract drifted', $result );
-mad4b_gap_assert( 2 === (int) $result['family_count'], 'only contract-discovery and safety-blocked families should be targeted', $result );
+mad4b_gap_assert( 3 === (int) $result['family_count'], 'contract-discovery, read-ready/write-blocked and safety-blocked families should be targeted', $result );
 mad4b_gap_assert( ! empty( $result['read_only'] ) && empty( $result['mutation_performed'] ) && empty( $result['remote_request_performed'] ) && empty( $result['raw_sql_performed'] ), 'diagnostic safety truth drifted', $result );
 mad4b_gap_assert( ! empty( $result['complete'] ), 'valid fixture should be complete', $result );
 mad4b_gap_assert( 64 === strlen( $result['report_sha256'] ) && ctype_xdigit( $result['report_sha256'] ), 'report digest invalid', $result );
 
 $by_family = array();
 foreach ( $result['families'] as $family ) $by_family[ $family['family'] ] = $family;
-mad4b_gap_assert( isset( $by_family['alpha'], $by_family['beta'] ), 'target family keys missing', $result );
+mad4b_gap_assert( isset( $by_family['alpha'], $by_family['beta'], $by_family['gamma'] ), 'target family keys missing', $result );
+mad4b_gap_assert( in_array( 'read_ready_write_blocked', $result['target_states'], true ), 'read-ready/write-blocked target state missing', $result );
 mad4b_gap_assert( ! isset( $by_family['alpha']['files'] ), 'default response must not expose full file manifest', $by_family['alpha'] );
 mad4b_gap_assert( mad4b_expected_tree( $plugins . '/alpha', $plugins ) === $by_family['alpha']['tree_sha256'], 'alpha tree hash is not path+size+sha256 deterministic identity', $by_family['alpha'] );
 mad4b_gap_assert( mad4b_expected_tree( $plugins . '/beta', $plugins ) === $by_family['beta']['tree_sha256'], 'beta tree hash is not path+size+sha256 deterministic identity', $by_family['beta'] );
@@ -152,7 +162,7 @@ if ( function_exists( 'symlink' ) ) {
 	}
 }
 
-foreach ( array( $plugins . '/alpha/alpha.php', $plugins . '/alpha/readme.txt', $plugins . '/beta/beta.php', $plugins . '/beta/sub/data.json' ) as $file ) @unlink( $file );
-@rmdir( $plugins . '/beta/sub' ); @rmdir( $plugins . '/beta' ); @rmdir( $plugins . '/alpha' ); @rmdir( $plugins ); @rmdir( $root );
+foreach ( array( $plugins . '/alpha/alpha.php', $plugins . '/alpha/readme.txt', $plugins . '/beta/beta.php', $plugins . '/beta/sub/data.json', $plugins . '/gamma/gamma.php' ) as $file ) @unlink( $file );
+@rmdir( $plugins . '/beta/sub' ); @rmdir( $plugins . '/beta' ); @rmdir( $plugins . '/gamma' ); @rmdir( $plugins . '/alpha' ); @rmdir( $plugins ); @rmdir( $root );
 
 echo "mad4b.runtime-functional-gap-diagnostic.runtime.v1: PASS\n";
