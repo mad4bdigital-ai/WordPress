@@ -10,13 +10,20 @@ authority = (ROOT / "includes/class-mad4b-scp-staging-write-authority.php").read
 cert = (ROOT / "includes/class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
 rollback = json.loads((ROOT / "MAD4B-ROLLBACK-CANDIDATE.json").read_text(encoding="utf-8"))
 certified_providers = json.loads((ROOT / "config/certified-providers.json").read_text(encoding="utf-8"))
+runtime_build = (ROOT / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
+runtime_release_match = re.search(r"^release=(0\.4\.0-rc\.\d+)$", runtime_build, re.M)
+if not runtime_release_match:
+    raise SystemExit("runtime build release is missing or malformed")
+runtime_release = runtime_release_match.group(1)
 
 def require(text, marker, label):
     if marker not in text:
         raise SystemExit(f"missing {label}: {marker}")
 
-require(main, "Version: 0.4.0-rc.50", "rc.50 plugin header")
-require(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.50' );", "rc.50 runtime constant")
+require(main, f"Version: {runtime_release}", "plugin header matches runtime build release")
+require(main, f"define( 'MAD4B_SCP_VERSION', '{runtime_release}' );", "runtime constant matches runtime build release")
+if not re.fullmatch(r"0\.4\.0-rc\.\d+", runtime_release):
+    raise SystemExit(f"unexpected release-candidate version format: {runtime_release!r}")
 require(main, "class-mad4b-scp-staging-certification.php", "staging certification include")
 require(main, "MAD4B_SCP_Staging_Certification::boot();", "staging certification boot")
 
@@ -203,7 +210,7 @@ for key, value in expected_rollback.items():
     if rollback.get(key) != value:
         raise SystemExit(f"rollback candidate drift for {key}: {rollback.get(key)!r}")
 if rollback.get("artifact_retention_verified_by_package") is not True:
-    raise SystemExit("rc.50 rollback candidate must be bound to the CI-verifiable rc.49 retention receipt")
+    raise SystemExit(f"{runtime_release} rollback candidate must be bound to the CI-verifiable rc.49 retention receipt")
 
 receipt_path = ROOT / "MAD4B-ROLLBACK-RETENTION-RECEIPT.json"
 if not receipt_path.is_file():
