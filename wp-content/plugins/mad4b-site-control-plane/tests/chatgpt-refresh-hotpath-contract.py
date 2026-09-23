@@ -5,6 +5,8 @@ from zipfile import ZipFile
 root = Path(__file__).resolve().parents[1]
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 plugin = (root / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
+handshake = (root / "includes/class-mad4b-scp-external-handshake-evidence.php").read_text(encoding="utf-8")
+observer = (root / "includes/class-mad4b-scp-live-acceptance-observer.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -41,6 +43,11 @@ for marker in [
 ]:
     assert marker in servers, marker
 assert servers.count("$this->create( $adapter,") == 7
+assert "$registry = null;" in servers
+assert "$registry_for_surface = static function () use ( &$registry )" in servers
+register_body = servers.split("public function register_servers( $adapter )", 1)[1].split("private function create( $adapter", 1)[0]
+pre_target = register_body.split("$target_server_id = self::current_request_server_id();", 1)[0]
+assert "MAD4B_SCP_Adapter_Registry::instance()" not in pre_target
 for server_id in [
     "mad4b-read",
     "mad4b-chatgpt",
@@ -83,4 +90,20 @@ assert "Version: 0.4.0-rc.58" in entry
 assert "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.58' );" in entry
 assert "release=0.4.0-rc.58" in runtime_build
 
-print("mad4b.chatgpt-refresh-hotpath.v1: PASS")
+# External evidence must not put dynamic provider certification back onto the
+# initialize/tools-list response path. Stable logical catalog identity is
+# captured synchronously; live eligibility is projected only when status is read.
+handshake_capture = handshake.split("private static function capture_tools_list", 1)[1].split("private static function normalize_tool_names", 1)[0]
+assert "expected_write_tool_names()" in handshake_capture
+assert "expected_eligible_write_tool_names()" not in handshake_capture
+assert "blocked_write_tool_names()" not in handshake_capture
+assert "'runtime_projection_deferred' => true" in handshake_capture
+
+observer_init = observer.split("private static function capture_external_initialize", 1)[1].split("private static function capture_external_tools_list", 1)[0]
+assert "expected_write_tool_names()" not in observer_init
+observer_inventory = observer.split("public static function inventory_attestation_from_names", 1)[1].split("public static function external_handshake_attestation_status()", 1)[0]
+assert "eligible_write_tool_names()" not in observer_inventory
+assert "blocked_write_tool_names()" not in observer_inventory
+assert "'runtime_projection_deferred' => true" in observer_inventory
+
+print("mad4b.chatgpt-refresh-hotpath.v2: PASS")
