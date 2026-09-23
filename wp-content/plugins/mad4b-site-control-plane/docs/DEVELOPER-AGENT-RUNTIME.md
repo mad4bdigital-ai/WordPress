@@ -58,6 +58,8 @@ The normal flow is:
 4. Review the exact Site Profile, source commit, plan SHA-256, tool inventory and blockers.
 5. Call `developer-authority-apply` with the exact expected plan fields and confirmation `PROVISION MAD4B DEVELOPER AGENT`.
 6. The apply path creates or re-enables the dedicated Developer NHI, derives and binds the isolated `oauth_developer` subject, creates exact environment-bound grants, enables the managed runtime options and performs immediate readback.
+
+Authority convergence is strict. Existing Developer grant inventory blocks apply when it contains wildcard grants, unexpected allow grants, broad/non-current environment allows, duplicate exact allows, or effective deny grants. Missing desired exact grants are the only grant state the normal apply path is allowed to create.
 7. Any partial failure triggers bounded rollback. An incomplete rollback or completion-audit failure activates the Developer Kill Switch.
 
 No SQL, WP-CLI or manual database mutation is required for this bootstrap.
