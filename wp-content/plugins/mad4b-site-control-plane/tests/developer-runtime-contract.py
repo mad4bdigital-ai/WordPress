@@ -58,6 +58,12 @@ assert "array( 'MAD4B_SCP_Policy', 'can_developer_runtime_status' )" in develope
 assert "mad4b/developer-php-eval" not in developer
 assert "mad4b/developer-shell-exec" not in developer
 assert "normal_wp_cli_guard" in developer
+assert "isolated_wp_cli_cwd" in developer
+assert "mad4b_developer_wp_cli_isolated_cwd_inside_wordpress" in developer
+assert "'--skip-packages'" in developer
+assert "WP_CLI_CONFIG_PATH" in developer
+assert "WP_CLI_SYSTEM_SETTINGS_PATH" in developer
+assert "WP_CLI_DISABLE_AUTO_CHECK_UPDATE" in developer
 assert "mad4b_developer_wp_cli_alias_denied" in developer
 assert "mad4b_developer_wp_cli_escape_denied" in developer
 assert "mad4b_developer_wp_cli_breakglass_required" in developer
@@ -215,4 +221,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v14: PASS")
+print("mad4b.developer-runtime-contract.v15: PASS")
