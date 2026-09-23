@@ -156,7 +156,7 @@ Parent traversal and absolute working-directory escape are denied.
 
 Sensitive credential/configuration paths remain denied outside Developer Breakglass.
 
-Delete requires an exact `expected_sha256`. Existing-file writes may also be bound to `expected_sha256` to prevent stale overwrite.
+Delete requires an exact `expected_sha256`. Existing-file writes also require the exact reviewed SHA-256; new-file writes require `expected_absent=true`. A write fails if the target existence or digest changed after review, preventing silent stale overwrite or create-vs-overwrite races.
 
 Normal Developer writes and deletes also pass the existing mutable-data policy, which denies executable/source-code and server-configuration mutation and defaults to explicitly allowed non-code data roots. Normal directory creation is likewise limited to mutable data roots. Live source-code mutation therefore requires Developer Breakglass or the governed repository/deployment path.
 
