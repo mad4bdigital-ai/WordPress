@@ -40,6 +40,11 @@ breakglass_apply = full.index("MAD4B_SCP_Developer_Authority::breakglass_apply")
 write_reconcile = full.index("MAD4B_SCP_Staging_Write_Authority::reconcile")
 candidate_bind = full.index("MAD4B_SCP_Staging_Write_Candidate_Binding::bind")
 assert developer_apply < breakglass_apply < write_reconcile < candidate_bind
+assert "mad4b/full-staging-authority-prepared" in full
+tail_after_binding = full[candidate_bind:]
+assert "mad4b/full-staging-authority-prepared" not in tail_after_binding
+assert "MAD4B_SCP_Developer_Authority::apply" not in tail_after_binding
+assert "MAD4B_SCP_Staging_Write_Authority::reconcile" not in tail_after_binding
 assert "'requested_authorities' => array( 'write', 'developer', 'developer_breakglass' )" in full
 assert "'generic_raw_sql_breakglass_requested' => false" in full
 assert "'mad4b/database-raw-query'" not in full
