@@ -262,6 +262,7 @@ final class MAD4B_SCP_Context_Preflight {
 			$total_bytes += $bytes;
 			$summary = array(
 				'asset_id' => $asset_id,
+				'context_sets' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset_context_sets( $asset ) : array( isset( $asset['category'] ) ? (string) $asset['category'] : '' ),
 				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
 				'source_mode' => isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
@@ -281,7 +282,8 @@ final class MAD4B_SCP_Context_Preflight {
 		foreach ( $effective_required_sets as $category ) {
 			$loaded = false;
 			foreach ( $receipt_assets as $asset ) {
-				if ( ! empty( $asset['required_for_skill'] ) && $category === $asset['category'] ) { $loaded = true; break; }
+				$sets = isset( $asset['context_sets'] ) && is_array( $asset['context_sets'] ) ? $asset['context_sets'] : array( isset( $asset['category'] ) ? (string) $asset['category'] : '' );
+				if ( ! empty( $asset['required_for_skill'] ) && in_array( $category, $sets, true ) ) { $loaded = true; break; }
 			}
 			if ( ! $loaded ) $blockers[] = 'required_context_set_not_loaded:' . $category;
 		}
@@ -357,7 +359,9 @@ final class MAD4B_SCP_Context_Preflight {
 	private static function category_candidates( array $assets, $category, $governed, $task_scope ) {
 		$out = array();
 		foreach ( $assets as $asset ) {
-			if ( ! is_array( $asset ) || $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
+			if ( ! is_array( $asset ) ) continue;
+			$asset_sets = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::asset_context_sets( $asset ) : array( isset( $asset['category'] ) ? (string) $asset['category'] : '' );
+			if ( ! in_array( $category, $asset_sets, true ) ) continue;
 			if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
 			if ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) continue;
 			$mode = isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '';
