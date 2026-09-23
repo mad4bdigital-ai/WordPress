@@ -25,17 +25,17 @@ Production execution is denied by code.
 
 - `mad4b/developer-runtime-status`
 - `mad4b/developer-wp-cli`
-- `mad4b/developer-php-eval`
-- `mad4b/developer-shell-exec`
 - `mad4b/developer-filesystem`
 - `mad4b/developer-package-install`
 
-`developer-php-eval` is implemented as a bounded WP-CLI `eval` subprocess. The plugin does not call PHP `eval()`.
+Arbitrary shell and PHP evaluation are not mounted on the normal Developer resource. They are Developer Breakglass operations because static command filtering cannot provide a reliable secrecy or filesystem boundary for arbitrary code.
 
 ## Developer Breakglass tools
 
 - `mad4b/developer-breakglass-shell`
 - `mad4b/developer-breakglass-wp-eval`
+
+The Breakglass WP-eval tool invokes WP-CLI `eval` in the bounded subprocess. The plugin does not call PHP `eval()`.
 
 Breakglass is a separate MCP resource, scope, grant set, enablement gate and approval class. Normal Developer provisioning never grants Developer Breakglass implicitly.
 
@@ -124,6 +124,8 @@ The process wrapper applies bounds for:
 Unix root execution is denied.
 
 The normal runtime never calls PHP `eval()`, `shell_exec()`, `system()`, `passthru()`, `exec()` or `popen()`. A single bounded `proc_open()` process primitive is isolated inside the Developer runtime implementation.
+
+Normal `developer-wp-cli` also denies WP-CLI aliases, caller-supplied `--path`, and global escape/bootstrap flags such as `--exec`, `--require`, `--ssh` and `--http`. Command families `eval`, `eval-file`, `db`, `config`, `shell`, `cli`, `package` and `server` require Developer Breakglass.
 
 ## Network policy
 
