@@ -477,15 +477,22 @@ for marker in [
 if "if ( '__return_true' === strtolower( $descriptor ) )" not in runtime:
     raise SystemExit('public permission callback detection must be case-insensitive')
 
-# Request-local snapshots must revalidate dynamic route/option/cron state before reuse.
+# Request-local snapshots must revalidate both dynamic route/option/cron
+# state and the metadata-only provider census before reuse.
 cache_body=runtime.split("public static function snapshot()",1)[1].split("public static function decision_handoff()",1)[0]
 for marker in [
     "current_dynamic_surface_fingerprint()",
     "snapshot_end_dynamic_surface_sha256",
     "snapshot_dynamic_surface_changed_during_evaluation",
+    "snapshot_census_required",
+    "snapshot_end_census",
+    "current_runtime_census_status()",
+    "$census_match",
+    "hash_equals( $cached_census, $current_census_sha )",
+    "if ( $dynamic_match && $census_match ) return self::$snapshot;",
 ]:
     if marker not in cache_body:
-        raise SystemExit(f'dynamic surface fixed-point/cache invalidation missing: {marker}')
+        raise SystemExit(f'dynamic/census fixed-point cache invalidation missing: {marker}')
 
 census_body=runtime.split("private static function plugin_census_once",1)[1].split("private static function runtime_census_from_runtime",1)[0]
 if "hash_file(" in census_body:
