@@ -61,6 +61,12 @@ required = [
     "stores_bearer_tokens' => false",
     "creates_credentials' => false",
     "write_surfaces_enabled' => false",
+    "'resource_transport_allowed' => $resource_transport_allowed",
+    "'http_loopback_local_only' => ( ! $https && $resource_transport_allowed )",
+    "valid_local_http_loopback_url",
+    "'local' !== $environment",
+    "array( '127.0.0.1', '::1', 'localhost' )",
+    "self::valid_authority_url( $issuer )",
 ]
 for marker in required:
     if marker not in bridge:
@@ -173,6 +179,7 @@ for forbidden in [
     "mad4b-admin' === $route",
     "mad4b-breakglass' === $route",
     "HS256",
+    "'http' === $scheme ) return true",
 ]:
     if forbidden in bridge:
         raise SystemExit(f"forbidden OAuth bridge primitive: {forbidden}")
