@@ -72,6 +72,14 @@ require(authority, "'actor_type' => 'wp_admin'", "human review audit actor type"
 require(authority, "'wp_user_id' => get_current_user_id()", "human review audit WordPress user attribution")
 require(authority, "mad4b_context_required_scope_confirmation_required", "site-wide required Context escalation confirmation")
 require(authority, "required_scope_escalated", "required Context escalation audit evidence")
+
+review_body = authority.split("public static function review_asset", 1)[1].split("public static function review_queue", 1)[0]
+scope_guard = review_body.index("$required_scope_changed && empty( $input['required_scope_confirmed'] )")
+category_mutation = review_body.index("$asset['category'] = $category;")
+required_mutation = review_body.index("$asset['required'] = $requested_required;")
+if not (scope_guard < category_mutation < required_mutation):
+    raise AssertionError("required-scope confirmation must precede all effective governance mutation")
+
 require(authority, "required_scope_shifted", "required Context category-shift evidence")
 require(authority, "required_scope_reduced", "required Context reduction evidence")
 require(authority, "required_scope_changed", "unified site-wide required scope guard")
@@ -541,4 +549,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v61: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v62: PASS")
