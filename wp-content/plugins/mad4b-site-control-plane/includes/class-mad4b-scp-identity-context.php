@@ -11,6 +11,9 @@ final class MAD4B_SCP_Identity_Context {
 			'authenticated' => false,
 			'subject_type' => '',
 			'subject_fingerprint' => '',
+			'issuer_fingerprint' => '',
+			'client_fingerprint' => '',
+			'token_instance_fingerprint' => '',
 			'token_scopes' => array(),
 			'approval_ticket_id' => '',
 			'auth_method' => '',
@@ -57,6 +60,17 @@ final class MAD4B_SCP_Identity_Context {
 		if ( '' !== $fingerprint && ! preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) return new WP_Error( 'mad4b_identity_fingerprint_invalid', 'Subject fingerprint must be a lowercase SHA-256 hexadecimal value.' );
 		if ( $authenticated && ( '' === $type || '' === $fingerprint ) ) return new WP_Error( 'mad4b_identity_subject_missing', 'Authenticated subject context is missing a stable subject type or fingerprint.' );
 
+		$issuer_fingerprint = isset( $context['issuer_fingerprint'] ) ? strtolower( trim( (string) $context['issuer_fingerprint'] ) ) : '';
+		$client_fingerprint = isset( $context['client_fingerprint'] ) ? strtolower( trim( (string) $context['client_fingerprint'] ) ) : '';
+		$token_instance_fingerprint = isset( $context['token_instance_fingerprint'] ) ? strtolower( trim( (string) $context['token_instance_fingerprint'] ) ) : '';
+		foreach ( array(
+			'issuer_fingerprint' => $issuer_fingerprint,
+			'client_fingerprint' => $client_fingerprint,
+			'token_instance_fingerprint' => $token_instance_fingerprint,
+		) as $field => $value ) {
+			if ( '' !== $value && 1 !== preg_match( '/^[a-f0-9]{64}$/', $value ) ) return new WP_Error( 'mad4b_identity_attribution_fingerprint_invalid', 'OAuth attribution fingerprint is malformed.', array( 'field' => $field ) );
+		}
+
 		$scopes = array();
 		$input_scopes = isset( $context['token_scopes'] ) && is_array( $context['token_scopes'] ) ? $context['token_scopes'] : array();
 		if ( count( $input_scopes ) > self::MAX_SCOPES ) return new WP_Error( 'mad4b_identity_scopes_too_many', 'Authenticated subject context contains too many token scopes.' );
@@ -74,6 +88,9 @@ final class MAD4B_SCP_Identity_Context {
 			'authenticated' => $authenticated,
 			'subject_type' => $type,
 			'subject_fingerprint' => $fingerprint,
+			'issuer_fingerprint' => $issuer_fingerprint,
+			'client_fingerprint' => $client_fingerprint,
+			'token_instance_fingerprint' => $token_instance_fingerprint,
 			'token_scopes' => array_values( array_unique( $scopes ) ),
 			'approval_ticket_id' => strtolower( $approval_ticket_id ),
 			'auth_method' => isset( $context['auth_method'] ) ? sanitize_key( (string) $context['auth_method'] ) : '',
