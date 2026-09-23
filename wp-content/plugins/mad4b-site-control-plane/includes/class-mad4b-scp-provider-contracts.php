@@ -70,9 +70,27 @@ final class MAD4B_SCP_Provider_Contracts {
 		}
 		$policy = isset( $catalog['premium_provider_policy'][ $provider ] ) && is_array( $catalog['premium_provider_policy'][ $provider ] ) ? $catalog['premium_provider_policy'][ $provider ] : array();
 		$observed = isset( $policy['observed_version'] ) ? trim( (string) $policy['observed_version'] ) : '';
-		if ( '' === $installed_version || '' === $observed || ! hash_equals( $observed, $installed_version ) ) return array( 'known_candidate' => false );
+		$repository_version = isset( $policy['repository_archive_version'] ) ? trim( (string) $policy['repository_archive_version'] ) : '';
+		if ( '' === $installed_version || empty( $policy ) ) return array( 'known_candidate' => false, 'candidate_policy_available' => ! empty( $policy ) );
+		if ( '' === $observed || ! hash_equals( $observed, $installed_version ) ) {
+			return array(
+				'known_candidate' => false,
+				'candidate_policy_available' => true,
+				'candidate_relation' => 'installed_version_not_exact_candidate',
+				'installed_version' => $installed_version,
+				'policy_observed_version' => $observed,
+				'repository_archive_version' => $repository_version,
+				'repository_archive_sha256' => isset( $policy['repository_archive_sha256'] ) ? strtolower( (string) $policy['repository_archive_sha256'] ) : '',
+				'attestation_required' => ! empty( $policy['attestation_required'] ),
+				'attestation_state' => isset( $policy['attestation_state'] ) ? sanitize_key( (string) $policy['attestation_state'] ) : 'unknown',
+				'mutation_policy' => isset( $policy['mutation_policy'] ) ? sanitize_key( (string) $policy['mutation_policy'] ) : 'fail_closed',
+				'authorizing' => false,
+			);
+		}
 		return array(
 			'known_candidate' => true,
+			'candidate_policy_available' => true,
+			'candidate_relation' => 'exact_candidate_version',
 			'attestation_required' => ! empty( $policy['attestation_required'] ),
 			'attestation_state' => isset( $policy['attestation_state'] ) ? sanitize_key( (string) $policy['attestation_state'] ) : 'unknown',
 			'attestation_contract' => isset( $policy['attestation_contract'] ) ? sanitize_text_field( (string) $policy['attestation_contract'] ) : '',
@@ -248,7 +266,7 @@ final class MAD4B_SCP_Provider_Contracts {
 			'runtime_integrity' => self::integrity_status( $contract ),
 		);
 		$candidate_attestation = self::candidate_attestation( $provider, $actual );
-		if ( ! empty( $candidate_attestation['known_candidate'] ) ) $result['candidate_attestation'] = $candidate_attestation;
+		if ( ! empty( $candidate_attestation['known_candidate'] ) || ! empty( $candidate_attestation['candidate_policy_available'] ) ) $result['candidate_attestation'] = $candidate_attestation;
 
 		if ( ! empty( $contract['native_abilities'] ) && is_array( $contract['native_abilities'] ) ) {
 			$present = array(); $missing = array();
