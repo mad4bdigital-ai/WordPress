@@ -170,6 +170,24 @@ The engine records artifact evidence separately from structural and behavioral e
 
 `compatible_unattested` means the required structural contract is present but the provider artifact itself is not an exact certified baseline. It does not mean “trusted for mutation.” A specific bounded capability may still be behaviorally recertified without changing that provider-level artifact truth.
 
+## Surface-aware structural compatibility
+
+Capability declarations and actually mounted adapter surfaces are separate facts. Each capability now reports:
+
+- `abilities` — catalog-declared abilities;
+- `mounted_abilities` — the subset currently declared by the adapter;
+- `surface_exposed` — whether the capability can participate in the current adapter surface.
+
+A structural probe failure on a catalog-only latent capability is retained as evidence but does not by itself mark the provider as a breaking contract. Exposed incompatibilities remain fail-closed. Mixed exposed compatibility is reported as `partially_compatible`; a provider whose installed artifact exists but whose adapter runtime is not available is reported as `adapter_runtime_unavailable`.
+
+`mad4b/provider-mcp-mount-plan` separates latent catalog abilities from mounted eligible/blocked abilities. A latent capability can never become mount-eligible merely because it exists in the capability catalog.
+
+Functional coverage also separates healthy reads from blocked writes. `read_ready_write_blocked` means the provider has a usable governed read surface while mutation remains blocked by exact/capability certification. If an exposed read capability itself is structurally incompatible, the provider remains `safety_blocked`.
+
+Runtime self-test treats drift from an installed-but-inactive provider as advisory evidence rather than platform degradation. The same drift becomes blocking when that provider is active. This classification changes health reporting only; it never grants mutation authority.
+
+Premium candidate metadata is diagnostic, not certification. If an installed premium version differs from the repository package candidate (for example a patch-suffix difference), the candidate relation is reported explicitly and mutation stays fail-closed. Live/runtime hashes are never accepted as self-attestation authority.
+
 ## Recertification planning
 
 `mad4b/provider-recertification-plan` is advisory evidence only. Current classifications include:
