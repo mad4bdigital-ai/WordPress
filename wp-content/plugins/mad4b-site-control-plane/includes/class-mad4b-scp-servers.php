@@ -17,7 +17,7 @@ final class MAD4B_SCP_Servers {
 	private static $external_attestation_projection_active = false;
 
 	public static function expected_server_ids() {
-		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
+		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 	}
 
 	public static function core_tools( $server_id ) {
@@ -41,6 +41,8 @@ final class MAD4B_SCP_Servers {
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			),
+			'mad4b-developer' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( false ) : array(),
+			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
 			'mad4b-breakglass' => array( 'mad4b/database-raw-query' ),
 		);
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
@@ -452,6 +454,8 @@ final class MAD4B_SCP_Servers {
 	public static function can_content_transport( $request = null ) { return self::transport_permission( 'mad4b-content', $request, array( 'MAD4B_SCP_Policy', 'can_content' ) ); }
 	public static function can_write_transport( $request = null ) { return self::transport_permission( 'mad4b-write', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
 	public static function can_admin_transport( $request = null ) { return self::transport_permission( 'mad4b-admin', $request, array( 'MAD4B_SCP_Policy', 'can_admin' ) ); }
+	public static function can_developer_transport( $request = null ) { return self::transport_permission( 'mad4b-developer', $request, array( 'MAD4B_SCP_Policy', 'can_developer_read' ) ); }
+	public static function can_developer_breakglass_transport( $request = null ) { return self::transport_permission( 'mad4b-developer-breakglass', $request, array( 'MAD4B_SCP_Policy', 'can_developer_breakglass' ) ); }
 	public static function can_breakglass_transport( $request = null ) { return self::transport_permission( 'mad4b-breakglass', $request, array( 'MAD4B_SCP_Policy', 'can_breakglass' ) ); }
 
 	private static function transport_permission( $server_id, $request, $policy_callback ) {
@@ -473,6 +477,8 @@ final class MAD4B_SCP_Servers {
 		$content_tools = array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) );
 		$write_tools = self::write_tools();
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
+		$developer_tools = self::core_tools( 'mad4b-developer' );
+		$developer_breakglass_tools = self::core_tools( 'mad4b-developer-breakglass' );
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
 			$chatgpt_description = 'Exact enrolled Staging unified governed gateway exposing all registered normal read capabilities, bounded Site Profile bootstrap, and the stable governed write catalog. Write visibility never grants authority: execution remains delegated to mad4b-write and requires runtime eligibility and exact grants. Normal writes require exact approval; the Context AI review ability may use only its explicitly configured bounded standing delegation. Breakglass and Raw SQL remain excluded.';
@@ -485,6 +491,8 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-content', 'MAD4B Content MCP', 'Governed content, media, SEO and plugin-specific editing abilities.', array_values( array_unique( $content_tools ) ), array( __CLASS__, 'can_content_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-write', 'MAD4B Write MCP', 'Unified governed write authority containing every runtime-eligible registered content/admin/write mutation explicitly annotated non-readonly. Cataloged provider mutations are projected per ability from capability certification; adapter-native runtime capability checks are hard mount gates; legacy providers retain exact runtime certification; breakglass is excluded.', array_values( array_unique( $write_tools ) ), array( __CLASS__, 'can_write_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-admin', 'MAD4B Admin MCP', 'Administrative governance, repair, mutation evidence and governed recovery abilities.', array_values( array_unique( $admin_tools ) ), array( __CLASS__, 'can_admin_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-developer', 'MAD4B Developer MCP', 'Isolated explicit non-Production Developer Agent plane. It is never mounted on mad4b-chatgpt or mad4b-write; execution requires the exact configured developer agent, exact grant, one-time approval, budget, audit and runtime gate.', array_values( array_unique( $developer_tools ) ), array( __CLASS__, 'can_developer_transport' ), $transport, $error_handler, $observability );
+		$this->create( $adapter, 'mad4b-developer-breakglass', 'MAD4B Developer Breakglass MCP', 'Exceptional non-Production Developer Agent recovery plane. Disabled by default and separately gated from normal developer execution.', array_values( array_unique( $developer_breakglass_tools ) ), array( __CLASS__, 'can_developer_breakglass_transport' ), $transport, $error_handler, $observability );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled in wp-config.php.', self::core_tools( 'mad4b-breakglass' ), array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability );
 	}
 
