@@ -8,7 +8,7 @@ final class MAD4B_SCP_Impact_Policy {
 		$provider = sanitize_key( (string) $provider );
 		if ( 'mad4b/database-raw-query' === $ability_name ) return 'exceptional';
 		$high_core = array(
-			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
+			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/mutation-undo',
 			'mad4b/provider-canary-execute',
 		);
 		if ( in_array( $ability_name, $high_core, true ) ) return 'high';
