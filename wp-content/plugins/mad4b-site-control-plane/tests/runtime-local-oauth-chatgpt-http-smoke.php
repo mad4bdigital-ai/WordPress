@@ -116,6 +116,10 @@ if ( isset( $tools_data['error'] ) ) $fail( 'OAuth bearer tools/list returned a 
 $tools = isset( $tools_data['result']['tools'] ) && is_array( $tools_data['result']['tools'] ) ? $tools_data['result']['tools'] : array();
 if ( empty( $tools ) ) $fail( 'OAuth bearer tools/list returned an empty inventory.', $tools_data );
 
+$tools_payload_json = wp_json_encode( $tools_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+if ( false === $tools_payload_json ) $fail( 'Unable to encode tools/list for refresh payload measurement.' );
+$tools_payload_bytes = strlen( $tools_payload_json );
+
 $names = array();
 foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name'];
 $names = array_values( array_unique( $names ) );
@@ -123,42 +127,57 @@ sort( $names );
 
 foreach ( array(
 	'mad4b-site-info',
-	'mad4b-list-post-types',
-	'mad4b-list-plugins',
-	'mad4b-abilities-inventory',
+	'mad4b-site-profile-status',
+	'mad4b-build-provenance-status',
 	'mad4b-tool-discover',
 	'mad4b-tool-info',
 	'mad4b-read-execute',
+	'mad4b-write-discover',
+	'mad4b-write-info',
+	'mad4b-write-execute',
 	'mad4b-diagnostics-health',
 	'mad4b-runtime-authority-status',
 	'mad4b-connection-status',
-	'mad4b-plugin-package-plan'
+	'mad4b-plugin-package-plan',
+	'mad4b-write-authority-status',
+	'mad4b-write-authority-reconciliation-plan',
+	'mad4b-write-runtime-certification',
+	'mad4b-rest-compatibility-status',
+	'mad4b-staging-certification-status',
+	'mad4b-site-profile-feature-reenroll',
+	'mad4b-site-profile-write-enable',
+	'mad4b-staging-write-grant-reconcile',
+	'mad4b-staging-write-candidate-bind'
 ) as $required ) {
-	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required compact safe-read/control tool.', $required );
+	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required minimal transport tool.', $required );
 }
-// Exact enrolled Staging keeps governed writes direct, while heavy readonly
-// capabilities are intentionally accessed through the compact readonly
-// discovery/info/execute surface.
+
+// Large normal reads and writes must remain behind their governed discovery/
+// execution transports. Bounded bootstrap mutations stay direct by design.
 foreach ( array(
+	'mad4b-browser-acceptance-capabilities',
+	'mad4b-filesystem-read',
+	'mad4b-database-select',
+	'mad4b-list-post-types',
+	'mad4b-list-plugins',
+	'mad4b-abilities-inventory',
 	'mad4b-filesystem-write',
 	'mad4b-database-update',
 	'mad4b-content-update-post',
 	'mad4b-plugin-activate',
+	'mad4b-plugin-deactivate',
+	'mad4b-plugin-package-apply',
 	'mad4b-mutation-undo',
-	'mad4b-site-profile-feature-reenroll',
-	'mad4b-site-profile-write-enable'
-) as $required_write ) {
-	if ( ! in_array( $required_write, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required governed direct write tool.', $required_write );
+	'mad4b-approval-plan'
+) as $hidden_tool ) {
+	if ( in_array( $hidden_tool, $names, true ) ) $fail( 'OAuth bearer tools/list leaked a capability that must stay behind governed discovery.', $hidden_tool );
 }
-foreach ( array(
-	'mad4b-browser-acceptance-capabilities',
-	'mad4b-filesystem-read',
-	'mad4b-database-select'
-) as $hidden_read ) {
-	if ( in_array( $hidden_read, $names, true ) ) $fail( 'OAuth bearer tools/list leaked a readonly capability that must stay behind compact discovery.', $hidden_read );
+
+if ( count( $names ) > 48 ) {
+	$fail( 'OAuth bearer tools/list exceeded the minimal refresh tool-count budget.', array( 'tool_count' => count( $names ), 'budget' => 48 ) );
 }
-if ( count( $names ) > 128 ) {
-	$fail( 'OAuth bearer tools/list exceeded the refresh-safety budget.', array( 'tool_count' => count( $names ), 'budget' => 128 ) );
+if ( $tools_payload_bytes > 131072 ) {
+	$fail( 'OAuth bearer tools/list exceeded the refresh payload budget.', array( 'payload_bytes' => $tools_payload_bytes, 'budget_bytes' => 131072 ) );
 }
 if ( in_array( 'mad4b-database-raw-query', $names, true ) ) {
 	$fail( 'OAuth bearer tools/list exposed Breakglass Raw SQL.', 'mad4b-database-raw-query' );
@@ -244,10 +263,11 @@ if ( ! empty( $unpreempted_http ) ) $fail( 'Local OAuth bearer verification atte
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v4: PASS ' .
+	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v5: PASS ' .
 	wp_json_encode(
 		array(
 			'tool_count' => count( $names ),
+			'tools_payload_bytes' => $tools_payload_bytes,
 			'http_filter_calls' => count( $http_seen ),
 			'unpreempted_http_calls' => count( $unpreempted_http ),
 			'session_established' => true,
