@@ -128,9 +128,10 @@ if ( empty( $write_authority['ready'] ) || 'ready' !== $write_authority['state']
 if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );
 if ( ! array_key_exists( 'all_remote_writes_require_exact_approval', $write_authority ) || false !== $write_authority['all_remote_writes_require_exact_approval'] ) $fail( 'Write authority did not expose the bounded bootstrap approval exception truth.' );
 if ( empty( $write_authority['normal_remote_writes_require_exact_approval'] ) ) $fail( 'Normal remote governed writes are not forced through exact approvals.' );
-if ( 'exact_approval_except_bounded_candidate_bootstrap' !== (string) $write_authority['remote_write_approval_policy'] ) $fail( 'Write authority remote approval policy is not the bounded bootstrap contract.' );
+if ( 'exact_approval_with_bounded_standing_exceptions' !== (string) $write_authority['remote_write_approval_policy'] ) $fail( 'Write authority remote approval policy is not the bounded standing-exception contract.' );
 $prior_approval_exceptions = isset( $write_authority['remote_write_prior_approval_exceptions'] ) && is_array( $write_authority['remote_write_prior_approval_exceptions'] ) ? array_values( $write_authority['remote_write_prior_approval_exceptions'] ) : array();
-if ( array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY ) !== $prior_approval_exceptions ) $fail( 'Write authority prior-approval exception set is not limited to the candidate bootstrap ability.' );
+$expected_prior_approval_exceptions = array( MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' );
+if ( $expected_prior_approval_exceptions !== $prior_approval_exceptions ) $fail( 'Write authority prior-approval exception definition must contain only candidate bootstrap plus the separately governed AI review standing-delegation ability.' );
 if ( ! empty( $write_authority['breakglass_included'] ) || ! empty( $write_authority['breakglass_auto_enable'] ) ) $fail( 'Breakglass leaked into governed write authority.' );
 if ( empty( $write_authority['write_tool_count'] ) ) $fail( 'Write authority inventory is empty.' );
 if ( empty( $write_authority['site_uuid'] ) || ! hash_equals( MAD4B_SCP_Site_Profile::site_uuid(), (string) $write_authority['site_uuid'] ) ) $fail( 'Write authority is not bound to the enrolled site UUID.' );
