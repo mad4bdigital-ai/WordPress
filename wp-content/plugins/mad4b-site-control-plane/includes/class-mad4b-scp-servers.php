@@ -451,14 +451,19 @@ final class MAD4B_SCP_Servers {
 		}
 		if ( 'mad4b-chatgpt' === $server_id ) {
 			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return $remember( null );
+
+			// The compact direct transport is overwhelmingly Control Plane core.
+			// Resolve those without scanning adapter/write catalogs. Underlying
+			// provider mutations are deliberately hidden behind write-execute.
+			if ( in_array( $ability_name, self::core_tools( 'mad4b-chatgpt' ), true ) ) return $remember( 'core' );
+			foreach ( array( 'mad4b-read', 'mad4b-enrollment', 'mad4b-content', 'mad4b-admin' ) as $core_server ) {
+				if ( in_array( $ability_name, self::core_tools( $core_server ), true ) ) return $remember( 'core' );
+			}
 			if ( self::is_external_write_candidate( $ability_name ) ) {
 				$runtime_provider = self::provider_for_ability( 'mad4b-write', $ability_name );
 				return $remember( null !== $runtime_provider ? $runtime_provider : self::provider_for_external_write_candidate( $ability_name ) );
 			}
 			if ( self::chatgpt_unified_catalog_enabled() ) {
-				foreach ( array( 'mad4b-read', 'mad4b-enrollment', 'mad4b-content', 'mad4b-admin' ) as $core_server ) {
-					if ( in_array( $ability_name, self::core_tools( $core_server ), true ) ) return $remember( 'core' );
-				}
 				if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
 					$registry = MAD4B_SCP_Adapter_Registry::instance();
 					$registry->register_defaults();
@@ -551,9 +556,15 @@ final class MAD4B_SCP_Servers {
 		$transport = '\\WP\\MCP\\Transport\\HttpTransport';
 		$error_handler = '\\WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler';
 		$observability = '\\WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler';
-		$registry = MAD4B_SCP_Adapter_Registry::instance();
-		$registry->register_defaults();
 		$target_server_id = self::current_request_server_id();
+		$registry = null;
+		$registry_for_surface = static function () use ( &$registry ) {
+			if ( null === $registry ) {
+				$registry = MAD4B_SCP_Adapter_Registry::instance();
+				$registry->register_defaults();
+			}
+			return $registry;
+		};
 
 		$materialize = static function ( $server_id, $factory ) use ( $target_server_id ) {
 			if ( ! self::should_materialize_server_tools( $server_id, $target_server_id ) ) return array();
@@ -561,12 +572,12 @@ final class MAD4B_SCP_Servers {
 			return is_array( $tools ) ? array_values( array_unique( $tools ) ) : array();
 		};
 
-		$read_tools = $materialize( 'mad4b-read', static function () use ( $registry ) { return array_merge( self::core_tools( 'mad4b-read' ), $registry->ability_names( 'read' ) ); } );
+		$read_tools = $materialize( 'mad4b-read', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-read' ), $registry->ability_names( 'read' ) ); } );
 		$chatgpt_tools = $materialize( 'mad4b-chatgpt', static function () { return self::chatgpt_tools(); } );
 		$enrollment_tools = $materialize( 'mad4b-enrollment', static function () { return self::core_tools( 'mad4b-enrollment' ); } );
-		$content_tools = $materialize( 'mad4b-content', static function () use ( $registry ) { return array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) ); } );
+		$content_tools = $materialize( 'mad4b-content', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-content' ), $registry->ability_names( 'content' ) ); } );
 		$write_tools = $materialize( 'mad4b-write', static function () { return self::write_tools(); } );
-		$admin_tools = $materialize( 'mad4b-admin', static function () use ( $registry ) { return array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) ); } );
+		$admin_tools = $materialize( 'mad4b-admin', static function () use ( $registry_for_surface ) { $registry = $registry_for_surface(); return array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) ); } );
 		$breakglass_tools = $materialize( 'mad4b-breakglass', static function () { return self::core_tools( 'mad4b-breakglass' ); } );
 
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
