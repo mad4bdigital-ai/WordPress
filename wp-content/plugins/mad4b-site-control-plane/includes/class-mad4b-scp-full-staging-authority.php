@@ -289,6 +289,12 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				// Feature enablement changes the Site Profile revision/digest.
 				$plan = self::plan();
 				if ( is_wp_error( $plan ) ) return self::fail_closed( 'post_write_enable_plan_failed', $plan );
+				if ( empty( $plan['ready_to_apply'] ) ) {
+					return self::fail_closed(
+						'post_write_enable_plan_blocked',
+						new WP_Error( 'mad4b_full_authority_post_write_enable_plan_blocked', 'Full authority plan gained a hard blocker after Site Profile Write enablement.', array( 'blockers' => $plan['hard_blockers'] ) )
+					);
+				}
 			}
 
 			// Provision normal Developer authority first. If any later stage fails,
