@@ -198,6 +198,7 @@ $review = MAD4B_SCP_Context_Authority::review_asset(
 		'required' => true,
 		'quality_mode' => 'manual',
 		'quality_score' => '97',
+		'review_note' => 'Reviewer confirms the exact Tone of Voice authority and documented manual quality override.',
 	)
 	)
 );
@@ -384,6 +385,7 @@ $failed_audit_review = MAD4B_SCP_Context_Authority::review_asset(
 		'required' => true,
 		'quality_mode' => 'manual',
 		'quality_score' => '88',
+		'review_note' => 'Injected audit-failure review retains an explicit reviewer rationale.',
 	)
 	)
 );
@@ -393,11 +395,73 @@ mad4b_review_assert( 'mad4b_context_registry_audit_commit_failed' === $failed_au
 mad4b_review_assert( $before_failed_review_asset === MAD4B_SCP_Context_Authority::asset( $asset_id ), 'Audit failure must restore the exact pre-review asset state.' );
 mad4b_review_assert( $before_failed_review_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Audit failure must restore the exact pre-review registry revision.' );
 
+$optional_needs_changes = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => 'writer_reference',
+			'authority_class' => 'reference',
+			'required' => false,
+			'quality_mode' => 'automatic',
+			'quality_score' => '',
+			'decision' => 'needs_changes',
+			'review_note' => 'The reference needs editorial changes before it may be relied on.',
+		)
+	)
+);
+mad4b_review_assert( ! is_wp_error( $optional_needs_changes ), 'Reviewer must be able to request changes against exact optional content.', $optional_needs_changes );
+mad4b_review_assert( 'needs_changes' === $optional_needs_changes['review_status'], 'Needs-changes decision must persist its explicit state.', $optional_needs_changes );
+mad4b_review_assert( 'needs_changes' === $optional_needs_changes['review_decision'], 'Needs-changes decision must retain decision semantics.', $optional_needs_changes );
+mad4b_review_assert( ! empty( $optional_needs_changes['reviewed_content_hash'] ) && hash_equals( (string) $optional_needs_changes['content_hash'], (string) $optional_needs_changes['reviewed_content_hash'] ), 'Needs-changes decision must bind to exact content.', $optional_needs_changes );
+
+$decision_preserve_scan = MAD4B_SCP_Context_Authority::replace_source_assets(
+	$source_id,
+	array(
+		mad4b_review_asset_payload( $file_id, $provider_write_text ),
+		mad4b_review_asset_payload( 'writer-file-optional', str_repeat( "Writer reference sample with narrative structure and sentence rhythm.\n\n", 10 ), 'Writer Reference Sample', 'References/Writer Reference Sample.txt' ),
+	),
+	array(
+		'complete' => true,
+		'started_at' => '2026-09-19T18:05:00Z',
+		'completed_at' => '2026-09-19T18:05:03Z',
+		'scan_generation' => str_repeat( '5', 64 ),
+	)
+);
+mad4b_review_assert( ! is_wp_error( $decision_preserve_scan ), 'Same-hash scan after needs-changes decision must succeed.', $decision_preserve_scan );
+$optional_after_same_hash_scan = MAD4B_SCP_Context_Authority::asset( $optional_asset_id );
+mad4b_review_assert( 'needs_changes' === $optional_after_same_hash_scan['review_status'], 'Same-hash rescan must preserve an exact needs-changes decision.', $optional_after_same_hash_scan );
+mad4b_review_assert( 'needs_changes' === $optional_after_same_hash_scan['review_decision'], 'Same-hash rescan must preserve decision semantics.', $optional_after_same_hash_scan );
+mad4b_review_assert( ! empty( $optional_after_same_hash_scan['reviewed_content_hash'] ) && hash_equals( (string) $optional_after_same_hash_scan['content_hash'], (string) $optional_after_same_hash_scan['reviewed_content_hash'] ), 'Same-hash rescan must preserve exact decision binding.', $optional_after_same_hash_scan );
+
+$optional_reject = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => 'writer_reference',
+			'authority_class' => 'reference',
+			'required' => false,
+			'quality_mode' => 'automatic',
+			'quality_score' => '',
+			'decision' => 'reject',
+			'review_note' => 'This reference is not approved as governed brand evidence.',
+		)
+	)
+);
+mad4b_review_assert( ! is_wp_error( $optional_reject ), 'Reviewer must be able to reject exact optional content.', $optional_reject );
+mad4b_review_assert( 'rejected' === $optional_reject['review_status'], 'Reject decision must persist rejected state.', $optional_reject );
+mad4b_review_assert( 'reject' === $optional_reject['review_decision'], 'Reject decision semantics must remain explicit.', $optional_reject );
+mad4b_review_assert( ! empty( $optional_reject['review_note'] ), 'Rejected content must retain reviewer rationale.', $optional_reject );
+
 $review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
-mad4b_review_assert( 3 === count( $review_events ), 'Initial review, changed-content reset review, and provider-mutation renewed review must each emit one audit event.', $review_events );
+mad4b_review_assert( 5 === count( $review_events ), 'Three primary approvals plus needs-changes and rejection must each emit one audit event.', $review_events );
 mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
 mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
 mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[2] );
+mad4b_review_assert( 'needs_changes' === $review_events[3]['data']['decision'] && 'needs_changes' === $review_events[3]['data']['review_status'], 'Needs-changes review audit must preserve exact decision semantics.', $review_events[3] );
+mad4b_review_assert( 'reject' === $review_events[4]['data']['decision'] && 'rejected' === $review_events[4]['data']['review_status'], 'Rejected review audit must preserve exact decision semantics.', $review_events[4] );
+mad4b_review_assert( ! empty( $review_events[3]['data']['review_note'] ) && ! empty( $review_events[4]['data']['review_note'] ), 'Non-approve review audit evidence must retain reviewer rationale.', array( $review_events[3], $review_events[4] ) );
 mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $review_events[0]['data']['contract'], 'Human review audit must use the v2 exact-review contract.', $review_events[0] );
 mad4b_review_assert( ! empty( $review_events[0]['data']['expected_content_hash'] ) && $review_events[0]['data']['expected_content_hash'] === $review_events[0]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[0] );
 mad4b_review_assert( (int) $review_events[0]['data']['registry_revision_after'] === (int) $review_events[0]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[0] );
@@ -405,4 +469,4 @@ mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'
 mad4b_review_assert( 'wp_admin' === $review_events[0]['data']['actor_type'] && 42 === (int) $review_events[0]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[0] );
 mad4b_review_assert( ! empty( $review_events[0]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[0] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v8: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v9: PASS\n";
