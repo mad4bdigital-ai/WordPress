@@ -191,41 +191,58 @@ final class MAD4B_SCP_Audit {
 	 * generic SQL/audit search. Selectors are exact and limited to binding events.
 	 */
 	public static function candidate_binding_events( array $selectors = array() ) {
+		global $wpdb;
 		$limit = isset( $selectors['limit'] ) ? max( 1, min( 200, absint( $selectors['limit'] ) ) ) : 50;
 		$request_id = isset( $selectors['request_id'] ) ? substr( sanitize_text_field( (string) $selectors['request_id'] ), 0, 100 ) : '';
 		$operation_id = isset( $selectors['operation_id'] ) ? strtolower( trim( (string) $selectors['operation_id'] ) ) : '';
 		$event_id = isset( $selectors['event_id'] ) ? strtolower( trim( (string) $selectors['event_id'] ) ) : '';
+		if ( '' !== $request_id && 1 !== preg_match( '/^[A-Za-z0-9._:-]{8,100}$/', $request_id ) ) return new WP_Error( 'mad4b_binding_audit_request_id_invalid', 'Binding audit request_id is invalid.' );
 		if ( '' !== $operation_id && 1 !== preg_match( '/^[a-f0-9-]{36}$/', $operation_id ) ) return new WP_Error( 'mad4b_binding_audit_operation_id_invalid', 'Binding audit operation_id is invalid.' );
 		if ( '' !== $event_id && 1 !== preg_match( '/^[a-f0-9-]{36}$/', $event_id ) ) return new WP_Error( 'mad4b_binding_audit_event_id_invalid', 'Binding audit event_id is invalid.' );
 
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_binding_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
 		$allowed = array(
 			'mad4b/staging-write-candidate-binding-authorized',
 			'mad4b/staging-write-candidate-binding-complete',
 			'mad4b/staging-write-candidate-binding-noop',
 			'mad4b/staging-write-candidate-binding-rollback',
 		);
-		$matches = array();
-		foreach ( self::tail( 200 ) as $entry ) {
-			if ( ! is_array( $entry ) || ! in_array( isset( $entry['ability'] ) ? (string) $entry['ability'] : '', $allowed, true ) ) continue;
-			if ( '' !== $request_id && ( ! isset( $entry['request_id'] ) || ! hash_equals( $request_id, (string) $entry['request_id'] ) ) ) continue;
-			if ( '' !== $event_id && ( ! isset( $entry['event_id'] ) || ! hash_equals( $event_id, strtolower( (string) $entry['event_id'] ) ) ) ) continue;
-			if ( '' !== $operation_id ) {
-				$summary_operation = isset( $entry['summary']['operation_id'] ) ? strtolower( (string) $entry['summary']['operation_id'] ) : '';
-				if ( ! hash_equals( $operation_id, $summary_operation ) ) continue;
-			}
-			$matches[] = $entry;
+		$where = array( 'chain_name = %s', 'ability IN (%s,%s,%s,%s)' );
+		$args = array_merge( array( self::CHAIN ), $allowed );
+		if ( '' !== $request_id ) {
+			$where[] = 'request_id = %s';
+			$args[] = $request_id;
 		}
-		if ( count( $matches ) > $limit ) $matches = array_slice( $matches, -$limit );
-		$status = self::storage_status();
+		if ( '' !== $event_id ) {
+			$where[] = 'event_id = %s';
+			$args[] = $event_id;
+		}
+		if ( '' !== $operation_id ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"operation_id":"' . $operation_id . '"' ) . '%';
+		}
+		$args[] = $limit;
+		$sql = "SELECT * FROM {$t['audit_events']} WHERE " . implode( ' AND ', $where ) . ' ORDER BY sequence DESC LIMIT %d';
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_binding_audit_lookup_failed', 'Binding audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$rows = array_reverse( $rows );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( is_array( $entry ) ) $events[] = $entry;
+		}
 		return array(
 			'contract' => 'mad4b.staging-write-candidate-binding-audit.v1',
 			'read_only' => true,
 			'mutation_performed' => false,
+			'bounded_event_types' => $allowed,
 			'chain' => self::CHAIN,
 			'chain_valid' => self::verify_chain(),
 			'head_consistent' => ! empty( $status['head_consistent'] ),
-			'count' => count( $matches ),
-			'events' => $matches,
+			'count' => count( $events ),
+			'events' => $events,
 		);
 	}
 
