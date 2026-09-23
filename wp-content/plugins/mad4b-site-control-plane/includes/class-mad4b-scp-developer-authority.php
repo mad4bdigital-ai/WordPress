@@ -322,6 +322,11 @@ final class MAD4B_SCP_Developer_Authority {
 			if ( is_wp_error( $match ) ) return $match;
 			if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) return new WP_Error( 'mad4b_developer_authority_audit_required', 'Ready append-only audit storage is required.' );
 
+			$config_before = self::configuration_snapshot();
+			$agent_before = self::configured_or_slug_agent();
+			$agent_status_before = is_array( $agent_before ) ? (string) $agent_before['status'] : '';
+			$agent_revision_before = is_array( $agent_before ) ? (int) $agent_before['revision'] : 0;
+
 			$authorized = MAD4B_SCP_Audit::record( $breakglass ? 'mad4b/developer-breakglass-authority-authorized' : 'mad4b/developer-authority-authorized', array(
 				'contract' => self::CONTRACT,
 				'plan_sha256' => $plan['plan_sha256'],
@@ -338,6 +343,7 @@ final class MAD4B_SCP_Developer_Authority {
 			$agent = self::configured_or_slug_agent();
 			$created_agent = false;
 			$subject_created = false;
+			$created_subject_fingerprint = '';
 			$created_grants = array();
 			if ( ! is_array( $agent ) ) {
 				$label = 'MAD4B Developer Agent';
@@ -361,10 +367,11 @@ final class MAD4B_SCP_Developer_Authority {
 			$bound_before = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
 			if ( is_wp_error( $bound_before ) && 'mad4b_nhi_subject_unbound' === $bound_before->get_error_code() ) {
 				$bind = MAD4B_SCP_Agent_Registry::bind_subject( $agent['public_id'], self::SUBJECT_TYPE, $plan['developer_subject_fingerprint'], 'Derived Developer OAuth subject' );
-				if ( is_wp_error( $bind ) ) return self::rollback_partial( $agent, $created_agent, false, $created_grants, $bind );
+				if ( is_wp_error( $bind ) ) return self::rollback_partial( $agent, $created_agent, false, '', $created_grants, $config_before, $agent_status_before, $bind );
 				$subject_created = true;
+				$created_subject_fingerprint = (string) $plan['developer_subject_fingerprint'];
 			} elseif ( is_array( $bound_before ) && (int) $bound_before['id'] !== (int) $agent['id'] ) {
-				return self::rollback_partial( $agent, $created_agent, false, $created_grants, new WP_Error( 'mad4b_developer_subject_bound_elsewhere', 'Derived Developer subject became bound elsewhere before apply.' ) );
+				return self::rollback_partial( $agent, $created_agent, false, '', $created_grants, $config_before, $agent_status_before, new WP_Error( 'mad4b_developer_subject_bound_elsewhere', 'Derived Developer subject became bound elsewhere before apply.' ) );
 			}
 
 			$server_id = $plan['server_id'];
@@ -373,9 +380,9 @@ final class MAD4B_SCP_Developer_Authority {
 				foreach ( $plan['rows'] as $row ) {
 					if ( ! empty( $row['exact_grant_present'] ) ) continue;
 					$created = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], $server_id, $row['ability'], $row['provider'], array(), 'allow', $plan['environment'] );
-					if ( is_wp_error( $created ) ) return self::rollback_partial( $agent, $created_agent, $subject_created, $created_grants, $created );
+					if ( is_wp_error( $created ) ) return self::rollback_partial( $agent, $created_agent, $subject_created, $created_subject_fingerprint, $created_grants, $config_before, $agent_status_before, $created );
 					$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $row['ability'], $row['provider'] );
-					if ( ! is_array( $grant ) ) return self::rollback_partial( $agent, $created_agent, $subject_created, $created_grants, new WP_Error( 'mad4b_developer_grant_readback_failed', 'Created Developer grant failed immediate readback.' ) );
+					if ( ! is_array( $grant ) ) return self::rollback_partial( $agent, $created_agent, $subject_created, $created_subject_fingerprint, $created_grants, $config_before, $agent_status_before, new WP_Error( 'mad4b_developer_grant_readback_failed', 'Created Developer grant failed immediate readback.' ) );
 					$created_grants[] = (int) $grant['id'];
 				}
 			} finally {
@@ -392,9 +399,22 @@ final class MAD4B_SCP_Developer_Authority {
 			}
 
 			$readback = $breakglass ? self::breakglass_plan() : self::plan();
-			if ( is_wp_error( $readback ) ) return $readback;
+			if ( is_wp_error( $readback ) ) {
+				return self::rollback_partial( $agent, $created_agent, $subject_created, $created_subject_fingerprint, $created_grants, $config_before, $agent_status_before, $readback );
+			}
 			$authority = self::grant_status( $agent, $server_id, $breakglass ? self::breakglass_tools() : self::normal_tools() );
-			if ( empty( $authority['ready'] ) ) return new WP_Error( 'mad4b_developer_authority_postcondition_failed', 'Developer authority did not converge after apply.', array( 'authority' => $authority ) );
+			if ( empty( $authority['ready'] ) ) {
+				return self::rollback_partial(
+					$agent,
+					$created_agent,
+					$subject_created,
+					$created_subject_fingerprint,
+					$created_grants,
+					$config_before,
+					$agent_status_before,
+					new WP_Error( 'mad4b_developer_authority_postcondition_failed', 'Developer authority did not converge after apply.', array( 'authority' => $authority ) )
+				);
+			}
 
 			$complete = MAD4B_SCP_Audit::record( $breakglass ? 'mad4b/developer-breakglass-authority-complete' : 'mad4b/developer-authority-complete', array(
 				'contract' => self::CONTRACT,
@@ -410,6 +430,19 @@ final class MAD4B_SCP_Developer_Authority {
 				'environment' => $plan['environment'],
 				'production_mutation' => false,
 			), 'ok' );
+			if ( is_wp_error( $complete ) ) {
+				self::force_fail_closed( 'completion_audit_failed' );
+				return self::rollback_partial(
+					$agent,
+					$created_agent,
+					$subject_created,
+					$created_subject_fingerprint,
+					$created_grants,
+					$config_before,
+					$agent_status_before,
+					new WP_Error( 'mad4b_developer_authority_completion_audit_failed', 'Developer authority completion audit failed after mutation.' )
+				);
+			}
 
 			return array(
 				'contract' => self::CONTRACT,
@@ -424,7 +457,7 @@ final class MAD4B_SCP_Developer_Authority {
 				'developer_enabled' => MAD4B_SCP_Developer_Runtime::developer_flag_enabled(),
 				'direct_execution_enabled' => MAD4B_SCP_Developer_Runtime::direct_execution_enabled(),
 				'breakglass_enabled' => MAD4B_SCP_Developer_Runtime::breakglass_flag_enabled(),
-				'completion_audit_recorded' => ! is_wp_error( $complete ),
+				'completion_audit_recorded' => true,
 				'production_mutation' => false,
 			);
 		} finally {
@@ -472,15 +505,82 @@ final class MAD4B_SCP_Developer_Authority {
 		);
 	}
 
-	private static function rollback_partial( array $agent, $created_agent, $subject_created, array $grant_ids, WP_Error $error ) {
-		foreach ( array_reverse( $grant_ids ) as $grant_id ) MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $agent['public_id'], (int) $grant_id );
-		if ( $subject_created ) {
-			$identity = MAD4B_SCP_Identity_Context::current();
-			$fingerprint = is_wp_error( $identity ) ? '' : self::derived_subject_fingerprint( $identity );
-			if ( is_string( $fingerprint ) && preg_match( '/^[a-f0-9]{64}$/', $fingerprint ) ) MAD4B_SCP_Agent_Registry::set_subject_status( $agent['public_id'], self::SUBJECT_TYPE, $fingerprint, 'disabled' );
+	private static function rollback_partial( array $agent, $created_agent, $subject_created, $subject_fingerprint, array $grant_ids, array $config_before, $agent_status_before, WP_Error $error ) {
+		$rollback_errors = array();
+		foreach ( array_reverse( $grant_ids ) as $grant_id ) {
+			$result = MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id( $agent['public_id'], (int) $grant_id );
+			if ( is_wp_error( $result ) ) $rollback_errors[] = $result->get_error_code() . ':grant:' . (int) $grant_id;
 		}
-		if ( $created_agent ) MAD4B_SCP_Agent_Registry::disable_agent( $agent['public_id'], (int) $agent['revision'] );
-		return new WP_Error( 'mad4b_developer_authority_apply_failed', 'Developer authority apply failed and bounded rollback was attempted.', array( 'cause' => $error->get_error_code() ) );
+		if ( $subject_created && preg_match( '/^[a-f0-9]{64}$/', (string) $subject_fingerprint ) ) {
+			$result = MAD4B_SCP_Agent_Registry::set_subject_status( $agent['public_id'], self::SUBJECT_TYPE, $subject_fingerprint, 'disabled' );
+			if ( is_wp_error( $result ) ) $rollback_errors[] = $result->get_error_code() . ':subject';
+		}
+		if ( $created_agent ) {
+			$current = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent['public_id'] );
+			if ( is_array( $current ) && 'disabled' !== (string) $current['status'] ) {
+				$result = MAD4B_SCP_Agent_Registry::disable_agent( $agent['public_id'], (int) $current['revision'] );
+				if ( is_wp_error( $result ) ) $rollback_errors[] = $result->get_error_code() . ':agent';
+			}
+		} elseif ( 'disabled' === (string) $agent_status_before ) {
+			$current = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent['public_id'] );
+			if ( is_array( $current ) && 'enabled' === (string) $current['status'] ) {
+				$result = MAD4B_SCP_Agent_Registry::disable_agent( $agent['public_id'], (int) $current['revision'] );
+				if ( is_wp_error( $result ) ) $rollback_errors[] = $result->get_error_code() . ':agent-status';
+			}
+		}
+		self::restore_configuration( $config_before );
+		if ( $rollback_errors ) self::force_fail_closed( 'rollback_incomplete' );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/developer-authority-rollback', array(
+				'contract' => self::CONTRACT,
+				'agent_public_id' => isset( $agent['public_id'] ) ? (string) $agent['public_id'] : '',
+				'cause' => $error->get_error_code(),
+				'rollback_errors' => $rollback_errors,
+				'kill_switch_enabled' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) && MAD4B_SCP_Developer_Runtime::kill_switch_enabled(),
+				'production_mutation' => false,
+			), empty( $rollback_errors ) ? 'ok' : 'partial' );
+		}
+		return new WP_Error(
+			'mad4b_developer_authority_apply_failed',
+			'Developer authority apply failed and bounded rollback was attempted.',
+			array( 'cause' => $error->get_error_code(), 'rollback_errors' => $rollback_errors )
+		);
+	}
+
+	private static function configuration_snapshot() {
+		return array(
+			'agent_public_id' => get_option( 'mad4b_scp_developer_agent_public_id', null ),
+			'enabled' => get_option( 'mad4b_scp_developer_enabled', null ),
+			'direct_execution_enabled' => get_option( 'mad4b_scp_developer_direct_execution_enabled', null ),
+			'breakglass_enabled' => get_option( 'mad4b_scp_developer_breakglass_enabled', null ),
+			'kill_switch' => get_option( 'mad4b_scp_developer_kill_switch', null ),
+		);
+	}
+
+	private static function restore_configuration( array $snapshot ) {
+		$map = array(
+			'agent_public_id' => 'mad4b_scp_developer_agent_public_id',
+			'enabled' => 'mad4b_scp_developer_enabled',
+			'direct_execution_enabled' => 'mad4b_scp_developer_direct_execution_enabled',
+			'breakglass_enabled' => 'mad4b_scp_developer_breakglass_enabled',
+			'kill_switch' => 'mad4b_scp_developer_kill_switch',
+		);
+		foreach ( $map as $key => $option ) {
+			if ( ! array_key_exists( $key, $snapshot ) || null === $snapshot[ $key ] ) delete_option( $option );
+			else update_option( $option, $snapshot[ $key ], false );
+		}
+	}
+
+	private static function force_fail_closed( $reason ) {
+		update_option( 'mad4b_scp_developer_kill_switch', '1', false );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/developer-authority-fail-closed', array(
+				'contract' => self::CONTRACT,
+				'reason' => sanitize_key( (string) $reason ),
+				'kill_switch_enabled' => true,
+				'production_mutation' => false,
+			), 'blocked' );
+		}
 	}
 
 	private static function match_expected_plan( array $plan, array $input ) {
