@@ -53,6 +53,7 @@ final class MAD4B_SCP_Servers {
 			array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
+				'mad4b/context-ai-review',
 			)
 		);
 	}
@@ -89,6 +90,11 @@ final class MAD4B_SCP_Servers {
 	 */
 	public static function write_tools() {
 		$candidates = self::core_write_candidates();
+		// AI Agent review is a stable catalog candidate but becomes runtime-write eligible
+		// only after an administrator explicitly enables the bounded Staging delegation.
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$candidates = array_values( array_diff( $candidates, array( 'mad4b/context-ai-review' ) ) );
+		}
 		$projection = self::adapter_write_projection();
 		$candidates = array_merge( $candidates, $projection['eligible'] );
 		$write = array();
@@ -102,7 +108,9 @@ final class MAD4B_SCP_Servers {
 	/**
 	 * Stable governed ChatGPT write catalog. Discovery is deliberately independent
 	 * of provider activation state; execution still requires the ability to be in
-	 * write_tools(), an exact NHI grant, and a one-time approval ticket.
+	 * write_tools() and an exact NHI grant. Normal writes require a one-time
+	 * approval ticket; the dedicated Context AI review ability may instead use its
+	 * explicit standing delegation when that bounded policy is active.
 	 */
 	public static function external_write_tools() {
 		$candidates = self::core_write_candidates();
@@ -467,7 +475,7 @@ final class MAD4B_SCP_Servers {
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
-			$chatgpt_description = 'Exact enrolled Staging unified governed gateway exposing all registered normal read capabilities, bounded Site Profile bootstrap, and the stable governed write catalog. Write visibility never grants authority: execution remains delegated to mad4b-write and requires runtime eligibility, exact grants and approval. Breakglass and Raw SQL remain excluded.';
+			$chatgpt_description = 'Exact enrolled Staging unified governed gateway exposing all registered normal read capabilities, bounded Site Profile bootstrap, and the stable governed write catalog. Write visibility never grants authority: execution remains delegated to mad4b-write and requires runtime eligibility and exact grants. Normal writes require exact approval; the Context AI review ability may use only its explicitly configured bounded standing delegation. Breakglass and Raw SQL remain excluded.';
 		} else {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with read diagnostics plus a stable governed write catalog. Provider writes may be discoverable before activation but remain fail-closed until mounted on mad4b-write, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}
