@@ -139,7 +139,12 @@ final class MAD4B_SCP_Context_Authority {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return false;
 		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return false;
 		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( (string) $policy['ai_agent_public_id'] );
-		return is_array( $agent ) && 'enabled' === ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) && 'staging' === ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' );
+		$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
+		return is_array( $agent )
+			&& 'enabled' === ( isset( $agent['status'] ) ? (string) $agent['status'] : '' )
+			&& 'staging' === ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' )
+			&& '' !== $profile_agent_slug
+			&& $profile_agent_slug === sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' );
 	}
 
 	public static function ai_review_policy_status() {
@@ -158,6 +163,8 @@ final class MAD4B_SCP_Context_Authority {
 			else {
 				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) ) $blockers[] = 'ai_review_agent_disabled';
 				if ( 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) $blockers[] = 'ai_review_agent_environment_mismatch';
+				$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
+				if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) $blockers[] = 'ai_review_agent_not_profile_owned';
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::AI_REVIEW_ABILITY, 'core' );
 				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_review_exact_grant_missing';
 			}
@@ -188,7 +195,9 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent approval mode is Staging-only in rc.54.' );
 			if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return new WP_Error( 'mad4b_context_ai_review_agent_registry_unavailable', 'MAD4B Agent registry is unavailable.' );
 			$agent = MAD4B_SCP_Agent_Registry::get_agent_by_public_id( $agent_public_id );
-			if ( ! is_array( $agent ) || empty( $agent ) || 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires one enabled Staging MAD4B Agent.' );
+			$profile_agent_slug = sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() );
+			if ( ! is_array( $agent ) || empty( $agent ) || 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires the enabled Staging Site Profile agent.' );
+			if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_not_profile_owned', 'AI review delegation must use the canonical Site Profile governed-write agent.' );
 		} else {
 			$agent_public_id = '';
 		}
@@ -1204,6 +1213,8 @@ final class MAD4B_SCP_Context_Authority {
 		$configured_agent = isset( $policy['ai_agent_public_id'] ) ? (string) $policy['ai_agent_public_id'] : '';
 		if ( empty( $agent['public_id'] ) || '' === $configured_agent || ! hash_equals( $configured_agent, (string) $agent['public_id'] ) ) return new WP_Error( 'mad4b_context_ai_review_agent_mismatch', 'Authenticated AI Agent does not match the Context review delegation.' );
 		if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires the configured enabled Staging agent.' );
+		$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
+		if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_not_profile_owned', 'AI review requires the canonical Site Profile governed-write agent.' );
 		$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::AI_REVIEW_ABILITY, 'core' );
 		if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_exact_grant_missing', 'Configured AI Agent does not have the exact Staging grant for Context AI review.' );
 		$asset_id = isset( $input['asset_id'] ) ? strtolower( trim( sanitize_text_field( (string) $input['asset_id'] ) ) ) : '';
