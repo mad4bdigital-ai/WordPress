@@ -5,7 +5,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "includes" / "class-mad4b-scp-plugin-package.php"
 BOOTSTRAP = ROOT / "mad4b-site-control-plane.php"
 SERVERS = ROOT / "includes" / "class-mad4b-scp-servers.php"
-REGISTRY = ROOT / "includes" / "class-mad4b-scp-adapter-registry.php"\nIMPACT = ROOT / "includes" / "class-mad4b-scp-impact-policy.php"\nGRANTS = ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php"
+REGISTRY = ROOT / "includes" / "class-mad4b-scp-adapter-registry.php"
+IMPACT = ROOT / "includes" / "class-mad4b-scp-impact-policy.php"
+GRANTS = ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php"
 
 
 def require(condition, message):
@@ -16,7 +18,9 @@ def require(condition, message):
 package = PACKAGE.read_text(encoding="utf-8")
 bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
 servers = SERVERS.read_text(encoding="utf-8")
-registry = REGISTRY.read_text(encoding="utf-8")\nimpact = IMPACT.read_text(encoding="utf-8")\ngrants = GRANTS.read_text(encoding="utf-8")
+registry = REGISTRY.read_text(encoding="utf-8")
+impact = IMPACT.read_text(encoding="utf-8")
+grants = GRANTS.read_text(encoding="utf-8")
 
 for marker in [
     "class MAD4B_SCP_Plugin_Package",
