@@ -243,6 +243,16 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_oauth_identity_required', 'Verified OAuth bearer governance identity is required.' );
 		$subject_fingerprint = isset( $identity['subject_fingerprint'] ) ? strtolower( trim( (string) $identity['subject_fingerprint'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $subject_fingerprint ) ) return new WP_Error( 'mad4b_candidate_bind_subject_fingerprint_missing', 'A stable hashed OAuth subject fingerprint is required for binding audit attribution.' );
+		$issuer_fingerprint = isset( $identity['issuer_fingerprint'] ) ? strtolower( trim( (string) $identity['issuer_fingerprint'] ) ) : '';
+		$client_fingerprint = isset( $identity['client_fingerprint'] ) ? strtolower( trim( (string) $identity['client_fingerprint'] ) ) : '';
+		$token_instance_fingerprint = isset( $identity['token_instance_fingerprint'] ) ? strtolower( trim( (string) $identity['token_instance_fingerprint'] ) ) : '';
+		foreach ( array(
+			'issuer_fingerprint' => $issuer_fingerprint,
+			'client_fingerprint' => $client_fingerprint,
+			'token_instance_fingerprint' => $token_instance_fingerprint,
+		) as $field => $value ) {
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $value ) ) return new WP_Error( 'mad4b_candidate_bind_actor_attribution_incomplete', 'Hashed OAuth issuer/client/token attribution is required for candidate binding.', array( 'field' => $field ) );
+		}
 		$correlation_id = isset( $identity['request_id'] ) ? substr( sanitize_text_field( (string) $identity['request_id'] ), 0, 100 ) : '';
 		if ( '' === $correlation_id ) return new WP_Error( 'mad4b_candidate_bind_correlation_missing', 'A request correlation identifier is required for binding audit attribution.' );
 		$transport = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
@@ -257,6 +267,9 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				'wp_user_id' => get_current_user_id(),
 				'identity_method' => 'oauth2_bearer',
 				'subject_fingerprint' => $subject_fingerprint,
+				'issuer_fingerprint' => $issuer_fingerprint,
+				'client_fingerprint' => $client_fingerprint,
+				'token_instance_fingerprint' => $token_instance_fingerprint,
 				'mcp_request_context_fingerprint' => hash( 'sha256', $subject_fingerprint . "\0" . $correlation_id . "\0" . $transport ),
 				'agent_public_id' => (string) $plan['agent_public_id'],
 				'transport_server_id' => $transport,
