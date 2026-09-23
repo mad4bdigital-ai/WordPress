@@ -544,24 +544,38 @@ final class MAD4B_SCP_Developer_Runtime {
 
 	private static function normal_wp_cli_guard( array $args ) {
 		$normalized = array_values( array_map( 'strval', $args ) );
+		$positionals = array();
 		foreach ( $normalized as $arg ) {
 			if ( false !== strpos( $arg, "\0" ) ) return new WP_Error( 'mad4b_developer_argument_invalid', 'NUL bytes are forbidden.' );
 			$lower = strtolower( trim( $arg ) );
+			if ( '' === $lower ) continue;
 			if ( 0 === strpos( $lower, '@' ) ) return new WP_Error( 'mad4b_developer_wp_cli_alias_denied', 'WP-CLI aliases are denied on the normal Developer Plane.' );
 			foreach ( array( '--exec', '--require', '--ssh', '--http', '--path' ) as $prefix ) {
 				if ( 0 === strpos( $lower, $prefix ) ) return new WP_Error( 'mad4b_developer_wp_cli_escape_denied', 'This WP-CLI execution, remote-bootstrap, or path-override flag requires Developer Breakglass.' );
 			}
+			if ( '-' !== $lower[0] ) $positionals[] = $lower;
 		}
-		$command = '';
-		foreach ( $normalized as $arg ) {
-			$trimmed = trim( $arg );
-			if ( '' === $trimmed || '-' === $trimmed[0] ) continue;
-			$command = strtolower( $trimmed );
-			break;
-		}
-		if ( '' === $command ) return new WP_Error( 'mad4b_developer_wp_cli_command_required', 'A concrete WP-CLI command is required.' );
-		$breakglass_only = array( 'eval', 'eval-file', 'db', 'config', 'shell', 'cli', 'package', 'server' );
+		if ( empty( $positionals ) ) return new WP_Error( 'mad4b_developer_wp_cli_command_required', 'A concrete WP-CLI command is required.' );
+
+		$command = $positionals[0];
+		$subcommand = isset( $positionals[1] ) ? $positionals[1] : '';
+		$breakglass_only = array(
+			'eval', 'eval-file', 'db', 'config', 'shell', 'cli', 'package', 'server',
+			'option', 'user', 'role', 'super-admin', 'application-password', 'cap',
+			'site', 'network', 'scaffold',
+		);
 		if ( in_array( $command, $breakglass_only, true ) ) return new WP_Error( 'mad4b_developer_wp_cli_breakglass_required', 'This WP-CLI command family requires Developer Breakglass.' );
+
+		$read_only_code_lifecycle = array(
+			'plugin' => array( 'list', 'status', 'get', 'is-active', 'is-installed', 'path', 'verify-checksums', 'search' ),
+			'theme'  => array( 'list', 'status', 'get', 'is-active', 'is-installed', 'path', 'verify-checksums', 'search' ),
+			'core'   => array( 'version', 'check-update', 'verify-checksums', 'is-installed' ),
+		);
+		if ( isset( $read_only_code_lifecycle[ $command ] ) ) {
+			if ( '' === $subcommand || ! in_array( $subcommand, $read_only_code_lifecycle[ $command ], true ) ) {
+				return new WP_Error( 'mad4b_developer_wp_cli_code_lifecycle_denied', 'Normal Developer WP-CLI permits only read/verification operations for plugin, theme, and core code lifecycle; use the dedicated governed lifecycle or Developer Breakglass for mutation.' );
+			}
+		}
 		return true;
 	}
 
