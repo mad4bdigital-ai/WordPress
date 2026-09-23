@@ -63,6 +63,17 @@ for marker in [
 ]:
     assert marker in primitive, f'candidate-binding primitive lacks mandatory guard: {marker}'
 
+# Candidate binding must not publish uncommitted authority state through the
+# WordPress options/object-cache path. The option row is updated directly under
+# SELECT ... FOR UPDATE and its cache is invalidated only after COMMIT.
+assert "update_option(" not in primitive, 'candidate-binding primitive must not use update_option inside its SQL transaction'
+assert "$wpdb->update(" in primitive, 'candidate-binding primitive must persist the authority option through the transactional DB path'
+commit_helper = authority.split("private static function commit_candidate_binding_transaction", 1)[1].split("public static function bind_candidate_identity", 1)[0]
+assert "COMMIT" in commit_helper
+assert "reset_authority_option_cache" in commit_helper
+assert commit_helper.index("COMMIT") < commit_helper.index("reset_authority_option_cache"), 'authority option cache must not be invalidated before COMMIT'
+assert commit_helper.index("reset_authority_option_cache") < commit_helper.index("transaction_committed"), 'committed audit dispatch must observe the post-COMMIT cache state'
+
 assert "mad4b/staging-write-candidate-binding-audit" in servers
 core_write = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
 assert "mad4b/staging-write-candidate-binding-audit" not in core_write, 'read-only binding audit leaked into normal write inventory'
