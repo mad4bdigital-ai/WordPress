@@ -12,6 +12,9 @@ for marker in [
     "mad4b/staging-write-candidate-binding-audit",
     "operation_context",
     "subject_fingerprint",
+    "issuer_fingerprint",
+    "client_fingerprint",
+    "token_instance_fingerprint",
     "mcp_request_context_fingerprint",
     "previous_binding",
     "target_binding",
@@ -34,6 +37,7 @@ for marker in [
     "previous_binding",
     "new_binding",
     "normalize_candidate_binding_context",
+    "mad4b_candidate_binding_actor_attribution_mismatch",
 ]:
     assert marker in authority, f'missing primitive audit invariant: {marker}'
 
