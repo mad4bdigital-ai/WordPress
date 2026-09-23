@@ -16,6 +16,7 @@ final class MAD4B_SCP_Context_Authority {
 	const SOURCE_CONTRACT = 'mad4b.context-source.v1';
 	const ASSET_CONTRACT = 'mad4b.context-asset.v1';
 	const QUALITY_CONTRACT = 'mad4b.context-quality-score.v2';
+	const HUMAN_REVIEW_CONTRACT = 'mad4b.context-human-review.v2';
 
 	const PROFILE_OPTION = 'mad4b_scp_brand_context_profile_v1';
 	const SOURCES_OPTION = 'mad4b_scp_context_sources_v1';
@@ -453,6 +454,7 @@ final class MAD4B_SCP_Context_Authority {
 							$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
 							$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
 							$normalized['review_status'] = 'approved';
+							$normalized['reviewed_content_hash'] = isset( $prior['reviewed_content_hash'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $prior['reviewed_content_hash'] ) ? (string) $prior['reviewed_content_hash'] : (string) $normalized['content_hash'];
 							if ( ! empty( $prior['quality']['human_override'] ) ) {
 								$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
 								$normalized['quality'] = $prior['quality'];
@@ -461,6 +463,7 @@ final class MAD4B_SCP_Context_Authority {
 							$normalized['reviewed_by'] = 0;
 							$normalized['reviewed_at'] = '';
 							$normalized['review_status'] = 'needs_review_content_changed';
+							$normalized['reviewed_content_hash'] = '';
 						}
 					}
 					$normalized['availability_reason'] = '';
@@ -621,13 +624,14 @@ final class MAD4B_SCP_Context_Authority {
 					&& 'human' === ( isset( $review_source['classification_source'] ) ? (string) $review_source['classification_source'] : '' );
 
 				if ( $human_review && $same_content ) {
-					foreach ( array( 'reviewed_by', 'reviewed_at', 'review_status' ) as $field ) {
+					foreach ( array( 'reviewed_by', 'reviewed_at', 'review_status', 'reviewed_content_hash' ) as $field ) {
 						if ( array_key_exists( $field, $review_source ) ) $normalized[ $field ] = $review_source[ $field ];
 					}
 				} elseif ( $human_review && ! $same_content ) {
 					$normalized['reviewed_by'] = 0;
 					$normalized['reviewed_at'] = '';
 					$normalized['review_status'] = 'needs_review_content_changed';
+					$normalized['reviewed_content_hash'] = '';
 				}
 
 				if ( $same_content && ! empty( $review_source['quality']['human_override'] ) ) {
@@ -686,6 +690,7 @@ final class MAD4B_SCP_Context_Authority {
 				$normalized['reviewed_by'] = 0;
 				$normalized['reviewed_at'] = '';
 				$normalized['review_status'] = 'needs_review_content_changed';
+				$normalized['reviewed_content_hash'] = '';
 				$normalized['availability_reason'] = '';
 				$normalized['last_seen_at'] = gmdate( 'c' );
 
@@ -997,11 +1002,32 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset raw registry record was not found.' );
 			$asset = $records[ $asset_id ];
 			if ( ! hash_equals( (string) $site['site_uuid'], (string) $asset['site_uuid'] ) ) return new WP_Error( 'mad4b_context_asset_site_mismatch', 'Context asset is not bound to this Site Profile.' );
+
+			$registry_revision_before = self::registry_revision();
+			$authority_manifest_before = self::authority_manifest_fingerprint( $records );
+			$context_fingerprint_before = self::context_fingerprint( $records, self::raw_sources() );
+			$expected_content_hash = strtolower( trim( isset( $input['expected_content_hash'] ) ? (string) $input['expected_content_hash'] : '' ) );
+			$expected_registry_revision = isset( $input['expected_registry_revision'] ) ? (int) $input['expected_registry_revision'] : -1;
+			$expected_authority_manifest = strtolower( trim( isset( $input['expected_authority_manifest_fingerprint'] ) ? (string) $input['expected_authority_manifest_fingerprint'] : '' ) );
+			$current_content_hash = strtolower( trim( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) );
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_content_hash ) || ! preg_match( '/^[a-f0-9]{64}$/', $current_content_hash ) || ! hash_equals( $current_content_hash, $expected_content_hash ) ) {
+				return new WP_Error( 'mad4b_context_review_content_drift', 'Context asset content changed after the review evidence was rendered. Reload the current asset before approving it.', array( 'asset_id' => $asset_id, 'expected_content_hash' => $expected_content_hash, 'current_content_hash' => $current_content_hash ) );
+			}
+			if ( $expected_registry_revision < 0 || $expected_registry_revision !== $registry_revision_before ) {
+				return new WP_Error( 'mad4b_context_review_registry_drift', 'Context registry changed after the review evidence was rendered. Reload the current review state.', array( 'expected_registry_revision' => $expected_registry_revision, 'current_registry_revision' => $registry_revision_before ) );
+			}
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_authority_manifest ) || ! hash_equals( $authority_manifest_before, $expected_authority_manifest ) ) {
+				return new WP_Error( 'mad4b_context_review_authority_drift', 'Context authority changed after the review evidence was rendered. Reload the current review state.', array( 'expected_authority_manifest_fingerprint' => $expected_authority_manifest, 'current_authority_manifest_fingerprint' => $authority_manifest_before ) );
+			}
 	
 			$categories = self::categories();
 			$authorities = self::authority_classes();
 			$category = sanitize_key( isset( $input['category'] ) ? $input['category'] : '' );
 			$authority = sanitize_key( isset( $input['authority_class'] ) ? $input['authority_class'] : '' );
+			$previous_category = isset( $asset['category'] ) ? (string) $asset['category'] : '';
+			$previous_authority = isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '';
+			$previous_required = ! empty( $asset['required'] );
+			$previous_review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
 			if ( ! isset( $categories[ $category ] ) ) return new WP_Error( 'mad4b_context_category_invalid', 'Context category is invalid.' );
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
 	
@@ -1009,7 +1035,12 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['classification_confidence'] = 1.0;
 			$asset['classification_source'] = 'human';
 			$asset['authority_class'] = $authority;
-			$asset['required'] = ! empty( $input['required'] );
+			$requested_required = ! empty( $input['required'] );
+			$required_scope_escalated = ! $previous_required && $requested_required;
+			if ( $required_scope_escalated && empty( $input['required_scope_confirmed'] ) ) {
+				return new WP_Error( 'mad4b_context_required_scope_confirmation_required', 'Making this Context category required expands site-wide Brand Context requirements and requires explicit confirmation.', array( 'category' => $category, 'previous_required' => false, 'requested_required' => true ) );
+			}
+			$asset['required'] = $requested_required;
 			$asset['priority'] = 'brand_authority' === $authority || 'policy_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
 			$quality_input = isset( $input['quality_score'] ) ? trim( (string) $input['quality_score'] ) : '';
 			$current_quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array( 'contract' => self::QUALITY_CONTRACT );
@@ -1060,6 +1091,7 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['reviewed_by'] = get_current_user_id();
 			$asset['reviewed_at'] = gmdate( 'c' );
 			$asset['review_status'] = 'approved';
+			$asset['reviewed_content_hash'] = $current_content_hash;
 			$records[ $asset_id ] = $asset;
 			$sources = self::raw_sources();
 			$profile = self::refreshed_profile_record( $records, $sources, true );
@@ -1071,23 +1103,144 @@ final class MAD4B_SCP_Context_Authority {
 				'Context asset review and authority fingerprint could not be committed atomically.'
 			);
 			if ( is_wp_error( $commit ) ) return $commit;
+			$authority_manifest_after = self::authority_manifest_fingerprint( $records );
+			$context_fingerprint_after = self::context_fingerprint( $records, $sources );
 			return self::audited_registry_result(
 				$asset,
 				'mad4b/context-asset-review',
 				array(
+					'contract' => self::HUMAN_REVIEW_CONTRACT,
+					'decision_id' => function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : hash( 'sha256', $asset_id . '|' . microtime( true ) ),
 					'asset_id' => $asset_id,
 					'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+					'expected_content_hash' => $expected_content_hash,
+					'observed_content_hash' => $current_content_hash,
+					'registry_revision_before' => $registry_revision_before,
+					'registry_revision_after' => $registry_revision_before + 1,
+					'authority_manifest_before' => $authority_manifest_before,
+					'authority_manifest_after' => $authority_manifest_after,
+					'context_fingerprint_before' => $context_fingerprint_before,
+					'context_fingerprint_after' => $context_fingerprint_after,
+					'previous_review_status' => $previous_review_status,
+					'review_status' => 'approved',
+					'previous_category' => $previous_category,
 					'category' => $category,
+					'previous_authority_class' => $previous_authority,
 					'authority_class' => $authority,
+					'previous_required' => $previous_required,
 					'required' => ! empty( $asset['required'] ),
+					'required_scope_escalated' => $required_scope_escalated,
+					'required_scope_confirmed' => ! empty( $input['required_scope_confirmed'] ),
 					'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+					'automatic_quality_score' => isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : null,
 					'quality_mode' => $quality_mode,
-					'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+					'reviewed_content_hash' => $current_content_hash,
+					'mutation_performed' => true,
 				),
 				'ok'
 			);
 		
 			}
+		);
+	}
+
+	public static function review_queue() {
+		$items = array();
+		$counts = array( 'required_pending' => 0, 'optional_pending' => 0, 'content_changed' => 0, 'approved' => 0, 'approved_exact' => 0 );
+		foreach ( self::assets() as $asset ) {
+			if ( ! is_array( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) continue;
+			$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
+			$current_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+			$reviewed_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
+			$exact = 'approved' === $review_status && preg_match( '/^[a-f0-9]{64}$/', $current_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_hash ) && hash_equals( $current_hash, $reviewed_hash );
+			if ( 'approved' === $review_status ) {
+				++$counts['approved'];
+				if ( $exact ) ++$counts['approved_exact'];
+			} elseif ( 'needs_review_content_changed' === $review_status ) {
+				++$counts['content_changed'];
+			} elseif ( ! empty( $asset['required'] ) ) {
+				++$counts['required_pending'];
+			} else {
+				++$counts['optional_pending'];
+			}
+			if ( 'approved' === $review_status && $exact ) continue;
+			$items[] = array(
+				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
+				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
+				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
+				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
+				'required' => ! empty( $asset['required'] ),
+				'review_status' => $review_status,
+				'content_hash' => $current_hash,
+				'reviewed_content_hash' => $reviewed_hash,
+				'review_binding_exact' => $exact,
+				'content_complete' => ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] ),
+				'normalization_status' => isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : '',
+				'content_excerpt' => isset( $asset['content_excerpt'] ) ? (string) $asset['content_excerpt'] : '',
+				'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+				'classification_confidence' => isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0,
+				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
+				'last_synced_at' => isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '',
+			);
+		}
+		usort( $items, static function ( $a, $b ) {
+			$required = (int) ! empty( $b['required'] ) <=> (int) ! empty( $a['required'] );
+			if ( 0 !== $required ) return $required;
+			return strcmp( (string) $a['title'], (string) $b['title'] );
+		} );
+		return array(
+			'contract' => 'mad4b.context-review-queue.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'registry_revision' => self::registry_revision(),
+			'context_fingerprint' => self::context_fingerprint(),
+			'authority_manifest_fingerprint' => self::authority_manifest_fingerprint(),
+			'counts' => $counts,
+			'count' => count( $items ),
+			'items' => $items,
+		);
+	}
+
+	public static function brand_core_coverage() {
+		$required_sets = array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' );
+		$coverage = array();
+		$missing = array();
+		foreach ( $required_sets as $category ) {
+			$eligible = array();
+			$observed = array();
+			foreach ( self::assets() as $asset ) {
+				if ( ! is_array( $asset ) || $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
+				$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
+				$current_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+				$reviewed_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
+				$review_exact = 'approved' === $review_status && preg_match( '/^[a-f0-9]{64}$/', $current_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_hash ) && hash_equals( $current_hash, $reviewed_hash );
+				$reasons = array();
+				if ( 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) $reasons[] = 'source_not_governed';
+				if ( 'ready' !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) $reasons[] = 'status_not_ready';
+				if ( array_key_exists( 'content_complete', $asset ) && empty( $asset['content_complete'] ) ) $reasons[] = 'content_incomplete';
+				if ( 'brand_authority' !== ( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) ) $reasons[] = 'wrong_authority_class';
+				if ( 'approved' !== $review_status ) $reasons[] = 'review_not_approved';
+				elseif ( ! $review_exact ) $reasons[] = 'review_not_exactly_bound';
+				$row = array( 'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '', 'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '', 'review_status' => $review_status, 'review_binding_exact' => $review_exact, 'reasons' => $reasons );
+				$observed[] = $row;
+				if ( empty( $reasons ) ) $eligible[] = $row;
+			}
+			$ready = ! empty( $eligible );
+			if ( ! $ready ) $missing[] = $category;
+			$coverage[ $category ] = array( 'ready' => $ready, 'eligible_asset_count' => count( $eligible ), 'eligible_assets' => $eligible, 'observed_assets' => $observed );
+		}
+		return array(
+			'contract' => 'mad4b.brand-core-context-coverage.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'required_context_sets' => $required_sets,
+			'coverage' => $coverage,
+			'missing_required_context_sets' => $missing,
+			'ready' => empty( $missing ),
+			'registry_revision' => self::registry_revision(),
+			'context_fingerprint' => self::context_fingerprint(),
+			'authority_manifest_fingerprint' => self::authority_manifest_fingerprint(),
 		);
 	}
 
@@ -1149,10 +1302,16 @@ final class MAD4B_SCP_Context_Authority {
 
 		$ready_required = 0;
 		$approved_required = 0;
+		$legacy_unbound_review = 0;
 		foreach ( $required as $asset ) {
 			$content_complete = ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] );
 			if ( 'ready' === $asset['status'] && $content_complete ) ++$ready_required;
-			if ( 'ready' === $asset['status'] && $content_complete && 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) ) ++$approved_required;
+			$approved = 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' );
+			$current_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+			$reviewed_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
+			$review_exact = $approved && preg_match( '/^[a-f0-9]{64}$/', $current_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_hash ) && hash_equals( $current_hash, $reviewed_hash );
+			if ( $approved && ! $review_exact ) ++$legacy_unbound_review;
+			if ( 'ready' === $asset['status'] && $content_complete && $review_exact ) ++$approved_required;
 		}
 
 		$blockers = array();
@@ -1167,6 +1326,7 @@ final class MAD4B_SCP_Context_Authority {
 		if ( ! empty( $governed_assets ) && empty( $required ) ) $blockers[] = 'mandatory_context_unclassified';
 		if ( count( $required ) !== $ready_required ) $blockers[] = 'mandatory_context_not_ready';
 		if ( count( $required ) !== $approved_required ) $blockers[] = 'mandatory_context_review_required';
+		if ( $legacy_unbound_review > 0 ) $blockers[] = 'mandatory_context_review_binding_required';
 		if ( $issue_counts['required_stale'] > 0 ) $blockers[] = 'mandatory_context_contains_stale_assets';
 		if ( $issue_counts['required_unavailable'] > 0 ) $blockers[] = 'mandatory_context_contains_unavailable_assets';
 		if ( $issue_counts['required_conflicting'] > 0 ) $blockers[] = 'mandatory_context_conflict';
@@ -1201,6 +1361,7 @@ final class MAD4B_SCP_Context_Authority {
 			'required_asset_count' => count( $required ),
 			'ready_required_asset_count' => $ready_required,
 			'approved_required_asset_count' => $approved_required,
+			'legacy_unbound_review_asset_count' => $legacy_unbound_review,
 			'stale_asset_count' => $issue_counts['stale'],
 			'unavailable_asset_count' => $issue_counts['unavailable'],
 			'incomplete_asset_count' => $issue_counts['incomplete'],
@@ -1502,6 +1663,7 @@ final class MAD4B_SCP_Context_Authority {
 			'reviewed_by' => 0,
 			'reviewed_at' => '',
 			'review_status' => 'unreviewed',
+			'reviewed_content_hash' => '',
 			'status' => $content_complete ? 'ready' : 'incomplete',
 			'last_synced_at' => gmdate( 'c' ),
 		);
