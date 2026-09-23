@@ -85,6 +85,8 @@ require(authority, "required_scope_shifted", "required Context category-shift ev
 require(authority, "required_scope_reduced", "required Context reduction evidence")
 require(authority, "required_scope_changed", "unified site-wide required scope guard")
 require(authority, "mad4b_context_review_decision_invalid", "bounded human review decision enum")
+require(authority, "mad4b_context_review_source_mode_forbidden", "Human Review governed-source-only backend guard")
+require(authority, "Task attachments remain task-local and cannot become Brand Authority", "task-local promotion denial semantics")
 require(authority, "mad4b_context_review_note_required", "review rationale required for non-default governance decisions")
 require(authority, "review_decision", "persisted review decision semantics")
 require(authority, "review_note", "persisted bounded reviewer rationale")
@@ -484,6 +486,11 @@ require(admin, "Normalization support", "normalization support matrix UX")
 require(admin, "Use automatic score", "automatic quality score review UX")
 require(admin, "Manual override", "manual quality override UX")
 require(admin, "Human Review Queue", "visible human review queue UX")
+require(admin, "Human Review is intentionally unavailable for task-only Context", "task-local Human Review hidden UX")
+require(admin, "Review decision saved.", "decision-neutral AJAX fallback")
+require(admin, "wp_nonce_field( self::ACTION_REVIEW_ASSET )", "Human Review form nonce")
+require(admin, "check_ajax_referer( $action, '_wpnonce', false )", "Human Review AJAX nonce enforcement")
+require(admin, "current_user_can( 'manage_options' )", "Human Review admin capability enforcement")
 require(admin, "Human review is pending.", "Source Folders Human Review discovery CTA")
 require(admin, "Quality evidence does not replace Human Review.", "Quality Human Review discovery CTA")
 require(admin, "Open Human Review Queue", "cross-tab Human Review queue navigation")
@@ -511,6 +518,12 @@ require(admin, "refreshReviewPanels", "AJAX review readback refresh")
 review_submit = admin.split('var form=event.target.closest(".mad4b-context-review-form")', 1)[1].split('var form=event.target.closest(".mad4b-context-ajax-form")', 1)[0]
 if review_submit.index("var body=new URLSearchParams(new FormData(form));") > review_submit.index("controls.forEach(function(control){control.disabled=true;});"):
     raise AssertionError("review AJAX serializes after controls are disabled; disabled exact-review evidence would be omitted")
+
+review_table = admin.split("foreach ( $assets as $asset )", 1)[1].split("private static function render_repair_queue", 1)[0]
+task_guard = review_table.index("if ( 'governed' !== ( isset( $asset['source_mode'] )")
+review_form_nonce = review_table.index("wp_nonce_field( self::ACTION_REVIEW_ASSET )")
+if task_guard > review_form_nonce:
+    raise AssertionError("task-local Human Review guard must run before rendering the review form")
 
 require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
@@ -549,6 +562,10 @@ require(drive, "self::clear_option_read_cache( $name, true )", "pre-read Options
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 require(adapter, "'context/review-queue'", "read-only Context review queue ability")
 require(adapter, "'context/review-audit'", "bounded read-only Context review audit ability")
+for forbidden_review_ability in ("context/review-asset", "context/approve-asset", "context/review", "context/approve"):
+    if forbidden_review_ability in adapter:
+        raise AssertionError(f"Human Review must remain Admin-only; forbidden MCP mutation surface found: {forbidden_review_ability}")
+
 require(adapter, "MAD4B_SCP_Audit::context_review_events", "Context review audit adapter delegates to bounded audit lookup")
 require(audit, "context_review_events", "bounded Context review audit lookup")
 require(audit, "'mad4b/context-asset-review'", "Context review audit event-type bound")
@@ -568,4 +585,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v65: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v66: PASS")
