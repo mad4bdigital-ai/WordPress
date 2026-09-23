@@ -562,6 +562,17 @@ require(drive, "self::clear_option_read_cache( $name, true )", "pre-read Options
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 require(adapter, "'context/review-queue'", "read-only Context review queue ability")
 require(adapter, "'context/review-audit'", "bounded read-only Context review audit ability")
+
+if adapter.count("'context/review-audit'") != 2:
+    raise AssertionError("Context review-audit must appear exactly once in ability_names and once in registration")
+if adapter.count("public function context_review_audit(") != 1:
+    raise AssertionError("Context review-audit handler must have exactly one definition")
+if adapter.count("final class MAD4B_SCP_Context_Adapter") != 1:
+    raise AssertionError("Context adapter source contains duplicated class content")
+require(adapter, "'pattern' => '^[a-f0-9]{64}$', 'default' => ''", "bounded Human Review audit asset-id schema")
+if "'pattern' => '^[a-f0-9]{64}\n" in adapter:
+    raise AssertionError("Context review-audit asset-id pattern is truncated or source-corrupted")
+
 for forbidden_review_ability in ("'context/review-asset'", "'context/approve-asset'", "'context/review'", "'context/approve'"):
     if forbidden_review_ability in adapter:
         raise AssertionError(f"Human Review must remain Admin-only; forbidden MCP mutation surface found: {forbidden_review_ability}")
