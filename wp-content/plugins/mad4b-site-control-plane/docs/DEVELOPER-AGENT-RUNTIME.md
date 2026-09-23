@@ -127,6 +127,8 @@ The normal runtime never calls PHP `eval()`, `shell_exec()`, `system()`, `passth
 
 Normal `developer-wp-cli` also denies WP-CLI aliases, caller-supplied `--path`, and global escape/bootstrap flags such as `--exec`, `--require`, `--ssh` and `--http`. Command families `eval`, `eval-file`, `db`, `config`, `shell`, `cli`, `package` and `server` require Developer Breakglass.
 
+Persistent-authority and code-lifecycle shortcuts are also constrained on the normal plane. `option`, `user`, `role`, `super-admin`, `application-password`, `site`, `network` and `scaffold` require Breakglass. For `plugin`, `theme` and `core`, normal WP-CLI is limited to read/verification subcommands; activation, installation, update and deletion use dedicated governed lifecycle surfaces or Breakglass.
+
 ## Network policy
 
 Outbound network is default-deny.
