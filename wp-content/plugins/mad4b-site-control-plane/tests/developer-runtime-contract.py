@@ -17,6 +17,7 @@ registry = (inc / "class-mad4b-scp-agent-registry.php").read_text(encoding="utf-
 transport = (inc / "class-mad4b-scp-transport-context.php").read_text(encoding="utf-8")
 connection = (inc / "class-mad4b-scp-connection-status.php").read_text(encoding="utf-8")
 oauth = (inc / "class-mad4b-scp-oauth-resource-bridge.php").read_text(encoding="utf-8")
+local_oauth = (inc / "class-mad4b-scp-local-oauth-server.php").read_text(encoding="utf-8")
 oauth_context = (inc / "class-mad4b-scp-oauth-request-context-guard.php").read_text(encoding="utf-8")
 oauth_header = (inc / "class-mad4b-scp-oauth-jwt-header-guard.php").read_text(encoding="utf-8")
 oauth_challenge = (inc / "class-mad4b-scp-oauth-challenge-alignment.php").read_text(encoding="utf-8")
@@ -193,6 +194,18 @@ for source in [oauth_context, oauth_header, oauth_challenge]:
     assert "/mcp/mad4b-developer" in source
     assert "/mcp/mad4b-developer-breakglass" in source
 
+derivation_marker = "hash( 'sha256', 'oauth-developer' . \"\\0\" ."
+assert derivation_marker in authority
+assert derivation_marker in oauth
+assert "'subject_type' => $subject_type" in oauth
+assert "'oauth_developer'" in oauth
+assert "'server:mad4b-developer'" in local_oauth
+assert "'server:mad4b-developer-breakglass'" in local_oauth
+assert "Developer resource requires exactly the normal Developer server scope." in local_oauth
+assert "Developer Breakglass resource requires exactly the Breakglass server scope." in local_oauth
+assert "'aud' => $resource" in local_oauth
+assert "'resource' => $resource" in local_oauth
+
 for marker in [
     "DEVELOPER_RESOURCE_PATH",
     "DEVELOPER_BREAKGLASS_RESOURCE_PATH",
@@ -221,4 +234,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v15: PASS")
+print("mad4b.developer-runtime-contract.v16: PASS")
