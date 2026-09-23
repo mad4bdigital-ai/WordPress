@@ -49,7 +49,7 @@ namespace {
 		public static function site_urls_match_enrollment() { return ! isset( $GLOBALS['mad4b_test_urls_match'] ) || ! empty( $GLOBALS['mad4b_test_urls_match'] ); }
 	}
 	class MAD4B_SCP_Servers {
-		public static function chatgpt_tools() { return array( 'mad4b/site-info', 'mad4b/content-update-post', 'elementor/update-widget-settings' ); }
+		public static function chatgpt_tools() { return array( 'mad4b/site-info', 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ); }
 		public static function external_write_tools() { return array( 'mad4b/content-update-post', 'elementor/update-widget-settings' ); }
 		public static function write_tools() { return array( 'mad4b/content-update-post' ); }
 		public static function blocked_write_tools() { return array( array( 'ability' => 'elementor/update-widget-settings' ) ); }
@@ -85,21 +85,32 @@ namespace {
 	mad4b_assert( false === stripos( $sanitized, 'hunter2' ), 'Password must be redacted.' );
 	mad4b_assert( false === strpos( $sanitized, '/home/user/site' ), 'Absolute filesystem path must be redacted.' );
 
-	$stable_inventory = array( 'mad4b-site-info', 'mad4b-content-update-post', 'elementor-update-widget-settings' );
+	$stable_inventory = array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-info', 'mad4b-write-execute' );
 	$current_build_test = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( $stable_inventory, str_repeat( '0', 64 ) );
-	mad4b_assert( ! empty( $current_build_test['inventory_match'] ), 'Same exact stable external set must match inventory independently of build freshness.' );
+	mad4b_assert( ! empty( $current_build_test['inventory_match'] ), 'Same exact minimal external transport must match independently of build freshness.' );
 	mad4b_assert( empty( $current_build_test['verified'] ), 'Pure evaluator must never self-certify an external session.' );
-	mad4b_assert( in_array( 'elementor-update-widget-settings', $current_build_test['provider_gated_write_tools'], true ), 'Provider-gated external write must be classified as gated.' );
-	mad4b_assert( empty( $current_build_test['provider_execution_mount_leaks'] ), 'Discoverable gated provider write must not be treated as an execution mount leak.' );
+	mad4b_assert( ! empty( $current_build_test['write_transport_ready'] ), 'Exact write transport trio must be recognized.' );
+	mad4b_assert( empty( $current_build_test['direct_write_schema_leaks'] ), 'Logical write schemas must not leak into direct tools/list.' );
+	mad4b_assert( ! empty( $current_build_test['write_inventory_fingerprint_match'] ), 'Logical write catalog must remain fingerprint-bound behind the transport.' );
+	mad4b_assert( 2 === (int) $current_build_test['external_write_tool_count'], 'Logical external write count must remain complete.' );
+	mad4b_assert( 1 === (int) $current_build_test['eligible_write_tool_count'], 'Eligible logical write count must remain dynamic.' );
+	mad4b_assert( in_array( 'elementor-update-widget-settings', $current_build_test['provider_gated_write_tools'], true ), 'Provider-gated logical write must be classified as gated.' );
+	mad4b_assert( empty( $current_build_test['provider_execution_mount_leaks'] ), 'Gated provider write must not be treated as an execution mount leak.' );
 
-	$different = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-content-update-post', 'mad4b-other-write' ), str_repeat( '0', 64 ) );
-	mad4b_assert( empty( $different['inventory_match'] ), 'Same count/different names must fail.' );
-	mad4b_assert( in_array( 'elementor-update-widget-settings', $different['missing_expected_tools'], true ), 'Missing stable provider tool must be diffed.' );
-	mad4b_assert( in_array( 'mad4b-other-write', $different['unexpected_tools'], true ), 'Unexpected tool must be diffed.' );
-	mad4b_assert( ! empty( $different['foreign_write_tool_exposed'] ), 'Unexpected external tool must be fail-closed as foreign exposure.' );
+	$different = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-execute', 'foreign-unexpected-tool' ), str_repeat( '0', 64 ) );
+	mad4b_assert( empty( $different['inventory_match'] ), 'Same count/different transport names must fail.' );
+	mad4b_assert( in_array( 'mad4b-write-info', $different['missing_expected_tools'], true ), 'Missing write-info transport must be diffed.' );
+	mad4b_assert( in_array( 'foreign-unexpected-tool', $different['unexpected_tools'], true ), 'Unexpected tool must be diffed.' );
+	mad4b_assert( empty( $different['write_transport_ready'] ), 'Missing write transport member must fail transport readiness.' );
 
-	$missing_write = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-content-update-post' ), str_repeat( '0', 64 ) );
-	mad4b_assert( empty( $missing_write['write_inventory_fingerprint_match'] ), 'Missing stable provider write must fail write inventory parity.' );
+	$direct_write_leak = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array_merge( $stable_inventory, array( 'mad4b-content-update-post' ) ), str_repeat( '0', 64 ) );
+	mad4b_assert( ! empty( $direct_write_leak['direct_write_schema_leaks'] ), 'Direct underlying write schema exposure must be detected.' );
+	mad4b_assert( in_array( 'mad4b-content-update-post', $direct_write_leak['direct_write_schema_leaks'], true ), 'Leaked underlying write tool must be named.' );
+	mad4b_assert( empty( $direct_write_leak['write_inventory_fingerprint_match'] ), 'Direct write schema leakage must fail logical write transport acceptance.' );
+
+	$missing_write_transport = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-execute' ), str_repeat( '0', 64 ) );
+	mad4b_assert( empty( $missing_write_transport['write_transport_ready'] ), 'Incomplete write transport must fail closed.' );
+	mad4b_assert( empty( $missing_write_transport['write_inventory_fingerprint_match'] ), 'Incomplete write transport must fail write inventory acceptance.' );
 
 	$raw_sql = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array_merge( $stable_inventory, array( 'mad4b-database-raw-query' ) ), str_repeat( '0', 64 ) );
 	mad4b_assert( ! empty( $raw_sql['raw_sql_exposed'] ), 'Raw SQL exposure must fail explicit assertion.' );
