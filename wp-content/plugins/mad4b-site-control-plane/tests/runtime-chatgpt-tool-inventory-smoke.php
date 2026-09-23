@@ -125,16 +125,16 @@ foreach ( $direct_required as $tool_name ) {
 // bounded. These abilities remain in the governed capability universe and are
 // reachable only through the read-only discovery/info/execute surface.
 $hidden_read_required = array(
-	'mad4b-filesystem-list',
-	'mad4b-filesystem-read',
-	'mad4b-database-list-tables',
-	'mad4b-database-describe-table',
-	'mad4b-database-select',
-	'mad4b-content-get-post',
-	'mad4b-audit-tail',
-	'mad4b-mutation-get',
-	'mad4b-agent-list',
-	'mad4b-agent-effective-access',
+		'mad4b/filesystem-list',
+		'mad4b/filesystem-read',
+		'mad4b/database-list-tables',
+		'mad4b/database-describe-table',
+		'mad4b/database-select',
+		'mad4b/content-get-post',
+		'mad4b/audit-tail',
+		'mad4b/mutation-get',
+		'mad4b/agent-list',
+		'mad4b/agent-effective-access',
 );
 $full_candidates = MAD4B_SCP_Servers::chatgpt_full_catalog_candidates();
 foreach ( $hidden_read_required as $ability_name ) {
