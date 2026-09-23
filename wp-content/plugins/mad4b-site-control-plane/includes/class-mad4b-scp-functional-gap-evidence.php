@@ -1359,6 +1359,55 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return self::runtime_dynamic_surface_fingerprint( $runtime );
 	}
 
+	private static function decision_handoff( array $decisions ) {
+		$groups = array(
+			'alignment_required' => array(),
+			'semantic_review_required' => array(),
+			'behavioral_review_required' => array(),
+			'read_candidates' => array(),
+			'inactive' => array(),
+			'other_followup' => array(),
+		);
+		$alignment = array( 'runtime_alignment_required', 'runtime_evidence_unstable', 'evidence_unavailable', 'contract_discovery_required' );
+		$semantic = array( 'contract_evidence_review', 'runtime_contract_evidence_captured', 'semantic_attestation_required' );
+		$behavioral = array( 'behavioral_recertification_required' );
+		$read_candidates = array( 'read_contract_candidate', 'redacted_read_contract_candidate' );
+		foreach ( $decisions as $row ) {
+			$family = isset( $row['family'] ) ? sanitize_key( (string) $row['family'] ) : '';
+			$state = isset( $row['state'] ) ? sanitize_key( (string) $row['state'] ) : '';
+			if ( '' === $family ) continue;
+			if ( 'not_active' === $state ) $groups['inactive'][] = $family;
+			elseif ( in_array( $state, $alignment, true ) ) $groups['alignment_required'][] = $family;
+			elseif ( in_array( $state, $semantic, true ) ) $groups['semantic_review_required'][] = $family;
+			elseif ( in_array( $state, $behavioral, true ) ) $groups['behavioral_review_required'][] = $family;
+			elseif ( in_array( $state, $read_candidates, true ) ) $groups['read_candidates'][] = $family;
+			else $groups['other_followup'][] = $family;
+		}
+		foreach ( $groups as $key => $families ) {
+			$families = array_values( array_unique( array_filter( array_map( 'sanitize_key', $families ) ) ) );
+			sort( $families, SORT_STRING );
+			$groups[ $key ] = $families;
+		}
+		$followup = array_values( array_unique( array_merge(
+			$groups['alignment_required'],
+			$groups['semantic_review_required'],
+			$groups['behavioral_review_required'],
+			$groups['read_candidates'],
+			$groups['other_followup']
+		) ) );
+		sort( $followup, SORT_STRING );
+		return array(
+			'contract' => 'mad4b.functional-gap-decision-handoff.v1',
+			'followup_required' => ! empty( $followup ),
+			'followup_count' => count( $followup ),
+			'followup_families' => $followup,
+			'groups' => $groups,
+			'authorizing' => false,
+			'mutation_granted' => false,
+			'promotion_granted' => false,
+		);
+	}
+
 	private static function decision_fingerprint( array $repository, array $policy, array $decisions, $runtime_evidence_fingerprint = '' ) {
 		$payload = array(
 			'contract' => self::EVALUATION_CONTRACT,
@@ -1390,9 +1439,15 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			usort( $decisions, static function ( $a, $b ) { return strcmp( isset( $a['family'] ) ? (string) $a['family'] : '', isset( $b['family'] ) ? (string) $b['family'] : '' ); } );
 			$runtime_evidence_fingerprint = self::runtime_evidence_fingerprint( $runtime );
 			$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions, $runtime_evidence_fingerprint );
+			$handoff = self::decision_handoff( $decisions );
 			return array(
 				'contract' => self::EVALUATION_CONTRACT,
+				'evaluation_complete' => false,
 				'ready' => false,
+				'ready_semantics' => 'backward_compatible_alias_for_evaluation_complete_not_provider_certification',
+				'followup_required' => ! empty( $handoff['followup_required'] ),
+				'followup_count' => isset( $handoff['followup_count'] ) ? (int) $handoff['followup_count'] : 0,
+				'decision_handoff' => $handoff,
 				'promotion_authorized' => false,
 				'production_mutation' => false,
 				'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
@@ -1560,9 +1615,16 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		ksort( $counts, SORT_STRING );
 		$evaluation_blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $evaluation_blockers ) ) ) );
 
+		$handoff = self::decision_handoff( $decisions );
+		$evaluation_complete = empty( $evaluation_blockers );
 		return array(
 			'contract' => self::EVALUATION_CONTRACT,
-			'ready' => empty( $evaluation_blockers ),
+			'evaluation_complete' => $evaluation_complete,
+			'ready' => $evaluation_complete,
+			'ready_semantics' => 'backward_compatible_alias_for_evaluation_complete_not_provider_certification',
+			'followup_required' => ! empty( $handoff['followup_required'] ),
+			'followup_count' => isset( $handoff['followup_count'] ) ? (int) $handoff['followup_count'] : 0,
+			'decision_handoff' => $handoff,
 			'promotion_authorized' => false,
 			'production_mutation' => false,
 			'policy_contract' => isset( $policy['contract'] ) ? $policy['contract'] : '',
