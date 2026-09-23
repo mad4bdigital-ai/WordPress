@@ -257,6 +257,7 @@ if ( ! in_array( $write_attempt->get_error_code(), array(
 	'invalid_input',
 	'mad4b_authorization_unavailable',
 	'mad4b_mutation_disabled',
+	'ability_invalid_permissions',
 ), true ) ) {
 	$fail( 'Write dispatcher failed closed with an unexpected contract.', array( 'code' => $write_attempt->get_error_code(), 'message' => $write_attempt->get_error_message() ) );
 }
