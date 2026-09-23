@@ -194,15 +194,18 @@ final class MAD4B_SCP_Plugin_Package {
 		$install = self::install_package( $package['path'] );
 		self::cleanup_package( $package );
 		if ( is_wp_error( $install ) ) {
-			self::rollback( $authority['plugin_file'], $backup, $before );
-			MAD4B_SCP_Audit::record( 'mad4b/plugin-package-apply', array( 'provider_id' => $provider, 'component' => $component, 'plugin' => $authority['plugin_file'], 'target_version' => $authority['version'], 'plan_sha256' => $expected_plan, 'backup_id' => isset( $backup['backup_id'] ) ? $backup['backup_id'] : '', 'readback_verified' => false, 'rollback_attempted' => true ), 'failure' );
-			return $install;
+			$rollback = self::rollback( $authority['plugin_file'], $backup, $before );
+			$rollback_ok = ! is_wp_error( $rollback );
+			MAD4B_SCP_Audit::record( 'mad4b/plugin-package-apply', array( 'provider_id' => $provider, 'component' => $component, 'plugin' => $authority['plugin_file'], 'target_version' => $authority['version'], 'plan_sha256' => $expected_plan, 'backup_id' => isset( $backup['backup_id'] ) ? $backup['backup_id'] : '', 'failure_phase' => 'install', 'failure_code' => $install->get_error_code(), 'readback_verified' => false, 'rollback_attempted' => true, 'rollback_ok' => $rollback_ok ), 'failure' );
+			return new WP_Error( 'mad4b_plugin_package_install_failed_with_rollback_status', 'Certified plugin package installation failed; rollback status is attached.', array( 'cause_code' => $install->get_error_code(), 'cause_message' => $install->get_error_message(), 'rollback_ok' => $rollback_ok, 'rollback_error_code' => is_wp_error( $rollback ) ? $rollback->get_error_code() : '' ) );
 		}
 
 		$activation = self::restore_activation_state( $authority['plugin_file'], is_array( $before ) ? $before : array() );
 		if ( is_wp_error( $activation ) ) {
-			self::rollback( $authority['plugin_file'], $backup, $before );
-			return $activation;
+			$rollback = self::rollback( $authority['plugin_file'], $backup, $before );
+			$rollback_ok = ! is_wp_error( $rollback );
+			MAD4B_SCP_Audit::record( 'mad4b/plugin-package-apply', array( 'provider_id' => $provider, 'component' => $component, 'plugin' => $authority['plugin_file'], 'target_version' => $authority['version'], 'plan_sha256' => $expected_plan, 'backup_id' => isset( $backup['backup_id'] ) ? $backup['backup_id'] : '', 'failure_phase' => 'activation_state_restore', 'failure_code' => $activation->get_error_code(), 'readback_verified' => false, 'rollback_attempted' => true, 'rollback_ok' => $rollback_ok ), 'failure' );
+			return new WP_Error( 'mad4b_plugin_package_activation_restore_failed_with_rollback_status', 'Plugin activation-state restoration failed; rollback status is attached.', array( 'cause_code' => $activation->get_error_code(), 'cause_message' => $activation->get_error_message(), 'rollback_ok' => $rollback_ok, 'rollback_error_code' => is_wp_error( $rollback ) ? $rollback->get_error_code() : '' ) );
 		}
 
 		$readback = self::verify_disk_readback( $authority );
