@@ -11,6 +11,13 @@ capability_catalog = json.loads((ROOT / 'config/provider-capability-contracts.js
 required = [
     'mad4b.wp-import-export-governed-adapter.v3',
     'mad4b.wp-import-export-execution-readiness.v4',
+    'mad4b.wp-import-export-runtime-symbol-diagnostic.v1',
+    'runtime_symbol_diagnostic',
+    'expected_classes',
+    'present_classes',
+    'missing_classes',
+    'autoload_or_bootstrap_mutation_attempted',
+    'filesystem_scan_performed',
     'mad4b.bulk-content-io-execution-evidence.v1',
     'mad4b.wp-all-import.server-local-wp-cli.v1',
     'mad4b.wp-all-export.server-local-record-execute.v1',
