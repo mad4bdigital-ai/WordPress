@@ -45,6 +45,10 @@ final class MAD4B_SCP_Context_Authority {
 	}
 	public static function profile() { return array( 'brand_id' => 'brand-001', 'revision' => 7 ); }
 	public static function assets() { return self::$assets; }
+	public static function asset_context_sets( array $asset ) {
+		if ( ! empty( $asset['approved_context_sets'] ) && is_array( $asset['approved_context_sets'] ) ) { $sets = array_values( array_unique( array_map( 'sanitize_key', $asset['approved_context_sets'] ) ) ); sort( $sets, SORT_STRING ); return $sets; }
+		return ! empty( $asset['category'] ) ? array( (string) $asset['category'] ) : array();
+	}
 	public static function registry_revision() { return 12; }
 	public static function authority_manifest_fingerprint( $assets = null ) { return str_repeat( 'd', 64 ); }
 }
@@ -148,6 +152,23 @@ sort( $ids, SORT_STRING );
 mad4b_context_preflight_assert( in_array( 'brand', $ids, true ) && in_array( 'tone', $ids, true ) && in_array( 'editorial', $ids, true ), 'All approved mandatory Brand Core assets must load.', $ids );
 mad4b_context_preflight_assert( in_array( 'writer', $ids, true ), 'Exact task-scoped optional writer reference should load.', $ids );
 mad4b_context_preflight_assert( 'site_policy' === $ready['envelope']['precedence'][0] && 'brand_core' === $ready['envelope']['precedence'][1], 'Context precedence must keep Site Policy and Brand Core ahead of references.', $ready['envelope']['precedence'] );
+
+$ready_assets = MAD4B_SCP_Context_Authority::$assets;
+$single_brand_core = mad4b_context_asset( 'brand-core-single', 'brand_strategy', 'governed', 'approved' );
+$single_brand_core['approved_context_sets'] = array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' );
+MAD4B_SCP_Context_Authority::$assets = array(
+	'brand-core-single' => $single_brand_core,
+	'writer' => $ready_assets['writer'],
+);
+$single_multi = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x' );
+mad4b_context_preflight_assert( ! empty( $single_multi['ready'] ), 'One exact approved Brand Core asset must be able to satisfy multiple required Context sets.', $single_multi );
+$single_governed = array_values( array_filter( $single_multi['envelope']['assets'], static function ( $row ) { return 'governed' === ( isset( $row['source_mode'] ) ? $row['source_mode'] : '' ); } ) );
+mad4b_context_preflight_assert( 1 === count( $single_governed ), 'Multi-set Brand Core must deduplicate one asset across required sets.', $single_governed );
+mad4b_context_preflight_assert( 'brand-core-single' === $single_governed[0]['asset_id'], 'Multi-set Brand Core must load the exact single governed asset.', $single_governed );
+foreach ( array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ) as $required_set ) {
+	mad4b_context_preflight_assert( in_array( $required_set, $single_governed[0]['context_sets'], true ), 'Context Receipt asset summary must expose every approved set satisfied by the single asset.', array( 'required_set' => $required_set, 'asset' => $single_governed[0] ) );
+}
+MAD4B_SCP_Context_Authority::$assets = $ready_assets;
 
 MAD4B_SCP_Context_Authority::$assets['terminology'] = mad4b_context_asset( 'terminology', 'terminology', 'governed', 'approved' );
 MAD4B_SCP_Context_Authority::$assets['terminology']['required'] = true;
