@@ -62,7 +62,7 @@ jobs:
 
           grep -Fq "const CONTRACT = 'mad4b.runtime-functional-gap-diagnostic.v2'" "$diag"
           grep -Fq "const ABILITY = 'mad4b/runtime-functional-gap-diagnostic'" "$diag"
-          grep -Fq "'contract_discovery_required', 'safety_blocked'" "$diag"
+          grep -Fq "'contract_discovery_required', 'read_ready_write_blocked', 'safety_blocked'" "$diag"
           grep -Fq "'generic_filesystem_surface_exposed' => false" "$diag"
           grep -Fq "'remote_request_performed' => false" "$diag"
           grep -Fq "'raw_sql_performed' => false" "$diag"
