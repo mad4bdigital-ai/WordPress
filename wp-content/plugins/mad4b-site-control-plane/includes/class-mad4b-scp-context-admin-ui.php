@@ -723,15 +723,17 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$result = MAD4B_SCP_Governance_Abilities::agent_list( array( 'status' => 'enabled', 'limit' => 100 ) );
 		if ( is_wp_error( $result ) || empty( $result['agents'] ) || ! is_array( $result['agents'] ) ) return array();
 		$agents = array();
+		$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
 		foreach ( $result['agents'] as $agent ) {
 			if ( ! is_array( $agent ) ) continue;
 			$public_id = isset( $agent['public_id'] ) ? strtolower( trim( (string) $agent['public_id'] ) ) : '';
 			$environment = isset( $agent['environment'] ) ? sanitize_key( (string) $agent['environment'] ) : '';
-			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $public_id ) || 'staging' !== $environment ) continue;
+			$agent_slug = isset( $agent['slug'] ) ? sanitize_key( (string) $agent['slug'] ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $public_id ) || 'staging' !== $environment || '' === $profile_agent_slug || $profile_agent_slug !== $agent_slug ) continue;
 			$agents[] = array(
 				'public_id' => $public_id,
 				'label' => isset( $agent['label'] ) && '' !== trim( (string) $agent['label'] ) ? (string) $agent['label'] : ( isset( $agent['slug'] ) ? (string) $agent['slug'] : $public_id ),
-				'slug' => isset( $agent['slug'] ) ? (string) $agent['slug'] : '',
+				'slug' => $agent_slug,
 				'environment' => $environment,
 			);
 		}
@@ -756,7 +758,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<label class="mad4b-context-approval-mode-card"><input type="radio" name="review_mode" value="human_and_ai"' . checked( $mode, 'human_and_ai', false ) . '> <strong>' . esc_html__( 'AI Agent Approval', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Adds one exact-agent governed review path. The AI can approve, reject, or request changes, but cannot change category, authority, Required scope, source mode, or quality policy.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '</div>';
 		echo '<div class="mad4b-context-ai-review-settings">';
-		echo '<label><strong>' . esc_html__( 'Delegated AI Agent', 'mad4b-site-control-plane' ) . '</strong><select name="ai_agent_public_id"><option value="">' . esc_html__( 'Select an enabled Staging agent', 'mad4b-site-control-plane' ) . '</option>';
+		echo '<label><strong>' . esc_html__( 'Delegated AI Agent', 'mad4b-site-control-plane' ) . '</strong><select name="ai_agent_public_id"><option value="">' . esc_html__( 'Select the canonical Site Profile agent', 'mad4b-site-control-plane' ) . '</option>';
 		foreach ( $agents as $agent ) {
 			$label = (string) $agent['label'];
 			if ( ! empty( $agent['slug'] ) ) $label .= ' · ' . (string) $agent['slug'];
