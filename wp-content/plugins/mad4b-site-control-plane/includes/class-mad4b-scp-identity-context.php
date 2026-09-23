@@ -13,7 +13,7 @@ final class MAD4B_SCP_Identity_Context {
 			'subject_fingerprint' => '',
 			'issuer_fingerprint' => '',
 			'client_fingerprint' => '',
-			'token_instance_fingerprint' => '',
+			'session_fingerprint' => '',
 			'token_scopes' => array(),
 			'approval_ticket_id' => '',
 			'auth_method' => '',
@@ -62,11 +62,11 @@ final class MAD4B_SCP_Identity_Context {
 
 		$issuer_fingerprint = isset( $context['issuer_fingerprint'] ) ? strtolower( trim( (string) $context['issuer_fingerprint'] ) ) : '';
 		$client_fingerprint = isset( $context['client_fingerprint'] ) ? strtolower( trim( (string) $context['client_fingerprint'] ) ) : '';
-		$token_instance_fingerprint = isset( $context['token_instance_fingerprint'] ) ? strtolower( trim( (string) $context['token_instance_fingerprint'] ) ) : '';
+		$session_fingerprint = isset( $context['session_fingerprint'] ) ? strtolower( trim( (string) $context['session_fingerprint'] ) ) : '';
 		foreach ( array(
 			'issuer_fingerprint' => $issuer_fingerprint,
 			'client_fingerprint' => $client_fingerprint,
-			'token_instance_fingerprint' => $token_instance_fingerprint,
+			'session_fingerprint' => $session_fingerprint,
 		) as $field => $value ) {
 			if ( '' !== $value && 1 !== preg_match( '/^[a-f0-9]{64}$/', $value ) ) return new WP_Error( 'mad4b_identity_attribution_fingerprint_invalid', 'OAuth attribution fingerprint is malformed.', array( 'field' => $field ) );
 		}
@@ -90,7 +90,7 @@ final class MAD4B_SCP_Identity_Context {
 			'subject_fingerprint' => $fingerprint,
 			'issuer_fingerprint' => $issuer_fingerprint,
 			'client_fingerprint' => $client_fingerprint,
-			'token_instance_fingerprint' => $token_instance_fingerprint,
+			'session_fingerprint' => $session_fingerprint,
 			'token_scopes' => array_values( array_unique( $scopes ) ),
 			'approval_ticket_id' => strtolower( $approval_ticket_id ),
 			'auth_method' => isset( $context['auth_method'] ) ? sanitize_key( (string) $context['auth_method'] ) : '',
