@@ -225,7 +225,7 @@ final class MAD4B_SCP_Developer_Runtime {
 			'description' => $label . ' through the isolated MAD4B Developer Plane.',
 			'category' => $category,
 			'execute_callback' => array( __CLASS__, $method ),
-			'permission_callback' => $permission,
+			'permission_callback' => self::permission_callback( $permission, $readonly, $name, $category ),
 			'input_schema' => $input,
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
@@ -247,6 +247,23 @@ final class MAD4B_SCP_Developer_Runtime {
 		);
 		wp_register_ability( $name, $args );
 	}
+
+	private static function permission_callback( $permission, $readonly, $ability_name, $server_id ) {
+		if ( $readonly ) return $permission;
+		return static function ( $input = null ) use ( $permission, $ability_name, $server_id ) {
+			$granted = is_callable( $permission ) ? call_user_func( $permission, $input ) : false;
+			if ( is_wp_error( $granted ) || ! $granted ) return $granted;
+			if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_developer_authorization_unavailable', 'Central MAD4B authorization is unavailable for Developer execution.' );
+			$authorized = MAD4B_SCP_Authorization::authorize_mutation(
+				(string) $ability_name,
+				sanitize_key( (string) $server_id ),
+				'core',
+				is_array( $input ) ? $input : array()
+			);
+			return is_wp_error( $authorized ) ? $authorized : true;
+		};
+	}
+
 
 	private static function approval_schema() {
 		return array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 );
