@@ -30,10 +30,11 @@ final class MAD4B_SCP_Servers {
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
-				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
+				'mad4b/site-info', 'mad4b/site-profile-status',
+				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
+				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
-				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
-				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
+				'mad4b/plugin-package-plan',
 			), $governed_status ),
 			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
@@ -300,45 +301,38 @@ final class MAD4B_SCP_Servers {
 
 	public static function chatgpt_tools() {
 		$core = self::core_tools( 'mad4b-chatgpt' );
-		$adapter_candidates = array();
-		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
-			$registry = MAD4B_SCP_Adapter_Registry::instance();
-			$registry->register_defaults();
-			$adapter_candidates = $registry->ability_names( 'read' );
-		}
+		$breakglass = self::core_tools( 'mad4b-breakglass' );
 
+		// ChatGPT always receives a bounded transport catalog. Full read and write
+		// capability universes remain available through governed discovery/info
+		// surfaces, while mutation execution is concentrated into the exact-target
+		// write dispatcher. This keeps tools/list small and stable enough for client
+		// refresh without weakening the underlying ability authority contracts.
 		if ( ! self::chatgpt_unified_catalog_enabled() ) {
-			$forbidden = array(
-				'mad4b/filesystem-list', 'mad4b/filesystem-read',
-				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query',
-			);
-			$tools = array_values( array_diff( $core, $forbidden ) );
-			foreach ( array_values( array_unique( $adapter_candidates ) ) as $ability_name ) {
-				if ( in_array( $ability_name, $forbidden, true ) ) continue;
-				if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
-				$ability = wp_get_ability( $ability_name );
-				if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
-				$meta = $ability->get_meta();
-				$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-				if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
-				$tools[] = (string) $ability_name;
-			}
-			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective() ) {
-				$tools = array_merge( $tools, self::write_tools() );
-				$tools = array_merge( $tools, array_values( array_diff( self::external_write_tools(), self::write_tools() ) ) );
-			}
-			return array_values( array_unique( $tools ) );
+			$tools = array_values( array_diff( $core, $breakglass, array( 'mad4b/database-raw-query' ) ) );
+			$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
+			sort( $tools, SORT_STRING );
+			return $tools;
 		}
 
-		$candidates = array_merge(
-			self::core_tools( 'mad4b-chatgpt' ),
-			self::core_tools( 'mad4b-enrollment' ),
-			self::external_write_tools()
+		$bootstrap = array(
+			'mad4b/build-provenance-status',
+			'mad4b/site-profile-feature-reenroll',
+			'mad4b/site-profile-write-enable',
+			'mad4b/staging-write-grant-reconcile',
+			'mad4b/staging-write-candidate-bind',
+			'mad4b/staging-write-candidate-binding-audit',
 		);
+		$candidates = array_merge( $core, $bootstrap );
+		$bounded_bootstrap = array(
+			'mad4b/site-profile-feature-reenroll',
+			'mad4b/site-profile-write-enable',
+			'mad4b/staging-write-grant-reconcile',
+			'mad4b/staging-write-candidate-bind',
+		);
+		$meta_write_transport = array( 'mad4b/write-execute' );
 
 		$tools = array();
-		$breakglass = self::core_tools( 'mad4b-breakglass' );
-		$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' );
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
 			if ( '' === $ability_name || 'mad4b/database-raw-query' === $ability_name || in_array( $ability_name, $breakglass, true ) ) continue;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
@@ -354,7 +348,7 @@ final class MAD4B_SCP_Servers {
 				$tools[] = $ability_name;
 				continue;
 			}
-			if ( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'] && self::is_external_write_candidate( $ability_name ) ) {
+			if ( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'] && in_array( $ability_name, $meta_write_transport, true ) ) {
 				$tools[] = $ability_name;
 			}
 		}
