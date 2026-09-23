@@ -303,14 +303,6 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		);
 	}
 
-	private static function rollback_binding_option( $before ) {
-		if ( ! is_array( $before ) ) return false;
-		$updated = update_option( MAD4B_SCP_Staging_Write_Authority::OPTION, $before, false );
-		MAD4B_SCP_Staging_Write_Authority::bootstrap();
-		$after = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
-		return false !== $updated && is_array( $after ) && $before === $after;
-	}
-
 	public static function bind( $input ) {
 		if ( self::$running ) return new WP_Error( 'mad4b_candidate_bind_reentry_denied', 'Candidate binding is already running in this request.' );
 		$permission = self::can_execute( $input );
