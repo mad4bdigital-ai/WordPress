@@ -84,8 +84,9 @@ require(authority, "quality_mode", "explicit automatic/manual quality review mod
 require(authority, "mad4b_context_quality_score_required", "manual quality score fail-closed")
 require(authority, "mad4b_context_automatic_quality_unavailable", "automatic score reset fail-closed")
 require(authority, "needs_review_content_changed", "rescan review invalidation")
-require(authority, "$prior_approved = $same_content", "approval remains bound to exact content hash")
-require(authority, "&& 'approved' === ( isset( $prior['review_status'] )", "rescan may preserve only an already-approved exact hash")
+require(authority, "$prior_review_bound = $same_content", "human review decisions remain bound to exact same-hash content")
+require(authority, "in_array( $prior_review_status, array( 'approved', 'needs_changes', 'rejected' ), true )", "same-hash rescan preserves only explicit exact human decision states")
+require(authority, "hash_equals( $prior_reviewed_hash, (string) $normalized['content_hash'] )", "same-hash review preservation requires the exact reviewed content hash")
 require(authority, "$normalized['reviewed_at'] = '';", "content change clears reviewer timestamp evidence")
 require(authority, "status'] = 'unavailable'", "missing asset retention")
 require(authority, "not_seen_in_complete_scan", "complete-scan missing asset reason")
@@ -531,4 +532,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v58: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v59: PASS")
