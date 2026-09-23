@@ -250,6 +250,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				'quality_score' => isset( $_POST['quality_score'] ) ? wp_unslash( $_POST['quality_score'] ) : '',
 				'decision' => isset( $_POST['decision'] ) ? wp_unslash( $_POST['decision'] ) : 'approve',
 				'review_note' => isset( $_POST['review_note'] ) ? wp_unslash( $_POST['review_note'] ) : '',
+				'approved_context_sets' => isset( $_POST['approved_context_sets'] ) && is_array( $_POST['approved_context_sets'] ) ? wp_unslash( $_POST['approved_context_sets'] ) : array(),
 				'expected_content_hash' => isset( $_POST['expected_content_hash'] ) ? wp_unslash( $_POST['expected_content_hash'] ) : '',
 				'expected_registry_revision' => isset( $_POST['expected_registry_revision'] ) ? wp_unslash( $_POST['expected_registry_revision'] ) : '',
 				'expected_authority_manifest_fingerprint' => isset( $_POST['expected_authority_manifest_fingerprint'] ) ? wp_unslash( $_POST['expected_authority_manifest_fingerprint'] ) : '',
@@ -258,7 +259,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( self::is_ajax_request() ) {
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
 			wp_send_json_success( array(
-				'message' => __( 'Exact Context content approved.', 'mad4b-site-control-plane' ),
+				'message' => __( 'Exact Context review decision committed.', 'mad4b-site-control-plane' ),
 				'asset' => $result,
 				'context_status' => MAD4B_SCP_Context_Authority::status(),
 				'review_queue' => MAD4B_SCP_Context_Authority::review_queue(),
@@ -855,7 +856,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '</p>';
 		}
 		echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Effective decision:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) . '</code> · ' . esc_html( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) . '</p></div>';
-		echo '<label><strong>' . esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
+		$suggested_sets = isset( $asset['suggested_context_sets'] ) && is_array( $asset['suggested_context_sets'] ) ? array_values( $asset['suggested_context_sets'] ) : array();
+		$approved_sets = MAD4B_SCP_Context_Authority::asset_context_sets( $asset );
+		echo '<label><strong>' . esc_html__( 'Approved Context sets', 'mad4b-site-control-plane' ) . '</strong><select name="approved_context_sets[]" multiple size="7">';
+		foreach ( $categories as $key => $label ) {
+			if ( 'uncategorized' === $key ) continue;
+			$label_text = $label . ( in_array( $key, $suggested_sets, true ) ? ' · suggested' : '' );
+			echo '<option value="' . esc_attr( $key ) . '"' . selected( in_array( $key, $approved_sets, true ), true, false ) . '>' . esc_html( $label_text ) . '</option>';
+		}
+		echo '</select><span class="description">' . esc_html__( 'Automatic suggestions are advisory only. Selected sets become governed coverage only after an exact human approval.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><strong>' . esc_html__( 'Primary category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
 		foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['category'], $key, false ) . '>' . esc_html( $label ) . '</option>';
 		echo '</select></label>';
 		echo '<label><strong>' . esc_html__( 'Authority', 'mad4b-site-control-plane' ) . '</strong><select name="authority_class">';
