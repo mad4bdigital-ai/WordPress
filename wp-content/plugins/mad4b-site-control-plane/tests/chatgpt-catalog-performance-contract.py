@@ -53,15 +53,25 @@ assert "$dynamic_write_resolution = 'mad4b-write' === $server_id || self::is_ext
 assert "if ( $cacheable && ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) )" in servers
 assert "$remember = static function ( $value ) use ( $cache_key, $cacheable, $dynamic_write_resolution )" in servers
 
-# Catalog memoization is legal only after registration lifecycle has settled.
+# Stable transport/catalog identity may be memoized as soon as the Abilities
+# registry is complete, including while rest_api_init is constructing the exact
+# addressed MCP server. Dynamic provider eligibility remains separately delayed
+# until REST registration settles.
 for marker in [
     "private static function catalog_cacheable()",
     "did_action( 'wp_abilities_api_init' ) > 0",
-    "did_action( 'rest_api_init' ) > 0",
     "! doing_action( 'wp_abilities_api_init' )",
-    "! doing_action( 'rest_api_init' )",
 ]:
     assert marker in servers, marker
+catalog_cache_body = servers.split("private static function catalog_cacheable()", 1)[1].split("private static function registered_adapter_write_candidates()", 1)[0]
+assert "did_action( 'rest_api_init' ) > 0" not in catalog_cache_body
+assert "doing_action( 'rest_api_init' )" not in catalog_cache_body
+adapter_projection_body = servers.split("private static function adapter_write_projection()", 1)[1].split("private static function chatgpt_unified_catalog_enabled()", 1)[0]
+for marker in [
+    "did_action( 'rest_api_init' ) > 0",
+    "! doing_action( 'rest_api_init' )",
+]:
+    assert marker in adapter_projection_body, marker
 
 # Runtime write eligibility must stay live within the same PHP request because
 # provider certification/isolation can converge after initial discovery.
@@ -73,11 +83,20 @@ assert "adapter_write_projection()" in write_body
 # Preserve the security model while optimizing discovery.
 assert "'mad4b/database-raw-query' === $ability_name" in servers
 assert "MAD4B_SCP_Developer_Authority::enrollment_tools()" in servers
-assert "array_diff( $enrollment_candidates, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in servers
+assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
+assert "private static function chatgpt_enrollment_candidates()" in servers
+assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in servers
+assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() )" in servers
 assert "mad4b-developer-breakglass" in servers
+assert "private static function current_request_server_id()" in servers
+assert "private static function should_materialize_server_tools" in servers
 
-assert "0.4.0-rc.57" in plugin
-assert "release=0.4.0-rc.57" in runtime_build
-assert "request-local memoization was introduced in rc.56 and is retained in rc.57" in readme
+import re
+plugin_version = re.search(r"^ \* Version: ([^\s]+)", plugin, re.M)
+runtime_version = re.search(r"^release=(.+)$", runtime_build, re.M)
+assert plugin_version and runtime_version
+assert plugin_version.group(1) == runtime_version.group(1)
+assert "route-targeted" in readme.lower() or "tools/list" in readme.lower()
+assert "no persistent" in readme.lower() or "request-local" in readme.lower()
 
-print("mad4b.chatgpt-catalog-performance.v4: PASS")
+print("mad4b.chatgpt-catalog-performance.v5: PASS")
