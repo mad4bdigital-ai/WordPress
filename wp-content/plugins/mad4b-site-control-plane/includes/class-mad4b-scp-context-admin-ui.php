@@ -4,6 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Context_Admin_UI {
 	const PAGE_SLUG = 'mad4b-control-plane-context';
+	const REVIEW_PAGE_SLUG = 'mad4b-control-plane-context-review';
+	const REVIEW_CAPABILITY = 'mad4b_review_context';
 	const ACTION_SAVE_PROFILE = 'mad4b_context_save_profile';
 	const ACTION_SAVE_GOOGLE = 'mad4b_context_google_save';
 	const ACTION_SAVE_GOOGLE_DEDICATED = 'mad4b_context_google_dedicated_save';
@@ -57,6 +59,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::PAGE_SLUG,
 			array( __CLASS__, 'render_page' )
 		);
+		if ( self::can_review() ) {
+			add_submenu_page(
+				'mad4b-control-plane',
+				__( 'MAD4B Context Review', 'mad4b-site-control-plane' ),
+				__( 'Context Review', 'mad4b-site-control-plane' ),
+				'read',
+				self::REVIEW_PAGE_SLUG,
+				array( __CLASS__, 'render_review_page' )
+			);
+		}
 	}
 
 	public static function handle_save_profile() {
@@ -216,7 +228,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	public static function handle_review_asset() {
-		self::require_admin_request( self::ACTION_REVIEW_ASSET );
+		self::require_reviewer_request( self::ACTION_REVIEW_ASSET );
 		$result = MAD4B_SCP_Context_Authority::review_asset(
 			isset( $_POST['asset_id'] ) ? wp_unslash( $_POST['asset_id'] ) : '',
 			array(
@@ -244,7 +256,35 @@ final class MAD4B_SCP_Context_Admin_UI {
 				'refresh' => true,
 			) );
 		}
-		self::redirect_result( $result, 'assets', 'asset_review_saved' );
+		if ( current_user_can( 'manage_options' ) ) self::redirect_result( $result, 'assets', 'asset_review_saved' );
+		self::redirect_review_result( $result, 'asset_review_saved' );
+	}
+
+	public static function render_review_page() {
+		if ( ! self::can_review() ) wp_die( esc_html__( 'Context review capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::styles();
+		self::styles();
+		self::scripts();
+		$queue = MAD4B_SCP_Context_Authority::review_queue();
+		$status = MAD4B_SCP_Context_Authority::status();
+		echo '<div class="wrap mad4b-scp-admin-page mad4b-context-page mad4b-context-review-only-page">';
+		echo '<h1>' . esc_html__( 'Context Human Review', 'mad4b-site-control-plane' ) . '</h1>';
+		echo '<p class="description">' . esc_html__( 'Review exact governed Context evidence only. This workspace does not expose Google OAuth, source administration, Drive mutation, or other Control Plane settings.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div id="mad4b-context-review-feedback" class="mad4b-context-review-feedback" aria-live="polite"></div>';
+		if ( empty( $queue['items'] ) ) {
+			echo '<div class="notice notice-success inline"><p>' . esc_html__( 'No Context assets currently require a human review decision.', 'mad4b-site-control-plane' ) . '</p></div></div>';
+			return;
+		}
+		echo '<div class="mad4b-context-review-workspace">';
+		foreach ( $queue['items'] as $item ) {
+			$asset = MAD4B_SCP_Context_Authority::asset( isset( $item['asset_id'] ) ? (string) $item['asset_id'] : '' );
+			if ( empty( $asset ) ) continue;
+			echo '<section class="mad4b-scp-panel mad4b-context-review-workspace-card" id="mad4b-context-review-' . esc_attr( sanitize_html_class( (string) $asset['asset_id'] ) ) . '">';
+			echo '<h2>' . esc_html( isset( $asset['title'] ) ? (string) $asset['title'] : __( 'Context asset', 'mad4b-site-control-plane' ) ) . '</h2>';
+			self::render_review_form( $asset, $status, false );
+			echo '</section>';
+		}
+		echo '</div></div>';
 	}
 
 	public static function render_page() {
@@ -773,52 +813,63 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if ( ! empty( $write_capabilities['blockers'] ) ) echo '<br><span class="mad4b-scp-muted">' . esc_html( implode( ' · ', array_map( 'sanitize_key', $write_capabilities['blockers'] ) ) ) . '</span>';
 			}
 			echo '</div></td>';
-			echo '<td class="mad4b-context-review-cell"><span class="mad4b-context-review-state is-' . esc_attr( sanitize_html_class( $review_status ) ) . '">' . esc_html( $review_exact ? 'approved · exact' : $review_status ) . '</span><details><summary class="button button-small">' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-			wp_nonce_field( self::ACTION_REVIEW_ASSET );
-			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';
-			echo '<input type="hidden" name="expected_content_hash" value="' . esc_attr( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '">';
-			echo '<input type="hidden" name="expected_registry_revision" value="' . esc_attr( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision() ) ) . '">';
-			echo '<input type="hidden" name="expected_authority_manifest_fingerprint" value="' . esc_attr( isset( $authority_status['authority_manifest_fingerprint'] ) ? (string) $authority_status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ) . '">';
-			echo '<input type="hidden" name="decision" value="approve">';
-			echo '<div class="mad4b-context-review-evidence"><strong>' . esc_html__( 'Exact review evidence', 'mad4b-site-control-plane' ) . '</strong>';
-			if ( ! empty( $asset['content_excerpt'] ) ) echo '<p>' . esc_html( (string) $asset['content_excerpt'] ) . '</p>';
-			echo '<dl><dt>' . esc_html__( 'Content hash', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '</code></dd>';
-			echo '<dt>' . esc_html__( 'Registry revision', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : 0 ) ) . '</code></dd>';
-			echo '<dt>' . esc_html__( 'Last synced', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '—' ) . '</dd></dl>';
-			$automatic_classification = isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array();
-			if ( $automatic_classification ) {
-				echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Automatic suggestion:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $automatic_classification['category'] ) ? (string) $automatic_classification['category'] : '' ) . '</code> · ' . esc_html( isset( $automatic_classification['authority_class'] ) ? (string) $automatic_classification['authority_class'] : '' );
-				if ( isset( $automatic_classification['confidence'] ) ) echo ' · ' . esc_html( number_format_i18n( (float) $automatic_classification['confidence'] * 100, 0 ) . '%' );
-				echo '</p>';
-			}
-			echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Effective decision:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) . '</code> · ' . esc_html( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) . '</p></div>';
-			echo '<label><strong>' . esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
-			foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['category'], $key, false ) . '>' . esc_html( $label ) . '</option>';
-			echo '</select></label>';
-			echo '<label><strong>' . esc_html__( 'Authority', 'mad4b-site-control-plane' ) . '</strong><select name="authority_class">';
-			foreach ( $authorities as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['authority_class'], $key, false ) . '>' . esc_html( $label ) . '</option>';
-			echo '</select></label>';
-			echo '<label><input type="checkbox" name="required" value="1"' . checked( ! empty( $asset['required'] ), true, false ) . '> ' . esc_html__( 'Required context', 'mad4b-site-control-plane' ) . '</label>';
-			echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="required_scope_confirmed" value="1"> ' . esc_html__( 'I confirm any change to Required context or the category of an already-required asset may change site-wide Brand Context requirements.', 'mad4b-site-control-plane' ) . '</label>';
-			$human_quality_override = ! empty( $quality['human_override'] );
-			$automatic_quality_score = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $quality['automatic_score'] ) ? (int) $quality['automatic_score'] : null );
-			echo '<fieldset class="mad4b-context-quality-mode"><legend><strong>' . esc_html__( 'Quality score', 'mad4b-site-control-plane' ) . '</strong></legend>';
-			echo '<label><input type="radio" name="quality_mode" value="automatic"' . checked( $human_quality_override, false, false ) . '> ' . esc_html__( 'Use automatic score', 'mad4b-site-control-plane' );
-			if ( null !== $automatic_quality_score ) echo ' <strong>(' . esc_html( (string) $automatic_quality_score . '/100' ) . ')</strong>';
-			echo '<span>' . esc_html__( 'Recommended. Uses the current scoring profile and updates naturally when the source changes.', 'mad4b-site-control-plane' ) . '</span></label>';
-			echo '<label><input type="radio" name="quality_mode" value="manual"' . checked( $human_quality_override, true, false ) . '> ' . esc_html__( 'Manual override', 'mad4b-site-control-plane' ) . '<span>' . esc_html__( 'Use only when a reviewer has a documented reason to replace the automatic score.', 'mad4b-site-control-plane' ) . '</span></label>';
-			echo '<input type="number" min="0" max="100" name="quality_score" value="' . esc_attr( $human_quality_override && isset( $asset['quality_score'] ) ? (string) $asset['quality_score'] : '' ) . '" placeholder="' . esc_attr( null === $automatic_quality_score ? '0–100' : (string) $automatic_quality_score ) . '">';
-			echo '</fieldset>';
-			echo '<label><strong>' . esc_html__( 'Review note', 'mad4b-site-control-plane' ) . '</strong><textarea name="review_note" rows="3" maxlength="1000" placeholder="' . esc_attr__( 'Required for rejection, requested changes, governance changes, or manual quality overrides.', 'mad4b-site-control-plane' ) . '"></textarea></label>';
-			echo '<div class="mad4b-context-review-inline-feedback" aria-live="polite"></div>';
-			echo '<div class="mad4b-context-review-actions">';
-			echo '<button type="submit" class="button button-primary" data-mad4b-review-decision="approve">' . esc_html__( 'Approve exact content', 'mad4b-site-control-plane' ) . '</button>';
-			echo '<button type="submit" class="button" data-mad4b-review-decision="needs_changes">' . esc_html__( 'Needs changes', 'mad4b-site-control-plane' ) . '</button>';
-			echo '<button type="submit" class="button button-link-delete" data-mad4b-review-decision="reject">' . esc_html__( 'Reject exact content', 'mad4b-site-control-plane' ) . '</button>';
-			echo '</div>';
-			echo '</form></details></td></tr>';
+			echo '<td class="mad4b-context-review-cell"><span class="mad4b-context-review-state is-' . esc_attr( sanitize_html_class( $review_status ) ) . '">' . esc_html( $review_exact ? 'approved · exact' : $review_status ) . '</span>';
+			self::render_review_form( $asset, $authority_status, true );
+			echo '</td></tr>';
 		}
 		echo '</tbody></table></div></div>';
+	}
+
+
+	private static function render_review_form( array $asset, array $authority_status, $collapsible = true ) {
+		$categories = MAD4B_SCP_Context_Authority::categories();
+		$authorities = MAD4B_SCP_Context_Authority::authority_classes();
+		$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
+		if ( $collapsible ) echo '<details><summary class="button button-small">' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . '</summary>';
+		echo '<form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		wp_nonce_field( self::ACTION_REVIEW_ASSET );
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';
+		echo '<input type="hidden" name="expected_content_hash" value="' . esc_attr( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '">';
+		echo '<input type="hidden" name="expected_registry_revision" value="' . esc_attr( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision() ) ) . '">';
+		echo '<input type="hidden" name="expected_authority_manifest_fingerprint" value="' . esc_attr( isset( $authority_status['authority_manifest_fingerprint'] ) ? (string) $authority_status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ) . '">';
+		echo '<input type="hidden" name="decision" value="approve">';
+		echo '<div class="mad4b-context-review-evidence"><strong>' . esc_html__( 'Exact review evidence', 'mad4b-site-control-plane' ) . '</strong>';
+		if ( ! empty( $asset['content_excerpt'] ) ) echo '<p>' . esc_html( (string) $asset['content_excerpt'] ) . '</p>';
+		echo '<dl><dt>' . esc_html__( 'Content hash', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '</code></dd>';
+		echo '<dt>' . esc_html__( 'Registry revision', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : 0 ) ) . '</code></dd>';
+		echo '<dt>' . esc_html__( 'Last synced', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '—' ) . '</dd></dl>';
+		$automatic_classification = isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array();
+		if ( $automatic_classification ) {
+			echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Automatic suggestion:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $automatic_classification['category'] ) ? (string) $automatic_classification['category'] : '' ) . '</code> · ' . esc_html( isset( $automatic_classification['authority_class'] ) ? (string) $automatic_classification['authority_class'] : '' );
+			if ( isset( $automatic_classification['confidence'] ) ) echo ' · ' . esc_html( number_format_i18n( (float) $automatic_classification['confidence'] * 100, 0 ) . '%' );
+			echo '</p>';
+		}
+		echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Effective decision:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) . '</code> · ' . esc_html( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) . '</p></div>';
+		echo '<label><strong>' . esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
+		foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['category'], $key, false ) . '>' . esc_html( $label ) . '</option>';
+		echo '</select></label>';
+		echo '<label><strong>' . esc_html__( 'Authority', 'mad4b-site-control-plane' ) . '</strong><select name="authority_class">';
+		foreach ( $authorities as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['authority_class'], $key, false ) . '>' . esc_html( $label ) . '</option>';
+		echo '</select></label>';
+		echo '<label><input type="checkbox" name="required" value="1"' . checked( ! empty( $asset['required'] ), true, false ) . '> ' . esc_html__( 'Required context', 'mad4b-site-control-plane' ) . '</label>';
+		echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="required_scope_confirmed" value="1"> ' . esc_html__( 'I confirm any change to Required context or the category of an already-required asset may change site-wide Brand Context requirements.', 'mad4b-site-control-plane' ) . '</label>';
+		$human_quality_override = ! empty( $quality['human_override'] );
+		$automatic_quality_score = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $quality['automatic_score'] ) ? (int) $quality['automatic_score'] : null );
+		echo '<fieldset class="mad4b-context-quality-mode"><legend><strong>' . esc_html__( 'Quality score', 'mad4b-site-control-plane' ) . '</strong></legend>';
+		echo '<label><input type="radio" name="quality_mode" value="automatic"' . checked( $human_quality_override, false, false ) . '> ' . esc_html__( 'Use automatic score', 'mad4b-site-control-plane' );
+		if ( null !== $automatic_quality_score ) echo ' <strong>(' . esc_html( (string) $automatic_quality_score . '/100' ) . ')</strong>';
+		echo '<span>' . esc_html__( 'Recommended. Uses the current scoring profile and updates naturally when the source changes.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="quality_mode" value="manual"' . checked( $human_quality_override, true, false ) . '> ' . esc_html__( 'Manual override', 'mad4b-site-control-plane' ) . '<span>' . esc_html__( 'Use only when a reviewer has a documented reason to replace the automatic score.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<input type="number" min="0" max="100" name="quality_score" value="' . esc_attr( $human_quality_override && isset( $asset['quality_score'] ) ? (string) $asset['quality_score'] : '' ) . '" placeholder="' . esc_attr( null === $automatic_quality_score ? '0–100' : (string) $automatic_quality_score ) . '">';
+		echo '</fieldset>';
+		echo '<label><strong>' . esc_html__( 'Review note', 'mad4b-site-control-plane' ) . '</strong><textarea name="review_note" rows="3" maxlength="1000" placeholder="' . esc_attr__( 'Required for rejection, requested changes, governance changes, or manual quality overrides.', 'mad4b-site-control-plane' ) . '"></textarea></label>';
+		echo '<div class="mad4b-context-review-inline-feedback" aria-live="polite"></div>';
+		echo '<div class="mad4b-context-review-actions">';
+		echo '<button type="submit" class="button button-primary" data-mad4b-review-decision="approve">' . esc_html__( 'Approve exact content', 'mad4b-site-control-plane' ) . '</button>';
+		echo '<button type="submit" class="button" data-mad4b-review-decision="needs_changes">' . esc_html__( 'Needs changes', 'mad4b-site-control-plane' ) . '</button>';
+		echo '<button type="submit" class="button button-link-delete" data-mad4b-review-decision="reject">' . esc_html__( 'Reject exact content', 'mad4b-site-control-plane' ) . '</button>';
+		echo '</div></form>';
+		if ( $collapsible ) echo '</details>';
 	}
 
 	private static function render_repair_queue( array $assets ) {
@@ -1057,6 +1108,29 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	private static function is_ajax_request() {
 		return function_exists( 'wp_doing_ajax' ) && wp_doing_ajax();
+	}
+
+
+	private static function can_review() {
+		return current_user_can( 'manage_options' ) || current_user_can( self::REVIEW_CAPABILITY );
+	}
+
+	private static function require_reviewer_request( $action ) {
+		if ( ! self::is_ajax_request() ) {
+			if ( ! self::can_review() ) wp_die( esc_html__( 'Context review capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+			check_admin_referer( $action );
+			return;
+		}
+		if ( ! self::can_review() ) wp_send_json_error( array( 'code' => 'mad4b_context_reviewer_required', 'message' => __( 'Context review capability is required.', 'mad4b-site-control-plane' ) ), 403 );
+		if ( false === check_ajax_referer( $action, '_wpnonce', false ) ) wp_send_json_error( array( 'code' => 'mad4b_context_ajax_nonce_invalid', 'message' => __( 'The review request expired. Refresh the page and try again.', 'mad4b-site-control-plane' ) ), 403 );
+	}
+
+	private static function redirect_review_result( $result, $notice ) {
+		$args = array( 'page' => self::REVIEW_PAGE_SLUG );
+		if ( is_wp_error( $result ) ) $args['mad4b_error'] = sanitize_key( $result->get_error_code() );
+		elseif ( '' !== $notice ) $args['mad4b_notice'] = sanitize_key( $notice );
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	private static function require_admin_request( $action ) {
