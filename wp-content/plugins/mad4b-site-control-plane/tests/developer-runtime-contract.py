@@ -234,8 +234,8 @@ assert "'server_id' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Servers::e
 assert "MAD4B_SCP_Impact_Policy::ticket_class_for" in governance
 assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
 assert "class-mad4b-scp-developer-runtime.php" in plugin
-assert "0.4.0-rc.56" in plugin
-assert "release=0.4.0-rc.56" in runtime_build
+assert "0.4.0-rc.57" in plugin
+assert "release=0.4.0-rc.57" in runtime_build
 assert "mad4b.developer-runtime.v1" in runbook
 assert "mad4b.developer-authority.v1" in runbook
 assert "PROVISION MAD4B DEVELOPER AGENT" in runbook
