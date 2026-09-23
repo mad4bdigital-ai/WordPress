@@ -20,6 +20,7 @@ write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php"
 grant_reconcile = (root / "includes/class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 planning_guard = (root / "includes/class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 workflow = (root.parents[2] / ".github/workflows/mad4b-context-authority.yml").read_text(encoding="utf-8")
+staging_handoff = (root / "config/staging-deployment-handoff.json").read_text(encoding="utf-8")
 oauth_runtime = (root / "tests/context-oauth-lifecycle-runtime.php").read_text(encoding="utf-8")
 
 def require(text, needle, label):
@@ -587,6 +588,12 @@ require(audit, "mad4b.context-human-review-audit.v1", "Context Human Review audi
 require(audit, "'read_only' => true", "Context Human Review audit remains read-only")
 require(audit, "'mutation_performed' => false", "Context Human Review audit performs no mutation")
 require(adapter, "'context/brand-core-coverage'", "read-only Brand Core coverage ability")
+require(staging_handoff, "context_human_review_admin_ui_visible_for_governed_assets", "post-deploy governed Human Review UI acceptance")
+require(staging_handoff, "context_task_local_human_review_controls_absent", "post-deploy task-local Human Review denial acceptance")
+require(staging_handoff, "context_review_queue_read_only_surface_available", "post-deploy Human Review queue acceptance")
+require(staging_handoff, "context_review_audit_read_only_surface_available", "post-deploy Human Review audit acceptance")
+require(staging_handoff, "context_brand_core_coverage_read_only_surface_available", "post-deploy Brand Core coverage acceptance")
+require(staging_handoff, "context_human_review_mcp_mutation_surface_absent", "post-deploy Human Review MCP mutation absence acceptance")
 require(adapter, "mad4b.context-asset-list.v3", "Context asset observability v3")
 require(adapter, "reviewed_content_hash", "Context asset exact review observability")
 require(adapter, "review_binding_exact", "Context asset exact review binding observability")
@@ -596,4 +603,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v67: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v68: PASS")
