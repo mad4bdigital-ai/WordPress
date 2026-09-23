@@ -524,8 +524,9 @@ final class MAD4B_SCP_Developer_Runtime {
 		foreach ( $normalized as $arg ) {
 			if ( false !== strpos( $arg, "\0" ) ) return new WP_Error( 'mad4b_developer_argument_invalid', 'NUL bytes are forbidden.' );
 			$lower = strtolower( trim( $arg ) );
-			foreach ( array( '--exec', '--require', '--ssh', '--http' ) as $prefix ) {
-				if ( 0 === strpos( $lower, $prefix ) ) return new WP_Error( 'mad4b_developer_wp_cli_escape_denied', 'This WP-CLI global execution/remote bootstrap flag requires Developer Breakglass.' );
+			if ( 0 === strpos( $lower, '@' ) ) return new WP_Error( 'mad4b_developer_wp_cli_alias_denied', 'WP-CLI aliases are denied on the normal Developer Plane.' );
+			foreach ( array( '--exec', '--require', '--ssh', '--http', '--path' ) as $prefix ) {
+				if ( 0 === strpos( $lower, $prefix ) ) return new WP_Error( 'mad4b_developer_wp_cli_escape_denied', 'This WP-CLI execution, remote-bootstrap, or path-override flag requires Developer Breakglass.' );
 			}
 		}
 		$command = '';
