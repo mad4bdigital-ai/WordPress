@@ -57,6 +57,7 @@ class MAD4B_SCP_Site_Profile {
 		);
 	}
 	public static function current_environment() { return self::$environment; }
+	public static function agent_slug() { return 'context-review-ai'; }
 }
 
 class MAD4B_SCP_Audit {
