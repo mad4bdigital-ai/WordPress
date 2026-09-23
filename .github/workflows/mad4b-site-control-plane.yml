@@ -122,6 +122,7 @@ jobs:
           authorization="$root/includes/class-mad4b-scp-authorization.php"
           site_profile="$root/includes/class-mad4b-scp-site-profile.php"
           write_authority="$root/includes/class-mad4b-scp-staging-write-authority.php"
+          candidate_binding="$root/includes/class-mad4b-scp-staging-write-candidate-binding.php"
           write_cert="$root/includes/class-mad4b-scp-write-runtime-certification.php"
           rest_compat="$root/includes/class-mad4b-scp-rest-compatibility.php"
           for file in \
@@ -137,11 +138,13 @@ jobs:
             includes/class-mad4b-scp-provider-contracts.php \
             includes/class-mad4b-scp-adapter-registry.php \
             includes/class-mad4b-scp-staging-write-authority.php \
+            includes/class-mad4b-scp-staging-write-candidate-binding.php \
             includes/class-mad4b-scp-staging-certification.php \
             includes/class-mad4b-scp-admin-query-performance.php \
             includes/class-mad4b-scp-query-monitor-evidence-bridge.php \
             includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php \
             includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php \
+            tests/staging-write-candidate-binding-runtime.php \
             MAD4B-ROLLBACK-CANDIDATE.json \
             MAD4B-ROLLBACK-RETENTION-RECEIPT.json \
             includes/class-mad4b-scp-write-runtime-certification.php \
@@ -242,6 +245,23 @@ jobs:
           grep -Fq "mad4b.site-profile.v1" "$site_profile"
           grep -Fq "MAD4B_SCP_Site_Profile::origin_enrolled" "$write_authority"
           grep -Fq "MAD4B_SCP_Site_Profile::write_enabled" "$write_authority"
+          grep -Fq "mad4b.staging-write-candidate-binding.v1" "$candidate_binding"
+          grep -Fq "mad4b/staging-write-candidate-bind" "$candidate_binding"
+          grep -Fq "'surface' => 'enrollment'" "$candidate_binding"
+          grep -Fq "'binding_only' => true" "$candidate_binding"
+          grep -Fq "'grant_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "'subject_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "'agent_mutation_allowed' => false" "$candidate_binding"
+          grep -Fq "expected_grant_rows_fingerprint" "$candidate_binding"
+          grep -Fq "expected_package_manifest_digest" "$candidate_binding"
+          grep -Fq "expected_artifact_identity" "$candidate_binding"
+          grep -Fq "MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity" "$candidate_binding"
+          if grep -Fq "MAD4B_SCP_Staging_Write_Authority::reconcile(" "$candidate_binding"; then
+            echo 'Binding-only enrollment surface must never call full authority reconcile().' >&2
+            exit 1
+          fi
+          grep -Fq "mad4b/staging-write-candidate-bind" "$servers"
+          php "$root/tests/staging-write-candidate-binding-runtime.php"
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
