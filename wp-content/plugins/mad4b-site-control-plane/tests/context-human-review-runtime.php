@@ -362,16 +362,13 @@ $automatic_review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
 	mad4b_review_exact_input(
 		$asset_id,
-		mad4b_review_exact_input(
-		$asset_id,
 		array(
-		'category' => 'tone_of_voice',
-		'authority_class' => 'brand_authority',
-		'required' => true,
-		'quality_mode' => 'automatic',
-		'quality_score' => '',
-	)
-	)
+			'category' => 'tone_of_voice',
+			'authority_class' => 'brand_authority',
+			'required' => true,
+			'quality_mode' => 'automatic',
+			'quality_score' => '',
+		)
 	)
 );
 mad4b_review_assert( ! is_wp_error( $automatic_review ), 'Reviewer must be able to return a previously overridden asset to automatic scoring.', $automatic_review );
@@ -404,12 +401,15 @@ mad4b_review_assert( in_array( 'mandatory_context_review_required', $provider_wr
 
 $provider_rereview = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
-	array(
-		'category' => 'tone_of_voice',
-		'authority_class' => 'brand_authority',
-		'required' => true,
-		'quality_mode' => 'automatic',
-		'quality_score' => '',
+	mad4b_review_exact_input(
+		$asset_id,
+		array(
+			'category' => 'tone_of_voice',
+			'authority_class' => 'brand_authority',
+			'required' => true,
+			'quality_mode' => 'automatic',
+			'quality_score' => '',
+		)
 	)
 );
 mad4b_review_assert( ! is_wp_error( $provider_rereview ), 'Reviewer must be able to approve the exact provider-mutated content.', $provider_rereview );
