@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "includes" / "class-mad4b-scp-plugin-package.php"
 BOOTSTRAP = ROOT / "mad4b-site-control-plane.php"
 SERVERS = ROOT / "includes" / "class-mad4b-scp-servers.php"
-REGISTRY = ROOT / "includes" / "class-mad4b-scp-adapter-registry.php"\nIMPACT = ROOT / "includes" / "class-mad4b-scp-impact-policy.php"
+REGISTRY = ROOT / "includes" / "class-mad4b-scp-adapter-registry.php"\nIMPACT = ROOT / "includes" / "class-mad4b-scp-impact-policy.php"\nGRANTS = ROOT / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php"
 
 
 def require(condition, message):
@@ -16,7 +16,7 @@ def require(condition, message):
 package = PACKAGE.read_text(encoding="utf-8")
 bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
 servers = SERVERS.read_text(encoding="utf-8")
-registry = REGISTRY.read_text(encoding="utf-8")\nimpact = IMPACT.read_text(encoding="utf-8")
+registry = REGISTRY.read_text(encoding="utf-8")\nimpact = IMPACT.read_text(encoding="utf-8")\ngrants = GRANTS.read_text(encoding="utf-8")
 
 for marker in [
     "class MAD4B_SCP_Plugin_Package",
@@ -101,6 +101,9 @@ core = servers.split("private static function core_write_candidates()", 1)[1].sp
 require("'mad4b/plugin-package-apply'" in core, "package apply must be a governed core write candidate")
 require("'mad4b/plugin-package-plan'" not in core, "read-only package plan must never enter write catalog")
 require("'mad4b/plugin-package-apply'" in impact.split("$high_core = array(", 1)[1].split(");", 1)[0], "plugin package replacement must remain hard high-impact")
+allowlist = grants.split("public static function allowed_ability_providers()", 1)[1].split("public static function allowed_abilities()", 1)[0]
+require("'mad4b/plugin-package-apply' => 'core'" in allowlist, "package apply exact Staging grant is not bounded/allowlisted")
+require("'wp-import-export/run-import'" not in allowlist and "'wp-import-export/run-export'" not in allowlist, "provider execution abilities must never leak into package grant reconciliation")
 chatgpt = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
 require("'mad4b/plugin-package-plan'" in chatgpt, "plugin package plan must be visible on ChatGPT read surface")
 
