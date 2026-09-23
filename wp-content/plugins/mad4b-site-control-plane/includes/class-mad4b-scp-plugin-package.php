@@ -22,7 +22,7 @@ final class MAD4B_SCP_Plugin_Package {
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 
-		if ( ! wp_has_ability( 'mad4b/plugin-package-plan' ) ) {
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'mad4b/plugin-package-plan' ) ) {
 			wp_register_ability(
 				'mad4b/plugin-package-plan',
 				array(
@@ -43,7 +43,7 @@ final class MAD4B_SCP_Plugin_Package {
 			);
 		}
 
-		if ( ! wp_has_ability( 'mad4b/plugin-package-apply' ) ) {
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( 'mad4b/plugin-package-apply' ) ) {
 			wp_register_ability(
 				'mad4b/plugin-package-apply',
 				array(
@@ -57,7 +57,7 @@ final class MAD4B_SCP_Plugin_Package {
 					'meta' => array(
 						'public' => false,
 						'show_in_rest' => false,
-						'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'write' ),
+						'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'admin' ),
 						'annotations' => array( 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
 					),
 				)
