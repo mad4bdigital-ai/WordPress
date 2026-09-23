@@ -46,6 +46,8 @@ for server in ["mad4b-developer", "mad4b-developer-breakglass"]:
 assert "MAD4B_SCP_Developer_Runtime::configured_agent_public_id()" in policy
 assert "MAD4B_SCP_Developer_Runtime::developer_flag_enabled()" in policy
 assert "can_developer_read" in policy
+assert "can_developer_runtime_status" in policy
+assert "MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-developer', 'mad4b/developer-runtime-status', 'core' )" in policy
 assert "can_developer_breakglass" in policy
 assert "mad4b_developer_production_denied" in developer
 assert "mad4b_developer_root_execution_denied" in developer
@@ -54,6 +56,7 @@ assert "expected_site_uuid" in developer
 assert "expected_environment" in developer
 assert "MAD4B_MCP_DEVELOPER_NETWORK_ENABLED" in developer
 assert "MAD4B_SCP_Authorization::authorize_mutation" in developer
+assert "array( 'MAD4B_SCP_Policy', 'can_developer_runtime_status' )" in developer
 assert "permission_callback( $permission, $readonly, $name, $category )" in developer
 assert "'_mad4b_approval_ticket_id'" in developer
 assert "network_default_deny" in developer
@@ -184,4 +187,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v7: PASS")
+print("mad4b.developer-runtime-contract.v8: PASS")
