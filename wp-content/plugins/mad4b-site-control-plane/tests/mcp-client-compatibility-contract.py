@@ -61,11 +61,17 @@ for marker in required_compat:
     assert marker in compat, f'missing compatibility marker: {marker}'
 
 for marker in [
-    "'/mcp/mad4b-enrollment' === $route",
-    "MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( 'mad4b-enrollment' )",
+    "'/mcp/mad4b-chatgpt' => 'mad4b-chatgpt'",
+    "'/mcp/mad4b-enrollment' => 'mad4b-enrollment'",
+    "'/mcp/mad4b-developer' => 'mad4b-developer'",
+    "'/mcp/mad4b-developer-breakglass' => 'mad4b-developer-breakglass'",
+    "$server_id = $server_map[ $route ]",
+    "MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url( $server_id )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource )",
 ]:
-    assert marker in challenge, f'missing enrollment challenge marker: {marker}'
-assert "MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource )" not in challenge, 'enrollment challenge must use canonical RFC9728 path-derived metadata'
+    assert marker in challenge, f'missing resource-specific challenge marker: {marker}'
+assert "MAD4B_SCP_OAuth_Resource_Bridge::metadata_url( $resource )" not in challenge, 'resource challenge must use canonical RFC9728 path-derived metadata'
 
 assert "'authorization_server_external' => true" not in compat, 'external authority truth must not be hardcoded'
 assert "MAD4B WordPress Staging Read MCP'" not in compat, 'resource name must not be hardcoded to Staging'
@@ -164,4 +170,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v9: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v10: PASS')
