@@ -435,7 +435,12 @@ final class MAD4B_SCP_Servers {
 		$ability_name = (string) $ability_name;
 		$cache_key = $server_id . "\0" . $ability_name;
 		$cacheable = self::catalog_cacheable();
-		$dynamic_write_resolution = 'mad4b-write' === $server_id || self::is_external_write_candidate( $ability_name );
+		// The compact ChatGPT transport contains only core/bootstrap dispatchers.
+		// Do not build the full logical write catalog merely to decide whether one
+		// of those direct transport tools is cacheable. Dynamic write resolution
+		// remains live on the dedicated write/content/admin surfaces.
+		$dynamic_write_resolution = 'mad4b-write' === $server_id
+			|| ( 'mad4b-chatgpt' !== $server_id && self::is_external_write_candidate( $ability_name ) );
 		if ( $cacheable && ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];
 		$remember = static function ( $value ) use ( $cache_key, $cacheable, $dynamic_write_resolution ) {
 			if ( $cacheable && ! $dynamic_write_resolution ) self::$provider_for_ability_cache[ $cache_key ] = $value;
