@@ -37,7 +37,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 38 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 9 );
 	}
 
 	public static function register_ability() {
