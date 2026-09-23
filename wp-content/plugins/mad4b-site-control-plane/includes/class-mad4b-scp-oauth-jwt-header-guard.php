@@ -29,16 +29,17 @@ final class MAD4B_SCP_OAuth_JWT_Header_Guard {
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
 		if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment', '/mcp/mad4b-developer', '/mcp/mad4b-developer-breakglass' ), true ) ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
+		$resource = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_for_route( $route ) : '';
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) return $result;
 
 		$header = self::header_from_authorization( $authorization );
-		if ( is_wp_error( $header ) ) return self::denied( $header->get_error_code(), $header->get_error_message() );
+		if ( is_wp_error( $header ) ) return self::denied( $header->get_error_code(), $header->get_error_message(), $resource );
 		if ( ! isset( $header['typ'] ) || ! is_string( $header['typ'] ) || ! hash_equals( 'at+jwt', strtolower( trim( $header['typ'] ) ) ) ) {
-			return self::denied( 'mad4b_oauth_jwt_typ_denied', 'OAuth bearer must use the at+jwt access-token type.' );
+			return self::denied( 'mad4b_oauth_jwt_typ_denied', 'OAuth bearer must use the at+jwt access-token type.', $resource );
 		}
 		if ( ! isset( $header['alg'] ) || ! is_string( $header['alg'] ) || ! hash_equals( 'RS256', $header['alg'] ) ) {
-			return self::denied( 'mad4b_oauth_jwt_alg_denied', 'Only RS256 access tokens are accepted.' );
+			return self::denied( 'mad4b_oauth_jwt_alg_denied', 'Only RS256 access tokens are accepted.', $resource );
 		}
 		return $result;
 	}
@@ -76,13 +77,9 @@ final class MAD4B_SCP_OAuth_JWT_Header_Guard {
 		return base64_decode( strtr( $value, '-_', '+/' ), true );
 	}
 
-	private static function denied( $code, $message ) {
+	private static function denied( $code, $message, $resource = '' ) {
 		$response = new WP_REST_Response( array( 'error' => sanitize_key( (string) $code ), 'message' => sanitize_text_field( (string) $message ) ), 401 );
-		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
-			$route = isset( $_SERVER['REQUEST_URI'] ) ? wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : '';
-			$resource = is_string( $route ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_for_route( preg_replace( '#^/wp-json#', '', $route ) ) : '';
-			$response->header( 'WWW-Authenticate', MAD4B_SCP_OAuth_Resource_Bridge::challenge_header( $resource ) );
-		}
+		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) $response->header( 'WWW-Authenticate', MAD4B_SCP_OAuth_Resource_Bridge::challenge_header( $resource ) );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
 	}
