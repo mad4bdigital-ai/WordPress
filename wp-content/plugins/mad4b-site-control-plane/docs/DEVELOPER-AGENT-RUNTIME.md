@@ -154,6 +154,8 @@ Sensitive credential/configuration paths remain denied outside Developer Breakgl
 
 Delete requires an exact `expected_sha256`. Existing-file writes may also be bound to `expected_sha256` to prevent stale overwrite.
 
+Normal Developer writes and deletes also pass the existing mutable-data policy, which denies executable/source-code and server-configuration mutation and defaults to explicitly allowed non-code data roots. Normal directory creation is likewise limited to mutable data roots. Live source-code mutation therefore requires Developer Breakglass or the governed repository/deployment path.
+
 ## Secrets and evidence
 
 Execution audit stores command digests rather than raw commands.
