@@ -267,7 +267,7 @@ jobs:
           grep -Fq "stored_package_manifest_digest" "$write_authority"
           grep -Fq "stored_artifact_identity" "$write_authority"
           php "$root/tests/staging-write-candidate-binding-runtime.php"
-          python "$root/tests/staging-write-candidate-binding-audit-contract.py"
+          python3 "$root/tests/staging-write-candidate-binding-audit-contract.py"
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
