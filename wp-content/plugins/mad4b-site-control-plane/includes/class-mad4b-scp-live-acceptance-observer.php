@@ -14,7 +14,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	const CONTRACT = 'mad4b.live-acceptance-observer.v1';
 	const QUERY_MONITOR_CONTRACT = 'mad4b.query-monitor-regression.v1';
 	const PROVENANCE_CONTRACT = 'mad4b.build-provenance.v1';
-	const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v2';
+	const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v3';
 	const WPML_RECEIPT_CONTRACT = 'mad4b.external-wpml-receipt.v1';
 	const SNAPSHOT_VERIFY_CONTRACT = 'mad4b.snapshot-verify.v1';
 	const AGGREGATE_CONTRACT = 'mad4b.live-acceptance-status.v1';
@@ -315,21 +315,151 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 
 	private static function observe_external_handshake( $response, $request ) { if ( ! self::external_capture_allowed( $request ) ) return; $method = self::jsonrpc_method( $request ); $rest = rest_ensure_response( $response ); if ( ! $rest instanceof WP_REST_Response || 200 !== (int) $rest->get_status() ) return; if ( 'initialize' === $method ) self::capture_external_initialize( $rest, $request ); elseif ( 'tools/list' === $method ) self::capture_external_tools_list( $rest, $request ); }
 	private static function capture_external_initialize( $response, $request ) { $data = self::normalize_value( $response->get_data() ); if ( ! is_array( $data ) || isset( $data['error'] ) || empty( $data['result']['capabilities']['tools'] ) ) return; $session_id = self::response_session_id( $response ); if ( '' === $session_id ) return; $context = self::verified_request_context( $request ); if ( ! is_array( $context ) ) return; $expected = self::expected_tool_names(); $expected_write = self::expected_write_tool_names(); $context['session_fingerprint'] = hash( 'sha256', $session_id ); $context['build_fingerprint'] = self::current_build_fingerprint(); $context['expected_tool_inventory_fingerprint'] = self::inventory_fingerprint( $expected ); $context['expected_write_inventory_fingerprint'] = self::inventory_fingerprint( $expected_write ); $context['initialized_at'] = gmdate( 'Y-m-d H:i:s' ); set_transient( self::pending_key( $context['session_fingerprint'] ), $context, self::PENDING_TTL ); }
-	private static function capture_external_tools_list( $response, $request ) { $session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : ''; if ( '' === $session_id || strlen( $session_id ) > 512 ) return; $fingerprint = hash( 'sha256', $session_id ); $pending = get_transient( self::pending_key( $fingerprint ) ); $current = self::verified_request_context( $request ); if ( ! is_array( $pending ) || ! is_array( $current ) || empty( $pending['session_fingerprint'] ) || ! hash_equals( (string) $pending['session_fingerprint'], $fingerprint ) || ! self::same_context( $pending, $current ) ) return; $data = self::normalize_value( $response->get_data() ); $tools = isset( $data['result']['tools'] ) && is_array( $data['result']['tools'] ) ? $data['result']['tools'] : array(); $names = array(); foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name']; $attestation = self::inventory_attestation_from_names( $names, isset( $pending['build_fingerprint'] ) ? $pending['build_fingerprint'] : '' ); $attestation['initialized_at'] = isset( $pending['initialized_at'] ) ? sanitize_text_field( (string) $pending['initialized_at'] ) : ''; $attestation['observed_at'] = gmdate( 'Y-m-d H:i:s' ); $attestation['real_external_session'] = true; $attestation['client_id'] = self::CHATGPT_CLIENT_ID; $attestation['server_id'] = self::SERVER_ID; $attestation['session_fingerprint_present'] = true; $attestation['pending_expected_tool_inventory_fingerprint'] = isset( $pending['expected_tool_inventory_fingerprint'] ) ? $pending['expected_tool_inventory_fingerprint'] : ''; $attestation['pending_expected_write_inventory_fingerprint'] = isset( $pending['expected_write_inventory_fingerprint'] ) ? $pending['expected_write_inventory_fingerprint'] : ''; update_option( self::EXTERNAL_OPTION, $attestation, false ); delete_transient( self::pending_key( $fingerprint ) ); }
+	private static function capture_external_tools_list( $response, $request ) { $session_id = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'mcp-session-id' ) ) : ''; if ( '' === $session_id || strlen( $session_id ) > 512 ) return; $fingerprint = hash( 'sha256', $session_id ); $pending = get_transient( self::pending_key( $fingerprint ) ); $current = self::verified_request_context( $request ); if ( ! is_array( $pending ) || ! is_array( $current ) || empty( $pending['session_fingerprint'] ) || ! hash_equals( (string) $pending['session_fingerprint'], $fingerprint ) || ! self::same_context( $pending, $current ) ) return; $data = self::normalize_value( $response->get_data() ); $tools = isset( $data['result']['tools'] ) && is_array( $data['result']['tools'] ) ? $data['result']['tools'] : array(); $names = array(); foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && is_string( $tool['name'] ) ) $names[] = $tool['name']; $attestation = self::inventory_attestation_from_names( $names, isset( $pending['build_fingerprint'] ) ? $pending['build_fingerprint'] : '' ); $attestation['initialized_at'] = isset( $pending['initialized_at'] ) ? sanitize_text_field( (string) $pending['initialized_at'] ) : ''; $attestation['observed_at'] = gmdate( 'Y-m-d H:i:s' ); $attestation['real_external_session'] = true; $attestation['client_id'] = self::CHATGPT_CLIENT_ID; $attestation['server_id'] = self::SERVER_ID; $attestation['session_fingerprint_present'] = true; $attestation['pending_expected_tool_inventory_fingerprint'] = isset( $pending['expected_tool_inventory_fingerprint'] ) ? $pending['expected_tool_inventory_fingerprint'] : ''; $attestation['pending_expected_write_inventory_fingerprint'] = isset( $pending['expected_write_inventory_fingerprint'] ) ? $pending['expected_write_inventory_fingerprint'] : ''; if ( empty( $attestation['pending_expected_tool_inventory_fingerprint'] ) || empty( $attestation['pending_expected_write_inventory_fingerprint'] ) || ! hash_equals( (string) $attestation['expected_tool_inventory_fingerprint'], (string) $attestation['pending_expected_tool_inventory_fingerprint'] ) || ! hash_equals( (string) $attestation['expected_write_inventory_fingerprint'], (string) $attestation['pending_expected_write_inventory_fingerprint'] ) ) return; update_option( self::EXTERNAL_OPTION, $attestation, false ); delete_transient( self::pending_key( $fingerprint ) ); }
 
 	public static function inventory_attestation_from_names( array $external_names, $captured_build_fingerprint = '' ) {
-		$external = self::normalize_tool_names( $external_names ); $expected = self::expected_tool_names(); $expected_write = self::expected_write_tool_names(); $eligible_write = self::eligible_write_tool_names(); $blocked = self::blocked_write_tool_names(); $breakglass = self::breakglass_tool_names(); $raw_sql = self::ability_to_mcp_tool_name( 'mad4b/database-raw-query' );
-		$missing = array_values( array_diff( $expected, $external ) ); $unexpected = array_values( array_diff( $external, $expected ) ); $provider_gated = array_values( array_intersect( $external, $blocked ) ); $execution_mount_leaks = array_values( array_intersect( $blocked, $eligible_write ) ); $breakglass_leaks = array_values( array_intersect( $external, $breakglass ) ); $observed_write = array_values( array_intersect( $external, $expected_write ) ); $observed_eligible = array_values( array_intersect( $external, $eligible_write ) );
-		$external_fp = self::inventory_fingerprint( $external ); $expected_fp = self::inventory_fingerprint( $expected ); $write_fp = self::inventory_fingerprint( $observed_write ); $expected_write_fp = self::inventory_fingerprint( $expected_write ); $current_build = self::current_build_fingerprint(); $build_match = '' !== $captured_build_fingerprint && '' !== $current_build && hash_equals( $current_build, (string) $captured_build_fingerprint ); $inventory_match = empty( $missing ) && empty( $unexpected ) && ! empty( $expected ) && hash_equals( $expected_fp, $external_fp ); $write_match = count( $observed_write ) === count( $expected_write ) && ( empty( $expected_write ) || hash_equals( $expected_write_fp, $write_fp ) ); $raw_sql_exposed = '' !== $raw_sql && in_array( $raw_sql, $external, true );
-		return array( 'contract' => self::EXTERNAL_ATTESTATION_CONTRACT, 'real_external_session' => false, 'observed_at' => '', 'build_fingerprint' => (string) $captured_build_fingerprint, 'current_build_fingerprint' => $current_build, 'build_fingerprint_match' => $build_match, 'external_tool_count' => count( $external ), 'external_tool_inventory_fingerprint' => $external_fp, 'expected_tool_count' => count( $expected ), 'expected_tool_inventory_fingerprint' => $expected_fp, 'inventory_match' => $inventory_match, 'missing_expected_tools' => $missing, 'unexpected_tools' => $unexpected, 'external_write_tool_count' => count( $observed_write ), 'external_write_inventory_fingerprint' => $write_fp, 'expected_write_tool_count' => count( $expected_write ), 'expected_write_inventory_fingerprint' => $expected_write_fp, 'eligible_write_tool_count' => count( $observed_eligible ), 'expected_eligible_write_tool_count' => count( $eligible_write ), 'provider_gated_write_tool_count' => count( $provider_gated ), 'provider_gated_write_tools' => $provider_gated, 'provider_execution_mount_leaks' => $execution_mount_leaks, 'provider_blocked_tool_leaks' => $execution_mount_leaks, 'write_inventory_fingerprint_match' => $write_match, 'raw_sql_exposed' => $raw_sql_exposed, 'breakglass_exposed' => ! empty( $breakglass_leaks ), 'foreign_write_tool_exposed' => ! empty( $unexpected ), 'verified' => false, 'status' => $build_match ? 'inventory_evaluated' : 'stale_build_evidence' );
+		$external = self::normalize_tool_names( $external_names );
+		$expected = self::expected_tool_names();
+		$expected_write = self::expected_write_tool_names();
+		$eligible_write = self::eligible_write_tool_names();
+		$blocked = self::blocked_write_tool_names();
+		$breakglass = self::breakglass_tool_names();
+		$raw_sql = self::ability_to_mcp_tool_name( 'mad4b/database-raw-query' );
+		$write_transport = self::abilities_to_mcp_names( array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ) );
+
+		$missing = array_values( array_diff( $expected, $external ) );
+		$unexpected = array_values( array_diff( $external, $expected ) );
+		$provider_gated = array_values( array_intersect( $expected_write, $blocked ) );
+		$execution_mount_leaks = array_values( array_intersect( $blocked, $eligible_write ) );
+		$breakglass_leaks = array_values( array_intersect( $external, $breakglass ) );
+		$direct_write_schema_leaks = array_values( array_intersect( $external, $expected_write ) );
+		$observed_write_transport = array_values( array_intersect( $external, $write_transport ) );
+
+		$external_fp = self::inventory_fingerprint( $external );
+		$expected_fp = self::inventory_fingerprint( $expected );
+		$write_fp = self::inventory_fingerprint( $expected_write );
+		$current_build = self::current_build_fingerprint();
+		$build_match = '' !== $captured_build_fingerprint && '' !== $current_build && hash_equals( $current_build, (string) $captured_build_fingerprint );
+		$inventory_match = empty( $missing ) && empty( $unexpected ) && ! empty( $expected ) && hash_equals( $expected_fp, $external_fp );
+		$write_transport_ready = ! empty( $write_transport ) && count( $observed_write_transport ) === count( $write_transport );
+		$write_match = '' !== $write_fp && $write_transport_ready && empty( $direct_write_schema_leaks );
+		$raw_sql_exposed = '' !== $raw_sql && in_array( $raw_sql, $external, true );
+
+		return array(
+			'contract' => self::EXTERNAL_ATTESTATION_CONTRACT,
+			'real_external_session' => false,
+			'observed_at' => '',
+			'build_fingerprint' => (string) $captured_build_fingerprint,
+			'current_build_fingerprint' => $current_build,
+			'build_fingerprint_match' => $build_match,
+			'external_tool_count' => count( $external ),
+			'external_tool_inventory_fingerprint' => $external_fp,
+			'expected_tool_count' => count( $expected ),
+			'expected_tool_inventory_fingerprint' => $expected_fp,
+			'inventory_match' => $inventory_match,
+			'missing_expected_tools' => $missing,
+			'unexpected_tools' => $unexpected,
+			// Compatibility fields now represent the full logical governed write
+			// catalog rather than direct write schemas in tools/list.
+			'external_write_tool_count' => count( $expected_write ),
+			'external_write_inventory_fingerprint' => $write_fp,
+			'expected_write_tool_count' => count( $expected_write ),
+			'expected_write_inventory_fingerprint' => $write_fp,
+			'write_transport_tool_count' => count( $observed_write_transport ),
+			'expected_write_transport_tool_count' => count( $write_transport ),
+			'write_transport_ready' => $write_transport_ready,
+			'direct_write_schema_leaks' => $direct_write_schema_leaks,
+			'eligible_write_tool_count' => count( $eligible_write ),
+			'expected_eligible_write_tool_count' => count( $eligible_write ),
+			'provider_gated_write_tool_count' => count( $provider_gated ),
+			'provider_gated_write_tools' => $provider_gated,
+			'provider_execution_mount_leaks' => $execution_mount_leaks,
+			'provider_blocked_tool_leaks' => $execution_mount_leaks,
+			'write_inventory_fingerprint_match' => $write_match,
+			'raw_sql_exposed' => $raw_sql_exposed,
+			'breakglass_exposed' => ! empty( $breakglass_leaks ),
+			'foreign_write_tool_exposed' => ! empty( $unexpected ),
+			'verified' => false,
+			'status' => $build_match ? 'inventory_evaluated' : 'stale_build_evidence',
+		);
 	}
 
 	public static function external_handshake_attestation_status() {
 		$stored = self::staging_capture_allowed() ? get_option( self::EXTERNAL_OPTION, array() ) : array();
-		if ( ! is_array( $stored ) || empty( $stored ) ) return array( 'contract' => self::EXTERNAL_ATTESTATION_CONTRACT, 'verified' => false, 'status' => 'pending_external_evidence', 'real_external_session' => false, 'inventory_match' => false, 'missing_expected_tools' => array(), 'unexpected_tools' => array(), 'provider_gated_write_tools' => array(), 'provider_execution_mount_leaks' => array(), 'provider_blocked_tool_leaks' => array(), 'raw_sql_exposed' => false, 'breakglass_exposed' => false, 'foreign_write_tool_exposed' => false, 'build_fingerprint_match' => false, 'write_inventory_fingerprint_match' => false );
-		$current_expected = self::inventory_fingerprint( self::expected_tool_names() ); $current_write = self::inventory_fingerprint( self::expected_write_tool_names() ); $current_build = self::current_build_fingerprint(); $build_match = ! empty( $stored['build_fingerprint'] ) && hash_equals( $current_build, (string) $stored['build_fingerprint'] ); $expected_match = ! empty( $stored['expected_tool_inventory_fingerprint'] ) && hash_equals( $current_expected, (string) $stored['expected_tool_inventory_fingerprint'] ); $write_match = ! empty( $stored['expected_write_inventory_fingerprint'] ) && hash_equals( $current_write, (string) $stored['expected_write_inventory_fingerprint'] ) && ! empty( $stored['write_inventory_fingerprint_match'] ); $observed_at = isset( $stored['observed_at'] ) ? (string) $stored['observed_at'] : ''; $ts = '' !== $observed_at ? strtotime( $observed_at . ' UTC' ) : false; $fresh_time = false !== $ts && ( time() - $ts ) <= self::EXTERNAL_TTL; $execution_leaks = isset( $stored['provider_execution_mount_leaks'] ) && is_array( $stored['provider_execution_mount_leaks'] ) ? $stored['provider_execution_mount_leaks'] : ( isset( $stored['provider_blocked_tool_leaks'] ) && is_array( $stored['provider_blocked_tool_leaks'] ) ? $stored['provider_blocked_tool_leaks'] : array() );
-		$verified = ! empty( $stored['real_external_session'] ) && $build_match && $expected_match && $write_match && $fresh_time && ! empty( $stored['inventory_match'] ) && empty( $stored['missing_expected_tools'] ) && empty( $stored['unexpected_tools'] ) && empty( $execution_leaks ) && empty( $stored['raw_sql_exposed'] ) && empty( $stored['breakglass_exposed'] ) && empty( $stored['foreign_write_tool_exposed'] );
-		$stored['current_build_fingerprint'] = $current_build; $stored['build_fingerprint_match'] = $build_match; $stored['current_expected_tool_inventory_fingerprint_match'] = $expected_match; $stored['write_inventory_fingerprint_match'] = $write_match; $stored['expected_eligible_write_tool_count'] = count( self::eligible_write_tool_names() ); $stored['provider_execution_mount_leaks'] = $execution_leaks; $stored['provider_blocked_tool_leaks'] = $execution_leaks; $stored['verified'] = $verified; $stored['status'] = $verified ? 'verified_external_inventory' : ( ! $build_match || ! $expected_match || ! $write_match ? 'stale_build_evidence' : 'external_inventory_mismatch' ); return $stored;
+		if ( ! is_array( $stored ) || empty( $stored ) ) {
+			return array(
+				'contract' => self::EXTERNAL_ATTESTATION_CONTRACT,
+				'verified' => false,
+				'status' => 'pending_external_evidence',
+				'real_external_session' => false,
+				'inventory_match' => false,
+				'missing_expected_tools' => array(),
+				'unexpected_tools' => array(),
+				'write_transport_ready' => false,
+				'direct_write_schema_leaks' => array(),
+				'provider_gated_write_tools' => array(),
+				'provider_execution_mount_leaks' => array(),
+				'provider_blocked_tool_leaks' => array(),
+				'raw_sql_exposed' => false,
+				'breakglass_exposed' => false,
+				'foreign_write_tool_exposed' => false,
+				'build_fingerprint_match' => false,
+				'write_inventory_fingerprint_match' => false,
+			);
+		}
+
+		$current_expected = self::inventory_fingerprint( self::expected_tool_names() );
+		$current_write = self::inventory_fingerprint( self::expected_write_tool_names() );
+		$current_build = self::current_build_fingerprint();
+		$build_match = ! empty( $stored['build_fingerprint'] ) && '' !== $current_build && hash_equals( $current_build, (string) $stored['build_fingerprint'] );
+		$expected_match = ! empty( $stored['expected_tool_inventory_fingerprint'] ) && '' !== $current_expected && hash_equals( $current_expected, (string) $stored['expected_tool_inventory_fingerprint'] );
+		$write_match = ! empty( $stored['expected_write_inventory_fingerprint'] )
+			&& '' !== $current_write
+			&& hash_equals( $current_write, (string) $stored['expected_write_inventory_fingerprint'] )
+			&& ! empty( $stored['write_inventory_fingerprint_match'] );
+		$write_transport_ready = ! empty( $stored['write_transport_ready'] )
+			&& isset( $stored['write_transport_tool_count'], $stored['expected_write_transport_tool_count'] )
+			&& (int) $stored['write_transport_tool_count'] === (int) $stored['expected_write_transport_tool_count']
+			&& 3 === (int) $stored['expected_write_transport_tool_count'];
+		$direct_write_schema_leaks = isset( $stored['direct_write_schema_leaks'] ) && is_array( $stored['direct_write_schema_leaks'] ) ? $stored['direct_write_schema_leaks'] : array();
+		$observed_at = isset( $stored['observed_at'] ) ? (string) $stored['observed_at'] : '';
+		$ts = '' !== $observed_at ? strtotime( $observed_at . ' UTC' ) : false;
+		$fresh_time = false !== $ts && ( time() - $ts ) <= self::EXTERNAL_TTL;
+		$execution_leaks = isset( $stored['provider_execution_mount_leaks'] ) && is_array( $stored['provider_execution_mount_leaks'] )
+			? $stored['provider_execution_mount_leaks']
+			: ( isset( $stored['provider_blocked_tool_leaks'] ) && is_array( $stored['provider_blocked_tool_leaks'] ) ? $stored['provider_blocked_tool_leaks'] : array() );
+
+		$verified = ! empty( $stored['real_external_session'] )
+			&& $build_match
+			&& $expected_match
+			&& $write_match
+			&& $write_transport_ready
+			&& $fresh_time
+			&& ! empty( $stored['inventory_match'] )
+			&& empty( $stored['missing_expected_tools'] )
+			&& empty( $stored['unexpected_tools'] )
+			&& empty( $direct_write_schema_leaks )
+			&& empty( $execution_leaks )
+			&& empty( $stored['raw_sql_exposed'] )
+			&& empty( $stored['breakglass_exposed'] )
+			&& empty( $stored['foreign_write_tool_exposed'] );
+
+		$stored['current_build_fingerprint'] = $current_build;
+		$stored['build_fingerprint_match'] = $build_match;
+		$stored['current_expected_tool_inventory_fingerprint_match'] = $expected_match;
+		$stored['write_inventory_fingerprint_match'] = $write_match;
+		$stored['write_transport_ready'] = $write_transport_ready;
+		$stored['direct_write_schema_leaks'] = $direct_write_schema_leaks;
+		$stored['expected_eligible_write_tool_count'] = count( self::eligible_write_tool_names() );
+		$stored['provider_execution_mount_leaks'] = $execution_leaks;
+		$stored['provider_blocked_tool_leaks'] = $execution_leaks;
+		$stored['verified'] = $verified;
+		$stored['status'] = $verified
+			? 'verified_external_inventory'
+			: ( ! $build_match || ! $expected_match || ! $write_match
+				? 'stale_build_evidence'
+				: ( ! $write_transport_ready || ! empty( $direct_write_schema_leaks ) ? 'external_write_transport_mismatch' : 'external_inventory_mismatch' ) );
+		return $stored;
 	}
 
 	private static function normalize_tool_names( array $names ) { $names = array_values( array_unique( array_filter( array_map( static function ( $name ) { return is_string( $name ) ? trim( $name ) : ''; }, $names ) ) ) ); sort( $names, SORT_STRING ); return $names; }
