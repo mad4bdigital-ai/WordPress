@@ -1359,7 +1359,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return self::runtime_dynamic_surface_fingerprint( $runtime );
 	}
 
-	private static function decision_handoff( array $decisions ) {
+	private static function evaluation_followup_handoff( array $decisions ) {
 		$groups = array(
 			'alignment_required' => array(),
 			'semantic_review_required' => array(),
@@ -1439,7 +1439,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			usort( $decisions, static function ( $a, $b ) { return strcmp( isset( $a['family'] ) ? (string) $a['family'] : '', isset( $b['family'] ) ? (string) $b['family'] : '' ); } );
 			$runtime_evidence_fingerprint = self::runtime_evidence_fingerprint( $runtime );
 			$decision_fingerprint = self::decision_fingerprint( $repository, $policy, $decisions, $runtime_evidence_fingerprint );
-			$handoff = self::decision_handoff( $decisions );
+			$handoff = self::evaluation_followup_handoff( $decisions );
 			return array(
 				'contract' => self::EVALUATION_CONTRACT,
 				'evaluation_complete' => false,
@@ -1615,7 +1615,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		ksort( $counts, SORT_STRING );
 		$evaluation_blockers = array_values( array_unique( array_filter( array_map( 'sanitize_key', $evaluation_blockers ) ) ) );
 
-		$handoff = self::decision_handoff( $decisions );
+		$handoff = self::evaluation_followup_handoff( $decisions );
 		$evaluation_complete = empty( $evaluation_blockers );
 		return array(
 			'contract' => self::EVALUATION_CONTRACT,
@@ -1730,6 +1730,7 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			}
 			$evaluation['blockers'] = array_values( array_unique( array_filter( array_map( 'sanitize_key', $evaluation['blockers'] ) ) ) );
 		}
+		$evaluation_followup = isset( $evaluation['decision_handoff'] ) && is_array( $evaluation['decision_handoff'] ) ? $evaluation['decision_handoff'] : self::evaluation_followup_handoff( isset( $evaluation['decisions'] ) && is_array( $evaluation['decisions'] ) ? $evaluation['decisions'] : array() );
 		$handoff = array(
 			'contract' => 'mad4b.functional-gap-decision-handoff.v1',
 			'source_commit_sha' => isset( $repository['source_commit_sha'] ) ? (string) $repository['source_commit_sha'] : '',
@@ -1751,6 +1752,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			'decision_fingerprint' => isset( $evaluation['decision_fingerprint'] ) ? (string) $evaluation['decision_fingerprint'] : '',
 			'runtime_generated_at' => isset( $runtime['generated_at'] ) ? (string) $runtime['generated_at'] : '',
 			'evidence_ready' => ! empty( $evaluation['ready'] ) && ! empty( $repository['valid'] ),
+			'evaluation_complete' => ! empty( $evaluation['evaluation_complete'] ),
+			'followup_required' => ! empty( $evaluation_followup['followup_required'] ),
+			'followup_count' => isset( $evaluation_followup['followup_count'] ) ? (int) $evaluation_followup['followup_count'] : 0,
+			'followup_families' => isset( $evaluation_followup['followup_families'] ) && is_array( $evaluation_followup['followup_families'] ) ? array_values( $evaluation_followup['followup_families'] ) : array(),
+			'groups' => isset( $evaluation_followup['groups'] ) && is_array( $evaluation_followup['groups'] ) ? $evaluation_followup['groups'] : array(),
+			'evaluation_followup' => $evaluation_followup,
 			'promotion_authorized' => false,
 			'mutation_authorized' => false,
 			'must_revalidate_before_mutation' => true,
@@ -1804,6 +1811,12 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		return isset( $snapshot['decision_handoff'] ) && is_array( $snapshot['decision_handoff'] ) ? $snapshot['decision_handoff'] : array(
 			'contract' => 'mad4b.functional-gap-decision-handoff.v1',
 			'evidence_ready' => false,
+			'evaluation_complete' => false,
+			'followup_required' => true,
+			'followup_count' => 0,
+			'followup_families' => array(),
+			'groups' => array(),
+			'evaluation_followup' => array(),
 			'promotion_authorized' => false,
 			'mutation_authorized' => false,
 			'must_revalidate_before_mutation' => true,
