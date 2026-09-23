@@ -100,6 +100,7 @@ final class MAD4B_SCP_Developer_Runtime {
 					'path' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 1000 ),
 					'content' => array( 'type' => 'string', 'maxLength' => 1048576, 'default' => '' ),
 					'expected_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'default' => '' ),
+					'expected_absent' => array( 'type' => 'boolean', 'default' => false ),
 					'_mad4b_approval_ticket_id' => self::approval_schema(),
 				),
 				array( 'action', 'root', 'path', '_mad4b_approval_ticket_id' )
@@ -321,9 +322,17 @@ final class MAD4B_SCP_Developer_Runtime {
 		}
 		if ( 'write' === $action ) {
 			$expected = isset( $input['expected_sha256'] ) ? strtolower( trim( (string) $input['expected_sha256'] ) ) : '';
-			if ( file_exists( $path ) && '' !== $expected ) {
+			$expected_absent = ! empty( $input['expected_absent'] );
+			if ( $expected_absent && '' !== $expected ) return new WP_Error( 'mad4b_developer_file_expectation_conflict', 'Write cannot require both expected_absent and expected_sha256.' );
+			$exists = file_exists( $path );
+			if ( $exists ) {
+				if ( $expected_absent ) return new WP_Error( 'mad4b_developer_file_unexpectedly_exists', 'File now exists but the reviewed write expected an absent target.' );
+				if ( 64 !== strlen( $expected ) || ! preg_match( '/^[a-f0-9]{64}$/', $expected ) ) return new WP_Error( 'mad4b_developer_write_sha_required', 'Overwriting an existing file requires its exact reviewed SHA-256.' );
 				$current = hash_file( 'sha256', $path );
 				if ( ! is_string( $current ) || ! hash_equals( $expected, strtolower( $current ) ) ) return new WP_Error( 'mad4b_developer_file_stale', 'File SHA-256 changed since review.' );
+			} else {
+				if ( '' !== $expected ) return new WP_Error( 'mad4b_developer_file_missing_after_review', 'Reviewed file no longer exists.' );
+				if ( ! $expected_absent ) return new WP_Error( 'mad4b_developer_write_absence_confirmation_required', 'Creating a new file requires expected_absent=true.' );
 			}
 			$content = isset( $input['content'] ) ? (string) $input['content'] : '';
 			$bytes = file_put_contents( $path, $content, LOCK_EX );
