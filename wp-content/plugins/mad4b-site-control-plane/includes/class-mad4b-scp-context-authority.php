@@ -1381,32 +1381,57 @@ final class MAD4B_SCP_Context_Authority {
 			'warnings' => array_values( array_unique( $warnings ) ),
 		);
 	}
-	public static function classify_asset( $name, $path = '', $content = '' ) {
-		$haystack = strtolower( trim( (string) $name . ' ' . (string) $path . ' ' . substr( (string) $content, 0, 6000 ) ) );
-		$rules = array(
-			 'brand_strategy' => array( 'brand strategy', 'brand core', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
-			 'brand_positioning' => array( 'positioning', 'brand position', 'تموضع العلامة', 'التموضع' ),
-			 'audience_persona' => array( 'persona', 'audience', 'customer profile', 'buyer profile', 'الجمهور', 'شخصية العميل', 'العميل المثالي' ),
-			 'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'brand voice', 'tov', 'نبرة الصوت', 'نبرة العلامة', 'أسلوب الكتابة' ),
+	private static function classification_rules() {
+		return array(
+			'brand_strategy' => array( 'brand strategy', 'brand core', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
+			'brand_positioning' => array( 'positioning', 'brand position', 'تموضع العلامة', 'التموضع' ),
+			'audience_persona' => array( 'persona', 'audience', 'customer profile', 'buyer profile', 'الجمهور', 'شخصية العميل', 'العميل المثالي' ),
+			'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'brand voice', 'tov', 'نبرة الصوت', 'نبرة العلامة', 'أسلوب الكتابة' ),
 			'messaging' => array( 'messaging', 'message framework', 'key messages' ),
-			 'editorial_guidelines' => array( 'editorial', 'writing guideline', 'style guide', 'content guideline', 'دليل التحرير', 'إرشادات الكتابة', 'قواعد المحتوى' ),
-			 'terminology' => array( 'terminology', 'naming rule', 'glossary', 'vocabulary', 'المصطلحات', 'قاموس', 'التسمية' ),
+			'editorial_guidelines' => array( 'editorial', 'writing guideline', 'style guide', 'content guideline', 'دليل التحرير', 'إرشادات الكتابة', 'قواعد المحتوى' ),
+			'terminology' => array( 'terminology', 'naming rule', 'glossary', 'vocabulary', 'المصطلحات', 'قاموس', 'التسمية' ),
 			'claim_policy' => array( 'prohibited claim', 'claim policy', 'restriction', 'legal claim' ),
-			 'seo_strategy' => array( 'seo', 'search strategy', 'keyword strategy', 'استراتيجية السيو', 'الكلمات المفتاحية', 'تحسين محركات البحث' ),
+			'seo_strategy' => array( 'seo', 'search strategy', 'keyword strategy', 'استراتيجية السيو', 'الكلمات المفتاحية', 'تحسين محركات البحث' ),
 			'content_strategy' => array( 'content strategy', 'blog strategy', 'content pillar' ),
 			'campaign_strategy' => array( 'campaign plan', 'campaign strategy' ),
 			'product_knowledge' => array( 'product knowledge', 'product guide', 'product catalog' ),
 			'service_knowledge' => array( 'service knowledge', 'service guide', 'services' ),
 			'destination_knowledge' => array( 'destination guide', 'destination knowledge', 'travel guide' ),
-			 'market_research' => array( 'market research', 'market report', 'research report', 'market insight', 'بحث السوق', 'دراسة السوق', 'تقرير السوق' ),
-			 'writer_reference' => array( 'writer reference', 'author reference', 'journalist', 'writing sample', 'style profile', 'مرجع كاتب', 'نموذج كتابة', 'أسلوب الكاتب' ),
+			'market_research' => array( 'market research', 'market report', 'research report', 'market insight', 'بحث السوق', 'دراسة السوق', 'تقرير السوق' ),
+			'writer_reference' => array( 'writer reference', 'author reference', 'journalist', 'writing sample', 'style profile', 'مرجع كاتب', 'نموذج كتابة', 'أسلوب الكاتب' ),
 			'content_example' => array( 'content example', 'sample article', 'sample blog', 'example copy' ),
 		);
+	}
+
+	private static function normalize_context_sets( $sets, $fallback = array() ) {
+		$categories = self::categories();
+		$input = is_array( $sets ) ? $sets : array();
+		$out = array();
+		foreach ( $input as $set ) {
+			$key = sanitize_key( (string) $set );
+			if ( '' !== $key && 'uncategorized' !== $key && isset( $categories[ $key ] ) ) $out[] = $key;
+		}
+		if ( empty( $out ) && is_array( $fallback ) ) {
+			foreach ( $fallback as $set ) {
+				$key = sanitize_key( (string) $set );
+				if ( '' !== $key && 'uncategorized' !== $key && isset( $categories[ $key ] ) ) $out[] = $key;
+			}
+		}
+		$out = array_values( array_unique( $out ) );
+		sort( $out, SORT_STRING );
+		return array_slice( $out, 0, 12 );
+	}
+
+	public static function classify_asset( $name, $path = '', $content = '' ) {
+		$haystack = strtolower( trim( (string) $name . ' ' . (string) $path . ' ' . substr( (string) $content, 0, 6000 ) ) );
+		$rules = self::classification_rules();
 		$best = 'uncategorized';
 		$best_hits = 0;
+		$matches = array();
 		foreach ( $rules as $category => $needles ) {
 			$hits = 0;
 			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
+			if ( $hits > 0 ) $matches[ $category ] = $hits;
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
 		}
 		$confidence = 0.35;
@@ -1418,6 +1443,12 @@ final class MAD4B_SCP_Context_Authority {
 		elseif ( in_array( $best, array( 'seo_strategy', 'content_strategy', 'campaign_strategy', 'product_knowledge', 'service_knowledge', 'destination_knowledge', 'market_research' ), true ) ) $authority = 'task_knowledge';
 		$required = in_array( $best, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines', 'terminology', 'claim_policy' ), true );
 		$priority = 'brand_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
+		$ranked = array_keys( $matches );
+		usort( $ranked, static function ( $a, $b ) use ( $matches ) {
+			$hits = (int) $matches[ $b ] <=> (int) $matches[ $a ];
+			return 0 !== $hits ? $hits : strcmp( $a, $b );
+		} );
+		$suggested = self::normalize_context_sets( $ranked, 'uncategorized' !== $best ? array( $best ) : array() );
 		return array(
 			'category' => $best,
 			'classification_confidence' => $confidence,
@@ -1425,6 +1456,7 @@ final class MAD4B_SCP_Context_Authority {
 			'authority_class' => $authority,
 			'required' => $required,
 			'priority' => $priority,
+			'suggested_context_sets' => $suggested,
 		);
 	}
 
@@ -1658,7 +1690,10 @@ final class MAD4B_SCP_Context_Authority {
 				'required' => ! empty( $classification['required'] ),
 				'confidence' => isset( $classification['classification_confidence'] ) ? (float) $classification['classification_confidence'] : 0.0,
 				'source' => isset( $classification['classification_source'] ) ? (string) $classification['classification_source'] : 'automatic_heuristic',
+				'suggested_context_sets' => isset( $classification['suggested_context_sets'] ) ? array_values( $classification['suggested_context_sets'] ) : array(),
 			),
+			'suggested_context_sets' => isset( $classification['suggested_context_sets'] ) ? array_values( $classification['suggested_context_sets'] ) : array(),
+			'approved_context_sets' => array(),
 			'category' => $classification['category'],
 			'classification_confidence' => $classification['classification_confidence'],
 			'classification_source' => $classification['classification_source'],
