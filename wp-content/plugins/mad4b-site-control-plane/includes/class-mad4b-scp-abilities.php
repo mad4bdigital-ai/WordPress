@@ -49,7 +49,11 @@ final class MAD4B_SCP_Abilities {
 		$this->add( 'mad4b/write-execute', 'Execute Governed Write Ability', 'mad4b-admin', 'write_execute', 'write_dispatch', $this->schema(
 			array(
 				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
-				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}		$this->add( 'mad4b/filesystem-list', 'List Files', 'mad4b-read', 'filesystem_list', 'read', $this->schema(
+				'expected_input_schema_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'input' => array( 'type' => 'object', 'default' => array() ),
+			), array( 'ability_name', 'expected_input_schema_sha256' )
+		), false, false, true, false );
+		$this->add( 'mad4b/filesystem-list', 'List Files', 'mad4b-read', 'filesystem_list', 'read', $this->schema(
 			array(
 				'root' => array( 'type' => 'string', 'enum' => $this->roots() ),
 				'path' => array( 'type' => 'string', 'default' => '' ),
