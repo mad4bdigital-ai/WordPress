@@ -99,6 +99,8 @@ assert "expected_source_commit_sha" in authority
 assert "expected_site_uuid" in authority
 assert "expected_profile_revision" in authority
 assert "expected_profile_digest" in authority
+assert "remove_filter( 'wp_register_ability_args', $augment" in authority
+assert "MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability" in authority
 assert "mad4b_scp_developer_kill_switch" in authority
 assert "configuration_snapshot" in authority
 assert "restore_configuration" in authority
