@@ -204,6 +204,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		$write_plan = self::write_plan();
 		if ( is_wp_error( $write_plan ) ) return $write_plan;
 		$developer_status = MAD4B_SCP_Developer_Authority::status();
+		$developer_plan = MAD4B_SCP_Developer_Authority::plan();
+		if ( is_wp_error( $developer_plan ) ) return $developer_plan;
+		$developer_breakglass_plan = MAD4B_SCP_Developer_Authority::breakglass_plan();
+		if ( is_wp_error( $developer_breakglass_plan ) ) return $developer_breakglass_plan;
 
 		$hard_blockers = array();
 		if ( isset( $write_plan['global_registry_wildcard_grants'] ) && (int) $write_plan['global_registry_wildcard_grants'] > 0 ) $hard_blockers[] = 'global_registry_wildcard_grants';
@@ -212,6 +216,15 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		if ( ! MAD4B_SCP_Site_Profile::acceptance_enabled() ) $hard_blockers[] = 'acceptance_disabled';
 		if ( ! MAD4B_SCP_Site_Profile::skills_enabled() ) $hard_blockers[] = 'skills_disabled';
 		if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() ) $hard_blockers[] = 'chatgpt_app_mapping_missing';
+		if ( empty( $developer_plan['ready_to_apply'] ) ) {
+			$hard_blockers[] = 'developer_authority_plan_blocked';
+		}
+		$breakglass_blockers = isset( $developer_breakglass_plan['blockers'] ) && is_array( $developer_breakglass_plan['blockers'] )
+			? array_values( array_unique( array_map( 'strval', $developer_breakglass_plan['blockers'] ) ) )
+			: array();
+		$breakglass_fixable_before_normal = array( 'normal_developer_agent_missing', 'normal_developer_authority_not_ready' );
+		$breakglass_hard_blockers = array_values( array_diff( $breakglass_blockers, $breakglass_fixable_before_normal ) );
+		if ( ! empty( $breakglass_hard_blockers ) ) $hard_blockers[] = 'developer_breakglass_plan_blocked';
 
 		$plan = array(
 			'contract' => self::CONTRACT,
@@ -229,6 +242,9 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'write_enabled' => (bool) MAD4B_SCP_Site_Profile::write_enabled(),
 			'write_reconciliation' => $write_plan,
 			'developer_status' => $developer_status,
+			'developer_plan' => $developer_plan,
+			'developer_breakglass_plan' => $developer_breakglass_plan,
+			'developer_breakglass_hard_blockers' => $breakglass_hard_blockers,
 			'fixable_write_drift' => array(
 				'exact_grants_missing_count' => isset( $write_plan['exact_grants_missing_count'] ) ? (int) $write_plan['exact_grants_missing_count'] : 0,
 				'stale_allow_grants_count' => isset( $write_plan['stale_allow_grants_count'] ) ? (int) $write_plan['stale_allow_grants_count'] : 0,
@@ -302,17 +318,25 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			// effective through the final exact-candidate binding.
 			$developer_plan = MAD4B_SCP_Developer_Authority::plan();
 			if ( is_wp_error( $developer_plan ) ) return self::fail_closed( 'developer_plan_failed', $developer_plan );
-			if ( ! empty( $developer_plan['ready_to_apply'] ) ) {
-				$developer = MAD4B_SCP_Developer_Authority::apply( self::developer_apply_input( $developer_plan, MAD4B_SCP_Developer_Authority::CONFIRM_PROVISION ) );
-				if ( is_wp_error( $developer ) ) return self::fail_closed( 'developer_apply_failed', $developer );
+			if ( empty( $developer_plan['ready_to_apply'] ) ) {
+				return self::fail_closed(
+					'developer_plan_blocked',
+					new WP_Error( 'mad4b_full_authority_developer_plan_blocked', 'Developer authority plan contains non-reconcilable drift.', array( 'blockers' => $developer_plan['blockers'] ) )
+				);
 			}
+			$developer = MAD4B_SCP_Developer_Authority::apply( self::developer_apply_input( $developer_plan, MAD4B_SCP_Developer_Authority::CONFIRM_PROVISION ) );
+			if ( is_wp_error( $developer ) ) return self::fail_closed( 'developer_apply_failed', $developer );
 
 			$breakglass_plan = MAD4B_SCP_Developer_Authority::breakglass_plan();
 			if ( is_wp_error( $breakglass_plan ) ) return self::fail_closed( 'developer_breakglass_plan_failed', $breakglass_plan );
-			if ( ! empty( $breakglass_plan['ready_to_apply'] ) ) {
-				$breakglass = MAD4B_SCP_Developer_Authority::breakglass_apply( self::developer_apply_input( $breakglass_plan, MAD4B_SCP_Developer_Authority::CONFIRM_BREAKGLASS ) );
-				if ( is_wp_error( $breakglass ) ) return self::fail_closed( 'developer_breakglass_apply_failed', $breakglass );
+			if ( empty( $breakglass_plan['ready_to_apply'] ) ) {
+				return self::fail_closed(
+					'developer_breakglass_plan_blocked',
+					new WP_Error( 'mad4b_full_authority_developer_breakglass_plan_blocked', 'Developer Breakglass authority plan contains non-reconcilable drift.', array( 'blockers' => $breakglass_plan['blockers'] ) )
+				);
 			}
+			$breakglass = MAD4B_SCP_Developer_Authority::breakglass_apply( self::developer_apply_input( $breakglass_plan, MAD4B_SCP_Developer_Authority::CONFIRM_BREAKGLASS ) );
+			if ( is_wp_error( $breakglass ) ) return self::fail_closed( 'developer_breakglass_apply_failed', $breakglass );
 
 			// Reconcile only the current runtime-eligible Write inventory. This
 			// removes stale/broad/duplicate current-agent allows and creates exact
