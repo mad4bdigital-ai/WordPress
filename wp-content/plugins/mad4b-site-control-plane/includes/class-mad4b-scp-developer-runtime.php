@@ -303,6 +303,10 @@ final class MAD4B_SCP_Developer_Runtime {
 		$path = MAD4B_SCP_Policy::resolve_path( $root, $path_input, $must_exist );
 		if ( is_wp_error( $path ) ) return $path;
 		if ( MAD4B_SCP_Policy::is_sensitive_path( $path ) ) return new WP_Error( 'mad4b_developer_sensitive_path_denied', 'Sensitive credential/configuration paths remain denied outside Developer Breakglass.' );
+		if ( in_array( $action, array( 'write', 'delete', 'mkdir' ), true ) ) {
+			$mutation_guard = self::normal_filesystem_mutation_guard( $action, $root, $path );
+			if ( is_wp_error( $mutation_guard ) ) return $mutation_guard;
+		}
 
 		if ( 'read' === $action ) {
 			if ( ! is_file( $path ) || ! is_readable( $path ) ) return new WP_Error( 'mad4b_developer_file_unreadable', 'Requested file is not readable.' );
@@ -338,6 +342,26 @@ final class MAD4B_SCP_Developer_Runtime {
 		}
 		return new WP_Error( 'mad4b_developer_filesystem_action_invalid', 'Unknown developer filesystem action.' );
 	}
+
+	private static function normal_filesystem_mutation_guard( $action, $root, $path ) {
+		$action = sanitize_key( (string) $action );
+		$root = sanitize_key( (string) $root );
+		if ( 'mkdir' === $action ) {
+			$allowed_roots = apply_filters( 'mad4b_scp_mutable_data_roots', array( 'uploads' ) );
+			if ( ! is_array( $allowed_roots ) || ! in_array( $root, $allowed_roots, true ) ) {
+				return new WP_Error( 'mad4b_developer_filesystem_code_root_denied', 'Normal Developer directory creation is limited to mutable non-code data roots.' );
+			}
+			if ( MAD4B_SCP_Policy::is_sensitive_path( $path ) || MAD4B_SCP_Policy::is_code_or_server_config_path( $path ) ) {
+				return new WP_Error( 'mad4b_developer_filesystem_code_mutation_denied', 'Normal Developer cannot create executable or sensitive filesystem targets.' );
+			}
+			return true;
+		}
+		if ( ! method_exists( 'MAD4B_SCP_Policy', 'can_mutate_file' ) ) return new WP_Error( 'mad4b_developer_filesystem_policy_unavailable', 'Mutable-file policy is unavailable.' );
+		$allowed = MAD4B_SCP_Policy::can_mutate_file( $root, $path );
+		if ( is_wp_error( $allowed ) ) return $allowed;
+		return true;
+	}
+
 
 	public static function package_install( $input ) {
 		$gate = self::runtime_gate( false, $input );
