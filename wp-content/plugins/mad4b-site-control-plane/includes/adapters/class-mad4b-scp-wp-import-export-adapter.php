@@ -82,7 +82,17 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 			'contract'=>self::CONTRACT,'id'=>$this->id(),'label'=>$this->label(),'available'=>$available,
 			'authority_mode'=>'governed_read_plan_execution_unmounted','abilities'=>$this->ability_names(),
 			'component_versions'=>$versions,'import_runtime_available'=>self::import_runtime_available(),
-			'export_runtime_available'=>self::export_runtime_available(),'execution'=>$this->execution_readiness(),
+			'export_runtime_available'=>self::export_runtime_available(),
+			'runtime_symbol_diagnostic'=>array(
+				'contract'=>'mad4b.wp-import-export-runtime-symbol-diagnostic.v1',
+				'import'=>self::runtime_symbol_state('import'),
+				'export'=>self::runtime_symbol_state('export'),
+				'autoload_or_bootstrap_mutation_attempted'=>false,
+				'filesystem_scan_performed'=>false,
+				'authorizing'=>false,
+				'read_only'=>true,
+			),
+			'execution'=>$this->execution_readiness(),
 			'caller_supplied_secret_allowed'=>false,'secret_material_exposed'=>false,'cron_url_execution_allowed'=>false,
 			'import_run_rollback_contract'=>self::IMPORT_ROLLBACK_CONTRACT,'import_run_rollback_certified'=>false,
 			'mutation_requires_certification'=>true,
@@ -591,6 +601,25 @@ final class MAD4B_SCP_WP_Import_Export_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		return $out;
 	}
+	private static function runtime_symbol_state( $kind ) {
+		$kind=sanitize_key((string)$kind);
+		$classes='import'===$kind
+			?array('PMXI_Plugin','PMXI_Import_Record','PMXI_Import_List')
+			:array('PMXE_Plugin','PMXE_Export_Record','PMXE_Export_List');
+		$present=array(); $missing=array();
+		foreach($classes as $class){
+			if(class_exists($class))$present[]=$class; else $missing[]=$class;
+		}
+		return array(
+			'kind'=>$kind,
+			'expected_classes'=>$classes,
+			'present_classes'=>$present,
+			'missing_classes'=>$missing,
+			'complete'=>empty($missing),
+			'provider_runtime_available'=>'import'===$kind?self::import_runtime_available():self::export_runtime_available(),
+		);
+	}
+
 	private function input_id( $input ){ $input=is_array($input)?$input:array(); return isset($input['id'])?absint($input['id']):0; }
 	private function limit( $input ){ $input=is_array($input)?$input:array(); $n=isset($input['limit'])?absint($input['limit']):25; return min(self::MAX_ITEMS,max(1,$n)); }
 	private static function record_options( $r ){ $v=self::record_value($r,'options',array()); return is_array($v)?$v:array(); }
