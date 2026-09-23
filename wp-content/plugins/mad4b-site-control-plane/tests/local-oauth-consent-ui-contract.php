@@ -21,6 +21,8 @@ $sample = '<!doctype html><html><head><meta charset="utf-8"><title>Authorize MCP
 
 $enhanced = MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $sample );
 if ( false === strpos( $enhanced, 'id="mad4b-oauth-consent-ui"' ) ) $fail( 'Consent stylesheet marker was not injected.' );
+if ( false === strpos( $enhanced, '<title>Authorize read access</title>' ) ) $fail( 'Read-specific consent title is missing.' );
+if ( false === strpos( $enhanced, '<h1>Authorize read access</h1>' ) ) $fail( 'Read-specific consent heading is missing.' );
 if ( false === strpos( $enhanced, 'This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.' ) ) $fail( 'OAuth/read-scope separation statement is missing.' );
 if ( false === strpos( $enhanced, 'Write, Developer and Developer Breakglass are separate governed authorities' ) ) $fail( 'Governed write separation statement is missing.' );
 if ( false === strpos( $enhanced, 'OAuth read identity · Write/Developer authorities separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
