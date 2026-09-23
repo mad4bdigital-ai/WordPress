@@ -100,6 +100,12 @@ assert "expected_site_uuid" in authority
 assert "expected_profile_revision" in authority
 assert "expected_profile_digest" in authority
 assert "mad4b_scp_developer_kill_switch" in authority
+assert "configuration_snapshot" in authority
+assert "restore_configuration" in authority
+assert "force_fail_closed" in authority
+assert "mad4b/developer-authority-rollback" in authority
+assert "completion_audit_failed" in authority
+assert "rollback_incomplete" in authority
 assert "get_agent_by_slug" in registry
 assert "mad4b_scp_allow_developer_breakglass_grant_creation" in registry
 
