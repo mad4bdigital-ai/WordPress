@@ -143,6 +143,7 @@ jobs:
             includes/class-mad4b-scp-admin-query-performance.php \
             includes/class-mad4b-scp-query-monitor-evidence-bridge.php \
             includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php \
+            includes/class-mad4b-scp-plugin-package.php \
             includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php \
             tests/staging-write-candidate-binding-runtime.php \
             MAD4B-ROLLBACK-CANDIDATE.json \
@@ -268,6 +269,7 @@ jobs:
           grep -Fq "stored_artifact_identity" "$write_authority"
           php "$root/tests/staging-write-candidate-binding-runtime.php"
           python3 "$root/tests/staging-write-candidate-binding-audit-contract.py"
+          python3 "$root/tests/plugin-package-mcp-governance-contract.py"
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
