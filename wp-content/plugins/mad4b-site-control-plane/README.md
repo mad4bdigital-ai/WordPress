@@ -2,7 +2,7 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.4.0-rc.54**.
+Current plugin version: **0.4.0-rc.55**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -14,13 +14,19 @@ Governed WP All Import / Export planning, exact identity, dry-run, classificatio
 
 ## MCP surfaces
 
-MAD4B now owns five governed custom MCP server IDs:
+MAD4B isolates governed capabilities across dedicated MCP server IDs:
 
 - `mad4b-read` — privileged discovery and diagnostics.
+- `mad4b-chatgpt` — governed ChatGPT gateway; Developer and Breakglass tools are excluded.
+- `mad4b-enrollment` — bounded Site Profile/bootstrap authority.
 - `mad4b-content` — specialist content/provider mutation surface.
-- `mad4b-write` — unified governed write ingress containing only already-registered Abilities with explicit runtime `annotations.readonly === false`.
+- `mad4b-write` — unified governed operational write ingress.
 - `mad4b-admin` — specialist administrative repair/governance surface.
+- `mad4b-developer` — exact-agent, non-Production Developer Plane for WP-CLI, WP eval, shell, filesystem and package operations.
+- `mad4b-developer-breakglass` — separately gated exceptional Developer recovery surface.
 - `mad4b-breakglass` — exceptional raw SQL recovery; disabled by default.
+
+The Developer Plane is default-off and is never projected into `mad4b-chatgpt` or `mad4b-write`. Mutating Developer jobs require an exact configured Developer Agent, exact server/ability grant, current source/site/environment binding, one-time approval, budget, append-only audit and the shared execution fence. Production is denied by contract.
 
 Their effective REST URLs are derived from the MCP Adapter runtime. With standard rewrites they normally appear as `/wp-json/mcp/<server-id>`; WordPress may also represent the same REST route through `index.php?rest_route=/mcp/<server-id>` when pretty REST rewrites are unavailable. MAD4B validates the registered logical route rather than assuming one URL-rewrite form.
 
