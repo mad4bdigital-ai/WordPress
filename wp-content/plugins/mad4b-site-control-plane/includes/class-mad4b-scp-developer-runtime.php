@@ -269,6 +269,8 @@ final class MAD4B_SCP_Developer_Runtime {
 			'developer_enabled' => self::developer_flag_enabled(),
 			'direct_execution_enabled' => self::direct_execution_enabled(),
 			'breakglass_enabled' => self::breakglass_flag_enabled(),
+			'kill_switch_enabled' => self::kill_switch_enabled(),
+			'configuration_source' => self::configuration_source(),
 			'configured_agent_public_id' => $agent,
 			'configured_agent_exact' => '' !== $agent,
 			'proc_open_available' => function_exists( 'proc_open' ),
@@ -427,22 +429,47 @@ final class MAD4B_SCP_Developer_Runtime {
 		return true;
 	}
 
-	private static function developer_flag_enabled() {
-		return defined( 'MAD4B_MCP_DEVELOPER_ENABLED' ) && true === constant( 'MAD4B_MCP_DEVELOPER_ENABLED' );
+	public static function kill_switch_enabled() {
+		return '1' === (string) get_option( 'mad4b_scp_developer_kill_switch', '0' );
 	}
 
-	private static function direct_execution_enabled() {
-		return defined( 'MAD4B_MCP_DEVELOPER_DIRECT_EXECUTION_ENABLED' ) && true === constant( 'MAD4B_MCP_DEVELOPER_DIRECT_EXECUTION_ENABLED' );
+	public static function developer_flag_enabled() {
+		if ( self::kill_switch_enabled() ) return false;
+		if ( defined( 'MAD4B_MCP_DEVELOPER_ENABLED' ) ) return true === constant( 'MAD4B_MCP_DEVELOPER_ENABLED' );
+		return '1' === (string) get_option( 'mad4b_scp_developer_enabled', '0' );
 	}
 
-	private static function breakglass_flag_enabled() {
-		return defined( 'MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED' )
-			&& defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' );
+	public static function direct_execution_enabled() {
+		if ( self::kill_switch_enabled() ) return false;
+		if ( defined( 'MAD4B_MCP_DEVELOPER_DIRECT_EXECUTION_ENABLED' ) ) return true === constant( 'MAD4B_MCP_DEVELOPER_DIRECT_EXECUTION_ENABLED' );
+		return '1' === (string) get_option( 'mad4b_scp_developer_direct_execution_enabled', '0' );
 	}
 
-	private static function configured_agent_public_id() {
-		$value = defined( 'MAD4B_MCP_DEVELOPER_AGENT_PUBLIC_ID' ) ? strtolower( trim( (string) constant( 'MAD4B_MCP_DEVELOPER_AGENT_PUBLIC_ID' ) ) ) : '';
+	public static function breakglass_flag_enabled() {
+		if ( self::kill_switch_enabled() || ! self::developer_flag_enabled() ) return false;
+		$developer_breakglass = defined( 'MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED' )
+			? true === constant( 'MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED' )
+			: '1' === (string) get_option( 'mad4b_scp_developer_breakglass_enabled', '0' );
+		return $developer_breakglass
+			&& defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' )
+			&& true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' );
+	}
+
+	public static function configured_agent_public_id() {
+		$value = defined( 'MAD4B_MCP_DEVELOPER_AGENT_PUBLIC_ID' )
+			? strtolower( trim( (string) constant( 'MAD4B_MCP_DEVELOPER_AGENT_PUBLIC_ID' ) ) )
+			: strtolower( trim( (string) get_option( 'mad4b_scp_developer_agent_public_id', '' ) ) );
 		return 1 === preg_match( '/^[a-f0-9-]{36}$/', $value ) ? $value : '';
+	}
+
+	public static function configuration_source() {
+		return array(
+			'enabled' => defined( 'MAD4B_MCP_DEVELOPER_ENABLED' ) ? 'constant' : 'option',
+			'direct_execution' => defined( 'MAD4B_MCP_DEVELOPER_DIRECT_EXECUTION_ENABLED' ) ? 'constant' : 'option',
+			'agent_public_id' => defined( 'MAD4B_MCP_DEVELOPER_AGENT_PUBLIC_ID' ) ? 'constant' : 'option',
+			'breakglass' => defined( 'MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED' ) ? 'constant' : 'option',
+			'kill_switch' => 'option',
+		);
 	}
 
 	private static function environment() {
