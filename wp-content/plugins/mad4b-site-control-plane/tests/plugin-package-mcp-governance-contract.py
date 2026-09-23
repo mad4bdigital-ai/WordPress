@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PACKAGE = ROOT / "includes" / "class-mad4b-scp-plugin-package.php"
+BOOTSTRAP = ROOT / "mad4b-site-control-plane.php"
+SERVERS = ROOT / "includes" / "class-mad4b-scp-servers.php"
+REGISTRY = ROOT / "includes" / "class-mad4b-scp-adapter-registry.php"
+
+
+def require(condition, message):
+    if not condition:
+        raise SystemExit(message)
+
+
+package = PACKAGE.read_text(encoding="utf-8")
+bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
+servers = SERVERS.read_text(encoding="utf-8")
+registry = REGISTRY.read_text(encoding="utf-8")
+
+for marker in [
+    "class MAD4B_SCP_Plugin_Package",
+    "mad4b.plugin-package-plan.v1",
+    "mad4b.plugin-package-apply.v1",
+    "'mad4b/plugin-package-plan'",
+    "'mad4b/plugin-package-apply'",
+    "'readonly' => true",
+    "'readonly' => false",
+    "MAD4B_SCP_Authorization::authorize_mutation",
+    "MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'write' )",
+    "'production_allowed' => false",
+    "'caller_supplied_url_allowed' => false",
+    "'caller_supplied_path_allowed' => false",
+    "expected_plan_sha256",
+    "mad4b_plugin_package_plan_changed",
+    "MAD4B_SCP_Provider_Contracts::get",
+    "archive_sha256",
+    "critical_files",
+    "hash_file( 'sha256'",
+    "prepare_backup_root",
+    "Plugin_Upgrader",
+    "'overwrite_package' => true",
+    "restore_activation_state",
+    "rollback_on_failed_disk_readback",
+    "mad4b_plugin_package_readback_failed_rolled_back",
+    "runtime_reboot_required",
+    "authority_created' => false",
+]:
+    require(marker in package, f"plugin package governance marker missing: {marker}")
+
+for forbidden in [
+    "'package_url'",
+    "'download_url'",
+    "'archive_path'",
+    "'plugin_file' => array(",
+    "'target_version' => array(",
+    "'archive_sha256' => array(",
+    "mad4b/database-raw-query",
+    "shell_exec(",
+    "exec(",
+    "system(",
+    "passthru(",
+    "proc_open(",
+    "popen(",
+]:
+    require(forbidden not in package, f"unsafe caller/arbitrary execution surface detected: {forbidden}")
+
+schema = package.split("private static function plan_schema()", 1)[1]
+require("'provider_id'" in schema and "'component'" in schema and "'source'" in schema and "'reason'" in schema, "bounded caller schema missing")
+require("wordpress_update_offer" in schema and "certified_local_archive" in schema, "server-resolved package sources missing")
+require("additionalProperties' => false" in schema, "package input schema must reject unknown caller fields")
+
+plan_body = package.split("public static function plan(", 1)[1].split("public static function apply(", 1)[0]
+for forbidden in ["Plugin_Upgrader", "download_url(", "copy_dir(", "activate_plugin(", "deactivate_plugins("]:
+    require(forbidden not in plan_body, f"read-only plan unexpectedly mutates or downloads: {forbidden}")
+
+apply_body = package.split("public static function apply(", 1)[1].split("private static function authority(", 1)[0]
+for marker in [
+    "self::plan( $input )",
+    "hash_equals( $plan['plan_sha256'], $expected_plan )",
+    "self::materialize_package",
+    "self::backup_plugin",
+    "self::install_package",
+    "self::verify_disk_readback",
+    "self::rollback",
+]:
+    require(marker in apply_body, f"apply safety sequence missing: {marker}")
+
+require("class-mad4b-scp-plugin-package.php" in bootstrap, "plugin package class is not loaded by bootstrap")
+require("MAD4B_SCP_Plugin_Package::boot();" in bootstrap, "plugin package abilities are not booted")
+
+for marker in [
+    "'mad4b/plugin-package-plan'",
+    "'mad4b/plugin-package-apply'",
+]:
+    require(marker in servers, f"plugin package ability missing from MCP server catalog: {marker}")
+    require(marker in registry, f"plugin package ability missing from runtime inventory: {marker}")
+
+core = servers.split("private static function core_write_candidates()", 1)[1].split("private static function registered_adapter_write_candidates()", 1)[0]
+require("'mad4b/plugin-package-apply'" in core, "package apply must be a governed core write candidate")
+require("'mad4b/plugin-package-plan'" not in core, "read-only package plan must never enter write catalog")
+
+print("mad4b.plugin-package-mcp-governance.v1: PASS")
