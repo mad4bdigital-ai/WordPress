@@ -190,6 +190,13 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		}
 		if ( defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) && absint( constant( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) !== $primary_user_id ) return new WP_Error( 'explicit_wp_user_conflict', 'Legacy primary OAuth user conflicts with the Site Profile trust owner.' );
 
+		// Site Profile OAuth means the HTTP protected-resource bridge must be
+		// available as well as the local authorization server. Honor an explicit
+		// operator disable instead of silently overriding it.
+		if ( defined( 'MAD4B_MCP_OAUTH_ENABLED' ) && true !== constant( 'MAD4B_MCP_OAUTH_ENABLED' ) ) {
+			return new WP_Error( 'explicit_resource_oauth_disabled', 'OAuth protected-resource handling is explicitly disabled.' );
+		}
+		if ( ! defined( 'MAD4B_MCP_OAUTH_ENABLED' ) ) define( 'MAD4B_MCP_OAUTH_ENABLED', true );
 		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) define( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED', true );
 		if ( ! defined( 'MAD4B_MCP_OAUTH_MODE' ) ) define( 'MAD4B_MCP_OAUTH_MODE', 'local' );
 		if ( ! defined( 'MAD4B_MCP_OAUTH_WP_USER_ID' ) ) define( 'MAD4B_MCP_OAUTH_WP_USER_ID', $primary_user_id );
