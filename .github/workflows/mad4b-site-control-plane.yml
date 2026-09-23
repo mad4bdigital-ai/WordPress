@@ -245,7 +245,7 @@ jobs:
           grep -Fq "mad4b.site-profile.v1" "$site_profile"
           grep -Fq "MAD4B_SCP_Site_Profile::origin_enrolled" "$write_authority"
           grep -Fq "MAD4B_SCP_Site_Profile::write_enabled" "$write_authority"
-          grep -Fq "mad4b.staging-write-candidate-binding.v1" "$candidate_binding"
+          grep -Fq "mad4b.staging-write-candidate-binding.v2" "$candidate_binding"
           grep -Fq "mad4b/staging-write-candidate-bind" "$candidate_binding"
           grep -Fq "'surface' => 'enrollment'" "$candidate_binding"
           grep -Fq "'binding_only' => true" "$candidate_binding"
@@ -261,7 +261,13 @@ jobs:
             exit 1
           fi
           grep -Fq "mad4b/staging-write-candidate-bind" "$servers"
+          grep -Fq "mad4b/staging-write-candidate-binding-audit" "$servers"
+          grep -Fq "mad4b/staging-write-candidate-binding-noop" "$write_authority"
+          grep -Fq "mad4b/staging-write-candidate-binding-rollback" "$write_authority"
+          grep -Fq "stored_package_manifest_digest" "$write_authority"
+          grep -Fq "stored_artifact_identity" "$write_authority"
           php "$root/tests/staging-write-candidate-binding-runtime.php"
+          python "$root/tests/staging-write-candidate-binding-audit-contract.py"
           grep -Fq "all_remote_writes_require_exact_approval" "$write_authority"
           grep -Fq "production_auto_enable" "$write_authority"
           grep -Fq "breakglass_auto_enable" "$write_authority"
