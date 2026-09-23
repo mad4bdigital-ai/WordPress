@@ -306,7 +306,7 @@ Repository CI currently covers:
 - exact packaged-provider version/archive certification;
 - runtime critical-file integrity manifests;
 - native MCP security invariants for JetEngine, Elementor and Bit Pi;
-- default-server isolation and six MAD4B custom servers;
+- default-server isolation and nine MAD4B custom servers;
 - exact route/server transport binding before exact grant and approval consumption;
 - `mad4b-write` projection from explicit `readonly=false` Ability metadata;
 - specialist-server grant versus `mad4b-write` grant isolation;
