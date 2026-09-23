@@ -200,7 +200,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	}
 
 	private static function normalize_candidate_binding_context( $context, array $current ) {
-		if ( ! is_array( $context ) ) return new WP_Error( 'mad4b_candidate_binding_audit_context_required', 'Candidate binding requires an explicit auditable operation context.' );
+		if ( ! is_array( $context ) || empty( $context ) ) return new WP_Error( 'mad4b_candidate_binding_audit_context_required', 'Candidate binding requires an explicit auditable operation context.' );
 		if ( ! isset( $context['contract'] ) || 'mad4b.staging-write-candidate-binding.v2' !== (string) $context['contract'] ) return new WP_Error( 'mad4b_candidate_binding_audit_context_contract_invalid', 'Candidate binding audit context contract is invalid.' );
 		$operation_id = isset( $context['operation_id'] ) ? strtolower( trim( (string) $context['operation_id'] ) ) : '';
 		$correlation_id = isset( $context['correlation_id'] ) ? substr( sanitize_text_field( (string) $context['correlation_id'] ), 0, 100 ) : '';
