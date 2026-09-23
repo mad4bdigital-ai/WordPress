@@ -76,16 +76,19 @@ $evidence = mad4b_capture_scenario( 'session-exact', array_reverse( $exact_exter
 mad4b_assert( ! empty( $evidence ), 'minimal governed transport inventory was not persisted' );
 mad4b_assert( 'mad4b.external-handshake-evidence.v4' === $evidence['contract'], 'v4 evidence contract missing' );
 mad4b_assert( count( $stable_writes ) === (int) $evidence['write_tool_count'], 'logical write count must use the full stable catalog' );
-mad4b_assert( count( $core_writes ) === (int) $evidence['eligible_write_tool_count'], 'eligible logical write count must stay dynamic' );
+mad4b_assert( ! empty( $evidence['runtime_projection_deferred'] ), 'tools/list capture must defer provider eligibility projection' );
+mad4b_assert( 0 === (int) $evidence['eligible_write_tool_count'], 'raw tools/list evidence must not execute provider eligibility projection' );
 mad4b_assert( 3 === (int) $evidence['write_transport_tool_count'], 'write transport trio must be captured' );
 mad4b_assert( ! empty( $evidence['write_transport_ready'] ), 'write transport must be ready' );
 mad4b_assert( empty( $evidence['direct_write_schema_leaks'] ), 'underlying write schemas must not be direct' );
-mad4b_assert( 1 === (int) $evidence['provider_gated_write_tool_count'], 'gated provider write must be reported logically' );
-mad4b_assert( in_array( mad4b_tool_name( $gated_provider ), $evidence['provider_gated_write_tools'], true ), 'gated provider write missing from evidence' );
+mad4b_assert( 0 === (int) $evidence['provider_gated_write_tool_count'], 'raw tools/list evidence must not execute provider gate projection' );
 $status = MAD4B_SCP_External_Handshake_Evidence::status();
 mad4b_assert( ! empty( $status['verified'] ), 'minimal transport plus logical write catalog should verify' );
 mad4b_assert( ! empty( $status['tool_inventory_match'] ), 'minimal transport fingerprint should match' );
 mad4b_assert( ! empty( $status['write_inventory_fingerprint_match'] ), 'logical write catalog fingerprint should match' );
+mad4b_assert( count( $core_writes ) === (int) $status['eligible_write_tool_count'], 'status read must project current eligible logical writes' );
+mad4b_assert( 1 === (int) $status['provider_gated_write_tool_count'], 'status read must project current provider-gated write count' );
+mad4b_assert( in_array( mad4b_tool_name( $gated_provider ), $status['provider_gated_write_tools'], true ), 'status read must identify the gated provider write' );
 
 // Certification transition changes runtime eligibility only; it must not change
 // either the external transport identity or the stable logical write catalog.
