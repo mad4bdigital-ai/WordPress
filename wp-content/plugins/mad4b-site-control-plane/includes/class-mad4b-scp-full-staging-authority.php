@@ -321,10 +321,57 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			$write_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
 			if ( ! is_array( $write_plan ) ) return self::fail_closed( 'write_plan_unavailable_after_reconcile', new WP_Error( 'mad4b_full_authority_write_plan_unavailable', 'Write reconciliation plan is unavailable after convergence.' ) );
 
-			// Candidate binding is deliberately the last authority mutation because
-			// it flips governed Write from reconciled-but-fail-closed to effective.
+			// Prove every authority except the final package binding is already ready.
+			// Nothing after the binding may introduce a second fallible governance
+			// mutation, otherwise a composite failure could leave Write effective.
+			$developer_after = MAD4B_SCP_Developer_Authority::status();
+			$developer_ready = ! empty( $developer_after['developer_enabled'] )
+				&& ! empty( $developer_after['direct_execution_enabled'] )
+				&& empty( $developer_after['kill_switch_enabled'] )
+				&& ! empty( $developer_after['normal_authority']['ready'] );
+			$developer_breakglass_ready = $developer_ready
+				&& ! empty( $developer_after['breakglass_enabled'] )
+				&& ! empty( $developer_after['breakglass_authority']['ready'] );
+			if ( ! $developer_ready || ! $developer_breakglass_ready ) {
+				return self::fail_closed( 'developer_postcondition_failed', new WP_Error( 'mad4b_full_authority_developer_postcondition_failed', 'Developer authorities did not converge before the final Write commit point.' ) );
+			}
+			$write_reconciled = ! empty( $write_plan['current_ready'] )
+				&& isset( $write_plan['exact_grants_existing'], $write_plan['write_tool_count'] )
+				&& (int) $write_plan['exact_grants_existing'] === (int) $write_plan['write_tool_count']
+				&& empty( $write_plan['exact_grants_missing_count'] )
+				&& empty( $write_plan['stale_allow_grants_count'] )
+				&& empty( $write_plan['broad_environment_grants_count'] )
+				&& empty( $write_plan['duplicate_exact_allow_grants_count'] )
+				&& empty( $write_plan['current_agent_wildcard_grants'] )
+				&& empty( $write_plan['global_registry_wildcard_grants'] );
+			if ( ! $write_reconciled ) {
+				return self::fail_closed( 'write_postcondition_failed', new WP_Error( 'mad4b_full_authority_write_postcondition_failed', 'Governed Write grants did not converge before the final package binding.' ) );
+			}
+
 			$binding = isset( $write_plan['candidate_binding'] ) && is_array( $write_plan['candidate_binding'] ) ? $write_plan['candidate_binding'] : array();
-			if ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) {
+			$binding_required = ! empty( $binding['required'] );
+			$binding_match_before = ! $binding_required || ! empty( $binding['match'] );
+
+			$prepared = MAD4B_SCP_Audit::record( 'mad4b/full-staging-authority-prepared', array(
+				'contract' => self::CONTRACT,
+				'state' => 'ready_for_final_candidate_binding',
+				'source_commit_sha' => $plan['source_commit_sha'],
+				'site_uuid' => $plan['site_uuid'],
+				'write_reconciled' => true,
+				'developer_ready' => true,
+				'developer_breakglass_ready' => true,
+				'candidate_binding_required' => $binding_required,
+				'candidate_binding_match_before' => $binding_match_before,
+				'generic_raw_sql_breakglass_enabled' => false,
+				'production_mutation' => false,
+			), 'ok' );
+			if ( is_wp_error( $prepared ) ) return self::fail_closed( 'prepared_audit_failed', new WP_Error( 'mad4b_full_authority_prepared_audit_failed', 'Full authority prepared evidence could not be committed before the final binding.' ) );
+
+			// Exact candidate binding is the commit point. Its own primitive writes
+			// authorized/completion/rollback audit records transactionally and proves
+			// MAD4B_SCP_Staging_Write_Authority::effective() before returning success.
+			$bind = null;
+			if ( $binding_required && ! $binding_match_before ) {
 				$bind = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( array(
 					'expected_revision' => (int) MAD4B_SCP_Site_Profile::revision(),
 					'expected_profile_digest' => strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() ),
@@ -341,21 +388,23 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				if ( is_wp_error( $bind ) ) return self::fail_closed( 'candidate_binding_failed', $bind );
 			}
 
-			$after = self::status();
-			if ( empty( $after['ready'] ) ) return self::fail_closed( 'full_authority_postcondition_failed', new WP_Error( 'mad4b_full_authority_postcondition_failed', 'Full Staging Authority did not converge after apply.', $after ) );
-
-			$complete = MAD4B_SCP_Audit::record( 'mad4b/full-staging-authority-complete', array(
-				'contract' => self::CONTRACT,
-				'state' => 'ready',
-				'source_commit_sha' => $plan['source_commit_sha'],
-				'site_uuid' => $plan['site_uuid'],
-				'write_ready' => true,
-				'developer_ready' => true,
-				'developer_breakglass_ready' => true,
-				'generic_raw_sql_breakglass_enabled' => false,
-				'production_mutation' => false,
-			), 'ok' );
-			if ( is_wp_error( $complete ) ) return self::fail_closed( 'completion_audit_failed', new WP_Error( 'mad4b_full_authority_completion_audit_failed', 'Full authority completion audit failed.' ) );
+			// No fallible governance mutation follows the commit point. For an
+			// already-bound idempotent run, append the composite completion record
+			// because no new Write authority is being committed by this invocation.
+			if ( $binding_match_before ) {
+				$complete = MAD4B_SCP_Audit::record( 'mad4b/full-staging-authority-complete', array(
+					'contract' => self::CONTRACT,
+					'state' => 'already_bound_ready',
+					'source_commit_sha' => $plan['source_commit_sha'],
+					'site_uuid' => $plan['site_uuid'],
+					'write_ready' => true,
+					'developer_ready' => true,
+					'developer_breakglass_ready' => true,
+					'generic_raw_sql_breakglass_enabled' => false,
+					'production_mutation' => false,
+				), 'ok' );
+				if ( is_wp_error( $complete ) ) return self::fail_closed( 'completion_audit_failed', new WP_Error( 'mad4b_full_authority_completion_audit_failed', 'Idempotent full authority completion audit failed.' ) );
+			}
 
 			return array(
 				'contract' => self::CONTRACT,
@@ -363,9 +412,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'write_ready' => true,
 				'developer_ready' => true,
 				'developer_breakglass_ready' => true,
+				'candidate_binding_committed' => $binding_required && ! $binding_match_before,
+				'candidate_binding_result' => is_array( $bind ) ? $bind : array(),
 				'generic_raw_sql_breakglass_enabled' => false,
 				'production_mutation' => false,
-				'status' => $after,
 			);
 		} finally {
 			self::$running = false;
