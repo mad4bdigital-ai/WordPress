@@ -208,6 +208,7 @@ final class MAD4B_SCP_Developer_Authority {
 			'direct_execution_enabled' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) && MAD4B_SCP_Developer_Runtime::direct_execution_enabled(),
 			'kill_switch_enabled' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) && MAD4B_SCP_Developer_Runtime::kill_switch_enabled(),
 			'breakglass_enabled' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) && MAD4B_SCP_Developer_Runtime::breakglass_flag_enabled(),
+			'runtime' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::runtime_status() : array(),
 			'normal_authority' => $normal,
 			'breakglass_authority' => $breakglass,
 		);
@@ -305,6 +306,7 @@ final class MAD4B_SCP_Developer_Authority {
 			'server_id' => $server_id,
 			'tool_count' => count( $rows ),
 			'rows' => $rows,
+			'execution_backend' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::runtime_status() : array(),
 			'blockers' => array_values( array_unique( array_map( 'strval', $blockers ) ) ),
 			'ready_to_apply' => empty( $blockers ),
 		);
