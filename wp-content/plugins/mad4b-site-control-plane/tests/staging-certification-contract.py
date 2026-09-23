@@ -57,6 +57,10 @@ for marker in [
     "'current_agent_wildcard_grants'",
     "'global_registry_wildcard_grants'",
     "'grant_lookup_strategy' => 'bulk_agent_grant_snapshot'",
+    "'persisted_ready'",
+    "'effective_ready'",
+    "'write_inventory_fingerprint'",
+    "'grant_rows_fingerprint'",
     "'apply_requires_explicit_operator_action' => true",
 ]:
     require(plan, marker, "read-only reconciliation plan")
