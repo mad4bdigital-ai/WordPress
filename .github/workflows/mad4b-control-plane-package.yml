@@ -176,8 +176,8 @@ jobs:
           grep -Fq "'breakglass_auto_enable' => false" "$write"
           grep -Fq "'all_remote_writes_require_exact_approval' => false" "$write"
           grep -Fq "'normal_remote_writes_require_exact_approval' => true" "$write"
-          grep -Fq "'remote_write_approval_policy' => 'exact_approval_except_bounded_candidate_bootstrap'" "$write"
-          grep -Fq "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY )" "$write"
+          grep -Fq "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'" "$write"
+          grep -Fq "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )" "$write"
           grep -Fq "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'" "$write"
           grep -Fq "MAD4B_SCP_Agent_Registry::grant_ability" "$write"
           grep -Fq "'mad4b/database-raw-query' === \$ability_name" "$servers"
@@ -385,7 +385,11 @@ jobs:
                   'functional_gap_runtime_evidence_requires_no_shell': True,
                   'all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write': True,
                   'provider_uncertified_write_actions_excluded_from_governed_write_surfaces': True,
-                  'remote_writes_require_exact_one_time_approval': True,
+                  'normal_remote_writes_require_exact_one_time_approval': True,
+                  'context_ai_review_may_use_explicit_standing_delegation': True,
+                  'context_ai_review_standing_delegation_staging_only': True,
+                  'context_ai_review_standing_delegation_exact_agent_grant_budget_audit_required': True,
+                  'context_ai_review_standing_delegation_production_authorized': False,
                   'approval_plan_bootstrap_governed_by_nhi_grant_budget': True,
                   'approval_plan_creates_pending_ticket_only': True,
                   'approval_plan_breakglass_target_denied': True,
@@ -431,7 +435,7 @@ jobs:
           4. Explicitly enroll the current WordPress site through Site Profile v2. The enrolled canonical origin and environment must match the live site. Public package presets are empty.
           5. Enable only the features required by this tenant. OAuth identity, Skills, provider isolation, managed runtime, acceptance, and governed write remain separate profile features.
           6. Production write remains disabled unless the Production Site Profile is explicitly enrolled for write and the separate `ENABLE GOVERNED PRODUCTION WRITE` confirmation is supplied.
-          7. Governed writes still require the normal NHI, exact grant, provider certification where applicable, mutation budget, audit availability, exact one-time approval, and execution fence. Breakglass and Raw SQL are never part of the normal MCP write surface.
+          7. Normal governed writes require NHI identity, exact grant, provider certification where applicable, mutation budget, audit availability, exact one-time approval, and the execution fence. The sole rc.54 exception is `mad4b/context-ai-review` when an administrator explicitly enables the Staging-only Human + AI review policy: that exact-agent standing delegation still requires current candidate binding, exact NHI grant, budget, audit, immutable governance metadata, and remains unauthorized in Production. Breakglass and Raw SQL are never part of the normal MCP write surface.
           8. Read `mad4b/write-authority-status` and `mad4b/write-runtime-certification` after enrollment. Provider-blocked writes must remain unmounted until their exact capability certification passes.
           9. Deployment-specific live acceptance, including external WPML compatibility where required, is performed against that deployment's explicitly enrolled origin. ETG is one deployment target, not Core identity.
           10. Compare the portable ChatGPT package `MAD4B-SNAPSHOT-ID.txt` with `mad4b/skills-export-status` before external snapshot acceptance, then Refresh/Scan Tools in ChatGPT.
@@ -486,6 +490,7 @@ jobs:
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
@@ -566,6 +571,11 @@ jobs:
           grep -Fq '"functional_gap_runtime_evidence_requires_no_shell": true' "$stage/install-manifest.json"
           grep -Fq '"all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write": true' "$stage/install-manifest.json"
           grep -Fq '"provider_uncertified_write_actions_excluded_from_governed_write_surfaces": true' "$stage/install-manifest.json"
+          grep -Fq '"normal_remote_writes_require_exact_one_time_approval": true' "$stage/install-manifest.json"
+          grep -Fq '"context_ai_review_may_use_explicit_standing_delegation": true' "$stage/install-manifest.json"
+          grep -Fq '"context_ai_review_standing_delegation_staging_only": true' "$stage/install-manifest.json"
+          grep -Fq '"context_ai_review_standing_delegation_exact_agent_grant_budget_audit_required": true' "$stage/install-manifest.json"
+          grep -Fq '"context_ai_review_standing_delegation_production_authorized": false' "$stage/install-manifest.json"
           grep -Fq '"approval_plan_bootstrap_governed_by_nhi_grant_budget": true' "$stage/install-manifest.json"
           grep -Fq '"local_rest_isolation_certified": true' "$stage/install-manifest.json"
           grep -Fq '"external_wpml_live_acceptance_required": true' "$stage/install-manifest.json"
@@ -573,7 +583,7 @@ jobs:
           grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
           grep -Fq 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}' "$stage/package/mad4b-site-control-plane/config/staging-deployment-handoff.json"
           grep -Fq "Current plugin version: **${expected_version}**." "$stage/package/mad4b-site-control-plane/README.md"
-          grep -Fq 'six MAD4B custom servers' "$stage/package/mad4b-site-control-plane/README.md"
+          grep -Fq 'nine MAD4B custom servers' "$stage/package/mad4b-site-control-plane/README.md"
           if grep -Fq 'Egypt Tour Gates' "$stage/package/mad4b-site-control-plane/README.md" || grep -Fq 'staging.egypttourgates.com' "$stage/package/mad4b-site-control-plane/README.md"; then
             echo 'General Distribution README retained tenant-specific identity.' >&2
             exit 1

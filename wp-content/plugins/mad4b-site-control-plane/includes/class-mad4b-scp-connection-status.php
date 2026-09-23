@@ -227,7 +227,7 @@ final class MAD4B_SCP_Connection_Status {
 	}
 
 	private static function server_status() {
-		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' );
+		$ids = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::expected_server_ids() : array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 		$expected_permissions = array(
 			'mad4b-read' => array( 'MAD4B_SCP_Servers', 'can_read_transport' ),
 			'mad4b-chatgpt' => array( 'MAD4B_SCP_Servers', 'can_chatgpt_transport' ),
@@ -235,6 +235,8 @@ final class MAD4B_SCP_Connection_Status {
 			'mad4b-content' => array( 'MAD4B_SCP_Servers', 'can_content_transport' ),
 			'mad4b-write' => array( 'MAD4B_SCP_Servers', 'can_write_transport' ),
 			'mad4b-admin' => array( 'MAD4B_SCP_Servers', 'can_admin_transport' ),
+			'mad4b-developer' => array( 'MAD4B_SCP_Servers', 'can_developer_transport' ),
+			'mad4b-developer-breakglass' => array( 'MAD4B_SCP_Servers', 'can_developer_breakglass_transport' ),
 			'mad4b-breakglass' => array( 'MAD4B_SCP_Servers', 'can_breakglass_transport' ),
 		);
 		$registration = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
@@ -389,6 +391,8 @@ final class MAD4B_SCP_Connection_Status {
 		if ( 'mad4b-content' === $id ) return 'content';
 		if ( 'mad4b-write' === $id ) return 'write';
 		if ( 'mad4b-admin' === $id ) return 'admin';
+		if ( 'mad4b-developer' === $id ) return 'developer';
+		if ( 'mad4b-developer-breakglass' === $id ) return 'developer-breakglass';
 		if ( 'mad4b-breakglass' === $id ) return 'breakglass';
 		return 'unknown';
 	}

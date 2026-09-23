@@ -26,10 +26,12 @@ for marker in required_gate_markers:
 
 for marker in (
     "resource_for_route",
-    "'/mcp/mad4b-chatgpt'",
-    "'/mcp/mad4b-enrollment'",
+    "foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id )",
+    "if ( '/mcp/' . $server_id === $route ) return self::resource_identifier( $server_id )",
     "resource_identifier( 'mad4b-chatgpt' )",
     "resource_identifier( 'mad4b-enrollment' )",
+    "resource_identifier( 'mad4b-developer' )",
+    "resource_identifier( 'mad4b-developer-breakglass' )",
     "subject_allowed( $issuer, $validated['subject'] )",
     "mad4b_oauth_subject_not_approved",
     "openssl_verify",

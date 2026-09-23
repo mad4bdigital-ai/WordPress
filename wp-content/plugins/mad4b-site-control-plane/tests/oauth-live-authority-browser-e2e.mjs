@@ -73,7 +73,7 @@ try {
 
   await page.locator('#mad4b-live-authority').waitFor({ state: 'visible' });
   const heading = (await page.locator('h1').textContent()) || '';
-  assert(heading.includes('Authorize MCP access'), 'OAuth consent heading missing.', { heading });
+  assert(heading.includes('Authorize read access'), 'OAuth read-consent heading missing.', { heading });
 
   const bodyText = (await page.locator('body').innerText()) || '';
   assert(!bodyText.includes('Signed in WordPress user:'), 'Raw numeric WordPress user identity leaked into primary UI.');

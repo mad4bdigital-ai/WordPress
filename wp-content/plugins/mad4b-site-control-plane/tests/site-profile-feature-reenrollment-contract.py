@@ -21,11 +21,17 @@ for marker in (
     if marker not in servers:
         raise SystemExit('missing enrollment server contract: ' + marker)
 
-entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' )"
-if entry not in servers:
-    raise SystemExit('enrollment inventory is not exact/bounded')
+base_entry = "array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' )"
+enrollment_start = servers.index("'mad4b-enrollment' =>")
+enrollment_end = servers.index("'mad4b-content' =>", enrollment_start)
+segment = servers[enrollment_start:enrollment_end]
+if base_entry not in segment:
+    raise SystemExit('base enrollment inventory is not exact/bounded')
+if "MAD4B_SCP_Developer_Authority::enrollment_tools()" not in segment:
+    raise SystemExit('Developer authority bootstrap must be projected only through its bounded enrollment inventory')
+if "class_exists( 'MAD4B_SCP_Developer_Authority' )" not in segment:
+    raise SystemExit('Developer authority enrollment projection must fail closed when the authority class is unavailable')
 for forbidden in ('mad4b/database-update', 'mad4b/database-raw-query', 'mad4b/filesystem-write', 'mad4b/plugin-activate', 'mad4b/approval-plan'):
-    segment = servers[servers.index(entry):servers.index(entry)+len(entry)]
     if forbidden in segment:
         raise SystemExit('dangerous ability leaked into enrollment inventory: ' + forbidden)
 write_candidates = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]

@@ -145,6 +145,7 @@ jobs:
           set -euo pipefail
           zip='dist/mad4b-site-control-plane.zip'
           test -f "$zip"
+          unzip -l "$zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
           unzip -p "$zip" 'mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json' > /tmp/mad4b-functional-gap-package-evidence.json
           unzip -p "$zip" 'mad4b-site-control-plane/config/functional-gap-policy.json' > /tmp/mad4b-functional-gap-package-policy.json
           python3 - /tmp/mad4b-functional-gap-package-evidence.json /tmp/mad4b-functional-gap-package-policy.json <<'PY'

@@ -15,6 +15,8 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 	const WELL_KNOWN_PREFIX = '/.well-known/oauth-protected-resource';
 	const RESOURCE_PATH = '/wp-json/mcp/mad4b-chatgpt';
 	const ENROLLMENT_RESOURCE_PATH = '/wp-json/mcp/mad4b-enrollment';
+	const DEVELOPER_RESOURCE_PATH = '/wp-json/mcp/mad4b-developer';
+	const DEVELOPER_BREAKGLASS_RESOURCE_PATH = '/wp-json/mcp/mad4b-developer-breakglass';
 	const MANIFEST_NAMESPACE = 'mad4b/v1';
 	const MANIFEST_ROUTE = '/client-compatibility';
 
@@ -58,6 +60,8 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 				'methods' => array( 'oauth_discovery', 'bearer_header' ),
 				'protected_resource_metadata' => self::authoritative_well_known_url(),
 				'enrollment_protected_resource_metadata' => self::authoritative_well_known_url( 'mad4b-enrollment' ),
+				'developer_protected_resource_metadata' => self::authoritative_well_known_url( 'mad4b-developer' ),
+				'developer_breakglass_protected_resource_metadata' => self::authoritative_well_known_url( 'mad4b-developer-breakglass' ),
 				'scope' => $status['scope'],
 				'authority_mode' => $status['oauth_authority_mode'],
 				'authorization_servers' => self::authorization_servers(),
@@ -96,6 +100,8 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'local_key_path_policy_ready' => $local_key_ready,
 			'authoritative_well_known_url' => self::authoritative_well_known_url(),
 			'enrollment_authoritative_well_known_url' => self::authoritative_well_known_url( 'mad4b-enrollment' ),
+			'developer_authoritative_well_known_url' => self::authoritative_well_known_url( 'mad4b-developer' ),
+			'developer_breakglass_authoritative_well_known_url' => self::authoritative_well_known_url( 'mad4b-developer-breakglass' ),
 			'compatibility_alias_url' => self::compatibility_alias_url(),
 			'compatibility_manifest_url' => untrailingslashit( rest_url( self::MANIFEST_NAMESPACE . self::MANIFEST_ROUTE ) ),
 			'profile_registry_contract' => isset( $registry['contract'] ) ? $registry['contract'] : '',
@@ -106,6 +112,8 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			'environment' => isset( $oauth['environment'] ) ? sanitize_key( (string) $oauth['environment'] ) : '',
 			'resource' => self::resource_identifier(),
 			'enrollment_resource' => self::resource_identifier( 'mad4b-enrollment' ),
+			'developer_resource' => self::resource_identifier( 'mad4b-developer' ),
+			'developer_breakglass_resource' => self::resource_identifier( 'mad4b-developer-breakglass' ),
 			'resource_name' => self::resource_name(),
 			'scope' => class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ? MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE : 'mad4b:read',
 		);
@@ -115,6 +123,8 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		$server_id = sanitize_key( (string) $server_id );
 		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id );
 		if ( 'mad4b-enrollment' === $server_id ) return untrailingslashit( rest_url( 'mcp/mad4b-enrollment' ) );
+		if ( 'mad4b-developer' === $server_id ) return untrailingslashit( rest_url( 'mcp/mad4b-developer' ) );
+		if ( 'mad4b-developer-breakglass' === $server_id ) return untrailingslashit( rest_url( 'mcp/mad4b-developer-breakglass' ) );
 		return untrailingslashit( rest_url( 'mcp/mad4b-chatgpt' ) );
 	}
 
@@ -126,16 +136,25 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 
 	public static function is_well_known_path( $path ) {
 		$path = self::normalize_path( $path );
-		return self::authoritative_path() === $path
-			|| self::authoritative_path( 'mad4b-enrollment' ) === $path
-			|| self::WELL_KNOWN_PREFIX === $path;
+		return in_array(
+			$path,
+			array(
+				self::authoritative_path(),
+				self::authoritative_path( 'mad4b-enrollment' ),
+				self::authoritative_path( 'mad4b-developer' ),
+				self::authoritative_path( 'mad4b-developer-breakglass' ),
+				self::WELL_KNOWN_PREFIX,
+			),
+			true
+		);
 	}
 
 	public static function metadata_for_path( $path ) {
 		$path = self::normalize_path( $path );
 		$server_id = '';
-		if ( self::authoritative_path() === $path ) $server_id = 'mad4b-chatgpt';
-		elseif ( self::authoritative_path( 'mad4b-enrollment' ) === $path ) $server_id = 'mad4b-enrollment';
+		foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $candidate ) {
+			if ( hash_equals( self::authoritative_path( $candidate ), $path ) ) { $server_id = $candidate; break; }
+		}
 		if ( '' === $server_id ) return new WP_Error( 'mad4b_oauth_resource_metadata_path_unknown', 'Protected-resource metadata must use an RFC 9728 path-derived location for a governed MAD4B protected resource.' );
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return new WP_Error( 'mad4b_oauth_resource_bridge_unavailable', 'OAuth resource bridge is unavailable.' );
 		$status = MAD4B_SCP_OAuth_Resource_Bridge::status();
@@ -210,11 +229,18 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 		if ( 'staging' === $environment ) $label .= ' Staging';
 		elseif ( 'production' === $environment ) $label .= ' Production';
 		elseif ( '' !== $environment && 'unknown' !== $environment ) $label .= ' ' . ucfirst( $environment );
-		return $label . ( 'mad4b-enrollment' === $server_id ? ' Enrollment MCP' : ' ChatGPT Read MCP' );
+		if ( 'mad4b-enrollment' === $server_id ) return $label . ' Enrollment MCP';
+		if ( 'mad4b-developer' === $server_id ) return $label . ' Developer MCP';
+		if ( 'mad4b-developer-breakglass' === $server_id ) return $label . ' Developer Breakglass MCP';
+		return $label . ' ChatGPT Read MCP';
 	}
 
 	private static function authoritative_path( $server_id = 'mad4b-chatgpt' ) {
-		return self::WELL_KNOWN_PREFIX . ( 'mad4b-enrollment' === sanitize_key( (string) $server_id ) ? self::ENROLLMENT_RESOURCE_PATH : self::RESOURCE_PATH );
+		$server_id = sanitize_key( (string) $server_id );
+		if ( 'mad4b-enrollment' === $server_id ) return self::WELL_KNOWN_PREFIX . self::ENROLLMENT_RESOURCE_PATH;
+		if ( 'mad4b-developer' === $server_id ) return self::WELL_KNOWN_PREFIX . self::DEVELOPER_RESOURCE_PATH;
+		if ( 'mad4b-developer-breakglass' === $server_id ) return self::WELL_KNOWN_PREFIX . self::DEVELOPER_BREAKGLASS_RESOURCE_PATH;
+		return self::WELL_KNOWN_PREFIX . self::RESOURCE_PATH;
 	}
 
 	private static function normalize_path( $path ) { $path = '/' . ltrim( (string) $path, '/' ); return rtrim( $path, '/' ); }
