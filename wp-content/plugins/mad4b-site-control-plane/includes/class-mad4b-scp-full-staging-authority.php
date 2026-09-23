@@ -285,10 +285,27 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				if ( is_wp_error( $plan ) ) return self::fail_closed( 'post_write_enable_plan_failed', $plan );
 			}
 
-			// Reconcile current runtime-eligible write inventory. This intentionally
+			// Provision normal Developer authority first. If any later stage fails,
+			// fail_closed() disables Developer execution before Write can become
+			// effective through the final exact-candidate binding.
+			$developer_plan = MAD4B_SCP_Developer_Authority::plan();
+			if ( is_wp_error( $developer_plan ) ) return self::fail_closed( 'developer_plan_failed', $developer_plan );
+			if ( ! empty( $developer_plan['ready_to_apply'] ) ) {
+				$developer = MAD4B_SCP_Developer_Authority::apply( self::developer_apply_input( $developer_plan, MAD4B_SCP_Developer_Authority::CONFIRM_PROVISION ) );
+				if ( is_wp_error( $developer ) ) return self::fail_closed( 'developer_apply_failed', $developer );
+			}
+
+			$breakglass_plan = MAD4B_SCP_Developer_Authority::breakglass_plan();
+			if ( is_wp_error( $breakglass_plan ) ) return self::fail_closed( 'developer_breakglass_plan_failed', $breakglass_plan );
+			if ( ! empty( $breakglass_plan['ready_to_apply'] ) ) {
+				$breakglass = MAD4B_SCP_Developer_Authority::breakglass_apply( self::developer_apply_input( $breakglass_plan, MAD4B_SCP_Developer_Authority::CONFIRM_BREAKGLASS ) );
+				if ( is_wp_error( $breakglass ) ) return self::fail_closed( 'developer_breakglass_apply_failed', $breakglass );
+			}
+
+			// Reconcile only the current runtime-eligible Write inventory. This
 			// removes stale/broad/duplicate current-agent allows and creates exact
-			// missing current-environment grants; provider-gated catalog entries
-			// remain gated until their providers are runtime-certified.
+			// missing current-environment grants. Provider-gated catalog entries
+			// remain gated until provider certification.
 			$write = MAD4B_SCP_Staging_Write_Authority::reconcile();
 			if ( is_wp_error( $write ) || empty( $write['ready'] ) ) {
 				$error = is_wp_error( $write ) ? $write : new WP_Error( 'mad4b_full_authority_write_reconcile_incomplete', 'Governed write reconciliation did not converge.' );
@@ -298,8 +315,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			$write_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
 			if ( ! is_array( $write_plan ) ) return self::fail_closed( 'write_plan_unavailable_after_reconcile', new WP_Error( 'mad4b_full_authority_write_plan_unavailable', 'Write reconciliation plan is unavailable after convergence.' ) );
 
-			// Bind the exact current package candidate if the reconciled authority
-			// is not already package-bound.
+			// Candidate binding is deliberately the last authority mutation because
+			// it flips governed Write from reconciled-but-fail-closed to effective.
 			$binding = isset( $write_plan['candidate_binding'] ) && is_array( $write_plan['candidate_binding'] ) ? $write_plan['candidate_binding'] : array();
 			if ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) {
 				$bind = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( array(
@@ -316,23 +333,6 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'confirmation' => MAD4B_SCP_Staging_Write_Candidate_Binding::CONFIRMATION,
 				) );
 				if ( is_wp_error( $bind ) ) return self::fail_closed( 'candidate_binding_failed', $bind );
-			}
-
-			// Provision normal Developer authority from its exact live plan.
-			$developer_plan = MAD4B_SCP_Developer_Authority::plan();
-			if ( is_wp_error( $developer_plan ) ) return self::fail_closed( 'developer_plan_failed', $developer_plan );
-			if ( ! empty( $developer_plan['ready_to_apply'] ) ) {
-				$developer = MAD4B_SCP_Developer_Authority::apply( self::developer_apply_input( $developer_plan, MAD4B_SCP_Developer_Authority::CONFIRM_PROVISION ) );
-				if ( is_wp_error( $developer ) ) return self::fail_closed( 'developer_apply_failed', $developer );
-			}
-
-			// Provision Developer Breakglass separately. Generic raw-SQL Breakglass
-			// is intentionally not enabled by this flow.
-			$breakglass_plan = MAD4B_SCP_Developer_Authority::breakglass_plan();
-			if ( is_wp_error( $breakglass_plan ) ) return self::fail_closed( 'developer_breakglass_plan_failed', $breakglass_plan );
-			if ( ! empty( $breakglass_plan['ready_to_apply'] ) ) {
-				$breakglass = MAD4B_SCP_Developer_Authority::breakglass_apply( self::developer_apply_input( $breakglass_plan, MAD4B_SCP_Developer_Authority::CONFIRM_BREAKGLASS ) );
-				if ( is_wp_error( $breakglass ) ) return self::fail_closed( 'developer_breakglass_apply_failed', $breakglass );
 			}
 
 			$after = self::status();
