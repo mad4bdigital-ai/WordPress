@@ -583,7 +583,7 @@ jobs:
           grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
           grep -Fq 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}' "$stage/package/mad4b-site-control-plane/config/staging-deployment-handoff.json"
           grep -Fq "Current plugin version: **${expected_version}**." "$stage/package/mad4b-site-control-plane/README.md"
-          grep -Fq 'six MAD4B custom servers' "$stage/package/mad4b-site-control-plane/README.md"
+          grep -Fq 'nine MAD4B custom servers' "$stage/package/mad4b-site-control-plane/README.md"
           if grep -Fq 'Egypt Tour Gates' "$stage/package/mad4b-site-control-plane/README.md" || grep -Fq 'staging.egypttourgates.com' "$stage/package/mad4b-site-control-plane/README.md"; then
             echo 'General Distribution README retained tenant-specific identity.' >&2
             exit 1
