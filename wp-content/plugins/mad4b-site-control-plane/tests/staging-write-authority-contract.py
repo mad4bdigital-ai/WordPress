@@ -367,6 +367,8 @@ for marker in [
     "MAD4B_SCP_Staging_Write_Authority::eligible()",
     "return self::ineligible_status()",
     "'persistence' => 'not_applicable'",
+    "write_dispatch_transport_available",
+    "direct_write_schemas_hidden_from_chatgpt",
     "all_write_tools_exposed_on_same_plugin_transport",
     "breakglass_absent_from_write_inventory",
     "approval_planner_governed",
