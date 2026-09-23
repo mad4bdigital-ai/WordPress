@@ -55,18 +55,18 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) return $result;
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return self::denied( 'mad4b_oauth_subject_policy_unavailable', 'OAuth authority registry is unavailable.', 503 );
+		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) return self::denied( 'mad4b_oauth_subject_policy_unavailable', 'OAuth authority registry is unavailable.', 503, $resource );
 
 		$claims = self::claims_from_bearer( $authorization );
-		if ( is_wp_error( $claims ) ) return self::denied( $claims->get_error_code(), $claims->get_error_message(), 401 );
+		if ( is_wp_error( $claims ) ) return self::denied( $claims->get_error_code(), $claims->get_error_message(), 401, $resource );
 
 		$issuer = isset( $claims['iss'] ) && is_string( $claims['iss'] ) ? $claims['iss'] : '';
 		$subject = isset( $claims['sub'] ) && is_string( $claims['sub'] ) ? trim( $claims['sub'] ) : '';
-		if ( '' === $issuer || ! MAD4B_SCP_OAuth_Resource_Bridge::is_trusted_issuer( $issuer ) ) return self::denied( 'mad4b_oauth_subject_issuer_mismatch', 'OAuth subject issuer is not trusted for this resource.', 403 );
-		if ( '' === $subject || strlen( $subject ) > 512 ) return self::denied( 'mad4b_oauth_subject_invalid', 'OAuth subject is invalid.', 403 );
-		if ( ! self::audience_contains( isset( $claims['aud'] ) ? $claims['aud'] : null, $resource ) ) return self::denied( 'mad4b_oauth_subject_audience_mismatch', 'OAuth subject audience binding does not match.', 403 );
-		if ( ! isset( $claims['resource'] ) || ! is_string( $claims['resource'] ) || ! hash_equals( $resource, untrailingslashit( trim( $claims['resource'] ) ) ) ) return self::denied( 'mad4b_oauth_subject_resource_mismatch', 'OAuth subject resource binding does not match.', 403 );
-		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::subject_allowed( $issuer, $subject ) ) return self::denied( 'mad4b_oauth_subject_not_approved', 'OAuth subject is not approved for this issuer.', 403 );
+		if ( '' === $issuer || ! MAD4B_SCP_OAuth_Resource_Bridge::is_trusted_issuer( $issuer ) ) return self::denied( 'mad4b_oauth_subject_issuer_mismatch', 'OAuth subject issuer is not trusted for this resource.', 403, $resource );
+		if ( '' === $subject || strlen( $subject ) > 512 ) return self::denied( 'mad4b_oauth_subject_invalid', 'OAuth subject is invalid.', 403, $resource );
+		if ( ! self::audience_contains( isset( $claims['aud'] ) ? $claims['aud'] : null, $resource ) ) return self::denied( 'mad4b_oauth_subject_audience_mismatch', 'OAuth subject audience binding does not match.', 403, $resource );
+		if ( ! isset( $claims['resource'] ) || ! is_string( $claims['resource'] ) || ! hash_equals( $resource, untrailingslashit( trim( $claims['resource'] ) ) ) ) return self::denied( 'mad4b_oauth_subject_resource_mismatch', 'OAuth subject resource binding does not match.', 403, $resource );
+		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::subject_allowed( $issuer, $subject ) ) return self::denied( 'mad4b_oauth_subject_not_approved', 'OAuth subject is not approved for this issuer.', 403, $resource );
 		return $result;
 	}
 
@@ -99,9 +99,9 @@ final class MAD4B_SCP_OAuth_Subject_Gate {
 		return false;
 	}
 
-	private static function denied( $code, $message, $status ) {
+	private static function denied( $code, $message, $status, $resource = '' ) {
 		$response = new WP_REST_Response( array( 'error' => sanitize_key( (string) $code ), 'message' => sanitize_text_field( (string) $message ) ), (int) $status );
-		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) $response->header( 'WWW-Authenticate', MAD4B_SCP_OAuth_Resource_Bridge::challenge_header() );
+		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) $response->header( 'WWW-Authenticate', MAD4B_SCP_OAuth_Resource_Bridge::challenge_header( $resource ) );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
 	}
