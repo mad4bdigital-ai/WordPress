@@ -501,4 +501,12 @@ for marker in ["filesize(", "filemtime(", "census_sha256", "runtime_census_time_
     if marker not in census_body:
         raise SystemExit(f'metadata census invariant missing: {marker}')
 
+identity_body=runtime.split("private static function runtime_identity_key()",1)[1].split("private static function plugin_tree_once",1)[0]
+provider_identity_body=identity_body.split("foreach ( array(",1)[0]
+if "hash_file(" in provider_identity_body:
+    raise SystemExit('request-local provider identity must not hash provider content outside bounded tree evidence')
+for marker in ["@lstat( $main )", "$main_stat['size']", "$main_stat['mtime']", "$main_stat['ctime']", "$main_stat['ino']"]:
+    if marker not in provider_identity_body:
+        raise SystemExit(f'metadata-only provider identity invariant missing: {marker}')
+
 print('mad4b.functional-gap-zero-touch.contract.v1: PASS')
