@@ -778,7 +778,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( ! empty( $asset['content_excerpt'] ) ) echo '<p>' . esc_html( (string) $asset['content_excerpt'] ) . '</p>';
 			echo '<dl><dt>' . esc_html__( 'Content hash', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '</code></dd>';
 			echo '<dt>' . esc_html__( 'Registry revision', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : 0 ) ) . '</code></dd>';
-			echo '<dt>' . esc_html__( 'Last synced', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '—' ) . '</dd></dl></div>';
+			echo '<dt>' . esc_html__( 'Last synced', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '—' ) . '</dd></dl>';
+			$automatic_classification = isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array();
+			if ( $automatic_classification ) {
+				echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Automatic suggestion:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $automatic_classification['category'] ) ? (string) $automatic_classification['category'] : '' ) . '</code> · ' . esc_html( isset( $automatic_classification['authority_class'] ) ? (string) $automatic_classification['authority_class'] : '' );
+				if ( isset( $automatic_classification['confidence'] ) ) echo ' · ' . esc_html( number_format_i18n( (float) $automatic_classification['confidence'] * 100, 0 ) . '%' );
+				echo '</p>';
+			}
+			echo '<p class="mad4b-scp-muted"><strong>' . esc_html__( 'Effective decision:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) . '</code> · ' . esc_html( isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '' ) . '</p></div>';
 			echo '<label><strong>' . esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
 			foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['category'], $key, false ) . '>' . esc_html( $label ) . '</option>';
 			echo '</select></label>';
