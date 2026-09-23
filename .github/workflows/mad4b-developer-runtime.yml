@@ -10,6 +10,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-developer-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   contract:
     name: Developer Plane contract
@@ -18,6 +25,8 @@ jobs:
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
