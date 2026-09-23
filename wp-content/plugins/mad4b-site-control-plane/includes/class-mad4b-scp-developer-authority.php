@@ -259,7 +259,10 @@ final class MAD4B_SCP_Developer_Authority {
 			} elseif ( is_array( $agent ) ) {
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability, $provider );
 				if ( is_array( $grant ) && $environment === (string) $grant['environment'] && 'allow' === (string) $grant['effect'] ) $present = true;
-				elseif ( is_wp_error( $grant ) && 'mad4b_nhi_grant_missing' !== $grant->get_error_code() ) $error = $grant->get_error_code();
+				elseif ( is_wp_error( $grant ) && 'mad4b_nhi_grant_missing' !== $grant->get_error_code() ) {
+					$error = $grant->get_error_code();
+					$blockers[] = $error . ':' . $ability;
+				}
 			}
 			$rows[] = array( 'ability' => $ability, 'provider' => null === $provider ? '' : (string) $provider, 'exact_grant_present' => $present, 'error' => $error );
 		}
@@ -431,7 +434,6 @@ final class MAD4B_SCP_Developer_Authority {
 				'production_mutation' => false,
 			), 'ok' );
 			if ( is_wp_error( $complete ) ) {
-				self::force_fail_closed( 'completion_audit_failed' );
 				return self::rollback_partial(
 					$agent,
 					$created_agent,
@@ -529,7 +531,8 @@ final class MAD4B_SCP_Developer_Authority {
 			}
 		}
 		self::restore_configuration( $config_before );
-		if ( $rollback_errors ) self::force_fail_closed( 'rollback_incomplete' );
+		if ( 'mad4b_developer_authority_completion_audit_failed' === $error->get_error_code() ) self::force_fail_closed( 'completion_audit_failed' );
+		elseif ( $rollback_errors ) self::force_fail_closed( 'rollback_incomplete' );
 		if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 			MAD4B_SCP_Audit::record( 'mad4b/developer-authority-rollback', array(
 				'contract' => self::CONTRACT,
