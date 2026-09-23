@@ -485,6 +485,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			if ( '' !== $mode && $mode !== $asset_mode ) continue;
 			if ( '' !== $status && $status !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
 			if ( '' !== $category && $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
+			$current_content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+			$reviewed_content_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
+			$review_binding_exact = 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) && preg_match( '/^[a-f0-9]{64}$/', $current_content_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_content_hash ) && hash_equals( $current_content_hash, $reviewed_content_hash );
 			$items[] = array(
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
 				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
@@ -502,6 +505,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed',
 				'reviewed_at' => isset( $asset['reviewed_at'] ) ? (string) $asset['reviewed_at'] : '',
 				'reviewed_content_hash' => isset( $asset['reviewed_content_hash'] ) ? (string) $asset['reviewed_content_hash'] : '',
+				'review_binding_exact' => $review_binding_exact,
 				'content_complete' => ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] ),
 				'content_available' => ! empty( $asset['content_available'] ),
 				'content_excerpt' => isset( $asset['content_excerpt'] ) ? (string) $asset['content_excerpt'] : '',
