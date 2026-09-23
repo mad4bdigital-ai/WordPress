@@ -171,6 +171,23 @@ mad4b_review_assert( ! empty( $optional_initial ), 'Optional writer reference mu
 mad4b_review_assert( 'writer_reference' === $optional_initial['category'], 'Writer reference fixture must classify as writer_reference, not Brand Core.', $optional_initial );
 mad4b_review_assert( empty( $optional_initial['required'] ), 'Writer reference fixture must remain optional by default.', $optional_initial );
 
+$optional_escalation_input = mad4b_review_exact_input(
+	$optional_asset_id,
+	array(
+		'category' => 'writer_reference',
+		'authority_class' => 'reference',
+		'required' => true,
+		'required_scope_confirmed' => false,
+		'quality_mode' => 'automatic',
+		'quality_score' => '',
+	)
+);
+$optional_escalation = MAD4B_SCP_Context_Authority::review_asset( $optional_asset_id, $optional_escalation_input );
+mad4b_review_assert( is_wp_error( $optional_escalation ), 'Optional-to-required review escalation must require explicit site-wide confirmation.', $optional_escalation );
+mad4b_review_assert( 'mad4b_context_required_scope_confirmation_required' === $optional_escalation->get_error_code(), 'Required Context escalation must fail with the exact confirmation error.', $optional_escalation->get_error_code() );
+$optional_after_denial = MAD4B_SCP_Context_Authority::asset( $optional_asset_id );
+mad4b_review_assert( empty( $optional_after_denial['required'] ) && 'unreviewed' === $optional_after_denial['review_status'], 'Denied required escalation must leave the optional asset unchanged.', $optional_after_denial );
+
 $review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
 	mad4b_review_exact_input(
@@ -371,6 +388,6 @@ mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 
 mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $review_events[0]['data']['contract'], 'Human review audit must use the v2 exact-review contract.', $review_events[0] );
 mad4b_review_assert( ! empty( $review_events[0]['data']['expected_content_hash'] ) && $review_events[0]['data']['expected_content_hash'] === $review_events[0]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[0] );
 mad4b_review_assert( (int) $review_events[0]['data']['registry_revision_after'] === (int) $review_events[0]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[0] );
-mad4b_review_assert( ! empty( $review_events[0]['data']['required_scope_escalated'] ) && ! empty( $review_events[0]['data']['required_scope_confirmed'] ), 'Initial required scope escalation must be explicitly confirmed and audited.', $review_events[0] );
+mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'] ), 'Already-required Brand Core review must not be mislabeled as a scope escalation.', $review_events[0] );
 
 echo "mad4b.site-control-plane.context-human-review.runtime.v8: PASS\n";
