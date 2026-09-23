@@ -1141,14 +1141,14 @@ final class MAD4B_SCP_Context_Authority {
 
 	public static function review_queue() {
 		$items = array();
-		$counts = array( 'required_pending' => 0, 'optional_pending' => 0, 'content_changed' => 0, 'approved' => 0, 'approved_exact' => 0 );
+		$counts = array( 'required_pending' => 0, 'optional_pending' => 0, 'content_changed' => 0, 'legacy_unbound' => 0, 'approved' => 0, 'approved_exact' => 0 );
 		foreach ( self::assets() as $asset ) {
 			if ( ! is_array( $asset ) || 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) continue;
 			$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
 			$current_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 			$reviewed_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
 			$exact = 'approved' === $review_status && preg_match( '/^[a-f0-9]{64}$/', $current_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_hash ) && hash_equals( $current_hash, $reviewed_hash );
-			if ( 'approved' === $review_status ) { ++$counts['approved']; if ( $exact ) ++$counts['approved_exact']; }
+			if ( 'approved' === $review_status ) { ++$counts['approved']; if ( $exact ) ++$counts['approved_exact']; else ++$counts['legacy_unbound']; }
 			elseif ( 'needs_review_content_changed' === $review_status ) ++$counts['content_changed'];
 			elseif ( ! empty( $asset['required'] ) ) ++$counts['required_pending'];
 			else ++$counts['optional_pending'];
