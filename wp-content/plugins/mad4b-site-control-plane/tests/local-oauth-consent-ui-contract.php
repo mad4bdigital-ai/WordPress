@@ -21,12 +21,22 @@ $sample = '<!doctype html><html><head><meta charset="utf-8"><title>Authorize MCP
 
 $enhanced = MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $sample );
 if ( false === strpos( $enhanced, 'id="mad4b-oauth-consent-ui"' ) ) $fail( 'Consent stylesheet marker was not injected.' );
-if ( false === strpos( $enhanced, 'This consent authenticates the client and grants the narrow read resource scope shown below; it does not grant write authority.' ) ) $fail( 'OAuth/read-scope separation statement is missing.' );
-if ( false === strpos( $enhanced, 'Governed write actions, when available, require separate governed write authority and a one-time approval.' ) ) $fail( 'Governed write separation statement is missing.' );
-if ( false === strpos( $enhanced, 'OAuth identity/read scope · write authority separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
+if ( false === strpos( $enhanced, 'This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.' ) ) $fail( 'OAuth/read-scope separation statement is missing.' );
+if ( false === strpos( $enhanced, 'Write, Developer and Developer Breakglass are separate governed authorities' ) ) $fail( 'Governed write separation statement is missing.' );
+if ( false === strpos( $enhanced, 'OAuth read identity · Write/Developer authorities separate · PKCE S256' ) ) $fail( 'Security context footer is missing.' );
 if ( false === strpos( $enhanced, '.mad4b-live-grants' ) ) $fail( 'Live governed grant projection styling is missing.' );
 if ( false === strpos( $enhanced, '.mad4b-grant-metrics' ) ) $fail( 'Live authority metrics styling is missing.' );
 if ( false === strpos( $enhanced, '.mad4b-grant-blockers' ) ) $fail( 'Live authority blocker styling is missing.' );
+if ( false === strpos( $enhanced, 'What you are approving now' ) ) $fail( 'OAuth decision context is missing.' );
+if ( false === strpos( $enhanced, '<code>mad4b-chatgpt</code>' ) ) $fail( 'Protected resource identity is missing.' );
+if ( false === strpos( $enhanced, 'Developer Breakglass' ) ) $fail( 'Developer Breakglass separation is missing.' );
+if ( false === strpos( $enhanced, 'Generic raw-SQL Breakglass' ) ) $fail( 'Generic Breakglass exclusion is missing.' );
+if ( false === strpos( $enhanced, 'Current Staging authority' ) ) $fail( 'Combined Staging authority summary is missing.' );
+if ( false === strpos( $enhanced, 'id="mad4b-write-state"' ) ) $fail( 'Write authority state target is missing.' );
+if ( false === strpos( $enhanced, 'id="mad4b-developer-state"' ) ) $fail( 'Developer authority state target is missing.' );
+if ( false === strpos( $enhanced, 'id="mad4b-developer-breakglass-state"' ) ) $fail( 'Developer Breakglass authority state target is missing.' );
+if ( false === strpos( $enhanced, '>Approve read access</button>' ) ) $fail( 'Read-specific approval label is missing.' );
+if ( false === strpos( $enhanced, '>Deny access</button>' ) ) $fail( 'Explicit deny label is missing.' );
 if ( false === strpos( $enhanced, '<section class="mad4b-live-grants">' ) ) $fail( 'Live governed grant projection content was not preserved.' );
 if ( false !== strpos( $enhanced, 'Read-only access · OAuth 2.1 · PKCE S256' ) ) $fail( 'Legacy whole-plugin read-only claim remains visible.' );
 if ( false !== strpos( $enhanced, 'mad4b:write' ) ) $fail( 'Consent presentation must not advertise or create a write OAuth scope.' );
@@ -52,4 +62,4 @@ $unrelated = '<!doctype html><html><head><title>Other page</title></head><body>O
 if ( $unrelated !== MAD4B_SCP_Local_OAuth_Consent_UI::enhance_document( $unrelated ) ) $fail( 'Unrelated HTML was modified.' );
 if ( $unrelated !== MAD4B_SCP_Local_OAuth_Consent_UI::enhance_connection_document( $unrelated ) ) $fail( 'Unrelated connection HTML was modified.' );
 
-echo "mad4b.site-control-plane.local-oauth-consent-ui.v2: PASS\n";
+echo "mad4b.site-control-plane.local-oauth-consent-ui.v3: PASS\n";
