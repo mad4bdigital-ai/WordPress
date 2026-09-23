@@ -224,6 +224,16 @@ jobs:
           $path = parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH );
           $file = rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . $path;
           if ( '/' !== $path && is_file( $file ) ) return false;
+
+          // PHP's built-in server has no Apache/nginx rewrite layer. Mirror the
+          // WordPress REST rewrite so a pretty /wp-json/... URL reaches the same
+          // rest_route that live Staging serves.
+          if ( 0 === strpos( $path, '/wp-json/' ) ) {
+              $rest_route = '/' . ltrim( substr( $path, strlen( '/wp-json/' ) ), '/' );
+              $_GET['rest_route'] = $rest_route;
+              $_REQUEST['rest_route'] = $rest_route;
+          }
+
           require rtrim( $_SERVER['DOCUMENT_ROOT'], '/' ) . '/index.php';
           PHP
 
