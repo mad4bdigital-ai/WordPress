@@ -134,6 +134,8 @@ required = [
     '"ready": evaluation_complete',
     '"ready_semantics": "backward_compatible_alias_for_evaluation_complete_not_provider_certification"',
     '"followup_required": handoff["followup_required"]',
+    '"provider_closure_ready": evaluation_complete and not handoff["followup_required"]',
+    '"provider_closure_semantics": "all_policy_families_evaluated_without_remaining_governed_followup"',
     '"decision_handoff": handoff',
     '"contract": "mad4b.functional-gap-decision-handoff.v1"',
     '"authorizing": False',
