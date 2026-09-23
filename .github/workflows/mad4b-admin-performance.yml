@@ -182,6 +182,14 @@ jobs:
               if marker_text not in census_body:
                   raise SystemExit('Metadata census implementation missing: ' + marker_text)
 
+          identity_body = functional_gap.split("private static function runtime_identity_key()", 1)[1].split("private static function plugin_tree_once", 1)[0]
+          provider_identity_body = identity_body.split("foreach ( array(", 1)[0]
+          if "hash_file(" in provider_identity_body:
+              raise SystemExit('Request-local provider identity performs unbudgeted content hashing')
+          for marker_text in ["@lstat( $main )", "$main_stat['size']", "$main_stat['mtime']", "$main_stat['ctime']", "$main_stat['ino']"]:
+              if marker_text not in provider_identity_body:
+                  raise SystemExit('Provider cache identity is not metadata-only: ' + marker_text)
+
           for forbidden in [
               "add_action( 'admin_init'",
               "add_action( 'init'",
