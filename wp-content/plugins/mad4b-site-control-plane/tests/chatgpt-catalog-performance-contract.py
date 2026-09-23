@@ -20,7 +20,7 @@ required_fast_paths = [
     "if ( is_array( self::$registered_adapter_write_candidates_cache ) ) return self::$registered_adapter_write_candidates_cache;",
     "if ( is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;",
     "if ( is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;",
-    "if ( array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];",
+    "if ( ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];",
 ]
 for marker in required_fast_paths:
     assert marker in servers, marker
