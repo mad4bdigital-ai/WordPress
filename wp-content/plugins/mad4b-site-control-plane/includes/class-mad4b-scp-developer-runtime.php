@@ -406,12 +406,17 @@ final class MAD4B_SCP_Developer_Runtime {
 		return self::execute( 'mad4b/developer-breakglass-wp-eval', array( $wp, '--path=' . ABSPATH, 'eval', $code ), $input, true, true );
 	}
 
-	private static function runtime_gate( $breakglass ) {
-		if ( 'production' === self::environment() ) return new WP_Error( 'mad4b_developer_production_denied', 'Developer execution is never authorized in Production.' );
+	private static function runtime_gate( $breakglass, $input = array() ) {
+		$environment = self::environment();
+		if ( 'production' === $environment ) return new WP_Error( 'mad4b_developer_production_denied', 'Developer execution is never authorized in Production.' );
+		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_environment_denied', 'Developer execution requires an explicit non-Production environment.' );
 		if ( ! self::developer_flag_enabled() ) return new WP_Error( 'mad4b_developer_disabled', 'Developer Plane is disabled.' );
 		if ( ! self::direct_execution_enabled() ) return new WP_Error( 'mad4b_developer_direct_execution_disabled', 'Direct developer execution backend is disabled.' );
 		if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
+		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
 		if ( $breakglass && ! self::breakglass_flag_enabled() ) return new WP_Error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass is disabled.' );
+		$binding = self::runtime_binding_gate( is_array( $input ) ? $input : array() );
+		if ( is_wp_error( $binding ) ) return $binding;
 		return true;
 	}
 
@@ -454,23 +459,79 @@ final class MAD4B_SCP_Developer_Runtime {
 		return '';
 	}
 
-	private static function normal_shell_guard( $command ) {
+	private static function normal_shell_guard( $command, $network_authorized = false ) {
 		$lower = strtolower( (string) $command );
-		$denied = array(
+		$always_denied = array(
 			'/wp-config', 'wp-config.php', '/.env', ' .env', '/.ssh/', 'id_rsa', 'id_ed25519',
 			'printenv', '/proc/self/environ', '/proc/1/environ', 'sudo ', ' su ', 'passwd ',
-			'curl ', 'wget ', 'nc ', 'netcat ', 'ssh ', 'scp ', 'sftp ', 'ftp ',
 		);
-		foreach ( $denied as $needle ) {
-			if ( false !== strpos( $lower, $needle ) ) return new WP_Error( 'mad4b_developer_shell_policy_denied', 'Normal Developer Shell denied a secret, privilege-escalation, or outbound-network pattern. Use a dedicated governed ability or Developer Breakglass when exceptional recovery is explicitly approved.' );
+		foreach ( $always_denied as $needle ) {
+			if ( false !== strpos( $lower, $needle ) ) return new WP_Error( 'mad4b_developer_shell_policy_denied', 'Normal Developer Shell denied a secret or privilege-escalation pattern.' );
+		}
+		if ( ! $network_authorized && self::shell_may_use_network( $command ) ) return new WP_Error( 'mad4b_developer_network_denied', 'Normal Developer Shell denies outbound network use unless this exact job carries explicit network authority.' );
+		return true;
+	}
+
+	private static function shell_may_use_network( $command ) {
+		$lower = strtolower( (string) $command );
+		foreach ( array( 'curl ', 'wget ', 'nc ', 'netcat ', 'ssh ', 'scp ', 'sftp ', 'ftp ', 'telnet ', 'openssl s_client', 'composer require ', 'composer update ', 'npm install ', 'pnpm install ', 'yarn add ' ) as $needle ) {
+			if ( false !== strpos( $lower, $needle ) ) return true;
+		}
+		return false;
+	}
+
+	private static function php_network_guard( $code, $network_authorized = false ) {
+		if ( $network_authorized ) return true;
+		$lower = strtolower( (string) $code );
+		foreach ( array( 'wp_remote_', 'curl_init', 'curl_exec', 'fsockopen', 'pfsockopen', 'stream_socket_client', 'socket_connect', 'https://', 'http://' ) as $needle ) {
+			if ( false !== strpos( $lower, $needle ) ) return new WP_Error( 'mad4b_developer_network_denied', 'Developer PHP/WP eval denies outbound network use unless this exact job carries explicit network authority.' );
 		}
 		return true;
+	}
+
+	private static function wp_cli_may_use_network( array $args ) {
+		$joined = strtolower( implode( ' ', array_map( 'strval', $args ) ) );
+		foreach ( array( 'plugin install', 'plugin update', 'theme install', 'theme update', 'core download', 'core update', 'package install', 'package update', 'cli update', 'language core install', 'language plugin install', 'language theme install' ) as $needle ) {
+			if ( false !== strpos( $joined, $needle ) ) return true;
+		}
+		return false;
+	}
+
+	private static function network_authorized( $input ) {
+		return is_array( $input )
+			&& ! empty( $input['allow_network'] )
+			&& defined( 'MAD4B_MCP_DEVELOPER_NETWORK_ENABLED' )
+			&& true === constant( 'MAD4B_MCP_DEVELOPER_NETWORK_ENABLED' );
+	}
+
+	private static function runtime_binding_gate( array $input ) {
+		$expected_sha = isset( $input['expected_source_commit_sha'] ) ? strtolower( trim( (string) $input['expected_source_commit_sha'] ) ) : '';
+		$expected_site = isset( $input['expected_site_uuid'] ) ? strtolower( trim( (string) $input['expected_site_uuid'] ) ) : '';
+		$expected_env = isset( $input['expected_environment'] ) ? sanitize_key( (string) $input['expected_environment'] ) : '';
+		$current_sha = self::current_source_commit_sha();
+		$current_site = class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'site_uuid' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
+		$current_env = self::environment();
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $expected_sha ) || 1 !== preg_match( '/^[a-f0-9]{40}$/', $current_sha ) || ! hash_equals( $current_sha, $expected_sha ) ) return new WP_Error( 'mad4b_developer_source_binding_mismatch', 'Developer job source commit does not match the loaded exact package.' );
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $expected_site ) || 1 !== preg_match( '/^[a-f0-9-]{36}$/', $current_site ) || ! hash_equals( $current_site, $expected_site ) ) return new WP_Error( 'mad4b_developer_site_binding_mismatch', 'Developer job site UUID does not match the enrolled site.' );
+		if ( $expected_env !== $current_env ) return new WP_Error( 'mad4b_developer_environment_binding_mismatch', 'Developer job environment does not match the live runtime.' );
+		return true;
+	}
+
+	private static function current_source_commit_sha() {
+		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : '';
+		if ( '' === $path || ! is_readable( $path ) ) return '';
+		$raw = file_get_contents( $path );
+		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		$sha = is_array( $data ) && isset( $data['source_commit_sha'] ) ? strtolower( trim( (string) $data['source_commit_sha'] ) ) : '';
+		return 1 === preg_match( '/^[a-f0-9]{40}$/', $sha ) ? $sha : '';
 	}
 
 	private static function working_dir( $input ) {
 		$requested = isset( $input['working_dir'] ) ? trim( (string) $input['working_dir'] ) : '';
 		if ( '' === $requested ) return ABSPATH;
-		if ( false !== strpos( $requested, "\0" ) || preg_match( '#(^|/|\\)\.\.(/|\\|$)#', $requested ) ) return new WP_Error( 'mad4b_developer_working_dir_invalid', 'Working directory traversal is denied.' );
+		if ( false !== strpos( $requested, "\0" ) ) return new WP_Error( 'mad4b_developer_working_dir_invalid', 'NUL bytes are denied in working_dir.' );
+		$normalized_requested = str_replace( '\\', '/', $requested );
+		foreach ( explode( '/', $normalized_requested ) as $segment ) if ( '..' === $segment ) return new WP_Error( 'mad4b_developer_working_dir_invalid', 'Working directory traversal is denied.' );
 		if ( preg_match( '#^(?:[A-Za-z]:[\\/]|/)#', $requested ) ) return new WP_Error( 'mad4b_developer_working_dir_absolute_denied', 'working_dir must be relative to the WordPress root.' );
 		$candidate = realpath( trailingslashit( ABSPATH ) . $requested );
 		$root = realpath( ABSPATH );
