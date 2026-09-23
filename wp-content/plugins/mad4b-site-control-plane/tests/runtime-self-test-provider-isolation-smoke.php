@@ -14,6 +14,9 @@ $check( 'mad4b.runtime-self-test.v2' === (string) $result['contract'], 'Runtime 
 $check( ! empty( $result['custom_server_isolation'] ), 'Custom-server isolation was not proven.' );
 $check( ! empty( $result['default_server_suppressed'] ), 'Default MCP server suppression was not reflected in self-test.' );
 $check( ! empty( $result['mcp_peer_governance_ok'] ), 'MCP peer governance is not healthy.' );
+$check( isset( $result['provider_capability_health'] ) && is_array( $result['provider_capability_health'] ), 'Capability-impact provider health evidence is missing.' );
+$check( array_key_exists( 'provider_active_drift_is_blocking_when_reads_compatible_and_writes_fail_closed', $result ), 'Active drift health semantic marker is missing.' );
+$check( false === $result['provider_active_drift_is_blocking_when_reads_compatible_and_writes_fail_closed'], 'Read-compatible/write-fail-closed drift must be advisory rather than platform-degrading.' );
 
 $isolation = isset( $result['provider_mcp_isolation'] ) && is_array( $result['provider_mcp_isolation'] ) ? $result['provider_mcp_isolation'] : array();
 $check( ! empty( $isolation['effective'] ), 'Provider MCP isolation is not effective in the disposable runtime.' );

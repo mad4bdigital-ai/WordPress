@@ -380,6 +380,38 @@
           ]
         }
       }
+    },
+    "rank_math": {
+      "adapter_id": "seo",
+      "artifact_authority": "required_for_write_certification",
+      "capabilities": {
+        "seo_meta.read": {
+          "risk": "read",
+          "abilities": [
+            "seo/status",
+            "seo/get-meta",
+            "seo/validate"
+          ],
+          "probes": [
+            {
+              "type": "adapter_available"
+            }
+          ]
+        },
+        "seo_meta.bounded-write": {
+          "risk": "bounded_write",
+          "abilities": [
+            "seo/update-meta"
+          ],
+          "reversible": true,
+          "rollback_contract": "mad4b.rollback.rank-math-meta.v1",
+          "probes": [
+            {
+              "type": "adapter_available"
+            }
+          ]
+        }
+      }
     }
   }
 }

@@ -196,6 +196,54 @@ def decision(family, state, reason, mode, **extra):
     out.update(extra)
     return out
 
+def decision_handoff(decisions):
+    groups = {
+        "alignment_required": [],
+        "semantic_review_required": [],
+        "behavioral_review_required": [],
+        "read_candidates": [],
+        "inactive": [],
+        "other_followup": [],
+    }
+    alignment = {"runtime_alignment_required", "runtime_evidence_unstable", "evidence_unavailable", "contract_discovery_required"}
+    semantic = {"contract_evidence_review", "runtime_contract_evidence_captured", "semantic_attestation_required"}
+    behavioral = {"behavioral_recertification_required"}
+    read_candidates = {"read_contract_candidate", "redacted_read_contract_candidate"}
+    for row in decisions:
+        family = str(row.get("family", ""))
+        state = str(row.get("state", ""))
+        if state == "not_active":
+            groups["inactive"].append(family)
+        elif state in alignment:
+            groups["alignment_required"].append(family)
+        elif state in semantic:
+            groups["semantic_review_required"].append(family)
+        elif state in behavioral:
+            groups["behavioral_review_required"].append(family)
+        elif state in read_candidates:
+            groups["read_candidates"].append(family)
+        else:
+            groups["other_followup"].append(family)
+    for key in groups:
+        groups[key] = sorted(set(x for x in groups[key] if x))
+    followup = sorted(set(
+        groups["alignment_required"]
+        + groups["semantic_review_required"]
+        + groups["behavioral_review_required"]
+        + groups["read_candidates"]
+        + groups["other_followup"]
+    ))
+    return {
+        "contract": "mad4b.functional-gap-decision-handoff.v1",
+        "followup_required": bool(followup),
+        "followup_count": len(followup),
+        "followup_families": followup,
+        "groups": groups,
+        "authorizing": False,
+        "mutation_granted": False,
+        "promotion_granted": False,
+    }
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repository-evidence", required=True)
@@ -438,6 +486,8 @@ def main():
     for row in decisions:
         counts[row["state"]] = counts.get(row["state"], 0) + 1
 
+    handoff = decision_handoff(decisions)
+    evaluation_complete = not blockers
     output = {
         "contract": "mad4b.functional-gap-promotion-evaluation.v2",
         "policy_contract": policy["contract"],
@@ -446,7 +496,14 @@ def main():
         "decision_fingerprint": decision_fingerprint,
         "repository_source_commit_sha": repo.get("source_commit_sha", ""),
         "runtime_generated_at": runtime.get("generated_at", ""),
-        "ready": not blockers,
+        "evaluation_complete": evaluation_complete,
+        "ready": evaluation_complete,
+        "ready_semantics": "backward_compatible_alias_for_evaluation_complete_not_provider_certification",
+        "followup_required": handoff["followup_required"],
+        "followup_count": handoff["followup_count"],
+        "provider_closure_ready": evaluation_complete and not handoff["followup_required"],
+        "provider_closure_semantics": "all_policy_families_evaluated_without_remaining_governed_followup",
+        "decision_handoff": handoff,
         "counts": dict(sorted(counts.items())),
         "decisions": decisions,
         "blockers": sorted(set(blockers)),

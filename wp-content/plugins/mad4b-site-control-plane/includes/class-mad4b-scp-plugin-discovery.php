@@ -284,7 +284,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$writes = array();
 		foreach ( array( 'content', 'write', 'admin' ) as $surface ) if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $writes = array_merge( $writes, $map[ $surface ] );
 		$writes = array_values( array_unique( $writes ) );
-		$state = 'functional_ready'; $reason = ''; $next = 'no_action_required'; $blockers = array(); $read_capability_blockers = array();
+		$state = 'functional_ready'; $reason = ''; $next = 'no_action_required'; $blockers = array(); $read_capability_blockers = array(); $classified_read_abilities = array(); $unclassified_read_abilities = array();
 
 		if ( ! $active ) {
 			$state = 'inactive'; $reason = 'plugin_not_active'; $next = 'activate_only_if_operationally_required';
@@ -307,10 +307,20 @@ final class MAD4B_SCP_Plugin_Discovery {
 			foreach ( isset( $capability['capabilities'] ) && is_array( $capability['capabilities'] ) ? $capability['capabilities'] : array() as $capability_id => $capability_status ) {
 				if ( ! is_array( $capability_status ) || 'read' !== ( isset( $capability_status['risk'] ) ? (string) $capability_status['risk'] : '' ) ) continue;
 				if ( empty( $capability_status['surface_exposed'] ) ) continue;
+				$mounted_reads = isset( $capability_status['mounted_abilities'] ) && is_array( $capability_status['mounted_abilities'] ) ? array_values( array_map( 'strval', $capability_status['mounted_abilities'] ) ) : array();
+				$classified_read_abilities = array_merge( $classified_read_abilities, $mounted_reads );
 				if ( empty( $capability_status['read_eligible'] ) ) $read_capability_blockers[] = sanitize_key( (string) $capability_id );
 			}
+			$classified_read_abilities = array_values( array_unique( array_filter( array_map( 'strval', $classified_read_abilities ) ) ) );
 			$read_capability_blockers = array_values( array_unique( array_filter( $read_capability_blockers ) ) );
-			if ( ! empty( $read_capability_blockers ) ) {
+			$unclassified_read_abilities = array_values( array_diff( $reads, $classified_read_abilities ) );
+			sort( $unclassified_read_abilities, SORT_STRING );
+			if ( ! empty( $unclassified_read_abilities ) ) {
+				$state = 'safety_blocked';
+				$reason = 'provider_read_capability_unclassified';
+				$blockers = array( 'provider_read_capability_unclassified', 'provider_write_certification_required' );
+				$next = 'define_and_verify_capability_contracts_for_all_mounted_reads_before_read_readiness';
+			} elseif ( ! empty( $read_capability_blockers ) ) {
 				$state = 'safety_blocked';
 				$reason = 'provider_read_capability_incompatible';
 				$blockers = array( 'provider_read_capability_incompatible', 'provider_write_certification_required' );
@@ -372,6 +382,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'requested_contracts' => $requested,
 			'blockers' => $blockers,
 			'read_capability_blockers' => $read_capability_blockers,
+			'classified_read_abilities' => $classified_read_abilities,
+			'unclassified_read_abilities' => $unclassified_read_abilities,
 			'next_action' => $next,
 			'authority_created' => false,
 		);
