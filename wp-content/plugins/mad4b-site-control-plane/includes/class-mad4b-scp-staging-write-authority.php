@@ -241,12 +241,71 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return false !== $updated && is_array( $after ) && $before === $after;
 	}
 
-	private static function candidate_binding_audit( $event, array $context, array $extra = array(), $status = 'ok' ) {
+	private static function candidate_binding_audit( $event, array $context, array $extra = array(), $status = 'ok', $join_transaction = false ) {
 		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_candidate_binding_audit_unavailable', 'Append-only audit is unavailable.' );
-		return MAD4B_SCP_Audit::record( $event, array_merge( $context, $extra ), $status );
+		return MAD4B_SCP_Audit::record( $event, array_merge( $context, $extra ), $status, (bool) $join_transaction );
+	}
+
+	private static function authority_option_from_database( $for_update = false ) {
+		global $wpdb;
+		$sql = "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s" . ( $for_update ? ' FOR UPDATE' : '' );
+		$raw = $wpdb->get_var( $wpdb->prepare( $sql, self::OPTION ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( null === $raw ) return new WP_Error( 'mad4b_candidate_binding_authority_option_missing', 'Persisted governed-write authority option is missing.' );
+		$value = maybe_unserialize( $raw );
+		if ( ! is_array( $value ) || ! isset( $value['contract'] ) || self::CONTRACT !== (string) $value['contract'] ) {
+			return new WP_Error( 'mad4b_candidate_binding_authority_option_invalid', 'Persisted governed-write authority option is invalid.' );
+		}
+		return $value;
+	}
+
+	private static function reset_authority_option_cache( array $status = array() ) {
+		wp_cache_delete( self::OPTION, 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		self::$status = $status;
+	}
+
+	private static function rollback_candidate_binding_transaction( array $before, array $context, $reason, array $extra = array() ) {
+		global $wpdb;
+		$rolled_back = false !== $wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( class_exists( 'MAD4B_SCP_Audit' ) && method_exists( 'MAD4B_SCP_Audit', 'transaction_rolled_back' ) ) MAD4B_SCP_Audit::transaction_rolled_back();
+		self::reset_authority_option_cache( $before );
+		$rollback = self::candidate_binding_audit(
+			'mad4b/staging-write-candidate-binding-rollback',
+			$context,
+			array_merge(
+				array(
+					'state' => 'rollback',
+					'reason' => sanitize_key( (string) $reason ),
+					'database_transaction_rolled_back' => $rolled_back,
+					'mutation_performed' => false,
+					'binding_mutation_performed' => false,
+					'grant_mutation_performed' => false,
+					'subject_mutation_performed' => false,
+					'agent_mutation_performed' => false,
+					'reconcile_called' => false,
+					'production_mutation' => false,
+				),
+				$extra
+			),
+			'error',
+			false
+		);
+		return array(
+			'database_transaction_rolled_back' => $rolled_back,
+			'rollback_audit_recorded' => ! is_wp_error( $rollback ),
+		);
+	}
+
+	private static function commit_candidate_binding_transaction() {
+		global $wpdb;
+		$committed = false !== $wpdb->query( 'COMMIT' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! $committed ) return new WP_Error( 'mad4b_candidate_binding_commit_failed', 'Candidate binding transaction could not be committed.' );
+		if ( class_exists( 'MAD4B_SCP_Audit' ) && method_exists( 'MAD4B_SCP_Audit', 'transaction_committed' ) ) MAD4B_SCP_Audit::transaction_committed();
+		return true;
 	}
 
 	public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint, $context = array() ) {
+		global $wpdb;
 		$source_commit_sha = strtolower( trim( (string) $source_commit_sha ) );
 		$build_fingerprint = strtolower( trim( (string) $build_fingerprint ) );
 		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $source_commit_sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $build_fingerprint ) ) {
@@ -260,31 +319,97 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			|| empty( $current['artifact_identity'] ) ) {
 			return new WP_Error( 'mad4b_write_authority_candidate_mismatch', 'Current package candidate does not match the reviewed reconciliation candidate.' );
 		}
-		$status = self::raw_status();
-		if ( empty( $status['ready'] ) || empty( $status['write_inventory_fingerprint'] ) || empty( $status['agent_public_id'] ) ) {
-			return new WP_Error( 'mad4b_write_authority_not_ready_for_candidate_binding', 'Write authority must be reconciled before binding the exact package candidate.' );
-		}
 		$context = self::normalize_candidate_binding_context( $context, $current );
 		if ( is_wp_error( $context ) ) return $context;
 		$audit_status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
-		if ( empty( $audit_status['ready'] ) ) return new WP_Error( 'mad4b_candidate_binding_audit_required', 'Ready append-only audit storage is required by the binding primitive.' );
-
-		$before = $status;
-		$before_binding = self::candidate_binding_snapshot( $before );
-		$binding = self::candidate_binding_status();
-		$write_snapshot = $context['write_snapshot'];
-		$plan_before = self::reconciliation_plan();
-		if ( ! is_array( $plan_before )
-			|| (int) $plan_before['write_tool_count'] !== (int) $write_snapshot['write_tool_count']
-			|| ! hash_equals( (string) $plan_before['write_inventory_fingerprint'], (string) $write_snapshot['write_inventory_fingerprint'] )
-			|| ! hash_equals( (string) $plan_before['grant_rows_fingerprint'], (string) $write_snapshot['grant_rows_fingerprint'] ) ) {
-			return new WP_Error( 'mad4b_candidate_binding_primitive_snapshot_drift', 'Write/grant snapshot changed before the candidate-binding primitive.' );
+		if ( empty( $audit_status['ready'] ) || empty( $audit_status['head_initialized'] ) ) return new WP_Error( 'mad4b_candidate_binding_audit_required', 'Ready initialized append-only audit storage is required by the binding primitive.' );
+		if ( ! class_exists( 'MAD4B_SCP_Audit_Integrity' ) || ! MAD4B_SCP_Audit_Integrity::transactional_table( $wpdb->options ) ) {
+			return new WP_Error( 'mad4b_candidate_binding_transactional_options_required', 'Candidate binding requires transactional WordPress option storage.' );
+		}
+		if ( class_exists( 'MAD4B_SCP_Budgets' ) && method_exists( 'MAD4B_SCP_Budgets', 'transaction_is_open' ) && MAD4B_SCP_Budgets::transaction_is_open() ) {
+			return new WP_Error( 'mad4b_candidate_binding_nested_transaction_denied', 'Candidate binding cannot run inside another governed database transaction.' );
 		}
 
-		if ( ! empty( $binding['match'] ) ) {
-			$noop = self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-noop', $context, array(
-				'state' => 'already_bound',
-				'idempotent' => true,
+		$started = $wpdb->query( 'START TRANSACTION' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( false === $started ) return new WP_Error( 'mad4b_candidate_binding_transaction_start_failed', 'Candidate binding transaction could not be started.' );
+		$transaction_open = true;
+		$before = array();
+
+		try {
+			$locked = self::authority_option_from_database( true );
+			if ( is_wp_error( $locked ) ) {
+				$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$transaction_open = false;
+				if ( method_exists( 'MAD4B_SCP_Audit', 'transaction_rolled_back' ) ) MAD4B_SCP_Audit::transaction_rolled_back();
+				return $locked;
+			}
+			$before = $locked;
+			self::$status = $locked;
+			if ( empty( $locked['ready'] ) || empty( $locked['write_inventory_fingerprint'] ) || empty( $locked['agent_public_id'] ) ) {
+				$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$transaction_open = false;
+				if ( method_exists( 'MAD4B_SCP_Audit', 'transaction_rolled_back' ) ) MAD4B_SCP_Audit::transaction_rolled_back();
+				return new WP_Error( 'mad4b_write_authority_not_ready_for_candidate_binding', 'Write authority must be reconciled before binding the exact package candidate.' );
+			}
+
+			$before_binding = self::candidate_binding_snapshot( $locked );
+			$binding = self::candidate_binding_status();
+			$write_snapshot = $context['write_snapshot'];
+			$plan_before = self::reconciliation_plan();
+			if ( ! is_array( $plan_before )
+				|| (int) $plan_before['write_tool_count'] !== (int) $write_snapshot['write_tool_count']
+				|| ! hash_equals( (string) $plan_before['write_inventory_fingerprint'], (string) $write_snapshot['write_inventory_fingerprint'] )
+				|| ! hash_equals( (string) $plan_before['grant_rows_fingerprint'], (string) $write_snapshot['grant_rows_fingerprint'] ) ) {
+				$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$transaction_open = false;
+				if ( method_exists( 'MAD4B_SCP_Audit', 'transaction_rolled_back' ) ) MAD4B_SCP_Audit::transaction_rolled_back();
+				return new WP_Error( 'mad4b_candidate_binding_primitive_snapshot_drift', 'Write/grant snapshot changed before the candidate-binding primitive.' );
+			}
+
+			if ( ! empty( $binding['match'] ) ) {
+				$noop = self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-noop', $context, array(
+					'state' => 'already_bound',
+					'idempotent' => true,
+					'mutation_performed' => false,
+					'binding_mutation_performed' => false,
+					'grant_mutation_performed' => false,
+					'subject_mutation_performed' => false,
+					'agent_mutation_performed' => false,
+					'reconcile_called' => false,
+					'production_mutation' => false,
+					'previous_binding' => $before_binding,
+					'new_binding' => $before_binding,
+					'candidate_binding_match' => true,
+					'effective_before' => true,
+					'effective_after' => true,
+				), 'ok', true );
+				if ( is_wp_error( $noop ) ) {
+					$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'noop_audit_failed', array( 'previous_binding' => $before_binding ) );
+					$transaction_open = false;
+					return new WP_Error( 'mad4b_candidate_binding_noop_audit_failed', 'Idempotent candidate-binding evidence could not be committed.', $rollback );
+				}
+				$commit = self::commit_candidate_binding_transaction();
+				if ( is_wp_error( $commit ) ) {
+					$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'noop_commit_failed', array( 'previous_binding' => $before_binding ) );
+					$transaction_open = false;
+					return new WP_Error( 'mad4b_candidate_binding_noop_commit_failed', 'Idempotent candidate-binding evidence could not be committed.', $rollback );
+				}
+				$transaction_open = false;
+				return array(
+					'contract' => 'mad4b.staging-write-candidate-binding.v2',
+					'operation_id' => (string) $context['operation_id'],
+					'state' => 'already_bound',
+					'idempotent' => true,
+					'mutation_performed' => false,
+					'binding_mutation_performed' => false,
+					'previous_binding' => $before_binding,
+					'new_binding' => $before_binding,
+				);
+			}
+
+			$effective_before = self::effective();
+			$intent = self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-authorized', $context, array(
+				'state' => 'authorized',
 				'mutation_performed' => false,
 				'binding_mutation_performed' => false,
 				'grant_mutation_performed' => false,
@@ -293,125 +418,117 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				'reconcile_called' => false,
 				'production_mutation' => false,
 				'previous_binding' => $before_binding,
-				'new_binding' => $before_binding,
+				'target_binding' => $context['target_binding'],
+				'effective_before' => $effective_before,
+			), 'ok', true );
+			if ( is_wp_error( $intent ) ) {
+				$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'authorization_audit_failed', array( 'previous_binding' => $before_binding ) );
+				$transaction_open = false;
+				return new WP_Error( 'mad4b_candidate_binding_intent_audit_failed', 'Candidate binding authorization evidence could not be appended before mutation.', $rollback );
+			}
+
+			$next = $locked;
+			$next['candidate_binding_contract'] = self::CANDIDATE_BINDING_CONTRACT;
+			$next['source_commit_sha'] = $source_commit_sha;
+			$next['build_fingerprint'] = $build_fingerprint;
+			$next['package_manifest_digest'] = (string) $current['package_manifest_digest'];
+			$next['artifact_identity'] = (string) $current['artifact_identity'];
+			$next['candidate_bound_at'] = gmdate( 'c' );
+			$updated = update_option( self::OPTION, $next, false );
+			$stored = self::authority_option_from_database( false );
+			$persisted_ok = ! is_wp_error( $stored )
+				&& isset( $stored['source_commit_sha'], $stored['build_fingerprint'], $stored['package_manifest_digest'], $stored['artifact_identity'] )
+				&& hash_equals( $source_commit_sha, (string) $stored['source_commit_sha'] )
+				&& hash_equals( $build_fingerprint, (string) $stored['build_fingerprint'] )
+				&& hash_equals( (string) $current['package_manifest_digest'], (string) $stored['package_manifest_digest'] )
+				&& hash_equals( (string) $current['artifact_identity'], (string) $stored['artifact_identity'] );
+			if ( false === $updated || ! $persisted_ok ) {
+				$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'persist_failed', array( 'previous_binding' => $before_binding ) );
+				$transaction_open = false;
+				return new WP_Error( 'mad4b_write_authority_candidate_persist_failed', 'Exact four-part package candidate binding could not be persisted.', $rollback );
+			}
+			self::$status = $stored;
+
+			$after_plan = self::reconciliation_plan();
+			$after_binding_status = self::candidate_binding_status();
+			$post_ok = is_array( $after_plan )
+				&& ! empty( $after_binding_status['match'] )
+				&& 'complete' === ( isset( $after_binding_status['identity_completeness'] ) ? (string) $after_binding_status['identity_completeness'] : '' )
+				&& (int) $after_plan['write_tool_count'] === (int) $write_snapshot['write_tool_count']
+				&& (int) $after_plan['exact_grants_existing'] === (int) $write_snapshot['write_tool_count']
+				&& 0 === (int) $after_plan['exact_grants_missing_count']
+				&& 0 === (int) $after_plan['stale_allow_grants_count']
+				&& 0 === (int) $after_plan['broad_environment_grants_count']
+				&& 0 === (int) $after_plan['duplicate_exact_allow_grants_count']
+				&& 0 === (int) $after_plan['current_agent_wildcard_grants']
+				&& 0 === (int) $after_plan['global_registry_wildcard_grants']
+				&& hash_equals( (string) $after_plan['write_inventory_fingerprint'], (string) $write_snapshot['write_inventory_fingerprint'] )
+				&& hash_equals( (string) $after_plan['grant_rows_fingerprint'], (string) $write_snapshot['grant_rows_fingerprint'] )
+				&& self::effective();
+			if ( ! $post_ok ) {
+				$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'postcondition_failed', array( 'previous_binding' => $before_binding ) );
+				$transaction_open = false;
+				return new WP_Error( 'mad4b_candidate_binding_primitive_postcondition_failed', 'Candidate-binding primitive postconditions failed; database transaction was rolled back.', $rollback );
+			}
+
+			$new_binding = self::candidate_binding_snapshot( $stored );
+			$completion = self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-complete', $context, array(
+				'state' => 'bound',
+				'idempotent' => false,
+				'mutation_performed' => true,
+				'binding_mutation_performed' => true,
+				'grant_mutation_performed' => false,
+				'subject_mutation_performed' => false,
+				'agent_mutation_performed' => false,
+				'reconcile_called' => false,
+				'production_mutation' => false,
+				'previous_binding' => $before_binding,
+				'new_binding' => $new_binding,
 				'candidate_binding_match' => true,
-				'effective_before' => true,
+				'effective_before' => $effective_before,
 				'effective_after' => true,
-			), 'ok' );
-			if ( is_wp_error( $noop ) ) return new WP_Error( 'mad4b_candidate_binding_noop_audit_failed', 'Idempotent candidate-binding evidence could not be committed.' );
+			), 'ok', true );
+			if ( is_wp_error( $completion ) ) {
+				$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'completion_audit_failed', array( 'previous_binding' => $before_binding, 'attempted_binding' => $new_binding ) );
+				$transaction_open = false;
+				return new WP_Error( 'mad4b_candidate_bind_completion_audit_failed', 'Candidate binding completion audit failed; database transaction was rolled back.', $rollback );
+			}
+
+			$commit = self::commit_candidate_binding_transaction();
+			if ( is_wp_error( $commit ) ) {
+				$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'commit_failed', array( 'previous_binding' => $before_binding, 'attempted_binding' => $new_binding ) );
+				$transaction_open = false;
+				return new WP_Error( 'mad4b_candidate_binding_commit_failed', 'Candidate binding transaction failed to commit.', $rollback );
+			}
+			$transaction_open = false;
+
 			return array(
 				'contract' => 'mad4b.staging-write-candidate-binding.v2',
 				'operation_id' => (string) $context['operation_id'],
-				'state' => 'already_bound',
-				'idempotent' => true,
-				'mutation_performed' => false,
-				'binding_mutation_performed' => false,
+				'state' => 'bound',
+				'idempotent' => false,
+				'mutation_performed' => true,
+				'binding_mutation_performed' => true,
+				'grant_mutation_performed' => false,
+				'subject_mutation_performed' => false,
+				'agent_mutation_performed' => false,
+				'reconcile_called' => false,
+				'production_mutation' => false,
 				'previous_binding' => $before_binding,
-				'new_binding' => $before_binding,
+				'new_binding' => $new_binding,
+				'effective' => true,
+				'write_tool_count' => (int) $after_plan['write_tool_count'],
+				'exact_grants_existing' => (int) $after_plan['exact_grants_existing'],
+				'write_inventory_fingerprint' => (string) $after_plan['write_inventory_fingerprint'],
+				'grant_rows_fingerprint' => (string) $after_plan['grant_rows_fingerprint'],
 			);
+		} finally {
+			if ( $transaction_open ) {
+				$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				if ( class_exists( 'MAD4B_SCP_Audit' ) && method_exists( 'MAD4B_SCP_Audit', 'transaction_rolled_back' ) ) MAD4B_SCP_Audit::transaction_rolled_back();
+				if ( ! empty( $before ) ) self::reset_authority_option_cache( $before );
+			}
 		}
-
-		$effective_before = self::effective();
-		$intent = self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-authorized', $context, array(
-			'state' => 'authorized',
-			'mutation_performed' => false,
-			'binding_mutation_performed' => false,
-			'grant_mutation_performed' => false,
-			'subject_mutation_performed' => false,
-			'agent_mutation_performed' => false,
-			'reconcile_called' => false,
-			'production_mutation' => false,
-			'previous_binding' => $before_binding,
-			'target_binding' => $context['target_binding'],
-			'effective_before' => $effective_before,
-		), 'ok' );
-		if ( is_wp_error( $intent ) ) return new WP_Error( 'mad4b_candidate_binding_intent_audit_failed', 'Candidate binding authorization evidence could not be committed before mutation.' );
-
-		$status['candidate_binding_contract'] = self::CANDIDATE_BINDING_CONTRACT;
-		$status['source_commit_sha'] = $source_commit_sha;
-		$status['build_fingerprint'] = $build_fingerprint;
-		$status['package_manifest_digest'] = (string) $current['package_manifest_digest'];
-		$status['artifact_identity'] = (string) $current['artifact_identity'];
-		$status['candidate_bound_at'] = gmdate( 'c' );
-		update_option( self::OPTION, $status, false );
-		$stored = get_option( self::OPTION, array() );
-		$persisted_ok = is_array( $stored )
-			&& isset( $stored['source_commit_sha'], $stored['build_fingerprint'], $stored['package_manifest_digest'], $stored['artifact_identity'] )
-			&& hash_equals( $source_commit_sha, (string) $stored['source_commit_sha'] )
-			&& hash_equals( $build_fingerprint, (string) $stored['build_fingerprint'] )
-			&& hash_equals( (string) $current['package_manifest_digest'], (string) $stored['package_manifest_digest'] )
-			&& hash_equals( (string) $current['artifact_identity'], (string) $stored['artifact_identity'] );
-		if ( ! $persisted_ok ) {
-			$restored = self::restore_candidate_binding_option( $before );
-			self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-rollback', $context, array( 'state' => 'rollback', 'reason' => 'persist_failed', 'rollback_restored' => $restored, 'mutation_performed' => true, 'binding_mutation_performed' => true ), 'error' );
-			return new WP_Error( 'mad4b_write_authority_candidate_persist_failed', 'Exact four-part package candidate binding could not be persisted.', array( 'rollback_restored' => $restored ) );
-		}
-		self::$status = $stored;
-
-		$after_plan = self::reconciliation_plan();
-		$after_binding_status = self::candidate_binding_status();
-		$post_ok = is_array( $after_plan )
-			&& ! empty( $after_binding_status['match'] )
-			&& (int) $after_plan['write_tool_count'] === (int) $write_snapshot['write_tool_count']
-			&& (int) $after_plan['exact_grants_existing'] === (int) $write_snapshot['write_tool_count']
-			&& 0 === (int) $after_plan['exact_grants_missing_count']
-			&& 0 === (int) $after_plan['stale_allow_grants_count']
-			&& 0 === (int) $after_plan['broad_environment_grants_count']
-			&& 0 === (int) $after_plan['duplicate_exact_allow_grants_count']
-			&& 0 === (int) $after_plan['current_agent_wildcard_grants']
-			&& 0 === (int) $after_plan['global_registry_wildcard_grants']
-			&& hash_equals( (string) $after_plan['write_inventory_fingerprint'], (string) $write_snapshot['write_inventory_fingerprint'] )
-			&& hash_equals( (string) $after_plan['grant_rows_fingerprint'], (string) $write_snapshot['grant_rows_fingerprint'] )
-			&& self::effective();
-		if ( ! $post_ok ) {
-			$restored = self::restore_candidate_binding_option( $before );
-			self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-rollback', $context, array( 'state' => 'rollback', 'reason' => 'postcondition_failed', 'rollback_restored' => $restored, 'mutation_performed' => true, 'binding_mutation_performed' => true, 'previous_binding' => $before_binding ), 'error' );
-			return new WP_Error( 'mad4b_candidate_binding_primitive_postcondition_failed', 'Candidate-binding primitive postconditions failed; previous authority was restored when possible.', array( 'rollback_restored' => $restored ) );
-		}
-
-		$new_binding = self::candidate_binding_snapshot( $stored );
-		$completion = self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-complete', $context, array(
-			'state' => 'bound',
-			'idempotent' => false,
-			'mutation_performed' => true,
-			'binding_mutation_performed' => true,
-			'grant_mutation_performed' => false,
-			'subject_mutation_performed' => false,
-			'agent_mutation_performed' => false,
-			'reconcile_called' => false,
-			'production_mutation' => false,
-			'previous_binding' => $before_binding,
-			'new_binding' => $new_binding,
-			'candidate_binding_match' => true,
-			'effective_before' => $effective_before,
-			'effective_after' => true,
-		), 'ok' );
-		if ( is_wp_error( $completion ) ) {
-			$restored = self::restore_candidate_binding_option( $before );
-			self::candidate_binding_audit( 'mad4b/staging-write-candidate-binding-rollback', $context, array( 'state' => 'rollback', 'reason' => 'completion_audit_failed', 'rollback_restored' => $restored, 'mutation_performed' => true, 'binding_mutation_performed' => true, 'previous_binding' => $before_binding, 'new_binding' => $new_binding ), 'error' );
-			return new WP_Error( 'mad4b_candidate_bind_completion_audit_failed', 'Candidate binding completion audit failed; previous authority was restored when possible.', array( 'rollback_restored' => $restored ) );
-		}
-
-		return array(
-			'contract' => 'mad4b.staging-write-candidate-binding.v2',
-			'operation_id' => (string) $context['operation_id'],
-			'state' => 'bound',
-			'idempotent' => false,
-			'mutation_performed' => true,
-			'binding_mutation_performed' => true,
-			'grant_mutation_performed' => false,
-			'subject_mutation_performed' => false,
-			'agent_mutation_performed' => false,
-			'reconcile_called' => false,
-			'production_mutation' => false,
-			'previous_binding' => $before_binding,
-			'new_binding' => $new_binding,
-			'effective' => true,
-			'write_tool_count' => (int) $after_plan['write_tool_count'],
-			'exact_grants_existing' => (int) $after_plan['exact_grants_existing'],
-			'write_inventory_fingerprint' => (string) $after_plan['write_inventory_fingerprint'],
-			'grant_rows_fingerprint' => (string) $after_plan['grant_rows_fingerprint'],
-		);
 	}
 
 	private static function current_candidate_identity() {
