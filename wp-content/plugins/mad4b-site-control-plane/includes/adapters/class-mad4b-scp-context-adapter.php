@@ -508,6 +508,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'normalization_status' => isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : '',
 				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
 				'classification_confidence' => isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0,
+				'automatic_classification' => isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array(),
 				'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
 				'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
 				'file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
