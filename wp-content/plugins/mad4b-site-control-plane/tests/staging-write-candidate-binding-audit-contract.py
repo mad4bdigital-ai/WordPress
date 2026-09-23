@@ -16,7 +16,7 @@ for marker in [
     "client_fingerprint",
     "session_fingerprint",
     "mcp_request_context_fingerprint",
-    "authorization_source",
+    "operation_basis",
     "grant_reconciliation",
     "mad4b.staging-write-grant-reconciliation.v1",
     "previous_binding",
