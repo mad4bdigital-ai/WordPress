@@ -188,6 +188,46 @@ mad4b_review_assert( 'mad4b_context_required_scope_confirmation_required' === $o
 $optional_after_denial = MAD4B_SCP_Context_Authority::asset( $optional_asset_id );
 mad4b_review_assert( empty( $optional_after_denial['required'] ) && 'unreviewed' === $optional_after_denial['review_status'], 'Denied required escalation must leave the optional asset unchanged.', $optional_after_denial );
 
+$required_shift = MAD4B_SCP_Context_Authority::review_asset(
+	$asset_id,
+	mad4b_review_exact_input(
+		$asset_id,
+		array(
+			'category' => 'editorial_guidelines',
+			'authority_class' => 'brand_authority',
+			'required' => true,
+			'required_scope_confirmed' => false,
+			'quality_mode' => 'automatic',
+			'quality_score' => '',
+			'review_note' => 'Attempted required-set category shift.',
+		)
+	)
+);
+mad4b_review_assert( is_wp_error( $required_shift ), 'Changing the category of an already-required asset must require explicit site-wide scope confirmation.', $required_shift );
+mad4b_review_assert( 'mad4b_context_required_scope_confirmation_required' === $required_shift->get_error_code(), 'Required-set category shift must fail with the exact scope confirmation error.', $required_shift->get_error_code() );
+$required_after_shift_denial = MAD4B_SCP_Context_Authority::asset( $asset_id );
+mad4b_review_assert( 'tone_of_voice' === $required_after_shift_denial['category'] && ! empty( $required_after_shift_denial['required'] ), 'Denied required-set shift must leave the original category and requirement unchanged.', $required_after_shift_denial );
+
+$required_reduction = MAD4B_SCP_Context_Authority::review_asset(
+	$asset_id,
+	mad4b_review_exact_input(
+		$asset_id,
+		array(
+			'category' => 'tone_of_voice',
+			'authority_class' => 'brand_authority',
+			'required' => false,
+			'required_scope_confirmed' => false,
+			'quality_mode' => 'automatic',
+			'quality_score' => '',
+			'review_note' => 'Attempted required-set reduction.',
+		)
+	)
+);
+mad4b_review_assert( is_wp_error( $required_reduction ), 'Removing an existing site-wide Context requirement must require explicit confirmation.', $required_reduction );
+mad4b_review_assert( 'mad4b_context_required_scope_confirmation_required' === $required_reduction->get_error_code(), 'Required-set reduction must fail with the exact scope confirmation error.', $required_reduction->get_error_code() );
+$required_after_reduction_denial = MAD4B_SCP_Context_Authority::asset( $asset_id );
+mad4b_review_assert( 'tone_of_voice' === $required_after_reduction_denial['category'] && ! empty( $required_after_reduction_denial['required'] ), 'Denied required-set reduction must leave the requirement unchanged.', $required_after_reduction_denial );
+
 $review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
 	mad4b_review_exact_input(
@@ -469,4 +509,4 @@ mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'
 mad4b_review_assert( 'wp_admin' === $review_events[0]['data']['actor_type'] && 42 === (int) $review_events[0]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[0] );
 mad4b_review_assert( ! empty( $review_events[0]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[0] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v9: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v10: PASS\n";
