@@ -80,7 +80,14 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema(
 				array(
-					'asset_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
+					'asset_id' => array( 'type' => 'string', 'minLength' => 0, 'maxLength' => 64, 'default' => '' ),
+					'request_id' => array( 'type' => 'string', 'maxLength' => 100, 'default' => '' ),
+					'event_id' => array( 'type' => 'string', 'maxLength' => 36, 'default' => '' ),
+					'decision' => array( 'type' => 'string', 'enum' => array( '', 'approve', 'needs_changes', 'reject' ), 'default' => '' ),
+					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 25 ),
+				)
+			)
+		);
 		$this->add_ability(
 			'context/brand-core-coverage',
 			'Brand Core Context Coverage',
