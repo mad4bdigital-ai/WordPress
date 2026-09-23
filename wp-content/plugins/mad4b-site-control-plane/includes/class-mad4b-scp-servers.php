@@ -212,7 +212,14 @@ final class MAD4B_SCP_Servers {
 	private static function adapter_write_projection() {
 		$result = array( 'eligible' => array(), 'blocked' => array() );
 		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
-		$cacheable = self::catalog_cacheable();
+		// Runtime provider eligibility is intentionally more conservative than
+		// the immutable transport/catalog caches above. Isolation/certification can
+		// settle during rest_api_init, so never freeze this projection while REST
+		// registration is still in progress.
+		$cacheable = function_exists( 'did_action' )
+			&& did_action( 'wp_abilities_api_init' ) > 0
+			&& did_action( 'rest_api_init' ) > 0
+			&& ( ! function_exists( 'doing_action' ) || ( ! doing_action( 'wp_abilities_api_init' ) && ! doing_action( 'rest_api_init' ) ) );
 		if ( $cacheable && is_array( self::$adapter_write_projection_cache ) ) return self::$adapter_write_projection_cache;
 
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
