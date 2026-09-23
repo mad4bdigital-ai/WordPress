@@ -23,7 +23,7 @@ final class MAD4B_SCP_Developer_Authority {
 	private static $running = false;
 
 	public static function boot() {
-		if ( self::$booted ) return;
+		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ), 17 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 17 );
