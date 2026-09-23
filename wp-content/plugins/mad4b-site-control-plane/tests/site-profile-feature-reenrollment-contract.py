@@ -14,13 +14,14 @@ for marker in (
     "'mad4b/site-profile-write-enable'",
     "'mad4b/staging-write-grant-reconcile'",
     "'mad4b/staging-write-candidate-bind'",
+    "'mad4b/staging-write-candidate-binding-audit'",
     "can_enrollment_transport",
     "MAD4B Enrollment MCP",
 ):
     if marker not in servers:
         raise SystemExit('missing enrollment server contract: ' + marker)
 
-entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' )"
+entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' )"
 if entry not in servers:
     raise SystemExit('enrollment inventory is not exact/bounded')
 for forbidden in ('mad4b/database-update', 'mad4b/database-raw-query', 'mad4b/filesystem-write', 'mad4b/plugin-activate', 'mad4b/approval-plan'):
