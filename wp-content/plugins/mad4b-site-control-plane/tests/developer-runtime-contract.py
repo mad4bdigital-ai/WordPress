@@ -28,8 +28,6 @@ runbook = (root / "docs/DEVELOPER-AGENT-RUNTIME.md").read_text(encoding="utf-8")
 required_tools = [
     "mad4b/developer-runtime-status",
     "mad4b/developer-wp-cli",
-    "mad4b/developer-php-eval",
-    "mad4b/developer-shell-exec",
     "mad4b/developer-filesystem",
     "mad4b/developer-package-install",
     "mad4b/developer-breakglass-shell",
@@ -57,6 +55,16 @@ assert "expected_environment" in developer
 assert "MAD4B_MCP_DEVELOPER_NETWORK_ENABLED" in developer
 assert "MAD4B_SCP_Authorization::authorize_mutation" in developer
 assert "array( 'MAD4B_SCP_Policy', 'can_developer_runtime_status' )" in developer
+assert "mad4b/developer-php-eval" not in developer
+assert "mad4b/developer-shell-exec" not in developer
+assert "normal_wp_cli_guard" in developer
+assert "mad4b_developer_wp_cli_alias_denied" in developer
+assert "mad4b_developer_wp_cli_escape_denied" in developer
+assert "mad4b_developer_wp_cli_breakglass_required" in developer
+for family in ["'eval'", "'eval-file'", "'db'", "'config'", "'shell'", "'cli'", "'package'", "'server'"]:
+    assert family in developer, family
+for flag in ["'--exec'", "'--require'", "'--ssh'", "'--http'", "'--path'"]:
+    assert flag in developer, flag
 assert "permission_callback( $permission, $readonly, $name, $category )" in developer
 assert "'_mad4b_approval_ticket_id'" in developer
 assert "network_default_deny" in developer
@@ -196,4 +204,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v10: PASS")
+print("mad4b.developer-runtime-contract.v11: PASS")
