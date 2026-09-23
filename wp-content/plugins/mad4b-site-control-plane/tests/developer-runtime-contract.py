@@ -11,6 +11,7 @@ policy = (inc / "class-mad4b-scp-policy.php").read_text(encoding="utf-8")
 auth = (inc / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 fence = (inc / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
 impact = (inc / "class-mad4b-scp-impact-policy.php").read_text(encoding="utf-8")
+governance = (inc / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 authority = (inc / "class-mad4b-scp-developer-authority.php").read_text(encoding="utf-8")
 registry = (inc / "class-mad4b-scp-agent-registry.php").read_text(encoding="utf-8")
 connection = (inc / "class-mad4b-scp-connection-status.php").read_text(encoding="utf-8")
@@ -50,6 +51,9 @@ assert "expected_source_commit_sha" in developer
 assert "expected_site_uuid" in developer
 assert "expected_environment" in developer
 assert "MAD4B_MCP_DEVELOPER_NETWORK_ENABLED" in developer
+assert "MAD4B_SCP_Authorization::authorize_mutation" in developer
+assert "permission_callback( $permission, $readonly, $name, $category )" in developer
+assert "'_mad4b_approval_ticket_id'" in developer
 assert "network_default_deny" in developer
 assert "network_sandbox_binary" in developer
 assert "bounded_execution_argv" in developer
@@ -155,8 +159,16 @@ for marker in [
 
 assert "developer-breakglass-" in impact and "return 'exceptional'" in impact
 assert "developer-" in impact and "return 'high'" in impact
+assert "MAD4B_SCP_Authorization::claim_mutation" in auth
+assert "MAD4B_SCP_Approval_Tickets::claim_exact" in auth
+assert "MAD4B_SCP_Budgets::reserve" in auth
+assert "finalize_execution_claim" in auth
+assert "array( 'content', 'write', 'admin', 'breakglass', 'developer', 'developer-breakglass' )" in auth
+assert "'server_id' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Servers::expected_server_ids() )" in governance
+assert "MAD4B_SCP_Impact_Policy::ticket_class_for" in governance
+assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
 assert "class-mad4b-scp-developer-runtime.php" in plugin
 assert "0.4.0-rc.55" in plugin
 assert "release=0.4.0-rc.55" in runtime_build
 
-print("mad4b.developer-runtime-contract.v4: PASS")
+print("mad4b.developer-runtime-contract.v5: PASS")
