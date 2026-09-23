@@ -290,8 +290,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::stages( $stages );
 		$pending_required_reviews = isset( $review_queue['counts']['required_pending'] ) ? (int) $review_queue['counts']['required_pending'] : 0;
 		$content_changed_reviews = isset( $review_queue['counts']['content_changed'] ) ? (int) $review_queue['counts']['content_changed'] : 0;
-		if ( $pending_required_reviews + $content_changed_reviews > 0 && class_exists( 'MAD4B_SCP_Admin_Experience' ) ) {
-			MAD4B_SCP_Admin_Experience::next_step( __( 'Human review required', 'mad4b-site-control-plane' ), sprintf( __( '%1$d required or changed Context asset(s) need an exact-content human decision before Brand Context can become ready.', 'mad4b-site-control-plane' ), $pending_required_reviews + $content_changed_reviews ), 'attention', self::tab_url( 'assets', array( 'review_filter' => 'needs_review' ) ), __( 'Review required assets', 'mad4b-site-control-plane' ) );
+		$legacy_unbound_reviews = isset( $review_queue['counts']['legacy_unbound'] ) ? (int) $review_queue['counts']['legacy_unbound'] : 0;
+		$actionable_reviews = $pending_required_reviews + $content_changed_reviews + $legacy_unbound_reviews;
+		if ( $actionable_reviews > 0 && class_exists( 'MAD4B_SCP_Admin_Experience' ) ) {
+			MAD4B_SCP_Admin_Experience::next_step( __( 'Human review required', 'mad4b-site-control-plane' ), sprintf( __( '%1$d Context asset(s) need an exact-content human decision or binding refresh before Brand Context can become ready.', 'mad4b-site-control-plane' ), $actionable_reviews ), 'attention', self::tab_url( 'assets', array( 'review_filter' => 'needs_review' ) ), __( 'Review required assets', 'mad4b-site-control-plane' ) );
 		}
 		$quality = null === $status['average_quality_score'] ? 'Not scored' : $status['average_quality_score'] . '/100';
 		$cards = array(
@@ -688,7 +690,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="mad4b-scp-panel mad4b-context-review-queue"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Human Review Queue', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Approve only the exact content shown for the current registry revision. Stale browser tabs fail closed if content or Context authority changes.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $review_queue['items'] ) ) . '</span></div><div class="mad4b-context-review-cards">';
 			foreach ( array_slice( $review_queue['items'], 0, 12 ) as $pending ) {
 				$asset_anchor = 'mad4b-context-asset-' . sanitize_html_class( (string) $pending['asset_id'] );
-				echo '<a class="mad4b-context-review-card" href="#' . esc_attr( $asset_anchor ) . '"><strong>' . esc_html( $pending['title'] ) . '</strong><span><code>' . esc_html( $pending['category'] ) . '</code> · ' . esc_html( $pending['review_status'] ) . ( ! empty( $pending['required'] ) ? ' · required' : '' ) . '</span><span>' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . ' →</span></a>';
+				$queue_state = 'approved' === ( isset( $pending['review_status'] ) ? (string) $pending['review_status'] : '' ) && empty( $pending['review_binding_exact'] ) ? 'approved · binding refresh required' : ( isset( $pending['review_status'] ) ? (string) $pending['review_status'] : 'unreviewed' );
+				echo '<a class="mad4b-context-review-card" href="#' . esc_attr( $asset_anchor ) . '"><strong>' . esc_html( $pending['title'] ) . '</strong><span><code>' . esc_html( $pending['category'] ) . '</code> · ' . esc_html( $queue_state ) . ( ! empty( $pending['required'] ) ? ' · required' : '' ) . '</span><span>' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . ' →</span></a>';
 			}
 			echo '</div></div>';
 		}
