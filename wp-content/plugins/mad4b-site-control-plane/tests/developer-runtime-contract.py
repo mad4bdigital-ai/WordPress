@@ -11,6 +11,8 @@ policy = (inc / "class-mad4b-scp-policy.php").read_text(encoding="utf-8")
 auth = (inc / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 fence = (inc / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
 impact = (inc / "class-mad4b-scp-impact-policy.php").read_text(encoding="utf-8")
+authority = (inc / "class-mad4b-scp-developer-authority.php").read_text(encoding="utf-8")
+registry = (inc / "class-mad4b-scp-agent-registry.php").read_text(encoding="utf-8")
 connection = (inc / "class-mad4b-scp-connection-status.php").read_text(encoding="utf-8")
 oauth = (inc / "class-mad4b-scp-oauth-resource-bridge.php").read_text(encoding="utf-8")
 oauth_context = (inc / "class-mad4b-scp-oauth-request-context-guard.php").read_text(encoding="utf-8")
@@ -38,7 +40,8 @@ for server in ["mad4b-developer", "mad4b-developer-breakglass"]:
     assert server in auth, f"authorization missing {server}"
     assert server in fence, f"execution fence missing {server}"
 
-assert "MAD4B_MCP_DEVELOPER_AGENT_PUBLIC_ID" in policy
+assert "MAD4B_SCP_Developer_Runtime::configured_agent_public_id()" in policy
+assert "MAD4B_SCP_Developer_Runtime::developer_flag_enabled()" in policy
 assert "can_developer_read" in policy
 assert "can_developer_breakglass" in policy
 assert "mad4b_developer_production_denied" in developer
@@ -64,12 +67,41 @@ for pattern in [
 ]:
     assert re.search(pattern, developer) is None, pattern
 
-# Developer tools must not be projected into the normal ChatGPT catalog.
+# Runtime execution tools and authority bootstrap must not be projected
+# into the normal ChatGPT catalog.
 start = servers.index("public static function chatgpt_tools")
 end = servers.index("private static function surface_for_server", start)
 chatgpt = servers[start:end]
-assert "mad4b-developer" not in chatgpt
 assert "developer-runtime-status" not in chatgpt
+assert "self::core_tools( 'mad4b-developer' )" not in chatgpt
+assert "self::core_tools( 'mad4b-developer-breakglass' )" not in chatgpt
+assert "array_diff( $enrollment_candidates, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in chatgpt
+
+authority_tools = [
+    "mad4b/developer-authority-status",
+    "mad4b/developer-authority-plan",
+    "mad4b/developer-authority-apply",
+    "mad4b/developer-authority-disable",
+    "mad4b/developer-breakglass-authority-plan",
+    "mad4b/developer-breakglass-authority-apply",
+]
+for tool in authority_tools:
+    assert tool in authority, tool
+assert "class-mad4b-scp-developer-authority.php" in servers
+assert "MAD4B_SCP_Developer_Authority::enrollment_tools()" in servers
+assert "mad4b.developer-authority.v1" in authority
+assert "PROVISION MAD4B DEVELOPER AGENT" in authority
+assert "PROVISION MAD4B DEVELOPER BREAKGLASS" in authority
+assert "DISABLE MAD4B DEVELOPER AGENT" in authority
+assert "production_allowed' => false" in authority
+assert "expected_plan_sha256" in authority
+assert "expected_source_commit_sha" in authority
+assert "expected_site_uuid" in authority
+assert "expected_profile_revision" in authority
+assert "expected_profile_digest" in authority
+assert "mad4b_scp_developer_kill_switch" in authority
+assert "get_agent_by_slug" in registry
+assert "mad4b_scp_allow_developer_breakglass_grant_creation" in registry
 
 
 # Developer transport must be first-class but isolated from the operational resource.
@@ -109,4 +141,4 @@ assert "class-mad4b-scp-developer-runtime.php" in plugin
 assert "0.4.0-rc.55" in plugin
 assert "release=0.4.0-rc.55" in runtime_build
 
-print("mad4b.developer-runtime-contract.v2: PASS")
+print("mad4b.developer-runtime-contract.v3: PASS")
