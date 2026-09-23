@@ -69,6 +69,10 @@ assert "mad4b_developer_wp_cli_alias_denied" in developer
 assert "mad4b_developer_wp_cli_escape_denied" in developer
 assert "mad4b_developer_wp_cli_breakglass_required" in developer
 assert "mad4b_developer_package_source_breakglass_required" in developer
+assert "mad4b_developer_package_version_required" in developer
+assert "mad4b_developer_package_overwrite_denied" in developer
+assert "'--version=' . $version" in developer
+assert "array( 'package', 'version', '_mad4b_approval_ticket_id' )" in developer
 assert "WordPress.org-style plugin slug" in developer
 assert "'maxLength' => 191" in developer
 assert "mad4b_developer_wp_cli_code_lifecycle_denied" in developer
@@ -237,4 +241,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v17: PASS")
+print("mad4b.developer-runtime-contract.v18: PASS")
