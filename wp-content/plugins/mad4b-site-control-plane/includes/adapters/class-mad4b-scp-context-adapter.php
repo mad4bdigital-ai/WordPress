@@ -23,6 +23,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'read' => array(
 				'context/status',
 				'context/assets',
+				'context/review-queue',
+				'context/brand-core-coverage',
 				'context/google-drive-status',
 				'context/runtime-readiness',
 				'context/conflicts',
@@ -62,6 +64,20 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 200, 'default' => 100 ),
 				)
 			)
+		);
+		$this->add_ability(
+			'context/review-queue',
+			'Context Human Review Queue',
+			'context_review_queue',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/brand-core-coverage',
+			'Brand Core Context Coverage',
+			'brand_core_coverage',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
 		);
 		$this->add_ability(
 			'context/google-drive-status',
@@ -479,7 +495,19 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
 				'required' => ! empty( $asset['required'] ),
 				'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
+				'quality_mode' => isset( $asset['quality']['mode'] ) ? (string) $asset['quality']['mode'] : '',
+				'quality_confidence' => isset( $asset['quality']['confidence'] ) ? (float) $asset['quality']['confidence'] : null,
+				'quality_provisional' => ! empty( $asset['quality']['provisional'] ),
 				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
+				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed',
+				'reviewed_at' => isset( $asset['reviewed_at'] ) ? (string) $asset['reviewed_at'] : '',
+				'reviewed_content_hash' => isset( $asset['reviewed_content_hash'] ) ? (string) $asset['reviewed_content_hash'] : '',
+				'content_complete' => ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] ),
+				'content_available' => ! empty( $asset['content_available'] ),
+				'content_excerpt' => isset( $asset['content_excerpt'] ) ? (string) $asset['content_excerpt'] : '',
+				'normalization_status' => isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : '',
+				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
+				'classification_confidence' => isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0,
 				'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
 				'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
 				'file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
@@ -490,12 +518,24 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			);
 			if ( count( $items ) >= $limit ) break;
 		}
+		$status = MAD4B_SCP_Context_Authority::status();
 		return array(
-			'contract' => 'mad4b.context-asset-list.v2',
+			'contract' => 'mad4b.context-asset-list.v3',
 			'items' => $items,
 			'count' => count( $items ),
 			'task_scope_bound' => '' !== $task_scope,
+			'registry_revision' => isset( $status['registry_revision'] ) ? (int) $status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision(),
+			'context_fingerprint' => isset( $status['context_fingerprint'] ) ? (string) $status['context_fingerprint'] : MAD4B_SCP_Context_Authority::context_fingerprint(),
+			'authority_manifest_fingerprint' => isset( $status['authority_manifest_fingerprint'] ) ? (string) $status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint(),
 		);
+	}
+
+	public function context_review_queue() {
+		return MAD4B_SCP_Context_Authority::review_queue();
+	}
+
+	public function brand_core_coverage() {
+		return MAD4B_SCP_Context_Authority::brand_core_coverage();
 	}
 
 	public function context_conflicts( $input ) {
