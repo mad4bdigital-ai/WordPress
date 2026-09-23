@@ -95,11 +95,35 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			if ( '' !== $family ) $runtime_only_families[ $family ] = true;
 		}
 		$runtime_only_family_count = count( $runtime_only_families );
+		$zero_touch = isset( $snapshot['zero_touch'] ) && is_array( $snapshot['zero_touch'] ) ? $snapshot['zero_touch'] : array();
+		$zero_touch_package_consistent = ! empty( $zero_touch['package_self_consistent'] );
+		$zero_touch_ready = ! empty( $zero_touch['ready'] ) && ! empty( $zero_touch['repository_evidence_valid'] ) && ! empty( $zero_touch['evidence_integrity_bound'] ) && $zero_touch_package_consistent;
+		$zero_touch_unstable = isset( $zero_touch['unstable_family_count'] ) ? (int) $zero_touch['unstable_family_count'] : 0;
+		$zero_touch_package_ms = isset( $zero_touch['package_integrity_elapsed_ms'] ) ? max( 0, (int) $zero_touch['package_integrity_elapsed_ms'] ) : 0;
+		$zero_touch_package_files = isset( $zero_touch['package_verified_file_count'] ) ? max( 0, (int) $zero_touch['package_verified_file_count'] ) : 0;
+		$zero_touch_runtime_ms = isset( $zero_touch['runtime_scan_elapsed_ms'] ) ? max( 0, (int) $zero_touch['runtime_scan_elapsed_ms'] ) : 0;
+		$zero_touch_runtime_files = isset( $zero_touch['runtime_scan_files_hashed'] ) ? max( 0, (int) $zero_touch['runtime_scan_files_hashed'] ) : 0;
+		$zero_touch_counts = isset( $zero_touch['counts'] ) && is_array( $zero_touch['counts'] ) ? $zero_touch['counts'] : array();
+		$zero_touch_read_candidates = (int) ( isset( $zero_touch_counts['read_contract_candidate'] ) ? $zero_touch_counts['read_contract_candidate'] : 0 ) + (int) ( isset( $zero_touch_counts['redacted_read_contract_candidate'] ) ? $zero_touch_counts['redacted_read_contract_candidate'] : 0 );
+		$zero_touch_exact_review = isset( $zero_touch_counts['contract_evidence_review'] ) ? (int) $zero_touch_counts['contract_evidence_review'] : 0;
+		$zero_touch_alignment = (int) ( isset( $zero_touch_counts['runtime_alignment_required'] ) ? $zero_touch_counts['runtime_alignment_required'] : 0 ) + (int) ( isset( $zero_touch_counts['runtime_alignment_or_behavioral_recertification_required'] ) ? $zero_touch_counts['runtime_alignment_or_behavioral_recertification_required'] : 0 );
+		$zero_touch_semantic = isset( $zero_touch_counts['semantic_attestation_required'] ) ? (int) $zero_touch_counts['semantic_attestation_required'] : 0;
+		$zero_touch_runtime_only = isset( $zero_touch_counts['runtime_contract_evidence_captured'] ) ? (int) $zero_touch_counts['runtime_contract_evidence_captured'] : 0;
 
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Installed', 'value' => isset( $counts['installed'] ) ? (string) $counts['installed'] : '0', 'state' => ! empty( $counts['installed'] ) ? 'complete' : 'pending', 'help' => 'Plugins included in runtime discovery.' ),
 			array( 'label' => 'Adapter covered', 'value' => (string) $supported, 'state' => 'complete', 'help' => 'A governed adapter surface exists. This does not by itself mean functional or execution certification is complete.' ),
 			array( 'label' => 'Runtime-only families', 'value' => (string) $runtime_only_family_count, 'state' => 0 === $runtime_only_family_count ? 'complete' : 'attention', 'help' => 'Known runtime families with read-only identity/status coverage but no packaged repository artifact.' ),
+			array( 'label' => 'Zero-touch evidence', 'value' => $zero_touch_ready ? 'bound' : 'blocked', 'state' => $zero_touch_ready ? 'complete' : 'blocked', 'help' => 'Build-embedded evidence and policy must match provenance, and the installed package manifest/build fingerprint must recompute exactly before runtime decisions are trusted.' ),
+			array( 'label' => 'Package integrity', 'value' => isset( $zero_touch['package_integrity_level'] ) ? (string) $zero_touch['package_integrity_level'] : 'unknown', 'state' => $zero_touch_package_consistent ? 'complete' : 'blocked', 'help' => 'Runtime recomputes the declared package manifest and build fingerprint with bounded read-only hashing. External cryptographic attestation is intentionally reported separately.' ),
+			array( 'label' => 'Integrity verify cost', 'value' => $zero_touch_package_ms . ' ms / ' . $zero_touch_package_files . ' files', 'state' => $zero_touch_package_consistent ? 'complete' : 'blocked', 'help' => 'Observed cost of recomputing package provenance on this read-only snapshot.' ),
+			array( 'label' => 'Runtime scan cost', 'value' => $zero_touch_runtime_ms . ' ms / ' . $zero_touch_runtime_files . ' files', 'state' => 0 === $zero_touch_unstable ? 'complete' : 'attention', 'help' => 'Observed cost of provider tree hashing for this zero-touch snapshot. Budget exhaustion fails closed.' ),
+			array( 'label' => 'Unstable scans', 'value' => (string) $zero_touch_unstable, 'state' => 0 === $zero_touch_unstable ? 'complete' : 'attention', 'help' => 'Provider trees that changed during evidence collection are retried and never classified as stable drift.' ),
+			array( 'label' => 'Read candidates', 'value' => (string) $zero_touch_read_candidates, 'state' => 0 === $zero_touch_read_candidates ? 'pending' : 'attention', 'help' => 'Exact evidence supports bounded read contracts only. This is evidence closure, not write authority.' ),
+			array( 'label' => 'Exact-tree review', 'value' => (string) $zero_touch_exact_review, 'state' => 0 === $zero_touch_exact_review ? 'complete' : 'attention', 'help' => 'Runtime bytes match repository evidence, but semantic scope still needs explicit review.' ),
+			array( 'label' => 'Runtime alignment', 'value' => (string) $zero_touch_alignment, 'state' => 0 === $zero_touch_alignment ? 'complete' : 'attention', 'help' => 'Live runtime does not match the repository/certified identity or still requires composite behavioral recertification.' ),
+			array( 'label' => 'Semantic attestation', 'value' => (string) $zero_touch_semantic, 'state' => 0 === $zero_touch_semantic ? 'complete' : 'attention', 'help' => 'Premium providers remain non-authorizing until explicit semantic review closes.' ),
+			array( 'label' => 'Runtime-only evidence', 'value' => (string) $zero_touch_runtime_only, 'state' => 0 === $zero_touch_runtime_only ? 'complete' : 'attention', 'help' => 'Live identity evidence exists, but no specialized provider contract or mutation authority is inferred.' ),
 			array( 'label' => 'Needs adapter', 'value' => (string) $needs_adapter, 'state' => 0 === $needs_adapter ? 'complete' : 'attention', 'help' => 'No silent fallback to write authority.' ),
 			array( 'label' => 'Needs certification', 'value' => (string) $needs_cert, 'state' => 0 === $needs_cert ? 'complete' : 'attention', 'help' => 'Adapter exists but exact provider proof is missing.' ),
 			array( 'label' => 'Runtime blocked', 'value' => (string) $side_channel, 'state' => 0 === $side_channel ? 'complete' : 'blocked', 'help' => 'Parallel MCP/write-plane risk remains.' ),
@@ -217,7 +241,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			return strcmp( $left_family, $right_family );
 		} );
 
-		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>Source</th><th>State</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Evidence needed</th><th>Safe now</th><th>Blocked scope</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
+		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Family</th><th>Active plugins</th><th>Source</th><th>State</th><th>Zero-touch</th><th>Read</th><th>Write</th><th>Risk</th><th>Reason</th><th>Evidence needed</th><th>Safe now</th><th>Blocked scope</th><th>Blockers</th><th>Next safe action</th></tr></thead><tbody>';
 		foreach ( $groups as $family => $group ) {
 			$item = $group['item']; $f = $group['functional']; $members = array_values( array_unique( $group['members'] ) );
 			$visible = array_slice( $members, 0, 4 ); $member_text = implode( ' · ', $visible );
@@ -228,7 +252,11 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			elseif ( 'repository_artifact_plus_runtime_match' === $runtime_source || $artifact_count > 0 ) $source = 'repository-backed';
 			elseif ( ! empty( $item['adapter_registered'] ) ) $source = 'specialized';
 			else $source = 'unregistered';
+			$zero_touch_decision = isset( $item['zero_touch_decision'] ) && is_array( $item['zero_touch_decision'] ) ? $item['zero_touch_decision'] : array();
+			$zero_touch_state = isset( $zero_touch_decision['state'] ) ? sanitize_key( (string) $zero_touch_decision['state'] ) : '';
+			$zero_touch_reason = isset( $zero_touch_decision['reason'] ) ? sanitize_key( (string) $zero_touch_decision['reason'] ) : '';
 			echo '<tr><td><strong>' . esc_html( $family ) . '</strong></td><td>' . esc_html( $member_text ) . '</td><td><code>' . esc_html( $source ) . '</code></td><td><strong>' . esc_html( $group['state'] ) . '</strong></td>';
+			echo '<td><code>' . esc_html( $zero_touch_state ) . '</code>' . ( '' !== $zero_touch_reason ? '<br><small>' . esc_html( $zero_touch_reason ) . '</small>' : '' ) . '</td>';
 			echo '<td>' . esc_html( isset( $f['read_ability_count'] ) ? (string) $f['read_ability_count'] : '0' ) . '</td><td>' . esc_html( isset( $f['write_ability_count'] ) ? (string) $f['write_ability_count'] : '0' ) . '</td>';
 			echo '<td>' . esc_html( isset( $item['risk'] ) ? $item['risk'] : '' ) . '</td><td><code>' . esc_html( isset( $f['reason'] ) ? $f['reason'] : '' ) . '</code></td>';
 			echo '<td>' . esc_html( ! empty( $f['evidence_requirements'] ) && is_array( $f['evidence_requirements'] ) ? implode( ', ', $f['evidence_requirements'] ) : '' ) . '</td>';
@@ -236,7 +264,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			echo '<td><code>' . esc_html( ! empty( $f['prohibited_until_certified'] ) && is_array( $f['prohibited_until_certified'] ) ? implode( ', ', $f['prohibited_until_certified'] ) : '' ) . '</code></td>';
 			echo '<td><code>' . esc_html( ! empty( $f['blockers'] ) && is_array( $f['blockers'] ) ? implode( ', ', $f['blockers'] ) : '' ) . '</code></td><td>' . esc_html( isset( $f['next_action'] ) ? $f['next_action'] : '' ) . '</td></tr>';
 		}
-		if ( empty( $groups ) ) echo '<tr><td colspan="13">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
+		if ( empty( $groups ) ) echo '<tr><td colspan="14">' . esc_html__( 'No active functional coverage gaps are currently detected.', 'mad4b-site-control-plane' ) . '</td></tr>';
 		echo '</tbody></table></div>';
 	}
 

@@ -44,6 +44,36 @@ $grant_snapshot = static function () use ( $agent ) {
 };
 
 $before = $grant_snapshot();
+
+$checkpoint = MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint();
+if ( empty( $checkpoint['exists'] ) || empty( $checkpoint['status'] ) ) $fail( 'Persisted authority checkpoint is unavailable.' );
+$persisted_before = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, false );
+if ( ! is_array( $persisted_before ) ) $fail( 'Persisted authority option is unavailable before checkpoint test.' );
+
+$finalized = MAD4B_SCP_Staging_Write_Authority::finalize_exact_existing_authority();
+if ( empty( $finalized['ready'] ) || 'ready' !== (string) ( $finalized['state'] ?? '' ) ) $fail( 'Exact existing-authority finalizer did not remain ready: ' . wp_json_encode( $finalized ) );
+if ( ! empty( $finalized['exact_grants_created'] ) || ! empty( $finalized['stale_allow_grants_revoked'] ) || ! empty( $finalized['stale_subjects_disabled'] ) ) {
+	$fail( 'Exact existing-authority finalizer reported forbidden identity/grant mutations.' );
+}
+$after_finalize = $grant_snapshot();
+if ( ! hash_equals( $before['hash'], $after_finalize['hash'] ) || $before['rows'] !== $after_finalize['rows'] ) {
+	$fail( 'Exact existing-authority finalizer mutated mad4b-write grants.' );
+}
+
+$tampered = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
+if ( ! is_array( $tampered ) ) $fail( 'Unable to prepare persisted-authority checkpoint tamper probe.' );
+$tampered['candidate_bound_at'] = '2099-01-01T00:00:00+00:00';
+$tampered['artifact_identity'] = 'mad4b-ci-checkpoint-tamper';
+update_option( MAD4B_SCP_Staging_Write_Authority::OPTION, $tampered, false );
+$restored_checkpoint = MAD4B_SCP_Staging_Write_Authority::restore_persistence_checkpoint( $checkpoint );
+if ( is_wp_error( $restored_checkpoint ) ) $fail( 'Persisted-authority checkpoint restore failed: ' . $restored_checkpoint->get_error_code() );
+$persisted_after_restore = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, false );
+if ( serialize( $persisted_after_restore ) !== serialize( $persisted_before ) ) $fail( 'Persisted-authority checkpoint did not restore the exact pre-probe snapshot.' );
+$after_checkpoint = $grant_snapshot();
+if ( ! hash_equals( $before['hash'], $after_checkpoint['hash'] ) || $before['rows'] !== $after_checkpoint['rows'] ) {
+	$fail( 'Persisted-authority checkpoint round-trip mutated mad4b-write grants.' );
+}
+
 $live = MAD4B_SCP_Live_Truth::current_authority_status();
 if ( empty( $live['ready'] ) || empty( $live['runtime_reconciled'] ) ) {
 	$fail( 'Live Truth did not accept persisted authority on the independent request: ' . wp_json_encode( $live['blockers'] ?? array() ) );

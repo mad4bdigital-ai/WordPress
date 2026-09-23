@@ -11,7 +11,7 @@ $check( class_exists( 'MAD4B_SCP_Adapter_Coverage_Admin_UI' ), 'Adapter Coverage
 $check( class_exists( 'MAD4B_SCP_Repository_Artifact_Catalog' ), 'Repository artifact catalog is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Family_Adapter' ), 'Repository family adapter class is unavailable.' );
 $check( class_exists( 'MAD4B_SCP_Repository_Plugins_Adapter' ), 'Repository inventory adapter class is unavailable.' );
-foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
+foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/functional-gap-runtime-evidence', 'repository-plugins/inventory', 'repository-plugins/get-artifact' ) as $ability_name ) {
 	$check( wp_has_ability( $ability_name ), 'Missing discovery ability: ' . $ability_name );
 	$ability = wp_get_ability( $ability_name );
 	$meta = $ability->get_meta();
@@ -20,6 +20,39 @@ foreach ( array( 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-request
 	$check( empty( $meta['annotations']['destructive'] ), 'Discovery ability is destructive: ' . $ability_name );
 	$check( 'read' === (string) ( $meta['mcp']['surface'] ?? '' ), 'Repository discovery ability escaped mad4b-read: ' . $ability_name );
 }
+
+$zero_touch_ability = wp_get_ability( 'mad4b/functional-gap-runtime-evidence' );
+$zero_touch = $zero_touch_ability->execute();
+$check( ! is_wp_error( $zero_touch ) && 'mad4b.functional-gap-zero-touch.v1' === (string) ( $zero_touch['contract'] ?? '' ), 'Zero-touch functional-gap evidence contract failed.' );
+$check( ! empty( $zero_touch['read_only'] ) && empty( $zero_touch['authority_created'] ) && empty( $zero_touch['mutation_performed'] ) && empty( $zero_touch['remote_request_performed'] ) && empty( $zero_touch['secret_values_returned'] ), 'Zero-touch functional-gap evidence escaped read-only boundary.' );
+$check( 'mad4b.runtime-functional-gap-evidence.v2' === (string) ( $zero_touch['runtime']['contract'] ?? '' ), 'Zero-touch runtime evidence contract drifted.' );
+$check( 'mad4b.functional-gap-promotion-evaluation.v2' === (string) ( $zero_touch['evaluation']['contract'] ?? '' ), 'Zero-touch promotion evaluation contract drifted.' );
+$check( empty( $zero_touch['evaluation']['promotion_authorized'] ), 'Zero-touch evaluator must never authorize promotion by itself.' );
+if ( ! empty( $zero_touch['repository_evidence']['present'] ) ) {
+	$check( ! empty( $zero_touch['repository_evidence']['valid'] ), 'Present build-embedded repository evidence must validate against build provenance.' );
+} else {
+	$check( empty( $zero_touch['evaluation']['ready'] ), 'Source/runtime without build-embedded repository evidence must fail closed.' );
+}
+$initial_zero_touch_identity = (string) ( $zero_touch['snapshot_identity_sha256'] ?? '' );
+$check( 64 === strlen( $initial_zero_touch_identity ), 'Zero-touch snapshot identity was not exposed.' );
+$check( ! empty( $zero_touch['snapshot_fixed_point_stable'] ), 'Zero-touch source-mode snapshot did not reach an identity fixed point.' );
+$check( 1 <= (int) ( $zero_touch['snapshot_fixed_point_attempts'] ?? 0 ) && 2 >= (int) ( $zero_touch['snapshot_fixed_point_attempts'] ?? 0 ), 'Zero-touch fixed-point attempts escaped the bounded retry contract.' );
+$check( empty( $zero_touch['snapshot_census_required'] ), 'Source-mode zero-touch snapshot incorrectly required deep census evidence.' );
+$check( hash_equals( $initial_zero_touch_identity, (string) ( $zero_touch['snapshot_end_identity_sha256'] ?? '' ) ), 'Zero-touch source-mode snapshot start/end identity diverged.' );
+$initial_dynamic_surface = (string) ( $zero_touch['snapshot_end_dynamic_surface_sha256'] ?? '' );
+$check( 64 === strlen( $initial_dynamic_surface ) && ! empty( $zero_touch['snapshot_dynamic_surface_stable'] ), 'Zero-touch dynamic surface fixed point was not exposed.' );
+
+$dynamic_probe_callback = static function () {};
+add_action( 'wp_ajax_bte_zero_touch_dynamic_probe', $dynamic_probe_callback );
+$zero_touch_dynamic = $zero_touch_ability->execute();
+$check( ! is_wp_error( $zero_touch_dynamic ), 'Zero-touch evidence failed after in-memory dynamic surface changed.' );
+$changed_dynamic_surface = (string) ( $zero_touch_dynamic['snapshot_end_dynamic_surface_sha256'] ?? '' );
+$check( 64 === strlen( $changed_dynamic_surface ) && ! hash_equals( $initial_dynamic_surface, $changed_dynamic_surface ), 'Zero-touch cache did not invalidate after dynamic hook state changed.' );
+$check( ! empty( $zero_touch_dynamic['snapshot_dynamic_surface_stable'] ) && ! empty( $zero_touch_dynamic['snapshot_fixed_point_stable'] ), 'Zero-touch dynamic re-evaluation did not reach a stable fixed point.' );
+remove_action( 'wp_ajax_bte_zero_touch_dynamic_probe', $dynamic_probe_callback );
+$zero_touch_dynamic_restored = $zero_touch_ability->execute();
+$restored_dynamic_surface = (string) ( $zero_touch_dynamic_restored['snapshot_end_dynamic_surface_sha256'] ?? '' );
+$check( hash_equals( $initial_dynamic_surface, $restored_dynamic_surface ), 'Zero-touch dynamic surface fingerprint did not return to baseline after in-memory hook removal.' );
 
 $registry = MAD4B_SCP_Adapter_Registry::instance();
 
@@ -71,6 +104,14 @@ $initial = $coverage_ability->execute();
 $check( ! is_wp_error( $initial ) && 'mad4b.plugin-adapter-discovery.v1' === $initial['contract'], 'Initial plugin discovery contract failed.' );
 $check( ! empty( $initial['discovery_only'] ) && empty( $initial['auto_install'] ) && empty( $initial['auto_generate_adapter'] ) && empty( $initial['auto_create_authority'] ), 'Discovery can create authority/code/install plugins.' );
 $check( 'deny' === $initial['unknown_plugin_write_default'], 'Unknown plugin write default is not deny.' );
+$check( isset( $initial['zero_touch_projection'] ) && is_array( $initial['zero_touch_projection'] ), 'Initial coverage did not expose atomic zero-touch projection metadata.' );
+$check( ! empty( $initial['zero_touch_projection']['identity_match'] ), 'Stable initial coverage projection did not preserve runtime identity.' );
+$check( ! empty( $initial['zero_touch_projection']['dynamic_surface_match'] ), 'Stable initial coverage projection did not preserve dynamic decision surface.' );
+$check( 64 === strlen( (string) ( $initial['zero_touch_projection']['snapshot_identity_sha256'] ?? '' ) ), 'Initial projection snapshot identity is missing.' );
+$check( hash_equals( (string) $initial['zero_touch_projection']['snapshot_identity_sha256'], (string) ( $initial['zero_touch_projection']['current_identity_sha256'] ?? '' ) ), 'Initial projection mixed different runtime identities.' );
+$check( empty( $initial['zero_touch_projection']['census_required'] ), 'Source-mode coverage incorrectly required deep census without embedded evidence.' );
+$check( ! empty( $initial['zero_touch_projection']['census_match'] ), 'Source-mode coverage census gate did not remain neutral when deep evidence was unavailable.' );
+$check( empty( $initial['zero_touch_projection']['census_content_rehashed'] ), 'Coverage census unexpectedly re-hashed content.' );
 
 $priority_ids = array();
 foreach ( $initial['priority_external'] as $item ) if ( isset( $item['id'] ) ) $priority_ids[] = $item['id'];
@@ -108,6 +149,15 @@ if ( function_exists( 'wp_clean_plugins_cache' ) ) wp_clean_plugins_cache( true 
 try {
 	$discovered = $coverage_ability->execute();
 	$check( ! is_wp_error( $discovered ), 'Plugin discovery failed with CI fixtures.' );
+	$check( isset( $discovered['zero_touch'] ) && is_array( $discovered['zero_touch'] ), 'Standard plugin coverage did not embed zero-touch summary.' );
+	$check( empty( $discovered['zero_touch']['promotion_authorized'] ), 'Standard plugin coverage projected authorizing zero-touch state.' );
+	$check( 64 === strlen( (string) ( $discovered['zero_touch']['snapshot_identity_sha256'] ?? '' ) ), 'Coverage zero-touch snapshot identity is missing.' );
+	$check( ! hash_equals( $initial_zero_touch_identity, (string) $discovered['zero_touch']['snapshot_identity_sha256'] ), 'Zero-touch request cache did not invalidate after runtime plugin identity changed.' );
+	$check( ! empty( $discovered['zero_touch_projection']['identity_match'] ), 'Stable fixture coverage projection reported an identity mismatch.' );
+	$check( hash_equals( (string) ( $discovered['zero_touch_projection']['snapshot_identity_sha256'] ?? '' ), (string) ( $discovered['zero_touch_projection']['current_identity_sha256'] ?? '' ) ), 'Fixture coverage projection mixed snapshot/current runtime identities.' );
+	$check( (int) ( $discovered['zero_touch_projection']['decision_count'] ?? -1 ) >= 1, 'Stable fixture coverage projection unexpectedly discarded all decisions.' );
+	$check( empty( $discovered['zero_touch_projection']['census_required'] ), 'Source-mode fixture coverage incorrectly enabled deep census guard.' );
+	$check( ! empty( $discovered['zero_touch_projection']['census_match'] ), 'Source-mode fixture census gate did not remain neutral.' );
 	$unknown = null; $risky = null; $menu = null; $runtime_only = null; $lookalike = null;
 	foreach ( $discovered['plugins'] as $item ) {
 		if ( 'ci-unknown-adapter-target/ci-unknown.php' === $item['plugin_file'] ) $unknown = $item;
@@ -137,6 +187,8 @@ try {
 	$check( 'mad4b.runtime-family-read-adapter.v1' === (string) ( $runtime_only['adapter_contract'] ?? '' ), 'Runtime-only plugin item did not expose its adapter contract.' );
 	$check( 'runtime_match_only' === (string) ( $runtime_only['adapter_runtime_source'] ?? '' ), 'Runtime-only plugin item did not expose runtime provenance.' );
 	$check( 0 === (int) ( $runtime_only['repository_artifact_count'] ?? -1 ), 'Runtime-only plugin item falsely reported a repository artifact.' );
+	$check( 'evidence_unavailable' === (string) ( $runtime_only['zero_touch_decision']['state'] ?? '' ), 'Runtime-only fixture did not inherit fail-closed zero-touch decision in source-mode runtime.' );
+	$check( 'evidence_unavailable' === (string) ( $menu['zero_touch_decision']['state'] ?? '' ), 'Repository-backed fixture did not inherit fail-closed zero-touch decision without embedded package evidence.' );
 	$runtime_only_status = $registry->get( 'duplicator' )->status();
 	$check( 'mad4b.runtime-family-read-adapter.v1' === (string) ( $runtime_only_status['contract'] ?? '' ), 'Runtime-only adapter contract drifted.' );
 	$check( 0 === (int) ( $runtime_only_status['repository_artifact_count'] ?? -1 ), 'Runtime-only family fabricated a repository artifact.' );
@@ -151,6 +203,17 @@ try {
 	$check( isset( $discovered['functional_family_states']['unknown-custom-mega-menu-villain'] ), 'Lookalike fixture missing from family-state projection.' );
 	$check( 'adapter_missing' === (string) $discovered['functional_family_states']['unknown-ci-unknown-adapter-target'], 'Unknown fixture family state drifted.' );
 	$check( 'adapter_missing' === (string) $discovered['functional_family_states']['unknown-custom-mega-menu-villain'], 'Lookalike fixture family state drifted.' );
+
+	$zero_touch_after = $zero_touch_ability->execute();
+	$check( ! is_wp_error( $zero_touch_after ), 'Zero-touch evidence failed after runtime identity changed.' );
+	$menu_runtime_rows = (array) ( $zero_touch_after['runtime']['families']['custom-mega-menu'] ?? array() );
+	$menu_runtime_files = wp_list_pluck( $menu_runtime_rows, 'plugin_file' );
+	$check( in_array( 'custom-mega-menu-v49/custom-mega-menu.php', $menu_runtime_files, true ), 'Numeric versioned Custom Mega Menu identity was not captured by zero-touch policy.' );
+	$check( ! in_array( 'custom-mega-menu-villain/custom-mega-menu.php', $menu_runtime_files, true ), 'Versioned-family lookalike leaked into zero-touch Custom Mega Menu identity.' );
+	$check( ! hash_equals( $initial_zero_touch_identity, (string) ( $zero_touch_after['snapshot_identity_sha256'] ?? '' ) ), 'Zero-touch direct ability cache did not invalidate after runtime identity changed.' );
+	$check( ! empty( $zero_touch_after['snapshot_fixed_point_stable'] ), 'Zero-touch direct ability did not reach a new fixed point after runtime identity changed.' );
+	$check( hash_equals( (string) ( $zero_touch_after['snapshot_identity_sha256'] ?? '' ), (string) ( $zero_touch_after['snapshot_end_identity_sha256'] ?? '' ) ), 'Zero-touch direct ability returned a mixed start/end runtime identity.' );
+	$check( 1 <= (int) ( $zero_touch_after['snapshot_fixed_point_attempts'] ?? 0 ) && 2 >= (int) ( $zero_touch_after['snapshot_fixed_point_attempts'] ?? 0 ), 'Zero-touch retry count exceeded the fixed-point bound.' );
 
 	$requests_ability = wp_get_ability( 'mad4b/adapter-support-requests' );
 	$requests_one = $requests_ability->execute();
@@ -175,6 +238,11 @@ try {
 	$check( 'runtime_match_only' === (string) ( $duplicator_discovery['adapter_runtime_source'] ?? '' ), 'Contract discovery lost runtime-only provenance.' );
 	$check( empty( $duplicator_discovery['repository_artifact_backed'] ), 'Contract discovery falsely marked runtime-only family as repository-backed.' );
 	$check( in_array( 'duplicator/duplicator.php', (array) ( $duplicator_discovery['plugin_files'] ?? array() ), true ), 'Contract discovery did not retain exact runtime plugin identity.' );
+	$check( 'evidence_unavailable' === (string) ( $duplicator_discovery['zero_touch_decision']['state'] ?? '' ), 'Contract discovery did not project zero-touch decision.' );
+	$check( isset( $contract_discovery['zero_touch'] ) && empty( $contract_discovery['zero_touch']['promotion_authorized'] ), 'Contract discovery zero-touch summary is missing or authorizing.' );
+	$check( isset( $contract_discovery['evidence_counts'] ) && is_array( $contract_discovery['evidence_counts'] ), 'Contract discovery report did not expose evidence closure counts.' );
+	$check( ! empty( $contract_discovery['evidence_projection_identity_match'] ), 'Contract discovery report did not preserve atomic evidence projection identity.' );
+$check( ! empty( $contract_discovery['evidence_projection_dynamic_surface_match'] ), 'Contract discovery report did not preserve dynamic evidence projection freshness.' );
 	$duplicator_runtime_identity = null;
 	foreach ( (array) ( $duplicator_discovery['runtime_identities'] ?? array() ) as $runtime_identity ) {
 		if ( 'duplicator/duplicator.php' === (string) ( $runtime_identity['plugin_file'] ?? '' ) ) $duplicator_runtime_identity = $runtime_identity;
@@ -182,8 +250,25 @@ try {
 	$check( is_array( $duplicator_runtime_identity ), 'Contract discovery runtime identity record is missing.' );
 	$check( '5.0.3' === (string) ( $duplicator_runtime_identity['plugin_version'] ?? '' ), 'Contract discovery lost exact runtime version.' );
 
+	$functional_ability = wp_get_ability( 'mad4b/provider-functional-coverage' );
+	$functional_report = $functional_ability->execute();
+	$check( ! is_wp_error( $functional_report ) && 'mad4b.provider-functional-coverage.v1' === (string) ( $functional_report['contract'] ?? '' ), 'Functional coverage report failed.' );
+	$check( isset( $functional_report['zero_touch'] ) && empty( $functional_report['zero_touch']['promotion_authorized'] ), 'Functional coverage report did not project non-authorizing zero-touch summary.' );
+	$check( isset( $functional_report['evidence_counts'] ) && is_array( $functional_report['evidence_counts'] ), 'Functional coverage report did not expose evidence closure counts.' );
+	$check( ! empty( $functional_report['evidence_projection_identity_match'] ), 'Functional coverage report did not preserve atomic evidence projection identity.' );
+$check( ! empty( $functional_report['evidence_projection_dynamic_surface_match'] ), 'Functional coverage report did not preserve dynamic evidence projection freshness.' );
+	$check( 64 === strlen( (string) ( $functional_report['evidence_snapshot_identity_sha256'] ?? '' ) ), 'Functional coverage report evidence snapshot identity is missing.' );
+	$check( 64 === strlen( (string) ( $functional_report['evidence_runtime_fingerprint'] ?? '' ) ) || empty( $functional_report['zero_touch']['ready'] ), 'Functional coverage runtime evidence fingerprint is missing for a ready snapshot.' );
+	$check( 64 === strlen( (string) ( $functional_report['evidence_decision_fingerprint'] ?? '' ) ) || empty( $functional_report['zero_touch']['ready'] ), 'Functional coverage decision fingerprint is missing for a ready snapshot.' );
+	$duplicator_functional = null;
+	foreach ( (array) ( $functional_report['items'] ?? array() ) as $functional_item ) {
+		if ( 'duplicator' === (string) ( $functional_item['family'] ?? '' ) ) $duplicator_functional = $functional_item;
+	}
+	$check( is_array( $duplicator_functional ) && 'evidence_unavailable' === (string) ( $duplicator_functional['zero_touch_decision']['state'] ?? '' ), 'Functional coverage item did not project Duplicator zero-touch decision.' );
+
 	$ui_snapshot = MAD4B_SCP_Adapter_Coverage_Admin_UI::snapshot();
 	$check( ! is_wp_error( $ui_snapshot ) && 'mad4b.plugin-adapter-discovery.v1' === $ui_snapshot['contract'], 'Adapter Coverage Admin snapshot failed.' );
+	$check( isset( $ui_snapshot['zero_touch'] ) && empty( $ui_snapshot['zero_touch']['promotion_authorized'] ), 'Adapter Coverage Admin snapshot did not include non-authorizing zero-touch summary.' );
 } finally {
 	update_option( 'active_plugins', $original_active );
 	@unlink( $unknown_dir . '/ci-unknown.php' );
