@@ -799,7 +799,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			foreach ( $authorities as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['authority_class'], $key, false ) . '>' . esc_html( $label ) . '</option>';
 			echo '</select></label>';
 			echo '<label><input type="checkbox" name="required" value="1"' . checked( ! empty( $asset['required'] ), true, false ) . '> ' . esc_html__( 'Required context', 'mad4b-site-control-plane' ) . '</label>';
-			if ( empty( $asset['required'] ) ) echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="required_scope_confirmed" value="1"> ' . esc_html__( 'If I enable Required context, I understand this category becomes a site-wide requirement for Brand Context-enabled Skills.', 'mad4b-site-control-plane' ) . '</label>';
+			echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="required_scope_confirmed" value="1"> ' . esc_html__( 'I confirm any change to Required context or the category of an already-required asset may change site-wide Brand Context requirements.', 'mad4b-site-control-plane' ) . '</label>';
 			$human_quality_override = ! empty( $quality['human_override'] );
 			$automatic_quality_score = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $quality['automatic_score'] ) ? (int) $quality['automatic_score'] : null );
 			echo '<fieldset class="mad4b-context-quality-mode"><legend><strong>' . esc_html__( 'Quality score', 'mad4b-site-control-plane' ) . '</strong></legend>';
