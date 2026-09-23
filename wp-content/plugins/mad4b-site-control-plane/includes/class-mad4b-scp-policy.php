@@ -70,6 +70,16 @@ final class MAD4B_SCP_Policy {
 		return (bool) apply_filters( 'mad4b_mcp_developer_read_permission', true, get_current_user_id(), $agent, $identity );
 	}
 
+	public static function can_developer_runtime_status() {
+		if ( ! self::can_developer_read() ) return false;
+		$identity = MAD4B_SCP_Identity_Context::current();
+		if ( is_wp_error( $identity ) ) return false;
+		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $agent ) ) return false;
+		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-developer', 'mad4b/developer-runtime-status', 'core' );
+		return ! is_wp_error( $grant );
+	}
+
 	public static function can_developer() {
 		return self::can_developer_read() && self::can_mutate();
 	}
