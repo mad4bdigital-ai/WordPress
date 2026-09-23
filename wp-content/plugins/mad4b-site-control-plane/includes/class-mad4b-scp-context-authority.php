@@ -1040,10 +1040,6 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! isset( $categories[ $category ] ) ) return new WP_Error( 'mad4b_context_category_invalid', 'Context category is invalid.' );
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
 	
-			$asset['category'] = $category;
-			$asset['classification_confidence'] = 1.0;
-			$asset['classification_source'] = 'human';
-			$asset['authority_class'] = $authority;
 			$requested_required = ! empty( $input['required'] );
 			$required_scope_escalated = ! $previous_required && $requested_required;
 			$required_scope_shifted = $previous_required && $requested_required && ! hash_equals( $previous_category, $category );
@@ -1063,6 +1059,10 @@ final class MAD4B_SCP_Context_Authority {
 				)
 			);
 			$governance_changed = ! hash_equals( $previous_category, $category ) || ! hash_equals( $previous_authority, $authority ) || $previous_required !== $requested_required;
+			$asset['category'] = $category;
+			$asset['classification_confidence'] = 1.0;
+			$asset['classification_source'] = 'human';
+			$asset['authority_class'] = $authority;
 			$asset['required'] = $requested_required;
 			$asset['priority'] = 'brand_authority' === $authority || 'policy_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
 			$quality_input = isset( $input['quality_score'] ) ? trim( (string) $input['quality_score'] ) : '';
