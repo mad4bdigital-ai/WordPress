@@ -105,6 +105,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		$public_leaks = array();
 		$provider_contract_blockers = array();
 		$provider_contract_advisories = array();
+		$provider_capability_health = array();
 		$provider_version_drift = array();
 		$required_provider_missing = array();
 		$mutation_blocked_adapters = array();
@@ -167,19 +168,50 @@ final class MAD4B_SCP_Adapter_Registry {
 			if ( empty( $violations ) ) continue;
 			$adapter_id = isset( $provider_adapter_ids[ $provider ] ) ? $provider_adapter_ids[ $provider ] : '';
 			$provider_active = 'mcp_adapter' === (string) $provider || ( '' !== $adapter_id && isset( $active_adapter_ids[ $adapter_id ] ) );
-			if ( $provider_active ) {
+			$capability_assessment = array();
+			$exposed_read_blockers = array();
+			$eligible_writes = array();
+			if ( $provider_active && 'mcp_adapter' !== (string) $provider && '' !== $adapter_id && class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ) {
+				$adapter_object = $this->get( $adapter_id );
+				if ( is_object( $adapter_object ) ) {
+					$capability_assessment = MAD4B_SCP_Provider_Compatibility_Certification::assess_provider( $provider, $adapter_object );
+					foreach ( isset( $capability_assessment['capabilities'] ) && is_array( $capability_assessment['capabilities'] ) ? $capability_assessment['capabilities'] : array() as $capability_id => $capability ) {
+						if ( empty( $capability['surface_exposed'] ) ) continue;
+						$risk = isset( $capability['risk'] ) ? (string) $capability['risk'] : 'unknown';
+						if ( 'read' === $risk && empty( $capability['read_eligible'] ) ) $exposed_read_blockers[] = sanitize_key( (string) $capability_id );
+						if ( 'read' !== $risk && ! empty( $capability['write_eligible'] ) ) $eligible_writes[] = sanitize_key( (string) $capability_id );
+					}
+				}
+			}
+			$provider_capability_health[ $provider ] = array(
+				'adapter_id' => $adapter_id,
+				'active' => $provider_active,
+				'compatibility_state' => isset( $capability_assessment['compatibility_state'] ) ? (string) $capability_assessment['compatibility_state'] : '',
+				'exposed_read_blockers' => array_values( array_unique( $exposed_read_blockers ) ),
+				'eligible_writes_under_drift' => array_values( array_unique( $eligible_writes ) ),
+			);
+			$drift_is_advisory = $provider_active
+				&& 'mcp_adapter' !== (string) $provider
+				&& ! empty( $capability_assessment )
+				&& empty( $exposed_read_blockers )
+				&& empty( $eligible_writes )
+				&& in_array( (string) ( $capability_assessment['compatibility_state'] ?? '' ), array( 'compatible_unattested', 'certified' ), true );
+			if ( $provider_active && ! $drift_is_advisory ) {
 				$provider_contract_blockers[ $provider ] = $violations;
-				if ( in_array( 'version_drift', $violations, true ) ) $provider_version_drift[] = $provider;
 				if ( isset( $status['status'] ) && 'unavailable' === $status['status'] ) $required_provider_missing[] = $provider;
 			} else {
 				$provider_contract_advisories[ $provider ] = array(
 					'violations' => $violations,
 					'adapter_id' => $adapter_id,
-					'active' => false,
+					'active' => $provider_active,
 					'blocking' => false,
-					'reason' => 'provider_not_active_in_current_runtime',
+					'reason' => $provider_active ? 'active_provider_drift_read_compatible_writes_fail_closed' : 'provider_not_active_in_current_runtime',
+					'compatibility_state' => isset( $capability_assessment['compatibility_state'] ) ? (string) $capability_assessment['compatibility_state'] : '',
+					'exposed_read_blockers' => array_values( array_unique( $exposed_read_blockers ) ),
+					'eligible_writes_under_drift' => array_values( array_unique( $eligible_writes ) ),
 				);
 			}
+			if ( in_array( 'version_drift', $violations, true ) ) $provider_version_drift[] = $provider;
 		}
 
 		$server_status = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::registration_status() : array();
@@ -240,7 +272,9 @@ final class MAD4B_SCP_Adapter_Registry {
 			'provider_certification_ok' => $provider_contract_ok,
 			'provider_contract_blockers' => $provider_contract_blockers,
 			'provider_contract_advisories' => $provider_contract_advisories,
+			'provider_capability_health' => $provider_capability_health,
 			'provider_inactive_drift_is_blocking' => false,
+			'provider_active_drift_is_blocking_when_reads_compatible_and_writes_fail_closed' => false,
 			'provider_version_drift' => array_values( array_unique( $provider_version_drift ) ),
 			'required_providers' => $required_providers,
 			'required_provider_missing' => array_values( array_unique( $required_provider_missing ) ),
