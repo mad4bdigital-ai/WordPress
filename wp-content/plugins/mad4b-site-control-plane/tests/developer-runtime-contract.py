@@ -129,6 +129,13 @@ assert "force_fail_closed" in authority
 assert "mad4b/developer-authority-rollback" in authority
 assert "completion_audit_failed" in authority
 assert "rollback_incomplete" in authority
+assert "strict_grant_inventory" in authority
+assert "unexpected_allow_grant:" in authority
+assert "non_exact_environment_allow:" in authority
+assert "duplicate_exact_allow:" in authority
+assert "effective_deny:" in authority
+assert "wildcard_grant:" in authority
+assert "'ready' => $ready" in authority
 assert "get_agent_by_slug" in registry
 assert "Existing subject binding could not be re-enabled." in registry
 assert "array( 'status' => 'enabled', 'label' => sanitize_text_field( $label )" in registry
@@ -187,4 +194,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v8: PASS")
+print("mad4b.developer-runtime-contract.v9: PASS")
