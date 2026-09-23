@@ -6,6 +6,9 @@ on:
       - '.github/workflows/mad4b-plugin-package.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
   workflow_dispatch:
 
 permissions:
@@ -19,6 +22,8 @@ jobs:
   package:
     name: Build installable plugin ZIP
     runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
@@ -73,6 +78,44 @@ jobs:
             exit 1
           fi
 
+      - name: Generate exact functional-gap repository evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          out='wp-content/plugins/mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json'
+          python3 tools/capture-functional-gap-contract-evidence.py "$out"
+          python3 - "$out" <<'PY'
+          import hashlib, json, os, sys
+          from pathlib import Path
+          data=json.load(open(sys.argv[1],encoding='utf-8'))
+          policy_path=Path('wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json')
+          policy_raw=policy_path.read_bytes()
+          policy=json.loads(policy_raw)
+          expected={
+              family for family,row in policy.get('families',{}).items()
+              if row.get('repository_evidence') is True
+          }
+          if data.get('contract')!='mad4b.functional-gap-contract-evidence.v1':
+              raise SystemExit('functional-gap evidence contract mismatch')
+          if data.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
+              raise SystemExit('functional-gap evidence exact source mismatch')
+          if data.get('policy_contract')!=policy.get('contract'):
+              raise SystemExit('functional-gap evidence policy contract mismatch')
+          if data.get('policy_sha256')!=hashlib.sha256(policy_raw).hexdigest():
+              raise SystemExit('functional-gap evidence policy SHA mismatch')
+          if set(data.get('families',{}))!=expected:
+              raise SystemExit('functional-gap evidence family set mismatch')
+          for family,row in data['families'].items():
+              if row.get('promotion_authorized') is not False or row.get('evidence_only') is not True:
+                  raise SystemExit(f'{family}: generated evidence became authorizing')
+              for artifact in row.get('artifacts',[]):
+                  tree=artifact.get('package_tree') or {}
+                  if len(tree.get('tree_sha256',''))!=64 or int(tree.get('file_count',0))<1:
+                      raise SystemExit(f'{family}: generated package tree evidence missing')
+          print('build-embedded functional-gap evidence: PASS')
+          PY
+
+
       - name: Build WordPress installable ZIP
         shell: bash
         run: |
@@ -95,6 +138,25 @@ jobs:
           sha256sum dist/mad4b-site-control-plane.zip > dist/mad4b-site-control-plane.zip.sha256
           printf '%s\n' '${{ github.event.pull_request.head.sha || github.sha }}' > dist/SOURCE_HEAD.txt
           printf '%s\n' "$embedded_sha" > dist/MCP_ADAPTER_SHA256.txt
+
+      - name: Verify embedded zero-touch functional-gap evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip='dist/mad4b-site-control-plane.zip'
+          test -f "$zip"
+          unzip -p "$zip" 'mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json' > /tmp/mad4b-functional-gap-package-evidence.json
+          unzip -p "$zip" 'mad4b-site-control-plane/config/functional-gap-policy.json' > /tmp/mad4b-functional-gap-package-policy.json
+          python3 - /tmp/mad4b-functional-gap-package-evidence.json /tmp/mad4b-functional-gap-package-policy.json <<'PY'
+          import hashlib,json,os,sys
+          evidence=json.load(open(sys.argv[1],encoding='utf-8'))
+          policy_raw=open(sys.argv[2],'rb').read()
+          policy=json.loads(policy_raw)
+          assert evidence.get('source_commit_sha')==os.environ['SOURCE_SHA']
+          assert evidence.get('policy_sha256')==hashlib.sha256(policy_raw).hexdigest()
+          assert policy.get('promotion_authorized') is False
+          print('plugin package zero-touch evidence: PASS')
+          PY
 
       - name: Upload packaging validation evidence only
         uses: actions/upload-artifact@v4
