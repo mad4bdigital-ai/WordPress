@@ -261,25 +261,9 @@ final class MAD4B_SCP_Developer_Authority {
 
 		$server_id = $breakglass ? 'mad4b-developer-breakglass' : 'mad4b-developer';
 		$tools = $breakglass ? self::breakglass_tools() : self::normal_tools();
-		$rows = array();
-		foreach ( $tools as $ability ) {
-			$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( $server_id, $ability ) : null;
-			$present = false;
-			$error = '';
-			if ( null === $provider ) {
-				$error = 'ability_not_mounted';
-				$blockers[] = 'unmounted:' . $ability;
-			} elseif ( is_array( $agent ) ) {
-				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability, $provider );
-				if ( is_array( $grant ) && $environment === (string) $grant['environment'] && 'allow' === (string) $grant['effect'] ) $present = true;
-				elseif ( is_wp_error( $grant ) && 'mad4b_nhi_grant_missing' !== $grant->get_error_code() ) {
-					$error = $grant->get_error_code();
-					$blockers[] = $error . ':' . $ability;
-				}
-			}
-			$rows[] = array( 'ability' => $ability, 'provider' => null === $provider ? '' : (string) $provider, 'exact_grant_present' => $present, 'error' => $error );
-		}
-		usort( $rows, static function ( $a, $b ) { return strcmp( $a['ability'], $b['ability'] ); } );
+		$inventory = self::strict_grant_inventory( $agent, $server_id, $tools );
+		$rows = $inventory['rows'];
+		$blockers = array_merge( $blockers, $inventory['blockers'] );
 
 		if ( $breakglass ) {
 			if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) $blockers[] = 'global_breakglass_gate_disabled';
@@ -651,33 +635,135 @@ final class MAD4B_SCP_Developer_Authority {
 		return class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array();
 	}
 
-	private static function grant_status( $agent, $server_id, array $tools ) {
+	private static function strict_grant_inventory( $agent, $server_id, array $tools ) {
 		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : 'unknown';
-		$exact = 0; $missing = array(); $unexpected = array();
-		if ( ! is_array( $agent ) ) {
-			$missing = $tools;
-		} else {
-			foreach ( $tools as $ability ) {
-				$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( $server_id, $ability ) : null;
-				if ( null === $provider ) { $missing[] = $ability; continue; }
-				$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], $server_id, $ability, $provider );
-				if ( is_array( $grant ) && 'allow' === (string) $grant['effect'] && $environment === (string) $grant['environment'] ) ++$exact;
-				else $missing[] = $ability;
+		$server_id = sanitize_key( (string) $server_id );
+		$desired = array();
+		$rows_by_key = array();
+		$blockers = array();
+		$missing = array();
+		$unexpected = array();
+		$non_exact = array();
+		$duplicates = array();
+		$denies = array();
+		$wildcards = array();
+		$exact = 0;
+
+		foreach ( $tools as $ability ) {
+			$ability = (string) $ability;
+			$provider = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::provider_for_ability( $server_id, $ability ) : null;
+			$key = $ability . "\0" . ( null === $provider ? '' : (string) $provider );
+			$rows_by_key[ $key ] = array(
+				'ability' => $ability,
+				'provider' => null === $provider ? '' : (string) $provider,
+				'exact_grant_present' => false,
+				'grant_state' => null === $provider ? 'unmounted' : 'missing_exact_grant',
+				'error' => null === $provider ? 'ability_not_mounted' : '',
+			);
+			if ( null === $provider ) {
+				$blockers[] = 'unmounted:' . $ability;
+				$missing[] = $ability;
+				continue;
 			}
-			$desired = array_fill_keys( $tools, true );
-			foreach ( MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], $server_id ) as $grant ) {
-				if ( 'allow' !== (string) $grant['effect'] ) continue;
-				if ( ! isset( $desired[ (string) $grant['ability_name'] ] ) ) $unexpected[] = (string) $grant['ability_name'];
+			$desired[ $key ] = array( 'ability' => $ability, 'provider' => (string) $provider );
+		}
+
+		$allow_current = array();
+		$deny_effective = array();
+		$non_exact_by_key = array();
+		if ( is_array( $agent ) ) {
+			$grants = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], $server_id );
+			foreach ( is_array( $grants ) ? $grants : array() as $grant ) {
+				if ( ! is_array( $grant ) ) continue;
+				$ability = isset( $grant['ability_name'] ) ? (string) $grant['ability_name'] : '';
+				$provider = isset( $grant['provider'] ) ? sanitize_key( (string) $grant['provider'] ) : '';
+				$grant_environment = isset( $grant['environment'] ) ? sanitize_key( (string) $grant['environment'] ) : '';
+				$effect = isset( $grant['effect'] ) ? sanitize_key( (string) $grant['effect'] ) : '';
+				$key = $ability . "\0" . $provider;
+				$descriptor = $ability . '@' . $provider . '@' . $grant_environment;
+
+				if ( preg_match( '/[*?\[\]]/', $ability ) ) {
+					$wildcards[] = $descriptor;
+					$blockers[] = 'wildcard_grant:' . $descriptor;
+				}
+				if ( 'allow' === $effect ) {
+					if ( ! isset( $desired[ $key ] ) ) {
+						$unexpected[] = $descriptor;
+						$blockers[] = 'unexpected_allow_grant:' . $descriptor;
+						continue;
+					}
+					if ( $environment !== $grant_environment ) {
+						$non_exact[] = $descriptor;
+						if ( ! isset( $non_exact_by_key[ $key ] ) ) $non_exact_by_key[ $key ] = array();
+						$non_exact_by_key[ $key ][] = $grant;
+						$blockers[] = 'non_exact_environment_allow:' . $descriptor;
+						continue;
+					}
+					if ( ! isset( $allow_current[ $key ] ) ) $allow_current[ $key ] = array();
+					$allow_current[ $key ][] = $grant;
+					continue;
+				}
+				if ( 'deny' === $effect && isset( $desired[ $key ] ) && in_array( $grant_environment, array( $environment, 'all' ), true ) ) {
+					if ( ! isset( $deny_effective[ $key ] ) ) $deny_effective[ $key ] = array();
+					$deny_effective[ $key ][] = $grant;
+					$denies[] = $descriptor;
+					$blockers[] = 'effective_deny:' . $descriptor;
+				}
 			}
 		}
+
+		foreach ( $desired as $key => $item ) {
+			$count = isset( $allow_current[ $key ] ) ? count( $allow_current[ $key ] ) : 0;
+			$has_deny = ! empty( $deny_effective[ $key ] );
+			$has_non_exact = ! empty( $non_exact_by_key[ $key ] );
+			if ( $count > 1 ) {
+				$duplicates[] = $item['ability'] . '@' . $item['provider'] . '@' . $environment . ':' . $count;
+				$blockers[] = 'duplicate_exact_allow:' . $item['ability'] . '@' . $item['provider'];
+			}
+			if ( $has_deny ) {
+				$rows_by_key[ $key ]['grant_state'] = 'effective_deny';
+				$rows_by_key[ $key ]['error'] = 'mad4b_nhi_grant_denied';
+			} elseif ( $has_non_exact ) {
+				$rows_by_key[ $key ]['grant_state'] = 'non_exact_environment_allow';
+				$rows_by_key[ $key ]['error'] = 'mad4b_developer_grant_environment_not_exact';
+			} elseif ( 1 === $count ) {
+				$rows_by_key[ $key ]['grant_state'] = 'exact_current_environment';
+				$rows_by_key[ $key ]['exact_grant_present'] = true;
+				++$exact;
+			} elseif ( $count > 1 ) {
+				$rows_by_key[ $key ]['grant_state'] = 'duplicate_exact_allow';
+				$rows_by_key[ $key ]['error'] = 'mad4b_developer_duplicate_exact_grant';
+			} else {
+				$missing[] = $item['ability'];
+			}
+		}
+
+		$rows = array_values( $rows_by_key );
+		usort( $rows, static function ( $a, $b ) { return strcmp( $a['ability'], $b['ability'] ); } );
 		return array(
 			'server_id' => $server_id,
+			'environment' => $environment,
 			'tool_count' => count( $tools ),
 			'exact_grant_count' => $exact,
+			'rows' => $rows,
 			'missing' => array_values( array_unique( $missing ) ),
 			'unexpected_allow_grants' => array_values( array_unique( $unexpected ) ),
-			'ready' => is_array( $agent ) && count( $tools ) === $exact && empty( $missing ) && empty( $unexpected ),
+			'non_exact_environment_allow_grants' => array_values( array_unique( $non_exact ) ),
+			'duplicate_exact_allow_grants' => array_values( array_unique( $duplicates ) ),
+			'effective_deny_grants' => array_values( array_unique( $denies ) ),
+			'wildcard_grants' => array_values( array_unique( $wildcards ) ),
+			'blockers' => array_values( array_unique( $blockers ) ),
 		);
+	}
+
+	private static function grant_status( $agent, $server_id, array $tools ) {
+		$inventory = self::strict_grant_inventory( $agent, $server_id, $tools );
+		$ready = is_array( $agent )
+			&& 'enabled' === (string) $agent['status']
+			&& (int) $inventory['tool_count'] === (int) $inventory['exact_grant_count']
+			&& empty( $inventory['missing'] )
+			&& empty( $inventory['blockers'] );
+		return array_merge( $inventory, array( 'ready' => $ready ) );
 	}
 
 	private static function provenance() {
