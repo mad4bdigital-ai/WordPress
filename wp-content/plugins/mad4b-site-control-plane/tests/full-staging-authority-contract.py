@@ -28,6 +28,9 @@ required = [
     "MAD4B_SCP_Staging_Write_Candidate_Binding::bind",
     "mad4b/full-staging-authority-fail-closed",
     "mad4b_scp_developer_kill_switch",
+    "generic_raw_sql_breakglass_gate_enabled",
+    "MAD4B_MCP_BREAKGLASS_ENABLED",
+    "mad4b_full_authority_raw_sql_breakglass_denied",
 ]
 for marker in required:
     assert marker in full, marker
@@ -37,6 +40,9 @@ breakglass_apply = full.index("MAD4B_SCP_Developer_Authority::breakglass_apply")
 write_reconcile = full.index("MAD4B_SCP_Staging_Write_Authority::reconcile")
 candidate_bind = full.index("MAD4B_SCP_Staging_Write_Candidate_Binding::bind")
 assert developer_apply < breakglass_apply < write_reconcile < candidate_bind
+assert "'requested_authorities' => array( 'write', 'developer', 'developer_breakglass' )" in full
+assert "'generic_raw_sql_breakglass_requested' => false" in full
+assert "'mad4b/database-raw-query'" not in full
 
 assert "class-mad4b-scp-full-staging-authority.php" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
