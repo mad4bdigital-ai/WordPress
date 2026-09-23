@@ -29,6 +29,8 @@ required = {
     'profile admin owner required': "site_profile_admin_owner_required",
     'primary owner selector': "primary_owner_user_id",
     'explicit disable respected': "explicit_local_oauth_disabled",
+    'explicit resource bridge disable respected': "explicit_resource_oauth_disabled",
+    'resource oauth enabled': "define( 'MAD4B_MCP_OAUTH_ENABLED', true )",
     'explicit local production disable respected': "explicit_local_oauth_production_disabled",
     'explicit resource production disable respected': "explicit_resource_oauth_production_disabled",
     'explicit non-local mode respected': "explicit_non_local_oauth_mode",
