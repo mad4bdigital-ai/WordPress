@@ -59,7 +59,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::PAGE_SLUG,
 			array( __CLASS__, 'render_page' )
 		);
-		if ( self::can_review() ) {
+		if ( current_user_can( 'manage_options' ) ) {
 			add_submenu_page(
 				'mad4b-control-plane',
 				__( 'MAD4B Context Review', 'mad4b-site-control-plane' ),
@@ -67,6 +67,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 				'read',
 				self::REVIEW_PAGE_SLUG,
 				array( __CLASS__, 'render_review_page' )
+			);
+		} elseif ( current_user_can( self::REVIEW_CAPABILITY ) ) {
+			add_menu_page(
+				__( 'MAD4B Context Review', 'mad4b-site-control-plane' ),
+				__( 'MAD4B Context Review', 'mad4b-site-control-plane' ),
+				'read',
+				self::REVIEW_PAGE_SLUG,
+				array( __CLASS__, 'render_review_page' ),
+				'dashicons-visibility',
+				59
 			);
 		}
 	}
