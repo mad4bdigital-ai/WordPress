@@ -78,6 +78,6 @@ assert "mad4b-developer-breakglass" in servers
 
 assert "0.4.0-rc.57" in plugin
 assert "release=0.4.0-rc.57" in runtime_build
-assert "request-locally memoized in rc.56" in readme
+assert "request-local memoization was introduced in rc.56 and is retained in rc.57" in readme
 
 print("mad4b.chatgpt-catalog-performance.v4: PASS")
