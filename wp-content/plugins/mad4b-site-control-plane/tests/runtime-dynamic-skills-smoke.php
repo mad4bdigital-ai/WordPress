@@ -199,9 +199,15 @@ $expected_core_writes = array(
 $write_tools = MAD4B_SCP_Staging_Write_Authority::write_tools();
 foreach ( $expected_core_writes as $ability ) if ( ! in_array( $ability, $write_tools, true ) ) $fail( 'Expected core write action is missing from mad4b-write: ' . $ability );
 if ( in_array( 'mad4b/database-raw-query', $write_tools, true ) ) $fail( 'Breakglass raw query leaked into mad4b-write.' );
+$stable_external_writes = MAD4B_SCP_Servers::external_write_tools();
+$direct_chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
+foreach ( array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ) as $transport_ability ) {
+	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $transport_ability ) ) $fail( 'Governed write transport is not mounted on ChatGPT: ' . $transport_ability );
+}
 foreach ( $write_tools as $ability ) {
 	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability ) ) $fail( 'Write action is not mounted on mad4b-write: ' . $ability );
-	if ( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability ) ) $fail( 'Write action is not exposed through the same ChatGPT Plugin transport: ' . $ability );
+	if ( ! in_array( $ability, $stable_external_writes, true ) ) $fail( 'Runtime-eligible write is missing from the stable logical write catalog: ' . $ability );
+	if ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability ) || in_array( $ability, $direct_chatgpt_tools, true ) ) $fail( 'Underlying write schema leaked directly into ChatGPT tools/list: ' . $ability );
 	$write_ability = wp_get_ability( $ability );
 	$write_meta = is_object( $write_ability ) && method_exists( $write_ability, 'get_meta' ) ? $write_ability->get_meta() : array();
 	if ( ! isset( $write_meta['annotations']['readonly'] ) || false !== $write_meta['annotations']['readonly'] ) $fail( 'Write inventory contains an ability without readonly=false: ' . $ability );
