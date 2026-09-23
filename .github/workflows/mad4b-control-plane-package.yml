@@ -490,6 +490,7 @@ jobs:
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-rest-compatibility.php'
