@@ -17,6 +17,10 @@ final class MAD4B_SCP_Developer_Runtime {
 	const DEFAULT_TIMEOUT = 30;
 	const MAX_TIMEOUT = 120;
 	const MAX_OUTPUT_BYTES = 262144;
+	const DEFAULT_MEMORY_LIMIT_BYTES = 536870912;
+	const MAX_MEMORY_LIMIT_BYTES = 1073741824;
+	const MAX_OPEN_FILES = 256;
+	const MAX_PROCESSES = 64;
 
 	private static $booted = false;
 
@@ -281,7 +285,14 @@ final class MAD4B_SCP_Developer_Runtime {
 			'network_default_deny' => true,
 			'network_per_job_opt_in_required' => true,
 			'network_global_gate_enabled' => defined( 'MAD4B_MCP_DEVELOPER_NETWORK_ENABLED' ) && true === constant( 'MAD4B_MCP_DEVELOPER_NETWORK_ENABLED' ),
-			'os_network_namespace_isolation' => false,
+			'network_isolation_backend' => self::network_sandbox_type(),
+			'no_network_execution_available' => '' !== self::network_sandbox_binary(),
+			'network_enforcement' => 'os_sandbox_or_explicit_global_plus_per_job_opt_in',
+			'resource_limit_backend' => '' !== self::prlimit_binary() ? 'prlimit' : '',
+			'resource_limits_enforced' => '' !== self::prlimit_binary(),
+			'default_memory_limit_bytes' => self::DEFAULT_MEMORY_LIMIT_BYTES,
+			'max_open_files' => self::MAX_OPEN_FILES,
+			'max_processes' => self::MAX_PROCESSES,
 			'non_root_verified' => function_exists( 'posix_geteuid' ) ? 0 !== (int) posix_geteuid() : null,
 			'exact_runtime_binding_required' => true,
 			'secret_redaction_enabled' => true,
@@ -422,6 +433,7 @@ final class MAD4B_SCP_Developer_Runtime {
 		if ( ! self::developer_flag_enabled() ) return new WP_Error( 'mad4b_developer_disabled', 'Developer Plane is disabled.' );
 		if ( ! self::direct_execution_enabled() ) return new WP_Error( 'mad4b_developer_direct_execution_disabled', 'Direct developer execution backend is disabled.' );
 		if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
+		if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Developer execution requires the prlimit resource-limiter backend.' );
 		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
 		if ( $breakglass && ! self::breakglass_flag_enabled() ) return new WP_Error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass is disabled.' );
 		$binding = self::runtime_binding_gate( is_array( $input ) ? $input : array() );
@@ -491,6 +503,65 @@ final class MAD4B_SCP_Developer_Runtime {
 		$candidates = array( '/bin/bash', '/bin/sh' );
 		foreach ( $candidates as $candidate ) if ( is_file( $candidate ) && is_executable( $candidate ) ) return $candidate;
 		return '';
+	}
+
+	private static function prlimit_binary() {
+		$candidates = array();
+		if ( defined( 'MAD4B_MCP_DEVELOPER_PRLIMIT_BIN' ) ) $candidates[] = (string) constant( 'MAD4B_MCP_DEVELOPER_PRLIMIT_BIN' );
+		$candidates = array_merge( $candidates, array( '/usr/bin/prlimit', '/bin/prlimit' ) );
+		foreach ( $candidates as $candidate ) {
+			$candidate = trim( (string) $candidate );
+			if ( '' !== $candidate && is_file( $candidate ) && is_executable( $candidate ) ) return $candidate;
+		}
+		return '';
+	}
+
+	private static function network_sandbox_binary() {
+		$candidates = array();
+		if ( defined( 'MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN' ) ) $candidates[] = (string) constant( 'MAD4B_MCP_DEVELOPER_NETWORK_SANDBOX_BIN' );
+		$candidates = array_merge( $candidates, array( '/usr/bin/bwrap', '/bin/bwrap', '/usr/bin/unshare', '/bin/unshare' ) );
+		foreach ( $candidates as $candidate ) {
+			$candidate = trim( (string) $candidate );
+			if ( '' !== $candidate && is_file( $candidate ) && is_executable( $candidate ) ) return $candidate;
+		}
+		return '';
+	}
+
+	private static function network_sandbox_type() {
+		$binary = self::network_sandbox_binary();
+		if ( '' === $binary ) return '';
+		$name = strtolower( basename( $binary ) );
+		if ( 'bwrap' === $name ) return 'bubblewrap';
+		if ( 'unshare' === $name ) return 'unshare-net';
+		return 'configured';
+	}
+
+	private static function bounded_execution_argv( array $argv, $cwd, $timeout, $network_authorized ) {
+		$prlimit = self::prlimit_binary();
+		if ( '' === $prlimit ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Developer execution requires prlimit.' );
+
+		$wrapped = array(
+			$prlimit,
+			'--as=' . (string) self::DEFAULT_MEMORY_LIMIT_BYTES . ':' . (string) self::DEFAULT_MEMORY_LIMIT_BYTES,
+			'--cpu=' . (string) max( 1, (int) $timeout + 1 ) . ':' . (string) max( 1, (int) $timeout + 1 ),
+			'--nofile=' . (string) self::MAX_OPEN_FILES . ':' . (string) self::MAX_OPEN_FILES,
+			'--nproc=' . (string) self::MAX_PROCESSES . ':' . (string) self::MAX_PROCESSES,
+			'--',
+		);
+
+		if ( ! $network_authorized ) {
+			$sandbox = self::network_sandbox_binary();
+			if ( '' === $sandbox ) return new WP_Error( 'mad4b_developer_network_isolation_unavailable', 'No-network Developer execution requires an OS network sandbox backend.' );
+			$type = self::network_sandbox_type();
+			if ( 'bubblewrap' === $type ) {
+				$wrapped = array_merge( $wrapped, array( $sandbox, '--unshare-net', '--die-with-parent', '--bind', '/', '/', '--chdir', (string) $cwd, '--' ) );
+			} elseif ( 'unshare-net' === $type ) {
+				$wrapped = array_merge( $wrapped, array( $sandbox, '--net', '--fork', '--' ) );
+			} else {
+				return new WP_Error( 'mad4b_developer_network_sandbox_unknown', 'Configured network sandbox backend is not a certified MAD4B backend.' );
+			}
+		}
+		return array_merge( $wrapped, array_values( array_map( 'strval', $argv ) ) );
 	}
 
 	private static function normal_shell_guard( $command, $network_authorized = false ) {
@@ -583,13 +654,16 @@ final class MAD4B_SCP_Developer_Runtime {
 		$timeout = max( 1, min( self::MAX_TIMEOUT, $timeout ) );
 		$started = microtime( true );
 		$started_at = gmdate( 'c' );
+		$network_authorized = self::network_authorized( is_array( $input ) ? $input : array() );
+		$bounded_argv = self::bounded_execution_argv( $argv, $cwd, $timeout, $network_authorized );
+		if ( is_wp_error( $bounded_argv ) ) return $bounded_argv;
 		$descriptor = array(
 			0 => array( 'pipe', 'r' ),
 			1 => array( 'pipe', 'w' ),
 			2 => array( 'pipe', 'w' ),
 		);
 		$env = self::sanitized_env();
-		$process = @proc_open( $argv, $descriptor, $pipes, $cwd, $env, array( 'bypass_shell' => true ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$process = @proc_open( $bounded_argv, $descriptor, $pipes, $cwd, $env, array( 'bypass_shell' => true ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( ! is_resource( $process ) ) return new WP_Error( 'mad4b_developer_process_start_failed', 'Developer subprocess could not be started.' );
 		fclose( $pipes[0] );
 		stream_set_blocking( $pipes[1], false );
@@ -632,6 +706,9 @@ final class MAD4B_SCP_Developer_Runtime {
 			'breakglass' => (bool) $breakglass,
 			'production_allowed' => false,
 			'command_digest' => self::argv_digest( $argv ),
+			'resource_limit_backend' => 'prlimit',
+			'network_authorized' => (bool) $network_authorized,
+			'network_sandbox' => $network_authorized ? 'none_explicitly_authorized' : self::network_sandbox_type(),
 			'exit_code' => $exit,
 			'timed_out' => $timed_out,
 			'timeout_seconds' => $timeout,
