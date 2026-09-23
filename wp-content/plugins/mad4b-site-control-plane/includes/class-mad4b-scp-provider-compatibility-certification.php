@@ -479,14 +479,12 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$installed_artifact_present = ! empty( $artifact['installed_version'] );
 		if ( ! $available ) {
 			$compatibility_state = $installed_artifact_present ? 'adapter_runtime_unavailable' : 'unavailable';
+		} elseif ( ! empty( $exposed_incompatibilities ) ) {
+			$compatibility_state = ! empty( $exposed_compatible ) ? 'partially_compatible' : 'breaking_contract_change';
 		} elseif ( $exact_certified ) {
 			$compatibility_state = 'certified';
-		} elseif ( empty( $exposed_incompatibilities ) ) {
-			$compatibility_state = 'compatible_unattested';
-		} elseif ( ! empty( $exposed_compatible ) ) {
-			$compatibility_state = 'partially_compatible';
 		} else {
-			$compatibility_state = 'breaking_contract_change';
+			$compatibility_state = 'compatible_unattested';
 		}
 		$structural_fingerprint = self::stable_digest( array_map( static function ( $item ) {
 			return array(
