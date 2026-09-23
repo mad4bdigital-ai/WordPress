@@ -140,6 +140,8 @@ Network-enabled jobs require both:
 
 Package installation therefore requires explicit network authority.
 
+Normal package installation is install-only and cannot activate the package. Activation must use the separate governed plugin activation surface, so package retrieval and code activation remain distinct approvals.
+
 Runtime status reports backend presence only; it does not claim kernel-level enforcement until an execution actually starts successfully.
 
 ## Filesystem policy
