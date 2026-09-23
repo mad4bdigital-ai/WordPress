@@ -360,6 +360,17 @@ mad4b_review_assert( in_array( 'optional_context_contains_unavailable_assets', $
 mad4b_review_assert( 1 === (int) $ready_status['optional_unavailable_asset_count'], 'Exactly one optional unavailable asset must be reported.', $ready_status );
 mad4b_review_assert( 0 === (int) $ready_status['legacy_unbound_review_asset_count'], 'Ready required Context must have no legacy unbound approvals.', $ready_status );
 
+$review_queue = MAD4B_SCP_Context_Authority::review_queue();
+mad4b_review_assert( 'mad4b.context-review-queue.v1' === $review_queue['contract'], 'Review queue must expose the bounded read-only contract.', $review_queue );
+mad4b_review_assert( 1 === (int) $review_queue['counts']['approved_exact'], 'Review queue must count the exact approved Brand asset.', $review_queue );
+mad4b_review_assert( 0 === (int) $review_queue['counts']['legacy_unbound'], 'Review queue must not report legacy-unbound approvals after exact review.', $review_queue );
+
+$brand_core = MAD4B_SCP_Context_Authority::brand_core_coverage();
+mad4b_review_assert( 'mad4b.brand-core-context-coverage.v1' === $brand_core['contract'], 'Brand Core diagnostic must expose its read-only contract.', $brand_core );
+mad4b_review_assert( ! empty( $brand_core['coverage']['tone_of_voice']['ready'] ), 'Exact approved Tone of Voice must satisfy its Brand Core set.', $brand_core );
+mad4b_review_assert( in_array( 'brand_strategy', $brand_core['missing_required_context_sets'], true ), 'Brand Strategy must remain explicitly missing in this fixture.', $brand_core );
+mad4b_review_assert( in_array( 'editorial_guidelines', $brand_core['missing_required_context_sets'], true ), 'Editorial Guidelines must remain explicitly missing in this fixture.', $brand_core );
+
 $before_failed_review_asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
 $before_failed_review_revision = MAD4B_SCP_Context_Authority::registry_revision();
 MAD4B_SCP_Audit::$fail_append = true;
