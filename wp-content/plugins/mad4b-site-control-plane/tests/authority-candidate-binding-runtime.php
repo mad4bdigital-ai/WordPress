@@ -3,8 +3,9 @@
  * Standalone runtime proof for exact package candidate binding.
  *
  * This deliberately avoids loading WordPress. It exercises the hot-path
- * candidate binding contract with a minimal option store and a synthetic
- * package provenance manifest.
+ * candidate-binding predicate with a minimal option store and proves that
+ * the mutation primitive cannot be invoked directly without audited context.
+ * Governed mutation success is covered by staging-write-candidate-binding-runtime.php.
  */
 
 define( 'ABSPATH', __DIR__ . '/' );
@@ -96,8 +97,15 @@ $ok( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'Packaged authority becam
 $wrong = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $source_b, $build_b );
 $ok( is_wp_error( $wrong ) && 'mad4b_write_authority_candidate_mismatch' === $wrong->get_error_code(), 'Wrong package candidate was not rejected.' );
 
-$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $source_a, $build_a );
-$ok( ! is_wp_error( $bound ), 'Exact package candidate binding failed.' );
+$direct = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $source_a, $build_a );
+$ok( is_wp_error( $direct ) && 'mad4b_candidate_binding_audit_context_required' === $direct->get_error_code(), 'Direct exact candidate binding bypassed the mandatory audited operation context.' );
+$persisted = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
+$persisted['candidate_binding_contract'] = MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BINDING_CONTRACT;
+$persisted['source_commit_sha'] = $source_a;
+$persisted['build_fingerprint'] = $build_a;
+$persisted['package_manifest_digest'] = $manifest_digest;
+$persisted['artifact_identity'] = 'mad4b-site-control-plane-general-distribution-kit-' . $source_a;
+update_option( MAD4B_SCP_Staging_Write_Authority::OPTION, $persisted, false );
 $binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 $ok( ! empty( $binding['match'] ), 'Exact package candidate did not match after binding.' );
 $ok( MAD4B_SCP_Staging_Write_Authority::effective(), 'Exact bound package authority is not effective.' );
@@ -112,7 +120,14 @@ $ok( ! empty( $binding['required'] ) && empty( $binding['match'] ), 'Same-versio
 $ok( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'Stale candidate retained effective write authority after same-version redeploy.' );
 
 $rebound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $source_b, $build_b );
-$ok( ! is_wp_error( $rebound ), 'Same-inventory candidate rebind failed.' );
+$ok( is_wp_error( $rebound ) && 'mad4b_candidate_binding_audit_context_required' === $rebound->get_error_code(), 'Same-inventory direct rebind bypassed mandatory audit context.' );
+$persisted = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
+$persisted['candidate_binding_contract'] = MAD4B_SCP_Staging_Write_Authority::CANDIDATE_BINDING_CONTRACT;
+$persisted['source_commit_sha'] = $source_b;
+$persisted['build_fingerprint'] = $build_b;
+$persisted['package_manifest_digest'] = $manifest_digest;
+$persisted['artifact_identity'] = 'mad4b-site-control-plane-general-distribution-kit-' . $source_b;
+update_option( MAD4B_SCP_Staging_Write_Authority::OPTION, $persisted, false );
 $binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 $ok( ! empty( $binding['match'] ), 'Rebound candidate does not match current package.' );
 $ok( MAD4B_SCP_Staging_Write_Authority::effective(), 'Authority did not become effective after exact candidate rebind.' );
@@ -127,4 +142,4 @@ $ok( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'Authority remained effec
 @unlink( $tmp . '/MAD4B-BUILD-PROVENANCE.json' );
 @rmdir( $tmp );
 
-echo "mad4b.governed-write-authority-candidate-binding.v1: PASS\n";
+echo "mad4b.governed-write-authority-candidate-binding.v2: PASS\n";
