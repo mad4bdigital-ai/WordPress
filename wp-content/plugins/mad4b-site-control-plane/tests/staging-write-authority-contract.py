@@ -74,7 +74,7 @@ for marker in [
     "'breakglass_auto_enable' => false",
     "'all_remote_writes_require_exact_approval' => false",
     "'normal_remote_writes_require_exact_approval' => true",
-    "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'",
+    "exact_approval_with_bounded_standing_exceptions",
     "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, $ai_ability )",
     "public static function approval_policy_projection( $candidate_bootstrap_exception_active = null )",
     "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
