@@ -250,7 +250,7 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "$meta_write_transport = array( 'mad4b/write-execute' )",
-    "return self::provider_for_ability( 'mad4b-write', $ability_name )",
+    "self::provider_for_ability( 'mad4b-write', $ability_name )",
     "'mad4b/write-authority-status'",
     "'mad4b/write-runtime-certification'",
     "'mad4b/rest-compatibility-status'",
