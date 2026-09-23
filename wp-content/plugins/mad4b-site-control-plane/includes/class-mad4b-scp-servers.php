@@ -15,6 +15,11 @@ MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
 final class MAD4B_SCP_Servers {
 	private static $registrations = array();
 	private static $adapter_write_projection_cache = null;
+	private static $registered_adapter_write_candidates_cache = null;
+	private static $write_tools_cache = null;
+	private static $external_write_tools_cache = null;
+	private static $chatgpt_tools_cache = null;
+	private static $provider_for_ability_cache = array();
 	private static $external_attestation_projection_active = false;
 
 	public static function expected_server_ids() {
@@ -65,6 +70,7 @@ final class MAD4B_SCP_Servers {
 	}
 
 	private static function registered_adapter_write_candidates() {
+		if ( is_array( self::$registered_adapter_write_candidates_cache ) ) return self::$registered_adapter_write_candidates_cache;
 		$result = array();
 		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
@@ -87,6 +93,7 @@ final class MAD4B_SCP_Servers {
 			}
 		}
 		ksort( $result, SORT_STRING );
+		self::$registered_adapter_write_candidates_cache = $result;
 		return $result;
 	}
 
@@ -95,6 +102,7 @@ final class MAD4B_SCP_Servers {
 	 * Provider certification and adapter-native capability checks are hard mount gates.
 	 */
 	public static function write_tools() {
+		if ( is_array( self::$write_tools_cache ) ) return self::$write_tools_cache;
 		$candidates = self::core_write_candidates();
 		// AI Agent review is a stable catalog candidate but becomes runtime-write eligible
 		// only after an administrator explicitly enables the bounded Staging delegation.
@@ -108,7 +116,8 @@ final class MAD4B_SCP_Servers {
 			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
 		}
 		sort( $write, SORT_STRING );
-		return array_values( array_unique( $write ) );
+		self::$write_tools_cache = array_values( array_unique( $write ) );
+		return self::$write_tools_cache;
 	}
 
 	/**
@@ -119,6 +128,7 @@ final class MAD4B_SCP_Servers {
 	 * explicit standing delegation when that bounded policy is active.
 	 */
 	public static function external_write_tools() {
+		if ( is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;
 		$candidates = self::core_write_candidates();
 		$candidates = array_merge( $candidates, array_keys( self::registered_adapter_write_candidates() ) );
 		$write = array();
@@ -126,7 +136,8 @@ final class MAD4B_SCP_Servers {
 			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
 		}
 		sort( $write, SORT_STRING );
-		return array_values( array_unique( array_diff( $write, array( 'mad4b/database-raw-query' ) ) ) );
+		self::$external_write_tools_cache = array_values( array_unique( array_diff( $write, array( 'mad4b/database-raw-query' ) ) ) );
+		return self::$external_write_tools_cache;
 	}
 
 	public static function is_external_write_candidate( $ability_name ) {
@@ -313,6 +324,7 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_tools() {
+		if ( is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$adapter_candidates = array();
 		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
@@ -341,7 +353,8 @@ final class MAD4B_SCP_Servers {
 				$tools = array_merge( $tools, self::write_tools() );
 				$tools = array_merge( $tools, array_values( array_diff( self::external_write_tools(), self::write_tools() ) ) );
 			}
-			return array_values( array_unique( $tools ) );
+			self::$chatgpt_tools_cache = array_values( array_unique( $tools ) );
+			return self::$chatgpt_tools_cache;
 		}
 
 		$enrollment_candidates = self::core_tools( 'mad4b-enrollment' );
@@ -388,7 +401,8 @@ final class MAD4B_SCP_Servers {
 		}
 		$tools = array_values( array_unique( $tools ) );
 		sort( $tools, SORT_STRING );
-		return $tools;
+		self::$chatgpt_tools_cache = $tools;
+		return self::$chatgpt_tools_cache;
 	}
 
 	private static function surface_for_server( $server_id ) {
@@ -411,22 +425,25 @@ final class MAD4B_SCP_Servers {
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
-		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return null;
+		$cache_key = $server_id . "\0" . $ability_name;
+		if ( array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];
+		$remember = static function ( $value ) use ( $cache_key ) { self::$provider_for_ability_cache[ $cache_key ] = $value; return $value; };
+		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return $remember( null );
 		if ( 'mad4b-write' === $server_id ) {
-			if ( ! in_array( $ability_name, self::write_tools(), true ) ) return null;
-			if ( in_array( $ability_name, self::core_write_candidates(), true ) ) return 'core';
+			if ( ! in_array( $ability_name, self::write_tools(), true ) ) return $remember( null );
+			if ( in_array( $ability_name, self::core_write_candidates(), true ) ) return $remember( 'core' );
 			$candidates = self::registered_adapter_write_candidates();
-			return isset( $candidates[ $ability_name ] ) ? $candidates[ $ability_name ] : null;
+			return $remember( isset( $candidates[ $ability_name ] ) ? $candidates[ $ability_name ] : null );
 		}
 		if ( 'mad4b-chatgpt' === $server_id ) {
-			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return null;
+			if ( ! in_array( $ability_name, self::chatgpt_tools(), true ) ) return $remember( null );
 			if ( self::is_external_write_candidate( $ability_name ) ) {
-				if ( null !== self::provider_for_ability( 'mad4b-write', $ability_name ) ) return self::provider_for_ability( 'mad4b-write', $ability_name );
-				return self::provider_for_external_write_candidate( $ability_name );
+				if ( null !== self::provider_for_ability( 'mad4b-write', $ability_name ) ) return $remember( self::provider_for_ability( 'mad4b-write', $ability_name ) );
+				return $remember( self::provider_for_external_write_candidate( $ability_name ) );
 			}
 			if ( self::chatgpt_unified_catalog_enabled() ) {
 				foreach ( array( 'mad4b-read', 'mad4b-enrollment', 'mad4b-content', 'mad4b-admin' ) as $core_server ) {
-					if ( in_array( $ability_name, self::core_tools( $core_server ), true ) ) return 'core';
+					if ( in_array( $ability_name, self::core_tools( $core_server ), true ) ) return $remember( 'core' );
 				}
 				if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
 					$registry = MAD4B_SCP_Adapter_Registry::instance();
@@ -435,22 +452,22 @@ final class MAD4B_SCP_Servers {
 						$map = $adapter->ability_names();
 						foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface ) {
 							if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
-								return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
+								return $remember( method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() ) );
 							}
 						}
 					}
 				}
 			}
 		}
-		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return 'core';
+		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return $remember( 'core' );
 		$surface = self::surface_for_server( $server_id );
-		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
+		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $remember( null );
 		$registry = MAD4B_SCP_Adapter_Registry::instance(); $registry->register_defaults();
 		foreach ( $registry->all() as $adapter ) {
 			$map = $adapter->ability_names();
-			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
+			if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) return $remember( method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() ) );
 		}
-		return null;
+		return $remember( null );
 	}
 
 	public static function registration_status() {
