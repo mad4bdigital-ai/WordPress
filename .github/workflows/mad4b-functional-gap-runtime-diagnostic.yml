@@ -85,17 +85,17 @@ jobs:
             exit 1
           fi
 
-          count="$(grep -o "mad4b/runtime-functional-gap-diagnostic" "$servers" | wc -l | tr -d ' ')"
-          if [ "$count" -lt 2 ]; then
-            echo 'Functional gap diagnostic must be exposed on both read and unified ChatGPT catalogs.' >&2
-            exit 1
-          fi
+          grep -Fq "mad4b/runtime-functional-gap-diagnostic" "$servers"
+          grep -Fq "mad4b/code-snippets-rest-bootstrap-diagnostic" "$servers"
+          grep -Fq "public static function chatgpt_full_catalog_candidates()" "$servers"
+          grep -Fq "self::core_tools( 'mad4b-read' )" "$servers"
+          grep -Fq "'mad4b/tool-discover'" "$servers"
+          grep -Fq "'mad4b/tool-info'" "$servers"
+          grep -Fq "'mad4b/read-execute'" "$servers"
 
-          snippet_count="$(grep -o "mad4b/code-snippets-rest-bootstrap-diagnostic" "$servers" | wc -l | tr -d ' ')"
-          if [ "$snippet_count" -lt 2 ]; then
-            echo 'Code Snippets diagnostic must be exposed on both read and unified ChatGPT catalogs.' >&2
-            exit 1
-          fi
+          # These diagnostics remain part of the governed read universe, but
+          # their schemas are intentionally not required to be direct tools.
+          # ChatGPT reaches them through the bounded readonly dispatcher.
 
           if grep -Eq 'wp_remote_|curl_|fsockopen|wpdb->|database-raw-query|grant_ability|authorize_mutation|wp_insert_post|wp_update_post|file_put_contents|fwrite\(|fopen\(' "$diag"; then
             echo 'Functional gap runtime diagnostic widened beyond bounded read-only plugin-tree evidence.' >&2
