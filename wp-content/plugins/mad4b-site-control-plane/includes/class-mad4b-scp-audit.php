@@ -248,9 +248,9 @@ final class MAD4B_SCP_Audit {
 
 
 	/**
-	 * Bounded read-only lookup for Context Human Review evidence.
+	 * Bounded read-only lookup for Context Review evidence.
 	 *
-	 * Only the exact Human Review event type is queryable. Review-note text is not
+	 * Only the exact Human and delegated AI review event types are queryable. Review-note text is not
 	 * returned through this MCP-facing diagnostic; presence and SHA-256 are enough
 	 * to prove rationale existed without widening the read surface.
 	 */
@@ -261,16 +261,18 @@ final class MAD4B_SCP_Audit {
 		$event_id = isset( $selectors['event_id'] ) ? strtolower( trim( (string) $selectors['event_id'] ) ) : '';
 		$asset_id = isset( $selectors['asset_id'] ) ? strtolower( trim( (string) $selectors['asset_id'] ) ) : '';
 		$decision = isset( $selectors['decision'] ) ? sanitize_key( (string) $selectors['decision'] ) : '';
+		$actor_type = isset( $selectors['actor_type'] ) ? sanitize_key( (string) $selectors['actor_type'] ) : '';
 		if ( '' !== $request_id && 1 !== preg_match( '/^[A-Za-z0-9._:-]{8,100}$/', $request_id ) ) return new WP_Error( 'mad4b_context_review_audit_request_id_invalid', 'Context review audit request_id is invalid.' );
 		if ( '' !== $event_id && 1 !== preg_match( '/^[a-f0-9-]{36}$/', $event_id ) ) return new WP_Error( 'mad4b_context_review_audit_event_id_invalid', 'Context review audit event_id is invalid.' );
 		if ( '' !== $asset_id && 1 !== preg_match( '/^[a-f0-9]{64}$/', $asset_id ) ) return new WP_Error( 'mad4b_context_review_audit_asset_id_invalid', 'Context review audit asset_id is invalid.' );
 		if ( '' !== $decision && ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_audit_decision_invalid', 'Context review audit decision is invalid.' );
+		if ( '' !== $actor_type && ! in_array( $actor_type, array( 'wp_admin', 'ai_agent' ), true ) ) return new WP_Error( 'mad4b_context_review_audit_actor_type_invalid', 'Context review audit actor_type is invalid.' );
 
 		$status = self::storage_status();
 		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_context_review_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
 		$t = MAD4B_SCP_Schema::tables();
-		$where = array( 'chain_name = %s', 'ability = %s' );
-		$args = array( self::CHAIN, 'mad4b/context-asset-review' );
+		$where = array( 'chain_name = %s', '( ability = %s OR ability = %s )' );
+		$args = array( self::CHAIN, 'mad4b/context-asset-review', 'mad4b/context-asset-ai-review' );
 		if ( '' !== $request_id ) {
 			$where[] = 'request_id = %s';
 			$args[] = $request_id;
@@ -286,6 +288,10 @@ final class MAD4B_SCP_Audit {
 		if ( '' !== $decision ) {
 			$where[] = 'summary_json LIKE %s';
 			$args[] = '%' . $wpdb->esc_like( '"decision":"' . $decision . '"' ) . '%';
+		}
+		if ( '' !== $actor_type ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"actor_type":"' . $actor_type . '"' ) . '%';
 		}
 		$args[] = $limit;
 		$sql = "SELECT * FROM {$t['audit_events']} WHERE " . implode( ' AND ', $where ) . ' ORDER BY sequence DESC LIMIT %d';
@@ -305,10 +311,10 @@ final class MAD4B_SCP_Audit {
 			$events[] = $entry;
 		}
 		return array(
-			'contract' => 'mad4b.context-human-review-audit.v1',
+			'contract' => 'mad4b.context-review-audit.v2',
 			'read_only' => true,
 			'mutation_performed' => false,
-			'bounded_event_types' => array( 'mad4b/context-asset-review' ),
+			'bounded_event_types' => array( 'mad4b/context-asset-review', 'mad4b/context-asset-ai-review' ),
 			'chain' => self::CHAIN,
 			'chain_valid' => self::verify_chain(),
 			'head_consistent' => ! empty( $status['head_consistent'] ),
