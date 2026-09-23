@@ -342,7 +342,7 @@ final class MAD4B_SCP_Developer_Runtime {
 	}
 
 	public static function filesystem( $input ) {
-		$gate = self::runtime_gate( false, $input );
+		$gate = self::runtime_gate( false, $input, false );
 		if ( is_wp_error( $gate ) ) return $gate;
 		$action = isset( $input['action'] ) ? sanitize_key( (string) $input['action'] ) : '';
 		$root = isset( $input['root'] ) ? sanitize_key( (string) $input['root'] ) : '';
@@ -426,14 +426,16 @@ final class MAD4B_SCP_Developer_Runtime {
 		return self::execute( 'mad4b/developer-breakglass-wp-eval', array( $wp, '--path=' . ABSPATH, 'eval', $code ), $input, true, true );
 	}
 
-	private static function runtime_gate( $breakglass, $input = array() ) {
+	private static function runtime_gate( $breakglass, $input = array(), $needs_process_backend = true ) {
 		$environment = self::environment();
 		if ( 'production' === $environment ) return new WP_Error( 'mad4b_developer_production_denied', 'Developer execution is never authorized in Production.' );
 		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return new WP_Error( 'mad4b_developer_environment_denied', 'Developer execution requires an explicit non-Production environment.' );
 		if ( ! self::developer_flag_enabled() ) return new WP_Error( 'mad4b_developer_disabled', 'Developer Plane is disabled.' );
 		if ( ! self::direct_execution_enabled() ) return new WP_Error( 'mad4b_developer_direct_execution_disabled', 'Direct developer execution backend is disabled.' );
-		if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
-		if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Developer execution requires the prlimit resource-limiter backend.' );
+		if ( $needs_process_backend ) {
+			if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
+			if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Developer execution requires the prlimit resource-limiter backend.' );
+		}
 		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
 		if ( $breakglass && ! self::breakglass_flag_enabled() ) return new WP_Error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass is disabled.' );
 		$binding = self::runtime_binding_gate( is_array( $input ) ? $input : array() );
