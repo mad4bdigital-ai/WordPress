@@ -236,6 +236,92 @@ jobs:
           done
           curl -fsS "$MAD4B_BROWSER_BASE_URL/wp-login.php" >/dev/null
 
+          # Exercise the real HTTP route that ChatGPT Refresh uses. This is
+          # intentionally separate from rest_do_request() and WP-CLI stdio so
+          # route-local server materialization and response-path observers are
+          # included in the latency measurement.
+          CHATGPT_TOKEN="$(php /tmp/wp-cli.phar eval '
+          MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
+          $mint = new ReflectionMethod( "MAD4B_SCP_Local_OAuth_Server", "mint_access_token" );
+          $mint->setAccessible( true );
+          $token = $mint->invoke( null, "https://chatgpt.com/oauth/client.json", 1, MAD4B_SCP_Local_OAuth_Server::resource_identifier(), array( "mad4b:read" ) );
+          if ( is_wp_error( $token ) ) throw new RuntimeException( $token->get_error_code() . ":" . $token->get_error_message() );
+          echo $token;
+          ' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          test -n "$CHATGPT_TOKEN"
+
+          MCP_URL="$MAD4B_BROWSER_BASE_URL/wp-json/mcp/mad4b-chatgpt"
+          INIT_TIME="$(curl --silent --show-error --fail-with-body \
+            --connect-timeout 2 --max-time 8 \
+            -D /tmp/mad4b-http-init.headers \
+            -o /tmp/mad4b-http-init.body \
+            -w '%{time_total}' \
+            -X POST "$MCP_URL" \
+            -H "Authorization: Bearer $CHATGPT_TOKEN" \
+            -H 'Accept: application/json, text/event-stream' \
+            -H 'Content-Type: application/json' \
+            -H 'MCP-Protocol-Version: 2025-11-25' \
+            --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
+          SESSION_ID="$(awk 'BEGIN{IGNORECASE=1} /^Mcp-Session-Id:/ {gsub(/\r/,""); print $2}' /tmp/mad4b-http-init.headers | tail -n1)"
+          test -n "$SESSION_ID"
+
+          TOOLS_TIME="$(curl --silent --show-error --fail-with-body \
+            --connect-timeout 2 --max-time 8 \
+            -D /tmp/mad4b-http-tools.headers \
+            -o /tmp/mad4b-http-tools.body \
+            -w '%{time_total}' \
+            -X POST "$MCP_URL" \
+            -H "Authorization: Bearer $CHATGPT_TOKEN" \
+            -H "Mcp-Session-Id: $SESSION_ID" \
+            -H 'Accept: application/json, text/event-stream' \
+            -H 'Content-Type: application/json' \
+            -H 'MCP-Protocol-Version: 2025-11-25' \
+            --data '{"jsonrpc":"2.0","id":902,"method":"tools/list","params":{}}')"
+
+          export INIT_TIME TOOLS_TIME
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          def decode(path):
+              raw = Path(path).read_text(encoding='utf-8', errors='replace').strip()
+              if raw.startswith('data:'):
+                  chunks = []
+                  for line in raw.splitlines():
+                      if line.startswith('data:'):
+                          chunks.append(line[5:].strip())
+                  raw = ''.join(chunks)
+              return json.loads(raw)
+
+          init = decode('/tmp/mad4b-http-init.body')
+          tools = decode('/tmp/mad4b-http-tools.body')
+          init_s = float(os.environ['INIT_TIME'])
+          tools_s = float(os.environ['TOOLS_TIME'])
+          if init_s > 5.0:
+              raise SystemExit(f'HTTP MCP initialize exceeded 5s hotpath budget: {init_s:.3f}s')
+          if tools_s > 5.0:
+              raise SystemExit(f'HTTP MCP tools/list exceeded 5s hotpath budget: {tools_s:.3f}s')
+          if init.get('error') or not isinstance(init.get('result'), dict):
+              raise SystemExit(f'HTTP MCP initialize failed: {init!r}')
+          inventory = tools.get('result', {}).get('tools', [])
+          if tools.get('error') or not isinstance(inventory, list) or not inventory:
+              raise SystemExit(f'HTTP MCP tools/list failed: {tools!r}')
+          payload_bytes = Path('/tmp/mad4b-http-tools.body').stat().st_size
+          if payload_bytes > 131072:
+              raise SystemExit(f'HTTP MCP tools/list payload exceeded 128 KiB: {payload_bytes}')
+          if len(inventory) > 48:
+              raise SystemExit(f'HTTP MCP tools/list exceeded 48 tools: {len(inventory)}')
+          print(json.dumps({
+              'contract': 'mad4b.chatgpt-refresh-http-hotpath.v1',
+              'initialize_seconds': init_s,
+              'tools_list_seconds': tools_s,
+              'tool_count': len(inventory),
+              'tools_payload_bytes': payload_bytes,
+              'status': 'PASS',
+          }, indent=2))
+          PY
+          unset CHATGPT_TOKEN
+
           rm -rf /tmp/mad4b-playwright
           mkdir -p /tmp/mad4b-playwright
           cp "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/oauth-live-authority-browser-e2e.mjs" /tmp/mad4b-playwright/test.mjs
