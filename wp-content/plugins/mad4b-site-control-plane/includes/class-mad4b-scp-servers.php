@@ -16,7 +16,6 @@ final class MAD4B_SCP_Servers {
 	private static $registrations = array();
 	private static $adapter_write_projection_cache = null;
 	private static $registered_adapter_write_candidates_cache = null;
-	private static $write_tools_cache = null;
 	private static $external_write_tools_cache = null;
 	private static $chatgpt_tools_cache = null;
 	private static $provider_for_ability_cache = array();
@@ -102,7 +101,6 @@ final class MAD4B_SCP_Servers {
 	 * Provider certification and adapter-native capability checks are hard mount gates.
 	 */
 	public static function write_tools() {
-		if ( is_array( self::$write_tools_cache ) ) return self::$write_tools_cache;
 		$candidates = self::core_write_candidates();
 		// AI Agent review is a stable catalog candidate but becomes runtime-write eligible
 		// only after an administrator explicitly enables the bounded Staging delegation.
@@ -116,8 +114,7 @@ final class MAD4B_SCP_Servers {
 			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
 		}
 		sort( $write, SORT_STRING );
-		self::$write_tools_cache = array_values( array_unique( $write ) );
-		return self::$write_tools_cache;
+		return array_values( array_unique( $write ) );
 	}
 
 	/**
@@ -426,8 +423,12 @@ final class MAD4B_SCP_Servers {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
 		$cache_key = $server_id . "\0" . $ability_name;
-		if ( array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];
-		$remember = static function ( $value ) use ( $cache_key ) { self::$provider_for_ability_cache[ $cache_key ] = $value; return $value; };
+		$dynamic_write_resolution = 'mad4b-write' === $server_id || self::is_external_write_candidate( $ability_name );
+		if ( ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];
+		$remember = static function ( $value ) use ( $cache_key, $dynamic_write_resolution ) {
+			if ( ! $dynamic_write_resolution ) self::$provider_for_ability_cache[ $cache_key ] = $value;
+			return $value;
+		};
 		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return $remember( null );
 		if ( 'mad4b-write' === $server_id ) {
 			if ( ! in_array( $ability_name, self::write_tools(), true ) ) return $remember( null );
