@@ -514,6 +514,8 @@ require(adapter, "'context/review-queue'", "read-only Context review queue abili
 require(adapter, "'context/brand-core-coverage'", "read-only Brand Core coverage ability")
 require(adapter, "mad4b.context-asset-list.v3", "Context asset observability v3")
 require(adapter, "reviewed_content_hash", "Context asset exact review observability")
+require(adapter, "review_binding_exact", "Context asset exact review binding observability")
+require(authority, "legacy_unbound", "legacy approval binding backlog observability")
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
