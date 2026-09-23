@@ -68,6 +68,9 @@ assert "WP_CLI_DISABLE_AUTO_CHECK_UPDATE" in developer
 assert "mad4b_developer_wp_cli_alias_denied" in developer
 assert "mad4b_developer_wp_cli_escape_denied" in developer
 assert "mad4b_developer_wp_cli_breakglass_required" in developer
+assert "mad4b_developer_package_source_breakglass_required" in developer
+assert "WordPress.org-style plugin slug" in developer
+assert "'maxLength' => 191" in developer
 assert "mad4b_developer_wp_cli_code_lifecycle_denied" in developer
 for family in ["'option'", "'user'", "'role'", "'super-admin'", "'application-password'", "'site'", "'network'", "'scaffold'"]:
     assert family in developer, family
@@ -234,4 +237,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v16: PASS")
+print("mad4b.developer-runtime-contract.v17: PASS")
