@@ -28,7 +28,7 @@ MAD4B isolates governed capabilities across dedicated MCP server IDs:
 
 The Developer Plane is default-off and is never projected into `mad4b-chatgpt` or `mad4b-write`. Mutating Developer jobs require an exact configured Developer Agent, exact server/ability grant, current source/site/environment binding, one-time approval, budget, append-only audit and the shared execution fence. Production is denied by contract.
 
-ChatGPT tool discovery is request-locally memoized in rc.56. A single `tools/list` request computes the unified catalog, stable external write inventory and provider mapping once, then reuses those values for the remainder of that PHP request. No transient or persistent catalog cache is used, so Site Profile, grant, provider-certification and write-authority changes are re-evaluated on the next request.
+ChatGPT tool discovery request-local memoization was introduced in rc.56 and is retained in rc.57. A single `tools/list` request computes the unified catalog, stable external write inventory and provider mapping once, then reuses those values for the remainder of that PHP request. No transient or persistent catalog cache is used, so Site Profile, grant, provider-certification and write-authority changes are re-evaluated on the next request.
 
 Their effective REST URLs are derived from the MCP Adapter runtime. With standard rewrites they normally appear as `/wp-json/mcp/<server-id>`; WordPress may also represent the same REST route through `index.php?rest_route=/mcp/<server-id>` when pretty REST rewrites are unavailable. MAD4B validates the registered logical route rather than assuming one URL-rewrite form.
 
