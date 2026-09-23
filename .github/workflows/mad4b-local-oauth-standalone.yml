@@ -210,7 +210,7 @@ jobs:
               "write_enabled" => false,
               "production_write_confirmed" => false,
               "provider_isolation_enabled" => false,
-              "managed_runtime_enabled" => false,
+              "managed_runtime_enabled" => true,
               "acceptance_enabled" => false,
           ) );
           if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() . ":" . $result->get_error_message() );
