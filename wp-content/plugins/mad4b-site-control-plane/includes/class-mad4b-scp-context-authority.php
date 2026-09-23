@@ -1014,6 +1014,14 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset raw registry record was not found.' );
 			$asset = $records[ $asset_id ];
 			if ( ! hash_equals( (string) $site['site_uuid'], (string) $asset['site_uuid'] ) ) return new WP_Error( 'mad4b_context_asset_site_mismatch', 'Context asset is not bound to this Site Profile.' );
+			$source_mode = isset( $asset['source_mode'] ) ? sanitize_key( (string) $asset['source_mode'] ) : '';
+			if ( 'governed' !== $source_mode ) {
+				return new WP_Error(
+					'mad4b_context_review_source_mode_forbidden',
+					'Human Review is only available for governed site-bound Context assets. Task attachments remain task-local and cannot become Brand Authority.',
+					array( 'asset_id' => $asset_id, 'source_mode' => $source_mode )
+				);
+			}
 
 			$registry_revision_before = self::registry_revision();
 			$authority_manifest_before = self::authority_manifest_fingerprint( $records );
