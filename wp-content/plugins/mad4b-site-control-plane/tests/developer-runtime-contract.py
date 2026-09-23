@@ -62,7 +62,9 @@ assert "prlimit_binary" in developer
 assert "DEFAULT_MEMORY_LIMIT_BYTES" in developer
 assert "MAX_OPEN_FILES" in developer
 assert "MAX_PROCESSES" in developer
-assert "'resource_limits_enforced' => '' !== self::prlimit_binary()" in developer
+assert "'resource_limiter_binary_present' => '' !== self::prlimit_binary()" in developer
+assert "'resource_limits_enforcement' => 'execution_proves_prlimit_or_fails_closed'" in developer
+assert "'network_sandbox_binary_present' => '' !== self::network_sandbox_binary()" in developer
 assert "self::runtime_gate( false, $input, false )" in developer
 assert "secret_redaction_enabled" in developer
 assert "proc_open" in developer
