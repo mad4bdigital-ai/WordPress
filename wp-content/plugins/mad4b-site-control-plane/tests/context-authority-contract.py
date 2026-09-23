@@ -20,6 +20,7 @@ write_authority = (root / "includes/class-mad4b-scp-staging-write-authority.php"
 grant_reconcile = (root / "includes/class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 planning_guard = (root / "includes/class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 workflow = (root.parents[2] / ".github/workflows/mad4b-context-authority.yml").read_text(encoding="utf-8")
+package_workflow = (root.parents[2] / ".github/workflows/mad4b-control-plane-package.yml").read_text(encoding="utf-8")
 staging_handoff = (root / "config/staging-deployment-handoff.json").read_text(encoding="utf-8")
 oauth_runtime = (root / "tests/context-oauth-lifecycle-runtime.php").read_text(encoding="utf-8")
 ai_review_runtime = (root / "tests/context-ai-agent-review-runtime.php").read_text(encoding="utf-8")
@@ -659,6 +660,14 @@ require(staging_handoff, "context_ai_review_exact_bound_stale_evidence_rejected"
 require(staging_handoff, "context_ai_review_governance_metadata_and_quality_immutable", "post-deploy AI governance immutability acceptance")
 require(staging_handoff, "context_human_review_remains_available_after_ai_enablement", "post-deploy Human fallback acceptance")
 require(staging_handoff, "context_ai_review_production_remains_unauthorized", "post-deploy Production denial acceptance")
+
+require(package_workflow, "'normal_remote_writes_require_exact_one_time_approval': True", "package invariant for normal one-time approvals")
+require(package_workflow, "'context_ai_review_may_use_explicit_standing_delegation': True", "package invariant for bounded AI review standing delegation")
+require(package_workflow, "'context_ai_review_standing_delegation_staging_only': True", "package invariant for Staging-only AI review standing delegation")
+require(package_workflow, "'context_ai_review_standing_delegation_exact_agent_grant_budget_audit_required': True", "package invariant for AI review governance requirements")
+require(package_workflow, "'context_ai_review_standing_delegation_production_authorized': False", "package invariant denying Production AI review")
+if "'remote_writes_require_exact_one_time_approval': True" in package_workflow:
+    raise AssertionError("package manifest must not claim universal one-time approval after the bounded AI review standing-delegation exception")
 require(adapter, "mad4b.context-asset-list.v4", "Context asset observability v4")
 require(adapter, "review_actor_type", "Context asset review actor observability")
 require(adapter, "review_agent_public_id", "Context asset AI reviewer observability")
