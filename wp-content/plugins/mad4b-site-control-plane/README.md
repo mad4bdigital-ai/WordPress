@@ -2,7 +2,7 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.4.0-rc.51**.
+Current plugin version: **0.4.0-rc.52**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -361,3 +361,10 @@ Keep the PR Draft until the exact target site proves at least:
 ## Host boundary
 
 The WordPress control plane does not provide arbitrary PHP/shell execution or privilege escalation. SSH, Hostinger APIs, system services, host-level cron/logs, files outside PHP permissions, and unrelated database credentials remain a separate MAD4B Host Connector concern.
+
+
+### Capability-impact health semantics
+
+Runtime provider health distinguishes artifact drift from unsafe capability drift. An active provider may remain platform-healthy when its mounted read capabilities are structurally compatible and every mutation capability remains fail-closed. Active providers with exposed read incompatibilities, adapter-runtime failure, or mutation eligibility under unresolved artifact drift remain blockers.
+
+Functional-gap evaluation also distinguishes evaluator completion from provider closure. The legacy `ready` field is a backward-compatible alias for `evaluation_complete`; it is not provider certification. Operators should use `decision_handoff`, `followup_required`, and per-family decision states for the next governed action.
