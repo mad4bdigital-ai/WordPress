@@ -44,6 +44,8 @@ for marker in [
     "restore_activation_state",
     "rollback_on_failed_disk_readback",
     "mad4b_plugin_package_readback_failed_rolled_back",
+    "rollback_error_code",
+    "failure_phase",
     "runtime_reboot_required",
     "certified_target_is_older_than_runtime",
     "path_outside_web_roots",
