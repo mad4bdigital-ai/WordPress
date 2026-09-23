@@ -154,6 +154,65 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return self::base_status();
 	}
 
+	public static function persistence_checkpoint() {
+		$stored = get_option( self::OPTION, false );
+		$exists = false !== $stored;
+		return array(
+			'contract' => 'mad4b.governed-write-authority-persistence-checkpoint.v1',
+			'exists' => $exists,
+			'status' => $exists && is_array( $stored ) ? $stored : array(),
+		);
+	}
+
+	public static function restore_persistence_checkpoint( $checkpoint ) {
+		if ( ! is_array( $checkpoint ) || 'mad4b.governed-write-authority-persistence-checkpoint.v1' !== ( isset( $checkpoint['contract'] ) ? (string) $checkpoint['contract'] : '' ) ) {
+			return new WP_Error( 'mad4b_write_authority_checkpoint_invalid', 'Persisted authority checkpoint is invalid.' );
+		}
+		$exists = ! empty( $checkpoint['exists'] );
+		if ( $exists ) {
+			$status = isset( $checkpoint['status'] ) && is_array( $checkpoint['status'] ) ? $checkpoint['status'] : null;
+			if ( ! is_array( $status ) ) return new WP_Error( 'mad4b_write_authority_checkpoint_status_invalid', 'Persisted authority checkpoint status is invalid.' );
+			update_option( self::OPTION, $status, false );
+			$stored = get_option( self::OPTION, false );
+			if ( ! is_array( $stored ) || serialize( $stored ) !== serialize( $status ) ) return new WP_Error( 'mad4b_write_authority_checkpoint_restore_failed', 'Persisted authority checkpoint could not be restored exactly.' );
+			self::$status = $stored;
+			return true;
+		}
+		delete_option( self::OPTION );
+		if ( false !== get_option( self::OPTION, false ) ) return new WP_Error( 'mad4b_write_authority_checkpoint_delete_failed', 'Persisted authority checkpoint could not be cleared.' );
+		self::$status = self::base_status();
+		return true;
+	}
+
+	public static function fail_closed_persisted_authority( $blocker ) {
+		$blocker = sanitize_key( (string) $blocker );
+		if ( '' === $blocker ) $blocker = 'authority_transaction_failed';
+		$status = self::base_status();
+		$status['ready'] = false;
+		$status['state'] = 'blocked';
+		$status['blocker'] = $blocker;
+		$status['candidate_binding_contract'] = self::CANDIDATE_BINDING_CONTRACT;
+		$status['source_commit_sha'] = '';
+		$status['build_fingerprint'] = '';
+		$status['package_manifest_digest'] = '';
+		$status['artifact_identity'] = '';
+		$status['candidate_bound_at'] = '';
+		$status['updated_at'] = gmdate( 'c' );
+		update_option( self::OPTION, $status, false );
+		$stored = get_option( self::OPTION, false );
+		if ( ! is_array( $stored ) || ! empty( $stored['ready'] ) || 'blocked' !== ( isset( $stored['state'] ) ? (string) $stored['state'] : '' ) || $blocker !== ( isset( $stored['blocker'] ) ? (string) $stored['blocker'] : '' ) ) {
+			delete_option( self::OPTION );
+			if ( false !== get_option( self::OPTION, false ) ) {
+				self::$status = $status;
+				return new WP_Error( 'mad4b_write_authority_fail_closed_persist_failed', 'Unable to persist or clear blocked governed-write authority after transactional failure.' );
+			}
+			self::$status = $status;
+			return true;
+		}
+		self::$status = $stored;
+		return true;
+	}
+
 	public static function candidate_binding_status() {
 		$status = self::raw_status();
 		$current = self::current_candidate_identity();
@@ -1304,6 +1363,109 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( $status['ready'] ) self::persist_ready_status( $status, $granted, $existing, $grants_revoked, $subjects_disabled );
 		self::$status = $status;
 		self::$reconciling = false;
+		return $status;
+	}
+
+	public static function finalize_exact_existing_authority() {
+		$status = self::base_status();
+		$status['mutation_gate_configured'] = defined( 'MAD4B_MCP_MUTATION_ENABLED' ) && true === constant( 'MAD4B_MCP_MUTATION_ENABLED' );
+		if ( empty( $status['eligible'] ) || empty( $status['mutation_gate_configured'] ) ) return self::finish_blocked( $status, empty( $status['eligible'] ) ? ( isset( $status['blocker'] ) ? $status['blocker'] : 'authority_ineligible' ) : 'mutation_gate_disabled' );
+		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() ) return self::finish_blocked( $status, 'governance_schema_unavailable' );
+		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+		if ( empty( $audit['ready'] ) ) return self::finish_blocked( $status, 'audit_unavailable' );
+		if ( ! function_exists( 'wp_get_ability' ) || ! class_exists( 'MAD4B_SCP_Servers' ) ) return self::finish_blocked( $status, 'abilities_runtime_unavailable' );
+		$issuer = self::oauth_issuer();
+		if ( '' === $issuer ) return self::finish_blocked( $status, 'oauth_issuer_unavailable' );
+		$user_ids = self::enrolled_user_ids();
+		if ( empty( $user_ids ) ) return self::finish_blocked( $status, 'oauth_subject_unavailable' );
+		foreach ( $user_ids as $user_id ) {
+			if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_connect_user( $user_id ) ) return self::finish_blocked( $status, 'oauth_subject_not_enrolled' );
+		}
+		$environment = self::current_environment();
+		$agent_slug = self::agent_slug();
+		$agent = self::agent_by_slug( $agent_slug );
+		$primary_user_id = (int) reset( $user_ids );
+		if ( ! $agent ) return self::finish_blocked( $status, 'exact_agent_missing' );
+		if ( 'enabled' !== (string) $agent['status'] || $environment !== (string) $agent['environment'] || (int) $agent['wp_user_id'] !== $primary_user_id ) return self::finish_blocked( $status, 'exact_agent_state_mismatch' );
+
+		$desired_subjects = array();
+		$subject_blockers = array();
+		foreach ( $user_ids as $user_id ) {
+			$fingerprint = self::subject_fingerprint( $issuer, $user_id );
+			$desired_subjects[ $fingerprint ] = true;
+			$identity = array( 'authenticated' => true, 'subject_type' => 'oauth', 'subject_fingerprint' => $fingerprint );
+			$bound = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+			if ( is_wp_error( $bound ) || (int) $bound['id'] !== (int) $agent['id'] ) $subject_blockers[] = 'exact_subject_binding_missing:user:' . $user_id;
+		}
+		$subjects = MAD4B_SCP_Agent_Registry::subjects_for_agent( $agent['id'], 'oauth' );
+		foreach ( $subjects as $subject ) {
+			$fingerprint = isset( $subject['subject_fingerprint'] ) ? strtolower( (string) $subject['subject_fingerprint'] ) : '';
+			if ( 'enabled' === (string) $subject['status'] && ! isset( $desired_subjects[ $fingerprint ] ) ) $subject_blockers[] = 'stale_enabled_subject:' . $fingerprint;
+		}
+
+		$tools = self::write_tools();
+		if ( empty( $tools ) ) return self::finish_blocked( $status, 'write_tool_inventory_empty' );
+		$desired_grants = array();
+		$inventory_rows = array();
+		$grant_blockers = array();
+		foreach ( $tools as $ability ) {
+			if ( 'mad4b/database-raw-query' === $ability ) { $grant_blockers[] = 'breakglass_leak'; continue; }
+			$provider = MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability );
+			if ( null === $provider ) { $grant_blockers[] = 'unmounted:' . $ability; continue; }
+			$key = (string) $ability . "\0" . (string) $provider;
+			$desired_grants[ $key ] = array( 'ability' => (string) $ability, 'provider' => (string) $provider );
+			$inventory_rows[] = array( 'ability' => (string) $ability, 'provider' => (string) $provider );
+		}
+		$existing_grants = MAD4B_SCP_Agent_Registry::grants_for_agent( $agent['id'], 'mad4b-write' );
+		$seen = array();
+		foreach ( $existing_grants as $grant ) {
+			if ( 'allow' !== (string) $grant['effect'] ) continue;
+			$key = (string) $grant['ability_name'] . "\0" . (string) $grant['provider'];
+			if ( ! isset( $desired_grants[ $key ] ) ) $grant_blockers[] = 'stale_allow:' . (string) $grant['ability_name'];
+			if ( $environment !== (string) $grant['environment'] ) $grant_blockers[] = 'non_environment_allow:' . (string) $grant['ability_name'];
+			if ( isset( $seen[ $key ] ) ) $grant_blockers[] = 'duplicate_allow:' . (string) $grant['ability_name'];
+			$seen[ $key ] = true;
+		}
+		$existing = 0;
+		foreach ( $desired_grants as $desired ) {
+			$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-write', $desired['ability'], $desired['provider'] );
+			if ( is_wp_error( $grant ) || $environment !== (string) $grant['environment'] || 'allow' !== (string) $grant['effect'] ) {
+				$grant_blockers[] = 'exact_grant_missing:' . $desired['ability'];
+				continue;
+			}
+			++$existing;
+		}
+		usort( $inventory_rows, static function ( $a, $b ) { return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] ); } );
+		$registry_counts = MAD4B_SCP_Agent_Registry::counts();
+		if ( ! empty( $registry_counts['wildcard_grants'] ) ) $grant_blockers[] = 'wildcard_grant_detected';
+		$all_blockers = array_values( array_unique( array_merge( $subject_blockers, $grant_blockers ) ) );
+		sort( $all_blockers, SORT_STRING );
+		$status['agent_public_id'] = (string) $agent['public_id'];
+		$status['agent_slug'] = $agent_slug;
+		$status['oauth_user_ids'] = array_values( array_map( 'absint', $user_ids ) );
+		$status['subject_count_expected'] = count( $desired_subjects );
+		$status['stale_subjects_disabled'] = 0;
+		$status['write_tool_count'] = count( $tools );
+		$status['write_inventory_fingerprint'] = hash( 'sha256', wp_json_encode( $inventory_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$status['exact_grants_existing'] = $existing;
+		$status['exact_grants_created'] = 0;
+		$status['stale_allow_grants_revoked'] = 0;
+		$status['grant_blockers'] = $all_blockers;
+		$status['all_remote_writes_require_exact_approval'] = false;
+		$status['normal_remote_writes_require_exact_approval'] = true;
+		$status['remote_write_approval_policy'] = 'exact_approval_with_bounded_standing_exceptions';
+		$status['remote_write_prior_approval_exceptions'] = array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' );
+		$status['breakglass_included'] = in_array( 'mad4b/database-raw-query', $tools, true );
+		$status['ready'] = empty( $all_blockers ) && ! $status['breakglass_included'];
+		$status['state'] = $status['ready'] ? 'ready' : 'blocked';
+		$status['blocker'] = $status['ready'] ? '' : ( ! empty( $all_blockers ) ? 'authority_exact_state_incomplete' : 'breakglass_leak' );
+		$status['updated_at'] = gmdate( 'c' );
+		$status['remote_transport'] = 'mad4b-chatgpt';
+		$status['authority_server'] = 'mad4b-write';
+		$status['oauth_role'] = 'identity_only';
+		$status['write_authority_components'] = array( 'site_profile', 'exact_origin', 'oauth_identity', 'nhi_subject_binding', 'exact_mad4b_write_grant', 'provider_runtime', 'global_mutation_gate', 'budget_reservation', 'normal_write_one_time_exact_approval_or_bounded_ai_review_delegation', 'audit' );
+		if ( $status['ready'] ) self::persist_ready_status( $status, 0, $existing, 0, 0 );
+		self::$status = $status;
 		return $status;
 	}
 
