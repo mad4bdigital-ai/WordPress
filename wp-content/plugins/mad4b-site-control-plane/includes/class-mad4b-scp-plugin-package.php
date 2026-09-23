@@ -97,6 +97,7 @@ final class MAD4B_SCP_Plugin_Package {
 		}
 		if ( self::protected_plugin( $plugin_file ) ) $blockers[] = 'protected_control_plane_dependency';
 		if ( $installed && hash_equals( $authority['version'], $current_version ) ) $blockers[] = 'already_on_certified_target_version';
+		if ( $installed && '' !== $current_version && version_compare( $current_version, $authority['version'], '>' ) ) $blockers[] = 'certified_target_is_older_than_runtime';
 		if ( ! $installed && ! current_user_can( 'install_plugins' ) ) $blockers[] = 'install_plugins_capability_required';
 		if ( $installed && ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
 
