@@ -308,13 +308,18 @@ final class MAD4B_SCP_Live_Truth {
 		foreach ( array( 'oauth_effective', 'oauth_resource_is_chatgpt', 'oauth_does_not_create_write_authority' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$missing_write_mounts = array();
-		$missing_remote_mounts = array();
+		$direct_write_schema_leaks = array();
+		$write_transport_tools = array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' );
+		$missing_write_transport = array();
+		foreach ( $write_transport_tools as $transport_ability ) {
+			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $transport_ability ) ) $missing_write_transport[] = $transport_ability;
+		}
 		$metadata_mismatch = array();
 		$breakglass = array();
 		foreach ( $tools as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
 			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $missing_write_mounts[] = $ability_name;
-			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $missing_remote_mounts[] = $ability_name;
+			if ( class_exists( 'MAD4B_SCP_Servers' ) && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) ) $direct_write_schema_leaks[] = $ability_name;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) { $metadata_mismatch[] = $ability_name; continue; }
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) { $metadata_mismatch[] = $ability_name; continue; }
@@ -331,11 +336,16 @@ final class MAD4B_SCP_Live_Truth {
 		}
 		$checks['write_inventory_nonempty'] = ! empty( $tools );
 		$checks['all_write_tools_mounted_on_authority'] = empty( $missing_write_mounts );
-		$checks['all_write_tools_exposed_on_same_plugin_transport'] = empty( $missing_remote_mounts );
+		$checks['write_dispatch_transport_available'] = empty( $missing_write_transport );
+		$checks['direct_write_schemas_hidden_from_chatgpt'] = empty( $direct_write_schema_leaks );
+		// Compatibility alias: "same plugin transport" now means the logical
+		// write inventory is reachable through the exact-target dispatcher on the
+		// same ChatGPT MCP resource, without enumerating target schemas directly.
+		$checks['all_write_tools_exposed_on_same_plugin_transport'] = $checks['write_dispatch_transport_available'] && $checks['direct_write_schemas_hidden_from_chatgpt'];
 		$checks['all_write_tools_annotated_mutating'] = empty( $metadata_mismatch );
 		$checks['provider_uncertified_write_tools_safely_unmounted'] = empty( $provider_blocked_mount_leaks );
 		$checks['breakglass_absent_from_write_inventory'] = empty( $breakglass );
-		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
+		foreach ( array( 'write_inventory_nonempty', 'all_write_tools_mounted_on_authority', 'write_dispatch_transport_available', 'direct_write_schemas_hidden_from_chatgpt', 'all_write_tools_exposed_on_same_plugin_transport', 'all_write_tools_annotated_mutating', 'provider_uncertified_write_tools_safely_unmounted', 'breakglass_absent_from_write_inventory' ) as $key ) if ( empty( $checks[ $key ] ) ) $blockers[] = $key;
 
 		$planner = class_exists( 'MAD4B_SCP_Staging_Write_Planning_Guard' ) ? MAD4B_SCP_Staging_Write_Planning_Guard::status() : array();
 		$planner_ability = function_exists( 'wp_has_ability' ) && function_exists( 'wp_get_ability' ) && wp_has_ability( 'mad4b/approval-plan' ) ? wp_get_ability( 'mad4b/approval-plan' ) : null;
@@ -378,7 +388,8 @@ final class MAD4B_SCP_Live_Truth {
 			'provider_blocked_write_tools' => $provider_blocked,
 			'provider_blocked_mount_leaks' => $provider_blocked_mount_leaks,
 			'missing_write_mounts' => $missing_write_mounts,
-			'missing_remote_mounts' => $missing_remote_mounts,
+			'missing_write_transport' => $missing_write_transport,
+			'direct_write_schema_leaks' => $direct_write_schema_leaks,
 			'metadata_mismatch' => $metadata_mismatch,
 			'breakglass' => $breakglass,
 			'local_rest_isolation' => $rest,
