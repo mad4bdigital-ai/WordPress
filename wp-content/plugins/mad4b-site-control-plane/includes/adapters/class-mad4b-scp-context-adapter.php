@@ -495,6 +495,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'source_write_policy' => class_exists( 'MAD4B_SCP_Context_Authority' ) && ! empty( $asset['source_id'] ) ? MAD4B_SCP_Context_Authority::source_write_policy( (string) $asset['source_id'] ) : 'read_only',
 				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'suggested_context_sets' => isset( $asset['suggested_context_sets'] ) && is_array( $asset['suggested_context_sets'] ) ? array_values( $asset['suggested_context_sets'] ) : array(),
+				'approved_context_sets' => MAD4B_SCP_Context_Authority::asset_context_sets( $asset ),
 				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
 				'required' => ! empty( $asset['required'] ),
 				'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
