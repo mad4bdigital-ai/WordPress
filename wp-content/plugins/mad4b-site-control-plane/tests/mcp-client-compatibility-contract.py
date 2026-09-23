@@ -108,13 +108,18 @@ for marker in [
 ]:
     assert marker in servers, f'missing minimal ChatGPT transport/logical catalog marker: {marker}'
 
-# The legacy/narrow fallback remains explicit when exact Staging binding is absent.
+# The non-unified fallback is also a minimal transport and must never
+# restore heavy filesystem/database schemas or Breakglass to tools/list.
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
+fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split('$bootstrap = array(', 1)[0]
 for marker in [
-    "'mad4b/filesystem-list', 'mad4b/filesystem-read'",
-    "'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/database-raw-query'",
+    "$tools = array_values( array_diff( $core, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
+    "array_unique( array_map( 'strval', $tools ) )",
+    "sort( $tools, SORT_STRING )",
+    "return $tools",
 ]:
-    assert marker in servers, f'missing non-Staging narrow fallback marker: {marker}'
+    assert marker in fallback, f'missing non-Staging minimal fallback marker: {marker}'
+assert 'self::write_tools()' not in fallback, 'non-Staging fallback must not merge the governed write catalog directly'
 
 # Discovery never grants execution. Every normal mutation arriving through ChatGPT
 # is intercepted regardless of current write readiness and can only cross to
