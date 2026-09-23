@@ -76,8 +76,8 @@ assert "MAD4B_SCP_Developer_Authority::enrollment_tools()" in servers
 assert "array_diff( $enrollment_candidates, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in servers
 assert "mad4b-developer-breakglass" in servers
 
-assert "0.4.0-rc.56" in plugin
-assert "release=0.4.0-rc.56" in runtime_build
+assert "0.4.0-rc.57" in plugin
+assert "release=0.4.0-rc.57" in runtime_build
 assert "request-locally memoized in rc.56" in readme
 
-print("mad4b.chatgpt-catalog-performance.v3: PASS")
+print("mad4b.chatgpt-catalog-performance.v4: PASS")
