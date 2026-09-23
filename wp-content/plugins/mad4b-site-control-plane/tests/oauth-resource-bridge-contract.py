@@ -56,8 +56,14 @@ required = [
     "public_key_from_jwk",
     "jwks_rsa_ne_supported",
     "home_url( '/wp-json/mcp/mad4b-chatgpt' )",
-    "'/mcp/mad4b-chatgpt'",
+    "resource_for_route( $route )",
+    "foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id )",
+    "resource_identifier( 'mad4b-chatgpt' )",
+    "resource_identifier( 'mad4b-enrollment' )",
+    "resource_identifier( 'mad4b-developer' )",
+    "resource_identifier( 'mad4b-developer-breakglass' )",
     "'protected_transport_server' => 'mad4b-chatgpt'",
+    "'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' )",
     "stores_bearer_tokens' => false",
     "creates_credentials' => false",
     "write_surfaces_enabled' => false",
@@ -133,7 +139,8 @@ alignment_required = [
     "/mcp/mad4b-chatgpt",
     "resource_metadata=",
     "authoritative_well_known_url",
-    "MAD4B_SCP_OAuth_Resource_Bridge::READ_SCOPE",
+    "MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( $server_id )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource( $resource )",
 ]
 for marker in alignment_required:
     if marker not in alignment:
@@ -208,4 +215,4 @@ for boot_marker in [
 if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
-print('mad4b.site-control-plane.oauth-resource-bridge.v8: PASS')
+print('mad4b.site-control-plane.oauth-resource-bridge.v9: PASS')
