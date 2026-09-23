@@ -6,6 +6,8 @@ binding = (ROOT / 'includes/class-mad4b-scp-staging-write-candidate-binding.php'
 authority = (ROOT / 'includes/class-mad4b-scp-staging-write-authority.php').read_text('utf-8')
 audit = (ROOT / 'includes/class-mad4b-scp-audit.php').read_text('utf-8')
 servers = (ROOT / 'includes/class-mad4b-scp-servers.php').read_text('utf-8')
+identity = (ROOT / 'includes/class-mad4b-scp-identity-context.php').read_text('utf-8')
+oauth = (ROOT / 'includes/class-mad4b-scp-oauth-resource-bridge.php').read_text('utf-8')
 
 for marker in [
     "mad4b.staging-write-candidate-binding.v2",
@@ -73,6 +75,28 @@ for marker in [
     "head_consistent",
 ]:
     assert marker in audit, f'missing bounded audit lookup marker: {marker}'
+
+
+for marker in [
+    "issuer_fingerprint",
+    "client_fingerprint",
+    "session_fingerprint",
+    "mad4b_identity_attribution_fingerprint_invalid",
+]:
+    assert marker in identity, f'missing safe identity attribution marker: {marker}'
+
+for marker in [
+    "issuer_fingerprint",
+    "client_fingerprint",
+    "session_fingerprint",
+    "claims['client_id']",
+    "claims['azp']",
+    "claims['jti']",
+    "mad4b_oauth_client_claim_mismatch",
+]:
+    assert marker in oauth, f'missing OAuth attribution derivation marker: {marker}'
+
+assert '$subject_fingerprint . "\\0" . $issuer_fingerprint . "\\0" . $client_fingerprint . "\\0" . $session_fingerprint . "\\0" . $correlation_id . "\\0" . $transport' in binding, 'request-context fingerprint does not bind the full safe OAuth attribution tuple'
 
 # Raw credential/session material must never be introduced into candidate-binding summaries.
 for forbidden in [
