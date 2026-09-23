@@ -14,12 +14,24 @@ $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Acceptance\\BrowserObserve
 $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Acceptance\\BrowserAcceptanceFreshnessGuard' ), 'Exact ETG Browser Acceptance freshness guard is unavailable.' );
 $check( class_exists( '\\ETG\\DynamicFilterSEOBridge\\Diagnostics\\BuildIdentity' ), 'ETG exact build identity source is unavailable.' );
 
+$full_chatgpt_candidates = MAD4B_SCP_Servers::chatgpt_full_catalog_candidates();
+$direct_chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
+$read_dispatch = wp_get_ability( 'mad4b/read-execute' );
+$check( is_object( $read_dispatch ) && method_exists( $read_dispatch, 'execute' ), 'Governed ChatGPT readonly dispatcher is unavailable.' );
+$dispatch_read = static function ( $ability_name, array $input = array() ) use ( $check, $read_dispatch ) {
+	$result = $read_dispatch->execute( array( 'ability_name' => (string) $ability_name, 'input' => $input ) );
+	$check( ! is_wp_error( $result ), 'Readonly dispatcher failed for ' . $ability_name . ( is_wp_error( $result ) ? ': ' . $result->get_error_code() : '' ) );
+	$check( 'mad4b.chatgpt-read-execute.v1' === (string) ( $result['contract'] ?? '' ), 'Unexpected readonly dispatcher contract for ' . $ability_name );
+	$check( ! empty( $result['read_only'] ) && empty( $result['mutation_performed'] ), 'Readonly dispatcher authority boundary drifted for ' . $ability_name );
+	$check( isset( $result['result'] ) && is_array( $result['result'] ), 'Readonly dispatcher returned no structured target result for ' . $ability_name );
+	return $result['result'];
+};
+
 $ability_names = array(
 	'mad4b/browser-acceptance-capabilities',
 	'mad4b/browser-acceptance-plan',
 	'mad4b/browser-acceptance-result',
 );
-$chatgpt_tools = MAD4B_SCP_Servers::chatgpt_tools();
 $write_tools = MAD4B_SCP_Servers::write_tools();
 foreach ( $ability_names as $name ) {
 	$check( wp_has_ability( $name ), 'Missing Browser Acceptance ability: ' . $name );
@@ -30,8 +42,9 @@ foreach ( $ability_names as $name ) {
 	$check( false === ( $meta['annotations']['destructive'] ?? null ), 'Browser Acceptance ability is destructive: ' . $name );
 	$check( empty( $meta['public'] ) && empty( $meta['mcp']['public'] ), 'Browser Acceptance ability leaked to default/public MCP: ' . $name );
 	$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-read', $name ), 'Browser Acceptance ability is not mounted on mad4b-read: ' . $name );
-	$check( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $name ), 'Browser Acceptance ability is not mounted on mad4b-chatgpt: ' . $name );
-	$check( in_array( $name, $chatgpt_tools, true ), 'ChatGPT projection omitted Browser Acceptance ability: ' . $name );
+	$check( in_array( $name, $full_chatgpt_candidates, true ), 'Browser Acceptance ability was lost from governed ChatGPT discovery: ' . $name );
+	$check( ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $name ), 'Browser Acceptance heavy read schema leaked directly into ChatGPT tools/list: ' . $name );
+	$check( ! in_array( $name, $direct_chatgpt_tools, true ), 'Direct ChatGPT projection leaked Browser Acceptance schema: ' . $name );
 	$check( ! in_array( $name, $write_tools, true ), 'Browser Acceptance ability leaked into write_tools(): ' . $name );
 	foreach ( array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ) as $server ) {
 		$check( ! MAD4B_SCP_Servers::ability_is_mounted( $server, $name ), 'Browser Acceptance read ability leaked to ' . $server . ': ' . $name );
@@ -39,7 +52,7 @@ foreach ( $ability_names as $name ) {
 }
 $check( ! wp_has_ability( 'mad4b/browser-acceptance-run' ), 'WordPress must not expose browser execution as a server-side ability.' );
 
-$capabilities = wp_get_ability( 'mad4b/browser-acceptance-capabilities' )->execute();
+$capabilities = $dispatch_read( 'mad4b/browser-acceptance-capabilities' );
 $check( ! is_wp_error( $capabilities ), 'Browser Acceptance capabilities execution failed.' );
 $check( 'mad4b.browser-acceptance-capabilities.v1' === (string) $capabilities['contract'], 'Unexpected Browser Acceptance capabilities contract.' );
 $check( ! empty( $capabilities['read_only'] ) && empty( $capabilities['authorizing'] ), 'Browser Acceptance Core authority boundary drifted.' );
@@ -100,7 +113,7 @@ if ( is_string( $expected_tree ) && '' !== $expected_tree ) {
 	$check( $expected_tree === (string) ( $asset['build_identity']['tree_sha'] ?? '' ), 'ETG observer asset exact tree identity drifted.' );
 }
 
-$blocked = wp_get_ability( 'mad4b/browser-acceptance-plan' )->execute( array(
+$blocked = $dispatch_read( 'mad4b/browser-acceptance-plan', array(
 	'provider_id' => 'etg-dfsb',
 	'profile_id' => 'tours',
 	'url' => 'https://example.invalid',
@@ -109,7 +122,7 @@ $check( ! is_wp_error( $blocked ), 'Browser Acceptance plan converted bounded re
 $check( 'blocked' === (string) $blocked['state'], 'Arbitrary browser URL input did not fail closed.' );
 $check( in_array( 'unsupported_request_fields', (array) $blocked['blocking_reasons'], true ), 'Arbitrary browser URL rejection reason was not preserved.' );
 
-$plan = wp_get_ability( 'mad4b/browser-acceptance-plan' )->execute( array(
+$plan = $dispatch_read( 'mad4b/browser-acceptance-plan', array(
 	'provider_id' => 'etg-dfsb',
 	'profile_id' => 'tours',
 	'suite' => 'browser_runtime',
@@ -133,7 +146,7 @@ if ( 'ready' === (string) $plan['state'] ) {
 	$expires_at = (int) ( $challenge['expires_at'] ?? 0 );
 	$check( $issued_at > 0 && $expires_at > $issued_at && ( $expires_at - $issued_at ) <= 900, 'Ready Browser Acceptance challenge freshness window is invalid.' );
 
-	$missing = wp_get_ability( 'mad4b/browser-acceptance-result' )->execute( array(
+	$missing = $dispatch_read( 'mad4b/browser-acceptance-result', array(
 		'provider_id' => 'etg-dfsb',
 		'profile_id' => 'tours',
 		'suite' => 'browser_runtime',
