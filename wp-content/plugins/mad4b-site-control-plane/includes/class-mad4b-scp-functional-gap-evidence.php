@@ -1594,7 +1594,19 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 		if ( null !== self::$snapshot && '' !== self::$snapshot_key && hash_equals( self::$snapshot_key, $key ) ) {
 			$cached_dynamic = isset( self::$snapshot['snapshot_end_dynamic_surface_sha256'] ) ? strtolower( (string) self::$snapshot['snapshot_end_dynamic_surface_sha256'] ) : '';
 			$current_dynamic = strtolower( (string) self::current_dynamic_surface_fingerprint() );
-			if ( preg_match( '/^[a-f0-9]{64}$/', $cached_dynamic ) && preg_match( '/^[a-f0-9]{64}$/', $current_dynamic ) && hash_equals( $cached_dynamic, $current_dynamic ) ) return self::$snapshot;
+			$dynamic_match = preg_match( '/^[a-f0-9]{64}$/', $cached_dynamic ) && preg_match( '/^[a-f0-9]{64}$/', $current_dynamic ) && hash_equals( $cached_dynamic, $current_dynamic );
+			$census_required = ! empty( self::$snapshot['snapshot_census_required'] );
+			$census_match = true;
+			if ( $census_required ) {
+				$cached_census = isset( self::$snapshot['snapshot_end_census']['census_sha256'] ) ? strtolower( (string) self::$snapshot['snapshot_end_census']['census_sha256'] ) : '';
+				$current_census = self::current_runtime_census_status();
+				$current_census_sha = isset( $current_census['census_sha256'] ) ? strtolower( (string) $current_census['census_sha256'] ) : '';
+				$census_match = ! empty( $current_census['valid'] )
+					&& preg_match( '/^[a-f0-9]{64}$/', $cached_census )
+					&& preg_match( '/^[a-f0-9]{64}$/', $current_census_sha )
+					&& hash_equals( $cached_census, $current_census_sha );
+			}
+			if ( $dynamic_match && $census_match ) return self::$snapshot;
 			self::$snapshot = null;
 			self::$snapshot_key = '';
 		}
