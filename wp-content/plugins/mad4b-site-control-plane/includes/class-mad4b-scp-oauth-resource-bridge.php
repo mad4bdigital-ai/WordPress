@@ -303,7 +303,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'subject_fingerprint' => hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] ),
 			'issuer_fingerprint' => isset( $verified['issuer_fingerprint'] ) ? (string) $verified['issuer_fingerprint'] : '',
 			'client_fingerprint' => isset( $verified['client_fingerprint'] ) ? (string) $verified['client_fingerprint'] : '',
-			'token_instance_fingerprint' => isset( $verified['token_instance_fingerprint'] ) ? (string) $verified['token_instance_fingerprint'] : '',
+			'session_fingerprint' => isset( $verified['session_fingerprint'] ) ? (string) $verified['session_fingerprint'] : '',
 			'token_scopes' => $verified['scopes'],
 			'approval_ticket_id' => '',
 			'auth_method' => 'oauth2_bearer',
@@ -413,7 +413,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'scopes' => $scopes,
 			'issuer_fingerprint' => hash( 'sha256', 'oauth-issuer' . "\0" . $issuer ),
 			'client_fingerprint' => '' !== $client_id ? hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id ) : '',
-			'token_instance_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
+			'session_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
 		);
 	}
 
