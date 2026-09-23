@@ -118,7 +118,6 @@ final class MAD4B_SCP_Developer_Runtime {
 			self::schema(
 				array(
 					'package' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 2048 ),
-					'activate' => array( 'type' => 'boolean', 'default' => false ),
 					'force' => array( 'type' => 'boolean', 'default' => true ),
 					'timeout_seconds' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_TIMEOUT, 'default' => 60 ),
 					'_mad4b_approval_ticket_id' => self::approval_schema(),
@@ -347,12 +346,12 @@ final class MAD4B_SCP_Developer_Runtime {
 		if ( '' === $wp ) return new WP_Error( 'mad4b_developer_wp_cli_unavailable', 'WP-CLI executable is unavailable.' );
 		$package = isset( $input['package'] ) ? trim( (string) $input['package'] ) : '';
 		if ( '' === $package || false !== strpos( $package, "\0" ) ) return new WP_Error( 'mad4b_developer_package_invalid', 'Package identifier is invalid.' );
+		if ( ! empty( $input['activate'] ) ) return new WP_Error( 'mad4b_developer_package_activation_denied', 'Normal Developer package installation never activates code; use the governed plugin activation surface separately.' );
 		if ( ! self::network_authorized( $input ) ) return new WP_Error( 'mad4b_developer_network_denied', 'Package installation requires explicit per-job network authority.' );
 		if ( preg_match( '#^[a-z][a-z0-9+.-]*://#i', $package ) && 0 !== stripos( $package, 'https://' ) ) return new WP_Error( 'mad4b_developer_package_scheme_denied', 'Only HTTPS package URLs are accepted.' );
 		if ( false !== strpos( $package, '@' ) && 0 === stripos( $package, 'https://' ) ) return new WP_Error( 'mad4b_developer_package_credentials_denied', 'Credential-bearing package URLs are forbidden.' );
 		$args = array( $wp, '--path=' . ABSPATH, 'plugin', 'install', $package );
 		if ( ! isset( $input['force'] ) || $input['force'] ) $args[] = '--force';
-		if ( ! empty( $input['activate'] ) ) $args[] = '--activate';
 		return self::execute( 'mad4b/developer-package-install', $args, $input, false, true );
 	}
 
