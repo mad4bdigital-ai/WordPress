@@ -525,7 +525,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			);
 			if ( count( $items ) >= $limit ) break;
 		}
-		$status = MAD4B_SCP_Context_Authority::status();
+		$status = method_exists( 'MAD4B_SCP_Context_Authority', 'status' ) ? MAD4B_SCP_Context_Authority::status() : array();
 		return array(
 			'contract' => 'mad4b.context-asset-list.v3',
 			'items' => $items,
