@@ -44,7 +44,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_UPDATE_SOURCE_POLICY => 'handle_update_source_policy',
 		) as $action => $method ) {
 			add_action( 'admin_post_' . $action, array( __CLASS__, $method ) );
-			if ( in_array( $action, array( self::ACTION_SAVE_GOOGLE, self::ACTION_SAVE_GOOGLE_DEDICATED, self::ACTION_SAVE_GOOGLE_AUTH_MODE, self::ACTION_SAVE_GOOGLE_GRANTS ), true ) ) add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
+			if ( in_array( $action, array( self::ACTION_SAVE_GOOGLE, self::ACTION_SAVE_GOOGLE_DEDICATED, self::ACTION_SAVE_GOOGLE_AUTH_MODE, self::ACTION_SAVE_GOOGLE_GRANTS, self::ACTION_REVIEW_ASSET ), true ) ) add_action( 'wp_ajax_' . $action, array( __CLASS__, $method ) );
 		}
 	}
 
@@ -216,17 +216,32 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	public static function handle_review_asset() {
-		self::require_admin( self::ACTION_REVIEW_ASSET );
+		self::require_admin_request( self::ACTION_REVIEW_ASSET );
 		$result = MAD4B_SCP_Context_Authority::review_asset(
 			isset( $_POST['asset_id'] ) ? wp_unslash( $_POST['asset_id'] ) : '',
 			array(
 				'category' => isset( $_POST['category'] ) ? wp_unslash( $_POST['category'] ) : '',
 				'authority_class' => isset( $_POST['authority_class'] ) ? wp_unslash( $_POST['authority_class'] ) : '',
 				'required' => ! empty( $_POST['required'] ),
+				'required_scope_confirmed' => ! empty( $_POST['required_scope_confirmed'] ),
 				'quality_mode' => isset( $_POST['quality_mode'] ) ? wp_unslash( $_POST['quality_mode'] ) : 'automatic',
 				'quality_score' => isset( $_POST['quality_score'] ) ? wp_unslash( $_POST['quality_score'] ) : '',
+				'expected_content_hash' => isset( $_POST['expected_content_hash'] ) ? wp_unslash( $_POST['expected_content_hash'] ) : '',
+				'expected_registry_revision' => isset( $_POST['expected_registry_revision'] ) ? wp_unslash( $_POST['expected_registry_revision'] ) : '',
+				'expected_authority_manifest_fingerprint' => isset( $_POST['expected_authority_manifest_fingerprint'] ) ? wp_unslash( $_POST['expected_authority_manifest_fingerprint'] ) : '',
 			)
 		);
+		if ( self::is_ajax_request() ) {
+			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
+			wp_send_json_success( array(
+				'message' => __( 'Exact Context content approved.', 'mad4b-site-control-plane' ),
+				'asset' => $result,
+				'context_status' => MAD4B_SCP_Context_Authority::status(),
+				'review_queue' => MAD4B_SCP_Context_Authority::review_queue(),
+				'brand_core_coverage' => MAD4B_SCP_Context_Authority::brand_core_coverage(),
+				'refresh' => true,
+			) );
+		}
 		self::redirect_result( $result, 'assets', 'asset_review_saved' );
 	}
 
@@ -263,6 +278,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$status = MAD4B_SCP_Context_Authority::status();
 		$google = MAD4B_SCP_Google_Drive_Context::connection_status();
 		$profile = MAD4B_SCP_Context_Authority::profile();
+		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
 		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$stages = array(
 			array( 'label' => 'Site Profile', 'detail' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'Enrolled to this origin' : 'Enroll this site first', 'state' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'complete' : 'blocked' ),
@@ -272,6 +288,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 			array( 'label' => 'Context Ready', 'detail' => $status['ready'] ? 'Mandatory context is ready' : 'Scan and review assets', 'state' => $status['ready'] ? 'complete' : 'attention', 'url' => self::tab_url( 'assets' ) ),
 		);
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::stages( $stages );
+		$pending_required_reviews = isset( $review_queue['counts']['required_pending'] ) ? (int) $review_queue['counts']['required_pending'] : 0;
+		$content_changed_reviews = isset( $review_queue['counts']['content_changed'] ) ? (int) $review_queue['counts']['content_changed'] : 0;
+		if ( $pending_required_reviews + $content_changed_reviews > 0 && class_exists( 'MAD4B_SCP_Admin_Experience' ) ) {
+			MAD4B_SCP_Admin_Experience::next_step( __( 'Human review required', 'mad4b-site-control-plane' ), sprintf( __( '%1$d required or changed Context asset(s) need an exact-content human decision before Brand Context can become ready.', 'mad4b-site-control-plane' ), $pending_required_reviews + $content_changed_reviews ), 'attention', self::tab_url( 'assets', array( 'review_filter' => 'needs_review' ) ), __( 'Review required assets', 'mad4b-site-control-plane' ) );
+		}
 		$quality = null === $status['average_quality_score'] ? 'Not scored' : $status['average_quality_score'] . '/100';
 		$cards = array(
 			array( 'label' => 'Context Authority', 'value' => strtoupper( $status['state'] ), 'help' => $status['ready'] ? 'Skills can rely on governed context.' : 'Fail-closed until mandatory assets are ready.', 'state' => $status['ready'] ? 'complete' : 'attention' ),
@@ -660,6 +681,17 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	private static function render_assets() {
 		$assets = MAD4B_SCP_Context_Authority::assets();
+		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
+		$authority_status = MAD4B_SCP_Context_Authority::status();
+		echo '<div id="mad4b-context-review-feedback" class="mad4b-context-review-feedback" aria-live="polite"></div>';
+		if ( ! empty( $review_queue['items'] ) ) {
+			echo '<div class="mad4b-scp-panel mad4b-context-review-queue"><div class="mad4b-context-review-title"><div><h2>' . esc_html__( 'Human Review Queue', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Approve only the exact content shown for the current registry revision. Stale browser tabs fail closed if content or Context authority changes.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-review-count">' . esc_html( (string) count( $review_queue['items'] ) ) . '</span></div><div class="mad4b-context-review-cards">';
+			foreach ( array_slice( $review_queue['items'], 0, 12 ) as $pending ) {
+				$asset_anchor = 'mad4b-context-asset-' . sanitize_html_class( (string) $pending['asset_id'] );
+				echo '<a class="mad4b-context-review-card" href="#' . esc_attr( $asset_anchor ) . '"><strong>' . esc_html( $pending['title'] ) . '</strong><span><code>' . esc_html( $pending['category'] ) . '</code> · ' . esc_html( $pending['review_status'] ) . ( ! empty( $pending['required'] ) ? ' · required' : '' ) . '</span><span>' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . ' →</span></a>';
+			}
+			echo '</div></div>';
+		}
 		self::render_repair_queue( $assets );
 		$mode_filter = isset( $_GET['mode_filter'] ) ? sanitize_key( wp_unslash( $_GET['mode_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
 		$category_filter = isset( $_GET['category_filter'] ) ? sanitize_key( wp_unslash( $_GET['category_filter'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only filtering.
@@ -683,7 +715,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				return true;
 			}
 		);
-		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Context Assets', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<div class="mad4b-scp-panel mad4b-context-assets-panel"><h2>' . esc_html__( 'Context Assets', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Classification is automatic in this first slice and remains visible with confidence. Quality scores marked provisional are metadata-based because the file type did not expose normalized text.', 'mad4b-site-control-plane' ) . '</p>';
 		$categories = MAD4B_SCP_Context_Authority::categories();
 		echo '<form class="mad4b-context-filterbar" method="get"><input type="hidden" name="page" value="' . esc_attr( self::PAGE_SLUG ) . '"><input type="hidden" name="tab" value="assets">';
@@ -700,7 +732,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>Asset</th><th>Mode</th><th>Category</th><th>Authority</th><th>Required</th><th>Quality</th><th>Confidence</th><th>Normalization</th><th>Status</th><th>Actionability</th><th>Review</th></tr></thead><tbody>';
 		foreach ( $assets as $asset ) {
 			$quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array();
-			echo '<tr><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( $asset['path'] ) . '</span></td>';
+			$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
+			$review_exact = 'approved' === $review_status && ! empty( $asset['reviewed_content_hash'] ) && ! empty( $asset['content_hash'] ) && hash_equals( (string) $asset['content_hash'], (string) $asset['reviewed_content_hash'] );
+			echo '<tr id="mad4b-context-asset-' . esc_attr( sanitize_html_class( (string) $asset['asset_id'] ) ) . '"><td><strong>' . esc_html( $asset['title'] ) . '</strong><br><span class="mad4b-scp-muted">' . esc_html( $asset['path'] ) . '</span></td>';
 			echo '<td>' . esc_html( $asset['source_mode'] ) . '</td><td><code>' . esc_html( $asset['category'] ) . '</code></td><td>' . esc_html( $asset['authority_class'] ) . '</td>';
 			echo '<td>' . esc_html( ! empty( $asset['required'] ) ? 'yes' : 'no' ) . '</td>';
 			$quality_profile = isset( $quality['profile'] ) ? (string) $quality['profile'] : 'legacy';
@@ -734,9 +768,17 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if ( ! empty( $write_capabilities['blockers'] ) ) echo '<br><span class="mad4b-scp-muted">' . esc_html( implode( ' · ', array_map( 'sanitize_key', $write_capabilities['blockers'] ) ) ) . '</span>';
 			}
 			echo '</div></td>';
-			echo '<td><details><summary class="button button-small">' . esc_html__( 'Review', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<td class="mad4b-context-review-cell"><span class="mad4b-context-review-state is-' . esc_attr( sanitize_html_class( $review_status ) ) . '">' . esc_html( $review_exact ? 'approved · exact' : $review_status ) . '</span><details><summary class="button button-small">' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REVIEW_ASSET );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';
+			echo '<input type="hidden" name="expected_content_hash" value="' . esc_attr( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '">';
+			echo '<input type="hidden" name="expected_registry_revision" value="' . esc_attr( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision() ) ) . '">';
+			echo '<input type="hidden" name="expected_authority_manifest_fingerprint" value="' . esc_attr( isset( $authority_status['authority_manifest_fingerprint'] ) ? (string) $authority_status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ) . '">';
+			echo '<div class="mad4b-context-review-evidence"><strong>' . esc_html__( 'Exact review evidence', 'mad4b-site-control-plane' ) . '</strong>';
+			if ( ! empty( $asset['content_excerpt'] ) ) echo '<p>' . esc_html( (string) $asset['content_excerpt'] ) . '</p>';
+			echo '<dl><dt>' . esc_html__( 'Content hash', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '' ) . '</code></dd>';
+			echo '<dt>' . esc_html__( 'Registry revision', 'mad4b-site-control-plane' ) . '</dt><dd><code>' . esc_html( (string) ( isset( $authority_status['registry_revision'] ) ? (int) $authority_status['registry_revision'] : 0 ) ) . '</code></dd>';
+			echo '<dt>' . esc_html__( 'Last synced', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '—' ) . '</dd></dl></div>';
 			echo '<label><strong>' . esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</strong><select name="category">';
 			foreach ( $categories as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['category'], $key, false ) . '>' . esc_html( $label ) . '</option>';
 			echo '</select></label>';
@@ -744,6 +786,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			foreach ( $authorities as $key => $label ) echo '<option value="' . esc_attr( $key ) . '"' . selected( $asset['authority_class'], $key, false ) . '>' . esc_html( $label ) . '</option>';
 			echo '</select></label>';
 			echo '<label><input type="checkbox" name="required" value="1"' . checked( ! empty( $asset['required'] ), true, false ) . '> ' . esc_html__( 'Required context', 'mad4b-site-control-plane' ) . '</label>';
+			if ( empty( $asset['required'] ) ) echo '<label class="mad4b-context-required-confirm"><input type="checkbox" name="required_scope_confirmed" value="1"> ' . esc_html__( 'If I enable Required context, I understand this category becomes a site-wide requirement for Brand Context-enabled Skills.', 'mad4b-site-control-plane' ) . '</label>';
 			$human_quality_override = ! empty( $quality['human_override'] );
 			$automatic_quality_score = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $quality['automatic_score'] ) ? (int) $quality['automatic_score'] : null );
 			echo '<fieldset class="mad4b-context-quality-mode"><legend><strong>' . esc_html__( 'Quality score', 'mad4b-site-control-plane' ) . '</strong></legend>';
@@ -753,7 +796,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<label><input type="radio" name="quality_mode" value="manual"' . checked( $human_quality_override, true, false ) . '> ' . esc_html__( 'Manual override', 'mad4b-site-control-plane' ) . '<span>' . esc_html__( 'Use only when a reviewer has a documented reason to replace the automatic score.', 'mad4b-site-control-plane' ) . '</span></label>';
 			echo '<input type="number" min="0" max="100" name="quality_score" value="' . esc_attr( $human_quality_override && isset( $asset['quality_score'] ) ? (string) $asset['quality_score'] : '' ) . '" placeholder="' . esc_attr( null === $automatic_quality_score ? '0–100' : (string) $automatic_quality_score ) . '">';
 			echo '</fieldset>';
-			submit_button( __( 'Save Review', 'mad4b-site-control-plane' ), 'primary small', 'submit', false );
+			echo '<div class="mad4b-context-review-inline-feedback" aria-live="polite"></div>';
+			submit_button( __( 'Approve exact content', 'mad4b-site-control-plane' ), 'primary small', 'submit', false );
 			echo '</form></details></td></tr>';
 		}
 		echo '</tbody></table></div></div>';
@@ -1085,6 +1129,39 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if(typeof form.requestSubmit==="function")form.requestSubmit();
 				else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
 			});
+			async function refreshReviewPanels(){
+				var response=await fetch(window.location.href,{credentials:"same-origin",headers:{"Cache-Control":"no-cache"}});
+				if(!response.ok)throw new Error("Review saved, but the refreshed Context view could not be loaded.");
+				var html=await response.text();
+				var doc=new DOMParser().parseFromString(html,"text/html");
+				[".mad4b-context-review-queue",".mad4b-context-assets-panel"].forEach(function(selector){
+					var current=document.querySelector(selector), next=doc.querySelector(selector);
+					if(current&&next)current.replaceWith(next); else if(current&&!next)current.remove();
+				});
+			}
+			document.addEventListener("submit",async function(event){
+				var form=event.target.closest(".mad4b-context-review-form");
+				if(!form)return;
+				event.preventDefault();
+				if(form.dataset.mad4bBusy==="1")return;
+				form.dataset.mad4bBusy="1"; form.setAttribute("aria-busy","true");
+				var controls=Array.prototype.slice.call(form.querySelectorAll("button,input,select,textarea"));
+				var priorDisabled=controls.map(function(control){return control.disabled;});
+				controls.forEach(function(control){control.disabled=true;});
+				var local=form.querySelector(".mad4b-context-review-inline-feedback");
+				if(local){local.className="mad4b-context-review-inline-feedback is-pending";local.textContent="Approving exact content…";}
+				try{
+					var body=new URLSearchParams(new FormData(form));
+					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","X-Requested-With":"XMLHttpRequest"},body:body.toString()});
+					var payload=await response.json();
+					if(!payload||!payload.success){var failure=new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Context review could not be committed.");failure.mad4bCode=payload&&payload.data&&payload.data.code?payload.data.code:"mad4b_context_review_failed";throw failure;}
+					if(local){local.className="mad4b-context-review-inline-feedback is-success";local.textContent=payload.data&&payload.data.message?payload.data.message:"Exact content approved.";}
+					await refreshReviewPanels();
+				}catch(error){
+					if(local){local.className="mad4b-context-review-inline-feedback is-error";local.textContent=(error&&error.mad4bCode?error.mad4bCode+" · ":"")+(error&&error.message?error.message:"Context review failed.");}
+					try{await refreshReviewPanels();}catch(refreshError){}
+				}finally{form.removeAttribute("aria-busy");delete form.dataset.mad4bBusy;controls.forEach(function(control,index){control.disabled=priorDisabled[index];});}
+			});
 			document.addEventListener("submit",async function(event){
 				var form=event.target.closest(".mad4b-context-ajax-form");
 				if(!form)return;
@@ -1138,6 +1215,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		.mad4b-context-governance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}.mad4b-context-governance-cell{border:1px solid #dcdcde;border-radius:5px;padding:12px;background:#fff}.mad4b-context-governance-cell span{display:block;color:#646970;margin-bottom:5px}.mad4b-context-governance-cell strong{display:block}.mad4b-context-governance-cell.is-complete{border-left:4px solid #00a32a}.mad4b-context-governance-cell.is-attention{border-left:4px solid #dba617}.mad4b-context-governance-cell.is-pending{border-left:4px solid #8c8f94}
 		.mad4b-context-review-form{min-width:260px;padding:12px;background:#fff;border:1px solid #dcdcde;margin-top:8px}.mad4b-context-review-form label{display:block;margin:0 0 10px}.mad4b-context-review-form select,.mad4b-context-review-form input[type=number]{display:block;width:100%;margin-top:4px}.mad4b-context-quality-mode{border:0;padding:0;margin:0 0 12px}.mad4b-context-quality-mode label{padding:8px;border:1px solid #dcdcde;border-radius:4px}.mad4b-context-quality-mode label span{display:block;margin:4px 0 0 22px;color:#646970;font-weight:400}
 		.mad4b-context-filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 16px}.mad4b-context-intelligence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:14px 0}.mad4b-context-intelligence-card{border:1px solid #dcdcde;border-radius:5px;background:#fff;padding:14px}.mad4b-context-intelligence-card h3{margin-top:0}.mad4b-context-intelligence-card label{display:block;margin:10px 0}.mad4b-context-intelligence-card select,.mad4b-context-intelligence-card input[type=text]{width:100%;margin-top:4px}.mad4b-context-conflict-card{border-left:4px solid #dba617;background:#fff8e5;padding:12px;margin:10px 0}.mad4b-context-folder-jump{margin:14px 0 18px}.mad4b-context-folder-jump label{display:block;margin-bottom:6px}.mad4b-context-filterbar select,.mad4b-context-filterbar input{max-width:220px}.mad4b-context-remove{margin-top:8px}.mad4b-context-remove form{margin-top:8px;max-width:280px}
+		.mad4b-context-review-feedback{margin:12px 0}.mad4b-context-review-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.mad4b-context-review-count{display:inline-flex;min-width:38px;height:38px;align-items:center;justify-content:center;border-radius:20px;background:#fff3cd;font-weight:700}.mad4b-context-review-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}.mad4b-context-review-card{display:flex;flex-direction:column;gap:6px;border:1px solid #dcdcde;border-left:4px solid #dba617;border-radius:5px;padding:12px;text-decoration:none;color:#1d2327;background:#fff}.mad4b-context-review-cell{position:sticky;right:0;background:#fff;min-width:190px;box-shadow:-8px 0 12px rgba(0,0,0,.04)}.mad4b-context-review-state{display:block;margin-bottom:7px;font-size:12px;font-weight:600}.mad4b-context-review-state.is-approved{color:#008a20}.mad4b-context-review-evidence{border:1px solid #dcdcde;background:#f6f7f7;padding:10px;margin-bottom:10px}.mad4b-context-review-evidence p{max-width:520px;line-height:1.5}.mad4b-context-review-evidence dl{display:grid;grid-template-columns:auto 1fr;gap:4px 8px}.mad4b-context-review-evidence dt{font-weight:600}.mad4b-context-review-evidence dd{margin:0;overflow-wrap:anywhere}.mad4b-context-required-confirm{border-left:3px solid #dba617!important;background:#fff8e5!important}.mad4b-context-review-inline-feedback{margin:8px 0;font-size:12px}.mad4b-context-review-inline-feedback.is-error{color:#b32d2e}.mad4b-context-review-inline-feedback.is-success{color:#008a20}
 		@media(max-width:782px){.mad4b-context-folder-head{align-items:flex-start!important;flex-direction:column}}
 		</style>';
 	}
