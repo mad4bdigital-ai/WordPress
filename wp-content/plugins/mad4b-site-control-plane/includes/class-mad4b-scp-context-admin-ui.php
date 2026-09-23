@@ -235,8 +235,15 @@ final class MAD4B_SCP_Context_Admin_UI {
 		);
 		if ( self::is_ajax_request() ) {
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
+			$review_state = isset( $result['review_status'] ) ? (string) $result['review_status'] : '';
+			$review_message = __( 'Exact Context review saved.', 'mad4b-site-control-plane' );
+			if ( 'approved' === $review_state ) $review_message = __( 'Exact Context content approved.', 'mad4b-site-control-plane' );
+			elseif ( 'needs_changes' === $review_state ) $review_message = __( 'Exact Context content marked as needing changes.', 'mad4b-site-control-plane' );
+			elseif ( 'rejected' === $review_state ) $review_message = __( 'Exact Context content rejected.', 'mad4b-site-control-plane' );
 			wp_send_json_success( array(
-				'message' => __( 'Exact Context content approved.', 'mad4b-site-control-plane' ),
+				'message' => $review_message,
+				'decision' => isset( $result['review_decision'] ) ? (string) $result['review_decision'] : '',
+				'review_status' => $review_state,
 				'asset' => $result,
 				'context_status' => MAD4B_SCP_Context_Authority::status(),
 				'review_queue' => MAD4B_SCP_Context_Authority::review_queue(),
@@ -644,8 +651,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 	private static function render_sources() {
 		$sources = MAD4B_SCP_Context_Authority::sources();
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Source Folders', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Governed folders participate in Context Authority. Task-only folders are isolated to their task scope and do not change the Brand Context fingerprint.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( ! empty( $review_queue['items'] ) ) echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Human review is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Source scanning discovers content; human decisions are made per exact asset in the Human Review Queue.', 'mad4b-site-control-plane' ) . ' <a class="button button-small" href="' . esc_url( self::tab_url( 'assets', array( 'review_filter' => 'needs_review' ) ) ) . '">' . esc_html__( 'Open Human Review Queue', 'mad4b-site-control-plane' ) . '</a></p></div>';
 		if ( empty( $sources ) ) {
 			echo '<p>' . esc_html__( 'No source folders selected yet.', 'mad4b-site-control-plane' ) . '</p>';
 			if ( ! empty( $connection['connected'] ) ) echo '<p><a class="button button-primary" href="' . esc_url( self::tab_url( 'google-drive', array( 'folder' => 'root' ) ) ) . '">' . esc_html__( 'Choose a Folder', 'mad4b-site-control-plane' ) . '</a></p>';
@@ -711,8 +720,12 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if ( $category_filter && $category_filter !== ( isset( $asset['category'] ) ? $asset['category'] : '' ) ) return false;
 				if ( $status_filter && $status_filter !== ( isset( $asset['status'] ) ? $asset['status'] : '' ) ) return false;
 				$review = isset( $asset['review_status'] ) ? $asset['review_status'] : 'unreviewed';
-				if ( 'needs_review' === $review_filter && ! in_array( $review, array( 'unreviewed', 'needs_review_content_changed' ), true ) ) return false;
-				if ( 'approved' === $review_filter && 'approved' !== $review ) return false;
+				$current_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
+				$reviewed_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
+				$review_exact = 'approved' === $review && preg_match( '/^[a-f0-9]{64}$/', $current_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_hash ) && hash_equals( $current_hash, $reviewed_hash );
+				$actionable_review = in_array( $review, array( 'unreviewed', 'needs_review_content_changed', 'needs_changes', 'rejected' ), true ) || ( 'approved' === $review && ! $review_exact );
+				if ( 'needs_review' === $review_filter && ! $actionable_review ) return false;
+				if ( 'approved' === $review_filter && ! $review_exact ) return false;
 				if ( '' !== $search_filter ) {
 					$haystack = strtolower( ( isset( $asset['title'] ) ? $asset['title'] : '' ) . ' ' . ( isset( $asset['path'] ) ? $asset['path'] : '' ) );
 					if ( false === strpos( $haystack, strtolower( $search_filter ) ) ) return false;
@@ -866,6 +879,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	private static function render_quality() {
 		$assets = MAD4B_SCP_Context_Authority::assets();
+		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
 		$groups = array();
 		foreach ( $assets as $asset ) {
 			$category = isset( $asset['category'] ) ? $asset['category'] : 'uncategorized';
@@ -880,6 +894,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		ksort( $groups );
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Content Quality', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Quality and authority are separate. A high-quality reference never outranks an authoritative Brand Core asset. Scores are transparent and show whether content or metadata was analyzed.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( ! empty( $review_queue['items'] ) ) echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Quality evidence does not replace Human Review.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( sprintf( __( '%d asset(s) still need an exact-content decision or binding refresh.', 'mad4b-site-control-plane' ), count( $review_queue['items'] ) ) ) . ' <a class="button button-small" href="' . esc_url( self::tab_url( 'assets', array( 'review_filter' => 'needs_review' ) ) ) . '">' . esc_html__( 'Open Human Review Queue', 'mad4b-site-control-plane' ) . '</a></p></div>';
 		echo '<h3>' . esc_html__( 'Normalization support', 'mad4b-site-control-plane' ) . '</h3><div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th>File type</th><th>Mode</th><th>Status</th><th>Notes</th></tr></thead><tbody>';
 		foreach ( MAD4B_SCP_Google_Drive_Context::normalization_capabilities() as $capability ) {
 			echo '<tr><td><strong>' . esc_html( $capability['type'] ) . '</strong><br><code>' . esc_html( $capability['mime'] ) . '</code></td><td>' . esc_html( $capability['mode'] ) . '</td><td>' . esc_html( $capability['status'] ) . '</td><td>' . esc_html( $capability['note'] ) . '</td></tr>';
