@@ -15,8 +15,8 @@ def require(text, marker, label):
     if marker not in text:
         raise SystemExit(f"missing {label}: {marker}")
 
-require(main, "Version: 0.4.0-rc.48", "rc.48 plugin header")
-require(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.48' );", "rc.48 runtime constant")
+require(main, "Version: 0.4.0-rc.49", "rc.49 plugin header")
+require(main, "define( 'MAD4B_SCP_VERSION', '0.4.0-rc.49' );", "rc.49 runtime constant")
 require(main, "class-mad4b-scp-staging-certification.php", "staging certification include")
 require(main, "MAD4B_SCP_Staging_Certification::boot();", "staging certification boot")
 
@@ -188,18 +188,18 @@ if "browser_runtime_parity_verified' => true" in cert:
 
 expected_rollback = {
     "contract": "mad4b.rollback-candidate.v1",
-    "source_commit_sha": "7855134502899535303340630ce773cac77e9e01",
-    "control_plane_version": "0.4.0-rc.47",
-    "build_fingerprint": "a5bb5e12bdca58a1f7d53821dd53a8304637e8ddfa5c6271a35b8ea06acaad40",
-    "package_manifest_digest": "7a75d644b8b4ac2e611e67b0f153b542f86e5632de9167ff6dfb803caf116cba",
-    "artifact_sha256": "7ff1b0674f1e905fd24e3516ff07401f61117eb6d60a5aa893c46cf8c810ffd4",
-    "artifact_name": "mad4b-site-control-plane-0.4.0-rc.47.zip",
+    "source_commit_sha": "3b1dd1c339e3dd3edc315cb65f6bcdb6f17ef6c9",
+    "control_plane_version": "0.4.0-rc.48",
+    "build_fingerprint": "11acee18169e65a4d9e5437e77be08e31a901a04951d8128127ff95f60539bbd",
+    "package_manifest_digest": "2fed7ef3164cc6909a4f40ed28e80994c4c9e4129d040e9928e9dda9fe793f3f",
+    "artifact_sha256": "07a667ca9badb8e000e17481e16b66c725efdd2d86dc91c41a07ace112fa85a4",
+    "artifact_name": "mad4b-site-control-plane-0.4.0-rc.48.zip",
 }
 for key, value in expected_rollback.items():
     if rollback.get(key) != value:
         raise SystemExit(f"rollback candidate drift for {key}: {rollback.get(key)!r}")
 if rollback.get("artifact_retention_verified_by_package") is not True:
-    raise SystemExit("rc.48 rollback candidate must be bound to the CI-verifiable rc.47 retention receipt")
+    raise SystemExit("rc.49 rollback candidate must be bound to the CI-verifiable rc.48 retention receipt")
 
 receipt_path = ROOT / "MAD4B-ROLLBACK-RETENTION-RECEIPT.json"
 if not receipt_path.is_file():
@@ -208,11 +208,11 @@ receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
 for key, value in {
     "contract": "mad4b.rollback-retention-receipt.v1",
     "verification_source": "github_actions_artifact_api",
-    "rollback_source_commit_sha": "7855134502899535303340630ce773cac77e9e01",
-    "rollback_control_plane_version": "0.4.0-rc.47",
-    "plugin_artifact_sha256": "7ff1b0674f1e905fd24e3516ff07401f61117eb6d60a5aa893c46cf8c810ffd4",
-    "distribution_artifact_id": 10719972789,
-    "distribution_artifact_sha256": "84ce5c4b61e9aefa679a7e5d2c74f0b6fd8cb41c35556bb9fe764d66579f6a5e",
+    "rollback_source_commit_sha": "3b1dd1c339e3dd3edc315cb65f6bcdb6f17ef6c9",
+    "rollback_control_plane_version": "0.4.0-rc.48",
+    "plugin_artifact_sha256": "07a667ca9badb8e000e17481e16b66c725efdd2d86dc91c41a07ace112fa85a4",
+    "distribution_artifact_id": 10724503277,
+    "distribution_artifact_sha256": "cffd8bc128d0cdf4c76564141086fe50c950ab3af04b47895eb64f077674b881",
 }.items():
     if receipt.get(key) != value:
         raise SystemExit(f"rollback retention receipt drift for {key}: {receipt.get(key)!r}")
