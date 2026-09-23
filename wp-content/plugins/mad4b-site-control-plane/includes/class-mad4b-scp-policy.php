@@ -53,6 +53,43 @@ final class MAD4B_SCP_Policy {
 		return (bool) apply_filters( 'mad4b_scp_mutation_permission', true, get_current_user_id(), $agent, $identity );
 	}
 
+	public static function can_developer_read() {
+		if ( ! current_user_can( 'manage_options' ) ) return false;
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		if ( ! in_array( $environment, array( 'staging', 'development', 'local' ), true ) ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! MAD4B_SCP_Developer_Runtime::developer_flag_enabled() ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return false;
+		$configured_agent = MAD4B_SCP_Developer_Runtime::configured_agent_public_id();
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $configured_agent ) ) return false;
+		$identity = MAD4B_SCP_Identity_Context::current();
+		if ( is_wp_error( $identity ) ) return false;
+		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $agent ) || empty( $agent['public_id'] ) ) return false;
+		if ( ! hash_equals( $configured_agent, strtolower( (string) $agent['public_id'] ) ) ) return false;
+		if ( $environment !== sanitize_key( (string) $agent['environment'] ) ) return false;
+		return (bool) apply_filters( 'mad4b_mcp_developer_read_permission', true, get_current_user_id(), $agent, $identity );
+	}
+
+	public static function can_developer_runtime_status() {
+		if ( ! self::can_developer_read() ) return false;
+		$identity = MAD4B_SCP_Identity_Context::current();
+		if ( is_wp_error( $identity ) ) return false;
+		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $agent ) ) return false;
+		$grant = MAD4B_SCP_Agent_Registry::exact_grant( $agent['id'], 'mad4b-developer', 'mad4b/developer-runtime-status', 'core' );
+		return ! is_wp_error( $grant );
+	}
+
+	public static function can_developer() {
+		return self::can_developer_read() && self::can_mutate();
+	}
+
+	public static function can_developer_breakglass() {
+		if ( ! self::can_developer() ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Developer_Runtime' ) || ! MAD4B_SCP_Developer_Runtime::breakglass_flag_enabled() ) return false;
+		return (bool) apply_filters( 'mad4b_mcp_developer_breakglass_permission', true, get_current_user_id() );
+	}
+
 	public static function can_breakglass() {
 		if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== MAD4B_MCP_BREAKGLASS_ENABLED ) return false;
 		if ( ! current_user_can( 'manage_options' ) ) return false;

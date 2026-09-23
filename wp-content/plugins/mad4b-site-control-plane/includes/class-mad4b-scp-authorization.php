@@ -84,6 +84,8 @@ final class MAD4B_SCP_Authorization {
 		if ( is_wp_error( $agent ) ) return $agent;
 		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() ) return self::error( 'mad4b_mutation_disabled', 'Mutation capability is disabled by MAD4B policy.' );
 		if ( 'mad4b-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_breakglass() ) return self::error( 'mad4b_breakglass_disabled', 'Breakglass capability is disabled.' );
+		if ( 'mad4b-developer' === $server_id && ! MAD4B_SCP_Policy::can_developer() ) return self::error( 'mad4b_developer_disabled', 'Developer execution capability is disabled or the exact Developer Agent is not bound.' );
+		if ( 'mad4b-developer-breakglass' === $server_id && ! MAD4B_SCP_Policy::can_developer_breakglass() ) return self::error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass capability is disabled.' );
 
 		$provider = sanitize_key( (string) $provider );
 		if ( '' === $provider ) $provider = 'core';
@@ -315,9 +317,9 @@ final class MAD4B_SCP_Authorization {
 		$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
 		$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 		$surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
-		if ( in_array( $surface, array( 'content', 'write', 'admin', 'breakglass' ), true ) ) return 'mad4b-' . $surface;
+		if ( in_array( $surface, array( 'content', 'write', 'admin', 'breakglass', 'developer', 'developer-breakglass' ), true ) ) return 'mad4b-' . $surface;
 		$category = isset( $args['category'] ) ? sanitize_key( (string) $args['category'] ) : '';
-		if ( in_array( $category, array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ), true ) ) return $category;
+		if ( in_array( $category, array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass', 'mad4b-developer', 'mad4b-developer-breakglass' ), true ) ) return $category;
 		return 'mad4b-write';
 	}
 
@@ -368,7 +370,7 @@ final class MAD4B_SCP_Authorization {
 	public static function audit_remote_permission_denial( $ability_name, $error, $input = null ) {
 		if ( ! is_wp_error( $error ) || 'mad4b_approval_replay_denied' !== (string) $error->get_error_code() ) return false;
 		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
-		if ( ! in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-write' ), true ) ) return false;
+		if ( ! in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-write', 'mad4b-developer', 'mad4b-developer-breakglass' ), true ) ) return false;
 		self::audit_execution_denial( $ability_name, $error, $input );
 		return true;
 	}
