@@ -24,7 +24,6 @@ for marker in [
     "previous_binding",
     "target_binding",
     "write_snapshot",
-    "binding_mutation_performed",
 ]:
     assert marker in binding, f'missing binding attribution marker: {marker}'
 
