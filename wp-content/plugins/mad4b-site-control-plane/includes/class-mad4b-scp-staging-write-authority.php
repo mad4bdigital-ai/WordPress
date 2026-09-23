@@ -211,7 +211,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$subject_fingerprint = isset( $actor['subject_fingerprint'] ) ? strtolower( trim( (string) $actor['subject_fingerprint'] ) ) : '';
 		$identity_subject = isset( $identity['subject_fingerprint'] ) ? strtolower( trim( (string) $identity['subject_fingerprint'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $subject_fingerprint ) || ! hash_equals( $identity_subject, $subject_fingerprint ) ) return new WP_Error( 'mad4b_candidate_binding_subject_context_mismatch', 'Candidate binding actor fingerprint does not match the live OAuth subject.' );
-		foreach ( array( 'issuer_fingerprint', 'client_fingerprint', 'token_instance_fingerprint' ) as $fingerprint_field ) {
+		foreach ( array( 'issuer_fingerprint', 'client_fingerprint', 'session_fingerprint' ) as $fingerprint_field ) {
 			$actor_value = isset( $actor[ $fingerprint_field ] ) ? strtolower( trim( (string) $actor[ $fingerprint_field ] ) ) : '';
 			$identity_value = isset( $identity[ $fingerprint_field ] ) ? strtolower( trim( (string) $identity[ $fingerprint_field ] ) ) : '';
 			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actor_value ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $identity_value ) || ! hash_equals( $identity_value, $actor_value ) ) {
