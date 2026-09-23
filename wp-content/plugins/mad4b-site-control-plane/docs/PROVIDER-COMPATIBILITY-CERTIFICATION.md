@@ -188,6 +188,21 @@ Runtime self-test treats drift from an installed-but-inactive provider as adviso
 
 Premium candidate metadata is diagnostic, not certification. If an installed premium version differs from the repository package candidate (for example a patch-suffix difference), the candidate relation is reported explicitly and mutation stays fail-closed. Live/runtime hashes are never accepted as self-attestation authority.
 
+## Evidence, artifact authority, capability certification and mutation authority
+
+These are separate trust layers:
+
+1. **Repository evidence** proves what package trees or contracts exist in the reviewed repository. It is evidence, not certification.
+2. **Artifact authority** binds an installed provider identity to a trusted provider contract/baseline. A repository ZIP or live version string does not create this authority by itself.
+3. **Capability certification** evaluates individual mounted abilities against structural and, where required, behavioral/rollback evidence.
+4. **Mutation authority** remains a separate execution-time gate requiring all normal MAD4B authorization controls.
+
+A provider may therefore be `READ_COMPATIBLE` while `artifact_authority_bound=false`. This is valid for structurally bounded reads, but any write capability must remain `DISCOVERED`, `write_eligible=false`, and `artifact_authority_required=true`. Behavioral or rollback probes cannot promote that write until artifact authority is established.
+
+Rank Math intentionally exercises this state in rc.52: the repository contains Rank Math package evidence and the SEO adapter exposes bounded read/write abilities, but no certified Rank Math provider baseline has been created. Its reads can be structurally classified; `seo/update-meta` remains fail-closed and its recertification plan must establish artifact authority before behavioral recertification.
+
+Functional-gap `ready` is also not provider closure. It is retained only as a backward-compatible alias for `evaluation_complete`. Consumers should use `provider_closure_ready`, `followup_required`, and `decision_handoff.groups` to determine whether governed follow-up remains.
+
 ## Recertification planning
 
 `mad4b/provider-recertification-plan` is advisory evidence only. Current classifications include:
