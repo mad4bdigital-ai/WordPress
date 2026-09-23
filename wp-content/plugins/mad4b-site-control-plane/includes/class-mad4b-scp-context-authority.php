@@ -446,6 +446,7 @@ final class MAD4B_SCP_Context_Authority {
 						$normalized['authority_class'] = isset( $prior['authority_class'] ) ? (string) $prior['authority_class'] : $normalized['authority_class'];
 						$normalized['required'] = ! empty( $prior['required'] );
 						$normalized['priority'] = isset( $prior['priority'] ) ? (int) $prior['priority'] : $normalized['priority'];
+						$normalized['approved_context_sets'] = self::normalize_context_sets( isset( $prior['approved_context_sets'] ) ? $prior['approved_context_sets'] : array(), ! empty( $prior['category'] ) ? array( (string) $prior['category'] ) : array() );
 						$same_content = ! empty( $prior['content_hash'] ) && hash_equals( (string) $prior['content_hash'], (string) $normalized['content_hash'] );
 						$prior_review_status = isset( $prior['review_status'] ) ? (string) $prior['review_status'] : '';
 						$prior_reviewed_hash = isset( $prior['reviewed_content_hash'] ) ? strtolower( trim( (string) $prior['reviewed_content_hash'] ) ) : '';
@@ -622,6 +623,8 @@ final class MAD4B_SCP_Context_Authority {
 					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
 					elseif ( ! empty( $existing['reviewed_at'] ) && 'human' === ( isset( $existing['classification_source'] ) ? $existing['classification_source'] : '' ) && array_key_exists( $field, $existing ) ) $normalized[ $field ] = $existing[ $field ];
 				}
+				$set_source = ! empty( $preserve ) ? $preserve : $existing;
+				if ( ! empty( $set_source['reviewed_at'] ) && 'human' === ( isset( $set_source['classification_source'] ) ? (string) $set_source['classification_source'] : '' ) ) $normalized['approved_context_sets'] = self::normalize_context_sets( isset( $set_source['approved_context_sets'] ) ? $set_source['approved_context_sets'] : array(), ! empty( $set_source['category'] ) ? array( (string) $set_source['category'] ) : array() );
 
 				$previous_hash = isset( $review_source['content_hash'] ) ? strtolower( trim( (string) $review_source['content_hash'] ) ) : '';
 				$current_hash = isset( $normalized['content_hash'] ) ? strtolower( trim( (string) $normalized['content_hash'] ) ) : '';
@@ -694,6 +697,8 @@ final class MAD4B_SCP_Context_Authority {
 					if ( array_key_exists( $field, $preserve ) ) $normalized[ $field ] = $preserve[ $field ];
 					elseif ( array_key_exists( $field, $original ) ) $normalized[ $field ] = $original[ $field ];
 				}
+				$set_source = ! empty( $preserve ) ? $preserve : $original;
+				$normalized['approved_context_sets'] = self::normalize_context_sets( isset( $set_source['approved_context_sets'] ) ? $set_source['approved_context_sets'] : array(), ! empty( $set_source['category'] ) ? array( (string) $set_source['category'] ) : array() );
 				// A recreated file has a new provider identity and newly supplied
 				// content. Preserve governance classification, never the old content
 				// approval or a manual quality override.
@@ -1034,6 +1039,7 @@ final class MAD4B_SCP_Context_Authority {
 			$previous_authority = isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '';
 			$previous_required = ! empty( $asset['required'] );
 			$previous_review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
+			$previous_context_sets = self::asset_context_sets( $asset );
 			$decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
 			if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_decision_invalid', 'Context review decision must be approve, needs_changes, or reject.' );
 			$review_note = substr( trim( sanitize_text_field( isset( $input['review_note'] ) ? (string) $input['review_note'] : '' ) ), 0, 1000 );
@@ -1041,6 +1047,9 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
 	
 			$requested_required = ! empty( $input['required'] );
+			$requested_context_sets = self::normalize_context_sets( isset( $input['approved_context_sets'] ) ? $input['approved_context_sets'] : array(), array( $category ) );
+			if ( ! in_array( $category, $requested_context_sets, true ) && 'uncategorized' !== $category ) { $requested_context_sets[] = $category; sort( $requested_context_sets, SORT_STRING ); }
+			$context_sets_changed = $previous_context_sets !== $requested_context_sets;
 			$required_scope_escalated = ! $previous_required && $requested_required;
 			$required_scope_shifted = $previous_required && $requested_required && ! hash_equals( $previous_category, $category );
 			$required_scope_reduced = $previous_required && ! $requested_required;
@@ -1058,12 +1067,13 @@ final class MAD4B_SCP_Context_Authority {
 					'required_scope_reduced' => $required_scope_reduced,
 				)
 			);
-			$governance_changed = ! hash_equals( $previous_category, $category ) || ! hash_equals( $previous_authority, $authority ) || $previous_required !== $requested_required;
+			$governance_changed = ! hash_equals( $previous_category, $category ) || ! hash_equals( $previous_authority, $authority ) || $previous_required !== $requested_required || $context_sets_changed;
 			$asset['category'] = $category;
 			$asset['classification_confidence'] = 1.0;
 			$asset['classification_source'] = 'human';
 			$asset['authority_class'] = $authority;
 			$asset['required'] = $requested_required;
+			$asset['approved_context_sets'] = $requested_context_sets;
 			$asset['priority'] = 'brand_authority' === $authority || 'policy_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
 			$quality_input = isset( $input['quality_score'] ) ? trim( (string) $input['quality_score'] ) : '';
 			$current_quality = isset( $asset['quality'] ) && is_array( $asset['quality'] ) ? $asset['quality'] : array( 'contract' => self::QUALITY_CONTRACT );
@@ -1155,6 +1165,9 @@ final class MAD4B_SCP_Context_Authority {
 					'wp_user_id' => get_current_user_id(),
 					'previous_category' => $previous_category,
 					'category' => $category,
+					'previous_approved_context_sets' => $previous_context_sets,
+					'approved_context_sets' => $requested_context_sets,
+					'context_sets_changed' => $context_sets_changed,
 					'automatic_classification' => isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array(),
 					'previous_authority_class' => $previous_authority,
 					'authority_class' => $authority,
@@ -1197,6 +1210,8 @@ final class MAD4B_SCP_Context_Authority {
 				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
 				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'suggested_context_sets' => isset( $asset['suggested_context_sets'] ) ? array_values( $asset['suggested_context_sets'] ) : array(),
+				'approved_context_sets' => self::asset_context_sets( $asset ),
 				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
 				'required' => ! empty( $asset['required'] ),
 				'review_status' => $review_status,
@@ -1225,7 +1240,7 @@ final class MAD4B_SCP_Context_Authority {
 		foreach ( $required_sets as $category ) {
 			$eligible = array(); $observed = array();
 			foreach ( self::assets() as $asset ) {
-				if ( ! is_array( $asset ) || $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
+				if ( ! is_array( $asset ) || ! in_array( $category, self::asset_context_sets( $asset ), true ) ) continue;
 				$review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
 				$current_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
 				$reviewed_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
@@ -1420,6 +1435,12 @@ final class MAD4B_SCP_Context_Authority {
 		$out = array_values( array_unique( $out ) );
 		sort( $out, SORT_STRING );
 		return array_slice( $out, 0, 12 );
+	}
+
+	public static function asset_context_sets( array $asset ) {
+		$fallback = array();
+		if ( ! empty( $asset['category'] ) && 'uncategorized' !== (string) $asset['category'] ) $fallback[] = (string) $asset['category'];
+		return self::normalize_context_sets( isset( $asset['approved_context_sets'] ) ? $asset['approved_context_sets'] : array(), $fallback );
 	}
 
 	public static function classify_asset( $name, $path = '', $content = '' ) {
@@ -1627,6 +1648,8 @@ final class MAD4B_SCP_Context_Authority {
 				'normalization_status' => isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : '',
 				'parent_folder_id' => isset( $asset['parent_folder_id'] ) ? (string) $asset['parent_folder_id'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'suggested_context_sets' => isset( $asset['suggested_context_sets'] ) && is_array( $asset['suggested_context_sets'] ) ? array_values( $asset['suggested_context_sets'] ) : array(),
+				'approved_context_sets' => self::asset_context_sets( $asset ),
 				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
 				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
 				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '',
@@ -1777,6 +1800,7 @@ final class MAD4B_SCP_Context_Authority {
 			$rows[] = array(
 				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
 				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
+				'approved_context_sets' => self::asset_context_sets( $asset ),
 				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
 				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
 				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '',
