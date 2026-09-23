@@ -22,6 +22,7 @@ for marker in [
     "class MAD4B_SCP_Plugin_Package",
     "mad4b.plugin-package-plan.v1",
     "mad4b.plugin-package-apply.v1",
+    "'surface' => 'admin'",
     "'mad4b/plugin-package-plan'",
     "'mad4b/plugin-package-apply'",
     "'readonly' => true",
