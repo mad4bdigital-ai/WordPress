@@ -250,7 +250,15 @@ jobs:
           ' --path="$WP_PATH" --user=mad4b-ci-admin)"
           test -n "$CHATGPT_TOKEN"
 
-          MCP_URL="$MAD4B_BROWSER_BASE_URL/wp-json/mcp/mad4b-chatgpt"
+          # Use the runtime-declared protected resource exactly. On disposable
+          # WordPress with plain permalinks this is ?rest_route=..., while live
+          # Staging may expose the equivalent pretty /wp-json/... form.
+          MCP_URL="$(php /tmp/wp-cli.phar eval '
+          MAD4B_SCP_Local_OAuth_Server::ensure_runtime();
+          echo MAD4B_SCP_Local_OAuth_Server::resource_identifier();
+          ' --path="$WP_PATH" --user=mad4b-ci-admin)"
+          test -n "$MCP_URL"
+          echo "HTTP MCP resource=$MCP_URL"
           INIT_META="$(curl --silent --show-error \
             --connect-timeout 2 --max-time 8 \
             -D /tmp/mad4b-http-init.headers \
