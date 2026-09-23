@@ -141,8 +141,12 @@ foreach(array(
     expect_true(false!==strpos($registry_source,$marker),'runtime self-test must classify provider drift by active capability impact: '.$marker);
 }
 $compat_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-provider-compatibility-certification.php');
-$structural_pos=strpos($compat_source,"elseif ( ! empty( $exposed_incompatibilities ) )");
-$exact_pos=strpos($compat_source,"elseif ( $exact_certified )");
+$state_anchor=strpos($compat_source,'$installed_artifact_present =');
+$state_end=false!==$state_anchor?strpos($compat_source,'$structural_fingerprint =',$state_anchor):false;
+expect_true(false!==$state_anchor && false!==$state_end && $state_end>$state_anchor,'provider compatibility state block is missing');
+$state_block=substr($compat_source,$state_anchor,$state_end-$state_anchor);
+$structural_pos=strpos($state_block,"elseif ( ! empty( $exposed_incompatibilities ) )");
+$exact_pos=strpos($state_block,"elseif ( $exact_certified )");
 expect_true(false!==$structural_pos && false!==$exact_pos && $structural_pos<$exact_pos,'exposed structural incompatibility must outrank exact artifact identity in provider health classification');
 $bitflows_source=file_get_contents(dirname(__DIR__).'/includes/adapters/class-mad4b-scp-bitflows-adapter.php');
 foreach(array('mad4b.bitflows-runtime-contract-diagnostic.v1','declared_class_suffix_candidates','autoload_or_bootstrap_mutation_attempted','filesystem_scan_performed') as $marker){
