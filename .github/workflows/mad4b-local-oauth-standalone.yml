@@ -251,25 +251,32 @@ jobs:
           test -n "$CHATGPT_TOKEN"
 
           MCP_URL="$MAD4B_BROWSER_BASE_URL/wp-json/mcp/mad4b-chatgpt"
-          INIT_TIME="$(curl --silent --show-error --fail-with-body \
+          INIT_META="$(curl --silent --show-error \
             --connect-timeout 2 --max-time 8 \
             -D /tmp/mad4b-http-init.headers \
             -o /tmp/mad4b-http-init.body \
-            -w '%{time_total}' \
+            -w '%{http_code} %{time_total}' \
             -X POST "$MCP_URL" \
             -H "Authorization: Bearer $CHATGPT_TOKEN" \
             -H 'Accept: application/json, text/event-stream' \
             -H 'Content-Type: application/json' \
             -H 'MCP-Protocol-Version: 2025-11-25' \
             --data '{"jsonrpc":"2.0","id":901,"method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"mad4b-http-refresh-ci","version":"1.0.0"}}}')"
+          INIT_STATUS="${INIT_META%% *}"
+          INIT_TIME="${INIT_META#* }"
+          echo "HTTP MCP initialize status=$INIT_STATUS time=$INIT_TIME"
+          cat /tmp/mad4b-http-init.headers
+          cat /tmp/mad4b-http-init.body
+          test "$INIT_STATUS" = "200"
+
           SESSION_ID="$(awk 'BEGIN{IGNORECASE=1} /^Mcp-Session-Id:/ {gsub(/\r/,""); print $2}' /tmp/mad4b-http-init.headers | tail -n1)"
           test -n "$SESSION_ID"
 
-          TOOLS_TIME="$(curl --silent --show-error --fail-with-body \
+          TOOLS_META="$(curl --silent --show-error \
             --connect-timeout 2 --max-time 8 \
             -D /tmp/mad4b-http-tools.headers \
             -o /tmp/mad4b-http-tools.body \
-            -w '%{time_total}' \
+            -w '%{http_code} %{time_total}' \
             -X POST "$MCP_URL" \
             -H "Authorization: Bearer $CHATGPT_TOKEN" \
             -H "Mcp-Session-Id: $SESSION_ID" \
@@ -277,6 +284,12 @@ jobs:
             -H 'Content-Type: application/json' \
             -H 'MCP-Protocol-Version: 2025-11-25' \
             --data '{"jsonrpc":"2.0","id":902,"method":"tools/list","params":{}}')"
+          TOOLS_STATUS="${TOOLS_META%% *}"
+          TOOLS_TIME="${TOOLS_META#* }"
+          echo "HTTP MCP tools/list status=$TOOLS_STATUS time=$TOOLS_TIME"
+          cat /tmp/mad4b-http-tools.headers
+          cat /tmp/mad4b-http-tools.body
+          test "$TOOLS_STATUS" = "200"
 
           export INIT_TIME TOOLS_TIME
           python3 - <<'PY'
