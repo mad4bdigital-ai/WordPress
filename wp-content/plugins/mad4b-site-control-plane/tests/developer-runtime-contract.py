@@ -62,6 +62,10 @@ assert "mad4b_developer_wp_cli_alias_denied" in developer
 assert "mad4b_developer_wp_cli_escape_denied" in developer
 assert "mad4b_developer_wp_cli_breakglass_required" in developer
 assert "mad4b_developer_package_activation_denied" in developer
+assert "normal_filesystem_mutation_guard" in developer
+assert "MAD4B_SCP_Policy::can_mutate_file" in developer
+assert "mad4b_developer_filesystem_code_root_denied" in developer
+assert "mad4b_developer_filesystem_code_mutation_denied" in developer
 assert "$args[] = '--activate'" not in developer
 for family in ["'eval'", "'eval-file'", "'db'", "'config'", "'shell'", "'cli'", "'package'", "'server'"]:
     assert family in developer, family
@@ -206,4 +210,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v12: PASS")
+print("mad4b.developer-runtime-contract.v13: PASS")
