@@ -68,8 +68,16 @@ final class MAD4B_SCP_Servers {
 		);
 	}
 
+	private static function catalog_cacheable() {
+		return function_exists( 'did_action' )
+			&& did_action( 'wp_abilities_api_init' ) > 0
+			&& did_action( 'rest_api_init' ) > 0
+			&& ( ! function_exists( 'doing_action' ) || ( ! doing_action( 'wp_abilities_api_init' ) && ! doing_action( 'rest_api_init' ) ) );
+	}
+
 	private static function registered_adapter_write_candidates() {
-		if ( is_array( self::$registered_adapter_write_candidates_cache ) ) return self::$registered_adapter_write_candidates_cache;
+		$cacheable = self::catalog_cacheable();
+		if ( $cacheable && is_array( self::$registered_adapter_write_candidates_cache ) ) return self::$registered_adapter_write_candidates_cache;
 		$result = array();
 		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
 		$registry = MAD4B_SCP_Adapter_Registry::instance();
@@ -92,7 +100,7 @@ final class MAD4B_SCP_Servers {
 			}
 		}
 		ksort( $result, SORT_STRING );
-		self::$registered_adapter_write_candidates_cache = $result;
+		if ( $cacheable ) self::$registered_adapter_write_candidates_cache = $result;
 		return $result;
 	}
 
@@ -125,7 +133,8 @@ final class MAD4B_SCP_Servers {
 	 * explicit standing delegation when that bounded policy is active.
 	 */
 	public static function external_write_tools() {
-		if ( is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;
+		$cacheable = self::catalog_cacheable();
+		if ( $cacheable && is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;
 		$candidates = self::core_write_candidates();
 		$candidates = array_merge( $candidates, array_keys( self::registered_adapter_write_candidates() ) );
 		$write = array();
@@ -133,8 +142,9 @@ final class MAD4B_SCP_Servers {
 			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
 		}
 		sort( $write, SORT_STRING );
-		self::$external_write_tools_cache = array_values( array_unique( array_diff( $write, array( 'mad4b/database-raw-query' ) ) ) );
-		return self::$external_write_tools_cache;
+		$result = array_values( array_unique( array_diff( $write, array( 'mad4b/database-raw-query' ) ) ) );
+		if ( $cacheable ) self::$external_write_tools_cache = $result;
+		return $result;
 	}
 
 	public static function is_external_write_candidate( $ability_name ) {
@@ -321,7 +331,8 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function chatgpt_tools() {
-		if ( is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
+		$cacheable = self::catalog_cacheable();
+		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$adapter_candidates = array();
 		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
@@ -350,8 +361,9 @@ final class MAD4B_SCP_Servers {
 				$tools = array_merge( $tools, self::write_tools() );
 				$tools = array_merge( $tools, array_values( array_diff( self::external_write_tools(), self::write_tools() ) ) );
 			}
-			self::$chatgpt_tools_cache = array_values( array_unique( $tools ) );
-			return self::$chatgpt_tools_cache;
+			$tools = array_values( array_unique( $tools ) );
+			if ( $cacheable ) self::$chatgpt_tools_cache = $tools;
+			return $tools;
 		}
 
 		$enrollment_candidates = self::core_tools( 'mad4b-enrollment' );
@@ -398,8 +410,8 @@ final class MAD4B_SCP_Servers {
 		}
 		$tools = array_values( array_unique( $tools ) );
 		sort( $tools, SORT_STRING );
-		self::$chatgpt_tools_cache = $tools;
-		return self::$chatgpt_tools_cache;
+		if ( $cacheable ) self::$chatgpt_tools_cache = $tools;
+		return $tools;
 	}
 
 	private static function surface_for_server( $server_id ) {
@@ -423,10 +435,11 @@ final class MAD4B_SCP_Servers {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
 		$cache_key = $server_id . "\0" . $ability_name;
+		$cacheable = self::catalog_cacheable();
 		$dynamic_write_resolution = 'mad4b-write' === $server_id || self::is_external_write_candidate( $ability_name );
-		if ( ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];
-		$remember = static function ( $value ) use ( $cache_key, $dynamic_write_resolution ) {
-			if ( ! $dynamic_write_resolution ) self::$provider_for_ability_cache[ $cache_key ] = $value;
+		if ( $cacheable && ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];
+		$remember = static function ( $value ) use ( $cache_key, $cacheable, $dynamic_write_resolution ) {
+			if ( $cacheable && ! $dynamic_write_resolution ) self::$provider_for_ability_cache[ $cache_key ] = $value;
 			return $value;
 		};
 		if ( ! in_array( $server_id, self::expected_server_ids(), true ) ) return $remember( null );
