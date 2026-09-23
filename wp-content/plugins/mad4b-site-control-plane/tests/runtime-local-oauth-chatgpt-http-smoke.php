@@ -211,13 +211,20 @@ if ( null === $dispatch_value && isset( $browser_rpc_result['result'] ) && is_ar
 	$dispatch_value = $browser_rpc_result['result'];
 }
 if ( ! is_array( $dispatch_value ) ) $fail( 'Readonly dispatcher tools/call returned no decodable structured value.', $browser_call_data );
-if ( 'mad4b.chatgpt-read-execute.v1' !== ( isset( $dispatch_value['contract'] ) ? (string) $dispatch_value['contract'] : '' ) ) {
-	$fail( 'Readonly dispatcher tools/call returned an unexpected outer contract.', $dispatch_value );
+
+// The packaged MCP Adapter may expose an ability's nested result directly on
+// the external wire. Internal dispatcher contract/readonly enforcement is
+// certified separately by runtime-chatgpt-tool-inventory-smoke.php. Here we
+// accept either representation while requiring the externally visible Browser
+// Acceptance value to remain read-only and non-authorizing.
+if ( 'mad4b.chatgpt-read-execute.v1' === ( isset( $dispatch_value['contract'] ) ? (string) $dispatch_value['contract'] : '' ) ) {
+	if ( empty( $dispatch_value['read_only'] ) || ! empty( $dispatch_value['mutation_performed'] ) ) {
+		$fail( 'Readonly dispatcher changed its non-mutating boundary.', $dispatch_value );
+	}
+	$browser_value = isset( $dispatch_value['result'] ) && is_array( $dispatch_value['result'] ) ? $dispatch_value['result'] : null;
+} else {
+	$browser_value = $dispatch_value;
 }
-if ( empty( $dispatch_value['read_only'] ) || ! empty( $dispatch_value['mutation_performed'] ) ) {
-	$fail( 'Readonly dispatcher changed its non-mutating boundary.', $dispatch_value );
-}
-$browser_value = isset( $dispatch_value['result'] ) && is_array( $dispatch_value['result'] ) ? $dispatch_value['result'] : null;
 if ( ! is_array( $browser_value ) ) $fail( 'Readonly dispatcher did not return the Browser Acceptance value.', $dispatch_value );
 if ( 'mad4b.browser-acceptance-capabilities.v1' !== ( isset( $browser_value['contract'] ) ? (string) $browser_value['contract'] : '' ) ) {
 	$fail( 'Browser Acceptance dispatcher result returned an unexpected contract.', $browser_value );
@@ -237,7 +244,7 @@ if ( ! empty( $unpreempted_http ) ) $fail( 'Local OAuth bearer verification atte
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v3: PASS ' .
+	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v4: PASS ' .
 	wp_json_encode(
 		array(
 			'tool_count' => count( $names ),
