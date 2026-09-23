@@ -786,6 +786,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 				if ( ! empty( $write_capabilities['blockers'] ) ) echo '<br><span class="mad4b-scp-muted">' . esc_html( implode( ' · ', array_map( 'sanitize_key', $write_capabilities['blockers'] ) ) ) . '</span>';
 			}
 			echo '</div></td>';
+			if ( 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) ) {
+				echo '<td class="mad4b-context-review-cell"><span class="mad4b-context-review-state">' . esc_html__( 'task-local · read-only', 'mad4b-site-control-plane' ) . '</span><span class="mad4b-scp-muted">' . esc_html__( 'Human Review is intentionally unavailable for task-only Context. Task attachments cannot be promoted into site-wide Brand Authority.', 'mad4b-site-control-plane' ) . '</span></td></tr>';
+				continue;
+			}
 			echo '<td class="mad4b-context-review-cell"><span class="mad4b-context-review-state is-' . esc_attr( sanitize_html_class( $review_status ) ) . '">' . esc_html( $review_exact ? 'approved · exact' : $review_status ) . '</span><details><summary class="button button-small">' . esc_html__( 'Review exact content', 'mad4b-site-control-plane' ) . '</summary><form class="mad4b-context-review-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REVIEW_ASSET );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REVIEW_ASSET ) . '"><input type="hidden" name="asset_id" value="' . esc_attr( $asset['asset_id'] ) . '">';
@@ -1196,7 +1200,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","X-Requested-With":"XMLHttpRequest"},body:body.toString()});
 					var payload=await response.json();
 					if(!payload||!payload.success){var failure=new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Context review could not be committed.");failure.mad4bCode=payload&&payload.data&&payload.data.code?payload.data.code:"mad4b_context_review_failed";throw failure;}
-					if(local){local.className="mad4b-context-review-inline-feedback is-success";local.textContent=payload.data&&payload.data.message?payload.data.message:"Exact content approved.";}
+					if(local){local.className="mad4b-context-review-inline-feedback is-success";local.textContent=payload.data&&payload.data.message?payload.data.message:"Review decision saved.";}
 					await refreshReviewPanels();
 				}catch(error){
 					if(local){local.className="mad4b-context-review-inline-feedback is-error";local.textContent=(error&&error.mad4bCode?error.mad4bCode+" · ":"")+(error&&error.message?error.message:"Context review failed.");}
