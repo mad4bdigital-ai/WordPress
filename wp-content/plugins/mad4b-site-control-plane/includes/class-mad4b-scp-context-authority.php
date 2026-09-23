@@ -1047,7 +1047,11 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
 	
 			$requested_required = ! empty( $input['required'] );
-			$requested_context_sets = self::normalize_context_sets( isset( $input['approved_context_sets'] ) ? $input['approved_context_sets'] : array(), array( $category ) );
+			$existing_human_sets = 'human' === ( isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '' ) ? $previous_context_sets : array();
+			$fallback_context_sets = ! empty( $existing_human_sets ) ? $existing_human_sets : array( $category );
+			$requested_context_sets = array_key_exists( 'approved_context_sets', $input )
+				? self::normalize_context_sets( $input['approved_context_sets'], $fallback_context_sets )
+				: self::normalize_context_sets( $fallback_context_sets, array( $category ) );
 			if ( ! in_array( $category, $requested_context_sets, true ) && 'uncategorized' !== $category ) { $requested_context_sets[] = $category; sort( $requested_context_sets, SORT_STRING ); }
 			$context_sets_changed = $previous_context_sets !== $requested_context_sets;
 			$required_scope_escalated = ! $previous_required && $requested_required;
