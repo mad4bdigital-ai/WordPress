@@ -247,14 +247,16 @@ for marker in [
     "false !== $annotations['readonly']",
     "$registry->ability_names( 'content' )",
     "$registry->ability_names( 'admin' )",
-    "array_merge( $tools, self::write_tools() )",
+    "public static function external_write_tools()",
+    "public static function chatgpt_full_catalog_candidates()",
+    "$meta_write_transport = array( 'mad4b/write-execute' )",
     "return self::provider_for_ability( 'mad4b-write', $ability_name )",
     "'mad4b/write-authority-status'",
     "'mad4b/write-runtime-certification'",
     "'mad4b/rest-compatibility-status'",
 ]:
     if marker not in servers:
-        raise SystemExit(f'missing complete write inventory/same-Plugin projection invariant: {marker}')
+        raise SystemExit(f'missing logical write inventory/minimal transport invariant: {marker}')
 
 for marker in [
     "MAD4B_SCP_Staging_Write_Authority::is_write_ability( $ability_name )",
