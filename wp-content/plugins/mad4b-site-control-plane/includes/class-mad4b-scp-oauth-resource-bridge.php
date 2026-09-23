@@ -166,9 +166,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
 		$server_id = sanitize_key( (string) $server_id );
-		$allowed = array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' );
-		if ( ! in_array( $server_id, $allowed, true ) ) $server_id = 'mad4b-chatgpt';
-		return untrailingslashit( home_url( '/wp-json/mcp/' . $server_id ) );
+		if ( 'mad4b-enrollment' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-enrollment' ) );
+		if ( 'mad4b-developer' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-developer' ) );
+		if ( 'mad4b-developer-breakglass' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-developer-breakglass' ) );
+		return untrailingslashit( home_url( '/wp-json/mcp/mad4b-chatgpt' ) );
 	}
 
 	public static function resource_identifiers() {
