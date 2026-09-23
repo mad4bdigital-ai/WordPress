@@ -241,7 +241,14 @@ jobs:
           grep -Fq "'mad4b-write'" "$servers"
           grep -Fq "public static function write_tools" "$servers"
           grep -Fq "'MAD4B Write MCP'" "$servers"
-          grep -Fq "array_merge( \$tools, self::write_tools() )" "$servers"
+          # Normal governed write schemas must stay out of ChatGPT tools/list.
+          # The full logical inventory remains on mad4b-write and is transported
+          # through the exact-target write dispatcher.
+          grep -Fq "public static function external_write_tools()" "$servers"
+          grep -Fq "public static function chatgpt_full_catalog_candidates()" "$servers"
+          grep -Fq "\$meta_write_transport = array( 'mad4b/write-execute' )" "$servers"
+          grep -Fq "write_dispatch_transport_available" "$write_cert"
+          grep -Fq "direct_write_schemas_hidden_from_chatgpt" "$write_cert"
 
           grep -Fq "mad4b.site-profile.v1" "$site_profile"
           grep -Fq "MAD4B_SCP_Site_Profile::origin_enrolled" "$write_authority"
