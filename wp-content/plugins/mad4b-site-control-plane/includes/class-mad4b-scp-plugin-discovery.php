@@ -80,6 +80,75 @@ final class MAD4B_SCP_Plugin_Discovery {
 			if ( ! empty( $item['support_request'] ) ) $requests[] = $item['support_request'];
 		}
 
+		$zero_touch_projection = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' )
+			? MAD4B_SCP_Functional_Gap_Evidence::coverage_projection()
+			: array(
+				'contract'=>'mad4b.functional-gap-coverage-projection.v1',
+				'snapshot_identity_sha256'=>'',
+				'snapshot_end_dynamic_surface_sha256'=>'',
+				'summary'=>array( 'contract'=>'mad4b.functional-gap-zero-touch.v1', 'ready'=>false, 'promotion_authorized'=>false, 'blockers'=>array( 'functional_gap_evidence_unavailable' ) ),
+				'decisions'=>array(),
+				'promotion_authorized'=>false,
+				'mutation_authorized'=>false,
+			);
+		$zero_touch = isset( $zero_touch_projection['summary'] ) && is_array( $zero_touch_projection['summary'] ) ? $zero_touch_projection['summary'] : array();
+		$zero_touch_map = isset( $zero_touch_projection['decisions'] ) && is_array( $zero_touch_projection['decisions'] ) ? $zero_touch_projection['decisions'] : array();
+		$projection_snapshot_identity = isset( $zero_touch_projection['snapshot_identity_sha256'] ) ? strtolower( (string) $zero_touch_projection['snapshot_identity_sha256'] ) : '';
+		$projection_current_identity = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? strtolower( (string) MAD4B_SCP_Functional_Gap_Evidence::current_runtime_identity_sha256() ) : '';
+		$projection_identity_match = '' !== $projection_snapshot_identity && '' !== $projection_current_identity && hash_equals( $projection_snapshot_identity, $projection_current_identity );
+		$projection_snapshot_dynamic = isset( $zero_touch_projection['snapshot_end_dynamic_surface_sha256'] ) ? strtolower( (string) $zero_touch_projection['snapshot_end_dynamic_surface_sha256'] ) : '';
+		$projection_current_dynamic = class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' ) ? strtolower( (string) MAD4B_SCP_Functional_Gap_Evidence::current_dynamic_surface_fingerprint() ) : '';
+		$projection_dynamic_match = '' !== $projection_snapshot_dynamic && '' !== $projection_current_dynamic && hash_equals( $projection_snapshot_dynamic, $projection_current_dynamic );
+
+		$projection_snapshot_census = isset( $zero_touch_projection['runtime_census'] ) && is_array( $zero_touch_projection['runtime_census'] ) ? $zero_touch_projection['runtime_census'] : array();
+		$projection_census_required = ! empty( $zero_touch['repository_evidence_valid'] );
+		$projection_current_census = $projection_census_required && class_exists( 'MAD4B_SCP_Functional_Gap_Evidence' )
+			? MAD4B_SCP_Functional_Gap_Evidence::current_runtime_census_status()
+			: array( 'contract'=>'mad4b.functional-gap-runtime-census.v1', 'valid'=>false, 'census_sha256'=>'', 'metadata_only'=>true, 'content_rehashed'=>false, 'blockers'=>array() );
+		$projection_snapshot_census_sha = isset( $projection_snapshot_census['census_sha256'] ) ? strtolower( (string) $projection_snapshot_census['census_sha256'] ) : '';
+		$projection_current_census_sha = isset( $projection_current_census['census_sha256'] ) ? strtolower( (string) $projection_current_census['census_sha256'] ) : '';
+		$projection_census_match = ! $projection_census_required || (
+			! empty( $projection_current_census['valid'] )
+			&& '' !== $projection_snapshot_census_sha && '' !== $projection_current_census_sha
+			&& hash_equals( $projection_snapshot_census_sha, $projection_current_census_sha )
+		);
+
+		$zero_touch['projection_identity_match'] = $projection_identity_match;
+		$zero_touch['projection_snapshot_identity_sha256'] = $projection_snapshot_identity;
+		$zero_touch['projection_current_identity_sha256'] = $projection_current_identity;
+		$zero_touch['projection_dynamic_surface_match'] = $projection_dynamic_match;
+		$zero_touch['projection_snapshot_dynamic_surface_sha256'] = $projection_snapshot_dynamic;
+		$zero_touch['projection_current_dynamic_surface_sha256'] = $projection_current_dynamic;
+		$zero_touch['projection_census_required'] = $projection_census_required;
+		$zero_touch['projection_census_match'] = $projection_census_match;
+		$zero_touch['projection_snapshot_census_sha256'] = $projection_snapshot_census_sha;
+		$zero_touch['projection_current_census_sha256'] = $projection_current_census_sha;
+		$zero_touch['projection_census_elapsed_ms'] = isset( $projection_current_census['elapsed_ms'] ) ? (int) $projection_current_census['elapsed_ms'] : 0;
+		$zero_touch['projection_census_file_count'] = isset( $projection_current_census['file_count'] ) ? (int) $projection_current_census['file_count'] : 0;
+
+		if ( ! $projection_identity_match || ! $projection_census_match || ! $projection_dynamic_match ) {
+			$zero_touch_map = array();
+			$zero_touch['ready'] = false;
+			$zero_touch['blockers'] = isset( $zero_touch['blockers'] ) && is_array( $zero_touch['blockers'] ) ? $zero_touch['blockers'] : array();
+			if ( ! $projection_identity_match ) $zero_touch['blockers'][] = 'coverage_projection_runtime_identity_changed';
+			if ( ! $projection_dynamic_match ) $zero_touch['blockers'][] = 'coverage_projection_dynamic_surface_changed';
+			if ( ! $projection_census_match ) {
+				$zero_touch['blockers'][] = 'coverage_projection_runtime_census_changed';
+				$zero_touch['blockers'] = array_merge( $zero_touch['blockers'], isset( $projection_current_census['blockers'] ) ? (array) $projection_current_census['blockers'] : array() );
+			}
+			$zero_touch['blockers'] = array_values( array_unique( array_filter( array_map( 'sanitize_key', $zero_touch['blockers'] ) ) ) );
+		}
+		foreach ( $items as &$coverage_item ) {
+			$family = isset( $coverage_item['family'] ) ? sanitize_key( (string) $coverage_item['family'] ) : '';
+			if ( '' === $family || ! isset( $zero_touch_map[ $family ] ) ) continue;
+			$coverage_item['zero_touch_decision'] = $zero_touch_map[ $family ];
+			if ( isset( $coverage_item['functional_coverage'] ) && is_array( $coverage_item['functional_coverage'] ) ) {
+				$coverage_item['functional_coverage']['zero_touch_state'] = isset( $zero_touch_map[ $family ]['state'] ) ? sanitize_key( (string) $zero_touch_map[ $family ]['state'] ) : '';
+				$coverage_item['functional_coverage']['zero_touch_reason'] = isset( $zero_touch_map[ $family ]['reason'] ) ? sanitize_key( (string) $zero_touch_map[ $family ]['reason'] ) : '';
+			}
+		}
+		unset( $coverage_item );
+
 		$priority = self::priority_external_items( $plugins );
 		foreach ( $priority as $item ) {
 			if ( 'priority_external_missing' === $item['coverage_state'] ) ++$counts['priority_external_missing'];
@@ -100,6 +169,27 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'functional_counts' => $functional_counts,
 			'functional_family_counts' => self::functional_state_counts( $functional_family_states ),
 			'functional_family_states' => $functional_family_states,
+			'zero_touch' => $zero_touch,
+			'zero_touch_projection' => array(
+				'contract' => isset( $zero_touch_projection['contract'] ) ? (string) $zero_touch_projection['contract'] : 'mad4b.functional-gap-coverage-projection.v1',
+				'snapshot_identity_sha256' => $projection_snapshot_identity,
+				'current_identity_sha256' => $projection_current_identity,
+				'identity_match' => $projection_identity_match,
+				'snapshot_dynamic_surface_sha256' => $projection_snapshot_dynamic,
+				'current_dynamic_surface_sha256' => $projection_current_dynamic,
+				'dynamic_surface_match' => $projection_dynamic_match,
+				'snapshot_census_sha256' => $projection_snapshot_census_sha,
+				'current_census_sha256' => $projection_current_census_sha,
+				'census_required' => $projection_census_required,
+				'census_match' => $projection_census_match,
+				'census_file_count' => isset( $projection_current_census['file_count'] ) ? (int) $projection_current_census['file_count'] : 0,
+				'census_elapsed_ms' => isset( $projection_current_census['elapsed_ms'] ) ? (int) $projection_current_census['elapsed_ms'] : 0,
+				'census_metadata_only' => ! empty( $projection_current_census['metadata_only'] ),
+				'census_content_rehashed' => ! empty( $projection_current_census['content_rehashed'] ),
+				'decision_count' => count( $zero_touch_map ),
+				'promotion_authorized' => false,
+				'mutation_authorized' => false,
+			),
 			'truncated' => count( $plugins ) > self::MAX_PLUGINS,
 		);
 	}
@@ -128,6 +218,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'adapter_contract' => isset( $plugin['adapter_contract'] ) ? $plugin['adapter_contract'] : '',
 				'adapter_runtime_source' => isset( $plugin['adapter_runtime_source'] ) ? $plugin['adapter_runtime_source'] : '',
 				'repository_artifact_count' => isset( $plugin['repository_artifact_count'] ) ? (int) $plugin['repository_artifact_count'] : 0,
+				'zero_touch_decision' => isset( $plugin['zero_touch_decision'] ) && is_array( $plugin['zero_touch_decision'] ) ? $plugin['zero_touch_decision'] : array(),
 				'functional_coverage' => $plugin['functional_coverage'],
 			);
 		}
@@ -138,6 +229,14 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'counts' => isset( $coverage['functional_family_counts'] ) ? $coverage['functional_family_counts'] : ( isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array() ),
 			'plugin_counts' => isset( $coverage['functional_counts'] ) ? $coverage['functional_counts'] : array(),
 			'family_states' => isset( $coverage['functional_family_states'] ) ? $coverage['functional_family_states'] : array(),
+			'zero_touch' => isset( $coverage['zero_touch'] ) && is_array( $coverage['zero_touch'] ) ? $coverage['zero_touch'] : array(),
+			'evidence_counts' => isset( $coverage['zero_touch']['counts'] ) && is_array( $coverage['zero_touch']['counts'] ) ? $coverage['zero_touch']['counts'] : array(),
+			'evidence_snapshot_identity_sha256' => isset( $coverage['zero_touch']['snapshot_identity_sha256'] ) ? (string) $coverage['zero_touch']['snapshot_identity_sha256'] : '',
+			'evidence_runtime_fingerprint' => isset( $coverage['zero_touch']['runtime_evidence_fingerprint'] ) ? (string) $coverage['zero_touch']['runtime_evidence_fingerprint'] : '',
+			'evidence_decision_fingerprint' => isset( $coverage['zero_touch']['decision_fingerprint'] ) ? (string) $coverage['zero_touch']['decision_fingerprint'] : '',
+			'evidence_projection_identity_match' => ! empty( $coverage['zero_touch_projection']['identity_match'] ),
+			'evidence_projection_dynamic_surface_match' => ! empty( $coverage['zero_touch_projection']['dynamic_surface_match'] ),
+			'evidence_projection_census_match' => ! empty( $coverage['zero_touch_projection']['census_match'] ),
 			'items' => $items,
 			'count' => count( $items ),
 		);
@@ -164,6 +263,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 					'safe_now' => isset( $f['safe_now'] ) && is_array( $f['safe_now'] ) ? array_values( $f['safe_now'] ) : array(),
 					'prohibited_until_certified' => isset( $f['prohibited_until_certified'] ) && is_array( $f['prohibited_until_certified'] ) ? array_values( $f['prohibited_until_certified'] ) : array(),
 					'next_action' => isset( $f['next_action'] ) ? sanitize_key( (string) $f['next_action'] ) : '',
+					'zero_touch_decision' => isset( $plugin['zero_touch_decision'] ) && is_array( $plugin['zero_touch_decision'] ) ? $plugin['zero_touch_decision'] : array(),
 					'plugin_files' => array(),
 					'plugin_names' => array(),
 					'runtime_identities' => array(),
