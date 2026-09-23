@@ -308,7 +308,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			&& 'mad4b.staging-write-candidate-binding.v2' === $authorization_contract
 			&& 'BIND EXACT CURRENT STAGING WRITE CANDIDATE' === $authorization_confirmation;
 		$reconcile_authorization = 'grant_reconciliation' === $authorization_source
-			&& 'mad4b.staging-write-grant-reconciliation.v1' === $authorization_contract
+			&& 'mad4b.staging-write-grant-reconciliation.v2' === $authorization_contract
 			&& 'RECONCILE EXACT STAGING WRITE GRANTS' === $authorization_confirmation;
 		if ( ( ! $direct_authorization && ! $reconcile_authorization ) || ! hash_equals( $authorization_confirmation, $context_confirmation ) ) {
 			return new WP_Error( 'mad4b_candidate_binding_confirmation_context_invalid', 'Candidate binding audit context authorization/confirmation is invalid.' );
