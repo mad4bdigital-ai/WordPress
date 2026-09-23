@@ -187,7 +187,7 @@ Managed options allow zero-touch enrollment activation. Explicit constants retai
 
 The persistent Developer Kill Switch has higher priority than normal enablement and can force the plane off.
 
-Breakglass additionally requires the existing global `MAD4B_MCP_BREAKGLASS_ENABLED` gate.
+Developer Breakglass uses its own dedicated `MAD4B_MCP_DEVELOPER_BREAKGLASS_ENABLED` gate (or the equivalent managed option) and remains limited to non-Production environments. It is intentionally independent from the generic raw-SQL `MAD4B_MCP_BREAKGLASS_ENABLED` gate.
 
 ## Disable flow
 
