@@ -121,71 +121,112 @@ foreach ( $tools as $tool ) if ( is_array( $tool ) && isset( $tool['name'] ) && 
 $names = array_values( array_unique( $names ) );
 sort( $names );
 
-foreach ( array( 'mad4b-site-info', 'mad4b-list-post-types', 'mad4b-list-plugins', 'mad4b-abilities-inventory', 'mad4b-diagnostics-health', 'mad4b-runtime-authority-status', 'mad4b-connection-status', 'mad4b-browser-acceptance-capabilities' ) as $required ) {
-	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required safe-read tool.', $required );
+foreach ( array(
+	'mad4b-site-info',
+	'mad4b-list-post-types',
+	'mad4b-list-plugins',
+	'mad4b-abilities-inventory',
+	'mad4b-tool-discover',
+	'mad4b-tool-info',
+	'mad4b-read-execute',
+	'mad4b-diagnostics-health',
+	'mad4b-runtime-authority-status',
+	'mad4b-connection-status',
+	'mad4b-plugin-package-plan'
+) as $required ) {
+	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required compact safe-read/control tool.', $required );
 }
-// Exact enrolled Staging intentionally exposes the unified normal Read + Write
-// catalog on this resource; only Breakglass Raw SQL remains outside ChatGPT.
-foreach ( array( 'mad4b-filesystem-read', 'mad4b-filesystem-write', 'mad4b-database-select', 'mad4b-database-update', 'mad4b-content-update-post', 'mad4b-plugin-activate', 'mad4b-mutation-undo', 'mad4b-site-profile-feature-reenroll', 'mad4b-site-profile-write-enable' ) as $required_unified ) {
-	if ( ! in_array( $required_unified, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required unified Staging Read/Write tool.', $required_unified );
+// Exact enrolled Staging keeps governed writes direct, while heavy readonly
+// capabilities are intentionally accessed through the compact readonly
+// discovery/info/execute surface.
+foreach ( array(
+	'mad4b-filesystem-write',
+	'mad4b-database-update',
+	'mad4b-content-update-post',
+	'mad4b-plugin-activate',
+	'mad4b-mutation-undo',
+	'mad4b-site-profile-feature-reenroll',
+	'mad4b-site-profile-write-enable'
+) as $required_write ) {
+	if ( ! in_array( $required_write, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required governed direct write tool.', $required_write );
+}
+foreach ( array(
+	'mad4b-browser-acceptance-capabilities',
+	'mad4b-filesystem-read',
+	'mad4b-database-select'
+) as $hidden_read ) {
+	if ( in_array( $hidden_read, $names, true ) ) $fail( 'OAuth bearer tools/list leaked a readonly capability that must stay behind compact discovery.', $hidden_read );
+}
+if ( count( $names ) > 128 ) {
+	$fail( 'OAuth bearer tools/list exceeded the refresh-safety budget.', array( 'tool_count' => count( $names ), 'budget' => 128 ) );
 }
 if ( in_array( 'mad4b-database-raw-query', $names, true ) ) {
 	$fail( 'OAuth bearer tools/list exposed Breakglass Raw SQL.', 'mad4b-database-raw-query' );
 }
 
-// Prove the exact packaged MCP Adapter can execute a safe Browser Acceptance
-// read ability through tools/call and that its wire result is compatible with
-// external MCP clients. Provider discovery may be empty in this generic OAuth
-// runtime; the core contract and authority boundary must still be stable.
+// Prove the exact packaged MCP Adapter can execute a hidden safe Browser
+// Acceptance read ability through the compact readonly dispatcher and that its
+// wire result remains compatible with external MCP clients.
 $browser_call = $dispatch(
 	array(
 		'jsonrpc' => '2.0',
 		'id' => 72,
 		'method' => 'tools/call',
 		'params' => array(
-			'name' => 'mad4b-browser-acceptance-capabilities',
-			'arguments' => array(),
+			'name' => 'mad4b-read-execute',
+			'arguments' => array(
+				'ability_name' => 'mad4b/browser-acceptance-capabilities',
+				'input' => array(),
+			),
 		),
 	),
 	$token,
 	$session_id
 );
-if ( ! $browser_call instanceof WP_REST_Response ) $fail( 'Browser Acceptance tools/call did not return WP_REST_Response.', gettype( $browser_call ) );
+if ( ! $browser_call instanceof WP_REST_Response ) $fail( 'Readonly dispatcher tools/call did not return WP_REST_Response.', gettype( $browser_call ) );
 if ( 200 !== (int) $browser_call->get_status() ) {
-	$fail( 'OAuth bearer Browser Acceptance tools/call failed.', array( 'status' => $browser_call->get_status(), 'body' => $browser_call->get_data() ) );
+	$fail( 'OAuth bearer readonly dispatcher tools/call failed.', array( 'status' => $browser_call->get_status(), 'body' => $browser_call->get_data() ) );
 }
 $browser_call_data = $normalize( $browser_call->get_data() );
 if ( ! is_array( $browser_call_data ) || isset( $browser_call_data['error'] ) ) {
-	$fail( 'OAuth bearer Browser Acceptance tools/call returned a JSON-RPC error.', $browser_call_data );
+	$fail( 'OAuth bearer readonly dispatcher tools/call returned a JSON-RPC error.', $browser_call_data );
 }
 $browser_rpc_result = isset( $browser_call_data['result'] ) && is_array( $browser_call_data['result'] ) ? $browser_call_data['result'] : array();
-$browser_value = null;
+$dispatch_value = null;
 
 if ( isset( $browser_rpc_result['structuredContent'] ) && is_array( $browser_rpc_result['structuredContent'] ) ) {
 	$structured = $browser_rpc_result['structuredContent'];
-	$browser_value = isset( $structured['result'] ) && is_array( $structured['result'] ) ? $structured['result'] : $structured;
+	$dispatch_value = isset( $structured['result'] ) && is_array( $structured['result'] ) ? $structured['result'] : $structured;
 }
-if ( null === $browser_value && isset( $browser_rpc_result['content'] ) && is_array( $browser_rpc_result['content'] ) ) {
+if ( null === $dispatch_value && isset( $browser_rpc_result['content'] ) && is_array( $browser_rpc_result['content'] ) ) {
 	foreach ( $browser_rpc_result['content'] as $item ) {
 		if ( ! is_array( $item ) || 'text' !== ( isset( $item['type'] ) ? (string) $item['type'] : '' ) || ! isset( $item['text'] ) || ! is_string( $item['text'] ) ) continue;
 		$decoded = json_decode( $item['text'], true );
 		if ( ! is_array( $decoded ) ) continue;
-		$browser_value = isset( $decoded['result'] ) && is_array( $decoded['result'] ) ? $decoded['result'] : $decoded;
+		$dispatch_value = isset( $decoded['result'] ) && is_array( $decoded['result'] ) ? $decoded['result'] : $decoded;
 		break;
 	}
 }
-if ( null === $browser_value && isset( $browser_rpc_result['result'] ) && is_array( $browser_rpc_result['result'] ) ) {
-	$browser_value = $browser_rpc_result['result'];
+if ( null === $dispatch_value && isset( $browser_rpc_result['result'] ) && is_array( $browser_rpc_result['result'] ) ) {
+	$dispatch_value = $browser_rpc_result['result'];
 }
-if ( ! is_array( $browser_value ) ) $fail( 'Browser Acceptance tools/call returned no decodable structured value.', $browser_call_data );
+if ( ! is_array( $dispatch_value ) ) $fail( 'Readonly dispatcher tools/call returned no decodable structured value.', $browser_call_data );
+if ( 'mad4b.chatgpt-read-execute.v1' !== ( isset( $dispatch_value['contract'] ) ? (string) $dispatch_value['contract'] : '' ) ) {
+	$fail( 'Readonly dispatcher tools/call returned an unexpected outer contract.', $dispatch_value );
+}
+if ( empty( $dispatch_value['read_only'] ) || ! empty( $dispatch_value['mutation_performed'] ) ) {
+	$fail( 'Readonly dispatcher changed its non-mutating boundary.', $dispatch_value );
+}
+$browser_value = isset( $dispatch_value['result'] ) && is_array( $dispatch_value['result'] ) ? $dispatch_value['result'] : null;
+if ( ! is_array( $browser_value ) ) $fail( 'Readonly dispatcher did not return the Browser Acceptance value.', $dispatch_value );
 if ( 'mad4b.browser-acceptance-capabilities.v1' !== ( isset( $browser_value['contract'] ) ? (string) $browser_value['contract'] : '' ) ) {
-	$fail( 'Browser Acceptance tools/call returned an unexpected contract.', $browser_value );
+	$fail( 'Browser Acceptance dispatcher result returned an unexpected contract.', $browser_value );
 }
 if ( empty( $browser_value['read_only'] ) || ! empty( $browser_value['authorizing'] ) ) {
-	$fail( 'Browser Acceptance tools/call changed the read-only non-authorizing boundary.', $browser_value );
+	$fail( 'Browser Acceptance dispatcher result changed the read-only non-authorizing boundary.', $browser_value );
 }
 if ( 'external_browser_agent' !== ( isset( $browser_value['execution_mode'] ) ? (string) $browser_value['execution_mode'] : '' ) ) {
-	$fail( 'Browser Acceptance tools/call changed execution ownership.', $browser_value );
+	$fail( 'Browser Acceptance dispatcher result changed execution ownership.', $browser_value );
 }
 
 remove_filter( 'pre_http_request', $http_spy, 9999 );
@@ -196,15 +237,15 @@ if ( ! empty( $unpreempted_http ) ) $fail( 'Local OAuth bearer verification atte
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v2: PASS ' .
+	'mad4b.site-control-plane.runtime-local-oauth-chatgpt-http.v3: PASS ' .
 	wp_json_encode(
 		array(
 			'tool_count' => count( $names ),
 			'http_filter_calls' => count( $http_seen ),
 			'unpreempted_http_calls' => count( $unpreempted_http ),
 			'session_established' => true,
-			'browser_tools_call_verified' => true,
-			'browser_tools_call_contract' => (string) $browser_value['contract'],
+			'browser_read_dispatch_verified' => true,
+			'browser_read_dispatch_contract' => (string) $browser_value['contract'],
 		),
 		JSON_UNESCAPED_SLASHES
 	) . PHP_EOL
