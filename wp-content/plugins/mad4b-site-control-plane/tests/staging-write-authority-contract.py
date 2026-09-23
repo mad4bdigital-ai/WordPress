@@ -570,6 +570,9 @@ expected_acceptance = {
     'exact_control_plane_version_and_build_readback',
     'site_profile_identity_exact',
     'enabled_feature_reconciliation',
+    'functional_gap_zero_touch_repository_evidence_exact_head',
+    'functional_gap_zero_touch_runtime_fixed_point_stable',
+    'functional_gap_zero_touch_promotion_remains_non_authorizing',
     'provider_blocked_write_tools_safely_unmounted',
     'external_tool_inventory_match_when_mcp_enabled',
     'one_time_approval_replay_denial_and_undo_when_write_enabled',
@@ -588,4 +591,4 @@ if set(forbidden_contract) != expected_forbidden or not all(forbidden_contract.g
 if deployment.get('secrets_included') is not False:
     raise SystemExit('deployment handoff must never contain secrets')
 
-print('mad4b.staging-write-authority.tenant-profile.v9: PASS')
+print('mad4b.staging-write-authority.tenant-profile.v10: PASS')
