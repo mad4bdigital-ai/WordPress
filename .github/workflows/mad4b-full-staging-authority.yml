@@ -17,6 +17,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: mad4b-full-staging-authority-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   contract:
     name: Full Staging authority contract
@@ -24,6 +31,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
