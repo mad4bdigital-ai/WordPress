@@ -286,6 +286,29 @@ jobs:
           (stage / 'PACKAGE-MANIFEST-DIGEST.txt').write_text(manifest_digest + '\n', encoding='utf-8')
           PY
 
+          php -r '
+          define("ABSPATH", rtrim($argv[1], "/") . "/");
+          define("MAD4B_SCP_DIR", rtrim($argv[1], "/") . "/");
+          if (!function_exists("sanitize_key")) {
+              function sanitize_key($key) {
+                  $key = strtolower((string) $key);
+                  $key = preg_replace("/[^a-z0-9_\\-]/", "", $key);
+                  return (string) $key;
+              }
+          }
+          require MAD4B_SCP_DIR . "includes/class-mad4b-scp-functional-gap-evidence.php";
+          $status = MAD4B_SCP_Functional_Gap_Evidence::package_integrity_status();
+          if (empty($status["valid"])) {
+              fwrite(STDERR, "Packaged runtime provenance verifier failed: " . json_encode($status, JSON_UNESCAPED_SLASHES) . PHP_EOL);
+              exit(1);
+          }
+          if (($status["integrity_level"] ?? "") !== "self_consistent_package") {
+              fwrite(STDERR, "Packaged runtime integrity level mismatch." . PHP_EOL);
+              exit(2);
+          }
+          echo "mad4b.functional-gap-package-integrity.v1: PASS files=" . (int)($status["verified_file_count"] ?? 0) . " bytes=" . (int)($status["verified_bytes"] ?? 0) . PHP_EOL;
+          ' "$MAD4B_CONTROL_STAGE"
+
           (
             cd "$stage/package"
             zip -qr "$stage/mad4b-site-control-plane-${version}.zip" mad4b-site-control-plane
@@ -304,10 +327,15 @@ jobs:
 
           export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest"
           python3 - "$stage" "$version" <<'PY'
-          import json, os, sys
+          import hashlib, json, os, sys
           from pathlib import Path
           stage = Path(sys.argv[1])
           version = sys.argv[2]
+          config_root = stage / 'package' / 'mad4b-site-control-plane' / 'config'
+          policy_raw = (config_root / 'functional-gap-policy.json').read_bytes()
+          evidence_raw = (config_root / 'functional-gap-contract-evidence.generated.json').read_bytes()
+          policy = json.loads(policy_raw)
+          evidence = json.loads(evidence_raw)
           data = {
               'contract': 'mad4b.site-control-plane.general-distribution-kit.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
@@ -330,6 +358,15 @@ jobs:
                   'sha256': os.environ['ADAPTER_SHA'],
                   'official_release_sha256': '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676',
               },
+              'functional_gap_zero_touch': {
+                  'contract': 'mad4b.functional-gap-zero-touch.v1',
+                  'policy_contract': policy.get('contract', ''),
+                  'policy_sha256': hashlib.sha256(policy_raw).hexdigest(),
+                  'evidence_contract': evidence.get('contract', ''),
+                  'evidence_sha256': hashlib.sha256(evidence_raw).hexdigest(),
+                  'promotion_authorized': False,
+                  'runtime_shell_required': False,
+              },
               'install_order': ['mcp-adapter-0.6.1.zip', f'mad4b-site-control-plane-{version}.zip'],
               'reviewed_invariants': {
                   'exact_source_bound': True,
@@ -343,6 +380,9 @@ jobs:
                   'zero_authority_fresh_install': True,
                   'empty_tenant_presets': True,
                   'explicit_site_profile_enrollment_required': True,
+                  'functional_gap_repository_evidence_embedded': True,
+                  'functional_gap_policy_bound_to_build_provenance': True,
+                  'functional_gap_runtime_evidence_requires_no_shell': True,
                   'all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write': True,
                   'provider_uncertified_write_actions_excluded_from_governed_write_surfaces': True,
                   'remote_writes_require_exact_one_time_approval': True,
@@ -438,6 +478,8 @@ jobs:
           unzip -tqq "$control_zip"
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/certified-providers.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/site-profile-presets.json'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/functional-gap-contract-evidence.generated.json'
+          unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/config/functional-gap-policy.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/mad4b-site-control-plane.php'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json'
           unzip -l "$control_zip" | grep -Fq 'mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
@@ -488,6 +530,18 @@ jobs:
               raise SystemExit('provenance build fingerprint mismatch')
           if (stage / 'BUILD-FINGERPRINT.txt').read_text().strip() != fingerprint:
               raise SystemExit('outer build fingerprint mismatch')
+          rows={entry['path']:entry for entry in p.get('package_files', [])}
+          for required in ('config/functional-gap-policy.json','config/functional-gap-contract-evidence.generated.json'):
+              if required not in rows:
+                  raise SystemExit(f'zero-touch provenance row missing: {required}')
+          policy_raw=(root/'config/functional-gap-policy.json').read_bytes()
+          evidence=json.loads((root/'config/functional-gap-contract-evidence.generated.json').read_text(encoding='utf-8'))
+          policy_sha=hashlib.sha256(policy_raw).hexdigest()
+          if evidence.get('policy_contract')!='mad4b.functional-gap-policy.v1':
+              raise SystemExit('embedded evidence policy contract mismatch')
+          if evidence.get('policy_sha256')!=policy_sha:
+              raise SystemExit('embedded evidence policy SHA mismatch')
+          print('provenance-bound zero-touch policy/evidence: PASS')
           print('provenance-bound General Distribution kit: PASS')
           PY
 
@@ -501,6 +555,12 @@ jobs:
           grep -Fq '"zero_authority_fresh_install": true' "$stage/install-manifest.json"
           grep -Fq '"empty_tenant_presets": true' "$stage/install-manifest.json"
           grep -Fq '"explicit_site_profile_enrollment_required": true' "$stage/install-manifest.json"
+          grep -Fq '"functional_gap_repository_evidence_embedded": true' "$stage/install-manifest.json"
+          grep -Fq '"functional_gap_policy_bound_to_build_provenance": true' "$stage/install-manifest.json"
+          grep -Fq '"contract": "mad4b.functional-gap-zero-touch.v1"' "$stage/install-manifest.json"
+          grep -Fq '"promotion_authorized": false' "$stage/install-manifest.json"
+          grep -Fq '"runtime_shell_required": false' "$stage/install-manifest.json"
+          grep -Fq '"functional_gap_runtime_evidence_requires_no_shell": true' "$stage/install-manifest.json"
           grep -Fq '"all_runtime_eligible_nonreadonly_content_admin_actions_projected_to_mad4b_write": true' "$stage/install-manifest.json"
           grep -Fq '"provider_uncertified_write_actions_excluded_from_governed_write_surfaces": true' "$stage/install-manifest.json"
           grep -Fq '"approval_plan_bootstrap_governed_by_nhi_grant_budget": true' "$stage/install-manifest.json"
