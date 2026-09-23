@@ -28,6 +28,8 @@ required = [
     "MAD4B_SCP_Staging_Write_Candidate_Binding::bind",
     "mad4b/full-staging-authority-fail-closed",
     "mad4b_scp_developer_kill_switch",
+    "post_write_enable_plan_blocked",
+    "mad4b_full_authority_post_write_enable_plan_blocked",
     "generic_raw_sql_breakglass_gate_enabled",
     "MAD4B_MCP_BREAKGLASS_ENABLED",
     "mad4b_full_authority_raw_sql_breakglass_denied",
