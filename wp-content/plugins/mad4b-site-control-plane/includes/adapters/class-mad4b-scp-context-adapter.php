@@ -503,6 +503,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'quality_provisional' => ! empty( $asset['quality']['provisional'] ),
 				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
 				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed',
+				'review_decision' => isset( $asset['review_decision'] ) ? (string) $asset['review_decision'] : '',
+				'review_note' => isset( $asset['review_note'] ) ? (string) $asset['review_note'] : '',
 				'reviewed_at' => isset( $asset['reviewed_at'] ) ? (string) $asset['reviewed_at'] : '',
 				'reviewed_content_hash' => isset( $asset['reviewed_content_hash'] ) ? (string) $asset['reviewed_content_hash'] : '',
 				'review_binding_exact' => $review_binding_exact,
