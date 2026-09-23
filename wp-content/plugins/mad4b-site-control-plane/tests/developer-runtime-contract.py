@@ -84,6 +84,11 @@ assert "normal_filesystem_mutation_guard" in developer
 assert "MAD4B_SCP_Policy::can_mutate_file" in developer
 assert "mad4b_developer_filesystem_code_root_denied" in developer
 assert "mad4b_developer_filesystem_code_mutation_denied" in developer
+assert "'expected_absent' => array( 'type' => 'boolean'" in developer
+assert "mad4b_developer_write_sha_required" in developer
+assert "mad4b_developer_write_absence_confirmation_required" in developer
+assert "mad4b_developer_file_unexpectedly_exists" in developer
+assert "mad4b_developer_file_expectation_conflict" in developer
 assert "$args[] = '--activate'" not in developer
 for flag in ["'--exec'", "'--require'", "'--ssh'", "'--http'", "'--path'"]:
     assert flag in developer, flag
@@ -238,4 +243,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v19: PASS")
+print("mad4b.developer-runtime-contract.v20: PASS")
