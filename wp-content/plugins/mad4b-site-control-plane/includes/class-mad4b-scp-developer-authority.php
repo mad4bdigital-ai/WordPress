@@ -266,7 +266,6 @@ final class MAD4B_SCP_Developer_Authority {
 		$blockers = array_merge( $blockers, $inventory['blockers'] );
 
 		if ( $breakglass ) {
-			if ( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) || true !== constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) ) $blockers[] = 'global_breakglass_gate_disabled';
 			if ( ! is_array( $agent ) ) $blockers[] = 'normal_developer_agent_missing';
 			$normal = self::grant_status( $agent, 'mad4b-developer', self::normal_tools() );
 			if ( empty( $normal['ready'] ) ) $blockers[] = 'normal_developer_authority_not_ready';
