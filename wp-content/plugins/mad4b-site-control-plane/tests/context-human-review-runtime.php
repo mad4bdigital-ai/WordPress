@@ -207,6 +207,8 @@ mad4b_review_assert( 'approved' === $review['review_status'], 'Human review must
 mad4b_review_assert( 97 === (int) $review['quality_score'], 'Human quality override must be persisted.', $review );
 mad4b_review_assert( ! empty( $review['quality']['human_override'] ), 'Human quality override marker must be explicit.', $review );
 mad4b_review_assert( ! empty( $review['reviewed_content_hash'] ) && hash_equals( (string) $review['content_hash'], (string) $review['reviewed_content_hash'] ), 'Human approval must bind to the exact reviewed content hash.', $review );
+mad4b_review_assert( ! empty( $review['automatic_classification'] ) && 'automatic_heuristic' === $review['automatic_classification']['source'], 'Human review must preserve the automatic classification evidence separately.', $review );
+mad4b_review_assert( 'human' === $review['classification_source'], 'Effective classification must remain explicitly human after review.', $review );
 
 $review_fingerprint = MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
 
@@ -389,5 +391,7 @@ mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $rev
 mad4b_review_assert( ! empty( $review_events[0]['data']['expected_content_hash'] ) && $review_events[0]['data']['expected_content_hash'] === $review_events[0]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[0] );
 mad4b_review_assert( (int) $review_events[0]['data']['registry_revision_after'] === (int) $review_events[0]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[0] );
 mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'] ), 'Already-required Brand Core review must not be mislabeled as a scope escalation.', $review_events[0] );
+mad4b_review_assert( 'wp_admin' === $review_events[0]['data']['actor_type'] && 42 === (int) $review_events[0]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[0] );
+mad4b_review_assert( ! empty( $review_events[0]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[0] );
 
 echo "mad4b.site-control-plane.context-human-review.runtime.v8: PASS\n";
