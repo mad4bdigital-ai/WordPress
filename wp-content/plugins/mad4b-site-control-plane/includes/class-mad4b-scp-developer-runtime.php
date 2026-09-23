@@ -209,7 +209,14 @@ final class MAD4B_SCP_Developer_Runtime {
 	private static function add( $name, $label, $category, $method, $readonly, $input, $permission, $surface ) {
 		if ( ! $readonly && is_array( $input ) ) {
 			if ( ! isset( $input['properties'] ) || ! is_array( $input['properties'] ) ) $input['properties'] = array();
-			$input['properties']['expected_source_commit_sha'] = array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}
+			$input['properties']['expected_source_commit_sha'] = array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' );
+			$input['properties']['expected_site_uuid'] = array( 'type' => 'string', 'minLength' => 36, 'maxLength' => 36 );
+			$input['properties']['expected_environment'] = array( 'type' => 'string', 'enum' => array( 'staging', 'development', 'local' ) );
+			$input['properties']['allow_network'] = array( 'type' => 'boolean', 'default' => false );
+			if ( ! isset( $input['required'] ) || ! is_array( $input['required'] ) ) $input['required'] = array();
+			$input['required'] = array_values( array_unique( array_merge( $input['required'], array( 'expected_source_commit_sha', 'expected_site_uuid', 'expected_environment' ) ) ) );
+		}
+		$args = array(
 			'label' => $label,
 			'description' => $label . ' through the isolated MAD4B Developer Plane.',
 			'category' => $category,
