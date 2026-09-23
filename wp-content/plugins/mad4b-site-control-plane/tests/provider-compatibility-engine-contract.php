@@ -68,6 +68,10 @@ MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
 $drift=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('jetengine',$adapter);
 expect_same('compatible_unattested',$drift['compatibility_state'],'version drift with intact structure becomes compatible_unattested');
 expect_same('READ_COMPATIBLE',$drift['capabilities']['post_meta.read']['certification_level'],'read capability survives benign version drift');
+expect_same(false,$drift['capabilities']['query_builder.read']['surface_exposed'],'catalog-only query-builder capability remains latent when no adapter ability is mounted');
+expect_same('QUARANTINED',$drift['capabilities']['query_builder.read']['certification_level'],'latent structural drift remains visible as capability evidence');
+expect_true(in_array('query_builder.read',$drift['structural_scope']['latent_incompatibilities'],true),'latent structural drift is reported separately');
+expect_same(0,$drift['structural_scope']['exposed_incompatibility_count'],'latent drift must not poison exposed provider compatibility');
 expect_same('DISCOVERED',$drift['capabilities']['post_meta.bounded-write']['certification_level'],'write capability does not self-certify from structure');
 expect_true(false===$drift['capabilities']['post_meta.bounded-write']['write_eligible'],'version drift cannot open write');
 $drift_projection=MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection('jetengine',$adapter);
@@ -121,6 +125,16 @@ expect_true(in_array('jetengine/get-post-meta',$eligible,true),'MCP mount plan i
 expect_true(!in_array('bitflows/run-flow',$eligible,true),'MCP mount plan never exposes shadow high-risk execution');
 expect_true(in_array('bitflows/run-flow',$blocked,true),'MCP mount plan reports shadow high-risk execution as blocked');
 expect_same(false,$mount['authorizing'],'mount plan is evidence, not authority');
+expect_true(isset($mount['latent']) && is_array($mount['latent']),'mount plan must separate latent catalog abilities from mounted eligibility');
+
+$registry_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-adapter-registry.php');
+foreach(array('provider_contract_advisories','provider_not_active_in_current_runtime','provider_inactive_drift_is_blocking') as $marker){
+    expect_true(false!==strpos($registry_source,$marker),'runtime self-test must preserve inactive provider drift as advisory evidence: '.$marker);
+}
+$bitflows_source=file_get_contents(dirname(__DIR__).'/includes/adapters/class-mad4b-scp-bitflows-adapter.php');
+foreach(array('mad4b.bitflows-runtime-contract-diagnostic.v1','declared_class_suffix_candidates','autoload_or_bootstrap_mutation_attempted','filesystem_scan_performed') as $marker){
+    expect_true(false!==strpos($bitflows_source,$marker),'Bit Flows must expose bounded non-mutating runtime contract diagnostics: '.$marker);
+}
 
 $adapter_base_source=file_get_contents(dirname(__DIR__).'/includes/adapters/class-mad4b-scp-adapter-base.php');
 expect_true(false!==strpos($adapter_base_source,"capability_mount_projection"),'Adapter Base must expose capability mount projection to MCP compiler');
