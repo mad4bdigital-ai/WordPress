@@ -138,7 +138,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'grant_types_supported' => array( 'authorization_code', 'refresh_token' ),
 			'token_endpoint_auth_methods_supported' => array( 'none' ),
 			'code_challenge_methods_supported' => array( 'S256' ),
-			'scopes_supported' => array( 'mad4b:read', 'offline_access' ),
+			'scopes_supported' => array( 'mad4b:read', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
 			'authorization_response_iss_parameter_supported' => true,
 			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
@@ -302,7 +302,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( 'S256' !== $method || ! preg_match( '/^[A-Za-z0-9_-]{43,128}$/', $challenge ) ) return new WP_Error( 'invalid_request', 'PKCE S256 code challenge is required.' );
 		$scope = self::request_param( $params, 'scope', self::MAX_SCOPE_BYTES );
 		if ( is_wp_error( $scope ) ) return $scope;
-		$scopes = self::normalize_scopes( '' !== $scope ? $scope : 'mad4b:read' );
+		$scopes = self::normalize_scopes( '' !== $scope ? $scope : 'mad4b:read', $resource );
 		if ( is_wp_error( $scopes ) ) return $scopes;
 		$state = self::request_param( $params, 'state', self::MAX_STATE_BYTES, false );
 		if ( is_wp_error( $state ) ) return $state;
@@ -639,7 +639,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! hash_equals( (string) $row['code_challenge'], $challenge ) ) self::send_oauth_error( 'invalid_grant', 'PKCE verification failed.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
 		if ( ! MAD4B_SCP_Local_OAuth_Store::mark_code_used( (int) $row['id'], gmdate( 'Y-m-d H:i:s' ) ) ) self::send_oauth_error( 'invalid_grant', 'Authorization code was already consumed.', 400 );
-		$scopes = self::normalize_scopes( (string) $row['scope'] );
+		$scopes = self::normalize_scopes( (string) $row['scope'], $resource );
 		if ( is_wp_error( $scopes ) ) self::send_oauth_error( 'invalid_scope', 'Stored scope binding is invalid.', 500 );
 		self::issue_token_response( $client_id, (int) $row['wp_user_id'], $resource, $scopes, true );
 	}
@@ -662,7 +662,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( ! empty( $row['revoked_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) < time() ) self::send_oauth_error( 'invalid_grant', 'Refresh token is expired or revoked.', 400 );
 		if ( ! hash_equals( (string) $row['client_id'], $client_id ) || ! hash_equals( (string) $row['resource'], $resource ) || ! self::resource_allowed( $resource ) ) self::send_oauth_error( 'invalid_grant', 'Refresh token binding does not match.', 400 );
 		if ( ! self::user_authorized( (int) $row['wp_user_id'] ) ) self::send_oauth_error( 'access_denied', 'WordPress subject is no longer authorized.', 403 );
-		$scopes = self::normalize_scopes( (string) $row['scope'] );
+		$scopes = self::normalize_scopes( (string) $row['scope'], $resource );
 		if ( is_wp_error( $scopes ) ) self::send_oauth_error( 'invalid_scope', 'Stored scope binding is invalid.', 500 );
 		$replacement = self::random_token( 48 );
 		if ( is_wp_error( $replacement ) ) self::send_oauth_error( 'server_error', 'Unable to rotate refresh token.', 500 );
@@ -778,11 +778,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		return $signing_input . '.' . self::base64url_encode( $signature );
 	}
 
-	private static function normalize_scopes( $scope ) {
+	private static function normalize_scopes( $scope, $resource = '' ) {
 		$scope = trim( (string) $scope );
 		if ( strlen( $scope ) > self::MAX_SCOPE_BYTES ) return new WP_Error( 'invalid_scope', 'OAuth scope is too large.' );
 		$items = preg_split( '/\s+/', $scope );
-		$allowed = array( 'mad4b:read', 'offline_access' );
+		$allowed = array( 'mad4b:read', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
 		$scopes = array();
 		foreach ( is_array( $items ) ? $items : array() as $item ) {
 			$item = trim( (string) $item );
@@ -792,6 +792,22 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		}
 		$scopes = array_values( array_unique( $scopes ) );
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return new WP_Error( 'invalid_scope', 'mad4b:read is required.' );
+
+		$resource = untrailingslashit( trim( (string) $resource ) );
+		if ( '' !== $resource && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
+			$developer = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' );
+			$breakglass = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer-breakglass' );
+			$has_developer = in_array( 'server:mad4b-developer', $scopes, true );
+			$has_breakglass = in_array( 'server:mad4b-developer-breakglass', $scopes, true );
+
+			if ( hash_equals( $developer, $resource ) ) {
+				if ( ! $has_developer || $has_breakglass ) return new WP_Error( 'invalid_scope', 'Developer resource requires exactly the normal Developer server scope.' );
+			} elseif ( hash_equals( $breakglass, $resource ) ) {
+				if ( ! $has_breakglass || $has_developer ) return new WP_Error( 'invalid_scope', 'Developer Breakglass resource requires exactly the Breakglass server scope.' );
+			} elseif ( $has_developer || $has_breakglass ) {
+				return new WP_Error( 'invalid_scope', 'Developer scopes cannot be issued for a non-Developer protected resource.' );
+			}
+		}
 		return $scopes;
 	}
 
