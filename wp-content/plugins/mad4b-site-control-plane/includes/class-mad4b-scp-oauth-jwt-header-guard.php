@@ -27,7 +27,7 @@ final class MAD4B_SCP_OAuth_JWT_Header_Guard {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment' ), true ) ) return $result;
+		if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment', '/mcp/mad4b-developer', '/mcp/mad4b-developer-breakglass' ), true ) ) return $result;
 		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $result;
 		$authorization = method_exists( $request, 'get_header' ) ? trim( (string) $request->get_header( 'authorization' ) ) : '';
 		if ( '' === $authorization ) return $result;
@@ -78,7 +78,11 @@ final class MAD4B_SCP_OAuth_JWT_Header_Guard {
 
 	private static function denied( $code, $message ) {
 		$response = new WP_REST_Response( array( 'error' => sanitize_key( (string) $code ), 'message' => sanitize_text_field( (string) $message ) ), 401 );
-		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) $response->header( 'WWW-Authenticate', MAD4B_SCP_OAuth_Resource_Bridge::challenge_header() );
+		if ( class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
+			$route = isset( $_SERVER['REQUEST_URI'] ) ? wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : '';
+			$resource = is_string( $route ) ? MAD4B_SCP_OAuth_Resource_Bridge::resource_for_route( preg_replace( '#^/wp-json#', '', $route ) ) : '';
+			$response->header( 'WWW-Authenticate', MAD4B_SCP_OAuth_Resource_Bridge::challenge_header( $resource ) );
+		}
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
 	}
