@@ -67,7 +67,9 @@ assert "WP_CLI_SYSTEM_SETTINGS_PATH" in developer
 assert "WP_CLI_DISABLE_AUTO_CHECK_UPDATE" in developer
 assert "mad4b_developer_wp_cli_alias_denied" in developer
 assert "mad4b_developer_wp_cli_escape_denied" in developer
-assert "mad4b_developer_wp_cli_breakglass_required" in developer
+assert "mad4b_developer_wp_cli_command_not_allowlisted" in developer
+assert "mad4b_developer_wp_cli_subcommand_not_allowlisted" in developer
+assert "finite read/verification surface" in developer
 assert "mad4b_developer_package_source_breakglass_required" in developer
 assert "mad4b_developer_package_version_required" in developer
 assert "mad4b_developer_package_overwrite_denied" in developer
@@ -75,9 +77,6 @@ assert "'--version=' . $version" in developer
 assert "array( 'package', 'version', '_mad4b_approval_ticket_id' )" in developer
 assert "WordPress.org-style plugin slug" in developer
 assert "'maxLength' => 191" in developer
-assert "mad4b_developer_wp_cli_code_lifecycle_denied" in developer
-for family in ["'option'", "'user'", "'role'", "'super-admin'", "'application-password'", "'site'", "'network'", "'scaffold'"]:
-    assert family in developer, family
 for readonly_family in ["'plugin' => array( 'list', 'status', 'get'", "'theme'  => array( 'list', 'status', 'get'", "'core'   => array( 'version', 'check-update', 'verify-checksums'"]:
     assert readonly_family in developer, readonly_family
 assert "mad4b_developer_package_activation_denied" in developer
@@ -86,8 +85,6 @@ assert "MAD4B_SCP_Policy::can_mutate_file" in developer
 assert "mad4b_developer_filesystem_code_root_denied" in developer
 assert "mad4b_developer_filesystem_code_mutation_denied" in developer
 assert "$args[] = '--activate'" not in developer
-for family in ["'eval'", "'eval-file'", "'db'", "'config'", "'shell'", "'cli'", "'package'", "'server'"]:
-    assert family in developer, family
 for flag in ["'--exec'", "'--require'", "'--ssh'", "'--http'", "'--path'"]:
     assert flag in developer, flag
 assert "permission_callback( $permission, $readonly, $name, $category )" in developer
@@ -241,4 +238,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v18: PASS")
+print("mad4b.developer-runtime-contract.v19: PASS")
