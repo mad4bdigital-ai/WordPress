@@ -263,7 +263,7 @@ final class MAD4B_SCP_Plugin_Package {
 		$archive = isset( $authority['archive'] ) ? basename( (string) $authority['archive'] ) : '';
 		$sha = isset( $authority['archive_sha256'] ) ? strtolower( trim( (string) $authority['archive_sha256'] ) ) : '';
 		$critical = isset( $authority['critical_files'] ) && is_array( $authority['critical_files'] ) ? $authority['critical_files'] : array();
-		if ( '' === $plugin_file || '' === $version || '' === $archive || ! preg_match( '/^[a-f0-9]{64}$/', $sha ) || empty( $critical ) ) {
+		if ( '' === $plugin_file || '.' === dirname( $plugin_file ) || '' === dirname( $plugin_file ) || '' === $version || '' === $archive || ! preg_match( '/^[a-f0-9]{64}$/', $sha ) || empty( $critical ) ) {
 			return new WP_Error( 'mad4b_plugin_package_authority_incomplete', 'Certified provider package authority is incomplete.' );
 		}
 		return array(
