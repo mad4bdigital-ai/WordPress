@@ -266,7 +266,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		$operation_id = wp_generate_uuid4();
 		return array(
 			'contract' => self::CONTRACT,
-			'authorization' => array(
+			'operation_basis' => array(
 				'source' => $authorization_source,
 				'contract' => $authorization_contract,
 				'confirmation' => $confirmation,
