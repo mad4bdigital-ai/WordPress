@@ -236,7 +236,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		return $plan;
 	}
 
-	private static function operation_context( array $plan, array $binding, $current_revision, $current_digest ) {
+	public static function operation_context( array $plan, array $binding, $current_revision, $current_digest, $confirmation = self::CONFIRMATION, $authorization_source = 'binding_only_mcp', $authorization_contract = self::CONTRACT ) {
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) ) return new WP_Error( 'mad4b_candidate_bind_identity_unavailable', 'Governance identity context is unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
@@ -257,9 +257,20 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( '' === $correlation_id ) return new WP_Error( 'mad4b_candidate_bind_correlation_missing', 'A request correlation identifier is required for binding audit attribution.' );
 		$transport = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
 		if ( ! in_array( $transport, array( 'mad4b-chatgpt', 'mad4b-enrollment' ), true ) ) return new WP_Error( 'mad4b_candidate_bind_transport_context_invalid', 'Candidate binding requires the bounded ChatGPT or enrollment MCP transport.' );
+		$authorization_source = sanitize_key( (string) $authorization_source );
+		$authorization_contract = trim( (string) $authorization_contract );
+		$confirmation = (string) $confirmation;
+		$authorization_valid = ( 'binding_only_mcp' === $authorization_source && self::CONTRACT === $authorization_contract && self::CONFIRMATION === $confirmation )
+			|| ( 'grant_reconciliation' === $authorization_source && 'mad4b.staging-write-grant-reconciliation.v1' === $authorization_contract && 'RECONCILE EXACT STAGING WRITE GRANTS' === $confirmation );
+		if ( ! $authorization_valid ) return new WP_Error( 'mad4b_candidate_bind_authorization_source_invalid', 'Candidate binding authorization source is invalid.' );
 		$operation_id = wp_generate_uuid4();
 		return array(
 			'contract' => self::CONTRACT,
+			'authorization' => array(
+				'source' => $authorization_source,
+				'contract' => $authorization_contract,
+				'confirmation' => $confirmation,
+			),
 			'operation_id' => $operation_id,
 			'correlation_id' => $correlation_id,
 			'actor' => array(
@@ -298,7 +309,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				'write_inventory_fingerprint' => (string) $plan['write_inventory_fingerprint'],
 				'grant_rows_fingerprint' => (string) $plan['grant_rows_fingerprint'],
 			),
-			'confirmation' => self::CONFIRMATION,
+			'confirmation' => $confirmation,
 			'mutation_class' => 'candidate_binding_only',
 		);
 	}
