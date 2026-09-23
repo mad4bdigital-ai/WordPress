@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "includes" / "class-mad4b-scp-plugin-package.php"
@@ -76,14 +77,12 @@ for forbidden in [
     "'archive_sha256' => array(",
     "trailingslashit( WP_PLUGIN_DIR ) . basename( $archive )",
     "mad4b/database-raw-query",
-    "shell_exec(",
-    "exec(",
-    "system(",
-    "passthru(",
-    "proc_open(",
-    "popen(",
 ]:
     require(forbidden not in package, f"unsafe caller/arbitrary execution surface detected: {forbidden}")
+
+for primitive in ["eval", "assert", "exec", "shell_exec", "system", "passthru", "popen", "proc_open"]:
+    pattern = r"(?<![A-Za-z0-9_])" + re.escape(primitive) + r"\s*\("
+    require(re.search(pattern, package) is None, f"forbidden arbitrary execution primitive detected: {primitive}")
 
 schema = package.split("private static function plan_schema()", 1)[1]
 require("'provider_id'" in schema and "'component'" in schema and "'source'" in schema and "'reason'" in schema, "bounded caller schema missing")
