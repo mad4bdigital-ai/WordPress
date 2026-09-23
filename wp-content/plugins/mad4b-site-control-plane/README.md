@@ -23,8 +23,8 @@ MAD4B isolates governed capabilities across dedicated MCP server IDs:
 - `mad4b-write` — unified governed operational write ingress.
 - `mad4b-admin` — specialist administrative repair/governance surface.
 - `mad4b-developer` — exact-agent, non-Production Developer Plane for bounded WP-CLI, filesystem and package operations.
-- `mad4b-developer-breakglass` — separately gated exceptional Developer recovery surface containing arbitrary shell / WP eval.
-- `mad4b-breakglass` — exceptional raw SQL recovery; disabled by default.
+- `mad4b-developer-breakglass` — separately gated exceptional Developer recovery surface containing arbitrary shell / WP eval. It uses the dedicated Developer Breakglass gate and does not require or enable generic raw-SQL Breakglass.
+- `mad4b-breakglass` — exceptional raw SQL recovery; disabled by default. This authority remains separate from Developer Breakglass.
 
 The Developer Plane is default-off and is never projected into `mad4b-chatgpt` or `mad4b-write`. Mutating Developer jobs require an exact configured Developer Agent, exact server/ability grant, current source/site/environment binding, one-time approval, budget, append-only audit and the shared execution fence. Production is denied by contract.
 
