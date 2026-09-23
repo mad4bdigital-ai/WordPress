@@ -1289,8 +1289,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status['grant_blockers'] = $all_blockers;
 		$status['all_remote_writes_require_exact_approval'] = false;
 		$status['normal_remote_writes_require_exact_approval'] = true;
-		$status['remote_write_approval_policy'] = 'exact_approval_except_bounded_candidate_bootstrap';
-		$status['remote_write_prior_approval_exceptions'] = array( self::CANDIDATE_BOOTSTRAP_ABILITY );
+		$status['remote_write_approval_policy'] = 'exact_approval_with_bounded_standing_exceptions';
+		$status['remote_write_prior_approval_exceptions'] = array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' );
 		$status['breakglass_included'] = in_array( 'mad4b/database-raw-query', $tools, true );
 		$status['ready'] = empty( $all_blockers ) && ! $status['breakglass_included'];
 		$status['state'] = $status['ready'] ? 'ready' : 'blocked';
@@ -1299,7 +1299,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status['remote_transport'] = 'mad4b-chatgpt';
 		$status['authority_server'] = 'mad4b-write';
 		$status['oauth_role'] = 'identity_only';
-		$status['write_authority_components'] = array( 'site_profile', 'exact_origin', 'oauth_identity', 'nhi_subject_binding', 'exact_mad4b_write_grant', 'provider_runtime', 'global_mutation_gate', 'budget_reservation', 'one_time_exact_approval', 'audit' );
+		$status['write_authority_components'] = array( 'site_profile', 'exact_origin', 'oauth_identity', 'nhi_subject_binding', 'exact_mad4b_write_grant', 'provider_runtime', 'global_mutation_gate', 'budget_reservation', 'normal_write_one_time_exact_approval_or_bounded_ai_review_delegation', 'audit' );
 
 		if ( $status['ready'] ) self::persist_ready_status( $status, $granted, $existing, $grants_revoked, $subjects_disabled );
 		self::$status = $status;
@@ -1491,8 +1491,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'breakglass_included' => false,
 			'all_remote_writes_require_exact_approval' => false,
 			'normal_remote_writes_require_exact_approval' => true,
-			'remote_write_approval_policy' => 'exact_approval_except_bounded_candidate_bootstrap',
-			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY ),
+			'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions',
+			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' ),
 			'candidate_bootstrap_contract' => self::CANDIDATE_BOOTSTRAP_CONTRACT,
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
