@@ -79,6 +79,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$authorities = self::authority_registry();
 		$issuers = array_keys( $authorities );
 		$https = self::resources_are_https();
+		$resource_transport_allowed = self::resources_transport_allowed();
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$environment_allowed = $profile_ready && ( in_array( $environment, array( 'local', 'development', 'staging' ), true ) || ( 'production' === $environment && $production_approved ) );
 		$registry_valid = self::authority_registry_valid( $mode, $authorities );
@@ -88,7 +89,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		foreach ( $authorities as $authority ) {
 			if ( 'local' === $authority['type'] && empty( $authority['runtime_ready'] ) ) $local_ready = false;
 		}
-		$effective = $enabled && $registry_valid && $subject_policy_ready && $wp_users_ready && $local_ready && $https && $environment_allowed;
+		$effective = $enabled && $registry_valid && $subject_policy_ready && $wp_users_ready && $local_ready && $resource_transport_allowed && $environment_allowed;
 
 		$authority_status = array();
 		foreach ( $authorities as $issuer => $authority ) {
@@ -124,6 +125,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'wp_user_id' => self::configured_user_id( self::primary_issuer() ),
 			'wp_user_capable' => $wp_users_ready,
 			'https' => $https,
+			'resource_transport_allowed' => $resource_transport_allowed,
+			'http_loopback_local_only' => ( ! $https && $resource_transport_allowed ),
 			'accepted_bearer_algorithms' => array( 'RS256' ),
 			'jwks_x5c_required' => false,
 			'jwks_rsa_ne_supported' => true,
@@ -648,7 +651,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		if ( ! defined( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) || true !== constant( 'MAD4B_MCP_LOCAL_OAUTH_ENABLED' ) ) return '';
 		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) || ! method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'issuer' ) ) return '';
 		$issuer = rtrim( (string) MAD4B_SCP_Local_OAuth_Server::issuer(), '/' );
-		return self::valid_https_url( $issuer ) ? $issuer : '';
+		return self::valid_authority_url( $issuer ) ? $issuer : '';
 	}
 
 	private static function normalize_subjects( $value ) {
@@ -665,17 +668,43 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	private static function resources_are_https() { foreach ( self::resource_identifiers() as $resource ) if ( 'https' !== strtolower( (string) wp_parse_url( $resource, PHP_URL_SCHEME ) ) ) return false; return true; }
+
+	private static function resources_transport_allowed() {
+		foreach ( self::resource_identifiers() as $resource ) if ( ! self::valid_authority_url( $resource ) ) return false;
+		return true;
+	}
+
+	private static function valid_local_http_loopback_url( $url ) {
+		if ( ! is_string( $url ) || '' === $url || strlen( $url ) > self::MAX_URI_BYTES ) return false;
+		$environment = function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown';
+		if ( 'local' !== $environment ) return false;
+		$parts = wp_parse_url( $url );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) ) return false;
+		$host = strtolower( rtrim( (string) $parts['host'], '.' ) );
+		return 'http' === strtolower( (string) $parts['scheme'] )
+			&& in_array( $host, array( '127.0.0.1', '::1', 'localhost' ), true )
+			&& empty( $parts['user'] ) && empty( $parts['pass'] ) && empty( $parts['query'] ) && empty( $parts['fragment'] );
+	}
+
 	private static function valid_https_url( $url ) {
 		if ( ! is_string( $url ) || '' === $url || strlen( $url ) > self::MAX_URI_BYTES ) return false;
 		$parts = wp_parse_url( $url );
 		return is_array( $parts ) && isset( $parts['scheme'], $parts['host'] ) && 'https' === strtolower( (string) $parts['scheme'] ) && '' !== (string) $parts['host'] && empty( $parts['user'] ) && empty( $parts['pass'] ) && empty( $parts['query'] ) && empty( $parts['fragment'] );
 	}
+
+	private static function valid_authority_url( $url ) {
+		return self::valid_https_url( $url ) || self::valid_local_http_loopback_url( $url );
+	}
+
 	private static function same_origin_https_url( $url, $issuer ) {
-		if ( ! self::valid_https_url( $url ) || ! self::valid_https_url( $issuer ) ) return false;
+		if ( ! self::valid_authority_url( $url ) || ! self::valid_authority_url( $issuer ) ) return false;
 		$url_parts = wp_parse_url( (string) $url );
 		$issuer_parts = wp_parse_url( (string) $issuer );
-		$url_port = isset( $url_parts['port'] ) ? (int) $url_parts['port'] : 443;
-		$issuer_port = isset( $issuer_parts['port'] ) ? (int) $issuer_parts['port'] : 443;
+		$url_scheme = strtolower( (string) $url_parts['scheme'] );
+		$issuer_scheme = strtolower( (string) $issuer_parts['scheme'] );
+		if ( ! hash_equals( $issuer_scheme, $url_scheme ) ) return false;
+		$url_port = isset( $url_parts['port'] ) ? (int) $url_parts['port'] : ( 'https' === $url_scheme ? 443 : 80 );
+		$issuer_port = isset( $issuer_parts['port'] ) ? (int) $issuer_parts['port'] : ( 'https' === $issuer_scheme ? 443 : 80 );
 		return strtolower( (string) $url_parts['host'] ) === strtolower( (string) $issuer_parts['host'] ) && $url_port === $issuer_port;
 	}
 	private static function decode_json_segment( $segment ) {
