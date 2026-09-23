@@ -76,6 +76,20 @@ function mad4b_review_assert( $condition, $message, $context = null ) {
 	exit( 1 );
 }
 
+function mad4b_review_exact_input( $asset_id, array $decision ) {
+	$asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
+	mad4b_review_assert( ! empty( $asset ), 'Exact review input requires a live asset.', $asset_id );
+	return array_merge(
+		array(
+			'expected_content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
+			'expected_registry_revision' => MAD4B_SCP_Context_Authority::registry_revision(),
+			'expected_authority_manifest_fingerprint' => MAD4B_SCP_Context_Authority::authority_manifest_fingerprint(),
+			'required_scope_confirmed' => true,
+		),
+		$decision
+	);
+}
+
 $site_uuid = '11111111-1111-4111-8111-111111111111';
 $source_id = str_repeat( 'a', 64 );
 $file_id = 'tone-file-001';
@@ -159,12 +173,15 @@ mad4b_review_assert( empty( $optional_initial['required'] ), 'Writer reference f
 
 $review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
-	array(
+	mad4b_review_exact_input(
+		$asset_id,
+		array(
 		'category' => 'tone_of_voice',
 		'authority_class' => 'brand_authority',
 		'required' => true,
 		'quality_mode' => 'manual',
 		'quality_score' => '97',
+	)
 	)
 );
 mad4b_review_assert( ! is_wp_error( $review ), 'Human review must succeed.', $review );
@@ -172,6 +189,7 @@ mad4b_review_assert( 'human' === $review['classification_source'], 'Human review
 mad4b_review_assert( 'approved' === $review['review_status'], 'Human review must approve the asset.', $review );
 mad4b_review_assert( 97 === (int) $review['quality_score'], 'Human quality override must be persisted.', $review );
 mad4b_review_assert( ! empty( $review['quality']['human_override'] ), 'Human quality override marker must be explicit.', $review );
+mad4b_review_assert( ! empty( $review['reviewed_content_hash'] ) && hash_equals( (string) $review['content_hash'], (string) $review['reviewed_content_hash'] ), 'Human approval must bind to the exact reviewed content hash.', $review );
 
 $review_fingerprint = MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
 
@@ -198,6 +216,16 @@ mad4b_review_assert( 'approved' === $same['review_status'], 'Same-hash rescan mu
 mad4b_review_assert( 97 === (int) $same['quality_score'] && ! empty( $same['quality']['human_override'] ), 'Same-hash rescan must preserve human quality override.', $same );
 mad4b_review_assert( hash_equals( $review_fingerprint, MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ), 'Same-hash rescan must not drift the authority manifest solely because of provider refresh.' );
 
+$stale_review_input = mad4b_review_exact_input(
+	$asset_id,
+	array(
+		'category' => 'tone_of_voice',
+		'authority_class' => 'brand_authority',
+		'required' => true,
+		'quality_mode' => 'automatic',
+		'quality_score' => '',
+	)
+);
 $changed_text = $initial_text . "\nNew provider content changes the governed asset body and therefore requires renewed review.";
 $scan3 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
@@ -216,6 +244,13 @@ mad4b_review_assert( 'tone_of_voice' === $changed['category'] && 'brand_authorit
 mad4b_review_assert( 'needs_review_content_changed' === $changed['review_status'], 'Changed content must invalidate approval.', $changed );
 mad4b_review_assert( empty( $changed['reviewed_at'] ) && empty( $changed['reviewed_by'] ), 'Changed content must clear reviewer identity/timestamp as current approval evidence.', $changed );
 mad4b_review_assert( empty( $changed['quality']['human_override'] ), 'Changed content must not reuse a prior human quality override.', $changed );
+
+$stale_review = MAD4B_SCP_Context_Authority::review_asset( $asset_id, $stale_review_input );
+mad4b_review_assert( is_wp_error( $stale_review ), 'A stale browser review must fail closed after content changes.', $stale_review );
+mad4b_review_assert( 'mad4b_context_review_content_drift' === $stale_review->get_error_code(), 'Stale review must expose exact content drift.', $stale_review->get_error_code() );
+$after_stale_review = MAD4B_SCP_Context_Authority::asset( $asset_id );
+mad4b_review_assert( 'needs_review_content_changed' === $after_stale_review['review_status'], 'Rejected stale review must not approve changed content.', $after_stale_review );
+mad4b_review_assert( empty( $after_stale_review['reviewed_content_hash'] ), 'Rejected stale review must not bind a reviewed content hash.', $after_stale_review );
 
 $status = MAD4B_SCP_Context_Authority::status();
 mad4b_review_assert( empty( $status['ready'] ), 'Context Authority must fail closed until changed mandatory content is reviewed again.', $status );
@@ -243,12 +278,18 @@ mad4b_review_assert( in_array( 'mandatory_context_review_required', $still_block
 
 $automatic_review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
-	array(
+	mad4b_review_exact_input(
+		$asset_id,
+		mad4b_review_exact_input(
+		$asset_id,
+		array(
 		'category' => 'tone_of_voice',
 		'authority_class' => 'brand_authority',
 		'required' => true,
 		'quality_mode' => 'automatic',
 		'quality_score' => '',
+	)
+	)
 	)
 );
 mad4b_review_assert( ! is_wp_error( $automatic_review ), 'Reviewer must be able to return a previously overridden asset to automatic scoring.', $automatic_review );
@@ -298,18 +339,22 @@ mad4b_review_assert( 'ready_with_warnings' === $ready_status['state'], 'Optional
 mad4b_review_assert( ! in_array( 'mandatory_context_review_required', $ready_status['blockers'], true ), 'Renewed review must clear the mandatory review blocker.', $ready_status['blockers'] );
 mad4b_review_assert( in_array( 'optional_context_contains_unavailable_assets', $ready_status['warnings'], true ), 'Missing optional writer reference must remain visible as a warning.', $ready_status['warnings'] );
 mad4b_review_assert( 1 === (int) $ready_status['optional_unavailable_asset_count'], 'Exactly one optional unavailable asset must be reported.', $ready_status );
+mad4b_review_assert( 0 === (int) $ready_status['legacy_unbound_review_asset_count'], 'Ready required Context must have no legacy unbound approvals.', $ready_status );
 
 $before_failed_review_asset = MAD4B_SCP_Context_Authority::asset( $asset_id );
 $before_failed_review_revision = MAD4B_SCP_Context_Authority::registry_revision();
 MAD4B_SCP_Audit::$fail_append = true;
 $failed_audit_review = MAD4B_SCP_Context_Authority::review_asset(
 	$asset_id,
-	array(
+	mad4b_review_exact_input(
+		$asset_id,
+		array(
 		'category' => 'tone_of_voice',
 		'authority_class' => 'brand_authority',
 		'required' => true,
 		'quality_mode' => 'manual',
 		'quality_score' => '88',
+	)
 	)
 );
 MAD4B_SCP_Audit::$fail_append = false;
@@ -323,5 +368,9 @@ mad4b_review_assert( 3 === count( $review_events ), 'Initial review, changed-con
 mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
 mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
 mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[2] );
+mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $review_events[0]['data']['contract'], 'Human review audit must use the v2 exact-review contract.', $review_events[0] );
+mad4b_review_assert( ! empty( $review_events[0]['data']['expected_content_hash'] ) && $review_events[0]['data']['expected_content_hash'] === $review_events[0]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[0] );
+mad4b_review_assert( (int) $review_events[0]['data']['registry_revision_after'] === (int) $review_events[0]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[0] );
+mad4b_review_assert( ! empty( $review_events[0]['data']['required_scope_escalated'] ) && ! empty( $review_events[0]['data']['required_scope_confirmed'] ), 'Initial required scope escalation must be explicitly confirmed and audited.', $review_events[0] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v7: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v8: PASS\n";
