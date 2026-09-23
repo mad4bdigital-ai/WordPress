@@ -65,39 +65,49 @@ $core_writes = array( 'mad4b/approval-plan', 'mad4b/content-update-post', 'mad4b
 $gated_provider = 'jetsmartfilters/update-filter-meta';
 $stable_writes = array_merge( $core_writes, array( $gated_provider ) );
 $reads = array( 'etg-dfsb/evidence-provider', 'etg-dfsb/evidence-query', 'mad4b/site-info' );
+$write_transport = array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' );
 MAD4B_SCP_Servers::$write_tools = $core_writes;
 MAD4B_SCP_Servers::$external_write_tools = $stable_writes;
-MAD4B_SCP_Servers::$chatgpt_tools = array_merge( $reads, $stable_writes );
+MAD4B_SCP_Servers::$chatgpt_tools = array_merge( $reads, $write_transport );
 MAD4B_SCP_Servers::$blocked_write_tools = array( array( 'ability' => $gated_provider, 'provider' => 'jetsmartfilters' ) );
 $exact_external = mad4b_external_names( MAD4B_SCP_Servers::$chatgpt_tools );
 
 $evidence = mad4b_capture_scenario( 'session-exact', array_reverse( $exact_external ) );
-mad4b_assert( ! empty( $evidence ), 'stable governed inventory was not persisted' );
-mad4b_assert( 'mad4b.external-handshake-evidence.v3' === $evidence['contract'], 'v3 evidence contract missing' );
-mad4b_assert( count( $stable_writes ) === (int) $evidence['write_tool_count'], 'external write count must use stable catalog' );
-mad4b_assert( count( $core_writes ) === (int) $evidence['eligible_write_tool_count'], 'eligible write count must stay dynamic' );
-mad4b_assert( 1 === (int) $evidence['provider_gated_write_tool_count'], 'gated provider write must be reported, not rejected' );
+mad4b_assert( ! empty( $evidence ), 'minimal governed transport inventory was not persisted' );
+mad4b_assert( 'mad4b.external-handshake-evidence.v4' === $evidence['contract'], 'v4 evidence contract missing' );
+mad4b_assert( count( $stable_writes ) === (int) $evidence['write_tool_count'], 'logical write count must use the full stable catalog' );
+mad4b_assert( count( $core_writes ) === (int) $evidence['eligible_write_tool_count'], 'eligible logical write count must stay dynamic' );
+mad4b_assert( 3 === (int) $evidence['write_transport_tool_count'], 'write transport trio must be captured' );
+mad4b_assert( ! empty( $evidence['write_transport_ready'] ), 'write transport must be ready' );
+mad4b_assert( empty( $evidence['direct_write_schema_leaks'] ), 'underlying write schemas must not be direct' );
+mad4b_assert( 1 === (int) $evidence['provider_gated_write_tool_count'], 'gated provider write must be reported logically' );
 mad4b_assert( in_array( mad4b_tool_name( $gated_provider ), $evidence['provider_gated_write_tools'], true ), 'gated provider write missing from evidence' );
 $status = MAD4B_SCP_External_Handshake_Evidence::status();
-mad4b_assert( ! empty( $status['verified'] ), 'stable catalog with gated provider tool should verify' );
-mad4b_assert( ! empty( $status['tool_inventory_match'] ), 'stable catalog fingerprint should match' );
+mad4b_assert( ! empty( $status['verified'] ), 'minimal transport plus logical write catalog should verify' );
+mad4b_assert( ! empty( $status['tool_inventory_match'] ), 'minimal transport fingerprint should match' );
+mad4b_assert( ! empty( $status['write_inventory_fingerprint_match'] ), 'logical write catalog fingerprint should match' );
 
-// Certification transition: internal eligible set changes, external schema must not.
-$before_fp = $status['expected_tool_inventory_fingerprint'];
+// Certification transition changes runtime eligibility only; it must not change
+// either the external transport identity or the stable logical write catalog.
+$before_transport_fp = $status['expected_tool_inventory_fingerprint'];
+$before_write_fp = $status['write_catalog_fingerprint'];
 MAD4B_SCP_Servers::$write_tools[] = $gated_provider;
 MAD4B_SCP_Servers::$blocked_write_tools = array();
 $status = MAD4B_SCP_External_Handshake_Evidence::status();
-mad4b_assert( ! empty( $status['verified'] ), 'provider activation must not stale external handshake' );
-mad4b_assert( hash_equals( $before_fp, $status['expected_tool_inventory_fingerprint'] ), 'provider activation must not change external inventory fingerprint' );
+mad4b_assert( ! empty( $status['verified'] ), 'provider activation must not stale minimal external handshake' );
+mad4b_assert( hash_equals( $before_transport_fp, $status['expected_tool_inventory_fingerprint'] ), 'provider activation must not change transport inventory fingerprint' );
+mad4b_assert( hash_equals( $before_write_fp, $status['write_catalog_fingerprint'] ), 'provider activation must not change logical write catalog fingerprint' );
 mad4b_assert( count( $stable_writes ) === (int) $status['expected_eligible_write_tool_count'], 'eligible write count should reflect newly active provider tool' );
 mad4b_assert( 0 === (int) $status['provider_gated_write_tool_count'], 'gated count should clear after activation' );
 
 $raw_sql = $exact_external; $raw_sql[] = mad4b_tool_name( 'mad4b/database-raw-query' );
 mad4b_assert( empty( mad4b_capture_scenario( 'session-raw-sql', $raw_sql ) ), 'raw SQL/Breakglass tool must reject handshake evidence' );
-$missing = array_values( array_diff( $exact_external, array( mad4b_tool_name( 'etg-dfsb/evidence-query' ) ) ) );
-mad4b_assert( empty( mad4b_capture_scenario( 'session-missing', $missing ) ), 'missing expected tool must reject handshake evidence' );
+$missing = array_values( array_diff( $exact_external, array( mad4b_tool_name( 'mad4b/write-info' ) ) ) );
+mad4b_assert( empty( mad4b_capture_scenario( 'session-missing-transport', $missing ) ), 'missing write transport member must reject handshake evidence' );
+$direct_write = $exact_external; $direct_write[] = mad4b_tool_name( 'mad4b/content-update-post' );
+mad4b_assert( empty( mad4b_capture_scenario( 'session-direct-write-leak', $direct_write ) ), 'direct underlying write schema must reject handshake evidence' );
 $unexpected = $exact_external; $unexpected[] = 'foreign-unexpected-tool';
 mad4b_assert( empty( mad4b_capture_scenario( 'session-unexpected', $unexpected ) ), 'unexpected foreign tool must reject handshake evidence' );
 
-echo "mad4b.external-handshake-inventory.v3: PASS\n";
+echo "mad4b.external-handshake-inventory.v4: PASS\n";
 }
