@@ -78,6 +78,7 @@ final class MAD4B_SCP_Plugin {
 		MAD4B_SCP_Code_Snippets_Runtime_Diagnostic::boot();
 		MAD4B_SCP_Governed_Ability_Overrides::boot();
 		MAD4B_SCP_Staging_Write_Authority::boot();
+		MAD4B_SCP_Staging_Write_Candidate_Binding::boot();
 
 		// Inspection and mutation are separate contracts. Never reconcile grants
 		// or subjects from Abilities bootstrap or ordinary wp-admin reads.
