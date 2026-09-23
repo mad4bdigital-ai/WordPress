@@ -723,7 +723,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$result = MAD4B_SCP_Governance_Abilities::agent_list( array( 'status' => 'enabled', 'limit' => 100 ) );
 		if ( is_wp_error( $result ) || empty( $result['agents'] ) || ! is_array( $result['agents'] ) ) return array();
 		$agents = array();
-		$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
+		$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
 		foreach ( $result['agents'] as $agent ) {
 			if ( ! is_array( $agent ) ) continue;
 			$public_id = isset( $agent['public_id'] ) ? strtolower( trim( (string) $agent['public_id'] ) ) : '';
