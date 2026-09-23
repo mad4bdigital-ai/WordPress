@@ -251,6 +251,19 @@ mad4b_review_assert( ! empty( $review['reviewed_content_hash'] ) && hash_equals(
 mad4b_review_assert( ! empty( $review['automatic_classification'] ) && 'automatic_heuristic' === $review['automatic_classification']['source'], 'Human review must preserve the automatic classification evidence separately.', $review );
 mad4b_review_assert( 'human' === $review['classification_source'], 'Effective classification must remain explicitly human after review.', $review );
 
+$exact_review_authority_fingerprint = MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
+$exact_review_context_fingerprint = MAD4B_SCP_Context_Authority::context_fingerprint();
+$legacy_unbound_records = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
+$legacy_unbound_records[ $asset_id ]['reviewed_content_hash'] = '';
+mad4b_review_assert(
+	! hash_equals( $exact_review_authority_fingerprint, MAD4B_SCP_Context_Authority::authority_manifest_fingerprint( $legacy_unbound_records ) ),
+	'Authority manifest fingerprint must distinguish exact-bound review evidence from a legacy unbound approval.'
+);
+mad4b_review_assert(
+	! hash_equals( $exact_review_context_fingerprint, MAD4B_SCP_Context_Authority::context_fingerprint( $legacy_unbound_records, $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ] ) ),
+	'Context fingerprint must distinguish exact-bound review evidence from a legacy unbound approval.'
+);
+
 $review_fingerprint = MAD4B_SCP_Context_Authority::authority_manifest_fingerprint();
 
 $scan2 = MAD4B_SCP_Context_Authority::replace_source_assets(
@@ -509,4 +522,4 @@ mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'
 mad4b_review_assert( 'wp_admin' === $review_events[0]['data']['actor_type'] && 42 === (int) $review_events[0]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[0] );
 mad4b_review_assert( ! empty( $review_events[0]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[0] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v10: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v11: PASS\n";
