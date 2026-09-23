@@ -48,6 +48,14 @@ final class MAD4B_SCP_Developer_Authority {
 	}
 
 	public static function register_abilities() {
+		// These are enrollment/bootstrap abilities with their own exact plan,
+		// confirmation, provenance, rollback and audit contract. Do not let the
+		// generic governed-write augmenter project them into operational write
+		// authority or inject a second approval envelope.
+		$augment = array( 'MAD4B_SCP_Staging_Write_Authority', 'augment_write_ability' );
+		$priority = function_exists( 'has_filter' ) ? has_filter( 'wp_register_ability_args', $augment ) : false;
+		if ( false !== $priority ) remove_filter( 'wp_register_ability_args', $augment, (int) $priority );
+		try {
 		self::register(
 			'mad4b/developer-authority-status',
 			'Developer Authority Status',
@@ -97,6 +105,10 @@ final class MAD4B_SCP_Developer_Authority {
 			false,
 			self::apply_schema( self::CONFIRM_BREAKGLASS )
 		);
+	
+		} finally {
+			if ( false !== $priority ) add_filter( 'wp_register_ability_args', $augment, (int) $priority, 2 );
+		}
 	}
 
 	private static function register( $name, $label, $method, $readonly, array $input ) {
