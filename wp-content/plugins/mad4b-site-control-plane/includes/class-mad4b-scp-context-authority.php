@@ -1115,8 +1115,11 @@ final class MAD4B_SCP_Context_Authority {
 					'context_fingerprint_after' => $context_fingerprint_after,
 					'previous_review_status' => $previous_review_status,
 					'review_status' => 'approved',
+					'actor_type' => 'wp_admin',
+					'wp_user_id' => get_current_user_id(),
 					'previous_category' => $previous_category,
 					'category' => $category,
+					'automatic_classification' => isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array(),
 					'previous_authority_class' => $previous_authority,
 					'authority_class' => $authority,
 					'previous_required' => $previous_required,
@@ -1167,6 +1170,7 @@ final class MAD4B_SCP_Context_Authority {
 				'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
 				'classification_confidence' => isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0,
 				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
+				'automatic_classification' => isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array(),
 				'last_synced_at' => isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '',
 			);
 		}
@@ -1605,6 +1609,13 @@ final class MAD4B_SCP_Context_Authority {
 			'normalization_reason' => isset( $asset['normalization_reason'] ) ? sanitize_key( (string) $asset['normalization_reason'] ) : '',
 			'content_available' => $content_complete && '' !== $content,
 			'content_excerpt' => $content_complete && '' !== $content ? wp_trim_words( wp_strip_all_tags( $content ), 45, '…' ) : '',
+			'automatic_classification' => array(
+				'category' => $classification['category'],
+				'authority_class' => $classification['authority_class'],
+				'required' => ! empty( $classification['required'] ),
+				'confidence' => isset( $classification['classification_confidence'] ) ? (float) $classification['classification_confidence'] : 0.0,
+				'source' => isset( $classification['classification_source'] ) ? (string) $classification['classification_source'] : 'automatic_heuristic',
+			),
 			'category' => $classification['category'],
 			'classification_confidence' => $classification['classification_confidence'],
 			'classification_source' => $classification['classification_source'],
