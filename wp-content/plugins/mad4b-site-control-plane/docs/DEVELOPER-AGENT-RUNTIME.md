@@ -1,6 +1,6 @@
 # MAD4B Developer Agent Runtime Plane
 
-Release: `0.4.0-rc.57`
+Release: `0.4.0-rc.59`
 
 Contracts:
 
