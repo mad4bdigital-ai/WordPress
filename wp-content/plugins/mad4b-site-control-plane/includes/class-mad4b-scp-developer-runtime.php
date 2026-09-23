@@ -52,8 +52,6 @@ final class MAD4B_SCP_Developer_Runtime {
 		return array(
 			'mad4b/developer-runtime-status',
 			'mad4b/developer-wp-cli',
-			'mad4b/developer-php-eval',
-			'mad4b/developer-shell-exec',
 			'mad4b/developer-filesystem',
 			'mad4b/developer-package-install',
 		);
@@ -85,44 +83,6 @@ final class MAD4B_SCP_Developer_Runtime {
 					'_mad4b_approval_ticket_id' => self::approval_schema(),
 				),
 				array( 'args', '_mad4b_approval_ticket_id' )
-			),
-			array( 'MAD4B_SCP_Policy', 'can_developer' ),
-			'developer'
-		);
-
-		self::add(
-			'mad4b/developer-php-eval',
-			'Developer PHP Eval via WP-CLI',
-			'mad4b-developer',
-			'php_eval',
-			false,
-			self::schema(
-				array(
-					'code' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 65536 ),
-					'working_dir' => array( 'type' => 'string', 'maxLength' => 500, 'default' => '' ),
-					'timeout_seconds' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_TIMEOUT, 'default' => self::DEFAULT_TIMEOUT ),
-					'_mad4b_approval_ticket_id' => self::approval_schema(),
-				),
-				array( 'code', '_mad4b_approval_ticket_id' )
-			),
-			array( 'MAD4B_SCP_Policy', 'can_developer' ),
-			'developer'
-		);
-
-		self::add(
-			'mad4b/developer-shell-exec',
-			'Developer Shell Exec',
-			'mad4b-developer',
-			'shell_exec_ability',
-			false,
-			self::schema(
-				array(
-					'command' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 32768 ),
-					'working_dir' => array( 'type' => 'string', 'maxLength' => 500, 'default' => '' ),
-					'timeout_seconds' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_TIMEOUT, 'default' => self::DEFAULT_TIMEOUT ),
-					'_mad4b_approval_ticket_id' => self::approval_schema(),
-				),
-				array( 'command', '_mad4b_approval_ticket_id' )
 			),
 			array( 'MAD4B_SCP_Policy', 'can_developer' ),
 			'developer'
@@ -328,35 +288,10 @@ final class MAD4B_SCP_Developer_Runtime {
 		if ( '' === $wp ) return new WP_Error( 'mad4b_developer_wp_cli_unavailable', 'WP-CLI executable is unavailable.' );
 		$args = isset( $input['args'] ) && is_array( $input['args'] ) ? array_values( array_map( 'strval', $input['args'] ) ) : array();
 		if ( empty( $args ) ) return new WP_Error( 'mad4b_developer_wp_cli_args_required', 'At least one WP-CLI argument is required.' );
-		foreach ( $args as $arg ) {
-			if ( false !== strpos( $arg, "\0" ) ) return new WP_Error( 'mad4b_developer_argument_invalid', 'NUL bytes are forbidden.' );
-		}
+		$guard = self::normal_wp_cli_guard( $args );
+		if ( is_wp_error( $guard ) ) return $guard;
 		if ( self::wp_cli_may_use_network( $args ) && ! self::network_authorized( $input ) ) return new WP_Error( 'mad4b_developer_network_denied', 'This WP-CLI operation may use outbound network access; explicit per-job network authority is required.' );
 		return self::execute( 'mad4b/developer-wp-cli', array_merge( array( $wp, '--path=' . ABSPATH ), $args ), $input, false, true );
-	}
-
-	public static function php_eval( $input ) {
-		$gate = self::runtime_gate( false, $input );
-		if ( is_wp_error( $gate ) ) return $gate;
-		$wp = self::wp_cli_binary();
-		if ( '' === $wp ) return new WP_Error( 'mad4b_developer_wp_cli_unavailable', 'WP-CLI executable is unavailable.' );
-		$code = isset( $input['code'] ) ? (string) $input['code'] : '';
-		if ( '' === trim( $code ) ) return new WP_Error( 'mad4b_developer_code_required', 'PHP code is required.' );
-		$network_guard = self::php_network_guard( $code, self::network_authorized( $input ) );
-		if ( is_wp_error( $network_guard ) ) return $network_guard;
-		return self::execute( 'mad4b/developer-php-eval', array( $wp, '--path=' . ABSPATH, 'eval', $code ), $input, false, true );
-	}
-
-	public static function shell_exec_ability( $input ) {
-		$gate = self::runtime_gate( false, $input );
-		if ( is_wp_error( $gate ) ) return $gate;
-		$command = isset( $input['command'] ) ? (string) $input['command'] : '';
-		if ( '' === trim( $command ) ) return new WP_Error( 'mad4b_developer_command_required', 'Shell command is required.' );
-		$deny = self::normal_shell_guard( $command, self::network_authorized( $input ) );
-		if ( is_wp_error( $deny ) ) return $deny;
-		$shell = self::shell_binary();
-		if ( '' === $shell ) return new WP_Error( 'mad4b_developer_shell_unavailable', 'A supported shell executable is unavailable.' );
-		return self::execute( 'mad4b/developer-shell-exec', array( $shell, '-lc', $command ), $input, false, true );
 	}
 
 	public static function filesystem( $input ) {
@@ -582,6 +517,28 @@ final class MAD4B_SCP_Developer_Runtime {
 			}
 		}
 		return array_merge( $wrapped, array_values( array_map( 'strval', $argv ) ) );
+	}
+
+	private static function normal_wp_cli_guard( array $args ) {
+		$normalized = array_values( array_map( 'strval', $args ) );
+		foreach ( $normalized as $arg ) {
+			if ( false !== strpos( $arg, "\0" ) ) return new WP_Error( 'mad4b_developer_argument_invalid', 'NUL bytes are forbidden.' );
+			$lower = strtolower( trim( $arg ) );
+			foreach ( array( '--exec', '--require', '--ssh', '--http' ) as $prefix ) {
+				if ( 0 === strpos( $lower, $prefix ) ) return new WP_Error( 'mad4b_developer_wp_cli_escape_denied', 'This WP-CLI global execution/remote bootstrap flag requires Developer Breakglass.' );
+			}
+		}
+		$command = '';
+		foreach ( $normalized as $arg ) {
+			$trimmed = trim( $arg );
+			if ( '' === $trimmed || '-' === $trimmed[0] ) continue;
+			$command = strtolower( $trimmed );
+			break;
+		}
+		if ( '' === $command ) return new WP_Error( 'mad4b_developer_wp_cli_command_required', 'A concrete WP-CLI command is required.' );
+		$breakglass_only = array( 'eval', 'eval-file', 'db', 'config', 'shell', 'cli', 'package', 'server' );
+		if ( in_array( $command, $breakglass_only, true ) ) return new WP_Error( 'mad4b_developer_wp_cli_breakglass_required', 'This WP-CLI command family requires Developer Breakglass.' );
+		return true;
 	}
 
 	private static function normal_shell_guard( $command, $network_authorized = false ) {
