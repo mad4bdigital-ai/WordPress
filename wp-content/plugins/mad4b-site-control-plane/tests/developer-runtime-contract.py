@@ -99,6 +99,7 @@ for tool in authority_tools:
 assert "class-mad4b-scp-developer-authority.php" in servers
 assert "MAD4B_SCP_Developer_Authority::enrollment_tools()" in servers
 assert "mad4b.developer-authority.v1" in authority
+assert "self::$booted || ! function_exists( 'add_action' )" in authority
 assert "PROVISION MAD4B DEVELOPER AGENT" in authority
 assert "PROVISION MAD4B DEVELOPER BREAKGLASS" in authority
 assert "DISABLE MAD4B DEVELOPER AGENT" in authority
