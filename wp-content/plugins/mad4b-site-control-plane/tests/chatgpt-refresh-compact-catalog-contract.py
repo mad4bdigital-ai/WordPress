@@ -21,6 +21,8 @@ for marker in [
     "MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate",
     "mad4b_read_dispatch_mutation_denied",
     "true !== $annotations['readonly']",
+    "get_input_schema",
+    "null === $target_input_schema",
     "$ability->execute( $params )",
     "'mutation_performed' => false",
 ]:
