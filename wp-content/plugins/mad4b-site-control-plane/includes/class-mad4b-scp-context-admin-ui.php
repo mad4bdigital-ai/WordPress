@@ -1171,13 +1171,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 				event.preventDefault();
 				if(form.dataset.mad4bBusy==="1")return;
 				form.dataset.mad4bBusy="1"; form.setAttribute("aria-busy","true");
+				var body=new URLSearchParams(new FormData(form));
 				var controls=Array.prototype.slice.call(form.querySelectorAll("button,input,select,textarea"));
 				var priorDisabled=controls.map(function(control){return control.disabled;});
 				controls.forEach(function(control){control.disabled=true;});
 				var local=form.querySelector(".mad4b-context-review-inline-feedback");
 				if(local){var decision=form.querySelector("input[name=decision]");var label=decision&&decision.value?decision.value:"approve";local.className="mad4b-context-review-inline-feedback is-pending";local.textContent="Committing exact review decision: "+label+"…";}
 				try{
-					var body=new URLSearchParams(new FormData(form));
 					var response=await fetch(window.ajaxurl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8","X-Requested-With":"XMLHttpRequest"},body:body.toString()});
 					var payload=await response.json();
 					if(!payload||!payload.success){var failure=new Error(payload&&payload.data&&payload.data.message?payload.data.message:"Context review could not be committed.");failure.mad4bCode=payload&&payload.data&&payload.data.code?payload.data.code:"mad4b_context_review_failed";throw failure;}
