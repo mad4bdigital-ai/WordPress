@@ -2,7 +2,7 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.4.0-rc.57**.
+Current plugin version: **0.4.0-rc.58**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -11,6 +11,11 @@ Provider-gap closure is zero-touch and non-authorizing. The package embeds exact
 Operator deployment, authority reconciliation, recovery, rollback and lifecycle guidance: [`docs/RELEASE-AND-OPERATOR-RUNBOOK.md`](docs/RELEASE-AND-OPERATOR-RUNBOOK.md).
 
 Governed WP All Import / Export planning, exact identity, dry-run, classification, receipt and rollback boundary: [`docs/BULK-CONTENT-IO-CONTRACT.md`](docs/BULK-CONTENT-IO-CONTRACT.md).
+
+### ChatGPT MCP refresh hot path
+
+rc.58 keeps the compact rc.57 transport catalog and additionally removes two request-time costs that were still paid before `tools/list` could return. On an HTTP request to one MAD4B MCP route, every MAD4B route is still registered, but only the addressed server materializes its Ability-to-MCP Tool DTOs; sibling servers are route stubs for that request and are fully materialized when addressed by their own request. Request-local catalog/provider memoization is active during MCP server construction as soon as the WordPress Abilities registry is complete. Skill seed/provider reconciliation is kept off generic MCP transport requests and remains on activation, explicit Control Plane admin lifecycle, and WP-CLI. No cross-request catalog cache or authority shortcut is introduced.
+
 
 ## MCP surfaces
 
