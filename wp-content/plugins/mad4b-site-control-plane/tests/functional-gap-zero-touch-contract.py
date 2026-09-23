@@ -242,46 +242,31 @@ for marker in [
     "mad4b/functional-gap-runtime-evidence",
     "functional_gap_runtime_evidence",
     "MAD4B_SCP_Functional_Gap_Evidence::snapshot()",
-    "MAD4B_SCP_Functional_Gap_Evidence::summary()",
-    "'functional_gap_zero_touch' => $functional_gap_zero_touch",
 ]:
     if marker not in registry:
-        raise SystemExit(f'zero-touch ability/summary not wired: {marker}')
+        raise SystemExit(f'zero-touch explicit ability is not wired: {marker}')
 
-for marker in [
-    "'zero_touch' => $zero_touch",
-    "'zero_touch_decision'",
-    "'zero_touch_state'",
-    "'zero_touch_reason'",
+# Deep functional-gap collection is deliberately explicit/on-demand. Runtime
+# self-test must remain a bounded platform-health read and must not trigger the
+# provider tree/hash fixed-point scan as a hidden side effect.
+self_test_body = registry.split("public function runtime_self_test()", 1)[1].split("public function ability_names", 1)[0]
+for forbidden in [
+    "MAD4B_SCP_Functional_Gap_Evidence::snapshot()",
+    "MAD4B_SCP_Functional_Gap_Evidence::summary()",
     "MAD4B_SCP_Functional_Gap_Evidence::coverage_projection()",
-    "MAD4B_SCP_Functional_Gap_Evidence::current_runtime_identity_sha256()",
-    "coverage_projection_runtime_identity_changed",
-    "coverage_projection_dynamic_surface_changed",
-    "coverage_projection_runtime_census_changed",
-    "'census_required' => $projection_census_required",
-    "'census_match' => $projection_census_match",
-    "current_runtime_census_status()",
-    "'identity_match' => $projection_identity_match",
-    "'decision_count' => count( $zero_touch_map )",
 ]:
-    if marker not in discovery:
-        raise SystemExit(f'standard coverage report missing zero-touch projection: {marker}')
+    if forbidden in self_test_body:
+        raise SystemExit(f'runtime self-test unexpectedly triggers deep zero-touch evidence: {forbidden}')
 
-for marker in [
-    "Zero-touch evidence",
-    "Unstable scans",
-    "zero_touch_decision",
-    "zero_touch_state",
-    "Package integrity",
-    "package_self_consistent",
-    "package_integrity_level",
-    "Integrity verify cost",
-    "Runtime scan cost",
-    "package_integrity_elapsed_ms",
-    "runtime_scan_elapsed_ms",
+# Standard provider coverage remains cheap and descriptive. Zero-touch evidence is
+# intentionally not invoked from ordinary coverage/admin rendering; operators request
+# the dedicated ability when exact tree/provenance evaluation is needed.
+for forbidden in [
+    "MAD4B_SCP_Functional_Gap_Evidence::coverage_projection()",
+    "MAD4B_SCP_Functional_Gap_Evidence::snapshot()",
 ]:
-    if marker not in ui:
-        raise SystemExit(f'coverage UI missing zero-touch projection: {marker}')
+    if forbidden in discovery:
+        raise SystemExit(f'ordinary provider coverage unexpectedly performs deep zero-touch evaluation: {forbidden}')
 
 for workflow_name,workflow in [('control-plane',control),('plugin-package',plugin)]:
     for marker in [
