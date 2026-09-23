@@ -34,6 +34,11 @@ $bridge_status = MAD4B_SCP_OAuth_Resource_Bridge::status();
 if ( empty( $local_status['effective'] ) ) $fail( 'Local OAuth is not effective.', $local_status );
 if ( empty( $bridge_status['effective'] ) || 'local' !== $bridge_status['authority_mode'] ) $fail( 'Local OAuth resource bridge is not effective in local mode.', $bridge_status );
 
+// Do not let WP-CLI --user mask a broken bearer bridge. The MCP request below
+// must establish WordPress identity exclusively from the verified OAuth token.
+wp_set_current_user( 0 );
+if ( 0 !== get_current_user_id() ) $fail( 'Unable to reset the fixture to an anonymous WordPress user.' );
+
 $resource = MAD4B_SCP_Local_OAuth_Server::resource_identifier();
 $mint = new ReflectionMethod( 'MAD4B_SCP_Local_OAuth_Server', 'mint_access_token' );
 $mint->setAccessible( true );
@@ -102,6 +107,11 @@ foreach ( $headers as $name => $value ) {
 	}
 }
 if ( '' === $session_id ) $fail( 'Initialize did not establish an MCP session after rest_post_dispatch.', $headers );
+if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) $fail( 'Initialize succeeded without a verified OAuth bearer context.' );
+$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
+if ( ! is_array( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) {
+	$fail( 'Initialize did not establish OAuth bearer identity.', $identity );
+}
 
 $tools_response = $dispatch(
 	array( 'jsonrpc' => '2.0', 'id' => 71, 'method' => 'tools/list', 'params' => array() ),
@@ -271,6 +281,7 @@ fwrite(
 			'http_filter_calls' => count( $http_seen ),
 			'unpreempted_http_calls' => count( $unpreempted_http ),
 			'session_established' => true,
+			'bearer_identity_verified' => true,
 			'browser_read_dispatch_verified' => true,
 			'browser_read_dispatch_contract' => (string) $browser_value['contract'],
 		),
