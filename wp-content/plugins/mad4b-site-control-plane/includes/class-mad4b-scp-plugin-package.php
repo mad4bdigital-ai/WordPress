@@ -355,11 +355,11 @@ final class MAD4B_SCP_Plugin_Package {
 	private static function path_outside_web_roots( $path ) {
 		$real = realpath( $path );
 		if ( false === $real ) return false;
-		$check = rtrim( str_replace( '\\\\', '/', $real ), '/' );
+		$check = rtrim( wp_normalize_path( $real ), '/' );
 		foreach ( array( ABSPATH, WP_CONTENT_DIR ) as $root ) {
 			$resolved = realpath( $root );
 			if ( false === $resolved ) continue;
-			$resolved = rtrim( str_replace( '\\\\', '/', $resolved ), '/' );
+			$resolved = rtrim( wp_normalize_path( $resolved ), '/' );
 			if ( $check === $resolved || 0 === strpos( $check, $resolved . '/' ) ) return false;
 		}
 		return true;
