@@ -51,6 +51,7 @@ final class MAD4B_SCP_Servers {
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
+				'mad4b/context-ai-review',
 			),
 			'mad4b-developer' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( false ) : array(),
 			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
@@ -118,6 +119,11 @@ final class MAD4B_SCP_Servers {
 	 */
 	public static function write_tools() {
 		$candidates = self::core_write_candidates();
+		// AI Agent review is always discoverable in the stable catalog, but it is
+		// runtime-write eligible only while the bounded Staging delegation is active.
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$candidates = array_values( array_diff( $candidates, array( 'mad4b/context-ai-review' ) ) );
+		}
 		$projection = self::adapter_write_projection();
 		$candidates = array_merge( $candidates, $projection['eligible'] );
 		$write = array();

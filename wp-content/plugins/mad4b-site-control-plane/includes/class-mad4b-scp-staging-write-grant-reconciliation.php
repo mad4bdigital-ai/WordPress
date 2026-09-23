@@ -23,6 +23,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 	public static function allowed_ability_providers() {
 		return array(
 			'mad4b/plugin-package-apply' => 'core',
+			'mad4b/context-ai-review' => 'core',
 			'jetengine/create-cct' => 'native-provider',
 			'jetengine/create-cpt' => 'native-provider',
 			'jetengine/create-glossary' => 'native-provider',

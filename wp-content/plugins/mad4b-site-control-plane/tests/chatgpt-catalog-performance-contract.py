@@ -49,7 +49,9 @@ for forbidden in [
 # Provider resolution must be memoized because the MCP adapter can ask membership
 # questions repeatedly while serializing a large tools/list response.
 assert '$cache_key = $server_id . "\\0" . $ability_name;' in servers
-assert "$dynamic_write_resolution = 'mad4b-write' === $server_id || self::is_external_write_candidate( $ability_name );" in servers
+assert "$dynamic_write_resolution = 'mad4b-write' === $server_id" in servers
+assert "( 'mad4b-chatgpt' !== $server_id && self::is_external_write_candidate( $ability_name ) )" in servers
+assert "self::provider_for_ability( 'mad4b-write', $ability_name )" in servers
 assert "if ( $cacheable && ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) )" in servers
 assert "$remember = static function ( $value ) use ( $cache_key, $cacheable, $dynamic_write_resolution )" in servers
 
