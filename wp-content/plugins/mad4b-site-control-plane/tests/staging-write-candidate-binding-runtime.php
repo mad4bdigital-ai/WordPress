@@ -22,6 +22,8 @@ function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i'
 function absint( $v ) { return abs( (int) $v ); }
 function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
+function wp_generate_uuid4() { static $i = 0; ++$i; return sprintf( '00000000-0000-4000-8000-%012d', $i ); }
+function sanitize_text_field( $v ) { return is_scalar( $v ) ? preg_replace( '/[\x00-\x1F\x7F]/', '', (string) $v ) : ''; }
 
 $GLOBALS['mad4b_bind_options'] = array();
 $GLOBALS['mad4b_bind_abilities'] = array();
@@ -40,6 +42,8 @@ final class MAD4B_SCP_Identity_Context {
 			'auth_method' => 'oauth2_bearer',
 			'subject_type' => 'oauth',
 			'subject_fingerprint' => str_repeat( '1', 64 ),
+			'wp_user_id' => 7,
+			'request_id' => 'runtime-request-0001',
 		);
 	}
 }
@@ -58,6 +62,10 @@ final class MAD4B_SCP_Agent_Registry {
 
 final class MAD4B_SCP_OAuth_Resource_Bridge {
 	public static function verified_bearer_active() { return true; }
+}
+
+final class MAD4B_SCP_Transport_Context {
+	public static function current_server_id() { return 'mad4b-chatgpt'; }
 }
 
 final class MAD4B_SCP_Site_Profile {
@@ -87,6 +95,7 @@ final class MAD4B_SCP_Audit {
 
 final class MAD4B_SCP_Staging_Write_Authority {
 	const OPTION = 'mad4b_scp_staging_write_authority_v1';
+	const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v2';
 	public static $reconcile_calls = 0;
 	public static $current_sha = '3b1dd1c339e3dd3edc315cb65f6bcdb6f17ef6c9';
 	public static $current_build = '11acee18169e65a4d9e5437e77be08e31a901a04951d8128127ff95f60539bbd';
@@ -105,12 +114,19 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status = get_option( self::OPTION, array() );
 		$stored_sha = isset( $status['source_commit_sha'] ) ? (string) $status['source_commit_sha'] : '';
 		$stored_build = isset( $status['build_fingerprint'] ) ? (string) $status['build_fingerprint'] : '';
+		$stored_manifest = isset( $status['package_manifest_digest'] ) ? (string) $status['package_manifest_digest'] : '';
+		$stored_artifact = isset( $status['artifact_identity'] ) ? (string) $status['artifact_identity'] : '';
+		$complete = '' !== $stored_sha && '' !== $stored_build && '' !== $stored_manifest && '' !== $stored_artifact;
 		return array(
+			'contract' => self::CANDIDATE_BINDING_CONTRACT,
 			'required' => true,
 			'stored_bound' => '' !== $stored_sha && '' !== $stored_build,
-			'match' => hash_equals( self::$current_sha, $stored_sha ) && hash_equals( self::$current_build, $stored_build ),
+			'identity_completeness' => $complete ? 'complete' : ( '' !== $stored_sha || '' !== $stored_build ? 'legacy_partial' : 'unbound' ),
+			'match' => $complete && hash_equals( self::$current_sha, $stored_sha ) && hash_equals( self::$current_build, $stored_build ) && hash_equals( self::$current_manifest, $stored_manifest ) && hash_equals( self::$current_artifact, $stored_artifact ),
 			'stored_source_commit_sha' => $stored_sha,
 			'stored_build_fingerprint' => $stored_build,
+			'stored_package_manifest_digest' => $stored_manifest,
+			'stored_artifact_identity' => $stored_artifact,
 			'current_source_commit_sha' => self::$current_sha,
 			'current_build_fingerprint' => self::$current_build,
 			'current_package_manifest_digest' => self::$current_manifest,
@@ -147,15 +163,69 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'rows' => self::$rows,
 		);
 	}
-	public static function bind_candidate_identity( $sha, $build ) {
+	public static function bind_candidate_identity( $sha, $build, $context = array() ) {
+		if ( ! is_array( $context ) || 'mad4b.staging-write-candidate-binding.v2' !== ( isset( $context['contract'] ) ? (string) $context['contract'] : '' ) ) return new WP_Error( 'mad4b_candidate_binding_audit_context_required' );
 		if ( ! hash_equals( self::$current_sha, strtolower( (string) $sha ) ) || ! hash_equals( self::$current_build, strtolower( (string) $build ) ) ) return new WP_Error( 'candidate_mismatch' );
 		$status = get_option( self::OPTION, array() );
+		$before = $status;
+		$current_binding = self::candidate_binding_status();
+		if ( ! empty( $current_binding['match'] ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/staging-write-candidate-binding-noop', array(
+				'contract' => $context['contract'],
+				'operation_id' => $context['operation_id'],
+				'state' => 'already_bound',
+				'idempotent' => true,
+				'mutation_performed' => false,
+				'binding_mutation_performed' => false,
+				'previous_binding' => $current_binding,
+				'new_binding' => $current_binding,
+			) );
+			return array( 'contract' => $context['contract'], 'operation_id' => $context['operation_id'], 'state' => 'already_bound', 'idempotent' => true, 'mutation_performed' => false, 'binding_mutation_performed' => false );
+		}
+		$intent = MAD4B_SCP_Audit::record( 'mad4b/staging-write-candidate-binding-authorized', array_merge( $context, array(
+			'state' => 'authorized',
+			'mutation_performed' => false,
+			'binding_mutation_performed' => false,
+		) ) );
+		if ( is_wp_error( $intent ) ) return $intent;
 		$status['source_commit_sha'] = self::$current_sha;
 		$status['build_fingerprint'] = self::$current_build;
 		$status['package_manifest_digest'] = self::$current_manifest;
 		$status['artifact_identity'] = self::$current_artifact;
 		update_option( self::OPTION, $status, false );
-		return $status;
+		$after = self::candidate_binding_status();
+		$completion = MAD4B_SCP_Audit::record( 'mad4b/staging-write-candidate-binding-complete', array_merge( $context, array(
+			'state' => 'bound',
+			'idempotent' => false,
+			'mutation_performed' => true,
+			'binding_mutation_performed' => true,
+			'previous_binding' => $before,
+			'new_binding' => get_option( self::OPTION, array() ),
+			'candidate_binding_match' => ! empty( $after['match'] ),
+			'grant_mutation_performed' => false,
+			'subject_mutation_performed' => false,
+			'agent_mutation_performed' => false,
+			'reconcile_called' => false,
+			'production_mutation' => false,
+		) ) );
+		if ( is_wp_error( $completion ) ) {
+			$GLOBALS['mad4b_bind_options'][ self::OPTION ] = $before;
+			MAD4B_SCP_Audit::record( 'mad4b/staging-write-candidate-binding-rollback', array_merge( $context, array( 'state' => 'rollback', 'mutation_performed' => true, 'binding_mutation_performed' => true ) ), 'error' );
+			return new WP_Error( 'mad4b_candidate_bind_completion_audit_failed' );
+		}
+		return array(
+			'contract' => $context['contract'],
+			'operation_id' => $context['operation_id'],
+			'state' => 'bound',
+			'idempotent' => false,
+			'mutation_performed' => true,
+			'binding_mutation_performed' => true,
+			'grant_mutation_performed' => false,
+			'subject_mutation_performed' => false,
+			'agent_mutation_performed' => false,
+			'reconcile_called' => false,
+			'production_mutation' => false,
+		);
 	}
 }
 
@@ -189,6 +259,11 @@ function mad4b_bind_assert( $condition, $message, $data = null ) {
 
 MAD4B_SCP_Staging_Write_Candidate_Binding::register_ability();
 mad4b_bind_assert( isset( $GLOBALS['mad4b_bind_abilities']['mad4b/staging-write-candidate-bind'] ), 'binding ability did not register' );
+MAD4B_SCP_Staging_Write_Candidate_Binding::register_audit_ability();
+mad4b_bind_assert( isset( $GLOBALS['mad4b_bind_abilities']['mad4b/staging-write-candidate-binding-audit'] ), 'binding audit ability did not register' );
+$audit_registration = $GLOBALS['mad4b_bind_abilities']['mad4b/staging-write-candidate-binding-audit'];
+mad4b_bind_assert( true === $audit_registration['meta']['annotations']['readonly'], 'binding audit ability must be read-only' );
+mad4b_bind_assert( 'enrollment' === $audit_registration['meta']['mcp']['surface'], 'binding audit ability must use enrollment surface' );
 $registration = $GLOBALS['mad4b_bind_abilities']['mad4b/staging-write-candidate-bind'];
 mad4b_bind_assert( 'enrollment' === $registration['meta']['mcp']['surface'], 'binding ability must use enrollment surface', $registration );
 mad4b_bind_assert( false === $registration['meta']['annotations']['readonly'], 'binding ability must declare mutation truthfully' );
@@ -218,6 +293,12 @@ mad4b_bind_assert( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'failed pre
 $result = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $input );
 mad4b_bind_assert( ! is_wp_error( $result ), 'exact binding-only operation failed', $result );
 mad4b_bind_assert( 'bound' === $result['state'], 'binding operation did not report bound state', $result );
+mad4b_bind_assert( ! empty( $result['mutation_performed'] ) && ! empty( $result['binding_mutation_performed'] ), 'true binding did not report its mutation explicitly', $result );
+$authorized = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $e ) { return 'mad4b/staging-write-candidate-binding-authorized' === $e['event']; } ) );
+$completed = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $e ) { return 'mad4b/staging-write-candidate-binding-complete' === $e['event']; } ) );
+mad4b_bind_assert( 1 === count( $authorized ) && 1 === count( $completed ), 'binding audit pair missing', MAD4B_SCP_Audit::$events );
+mad4b_bind_assert( $authorized[0]['data']['operation_id'] === $completed[0]['data']['operation_id'], 'binding audit operation_id drifted' );
+mad4b_bind_assert( ! empty( $completed[0]['data']['mutation_performed'] ) && ! empty( $completed[0]['data']['binding_mutation_performed'] ), 'completion audit did not distinguish true mutation' );
 mad4b_bind_assert( ! empty( $result['effective'] ), 'authority did not become effective after exact binding', $result );
 mad4b_bind_assert( empty( $result['grant_mutation_performed'] ) && empty( $result['subject_mutation_performed'] ) && empty( $result['agent_mutation_performed'] ), 'binding-only operation claimed broader mutations', $result );
 mad4b_bind_assert( empty( $result['reconcile_called'] ) && 0 === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'binding-only operation called full reconcile', $result );
@@ -225,9 +306,13 @@ mad4b_bind_assert( 2 === (int) $result['exact_grants_existing'], 'exact grant co
 
 $again = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $input );
 mad4b_bind_assert( ! is_wp_error( $again ) && 'already_bound' === $again['state'] && ! empty( $again['idempotent'] ) && empty( $again['mutation_performed'] ), 'repeat exact binding was not idempotent', $again );
+$noop = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $e ) { return 'mad4b/staging-write-candidate-binding-noop' === $e['event']; } ) );
+mad4b_bind_assert( 1 === count( $noop ) && 'already_bound' === $noop[0]['data']['state'] && empty( $noop[0]['data']['mutation_performed'] ), 'idempotent replay did not emit explicit no-op evidence', $noop );
 mad4b_bind_assert( 0 === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'idempotent binding called reconcile' );
 
 $GLOBALS['mad4b_bind_options'][ MAD4B_SCP_Staging_Write_Authority::OPTION ] = $old_status;
+$direct = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( MAD4B_SCP_Staging_Write_Authority::$current_sha, MAD4B_SCP_Staging_Write_Authority::$current_build );
+mad4b_bind_assert( is_wp_error( $direct ) && 'mad4b_candidate_binding_audit_context_required' === $direct->get_error_code(), 'direct primitive binding bypassed mandatory audit context', $direct );
 MAD4B_SCP_Audit::$fail_completion = true;
 $failed_audit = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $input );
 mad4b_bind_assert( is_wp_error( $failed_audit ) && 'mad4b_candidate_bind_completion_audit_failed' === $failed_audit->get_error_code(), 'completion audit failure did not fail closed', $failed_audit );
@@ -236,4 +321,4 @@ $restored = get_option( MAD4B_SCP_Staging_Write_Authority::OPTION, array() );
 mad4b_bind_assert( $old_status === $restored, 'binding rollback did not restore exact previous persisted authority', $restored );
 mad4b_bind_assert( 0 === MAD4B_SCP_Staging_Write_Authority::$reconcile_calls, 'audit rollback path called reconcile' );
 
-echo "mad4b.staging-write-candidate-binding.runtime.v1: PASS\n";
+echo "mad4b.staging-write-candidate-binding.runtime.v2: PASS\n";
