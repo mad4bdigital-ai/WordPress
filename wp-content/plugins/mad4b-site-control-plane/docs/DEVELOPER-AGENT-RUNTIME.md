@@ -205,7 +205,7 @@ A later normal authority apply can re-enable the same NHI and subject binding id
 
 Before live Developer execution is certified on Staging, verify:
 
-- exact rc.55 source SHA and package provenance
+- exact current release source SHA and package provenance
 - Site Profile exact origin and environment
 - Developer authority plan has no blockers
 - exact normal Developer grants exist and no unexpected allow grants exist
