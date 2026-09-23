@@ -23,6 +23,7 @@ oauth_challenge = (inc / "class-mad4b-scp-oauth-challenge-alignment.php").read_t
 compat = (inc / "class-mad4b-scp-mcp-client-compatibility.php").read_text(encoding="utf-8")
 plugin = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
+runbook = (root / "docs/DEVELOPER-AGENT-RUNTIME.md").read_text(encoding="utf-8")
 
 required_tools = [
     "mad4b/developer-runtime-status",
@@ -176,5 +177,11 @@ assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
 assert "class-mad4b-scp-developer-runtime.php" in plugin
 assert "0.4.0-rc.55" in plugin
 assert "release=0.4.0-rc.55" in runtime_build
+assert "mad4b.developer-runtime.v1" in runbook
+assert "mad4b.developer-authority.v1" in runbook
+assert "PROVISION MAD4B DEVELOPER AGENT" in runbook
+assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
+assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
+assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v6: PASS")
+print("mad4b.developer-runtime-contract.v7: PASS")
