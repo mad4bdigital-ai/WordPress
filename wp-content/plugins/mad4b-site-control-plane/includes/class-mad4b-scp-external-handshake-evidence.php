@@ -194,7 +194,7 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$base['write_transport_tool_count'] = isset( $evidence['write_transport_tool_count'] ) ? max( 0, (int) $evidence['write_transport_tool_count'] ) : 0;
 		$base['write_transport_ready'] = (bool) $write_transport_ready;
 		$base['direct_write_schema_leaks'] = $direct_write_schema_leaks;
-		$base['eligible_write_tool_count'] = isset( $evidence['eligible_write_tool_count'] ) ? max( 0, (int) $evidence['eligible_write_tool_count'] ) : 0;
+		$base['eligible_write_tool_count'] = count( $eligible_write_names );
 		$base['expected_eligible_write_tool_count'] = count( $eligible_write_names );
 		$base['provider_gated_write_tool_count'] = count( $gated_write_names );
 		$base['provider_gated_write_tools'] = $gated_write_names;
@@ -310,10 +310,11 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 		$expected_fingerprint = self::inventory_fingerprint( $expected_names );
 		if ( '' === $actual_fingerprint || '' === $expected_fingerprint || ! hash_equals( $expected_fingerprint, $actual_fingerprint ) ) return;
 
+		// tools/list attests the exact transport plus the stable logical write
+		// catalog. Dynamic provider eligibility/blocking is intentionally deferred
+		// to status() so Refresh never runs provider certification on the response
+		// critical path.
 		$write_names = self::expected_write_tool_names();
-		$eligible_names = self::expected_eligible_write_tool_names();
-		$blocked_names = self::blocked_write_tool_names();
-		$gated_names = array_values( array_intersect( $write_names, $blocked_names ) );
 		$write_transport_names = self::ability_names_to_mcp_tool_names( array( 'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute' ) );
 		$observed_write_transport = array_values( array_intersect( $names, $write_transport_names ) );
 		if ( count( $observed_write_transport ) !== count( $write_transport_names ) ) return;
@@ -342,9 +343,10 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 			'write_transport_tool_count' => count( $observed_write_transport ),
 			'write_transport_ready' => true,
 			'direct_write_schema_leaks' => array(),
-			'eligible_write_tool_count' => count( $eligible_names ),
-			'provider_gated_write_tool_count' => count( $gated_names ),
-			'provider_gated_write_tools' => $gated_names,
+			'eligible_write_tool_count' => 0,
+			'provider_gated_write_tool_count' => 0,
+			'provider_gated_write_tools' => array(),
+			'runtime_projection_deferred' => true,
 			'tool_inventory_fingerprint' => $actual_fingerprint,
 			'initialized_at' => isset( $pending['initialized_at'] ) ? sanitize_text_field( (string) $pending['initialized_at'] ) : '',
 			'verified_at' => gmdate( 'Y-m-d H:i:s' ),
