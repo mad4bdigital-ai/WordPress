@@ -270,13 +270,19 @@ final class MAD4B_SCP_Functional_Gap_Evidence {
 			}
 			if ( ! $matched ) continue;
 			$main = WP_PLUGIN_DIR . '/' . ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
-			$main_sha = is_file( $main ) ? @hash_file( 'sha256', $main ) : false;
+			// Provider fixed-point/cache identity is metadata-only. Exact content
+			// identity is supplied by the bounded plugin_tree evidence path below,
+			// so cache revalidation never needs an unbudgeted provider content hash.
+			clearstatcache( true, $main );
+			$main_stat = is_file( $main ) ? @lstat( $main ) : false;
 			$rows[] = implode( "\0", array(
 				$normalized,
 				isset( $headers['Version'] ) ? (string) $headers['Version'] : '',
 				isset( $active[ $normalized ] ) ? '1' : '0',
-				is_file( $main ) ? (string) @filesize( $main ) : '-1',
-				false !== $main_sha ? (string) $main_sha : '',
+				is_array( $main_stat ) && isset( $main_stat['size'] ) ? (string) (int) $main_stat['size'] : '-1',
+				is_array( $main_stat ) && isset( $main_stat['mtime'] ) ? (string) (int) $main_stat['mtime'] : '-1',
+				is_array( $main_stat ) && isset( $main_stat['ctime'] ) ? (string) (int) $main_stat['ctime'] : '-1',
+				is_array( $main_stat ) && isset( $main_stat['ino'] ) ? (string) (int) $main_stat['ino'] : '-1',
 			) );
 		}
 		foreach ( array(
