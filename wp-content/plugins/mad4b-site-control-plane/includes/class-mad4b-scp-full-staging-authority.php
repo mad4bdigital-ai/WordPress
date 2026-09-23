@@ -150,8 +150,14 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		if ( empty( $identity['authenticated'] ) || 'oauth' !== ( isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '' ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) {
 			return new WP_Error( 'mad4b_full_authority_normal_oauth_required', 'Full authority convergence must originate from the enrolled normal OAuth identity.' );
 		}
-		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) return new WP_Error( 'mad4b_full_authority_raw_sql_breakglass_denied', 'Generic raw-SQL Breakglass must remain disabled during Full Staging Authority convergence.' );
+		if ( self::generic_raw_sql_breakglass_gate_enabled() || ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) ) {
+			return new WP_Error( 'mad4b_full_authority_raw_sql_breakglass_denied', 'Generic raw-SQL Breakglass must remain disabled during Full Staging Authority convergence.' );
+		}
 		return true;
+	}
+
+	private static function generic_raw_sql_breakglass_gate_enabled() {
+		return defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === constant( 'MAD4B_MCP_BREAKGLASS_ENABLED' );
 	}
 
 	public static function status() {
@@ -172,7 +178,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			'mutation_performed' => false,
 			'environment' => 'staging',
 			'production_allowed' => false,
-			'generic_raw_sql_breakglass_enabled' => class_exists( 'MAD4B_SCP_Policy' ) ? (bool) MAD4B_SCP_Policy::can_breakglass() : false,
+			'generic_raw_sql_breakglass_enabled' => self::generic_raw_sql_breakglass_gate_enabled(),
 			'write' => array(
 				'ready' => $write_ready,
 				'plan' => is_array( $write_plan ) ? $write_plan : array(),
