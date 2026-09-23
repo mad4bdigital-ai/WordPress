@@ -455,6 +455,8 @@ final class MAD4B_SCP_Context_Authority {
 							$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
 							$normalized['review_status'] = 'approved';
 							$normalized['reviewed_content_hash'] = isset( $prior['reviewed_content_hash'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $prior['reviewed_content_hash'] ) && hash_equals( (string) $prior['reviewed_content_hash'], (string) $normalized['content_hash'] ) ? (string) $prior['reviewed_content_hash'] : '';
+							$normalized['review_decision'] = isset( $prior['review_decision'] ) ? sanitize_key( (string) $prior['review_decision'] ) : ( 'approved' === ( isset( $prior['review_status'] ) ? (string) $prior['review_status'] : '' ) ? 'approve' : '' );
+							$normalized['review_note'] = isset( $prior['review_note'] ) ? substr( sanitize_text_field( (string) $prior['review_note'] ), 0, 1000 ) : '';
 							if ( ! empty( $prior['quality']['human_override'] ) ) {
 								$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
 								$normalized['quality'] = $prior['quality'];
@@ -464,6 +466,8 @@ final class MAD4B_SCP_Context_Authority {
 							$normalized['reviewed_at'] = '';
 							$normalized['review_status'] = 'needs_review_content_changed';
 							$normalized['reviewed_content_hash'] = '';
+							$normalized['review_decision'] = '';
+							$normalized['review_note'] = '';
 						}
 					}
 					$normalized['availability_reason'] = '';
@@ -624,7 +628,7 @@ final class MAD4B_SCP_Context_Authority {
 					&& 'human' === ( isset( $review_source['classification_source'] ) ? (string) $review_source['classification_source'] : '' );
 
 				if ( $human_review && $same_content ) {
-					foreach ( array( 'reviewed_by', 'reviewed_at', 'review_status', 'reviewed_content_hash' ) as $field ) {
+					foreach ( array( 'reviewed_by', 'reviewed_at', 'review_status', 'reviewed_content_hash', 'review_decision', 'review_note' ) as $field ) {
 						if ( array_key_exists( $field, $review_source ) ) $normalized[ $field ] = $review_source[ $field ];
 					}
 				} elseif ( $human_review && ! $same_content ) {
@@ -632,6 +636,8 @@ final class MAD4B_SCP_Context_Authority {
 					$normalized['reviewed_at'] = '';
 					$normalized['review_status'] = 'needs_review_content_changed';
 					$normalized['reviewed_content_hash'] = '';
+					$normalized['review_decision'] = '';
+					$normalized['review_note'] = '';
 				}
 
 				if ( $same_content && ! empty( $review_source['quality']['human_override'] ) ) {
@@ -691,6 +697,8 @@ final class MAD4B_SCP_Context_Authority {
 				$normalized['reviewed_at'] = '';
 				$normalized['review_status'] = 'needs_review_content_changed';
 				$normalized['reviewed_content_hash'] = '';
+				$normalized['review_decision'] = '';
+				$normalized['review_note'] = '';
 				$normalized['availability_reason'] = '';
 				$normalized['last_seen_at'] = gmdate( 'c' );
 
@@ -1022,6 +1030,9 @@ final class MAD4B_SCP_Context_Authority {
 			$previous_authority = isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '';
 			$previous_required = ! empty( $asset['required'] );
 			$previous_review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
+			$decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
+			if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_decision_invalid', 'Context review decision must be approve, needs_changes, or reject.' );
+			$review_note = substr( trim( sanitize_text_field( isset( $input['review_note'] ) ? (string) $input['review_note'] : '' ) ), 0, 1000 );
 			if ( ! isset( $categories[ $category ] ) ) return new WP_Error( 'mad4b_context_category_invalid', 'Context category is invalid.' );
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
 	
@@ -1032,6 +1043,7 @@ final class MAD4B_SCP_Context_Authority {
 			$requested_required = ! empty( $input['required'] );
 			$required_scope_escalated = ! $previous_required && $requested_required;
 			if ( $required_scope_escalated && empty( $input['required_scope_confirmed'] ) ) return new WP_Error( 'mad4b_context_required_scope_confirmation_required', 'Making this Context category required expands site-wide Brand Context requirements and requires explicit confirmation.', array( 'category' => $category, 'previous_required' => false, 'requested_required' => true ) );
+			$governance_changed = ! hash_equals( $previous_category, $category ) || ! hash_equals( $previous_authority, $authority ) || $previous_required !== $requested_required;
 			$asset['required'] = $requested_required;
 			$asset['priority'] = 'brand_authority' === $authority || 'policy_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
 			$quality_input = isset( $input['quality_score'] ) ? trim( (string) $input['quality_score'] ) : '';
@@ -1042,6 +1054,7 @@ final class MAD4B_SCP_Context_Authority {
 					: ( '' !== $quality_input ? 'manual' : ( ! empty( $current_quality['human_override'] ) ? 'manual' : 'automatic' ) )
 			);
 			if ( ! in_array( $quality_mode, array( 'automatic', 'manual' ), true ) ) return new WP_Error( 'mad4b_context_quality_mode_invalid', 'Quality mode must be automatic or manual.' );
+			if ( ( 'approve' !== $decision || $governance_changed || 'manual' === $quality_mode ) && '' === $review_note ) return new WP_Error( 'mad4b_context_review_note_required', 'A review note is required for rejection, requested changes, classification/authority changes, required-scope changes, or manual quality overrides.' );
 			$automatic = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $current_quality['automatic_score'] ) ? (int) $current_quality['automatic_score'] : null );
 
 			if ( 'automatic' === $quality_mode ) {
@@ -1082,7 +1095,9 @@ final class MAD4B_SCP_Context_Authority {
 			}
 			$asset['reviewed_by'] = get_current_user_id();
 			$asset['reviewed_at'] = gmdate( 'c' );
-			$asset['review_status'] = 'approved';
+			$asset['review_decision'] = $decision;
+			$asset['review_note'] = $review_note;
+			$asset['review_status'] = 'approve' === $decision ? 'approved' : ( 'needs_changes' === $decision ? 'needs_changes' : 'rejected' );
 			$asset['reviewed_content_hash'] = $current_content_hash;
 			$records[ $asset_id ] = $asset;
 			$sources = self::raw_sources();
@@ -1114,7 +1129,9 @@ final class MAD4B_SCP_Context_Authority {
 					'context_fingerprint_before' => $context_fingerprint_before,
 					'context_fingerprint_after' => $context_fingerprint_after,
 					'previous_review_status' => $previous_review_status,
-					'review_status' => 'approved',
+					'review_status' => (string) $asset['review_status'],
+					'decision' => $decision,
+					'review_note' => $review_note,
 					'actor_type' => 'wp_admin',
 					'wp_user_id' => get_current_user_id(),
 					'previous_category' => $previous_category,
@@ -1161,6 +1178,8 @@ final class MAD4B_SCP_Context_Authority {
 				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
 				'required' => ! empty( $asset['required'] ),
 				'review_status' => $review_status,
+				'review_decision' => isset( $asset['review_decision'] ) ? (string) $asset['review_decision'] : '',
+				'review_note' => isset( $asset['review_note'] ) ? (string) $asset['review_note'] : '',
 				'content_hash' => $current_hash,
 				'reviewed_content_hash' => $reviewed_hash,
 				'review_binding_exact' => $exact,
@@ -1631,6 +1650,8 @@ final class MAD4B_SCP_Context_Authority {
 			'reviewed_at' => '',
 			'review_status' => 'unreviewed',
 			'reviewed_content_hash' => '',
+			'review_decision' => '',
+			'review_note' => '',
 			'status' => $content_complete ? 'ready' : 'incomplete',
 			'last_synced_at' => gmdate( 'c' ),
 		);
