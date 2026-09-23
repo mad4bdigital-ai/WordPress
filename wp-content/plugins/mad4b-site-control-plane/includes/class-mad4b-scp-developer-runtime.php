@@ -290,7 +290,7 @@ final class MAD4B_SCP_Developer_Runtime {
 		$guard = self::normal_wp_cli_guard( $args );
 		if ( is_wp_error( $guard ) ) return $guard;
 		if ( self::wp_cli_may_use_network( $args ) && ! self::network_authorized( $input ) ) return new WP_Error( 'mad4b_developer_network_denied', 'This WP-CLI operation may use outbound network access; explicit per-job network authority is required.' );
-		return self::execute( 'mad4b/developer-wp-cli', array_merge( array( $wp, '--path=' . ABSPATH ), $args ), $input, false, true );
+		return self::execute( 'mad4b/developer-wp-cli', array_merge( array( $wp, '--path=' . ABSPATH, '--skip-packages' ), $args ), $input, false, true, true );
 	}
 
 	public static function filesystem( $input ) {
@@ -376,7 +376,8 @@ final class MAD4B_SCP_Developer_Runtime {
 		if ( false !== strpos( $package, '@' ) && 0 === stripos( $package, 'https://' ) ) return new WP_Error( 'mad4b_developer_package_credentials_denied', 'Credential-bearing package URLs are forbidden.' );
 		$args = array( $wp, '--path=' . ABSPATH, 'plugin', 'install', $package );
 		if ( ! isset( $input['force'] ) || $input['force'] ) $args[] = '--force';
-		return self::execute( 'mad4b/developer-package-install', $args, $input, false, true );
+		$args = array_merge( array_slice( $args, 0, 2 ), array( '--skip-packages' ), array_slice( $args, 2 ) );
+		return self::execute( 'mad4b/developer-package-install', $args, $input, false, true, true );
 	}
 
 	public static function breakglass_shell( $input ) {
@@ -662,8 +663,23 @@ final class MAD4B_SCP_Developer_Runtime {
 		return $candidate;
 	}
 
-	private static function execute( $ability, array $argv, $input, $breakglass, $mutation_assumed ) {
-		$cwd = self::working_dir( is_array( $input ) ? $input : array() );
+	private static function isolated_wp_cli_cwd() {
+		$base = function_exists( 'sys_get_temp_dir' ) ? realpath( sys_get_temp_dir() ) : false;
+		if ( false === $base || ! is_dir( $base ) || ! is_writable( $base ) ) return new WP_Error( 'mad4b_developer_wp_cli_isolated_cwd_unavailable', 'Normal Developer WP-CLI requires a writable system temporary directory outside the WordPress tree.' );
+		$cwd = trailingslashit( $base ) . 'mad4b-developer-wp-cli';
+		if ( ! is_dir( $cwd ) && ! wp_mkdir_p( $cwd ) ) return new WP_Error( 'mad4b_developer_wp_cli_isolated_cwd_create_failed', 'Normal Developer WP-CLI could not create its isolated working directory.' );
+		$resolved = realpath( $cwd );
+		$root = realpath( ABSPATH );
+		if ( false === $resolved || false === $root || ! is_dir( $resolved ) ) return new WP_Error( 'mad4b_developer_wp_cli_isolated_cwd_invalid', 'Normal Developer WP-CLI isolated working directory is invalid.' );
+		$resolved_n = rtrim( str_replace( '\\', '/', $resolved ), '/' );
+		$root_n = rtrim( str_replace( '\\', '/', $root ), '/' );
+		if ( $resolved_n === $root_n || 0 === strpos( $resolved_n, $root_n . '/' ) ) return new WP_Error( 'mad4b_developer_wp_cli_isolated_cwd_inside_wordpress', 'Normal Developer WP-CLI isolated working directory must be outside the WordPress tree.' );
+		@chmod( $resolved, 0700 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		return $resolved;
+	}
+
+	private static function execute( $ability, array $argv, $input, $breakglass, $mutation_assumed, $isolated_wp_cli = false ) {
+		$cwd = $isolated_wp_cli ? self::isolated_wp_cli_cwd() : self::working_dir( is_array( $input ) ? $input : array() );
 		if ( is_wp_error( $cwd ) ) return $cwd;
 		$timeout = isset( $input['timeout_seconds'] ) ? absint( $input['timeout_seconds'] ) : self::DEFAULT_TIMEOUT;
 		$timeout = max( 1, min( self::MAX_TIMEOUT, $timeout ) );
@@ -677,7 +693,7 @@ final class MAD4B_SCP_Developer_Runtime {
 			1 => array( 'pipe', 'w' ),
 			2 => array( 'pipe', 'w' ),
 		);
-		$env = self::sanitized_env();
+		$env = self::sanitized_env( $isolated_wp_cli );
 		$process = @proc_open( $bounded_argv, $descriptor, $pipes, $cwd, $env, array( 'bypass_shell' => true ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		if ( ! is_resource( $process ) ) return new WP_Error( 'mad4b_developer_process_start_failed', 'Developer subprocess could not be started.' );
 		fclose( $pipes[0] );
@@ -759,13 +775,19 @@ final class MAD4B_SCP_Developer_Runtime {
 		return $receipt;
 	}
 
-	private static function sanitized_env() {
+	private static function sanitized_env( $isolated_wp_cli = false ) {
 		$env = array();
 		foreach ( array( 'PATH', 'HOME', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL' ) as $key ) {
 			$value = getenv( $key );
 			if ( false !== $value && '' !== (string) $value ) $env[ $key ] = (string) $value;
 		}
 		$env['MAD4B_DEVELOPER_EXECUTION'] = '1';
+		if ( $isolated_wp_cli ) {
+			$null = defined( 'PHP_OS_FAMILY' ) && 'Windows' === PHP_OS_FAMILY ? 'NUL' : '/dev/null';
+			$env['WP_CLI_CONFIG_PATH'] = $null;
+			$env['WP_CLI_SYSTEM_SETTINGS_PATH'] = $null;
+			$env['WP_CLI_DISABLE_AUTO_CHECK_UPDATE'] = '1';
+		}
 		return $env;
 	}
 
