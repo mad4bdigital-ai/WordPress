@@ -81,8 +81,10 @@ final class MAD4B_SCP_Provider_Contracts {
 				'policy_observed_version' => $observed,
 				'repository_archive_version' => $repository_version,
 				'repository_archive_sha256' => isset( $policy['repository_archive_sha256'] ) ? strtolower( (string) $policy['repository_archive_sha256'] ) : '',
-				'attestation_required' => ! empty( $policy['attestation_required'] ),
-				'attestation_state' => isset( $policy['attestation_state'] ) ? sanitize_key( (string) $policy['attestation_state'] ) : 'unknown',
+				'attestation_required' => false,
+				'candidate_attestation_required' => ! empty( $policy['attestation_required'] ),
+				'candidate_attestation_state' => isset( $policy['attestation_state'] ) ? sanitize_key( (string) $policy['attestation_state'] ) : 'unknown',
+				'installed_version_eligible_for_candidate_attestation' => false,
 				'mutation_policy' => isset( $policy['mutation_policy'] ) ? sanitize_key( (string) $policy['mutation_policy'] ) : 'fail_closed',
 				'authorizing' => false,
 			);
