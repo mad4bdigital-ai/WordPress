@@ -560,22 +560,16 @@ final class MAD4B_SCP_Developer_Runtime {
 
 		$command = $positionals[0];
 		$subcommand = isset( $positionals[1] ) ? $positionals[1] : '';
-		$breakglass_only = array(
-			'eval', 'eval-file', 'db', 'config', 'shell', 'cli', 'package', 'server',
-			'option', 'user', 'role', 'super-admin', 'application-password', 'cap',
-			'site', 'network', 'scaffold',
-		);
-		if ( in_array( $command, $breakglass_only, true ) ) return new WP_Error( 'mad4b_developer_wp_cli_breakglass_required', 'This WP-CLI command family requires Developer Breakglass.' );
-
-		$read_only_code_lifecycle = array(
+		$allow = array(
 			'plugin' => array( 'list', 'status', 'get', 'is-active', 'is-installed', 'path', 'verify-checksums', 'search' ),
 			'theme'  => array( 'list', 'status', 'get', 'is-active', 'is-installed', 'path', 'verify-checksums', 'search' ),
 			'core'   => array( 'version', 'check-update', 'verify-checksums', 'is-installed' ),
 		);
-		if ( isset( $read_only_code_lifecycle[ $command ] ) ) {
-			if ( '' === $subcommand || ! in_array( $subcommand, $read_only_code_lifecycle[ $command ], true ) ) {
-				return new WP_Error( 'mad4b_developer_wp_cli_code_lifecycle_denied', 'Normal Developer WP-CLI permits only read/verification operations for plugin, theme, and core code lifecycle; use the dedicated governed lifecycle or Developer Breakglass for mutation.' );
-			}
+		if ( ! isset( $allow[ $command ] ) ) {
+			return new WP_Error( 'mad4b_developer_wp_cli_command_not_allowlisted', 'Normal Developer WP-CLI is a finite read/verification surface. Other command families require a dedicated governed ability or Developer Breakglass.' );
+		}
+		if ( '' === $subcommand || ! in_array( $subcommand, $allow[ $command ], true ) ) {
+			return new WP_Error( 'mad4b_developer_wp_cli_subcommand_not_allowlisted', 'This WP-CLI subcommand is not in the normal Developer read/verification allowlist.' );
 		}
 		return true;
 	}
@@ -612,7 +606,7 @@ final class MAD4B_SCP_Developer_Runtime {
 
 	private static function wp_cli_may_use_network( array $args ) {
 		$joined = strtolower( implode( ' ', array_map( 'strval', $args ) ) );
-		foreach ( array( 'plugin install', 'plugin update', 'theme install', 'theme update', 'core download', 'core update', 'package install', 'package update', 'cli update', 'language core install', 'language plugin install', 'language theme install' ) as $needle ) {
+		foreach ( array( 'plugin install', 'plugin update', 'plugin search', 'plugin verify-checksums', 'theme install', 'theme update', 'theme search', 'theme verify-checksums', 'core download', 'core update', 'core check-update', 'core verify-checksums', 'package install', 'package update', 'cli update', 'language core install', 'language plugin install', 'language theme install' ) as $needle ) {
 			if ( false !== strpos( $joined, $needle ) ) return true;
 		}
 		return false;
