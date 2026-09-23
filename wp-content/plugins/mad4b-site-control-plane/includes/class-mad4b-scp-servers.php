@@ -348,7 +348,7 @@ final class MAD4B_SCP_Servers {
 
 		$tools = array();
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
-		$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );
+		$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' );
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
 			if ( '' === $ability_name || 'mad4b/database-raw-query' === $ability_name || in_array( $ability_name, $breakglass, true ) ) continue;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
