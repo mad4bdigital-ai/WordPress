@@ -93,9 +93,10 @@ namespace {
 	mad4b_assert( empty( $current_build_test['direct_write_schema_leaks'] ), 'Logical write schemas must not leak into direct tools/list.' );
 	mad4b_assert( ! empty( $current_build_test['write_inventory_fingerprint_match'] ), 'Logical write catalog must remain fingerprint-bound behind the transport.' );
 	mad4b_assert( 2 === (int) $current_build_test['external_write_tool_count'], 'Logical external write count must remain complete.' );
-	mad4b_assert( 1 === (int) $current_build_test['eligible_write_tool_count'], 'Eligible logical write count must remain dynamic.' );
-	mad4b_assert( in_array( 'elementor-update-widget-settings', $current_build_test['provider_gated_write_tools'], true ), 'Provider-gated logical write must be classified as gated.' );
-	mad4b_assert( empty( $current_build_test['provider_execution_mount_leaks'] ), 'Gated provider write must not be treated as an execution mount leak.' );
+	mad4b_assert( ! empty( $current_build_test['runtime_projection_deferred'] ), 'Pure tools/list evaluator must defer provider eligibility projection.' );
+	mad4b_assert( 0 === (int) $current_build_test['eligible_write_tool_count'], 'Pure tools/list evaluator must not run provider eligibility projection.' );
+	mad4b_assert( empty( $current_build_test['provider_gated_write_tools'] ), 'Pure tools/list evaluator must not run provider gate projection.' );
+	mad4b_assert( empty( $current_build_test['provider_execution_mount_leaks'] ), 'Deferred provider projection must not invent execution leaks.' );
 
 	$different = MAD4B_SCP_Live_Acceptance_Observer::inventory_attestation_from_names( array( 'mad4b-site-info', 'mad4b-write-discover', 'mad4b-write-execute', 'foreign-unexpected-tool' ), str_repeat( '0', 64 ) );
 	mad4b_assert( empty( $different['inventory_match'] ), 'Same count/different transport names must fail.' );
