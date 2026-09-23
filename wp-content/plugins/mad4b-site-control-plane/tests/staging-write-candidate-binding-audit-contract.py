@@ -14,7 +14,7 @@ for marker in [
     "subject_fingerprint",
     "issuer_fingerprint",
     "client_fingerprint",
-    "token_instance_fingerprint",
+    "session_fingerprint",
     "mcp_request_context_fingerprint",
     "previous_binding",
     "target_binding",
