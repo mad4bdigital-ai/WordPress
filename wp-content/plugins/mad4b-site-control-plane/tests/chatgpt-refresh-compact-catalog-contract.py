@@ -107,7 +107,7 @@ full = SERVERS.split("public static function chatgpt_full_catalog_candidates()",
 for marker in [
     "self::core_tools( 'mad4b-read' )",
     "self::core_tools( 'mad4b-chatgpt' )",
-    "self::core_tools( 'mad4b-enrollment' )",
+    "self::chatgpt_enrollment_candidates()",
     "self::core_tools( 'mad4b-content' )",
     "self::core_tools( 'mad4b-admin' )",
     "self::external_write_tools()",
