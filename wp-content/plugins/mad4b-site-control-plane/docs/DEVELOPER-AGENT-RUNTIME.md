@@ -125,11 +125,11 @@ Unix root execution is denied.
 
 The normal runtime never calls PHP `eval()`, `shell_exec()`, `system()`, `passthru()`, `exec()` or `popen()`. A single bounded `proc_open()` process primitive is isolated inside the Developer runtime implementation.
 
-Normal `developer-wp-cli` also denies WP-CLI aliases, caller-supplied `--path`, and global escape/bootstrap flags such as `--exec`, `--require`, `--ssh` and `--http`. Command families `eval`, `eval-file`, `db`, `config`, `shell`, `cli`, `package` and `server` require Developer Breakglass.
+Normal `developer-wp-cli` is a finite read/verification surface, not a mutation denylist. It denies WP-CLI aliases, caller-supplied `--path`, and global escape/bootstrap flags such as `--exec`, `--require`, `--ssh` and `--http`; any command family not explicitly allowlisted is denied and must use a dedicated governed ability or Developer Breakglass.
 
 Normal WP-CLI also runs from an isolated system temporary working directory outside the WordPress tree, disables global/system WP-CLI config discovery through controlled environment settings, and adds `--skip-packages`. This prevents project/global aliases, `require` directives, or installed WP-CLI packages from silently widening the reviewed command.
 
-Persistent-authority and code-lifecycle shortcuts are also constrained on the normal plane. `option`, `user`, `role`, `super-admin`, `application-password`, `site`, `network` and `scaffold` require Breakglass. For `plugin`, `theme` and `core`, normal WP-CLI is limited to read/verification subcommands; activation, installation, update and deletion use dedicated governed lifecycle surfaces or Breakglass.
+The normal allowlist is limited to bounded read/verification subcommands under `plugin`, `theme` and `core`. Activation, installation, update, deletion, content/database mutation, arbitrary code, account/role changes, network/site administration and other WP-CLI families are not admitted through the generic normal WP-CLI surface.
 
 ## Network policy
 
