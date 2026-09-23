@@ -230,10 +230,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			|| empty( $write['grant_rows_fingerprint'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $write['grant_rows_fingerprint'] ) ) {
 			return new WP_Error( 'mad4b_candidate_binding_write_snapshot_invalid', 'Candidate binding write snapshot is invalid.' );
 		}
-		$authorization = isset( $context['authorization'] ) && is_array( $context['authorization'] ) ? $context['authorization'] : array();
-		$authorization_source = isset( $authorization['source'] ) ? sanitize_key( (string) $authorization['source'] ) : '';
-		$authorization_contract = isset( $authorization['contract'] ) ? trim( (string) $authorization['contract'] ) : '';
-		$authorization_confirmation = isset( $authorization['confirmation'] ) ? (string) $authorization['confirmation'] : '';
+		$operation_basis = isset( $context['operation_basis'] ) && is_array( $context['operation_basis'] ) ? $context['operation_basis'] : array();
+		$authorization_source = isset( $operation_basis['source'] ) ? sanitize_key( (string) $operation_basis['source'] ) : '';
+		$authorization_contract = isset( $operation_basis['contract'] ) ? trim( (string) $operation_basis['contract'] ) : '';
+		$authorization_confirmation = isset( $operation_basis['confirmation'] ) ? (string) $operation_basis['confirmation'] : '';
 		$context_confirmation = isset( $context['confirmation'] ) ? (string) $context['confirmation'] : '';
 		$direct_authorization = 'binding_only_mcp' === $authorization_source
 			&& 'mad4b.staging-write-candidate-binding.v2' === $authorization_contract
