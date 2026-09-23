@@ -288,7 +288,7 @@ for marker in [
     "$registry->ability_names( 'content' )",
     "$registry->ability_names( 'admin' )",
     "array_merge( $tools, self::write_tools() )",
-    "return self::provider_for_ability( 'mad4b-write', $ability_name )",
+    "self::provider_for_ability( 'mad4b-write', $ability_name )",
     "'mad4b/write-authority-status'",
     "'mad4b/write-runtime-certification'",
     "'mad4b/rest-compatibility-status'",
