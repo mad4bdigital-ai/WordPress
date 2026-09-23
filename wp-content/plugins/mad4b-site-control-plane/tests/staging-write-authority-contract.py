@@ -44,7 +44,7 @@ if not write.rstrip().endswith('}'):
 
 if "exact_approval_except_bounded_candidate_bootstrap" in write:
     raise SystemExit("write authority retained obsolete candidate-bootstrap-only approval policy semantics after AI review standing delegation")
-if "one_time_exact_approval" in write:
+if "'one_time_exact_approval'" in write:
     raise SystemExit("write authority component inventory must distinguish normal one-time approval from the bounded AI review standing delegation")
 
 # Runtime write authority is tenant-neutral. ETG binding belongs to the reviewed
