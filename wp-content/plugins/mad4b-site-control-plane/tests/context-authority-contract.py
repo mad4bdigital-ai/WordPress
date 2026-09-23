@@ -7,6 +7,7 @@ drive = (root / "includes/class-mad4b-scp-google-drive-context.php").read_text(e
 admin = (root / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
 skills_admin = (root / "includes/class-mad4b-scp-skills-admin-ui.php").read_text(encoding="utf-8")
 adapter = (root / "includes/adapters/class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
+audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 registry = (root / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 preflight = (root / "includes/class-mad4b-scp-context-preflight.php").read_text(encoding="utf-8")
@@ -567,4 +568,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v64: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v65: PASS")
