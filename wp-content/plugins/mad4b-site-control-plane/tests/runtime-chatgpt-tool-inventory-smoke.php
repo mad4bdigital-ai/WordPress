@@ -121,6 +121,7 @@ $hidden_read_required = array(
 		'mad4b/database-describe-table',
 		'mad4b/database-select',
 		'mad4b/content-get-post',
+		'mad4b/post-identity',
 		'mad4b/audit-tail',
 		'mad4b/mutation-get',
 		'mad4b/agent-list',
@@ -277,8 +278,11 @@ if ( empty( $identity_annotations['readonly'] ) || ! empty( $identity_annotation
 if ( 'core' !== MAD4B_SCP_Servers::provider_for_ability( 'mad4b-read', 'mad4b/post-identity' ) ) {
 	$fail( 'Post identity must be mounted on mad4b-read.' );
 }
-if ( 'core' !== MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', 'mad4b/post-identity' ) ) {
-	$fail( 'Post identity must be mounted on mad4b-chatgpt.' );
+if ( ! in_array( 'mad4b/post-identity', $full_candidates, true ) ) {
+	$fail( 'Post identity was lost from the governed ChatGPT discovery universe.' );
+}
+if ( null !== MAD4B_SCP_Servers::provider_for_ability( 'mad4b-chatgpt', 'mad4b/post-identity' ) ) {
+	$fail( 'Post identity heavy schema leaked directly into mad4b-chatgpt tools/list.' );
 }
 foreach ( array( 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-breakglass' ) as $server_id ) {
 	if ( null !== MAD4B_SCP_Servers::provider_for_ability( $server_id, 'mad4b/post-identity' ) ) {
