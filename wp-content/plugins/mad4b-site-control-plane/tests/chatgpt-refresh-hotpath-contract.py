@@ -48,6 +48,13 @@ assert "$registry_for_surface = static function () use ( &$registry )" in server
 register_body = servers.split("public function register_servers( $adapter )", 1)[1].split("private function create( $adapter", 1)[0]
 pre_target = register_body.split("$target_server_id = self::current_request_server_id();", 1)[0]
 assert "MAD4B_SCP_Adapter_Registry::instance()" not in pre_target
+
+provider_body = servers.split("public static function provider_for_ability( $server_id, $ability_name )", 1)[1].split("public static function registration_status()", 1)[0]
+assert "( 'mad4b-chatgpt' !== $server_id && self::is_external_write_candidate( $ability_name ) )" in provider_body
+chatgpt_provider = provider_body.split("if ( 'mad4b-chatgpt' === $server_id )", 1)[1]
+core_shortcut = chatgpt_provider.split("if ( self::is_external_write_candidate( $ability_name ) )", 1)[0]
+assert "self::core_tools( 'mad4b-chatgpt' )" in core_shortcut
+assert "self::core_tools( $core_server )" in core_shortcut
 for server_id in [
     "mad4b-read",
     "mad4b-chatgpt",
@@ -106,4 +113,4 @@ assert "eligible_write_tool_names()" not in observer_inventory
 assert "blocked_write_tool_names()" not in observer_inventory
 assert "'runtime_projection_deferred' => true" in observer_inventory
 
-print("mad4b.chatgpt-refresh-hotpath.v2: PASS")
+print("mad4b.chatgpt-refresh-hotpath.v3: PASS")
