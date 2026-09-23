@@ -246,6 +246,77 @@ final class MAD4B_SCP_Audit {
 		);
 	}
 
+
+	/**
+	 * Bounded read-only lookup for Context Human Review evidence.
+	 *
+	 * Only the exact Human Review event type is queryable. Review-note text is not
+	 * returned through this MCP-facing diagnostic; presence and SHA-256 are enough
+	 * to prove rationale existed without widening the read surface.
+	 */
+	public static function context_review_events( array $selectors = array() ) {
+		global $wpdb;
+		$limit = isset( $selectors['limit'] ) ? max( 1, min( 100, absint( $selectors['limit'] ) ) ) : 25;
+		$request_id = isset( $selectors['request_id'] ) ? substr( sanitize_text_field( (string) $selectors['request_id'] ), 0, 100 ) : '';
+		$event_id = isset( $selectors['event_id'] ) ? strtolower( trim( (string) $selectors['event_id'] ) ) : '';
+		$asset_id = isset( $selectors['asset_id'] ) ? strtolower( trim( (string) $selectors['asset_id'] ) ) : '';
+		$decision = isset( $selectors['decision'] ) ? sanitize_key( (string) $selectors['decision'] ) : '';
+		if ( '' !== $request_id && 1 !== preg_match( '/^[A-Za-z0-9._:-]{8,100}$/', $request_id ) ) return new WP_Error( 'mad4b_context_review_audit_request_id_invalid', 'Context review audit request_id is invalid.' );
+		if ( '' !== $event_id && 1 !== preg_match( '/^[a-f0-9-]{36}$/', $event_id ) ) return new WP_Error( 'mad4b_context_review_audit_event_id_invalid', 'Context review audit event_id is invalid.' );
+		if ( '' !== $asset_id && 1 !== preg_match( '/^[a-f0-9]{64}$/', $asset_id ) ) return new WP_Error( 'mad4b_context_review_audit_asset_id_invalid', 'Context review audit asset_id is invalid.' );
+		if ( '' !== $decision && ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_audit_decision_invalid', 'Context review audit decision is invalid.' );
+
+		$status = self::storage_status();
+		if ( empty( $status['ready'] ) ) return new WP_Error( 'mad4b_context_review_audit_storage_unavailable', 'Append-only audit storage is not ready.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$where = array( 'chain_name = %s', 'ability = %s' );
+		$args = array( self::CHAIN, 'mad4b/context-asset-review' );
+		if ( '' !== $request_id ) {
+			$where[] = 'request_id = %s';
+			$args[] = $request_id;
+		}
+		if ( '' !== $event_id ) {
+			$where[] = 'event_id = %s';
+			$args[] = $event_id;
+		}
+		if ( '' !== $asset_id ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"asset_id":"' . $asset_id . '"' ) . '%';
+		}
+		if ( '' !== $decision ) {
+			$where[] = 'summary_json LIKE %s';
+			$args[] = '%' . $wpdb->esc_like( '"decision":"' . $decision . '"' ) . '%';
+		}
+		$args[] = $limit;
+		$sql = "SELECT * FROM {$t['audit_events']} WHERE " . implode( ' AND ', $where ) . ' ORDER BY sequence DESC LIMIT %d';
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( ! is_array( $rows ) ) return new WP_Error( 'mad4b_context_review_audit_lookup_failed', 'Context review audit lookup failed.', array( 'db_error' => $wpdb->last_error ) );
+		$rows = array_reverse( $rows );
+		$events = array();
+		foreach ( $rows as $row ) {
+			$entry = MAD4B_SCP_Audit_Integrity::row_to_entry( $row );
+			if ( ! is_array( $entry ) ) continue;
+			$summary = isset( $entry['summary'] ) && is_array( $entry['summary'] ) ? $entry['summary'] : array();
+			$review_note = isset( $summary['review_note'] ) ? (string) $summary['review_note'] : '';
+			unset( $summary['review_note'] );
+			$summary['review_note_present'] = '' !== $review_note;
+			$summary['review_note_sha256'] = '' !== $review_note ? hash( 'sha256', $review_note ) : '';
+			$entry['summary'] = $summary;
+			$events[] = $entry;
+		}
+		return array(
+			'contract' => 'mad4b.context-human-review-audit.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'bounded_event_types' => array( 'mad4b/context-asset-review' ),
+			'chain' => self::CHAIN,
+			'chain_valid' => self::verify_chain(),
+			'head_consistent' => ! empty( $status['head_consistent'] ),
+			'count' => count( $events ),
+			'events' => $events,
+		);
+	}
+
 	private static function append_locked( $ability, array $summary, $summary_json, $status ) {
 		global $wpdb;
 		$t = MAD4B_SCP_Schema::tables();
