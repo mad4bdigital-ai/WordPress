@@ -102,8 +102,17 @@ for marker in [
 core_write = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
 if 'mad4b/site-profile-write-enable' in core_write:
     raise SystemExit('bounded Site Profile write enablement leaked into normal governed write candidates')
-if "array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' )" not in servers:
-    raise SystemExit('unified ChatGPT catalog does not explicitly classify all bounded bootstrap mutations')
+chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('public static function chatgpt_full_catalog_candidates()', 1)[0]
+if '$bounded_bootstrap = array(' not in chatgpt_transport:
+    raise SystemExit('minimal ChatGPT transport does not declare bounded bootstrap mutations')
+for bootstrap_ability in (
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+):
+    if bootstrap_ability not in chatgpt_transport:
+        raise SystemExit('minimal ChatGPT transport missing bounded bootstrap mutation: ' + bootstrap_ability)
 if 'mad4b/staging-write-grant-reconcile' in core_write:
     raise SystemExit('bounded exact grant reconciliation leaked into normal governed write candidates')
 if 'mad4b/staging-write-candidate-bind' in core_write:
