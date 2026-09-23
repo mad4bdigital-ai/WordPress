@@ -281,7 +281,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				'issuer_fingerprint' => $issuer_fingerprint,
 				'client_fingerprint' => $client_fingerprint,
 				'session_fingerprint' => $session_fingerprint,
-				'mcp_request_context_fingerprint' => hash( 'sha256', $subject_fingerprint . "\0" . $correlation_id . "\0" . $transport ),
+				'mcp_request_context_fingerprint' => hash( 'sha256', $subject_fingerprint . "\0" . $issuer_fingerprint . "\0" . $client_fingerprint . "\0" . $session_fingerprint . "\0" . $correlation_id . "\0" . $transport ),
 				'agent_public_id' => (string) $plan['agent_public_id'],
 				'transport_server_id' => $transport,
 			),
