@@ -51,6 +51,15 @@ assert "expected_site_uuid" in developer
 assert "expected_environment" in developer
 assert "MAD4B_MCP_DEVELOPER_NETWORK_ENABLED" in developer
 assert "network_default_deny" in developer
+assert "network_sandbox_binary" in developer
+assert "bounded_execution_argv" in developer
+assert "mad4b_developer_network_isolation_unavailable" in developer
+assert "prlimit_binary" in developer
+assert "DEFAULT_MEMORY_LIMIT_BYTES" in developer
+assert "MAX_OPEN_FILES" in developer
+assert "MAX_PROCESSES" in developer
+assert "'resource_limits_enforced' => '' !== self::prlimit_binary()" in developer
+assert "self::runtime_gate( false, $input, false )" in developer
 assert "secret_redaction_enabled" in developer
 assert "proc_open" in developer
 assert "wp eval" not in developer.lower() or "'eval'" in developer
@@ -149,4 +158,4 @@ assert "class-mad4b-scp-developer-runtime.php" in plugin
 assert "0.4.0-rc.55" in plugin
 assert "release=0.4.0-rc.55" in runtime_build
 
-print("mad4b.developer-runtime-contract.v3: PASS")
+print("mad4b.developer-runtime-contract.v4: PASS")
