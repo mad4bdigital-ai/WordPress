@@ -38,6 +38,11 @@ for marker in [
     "new_binding",
     "normalize_candidate_binding_context",
     "mad4b_candidate_binding_actor_attribution_mismatch",
+    "START TRANSACTION",
+    "FOR UPDATE",
+    "transaction_committed",
+    "transaction_rolled_back",
+    "transactional_table",
 ]:
     assert marker in authority, f'missing primitive audit invariant: {marker}'
 
@@ -73,6 +78,7 @@ for forbidden in [
     "'refresh_token'",
     "'raw_subject'",
     "'raw_session_id'",
+    "token_instance_fingerprint",
 ]:
     assert forbidden not in binding
     assert forbidden not in authority
