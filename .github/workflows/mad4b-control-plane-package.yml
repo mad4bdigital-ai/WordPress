@@ -406,6 +406,9 @@ jobs:
               'required_post_install_checks': [
                   'mad4b/site-profile-status',
                   'mad4b/runtime-self-test',
+                  'mad4b/provider-functional-coverage',
+                  'mad4b/provider-contract-discovery',
+                  'mad4b/provider-mcp-mount-plan',
                   'mad4b/functional-gap-runtime-evidence',
                   'mad4b/build-provenance-status',
                   'mad4b/skills-runtime-certification',
