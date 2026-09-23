@@ -1046,7 +1046,22 @@ final class MAD4B_SCP_Context_Authority {
 			$asset['authority_class'] = $authority;
 			$requested_required = ! empty( $input['required'] );
 			$required_scope_escalated = ! $previous_required && $requested_required;
-			if ( $required_scope_escalated && empty( $input['required_scope_confirmed'] ) ) return new WP_Error( 'mad4b_context_required_scope_confirmation_required', 'Making this Context category required expands site-wide Brand Context requirements and requires explicit confirmation.', array( 'category' => $category, 'previous_required' => false, 'requested_required' => true ) );
+			$required_scope_shifted = $previous_required && $requested_required && ! hash_equals( $previous_category, $category );
+			$required_scope_reduced = $previous_required && ! $requested_required;
+			$required_scope_changed = $required_scope_escalated || $required_scope_shifted || $required_scope_reduced;
+			if ( $required_scope_changed && empty( $input['required_scope_confirmed'] ) ) return new WP_Error(
+				'mad4b_context_required_scope_confirmation_required',
+				'Changing required Context scope changes site-wide Brand Context requirements and requires explicit confirmation.',
+				array(
+					'previous_category' => $previous_category,
+					'requested_category' => $category,
+					'previous_required' => $previous_required,
+					'requested_required' => $requested_required,
+					'required_scope_escalated' => $required_scope_escalated,
+					'required_scope_shifted' => $required_scope_shifted,
+					'required_scope_reduced' => $required_scope_reduced,
+				)
+			);
 			$governance_changed = ! hash_equals( $previous_category, $category ) || ! hash_equals( $previous_authority, $authority ) || $previous_required !== $requested_required;
 			$asset['required'] = $requested_required;
 			$asset['priority'] = 'brand_authority' === $authority || 'policy_authority' === $authority ? 100 : ( 'task_knowledge' === $authority ? 70 : 40 );
@@ -1145,7 +1160,10 @@ final class MAD4B_SCP_Context_Authority {
 					'authority_class' => $authority,
 					'previous_required' => $previous_required,
 					'required' => ! empty( $asset['required'] ),
+					'required_scope_changed' => $required_scope_changed,
 					'required_scope_escalated' => $required_scope_escalated,
+					'required_scope_shifted' => $required_scope_shifted,
+					'required_scope_reduced' => $required_scope_reduced,
 					'required_scope_confirmed' => ! empty( $input['required_scope_confirmed'] ),
 					'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
 					'automatic_quality_score' => isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : null,
