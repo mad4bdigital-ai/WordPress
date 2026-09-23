@@ -9,7 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * an exact MAD4B Site Profile is enrolled for the live origin/environment and
  * its governed-write feature is enabled. OAuth remains identity only; execution
  * still requires an enabled NHI, exact provider/ability grant, runtime/provider
- * certification, mutation budget, one-time exact human approval, and audit.
+ * certification, mutation budget, and audit. Normal writes require one-time
+ * exact human approval; the dedicated Context AI review ability may instead use
+ * only an explicitly configured, exact-agent, Staging-only standing delegation.
  *
  * Breakglass/raw SQL are never included in this authority.
  */
@@ -114,25 +116,33 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	public static function approval_policy_projection( $candidate_bootstrap_exception_active = null ) {
 		$resolved = is_bool( $candidate_bootstrap_exception_active );
 		$active = true === $candidate_bootstrap_exception_active;
+		$ai_ability = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY : 'mad4b/context-ai-review';
+		$ai_configured = class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::ai_review_catalog_eligible();
 		$policy = array(
-			'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v1',
+			'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2',
 			'approval_policy_scope' => $resolved ? 'effective_runtime' : 'capability_definition',
 			'approval_policy_effective_state_resolved' => $resolved,
 			'normal_remote_writes_require_exact_approval' => true,
 			'candidate_bootstrap_exception_defined' => true,
 			'candidate_bootstrap_contract' => self::CANDIDATE_BOOTSTRAP_CONTRACT,
-			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY ),
+			'ai_review_standing_delegation_defined' => true,
+			'ai_review_standing_delegation_contract' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::AI_REVIEW_CONTRACT : 'mad4b.context-ai-agent-review.v1',
+			'ai_review_standing_delegation_configured' => $ai_configured,
+			'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, $ai_ability ),
 		);
 		if ( $resolved ) {
+			$exceptions = array();
+			if ( $active ) $exceptions[] = self::CANDIDATE_BOOTSTRAP_ABILITY;
+			if ( $ai_configured ) $exceptions[] = $ai_ability;
 			$policy['candidate_bootstrap_exception_active'] = $active;
-			$policy['all_remote_writes_require_exact_approval'] = ! $active;
-			$policy['remote_write_approval_policy'] = $active ? 'exact_approval_except_bounded_candidate_bootstrap' : 'exact_approval_required';
-			$policy['remote_write_approval_exceptions'] = $active ? array( self::CANDIDATE_BOOTSTRAP_ABILITY ) : array();
+			$policy['all_remote_writes_require_exact_approval'] = empty( $exceptions );
+			$policy['remote_write_approval_policy'] = empty( $exceptions ) ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions';
+			$policy['remote_write_approval_exceptions'] = $exceptions;
 		} else {
-			// Definition scope declares the one possible exception but deliberately
-			// does not claim whether it is active for the current runtime.
+			// Definition scope declares the bounded possible exceptions without
+			// claiming that request-time identity/grant/candidate checks are satisfied.
 			$policy['all_remote_writes_require_exact_approval'] = false;
-			$policy['remote_write_approval_policy'] = 'exact_approval_except_bounded_candidate_bootstrap';
+			$policy['remote_write_approval_policy'] = 'exact_approval_with_bounded_standing_exceptions';
 		}
 		return $policy;
 	}
@@ -758,13 +768,96 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return ! empty( $status['allowed'] );
 	}
 
+
+	public static function ai_review_delegation_status( $ability_name, $input = null, $identity = null ) {
+		$ability_name = (string) $ability_name;
+		$ai_ability = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY : 'mad4b/context-ai-review';
+		$blockers = array();
+		$agent = array();
+		$policy = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::review_policy() : array();
+		if ( $ai_ability !== $ability_name ) $blockers[] = 'ability_not_ai_review';
+		if ( ! self::effective() ) $blockers[] = 'write_authority_not_effective';
+		if ( ! self::is_write_ability( $ability_name ) ) $blockers[] = 'ai_review_not_runtime_eligible';
+		if ( 'human_and_ai' !== ( isset( $policy['mode'] ) ? (string) $policy['mode'] : 'human_only' ) ) $blockers[] = 'ai_review_mode_disabled';
+		$configured_agent = isset( $policy['ai_agent_public_id'] ) ? strtolower( trim( (string) $policy['ai_agent_public_id'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $configured_agent ) ) $blockers[] = 'ai_review_agent_unconfigured';
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) $blockers[] = 'ai_review_staging_only';
+		if ( '' !== self::approval_ticket_from_input( $input ) ) $blockers[] = 'ai_review_approval_ticket_not_allowed';
+
+		if ( ! is_array( $input ) ) {
+			$blockers[] = 'ai_review_exact_input_required';
+		} else {
+			$asset_id = isset( $input['asset_id'] ) ? strtolower( trim( (string) $input['asset_id'] ) ) : '';
+			$decision = isset( $input['decision'] ) ? sanitize_key( (string) $input['decision'] ) : '';
+			$content_hash = isset( $input['expected_content_hash'] ) ? strtolower( trim( (string) $input['expected_content_hash'] ) ) : '';
+			$revision = isset( $input['expected_registry_revision'] ) ? (int) $input['expected_registry_revision'] : -1;
+			$authority_hash = isset( $input['expected_authority_manifest_fingerprint'] ) ? strtolower( trim( (string) $input['expected_authority_manifest_fingerprint'] ) ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $asset_id ) ) $blockers[] = 'ai_review_asset_id_invalid';
+			if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) $blockers[] = 'ai_review_decision_invalid';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $content_hash ) ) $blockers[] = 'ai_review_content_hash_invalid';
+			if ( $revision < 0 ) $blockers[] = 'ai_review_registry_revision_invalid';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $authority_hash ) ) $blockers[] = 'ai_review_authority_fingerprint_invalid';
+			foreach ( array( 'category', 'authority_class', 'required', 'required_scope_confirmed', 'quality_mode', 'quality_score' ) as $forbidden_key ) {
+				if ( array_key_exists( $forbidden_key, $input ) ) $blockers[] = 'ai_review_governance_mutation_forbidden';
+			}
+		}
+
+		if ( null === $identity ) {
+			if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) ) $blockers[] = 'ai_review_identity_unavailable';
+			else {
+				$identity = MAD4B_SCP_Identity_Context::current();
+				if ( is_wp_error( $identity ) ) { $blockers[] = 'ai_review_identity_unavailable'; $identity = array(); }
+			}
+		}
+		if ( ! is_array( $identity ) || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) {
+			$blockers[] = 'ai_review_oauth_identity_required';
+		} elseif ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) {
+			$blockers[] = 'ai_review_agent_registry_unavailable';
+		} else {
+			$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+			if ( is_wp_error( $agent ) || empty( $agent['id'] ) || empty( $agent['public_id'] ) ) {
+				$blockers[] = 'ai_review_agent_unresolved';
+				$agent = array();
+			} else {
+				if ( '' === $configured_agent || ! hash_equals( $configured_agent, (string) $agent['public_id'] ) ) $blockers[] = 'ai_review_agent_mismatch';
+				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) $blockers[] = 'ai_review_agent_ineligible';
+				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', $ai_ability, 'core' );
+				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_review_exact_nhi_grant_missing';
+			}
+		}
+		$blockers = array_values( array_unique( $blockers ) );
+		return array(
+			'contract' => 'mad4b.context-ai-review-standing-delegation.v1',
+			'ability' => $ai_ability,
+			'applicable' => $ai_ability === $ability_name,
+			'allowed' => empty( $blockers ),
+			'blockers' => $blockers,
+			'configured_agent_public_id' => $configured_agent,
+			'resolved_agent_public_id' => isset( $agent['public_id'] ) ? (string) $agent['public_id'] : '',
+			'prior_approval_required' => false,
+			'exact_nhi_grant_required' => true,
+			'candidate_binding_required' => true,
+			'budget_required' => true,
+			'audit_required' => true,
+			'governance_metadata_mutation_allowed' => false,
+			'production_authorized' => false,
+		);
+	}
+
+	public static function ai_review_delegation_allowed( $ability_name, $input = null, $identity = null ) {
+		$status = self::ai_review_delegation_status( $ability_name, $input, $identity );
+		return ! empty( $status['allowed'] );
+	}
+
 	public static function remote_scope_delegation_allowed( array $identity, $server_id, $ability_name, $input ) {
 		$bootstrap = self::candidate_bootstrap_allowed( $ability_name, $input );
-		if ( ( ! self::effective() && ! $bootstrap ) || 'mad4b-write' !== sanitize_key( (string) $server_id ) || ! self::is_write_ability( $ability_name ) ) return false;
+		if ( 'mad4b-write' !== sanitize_key( (string) $server_id ) ) return false;
 		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return false;
 		$scopes = isset( $identity['token_scopes'] ) && is_array( $identity['token_scopes'] ) ? $identity['token_scopes'] : array();
 		if ( ! in_array( 'mad4b:read', $scopes, true ) ) return false;
 		if ( $bootstrap ) return true;
+		if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;
+		if ( ! self::effective() || ! self::is_write_ability( $ability_name ) ) return false;
 		return '' !== self::approval_ticket_from_input( $input );
 	}
 
@@ -775,6 +868,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$current = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
 		if ( ! in_array( $current, array( 'mad4b-chatgpt', 'mad4b-write' ), true ) ) return $required;
 		if ( self::candidate_bootstrap_allowed( $ability_name, $input ) ) return false;
+		if ( self::ai_review_delegation_allowed( $ability_name, $input ) ) return false;
 		return self::effective() ? true : $required;
 	}
 
@@ -784,7 +878,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
 		if ( ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) return $args;
 
-		if ( isset( $args['input_schema'] ) && is_array( $args['input_schema'] ) ) {
+		$ai_review = class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY === (string) $name;
+		if ( ! $ai_review && isset( $args['input_schema'] ) && is_array( $args['input_schema'] ) ) {
 			if ( ! isset( $args['input_schema']['properties'] ) || ! is_array( $args['input_schema']['properties'] ) ) $args['input_schema']['properties'] = array();
 			$args['input_schema']['properties'][ self::APPROVAL_INPUT_KEY ] = array(
 				'type' => 'string',
@@ -810,7 +905,12 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( ! isset( $args['meta'] ) || ! is_array( $args['meta'] ) ) $args['meta'] = array();
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
 		$args['meta']['mcp']['mad4b_governed_write_authority'] = self::CONTRACT;
-		$args['meta']['mcp']['mad4b_remote_write_approval_required'] = true;
+		$args['meta']['mcp']['mad4b_remote_write_approval_required'] = ! $ai_review;
+		if ( $ai_review ) {
+			$args['meta']['mcp']['mad4b_ai_review_standing_delegation'] = 'mad4b.context-ai-review-standing-delegation.v1';
+			$args['meta']['mcp']['mad4b_ai_review_exact_agent_required'] = true;
+			$args['meta']['mcp']['mad4b_ai_review_governance_metadata_mutation_allowed'] = false;
+		}
 		if ( self::CANDIDATE_BOOTSTRAP_ABILITY === (string) $name ) {
 			$args['meta']['mcp']['mad4b_candidate_bootstrap_contract'] = self::CANDIDATE_BOOTSTRAP_CONTRACT;
 			$args['meta']['mcp']['mad4b_candidate_bootstrap_prior_approval_exception'] = true;
