@@ -298,6 +298,10 @@ final class MAD4B_SCP_Abilities {
 		$ability = $this->governed_read_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
 		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) {
+			$params = null;
+		}
 		$result = $ability->execute( $params );
 		if ( is_wp_error( $result ) ) return $result;
 		return array( 'contract' => 'mad4b.chatgpt-read-execute.v1', 'ability_name' => $ability_name, 'result' => $result, 'read_only' => true, 'mutation_performed' => false );
