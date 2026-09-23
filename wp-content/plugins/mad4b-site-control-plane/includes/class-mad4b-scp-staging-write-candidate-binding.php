@@ -245,11 +245,11 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $subject_fingerprint ) ) return new WP_Error( 'mad4b_candidate_bind_subject_fingerprint_missing', 'A stable hashed OAuth subject fingerprint is required for binding audit attribution.' );
 		$issuer_fingerprint = isset( $identity['issuer_fingerprint'] ) ? strtolower( trim( (string) $identity['issuer_fingerprint'] ) ) : '';
 		$client_fingerprint = isset( $identity['client_fingerprint'] ) ? strtolower( trim( (string) $identity['client_fingerprint'] ) ) : '';
-		$token_instance_fingerprint = isset( $identity['token_instance_fingerprint'] ) ? strtolower( trim( (string) $identity['token_instance_fingerprint'] ) ) : '';
+		$session_fingerprint = isset( $identity['session_fingerprint'] ) ? strtolower( trim( (string) $identity['session_fingerprint'] ) ) : '';
 		foreach ( array(
 			'issuer_fingerprint' => $issuer_fingerprint,
 			'client_fingerprint' => $client_fingerprint,
-			'token_instance_fingerprint' => $token_instance_fingerprint,
+			'session_fingerprint' => $session_fingerprint,
 		) as $field => $value ) {
 			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $value ) ) return new WP_Error( 'mad4b_candidate_bind_actor_attribution_incomplete', 'Hashed OAuth issuer/client/token attribution is required for candidate binding.', array( 'field' => $field ) );
 		}
@@ -269,7 +269,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				'subject_fingerprint' => $subject_fingerprint,
 				'issuer_fingerprint' => $issuer_fingerprint,
 				'client_fingerprint' => $client_fingerprint,
-				'token_instance_fingerprint' => $token_instance_fingerprint,
+				'session_fingerprint' => $session_fingerprint,
 				'mcp_request_context_fingerprint' => hash( 'sha256', $subject_fingerprint . "\0" . $correlation_id . "\0" . $transport ),
 				'agent_public_id' => (string) $plan['agent_public_id'],
 				'transport_server_id' => $transport,
