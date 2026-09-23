@@ -555,7 +555,6 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		return MAD4B_SCP_Audit::context_review_events( $selectors );
 	}
 
-
 	public function brand_core_coverage() {
 		return MAD4B_SCP_Context_Authority::brand_core_coverage();
 	}
