@@ -144,7 +144,7 @@ Network-enabled jobs require both:
 
 Package installation therefore requires explicit network authority.
 
-Normal package installation is install-only and cannot activate the package. Activation must use the separate governed plugin activation surface, so package retrieval and code activation remain distinct approvals. Normal package installation accepts only a WordPress.org-style plugin slug; custom URLs, archives, alternate repositories or mutable package sources require Developer Breakglass.
+Normal package installation is install-only and cannot activate the package. Activation must use the separate governed plugin activation surface, so package retrieval and code activation remain distinct approvals. Normal package installation accepts only a WordPress.org-style plugin slug **plus an exact non-development version**, and it does not use `--force`; custom URLs, archives, alternate repositories, latest-version resolution, overwrite/update, or other mutable package sources require a separate governed lifecycle or Developer Breakglass.
 
 Runtime status reports backend presence only; it does not claim kernel-level enforcement until an execution actually starts successfully.
 
