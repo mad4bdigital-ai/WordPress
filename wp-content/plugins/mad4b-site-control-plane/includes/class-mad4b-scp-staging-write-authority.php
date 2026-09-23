@@ -302,10 +302,14 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		);
 	}
 
-	private static function commit_candidate_binding_transaction() {
+	private static function commit_candidate_binding_transaction( array $committed_status = array() ) {
 		global $wpdb;
 		$committed = false !== $wpdb->query( 'COMMIT' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( ! $committed ) return new WP_Error( 'mad4b_candidate_binding_commit_failed', 'Candidate binding transaction could not be committed.' );
+		// The authority option is written directly inside the SQL transaction so
+		// persistent object caches cannot expose uncommitted binding state. Only
+		// after COMMIT do we invalidate the option cache, before audit dispatch.
+		if ( ! empty( $committed_status ) ) self::reset_authority_option_cache( $committed_status );
 		if ( class_exists( 'MAD4B_SCP_Audit' ) && method_exists( 'MAD4B_SCP_Audit', 'transaction_committed' ) ) MAD4B_SCP_Audit::transaction_committed();
 		return true;
 	}
@@ -394,7 +398,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 					$transaction_open = false;
 					return new WP_Error( 'mad4b_candidate_binding_noop_audit_failed', 'Idempotent candidate-binding evidence could not be committed.', $rollback );
 				}
-				$commit = self::commit_candidate_binding_transaction();
+				$commit = self::commit_candidate_binding_transaction( $before );
 				if ( is_wp_error( $commit ) ) {
 					$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'noop_commit_failed', array( 'previous_binding' => $before_binding ) );
 					$transaction_open = false;
@@ -440,7 +444,13 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$next['package_manifest_digest'] = (string) $current['package_manifest_digest'];
 			$next['artifact_identity'] = (string) $current['artifact_identity'];
 			$next['candidate_bound_at'] = gmdate( 'c' );
-			$updated = update_option( self::OPTION, $next, false );
+			$updated = $wpdb->update(
+				$wpdb->options,
+				array( 'option_value' => maybe_serialize( $next ) ),
+				array( 'option_name' => self::OPTION ),
+				array( '%s' ),
+				array( '%s' )
+			); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$stored = self::authority_option_from_database( false );
 			$persisted_ok = ! is_wp_error( $stored )
 				&& isset( $stored['source_commit_sha'], $stored['build_fingerprint'], $stored['package_manifest_digest'], $stored['artifact_identity'] )
@@ -500,7 +510,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 				return new WP_Error( 'mad4b_candidate_bind_completion_audit_failed', 'Candidate binding completion audit failed; database transaction was rolled back.', $rollback );
 			}
 
-			$commit = self::commit_candidate_binding_transaction();
+			$commit = self::commit_candidate_binding_transaction( $stored );
 			if ( is_wp_error( $commit ) ) {
 				$rollback = self::rollback_candidate_binding_transaction( $before, $context, 'commit_failed', array( 'previous_binding' => $before_binding, 'attempted_binding' => $new_binding ) );
 				$transaction_open = false;
