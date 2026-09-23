@@ -57,9 +57,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'excluded_high_risk' => 0,
 			'priority_external_missing' => 0,
 		);
-		$functional_counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'contract_discovery_required'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
+		$functional_counts = array( 'functional_ready'=>0, 'read_ready_write_blocked'=>0, 'status_only_candidate'=>0, 'contract_discovery_required'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
 		$functional_family_states = array();
-		$functional_severity = array( 'inactive'=>0, 'functional_ready'=>1, 'intentionally_excluded'=>2, 'status_only_candidate'=>3, 'contract_discovery_required'=>4, 'adapter_missing'=>5, 'safety_blocked'=>6 );
+		$functional_severity = array( 'inactive'=>0, 'functional_ready'=>1, 'read_ready_write_blocked'=>2, 'intentionally_excluded'=>3, 'status_only_candidate'=>4, 'contract_discovery_required'=>5, 'adapter_missing'=>6, 'safety_blocked'=>7 );
 
 		foreach ( $plugins as $plugin_file => $headers ) {
 			if ( count( $items ) >= self::MAX_PLUGINS ) break;
@@ -105,7 +105,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 	}
 
 	private static function functional_state_counts( array $states ) {
-		$counts = array( 'functional_ready'=>0, 'status_only_candidate'=>0, 'contract_discovery_required'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
+		$counts = array( 'functional_ready'=>0, 'read_ready_write_blocked'=>0, 'status_only_candidate'=>0, 'contract_discovery_required'=>0, 'safety_blocked'=>0, 'adapter_missing'=>0, 'intentionally_excluded'=>0, 'inactive'=>0 );
 		foreach ( $states as $state ) {
 			$state = sanitize_key( (string) $state );
 			if ( isset( $counts[ $state ] ) ) ++$counts[ $state ];
@@ -284,7 +284,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$writes = array();
 		foreach ( array( 'content', 'write', 'admin' ) as $surface ) if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $writes = array_merge( $writes, $map[ $surface ] );
 		$writes = array_values( array_unique( $writes ) );
-		$state = 'functional_ready'; $reason = ''; $next = 'no_action_required'; $blockers = array();
+		$state = 'functional_ready'; $reason = ''; $next = 'no_action_required'; $blockers = array(); $read_capability_blockers = array();
 
 		if ( ! $active ) {
 			$state = 'inactive'; $reason = 'plugin_not_active'; $next = 'activate_only_if_operationally_required';
@@ -303,10 +303,29 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$blockers = array( 'adapter_runtime_unavailable' );
 			$next = 'restore_or_certify_exact_provider_runtime_before_functional_readiness';
 		} elseif ( 'adapter_present_certification_required' === $coverage_state ) {
-			$state = 'safety_blocked';
-			$reason = 'provider_certification_required';
-			$blockers = array( 'provider_certification_required' );
-			$next = 'complete_exact_provider_certification_before_write_readiness';
+			$capability = isset( $status['capability_certification'] ) && is_array( $status['capability_certification'] ) ? $status['capability_certification'] : array();
+			foreach ( isset( $capability['capabilities'] ) && is_array( $capability['capabilities'] ) ? $capability['capabilities'] : array() as $capability_id => $capability_status ) {
+				if ( ! is_array( $capability_status ) || 'read' !== ( isset( $capability_status['risk'] ) ? (string) $capability_status['risk'] : '' ) ) continue;
+				if ( empty( $capability_status['surface_exposed'] ) ) continue;
+				if ( empty( $capability_status['read_eligible'] ) ) $read_capability_blockers[] = sanitize_key( (string) $capability_id );
+			}
+			$read_capability_blockers = array_values( array_unique( array_filter( $read_capability_blockers ) ) );
+			if ( ! empty( $read_capability_blockers ) ) {
+				$state = 'safety_blocked';
+				$reason = 'provider_read_capability_incompatible';
+				$blockers = array( 'provider_read_capability_incompatible', 'provider_write_certification_required' );
+				$next = 'reconcile_exposed_read_capabilities_before_write_certification';
+			} elseif ( ! empty( $reads ) ) {
+				$state = 'read_ready_write_blocked';
+				$reason = 'read_surface_ready_write_certification_blocked';
+				$blockers = array( 'provider_write_certification_required' );
+				$next = 'complete_exact_or_capability_scoped_write_certification_before_mutation';
+			} else {
+				$state = 'safety_blocked';
+				$reason = 'provider_certification_required';
+				$blockers = array( 'provider_certification_required' );
+				$next = 'complete_exact_provider_certification_before_write_readiness';
+			}
 		} elseif ( 'adapter_present_side_channel_blocked' === $coverage_state ) {
 			$state = 'safety_blocked';
 			$reason = 'parallel_mcp_write_plane_requires_isolation';
@@ -352,6 +371,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'write_abilities' => $writes,
 			'requested_contracts' => $requested,
 			'blockers' => $blockers,
+			'read_capability_blockers' => $read_capability_blockers,
 			'next_action' => $next,
 			'authority_created' => false,
 		);
