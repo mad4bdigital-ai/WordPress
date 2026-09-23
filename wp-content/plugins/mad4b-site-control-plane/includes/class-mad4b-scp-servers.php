@@ -6,6 +6,7 @@ require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';
 require_once __DIR__ . '/class-mad4b-scp-staging-write-grant-reconciliation.php';
+require_once __DIR__ . '/class-mad4b-scp-developer-authority.php';
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
 MAD4B_SCP_Site_Profile_Write_Enablement::boot();
@@ -35,7 +36,10 @@ final class MAD4B_SCP_Servers {
 				'mad4b/plugin-lifecycle-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 			), $governed_status ),
-			'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
+			'mad4b-enrollment' => array_merge(
+				array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
+				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array()
+			),
 			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
@@ -340,10 +344,14 @@ final class MAD4B_SCP_Servers {
 			return array_values( array_unique( $tools ) );
 		}
 
+		$enrollment_candidates = self::core_tools( 'mad4b-enrollment' );
+		if ( class_exists( 'MAD4B_SCP_Developer_Authority' ) ) {
+			$enrollment_candidates = array_values( array_diff( $enrollment_candidates, MAD4B_SCP_Developer_Authority::enrollment_tools() ) );
+		}
 		$candidates = array_merge(
 			self::core_tools( 'mad4b-read' ),
 			self::core_tools( 'mad4b-chatgpt' ),
-			self::core_tools( 'mad4b-enrollment' ),
+			$enrollment_candidates,
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
 			self::external_write_tools()
