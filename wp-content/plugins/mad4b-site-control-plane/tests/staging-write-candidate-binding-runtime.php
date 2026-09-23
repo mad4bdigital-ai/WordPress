@@ -1,5 +1,6 @@
 <?php
 define( 'ABSPATH', '/tmp/' );
+define( 'MAD4B_MCP_MUTATION_ENABLED', true );
 
 class WP_Error {
 	private $code;
@@ -28,6 +29,32 @@ function get_option( $key, $default = false ) { return array_key_exists( $key, $
 function update_option( $key, $value, $autoload = null ) { $before = array_key_exists( $key, $GLOBALS['mad4b_bind_options'] ) ? $GLOBALS['mad4b_bind_options'][ $key ] : null; $GLOBALS['mad4b_bind_options'][ $key ] = $value; return $before !== $value; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['mad4b_bind_abilities'][ $name ] ); }
 function wp_register_ability( $name, $args ) { $GLOBALS['mad4b_bind_abilities'][ $name ] = $args; return true; }
+
+final class MAD4B_SCP_Policy {
+	public static function can_breakglass() { return false; }
+}
+final class MAD4B_SCP_Identity_Context {
+	public static function current() {
+		return array(
+			'authenticated' => true,
+			'auth_method' => 'oauth2_bearer',
+			'subject_type' => 'oauth',
+			'subject_fingerprint' => str_repeat( '1', 64 ),
+		);
+	}
+}
+final class MAD4B_SCP_Agent_Registry {
+	public static function resolve_agent( $identity ) {
+		return array(
+			'id' => 5,
+			'public_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+			'slug' => 'chatgpt-governed-write',
+			'status' => 'enabled',
+			'environment' => 'staging',
+			'wp_user_id' => 7,
+		);
+	}
+}
 
 final class MAD4B_SCP_OAuth_Resource_Bridge {
 	public static function verified_bearer_active() { return true; }
@@ -65,7 +92,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	public static $current_build = '11acee18169e65a4d9e5437e77be08e31a901a04951d8128127ff95f60539bbd';
 	public static $current_manifest = '2fed7ef3164cc6909a4f40ed28e80994c4c9e4129d040e9928e9dda9fe793f3f';
 	public static $current_artifact = 'mad4b-site-control-plane-general-distribution-kit-3b1dd1c339e3dd3edc315cb65f6bcdb6f17ef6c9';
-	public static $inventory_fp = 'b7c959d961665d3a58a48eb78cf42c12d507175176d5f6a4b56db92f603919be';
+	public static $inventory_fp = '';
 	public static $rows = array(
 		array( 'ability' => 'mad4b/content-update-post', 'provider' => 'core', 'mounted' => true, 'exact_grant_present' => true, 'grant_state' => 'exact_current_environment' ),
 		array( 'ability' => 'mad4b/plugin-activate', 'provider' => 'core', 'mounted' => true, 'exact_grant_present' => true, 'grant_state' => 'exact_current_environment' ),
@@ -131,6 +158,13 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return $status;
 	}
 }
+
+$inventory_rows = array();
+foreach ( MAD4B_SCP_Staging_Write_Authority::$rows as $row ) {
+	$inventory_rows[] = array( 'ability' => $row['ability'], 'provider' => sanitize_key( $row['provider'] ) );
+}
+usort( $inventory_rows, static function ( $a, $b ) { return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] ); } );
+MAD4B_SCP_Staging_Write_Authority::$inventory_fp = hash( 'sha256', wp_json_encode( $inventory_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
 $old_status = array(
 	'contract' => 'mad4b.governed-write-authority.v2',
