@@ -33,6 +33,14 @@ final class MAD4B_SCP_Agent_Registry {
 		return $row ? $row : null;
 	}
 
+	public static function get_agent_by_slug( $slug ) {
+		global $wpdb; $t = MAD4B_SCP_Schema::tables();
+		$slug = sanitize_title( (string) $slug );
+		if ( '' === $slug ) return null;
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['agents']} WHERE slug = %s LIMIT 1", $slug ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		return $row ? $row : null;
+	}
+
 	public static function get_agent_by_public_id( $public_id ) {
 		global $wpdb; $t = MAD4B_SCP_Schema::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['agents']} WHERE public_id = %s LIMIT 1", (string) $public_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
@@ -120,6 +128,7 @@ final class MAD4B_SCP_Agent_Registry {
 			if ( $provider !== $expected_provider ) return new WP_Error( 'mad4b_grant_provider_mismatch', 'Grant provider does not match the certified provider.', array( 'expected_provider' => $expected_provider ) );
 		}
 		if ( 'mad4b-breakglass' === $server_id && ! apply_filters( 'mad4b_scp_allow_breakglass_grant_creation', false, $agent, $ability_name, $provider, $environment ) ) return new WP_Error( 'mad4b_breakglass_grant_creation_denied', 'Breakglass grants require an explicit exceptional administration path.' );
+		if ( 'mad4b-developer-breakglass' === $server_id && ! apply_filters( 'mad4b_scp_allow_developer_breakglass_grant_creation', false, $agent, $ability_name, $provider, $environment ) ) return new WP_Error( 'mad4b_developer_breakglass_grant_creation_denied', 'Developer Breakglass grants require an explicit exceptional Developer authority path.' );
 		$encoded = wp_json_encode( $constraints ); if ( false === $encoded || strlen( $encoded ) > 16384 ) return new WP_Error( 'mad4b_grant_constraints_invalid', 'Resource constraints are invalid or too large.' );
 		$now = self::now();
 		$ok = $wpdb->insert( $t['grants'], array( 'agent_id' => (int) $agent['id'], 'effect' => $effect, 'server_id' => $server_id, 'ability_name' => $ability_name, 'provider' => $provider, 'resource_schema_version' => 'v1', 'resource_constraints' => $encoded, 'environment' => $environment, 'created_by' => get_current_user_id(), 'created_at' => $now, 'updated_at' => $now ), array( '%d','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
