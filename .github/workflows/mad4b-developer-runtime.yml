@@ -1,0 +1,44 @@
+name: MAD4B Developer Runtime
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - '.github/workflows/mad4b-developer-runtime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Developer Plane contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+
+      - name: Developer Plane static contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/developer-runtime-contract.py
