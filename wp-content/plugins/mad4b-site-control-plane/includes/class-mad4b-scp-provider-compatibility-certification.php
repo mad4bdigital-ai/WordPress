@@ -274,6 +274,8 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 						'activation_required' => ! empty( $capability['activation_required'] ),
 						'canary_eligible' => ! empty( $capability['canary_eligible'] ),
 						'behavioral_evidence_state' => isset( $capability['behavioral_evidence']['state'] ) ? $capability['behavioral_evidence']['state'] : 'not_applicable',
+						'artifact_authority_bound' => ! empty( $capability['artifact_authority_bound'] ),
+						'artifact_authority_required' => ! empty( $capability['artifact_authority_required'] ),
 					);
 					if ( ! isset( $mounted_abilities[ (string) $ability ] ) ) {
 						$entry['surface'] = 'latent';
@@ -288,6 +290,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 					} else {
 						$entry['surface'] = 'write';
 						$entry['eligible'] = ! empty( $capability['write_eligible'] );
+						if ( ! $entry['eligible'] ) $entry['reason'] = ! empty( $capability['artifact_authority_required'] ) ? 'artifact_authority_required' : ( 'high_risk_write' === $entry['risk'] ? 'high_risk_activation_required' : 'capability_write_certification_required' );
 					}
 					if ( $entry['eligible'] ) $eligible[] = $entry; else $blocked[] = $entry;
 				}
@@ -355,7 +358,11 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			);
 			if ( ! empty( $status['write_eligible'] ) ) $eligible[ $ability ] = $entry;
 			else {
-				$entry['reason'] = empty( $status ) ? 'ability_capability_not_cataloged' : ( 'high_risk_write' === $entry['risk'] ? 'high_risk_activation_required' : 'capability_write_certification_required' );
+				$entry['reason'] = empty( $status )
+					? 'ability_capability_not_cataloged'
+					: ( ! empty( $status['artifact_authority_required'] )
+						? 'artifact_authority_required'
+						: ( 'high_risk_write' === $entry['risk'] ? 'high_risk_activation_required' : 'capability_write_certification_required' ) );
 				$blocked[ $ability ] = $entry;
 			}
 		}
@@ -379,7 +386,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		else {
 			if ( ! empty( $status['artifact_authority_required'] ) ) $violations[] = 'artifact_authority_required';
 			if ( empty( $status['structural_compatible'] ) ) $violations[] = 'structural_contract_not_satisfied';
-			if ( isset( $status['certification_level'] ) && in_array( $status['certification_level'], array( self::LEVEL_DISCOVERED, self::LEVEL_READ, self::LEVEL_UNKNOWN ), true ) ) $violations[] = 'write_behavioral_certification_required';
+			if ( empty( $status['artifact_authority_required'] ) && isset( $status['certification_level'] ) && in_array( $status['certification_level'], array( self::LEVEL_DISCOVERED, self::LEVEL_READ, self::LEVEL_UNKNOWN ), true ) ) $violations[] = 'write_behavioral_certification_required';
 			if ( 'high_risk_write' === (string) ( $status['risk'] ?? '' ) && self::ACTIVATION_ACTIVE !== (string) ( $status['activation_stage'] ?? self::ACTIVATION_SHADOW ) ) $violations[] = 'high_risk_activation_required';
 			if ( self::LEVEL_QUARANTINED === (string) ( $status['certification_level'] ?? '' ) ) $violations[] = 'capability_quarantined';
 		}
