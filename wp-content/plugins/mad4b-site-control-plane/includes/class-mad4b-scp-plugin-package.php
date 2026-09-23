@@ -77,7 +77,7 @@ final class MAD4B_SCP_Plugin_Package {
 		$input = is_array( $input ) ? $input : array();
 		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
 		$component = isset( $input['component'] ) ? sanitize_key( (string) $input['component'] ) : '';
-		$source = isset( $input['source'] ) ? sanitize_key( (string) $input['source'] ) : 'wordpress_update_offer';
+		$source = isset( $input['source'] ) ? sanitize_key( (string) $input['source'] ) : 'auto_certified';
 		$reason = isset( $input['reason'] ) ? sanitize_text_field( (string) $input['reason'] ) : '';
 
 		$authority = self::authority( $provider, $component );
@@ -172,11 +172,12 @@ final class MAD4B_SCP_Plugin_Package {
 
 		$provider = sanitize_key( (string) $input['provider_id'] );
 		$component = isset( $input['component'] ) ? sanitize_key( (string) $input['component'] ) : '';
-		$source = isset( $input['source'] ) ? sanitize_key( (string) $input['source'] ) : 'wordpress_update_offer';
+		$source = isset( $input['source'] ) ? sanitize_key( (string) $input['source'] ) : 'auto_certified';
 		$authority = self::authority( $provider, $component );
 		if ( is_wp_error( $authority ) ) return $authority;
 
-		$package = self::materialize_package( $source, $authority['plugin_file'], $authority );
+		$resolved_source = isset( $plan['source']['resolved_source'] ) ? sanitize_key( (string) $plan['source']['resolved_source'] ) : $source;
+		$package = self::materialize_package( $resolved_source, $authority['plugin_file'], $authority );
 		if ( is_wp_error( $package ) ) return $package;
 
 		$before = self::disk_state( $authority['plugin_file'] );
@@ -267,6 +268,12 @@ final class MAD4B_SCP_Plugin_Package {
 		$archive = isset( $authority['archive'] ) ? basename( (string) $authority['archive'] ) : '';
 		$sha = isset( $authority['archive_sha256'] ) ? strtolower( trim( (string) $authority['archive_sha256'] ) ) : '';
 		$critical = isset( $authority['critical_files'] ) && is_array( $authority['critical_files'] ) ? $authority['critical_files'] : array();
+		$certification_authority = isset( $authority['certification_authority'] ) ? trim( (string) $authority['certification_authority'] ) : '';
+		$repository_artifact_path = '';
+		if ( 0 === strpos( $certification_authority, 'repository_artifact:' ) ) {
+			$repository_artifact_path = ltrim( substr( $certification_authority, strlen( 'repository_artifact:' ) ), '/' );
+			if ( ! preg_match( '#^wp-content/plugins/[A-Za-z0-9._-]+\.zip$#', $repository_artifact_path ) || basename( $repository_artifact_path ) !== $archive ) $repository_artifact_path = '';
+		}
 		if ( '' === $plugin_file || '.' === dirname( $plugin_file ) || '' === dirname( $plugin_file ) || '' === $version || '' === $archive || ! preg_match( '/^[a-f0-9]{64}$/', $sha ) || empty( $critical ) ) {
 			return new WP_Error( 'mad4b_plugin_package_authority_incomplete', 'Certified provider package authority is incomplete.' );
 		}
@@ -278,29 +285,99 @@ final class MAD4B_SCP_Plugin_Package {
 			'archive' => $archive,
 			'archive_sha256' => $sha,
 			'critical_files' => $critical,
+			'repository_artifact_path' => $repository_artifact_path,
 		);
 	}
 
 	private static function source_state( $source, $plugin_file, array $authority ) {
-		if ( 'certified_local_archive' === $source ) {
-			$path = self::local_archive_path( $authority['archive'] );
-			if ( '' === $path || ! is_file( $path ) || ! is_readable( $path ) ) return new WP_Error( 'certified_local_archive_unavailable', 'Certified local archive is unavailable.' );
-			$sha = hash_file( 'sha256', $path );
-			return array(
-				'source' => $source,
-				'available' => is_string( $sha ) && hash_equals( $authority['archive_sha256'], strtolower( $sha ) ),
-				'package_sha256_verified' => is_string( $sha ) && hash_equals( $authority['archive_sha256'], strtolower( $sha ) ),
-				'archive' => $authority['archive'],
-				'caller_supplied_location_allowed' => false,
-			);
+		$source = sanitize_key( (string) $source );
+		if ( 'auto_certified' === $source ) {
+			$offer = self::wordpress_update_offer_state( $plugin_file, $authority );
+			if ( ! empty( $offer['available'] ) ) {
+				$offer['requested_source'] = 'auto_certified';
+				$offer['resolved_source'] = 'wordpress_update_offer';
+				return $offer;
+			}
+			$local = self::certified_local_archive_state( $authority );
+			if ( ! empty( $local['available'] ) ) {
+				$local['requested_source'] = 'auto_certified';
+				$local['resolved_source'] = 'certified_local_archive';
+				return $local;
+			}
+			$repository = self::certified_repository_archive_state( $authority );
+			if ( ! empty( $repository['available'] ) ) {
+				$repository['requested_source'] = 'auto_certified';
+				$repository['resolved_source'] = 'certified_repository_archive';
+				return $repository;
+			}
+			return new WP_Error( 'certified_package_source_unavailable', 'No exact server-resolved certified package source is currently available.' );
 		}
-		if ( 'wordpress_update_offer' !== $source ) return new WP_Error( 'plugin_package_source_not_allowed', 'Only server-resolved certified_local_archive or wordpress_update_offer sources are allowed.' );
+		if ( 'certified_local_archive' === $source ) return self::certified_local_archive_state( $authority );
+		if ( 'certified_repository_archive' === $source ) return self::certified_repository_archive_state( $authority );
+		if ( 'wordpress_update_offer' === $source ) return self::wordpress_update_offer_state( $plugin_file, $authority );
+		return new WP_Error( 'plugin_package_source_not_allowed', 'Only server-resolved auto_certified, certified_repository_archive, certified_local_archive, or wordpress_update_offer sources are allowed.' );
+	}
+
+	private static function certified_local_archive_state( array $authority ) {
+		$path = self::local_archive_path( $authority['archive'] );
+		if ( '' === $path || ! is_file( $path ) || ! is_readable( $path ) ) return array(
+			'source' => 'certified_local_archive',
+			'resolved_source' => 'certified_local_archive',
+			'available' => false,
+			'package_sha256_verified' => false,
+			'archive' => $authority['archive'],
+			'caller_supplied_location_allowed' => false,
+			'remote_request_performed' => false,
+		);
+		$sha = hash_file( 'sha256', $path );
+		$verified = is_string( $sha ) && hash_equals( $authority['archive_sha256'], strtolower( $sha ) );
+		return array(
+			'source' => 'certified_local_archive',
+			'resolved_source' => 'certified_local_archive',
+			'available' => $verified,
+			'package_sha256_verified' => $verified,
+			'archive' => $authority['archive'],
+			'caller_supplied_location_allowed' => false,
+			'remote_request_performed' => false,
+		);
+	}
+
+	private static function certified_repository_archive_state( array $authority ) {
+		$source_sha = self::repository_source_commit_sha();
+		$path = isset( $authority['repository_artifact_path'] ) ? (string) $authority['repository_artifact_path'] : '';
+		$available = 1 === preg_match( '/^[a-f0-9]{40}$/', $source_sha ) && '' !== $path;
+		return array(
+			'source' => 'certified_repository_archive',
+			'resolved_source' => 'certified_repository_archive',
+			'available' => $available,
+			'repository_source_commit_sha' => $source_sha,
+			'repository_artifact_path' => $path,
+			'exact_build_source_bound' => $available,
+			'package_sha256_verified' => false,
+			'package_sha256_verified_at_apply' => true,
+			'caller_supplied_location_allowed' => false,
+			'remote_request_performed' => false,
+		);
+	}
+
+	private static function wordpress_update_offer_state( $plugin_file, array $authority ) {
 		$offer = self::update_offer( $plugin_file );
-		if ( empty( $offer ) ) return new WP_Error( 'wordpress_update_offer_unavailable', 'WordPress has no update offer for the certified plugin file.' );
+		if ( empty( $offer ) ) return array(
+			'source' => 'wordpress_update_offer',
+			'resolved_source' => 'wordpress_update_offer',
+			'available' => false,
+			'target_version_match' => false,
+			'package_download_available' => false,
+			'package_sha256_verified' => false,
+			'package_sha256_verified_at_apply' => true,
+			'caller_supplied_location_allowed' => false,
+			'remote_request_performed' => false,
+		);
 		$offered_version = isset( $offer->new_version ) ? trim( (string) $offer->new_version ) : '';
 		$package = isset( $offer->package ) ? trim( (string) $offer->package ) : '';
 		return array(
-			'source' => $source,
+			'source' => 'wordpress_update_offer',
+			'resolved_source' => 'wordpress_update_offer',
 			'available' => '' !== $package && hash_equals( $authority['version'], $offered_version ),
 			'offered_version' => $offered_version,
 			'target_version_match' => hash_equals( $authority['version'], $offered_version ),
@@ -308,6 +385,7 @@ final class MAD4B_SCP_Plugin_Package {
 			'package_sha256_verified' => false,
 			'package_sha256_verified_at_apply' => true,
 			'caller_supplied_location_allowed' => false,
+			'remote_request_performed' => false,
 		);
 	}
 
@@ -317,14 +395,29 @@ final class MAD4B_SCP_Plugin_Package {
 			if ( '' === $path || ! is_file( $path ) ) return new WP_Error( 'mad4b_certified_local_archive_missing', 'Certified local archive is missing.' );
 			$sha = strtolower( (string) hash_file( 'sha256', $path ) );
 			if ( ! hash_equals( $authority['archive_sha256'], $sha ) ) return new WP_Error( 'mad4b_certified_archive_hash_mismatch', 'Certified local archive SHA-256 does not match repository authority.' );
-			return array( 'path' => $path, 'sha256' => $sha, 'temporary' => false );
+			return array( 'path' => $path, 'sha256' => $sha, 'temporary' => false, 'resolved_source' => $source );
 		}
 
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+
+		if ( 'certified_repository_archive' === $source ) {
+			$url = self::repository_archive_url( $authority );
+			if ( is_wp_error( $url ) ) return $url;
+			$tmp = download_url( $url, 300 );
+			if ( is_wp_error( $tmp ) ) return new WP_Error( 'mad4b_repository_package_download_failed', 'Exact repository-certified package download failed.' );
+			$sha = is_file( $tmp ) ? strtolower( (string) hash_file( 'sha256', $tmp ) ) : '';
+			if ( '' === $sha || ! hash_equals( $authority['archive_sha256'], $sha ) ) {
+				@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				return new WP_Error( 'mad4b_repository_package_hash_mismatch', 'Repository package does not match the exact certified archive SHA-256.' );
+			}
+			return array( 'path' => $tmp, 'sha256' => $sha, 'temporary' => true, 'resolved_source' => $source );
+		}
+
+		if ( 'wordpress_update_offer' !== $source ) return new WP_Error( 'mad4b_plugin_package_resolved_source_invalid', 'Resolved certified package source is invalid.' );
 		$offer = self::update_offer( $plugin_file );
 		if ( empty( $offer ) || empty( $offer->package ) || empty( $offer->new_version ) || ! hash_equals( $authority['version'], (string) $offer->new_version ) ) {
 			return new WP_Error( 'mad4b_wordpress_update_offer_changed', 'WordPress update offer no longer matches the certified target version.' );
 		}
-		require_once ABSPATH . 'wp-admin/includes/file.php';
 		$tmp = download_url( (string) $offer->package, 300 );
 		if ( is_wp_error( $tmp ) ) return new WP_Error( 'mad4b_plugin_package_download_failed', 'Server-resolved WordPress update package download failed.' );
 		$sha = is_file( $tmp ) ? strtolower( (string) hash_file( 'sha256', $tmp ) ) : '';
@@ -332,7 +425,25 @@ final class MAD4B_SCP_Plugin_Package {
 			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			return new WP_Error( 'mad4b_plugin_package_download_hash_mismatch', 'Downloaded update package does not match the exact certified archive SHA-256.' );
 		}
-		return array( 'path' => $tmp, 'sha256' => $sha, 'temporary' => true );
+		return array( 'path' => $tmp, 'sha256' => $sha, 'temporary' => true, 'resolved_source' => $source );
+	}
+
+	private static function repository_source_commit_sha() {
+		$path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'config/functional-gap-contract-evidence.generated.json' : '';
+		if ( '' === $path || ! is_file( $path ) || ! is_readable( $path ) ) return '';
+		$decoded = json_decode( (string) file_get_contents( $path ), true );
+		$sha = is_array( $decoded ) && isset( $decoded['source_commit_sha'] ) ? strtolower( trim( (string) $decoded['source_commit_sha'] ) ) : '';
+		return 1 === preg_match( '/^[a-f0-9]{40}$/', $sha ) ? $sha : '';
+	}
+
+	private static function repository_archive_url( array $authority ) {
+		$sha = self::repository_source_commit_sha();
+		$path = isset( $authority['repository_artifact_path'] ) ? ltrim( (string) $authority['repository_artifact_path'], '/' ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $sha ) || ! preg_match( '#^wp-content/plugins/[A-Za-z0-9._-]+\.zip$#', $path ) ) {
+			return new WP_Error( 'mad4b_repository_package_identity_unavailable', 'Exact build-bound repository package identity is unavailable.' );
+		}
+		$segments = array_map( 'rawurlencode', explode( '/', $path ) );
+		return 'https://raw.githubusercontent.com/mad4bdigital-ai/WordPress/' . $sha . '/' . implode( '/', $segments );
 	}
 
 	private static function update_offer( $plugin_file ) {
@@ -488,7 +599,7 @@ final class MAD4B_SCP_Plugin_Package {
 			'properties' => array(
 				'provider_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 80 ),
 				'component' => array( 'type' => 'string', 'maxLength' => 80, 'default' => '' ),
-				'source' => array( 'type' => 'string', 'enum' => array( 'wordpress_update_offer', 'certified_local_archive' ), 'default' => 'wordpress_update_offer' ),
+				'source' => array( 'type' => 'string', 'enum' => array( 'auto_certified', 'wordpress_update_offer', 'certified_repository_archive', 'certified_local_archive' ), 'default' => 'auto_certified' ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
 			),
 			'required' => array( 'provider_id', 'reason' ),
