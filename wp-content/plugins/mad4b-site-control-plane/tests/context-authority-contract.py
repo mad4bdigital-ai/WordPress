@@ -72,6 +72,9 @@ require(authority, "'actor_type' => 'wp_admin'", "human review audit actor type"
 require(authority, "'wp_user_id' => get_current_user_id()", "human review audit WordPress user attribution")
 require(authority, "mad4b_context_required_scope_confirmation_required", "site-wide required Context escalation confirmation")
 require(authority, "required_scope_escalated", "required Context escalation audit evidence")
+require(authority, "required_scope_shifted", "required Context category-shift evidence")
+require(authority, "required_scope_reduced", "required Context reduction evidence")
+require(authority, "required_scope_changed", "unified site-wide required scope guard")
 require(authority, "mad4b_context_review_decision_invalid", "bounded human review decision enum")
 require(authority, "mad4b_context_review_note_required", "review rationale required for non-default governance decisions")
 require(authority, "review_decision", "persisted review decision semantics")
@@ -484,6 +487,7 @@ require(admin, "expected_content_hash", "admin exact content review binding")
 require(admin, "expected_registry_revision", "admin registry revision review binding")
 require(admin, "expected_authority_manifest_fingerprint", "admin authority fingerprint review binding")
 require(admin, "required_scope_confirmed", "admin required Context escalation confirmation")
+require(admin, "may change site-wide Brand Context requirements", "required-set shift/reduction confirmation UX")
 require(admin, "mad4b-context-review-cell", "sticky review action UX")
 require(admin, "refreshReviewPanels", "AJAX review readback refresh")
 
@@ -537,4 +541,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v60: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v61: PASS")
