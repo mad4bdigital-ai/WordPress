@@ -301,6 +301,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'authenticated' => true,
 			'subject_type' => 'oauth',
 			'subject_fingerprint' => hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] ),
+			'issuer_fingerprint' => isset( $verified['issuer_fingerprint'] ) ? (string) $verified['issuer_fingerprint'] : '',
+			'client_fingerprint' => isset( $verified['client_fingerprint'] ) ? (string) $verified['client_fingerprint'] : '',
+			'token_instance_fingerprint' => isset( $verified['token_instance_fingerprint'] ) ? (string) $verified['token_instance_fingerprint'] : '',
 			'token_scopes' => $verified['scopes'],
 			'approval_ticket_id' => '',
 			'auth_method' => 'oauth2_bearer',
@@ -388,7 +391,30 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$scopes = self::extract_scopes( $claims );
 		if ( is_wp_error( $scopes ) ) return $scopes;
 		if ( ! in_array( self::READ_SCOPE, $scopes, true ) ) return new WP_Error( 'mad4b_oauth_scope_missing', 'Access token does not grant mad4b:read.' );
-		return array( 'issuer' => $issuer, 'subject' => $subject, 'scopes' => $scopes );
+		$client_id = '';
+		if ( isset( $claims['client_id'] ) ) {
+			if ( ! is_string( $claims['client_id'] ) || '' === trim( $claims['client_id'] ) || strlen( trim( $claims['client_id'] ) ) > self::MAX_URI_BYTES ) return new WP_Error( 'mad4b_oauth_client_claim_invalid', 'Access token client_id claim is invalid.' );
+			$client_id = trim( $claims['client_id'] );
+		}
+		if ( isset( $claims['azp'] ) ) {
+			if ( ! is_string( $claims['azp'] ) || '' === trim( $claims['azp'] ) || strlen( trim( $claims['azp'] ) ) > self::MAX_URI_BYTES ) return new WP_Error( 'mad4b_oauth_authorized_party_invalid', 'Access token azp claim is invalid.' );
+			$azp = trim( $claims['azp'] );
+			if ( '' !== $client_id && ! hash_equals( $client_id, $azp ) ) return new WP_Error( 'mad4b_oauth_client_claim_mismatch', 'Access token client_id and azp claims disagree.' );
+			if ( '' === $client_id ) $client_id = $azp;
+		}
+		$jti = '';
+		if ( isset( $claims['jti'] ) ) {
+			if ( ! is_string( $claims['jti'] ) || '' === trim( $claims['jti'] ) || strlen( trim( $claims['jti'] ) ) > 512 ) return new WP_Error( 'mad4b_oauth_jti_invalid', 'Access token jti claim is invalid.' );
+			$jti = trim( $claims['jti'] );
+		}
+		return array(
+			'issuer' => $issuer,
+			'subject' => $subject,
+			'scopes' => $scopes,
+			'issuer_fingerprint' => hash( 'sha256', 'oauth-issuer' . "\0" . $issuer ),
+			'client_fingerprint' => '' !== $client_id ? hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id ) : '',
+			'token_instance_fingerprint' => '' !== $jti ? hash( 'sha256', 'oauth-token-instance' . "\0" . $issuer . "\0" . $jti ) : '',
+		);
 	}
 
 	private static function extract_scopes( array $claims ) {
