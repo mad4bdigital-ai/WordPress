@@ -161,8 +161,17 @@ for forbidden_grant in [
 
 if "'mad4b/staging-write-grant-reconcile'" not in servers:
     raise SystemExit('bounded grant reconciliation is missing from enrollment server catalog')
-if "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' );" not in servers:
-    raise SystemExit('bounded bootstrap mutations are not projected into the unified ChatGPT catalog')
+chatgpt_transport = servers.split('public static function chatgpt_tools()', 1)[1].split('public static function chatgpt_full_catalog_candidates()', 1)[0]
+if '$bounded_bootstrap = array(' not in chatgpt_transport:
+    raise SystemExit('bounded bootstrap transport set is missing from the minimal ChatGPT catalog')
+for bootstrap_ability in (
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+):
+    if bootstrap_ability not in chatgpt_transport:
+        raise SystemExit('bounded bootstrap mutation missing from minimal ChatGPT transport: ' + bootstrap_ability)
 core_write = servers[servers.index('private static function core_write_candidates()'):servers.index('private static function registered_adapter_write_candidates()')]
 if "'mad4b/staging-write-grant-reconcile'" in core_write:
     raise SystemExit('grant reconciliation must not become a normal mad4b-write candidate')
