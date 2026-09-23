@@ -100,9 +100,11 @@ final class MAD4B_SCP_Adapter_Registry {
 		$public_candidates = array();
 		$public_leaks = array();
 		$provider_contract_blockers = array();
+		$provider_contract_advisories = array();
 		$provider_version_drift = array();
 		$required_provider_missing = array();
 		$mutation_blocked_adapters = array();
+		$provider_adapter_ids = array();
 		$ability_names = $this->core_ability_names();
 		$surface_abilities = array();
 		foreach ( array( 'read', 'content', 'admin' ) as $surface ) {
@@ -129,6 +131,12 @@ final class MAD4B_SCP_Adapter_Registry {
 		$public_leaks = $default_server_suppressed ? array() : $public_candidates;
 
 		$inventory = $this->inventory();
+		$plugin_coverage = $this->plugin_coverage();
+		$active_adapter_ids = array();
+		foreach ( isset( $plugin_coverage['plugins'] ) && is_array( $plugin_coverage['plugins'] ) ? $plugin_coverage['plugins'] : array() as $plugin_item ) {
+			if ( empty( $plugin_item['active'] ) || empty( $plugin_item['adapter_id'] ) ) continue;
+			$active_adapter_ids[ sanitize_key( (string) $plugin_item['adapter_id'] ) ] = true;
+		}
 		$available = 0;
 		$provider_runtime = array();
 		foreach ( $inventory['adapters'] as $adapter ) {
@@ -136,6 +144,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			if ( isset( $adapter['provider_certification']['provider'] ) ) {
 				$key = (string) $adapter['provider_certification']['provider'];
 				$provider_runtime[ $key ] = $adapter['provider_certification'];
+				if ( ! empty( $adapter['id'] ) ) $provider_adapter_ids[ $key ] = sanitize_key( (string) $adapter['id'] );
 			}
 			if ( ! empty( $adapter['mutation_requires_certification'] ) ) {
 				$cert = isset( $adapter['provider_certification'] ) && is_array( $adapter['provider_certification'] ) ? $adapter['provider_certification'] : array();
@@ -151,10 +160,21 @@ final class MAD4B_SCP_Adapter_Registry {
 		foreach ( $required_providers as $provider ) {
 			$status = isset( $provider_runtime[ $provider ] ) ? $provider_runtime[ $provider ] : MAD4B_SCP_Provider_Contracts::runtime_status( $provider, false );
 			$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' ) ? MAD4B_SCP_Provider_Contracts::violations_for_status( $status ) : array( 'certification_authority_unavailable' );
-			if ( ! empty( $violations ) ) {
+			if ( empty( $violations ) ) continue;
+			$adapter_id = isset( $provider_adapter_ids[ $provider ] ) ? $provider_adapter_ids[ $provider ] : '';
+			$provider_active = 'mcp_adapter' === (string) $provider || ( '' !== $adapter_id && isset( $active_adapter_ids[ $adapter_id ] ) );
+			if ( $provider_active ) {
 				$provider_contract_blockers[ $provider ] = $violations;
 				if ( in_array( 'version_drift', $violations, true ) ) $provider_version_drift[] = $provider;
 				if ( isset( $status['status'] ) && 'unavailable' === $status['status'] ) $required_provider_missing[] = $provider;
+			} else {
+				$provider_contract_advisories[ $provider ] = array(
+					'violations' => $violations,
+					'adapter_id' => $adapter_id,
+					'active' => false,
+					'blocking' => false,
+					'reason' => 'provider_not_active_in_current_runtime',
+				);
 			}
 		}
 
@@ -183,7 +203,6 @@ final class MAD4B_SCP_Adapter_Registry {
 
 		$mcp_peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
 		$mcp_peer_governance_ok = ! empty( $mcp_peer_governance['inventory_ready'] ) && empty( $mcp_peer_governance['write_side_channel_detected'] );
-		$plugin_coverage = $this->plugin_coverage();
 		$support_requests = isset( $plugin_coverage['support_requests'] ) && is_array( $plugin_coverage['support_requests'] ) ? $plugin_coverage['support_requests'] : array();
 		$functional_family_counts = isset( $plugin_coverage['functional_family_counts'] ) && is_array( $plugin_coverage['functional_family_counts'] ) ? $plugin_coverage['functional_family_counts'] : array();
 		$functional_family_states = isset( $plugin_coverage['functional_family_states'] ) && is_array( $plugin_coverage['functional_family_states'] ) ? $plugin_coverage['functional_family_states'] : array();
@@ -216,6 +235,8 @@ final class MAD4B_SCP_Adapter_Registry {
 			'mcp_adapter_certification' => $mcp_certification,
 			'provider_certification_ok' => $provider_contract_ok,
 			'provider_contract_blockers' => $provider_contract_blockers,
+			'provider_contract_advisories' => $provider_contract_advisories,
+			'provider_inactive_drift_is_blocking' => false,
 			'provider_version_drift' => array_values( array_unique( $provider_version_drift ) ),
 			'required_providers' => $required_providers,
 			'required_provider_missing' => array_values( array_unique( $required_provider_missing ) ),
