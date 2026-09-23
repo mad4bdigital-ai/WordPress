@@ -340,7 +340,7 @@ for ability in [
     "context/recreate-drive-asset",
 ]:
     require(adapter, ability, f"Context adapter ability {ability}")
-require(adapter, "'contract' => 'mad4b.context-asset-list.v3'", "task-isolated Context asset list contract")
+require(adapter, "'contract' => 'mad4b.context-asset-list.v4'", "task-isolated Context asset list v4 contract")
 require(adapter, "mad4b_context_task_scope_required", "explicit task-attachment listing requires exact task scope")
 require(adapter, "hash_equals( $asset_scope, $task_scope )", "task attachment metadata exact-scope isolation")
 require(adapter, "'task_scope' => array( 'type' => 'string', 'maxLength' => 160", "bounded task_scope asset-list input")
