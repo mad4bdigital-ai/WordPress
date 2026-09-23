@@ -144,6 +144,8 @@ assert "'mad4b-developer', 'mad4b-developer-breakglass'" in transport
 
 
 # Developer transport must be first-class but isolated from the operational resource.
+assert "array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' )" in connection
+
 for marker in [
     "'mad4b-developer' => array( 'MAD4B_SCP_Servers', 'can_developer_transport' )",
     "'mad4b-developer-breakglass' => array( 'MAD4B_SCP_Servers', 'can_developer_breakglass_transport' )",
@@ -194,4 +196,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v9: PASS")
+print("mad4b.developer-runtime-contract.v10: PASS")
