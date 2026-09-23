@@ -821,6 +821,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			} else {
 				if ( '' === $configured_agent || ! hash_equals( $configured_agent, (string) $agent['public_id'] ) ) $blockers[] = 'ai_review_agent_mismatch';
 				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) $blockers[] = 'ai_review_agent_ineligible';
+				$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
+				if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) $blockers[] = 'ai_review_agent_not_profile_owned';
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', $ai_ability, 'core' );
 				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_review_exact_nhi_grant_missing';
 			}
