@@ -17,19 +17,19 @@ for marker in required_cache_properties:
     assert marker in servers, marker
 
 required_fast_paths = [
-    "if ( is_array( self::$registered_adapter_write_candidates_cache ) ) return self::$registered_adapter_write_candidates_cache;",
-    "if ( is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;",
-    "if ( is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;",
-    "if ( ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];",
+    "if ( $cacheable && is_array( self::$registered_adapter_write_candidates_cache ) ) return self::$registered_adapter_write_candidates_cache;",
+    "if ( $cacheable && is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;",
+    "if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;",
+    "if ( $cacheable && ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) ) return self::$provider_for_ability_cache[ $cache_key ];",
 ]
 for marker in required_fast_paths:
     assert marker in servers, marker
 
 required_population = [
-    "self::$registered_adapter_write_candidates_cache = $result;",
-    "self::$external_write_tools_cache = array_values( array_unique( array_diff( $write, array( 'mad4b/database-raw-query' ) ) ) );",
-    "self::$chatgpt_tools_cache = array_values( array_unique( $tools ) );",
-    "self::$chatgpt_tools_cache = $tools;",
+    "if ( $cacheable ) self::$registered_adapter_write_candidates_cache = $result;",
+    "if ( $cacheable ) self::$external_write_tools_cache = $result;",
+    "if ( $cacheable ) self::$chatgpt_tools_cache = $tools;",
+    "if ( $cacheable ) self::$chatgpt_tools_cache = $tools;",
     "self::$provider_for_ability_cache[ $cache_key ] = $value;",
 ]
 for marker in required_population:
@@ -51,7 +51,17 @@ for forbidden in [
 assert '$cache_key = $server_id . "\\0" . $ability_name;' in servers
 assert "$dynamic_write_resolution = 'mad4b-write' === $server_id || self::is_external_write_candidate( $ability_name );" in servers
 assert "if ( ! $dynamic_write_resolution && array_key_exists( $cache_key, self::$provider_for_ability_cache ) )" in servers
-assert "$remember = static function ( $value ) use ( $cache_key, $dynamic_write_resolution )" in servers
+assert "$remember = static function ( $value ) use ( $cache_key, $cacheable, $dynamic_write_resolution )" in servers
+
+# Catalog memoization is legal only after registration lifecycle has settled.
+for marker in [
+    "private static function catalog_cacheable()",
+    "did_action( 'wp_abilities_api_init' ) > 0",
+    "did_action( 'rest_api_init' ) > 0",
+    "! doing_action( 'wp_abilities_api_init' )",
+    "! doing_action( 'rest_api_init' )",
+]:
+    assert marker in servers, marker
 
 # Runtime write eligibility must stay live within the same PHP request because
 # provider certification/isolation can converge after initial discovery.
@@ -70,4 +80,4 @@ assert "0.4.0-rc.56" in plugin
 assert "release=0.4.0-rc.56" in runtime_build
 assert "request-locally memoized in rc.56" in readme
 
-print("mad4b.chatgpt-catalog-performance.v2: PASS")
+print("mad4b.chatgpt-catalog-performance.v3: PASS")
