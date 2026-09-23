@@ -18,7 +18,7 @@ write_cert = (root / 'includes/class-mad4b-scp-write-runtime-certification.php')
 required_observer = [
     "const QUERY_MONITOR_CONTRACT = 'mad4b.query-monitor-regression.v1'",
     "const PROVENANCE_CONTRACT = 'mad4b.build-provenance.v1'",
-    "const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v2'",
+    "const EXTERNAL_ATTESTATION_CONTRACT = 'mad4b.external-handshake-attestation.v3'",
     "const WPML_RECEIPT_CONTRACT = 'mad4b.external-wpml-receipt.v1'",
     "const SNAPSHOT_VERIFY_CONTRACT = 'mad4b.snapshot-verify.v1'",
     "const AGGREGATE_CONTRACT = 'mad4b.live-acceptance-status.v1'",
@@ -67,6 +67,8 @@ required_observer = [
     "'breakglass_exposed'",
     "'foreign_write_tool_exposed'",
     "'write_inventory_fingerprint_match'",
+    "'write_transport_ready'",
+    "'direct_write_schema_leaks'",
 ]
 missing = [marker for marker in required_observer if marker not in observer]
 if missing:
@@ -324,14 +326,17 @@ for marker in [
     if marker not in runtime_test:
         raise SystemExit('Live Acceptance reachability regression is missing: ' + marker)
 
-# Canonical external handshake v3 certifies the stable external catalog while
-# current execution eligibility stays bound to mad4b-write separately.
-if "const CONTRACT = 'mad4b.external-handshake-evidence.v3'" not in external:
-    raise SystemExit('Canonical external-handshake v3 contract is missing.')
+# Canonical external handshake v4 certifies the minimal external transport and
+# the full logical write catalog independently, while execution eligibility
+# remains bound to mad4b-write.
+if "const CONTRACT = 'mad4b.external-handshake-evidence.v4'" not in external:
+    raise SystemExit('Canonical external-handshake v4 contract is missing.')
 for marker in [
     'public static function external_write_tools',
     'public static function is_external_write_candidate',
     'stable registered tenant-bound catalog',
+    "'write_transport_ready'",
+    "'direct_write_schema_leaks'",
 ]:
     if marker not in servers and marker not in external:
         raise SystemExit('Stable external write-catalog contract missing: ' + marker)
