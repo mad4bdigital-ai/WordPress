@@ -123,8 +123,9 @@ if ( ! empty( $rest_compat['rest_enabled_hook']['truncated'] ) || ! empty( $rest
 if ( empty( $rest_compat['wpml']['route_registered'] ) || empty( $rest_compat['wpml']['ready'] ) || empty( $rest_compat['wpml']['query_parameters_preserved'] ) ) $fail( 'WPML-compatible REST probe did not preserve query parameters.' );
 if ( ! empty( $rest_compat['wpml']['control_plane_block_detected'] ) ) $fail( 'Control Plane blocked the WPML-compatible REST probe.' );
 
-$write_authority = MAD4B_SCP_Staging_Write_Authority::reconcile();
-if ( empty( $write_authority['ready'] ) || 'ready' !== $write_authority['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_authority ) );
+$write_reconciliation = MAD4B_SCP_Staging_Write_Authority::reconcile();
+if ( empty( $write_reconciliation['ready'] ) || 'ready' !== $write_reconciliation['state'] ) $fail( 'Governed write authority is not ready: ' . wp_json_encode( $write_reconciliation ) );
+$write_authority = MAD4B_SCP_Staging_Write_Authority::status();
 if ( empty( $write_authority['mutation_gate_configured'] ) ) $fail( 'Governed mutation gate was not configured.' );
 if ( ! isset( $write_authority['approval_policy_contract'] ) || 'mad4b.remote-write-approval-policy.v2' !== (string) $write_authority['approval_policy_contract'] ) $fail( 'Write authority did not expose remote approval policy v2.' );
 if ( ! array_key_exists( 'all_remote_writes_require_exact_approval', $write_authority ) || false !== $write_authority['all_remote_writes_require_exact_approval'] ) $fail( 'Write authority did not expose bounded standing-exception truth.' );
