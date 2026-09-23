@@ -29,10 +29,42 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 			'flow_executor' => class_exists( 'BitApps\\Pi\\src\\Flow\\FlowExecutor' ),
 			'flow_history' => class_exists( 'BitApps\\Pi\\Model\\FlowHistory' ),
 		);
+		$status['runtime_contract_diagnostic'] = array(
+			'contract' => 'mad4b.bitflows-runtime-contract-diagnostic.v1',
+			'provider_runtime_available' => $this->is_available(),
+			'provider_version' => '' !== $this->detect_plugin_version() ? $this->detect_plugin_version() : ( isset( $status['version'] ) ? (string) $status['version'] : '' ),
+			'exact_expected_symbols' => $status['contracts'],
+			'declared_class_suffix_candidates' => array(
+				'flow_model' => self::declared_class_suffix_matches( array( '\\Model\\Flow' ) ),
+				'flow_node' => self::declared_class_suffix_matches( array( '\\Model\\FlowNode' ) ),
+				'flow_executor' => self::declared_class_suffix_matches( array( '\\Flow\\FlowExecutor', '\\FlowExecutor' ) ),
+				'flow_history' => self::declared_class_suffix_matches( array( '\\Model\\FlowHistory' ) ),
+			),
+			'autoload_or_bootstrap_mutation_attempted' => false,
+			'filesystem_scan_performed' => false,
+			'authorizing' => false,
+			'read_only' => true,
+		);
 		$status['execution_enabled'] = defined( 'MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED' ) && true === MAD4B_MCP_BITFLOWS_EXECUTION_ENABLED;
 		$status['flow_policy_default'] = 'deny';
 		$status['native_mcp_role'] = 'client';
 		return $status;
+	}
+
+	private static function declared_class_suffix_matches( array $suffixes ) {
+		$matches = array();
+		foreach ( get_declared_classes() as $class ) {
+			foreach ( $suffixes as $suffix ) {
+				$suffix = (string) $suffix;
+				if ( '' === $suffix || strlen( $class ) < strlen( $suffix ) ) continue;
+				if ( substr( $class, -strlen( $suffix ) ) === $suffix ) {
+					$matches[] = $class;
+					break;
+				}
+			}
+			if ( count( $matches ) >= 20 ) break;
+		}
+		return array_values( array_unique( $matches ) );
 	}
 	public function can_run_flow( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return false;
