@@ -14,6 +14,7 @@ impact = (inc / "class-mad4b-scp-impact-policy.php").read_text(encoding="utf-8")
 governance = (inc / "class-mad4b-scp-governance-abilities.php").read_text(encoding="utf-8")
 authority = (inc / "class-mad4b-scp-developer-authority.php").read_text(encoding="utf-8")
 registry = (inc / "class-mad4b-scp-agent-registry.php").read_text(encoding="utf-8")
+transport = (inc / "class-mad4b-scp-transport-context.php").read_text(encoding="utf-8")
 connection = (inc / "class-mad4b-scp-connection-status.php").read_text(encoding="utf-8")
 oauth = (inc / "class-mad4b-scp-oauth-resource-bridge.php").read_text(encoding="utf-8")
 oauth_context = (inc / "class-mad4b-scp-oauth-request-context-guard.php").read_text(encoding="utf-8")
@@ -125,7 +126,10 @@ assert "mad4b/developer-authority-rollback" in authority
 assert "completion_audit_failed" in authority
 assert "rollback_incomplete" in authority
 assert "get_agent_by_slug" in registry
+assert "Existing subject binding could not be re-enabled." in registry
+assert "array( 'status' => 'enabled', 'label' => sanitize_text_field( $label )" in registry
 assert "mad4b_scp_allow_developer_breakglass_grant_creation" in registry
+assert "'mad4b-developer', 'mad4b-developer-breakglass'" in transport
 
 
 # Developer transport must be first-class but isolated from the operational resource.
@@ -173,4 +177,4 @@ assert "class-mad4b-scp-developer-runtime.php" in plugin
 assert "0.4.0-rc.55" in plugin
 assert "release=0.4.0-rc.55" in runtime_build
 
-print("mad4b.developer-runtime-contract.v5: PASS")
+print("mad4b.developer-runtime-contract.v6: PASS")
