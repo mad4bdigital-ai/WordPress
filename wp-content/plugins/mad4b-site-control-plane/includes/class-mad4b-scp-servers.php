@@ -30,7 +30,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 			), $governed_status ),
 			'mad4b-chatgpt' => array_merge( array(
-				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory',
+				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
@@ -331,20 +331,10 @@ final class MAD4B_SCP_Servers {
 		}
 
 		$candidates = array_merge(
-			self::core_tools( 'mad4b-read' ),
 			self::core_tools( 'mad4b-chatgpt' ),
 			self::core_tools( 'mad4b-enrollment' ),
-			self::core_tools( 'mad4b-content' ),
-			self::core_tools( 'mad4b-admin' ),
 			self::external_write_tools()
 		);
-		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
-			$registry = MAD4B_SCP_Adapter_Registry::instance();
-			$registry->register_defaults();
-			foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface ) {
-				$candidates = array_merge( $candidates, $registry->ability_names( $surface ) );
-			}
-		}
 
 		$tools = array();
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
@@ -371,6 +361,30 @@ final class MAD4B_SCP_Servers {
 		$tools = array_values( array_unique( $tools ) );
 		sort( $tools, SORT_STRING );
 		return $tools;
+	}
+
+	public static function chatgpt_full_catalog_candidates() {
+		$candidates = array_merge(
+			self::core_tools( 'mad4b-read' ),
+			self::core_tools( 'mad4b-chatgpt' ),
+			self::core_tools( 'mad4b-enrollment' ),
+			self::core_tools( 'mad4b-content' ),
+			self::core_tools( 'mad4b-admin' ),
+			self::external_write_tools()
+		);
+		if ( class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			$registry->register_defaults();
+			foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface ) $candidates = array_merge( $candidates, $registry->ability_names( $surface ) );
+		}
+		$candidates = array_values( array_unique( array_map( 'strval', $candidates ) ) );
+		$candidates = array_values( array_diff( $candidates, array( 'mad4b/database-raw-query' ) ) );
+		sort( $candidates, SORT_STRING );
+		return $candidates;
+	}
+
+	public static function is_chatgpt_full_catalog_candidate( $ability_name ) {
+		return in_array( (string) $ability_name, self::chatgpt_full_catalog_candidates(), true );
 	}
 
 	private static function surface_for_server( $server_id ) {
@@ -467,7 +481,7 @@ final class MAD4B_SCP_Servers {
 		$admin_tools = array_merge( self::core_tools( 'mad4b-admin' ), $registry->ability_names( 'admin' ) );
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
-			$chatgpt_description = 'Exact enrolled Staging unified governed gateway exposing all registered normal read capabilities, bounded Site Profile bootstrap, and the stable governed write catalog. Write visibility never grants authority: execution remains delegated to mad4b-write and requires runtime eligibility, exact grants and approval. Breakglass and Raw SQL remain excluded.';
+			$chatgpt_description = 'Exact enrolled Staging governed gateway with a compact direct catalog for refresh reliability. Critical control-plane reads, bounded bootstrap and the stable governed write catalog remain direct; the full read capability universe stays available through governed discovery, info and readonly dispatch. Write visibility never grants authority: execution remains delegated to mad4b-write and requires runtime eligibility, exact grants and approval. Breakglass and Raw SQL remain excluded.';
 		} else {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with read diagnostics plus a stable governed write catalog. Provider writes may be discoverable before activation but remain fail-closed until mounted on mad4b-write, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}
