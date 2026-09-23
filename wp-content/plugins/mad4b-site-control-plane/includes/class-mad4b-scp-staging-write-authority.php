@@ -781,7 +781,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( 'human_and_ai' !== ( isset( $policy['mode'] ) ? (string) $policy['mode'] : 'human_only' ) ) $blockers[] = 'ai_review_mode_disabled';
 		$configured_agent = isset( $policy['ai_agent_public_id'] ) ? strtolower( trim( (string) $policy['ai_agent_public_id'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $configured_agent ) ) $blockers[] = 'ai_review_agent_unconfigured';
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) $blockers[] = 'ai_review_staging_only';
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' ) || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) $blockers[] = 'ai_review_staging_only';
 		if ( '' !== self::approval_ticket_from_input( $input ) ) $blockers[] = 'ai_review_approval_ticket_not_allowed';
 
 		if ( ! is_array( $input ) ) {
@@ -821,7 +821,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			} else {
 				if ( '' === $configured_agent || ! hash_equals( $configured_agent, (string) $agent['public_id'] ) ) $blockers[] = 'ai_review_agent_mismatch';
 				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) $blockers[] = 'ai_review_agent_ineligible';
-				$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
+				$profile_agent_slug = class_exists( 'MAD4B_SCP_Site_Profile' ) && method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
 				if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) $blockers[] = 'ai_review_agent_not_profile_owned';
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', $ai_ability, 'core' );
 				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_review_exact_nhi_grant_missing';
