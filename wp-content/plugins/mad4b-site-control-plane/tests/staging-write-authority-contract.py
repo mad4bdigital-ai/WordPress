@@ -582,6 +582,10 @@ expected_acceptance = {
     'context_review_audit_read_only_surface_available',
     'context_brand_core_coverage_read_only_surface_available',
     'context_human_review_mcp_mutation_surface_absent',
+    'plugin_package_plan_read_only_surface_available',
+    'plugin_package_apply_requires_exact_governed_write_authority',
+    'plugin_package_caller_supplied_url_and_path_absent',
+    'plugin_package_apply_preserves_activation_state_and_rolls_back_on_failed_disk_readback',
 }
 if set(post_deploy.get('required_live_acceptance', [])) != expected_acceptance:
     raise SystemExit('deployment post-deploy acceptance contract drift')
