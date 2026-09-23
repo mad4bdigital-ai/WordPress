@@ -588,16 +588,25 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$duplicate_excess = 0;
 		foreach ( $duplicates as $duplicate ) $duplicate_excess += isset( $duplicate['excess_count'] ) ? (int) $duplicate['excess_count'] : 0;
 
+		$persisted_status = self::status();
+		$persisted_ready = ! empty( $persisted_status['ready'] );
+		$effective_ready = self::effective();
+		$grant_rows_fingerprint = hash( 'sha256', wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+
 		return array(
 			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v2',
 			'read_only' => true,
 			'mutation_performed' => false,
 			'eligible' => ! empty( $status['eligible'] ),
-			'current_ready' => ! empty( self::status()['ready'] ),
+			'current_ready' => $persisted_ready,
+			'persisted_ready' => $persisted_ready,
+			'effective_ready' => $effective_ready,
 			'environment' => $environment,
 			'agent_present' => is_array( $agent ) && ! empty( $agent['id'] ),
 			'agent_public_id' => is_array( $agent ) && isset( $agent['public_id'] ) ? (string) $agent['public_id'] : '',
 			'write_tool_count' => count( $tools ),
+			'write_inventory_fingerprint' => isset( $persisted_status['write_inventory_fingerprint'] ) ? (string) $persisted_status['write_inventory_fingerprint'] : '',
+			'grant_rows_fingerprint' => $grant_rows_fingerprint,
 			'exact_grants_existing' => $existing_count,
 			'exact_grants_missing_count' => count( $missing ),
 			'exact_grants_missing' => $missing,
