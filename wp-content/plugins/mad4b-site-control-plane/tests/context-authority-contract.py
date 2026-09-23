@@ -562,7 +562,7 @@ require(drive, "self::clear_option_read_cache( $name, true )", "pre-read Options
 require(workflow, "context-human-review-runtime.php", "human review persistence runtime CI")
 require(adapter, "'context/review-queue'", "read-only Context review queue ability")
 require(adapter, "'context/review-audit'", "bounded read-only Context review audit ability")
-for forbidden_review_ability in ("context/review-asset", "context/approve-asset", "context/review", "context/approve"):
+for forbidden_review_ability in ("'context/review-asset'", "'context/approve-asset'", "'context/review'", "'context/approve'"):
     if forbidden_review_ability in adapter:
         raise AssertionError(f"Human Review must remain Admin-only; forbidden MCP mutation surface found: {forbidden_review_ability}")
 
@@ -585,4 +585,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v66: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v67: PASS")
