@@ -22,6 +22,21 @@ final class MAD4B_SCP_Abilities {
 		$this->add( 'mad4b/list-post-types', 'List Post Types', 'mad4b-read', 'list_post_types', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/list-plugins', 'List Plugins', 'mad4b-read', 'list_plugins', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/abilities-inventory', 'Abilities Inventory', 'mad4b-read', 'abilities_inventory', 'read', null, false, true, false, true );
+		$this->add( 'mad4b/tool-discover', 'Discover Governed Read Abilities', 'mad4b-read', 'tool_discover', 'read', $this->schema(
+			array(
+				'query' => array( 'type' => 'string', 'default' => '', 'maxLength' => 160 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ),
+			), array()
+		), false, true, false, true );
+		$this->add( 'mad4b/tool-info', 'Get Governed Read Ability Info', 'mad4b-read', 'tool_info', 'read', $this->schema(
+			array( 'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ) ), array( 'ability_name' )
+		), false, true, false, true );
+		$this->add( 'mad4b/read-execute', 'Execute Governed Read Ability', 'mad4b-read', 'read_execute', 'read', $this->schema(
+			array(
+				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
+				'input' => array( 'type' => 'object', 'default' => array() ),
+			), array( 'ability_name' )
+		), false, true, false, true );
 		$this->add( 'mad4b/filesystem-list', 'List Files', 'mad4b-read', 'filesystem_list', 'read', $this->schema(
 			array(
 				'root' => array( 'type' => 'string', 'enum' => $this->roots() ),
@@ -222,6 +237,70 @@ final class MAD4B_SCP_Abilities {
 			$items[] = array( 'name' => $name, 'label' => method_exists( $ability, 'get_label' ) ? $ability->get_label() : '', 'description' => method_exists( $ability, 'get_description' ) ? $ability->get_description() : '', 'category' => method_exists( $ability, 'get_category' ) ? $ability->get_category() : '' );
 		}
 		return array( 'abilities' => $items, 'count' => count( $items ) );
+	}
+
+	private function governed_read_target( $ability_name ) {
+		$ability_name = trim( (string) $ability_name );
+		if ( '' === $ability_name ) return new WP_Error( 'mad4b_read_dispatch_target_required', 'A governed read ability_name is required.' );
+		if ( in_array( $ability_name, array( 'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute' ), true ) ) return new WP_Error( 'mad4b_read_dispatch_recursion_denied', 'Nested read-dispatch execution is not allowed.' );
+		if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::is_chatgpt_full_catalog_candidate( $ability_name ) ) return new WP_Error( 'mad4b_read_dispatch_target_not_cataloged', 'Requested ability is not in the governed ChatGPT capability universe.' );
+		if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) return new WP_Error( 'mad4b_read_dispatch_target_unavailable', 'Requested ability is not registered in the current runtime.' );
+		$ability = wp_get_ability( $ability_name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) || ! method_exists( $ability, 'execute' ) ) return new WP_Error( 'mad4b_read_dispatch_contract_unavailable', 'Requested ability does not expose the required WordPress Ability contract.' );
+		$meta = $ability->get_meta();
+		$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+		if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) return new WP_Error( 'mad4b_read_dispatch_mutation_denied', 'Only abilities explicitly annotated readonly=true may be executed through mad4b/read-execute.' );
+		return $ability;
+	}
+
+	public function tool_discover( $input ) {
+		$query = isset( $input['query'] ) ? strtolower( trim( (string) $input['query'] ) ) : '';
+		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
+		$items = array();
+		$candidates = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::chatgpt_full_catalog_candidates() : array();
+		foreach ( $candidates as $ability_name ) {
+			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
+			$ability = wp_get_ability( $ability_name );
+			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
+			$meta = $ability->get_meta();
+			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+			if ( ! array_key_exists( 'readonly', $annotations ) || true !== $annotations['readonly'] ) continue;
+			$label = method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '';
+			$description = method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '';
+			$category = method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '';
+			$haystack = strtolower( $ability_name . ' ' . $label . ' ' . $description . ' ' . $category );
+			if ( '' !== $query && false === strpos( $haystack, $query ) ) continue;
+			$items[] = array( 'ability_name' => $ability_name, 'label' => $label, 'description' => $description, 'category' => $category, 'direct' => in_array( $ability_name, MAD4B_SCP_Servers::chatgpt_tools(), true ) );
+			if ( count( $items ) >= $limit ) break;
+		}
+		return array( 'contract' => 'mad4b.chatgpt-read-discovery.v1', 'query' => $query, 'items' => $items, 'count' => count( $items ), 'read_only' => true, 'mutation_performed' => false );
+	}
+
+	public function tool_info( $input ) {
+		$ability = $this->governed_read_target( $input['ability_name'] );
+		if ( is_wp_error( $ability ) ) return $ability;
+		return array(
+			'contract' => 'mad4b.chatgpt-read-ability-info.v1',
+			'ability_name' => (string) $input['ability_name'],
+			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
+			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
+			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
+			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
+			'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null,
+			'annotations' => ( $meta = $ability->get_meta() ) && isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	public function read_execute( $input ) {
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_read_target( $ability_name );
+		if ( is_wp_error( $ability ) ) return $ability;
+		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
+		$result = $ability->execute( $params );
+		if ( is_wp_error( $result ) ) return $result;
+		return array( 'contract' => 'mad4b.chatgpt-read-execute.v1', 'ability_name' => $ability_name, 'result' => $result, 'read_only' => true, 'mutation_performed' => false );
 	}
 
 	public function filesystem_list( $input ) {
