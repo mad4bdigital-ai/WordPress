@@ -75,7 +75,19 @@
       "context_review_queue_read_only_surface_available",
       "context_review_audit_read_only_surface_available",
       "context_brand_core_coverage_read_only_surface_available",
-      "context_human_review_mcp_mutation_surface_absent"
+      "context_human_review_mcp_mutation_surface_absent",
+      "context_review_default_mode_human_only_after_upgrade",
+      "context_ai_review_admin_confirmation_required",
+      "context_ai_review_stable_catalog_present_but_runtime_blocked_until_delegation",
+      "context_ai_review_exact_agent_and_exact_grant_required",
+      "context_ai_review_policy_change_does_not_auto_reconcile_grants",
+      "context_ai_review_runtime_mount_changes_write_inventory_only_after_policy_enablement",
+      "context_ai_review_exact_candidate_binding_and_write_authority_required",
+      "context_ai_review_exact_bound_stale_evidence_rejected",
+      "context_ai_review_governance_metadata_and_quality_immutable",
+      "context_ai_review_audit_actor_attribution_exact",
+      "context_human_review_remains_available_after_ai_enablement",
+      "context_ai_review_production_remains_unauthorized"
     ]
   },
   "forbidden": {
