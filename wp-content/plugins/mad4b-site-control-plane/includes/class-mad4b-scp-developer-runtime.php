@@ -78,7 +78,6 @@ final class MAD4B_SCP_Developer_Runtime {
 			self::schema(
 				array(
 					'args' => array( 'type' => 'array', 'minItems' => 1, 'maxItems' => 64, 'items' => array( 'type' => 'string', 'maxLength' => 4096 ) ),
-					'working_dir' => array( 'type' => 'string', 'maxLength' => 500, 'default' => '' ),
 					'timeout_seconds' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_TIMEOUT, 'default' => self::DEFAULT_TIMEOUT ),
 					'_mad4b_approval_ticket_id' => self::approval_schema(),
 				),
