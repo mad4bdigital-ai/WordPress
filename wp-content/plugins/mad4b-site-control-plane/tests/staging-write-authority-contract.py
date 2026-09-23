@@ -42,6 +42,11 @@ for marker_text in ["$seen_current_exact_allow", "$duplicate_grants_revoked", ":
 if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
 
+if "exact_approval_except_bounded_candidate_bootstrap" in write:
+    raise SystemExit("write authority retained obsolete candidate-bootstrap-only approval policy semantics after AI review standing delegation")
+if "one_time_exact_approval" in write:
+    raise SystemExit("write authority component inventory must distinguish normal one-time approval from the bounded AI review standing delegation")
+
 # Runtime write authority is tenant-neutral. ETG binding belongs to the reviewed
 # deployment Site Profile/handoff, never to a host constant inside the authority.
 for marker in [
@@ -81,6 +86,7 @@ for marker in [
     "'ai_review_standing_delegation_defined' => true",
     "'ai_review_standing_delegation_contract'",
     "'ai_review_standing_delegation_configured'",
+    "'normal_write_one_time_exact_approval_or_bounded_ai_review_delegation'",
     "public static function ai_review_delegation_status( $ability_name, $input = null, $identity = null )",
     "public static function ai_review_delegation_allowed( $ability_name, $input = null, $identity = null )",
     "'mad4b.context-ai-review-standing-delegation.v1'",
