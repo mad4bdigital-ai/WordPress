@@ -68,14 +68,14 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		);
 		$this->add_ability(
 			'context/review-queue',
-			'Context Human Review Queue',
+			'Context Review Queue',
 			'context_review_queue',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
 		);
 		$this->add_ability(
 			'context/review-audit',
-			'Context Human Review Audit',
+			'Context Review Audit',
 			'context_review_audit',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema(
@@ -84,6 +84,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'request_id' => array( 'type' => 'string', 'maxLength' => 100, 'default' => '' ),
 					'event_id' => array( 'type' => 'string', 'maxLength' => 36, 'default' => '' ),
 					'decision' => array( 'type' => 'string', 'enum' => array( '', 'approve', 'needs_changes', 'reject' ), 'default' => '' ),
+					'actor_type' => array( 'type' => 'string', 'enum' => array( '', 'wp_admin', 'ai_agent' ), 'default' => '' ),
 					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 25 ),
 				)
 			)
@@ -521,6 +522,8 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed',
 				'review_decision' => isset( $asset['review_decision'] ) ? (string) $asset['review_decision'] : '',
 				'review_note' => isset( $asset['review_note'] ) ? (string) $asset['review_note'] : '',
+				'review_actor_type' => isset( $asset['review_actor_type'] ) ? (string) $asset['review_actor_type'] : '',
+				'review_agent_public_id' => isset( $asset['review_agent_public_id'] ) ? (string) $asset['review_agent_public_id'] : '',
 				'reviewed_at' => isset( $asset['reviewed_at'] ) ? (string) $asset['reviewed_at'] : '',
 				'reviewed_content_hash' => isset( $asset['reviewed_content_hash'] ) ? (string) $asset['reviewed_content_hash'] : '',
 				'review_binding_exact' => $review_binding_exact,
@@ -543,7 +546,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		}
 		$status = method_exists( 'MAD4B_SCP_Context_Authority', 'status' ) ? MAD4B_SCP_Context_Authority::status() : array();
 		return array(
-			'contract' => 'mad4b.context-asset-list.v3',
+			'contract' => 'mad4b.context-asset-list.v4',
 			'items' => $items,
 			'count' => count( $items ),
 			'task_scope_bound' => '' !== $task_scope,
