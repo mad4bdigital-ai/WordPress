@@ -110,11 +110,27 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		if ( 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_candidate_bind_staging_only', 'Candidate binding is Staging-only.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_candidate_bind_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Site Profile.' );
 		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_candidate_bind_write_disabled', 'Governed write must already be enabled.' );
+		if ( ! defined( 'MAD4B_MCP_MUTATION_ENABLED' ) || true !== constant( 'MAD4B_MCP_MUTATION_ENABLED' ) ) return new WP_Error( 'mad4b_candidate_bind_mutation_gate_disabled', 'The governed mutation master gate must already be enabled.' );
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) return new WP_Error( 'mad4b_candidate_bind_breakglass_enabled', 'Candidate binding is denied while Breakglass authority is enabled.' );
 		if ( 'chatgpt-governed-write' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) ) return new WP_Error( 'mad4b_candidate_bind_canonical_agent_required', 'Candidate binding is limited to the canonical profile-owned governed-write agent.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_candidate_bind_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_candidate_bind_https_required', 'Remote candidate binding requires HTTPS.' );
 		return true;
+	}
+
+	private static function current_agent_or_error() {
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_candidate_bind_identity_unavailable', 'Governance identity components are unavailable.' );
+		$identity = MAD4B_SCP_Identity_Context::current();
+		if ( is_wp_error( $identity ) ) return $identity;
+		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_oauth_identity_required', 'Verified OAuth bearer governance identity is required.' );
+		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $agent ) ) return $agent;
+		if ( 'chatgpt-governed-write' !== ( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' )
+			|| 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' )
+			|| 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) return new WP_Error( 'mad4b_candidate_bind_agent_invalid', 'Resolved governance identity is not the canonical enabled Staging governed-write agent.' );
+		if ( (int) ( isset( $agent['wp_user_id'] ) ? $agent['wp_user_id'] : 0 ) !== get_current_user_id() ) return new WP_Error( 'mad4b_candidate_bind_agent_user_mismatch', 'Resolved governed-write agent belongs to another WordPress user.' );
+		return $agent;
 	}
 
 	private static function clean_plan_or_error( array $input ) {
@@ -141,7 +157,9 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 
 		$rows = isset( $plan['rows'] ) && is_array( $plan['rows'] ) ? $plan['rows'] : array();
 		if ( count( $rows ) !== $write_tool_count ) return new WP_Error( 'mad4b_candidate_bind_row_count_mismatch', 'Reconciliation rows do not match the current write inventory.' );
+		$inventory_rows = array();
 		foreach ( $rows as $row ) {
+			if ( is_array( $row ) && isset( $row['ability'], $row['provider'] ) ) $inventory_rows[] = array( 'ability' => (string) $row['ability'], 'provider' => sanitize_key( (string) $row['provider'] ) );
 			if ( ! is_array( $row )
 				|| empty( $row['mounted'] )
 				|| empty( $row['exact_grant_present'] )
@@ -152,11 +170,19 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 
 		$expected_agent = strtolower( trim( (string) $input['expected_agent_public_id'] ) );
 		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $expected_agent ) || ! hash_equals( $expected_agent, strtolower( (string) $plan['agent_public_id'] ) ) ) return new WP_Error( 'mad4b_candidate_bind_agent_mismatch', 'Canonical governed-write agent changed after operator review.' );
+		$resolved_agent = self::current_agent_or_error();
+		if ( is_wp_error( $resolved_agent ) ) return $resolved_agent;
+		if ( ! isset( $resolved_agent['public_id'] ) || ! hash_equals( $expected_agent, strtolower( (string) $resolved_agent['public_id'] ) ) ) return new WP_Error( 'mad4b_candidate_bind_resolved_agent_mismatch', 'Authenticated governance identity no longer resolves to the reviewed canonical agent.' );
 		if ( (int) $input['expected_write_tool_count'] !== $write_tool_count ) return new WP_Error( 'mad4b_candidate_bind_write_count_mismatch', 'Governed write tool count changed after operator review.' );
 
+		usort( $inventory_rows, static function ( $a, $b ) { return strcmp( $a['ability'] . "\0" . $a['provider'], $b['ability'] . "\0" . $b['provider'] ); } );
+		$current_inventory = hash( 'sha256', wp_json_encode( $inventory_rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$expected_inventory = strtolower( trim( (string) $input['expected_write_inventory_fingerprint'] ) );
-		$live_inventory = isset( $plan['write_inventory_fingerprint'] ) ? strtolower( (string) $plan['write_inventory_fingerprint'] ) : '';
-		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_inventory ) || ! preg_match( '/^[a-f0-9]{64}$/', $live_inventory ) || ! hash_equals( $expected_inventory, $live_inventory ) ) return new WP_Error( 'mad4b_candidate_bind_inventory_fingerprint_mismatch', 'Governed write inventory changed after operator review.' );
+		$persisted_inventory = isset( $plan['write_inventory_fingerprint'] ) ? strtolower( (string) $plan['write_inventory_fingerprint'] ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_inventory )
+			|| ! preg_match( '/^[a-f0-9]{64}$/', $persisted_inventory )
+			|| ! hash_equals( $expected_inventory, $current_inventory )
+			|| ! hash_equals( $persisted_inventory, $current_inventory ) ) return new WP_Error( 'mad4b_candidate_bind_inventory_fingerprint_mismatch', 'Governed write inventory changed after operator review or no longer matches persisted authority.' );
 
 		$expected_rows = strtolower( trim( (string) $input['expected_grant_rows_fingerprint'] ) );
 		$live_rows = isset( $plan['grant_rows_fingerprint'] ) ? strtolower( (string) $plan['grant_rows_fingerprint'] ) : '';
