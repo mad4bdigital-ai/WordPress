@@ -576,6 +576,12 @@ expected_acceptance = {
     'provider_blocked_write_tools_safely_unmounted',
     'external_tool_inventory_match_when_mcp_enabled',
     'one_time_approval_replay_denial_and_undo_when_write_enabled',
+    'context_human_review_admin_ui_visible_for_governed_assets',
+    'context_task_local_human_review_controls_absent',
+    'context_review_queue_read_only_surface_available',
+    'context_review_audit_read_only_surface_available',
+    'context_brand_core_coverage_read_only_surface_available',
+    'context_human_review_mcp_mutation_surface_absent',
 }
 if set(post_deploy.get('required_live_acceptance', [])) != expected_acceptance:
     raise SystemExit('deployment post-deploy acceptance contract drift')
@@ -591,4 +597,4 @@ if set(forbidden_contract) != expected_forbidden or not all(forbidden_contract.g
 if deployment.get('secrets_included') is not False:
     raise SystemExit('deployment handoff must never contain secrets')
 
-print('mad4b.staging-write-authority.tenant-profile.v10: PASS')
+print('mad4b.staging-write-authority.tenant-profile.v11: PASS')
