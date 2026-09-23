@@ -84,22 +84,29 @@ required_registry = [
 for marker in required_registry:
     assert marker in registry, f'missing profile registry marker: {marker}'
 
-# Exact enrolled Staging uses one ChatGPT resource for the complete normal governed
-# read/write catalog plus the bounded bootstrap transitions. Production/non-exact
-# sites retain the historical narrow read surface.
+# Exact enrolled Staging uses one ChatGPT resource with a minimal direct
+# transport. The full logical read/write universe remains discoverable, while
+# large target schemas stay outside tools/list and execute only through their
+# original governed WP_Ability contracts.
 for marker in [
     'chatgpt_unified_catalog_enabled',
     "'staging' === MAD4B_SCP_Site_Profile::current_environment()",
     'MAD4B_SCP_Site_Profile::origin_enrolled()',
     'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
+    'public static function chatgpt_full_catalog_candidates()',
     "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
     "self::core_tools( 'mad4b-enrollment' )",
-    "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' );",
+    '$bounded_bootstrap = array(',
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+    "$meta_write_transport = array( 'mad4b/write-execute' )",
     'self::external_write_tools()',
     "'mad4b/database-raw-query' === $ability_name",
     "self::core_tools( 'mad4b-breakglass' )",
 ]:
-    assert marker in servers, f'missing unified ChatGPT catalog marker: {marker}'
+    assert marker in servers, f'missing minimal ChatGPT transport/logical catalog marker: {marker}'
 
 # The legacy/narrow fallback remains explicit when exact Staging binding is absent.
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
