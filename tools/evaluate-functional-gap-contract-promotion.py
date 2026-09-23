@@ -501,6 +501,8 @@ def main():
         "ready_semantics": "backward_compatible_alias_for_evaluation_complete_not_provider_certification",
         "followup_required": handoff["followup_required"],
         "followup_count": handoff["followup_count"],
+        "provider_closure_ready": evaluation_complete and not handoff["followup_required"],
+        "provider_closure_semantics": "all_policy_families_evaluated_without_remaining_governed_followup",
         "decision_handoff": handoff,
         "counts": dict(sorted(counts.items())),
         "decisions": decisions,
