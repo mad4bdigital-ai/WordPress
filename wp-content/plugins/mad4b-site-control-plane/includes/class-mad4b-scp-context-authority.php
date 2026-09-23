@@ -447,15 +447,19 @@ final class MAD4B_SCP_Context_Authority {
 						$normalized['required'] = ! empty( $prior['required'] );
 						$normalized['priority'] = isset( $prior['priority'] ) ? (int) $prior['priority'] : $normalized['priority'];
 						$same_content = ! empty( $prior['content_hash'] ) && hash_equals( (string) $prior['content_hash'], (string) $normalized['content_hash'] );
-						$prior_approved = $same_content
-							&& 'approved' === ( isset( $prior['review_status'] ) ? (string) $prior['review_status'] : '' )
-							&& ! empty( $prior['reviewed_at'] );
-						if ( $prior_approved ) {
+						$prior_review_status = isset( $prior['review_status'] ) ? (string) $prior['review_status'] : '';
+						$prior_reviewed_hash = isset( $prior['reviewed_content_hash'] ) ? strtolower( trim( (string) $prior['reviewed_content_hash'] ) ) : '';
+						$prior_review_bound = $same_content
+							&& in_array( $prior_review_status, array( 'approved', 'needs_changes', 'rejected' ), true )
+							&& ! empty( $prior['reviewed_at'] )
+							&& preg_match( '/^[a-f0-9]{64}$/', $prior_reviewed_hash )
+							&& hash_equals( $prior_reviewed_hash, (string) $normalized['content_hash'] );
+						if ( $prior_review_bound ) {
 							$normalized['reviewed_by'] = isset( $prior['reviewed_by'] ) ? absint( $prior['reviewed_by'] ) : 0;
 							$normalized['reviewed_at'] = (string) $prior['reviewed_at'];
-							$normalized['review_status'] = 'approved';
-							$normalized['reviewed_content_hash'] = isset( $prior['reviewed_content_hash'] ) && preg_match( '/^[a-f0-9]{64}$/', (string) $prior['reviewed_content_hash'] ) && hash_equals( (string) $prior['reviewed_content_hash'], (string) $normalized['content_hash'] ) ? (string) $prior['reviewed_content_hash'] : '';
-							$normalized['review_decision'] = isset( $prior['review_decision'] ) ? sanitize_key( (string) $prior['review_decision'] ) : ( 'approved' === ( isset( $prior['review_status'] ) ? (string) $prior['review_status'] : '' ) ? 'approve' : '' );
+							$normalized['review_status'] = $prior_review_status;
+							$normalized['reviewed_content_hash'] = $prior_reviewed_hash;
+							$normalized['review_decision'] = isset( $prior['review_decision'] ) ? sanitize_key( (string) $prior['review_decision'] ) : ( 'approved' === $prior_review_status ? 'approve' : ( 'rejected' === $prior_review_status ? 'reject' : 'needs_changes' ) );
 							$normalized['review_note'] = isset( $prior['review_note'] ) ? substr( sanitize_text_field( (string) $prior['review_note'] ), 0, 1000 ) : '';
 							if ( ! empty( $prior['quality']['human_override'] ) ) {
 								$normalized['quality_score'] = isset( $prior['quality_score'] ) ? (int) $prior['quality_score'] : $normalized['quality_score'];
