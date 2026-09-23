@@ -486,6 +486,11 @@ require(admin, "expected_authority_manifest_fingerprint", "admin authority finge
 require(admin, "required_scope_confirmed", "admin required Context escalation confirmation")
 require(admin, "mad4b-context-review-cell", "sticky review action UX")
 require(admin, "refreshReviewPanels", "AJAX review readback refresh")
+
+review_submit = admin.split('var form=event.target.closest(".mad4b-context-review-form")', 1)[1].split('var form=event.target.closest(".mad4b-context-ajax-form")', 1)[0]
+if review_submit.index("var body=new URLSearchParams(new FormData(form));") > review_submit.index("controls.forEach(function(control){control.disabled=true;});"):
+    raise AssertionError("review AJAX serializes after controls are disabled; disabled exact-review evidence would be omitted")
+
 require(admin, "Actionability", "per-asset actionability UX")
 require(admin, "Reversible text update", "reversible update UX")
 require(admin, "Reversible missing-asset recreation", "reversible recreate UX")
@@ -532,4 +537,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v59: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v60: PASS")
