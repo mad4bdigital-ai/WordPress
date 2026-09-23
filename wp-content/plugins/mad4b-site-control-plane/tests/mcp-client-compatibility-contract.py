@@ -94,7 +94,7 @@ for marker in [
     'MAD4B_SCP_Site_Profile::site_urls_match_enrollment()',
     "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
     "self::core_tools( 'mad4b-enrollment' )",
-    "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' );",
+    "$bounded_bootstrap = array( 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' );",
     'self::external_write_tools()',
     "'mad4b/database-raw-query' === $ability_name",
     "self::core_tools( 'mad4b-breakglass' )",
