@@ -45,6 +45,7 @@ for marker in [
     "mad4b_plugin_package_readback_failed_rolled_back",
     "runtime_reboot_required",
     "certified_target_is_older_than_runtime",
+    "path_outside_web_roots",
     "authority_created' => false",
 ]:
     require(marker in package, f"plugin package governance marker missing: {marker}")
@@ -56,6 +57,7 @@ for forbidden in [
     "'plugin_file' => array(",
     "'target_version' => array(",
     "'archive_sha256' => array(",
+    "trailingslashit( WP_PLUGIN_DIR ) . basename( $archive )",
     "mad4b/database-raw-query",
     "shell_exec(",
     "exec(",
