@@ -57,6 +57,8 @@ final class MAD4B_SCP_Local_OAuth_Consent_UI {
 		$legacy_request = 'is requesting read access to this WordPress MCP resource.';
 		$governed_request = 'is requesting OAuth read access to this WordPress MCP resource. This consent authenticates the client and grants only the read resource scope shown below. Write, Developer and Developer Breakglass are separate governed authorities and are not created by this OAuth approval.';
 		$html = str_replace( $legacy_request, $governed_request, $html );
+		$html = str_replace( '<title>Authorize MCP access</title>', '<title>Authorize read access</title>', $html );
+		$html = str_replace( '<h1>Authorize MCP access</h1>', '<h1>Authorize read access</h1>', $html );
 
 		$context = '<section class="mad4b-consent-context" aria-label="OAuth consent boundary">'
 			. '<h2>What you are approving now</h2>'
