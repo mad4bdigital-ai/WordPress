@@ -42,6 +42,9 @@ final class MAD4B_SCP_Identity_Context {
 			'auth_method' => 'oauth2_bearer',
 			'subject_type' => 'oauth',
 			'subject_fingerprint' => str_repeat( '1', 64 ),
+			'issuer_fingerprint' => str_repeat( '2', 64 ),
+			'client_fingerprint' => str_repeat( '3', 64 ),
+			'token_instance_fingerprint' => str_repeat( '4', 64 ),
 			'wp_user_id' => 7,
 			'request_id' => 'runtime-request-0001',
 		);
@@ -298,6 +301,9 @@ $authorized = array_values( array_filter( MAD4B_SCP_Audit::$events, static funct
 $completed = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $e ) { return 'mad4b/staging-write-candidate-binding-complete' === $e['event']; } ) );
 mad4b_bind_assert( 1 === count( $authorized ) && 1 === count( $completed ), 'binding audit pair missing', MAD4B_SCP_Audit::$events );
 mad4b_bind_assert( $authorized[0]['data']['operation_id'] === $completed[0]['data']['operation_id'], 'binding audit operation_id drifted' );
+mad4b_bind_assert( str_repeat( '3', 64 ) === $authorized[0]['data']['actor']['client_fingerprint'], 'safe OAuth client attribution was not preserved' );
+mad4b_bind_assert( str_repeat( '4', 64 ) === $authorized[0]['data']['actor']['token_instance_fingerprint'], 'safe OAuth token-instance attribution was not preserved' );
+mad4b_bind_assert( ! isset( $authorized[0]['data']['actor']['client_id'] ) && ! isset( $authorized[0]['data']['actor']['jti'] ), 'raw OAuth client/session material leaked into binding audit' );
 mad4b_bind_assert( ! empty( $completed[0]['data']['mutation_performed'] ) && ! empty( $completed[0]['data']['binding_mutation_performed'] ), 'completion audit did not distinguish true mutation' );
 mad4b_bind_assert( ! empty( $result['effective'] ), 'authority did not become effective after exact binding', $result );
 mad4b_bind_assert( empty( $result['grant_mutation_performed'] ) && empty( $result['subject_mutation_performed'] ) && empty( $result['agent_mutation_performed'] ), 'binding-only operation claimed broader mutations', $result );
