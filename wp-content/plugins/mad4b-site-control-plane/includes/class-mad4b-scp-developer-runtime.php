@@ -67,7 +67,7 @@ final class MAD4B_SCP_Developer_Runtime {
 			'runtime_status',
 			true,
 			self::schema( array() ),
-			array( 'MAD4B_SCP_Policy', 'can_developer_read' ),
+			array( 'MAD4B_SCP_Policy', 'can_developer_runtime_status' ),
 			'developer'
 		);
 
