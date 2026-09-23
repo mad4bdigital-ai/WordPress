@@ -328,7 +328,26 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				return new WP_Error( 'mad4b_grant_reconcile_unexpected_authority_mutation', 'Authority reconciliation attempted mutations outside the explicitly created exact grant set.', array( 'authority' => $authority, 'rollback_errors' => $rollback ) );
 			}
 
-			$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint );
+			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) || ! method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'operation_context' ) ) {
+				$rollback = self::rollback_created( $agent, $created_ids );
+				return new WP_Error( 'mad4b_grant_reconcile_binding_context_unavailable', 'Audited candidate-binding context factory is unavailable; newly-created grants were rolled back.', array( 'rollback_errors' => $rollback ) );
+			}
+			$binding_plan = MAD4B_SCP_Staging_Write_Authority::reconciliation_plan();
+			$binding_snapshot = isset( $binding_plan['candidate_binding'] ) && is_array( $binding_plan['candidate_binding'] ) ? $binding_plan['candidate_binding'] : array();
+			$binding_context = MAD4B_SCP_Staging_Write_Candidate_Binding::operation_context(
+				$binding_plan,
+				$binding_snapshot,
+				$current_revision,
+				$current_digest,
+				self::CONFIRMATION,
+				'grant_reconciliation',
+				self::CONTRACT
+			);
+			if ( is_wp_error( $binding_context ) ) {
+				$rollback = self::rollback_created( $agent, $created_ids );
+				return new WP_Error( 'mad4b_grant_reconcile_binding_context_failed', 'Audited candidate-binding context could not be created after grant reconciliation; newly-created grants were rolled back.', array( 'code' => $binding_context->get_error_code(), 'rollback_errors' => $rollback ) );
+			}
+			$bound = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint, $binding_context );
 			if ( is_wp_error( $bound ) ) {
 				$rollback = self::rollback_created( $agent, $created_ids );
 				return new WP_Error( 'mad4b_grant_reconcile_candidate_binding_failed', 'Exact package candidate could not be bound after grant reconciliation; newly-created grants were rolled back.', array( 'code' => $bound->get_error_code(), 'rollback_errors' => $rollback ) );
