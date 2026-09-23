@@ -317,12 +317,13 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$developer_resource = hash_equals( self::resource_identifier( 'mad4b-developer' ), $resource )
 			|| hash_equals( self::resource_identifier( 'mad4b-developer-breakglass' ), $resource );
 		$subject_type = 'oauth';
-		$subject_fingerprint = hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] );
+		$normal_subject_fingerprint = hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] );
+		$subject_fingerprint = $normal_subject_fingerprint;
 		if ( $developer_resource ) {
 			$client_fingerprint = isset( $verified['client_fingerprint'] ) ? strtolower( trim( (string) $verified['client_fingerprint'] ) ) : '';
 			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $client_fingerprint ) ) return self::unauthorized_response( 'mad4b_developer_oauth_client_required', 'Developer MCP requires an attributable OAuth client identity.', 401, $resource );
 			$subject_type = 'oauth_developer';
-			$subject_fingerprint = hash( 'sha256', 'oauth-developer' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] . "\0" . $client_fingerprint );
+			$subject_fingerprint = hash( 'sha256', 'oauth-developer' . "\0" . $normal_subject_fingerprint . "\0" . $client_fingerprint );
 		}
 		self::$verified_context = array(
 			'authenticated' => true,
