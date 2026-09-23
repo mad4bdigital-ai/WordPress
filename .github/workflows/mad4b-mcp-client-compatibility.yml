@@ -113,13 +113,13 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-client-compatibility-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
-      - name: Prove ChatGPT server contains the refresh-safe compact governed tool inventory
+      - name: Prove ChatGPT server contains the refresh-safe minimal governed tool inventory
         shell: bash
         run: |
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
-      - name: Prove initialize and compact tools/list over the pinned Adapter protocol
+      - name: Prove initialize and minimal tools/list over the pinned Adapter protocol
         shell: bash
         run: |
           set -euo pipefail
@@ -162,33 +162,34 @@ jobs:
               'mad4b-site-info',
               'mad4b-site-profile-status',
               'mad4b-build-provenance-status',
-              'mad4b-list-post-types',
-              'mad4b-list-plugins',
-              'mad4b-abilities-inventory',
               'mad4b-tool-discover',
               'mad4b-tool-info',
               'mad4b-read-execute',
+              'mad4b-write-discover',
+              'mad4b-write-info',
+              'mad4b-write-execute',
               'mad4b-diagnostics-health',
               'mad4b-runtime-authority-status',
               'mad4b-connection-status',
               'mad4b-plugin-package-plan',
-              'mad4b-filesystem-write',
-              'mad4b-filesystem-patch',
-              'mad4b-database-update',
-              'mad4b-content-update-post',
-              'mad4b-plugin-activate',
-              'mad4b-plugin-deactivate',
-              'mad4b-mutation-undo',
-              'mad4b-approval-plan',
+              'mad4b-write-authority-status',
+              'mad4b-write-authority-reconciliation-plan',
+              'mad4b-write-runtime-certification',
+              'mad4b-rest-compatibility-status',
+              'mad4b-staging-certification-status',
               'mad4b-site-profile-feature-reenroll',
+              'mad4b-site-profile-write-enable',
               'mad4b-staging-write-grant-reconcile',
               'mad4b-staging-write-candidate-bind',
           }
           missing = sorted(required.difference(names))
           if missing:
-              raise SystemExit(f'tools/list missing required compact Staging tools: {missing}')
+              raise SystemExit(f'tools/list missing required minimal Staging transport tools: {missing}')
 
-          heavy_reads = {
+          hidden = {
+              'mad4b-list-post-types',
+              'mad4b-list-plugins',
+              'mad4b-abilities-inventory',
               'mad4b-filesystem-list',
               'mad4b-filesystem-read',
               'mad4b-database-list-tables',
@@ -199,18 +200,30 @@ jobs:
               'mad4b-mutation-get',
               'mad4b-agent-list',
               'mad4b-agent-effective-access',
+              'mad4b-filesystem-write',
+              'mad4b-filesystem-patch',
+              'mad4b-database-update',
+              'mad4b-content-update-post',
+              'mad4b-plugin-activate',
+              'mad4b-plugin-deactivate',
+              'mad4b-plugin-package-apply',
+              'mad4b-mutation-undo',
+              'mad4b-approval-plan',
           }
-          leaked_heavy_reads = sorted(heavy_reads.intersection(names))
-          if leaked_heavy_reads:
-              raise SystemExit(f'tools/list leaked read capabilities that must stay behind compact discovery: {leaked_heavy_reads}')
+          leaked_hidden = sorted(hidden.intersection(names))
+          if leaked_hidden:
+              raise SystemExit(f'tools/list leaked capabilities that must stay behind governed discovery: {leaked_hidden}')
 
-          if len(names) > 128:
-              raise SystemExit(f'tools/list exceeded refresh-safety budget: {len(names)} > 128')
+          payload_bytes = len(json.dumps(tools_response, separators=(',', ':'), ensure_ascii=False).encode('utf-8'))
+          if len(names) > 48:
+              raise SystemExit(f'tools/list exceeded minimal tool-count budget: {len(names)} > 48')
+          if payload_bytes > 131072:
+              raise SystemExit(f'tools/list exceeded refresh payload budget: {payload_bytes} > 131072 bytes')
 
           forbidden = {'mad4b-database-raw-query'}
           leaked = sorted(forbidden.intersection(names))
           if leaked:
               raise SystemExit(f'tools/list leaked Breakglass/Raw SQL tools: {leaked}')
 
-          print(json.dumps({'status': 'PASS', 'catalog_mode': 'compact_direct_plus_read_discovery', 'tool_count': len(names), 'tools': names}, indent=2))
+          print(json.dumps({'status': 'PASS', 'catalog_mode': 'minimal_direct_plus_governed_read_write_dispatch', 'tool_count': len(names), 'tools_payload_bytes': payload_bytes, 'tools': names}, indent=2))
           PY
