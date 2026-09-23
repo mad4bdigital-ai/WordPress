@@ -61,6 +61,11 @@ assert "normal_wp_cli_guard" in developer
 assert "mad4b_developer_wp_cli_alias_denied" in developer
 assert "mad4b_developer_wp_cli_escape_denied" in developer
 assert "mad4b_developer_wp_cli_breakglass_required" in developer
+assert "mad4b_developer_wp_cli_code_lifecycle_denied" in developer
+for family in ["'option'", "'user'", "'role'", "'super-admin'", "'application-password'", "'site'", "'network'", "'scaffold'"]:
+    assert family in developer, family
+for readonly_family in ["'plugin' => array( 'list', 'status', 'get'", "'theme'  => array( 'list', 'status', 'get'", "'core'   => array( 'version', 'check-update', 'verify-checksums'"]:
+    assert readonly_family in developer, readonly_family
 assert "mad4b_developer_package_activation_denied" in developer
 assert "normal_filesystem_mutation_guard" in developer
 assert "MAD4B_SCP_Policy::can_mutate_file" in developer
@@ -210,4 +215,4 @@ assert "DISABLE MAD4B DEVELOPER AGENT" in runbook
 assert "No SQL, WP-CLI or manual database mutation is required for this bootstrap." in runbook
 assert "Production execution is denied by code." in runbook
 
-print("mad4b.developer-runtime-contract.v13: PASS")
+print("mad4b.developer-runtime-contract.v14: PASS")
