@@ -128,9 +128,22 @@ expect_same(false,$mount['authorizing'],'mount plan is evidence, not authority')
 expect_true(isset($mount['latent']) && is_array($mount['latent']),'mount plan must separate latent catalog abilities from mounted eligibility');
 
 $registry_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-adapter-registry.php');
-foreach(array('provider_contract_advisories','provider_not_active_in_current_runtime','provider_inactive_drift_is_blocking') as $marker){
-    expect_true(false!==strpos($registry_source,$marker),'runtime self-test must preserve inactive provider drift as advisory evidence: '.$marker);
+foreach(array(
+    'provider_contract_advisories',
+    'provider_capability_health',
+    'provider_not_active_in_current_runtime',
+    'active_provider_drift_read_compatible_writes_fail_closed',
+    'provider_inactive_drift_is_blocking',
+    'provider_active_drift_is_blocking_when_reads_compatible_and_writes_fail_closed',
+    'exposed_read_blockers',
+    'eligible_writes_under_drift'
+) as $marker){
+    expect_true(false!==strpos($registry_source,$marker),'runtime self-test must classify provider drift by active capability impact: '.$marker);
 }
+$compat_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-provider-compatibility-certification.php');
+$structural_pos=strpos($compat_source,"elseif ( ! empty( $exposed_incompatibilities ) )");
+$exact_pos=strpos($compat_source,"elseif ( $exact_certified )");
+expect_true(false!==$structural_pos && false!==$exact_pos && $structural_pos<$exact_pos,'exposed structural incompatibility must outrank exact artifact identity in provider health classification');
 $bitflows_source=file_get_contents(dirname(__DIR__).'/includes/adapters/class-mad4b-scp-bitflows-adapter.php');
 foreach(array('mad4b.bitflows-runtime-contract-diagnostic.v1','declared_class_suffix_candidates','autoload_or_bootstrap_mutation_attempted','filesystem_scan_performed') as $marker){
     expect_true(false!==strpos($bitflows_source,$marker),'Bit Flows must expose bounded non-mutating runtime contract diagnostics: '.$marker);
