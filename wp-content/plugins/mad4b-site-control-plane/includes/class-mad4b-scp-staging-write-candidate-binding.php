@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * This surface is intentionally narrower than grant reconciliation:
  * - it never creates/revokes grants;
  * - it never creates/rebinds subjects or agents;
- * - it never calls MAD4B_SCP_Staging_Write_Authority::reconcile();
+ * - it never invokes full authority reconciliation;
  * - it binds only the already-reconciled persisted authority to the exact
  *   currently-installed package candidate after proving the grant snapshot is
  *   clean and unchanged from the operator-reviewed read-only plan.
