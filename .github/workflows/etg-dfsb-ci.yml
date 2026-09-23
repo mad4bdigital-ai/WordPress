@@ -228,7 +228,7 @@ jobs:
           test -n "$MERGE_BASE"
           git diff --name-only "$MERGE_BASE...HEAD" | while IFS= read -r path; do
             case "$path" in
-              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-*|plugins/mad4b-wordpress/*|wp-content/plugins/mad4b-site-control-plane/*|docs/MAD4B-*|docs/evidence/ETG-STAGING-RC41-PROVIDER-RUNTIME-ALIGNMENT.json|tools/capture-provider-recertification-evidence.py|tools/provider-semantic-delta.py|tests/premium-provider-semantic-review-request-contract.py) ;;
+              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-*|plugins/mad4b-wordpress/*|wp-content/plugins/mad4b-site-control-plane/*|docs/MAD4B-*|docs/evidence/ETG-STAGING-RC41-PROVIDER-RUNTIME-ALIGNMENT.json|tools/capture-provider-recertification-evidence.py|tools/provider-semantic-delta.py|tools/capture-functional-gap-contract-evidence.py|tools/evaluate-functional-gap-contract-promotion.py|tools/browser-acceptance/*|tests/premium-provider-semantic-review-request-contract.py) ;;
               *) echo "Unexpected path in ETG PR: $path"; exit 1 ;;
             esac
           done
