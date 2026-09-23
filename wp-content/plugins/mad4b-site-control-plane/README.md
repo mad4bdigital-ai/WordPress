@@ -2,7 +2,7 @@
 
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
-Current plugin version: **0.4.0-rc.58**.
+Current plugin version: **0.4.0-rc.59**.
 
 Provider-gap closure is zero-touch and non-authorizing. The package embeds exact-head repository evidence plus `functional-gap-policy.json`; `mad4b/functional-gap-runtime-evidence` performs bounded local runtime collection, fixed-point drift checks, and deterministic evaluation without shell, WP-CLI, raw SQL, remote requests, credential reads, or mutation. Evidence readiness never grants provider write authority or Production activation. Provider capability diagnostics also distinguish mounted from latent capabilities and read readiness from blocked write certification.
 
@@ -19,13 +19,17 @@ rc.58 keeps the compact rc.57 transport catalog and additionally removes two req
 
 ## MCP surfaces
 
-MAD4B now owns five governed custom MCP server IDs:
+MAD4B now owns nine governed custom MCP server IDs:
 
 - `mad4b-read` — privileged discovery and diagnostics.
+- `mad4b-chatgpt` — compact ChatGPT-safe gateway with governed discovery/dispatch.
+- `mad4b-enrollment` — bounded Site Profile and authority-bootstrap surface.
 - `mad4b-content` — specialist content/provider mutation surface.
-- `mad4b-write` — unified governed write ingress containing only already-registered Abilities with explicit runtime `annotations.readonly === false`.
+- `mad4b-write` — unified governed write ingress containing only runtime-eligible Abilities with explicit `annotations.readonly === false`.
 - `mad4b-admin` — specialist administrative repair/governance surface.
-- `mad4b-breakglass` — exceptional raw SQL recovery; disabled by default.
+- `mad4b-developer` — isolated non-Production Developer Agent plane with exact OAuth scope, agent, grant, approval, budget and audit requirements.
+- `mad4b-developer-breakglass` — separately scoped exceptional Developer recovery plane; disabled unless its dedicated governance gates are satisfied.
+- `mad4b-breakglass` — generic exceptional raw SQL recovery; disabled by default and excluded from normal Developer/ChatGPT authority.
 
 Their effective REST URLs are derived from the MCP Adapter runtime. With standard rewrites they normally appear as `/wp-json/mcp/<server-id>`; WordPress may also represent the same REST route through `index.php?rest_route=/mcp/<server-id>` when pretty REST rewrites are unavailable. MAD4B validates the registered logical route rather than assuming one URL-rewrite form.
 
@@ -121,7 +125,7 @@ A detected peer/foreign write path produces `mcp_write_side_channel_detected` an
 2. remote HTTPS endpoint preflight readiness;
 3. external connection certification, which remains false until a real target MCP session is proven.
 
-It derives all five runtime server endpoints, validates REST route registration and exact transport permission callback identity, and displays a dedicated `mad4b-write` summary with mounted-write count, global mutation state and the exact-transport-grant requirement.
+It derives all nine runtime server endpoints, validates REST route registration and exact transport permission callback identity, and displays a dedicated `mad4b-write` summary with mounted-write count, global mutation state and the exact-transport-grant requirement.
 
 The page does not create credentials, configure a client, enable mutation, create grants/approvals, or make outbound self-probe HTTP requests. A local WordPress process cannot self-certify Internet reachability, authentication behavior or the external subject bridge.
 
@@ -303,7 +307,7 @@ Repository CI currently covers:
 - exact packaged-provider version/archive certification;
 - runtime critical-file integrity manifests;
 - native MCP security invariants for JetEngine, Elementor and Bit Pi;
-- default-server isolation and six MAD4B custom servers;
+- default-server isolation and nine MAD4B custom servers;
 - exact route/server transport binding before exact grant and approval consumption;
 - `mad4b-write` projection from explicit `readonly=false` Ability metadata;
 - specialist-server grant versus `mad4b-write` grant isolation;
@@ -334,7 +338,7 @@ Keep the PR Draft until the exact target site proves at least:
 
 1. the deployed provider versions and critical files match the certified baseline;
 2. MCP Adapter and the control plane activate without fatal/runtime warnings;
-3. all six MAD4B servers are registered and the intended endpoint is remotely reachable over HTTPS;
+3. all nine MAD4B servers are registered and the intended endpoint is remotely reachable over HTTPS;
 4. the dedicated control identity authenticates correctly through real MCP transport/session handling;
 5. `mad4b/runtime-self-test` returns `passed`, with custom-server isolation and no required-provider/peer blockers;
 6. the official default MCP server cannot discover MAD4B abilities;
