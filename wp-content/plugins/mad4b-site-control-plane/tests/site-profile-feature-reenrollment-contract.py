@@ -13,13 +13,14 @@ for marker in (
     "'mad4b/site-profile-feature-reenroll'",
     "'mad4b/site-profile-write-enable'",
     "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
     "can_enrollment_transport",
     "MAD4B Enrollment MCP",
 ):
     if marker not in servers:
         raise SystemExit('missing enrollment server contract: ' + marker)
 
-entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile' )"
+entry = "'mad4b-enrollment' => array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind' )"
 if entry not in servers:
     raise SystemExit('enrollment inventory is not exact/bounded')
 for forbidden in ('mad4b/database-update', 'mad4b/database-raw-query', 'mad4b/filesystem-write', 'mad4b/plugin-activate', 'mad4b/approval-plan'):
@@ -27,7 +28,7 @@ for forbidden in ('mad4b/database-update', 'mad4b/database-raw-query', 'mad4b/fi
     if forbidden in segment:
         raise SystemExit('dangerous ability leaked into enrollment inventory: ' + forbidden)
 write_candidates = servers[servers.index('private static function core_write_candidates'):servers.index('private static function registered_adapter_write_candidates')]
-for bounded in ('mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile'):
+for bounded in ('mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind'):
     if bounded in write_candidates:
         raise SystemExit('bounded enrollment ability leaked into normal write candidates: ' + bounded)
 
