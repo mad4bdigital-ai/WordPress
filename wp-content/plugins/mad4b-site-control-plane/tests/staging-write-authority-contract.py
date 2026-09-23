@@ -46,7 +46,7 @@ if not write.rstrip().endswith('}'):
 # deployment Site Profile/handoff, never to a host constant inside the authority.
 for marker in [
     "const CONTRACT = 'mad4b.governed-write-authority.v2'",
-    "const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v1'",
+    "const CANDIDATE_BINDING_CONTRACT = 'mad4b.governed-write-authority-candidate-binding.v2'",
     "const CANDIDATE_BOOTSTRAP_CONTRACT = 'mad4b.governed-write-candidate-bootstrap.v1'",
     "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'",
     "public static function candidate_bootstrap_status( $ability_name, $input = null )",
@@ -62,7 +62,7 @@ for marker in [
     "'global_registry_wildcard_grants'",
     "'broad_environment_grants_count'",
     "'duplicate_exact_allow_grants_revoked'",
-    "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint )",
+    "public static function bind_candidate_identity( $source_commit_sha, $build_fingerprint, $context = array() )",
     "private static function current_candidate_identity()",
     "define( 'MAD4B_MCP_MUTATION_ENABLED', true )",
     "MAD4B_SCP_Site_Profile::origin_enrolled()",
