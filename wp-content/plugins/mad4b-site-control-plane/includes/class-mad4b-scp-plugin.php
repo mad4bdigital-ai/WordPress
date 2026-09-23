@@ -131,10 +131,17 @@ final class MAD4B_SCP_Plugin {
 
 	private static function request_requires_skill_reconciliation() {
 		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;
-		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) ) {
-			return MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime();
-		}
-		return false;
+
+		// MCP transport requests are latency-sensitive and must remain read/execute
+		// hot paths. Seed/provider Skill reconciliation performs filesystem, plugin
+		// discovery and durable status work and is not required to construct an MCP
+		// server or execute an already-registered Ability. Activation and explicit
+		// Control Plane admin/CLI lifecycle remain the reconciliation authorities.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) return false;
+
+		if ( ! is_admin() ) return false;
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		return 0 === strpos( $page, 'mad4b-control-plane' );
 	}
 
 	private static function bind_local_oauth_subject_compatibility() {
