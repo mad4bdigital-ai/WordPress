@@ -74,6 +74,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-fence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mutation-manager.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reversible-adapter-mutations.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-discovery.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-functional-gap-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-code-snippets-runtime-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-lifecycle.php';
