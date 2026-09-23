@@ -44,6 +44,7 @@ for marker in [
     "rollback_on_failed_disk_readback",
     "mad4b_plugin_package_readback_failed_rolled_back",
     "runtime_reboot_required",
+    "certified_target_is_older_than_runtime",
     "authority_created' => false",
 ]:
     require(marker in package, f"plugin package governance marker missing: {marker}")
