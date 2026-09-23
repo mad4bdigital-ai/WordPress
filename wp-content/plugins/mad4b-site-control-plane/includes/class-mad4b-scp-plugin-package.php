@@ -339,7 +339,6 @@ final class MAD4B_SCP_Plugin_Package {
 
 	private static function local_archive_path( $archive ) {
 		$candidates = array(
-			trailingslashit( WP_PLUGIN_DIR ) . basename( $archive ),
 			trailingslashit( get_temp_dir() ) . 'mad4b-certified-plugin-packages/' . basename( $archive ),
 		);
 		$filtered = apply_filters( 'mad4b_scp_certified_plugin_package_paths', $candidates, basename( $archive ) );
@@ -347,9 +346,23 @@ final class MAD4B_SCP_Plugin_Package {
 		foreach ( $candidates as $candidate ) {
 			if ( ! is_string( $candidate ) || '' === trim( $candidate ) ) continue;
 			$real = realpath( $candidate );
-			if ( false !== $real && is_file( $real ) && is_readable( $real ) ) return $real;
+			if ( false === $real || ! is_file( $real ) || ! is_readable( $real ) || ! self::path_outside_web_roots( $real ) ) continue;
+			return $real;
 		}
 		return '';
+	}
+
+	private static function path_outside_web_roots( $path ) {
+		$real = realpath( $path );
+		if ( false === $real ) return false;
+		$check = rtrim( str_replace( '\\\\', '/', $real ), '/' );
+		foreach ( array( ABSPATH, WP_CONTENT_DIR ) as $root ) {
+			$resolved = realpath( $root );
+			if ( false === $resolved ) continue;
+			$resolved = rtrim( str_replace( '\\\\', '/', $resolved ), '/' );
+			if ( $check === $resolved || 0 === strpos( $check, $resolved . '/' ) ) return false;
+		}
+		return true;
 	}
 
 	private static function backup_plugin( $plugin_file ) {
