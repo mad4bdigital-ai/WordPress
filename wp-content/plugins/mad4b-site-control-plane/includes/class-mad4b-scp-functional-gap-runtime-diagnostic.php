@@ -27,7 +27,7 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 		if ( ! function_exists( 'wp_register_ability' ) || ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) ) return;
 		wp_register_ability( self::ABILITY, array(
 			'label' => 'Get Functional Gap Runtime Diagnostic',
-			'description' => 'Read exact file-tree identities for active contract-discovery and safety-blocked plugin families without generic filesystem access.',
+			'description' => 'Read exact file-tree identities for active contract-discovery, read-ready/write-blocked and safety-blocked plugin families without generic filesystem access.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'execute' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
@@ -95,7 +95,7 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 			'secret_values_returned' => false,
 			'raw_sql_performed' => false,
 			'generic_filesystem_surface_exposed' => false,
-			'target_states' => array( 'contract_discovery_required', 'safety_blocked' ),
+			'target_states' => array( 'contract_discovery_required', 'read_ready_write_blocked', 'safety_blocked' ),
 			'coverage_contract' => isset( $coverage['contract'] ) ? (string) $coverage['contract'] : '',
 			'family_count' => count( $results ),
 			'complete' => $complete,
@@ -111,7 +111,7 @@ final class MAD4B_SCP_Functional_Gap_Runtime_Diagnostic {
 		foreach ( isset( $coverage['items'] ) && is_array( $coverage['items'] ) ? $coverage['items'] : array() as $item ) {
 			if ( ! is_array( $item ) || empty( $item['functional_coverage'] ) || ! is_array( $item['functional_coverage'] ) ) continue;
 			$state = isset( $item['functional_coverage']['state'] ) ? sanitize_key( (string) $item['functional_coverage']['state'] ) : '';
-			if ( ! in_array( $state, array( 'contract_discovery_required', 'safety_blocked' ), true ) ) continue;
+			if ( ! in_array( $state, array( 'contract_discovery_required', 'read_ready_write_blocked', 'safety_blocked' ), true ) ) continue;
 			$family = ! empty( $item['functional_family_key'] ) ? sanitize_key( (string) $item['functional_family_key'] ) : sanitize_key( isset( $item['family'] ) ? (string) $item['family'] : '' );
 			if ( '' === $family ) continue;
 			if ( ! isset( $families[ $family ] ) ) {
