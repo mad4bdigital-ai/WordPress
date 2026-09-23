@@ -444,18 +444,41 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		);
 		$candidate_fingerprint = hash( 'sha256', wp_json_encode( $candidate_identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$authority_generation = hash( 'sha256', implode( "\0", array( $catalog_fingerprint, $runtime_inventory_fingerprint, $grant_set_fingerprint, $candidate_fingerprint ) ) );
+		$write_ready = ! empty( $plan['current_ready'] )
+			&& $projection_consistent
+			&& $write_tool_count > 0
+			&& count( $grants ) === count( $runtime )
+			&& empty( $blocking_conditions );
+
+		$developer_status = class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::status() : array();
+		$developer_ready = ! empty( $developer_status['developer_enabled'] )
+			&& ! empty( $developer_status['direct_execution_enabled'] )
+			&& empty( $developer_status['kill_switch_enabled'] )
+			&& ! empty( $developer_status['normal_authority']['ready'] );
+		$developer_breakglass_ready = $developer_ready
+			&& ! empty( $developer_status['breakglass_enabled'] )
+			&& ! empty( $developer_status['breakglass_authority']['ready'] );
+		$full_staging_authority_ready = $write_ready && $developer_ready && $developer_breakglass_ready;
+		$developer_fingerprint = hash( 'sha256', wp_json_encode( array(
+			'agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
+			'developer_enabled' => ! empty( $developer_status['developer_enabled'] ),
+			'direct_execution_enabled' => ! empty( $developer_status['direct_execution_enabled'] ),
+			'kill_switch_enabled' => ! empty( $developer_status['kill_switch_enabled'] ),
+			'normal_ready' => $developer_ready,
+			'breakglass_enabled' => ! empty( $developer_status['breakglass_enabled'] ),
+			'breakglass_ready' => $developer_breakglass_ready,
+		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+
 		$projection_fingerprint = hash( 'sha256', wp_json_encode( array(
 			'generation' => $authority_generation,
 			'blocking_conditions' => $blocking_conditions,
 			'provider_gated' => $blocked_rows,
 			'current_ready' => ! empty( $plan['current_ready'] ),
+			'developer_fingerprint' => $developer_fingerprint,
+			'full_staging_authority_ready' => $full_staging_authority_ready,
 		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
-		$ready = ! empty( $plan['current_ready'] )
-			&& $projection_consistent
-			&& $write_tool_count > 0
-			&& count( $grants ) === count( $runtime )
-			&& empty( $blocking_conditions );
+		$ready = $write_ready;
 
 		return array(
 			'contract' => 'mad4b.oauth-consent-grant-projection.v3',
@@ -493,6 +516,15 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'observed_at' => gmdate( 'c' ),
 			'grant_lookup_strategy' => isset( $plan['grant_lookup_strategy'] ) ? (string) $plan['grant_lookup_strategy'] : '',
 			'normal_remote_writes_require_exact_approval' => true,
+			'developer_authority_ready' => $developer_ready,
+			'developer_breakglass_authority_ready' => $developer_breakglass_ready,
+			'developer_enabled' => ! empty( $developer_status['developer_enabled'] ),
+			'developer_direct_execution_enabled' => ! empty( $developer_status['direct_execution_enabled'] ),
+			'developer_kill_switch_enabled' => ! empty( $developer_status['kill_switch_enabled'] ),
+			'developer_breakglass_enabled' => ! empty( $developer_status['breakglass_enabled'] ),
+			'developer_agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
+			'full_staging_authority_ready' => $full_staging_authority_ready,
+			'generic_raw_sql_breakglass_included' => false,
 			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
 			'blocked_catalog_abilities' => $blocked_rows,
