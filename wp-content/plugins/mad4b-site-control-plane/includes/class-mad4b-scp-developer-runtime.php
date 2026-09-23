@@ -116,12 +116,12 @@ final class MAD4B_SCP_Developer_Runtime {
 			false,
 			self::schema(
 				array(
-					'package' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191, 'pattern' => '^[a-z0-9](?:[a-z0-9-]{0,189}[a-z0-9])?
-					'force' => array( 'type' => 'boolean', 'default' => true ),
+					'package' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191, 'pattern' => '^[a-z0-9](?:[a-z0-9-]{0,189}[a-z0-9])?$' ),
+					'version' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[0-9][0-9A-Za-z._-]{0,63}$' ),
 					'timeout_seconds' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_TIMEOUT, 'default' => 60 ),
 					'_mad4b_approval_ticket_id' => self::approval_schema(),
 				),
-				array( 'package', '_mad4b_approval_ticket_id' )
+				array( 'package', 'version', '_mad4b_approval_ticket_id' )
 			),
 			array( 'MAD4B_SCP_Policy', 'can_developer' ),
 			'developer'
@@ -368,12 +368,14 @@ final class MAD4B_SCP_Developer_Runtime {
 		$wp = self::wp_cli_binary();
 		if ( '' === $wp ) return new WP_Error( 'mad4b_developer_wp_cli_unavailable', 'WP-CLI executable is unavailable.' );
 		$package = isset( $input['package'] ) ? trim( (string) $input['package'] ) : '';
-		if ( '' === $package || false !== strpos( $package, "\0" ) ) return new WP_Error( 'mad4b_developer_package_invalid', 'Package identifier is invalid.' );
+		if ( '' === $package || false !== strpos( $package, "\\0" ) ) return new WP_Error( 'mad4b_developer_package_invalid', 'Package identifier is invalid.' );
 		if ( ! preg_match( '/^[a-z0-9](?:[a-z0-9-]{0,189}[a-z0-9])?$/', $package ) ) return new WP_Error( 'mad4b_developer_package_source_breakglass_required', 'Normal Developer package installation accepts only a WordPress.org-style plugin slug. Custom URLs, archives and alternate sources require Developer Breakglass.' );
+		$version = isset( $input['version'] ) ? trim( (string) $input['version'] ) : '';
+		if ( ! preg_match( '/^[0-9][0-9A-Za-z._-]{0,63}$/', $version ) ) return new WP_Error( 'mad4b_developer_package_version_required', 'Normal Developer package installation requires an exact non-development WordPress.org plugin version.' );
 		if ( ! empty( $input['activate'] ) ) return new WP_Error( 'mad4b_developer_package_activation_denied', 'Normal Developer package installation never activates code; use the governed plugin activation surface separately.' );
+		if ( ! empty( $input['force'] ) ) return new WP_Error( 'mad4b_developer_package_overwrite_denied', 'Normal Developer package installation never overwrites an installed plugin; updates require a separate governed lifecycle or Developer Breakglass.' );
 		if ( ! self::network_authorized( $input ) ) return new WP_Error( 'mad4b_developer_network_denied', 'Package installation requires explicit per-job network authority.' );
-		$args = array( $wp, '--path=' . ABSPATH, 'plugin', 'install', $package );
-		if ( ! isset( $input['force'] ) || $input['force'] ) $args[] = '--force';
+		$args = array( $wp, '--path=' . ABSPATH, 'plugin', 'install', $package, '--version=' . $version );
 		$args = array_merge( array_slice( $args, 0, 2 ), array( '--skip-packages' ), array_slice( $args, 2 ) );
 		return self::execute( 'mad4b/developer-package-install', $args, $input, false, true, true );
 	}
