@@ -247,13 +247,6 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return $context;
 	}
 
-	private static function restore_candidate_binding_option( array $before ) {
-		$updated = update_option( self::OPTION, $before, false );
-		self::$status = $before;
-		$after = get_option( self::OPTION, array() );
-		return false !== $updated && is_array( $after ) && $before === $after;
-	}
-
 	private static function candidate_binding_audit( $event, array $context, array $extra = array(), $status = 'ok', $join_transaction = false ) {
 		if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_candidate_binding_audit_unavailable', 'Append-only audit is unavailable.' );
 		return MAD4B_SCP_Audit::record( $event, array_merge( $context, $extra ), $status, (bool) $join_transaction );
