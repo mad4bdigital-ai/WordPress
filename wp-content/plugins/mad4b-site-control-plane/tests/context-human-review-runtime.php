@@ -92,6 +92,7 @@ function mad4b_review_exact_input( $asset_id, array $decision ) {
 
 $site_uuid = '11111111-1111-4111-8111-111111111111';
 $source_id = str_repeat( 'a', 64 );
+$task_source_id = str_repeat( 'b', 64 );
 $file_id = 'tone-file-001';
 $asset_id = hash( 'sha256', $source_id . '|' . $file_id );
 
@@ -121,6 +122,25 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 		'external_root_id' => 'folder-brand-core',
 		'label' => 'Brand Core',
 		'task_scope' => '',
+		'recursive' => true,
+		'status' => 'selected',
+		'last_synced_at' => '',
+		'last_scan_complete' => false,
+		'asset_count' => 0,
+		'created_at' => gmdate( 'c' ),
+		'updated_at' => gmdate( 'c' ),
+	),
+	$task_source_id => array(
+		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
+		'source_id' => $task_source_id,
+		'site_uuid' => $site_uuid,
+		'brand_id' => 'brand-fixture',
+		'provider' => 'google_drive',
+		'mode' => 'task_attachment',
+		'write_policy' => 'read_only',
+		'external_root_id' => 'folder-task-context',
+		'label' => 'Task Context',
+		'task_scope' => 'fixture-task-001',
 		'recursive' => true,
 		'status' => 'selected',
 		'last_synced_at' => '',
@@ -164,6 +184,47 @@ $scan1 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	)
 );
 mad4b_review_assert( ! is_wp_error( $scan1 ), 'Initial complete scan must succeed.', $scan1 );
+
+$task_payload = mad4b_review_asset_payload(
+	'task-file-001',
+	str_repeat( "Task-local brief. This evidence is relevant only to the active task and must never become site-wide Brand Authority.\n\n", 8 ),
+	'Task Brief',
+	'Tasks/Task Brief.txt'
+);
+$task_payload['parent_folder_id'] = 'folder-task-context';
+$task_scan = MAD4B_SCP_Context_Authority::replace_source_assets(
+	$task_source_id,
+	array( $task_payload ),
+	array(
+		'complete' => true,
+		'started_at' => '2026-09-19T17:59:00Z',
+		'completed_at' => '2026-09-19T17:59:02Z',
+		'scan_generation' => str_repeat( '9', 64 ),
+	)
+);
+mad4b_review_assert( ! is_wp_error( $task_scan ), 'Task-local source fixture must scan successfully.', $task_scan );
+$task_asset_id = hash( 'sha256', $task_source_id . '|task-file-001' );
+$task_asset_before = MAD4B_SCP_Context_Authority::asset( $task_asset_id );
+mad4b_review_assert( ! empty( $task_asset_before ) && 'task_attachment' === $task_asset_before['source_mode'], 'Task-local asset fixture must remain visible as task_attachment.', $task_asset_before );
+$task_revision_before = MAD4B_SCP_Context_Authority::registry_revision();
+$task_review = MAD4B_SCP_Context_Authority::review_asset(
+	$task_asset_id,
+	mad4b_review_exact_input(
+		$task_asset_id,
+		array(
+			'category' => 'tone_of_voice',
+			'authority_class' => 'brand_authority',
+			'required' => true,
+			'quality_mode' => 'automatic',
+			'quality_score' => '',
+			'review_note' => 'This promotion attempt must be denied before any governance mutation.',
+		)
+	)
+);
+mad4b_review_assert( is_wp_error( $task_review ), 'Task-local Context must never enter the Human Review promotion lifecycle.', $task_review );
+mad4b_review_assert( 'mad4b_context_review_source_mode_forbidden' === $task_review->get_error_code(), 'Task-local Human Review denial must expose the exact source-mode governance error.', $task_review->get_error_code() );
+mad4b_review_assert( $task_asset_before === MAD4B_SCP_Context_Authority::asset( $task_asset_id ), 'Denied task-local review must leave the exact asset unchanged.' );
+mad4b_review_assert( $task_revision_before === MAD4B_SCP_Context_Authority::registry_revision(), 'Denied task-local review must not advance registry revision.' );
 
 $optional_asset_id = hash( 'sha256', $source_id . '|writer-file-optional' );
 $optional_initial = MAD4B_SCP_Context_Authority::asset( $optional_asset_id );
@@ -531,4 +592,4 @@ mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'
 mad4b_review_assert( 'wp_admin' === $review_events[0]['data']['actor_type'] && 42 === (int) $review_events[0]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[0] );
 mad4b_review_assert( ! empty( $review_events[0]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[0] );
 
-echo "mad4b.site-control-plane.context-human-review.runtime.v11: PASS\n";
+echo "mad4b.site-control-plane.context-human-review.runtime.v12: PASS\n";
