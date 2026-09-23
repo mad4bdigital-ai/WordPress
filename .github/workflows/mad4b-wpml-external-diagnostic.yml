@@ -207,4 +207,3 @@ jobs:
               raise SystemExit('WPML external contract failed after 3 attempts: status/get_parameters must both be valid')
           print('mad4b.wpml-external-http-acceptance.v4: PASS')
           PY
-
