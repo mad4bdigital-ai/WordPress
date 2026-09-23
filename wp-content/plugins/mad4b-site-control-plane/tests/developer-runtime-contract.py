@@ -130,7 +130,7 @@ chatgpt = servers[start:end]
 assert "developer-runtime-status" not in chatgpt
 assert "self::core_tools( 'mad4b-developer' )" not in chatgpt
 assert "self::core_tools( 'mad4b-developer-breakglass' )" not in chatgpt
-assert "array_diff( $enrollment_candidates, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in chatgpt
+assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in chatgpt
 
 authority_tools = [
     "mad4b/developer-authority-status",
