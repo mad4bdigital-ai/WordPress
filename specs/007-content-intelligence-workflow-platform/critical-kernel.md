@@ -54,3 +54,10 @@ current baseline
 ## Freeze rule
 
 No new Critical Kernel abstraction is admitted without satisfying architecture-freeze.md.
+
+
+## Architecture Freeze
+
+Critical Kernel scope is frozen under `contracts/architecture-freeze.md`.
+
+A new CORE abstraction is not admitted merely because it is useful or elegant. It requires qualifying runtime, security, irreversible-model, second-provider, Production-recovery, or applicable compliance evidence. Otherwise it remains an ADR, backlog item, or optional extension.
