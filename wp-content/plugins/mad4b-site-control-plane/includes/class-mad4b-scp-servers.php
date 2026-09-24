@@ -31,7 +31,7 @@ final class MAD4B_SCP_Servers {
 		$map = array(
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
-				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status', 'mad4b/context-authority-status',
+				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/context-authority-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 			), $governed_status ),
@@ -39,11 +39,11 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
-				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/connection-status',
+				'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status',
 				'mad4b/plugin-package-plan',
 			), $governed_status ),
 			'mad4b-enrollment' => array_merge(
-				array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
+				array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/multi-authority-registry-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' ),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array()
 			),
