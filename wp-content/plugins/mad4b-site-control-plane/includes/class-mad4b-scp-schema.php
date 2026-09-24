@@ -3,9 +3,9 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Schema {
-	const VERSION = 7;
+	const VERSION = 8;
 	const OPTION  = 'mad4b_scp_schema_version';
-	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v7';
+	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v8';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
 	private static $critical_ready_cache = null;
@@ -315,6 +315,7 @@ final class MAD4B_SCP_Schema {
 			status varchar(32) NOT NULL DEFAULT 'pending',
 			result_json longtext NULL,
 			result_sha256 char(64) NOT NULL DEFAULT '',
+			reconciliation_ref varchar(191) NOT NULL DEFAULT '',
 			expires_at datetime NOT NULL,
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
@@ -378,14 +379,53 @@ final class MAD4B_SCP_Schema {
 	public static function is_ready() { $version = (int) get_option( self::OPTION, 0 ); $token = (string) get_option( self::INTEGRITY_OPTION, '' ); return self::VERSION === $version && '' !== $token && hash_equals( self::expected_integrity_token(), $token ); }
 	public static function critical_ready() { if ( null !== self::$critical_ready_cache ) return (bool) self::$critical_ready_cache; if ( ! self::is_ready() ) { self::$critical_ready_cache = false; return false; } $status = self::physical_integrity_status(); self::$critical_ready_cache = ! empty( $status['ready'] ); return (bool) self::$critical_ready_cache; }
 	public static function physical_integrity_status() {
-		if ( null !== self::$physical_status_cache ) return self::$physical_status_cache; global $wpdb; $missing_tables = array();
-		foreach ( self::tables() as $key => $table ) { $found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); if ( $found !== $table ) $missing_tables[] = $key; }
-		$missing_columns = array(); if ( empty( $missing_tables ) ) { $t = self::tables(); $columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$t['approvals']}`", 0 ); $columns = is_array( $columns ) ? array_map( 'strval', $columns ) : array(); foreach ( self::required_approval_binding_columns() as $column ) if ( ! in_array( $column, $columns, true ) ) $missing_columns[] = $column; }
-		self::$physical_status_cache = array( 'contract' => 'mad4b.schema-integrity.v2', 'expected_version' => self::VERSION, 'missing_tables' => $missing_tables, 'missing_approval_columns' => $missing_columns, 'ready' => empty( $missing_tables ) && empty( $missing_columns ) ); return self::$physical_status_cache;
+		if ( null !== self::$physical_status_cache ) return self::$physical_status_cache;
+		global $wpdb;
+		$missing_tables = array();
+		foreach ( self::tables() as $key => $table ) {
+			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			if ( $found !== $table ) $missing_tables[] = $key;
+		}
+		$missing_columns = array();
+		$missing_durable_columns = array();
+		if ( empty( $missing_tables ) ) {
+			$t = self::tables();
+			$columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$t['approvals']}`", 0 );
+			$columns = is_array( $columns ) ? array_map( 'strval', $columns ) : array();
+			foreach ( self::required_approval_binding_columns() as $column ) if ( ! in_array( $column, $columns, true ) ) $missing_columns[] = $column;
+			foreach ( self::required_durable_columns() as $table_key => $required ) {
+				$durable_columns = $wpdb->get_col( "SHOW COLUMNS FROM `{$t[ $table_key ]}`", 0 );
+				$durable_columns = is_array( $durable_columns ) ? array_map( 'strval', $durable_columns ) : array();
+				foreach ( $required as $column ) if ( ! in_array( $column, $durable_columns, true ) ) $missing_durable_columns[] = $table_key . '.' . $column;
+			}
+		}
+		self::$physical_status_cache = array(
+			'contract' => 'mad4b.schema-integrity.v3',
+			'expected_version' => self::VERSION,
+			'missing_tables' => $missing_tables,
+			'missing_approval_columns' => $missing_columns,
+			'missing_durable_columns' => $missing_durable_columns,
+			'ready' => empty( $missing_tables ) && empty( $missing_columns ) && empty( $missing_durable_columns ),
+		);
+		return self::$physical_status_cache;
 	}
 	public static function status( $deep = false ) { $status = array( 'expected_version' => self::VERSION, 'installed_version' => (int) get_option( self::OPTION, 0 ), 'ready' => self::is_ready(), 'integrity_token_valid' => self::is_ready(), 'tables' => self::tables() ); if ( $deep ) $status['physical_integrity'] = self::physical_integrity_status(); return $status; }
-	private static function expected_integrity_token() { return hash( 'sha256', 'mad4b-schema-v7|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) ); }
+	private static function expected_integrity_token() {
+		$durable = array();
+		foreach ( self::required_durable_columns() as $table => $columns ) foreach ( $columns as $column ) $durable[] = $table . '.' . $column;
+		return hash( 'sha256', 'mad4b-schema-v8|' . implode( '|', array_keys( self::tables() ) ) . '|' . implode( '|', self::required_approval_binding_columns() ) . '|' . implode( '|', $durable ) );
+	}
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
+	private static function required_durable_columns() {
+		return array(
+			'content_jobs' => array( 'job_id', 'revision', 'state', 'stage', 'current_artifact_ref', 'updated_at' ),
+			'content_job_events' => array( 'event_id', 'job_id', 'job_revision', 'event_type', 'payload_sha256', 'created_at' ),
+			'work_leases' => array( 'work_id', 'aggregate_type', 'aggregate_id', 'worker_id', 'lease_epoch', 'expected_aggregate_revision', 'status', 'heartbeat_at', 'expires_at', 'reconciliation_ref' ),
+			'idempotency' => array( 'scope_key', 'idempotency_key', 'request_sha256', 'status', 'result_sha256', 'reconciliation_ref', 'expires_at' ),
+			'outbox' => array( 'outbox_id', 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256', 'status', 'attempts', 'available_at' ),
+			'inbox' => array( 'provider_id', 'provider_event_id', 'job_id', 'payload_sha256', 'status', 'provider_execution_ref', 'result_ref', 'received_at' ),
+		);
+	}
 	private static function migrate_legacy_candidate_bindings() {
 		global $wpdb; $legacy = get_option( self::LEGACY_BINDINGS_OPTION, array() ); if ( ! is_array( $legacy ) || empty( $legacy ) ) return; $t = self::tables();
 		foreach ( array_slice( $legacy, -100, 100, true ) as $ticket_id => $binding ) {
