@@ -11,6 +11,7 @@ skill_abilities = (root / "includes/class-mad4b-scp-skill-abilities.php").read_t
 skill_snapshot = (root / "includes/class-mad4b-scp-skill-snapshot-identity.php").read_text(encoding="utf-8")
 skill_runtime = (root / "includes/class-mad4b-scp-skill-runtime-certification.php").read_text(encoding="utf-8")
 finalizer = (root / "includes/class-mad4b-scp-live-acceptance-finalizer.php").read_text(encoding="utf-8")
+live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -189,4 +190,11 @@ assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime()" in 
 assert "return self::persisted_status();" in skill_observe
 assert skill_observe.index("current_request_requires_mcp_runtime()") < skill_observe.index("self::evaluate()")
 
-print("mad4b.chatgpt-refresh-hotpath.v8: PASS")
+# Automatic Live Truth recovery at wp_abilities_api_init can perform DB/grant/
+# provider inventory work. MCP discovery must not invoke it implicitly; explicit
+# status tools remain fresh because their execute callbacks still call current truth.
+live_truth_recovery = live_truth.split("private static function recover_runtime_authority()", 1)[1].split("public static function current_authority_status()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime()" in live_truth_recovery
+assert live_truth_recovery.index("current_request_requires_mcp_runtime()") < live_truth_recovery.index("MAD4B_SCP_Staging_Write_Authority::eligible()")
+
+print("mad4b.chatgpt-refresh-hotpath.v9: PASS")
