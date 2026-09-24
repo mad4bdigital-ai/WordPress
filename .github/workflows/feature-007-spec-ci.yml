@@ -93,6 +93,7 @@ jobs:
               "wp-content/plugins/mad4b-site-control-plane/",
           ]
           cross_feature_dependencies = [
+              ".github/workflows/wpl-client-contract.yml",
               "specs/006-agent-governed-reversible-control-plane/data-model.md",
           ]
           implementation_branch = "feat/007-critical-kernel-root-trust-20260924"
