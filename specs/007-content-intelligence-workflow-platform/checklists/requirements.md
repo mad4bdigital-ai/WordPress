@@ -49,7 +49,10 @@
 - [ ] First SERPProvider.
 - [ ] First ScrapeProvider.
 - [ ] Exact Bit Flows lifecycle public API support on certified package.
-- [ ] Host Connector transport/provider for first implementation.
+- [ ] First Host Connector/Tool Executor channel for implementation.
+- [ ] Exact first Hostinger validation channels available on the target account.
+- [ ] Durable queue/spool backend for Host Runner.
+- [ ] Standalone CLI requirement after minimal WP-CLI/Recovery Runner proof.
 - [ ] SearchPerformanceProvider for Growth phase.
 
 
@@ -184,3 +187,60 @@
 - [ ] Recovery Plane runtime canary exists.
 - [ ] Fencing/commit-guard runtime tests exist.
 - [ ] Critical Kernel ETG Staging vertical slice passes.
+
+## Governed tool execution / host operability
+- [x] Semantic operations are separated from command/API/CLI syntax.
+- [x] MCP, Admin UI, WP-CLI, standalone CLI and Host Runner are defined as frontends/executors over shared services.
+- [x] Generic shell, arbitrary `wp eval`, arbitrary PHP and generic raw SQL are excluded from ordinary authority.
+- [x] Host Read/Write/Execution/Breakglass/Recovery/Production authorities are separate from WordPress authority.
+- [x] Full Staging Authority does not imply Host Execution Authority.
+- [x] ToolOperationDefinition/ToolExecutorProfile/ToolExecutionPlan/ToolExecutionReceipt data models exist.
+- [x] Named filesystem zones, canonical paths, symlink/zip-slip/TOCTOU controls are specified.
+- [x] Fixed executable + structured argv process policy is specified.
+- [x] Secret handles, environment allowlists and output redaction are specified.
+- [x] Host Runner durable queue/lease/fencing/idempotency/DLQ semantics are specified.
+- [x] Host Runner first-install/bootstrap and one-time enrollment are specified without assuming interactive hosting terminal.
+- [x] WordPress Host Bridge is specified as plan/enqueue/status surface, not generic shell execution.
+- [x] Host Bridge apply is exact-plan bound and revalidated by the runner.
+- [x] Minimal WordPress-independent Recovery Runner is specified.
+- [x] Provider API/CLI/plugin/WP-CLI/runner channels are discovered/certified independently.
+- [x] Hostinger is a first validation profile, not a generic schema dependency.
+- [x] Deterministic same-authority executor fallback is specified and non-authorizing.
+- [x] Cross-adapter conformance is required.
+- [x] Tool/runner Doctor, evidence, decommission and recovery integration are specified.
+- [x] Runner/CLI binary supply-chain provenance and artifact-input verification are specified.
+- [x] Host Execution/Runner/provider-channel kill switches are independent.
+- [x] Queued jobs revalidate offline authorization/commit-guard dependencies before commit.
+- [x] Host Runner fencing prevents zombie-worker commit.
+- [x] Recovery Runner has an independent root-trust model.
+- [x] Executor runtime-profile compatibility dimensions are explicit.
+- [ ] Runtime `wp mad4b` namespace exists.
+- [ ] Runtime Host Runner exists.
+- [ ] At least one supported hosting profile can bootstrap/enroll Host Runner without interactive terminal.
+- [ ] Runtime Recovery Runner canary exists.
+- [ ] MCP/CLI normalized parity gate passes.
+- [ ] Hostinger first-channel discovery/certification evidence exists.
+- [ ] Cross-adapter semantic conformance gate passes.
+- [ ] Reversible host write canary passes.
+- [ ] Production Host Authority remains ungranted until separately approved.
+
+
+## Unified implementation closure
+- [x] All known remaining workstreams are classified in implementation-closure.md/json.
+- [x] Remaining work is separated into KERNEL_BLOCKER / LIVE_PRECONDITION / MATURITY_REQUIRED / DEFERRED_MATURITY.
+- [x] Phase 36 maps the closure program to explicit task IDs and terminal evidence.
+- [ ] External master repository ruleset is active and independently read back.
+- [ ] Legacy execution ledger is reconciled to DONE/PARTIAL/OPEN/DEFERRED with exact evidence refs.
+- [ ] Latest master descendant has fresh trusted release/root evidence.
+- [ ] Protected backup root is exists/writable/ready with current-runtime backup receipt.
+- [ ] Exact installed Bit Flows 1.29.0 is certified and privileged-side-channel disposition is proven.
+- [ ] Existing-site bootstrap and Intent Registry gates pass.
+- [ ] ContentJob + Artifact Registry/Store + consistency/fencing gates pass.
+- [ ] Context/Writer/Research/Competitive evidence gates pass.
+- [ ] Blueprint/Draft/FactLedger/QA gates pass.
+- [ ] Governed WordPress draft canary passes with readback and rollback.
+- [ ] Semantic publication verification passes.
+- [ ] Operator/Doctor/DLQ + live recovery review pass.
+- [ ] Formal critical-state/liveness proof passes.
+- [ ] Exact ETG Staging linked vertical slice emits CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED.
+- [ ] Production remains separately unauthorized until a distinct production gate is approved.

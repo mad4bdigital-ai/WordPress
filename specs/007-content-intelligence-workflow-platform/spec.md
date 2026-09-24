@@ -589,3 +589,40 @@ FLOW-001 Data residency/processing policy applies to all processors/storage/inde
 FORMAL-001 Executable/model-based invariants cover authority/approval/commit guard, worker lease/fencing and provider certification/release ring.
 FREEZE-001 New Critical Kernel contracts require runtime failure, security boundary, irreversible model decision, second-provider evidence, Production recovery need or applicable compliance requirement.
 FREEZE-002 Broader maturity contracts do not automatically become implementation blockers.
+
+## Governed Tool Execution expansion
+
+Operational review identified a missing platform layer between semantic capabilities and hosting/provider command surfaces.
+
+Feature 007 therefore specifies:
+- a semantic ToolOperation registry;
+- one shared service model across MCP/Admin UI/WP-CLI/standalone CLI;
+- certified ToolExecutor profiles;
+- Host Runner for non-HTTP execution;
+- minimal out-of-band Recovery Runner;
+- provider API/CLI/plugin adapters;
+- path/network/secret/output governance;
+- plan/apply/readback/rollback for tool writes;
+- deterministic non-authorizing executor fallback.
+
+Hostinger is the first validation profile only. A future hosting/provider implementation must replace adapters, not ToolOperation/domain contracts.
+
+No ordinary capability exposes arbitrary shell, arbitrary `wp eval`, arbitrary PHP, unrestricted SQL or caller-defined process commands.
+
+The minimum recovery/diagnostic subset is admitted under Architecture Freeze because manual hosting-terminal dependence was an observed operability gap and a generic shell workaround would create a new privilege boundary. Broader host automation remains Phase 11 maturity work.
+
+
+## Unified closure requirements
+
+REPOGOV-001 Committed repository-governance policy is not equivalent to externally enforced policy; the Critical Kernel requires active master ruleset readback.
+REPOGOV-002 The required Release Verdict check is source-integration pinned and applicable master rulesets contain no bypass actors.
+CLOSURE-001 All known remaining Feature 007 work MUST be represented in the machine-readable implementation closure ledger with one priority class and explicit status.
+CLOSURE-002 Legacy tasks are DONE only with exact commit/artifact/runtime evidence references; similar code names do not imply completion.
+CLOSURE-003 The first Content Intelligence vertical slice MUST use one exact ETG candidate across package, authority, provider, domain, mutation, verification and recovery evidence.
+CLOSURE-004 Maturity-deferred work remains visible but cannot fabricate a Critical Kernel blocker or PASS.
+BACKUP-001 A protected backup root MUST be exists/writable/ready before the governed live candidate deployment path begins.
+BACKUP-002 A current-runtime backup receipt and attested known-good restore target MUST exist before a destructive/replacement deployment step.
+BITFLOW-001 The target Staging installed Bit Flows 1.29.0 artifact is certified directly; certification of 1.24.0 is historical evidence only.
+BITFLOW-002 Native/parallel privileged provider surfaces are explicitly proven absent, suppressed, federated read-only, or treated as blockers.
+VERTICAL-001 CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED is emitted only after the expanded hard-gate DAG is satisfied by linked exact-candidate evidence.
+VERTICAL-002 Production authorization remains independent and false unless separately granted.

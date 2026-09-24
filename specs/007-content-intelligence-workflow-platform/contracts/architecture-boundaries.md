@@ -94,3 +94,37 @@ Otherwise it is a hard blocker.
 
 Staging authority does not imply Production authority.
 Production Developer shell/eval is denied by default.
+
+## Governed Tool Execution Plane
+
+The platform contains a generic Tool Execution Plane between semantic capabilities and concrete executors.
+
+```text
+Skill / Workflow / Operator
+        ↓
+semantic ToolOperation
+        ↓
+MAD4B authority + plan + policy
+        ↓
+Tool Executor Resolver
+        ↓
+WordPress service | WP-CLI | Host Runner | Provider API/CLI | Recovery Runner
+```
+
+The executor does not own authority and cannot reinterpret a semantic operation into a broader command.
+
+### Frontend boundary
+
+MCP, Admin UI, WP-CLI and standalone CLI are frontends. They MUST NOT implement independent authorization or mutation semantics.
+
+### Host Runner boundary
+
+Host Runner is outside the HTTP request lifecycle and MAY perform bounded host operations under a dedicated operating-system identity. It consumes signed/bound operation envelopes, not caller-provided command strings.
+
+### Recovery boundary
+
+Recovery Runner/transport is deliberately narrower than Host Execution. It remains capable of package/runtime health and known-good restore when WordPress is unavailable, but cannot inherit content publication or normal host-write authority.
+
+### Provider channel boundary
+
+Provider API, provider CLI, WordPress plugin integration and SSH are separate channels with separate certification. Side-channel rules apply to every write-capable channel.

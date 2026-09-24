@@ -16,6 +16,8 @@ Core:
 - gate-graph.json
 - data-model-critical-kernel.md
 - critical-kernel.md
+- implementation-closure.md
+- implementation-closure.json
 - feature.json
 - constitution.md
 - spec.md
@@ -101,11 +103,14 @@ Contracts:
 - skills-orchestration.md
 - publishing.md
 - host-connector.md
+- governed-tool-execution.md
+- cli-host-runner.md
 - cron-and-growth.md
 - observability-and-evidence.md
 - generalization-rules.md
 
 References:
+- host-provider-validation-profile.md
 - current-platform-baseline.md
 - provider-observations.md
 
@@ -141,3 +146,26 @@ The architecture is now frozen for first implementation scope. Broader maturity 
 The active implementation target is `critical-kernel.md`, not automatic execution of every contract in this directory.
 
 The PR must also contain the current target-branch base SHA as an ancestor. Green spec CI on a stale baseline is not sufficient.
+
+## Governed execution rule
+
+Host/CLI automation is expressed as semantic ToolOperations with certified executor adapters. MCP, WP-CLI, standalone CLI, Host Runner and provider API/CLI are not separate authority planes.
+
+Hostinger is a validation profile only. Generic contracts must remain portable to other hosting providers and executor channels.
+
+Ordinary capabilities MUST NOT expose arbitrary shell, arbitrary `wp eval`, arbitrary PHP or unrestricted raw SQL.
+
+
+## Unified implementation closure
+
+`implementation-closure.md` is the normative program for all remaining Feature 007 work. `implementation-closure.json` is its machine-readable workstream ledger and is validated by `validate_spec.py`.
+
+The closure program separates:
+- first vertical-slice hard blockers;
+- live mutation preconditions;
+- required platform maturity;
+- intentionally deferred maturity.
+
+Phase 36 in `plan.md` and `tasks.md` is the execution umbrella. Existing phases remain authoritative for detailed semantics; Phase 36 does not duplicate or supersede their contracts.
+
+The first vertical slice cannot close while repository governance is only committed but not externally enforced, protected backup/recovery is unready, the exact installed workflow provider is uncertified, or the ContentJob-to-public-verification chain lacks exact ETG evidence.

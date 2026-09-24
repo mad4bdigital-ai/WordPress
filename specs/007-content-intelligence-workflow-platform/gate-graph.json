@@ -1,27 +1,56 @@
 {
-  "contract": "mad4b.feature007-critical-gate-graph.v1",
-  "description": "Critical Kernel hard-gate DAG. Broader maturity gates remain outside Critical Kernel until architecture-freeze admission.",
+  "contract": "mad4b.feature007-critical-gate-graph.v2",
+  "description": "Expanded Critical Kernel hard-gate DAG. It decomposes the real Content Intelligence vertical slice and makes repository governance, protected recovery, exact provider evidence and formal closure explicit.",
   "roots": [
+    "repository_governance_enforced",
     "baseline_current",
-    "release_provenance_root",
-    "recovery_plane_available"
+    "execution_ledger_reconciled"
   ],
   "terminal_states": [
     "critical_kernel_vertical_slice_verified"
   ],
   "gates": [
     {
+      "id": "repository_governance_enforced",
+      "depends_on": []
+    },
+    {
       "id": "baseline_current",
       "depends_on": []
     },
     {
-      "id": "release_provenance_root",
+      "id": "execution_ledger_reconciled",
       "depends_on": []
+    },
+    {
+      "id": "release_provenance_root",
+      "depends_on": [
+        "baseline_current"
+      ]
+    },
+    {
+      "id": "recovery_tooling_available",
+      "depends_on": [
+        "release_provenance_root"
+      ]
     },
     {
       "id": "recovery_plane_available",
       "depends_on": [
+        "recovery_tooling_available"
+      ]
+    },
+    {
+      "id": "protected_backup_recovery_ready",
+      "depends_on": [
+        "recovery_plane_available",
         "release_provenance_root"
+      ]
+    },
+    {
+      "id": "recovery_live_verified",
+      "depends_on": [
+        "protected_backup_recovery_ready"
       ]
     },
     {
@@ -51,10 +80,23 @@
       ]
     },
     {
+      "id": "provider_side_channel_safe",
+      "depends_on": [
+        "provider_exact_certified"
+      ]
+    },
+    {
+      "id": "capability_traits_ready",
+      "depends_on": [
+        "provider_exact_certified"
+      ]
+    },
+    {
       "id": "execution_commit_guard_ready",
       "depends_on": [
         "policy_engine_ready",
-        "provider_exact_certified"
+        "provider_exact_certified",
+        "capability_traits_ready"
       ]
     },
     {
@@ -64,41 +106,116 @@
       ]
     },
     {
+      "id": "authoritative_execution_verified",
+      "depends_on": [
+        "durable_execution_ready",
+        "gate_liveness_verified"
+      ]
+    },
+    {
       "id": "site_bootstrap_reconciled",
       "depends_on": [
-        "baseline_current"
+        "baseline_current",
+        "execution_ledger_reconciled"
       ]
     },
     {
-      "id": "content_kernel_ready",
+      "id": "intent_registry_reconciled",
       "depends_on": [
-        "site_bootstrap_reconciled",
-        "durable_execution_ready"
+        "site_bootstrap_reconciled"
       ]
     },
     {
-      "id": "draft_publish_path_ready",
+      "id": "content_job_domain_ready",
       "depends_on": [
-        "content_kernel_ready",
+        "intent_registry_reconciled",
+        "authoritative_execution_verified"
+      ]
+    },
+    {
+      "id": "artifact_lineage_ready",
+      "depends_on": [
+        "content_job_domain_ready"
+      ]
+    },
+    {
+      "id": "context_writer_ready",
+      "depends_on": [
+        "artifact_lineage_ready"
+      ]
+    },
+    {
+      "id": "research_intelligence_ready",
+      "depends_on": [
+        "context_writer_ready",
+        "provider_side_channel_safe"
+      ]
+    },
+    {
+      "id": "blueprint_draft_qa_ready",
+      "depends_on": [
+        "research_intelligence_ready"
+      ]
+    },
+    {
+      "id": "governed_wp_draft_ready",
+      "depends_on": [
+        "blueprint_draft_qa_ready",
+        "execution_commit_guard_ready",
         "provider_exact_certified"
       ]
     },
     {
       "id": "semantic_publication_verification_ready",
       "depends_on": [
-        "draft_publish_path_ready"
+        "governed_wp_draft_ready"
+      ]
+    },
+    {
+      "id": "kernel_quality_verified",
+      "depends_on": [
+        "authoritative_execution_verified",
+        "provider_side_channel_safe",
+        "artifact_lineage_ready"
+      ]
+    },
+    {
+      "id": "operator_recovery_review_ready",
+      "depends_on": [
+        "semantic_publication_verification_ready",
+        "recovery_live_verified",
+        "kernel_quality_verified"
+      ]
+    },
+    {
+      "id": "formal_critical_state_verified",
+      "depends_on": [
+        "authoritative_execution_verified",
+        "gate_liveness_verified",
+        "provider_exact_certified"
       ]
     },
     {
       "id": "critical_kernel_vertical_slice_verified",
       "depends_on": [
+        "repository_governance_enforced",
+        "execution_ledger_reconciled",
         "semantic_publication_verification_ready",
-        "recovery_plane_available",
-        "gate_liveness_verified"
+        "recovery_live_verified",
+        "operator_recovery_review_ready",
+        "formal_critical_state_verified"
       ]
     }
   ],
   "bootstrap_transitions": [
+    {
+      "id": "repository_ruleset_bootstrap",
+      "from": "policy_committed_external_enforcement_missing",
+      "to": "repository_governance_enforced",
+      "exact_operation": "apply exact reviewed master ruleset then independently read back active enforcement",
+      "one_shot": true,
+      "requires_postcondition": "repository_governance_enforced"
+    },
     {
       "id": "candidate_binding_bootstrap",
       "from": "candidate_unbound",
@@ -114,6 +231,22 @@
       "exact_operation": "bounded disposable/staging canary",
       "one_shot": false,
       "requires_postcondition": "canary_evidence"
+    },
+    {
+      "id": "recovery_tooling_bootstrap",
+      "from": "recovery_tooling_unavailable",
+      "to": "recovery_tooling_available",
+      "exact_operation": "certify minimal read-only CLI/recovery runner and known-good package restore path",
+      "one_shot": false,
+      "requires_postcondition": "recovery_tooling_readiness"
+    },
+    {
+      "id": "protected_backup_root_bootstrap",
+      "from": "protected_backup_root_unprepared",
+      "to": "protected_backup_recovery_ready",
+      "exact_operation": "prepare bounded protected backup root, capture current-runtime backup receipt and verify known-good restore preconditions",
+      "one_shot": false,
+      "requires_postcondition": "protected_backup_recovery_ready"
     }
   ]
 }

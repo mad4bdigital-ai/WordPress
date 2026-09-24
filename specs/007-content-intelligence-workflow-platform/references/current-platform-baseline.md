@@ -57,3 +57,44 @@ The creation baseline remains historical provenance:
 `ab179816c03acb45751c1707eddee50d19178298`
 
 Future PR-base movement is a hard CI condition; green Feature 007 validation on a stale base is not considered current.
+
+## Canonical master synchronization — 2026-09-25
+
+Feature 007 is now reviewed against canonical `master`, not the historical rc.59 integration branch.
+
+Current reviewed baseline:
+- branch: `master`
+- exact SHA: `45b44d5885c24976df8df9cc47a51fbf6cd0a3bb`
+- commit: `Merge PR #62: ci(root-trust): verify trusted master attestation end-to-end`
+- Feature 007 governed-tooling branch is created with this SHA as its direct parent.
+
+The historical creation baseline and earlier integration-line synchronization remain provenance only. They no longer represent the current PR base.
+
+Any later movement of `master` reopens:
+- ancestry verification;
+- architecture-sensitive semantic impact review;
+- `current_baseline_head` update;
+- affected references/contracts if semantics changed.
+
+This synchronization does not imply live Staging or Production readiness; those remain separately evidenced.
+
+
+## Post-governance/schema synchronization — 2026-09-25
+
+Feature 007 was synchronized again after the governed merge sequence:
+
+- PR #62 — trusted master release-root verification implementation;
+- PR #61 — Schema v9 live migration diagnostics and real MariaDB v6→v9 certification;
+- PR #60 — release evidence identity and repository-governance bootstrap/policy.
+
+Current exact baseline:
+- branch: `master`
+- SHA: `ae40fa8821934318bec7c386d7acdf77653b8a87`
+- Feature 007 PR base: exact same SHA
+- behind: 0 at synchronization
+
+The repository-governance policy is now committed, but external ruleset enforcement remains a distinct evidence gate until independently read back as active. Committed policy MUST NOT be interpreted as enforced policy.
+
+The previous `45b44d5885c24976df8df9cc47a51fbf6cd0a3bb` baseline remains historical trusted-root evidence. Because `master` advanced after it, the current descendant requires its own release/root evidence before live deployment claims can be made.
+
+This exact baseline is also the anchor for `implementation-closure.json` and Phase 36.

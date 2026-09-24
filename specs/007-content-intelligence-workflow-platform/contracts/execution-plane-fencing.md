@@ -72,3 +72,27 @@ It targets:
 ## Migration
 
 Worker transport may later move outside WordPress/PHP without changing ContentJob or capability semantics.
+
+## Host Runner fencing
+
+HostRunnerJob leases use the same monotonic fencing principle as other durable execution.
+
+Every commit-capable runner attempt carries:
+- job ID;
+- attempt ID;
+- lease owner;
+- fencing epoch;
+- lease expiry;
+- checkpoint.
+
+Before external/host commit, runner verifies its fencing epoch is still current.
+
+A timed-out or zombie worker may finish local computation but cannot:
+- replace files;
+- apply packages;
+- mutate database state;
+- restore backups;
+- publish provider-side changes;
+- finalize a successful receipt.
+
+Executor adapters that cannot enforce direct fencing at the external provider boundary require reconciliation/idempotency semantics before retry.

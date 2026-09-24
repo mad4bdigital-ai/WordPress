@@ -15,6 +15,7 @@ required = [
     "feature.json","README.md","constitution.md","spec.md","research.md","data-model.md",
     "data-model-authority-certification.md","data-model-operations-lifecycle.md","data-model-critical-kernel.md",
     "critical-kernel.md","gate-graph.json","supported-runtime-profiles.json",
+    "implementation-closure.md","implementation-closure.json",
     "plan.md","tasks.md","quickstart.md","runbook.md","traceability.md","coverage-audit.md",
     "quality-model.md","quality-scorecard.md","checklists/requirements.md",
     "contracts/architecture-boundaries.md","contracts/release-lineage.md",
@@ -27,7 +28,8 @@ required = [
     "contracts/release-rings.md","contracts/content-job.md","contracts/context-dispatch.md",
     "contracts/research-provider.md","contracts/artifact-and-quality-gates.md",
     "contracts/skills-orchestration.md","contracts/publishing.md","contracts/plugin-onboarding.md",
-    "contracts/host-connector.md","contracts/cron-and-growth.md",
+    "contracts/host-connector.md","contracts/governed-tool-execution.md","contracts/cli-host-runner.md",
+    "contracts/cron-and-growth.md",
     "contracts/observability-and-evidence.md","contracts/generalization-rules.md",
     "contracts/spec-isolation.md","contracts/correctness-consistency-idempotency.md",
     "contracts/durable-execution-resilience.md","contracts/schema-contract-evolution.md",
@@ -52,6 +54,7 @@ required = [
     "contracts/offline-authorization-window.md","contracts/audit-telemetry-retention.md",
     "contracts/data-flow-policy.md","contracts/formal-model-critical-state.md",
     "contracts/architecture-freeze.md",
+    "references/host-provider-validation-profile.md",
 ]
 for rel in required:
     require_file(rel)
@@ -65,7 +68,7 @@ if feature_path.exists():
         "merge_authorized": False,
         "production_activation_authorized": False,
         "architecture_freeze": True,
-        "required_phase_count": 36,
+        "required_phase_count": 37,
     }
     for k, v in expected.items():
         if data.get(k) != v:
@@ -101,11 +104,72 @@ if feature_path.exists():
         "semantic_publication_fingerprint","ai_provenance_reproducibility",
         "eval_holdout_integrity","supported_runtime_profiles","offline_authorization_windows",
         "audit_telemetry_separation","data_flow_policy","formal_critical_state_models",
-        "architecture_freeze_critical_kernel"
+        "architecture_freeze_critical_kernel",
+        "governed_tool_operation_registry","cli_mcp_shared_service_parity",
+        "host_executor_authority_separation","host_runner_durable_execution","host_runner_bootstrap_enrollment",
+        "recovery_runner_wordpress_independence","no_generic_shell_surface",
+        "tool_path_network_secret_governance","tool_execution_receipt_evidence",
+        "host_provider_channel_certification","cross_executor_semantic_conformance",
+        "wordpress_host_bridge_exact_plan_enqueue","host_runner_execution_location_truthfulness",
+        "tool_executor_supply_chain_provenance","host_execution_kill_switches",
+        "runner_offline_authorization_revalidation","host_runner_fencing",
+        "recovery_runner_independent_root_trust","tool_executor_runtime_profile_compatibility",
+        "repository_governance_external_enforcement","execution_ledger_reconciliation",
+        "protected_backup_recovery_readiness","bitflows_1_29_exact_runtime_certification",
+        "unified_implementation_closure","critical_kernel_vertical_slice_verified"
     }
     missing = mandatory_gates.difference(gates)
     if missing:
         errors.append("missing_gates:" + ",".join(sorted(missing)))
+
+closure_path = require_file("implementation-closure.json")
+if closure_path.exists() and feature_path.exists():
+    closure = json.loads(closure_path.read_text(encoding="utf-8"))
+    if closure.get("contract") != "mad4b.feature007-implementation-closure.v1":
+        errors.append("closure:contract_mismatch")
+    if closure.get("baseline_branch") != "master":
+        errors.append("closure:baseline_branch_mismatch")
+    if closure.get("baseline_sha") != data.get("current_baseline_head"):
+        errors.append("closure:baseline_sha_mismatch")
+    if closure.get("terminal_gate") != "critical_kernel_vertical_slice_verified":
+        errors.append("closure:terminal_gate_mismatch")
+    if closure.get("production_authorized") is not False:
+        errors.append("closure:production_must_remain_false")
+    streams = closure.get("workstreams", [])
+    stream_ids = [row.get("id") for row in streams if isinstance(row, dict)]
+    if len(stream_ids) != len(set(stream_ids)) or any(not x for x in stream_ids):
+        errors.append("closure:workstream_ids_invalid")
+    required_streams = {
+        "repository_governance","execution_ledger_reconciliation","latest_master_root_trust",
+        "governed_tool_execution","protected_backup_recovery","recovery_live_drill","bitflows_1_29_exact_certification",
+        "provider_side_channel","capability_traits","site_bootstrap","intent_registry",
+        "content_job_domain","artifact_registry_store","context_writer","research_competitive",
+        "blueprint_draft_qa","governed_wp_draft","semantic_publication_verification",
+        "authoritative_consistency_fencing","security_ai_eval_faults","operator_doctor_dlq",
+        "formal_state_proof","etg_vertical_slice"
+    }
+    missing_streams = required_streams.difference(stream_ids)
+    if missing_streams:
+        errors.append("closure:missing_workstreams:" + ",".join(sorted(missing_streams)))
+    allowed_status=set(closure.get("status_vocabulary", []))
+    allowed_priority=set(closure.get("priority_classes", []))
+    for row in streams:
+        if not isinstance(row, dict):
+            errors.append("closure:workstream_not_object")
+            continue
+        if row.get("status") not in allowed_status:
+            errors.append(f"closure:invalid_status:{row.get('id')}:{row.get('status')}")
+        if row.get("priority") not in allowed_priority:
+            errors.append(f"closure:invalid_priority:{row.get('id')}:{row.get('priority')}")
+        if row.get("priority") in {"KERNEL_BLOCKER","LIVE_PRECONDITION"} and not row.get("gate"):
+            errors.append(f"closure:missing_gate:{row.get('id')}")
+
+closure_md_path = require_file("implementation-closure.md")
+if closure_md_path.exists() and feature_path.exists():
+    closure_md = closure_md_path.read_text(encoding="utf-8")
+    current_base = data.get("current_baseline_head")
+    if isinstance(current_base, str) and current_base not in closure_md:
+        errors.append("closure:markdown_baseline_mismatch")
 
 tasks_path = require_file("tasks.md")
 if tasks_path.exists():
@@ -114,7 +178,7 @@ if tasks_path.exists():
     dupes = sorted({x for x in ids if ids.count(x) > 1})
     if dupes:
         errors.append("duplicate_task_ids:" + ",".join(dupes))
-    for phase in range(0, 36):
+    for phase in range(0, 37):
         if f"Phase {phase} " not in txt and f"Phase {phase} —" not in txt:
             errors.append(f"missing_task_phase:{phase}")
 
@@ -142,7 +206,7 @@ if trace.exists():
         "POLICY","ATTEST","BOOT","INTENT","STORE","RECOMP","PVERIFY","RIGHTS","AIDATA","OPS","CONF",
         "FAIR","LOC","EVALREG","EXP","USAGE","PORT","BASESYNC","ROOT","STATE","FENCE","COMMIT",
         "LIVENESS","TRAIT","PRIVHASH","PUBFP","AIINT","PROFILE","OFFLINE","AUDITSEP","DATAFLOW",
-        "FORMAL","FREEZE"
+        "FORMAL","FREEZE","TOOL","CLI","RUNNER","HOSTPROF","REPOGOV","BACKUP","CLOSURE"
     ]
     for family in families:
         if f"| {family} |" not in t:
@@ -169,6 +233,10 @@ if graph_path.exists():
     if None in ids or len(ids) != len(set(ids)):
         errors.append("gate_graph:ids_invalid_or_duplicate")
     idset=set(ids)
+    if closure_path.exists():
+        for row in closure.get("workstreams", []):
+            if isinstance(row, dict) and row.get("gate") and row.get("gate") not in idset:
+                errors.append(f"closure:unknown_gate:{row.get('id')}:{row.get('gate')}")
     deps={}
     for n in nodes:
         nid=n.get("id")
@@ -248,7 +316,7 @@ if errors:
 
 print("FEATURE_007_SPEC_VALIDATION: PASS")
 print(f"required_files={len(required)}")
-print("required_phases=36")
+print(f"required_phases={data.get('required_phase_count') if feature_path.exists() else 'unknown'}")
 print("gate_graph=acyclic_and_terminal_reachable")
 print("architecture_freeze=true")
 print("merge_authorized=false")

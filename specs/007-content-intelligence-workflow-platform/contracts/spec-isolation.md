@@ -28,3 +28,16 @@ The repository-global `.specify/feature.json` remains owned by the existing Feat
 - ETG DFSB CI Feature 001 metadata assertions pass;
 - Feature 007 documents and tooling can be located without a global pointer change;
 - future multi-feature metadata migration, if desired, is a separate change with compatibility tests.
+
+## Spec maintenance during implementation
+
+Once Feature 007 enters `implementation`, specification maintenance remains valid on isolated branches matching `spec/007-*` when and only when every changed path is inside the workflow-owned specification allowlist.
+
+This does not widen runtime implementation authority:
+- runtime/plugin/tool changes remain restricted to the exact implementation branch;
+- cross-feature files remain denied unless the implementation branch uses the separately declared dependency allowlist;
+- `feature.json` cannot widen the workflow-owned allowlist;
+- baseline ancestry/current-baseline metadata gates still apply;
+- Spec validation/gate-liveness still applies.
+
+This rule prevents an implementation-status flag from freezing the specification while preserving phase isolation.

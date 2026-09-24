@@ -85,3 +85,30 @@ Security-critical policy/normalization code SHOULD use mutation testing or equiv
 
 Flaky tests are quarantined only with owner/reason/expiry.
 A quarantined security/release gate does not count as PASS.
+
+## Tool execution conformance matrix
+
+For each high-value semantic operation, test applicable executor mappings across:
+- WordPress-native service;
+- WP-CLI;
+- Host Runner;
+- provider API;
+- provider CLI;
+- Recovery Runner.
+
+Required fixtures include:
+- exact normalized success parity;
+- authority denial parity;
+- shell/flag injection denial;
+- path traversal/symlink/zip-slip denial;
+- stale target/plan denial;
+- timeout/output-limit behavior;
+- secret redaction;
+- idempotent retry;
+- crash/lease fencing;
+- readback/rollback;
+- unavailable executor and explicit fallback;
+- provider CLI/API drift;
+- WordPress-unbootable recovery path.
+
+At least one semantic operation MUST be proven across two different executor adapters without changes to its Skill/domain contract.

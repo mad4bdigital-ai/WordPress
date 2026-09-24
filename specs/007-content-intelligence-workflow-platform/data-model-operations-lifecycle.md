@@ -258,3 +258,158 @@ Exposure:
 - omitted secrets/external refs
 - remapping requirements
 - manifest_sha256
+
+## ToolOperationDefinition / ToolExecutorProfile
+
+ToolOperationDefinition:
+- operation_id/version/fingerprint;
+- capability family;
+- read/write/risk class;
+- input/output schema;
+- supported target classes/environments;
+- required executor traits;
+- authority/approval policy;
+- idempotency/commit/readback requirements;
+- path/network/secret policy refs;
+- timeout/output/resource budgets;
+- rollback/forward-fix policy;
+- certification refs.
+
+ToolExecutorProfile:
+- executor_id/version/fingerprint;
+- executor_kind;
+- provider/channel optional;
+- supported operation mappings;
+- runtime/site compatibility;
+- local/remote;
+- WordPress-boot dependency;
+- privilege identity class;
+- filesystem/network reach;
+- retry/cancel/idempotency traits;
+- health/certification state.
+
+## HostTarget
+
+- host_target_id;
+- tenant/site/environment;
+- provider/account/resource refs;
+- canonical WordPress root optional;
+- allowed filesystem zones;
+- runtime profile;
+- target fingerprint;
+- status/evidence refs.
+
+## ToolExecutionPlan
+
+- plan_id;
+- operation definition fingerprint;
+- selected executor fingerprint;
+- exact target;
+- current-state fingerprint;
+- normalized requested change;
+- normalized argv/API summary;
+- filesystem/network scope;
+- expected side effects;
+- blast radius/resource budget;
+- idempotency key;
+- rollback/forward-fix;
+- candidate/build binding;
+- approval requirements;
+- expiry;
+- plan_sha256.
+
+## HostRunnerJob / Lease
+
+HostRunnerJob:
+- job_id;
+- operation/plan refs;
+- target/candidate refs;
+- input hash;
+- opaque secret refs;
+- authority/approval refs;
+- idempotency key;
+- runner profile requirement;
+- expiry;
+- envelope integrity/signature;
+- state.
+
+Lease:
+- job_id;
+- runner_id;
+- fencing_epoch;
+- acquired/heartbeat/expires;
+- checkpoint;
+- attempt.
+
+## ToolExecutionReceipt
+
+- execution_id;
+- operation/executor identities;
+- target;
+- actor/NHI;
+- plan/approval/authority refs;
+- start/end;
+- normalized result/reason code;
+- output evidence refs;
+- pre/post state fingerprints;
+- mutation_performed;
+- readback verdict;
+- rollback/recovery state;
+- correlation_id;
+- receipt_sha256.
+
+## Execution location fields
+
+ToolExecutorProfile:
+- execution_location_class;
+- submission/control locations supported;
+- authoritative commit location;
+- location constraints by environment.
+
+ToolExecutionPlan:
+- submission_location;
+- expected_execution_location;
+- allowed_fallback_execution_locations[];
+- execution_location_change_material=true by default.
+
+HostRunnerJob:
+- submission_location;
+- required_execution_location;
+- assigned_runner/executor identity.
+
+ToolExecutionReceipt:
+- submission_location;
+- execution_location;
+- executor_instance_ref;
+- commit_location evidence;
+- fallback_used + fallback_reason optional.
+
+A receipt with an execution location outside the exact plan/fallback set is invalid.
+
+## RunnerPackage / RunnerEnrollment
+
+RunnerPackage:
+- runner_package_id/version;
+- source/build identity;
+- archive/tree/manifest hashes;
+- SBOM/attestation refs;
+- entrypoint;
+- supported operation-contract versions;
+- required runtime profile;
+- allowed installation zone;
+- update/rollback compatibility.
+
+RunnerEnrollment:
+- enrollment_id;
+- host_target_id/site/environment;
+- runner package fingerprint;
+- runner public identity/key ref;
+- bootstrap channel/executor;
+- installation root fingerprint;
+- scheduling profile/ref;
+- issued/consumed/expires timestamps;
+- single_use=true;
+- certification/readiness state;
+- enrollment evidence hash.
+
+Enrollment is identity/bootstrap state, not authority.

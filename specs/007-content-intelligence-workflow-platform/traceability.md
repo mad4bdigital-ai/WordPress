@@ -22,6 +22,10 @@
 | PLAN/WRITE/QA | Skills + artifact services | quality-gate decisions |
 | PUB | existing content/media/SEO abilities | PublishManifest + readback evidence |
 | HOST | separate Host Connector | connector grants/provider evidence |
+| TOOL | governed Tool Execution Plane | operation registry + executor resolution + receipts |
+| CLI | canonical WP-CLI/standalone CLI frontends | MCP/CLI normalized parity evidence |
+| RUNNER | Host Runner / Recovery Runner | signed jobs + lease fencing + crash/recovery evidence |
+| HOSTPROF | host-provider channel adapters | per-channel discovery/certification + cross-adapter conformance |
 | CRON | cron semantic family | provider-specific runtime tests |
 | GROW | search performance providers | snapshots + refresh lineage |
 | QCORR | correctness/idempotency/concurrency | transaction + replay/race evidence |
@@ -69,6 +73,9 @@
 | BOOT | existing-site-bootstrap-content-inventory | bootstrap snapshot + inventory reconciliation |
 | ATTEST | evidence-attestation-trust | signed/revoked evidence verification |
 | POLICY | policy-resolution-separation-of-duties | effective decision + precedence/conflict tests |
+| REPOGOV | external repository governance | active master ruleset + pinned Release Verdict + zero bypass actors |
+| BACKUP | protected backup/recovery readiness | protected-root readiness + current-runtime backup receipt + known-good restore proof |
+| CLOSURE | unified implementation closure | closure ledger + Phase 36 evidence + terminal vertical-slice chain |
 
 ## Dependency graph
 release-lineage
@@ -87,6 +94,10 @@ content-job
 → publishing
 
 Host Connector is a separate authority track.
+Governed Tool Execution sits between semantic operations and executor adapters.
+MCP/Admin UI/WP-CLI/Host Runner share the same operation/policy service.
+Hostinger/provider channels remain adapter profiles; transport availability never creates authority.
+Minimal CLI/Recovery Runner is admitted to the Critical Kernel recovery boundary, while broad host automation remains Phase 11 maturity work.
 Growth depends on stable published-content identity.
 
 ## Gates
@@ -191,15 +202,17 @@ No downstream layer can widen upstream authority or fabricate evidence.
 
 ## Critical Kernel proof chain
 
-BASESYNC + ROOT
+REPOGOV + BASESYNC + CLOSURE
+→ ROOT + BACKUP
 → AUTH + POLICY + COMMIT + LIVENESS
 → STATE + FENCE + QCORR + QRES
-→ DPC + TRAIT
+→ exact Bit Flows 1.29.0 DPC + TRAIT + side-channel proof
 → BOOT + INTENT
-→ CJ + ART + CTX + RES
-→ WRITE/QA/PUB
-→ PUBFP
-→ RECOVERY evidence
+→ CJ + ART + STORE
+→ CTX + WR + RES + COMP
+→ PLAN/WRITE/QA + governed PUB draft
+→ PUBFP + PVERIFY
+→ OPS + recovery evidence + FORMAL
 → CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED
 
 Maturity families remain outside this critical proof unless a concrete dependency requires admission.

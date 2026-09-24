@@ -42,3 +42,28 @@ A provider failing a claimed trait loses eligibility for requirements needing th
 ## Plan binding
 
 Selected CapabilityProfile fingerprint is part of the execution plan so changing semantic traits invalidates stale plans.
+
+## Tool executor traits
+
+Tool executor mappings extend semantic traits with:
+- executor_kind;
+- requires_wordpress_boot;
+- local_or_remote;
+- synchronous_or_async;
+- interactive_tty;
+- filesystem_zones;
+- network_scope;
+- secret_access_class;
+- process_spawn_policy;
+- timeout/output bounds;
+- cancellation;
+- idempotency;
+- recovery availability;
+- Production eligibility.
+
+A semantic operation can require traits such as:
+`requires_wordpress_boot=false`,
+`interactive_tty=false`,
+`recovery_available=true`.
+
+Resolver selection is based on these traits plus certification; executable/CLI presence alone is insufficient.

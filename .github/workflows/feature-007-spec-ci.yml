@@ -115,28 +115,39 @@ jobs:
 
           if status == "specification":
               forbidden = [p for p in changed if not permitted(p, spec_allowed)]
+              boundary_mode = "specification"
           elif status == "implementation":
-              if head_branch != implementation_branch:
+              if head_branch == implementation_branch:
+                  permitted_entries = implementation_allowed + cross_feature_dependencies
+                  forbidden = [p for p in changed if not permitted(p, permitted_entries)]
+                  touched_cross_feature = [
+                      p for p in changed
+                      if p.startswith("specs/")
+                      and not p.startswith("specs/007-content-intelligence-workflow-platform/")
+                  ]
+                  undeclared = [p for p in touched_cross_feature if p not in cross_feature_dependencies]
+                  if undeclared:
+                      raise SystemExit("UNDECLARED_CROSS_FEATURE_CHANGE: " + ",".join(sorted(undeclared)))
+                  boundary_mode = "implementation"
+              elif head_branch.startswith("spec/007-"):
+                  # Feature implementation has started, but specification maintenance must
+                  # remain possible on isolated spec branches. This path is intentionally
+                  # narrower than the implementation branch: only the immutable workflow-
+                  # owned spec allowlist is accepted, so feature.json cannot self-widen it.
+                  forbidden = [p for p in changed if not permitted(p, spec_allowed)]
+                  boundary_mode = "implementation_spec_maintenance"
+              else:
                   raise SystemExit(
-                      f"IMPLEMENTATION_BRANCH_MISMATCH expected={implementation_branch} actual={head_branch}"
+                      f"IMPLEMENTATION_BRANCH_MISMATCH expected={implementation_branch} "
+                      f"or isolated spec/007-* maintenance branch; actual={head_branch}"
                   )
-              permitted_entries = implementation_allowed + cross_feature_dependencies
-              forbidden = [p for p in changed if not permitted(p, permitted_entries)]
-              touched_cross_feature = [
-                  p for p in changed
-                  if p.startswith("specs/")
-                  and not p.startswith("specs/007-content-intelligence-workflow-platform/")
-              ]
-              undeclared = [p for p in touched_cross_feature if p not in cross_feature_dependencies]
-              if undeclared:
-                  raise SystemExit("UNDECLARED_CROSS_FEATURE_CHANGE: " + ",".join(sorted(undeclared)))
           else:
               raise SystemExit(f"UNKNOWN_FEATURE_STATUS: {status!r}")
 
           if forbidden:
               raise SystemExit("FORBIDDEN_CHANGE: " + ",".join(sorted(forbidden)))
 
-          print(f"FEATURE_007_BOUNDARY_OK status={status} changed={len(changed)}")
+          print(f"FEATURE_007_BOUNDARY_OK status={status} mode={boundary_mode} changed={len(changed)}")
           PY
 
       - name: Validate Feature 007 contracts and gate liveness

@@ -63,3 +63,27 @@ Every fail-closed status provides:
 - non-secret next action.
 
 A generic "blocked" state without reason is insufficient.
+
+## Tool execution evidence
+
+Tool/host execution additionally records:
+- semantic operation ID/version/fingerprint;
+- selected executor ID/version/fingerprint;
+- executor resolution decision;
+- target/root identity;
+- job/lease/fencing epoch where async;
+- normalized argv or provider request summary with secrets removed;
+- timeout/output budgets;
+- pre/post state fingerprints;
+- mutation_performed;
+- readback/rollback state;
+- stable execution reason code.
+
+Raw stdout/stderr is optional sensitive evidence and is never the primary normalized contract.
+
+Evidence MUST distinguish:
+- operation semantics;
+- executor implementation;
+- transport;
+- authority;
+so changing from WP-CLI to provider API cannot be mistaken for a change in requested business operation.

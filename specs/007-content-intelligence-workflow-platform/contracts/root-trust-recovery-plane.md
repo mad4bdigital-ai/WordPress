@@ -78,3 +78,23 @@ Every recovery action binds:
 ## Self-test
 
 Release readiness includes a proof that a broken/disabled Control Plane can be restored through the Recovery Plane without relying on the broken plugin path.
+
+## Recovery Runner trust
+
+Recovery Runner is part of the minimal Recovery Plane and therefore has an independent trust requirement.
+
+It verifies:
+- its own package/executable identity;
+- trusted recovery policy;
+- exact target/root;
+- requested recovery operation;
+- known-good package artifact/attestation;
+- job/request integrity and expiry.
+
+Recovery Runner does not trust the currently broken Control Plane package to authorize replacement of that same package.
+
+Recovery credentials and signing material are separate from ordinary WordPress content-write credentials where feasible.
+
+Recovery read health is broader than recovery mutation: mutation remains restricted to explicitly enumerated restore/disable/reconcile operations.
+
+A successful recovery receipt proves restored package/runtime identity and then hands authority back to the normal Control Plane; it does not retain standing host-write authority.

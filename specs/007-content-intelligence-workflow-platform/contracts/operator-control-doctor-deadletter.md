@@ -95,3 +95,22 @@ DLQ replay:
 ## Bulk safety
 
 Bulk actions require bounded selection/count, preview and blast-radius budget.
+
+## Tool/runner Doctor coverage
+
+Doctor additionally diagnoses:
+- executor missing/uncertified;
+- CLI binary/version drift;
+- runner unavailable;
+- stale runner heartbeat;
+- stuck/fenced lease;
+- queue age/backlog;
+- dead-lettered host jobs;
+- target-root mismatch;
+- path-permission drift;
+- provider API/CLI auth readiness;
+- output-limit/timeouts;
+- recovery-runner readiness;
+- side-channel executor discovered outside policy.
+
+Suggested RepairPlan references semantic operation IDs. Doctor never emits or executes arbitrary shell text.

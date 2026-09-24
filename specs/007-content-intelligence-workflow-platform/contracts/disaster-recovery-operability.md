@@ -70,3 +70,24 @@ Incident records include:
 ## Restore gate
 
 Production-eligible release families that introduce new durable state or irreversible writes require a restore/rollback rehearsal appropriate to the risk.
+
+## Host execution and terminal independence
+
+Normal operation SHOULD NOT require a human to open a hosting-provider terminal.
+
+Recovery design includes:
+- canonical `wp mad4b` diagnostics when WordPress core can bootstrap;
+- Host Runner for non-HTTP execution;
+- provider API/CLI adapters where certified;
+- minimal out-of-band Recovery Runner/transport when WordPress/plugin boot is unavailable.
+
+Required recovery rehearsals:
+- WordPress plugin boot failure while package/runtime health remains inspectable;
+- restore of an attested known-good package without normal content-write authority;
+- Host Runner queue/lease corruption;
+- provider API outage with explicit non-authorizing fallback;
+- loss of WP-CLI with alternate certified read path;
+- runner credential rotation/revocation;
+- stale or replayed recovery job rejection.
+
+Interactive hosting shell remains a last-resort operator path, not the normal automated recovery contract.

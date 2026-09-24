@@ -66,3 +66,21 @@ baseline/root trust
 ## Review
 
 Any major redesign triggered by this vertical slice updates the affected contracts before scale-out.
+
+## Admission decision — governed tooling
+
+Observed evidence now satisfies admission criteria 1, 2 and 5:
+- operational diagnosis required a manual hosting-terminal fallback because no canonical CLI/MCP diagnostic existed;
+- exposing generic shell inside WordPress would create a concrete privilege/security boundary;
+- recovery must remain possible when the WordPress/plugin path is unhealthy.
+
+Therefore the following minimal subset is admitted to Critical Kernel / Recovery Plane support:
+- semantic ToolOperation registry sufficient for recovery diagnostics;
+- canonical read-only CLI diagnostics;
+- bounded executor contract;
+- minimal out-of-band Recovery Runner capable of package/runtime health and known-good package restore;
+- host/WordPress authority separation.
+
+The broader Host Execution Plane remains a maturity/Phase 11 platform capability and MUST NOT block the first ContentJob vertical slice merely because every future host write adapter is not implemented.
+
+This admission does not authorize generic shell, Production host mutation, provider-specific automation or broad Host Write.

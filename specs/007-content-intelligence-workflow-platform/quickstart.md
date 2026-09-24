@@ -71,3 +71,21 @@ Flow:
 - host SSH inside WordPress filesystem authority;
 - QA average overriding hard blockers;
 - large runtime merge before Phase 0 closure.
+
+## Governed tooling quickstart
+
+For host/CLI work, read:
+1. contracts/governed-tool-execution.md
+2. contracts/cli-host-runner.md
+3. contracts/host-connector.md
+4. references/host-provider-validation-profile.md
+
+First implementation proof:
+- expose one read-only `wp mad4b diagnostics ...` command;
+- expose the same semantic diagnostic through MCP;
+- prove normalized output equivalence;
+- run the same operation through a Host Runner;
+- prove no WordPress Write/Developer grant implicitly creates Host Execution;
+- prove no arbitrary command text is accepted.
+
+Do not automate Hostinger Terminal text as the platform API. Map provider/API/CLI/runner channels to semantic operations instead.

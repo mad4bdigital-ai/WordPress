@@ -38,3 +38,22 @@ plan → diff → approval if required → apply → readback → evidence.
 ## Unknown state
 
 If runtime cannot determine whether a high-risk feature is enabled/disabled or which policy is active, affected writes fail closed.
+
+## Tool execution kill switches
+
+Independent desired-state kill switches exist for:
+- Host Write;
+- Host Execution;
+- Host Runner pickup;
+- provider API channel;
+- provider CLI channel;
+- bounded SSH;
+- Recovery Runner mutation.
+
+A Host Runner kill switch may stop new leasing while allowing safe terminal readback/receipt persistence for already executed work.
+
+Recovery mutation kill switch is separate from recovery read health.
+
+Provider-channel drift or executor fingerprint mismatch can quarantine only the affected channel/operations without disabling unrelated WordPress reads.
+
+No kill switch may silently route work to a broader executor.
