@@ -630,7 +630,18 @@ def main() -> int:
 
     if args.mode == "certified" and archive_matches_catalog:
         if not evidence["native_mcp"]["catalog_role_artifact_bound"]:
-            raise SystemExit("Bit Flows certified native MCP role no longer matches exact artifact-bound catalog")
+            details = {
+                "catalog_role": evidence["native_mcp"]["catalog_role"],
+                "server_marker_files": evidence["native_mcp"]["server_marker_files"],
+                "route_marker_files": evidence["native_mcp"]["route_marker_files"],
+                "server_reference_files": evidence["native_mcp"]["server_reference_files"],
+                "client_marker_files": evidence["native_mcp"]["client_marker_files"],
+                "mcp_named_paths": evidence["native_mcp"]["mcp_named_paths"],
+            }
+            raise SystemExit(
+                "Bit Flows certified native MCP role no longer matches exact artifact-bound catalog: "
+                + json.dumps(details, sort_keys=True)
+            )
         if not evidence["native_mcp"]["catalog_server_route_expectation_match"]:
             raise SystemExit("Bit Flows certified native MCP server-route expectation no longer matches catalog")
 
