@@ -111,7 +111,7 @@ try {
 	mad4b_contract_assert( false, 'Context Authority registration must not assign an unregistered category.', $e->getMessage() );
 }
 mad4b_contract_assert( isset( $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ] ), 'AI review ability must register after its category exists.' );
-mad4b_contract_assert( 'mad4b-write' === $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ]['category'], 'AI review ability must remain bound to the unified governed write category.' );
+mad4b_contract_assert( 'mad4b-admin' === $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ]['category'], 'AI review ability must use the registered governance Ability category; mad4b-write remains the dedicated MCP write transport/server.' );
 
 $schema = $abilities->schema_status();
 mad4b_contract_assert( is_array( $schema ) && 'mad4b.schema-status.v1' === $schema['contract'], 'Schema status must expose the stable read-only contract.', $schema );
