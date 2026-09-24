@@ -200,8 +200,21 @@ final class MAD4B_SCP_Context_Authority {
 		$mode = sanitize_key( (string) $mode );
 		$agent_public_id = strtolower( trim( sanitize_text_field( (string) $agent_public_id ) ) );
 		if ( ! in_array( $mode, array( 'human_only', 'human_and_ai' ), true ) ) return new WP_Error( 'mad4b_context_review_mode_invalid', 'Context review mode must be human_only or human_and_ai.' );
+		if ( 'human_only' === $mode ) $agent_public_id = '';
+
+		// Persisted state is authoritative. A reload must not force the operator to
+		// re-confirm an already committed delegation merely because the one-time
+		// confirmation checkbox is intentionally not persisted.
+		$current = self::review_policy();
+		if ( $mode === (string) $current['mode'] && $agent_public_id === (string) $current['ai_agent_public_id'] ) {
+			$current['mutation_performed'] = false;
+			$current['idempotent'] = true;
+			$current['persistence_verified'] = true;
+			return $current;
+		}
+
 		if ( 'human_and_ai' === $mode ) {
-			if ( ! $confirmed ) return new WP_Error( 'mad4b_context_ai_review_confirmation_required', 'Enabling delegated AI Agent review requires explicit administrator confirmation.' );
+			if ( ! $confirmed ) return new WP_Error( 'mad4b_context_ai_review_confirmation_required', 'Changing delegated AI Agent review requires explicit administrator confirmation.' );
 			if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/', $agent_public_id ) ) return new WP_Error( 'mad4b_context_ai_review_agent_required', 'Select one exact enabled MAD4B Agent for AI review delegation.' );
 			if ( 'staging' !== self::site_profile_environment() ) return new WP_Error( 'mad4b_context_ai_review_staging_only', 'AI Agent approval mode is Staging-only in rc.54.' );
 			if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' ) || ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) return new WP_Error( 'mad4b_context_ai_review_agent_registry_unavailable', 'MAD4B Agent registry is unavailable.' );
@@ -209,14 +222,6 @@ final class MAD4B_SCP_Context_Authority {
 			$profile_agent_slug = self::site_profile_agent_slug();
 			if ( ! is_array( $agent ) || empty( $agent ) || 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_ineligible', 'AI review requires the enabled Staging Site Profile agent.' );
 			if ( '' === $profile_agent_slug || $profile_agent_slug !== sanitize_key( isset( $agent['slug'] ) ? (string) $agent['slug'] : '' ) ) return new WP_Error( 'mad4b_context_ai_review_agent_not_profile_owned', 'AI review delegation must use the canonical Site Profile governed-write agent.' );
-		} else {
-			$agent_public_id = '';
-		}
-		$current = self::review_policy();
-		if ( $mode === (string) $current['mode'] && $agent_public_id === (string) $current['ai_agent_public_id'] ) {
-			$current['mutation_performed'] = false;
-			$current['idempotent'] = true;
-			return $current;
 		}
 		return self::with_registry_lock(
 			'set_review_policy',
