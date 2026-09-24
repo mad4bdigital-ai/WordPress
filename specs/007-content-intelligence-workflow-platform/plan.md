@@ -782,12 +782,12 @@ Objective: convert all known remaining work into one governed closure program an
 Execution order:
 1. Apply and independently read back the reviewed `master` repository ruleset.
 2. Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact evidence references.
-3. Recapture trusted release/root evidence for the current master descendant.
-4. Prepare and verify the protected backup root, current-runtime backup receipt and known-good restore preconditions.
+3. Separate the reviewed repository parent from the deployable runtime release; recapture trusted runtime/root evidence only after runtime-affecting changes.
+4. Prepare and verify the protected backup root, current-runtime backup receipt, independent disable/restore path and known-good restore preconditions.
 5. Certify the exact installed Bit Flows 1.29.0 artifact, capability traits and privileged-side-channel policy.
 6. Close live Multi-Authority, Policy Resolution Engine, gate-liveness and operating-mode blockers.
 7. Implement existing-site bootstrap + Intent Registry.
-8. Implement ContentJob domain + Artifact Registry/Store/lineage and authoritative consistency checks.
+8. Complete the now-started ContentJob domain runtime proof, then implement Artifact Registry/Store/lineage and authoritative consistency checks.
 9. Implement Knowledge Dispatcher, ContextPack and immutable WriterProfile binding.
 10. Implement normalized research + competitive-intelligence evidence.
 11. Implement Blueprint → ArticleDraft → FactLedger → Editorial/SEO/Final QA.
