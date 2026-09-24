@@ -177,10 +177,7 @@ jobs:
               'mad4b-write-runtime-certification',
               'mad4b-rest-compatibility-status',
               'mad4b-staging-certification-status',
-              'mad4b-site-profile-feature-reenroll',
-              'mad4b-site-profile-write-enable',
-              'mad4b-staging-write-grant-reconcile',
-              'mad4b-staging-write-candidate-bind',
+              'mad4b-full-staging-authority-apply',
           }
           missing = sorted(required.difference(names))
           if missing:
@@ -207,6 +204,10 @@ jobs:
               'mad4b-plugin-activate',
               'mad4b-plugin-deactivate',
               'mad4b-plugin-package-apply',
+              'mad4b-site-profile-feature-reenroll',
+              'mad4b-site-profile-write-enable',
+              'mad4b-staging-write-grant-reconcile',
+              'mad4b-staging-write-candidate-bind',
               'mad4b-mutation-undo',
               'mad4b-approval-plan',
           }
