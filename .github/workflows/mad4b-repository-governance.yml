@@ -1,0 +1,124 @@
+name: MAD4B Repository Governance
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: mad4b-repository-governance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance:
+    name: Repository governance policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify active master repository governance
+        id: governance
+        shell: bash
+        run: |
+          set -uo pipefail
+          stdout=/tmp/mad4b-repository-governance.stdout
+          stderr=/tmp/mad4b-repository-governance.stderr
+          status=/tmp/mad4b-repository-governance-status.json
+          rm -f "$stdout" "$stderr" "$status"
+
+          set +e
+          python3 tools/verify_repository_governance.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --policy .github/mad4b-repository-governance-policy.json \
+            --output "$status" >"$stdout" 2>"$stderr"
+          rc=$?
+          set -e
+
+          cat "$stdout" || true
+          cat "$stderr" >&2 || true
+
+          if [ ! -s "$status" ]; then
+            GOVERNANCE_RC="$rc" python3 - "$status" "$stderr" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          status_path=Path(sys.argv[1])
+          stderr_path=Path(sys.argv[2])
+          reason=stderr_path.read_text(encoding='utf-8',errors='replace').strip()
+          data={
+              'contract':'mad4b.repository-governance-status.v1',
+              'repository':os.environ.get('GITHUB_REPOSITORY',''),
+              'target_ref':'refs/heads/master',
+              'ready':False,
+              'verification_exit_code':int(os.environ.get('GOVERNANCE_RC','1')),
+              'failure_reason':reason or 'repository governance verification failed without diagnostic text',
+          }
+          status_path.write_text(json.dumps(data,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          PY
+          fi
+
+          echo "verification_exit_code=$rc" >> "$GITHUB_OUTPUT"
+
+          # Initial governance bootstrap is a bounded one-time exception:
+          # the policy remains externally NOT ready, but this exact change set
+          # may land so an administrator can apply the ruleset from audited code.
+          if [ "$rc" -ne 0 ]; then
+            reason="$(jq -r '.failure_reason // ""' "$status" 2>/dev/null || true)"
+            changed=/tmp/mad4b-repository-governance-changed-files.txt
+            : > "$changed"
+            if [ -n "${BASE_SHA:-}" ] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+              git diff --name-only "$BASE_SHA..$SOURCE_SHA" | sort -u > "$changed"
+            fi
+
+            bootstrap=true
+            for required in \
+              .github/mad4b-master-ruleset-template.json \
+              .github/mad4b-repository-governance-policy.json \
+              .github/workflows/mad4b-repository-governance.yml \
+              .github/workflows/mad4b-release-verdict.yml \
+              tools/Apply-Mad4bMasterRuleset.ps1 \
+              tools/verify_repository_governance.py
+            do
+              grep -Fxq "$required" "$changed" || bootstrap=false
+            done
+
+            if [ "$bootstrap" = true ] && [[ "$reason" == no\ active\ repository\ ruleset\ applies\ to\ refs/heads/master* ]]; then
+              python3 -c "import json,sys; p=sys.argv[1]; data=json.load(open(p,encoding='utf-8')); data.update({'ready':False,'bootstrap_merge_exception':True,'bootstrap_scope':'initial_master_ruleset_only','external_ruleset_required':True,'enforcement_state':'external_pending'}); open(p,'w',encoding='utf-8').write(json.dumps(data,indent=2,sort_keys=True)+'\\n')" "$status"
+              echo "bootstrap_merge_exception=true" >> "$GITHUB_OUTPUT"
+              echo "Repository governance external enforcement is pending; bounded initial bootstrap accepted."
+              exit 0
+            fi
+          fi
+
+          exit "$rc"
+
+      - name: Upload governance status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-repository-governance-status-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-repository-governance-status.json
+          if-no-files-found: ignore
+          retention-days: 30

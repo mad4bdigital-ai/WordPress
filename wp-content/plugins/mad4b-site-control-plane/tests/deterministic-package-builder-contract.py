@@ -121,6 +121,28 @@ def main() -> int:
         if data_a["receipt"].get("archive_compression") != "stored":
             raise AssertionError("builder receipt must bind stored archive semantics")
 
+        manifest_count = len(prov.get("package_files", []))
+        archive_count = manifest_count + 1
+        if prov.get("manifest_file_count") != manifest_count:
+            raise AssertionError("provenance manifest_file_count does not match manifest payload")
+        if prov.get("archive_file_count") != archive_count:
+            raise AssertionError("provenance archive_file_count must include exactly one provenance self-file")
+        if prov.get("manifest_excluded_files") != ["MAD4B-BUILD-PROVENANCE.json"]:
+            raise AssertionError("provenance manifest exclusion set drifted")
+        if prov.get("manifest_excludes_self") is not True:
+            raise AssertionError("provenance must explicitly declare self-exclusion")
+        receipt = data_a["receipt"]
+        if receipt.get("manifest_file_count") != manifest_count:
+            raise AssertionError("receipt manifest_file_count mismatch")
+        if receipt.get("archive_file_count") != archive_count:
+            raise AssertionError("receipt archive_file_count mismatch")
+        if receipt.get("package_file_count") != archive_count:
+            raise AssertionError("legacy package_file_count alias must remain the archive count")
+        if receipt.get("package_file_count_semantics") != "archive_file_count_including_provenance":
+            raise AssertionError("receipt package_file_count semantics are ambiguous")
+        if receipt.get("manifest_excluded_files") != ["MAD4B-BUILD-PROVENANCE.json"]:
+            raise AssertionError("receipt manifest exclusion set drifted")
+
         with zipfile.ZipFile(zip_a) as z:
             names = z.namelist()
             if names != sorted(names):
@@ -129,6 +151,8 @@ def main() -> int:
                 raise AssertionError("ZIP timestamps are not canonical")
             if "mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json" not in names:
                 raise AssertionError("canonical provenance missing from ZIP")
+            if len(names) != archive_count:
+                raise AssertionError("actual ZIP entry count does not match declared archive_file_count")
             embedded = json.loads(z.read("mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json"))
             if embedded != prov:
                 raise AssertionError("sidecar and embedded canonical provenance diverged")
