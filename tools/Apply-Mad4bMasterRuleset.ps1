@@ -136,7 +136,7 @@ if ($named.Count -gt 1) {
 }
 
 Write-Host "=== EXACT READBACK ==="
-$detailArgs = @("api","-H","Accept: application/vnd.github+json","-H","X-GitHub-Api-Version: 2026-03-10","repos/$Repository/rulesets/$rulesetId?includes_parents=true")
+$detailArgs = @("api","-H","Accept: application/vnd.github+json","-H","X-GitHub-Api-Version: 2026-03-10","repos/$Repository/rulesets/${rulesetId}?includes_parents=true")
 $detailRaw = & gh @detailArgs
 if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: exact ruleset readback failed."
