@@ -307,8 +307,22 @@ jobs:
           config_root = stage / 'package' / 'mad4b-site-control-plane' / 'config'
           policy_raw = (config_root / 'functional-gap-policy.json').read_bytes()
           evidence_raw = (config_root / 'functional-gap-contract-evidence.generated.json').read_bytes()
+          receipt_raw = (stage / 'CANONICAL-PACKAGE-RECEIPT.json').read_bytes()
           policy = json.loads(policy_raw)
           evidence = json.loads(evidence_raw)
+          receipt = json.loads(receipt_raw)
+          if receipt.get('contract') != 'mad4b.deterministic-control-plane-package.v1':
+              raise SystemExit('canonical package receipt contract mismatch')
+          if receipt.get('archive_format_contract') != 'mad4b.deterministic-zip.v1' or receipt.get('archive_compression') != 'stored':
+              raise SystemExit('canonical archive format mismatch')
+          if receipt.get('source_commit_sha') != os.environ['SOURCE_SHA']:
+              raise SystemExit('canonical package receipt source mismatch')
+          if receipt.get('archive_sha256') != os.environ['CONTROL_SHA']:
+              raise SystemExit('canonical package receipt archive SHA mismatch')
+          if receipt.get('build_fingerprint') != os.environ['BUILD_FINGERPRINT']:
+              raise SystemExit('canonical package receipt build fingerprint mismatch')
+          if receipt.get('package_manifest_digest') != os.environ['PACKAGE_DIGEST']:
+              raise SystemExit('canonical package receipt manifest mismatch')
           data = {
               'contract': 'mad4b.site-control-plane.general-distribution-kit.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
@@ -324,6 +338,15 @@ jobs:
                   'archive': f'mad4b-site-control-plane-{version}.zip',
                   'sha256': os.environ['CONTROL_SHA'],
                   'provenance_contract': 'mad4b.build-provenance.v1',
+              },
+              'canonical_package': {
+                  'contract': receipt.get('contract', ''),
+                  'archive_format_contract': receipt.get('archive_format_contract', ''),
+                  'archive_compression': receipt.get('archive_compression', ''),
+                  'archive_sha256': receipt.get('archive_sha256', ''),
+                  'receipt_sha256': hashlib.sha256(receipt_raw).hexdigest(),
+                  'producer_metadata_external': bool(receipt.get('producer_metadata_external')),
+                  'deterministic_archive': bool(receipt.get('deterministic_archive')),
               },
               'mcp_adapter': {
                   'version': '0.6.1',
