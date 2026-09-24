@@ -55,6 +55,7 @@ required = [
     "contracts/data-flow-policy.md","contracts/formal-model-critical-state.md",
     "contracts/architecture-freeze.md",
     "references/host-provider-validation-profile.md",
+    "contracts/bulk-runtime-closure-hardening.md","bulk-closure-hardening.json",
 ]
 for rel in required:
     require_file(rel)
@@ -331,6 +332,34 @@ if critical.exists():
     for phrase in ["Architecture Freeze","Recovery Plane","Bit Flows","vertical-slice"]:
         if phrase not in txt:
             errors.append(f"critical_kernel:missing:{phrase}")
+
+bulk_hardening_path=require_file("bulk-closure-hardening.json")
+if bulk_hardening_path.exists():
+    hardening=json.loads(bulk_hardening_path.read_text(encoding="utf-8"))
+    if hardening.get("contract") != "mad4b.feature007-bulk-closure-hardening.v1":
+        errors.append("bulk_hardening:contract_mismatch")
+    if hardening.get("production_authorized") is not False:
+        errors.append("bulk_hardening:production_must_remain_false")
+    if hardening.get("architecture_freeze") is not True:
+        errors.append("bulk_hardening:architecture_freeze_required")
+    if hardening.get("terminal_gate") != "critical_kernel_vertical_slice_verified":
+        errors.append("bulk_hardening:terminal_gate_mismatch")
+    domains=hardening.get("required_domains",[])
+    fixtures=hardening.get("required_fault_fixtures",[])
+    if len(domains) < 13 or len(domains) != len(set(domains)):
+        errors.append("bulk_hardening:required_domains_incomplete_or_duplicate")
+    if len(fixtures) < 16 or len(fixtures) != len(set(fixtures)):
+        errors.append("bulk_hardening:fault_fixtures_incomplete_or_duplicate")
+    if hardening.get("mutation_uncertainty_state") != "MUTATED_BUT_EVIDENCE_UNCERTAIN":
+        errors.append("bulk_hardening:mutation_uncertainty_state_missing")
+    rules=hardening.get("closure_rules",{})
+    for key in [
+        "backup_exists_is_not_ready","runtime_evidence_required_for_live_gate",
+        "docs_only_cannot_close_runtime_gate","ordinary_generic_shell_prohibited",
+        "raw_sql_breakglass_separate","production_authority_not_implied",
+    ]:
+        if rules.get(key) is not True:
+            errors.append(f"bulk_hardening:closure_rule_missing:{key}")
 
 for rel in ["spec.md","plan.md","coverage-audit.md"]:
     p=require_file(rel)
