@@ -9,7 +9,7 @@ It does not redefine the existing contracts. It orders them into one executable 
 ## Baseline
 
 - target branch: `master`
-- synchronized baseline: `540d5db4be521297de673c8a4d14974c23b67a6a`
+- reviewed repository parent: `b1f7e837efc69aa220385d84761e46f64c2442b1`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
@@ -17,7 +17,7 @@ It does not redefine the existing contracts. It orders them into one executable 
 - repository ruleset: `23968498` active on `refs/heads/master`, no bypass actors
 - governance bootstrap exception: retired in PR #64
 
-Any descendant synchronization MUST update `feature.json.current_baseline_head`, `baseline_sync_commit`, this file and the machine-readable closure ledger in the same governed change.
+Any descendant synchronization MUST update the exact reviewed-parent identity (`feature.json.last_reviewed_master_parent_sha`), this document and the machine-readable closure ledger together. Deployable runtime-release identity remains separately evidenced and MUST NOT be rewritten merely because repository-only changes landed.
 
 
 ### Baseline release-root evidence
@@ -168,3 +168,24 @@ Architecture Freeze still applies: runtime evidence may admit a deferred concern
 - Repository readiness does not imply ETG live readiness.
 - Staging certification does not imply Production authorization.
 - Production remains false until separately authorized.
+
+
+## Bulk runtime closure hardening
+
+The normative machine-readable matrix is `bulk-closure-hardening.json` under contract `mad4b.feature007-bulk-closure-hardening.v1`.
+
+The bulk lane closes the remaining review findings without widening the architecture:
+- durable pre-mutation journal and atomic evidence persistence;
+- explicit `MUTATED_BUT_EVIDENCE_UNCERTAIN` reconciliation state;
+- lease/zombie/replay/crash-after-side-effect/provider-uncertainty fault injection;
+- centralized filesystem/process confinement;
+- minimal runner bootstrap/enrollment;
+- protected backup plus corrupt/interrupted restore rehearsal;
+- WordPress-independent Recovery Runner proof;
+- cross-executor parity and execution-location truthfulness;
+- blocker-to-terminal gate liveness;
+- Doctor/DLQ/reconciliation incident behavior;
+- exact Bit Flows 1.29 behavioral/security recertification;
+- one complete live request-to-rollback vertical slice.
+
+Repository CI proves contracts and denial behavior only. Live ETG gates still require fresh exact-runtime evidence; documentation cannot close them. Production authorization remains false.
