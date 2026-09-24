@@ -378,9 +378,28 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$code = isset( $status['blocker_code'] ) ? sanitize_key( (string) $status['blocker_code'] ) : 'governance_unavailable';
 		if ( 'schema' === $status['blocker_kind'] ) {
 			$physical = isset( $status['schema']['physical_integrity'] ) && is_array( $status['schema']['physical_integrity'] ) ? $status['schema']['physical_integrity'] : array();
+			$error_data = class_exists( 'MAD4B_SCP_Plugin' ) && method_exists( 'MAD4B_SCP_Plugin', 'governance_bootstrap_error_data' ) ? MAD4B_SCP_Plugin::governance_bootstrap_error_data() : array();
+			if ( ! is_array( $error_data ) ) $error_data = array();
 			$details = array();
-			if ( ! empty( $physical['missing_tables'] ) && is_array( $physical['missing_tables'] ) ) $details[] = 'missing_tables=' . implode( ',', array_map( 'sanitize_key', $physical['missing_tables'] ) );
-			if ( ! empty( $physical['missing_approval_columns'] ) && is_array( $physical['missing_approval_columns'] ) ) $details[] = 'missing_approval_columns=' . implode( ',', array_map( 'sanitize_key', $physical['missing_approval_columns'] ) );
+			if ( isset( $error_data['from_version'], $error_data['target_version'] ) ) $details[] = 'schema=' . (int) $error_data['from_version'] . '→' . (int) $error_data['target_version'];
+			foreach ( array(
+				'missing_tables' => 'missing_tables',
+				'missing_approval_columns' => 'missing_approval_columns',
+				'missing_durable_columns' => 'missing_durable_columns',
+				'missing_durable_indexes' => 'missing_durable_indexes',
+			) as $key => $label ) {
+				$items = ! empty( $physical[ $key ] ) && is_array( $physical[ $key ] ) ? array_values( array_filter( array_map( 'sanitize_text_field', $physical[ $key ] ) ) ) : array();
+				if ( $items ) $details[] = $label . '=' . implode( ',', array_slice( $items, 0, 12 ) );
+			}
+			$dbdelta_errors = array();
+			foreach ( isset( $error_data['dbdelta_diagnostics'] ) && is_array( $error_data['dbdelta_diagnostics'] ) ? $error_data['dbdelta_diagnostics'] : array() as $row ) {
+				if ( ! is_array( $row ) || empty( $row['last_error'] ) ) continue;
+				$table = ! empty( $row['table'] ) ? sanitize_key( (string) $row['table'] ) : 'unknown_table';
+				$error = sanitize_text_field( substr( trim( (string) $row['last_error'] ), 0, 220 ) );
+				if ( '' !== $error ) $dbdelta_errors[] = $table . ':' . $error;
+				if ( count( $dbdelta_errors ) >= 3 ) break;
+			}
+			if ( $dbdelta_errors ) $details[] = 'dbdelta=' . implode( ' | ', $dbdelta_errors );
 			$message = 'MAD4B governance schema is unavailable [' . $code . ']. Mutation remains fail-closed.' . ( empty( $details ) ? '' : ' ' . implode( '; ', $details ) . '.' );
 		} else {
 			$audit = isset( $status['audit'] ) && is_array( $status['audit'] ) ? $status['audit'] : array();
