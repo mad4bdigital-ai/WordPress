@@ -105,15 +105,19 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    payload = json.dumps(build(), indent=2, sort_keys=True) + "\n"
+    built = build()
+    payload = json.dumps(built, indent=2, sort_keys=True) + "\n"
     if args.check:
         if not OUTPUT.is_file():
             raise SystemExit("TASK_LEDGER: generated ledger missing")
-        current = OUTPUT.read_text(encoding="utf-8")
-        if current != payload:
+        try:
+            current = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"TASK_LEDGER: generated ledger is invalid JSON: {exc}")
+        if current != built:
             raise SystemExit("TASK_LEDGER: generated ledger drift; run reconcile_task_ledger.py")
         print("FEATURE_007_TASK_LEDGER: PASS")
-        print(json.dumps(json.loads(payload)["counts"], sort_keys=True))
+        print(json.dumps(built["counts"], sort_keys=True))
         return 0
     OUTPUT.write_text(payload, encoding="utf-8")
     print(str(OUTPUT))
