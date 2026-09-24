@@ -212,7 +212,7 @@ for marker in [
     "if ( ! empty( $limits['exceeded'] ) ) return self::set_status( 'catalog_limits_exceeded' );",
     "private static function canonical_document( array $definition )",
     "'mad4b/skill-provider-refresh'",
-    "'provider_content_refreshed' => true",
+    "$meta['provider_content_refreshed'] = true;",
     "'provider_refresh_metadata_rollback_failed'",
     "$provider_managed && (bool) $desired_enabled",
 ]:
