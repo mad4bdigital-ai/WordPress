@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "2af5e6078f7be1c72e1d5638759fc9e8ad3dd6ed",
+  "source_tasks_git_blob_sha": "b2d9af0068b449ff6890a6e2e286176fee796fbb",
   "override_git_blob_sha": "fc7aefe962dae1299a7d360d7f1257547acb22fa",
   "classification_policy": {
     "default_unchecked": "OPEN",
@@ -11,14 +11,14 @@
   "counts": {
     "DEFERRED": 1,
     "DONE": 4,
-    "OPEN": 635,
+    "OPEN": 651,
     "PARTIAL": 2
   },
   "counts_by_priority": {
     "P0": {
       "DEFERRED": 0,
       "DONE": 4,
-      "OPEN": 500,
+      "OPEN": 516,
       "PARTIAL": 2
     },
     "P1": {
@@ -34,7 +34,7 @@
       "PARTIAL": 0
     }
   },
-  "task_count": 642,
+  "task_count": 658,
   "tasks": [
     {
       "task_id": "T0001",
@@ -6467,6 +6467,166 @@
       "phase": 36,
       "priority": "P0",
       "summary": "Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3639",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3640",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3641",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3642",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Execute runner crash-after-lease, lease-loss-before-commit, zombie writer and duplicate/replay fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3643",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Execute crash-after-side-effect-before-receipt and provider-timeout-after-possible-side-effect fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3644",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Execute symlink/reparse swap, traversal, zip-slip, shell metacharacter and executable injection denial fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3645",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove timeout/output/disk/file/network/database resource budgets fail closed with stable reason codes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3646",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove bootstrap executor can install/enroll only the exact attested runner package and exact scheduler entry; no standing Host authority is created.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3647",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove WordPress-unbootable Recovery Runner health/read/known-good restore path.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3648",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove protected backup integrity/capacity/exact-runtime binding and interrupted/corrupt restore behavior.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3649",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove one semantic operation across two executor adapters with normalized-result and authority parity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3650",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove submission/execution/commit location truthfulness and reapproval on material executor-location change.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3651",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3652",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove Doctor/DLQ/reconciliation behavior for stuck lease, orphan job, uncertain mutation and recovery-required states.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3653",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Recertify exact installed Bit Flows 1.29.0 against permanent behavioral/security probes before execution eligibility.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3654",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.",
       "status": "OPEN",
       "checked": false,
       "evidence_refs": [],
