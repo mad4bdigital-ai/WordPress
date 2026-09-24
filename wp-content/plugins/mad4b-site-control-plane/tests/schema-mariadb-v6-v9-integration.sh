@@ -10,13 +10,21 @@ WP_CLI="${WP_CLI:-wp}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+export MAD4B_SCHEMA_V6_FILE="$tmp/schema-v6.php"
+export MAD4B_SCHEMA_V9_FILE="$CURRENT_SCHEMA"
+
 git -C "$ROOT" show "$V6_SHA:$SCHEMA_REL" > "$tmp/schema-v6.php"
 grep -Fq "const VERSION = 6;" "$tmp/schema-v6.php"
 grep -Fq "const VERSION = 9;" "$CURRENT_SCHEMA"
 
-cat > "$tmp/install-v6.php" <<PHP
+cat > "$tmp/install-v6.php" <<'PHP'
 <?php
-require '$tmp/schema-v6.php';
+$schema = getenv( 'MAD4B_SCHEMA_V6_FILE' );
+if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_V6_FILE\n" );
+    exit( 10 );
+}
+require $schema;
 $result = MAD4B_SCP_Schema::install_or_upgrade();
 if ( is_wp_error( $result ) ) {
     fwrite( STDERR, wp_json_encode( array(
@@ -32,9 +40,14 @@ echo wp_json_encode( array( 'stage' => 'install_v6', 'status' => $status ), JSON
 if ( 6 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) || empty( $status['ready'] ) ) exit( 12 );
 PHP
 
-cat > "$tmp/upgrade-v9.php" <<PHP
+cat > "$tmp/upgrade-v9.php" <<'PHP'
 <?php
-require '$CURRENT_SCHEMA';
+$schema = getenv( 'MAD4B_SCHEMA_V9_FILE' );
+if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_V9_FILE\n" );
+    exit( 20 );
+}
+require $schema;
 $before = MAD4B_SCP_Schema::status( true );
 $result = MAD4B_SCP_Schema::install_or_upgrade();
 if ( is_wp_error( $result ) ) {
@@ -53,9 +66,14 @@ if ( 9 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 22 );
 if ( empty( $after['ready'] ) || empty( $after['migration']['receipt_valid'] ) || empty( $after['physical_integrity']['ready'] ) ) exit( 23 );
 PHP
 
-cat > "$tmp/retry-v9.php" <<PHP
+cat > "$tmp/retry-v9.php" <<'PHP'
 <?php
-require '$CURRENT_SCHEMA';
+$schema = getenv( 'MAD4B_SCHEMA_V9_FILE' );
+if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_V9_FILE\n" );
+    exit( 30 );
+}
+require $schema;
 $before = MAD4B_SCP_Schema::status( true );
 $result = MAD4B_SCP_Schema::install_or_upgrade();
 if ( is_wp_error( $result ) ) {
