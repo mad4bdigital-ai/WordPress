@@ -746,7 +746,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			} else {
 				echo '<select name="write_policy">';
 				foreach ( MAD4B_SCP_Context_Authority::write_policies() as $policy_key => $policy ) echo '<option value="' . esc_attr( $policy_key ) . '"' . selected( $source['write_policy'], $policy_key, false ) . '>' . esc_html( $policy['label'] ) . '</option>';
-				echo '</select><br><label class="description"><input type="checkbox" name="write_policy_confirmed" value="1" data-mad4b-one-time-confirm> ' . esc_html__( 'One-time confirmation if this change increases Drive write authority. This confirmation is intentionally not stored.', 'mad4b-site-control-plane' ) . '</label> ';
+				echo '</select><br><label class="description"><input type="checkbox" name="write_policy_confirmed" value="1" data-mad4b-one-time-confirm> ' . esc_html__( 'Confirm if this change increases Drive write authority. This is a one-time confirmation and is intentionally not stored.', 'mad4b-site-control-plane' ) . '</label> ';
 				echo '<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>';
 				submit_button( __( 'Save', 'mad4b-site-control-plane' ), 'secondary small', 'submit', false );
 			}
