@@ -1,0 +1,6486 @@
+{
+  "contract": "mad4b.feature007-task-ledger.v1",
+  "source_tasks_git_blob_sha": "2af5e6078f7be1c72e1d5638759fc9e8ad3dd6ed",
+  "override_git_blob_sha": "fc7aefe962dae1299a7d360d7f1257547acb22fa",
+  "classification_policy": {
+    "default_unchecked": "OPEN",
+    "default_checked": "DONE",
+    "non_open_requires_explicit_override_and_evidence": true,
+    "bulk_completion_without_evidence_forbidden": true
+  },
+  "counts": {
+    "DEFERRED": 1,
+    "DONE": 4,
+    "OPEN": 635,
+    "PARTIAL": 2
+  },
+  "counts_by_priority": {
+    "P0": {
+      "DEFERRED": 0,
+      "DONE": 4,
+      "OPEN": 500,
+      "PARTIAL": 2
+    },
+    "P1": {
+      "DEFERRED": 0,
+      "DONE": 0,
+      "OPEN": 111,
+      "PARTIAL": 0
+    },
+    "P2": {
+      "DEFERRED": 1,
+      "DONE": 0,
+      "OPEN": 24,
+      "PARTIAL": 0
+    }
+  },
+  "task_count": 642,
+  "tasks": [
+    {
+      "task_id": "T0001",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "GATE Snapshot PR #47 exact head and CI.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0002",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "GATE Snapshot PR #45 head and merge base.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0003",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Extract the 10 PR #45-only commits.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0004",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify 0313e03 semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0005",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify a533de8 semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0006",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify 5ea91a7 semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0007",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify b0f2c8a semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0008",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify 93f99fb semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0009",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify 218bf66 semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0010",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify 173985e semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0011",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify 8775f56 semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0012",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify ced93ea semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0013",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Classify b5d697f semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0014",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "GATE Require evidence-backed SUPERSEDED/EQUIVALENT/REQUIRED for every commit.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0015",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Port any REQUIRED semantics deliberately; no blind cherry-pick.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0016",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Rerun exact-head CI.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0017",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "GATE Assert REQUIRED=0.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0018",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Freeze final rc.59 SHA.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0019",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Build exact package/provenance.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0020",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Deploy exact Staging package.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0021",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Verify source/build/package/MCP provenance.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0022",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Run exact-head live acceptance.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0023",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Generate fresh Full Staging Authority status/plan.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0024",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Apply only an exact fresh ready plan.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0025",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Verify candidate binding/runtime reconciliation/write readiness.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0026",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "GATE Mark PR #47 Ready.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0027",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Merge #47 under repository policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0028",
+      "phase": 0,
+      "priority": "P0",
+      "summary": "Verify canonical master semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0101",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Inventory existing certification code/config.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0102",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Define ProviderRuntimeObservation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0103",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Define capability certification states.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0104",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Separate installed/certified/upstream versions.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0105",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Add non-authorizing upgrade_available.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0106",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Add read_eligible/write_eligible/reversible/blockers.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0107",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Add semantic-delta evidence refs.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0108",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Add package/runtime drift invalidation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0109",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Test partial capability certification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0110",
+      "phase": 1,
+      "priority": "P0",
+      "summary": "Test unknown capability fail-closed.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0111",
+      "phase": 1,
+      "priority": "P1",
+      "summary": "Add read-only admin projection.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0201",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Acquire exact installed package.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0202",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Hash archive/critical files.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0203",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Semantic delta against 1.24 baseline.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0204",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Inventory Flow/Node/History/Executor.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0205",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Inventory lifecycle APIs.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0206",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Inventory retry/cancel.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0207",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Inventory definition create/update/validate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0208",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Inventory webhook/action-hook behavior.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0209",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Inventory native MCP surface.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0210",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "GATE Prove no unmanaged privileged MCP side-channel.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0211",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Build disposable runtime.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0212",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Verify list/get/executions.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0213",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Create harmless canary flow.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0214",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Verify flow SHA determinism.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0215",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Verify plan SHA determinism.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0216",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Verify stale-flow denial.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0217",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Verify stale-plan denial.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0218",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Verify global execution gate/per-flow allowlist.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0219",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Verify audit/result evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0220",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Promote read capabilities.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0221",
+      "phase": 2,
+      "priority": "P0",
+      "summary": "Promote execute according to risk policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0222",
+      "phase": 2,
+      "priority": "P1",
+      "summary": "Add enable/disable only if public contract proven.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0223",
+      "phase": 2,
+      "priority": "P1",
+      "summary": "Add retry/cancel only if semantics proven.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0224",
+      "phase": 2,
+      "priority": "P1",
+      "summary": "Add definition validate/diff.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0225",
+      "phase": 2,
+      "priority": "P1",
+      "summary": "Add create/update only with plan/readback/recovery.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0226",
+      "phase": 2,
+      "priority": "P2",
+      "summary": "Keep delete blocked until recovery proof.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0301",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Add jobs schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0302",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Add job events schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0303",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Add generic artifacts schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0304",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Add artifact edges schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0305",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Add writer-profile identity schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0306",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Implement registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0307",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Implement independent state/stage validators.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0308",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Implement append-only JobEvent.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0309",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Implement optimistic revision.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0310",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Implement artifact append/version/SHA.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0311",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Implement lineage graph/invalidation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0312",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Add job/artifact read abilities.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0313",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Add governed create/transition/cancel.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0314",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "Test concurrency/retry/cancel.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0315",
+      "phase": 3,
+      "priority": "P0",
+      "summary": "GATE Prove no default Production authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0401",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "KnowledgeClass registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0402",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "Job requirement schema/resolver.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0403",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "Map Context Authority to semantic knowledge classes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0404",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "KnowledgeDispatcher.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0405",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "ContextPack builder.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0406",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "Enforce review/site/brand/language policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0407",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "Enforce context bounds.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0408",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "Persist source/version/fingerprint lineage.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0409",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "Missing-required blockers.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0410",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "Dependency invalidation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0411",
+      "phase": 4,
+      "priority": "P0",
+      "summary": "GATE Prove no raw Drive-folder bypass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0501",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "WriterProfile registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0502",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "WriterProfileVersion artifact.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0503",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "Source eligibility.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0504",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "Distillation plan/process metadata.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0505",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "Review/activation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0506",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "Read/list abilities.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0507",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "Exact version pinning.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0508",
+      "phase": 5,
+      "priority": "P1",
+      "summary": "Historical-job immutability test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0601",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "KeywordProvider.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0602",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "SERPProvider.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0603",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "SearchProvider.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0604",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "ScrapeProvider.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0605",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "Error/freshness/request fingerprint contracts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0606",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "Usage/cost/budget metadata.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0607",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "First keyword adapter.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0608",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "First SERP adapter.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0609",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "First scraper adapter.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0610",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "Provider certification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0611",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "Retry/backoff/budget integration.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0612",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "Research artifact persistence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0613",
+      "phase": 6,
+      "priority": "P0",
+      "summary": "GATE Verify no vendor fields in ContentJob.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0701",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "SERPSnapshot.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0702",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "CompetitorSelection.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0703",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "ScrapedPage.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0704",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "TopicCoverageMatrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0705",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "QuestionCoverageMatrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0706",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "EntityCoverageMatrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0707",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "EvidenceCoverageMatrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0708",
+      "phase": 7,
+      "priority": "P1",
+      "summary": "UXCoverageMatrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0709",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "InformationGainPlan.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0710",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "Partial-research policy/freshness.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0711",
+      "phase": 7,
+      "priority": "P0",
+      "summary": "Reproducibility fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0801",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "ContentBlueprint.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0802",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "BlueprintQA.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0803",
+      "phase": 8,
+      "priority": "P1",
+      "summary": "SectionPlan.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0804",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "CAN_PLAN.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0805",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "ArticleDraft.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0806",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "Section assembly lineage.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0807",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "CAN_WRITE.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0808",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "FactLedger and unsupported-claim blocker.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0809",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "EditorialQA.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0810",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "SEOQA.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0811",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "FinalQA with hard-blocker semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0812",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "Dynamic Skills for stages.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0813",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "Replay/resume tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0814",
+      "phase": 8,
+      "priority": "P0",
+      "summary": "GATE Approved draft artifact without site mutation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0901",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "MediaManifest.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0902",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "SEO intent schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0903",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "PublishManifest.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0904",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "Bind exact draft/media/SEO/plan SHAs.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0905",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "Reuse Media, Rank Math and content abilities.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0906",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "Expected target-state fingerprint.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0907",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "CAN_PUBLISH for draft operation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0908",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "Staging create/update draft canary.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0909",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "Read-after-write verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0910",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "Mutation/rollback/audit evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T0911",
+      "phase": 9,
+      "priority": "P0",
+      "summary": "GATE Ensure public publication remains blocked.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1001",
+      "phase": 10,
+      "priority": "P1",
+      "summary": "Scheduling capability.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1002",
+      "phase": 10,
+      "priority": "P1",
+      "summary": "Publish capability.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1003",
+      "phase": 10,
+      "priority": "P1",
+      "summary": "Environment-aware approval.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1004",
+      "phase": 10,
+      "priority": "P1",
+      "summary": "Stale target-state denial.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1005",
+      "phase": 10,
+      "priority": "P1",
+      "summary": "Post-publication cache/SEO verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1006",
+      "phase": 10,
+      "priority": "P1",
+      "summary": "Bounded Staging publish canary.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1007",
+      "phase": 10,
+      "priority": "P1",
+      "summary": "Production remains separately authorized.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1101",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define ToolOperationDefinition registry and operation fingerprints.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1102",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define ToolExecutorProfile and non-authorizing executor resolver.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1103",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define HostTarget + canonical target/root identity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1104",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define Host Read/Write/Execution/Breakglass/Recovery/Production authority classes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1105",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Prove WordPress grants, Developer and Full Staging Authority do not imply Host Execution.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1106",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement first read-only semantic operations: schema/runtime/package/filesystem/log/php/db/cron diagnostics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1107",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement `wp mad4b` namespace over shared application services.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1108",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Add machine-readable CLI discovery and normalized JSON output.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1109",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Prove MCP and WP-CLI equivalent normalized diagnostic result.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1110",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement Host Runner job envelope, queue, lease and fencing.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1111",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement Host Runner idempotency/retry/timeout/output/resource budgets.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1112",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement ToolExecutionReceipt + bounded stdout/stderr evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1113",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement named filesystem zones and realpath/symlink/zip-slip/TOCTOU defenses.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1114",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement process policy: fixed executable + structured argv, no caller shell strings.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1115",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement opaque secret handles/environment allowlist/redaction.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1116",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement network destination/SSRF policy for tool executors.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1117",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Add CLI/Runner/Tool Doctor findings and RepairPlan integration.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1118",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Shell/flag/path injection negative suite.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1119",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Runner crash/zombie-worker/lease-fencing suite.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1120",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define minimal WordPress-independent Recovery Runner.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1121",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Recovery Runner reads package/runtime health while WordPress/plugin boot is broken.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1122",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Recovery Runner restores an attested known-good package without content publication authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1123",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Discover first Hostinger validation channels independently.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1124",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Certify provider API adapter mappings where supported.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1125",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Certify provider CLI adapter mappings where supported.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1126",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Certify account-local WP-CLI/Host Runner mappings.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1127",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "GATE Prove one semantic operation across two executor adapters without Skill/domain changes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1128",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Implement deterministic same-authority executor fallback with evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1129",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add provider-channel drift/quarantine handling.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1130",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add reversible plugin.package stage/apply/rollback operation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1131",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add bounded host.files.patch with atomic swap/readback.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1132",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add governed cron schedule/unschedule and cache-purge mappings.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1133",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add backup.create/restore contracts + restore rehearsal.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1134",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add bounded database migration/repair operations; keep raw SQL separate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1135",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add Host Runner DLQ/replay safety.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1136",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add runner/provider credential rotation/revocation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1137",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add executor/runner decommission and portability flow.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1138",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "GATE No generic shell, arbitrary `wp eval`, arbitrary PHP or generic raw SQL in ordinary catalog.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1139",
+      "phase": 11,
+      "priority": "P2",
+      "summary": "Add standalone `mad4b` CLI when an operation must not require WordPress bootstrap.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1140",
+      "phase": 11,
+      "priority": "P2",
+      "summary": "Add bounded SSH executor only where provider/API/runner cannot satisfy certified requirement.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1141",
+      "phase": 11,
+      "priority": "P2",
+      "summary": "GATE Production Host Authority remains distinct and denied by default.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1142",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define WordPress Host Bridge abilities: capabilities/plan/apply/status/cancel/receipt/doctor.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1143",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement exact-plan enqueue path; WordPress request process MUST NOT become generic shell executor.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1144",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define durable queue backend profile and Recovery Plane independence requirement.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1145",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Apply submission cannot mutate reviewed operation/target/executor/argv/authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1146",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Certify first Hostinger WordPress-plugin/API direct mapping and Host Runner fallback without semantic contract change.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1147",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Certify runner/CLI executable provenance, resolved path and package hash.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1148",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement independent Host Execution/Runner/provider-channel kill switches.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1149",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Enforce offline authorization windows and fresh commit-guard validation for queued host writes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1150",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Zombie/expired runner cannot commit after fencing loss.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1151",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Recovery Runner trust does not depend on the broken package it may replace.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1152",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add artifact-input hash/attestation verification before host package staging.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1153",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Add executor runtime-profile compatibility evidence (OS/PHP/WP-CLI/provider CLI/filesystem/process semantics).",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1154",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Prove submission_location and authoritative execution_location are truthful and exact-plan bound across direct and queued host execution.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1155",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define RunnerPackage attestation/manifest/runtime-profile contract.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1156",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Define bounded runner bootstrap BootstrapTransition and authority requirements.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1157",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement one-time target-bound RunnerEnrollment identity handshake.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1158",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement provider-neutral bootstrap channel resolver with no privilege-widening fallback.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1159",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "Implement exact cron/service wake-up registration + readback/removal profile.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1160",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Reject replayed enrollment, wrong target/root, untrusted package and unexpected scheduling command.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1161",
+      "phase": 11,
+      "priority": "P0",
+      "summary": "GATE Prove one supported hosting profile installs/enrolls Host Runner without interactive terminal.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1162",
+      "phase": 11,
+      "priority": "P1",
+      "summary": "Implement governed runner update/rollback/decommission lifecycle.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1201",
+      "phase": 12,
+      "priority": "P1",
+      "summary": "WordPressCronProvider read/health.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1202",
+      "phase": 12,
+      "priority": "P1",
+      "summary": "Governed cron.run.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1203",
+      "phase": 12,
+      "priority": "P2",
+      "summary": "cron.schedule/unschedule.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1204",
+      "phase": 12,
+      "priority": "P2",
+      "summary": "HostCronProvider.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1301",
+      "phase": 13,
+      "priority": "P1",
+      "summary": "WP All Import dry-run/rollback.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1302",
+      "phase": 13,
+      "priority": "P1",
+      "summary": "WP All Export artifact ingest/receipt.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1303",
+      "phase": 13,
+      "priority": "P1",
+      "summary": "Post-execution reconciliation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1304",
+      "phase": 13,
+      "priority": "P1",
+      "summary": "JetSmartFilters query/provider/indexer contracts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1305",
+      "phase": 13,
+      "priority": "P1",
+      "summary": "JetSmartFilters reversible execution.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1306",
+      "phase": 13,
+      "priority": "P2",
+      "summary": "Yoast writes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1307",
+      "phase": 13,
+      "priority": "P2",
+      "summary": "SEOPress writes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1308",
+      "phase": 13,
+      "priority": "P2",
+      "summary": "Generic unknown-provider onboarding automation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1401",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "SearchPerformanceProvider.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1402",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "IndexStatus.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1403",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "SearchPerformanceSnapshot.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1404",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "ContentDecaySignal.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1405",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "CannibalizationSignal.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1406",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "RefreshRecommendation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1407",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "Revision ContentJob creation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1408",
+      "phase": 14,
+      "priority": "P2",
+      "summary": "No silent rewrite test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1501",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Add Feature 007 spec consistency test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1502",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Validate required documents/contracts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1503",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Validate one governance owner.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1504",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Validate Production not implicitly authorized.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1505",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Validate ETG is not a required generic schema field.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1506",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Validate vendor methods remain in adapters.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1507",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Validate every write family has risk/recovery/evidence policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1508",
+      "phase": 14,
+      "priority": "P0",
+      "summary": "Validate traceability covers functional families.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1509",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Model AuthorityDescriptor trust/advertisement/resource/subject/live dimensions.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1510",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Split trusted_authorities from advertised_authorities.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1511",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Implement authority_resource_policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1512",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Implement issuer+external_sub+site subject mapping.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1513",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Add mapping governance/audit/revision.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1514",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "GATE Full REST filter-chain Local subject E2E.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1515",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "GATE Full REST filter-chain External subject E2E.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1516",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Cross-authority subject/JWK isolation negatives.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1517",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "External live readiness evidence and truthful status.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1518",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Authority outage/no-unintended-fallback test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1519",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Restrict Local default resource policy from Developer/Breakglass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1520",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Add Local keyring current/next/previous.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1521",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Add overlap rotation state machine.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1522",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Restart persistence/kid stability test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1523",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Unknown-kid bounded refresh/deny test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1524",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Refresh replay/family poisoning regression.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1525",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Key rotation overlap test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1526",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Add MCP Adapter exact-package protocol profile.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1527",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Add successor official release certification workflow.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1528",
+      "phase": 15,
+      "priority": "P1",
+      "summary": "Dual-protocol regression when successor supports newer MCP.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1529",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "GATE Multi-Authority Live Certification contract implementation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1530",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Exact deployment/package/resource metadata probes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1531",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Local AS live canary.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1532",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "External AS live canary where configured.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1533",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Real ChatGPT OAuth→MCP acceptance.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1534",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Same-identity MCP tools discovery/call.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1535",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "Production isolation negative.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1536",
+      "phase": 15,
+      "priority": "P0",
+      "summary": "GATE Require MULTI_AUTHORITY_LIVE=PASS before removing Draft trust gate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1601",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Implement workflow-provider-diagnostic.v1.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1602",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Artifact tree/critical-file/schema identity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1603",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Structural capability discovery.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1604",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Security surface discovery.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1605",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Compute per-capability fingerprint.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1606",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Migrate certification lifecycle to extended states.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1607",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Implement QUARANTINED state.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1608",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Implement Artifact Diff Classifier.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1609",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Map changed dependencies to affected capabilities.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1610",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Build CertificationEvidence dependency graph.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1611",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Explicit evidence reuse with lightweight smoke.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1612",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Central exact-artifact Certification Registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1613",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "SiteRuntimeCompatibility probes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1614",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Verify global cert does not auto-grant site eligibility.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1615",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Generic deterministic execution probe.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1616",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Controlled failure/timeout/retry probes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1617",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Duplicate execution/trigger probes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1618",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Bit Flows trigger_isolation_test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1619",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Bit Flows paused_execution_state_test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1620",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Bit Flows native MCP privilege test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1621",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Bit Flows Run Code ordinary-capability denial test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1622",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Outbound/private-network policy probe.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1623",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Webhook authentication/binding probe.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1624",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "Promote exact installed Bit Flows capabilities individually.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1625",
+      "phase": 16,
+      "priority": "P1",
+      "summary": "Test newer Bit Flows artifact in disposable ring without changing ETG first.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1626",
+      "phase": 16,
+      "priority": "P0",
+      "summary": "GATE Prove version is metadata/risk signal, not direct authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1701",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Define RequiredCapabilitySet.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1702",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Build provider feature/capability matrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1703",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Implement ProviderResolutionDecision.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1704",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Consider certification/environment/risk/cost/locality/performance.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1705",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Ensure Resolver is non-authorizing.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1706",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Ensure Skills do not hardcode Bit Flows.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1707",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Define signed workflow-execution-request.v1.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1708",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Bind request to site/workflow SHA/plan SHA/expiry/nonce.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1709",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Replay denial.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1710",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "Bound callback/result contract.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1711",
+      "phase": 17,
+      "priority": "P0",
+      "summary": "GATE Resolve equivalent fixture across two provider adapters without domain-schema change.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1801",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Implement R0 disposable state.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1802",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Implement R1 canary Staging.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1803",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Implement R2 selected Staging.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1804",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Implement R3 general Staging eligibility.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1805",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Implement R4 Production eligibility.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1806",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Define per-ring evidence requirements.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1807",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Conditional autopromotion policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1808",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Demotion/quarantine.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1809",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "Verify Production eligibility != authorization.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1810",
+      "phase": 18,
+      "priority": "P1",
+      "summary": "GATE Demonstrate selective capability promotion/demotion from dependency evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1901",
+      "phase": 19,
+      "priority": "P0",
+      "summary": "Keep Feature 007 metadata local to specs/007-content-intelligence-workflow-platform/feature.json.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1902",
+      "phase": 19,
+      "priority": "P0",
+      "summary": "GATE Preserve existing repository-global .specify/feature.json semantics for Feature 001.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1903",
+      "phase": 19,
+      "priority": "P0",
+      "summary": "Add cross-feature spec isolation contract/test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1904",
+      "phase": 19,
+      "priority": "P0",
+      "summary": "Verify Feature 001 CI stays green for spec-only Feature 007 changes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T1905",
+      "phase": 19,
+      "priority": "P0",
+      "summary": "Verify Feature 007 validation does not depend on mutating another feature's metadata.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2001",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Define canonical serialization/hash version.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2002",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Define ContentJob/Event/Artifact transaction boundaries.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2003",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Implement optimistic revisions and stale-write conflicts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2004",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Implement write idempotency key registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2005",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Implement durable provider outbox.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2006",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Implement callback/event inbox deduplication.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2007",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Define at-least-once delivery + effect-once guarantees.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2008",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Worker lease/heartbeat/reclaim semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2009",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Retry error taxonomy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2010",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Retry attempt/time/cost budgets + backoff/jitter.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2011",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Provider timeouts/bulkheads/circuit breakers.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2012",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Queue/backpressure/saturation behavior.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2013",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Cancellation vs execution race handling.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2014",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Multi-step saga/compensation declarations.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2015",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Concurrency test: two writers same job revision.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2016",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Timeout-after-provider-success duplicate prevention.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2017",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Duplicate/reordered callback tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2018",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "Crash/lease-expiry resume test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2019",
+      "phase": 20,
+      "priority": "P0",
+      "summary": "GATE QCORRECTNESS + QRESILIENCE pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2101",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Enumerate trust zones and threat model.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2102",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "SSRF/private/link-local/metadata endpoint policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2103",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Redirect/DNS rebinding revalidation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2104",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Prompt/source injection isolation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2105",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "HTML/XSS sanitization and output context tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2106",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "SQL/command/path traversal negative tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2107",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Zip-slip/symlink package extraction tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2108",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Confused-deputy capability escalation tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2109",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Provider compromise quarantine/kill-switch test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2110",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Exact package provenance/dependency inventory.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2111",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Unexpected update-source/digest drift blocker.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2112",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Secret binding/storage/redaction/rotation contract.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2113",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Tenant/site DB/query/cache isolation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2114",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Wrong-site webhook/provider callback negatives.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2115",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Data classification/minimization.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2116",
+      "phase": 21,
+      "priority": "P1",
+      "summary": "Retention/export/erasure/tombstone workflow.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2117",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "Policy desired-vs-observed drift status.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2118",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "High-risk kill-switch precedence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2119",
+      "phase": 21,
+      "priority": "P0",
+      "summary": "GATE QSECURITY + QSUPPLYCHAIN + QDATA pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2201",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Record model/prompt/Skill/input fingerprints on AI artifacts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2202",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Structured-output schema validation + bounded repair.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2203",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Fact grounding/evidence coverage metrics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2204",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Versioned multilingual/content-type evaluation fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2205",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Model/prompt/Skill regression policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2206",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Fallback-model equivalence gate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2207",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Define environment/use-case SLO profiles.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2208",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Queue/latency/error/payload/DB/memory/concurrency metrics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2209",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Per-job/stage/provider/model cost budgets.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2210",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Capacity and burst load tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2211",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Schema migration fresh/upgrade/repeat/partial-failure tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2212",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Mixed-version compatibility policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2213",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "PHP/WP/DB/MCP/provider compatibility matrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2214",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Property tests for state/idempotency/hash/scope.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2215",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Bounded fuzz tests for external envelopes/URLs/paths.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2216",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Fault injection for timeout/duplicate/reorder/DB crash/JWKS outage.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2217",
+      "phase": 22,
+      "priority": "P1",
+      "summary": "Mutation testing for critical deny-policy code.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2218",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Define RPO/RTO profiles.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2219",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Database/artifact restore rehearsal.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2220",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "OAuth key/provider compromise recovery rehearsal.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2221",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "Failed publish/rollback/forward-fix rehearsal.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2222",
+      "phase": 22,
+      "priority": "P0",
+      "summary": "GATE QEVAL + QPERF + QCOMPAT + QRECOVERY pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2301",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Implement Policy Resolution Engine input normalization.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2302",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Define deny/kill-switch/environment/certification/approval/grant precedence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2303",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Emit explainable PolicyDecision with versions/reasons/SHA.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2304",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Implement ApprovalPolicy requester/approver separation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2305",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Implement quorum and distinct-principal enforcement.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2306",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Implement bounded delegation + revocation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2307",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Implement emergency approval TTL/incident/post-review.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2308",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Deny Breakglass self-approval by default.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2309",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Add evidence attestation signing profile.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2310",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Add attestation trust roots/key roles.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2311",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Add evidence/key revocation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2312",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Add bounded offline trust-cache TTL.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2313",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Tampered local certification flag negative test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2314",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "Expired/revoked attestation negative tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2315",
+      "phase": 23,
+      "priority": "P0",
+      "summary": "GATE QGOVERNANCE pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2401",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Implement read-only SiteBootstrapSnapshot.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2402",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Normalize posts/pages/CPTs/taxonomies/languages.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2403",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Normalize URLs/canonicals/SEO/indexability.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2404",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Normalize media and internal/outbound links.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2405",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Backfill observed existing-content artifacts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2406",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Implement ContentInventoryItem registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2407",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Implement Intent Registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2408",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Define CREATE_NEW/UPDATE/CONSOLIDATE/SUPPORT/HUMAN_REVIEW outcomes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2409",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Content Planner intent-collision gate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2410",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Incremental inventory refresh.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2411",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Periodic inventory reconciliation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2412",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "Multilingual canonical-owner collision test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2413",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "GATE Bootstrap performs no mutation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2414",
+      "phase": 24,
+      "priority": "P0",
+      "summary": "GATE First job requires reconciled site inventory where policy mandates.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2501",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Define ArtifactStore interface.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2502",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Implement immutable content-addressed blob identity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2503",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Separate logical Artifact ID from blob ID.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2504",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Integrity verification on blob reads.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2505",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Storage classes/tiering.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2506",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Tenant/site storage quotas.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2507",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Dedup accounting.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2508",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Retention/legal-hold-aware garbage collection.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2509",
+      "phase": 25,
+      "priority": "P1",
+      "summary": "Define rebuildable RetrievalIndex abstraction.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2510",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Type ArtifactEdge invalidation semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2511",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Implement RecomputePlanner.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2512",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Preserve unaffected artifacts with rationale.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2513",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Add recompute cost/fan-out estimate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2514",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Fan-out review threshold.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2515",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Change coalescing/debounce.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2516",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Dependency cycle/loop prevention.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2517",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "Freshness-only gate invalidation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2518",
+      "phase": 25,
+      "priority": "P0",
+      "summary": "GATE Minimal recomputation property tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2601",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "PublicationEvidence schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2602",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Origin object + HTTP verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2603",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Public/edge fetch and rendered-content fingerprint.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2604",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Canonical/robots/indexability verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2605",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Structured-data verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2606",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Hreflang/language verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2607",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Media/sitemap verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2608",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Cache/CDN propagation state and timeout.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2609",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Governed cache purge capability where provider supports it.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2610",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Publication containment/rollback policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2611",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "RightsRecord registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2612",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Research-vs-republication rights policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2613",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Media rights/attribution verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2614",
+      "phase": 26,
+      "priority": "P1",
+      "summary": "Similarity/near-duplicate policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2615",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Takedown invalidation workflow.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2616",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "AI DataProcessingProfile registry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2617",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Classification→provider processing decision.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2618",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Redaction/minimization path.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2619",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Data residency/local-only policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2620",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "Fallback-model processing equivalence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2621",
+      "phase": 26,
+      "priority": "P0",
+      "summary": "GATE Public publish requires required verification/rights/data gates.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2701",
+      "phase": 27,
+      "priority": "P1",
+      "summary": "Operator Control Center read model.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2702",
+      "phase": 27,
+      "priority": "P1",
+      "summary": "Queue/blocker/approval/provider/gate/budget views.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2703",
+      "phase": 27,
+      "priority": "P1",
+      "summary": "Governed retry/cancel/pause/resume actions.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2704",
+      "phase": 27,
+      "priority": "P1",
+      "summary": "Bounded bulk-action preview/blast-radius policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2705",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Read-only Doctor findings.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2706",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "RepairPlan contract.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2707",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Stuck lease/orphan artifact/stale gate diagnostics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2708",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Provider/policy/publication drift diagnostics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2709",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Dead-Letter Queue schema/policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2710",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "DLQ replay with current readback/idempotency.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2711",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Poison-work retention/quarantine.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2712",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Shared provider semantic conformance suite.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2713",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Golden cross-provider fixtures.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2714",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Contract/capability/Skill lifecycle metadata.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2715",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Deprecation usage inventory.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2716",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "Sunset migration/removal gate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2717",
+      "phase": 27,
+      "priority": "P0",
+      "summary": "GATE Common repair/replay path works without raw DB surgery.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2801",
+      "phase": 28,
+      "priority": "P1",
+      "summary": "Tenant/site/provider scheduling classes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2802",
+      "phase": 28,
+      "priority": "P1",
+      "summary": "Weighted fair scheduling and anti-starvation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2803",
+      "phase": 28,
+      "priority": "P1",
+      "summary": "Per-scope quotas/concurrency.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2804",
+      "phase": 28,
+      "priority": "P1",
+      "summary": "Reserved incident/recovery capacity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2805",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Define central dependency outage matrix.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2806",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Define cached evidence/authority TTL by dependency.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2807",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Deny new privilege during central outage by default.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2808",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Reconnection trust/revocation/drift reconciliation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2809",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "LocalizationCluster.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2810",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Translation/transcreation lineage.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2811",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Locale formatting and RTL/LTR rules.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2812",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Canonical/hreflang locale policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2813",
+      "phase": 28,
+      "priority": "P1",
+      "summary": "Accessibility QA profile.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2814",
+      "phase": 28,
+      "priority": "P1",
+      "summary": "Heading/link/alt/language/direction checks.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2815",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Internal Link Graph.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2816",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Link recommendation policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2817",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Orphan/anchor-diversity/indexability rules.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2818",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "Publication verification for links/hreflang/canonical.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2819",
+      "phase": 28,
+      "priority": "P0",
+      "summary": "GATE Noisy-neighbor + central-outage + multilingual fixtures pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2901",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "EvalSuite registry/ownership/versioning.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2902",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "Gold fixture provenance/contamination policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2903",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "Threshold calibration/versioning.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2904",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "Human reviewer agreement metadata where applicable.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2905",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "EvalRun baseline comparison.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2906",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "SLO error-budget state.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2907",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "Burn-rate alerts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2908",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "Alert owner/runbook/escalation/dedup.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2909",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "Maintenance-window policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2910",
+      "phase": 29,
+      "priority": "P2",
+      "summary": "Experiment identity/hypothesis/assignment.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2911",
+      "phase": 29,
+      "priority": "P2",
+      "summary": "Immutable variant artifacts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2912",
+      "phase": 29,
+      "priority": "P2",
+      "summary": "SEO-safe experiment constraints.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2913",
+      "phase": 29,
+      "priority": "P2",
+      "summary": "Guardrails/stopping/interaction policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2914",
+      "phase": 29,
+      "priority": "P2",
+      "summary": "Winner promotion through normal publish gates.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2915",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "UsageEvent append-only ledger.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2916",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "Job/stage/site/tenant/provider budgets.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2917",
+      "phase": 29,
+      "priority": "P2",
+      "summary": "Rate-card versioning/internal chargeback.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2918",
+      "phase": 29,
+      "priority": "P2",
+      "summary": "Provider invoice reconciliation/adjustments.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T2919",
+      "phase": 29,
+      "priority": "P1",
+      "summary": "GATE Usage/alert/eval evidence is payload-minimized and tenant-scoped.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3001",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Define decommission scopes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3002",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Inventory active jobs/DLQ/artifacts/providers/credentials/cron/webhooks.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3003",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Quiesce and late-callback treatment.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3004",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "ExportBundle manifest.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3005",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Artifact/blob checksum export.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3006",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Exclude secrets/private keys by default.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3007",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Provider resolver removal + credential revoke.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3008",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Webhook/MCP side-channel cleanup.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3009",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Site/tenant local+central cleanup plan.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3010",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Import compatibility/remapping/collision validation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3011",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Prove import does not recreate grants/Production authorization.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3012",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "Final no-in-flight/no-active-secret verification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3013",
+      "phase": 30,
+      "priority": "P1",
+      "summary": "GATE Produce decommission completion report.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3101",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "CI: current PR base SHA must be ancestor of Feature HEAD.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3102",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Emit BASELINE_STALE with ahead/behind evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3103",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Review baseline deltas in OAuth/authority/MCP/certification/runtime surfaces.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3104",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Update current_baseline_head after each governed synchronization.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3105",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Define externally established Control Plane release attestation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3106",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Separate OAuth/evidence/release/recovery trust roles.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3107",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Define release signer/root rotation and revocation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3108",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Define minimal Recovery Plane transport/identity/grants.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3109",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Recovery read health/log/package identity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3110",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Recovery disable known-bad package.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3111",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Recovery restore attested known-good package.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3112",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "Recovery connector/service restoration path.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3113",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "GATE prove Recovery Plane cannot publish/content-mutate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3114",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "GATE recover deliberately unavailable normal Control Plane path.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3115",
+      "phase": 31,
+      "priority": "P0",
+      "summary": "GATE QROOTTRUST pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3201",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Declare aggregate-authoritative state per mutable aggregate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3202",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Classify events as history/audit rather than current-state authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3203",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Mark indexes/dashboards as rebuildable projections.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3204",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Implement aggregate/event/artifact consistency checker.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3205",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Add BLOCKED_FOR_RECONCILIATION uncertain-state path.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3206",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Define Control Plane vs Execution Worker API boundary.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3207",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Add monotonic lease_epoch fencing token.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3208",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Require fencing epoch on worker authoritative writes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3209",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Reject zombie worker write after newer lease.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3210",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Heartbeat cannot refresh approval/grant/certification.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3211",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Reconcile external provider execution before ambiguous retry.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3212",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Crash/reclaim test after external-success/network-timeout.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3213",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "Duplicate callback/effect-once test with fencing.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3214",
+      "phase": 32,
+      "priority": "P0",
+      "summary": "GATE QEXECUTIONMODEL pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3301",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Define material ExecutionGuard dependency set.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3302",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Bind approval to dependency revisions/fingerprints.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3303",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Implement pre-commit revalidation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3304",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Kill-switch-after-approval race test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3305",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Provider-quarantine-after-plan race test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3306",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Target-edit-after-approval race test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3307",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Rights/data-policy-change approval invalidation test.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3308",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Parse/validate gate-graph.json.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3309",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Reject unknown dependencies and cycles.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3310",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Verify root-to-terminal reachability.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3311",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Register bounded BootstrapTransition objects.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3312",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Prohibit hidden first-run allow branches.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3313",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Emit decisive/secondary/minimal blocker sets.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3314",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Implement ENTERPRISE_MULTI_OPERATOR policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3315",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Implement truthful SINGLE_OWNER_HARDENED compensating controls.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3316",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "Implement EMERGENCY_RECOVERY policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3317",
+      "phase": 33,
+      "priority": "P0",
+      "summary": "GATE QLIVENESS pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3401",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "CapabilityProfile trait schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3402",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Bit Flows workflow.execute semantic trait profile.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3403",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Bind CapabilityProfile fingerprint into plans.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3404",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Provider Resolver trait constraint matching.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3405",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "IntentRelation many-to-many schema.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3406",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Role/confidence/evidence-based cannibalization analysis.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3407",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Configure ArtifactStore dedup scope by data class.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3408",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Prevent cross-tenant global hash existence oracle.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3409",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Verify hash knowledge does not authorize blob read.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3410",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Define PublicationFingerprintSet normalizers.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3411",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Explicit volatile DOM/attribute allowlist.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3412",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "CONTENT/SEO/STRUCTURE/LINK/MEDIA match dimensions.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3413",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Record provenance reproducibility vs regeneration semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3414",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Partition eval sets into development/regression/holdout/adversarial/human.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3415",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Track threshold/fixture exposure and evaluator identity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3416",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Validate SupportedRuntimeProfiles.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3417",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Add pairwise/risk-based compatibility selection.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3418",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Configure OfflineAuthorizationWindow by risk class.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3419",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Record cached-evidence age used by offline action.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3420",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Separate audit/domain-event/telemetry persistence classes.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3421",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Define hot/cold audit and telemetry retention.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3422",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "General DataFlowPolicy for storage/backups/index/telemetry/workflow/research/host/AI.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3423",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "Derived embedding/index sensitivity inheritance.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3424",
+      "phase": 34,
+      "priority": "P0",
+      "summary": "GATE QSEMANTICS pass.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3501",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Model authority/grant/approval/commit-guard state machine.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3502",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Prove revoked/stale/kill-switched decisions cannot commit.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3503",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Model lease/fencing/retry state machine.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3504",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Prove older fencing epoch cannot commit.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3505",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Model provider certification/release-ring/quarantine state machine.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3506",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Prove quarantine blocks execution and promotion cannot skip evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3507",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Add liveness/reachability properties.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3508",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Add ArchitectureAdmissionDecision workflow.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3509",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Freeze Critical Kernel document.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3510",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Defer non-qualified new CORE contracts to ADR/backlog/extension.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3511",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Execute exact ETG Staging Critical Kernel vertical slice.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3512",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "Capture runtime-discovered redesigns.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3513",
+      "phase": 35,
+      "priority": "P0",
+      "summary": "GATE CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3601",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "GATE Apply and independently read back the reviewed master repository ruleset with no bypass actors and pinned Release Verdict source. Evidence: ruleset `23968498`; master governance run `36072550595`; PR #64.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "ruleset:23968498",
+        "workflow_run:36072550595",
+        "PR:#64"
+      ],
+      "reason": "External master repository governance is active and independently read back."
+    },
+    {
+      "task_id": "T3602",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Separate reviewed repository parent identity from deployable runtime release identity and bind the selected runtime release to external Root Trust evidence. Evidence: reviewed parent `b1f7e837efc69aa220385d84761e46f64c2442b1`; runtime release `540d5db4be521297de673c8a4d14974c23b67a6a`; package run `36072550999`; artifact `10838403565`; receipt `10838323685`.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "runtime_release_sha:540d5db4be521297de673c8a4d14974c23b67a6a",
+        "workflow_run:36072550999",
+        "artifact:10838403565",
+        "receipt:10838323685"
+      ],
+      "reason": "Reviewed parent and deployable runtime release identities were captured; v2 model separates them."
+    },
+    {
+      "task_id": "T3603",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact commit/artifact/runtime evidence references; no bulk completion. Evidence: `reconcile_task_ledger.py`, `task-ledger-overrides.json`, `task-ledger.generated.json`.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py",
+        "specs/007-content-intelligence-workflow-platform/task-ledger.generated.json",
+        "specs/007-content-intelligence-workflow-platform/task-ledger-overrides.json"
+      ],
+      "reason": "Every task is deterministically classified and non-OPEN states require explicit evidence overrides."
+    },
+    {
+      "task_id": "T3604",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prepare protected backup root and prove exists/writable/ready plus current-runtime backup receipt.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3605",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove known-good restore preconditions and run the bounded Recovery Plane live drill without Production/Breakglass authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3606",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Capture and certify exact installed Bit Flows 1.29.0 artifact/tree/critical hashes/runtime semantics.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3607",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Prove or enforce Bit Flows privileged-side-channel disposition and bind semantic CapabilityProfile traits into plans.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3608",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Close Multi-Authority live subject/resource mapping and exact live certification.",
+      "status": "PARTIAL",
+      "checked": false,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
+      ],
+      "reason": "Repository implementation exists; exact live subject/resource certification remains open."
+    },
+    {
+      "task_id": "T3609",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement Policy Resolution Engine, gate DAG parser/liveness and truthful operating-mode blocker sets.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3610",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement existing-site bootstrap normalized content/SEO/canonical/media/link inventory.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3611",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement many-to-many Intent Registry ownership/collision/cannibalization decisions.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3612",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement ContentJob domain create/transition/cancel/read services over the durable substrate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3613",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement immutable Artifact Registry/Store/edges/lineage/invalidation with tenant-safe addressing.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3614",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement aggregate/event/artifact consistency checker and BLOCKED_FOR_RECONCILIATION path.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3615",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Complete fencing failure model: stale/zombie writers, crash-after-success and duplicate/reordered callbacks.",
+      "status": "PARTIAL",
+      "checked": false,
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        ".github/workflows/mad4b-governed-execution-fence.yml"
+      ],
+      "reason": "Fencing/commit-guard substrate exists; stale/zombie/crash callback fault proof remains open."
+    },
+    {
+      "task_id": "T3616",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement Knowledge Dispatcher, bounded ContextPack and dependency invalidation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3617",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement immutable WriterProfile versions and exact profile/hash job binding.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3618",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement normalized research provider platform and evidence/error/freshness/cost contracts.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3619",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement competitive-intelligence artifacts and InformationGainPlan.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3620",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement ContentBlueprint, ArticleDraft, FactLedger and Editorial/SEO/Final QA hard gates.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3621",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Execute governed WordPress draft canary with exact PublishManifest, target fingerprint, read-after-write, audit and rollback.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3622",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement semantic publication verification for content/SEO/structure/link/media and origin/public propagation.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3623",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Close admitted-kernel security negatives, AI evaluation, SLO/fault/restore and provider-compromise evidence.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3624",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Implement Operator Control, Doctor, RepairPlan, DLQ/replay/quarantine and stuck/orphan diagnostics for the kernel.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3625",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Complete formal authority/approval/commit/fencing/provider state models and liveness proofs.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3626",
+      "phase": 36,
+      "priority": "P1",
+      "summary": "Complete Provider Resolver, signed workflow bridge, dynamic certification lifecycle and release-ring maturity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3627",
+      "phase": 36,
+      "priority": "P1",
+      "summary": "Complete rights/AI-data processing, cron/provider backlog and schedule/public-publish maturity without widening kernel authority.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3628",
+      "phase": 36,
+      "priority": "P2",
+      "summary": "Complete growth/fairness/localization/accessibility/link/eval-ops/experimentation/usage maturity lanes.",
+      "status": "DEFERRED",
+      "checked": false,
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json#growth_fairness_localization_evalops"
+      ],
+      "reason": "Explicit DEFERRED_MATURITY lane; not a Critical Kernel blocker."
+    },
+    {
+      "task_id": "T3629",
+      "phase": 36,
+      "priority": "P1",
+      "summary": "Complete decommission/portability quiesce/export/import/remap/revoke/final-authority proof.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3631",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Apply/read back the external master ruleset, then remove or permanently disable the initial governance bootstrap exception and prove ordinary PRs fail closed if the ruleset is absent. Evidence: PR #64 exact head `0dd96ad9a67dd7c31415b847de2019cdb6438555`, merge `540d5db4be521297de673c8a4d14974c23b67a6a`, bootstrap-retirement contract PASS.",
+      "status": "DONE",
+      "checked": true,
+      "evidence_refs": [
+        "PR:#64",
+        "merge:540d5db4be521297de673c8a4d14974c23b67a6a",
+        "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py"
+      ],
+      "reason": "One-time repository-governance bootstrap exception is retired."
+    },
+    {
+      "task_id": "T3632",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "After protected backup readiness, deploy the exact selected runtime release artifact to ETG Staging; repository HEAD equality is not required when the repository delta is proven non-runtime.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3633",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Read back runtime-release source SHA, build fingerprint, package manifest digest, archive SHA and all seven Root Trust/provenance files from the deployed runtime; UNKNOWN filesystem evidence cannot satisfy the gate.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3634",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Re-run runtime/schema/authority/fail-closed diagnostics on the exact deployed candidate before Bit Flows or content canaries.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3635",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Enforce exact-head OWNER_ATTEST_SINGLE_OWNER as a repository merge-gate input, including stale-on-descendant behavior and authorized-owner identity.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3636",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Replace the stale fixed implementation branch with workflow-owned Feature 007 branch-prefix policy.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3637",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Enforce reviewed-parent versus runtime-release identity separation and runtime-path drift detection in CI.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3638",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    },
+    {
+      "task_id": "T3630",
+      "phase": 36,
+      "priority": "P0",
+      "summary": "GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.",
+      "status": "OPEN",
+      "checked": false,
+      "evidence_refs": [],
+      "reason": ""
+    }
+  ]
+}
