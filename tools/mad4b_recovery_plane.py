@@ -402,7 +402,10 @@ def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str,
         "mutation_started": True,
         "mutation_started_at": utc_now(),
         "target_plugin_path": str(live),
-        "expected_post_identity": expected,
+        "expected_post_identity": {
+            "plugin_present": False,
+            "quarantine_tree_sha256": planned_tree,
+        },
         "evidence_state": "MUTATION_INTENT_DURABLE",
         "terminal": False,
     }
@@ -475,9 +478,25 @@ def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str,
         receipt["receipt_path"] = str(receipt_path)
         receipt["journal_path"] = str(journal_path)
         return receipt
-    except Exception:
+    except Exception as exc:
+        rollback_restored = False
         if moved and quarantine.exists() and not live.exists():
             os.replace(quarantine, live)
+            rollback_restored = True
+        if rollback_restored:
+            rolled_back = dict(journal)
+            rolled_back.update({
+                "terminal": True,
+                "evidence_state": "ROLLED_BACK_AFTER_FAILURE",
+                "reconciliation_required": False,
+                "rollback_restored_original": True,
+                "failure": str(exc),
+                "completed_at": utc_now(),
+            })
+            try:
+                atomic_json_write(journal_path, rolled_back)
+            except OSError:
+                pass
         raise
 
 def assert_verified_root_receipt(root_receipt: dict[str, Any]) -> None:
