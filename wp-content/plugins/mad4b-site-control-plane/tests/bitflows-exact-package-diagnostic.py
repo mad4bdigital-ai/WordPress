@@ -415,6 +415,8 @@ def main() -> int:
             "client_marker_files": [],
             "mcp_named_paths": [],
             "server_detection_method": "bounded_static_implementation_markers_v2",
+            "client_detection_method": "observational_identifier_markers_v1",
+            "catalog_role_binding_source": "exact_archive_sha256_certification",
             "server_surface_absence_proven": False,
             "no_privileged_side_channel_proven": False,
             "security_recertification_required": args.mode == "candidate",
@@ -599,16 +601,26 @@ def main() -> int:
     catalog_role = evidence["native_mcp"]["catalog_role"]
     catalog_security = evidence["native_mcp"]["catalog_security"]
     expected_server_routes = catalog_security.get("server_rest_routes_detected")
+    # The catalog role is bound to the exact certified archive SHA. Static
+    # client identifiers are observational only: a client implementation is not
+    # required to name a class "McpClient". For the exact certified artifact,
+    # static analysis is a contradiction detector: a cataloged client must not
+    # expose a detected first-party MCP server implementation or server route.
+    # Candidate artifacts may be semantically compared to the catalog role, but
+    # an archive mismatch still independently requires recertification below.
     evidence["native_mcp"]["catalog_role_match"] = (
         True
         if not catalog_role
         else (
-            evidence["native_mcp"]["client_surface_detected"] and not evidence["native_mcp"]["server_surface_detected"]
+            not evidence["native_mcp"]["server_surface_detected"]
             if catalog_role == "client"
             else evidence["native_mcp"]["server_surface_detected"]
             if catalog_role == "server"
             else False
         )
+    )
+    evidence["native_mcp"]["catalog_role_artifact_bound"] = bool(
+        archive_matches_catalog and evidence["native_mcp"]["catalog_role_match"]
     )
     evidence["native_mcp"]["catalog_server_route_expectation_match"] = (
         True
@@ -617,8 +629,8 @@ def main() -> int:
     )
 
     if args.mode == "certified" and archive_matches_catalog:
-        if not evidence["native_mcp"]["catalog_role_match"]:
-            raise SystemExit("Bit Flows certified native MCP role no longer matches catalog")
+        if not evidence["native_mcp"]["catalog_role_artifact_bound"]:
+            raise SystemExit("Bit Flows certified native MCP role no longer matches exact artifact-bound catalog")
         if not evidence["native_mcp"]["catalog_server_route_expectation_match"]:
             raise SystemExit("Bit Flows certified native MCP server-route expectation no longer matches catalog")
 
@@ -671,6 +683,7 @@ def main() -> int:
         "candidate_version_claim_match": bool(evidence.get("candidate_version_claim_match")),
         "native_mcp_security_review_required": bool(evidence["native_mcp"]["security_recertification_required"]),
         "native_mcp_catalog_role_match": bool(evidence["native_mcp"]["catalog_role_match"]),
+        "native_mcp_catalog_role_artifact_bound": bool(evidence["native_mcp"]["catalog_role_artifact_bound"]),
         "native_mcp_server_route_expectation_match": bool(evidence["native_mcp"]["catalog_server_route_expectation_match"]),
         "no_privileged_mcp_side_channel_proven": False,
         "write_authority_granted": False,
