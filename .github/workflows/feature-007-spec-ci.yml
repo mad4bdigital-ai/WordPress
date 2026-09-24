@@ -1,0 +1,54 @@
+name: Feature 007 Spec Quality CI
+
+on:
+  pull_request:
+    paths:
+      - 'specs/007-content-intelligence-workflow-platform/**'
+      - '.github/workflows/feature-007-spec-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  spec-quality:
+    name: Feature 007 specification quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+
+      - name: Preserve cross-feature global metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          git diff --exit-code "$BASE"...HEAD -- .specify/feature.json .specify/memory/constitution.md
+
+      - name: Enforce specification-only change boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          bad=0
+          while IFS= read -r path; do
+            case "$path" in
+              specs/007-content-intelligence-workflow-platform/*|.github/workflows/feature-007-spec-ci.yml)
+                ;;
+              *)
+                echo "FORBIDDEN_CHANGE: $path"
+                bad=1
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE"...HEAD)
+          test "$bad" -eq 0
+
+      - name: Validate Feature 007 contracts
+        run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
