@@ -207,19 +207,30 @@ jobs:
           failed=[]; pending=[]
           for name in required:
               row=latest.get(name)
-              if not row or row.get('status')!='completed': pending.append(name); continue
-              if row.get('conclusion')!='success': failed.append((name,row.get('conclusion')))
-          if failed:
-              print('critical failures:',failed); raise SystemExit(1)
+              if not row or row.get('status')!='completed':
+                  pending.append(name)
+                  continue
+              if row.get('conclusion')!='success':
+                  failed.append((name,row.get('conclusion')))
           if pending:
-              print('critical pending:',len(pending),pending[:5]); raise SystemExit(2)
+              print('critical pending:',len(pending),pending[:5])
+              if failed:
+                  print('critical failures already terminal:',failed)
+              raise SystemExit(2)
+          if failed:
+              print('critical failures:',failed)
+              raise SystemExit(1)
           print('all critical exact-head checks passed:',len(required))
           PY
             rc=$?
             set -e
-            if [ "$rc" -eq 0 ]; then break; fi
-            if [ "$rc" -eq 1 ]; then exit 1; fi
-            if [ "$attempt" -eq 120 ]; then echo 'Timed out waiting for exact-head critical checks.' >&2; exit 1; fi
+            if [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ]; then
+              break
+            fi
+            if [ "$attempt" -eq 120 ]; then
+              echo 'Timed out waiting for exact-head critical checks; emitting a negative machine-readable verdict.' >&2
+              break
+            fi
             sleep 10
           done
 
@@ -248,14 +259,14 @@ jobs:
           latest={}
           for row in sorted(runs,key=lambda x:int(x.get('id',0))):
               latest[row.get('name','')]=row
-          critical={
-              name:{
-                  'status':latest[name].get('status'),
-                  'conclusion':latest[name].get('conclusion'),
-                  'details_url':latest[name].get('details_url',''),
+          critical={}
+          for name in required:
+              row=latest.get(name) or {}
+              critical[name]={
+                  'status':row.get('status','missing'),
+                  'conclusion':row.get('conclusion'),
+                  'details_url':row.get('details_url',''),
               }
-              for name in required
-          }
           merge_gate_ready=all(
               value['status']=='completed' and value['conclusion']=='success'
               for value in critical.values()
@@ -271,109 +282,117 @@ jobs:
 
           artifact=None
           canonical_package=None
+          artifact_verification_error=None
           if artifact_required:
-              artifacts=json.load(open(sys.argv[5],encoding='utf-8')).get('artifacts',[])
-              exact=[
-                  a for a in artifacts
-                  if not a.get('expired')
-                  and (a.get('workflow_run') or {}).get('head_sha')==os.environ['SOURCE_SHA']
-              ]
-              exact=sorted(exact,key=lambda a:int(a.get('id',0)),reverse=True)
-              artifact=exact[0] if exact else None
-              if not artifact:
-                  raise SystemExit('exact-head distribution artifact not found')
+              try:
+                  artifacts=json.load(open(sys.argv[5],encoding='utf-8')).get('artifacts',[])
+                  exact=[
+                      a for a in artifacts
+                      if not a.get('expired')
+                      and (a.get('workflow_run') or {}).get('head_sha')==os.environ['SOURCE_SHA']
+                  ]
+                  exact=sorted(exact,key=lambda a:int(a.get('id',0)),reverse=True)
+                  artifact_row=exact[0] if exact else None
+                  if not artifact_row:
+                      raise RuntimeError('exact-head distribution artifact not found')
 
-              digest=str(artifact.get('digest','')).removeprefix('sha256:')
-              if len(digest)!=64:
-                  raise SystemExit('distribution artifact digest missing/invalid')
+                  digest=str(artifact_row.get('digest','')).removeprefix('sha256:')
+                  if len(digest)!=64:
+                      raise RuntimeError('distribution artifact digest missing/invalid')
 
-              download_root=Path('/tmp/mad4b-release-verdict-artifact')
-              shutil.rmtree(download_root,ignore_errors=True)
-              download_root.mkdir(parents=True,exist_ok=True)
-              run_id=int((artifact.get('workflow_run') or {}).get('id') or 0)
-              if run_id < 1:
-                  raise SystemExit('distribution artifact workflow run id missing')
-              subprocess.run([
-                  'gh','run','download',str(run_id),
-                  '-n',str(artifact.get('name') or ''),
-                  '-D',str(download_root),
-              ],check=True)
+                  download_root=Path('/tmp/mad4b-release-verdict-artifact')
+                  shutil.rmtree(download_root,ignore_errors=True)
+                  download_root.mkdir(parents=True,exist_ok=True)
+                  run_id=int((artifact_row.get('workflow_run') or {}).get('id') or 0)
+                  if run_id < 1:
+                      raise RuntimeError('distribution artifact workflow run id missing')
+                  subprocess.run([
+                      'gh','run','download',str(run_id),
+                      '-n',str(artifact_row.get('name') or ''),
+                      '-D',str(download_root),
+                  ],check=True)
 
-              receipt_path=download_root/'CANONICAL-PACKAGE-RECEIPT.json'
-              provenance_path=download_root/'MAD4B-BUILD-PROVENANCE.json'
-              fingerprint_path=download_root/'BUILD-FINGERPRINT.txt'
-              manifest_path=download_root/'PACKAGE-MANIFEST-DIGEST.txt'
-              for required_path in (receipt_path,provenance_path,fingerprint_path,manifest_path):
-                  if not required_path.is_file():
-                      raise SystemExit(f'distribution artifact identity file missing: {required_path.name}')
+                  receipt_path=download_root/'CANONICAL-PACKAGE-RECEIPT.json'
+                  provenance_path=download_root/'MAD4B-BUILD-PROVENANCE.json'
+                  fingerprint_path=download_root/'BUILD-FINGERPRINT.txt'
+                  manifest_path=download_root/'PACKAGE-MANIFEST-DIGEST.txt'
+                  for required_path in (receipt_path,provenance_path,fingerprint_path,manifest_path):
+                      if not required_path.is_file():
+                          raise RuntimeError(f'distribution artifact identity file missing: {required_path.name}')
 
-              receipt=json.loads(receipt_path.read_text(encoding='utf-8'))
-              provenance=json.loads(provenance_path.read_text(encoding='utf-8'))
-              fingerprint=fingerprint_path.read_text(encoding='utf-8').strip()
-              manifest_digest=manifest_path.read_text(encoding='utf-8').strip()
+                  receipt=json.loads(receipt_path.read_text(encoding='utf-8'))
+                  provenance=json.loads(provenance_path.read_text(encoding='utf-8'))
+                  fingerprint=fingerprint_path.read_text(encoding='utf-8').strip()
+                  manifest_digest=manifest_path.read_text(encoding='utf-8').strip()
 
-              if receipt.get('contract')!='mad4b.deterministic-control-plane-package.v1':
-                  raise SystemExit('canonical package receipt contract mismatch')
-              if receipt.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
-                  raise SystemExit('canonical package receipt source mismatch')
-              if provenance.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
-                  raise SystemExit('canonical package provenance source mismatch')
-              if receipt.get('build_fingerprint')!=fingerprint or provenance.get('build_fingerprint')!=fingerprint:
-                  raise SystemExit('canonical build fingerprint mismatch')
-              if receipt.get('package_manifest_digest')!=manifest_digest or provenance.get('package_manifest_digest')!=manifest_digest:
-                  raise SystemExit('canonical package manifest digest mismatch')
+                  if receipt.get('contract')!='mad4b.deterministic-control-plane-package.v1':
+                      raise RuntimeError('canonical package receipt contract mismatch')
+                  if receipt.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
+                      raise RuntimeError('canonical package receipt source mismatch')
+                  if provenance.get('source_commit_sha')!=os.environ['SOURCE_SHA']:
+                      raise RuntimeError('canonical package provenance source mismatch')
+                  if receipt.get('build_fingerprint')!=fingerprint or provenance.get('build_fingerprint')!=fingerprint:
+                      raise RuntimeError('canonical build fingerprint mismatch')
+                  if receipt.get('package_manifest_digest')!=manifest_digest or provenance.get('package_manifest_digest')!=manifest_digest:
+                      raise RuntimeError('canonical package manifest digest mismatch')
 
-              manifest_count=len(provenance.get('package_files',[]))
-              expected_archive_count=manifest_count+1
-              expected_excluded=['MAD4B-BUILD-PROVENANCE.json']
-              if provenance.get('manifest_file_count')!=manifest_count:
-                  raise SystemExit('provenance manifest_file_count mismatch')
-              if provenance.get('archive_file_count')!=expected_archive_count:
-                  raise SystemExit('provenance archive_file_count mismatch')
-              if provenance.get('manifest_excluded_files')!=expected_excluded or provenance.get('manifest_excludes_self') is not True:
-                  raise SystemExit('provenance self-exclusion semantics mismatch')
-              if receipt.get('manifest_file_count')!=manifest_count:
-                  raise SystemExit('receipt manifest_file_count mismatch')
-              if receipt.get('archive_file_count')!=expected_archive_count:
-                  raise SystemExit('receipt archive_file_count mismatch')
-              if receipt.get('package_file_count')!=expected_archive_count:
-                  raise SystemExit('legacy package_file_count alias mismatch')
-              if receipt.get('package_file_count_semantics')!='archive_file_count_including_provenance':
-                  raise SystemExit('receipt package_file_count semantics mismatch')
-              if receipt.get('manifest_excluded_files')!=expected_excluded:
-                  raise SystemExit('receipt manifest exclusion set mismatch')
+                  manifest_count=len(provenance.get('package_files',[]))
+                  expected_archive_count=manifest_count+1
+                  expected_excluded=['MAD4B-BUILD-PROVENANCE.json']
+                  if provenance.get('manifest_file_count')!=manifest_count:
+                      raise RuntimeError('provenance manifest_file_count mismatch')
+                  if provenance.get('archive_file_count')!=expected_archive_count:
+                      raise RuntimeError('provenance archive_file_count mismatch')
+                  if provenance.get('manifest_excluded_files')!=expected_excluded or provenance.get('manifest_excludes_self') is not True:
+                      raise RuntimeError('provenance self-exclusion semantics mismatch')
+                  if receipt.get('manifest_file_count')!=manifest_count:
+                      raise RuntimeError('receipt manifest_file_count mismatch')
+                  if receipt.get('archive_file_count')!=expected_archive_count:
+                      raise RuntimeError('receipt archive_file_count mismatch')
+                  if receipt.get('package_file_count')!=expected_archive_count:
+                      raise RuntimeError('legacy package_file_count alias mismatch')
+                  if receipt.get('package_file_count_semantics')!='archive_file_count_including_provenance':
+                      raise RuntimeError('receipt package_file_count semantics mismatch')
+                  if receipt.get('manifest_excluded_files')!=expected_excluded:
+                      raise RuntimeError('receipt manifest exclusion set mismatch')
 
-              version=str(receipt.get('control_plane_version') or '').strip()
-              control_zip=download_root/f'mad4b-site-control-plane-{version}.zip'
-              if not version or not control_zip.is_file():
-                  raise SystemExit('canonical Control Plane archive missing')
-              control_sha=hashlib.sha256(control_zip.read_bytes()).hexdigest()
-              if control_sha!=receipt.get('archive_sha256'):
-                  raise SystemExit('canonical Control Plane archive SHA mismatch')
-              with zipfile.ZipFile(control_zip) as archive:
-                  actual_archive_count=len(archive.infolist())
-              if actual_archive_count!=expected_archive_count:
-                  raise SystemExit('actual canonical ZIP entry count mismatch')
+                  version=str(receipt.get('control_plane_version') or '').strip()
+                  control_zip=download_root/f'mad4b-site-control-plane-{version}.zip'
+                  if not version or not control_zip.is_file():
+                      raise RuntimeError('canonical Control Plane archive missing')
+                  control_sha=hashlib.sha256(control_zip.read_bytes()).hexdigest()
+                  if control_sha!=receipt.get('archive_sha256'):
+                      raise RuntimeError('canonical Control Plane archive SHA mismatch')
+                  with zipfile.ZipFile(control_zip) as archive:
+                      actual_archive_count=len(archive.infolist())
+                  if actual_archive_count!=expected_archive_count:
+                      raise RuntimeError('actual canonical ZIP entry count mismatch')
 
-              artifact={
-                  'id':artifact.get('id'),
-                  'name':artifact.get('name'),
-                  'sha256':digest,
-                  'workflow_run_id':run_id,
-                  'expired':artifact.get('expired',False),
-              }
-              canonical_package={
-                  'verified':True,
-                  'contract':receipt.get('contract'),
-                  'control_plane_version':version,
-                  'archive_sha256':control_sha,
-                  'build_fingerprint':fingerprint,
-                  'package_manifest_digest':manifest_digest,
-                  'manifest_file_count':manifest_count,
-                  'archive_file_count':actual_archive_count,
-                  'manifest_excluded_files':expected_excluded,
-                  'package_file_count_semantics':'archive_file_count_including_provenance',
-              }
+                  artifact={
+                      'id':artifact_row.get('id'),
+                      'name':artifact_row.get('name'),
+                      'sha256':digest,
+                      'workflow_run_id':run_id,
+                      'expired':artifact_row.get('expired',False),
+                  }
+                  canonical_package={
+                      'verified':True,
+                      'contract':receipt.get('contract'),
+                      'control_plane_version':version,
+                      'archive_sha256':control_sha,
+                      'build_fingerprint':fingerprint,
+                      'package_manifest_digest':manifest_digest,
+                      'manifest_file_count':manifest_count,
+                      'archive_file_count':actual_archive_count,
+                      'manifest_excluded_files':expected_excluded,
+                      'package_file_count_semantics':'archive_file_count_including_provenance',
+                  }
+              except Exception as exc:
+                  artifact_verification_error=str(exc)
+                  canonical_package={
+                      'verified':False,
+                      'verification_error':artifact_verification_error,
+                  }
 
           verdict={
               'contract':'mad4b.repository-release-verdict.v1',
@@ -388,6 +407,7 @@ jobs:
               'repository_release_ready':bool(merge_gate_ready and artifact_required and canonical_package and canonical_package.get('verified')),
               'distribution_artifact':artifact,
               'canonical_package_identity':canonical_package,
+              'artifact_verification_error':artifact_verification_error,
               'live_etg_managed_browser_acceptance':live_state,
               'live_performance_acceptance':'external_pending',
               'live_rollback_drill':'external_pending',
@@ -418,3 +438,17 @@ jobs:
           path: MAD4B-RELEASE-VERDICT.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Enforce release verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          verdict=json.load(open('MAD4B-RELEASE-VERDICT.json',encoding='utf-8'))
+          if verdict.get('repository_merge_gate_ready') is not True:
+              raise SystemExit('repository merge gate is not ready')
+          if verdict.get('artifact_required') and verdict.get('repository_release_ready') is not True:
+              raise SystemExit('repository release artifact identity is not ready')
+          print('repository release verdict enforcement: PASS')
+          PY
