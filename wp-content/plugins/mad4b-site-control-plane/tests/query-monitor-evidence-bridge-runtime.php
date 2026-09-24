@@ -99,10 +99,12 @@ $d->actions[] = new QM_Doing_It_Wrong_Run(
     'Function wp_get_ability was called incorrectly. Ability "mad4b/test" not found before Abilities init.',
     new FakeTrace(array(new FakeFrame('MAD4B_Real_Source::run()', '/srv/wordpress/wp-content/plugins/mad4b-site-control-plane/includes/real-source.php')))
 );
-$d->actions[] = new QM_Doing_It_Wrong_Run(
-    'Function as_next_scheduled_action was called incorrectly. Action Scheduler data store was not initialized.',
-    new FakeTrace(array(new FakeFrame('FluentForm\\Scheduler::run()', '/srv/wordpress/wp-content/plugins/fluentform/app/Scheduler.php')))
-);
+for ( $i = 0; $i < 40; $i++ ) {
+    $d->actions[] = new QM_Doing_It_Wrong_Run(
+        'Function as_next_scheduled_action was called incorrectly. Action Scheduler data store was not initialized.',
+        new FakeTrace(array(new FakeFrame('FluentForm\\Scheduler::run()', '/srv/wordpress/wp-content/plugins/fluentform/app/Scheduler.php')))
+    );
+}
 QM_Collectors::$collector = new FakeCollector($d);
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::capture_and_flush();
 $t = $GLOBALS['option'];
@@ -112,9 +114,15 @@ $check(1 === $t['counters']['mad4b']['doing_it_wrong'], 'MAD4B warning imported 
 $check(1 === $t['counters']['mad4b']['ability_not_found'], 'ability-not-found preserved');
 $check(1 === $t['counters']['mad4b']['wp_get_ability_missing'], 'wp_get_ability classification preserved');
 $check(1 === $t['counters']['mad4b']['pre_init_abilities_violation'], 'pre-init semantics preserved at shutdown');
-$check(1 === $t['counters']['third_party']['doing_it_wrong'], 'third-party warning remains third-party');
-$check(1 === $t['counters']['third_party']['fluentform_action_scheduler'], 'FluentForms classification preserved');
+$check(40 === $t['counters']['third_party']['doing_it_wrong'], 'third-party warning remains third-party');
+$check(40 === $t['counters']['third_party']['fluentform_action_scheduler'], 'FluentForms classification preserved');
 $check('mad4b.query-monitor-collector-bridge.v1' === $t['events'][0]['evidence_source'], 'collector evidence source recorded');
+$check(32 === count($t['events']), 'global event ring remains bounded to 32');
+$global_mad4b = array_values(array_filter($t['events'], function($event){ return isset($event['classification']) && 'mad4b' === $event['classification']; }));
+$check(0 === count($global_mad4b), 'fixture must prove global ring can evict older MAD4B detail');
+$check(isset($t['events_by_bucket']['mad4b']) && 1 === count($t['events_by_bucket']['mad4b']), 'MAD4B bucket ring must retain its event independently');
+$check('doing_it_wrong' === $t['events_by_bucket']['mad4b'][0]['type'], 'retained MAD4B event type drifted');
+$check(isset($t['events_by_bucket']['third_party']) && 32 === count($t['events_by_bucket']['third_party']), 'third-party bucket ring must remain independently bounded');
 $check(!empty($t['performance']['frontend_observed']), 'frontend performance evidence observed');
 $check(isset($t['performance']['last_by_class']['frontend']), 'frontend performance last sample present');
 $perf = $t['performance']['last_by_class']['frontend'];
@@ -132,4 +140,4 @@ $check('Alpha\\Reader::load' === $perf['db_profile']['top_callers'][0]['caller']
 $check('plugin:Alpha' === $perf['db_profile']['top_components'][0]['component'], 'top component attribution derived');
 $check(false === strpos(json_encode($perf['db_profile']), 'SELECT 1'), 'raw SQL must not be returned in profile');
 $check(empty($perf['db_profile']['raw_sql_returned']), 'raw SQL safety flag must remain false');
-echo "mad4b.query-monitor-collector-bridge.runtime.v2: PASS\n";
+echo "mad4b.query-monitor-collector-bridge.runtime.v3: PASS\n";
