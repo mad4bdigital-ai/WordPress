@@ -57,23 +57,23 @@ jobs:
             gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/check-runs?per_page=100&page=2" > /tmp/checks-2.json
             set +e
             python3 - /tmp/mad4b-critical-checks.txt /tmp/checks-1.json /tmp/checks-2.json <<'PY'
-import json,sys
-required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
-runs=[]
-for path in sys.argv[2:]: runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
-latest={}
-for row in sorted(runs,key=lambda x:int(x.get('id',0))): latest[row.get('name','')]=row
-failed=[]; pending=[]
-for name in required:
-    row=latest.get(name)
-    if not row or row.get('status')!='completed': pending.append(name); continue
-    if row.get('conclusion')!='success': failed.append((name,row.get('conclusion')))
-if failed:
-    print('critical failures:',failed); raise SystemExit(1)
-if pending:
-    print('critical pending:',len(pending),pending[:5]); raise SystemExit(2)
-print('all critical exact-head checks passed:',len(required))
-PY
+          import json,sys
+          required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
+          runs=[]
+          for path in sys.argv[2:]: runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
+          latest={}
+          for row in sorted(runs,key=lambda x:int(x.get('id',0))): latest[row.get('name','')]=row
+          failed=[]; pending=[]
+          for name in required:
+              row=latest.get(name)
+              if not row or row.get('status')!='completed': pending.append(name); continue
+              if row.get('conclusion')!='success': failed.append((name,row.get('conclusion')))
+          if failed:
+              print('critical failures:',failed); raise SystemExit(1)
+          if pending:
+              print('critical pending:',len(pending),pending[:5]); raise SystemExit(2)
+          print('all critical exact-head checks passed:',len(required))
+          PY
             rc=$?
             set -e
             if [ "$rc" -eq 0 ]; then break; fi
@@ -93,51 +93,51 @@ PY
           artifact_name="mad4b-site-control-plane-general-distribution-kit-$SOURCE_SHA"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact_name&per_page=100" > /tmp/artifacts.json
           python3 - /tmp/mad4b-critical-checks.txt /tmp/checks-1.json /tmp/checks-2.json /tmp/artifacts.json <<'PY'
-import json,os,sys
-required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
-runs=[]
-for path in sys.argv[2:4]: runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
-latest={}
-for row in sorted(runs,key=lambda x:int(x.get('id',0))): latest[row.get('name','')]=row
-critical={name:{'status':latest[name].get('status'),'conclusion':latest[name].get('conclusion'),'details_url':latest[name].get('details_url','')} for name in required}
-live=latest.get('Live ETG managed browser acceptance')
-if live and live.get('conclusion')=='success': live_state='accepted'
-elif live and live.get('conclusion') in ('failure','cancelled','timed_out','action_required'): live_state='failed'
-else: live_state='external_pending'
-artifacts=json.load(open(sys.argv[4],encoding='utf-8')).get('artifacts',[])
-exact=[a for a in artifacts if not a.get('expired') and (a.get('workflow_run') or {}).get('head_sha')==os.environ['SOURCE_SHA']]
-exact=sorted(exact,key=lambda a:int(a.get('id',0)),reverse=True)
-artifact=exact[0] if exact else {}
-if not artifact: raise SystemExit('exact-head distribution artifact not found')
-digest=str(artifact.get('digest','')).removeprefix('sha256:')
-if len(digest)!=64: raise SystemExit('distribution artifact digest missing/invalid')
-verdict={
-  'contract':'mad4b.repository-release-verdict.v1',
-  'source_commit_sha':os.environ['SOURCE_SHA'],
-  'critical_checks':critical,
-  'critical_check_count':len(critical),
-  'repository_release_ready':all(v['status']=='completed' and v['conclusion']=='success' for v in critical.values()),
-  'distribution_artifact':{
-    'id':artifact.get('id'), 'name':artifact.get('name'), 'sha256':digest,
-    'workflow_run_id':(artifact.get('workflow_run') or {}).get('id'), 'expired':artifact.get('expired',False)
-  },
-  'live_etg_managed_browser_acceptance':live_state,
-  'live_performance_acceptance':'external_pending',
-  'live_rollback_drill':'external_pending',
-  'ready_for_review_authorized':False,
-  'merge_authorized':False,
-  'production_authorized':False,
-  'owner_attestation_required_for_exact_head':True,
-  'attestation_stale_on_descendant':True,
-  'notes':[
-    'Repository success does not substitute for live ETG Staging acceptance.',
-    'Live performance and rollback drill remain external deployment gates.',
-    'Production and Breakglass/raw-SQL authority are not granted by this verdict.'
-  ]
-}
-open('MAD4B-RELEASE-VERDICT.json','w',encoding='utf-8').write(json.dumps(verdict,indent=2,sort_keys=True)+'\n')
-print(json.dumps(verdict,indent=2,sort_keys=True))
-PY
+          import json,os,sys
+          required=[x.strip() for x in open(sys.argv[1],encoding='utf-8') if x.strip()]
+          runs=[]
+          for path in sys.argv[2:4]: runs.extend(json.load(open(path,encoding='utf-8')).get('check_runs',[]))
+          latest={}
+          for row in sorted(runs,key=lambda x:int(x.get('id',0))): latest[row.get('name','')]=row
+          critical={name:{'status':latest[name].get('status'),'conclusion':latest[name].get('conclusion'),'details_url':latest[name].get('details_url','')} for name in required}
+          live=latest.get('Live ETG managed browser acceptance')
+          if live and live.get('conclusion')=='success': live_state='accepted'
+          elif live and live.get('conclusion') in ('failure','cancelled','timed_out','action_required'): live_state='failed'
+          else: live_state='external_pending'
+          artifacts=json.load(open(sys.argv[4],encoding='utf-8')).get('artifacts',[])
+          exact=[a for a in artifacts if not a.get('expired') and (a.get('workflow_run') or {}).get('head_sha')==os.environ['SOURCE_SHA']]
+          exact=sorted(exact,key=lambda a:int(a.get('id',0)),reverse=True)
+          artifact=exact[0] if exact else {}
+          if not artifact: raise SystemExit('exact-head distribution artifact not found')
+          digest=str(artifact.get('digest','')).removeprefix('sha256:')
+          if len(digest)!=64: raise SystemExit('distribution artifact digest missing/invalid')
+          verdict={
+            'contract':'mad4b.repository-release-verdict.v1',
+            'source_commit_sha':os.environ['SOURCE_SHA'],
+            'critical_checks':critical,
+            'critical_check_count':len(critical),
+            'repository_release_ready':all(v['status']=='completed' and v['conclusion']=='success' for v in critical.values()),
+            'distribution_artifact':{
+              'id':artifact.get('id'), 'name':artifact.get('name'), 'sha256':digest,
+              'workflow_run_id':(artifact.get('workflow_run') or {}).get('id'), 'expired':artifact.get('expired',False)
+            },
+            'live_etg_managed_browser_acceptance':live_state,
+            'live_performance_acceptance':'external_pending',
+            'live_rollback_drill':'external_pending',
+            'ready_for_review_authorized':False,
+            'merge_authorized':False,
+            'production_authorized':False,
+            'owner_attestation_required_for_exact_head':True,
+            'attestation_stale_on_descendant':True,
+            'notes':[
+              'Repository success does not substitute for live ETG Staging acceptance.',
+              'Live performance and rollback drill remain external deployment gates.',
+              'Production and Breakglass/raw-SQL authority are not granted by this verdict.'
+            ]
+          }
+          open('MAD4B-RELEASE-VERDICT.json','w',encoding='utf-8').write(json.dumps(verdict,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(verdict,indent=2,sort_keys=True))
+          PY
 
       - name: Upload exact-head release verdict
         uses: actions/upload-artifact@v4
