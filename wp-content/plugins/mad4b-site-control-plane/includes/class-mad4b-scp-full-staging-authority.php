@@ -7,9 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * planes: governed write, Developer, and Developer Breakglass.
  *
  * OAuth remains identity/read consent only. Read-only status/plan are exposed
- * on mad4b-chatgpt for diagnosis; the mutating apply surface remains mounted
- * only on mad4b-enrollment and reuses the existing write/developer primitives
- * rather than creating parallel grant semantics.
+ * on mad4b-chatgpt for diagnosis. The single ChatGPT app may also project the
+ * composite apply ability as a temporary step-up tool, but only while the
+ * exact current Staging plan is ready, unblocked and not already converged.
+ * Low-level enrollment/developer primitives remain internal and the composite
+ * apply path reuses them rather than creating parallel grant semantics.
  */
 final class MAD4B_SCP_Full_Staging_Authority {
 	const CONTRACT = 'mad4b.full-staging-authority.v1';
@@ -34,6 +36,27 @@ final class MAD4B_SCP_Full_Staging_Authority {
 
 	public static function chatgpt_read_tools() {
 		return array( self::STATUS_ABILITY, self::PLAN_ABILITY );
+	}
+
+	/**
+	 * Project only the composite authority mutation onto the single ChatGPT app.
+	 * This is intentionally fail-closed: any access, provenance, plan or current
+	 * authority ambiguity returns an empty projection. The low-level primitives
+	 * remain enrollment-only and are never surfaced by this method.
+	 */
+	public static function chatgpt_step_up_tools() {
+		$access = self::can_access();
+		if ( is_wp_error( $access ) || ! $access ) return array();
+
+		$status = self::status();
+		if ( ! is_array( $status ) || ! empty( $status['ready'] ) ) return array();
+
+		$plan = self::plan();
+		if ( ! is_array( $plan ) ) return array();
+		if ( empty( $plan['ready_to_apply'] ) ) return array();
+		if ( ! empty( $plan['hard_blockers'] ) ) return array();
+
+		return array( self::APPLY_ABILITY );
 	}
 
 	public static function register_category() {
