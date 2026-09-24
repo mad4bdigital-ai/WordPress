@@ -1,6 +1,6 @@
 {
-  "contract": "mad4b.feature007-critical-gate-graph.v2",
-  "description": "Expanded Critical Kernel hard-gate DAG. It decomposes the real Content Intelligence vertical slice and makes repository governance, protected recovery, exact provider evidence and formal closure explicit.",
+  "contract": "mad4b.feature007-critical-gate-graph.v3",
+  "description": "Expanded Critical Kernel hard-gate DAG including repository-governance bootstrap retirement, exact ETG master deployment, runtime root-trust readback, protected recovery and full content vertical-slice closure.",
   "roots": [
     "repository_governance_enforced",
     "baseline_current",
@@ -57,7 +57,8 @@
       "id": "multi_authority_live",
       "depends_on": [
         "baseline_current",
-        "release_provenance_root"
+        "release_provenance_root",
+        "runtime_root_trust_readback"
       ]
     },
     {
@@ -76,7 +77,8 @@
       "id": "provider_exact_certified",
       "depends_on": [
         "baseline_current",
-        "policy_engine_ready"
+        "policy_engine_ready",
+        "runtime_root_trust_readback"
       ]
     },
     {
@@ -116,7 +118,8 @@
       "id": "site_bootstrap_reconciled",
       "depends_on": [
         "baseline_current",
-        "execution_ledger_reconciled"
+        "execution_ledger_reconciled",
+        "runtime_root_trust_readback"
       ]
     },
     {
@@ -203,7 +206,29 @@
         "semantic_publication_verification_ready",
         "recovery_live_verified",
         "operator_recovery_review_ready",
-        "formal_critical_state_verified"
+        "formal_critical_state_verified",
+        "repository_governance_bootstrap_retired",
+        "runtime_root_trust_readback"
+      ]
+    },
+    {
+      "id": "repository_governance_bootstrap_retired",
+      "depends_on": [
+        "repository_governance_enforced"
+      ]
+    },
+    {
+      "id": "etg_exact_master_deployed",
+      "depends_on": [
+        "repository_governance_bootstrap_retired",
+        "protected_backup_recovery_ready",
+        "release_provenance_root"
+      ]
+    },
+    {
+      "id": "runtime_root_trust_readback",
+      "depends_on": [
+        "etg_exact_master_deployed"
       ]
     }
   ],
@@ -247,6 +272,22 @@
       "exact_operation": "prepare bounded protected backup root, capture current-runtime backup receipt and verify known-good restore preconditions",
       "one_shot": false,
       "requires_postcondition": "protected_backup_recovery_ready"
+    },
+    {
+      "id": "repository_ruleset_bootstrap_retirement",
+      "from": "repository_governance_enforced_bootstrap_exception_present",
+      "to": "repository_governance_bootstrap_retired",
+      "exact_operation": "remove or permanently disable the initial bootstrap exception after independent ruleset readback and prove ordinary master-bound PRs fail closed without the ruleset",
+      "one_shot": true,
+      "requires_postcondition": "repository_governance_bootstrap_retired"
+    },
+    {
+      "id": "etg_exact_master_deployment_transition",
+      "from": "trusted_master_not_deployed",
+      "to": "etg_exact_master_deployed",
+      "exact_operation": "after protected backup readiness, deploy the exact trusted master artifact and read back source/build/manifest/archive identity",
+      "one_shot": false,
+      "requires_postcondition": "runtime_root_trust_readback"
     }
   ]
 }
