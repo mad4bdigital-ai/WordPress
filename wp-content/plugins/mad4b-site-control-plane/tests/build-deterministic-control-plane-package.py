@@ -126,13 +126,14 @@ def provenance(
         "generated_at_is_identity_neutral": True,
         "package_producer_metadata_external": True,
         "archive_format_contract": ARCHIVE_FORMAT_CONTRACT,
+        "archive_compression": "stored",
         "canonical_archive_identity": canonical_identity,
     }
 
 
 def zip_entry(name: str, raw: bytes) -> tuple[zipfile.ZipInfo, bytes]:
     info = zipfile.ZipInfo(name, FIXED_ZIP_TIME)
-    info.compress_type = zipfile.ZIP_DEFLATED
+    info.compress_type = zipfile.ZIP_STORED
     info.create_system = 3
     info.external_attr = (stat.S_IFREG | 0o644) << 16
     info.extra = b""
@@ -155,10 +156,13 @@ def write_deterministic_zip(root: Path, output: Path, wrapper: str) -> None:
     tmp = output.with_suffix(output.suffix + ".tmp")
     if tmp.exists():
         tmp.unlink()
-    with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9, strict_timestamps=True) as archive:
+    # ZIP_STORED avoids compressor-version drift. The package is small enough
+    # that exact reproducibility across runner/zlib generations is worth the
+    # modest size increase.
+    with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_STORED, strict_timestamps=True) as archive:
         for name, raw in all_rows:
             info, payload = zip_entry(name, raw)
-            archive.writestr(info, payload, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+            archive.writestr(info, payload, compress_type=zipfile.ZIP_STORED)
     os.replace(tmp, output)
 
 
@@ -224,6 +228,7 @@ def main() -> int:
     receipt = {
         "contract": CONTRACT,
         "archive_format_contract": ARCHIVE_FORMAT_CONTRACT,
+        "archive_compression": "stored",
         "source_commit_sha": source,
         "control_plane_version": args.version.strip(),
         "package_manifest_digest": manifest_digest,
