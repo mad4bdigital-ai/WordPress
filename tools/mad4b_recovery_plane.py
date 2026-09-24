@@ -267,8 +267,12 @@ def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str,
     recovery_root = root / "wp-content" / "mad4b-recovery"
     quarantine_root = recovery_root / "quarantine"
     receipt_root = recovery_root / "receipts"
+    journal_root = recovery_root / "recovery-journal"
+    if recovery_root.is_symlink():
+        raise ValueError("recovery root symlink is forbidden")
     quarantine_root.mkdir(parents=True, exist_ok=True)
     receipt_root.mkdir(parents=True, exist_ok=True)
+    journal_root.mkdir(parents=True, exist_ok=True)
 
     token = f"{require_incident_id(str(plan['incident_id']))}-{plan_sha[:12]}-disabled"
     quarantine = quarantine_root / token
@@ -277,6 +281,19 @@ def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str,
 
     planned_tree = str(plan["target"]["plugin_tree_sha256"])
     moved = False
+    journal_path = journal_root / f"{token}.json"
+    journal = {
+        "contract": "mad4b.recovery-mutation-journal.v1",
+        "action": "disable_current",
+        "plan_sha256": plan_sha,
+        "incident_id": plan["incident_id"],
+        "mutation_started": True,
+        "mutation_started_at": utc_now(),
+        "target_plugin_path": str(live),
+        "evidence_state": "MUTATION_INTENT_DURABLE",
+        "terminal": False,
+    }
+    atomic_json_write(journal_path, journal)
     try:
         os.replace(live, quarantine)
         moved = True
@@ -310,9 +327,34 @@ def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str,
                 "production_authorized": False,
             },
         }
+        receipt["evidence_state"] = "DURABLE_VERIFIED_RECEIPT"
         receipt_path = receipt_root / f"{token}.json"
-        receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        try:
+            atomic_json_write(receipt_path, receipt)
+        except OSError as exc:
+            uncertain = dict(journal)
+            uncertain.update({
+                "terminal": True,
+                "evidence_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+                "reconciliation_required": True,
+                "failure": str(exc),
+            })
+            try:
+                atomic_json_write(journal_path, uncertain)
+            except OSError:
+                pass
+            raise RuntimeError("MUTATED_BUT_EVIDENCE_UNCERTAIN") from exc
+
+        completed = dict(journal)
+        completed.update({
+            "terminal": True,
+            "evidence_state": "DURABLE_VERIFIED_RECEIPT",
+            "receipt_path": str(receipt_path),
+            "completed_at": utc_now(),
+        })
+        atomic_json_write(journal_path, completed)
         receipt["receipt_path"] = str(receipt_path)
+        receipt["journal_path"] = str(journal_path)
         return receipt
     except Exception:
         if moved and quarantine.exists() and not live.exists():
