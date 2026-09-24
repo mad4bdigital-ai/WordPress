@@ -17,6 +17,8 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
+      - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
@@ -115,6 +117,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
+
+      - name: Verify WPML external diagnostic contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py
 
       - name: Verify deterministic Control Plane package builder
         shell: bash
