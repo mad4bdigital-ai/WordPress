@@ -238,7 +238,9 @@ if ( ! $read_apply instanceof WP_REST_Response || 200 !== (int) $read_apply->get
 	$fail( 'Read-only bearer step-up denial did not return an MCP response.', $normalize( $read_apply instanceof WP_REST_Response ? $read_apply->get_data() : $read_apply ) );
 }
 $read_apply_json = wp_json_encode( $normalize( $read_apply->get_data() ), JSON_UNESCAPED_SLASHES );
-if ( false === $read_apply_json || false === strpos( $read_apply_json, 'mad4b_full_authority_step_up_scope_required' ) ) {
+if ( false === $read_apply_json
+	|| false === strpos( $read_apply_json, '"isError":true' )
+	|| false === strpos( $read_apply_json, 'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.' ) ) {
 	$fail( 'Read-only bearer was not denied by the dedicated authority step-up scope gate.', $normalize( $read_apply->get_data() ) );
 }
 
@@ -365,7 +367,9 @@ if ( ! $foreign_apply instanceof WP_REST_Response || 200 !== (int) $foreign_appl
 	$fail( 'Foreign-client step-up denial did not return an MCP response.', $normalize( $foreign_apply instanceof WP_REST_Response ? $foreign_apply->get_data() : $foreign_apply ) );
 }
 $foreign_apply_json = wp_json_encode( $normalize( $foreign_apply->get_data() ), JSON_UNESCAPED_SLASHES );
-if ( false === $foreign_apply_json || false === strpos( $foreign_apply_json, 'mad4b_full_authority_chatgpt_client_required' ) ) {
+if ( false === $foreign_apply_json
+	|| false === strpos( $foreign_apply_json, '"isError":true' )
+	|| false === strpos( $foreign_apply_json, 'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.' ) ) {
 	$fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $normalize( $foreign_apply->get_data() ) );
 }
 
