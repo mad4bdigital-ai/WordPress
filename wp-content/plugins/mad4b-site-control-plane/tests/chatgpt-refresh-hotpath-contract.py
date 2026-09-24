@@ -160,4 +160,16 @@ assert "'mad4b.build-provenance.v1'" in fingerprint_body
 assert fingerprint_body.index("MAD4B-BUILD-PROVENANCE.json") < fingerprint_body.index("$files = array(")
 assert fingerprint_body.index("self::$request_build_fingerprint") < fingerprint_body.index("$files = array(")
 
-print("mad4b.chatgpt-refresh-hotpath.v5: PASS")
+# tools/list observers only need tool names/identity anchors. They must not
+# serialize+deserialize the full schema payload merely to inspect names.
+handshake_tools_body = handshake.split("private static function capture_tools_list", 1)[1].split("private static function normalize_tool_names", 1)[0]
+assert "normalize_value( $response->get_data() )" not in handshake_tools_body
+observer_tools_body = observer.split("private static function capture_external_tools_list", 1)[1].split("public static function inventory_attestation_from_names", 1)[0]
+assert "normalize_value( $response->get_data() )" not in observer_tools_body
+skill_tools_body = skill_abilities.split("public static function observe_external_tools_list", 1)[1].split("public static function finalize_external_snapshot_observation", 1)[0]
+assert "normalize_value( $rest->get_data() )" not in skill_tools_body
+for body in [handshake_tools_body, observer_tools_body, skill_tools_body]:
+    assert "get_object_vars" in body
+    assert "['tools']" in body
+
+print("mad4b.chatgpt-refresh-hotpath.v6: PASS")
