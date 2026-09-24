@@ -111,3 +111,18 @@ capability traits, privacy-safe addressing, semantic publication fingerprints, r
 ## Rule
 
 A component can be feature-complete while still not Production-eligible.
+
+## Tool Execution quality interpretation
+
+The Governed Tool Execution Plane is evaluated through existing hard gates, not a weaker parallel score:
+
+- QSECURITY — no generic shell; path/network/secret/authority isolation;
+- QSUPPLYCHAIN — exact runner/CLI/provider executable provenance and input artifact trust;
+- QRESILIENCE — durable queue, timeout/retry/DLQ and executor outage behavior;
+- QRECOVERY/QROOTTRUST — WordPress-independent Recovery Runner and known-good restore;
+- QEXECUTIONMODEL — exact plan, execution-location truthfulness, commit guard and fencing;
+- QCOMPAT — executor/runtime-profile compatibility;
+- QOPERABILITY — CLI/Doctor/receipts/kill switches and bounded diagnostics;
+- QPORTABILITY — provider/executor replacement without semantic operation rewrites.
+
+A host/tool capability is not Production-eligible while any applicable gate above is unproven.

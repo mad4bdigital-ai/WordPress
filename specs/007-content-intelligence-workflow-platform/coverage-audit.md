@@ -632,7 +632,32 @@ Before audit: COVERED as later provider-completion work.
 Input:
 Separate authority for outside-WP files, logs, PHP config, cron/process, SSH, backups, databases/domains.
 
-Before audit: COVERED.
+Prior audit classification: COVERED.
+
+Reassessment after live operability review: PARTIAL.
+
+The earlier contract correctly separated Host authority, but did not fully specify:
+- canonical CLI alternative to manual hosting terminal;
+- semantic operation registry;
+- shared MCP/Admin/CLI service semantics;
+- Host Runner;
+- WordPress-independent Recovery Runner;
+- fixed executable/structured argv process policy;
+- path zones/symlink/TOCTOU controls;
+- provider API/CLI/plugin channel decomposition;
+- deterministic same-authority executor fallback;
+- normalized ToolExecutionReceipt;
+- runner leases/fencing/DLQ;
+- cross-adapter conformance;
+- Hostinger-as-profile rather than assumed transport.
+
+New coverage:
+- contracts/governed-tool-execution.md
+- contracts/cli-host-runner.md
+- expanded contracts/host-connector.md
+- references/host-provider-validation-profile.md
+- expanded architecture/security/DR/Doctor/evidence/portability/testing contracts
+- plan/tasks Phase 11 expansion.
 
 ## 40. Cron control
 
@@ -683,6 +708,11 @@ Fully represented architecture families:
 - publishing/site operations
 - generic plugin onboarding
 - Host Connector
+- Governed Tool Execution Plane
+- canonical WP-CLI / standalone CLI model
+- Host Runner + Recovery Runner
+- provider API/CLI/plugin executor adapters
+- host-provider channel generalization
 - cron
 - Growth
 - Skills
@@ -842,3 +872,201 @@ The primary architecture risk is no longer missing conceptual surface area. It i
 Implementation MUST prioritize critical-kernel.md and Phases 31–35 together with existing P0 release/authority/provider/content vertical-slice prerequisites.
 
 Maturity contracts remain valid but do not justify delaying the first live proof unless they become a real dependency.
+
+## 51. Governed Tool Execution / CLI / Host Runner gap closure
+
+Triggering gap:
+A live ETG troubleshooting cycle still required asking the operator to open Hostinger Shell for a read-only diagnostic because the MCP catalog had no canonical CLI/host-execution alternative. A naive fix using generic shell inside WordPress would have widened privilege and violated the existing Host Connector boundary.
+
+Before closure: PARTIAL/MISSING.
+
+Missing architecture pieces:
+1. semantic operation registry independent from command syntax;
+2. canonical `wp mad4b` CLI;
+3. optional standalone CLI for WordPress-independent operations;
+4. Host Runner outside HTTP lifecycle;
+5. minimal out-of-band Recovery Runner;
+6. ToolExecutor profiles and resolver;
+7. Host Read/Write/Execution/Breakglass/Recovery/Production authority separation;
+8. structured argv and no generic shell;
+9. filesystem zones + realpath/symlink/zip-slip/TOCTOU controls;
+10. opaque secret handles and environment allowlists;
+11. network/SSRF policy at executor layer;
+12. output budgets/redaction and normalized receipts;
+13. runner queue/lease/fencing/idempotency/DLQ;
+14. provider API/CLI/plugin/WP-CLI/runner channel decomposition;
+15. deterministic non-authorizing fallback;
+16. Hostinger as first validation profile only;
+17. cross-adapter semantic conformance;
+18. Doctor/RepairPlan integration;
+19. decommission/portability for runners/credentials/spools;
+20. terminal-independent recovery when WordPress/plugin boot fails.
+21. WordPress-to-host bridge with exact plan/enqueue/status/receipt semantics;
+22. explicit execution_location so a WordPress request is not confused with in-process shell execution;
+23. runner/CLI executable supply-chain provenance and artifact-input trust;
+24. independent Host Execution/Runner/provider-channel kill switches;
+25. offline authorization windows for deferred jobs;
+26. host ToolExecutionPlan commit-guard dependencies;
+27. Host Runner fencing/zombie-worker prevention;
+28. independent Recovery Runner root trust;
+29. executor runtime-profile compatibility;
+30. terminal-independent Host Runner bootstrap/enrollment, one-time identity handshake and governed runner update/rollback.
+
+Closure:
+- contracts/governed-tool-execution.md
+- contracts/cli-host-runner.md
+- contracts/host-connector.md expansion
+- contracts/generalization-rules.md rules 11–20
+- contracts/architecture-boundaries.md
+- contracts/security-threat-model.md
+- contracts/disaster-recovery-operability.md
+- contracts/operator-control-doctor-deadletter.md
+- contracts/observability-and-evidence.md
+- contracts/decommission-portability.md
+- contracts/verification-testing-strategy.md
+- contracts/capability-traits.md
+- contracts/supply-chain-secrets.md
+- contracts/policy-drift-kill-switches.md
+- contracts/offline-authorization-window.md
+- contracts/execution-commit-guard.md
+- contracts/execution-plane-fencing.md
+- contracts/root-trust-recovery-plane.md
+- contracts/runtime-profile-compatibility.md
+- data-model-operations-lifecycle.md
+- references/host-provider-validation-profile.md
+- plan Phase 11
+- tasks T1101–T1162 (including bootstrap/enrollment T1155–T1162)
+- traceability families TOOL/CLI/RUNNER/HOSTPROF
+- requirements checklist.
+
+Architecture Freeze decision:
+The minimal semantic operation/CLI/recovery-runner subset is admitted because the gap is supported by observed operability evidence, a concrete privilege boundary and a Production recovery requirement. Broad host automation remains Phase 11 maturity work and is not automatically a blocker for the first ContentJob vertical slice.
+
+Post-closure verdict:
+SPEC_COVERAGE = COVERED.
+RUNTIME_IMPLEMENTATION = PENDING.
+GENERIC_SHELL = PROHIBITED.
+HOSTINGER_CORE_COUPLING = PROHIBITED.
+
+## 52. Spec maintenance liveness during implementation
+
+Observed CI defect:
+Feature 007 had `status=implementation`, and the phase-aware boundary permitted changes only from the single runtime implementation branch. A spec-only maintenance PR was therefore blocked even though all changed files were Feature 007 specification files.
+
+Risk of naive fix:
+Allowing arbitrary branches during implementation would weaken runtime path governance.
+
+Closure:
+- `.github/workflows/feature-007-spec-ci.yml` now allows isolated `spec/007-*` branches only when all changes remain inside the immutable spec allowlist;
+- runtime implementation paths remain exclusive to the exact implementation branch;
+- feature metadata still must mirror workflow-owned implementation allowlists and cannot self-authorize expansion;
+- baseline and validator gates remain mandatory.
+
+Verdict:
+SPEC_MAINTENANCE_LIVENESS = COVERED.
+RUNTIME_BRANCH_ISOLATION = PRESERVED.
+
+
+# Unified Remaining-Implementation Closure Audit
+
+Audit baseline: `540d5db4be521297de673c8a4d14974c23b67a6a`
+
+This section closes the planning gap between broad contract coverage and executable completion. Every known remaining concern is now assigned to the unified closure program rather than being inferred from the existence of a contract or a green infrastructure workflow.
+
+## A. Hard blockers for the first exact ETG vertical slice
+
+| Concern | Closure mapping | Terminal evidence |
+|---|---|---|
+| External GitHub master ruleset | REPOGOV / T3601 | DONE — ruleset `23968498`, active on `refs/heads/master`, pinned Release Verdict integration, zero bypass actors |
+| Governance bootstrap retirement | REPOGOV / T3631 | DONE — PR #64 removed the exception; Governance and Release Verdict now require `governance_ready=true` |
+| Baseline + execution ledger | BASESYNC/CLOSURE / T3602–T3603 | exact master ancestry + evidence-backed DONE/PARTIAL/OPEN/DEFERRED ledger |
+| Latest-master release root | ROOT / T3602 | trusted master attestation and exact package identity |
+| Protected backup + live recovery | BACKUP/ROOT / T3604–T3605 | protected-root readiness, backup receipt, known-good restore, deliberate-failure recovery |
+| Exact trusted-master ETG deployment | CLOSURE/ROOT / T3632 | deployed source/build/manifest/archive identity equals exact master artifact |
+| Runtime Root Trust readback | ROOT/CLOSURE / T3633–T3634 | seven trust/provenance files + runtime/schema/authority fail-closed readback on the exact deployed candidate |
+| Bit Flows 1.29 exact runtime | DPC/TRAIT / T3606–T3607 | exact artifact/capability/behavior/security evidence |
+| Privileged provider side-channel | DPC/QSEC / T3607 | absent/suppressed/federated-read-only/blocking proof |
+| Multi-Authority live path | AUTH / T3608 | exact issuer/subject/resource/filter-chain canary |
+| Policy + gate liveness | POLICY/LIVENESS / T3609 | explainable precedence, DAG parser, cycle/reachability/blocker-set evidence |
+| Existing-site bootstrap | BOOT / T3610 | normalized content/SEO/canonical/media/link inventory |
+| Intent ownership | INTENT / T3611 | many-to-many owner/role/confidence/collision decision |
+| ContentJob domain | CJ / T3612 | domain services and state/stage/revision/event invariants |
+| Artifact registry/store | ART/STORE / T3613 | immutable artifacts, edges, lineage, integrity and tenant-safe addressing |
+| Authoritative consistency | STATE / T3614 | aggregate/event/artifact consistency + reconciliation state |
+| Fencing failure model | FENCE/QRES / T3615 | zombie/stale writer + ambiguous success + duplicate callback tests |
+| Context + writer binding | CTX/WR / T3616–T3617 | bounded ContextPack and immutable WriterProfile version/hash |
+| Research + competitive intelligence | RES/COMP / T3618–T3619 | normalized evidence and InformationGain artifacts |
+| Blueprint/draft/FactLedger/QA | PLAN/WRITE/QA / T3620 | hard quality decisions on exact artifacts |
+| Governed WordPress draft | PUB / T3621 | exact PublishManifest + mutation receipt + readback + rollback |
+| Semantic publication verification | PUBFP/PVERIFY / T3622 | content/SEO/structure/link/media semantic match |
+| Kernel security/AI/fault evidence | QSEC/QAI/QPERF/QDR / T3623 | admitted-kernel negative tests, evals, SLO/fault/restore evidence |
+| Operator/Doctor/DLQ | OPS / T3624 | blockers, RepairPlan, stuck/orphan, DLQ replay/quarantine |
+| Formal state proof | FORMAL / T3625 | authority/commit/fencing/provider invariants + liveness |
+| Exact ETG vertical slice | CLOSURE / T3630 | one linked exact-candidate evidence chain |
+
+## B. Live mutation preconditions
+
+These do not grant deployment authority, but the related live mutation MUST NOT start until they pass:
+
+- protected backup root exists/writable/ready;
+- current runtime backup receipt is captured;
+- known-good restore target is attested and identity-bound;
+- exact deployment artifact identity is fixed;
+- authority/grant/candidate bindings are exact and current;
+- provider capabilities used by the canary are certified;
+- rollback/readback paths are available;
+- the trusted master artifact is deployed by exact identity, not by version label;
+- Root Trust/provenance files are readable through an authorized evidence path after deployment; UNKNOWN does not count as PASS.
+
+The current ETG observation that a Control Plane build is internally consistent is not a substitute for these preconditions.
+
+## C. Required maturity not automatically blocking the first slice
+
+Tracked by Phase 36 without silently enlarging Critical Kernel:
+
+- Provider Resolver and semantic candidate selection;
+- signed workflow bridge;
+- full dynamic certification lifecycle and evidence reuse;
+- release rings/promotion/demotion/quarantine;
+- approval SoD/quorum/delegation modes beyond the applicable first-slice operating mode;
+- rights/licensing and AI data-processing breadth;
+- scheduling/public publish after the draft slice;
+- cron semantic family;
+- WP Import/Export, JetSmartFilters, SEO-provider and generic-provider onboarding;
+- incremental recompute breadth;
+- decommission/portability.
+
+Runtime evidence may promote one of these into the kernel only through Architecture Freeze admission.
+
+## D. Deferred maturity lanes
+
+Still explicitly tracked, not forgotten:
+
+- growth/index/decay/cannibalization refresh loop;
+- noisy-neighbor/fair scheduling and central-site autonomy;
+- localization/transcreation/accessibility/internal-link graph;
+- EvalRegistry/error budgets/alerts;
+- experiments/attribution;
+- UsageLedger/provider cost/chargeback;
+- broad multi-site rollout and autopromotion.
+
+## E. Bookkeeping correction
+
+A green workflow or an implemented substrate does not mark a historical task DONE automatically.
+
+Phase 36 T3603 requires reconciliation of the full legacy task ledger:
+- DONE: exact evidence reference exists;
+- PARTIAL: implemented foundation plus explicit remainder;
+- OPEN: no accepted implementation evidence;
+- DEFERRED: intentionally outside current execution slice.
+
+This prevents the old all-unchecked task file from being interpreted either as “nothing was implemented” or “everything implied by code is done”.
+
+## F. Final closure condition
+
+Coverage is considered complete only when:
+1. every known remaining concern is mapped to a contract/task/gate/class;
+2. the expanded gate graph remains acyclic and root-to-terminal reachable;
+3. the exact ETG evidence chain satisfies every Critical Kernel dependency;
+4. maturity-deferred items remain visible but cannot fabricate a vertical-slice blocker or PASS;
+5. Production authorization remains independently false unless separately granted.

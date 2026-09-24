@@ -295,21 +295,167 @@ Separate capabilities:
 
 Require current CAN_PUBLISH, exact PublishManifest, exact target fingerprint, environment-aware approval, and post-write verification. Production remains separately authorized.
 
-## Phase 11 — Host Connector
+## Phase 11 — Governed Tool Execution + Host Connector
 
-Separate external authority.
+Separate external authority plus one provider-neutral execution plane.
 
-Initial read-only families:
-- host.files.list/read
-- host.logs.list/read
+### 11A — Semantic operation registry
+
+Define ToolOperationDefinition and normalized operation families.
+
+Minimum read-only operations:
+- schema.diagnostics.read
+- runtime.status.read
+- runtime.provenance.verify
+- package.integrity.verify
+- filesystem.inventory.read/hash
+- host.logs.list/read/tail
 - host.php.status
 - host.cron.list/health
 - host.process.status
 - host.backup.list/status
-- host.database.list/status
-- host.domain.list/status
+- host.database.status/integrity
+- host.domain.status
+- disk.capacity.read
+- provider.runtime.read
 
-Later writes require exact recovery contracts. Arbitrary Production shell stays outside ordinary catalog.
+No generic shell/command-string operation is admitted.
+
+### 11B — Canonical CLI
+
+Implement thin frontends over shared services:
+- `wp mad4b ...` for WordPress-local operations;
+- optional standalone `mad4b` CLI for WordPress-independent recovery/host operations.
+
+Machine-readable discovery/output is required.
+
+MCP, CLI and Admin UI MUST call the same operation service.
+
+### 11C — Tool Executor profiles and resolver
+
+Executor types:
+- WordPress service
+- WP-CLI
+- Host Runner
+- provider API
+- provider CLI
+- bounded SSH
+- Recovery Runner
+
+Resolver is deterministic and non-authorizing. It cannot fall back to broader privilege.
+
+### 11D — Host Runner
+
+Implement durable non-interactive execution:
+- signed/bound job envelope;
+- queue;
+- lease + fencing epoch;
+- idempotency;
+- timeout/output/resource budgets;
+- readback;
+- receipt;
+- DLQ;
+- crash recovery.
+
+Host Runner accepts semantic jobs only, never caller-provided shell text.
+
+### 11E — Authority and security
+
+Separate:
+- Host Read
+- Host Write
+- Host Execution
+- Host Execution Breakglass
+- Recovery
+- Production Host Authority
+
+WordPress Write/Developer/Full Staging Authority cannot imply Host Execution.
+
+Implement path zones, canonical real-path checks, symlink/zip-slip/TOCTOU defenses, secret handles, network policy and output redaction.
+
+### 11F — Provider adapter validation
+
+Use Hostinger as first validation profile while preserving generic contracts.
+
+Discover/certify independently:
+- WordPress/plugin integration;
+- provider API;
+- provider CLI;
+- account-local WP-CLI;
+- account-local Host Runner;
+- bounded SSH/recovery path where available.
+
+A brand name never implies capability availability.
+
+### 11G — Write/recovery expansion
+
+Only after read path certification:
+- plugin.package.stage/apply/rollback;
+- host.files.patch;
+- cron.schedule/unschedule;
+- cache purge;
+- backup.create/restore;
+- bounded database migration/repair;
+- provider runtime reconcile.
+
+Every write requires plan/apply/readback and recovery semantics.
+
+Arbitrary Production shell, arbitrary `wp eval`, arbitrary PHP and generic raw SQL remain outside ordinary catalog.
+
+### 11H — Cross-adapter acceptance
+
+Prove:
+- one read diagnostic is equivalent through MCP + CLI;
+- one read executes through Host Runner;
+- one semantic operation maps to two different executor adapters with identical normalized semantics;
+- one reversible write proves plan/apply/readback/rollback;
+- shell/path injection is denied;
+- runner crash/lease fencing works;
+- minimal Recovery Runner works while WordPress/plugin boot is deliberately unavailable.
+
+### 11I — WordPress Host Bridge
+
+Expose generic abilities:
+- host-operation-capabilities
+- host-operation-plan
+- host-operation-apply
+- host-operation-status
+- host-operation-cancel
+- host-operation-receipt
+- host-doctor
+
+WordPress may execute a certified WordPress-native/provider-plugin mapping directly or enqueue an exact HostRunnerJob. It never accepts caller-provided host shell.
+
+Execution evidence distinguishes:
+- submission/control location;
+- authoritative execution location;
+- exact executor instance/profile.
+
+A queued WordPress request MUST report WordPress only as the submission location and Host Runner/provider channel as the authoritative execution location. Location changes are material plan dependencies.
+
+Queue backend is profile-driven: DB queue, protected spool or external broker. Recovery cannot rely solely on an in-band queue.
+
+### 11J — Runner bootstrap and enrollment
+
+Provide at least one terminal-independent first-install route for a supported hosting profile.
+
+Bootstrap flow:
+- acquire/verify attested RunnerPackage;
+- resolve certified bootstrap channel;
+- create exact bootstrap plan;
+- install only into dedicated runner zone;
+- register exact wake-up cron/service profile;
+- enroll with one-time target-bound token;
+- verify runner identity/package/root/runtime profile;
+- consume/revoke bootstrap credential;
+- keep runner write-ineligible until normal executor certification/authority passes.
+
+Preferred channel order is provider capability driven, not vendor hardcoded:
+provider API/plugin → bounded WordPress package/filesystem bootstrap → certified provider CLI/SSH bootstrap → manual operator fallback.
+
+Bootstrap is a bounded BootstrapTransition and cannot create generic shell or standing Host Execution authority.
+
+Acceptance proves at least one supported profile can install/enroll the runner without interactive hosting terminal.
 
 ## Phase 12 — Cron governance
 
@@ -627,3 +773,44 @@ Exit gate: QSEMANTICS pass for the Critical Kernel.
 - record redesigns discovered by runtime evidence before wider implementation.
 
 Exit gate: CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED.
+
+
+## Phase 36 — Unified implementation closure
+
+Objective: convert all known remaining work into one governed closure program and drive the first real ETG Content Intelligence vertical slice to terminal evidence without confusing maturity backlog with kernel blockers.
+
+Execution order:
+1. Apply and independently read back the reviewed `master` repository ruleset.
+2. Reconcile the legacy task ledger into DONE/PARTIAL/OPEN/DEFERRED with exact evidence references.
+3. Recapture trusted release/root evidence for the current master descendant.
+4. Prepare and verify the protected backup root, current-runtime backup receipt and known-good restore preconditions.
+5. Certify the exact installed Bit Flows 1.29.0 artifact, capability traits and privileged-side-channel policy.
+6. Close live Multi-Authority, Policy Resolution Engine, gate-liveness and operating-mode blockers.
+7. Implement existing-site bootstrap + Intent Registry.
+8. Implement ContentJob domain + Artifact Registry/Store/lineage and authoritative consistency checks.
+9. Implement Knowledge Dispatcher, ContextPack and immutable WriterProfile binding.
+10. Implement normalized research + competitive-intelligence evidence.
+11. Implement Blueprint → ArticleDraft → FactLedger → Editorial/SEO/Final QA.
+12. Execute one governed WordPress draft mutation with exact PublishManifest/readback/rollback.
+13. Verify semantic origin/public state.
+14. Execute Operator/Doctor/reconciliation + Recovery Plane live drill and formal critical-state proof.
+15. Execute the exact ETG Staging vertical slice and emit the terminal gate only from the linked evidence chain.
+
+Parallel maturity lanes:
+- Provider Resolver/rings/dynamic certification breadth.
+- Rights/AI-data governance beyond admitted kernel requirements.
+- Cron/provider breadth.
+- Growth, fairness, localization, accessibility and link graph.
+- Eval operations, experimentation and usage ledger.
+- Decommission/portability.
+
+These lanes remain tracked and required for platform maturity but do not automatically block the first vertical slice.
+
+Exit gates:
+- `repository_governance_enforced`
+- `protected_backup_recovery_ready`
+- `provider_exact_certified`
+- `execution_ledger_reconciled`
+- `critical_kernel_vertical_slice_verified`
+
+No Phase 36 action grants Production authorization.

@@ -63,3 +63,30 @@ Jobs reference credential binding IDs, not secret values.
 
 Logs/evidence have structured redaction before persistence.
 Redaction failure for sensitive fields is a hard evidence-persistence blocker where leakage risk exists.
+
+## Tool and runner supply chain
+
+Executables used by the Tool Execution Plane are supply-chain dependencies.
+
+Where material, executor certification records:
+- executable/package source;
+- exact version;
+- content hash/signature;
+- resolved executable path;
+- file owner/permissions;
+- package provenance;
+- dependency/runtime fingerprint.
+
+Process launch MUST NOT trust an unqualified mutable `PATH` lookup when executable substitution would cross a privilege boundary.
+
+Host Runner/Recovery Runner packages are built, distributed and verified like privileged control-plane artifacts.
+
+Package/artifact inputs to host operations are content-addressed and verified before staging/apply. A URL or filename alone is not artifact identity.
+
+Provider CLI updates invalidate affected executor certification until semantic mapping and security probes pass.
+
+Secrets:
+- remain in dedicated credential bindings;
+- are not embedded in runner packages;
+- are not serialized into plans/jobs/receipts;
+- are not exposed through process listings or logs where avoidable.

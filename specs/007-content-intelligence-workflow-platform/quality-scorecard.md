@@ -46,3 +46,16 @@ This scorecard is evidence-based. "Defined" means specified, not implemented.
 ## Rule
 
 Do not convert this table into one averaged score. A hard blocker stays a blocker regardless of strengths elsewhere.
+
+## Governed Tool Execution status
+
+| Quality family | Spec status | Runtime status | Production blocker? |
+|---|---|---|---|
+| Semantic Tool Operation registry | Defined | Not implemented | Yes for automated host operations |
+| CLI/MCP shared-service parity | Defined | Not implemented | Before replacing manual terminal workflow |
+| Host Runner durable execution | Defined | Not implemented | Yes for async host writes |
+| Execution-location truthfulness | Defined | Not implemented | Yes for host mutation evidence |
+| Tool executor supply chain | Defined | Not certified | Yes for privileged executors |
+| Host authority/kill-switch isolation | Defined | Not implemented | Yes for Host Write/Execution |
+| Recovery Runner independent trust | Defined | Not implemented | Yes before claiming terminal-independent recovery |
+| Cross-executor conformance | Defined | Not proven | Before dynamic executor fallback |

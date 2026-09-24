@@ -66,3 +66,23 @@ After the point of no return, changed policy may stop downstream work but cannot
 - grant revoked immediately before mutation;
 - rights record changes to prohibited;
 - stale approval reused after candidate change.
+
+## ToolExecutionPlan dependencies
+
+A host/tool write commit guard fingerprints at least:
+- ToolOperationDefinition;
+- ToolExecutorProfile;
+- exact target/root;
+- current-state fingerprint;
+- candidate/build identity where relevant;
+- authority/grants;
+- approval;
+- kill-switch state;
+- path/network policy;
+- secret binding version where material;
+- input artifact hashes;
+- recovery policy.
+
+The runner repeats commit-guard validation immediately before the irreversible boundary.
+
+A job queued under one executor profile cannot commit after CLI/runner/provider-channel drift without a fresh plan/decision.

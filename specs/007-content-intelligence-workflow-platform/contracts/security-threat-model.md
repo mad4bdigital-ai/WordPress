@@ -67,3 +67,32 @@ High-risk capabilities require:
 ## Default
 
 Unknown high-risk behavior fails closed.
+
+## Tool execution threats
+
+### Command injection
+Process executors use fixed executable + structured argv. Caller text cannot become shell syntax, flags outside schema or nested commands.
+
+### Path/symlink/TOCTOU
+Filesystem operations canonicalize allowed roots, reject traversal/symlink escape and revalidate immediately before commit. Atomic replacement is preferred.
+
+### Runner spoofing and replay
+Host Runner jobs are integrity-bound to operation, plan, target, candidate and expiry. Lease fencing prevents a stale/zombie runner from committing.
+
+### Secret/environment leakage
+Only allowlisted environment values reach a process. Credentials are resolved from opaque handles and redacted from argv/output evidence where possible.
+
+### Output exfiltration
+stdout/stderr have byte/line bounds, redaction and data classification. A diagnostic cannot become an unrestricted file/secret dump.
+
+### Privilege confusion
+Transport access such as SSH/API/CLI availability does not imply Host Execution Authority. A provider plugin executing inside WordPress cannot silently inherit outside-WP host scope.
+
+### Unsafe fallback
+Executor failure cannot fall back to arbitrary shell, broader credentials, Production, raw SQL or another target.
+
+### Queue poisoning
+Runner queues validate schema, integrity, expiry, authority, idempotency and target before leasing work. Unknown operation IDs fail closed.
+
+### Provider CLI drift
+A provider CLI binary/version change invalidates affected certification and cannot silently alter command semantics.

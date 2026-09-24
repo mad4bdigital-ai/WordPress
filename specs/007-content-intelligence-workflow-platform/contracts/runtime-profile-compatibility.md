@@ -41,3 +41,20 @@ Changing one profile dimension triggers the dependency-aware compatibility probe
 ## Site eligibility
 
 SiteRuntimeCompatibility references a SupportedRuntimeProfile or an explicitly certified derivative.
+
+## Executor compatibility dimensions
+
+ToolExecutorProfile compatibility MAY depend on:
+- operating-system family/architecture;
+- PHP/runtime version;
+- WordPress/WP-CLI version;
+- database client/server;
+- filesystem/symlink semantics;
+- process-launch support;
+- provider CLI version;
+- cron/service availability;
+- network egress;
+- account permissions;
+- container/sandbox mode.
+
+An operation mapping certified on one executor/runtime profile is not assumed equivalent on a materially different profile.

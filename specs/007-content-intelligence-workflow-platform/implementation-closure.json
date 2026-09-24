@@ -1,0 +1,413 @@
+{
+  "contract": "mad4b.feature007-implementation-closure.v1",
+  "baseline_branch": "master",
+  "baseline_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+  "terminal_gate": "critical_kernel_vertical_slice_verified",
+  "production_authorized": false,
+  "architecture_freeze": true,
+  "status_vocabulary": [
+    "DONE",
+    "PARTIAL",
+    "OPEN",
+    "EXTERNAL_PENDING",
+    "DEFERRED"
+  ],
+  "priority_classes": [
+    "KERNEL_BLOCKER",
+    "LIVE_PRECONDITION",
+    "MATURITY_REQUIRED",
+    "DEFERRED_MATURITY"
+  ],
+  "workstreams": [
+    {
+      "id": "repository_governance",
+      "priority": "KERNEL_BLOCKER",
+      "status": "DONE",
+      "gate": "repository_governance_enforced",
+      "evidence": {
+        "master_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "ruleset_id": 23968498,
+        "ruleset_name": "MAD4B master release governance",
+        "enforcement": "active",
+        "target_ref": "refs/heads/master",
+        "bypass_actor_count": 0,
+        "current_user_can_bypass": "never",
+        "required_check": "Repository release verdict",
+        "required_check_integration_id": 15368,
+        "strict_required_status_checks_policy": true,
+        "allowed_merge_methods": [
+          "merge"
+        ],
+        "required_review_thread_resolution": true,
+        "deletion_blocked": true,
+        "non_fast_forward_blocked": true,
+        "governance_push_run_id": 36072550595,
+        "repository_governance_ready": true,
+        "release_verdict_run_id": 36072550766,
+        "repository_merge_gate_ready": true,
+        "repository_release_ready": true,
+        "production_authorized": false
+      }
+    },
+    {
+      "id": "repository_governance_bootstrap_retirement",
+      "priority": "KERNEL_BLOCKER",
+      "status": "DONE",
+      "gate": "repository_governance_bootstrap_retired",
+      "evidence": {
+        "pr": 64,
+        "authorized_exact_head_sha": "0dd96ad9a67dd7c31415b847de2019cdb6438555",
+        "merge_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "bootstrap_exception_active": false,
+        "retirement_contract": "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py",
+        "governance_workflow_fail_closed_without_ruleset": true,
+        "release_verdict_requires_governance_ready": true
+      }
+    },
+    {
+      "id": "execution_ledger_reconciliation",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "execution_ledger_reconciled"
+    },
+    {
+      "id": "latest_master_root_trust",
+      "priority": "KERNEL_BLOCKER",
+      "status": "DONE",
+      "gate": "release_provenance_root",
+      "evidence": {
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "workflow_run_id": 36072550999,
+        "general_distribution_artifact_id": 10838403565,
+        "artifact_digest": "sha256:23887c052950d62f42d68ddba378460ec80a68f9b14365bc3d91220be451b63e",
+        "receipt_artifact_id": 10838323685,
+        "receipt_digest": "sha256:baa92a2dc3e5ebf92b80d172983be8585486aed1065951b8ddb452d0bfb33cfc",
+        "control_plane_version": "0.4.0-rc.59",
+        "build_fingerprint": "f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6",
+        "package_manifest_digest": "3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950",
+        "control_plane_archive_sha256": "c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06",
+        "trusted_master_external_verification": true,
+        "attestation_verified": true,
+        "trusted_signer_ref": "refs/heads/master",
+        "trusted_signer_event": "push",
+        "release_verdict_run_id": 36072550766,
+        "repository_release_ready": true
+      }
+    },
+    {
+      "id": "governed_tool_execution",
+      "priority": "LIVE_PRECONDITION",
+      "status": "PARTIAL",
+      "gate": "recovery_tooling_available",
+      "evidence": {
+        "filesystem_read_abilities_present": true,
+        "filesystem_read_authorized_for_current_subject": false,
+        "remote_shell_surface_available_in_current_chat": false,
+        "generic_shell_allowed": false,
+        "evidence_source": "observed_live_etg_state",
+        "source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
+        "authoritative_for_gate": false
+      },
+      "remainder": [
+        "bind a fresh authorized evidence path for filesystem/runtime trust readback",
+        "implement and certify terminal-independent Host Runner bootstrap/enrollment",
+        "implement semantic host operations and write-capable executor path without generic shell",
+        "prove exact plan/apply/readback/rollback and cross-executor conformance on a supported hosting profile"
+      ]
+    },
+    {
+      "id": "protected_backup_recovery",
+      "priority": "LIVE_PRECONDITION",
+      "status": "OPEN",
+      "gate": "protected_backup_recovery_ready",
+      "evidence": {
+        "exists": false,
+        "writable": false,
+        "ready": false,
+        "requires_preparation": true,
+        "mutation_performed": false
+      }
+    },
+    {
+      "id": "etg_exact_master_deployment",
+      "priority": "LIVE_PRECONDITION",
+      "status": "OPEN",
+      "gate": "etg_exact_master_deployed",
+      "evidence": {
+        "target_source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "currently_deployed_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
+        "source_commit_match": false,
+        "deployment_performed": false
+      }
+    },
+    {
+      "id": "runtime_root_trust_readback",
+      "priority": "LIVE_PRECONDITION",
+      "status": "OPEN",
+      "gate": "runtime_root_trust_readback",
+      "evidence": {
+        "required_files": [
+          "MAD4B-BUILD-PROVENANCE.json",
+          "BUILD-FINGERPRINT.txt",
+          "PACKAGE-MANIFEST-DIGEST.txt",
+          "install-manifest.json",
+          "RELEASE-ATTESTATION.sigstore.json",
+          "RELEASE-ATTESTATION-LOCATOR.json",
+          "RELEASE-ROOT-TRUST-VERIFICATION.json"
+        ],
+        "current_subject_authorized": false,
+        "current_file_presence": "UNKNOWN_FROM_CURRENT_SUBJECT"
+      }
+    },
+    {
+      "id": "recovery_live_drill",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "recovery_live_verified"
+    },
+    {
+      "id": "bitflows_1_29_exact_certification",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "provider_exact_certified",
+      "evidence": {
+        "installed_version": "1.29.0",
+        "installed_status": "inactive",
+        "prior_certified_version": "1.24.0",
+        "available": false,
+        "runtime_contract_ok": false,
+        "execution_enabled": false
+      }
+    },
+    {
+      "id": "provider_side_channel",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "provider_side_channel_safe"
+    },
+    {
+      "id": "capability_traits",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "capability_traits_ready"
+    },
+    {
+      "id": "multi_authority_live",
+      "priority": "KERNEL_BLOCKER",
+      "status": "PARTIAL",
+      "gate": "multi_authority_live",
+      "evidence": {
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "implementation_paths": [
+          "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php",
+          "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
+        ],
+        "evidence_class": "repository_implementation_and_contract",
+        "live_certification_proven": false
+      },
+      "remainder": [
+        "prove exact issuer/subject/resource mapping on the current deployed candidate",
+        "prove full live filter-chain/canary behavior with current candidate binding",
+        "bind resulting live evidence to the exact deployed source/build identity"
+      ]
+    },
+    {
+      "id": "policy_engine",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "policy_engine_ready"
+    },
+    {
+      "id": "gate_liveness",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "gate_liveness_verified"
+    },
+    {
+      "id": "site_bootstrap",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "site_bootstrap_reconciled"
+    },
+    {
+      "id": "intent_registry",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "intent_registry_reconciled"
+    },
+    {
+      "id": "content_job_domain",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "content_job_domain_ready",
+      "evidence": {
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "contract_path": "specs/007-content-intelligence-workflow-platform/contracts/content-job.md",
+        "runtime_implementation_match": "not_found_in_master_tree_review"
+      },
+      "remainder": [
+        "implement durable ContentJob create/read/transition/cancel domain service",
+        "implement state/stage/revision/event invariants and idempotent persistence",
+        "prove disposable and exact Staging runtime behavior"
+      ]
+    },
+    {
+      "id": "artifact_registry_store",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "artifact_lineage_ready"
+    },
+    {
+      "id": "context_writer",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "context_writer_ready"
+    },
+    {
+      "id": "research_competitive",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "research_intelligence_ready"
+    },
+    {
+      "id": "blueprint_draft_qa",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "blueprint_draft_qa_ready"
+    },
+    {
+      "id": "governed_wp_draft",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "governed_wp_draft_ready"
+    },
+    {
+      "id": "semantic_publication_verification",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "semantic_publication_verification_ready"
+    },
+    {
+      "id": "authoritative_consistency_fencing",
+      "priority": "KERNEL_BLOCKER",
+      "status": "PARTIAL",
+      "gate": "authoritative_execution_verified",
+      "evidence": {
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "implementation_paths": [
+          "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+          "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+          "wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py",
+          "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence.php",
+          "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence-reconciler.php",
+          ".github/workflows/mad4b-governed-execution-fence.yml"
+        ],
+        "evidence_class": "repository_implementation_and_tests",
+        "live_exact_candidate_proven": false
+      },
+      "remainder": [
+        "prove aggregate/event/artifact consistency on the exact deployed candidate",
+        "prove stale/zombie writer rejection and crash-after-success reconciliation",
+        "prove duplicate/reordered callback effect-once semantics under live/disposable fault tests"
+      ]
+    },
+    {
+      "id": "security_ai_eval_faults",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "kernel_quality_verified"
+    },
+    {
+      "id": "operator_doctor_dlq",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "operator_recovery_review_ready"
+    },
+    {
+      "id": "formal_state_proof",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "formal_critical_state_verified"
+    },
+    {
+      "id": "etg_vertical_slice",
+      "priority": "KERNEL_BLOCKER",
+      "status": "OPEN",
+      "gate": "critical_kernel_vertical_slice_verified"
+    },
+    {
+      "id": "provider_resolver_rings_dynamic_cert",
+      "priority": "MATURITY_REQUIRED",
+      "status": "OPEN"
+    },
+    {
+      "id": "rights_ai_data",
+      "priority": "MATURITY_REQUIRED",
+      "status": "OPEN"
+    },
+    {
+      "id": "cron_provider_backlog",
+      "priority": "MATURITY_REQUIRED",
+      "status": "OPEN"
+    },
+    {
+      "id": "growth_fairness_localization_evalops",
+      "priority": "DEFERRED_MATURITY",
+      "status": "DEFERRED"
+    },
+    {
+      "id": "decommission_portability",
+      "priority": "MATURITY_REQUIRED",
+      "status": "OPEN"
+    }
+  ],
+  "observed_live_etg_state": {
+    "observed_from": "MAD4B live read-only surfaces",
+    "environment": "staging",
+    "wordpress_version": "7.1.2",
+    "php_version": "8.3.33",
+    "database_version": "11.8.9-MariaDB-log",
+    "control_plane_version": "0.4.0-rc.59",
+    "mcp_adapter_version": "0.6.1",
+    "live_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
+    "target_master_source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+    "trusted_master_deployed": false,
+    "live_manifest_present": true,
+    "live_manifest_valid": true,
+    "live_runtime_manifest_match": true,
+    "live_stale": false,
+    "live_provenance_mismatch": [],
+    "protected_backup_root": {
+      "exists": false,
+      "writable": false,
+      "ready": false,
+      "requires_preparation": true
+    },
+    "filesystem_trust_readback": {
+      "abilities_present": [
+        "mad4b/filesystem-list",
+        "mad4b/filesystem-read"
+      ],
+      "subject_authorized": false,
+      "file_presence_conclusion": "UNKNOWN_FROM_CURRENT_SUBJECT"
+    },
+    "bitflows": {
+      "installed_version": "1.29.0",
+      "status": "inactive",
+      "certified_version": "1.24.0",
+      "available": false,
+      "runtime_contract_ok": false,
+      "execution_enabled": false
+    },
+    "mutation_performed": false,
+    "breakglass_enabled": false,
+    "observation_semantics": {
+      "authoritative_for_gate": false,
+      "freshness_status": "UNBOUND",
+      "observed_at": null,
+      "evidence_refs": [],
+      "must_refresh_before_gate_decision": true,
+      "unknown_or_stale_behavior": "UNKNOWN"
+    }
+  }
+}

@@ -92,3 +92,27 @@ Decommission completes only after:
 - no unresolved in-flight writes;
 - required evidence retained/exported;
 - final report generated.
+
+## Tool execution decommission
+
+Decommission inventory additionally includes:
+- registered ToolOperation definitions;
+- executor profiles;
+- Host Runner deployments;
+- runner queues/spools/leases;
+- provider CLI/API credential bindings;
+- SSH/recovery trust material;
+- scheduled runner cron/service entries;
+- local workspaces/package staging roots;
+- tool-specific evidence retention.
+
+Provider/channel removal MUST:
+- stop resolver selection;
+- reject new jobs;
+- drain/cancel bounded work;
+- revoke credentials;
+- remove scheduled runners;
+- quarantine or export pending/dead-letter work;
+- preserve receipts required for audit.
+
+Switching hosting providers SHOULD preserve semantic operation IDs and normalized result contracts; only adapter/profile mappings should change.
