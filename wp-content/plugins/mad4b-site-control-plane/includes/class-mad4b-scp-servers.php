@@ -47,7 +47,10 @@ final class MAD4B_SCP_Servers {
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array()
 			),
-			'mad4b-content' => array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
+			'mad4b-content' => array(
+				'mad4b/content-get-post', 'mad4b/content-update-post',
+				'mad4b/content-job-list', 'mad4b/content-job-get', 'mad4b/content-job-events',
+			),
 			'mad4b-admin' => array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
@@ -69,7 +72,10 @@ final class MAD4B_SCP_Servers {
 
 	private static function core_write_candidates() {
 		$candidates = array_merge(
-			array( 'mad4b/content-get-post', 'mad4b/content-update-post' ),
+			array(
+				'mad4b/content-get-post', 'mad4b/content-update-post',
+				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
+			),
 			array(
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
