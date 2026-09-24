@@ -17,8 +17,9 @@ PHASE_RE = re.compile(r"^## Phase (?P<phase>\d+)\b")
 ALLOWED = {"DONE", "PARTIAL", "OPEN", "DEFERRED"}
 
 
-def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def git_blob_sha(path: Path) -> str:
+    raw = path.read_bytes()
+    return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\\0" + raw).hexdigest()
 
 
 def build() -> dict:
@@ -85,8 +86,8 @@ def build() -> dict:
 
     return {
         "contract": "mad4b.feature007-task-ledger.v1",
-        "source_tasks_sha256": sha256(TASKS),
-        "override_sha256": sha256(OVERRIDES),
+        "source_tasks_git_blob_sha": git_blob_sha(TASKS),
+        "override_git_blob_sha": git_blob_sha(OVERRIDES),
         "classification_policy": {
             "default_unchecked": "OPEN",
             "default_checked": "DONE",
