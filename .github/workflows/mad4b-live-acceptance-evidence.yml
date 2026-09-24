@@ -311,10 +311,24 @@ jobs:
           package_digest="$(tr -d '\r\n' < "$out/PACKAGE-MANIFEST-DIGEST.txt")"
           export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" PORTABLE_SHA="$portable_sha" SNAPSHOT_TOKEN="$snapshot" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest" CONTROL_VERSION="$version"
           python3 <<'PY'
-          import json, os
+          import hashlib, json, os
           from pathlib import Path
           out = Path('/tmp/mad4b-live-acceptance/out')
           version = os.environ['CONTROL_VERSION']
+          receipt_raw = (out / 'CANONICAL-PACKAGE-RECEIPT.json').read_bytes()
+          receipt = json.loads(receipt_raw)
+          if receipt.get('contract') != 'mad4b.deterministic-control-plane-package.v1':
+              raise SystemExit('canonical package receipt contract mismatch')
+          if receipt.get('archive_format_contract') != 'mad4b.deterministic-zip.v1' or receipt.get('archive_compression') != 'stored':
+              raise SystemExit('canonical archive format mismatch')
+          if receipt.get('source_commit_sha') != os.environ['SOURCE_SHA']:
+              raise SystemExit('canonical package receipt source mismatch')
+          if receipt.get('archive_sha256') != os.environ['CONTROL_SHA']:
+              raise SystemExit('canonical package receipt archive SHA mismatch')
+          if receipt.get('build_fingerprint') != os.environ['BUILD_FINGERPRINT']:
+              raise SystemExit('canonical package receipt build fingerprint mismatch')
+          if receipt.get('package_manifest_digest') != os.environ['PACKAGE_DIGEST']:
+              raise SystemExit('canonical package receipt manifest mismatch')
           data = {
               'contract': 'mad4b.live-acceptance-exact-artifact.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY', ''),
@@ -332,6 +346,15 @@ jobs:
               'snapshot_token': os.environ['SNAPSHOT_TOKEN'],
               'build_fingerprint': os.environ['BUILD_FINGERPRINT'],
               'package_manifest_digest': os.environ['PACKAGE_DIGEST'],
+              'canonical_package': {
+                  'contract': receipt.get('contract', ''),
+                  'archive_format_contract': receipt.get('archive_format_contract', ''),
+                  'archive_compression': receipt.get('archive_compression', ''),
+                  'archive_sha256': receipt.get('archive_sha256', ''),
+                  'receipt_sha256': hashlib.sha256(receipt_raw).hexdigest(),
+                  'producer_metadata_external': bool(receipt.get('producer_metadata_external')),
+                  'deterministic_archive': bool(receipt.get('deterministic_archive')),
+              },
               'deployment_performed': False,
               'merge_authorized': False,
           }
