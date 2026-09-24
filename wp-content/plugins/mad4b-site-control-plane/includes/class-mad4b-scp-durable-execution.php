@@ -50,6 +50,18 @@ final class MAD4B_SCP_Durable_Execution {
 		if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
 			return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
 		}
+		$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= time();
+		if ( 'pending' === (string) $row['status'] && $expired ) {
+			return new WP_Error(
+				'mad4b_idempotency_reconciliation_required',
+				'Expired pending idempotency record requires durable provider/state reconciliation before reclaim.',
+				array(
+					'scope_key' => $scope_key,
+					'idempotency_key' => $idempotency_key,
+					'expires_at' => isset( $row['expires_at'] ) ? (string) $row['expires_at'] : '',
+				)
+			);
+		}
 		if ( 'completed' === (string) $row['status'] ) {
 			$result = null;
 			if ( ! empty( $row['result_json'] ) ) {
@@ -87,6 +99,66 @@ final class MAD4B_SCP_Durable_Execution {
 		return 1 === (int) $updated
 			? array( 'contract' => self::IDEMPOTENCY_CONTRACT, 'completed' => true, 'result_sha256' => $sha )
 			: new WP_Error( 'mad4b_idempotency_complete_conflict', 'Idempotency record is no longer pending for this request.' );
+	}
+
+	public static function reclaim_idempotency( $scope_key, $idempotency_key, $request_sha256, $reconciliation_ref, $ttl_seconds = 86400 ) {
+		global $wpdb;
+		$scope_key = strtolower( trim( (string) $scope_key ) );
+		$idempotency_key = trim( (string) $idempotency_key );
+		$request_sha256 = strtolower( trim( (string) $request_sha256 ) );
+		$reconciliation_ref = trim( (string) $reconciliation_ref );
+		$ttl_seconds = max( 3600, min( 2592000, absint( $ttl_seconds ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $scope_key ) || ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_idempotency_reclaim_identity_invalid', 'Idempotency reclaim identity is invalid.' );
+		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_idempotency_key_invalid', 'Idempotency key is missing or too long.' );
+		if ( '' === $reconciliation_ref || strlen( $reconciliation_ref ) > 191 ) return new WP_Error( 'mad4b_idempotency_reconciliation_evidence_required', 'Idempotency reclaim requires bounded reconciliation evidence.' );
+		$t = MAD4B_SCP_Schema::tables();
+		$now_ts = time();
+		$now = gmdate( 'Y-m-d H:i:s', $now_ts );
+		$expires = gmdate( 'Y-m-d H:i:s', $now_ts + $ttl_seconds );
+		$wpdb->query( 'START TRANSACTION' );
+		try {
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT * FROM {$t['idempotency']} WHERE scope_key=%s AND idempotency_key=%s FOR UPDATE",
+				$scope_key, $idempotency_key
+			), ARRAY_A );
+			if ( ! is_array( $row ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_missing', 'Cannot reclaim unknown idempotency record.' );
+			}
+			if ( ! hash_equals( (string) $row['request_sha256'], $request_sha256 ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_hash_conflict', 'Same idempotency key was reused with a different request hash.' );
+			}
+			if ( 'pending' !== (string) $row['status'] ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_reclaim_state_denied', 'Only expired pending idempotency records may be reclaimed.' );
+			}
+			$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= $now_ts;
+			if ( ! $expired ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_idempotency_still_active', 'Pending idempotency record has not expired.' );
+			}
+			$updated = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$t['idempotency']} SET expires_at=%s,reconciliation_ref=%s,updated_at=%s WHERE id=%d AND request_sha256=%s AND status='pending' AND expires_at<=%s",
+				$expires, $reconciliation_ref, $now, (int) $row['id'], $request_sha256, $now
+			) );
+			if ( 1 !== (int) $updated ) throw new RuntimeException( 'idempotency_reclaim_cas_failed' );
+			$wpdb->query( 'COMMIT' );
+			return array(
+				'contract' => self::IDEMPOTENCY_CONTRACT,
+				'claimed' => true,
+				'reclaimed' => true,
+				'replayed' => false,
+				'scope_key' => $scope_key,
+				'idempotency_key' => $idempotency_key,
+				'request_sha256' => $request_sha256,
+				'reconciliation_ref' => $reconciliation_ref,
+				'expires_at' => $expires,
+			);
+		} catch ( Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'mad4b_idempotency_reclaim_failed', 'Unable to reclaim idempotency record.', array( 'cause' => $e->getMessage() ) );
+		}
 	}
 
 	public static function scope_key( $site_uuid, $capability, $operation, $target_identity ) {
@@ -177,7 +249,11 @@ final class MAD4B_SCP_Durable_Execution {
 				return new WP_Error( 'mad4b_lease_missing', 'Cannot reclaim unknown work.' );
 			}
 			$expired = empty( $row['expires_at'] ) || strtotime( (string) $row['expires_at'] . ' UTC' ) <= $now_ts;
-			if ( 'active' === (string) $row['status'] && ! $expired ) {
+			if ( 'active' !== (string) $row['status'] ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'mad4b_lease_terminal_reclaim_denied', 'Only an expired active lease may be reclaimed; terminal work requires a new work identity.' );
+			}
+			if ( ! $expired ) {
 				$wpdb->query( 'ROLLBACK' );
 				return new WP_Error( 'mad4b_lease_still_active', 'Active unexpired work cannot be reclaimed.' );
 			}
@@ -284,17 +360,20 @@ final class MAD4B_SCP_Durable_Execution {
 		global $wpdb;
 		$provider_id = sanitize_key( (string) $provider_id );
 		$provider_event_id = trim( (string) $provider_event_id );
+		$job_id = strtolower( trim( (string) $job_id ) );
+		$provider_execution_ref = trim( (string) $provider_execution_ref );
 		$payload_sha256 = strtolower( trim( (string) $payload_sha256 ) );
-		if ( '' === $provider_id || '' === $provider_event_id || strlen( $provider_event_id ) > 191 || ! preg_match( '/^[a-f0-9]{64}$/', $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_identity_invalid', 'Provider inbox identity is invalid.' );
+		if ( '' === $provider_id || '' === $provider_event_id || strlen( $provider_event_id ) > 191 || ! preg_match( '/^[a-f0-9-]{36}$/', $job_id ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_identity_invalid', 'Provider inbox identity is invalid.' );
+		if ( strlen( $provider_execution_ref ) > 191 ) return new WP_Error( 'mad4b_inbox_execution_ref_invalid', 'Provider execution reference is too long.' );
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s' );
 		$inserted = $wpdb->insert( $t['inbox'], array(
 			'provider_id' => $provider_id,
 			'provider_event_id' => $provider_event_id,
-			'job_id' => strtolower( trim( (string) $job_id ) ),
+			'job_id' => $job_id,
 			'payload_sha256' => $payload_sha256,
 			'status' => 'accepted',
-			'provider_execution_ref' => substr( trim( (string) $provider_execution_ref ), 0, 191 ),
+			'provider_execution_ref' => $provider_execution_ref,
 			'result_ref' => '',
 			'received_at' => $now,
 			'processed_at' => null,
@@ -303,6 +382,9 @@ final class MAD4B_SCP_Durable_Execution {
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['inbox']} WHERE provider_id=%s AND provider_event_id=%s LIMIT 1", $provider_id, $provider_event_id ), ARRAY_A );
 		if ( ! is_array( $row ) ) return new WP_Error( 'mad4b_inbox_accept_failed', 'Unable to accept or read provider event.' );
 		if ( ! hash_equals( (string) $row['payload_sha256'], $payload_sha256 ) ) return new WP_Error( 'mad4b_inbox_event_conflict', 'Duplicate provider event ID carries a different payload hash.' );
+		if ( ! hash_equals( (string) $row['job_id'], $job_id ) ) return new WP_Error( 'mad4b_inbox_job_conflict', 'Duplicate provider event ID is already bound to a different job.' );
+		$stored_execution_ref = isset( $row['provider_execution_ref'] ) ? (string) $row['provider_execution_ref'] : '';
+		if ( '' !== $provider_execution_ref && '' !== $stored_execution_ref && ! hash_equals( $stored_execution_ref, $provider_execution_ref ) ) return new WP_Error( 'mad4b_inbox_execution_ref_conflict', 'Duplicate provider event ID is already bound to a different provider execution reference.' );
 		return array( 'contract' => self::INBOX_CONTRACT, 'duplicate' => true, 'provider_id' => $provider_id, 'provider_event_id' => $provider_event_id, 'status' => (string) $row['status'], 'result_ref' => (string) $row['result_ref'] );
 	}
 
