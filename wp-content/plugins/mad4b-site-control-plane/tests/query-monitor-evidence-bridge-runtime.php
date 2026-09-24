@@ -7,6 +7,7 @@ define( 'PHP_INT_MAX_TEST', PHP_INT_MAX );
 
 $GLOBALS['actions'] = array();
 $GLOBALS['option'] = array();
+$GLOBALS['current_build_fingerprint'] = str_repeat('a',64);
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['actions'][$hook][$priority][] = $callback; }
 function add_filter( $hook, $callback, $priority = 10, $accepted_args = 1 ) { $GLOBALS['mad4b_qm_filters'][$hook][$priority][] = $callback; return true; }
 function remove_action( $hook, $callback, $priority = 10 ) {
@@ -30,7 +31,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
     const MAX_EVENTS = 32;
     const TELEMETRY_TTL = 21600;
     public static function staging_capture_allowed() { return true; }
-    public static function build_provenance_status() { return array('build_fingerprint' => str_repeat('a',64)); }
+    public static function build_provenance_status() { return array('build_fingerprint' => $GLOBALS['current_build_fingerprint']); }
     public static function sanitize_warning_message( $m ) { return (string)$m; }
     public static function classify_warning_for_test( $type, $function, $message, array $trace = array() ) {
         $mad4b = false;
@@ -94,6 +95,11 @@ foreach ( $hooks as $hook => $method ) {
 if ( ! empty($GLOBALS['actions']['shutdown'][PHP_INT_MAX]) ) { fwrite(STDERR,"FAIL: legacy flush still registered\n"); exit(1); }
 if ( empty($GLOBALS['actions']['shutdown'][8]) ) { fwrite(STDERR,"FAIL: bridge shutdown capture missing\n"); exit(1); }
 
+$check = function($c,$m){ if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);} };
+$check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'request build fingerprint must pin at request bootstrap');
+$GLOBALS['current_build_fingerprint'] = str_repeat('b',64);
+$check(str_repeat('a',64) === MAD4B_SCP_Query_Monitor_Evidence_Bridge::request_build_fingerprint_for_test(), 'mid-request provenance replacement must not change pinned build identity');
+
 $d = new FakeData();
 $d->actions[] = new QM_Doing_It_Wrong_Run(
     'Function wp_get_ability was called incorrectly. Ability "mad4b/test" not found before Abilities init.',
@@ -108,7 +114,7 @@ for ( $i = 0; $i < 40; $i++ ) {
 QM_Collectors::$collector = new FakeCollector($d);
 MAD4B_SCP_Query_Monitor_Evidence_Bridge::capture_and_flush();
 $t = $GLOBALS['option'];
-$check = function($c,$m){ if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);} };
+$check(str_repeat('a',64) === $t['build_fingerprint'], 'shutdown telemetry must stay bound to request-start build identity');
 $check(1 === $t['observed_request_count'], 'request count');
 $check(1 === $t['counters']['mad4b']['doing_it_wrong'], 'MAD4B warning imported exactly once');
 $check(1 === $t['counters']['mad4b']['ability_not_found'], 'ability-not-found preserved');
@@ -140,4 +146,4 @@ $check('Alpha\\Reader::load' === $perf['db_profile']['top_callers'][0]['caller']
 $check('plugin:Alpha' === $perf['db_profile']['top_components'][0]['component'], 'top component attribution derived');
 $check(false === strpos(json_encode($perf['db_profile']), 'SELECT 1'), 'raw SQL must not be returned in profile');
 $check(empty($perf['db_profile']['raw_sql_returned']), 'raw SQL safety flag must remain false');
-echo "mad4b.query-monitor-collector-bridge.runtime.v3: PASS\n";
+echo "mad4b.query-monitor-collector-bridge.runtime.v4: PASS\n";
