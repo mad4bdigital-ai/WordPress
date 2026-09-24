@@ -58,7 +58,10 @@ jobs:
             : > "$out/${name}.headers"
             : > "$out/${name}.body"
             set +e
-            http_code="$(curl --silent --show-error --max-time 30 --connect-timeout 10 \
+            http_code="$(curl --silent --show-error --compressed --max-time 30 --connect-timeout 10 \
+              --user-agent 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36' \
+              --header 'Accept: application/json,text/plain,*/*' \
+              --header 'Accept-Language: en-US,en;q=0.9' \
               --header 'Cache-Control: no-cache, no-store, max-age=0' \
               --header 'Pragma: no-cache' \
               --dump-header "$out/${name}.headers" \
