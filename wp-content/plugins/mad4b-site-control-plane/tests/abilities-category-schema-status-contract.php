@@ -79,4 +79,7 @@ mad4b_contract_assert( ! empty( $schema['ready'] ) && ! empty( $schema['physical
 mad4b_contract_assert( array() === $schema['physical_integrity']['missing_durable_columns'] && array() === $schema['physical_integrity']['missing_durable_indexes'], 'Durable column/index gaps must remain explicit.', $schema );
 mad4b_contract_assert( 6 === count( $schema['durable_tables'] ) && ! in_array( false, $schema['durable_tables'], true ), 'All six Feature 007 durable tables must be represented explicitly.', $schema['durable_tables'] );
 
+$servers_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+mad4b_contract_assert( is_string( $servers_source ) && false !== strpos( $servers_source, "'mad4b/schema-status'" ), 'Schema status must be part of the governed ChatGPT full-catalog universe through mad4b-read.' );
+
 echo "mad4b.site-control-plane.abilities-category-schema-status.contract.v1: PASS\n";
