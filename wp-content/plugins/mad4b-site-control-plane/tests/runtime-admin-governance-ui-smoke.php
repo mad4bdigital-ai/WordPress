@@ -27,6 +27,14 @@ $check(
 	has_action( 'wp_ajax_mad4b_site_profile_save', array( 'MAD4B_SCP_Site_Profile_Admin', 'handle_save' ) ) !== false,
 	'Site Profile settings AJAX action is not registered.'
 );
+$check(
+	has_action( 'wp_ajax_mad4b_enable_production_readonly_oauth', array( 'MAD4B_SCP_Staging_OAuth_Autoconfig', 'handle_enable_production_readonly' ) ) !== false,
+	'Production read-only OAuth enable AJAX action is not registered.'
+);
+$check(
+	has_action( 'wp_ajax_mad4b_disable_production_readonly_oauth', array( 'MAD4B_SCP_Staging_OAuth_Autoconfig', 'handle_disable_production_readonly' ) ) !== false,
+	'Production read-only OAuth disable AJAX action is not registered.'
+);
 
 $tables = MAD4B_SCP_Schema::tables();
 global $wpdb;
@@ -92,4 +100,4 @@ $check( false === strpos( $html, 'rollback_payload' ), 'Admin governance HTML ex
 $after = $counts();
 $check( $before === $after, 'Read-only admin governance inspection changed authority/approval/mutation state.' );
 
-echo "mad4b.site-control-plane.runtime-admin-governance-ui.v2: PASS\n";
+echo "mad4b.site-control-plane.runtime-admin-governance-ui.v3: PASS\n";
