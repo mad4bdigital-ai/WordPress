@@ -277,7 +277,7 @@ jobs:
 
 
   schema-mariadb-v6-v9:
-    name: Schema v6 to v9 real MariaDB upgrade
+    name: Schema v6 v7 v8 to v9 real MariaDB upgrade
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
