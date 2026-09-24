@@ -350,8 +350,6 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$schema_ready = ! empty( $schema['ready'] ) && ( empty( $physical ) || ! empty( $physical['ready'] ) );
 		$audit_ready = ! empty( $audit['ready'] );
 		$bootstrap_error = class_exists( 'MAD4B_SCP_Plugin' ) && method_exists( 'MAD4B_SCP_Plugin', 'governance_bootstrap_error_code' ) ? sanitize_key( (string) MAD4B_SCP_Plugin::governance_bootstrap_error_code() ) : '';
-		$bootstrap_error_data = class_exists( 'MAD4B_SCP_Plugin' ) && method_exists( 'MAD4B_SCP_Plugin', 'governance_bootstrap_error_data' ) ? MAD4B_SCP_Plugin::governance_bootstrap_error_data() : array();
-		if ( ! is_array( $bootstrap_error_data ) ) $bootstrap_error_data = array();
 		$kind = '';
 		$code = '';
 		if ( ! $schema_ready ) {
@@ -367,7 +365,6 @@ final class MAD4B_SCP_Upgrade_Continuity {
 			'blocker_kind' => $kind,
 			'blocker_code' => $code,
 			'schema' => is_array( $schema ) ? $schema : array(),
-			'bootstrap_error_data' => $bootstrap_error_data,
 			'audit' => self::bounded_audit_status( $audit ),
 			'mutation_fail_closed' => ! ( $schema_ready && $audit_ready ),
 		);
@@ -381,7 +378,8 @@ final class MAD4B_SCP_Upgrade_Continuity {
 		$code = isset( $status['blocker_code'] ) ? sanitize_key( (string) $status['blocker_code'] ) : 'governance_unavailable';
 		if ( 'schema' === $status['blocker_kind'] ) {
 			$physical = isset( $status['schema']['physical_integrity'] ) && is_array( $status['schema']['physical_integrity'] ) ? $status['schema']['physical_integrity'] : array();
-			$error_data = isset( $status['bootstrap_error_data'] ) && is_array( $status['bootstrap_error_data'] ) ? $status['bootstrap_error_data'] : array();
+			$error_data = class_exists( 'MAD4B_SCP_Plugin' ) && method_exists( 'MAD4B_SCP_Plugin', 'governance_bootstrap_error_data' ) ? MAD4B_SCP_Plugin::governance_bootstrap_error_data() : array();
+			if ( ! is_array( $error_data ) ) $error_data = array();
 			$details = array();
 			if ( isset( $error_data['from_version'], $error_data['target_version'] ) ) $details[] = 'schema=' . (int) $error_data['from_version'] . '→' . (int) $error_data['target_version'];
 			foreach ( array(
