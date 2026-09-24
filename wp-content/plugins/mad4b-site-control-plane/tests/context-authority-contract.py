@@ -631,7 +631,7 @@ require(authority, "'mad4b/context-ai-review'", "direct core AI review ability r
 require(servers, "'mad4b/context-ai-review'", "stable unified catalog entry for AI review")
 require(servers, "MAD4B_SCP_Context_Authority::ai_review_catalog_eligible()", "AI review runtime inventory policy gate")
 require(servers, "array_diff( $candidates, array( 'mad4b/context-ai-review' ) )", "AI review fail-closed runtime unmount")
-blocked_write_body = servers.split("public static function blocked_write_tools()", 1)[1].split("public static function filter_external_inventory_attestation_runtime", 1)[0]
+blocked_write_body = servers.split("public static function blocked_write_tools()", 1)[1].split("public static function governance_gated_write_tools()", 1)[0]
 if "ai_review_standing_delegation_not_eligible" in blocked_write_body:
     raise AssertionError("blocked_write_tools must remain provider/runtime-certification scoped; core AI standing-delegation gates belong to write_tools()/authority status")
 require(write_authority, "mad4b.context-ai-review-standing-delegation.v1", "AI review standing delegation contract")
@@ -688,4 +688,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v72: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v73: PASS")
