@@ -413,6 +413,7 @@ def main() -> int:
             "server_reference_files": [],
             "route_marker_files": [],
             "route_marker_details": [],
+            "client_route_details": [],
             "client_marker_files": [],
             "mcp_named_paths": [],
             "server_detection_method": "bounded_static_implementation_markers_v2",
@@ -591,8 +592,19 @@ def main() -> int:
                         }
                     )
             if route_hits:
-                evidence["native_mcp"]["route_marker_files"].append(name)
-                evidence["native_mcp"]["route_marker_details"].extend(route_hits)
+                server_route_hits = []
+                client_route_hits = []
+                for row in route_hits:
+                    snippet = row.get("snippet", "")
+                    if re.search(r"mcp[-_]?client|\bMcpClient[A-Za-z0-9_]*\b", snippet, re.I):
+                        client_route_hits.append(row)
+                    else:
+                        server_route_hits.append(row)
+                if client_route_hits:
+                    evidence["native_mcp"]["client_route_details"].extend(client_route_hits)
+                if server_route_hits:
+                    evidence["native_mcp"]["route_marker_files"].append(name)
+                    evidence["native_mcp"]["route_marker_details"].extend(server_route_hits)
 
             if re.search(r"\bMcpClient\b|mcp[_ -]?client", source, re.I):
                 evidence["native_mcp"]["client_marker_files"].append(name)
@@ -604,6 +616,10 @@ def main() -> int:
         evidence["native_mcp"][key] = sorted(set(evidence["native_mcp"][key]))
     evidence["native_mcp"]["route_marker_details"] = sorted(
         evidence["native_mcp"]["route_marker_details"],
+        key=lambda row: (row.get("path", ""), row.get("kind", ""), row.get("snippet", "")),
+    )
+    evidence["native_mcp"]["client_route_details"] = sorted(
+        evidence["native_mcp"]["client_route_details"],
         key=lambda row: (row.get("path", ""), row.get("kind", ""), row.get("snippet", "")),
     )
 
@@ -652,6 +668,7 @@ def main() -> int:
                 "server_marker_files": evidence["native_mcp"]["server_marker_files"],
                 "route_marker_files": evidence["native_mcp"]["route_marker_files"],
                 "route_marker_details": evidence["native_mcp"]["route_marker_details"],
+                "client_route_details": evidence["native_mcp"]["client_route_details"],
                 "server_reference_files": evidence["native_mcp"]["server_reference_files"],
                 "client_marker_files": evidence["native_mcp"]["client_marker_files"],
                 "mcp_named_paths": evidence["native_mcp"]["mcp_named_paths"],
