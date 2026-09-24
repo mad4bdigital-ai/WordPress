@@ -1,0 +1,56 @@
+name: Feature 007 Critical Kernel
+
+on:
+  pull_request:
+    paths:
+      - 'tools/verify_release_root_trust.py'
+      - 'tools/mad4b_recovery_plane.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/feature-007-critical-kernel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feature-007-critical-kernel-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  root-trust-recovery:
+    name: Root trust and Recovery Plane
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Compile Critical Kernel recovery tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile             tools/verify_release_root_trust.py             tools/mad4b_recovery_plane.py
+
+      - name: Verify external release root-trust contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py
+
+      - name: Verify out-of-band Recovery Plane contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py
