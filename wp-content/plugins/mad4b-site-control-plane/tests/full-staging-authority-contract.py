@@ -59,19 +59,42 @@ assert "'mad4b/database-raw-query'" not in full
 assert "class-mad4b-scp-full-staging-authority.php" in servers
 assert "public static function chatgpt_read_tools()" in full
 assert "return array( self::STATUS_ABILITY, self::PLAN_ABILITY );" in full
+assert "public static function chatgpt_step_up_tools()" in full
+step_up = full.split("public static function chatgpt_step_up_tools()", 1)[1].split("public static function register_category()", 1)[0]
+for marker in [
+    "self::can_access()",
+    "self::status()",
+    "self::plan()",
+    "empty( $plan['ready_to_apply'] )",
+    "! empty( $plan['hard_blockers'] )",
+    "return array( self::APPLY_ABILITY );",
+]:
+    assert marker in step_up, marker
+assert "if ( ! is_array( $status ) || ! empty( $status['ready'] ) ) return array();" in step_up
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in servers
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in servers
+assert "private static function chatgpt_internal_enrollment_mutations()" in servers
 assert "private static function chatgpt_enrollment_candidates()" in servers
 assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in servers
 assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() )" in servers
 
 chatgpt_map = servers.split("'mad4b-chatgpt' => array_merge(", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in chatgpt_map
-chatgpt_tools = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_enrollment_candidates()", 1)[0]
+chatgpt_tools = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
-assert "mad4b/full-staging-authority-apply" not in chatgpt_tools
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_tools
+assert "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_tools
+for low_level in [
+    "mad4b/site-profile-feature-reenroll",
+    "mad4b/site-profile-write-enable",
+    "mad4b/staging-write-grant-reconcile",
+    "mad4b/staging-write-candidate-bind",
+]:
+    assert low_level not in chatgpt_tools
 full_catalog = servers.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in full_catalog
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full_catalog
 assert full.count("self::meta( true, 'read' )") >= 2
 assert "self::meta( false, 'enrollment' )" in full
 
@@ -95,4 +118,4 @@ assert "Current Staging authority" in ui
 assert "0.4.0-rc.59" in plugin
 assert "release=0.4.0-rc.59" in runtime_build
 
-print("mad4b.full-staging-authority-contract.v2: PASS")
+print("mad4b.full-staging-authority-contract.v3: PASS")
