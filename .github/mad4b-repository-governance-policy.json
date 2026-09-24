@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.repository-governance-policy.v1",
+  "target_branch": "master",
+  "target_ref": "refs/heads/master",
+  "required_ruleset_enforcement": "active",
+  "require_no_bypass_actors": true,
+  "required_rule_types": [
+    "deletion",
+    "non_fast_forward",
+    "pull_request",
+    "required_status_checks"
+  ],
+  "pull_request": {
+    "required_approving_review_count": 0,
+    "require_last_push_approval": false,
+    "required_review_thread_resolution": true
+  },
+  "required_status_checks": {
+    "contexts": [
+      "Repository release verdict"
+    ],
+    "strict_required_status_checks_policy": true
+  },
+  "single_owner_safety": {
+    "external_review_count_required": 0,
+    "last_pusher_may_complete_owner_attestation_outside_github_review": true,
+    "owner_attestation_remains_exact_sha_scoped": true
+  }
+}
