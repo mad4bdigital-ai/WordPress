@@ -141,6 +141,17 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
 
+/*
+ * Register ordinary wp-admin settings handlers before the heavier runtime
+ * bootstrap begins. admin-ajax.php is a narrow lifecycle and may be short-
+ * circuited by performance/security layers before init; settings actions must
+ * therefore exist as soon as their classes are loaded. All boot methods are
+ * idempotent and later calls remain safe.
+ */
+MAD4B_SCP_Context_Admin_UI::boot();
+MAD4B_SCP_Site_Profile_Admin::boot();
+MAD4B_SCP_Admin_Settings_Persistence::boot();
+
 MAD4B_SCP_Site_Profile::bootstrap();
 $mad4b_upgrade_continuity = MAD4B_SCP_Upgrade_Continuity::pre_boot();
 if ( ! empty( $mad4b_upgrade_continuity['recovered'] ) ) {
