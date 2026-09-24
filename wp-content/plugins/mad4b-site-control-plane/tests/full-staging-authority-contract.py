@@ -38,6 +38,10 @@ required = [
     "generic_raw_sql_breakglass_gate_enabled",
     "MAD4B_MCP_BREAKGLASS_ENABLED",
     "mad4b_full_authority_raw_sql_breakglass_denied",
+    "public static function can_apply( $input = null )",
+    "AUTHORITY_STEP_UP_SCOPE",
+    "verified_bearer_has_scope",
+    "mad4b_full_authority_step_up_scope_required",
 ]
 for marker in required:
     assert marker in full, marker
@@ -81,7 +85,7 @@ for forbidden in [
 
 apply_body = full.split("public static function apply( $input )", 1)[1].split("private static function developer_apply_input", 1)[0]
 for marker in [
-    "$access = self::can_access( $input );",
+    "$access = self::can_apply( $input );",
     "$plan = self::plan();",
     "empty( $plan['ready_to_apply'] )",
     "self::match_expected_plan( $plan, $input )",
@@ -113,6 +117,7 @@ assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in full_catalog
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full_catalog
 assert full.count("self::meta( true, 'read' )") >= 2
 assert "self::meta( false, 'enrollment' )" in full
+assert "'permission_callback' => array( __CLASS__, 'can_apply' )" in full
 
 bg_start = developer.index("public static function breakglass_flag_enabled()")
 bg_end = developer.index("public static function configured_agent_public_id()", bg_start)
@@ -127,6 +132,9 @@ assert "full_staging_authority_ready" in oauth
 assert "'generic_raw_sql_breakglass_included' => false" in oauth
 assert "What you are approving now" in ui
 assert "Approve read access" in ui
+assert "Approve governed access" in ui
+assert "Read identity + Staging authority step-up" in ui
+assert "mad4b:authority:step-up" in ui
 assert "Deny access" in ui
 assert "Generic raw-SQL Breakglass" in ui
 assert "Current Staging authority" in ui
@@ -134,4 +142,4 @@ assert "Current Staging authority" in ui
 assert "0.4.0-rc.59" in plugin
 assert "release=0.4.0-rc.59" in runtime_build
 
-print("mad4b.full-staging-authority-contract.v5: PASS")
+print("mad4b.full-staging-authority-contract.v6: PASS")
