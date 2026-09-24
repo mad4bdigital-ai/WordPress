@@ -735,7 +735,12 @@ def apply_restore(
         "receipt_path": str(receipt_path),
         "completed_at": utc_now(),
     })
-    atomic_json_write(journal_path, completed)
+    try:
+        atomic_json_write(journal_path, completed)
+        receipt["journal_completion_persisted"] = True
+    except OSError:
+        # Durable receipt is authoritative; reconcile the stale journal read-only.
+        receipt["journal_completion_persisted"] = False
     receipt["receipt_path"] = str(receipt_path)
     receipt["journal_path"] = str(journal_path)
     return receipt
@@ -799,6 +804,8 @@ def main() -> int:
     try:
         if args.command == "status":
             result = recovery_status(args.wordpress_root, args.environment)
+        elif args.command == "reconcile-evidence":
+            result = reconcile_recovery_evidence(args.wordpress_root, args.environment)
         elif args.command == "plan-disable":
             result = build_disable_plan(
                 args.wordpress_root,
