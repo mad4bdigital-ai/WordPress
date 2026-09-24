@@ -372,32 +372,23 @@ final class MAD4B_SCP_Servers {
 			return $tools;
 		}
 
+		$step_up = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+			? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()
+			: array();
 		$bootstrap = array(
 			'mad4b/build-provenance-status',
-			'mad4b/site-profile-feature-reenroll',
-			'mad4b/site-profile-write-enable',
-			'mad4b/staging-write-grant-reconcile',
-			'mad4b/staging-write-candidate-bind',
 			'mad4b/staging-write-candidate-binding-audit',
 		);
-		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $bootstrap = array_merge( $bootstrap, MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() );
+		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) {
+			$bootstrap = array_merge( $bootstrap, MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools(), $step_up );
+		}
 		$candidates = array_merge( $core, $bootstrap );
-		$bounded_bootstrap = array(
-			'mad4b/site-profile-feature-reenroll',
-			'mad4b/site-profile-write-enable',
-			'mad4b/staging-write-grant-reconcile',
-			'mad4b/staging-write-candidate-bind',
-		);
-		$meta_write_transport = array( 'mad4b/write-execute' );
+		$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up );
 
 		$tools = array();
 		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
 			if ( '' === $ability_name || 'mad4b/database-raw-query' === $ability_name || in_array( $ability_name, $breakglass, true ) ) continue;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
-			if ( in_array( $ability_name, $bounded_bootstrap, true ) ) {
-				$tools[] = $ability_name;
-				continue;
-			}
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
 			$meta = $ability->get_meta();
@@ -406,7 +397,7 @@ final class MAD4B_SCP_Servers {
 				$tools[] = $ability_name;
 				continue;
 			}
-			if ( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'] && in_array( $ability_name, $meta_write_transport, true ) ) {
+			if ( array_key_exists( 'readonly', $annotations ) && false === $annotations['readonly'] && in_array( $ability_name, $direct_mutation_transport, true ) ) {
 				$tools[] = $ability_name;
 			}
 		}
@@ -416,8 +407,18 @@ final class MAD4B_SCP_Servers {
 		return $tools;
 	}
 
+	private static function chatgpt_internal_enrollment_mutations() {
+		return array(
+			'mad4b/site-profile-feature-reenroll',
+			'mad4b/site-profile-write-enable',
+			'mad4b/staging-write-grant-reconcile',
+			'mad4b/staging-write-candidate-bind',
+		);
+	}
+
 	private static function chatgpt_enrollment_candidates() {
 		$tools = self::core_tools( 'mad4b-enrollment' );
+		$tools = array_values( array_diff( $tools, self::chatgpt_internal_enrollment_mutations() ) );
 		if ( class_exists( 'MAD4B_SCP_Developer_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() ) );
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $tools = array_values( array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() ) );
 		return $tools;
@@ -428,6 +429,7 @@ final class MAD4B_SCP_Servers {
 			self::core_tools( 'mad4b-read' ),
 			self::core_tools( 'mad4b-chatgpt' ),
 			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() : array(),
+			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools() : array(),
 			self::chatgpt_enrollment_candidates(),
 			self::core_tools( 'mad4b-content' ),
 			self::core_tools( 'mad4b-admin' ),
@@ -626,7 +628,7 @@ final class MAD4B_SCP_Servers {
 
 		$chatgpt_write_ready = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
 		if ( self::chatgpt_unified_catalog_enabled() ) {
-			$chatgpt_description = 'Exact enrolled Staging governed gateway with a compact direct transport catalog. The full logical read/write universes remain available through governed discovery/info/dispatch. Write discovery never grants authority: execution still requires current runtime eligibility, exact grants and approval. Breakglass and Raw SQL remain excluded.';
+			$chatgpt_description = 'Exact enrolled Staging governed gateway with one compact app catalog. Read/write universes remain available through governed discovery/info/dispatch. Low-level enrollment mutations stay internal; the composite Full Staging Authority apply appears only as a temporary plan-bound step-up tool when the exact current plan is ready and unblocked. Breakglass and Raw SQL remain excluded.';
 		} else {
 			$chatgpt_description = $chatgpt_write_ready ? 'ChatGPT governed gateway with compact read/write discovery transports. Provider writes remain fail-closed until runtime eligible, exactly granted and approved. Generic filesystem/database introspection and breakglass remain excluded.' : 'ChatGPT-safe read gateway. Generic filesystem/database inspection and all content/write/admin/breakglass mutation surfaces are excluded.';
 		}
