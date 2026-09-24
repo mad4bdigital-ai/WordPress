@@ -132,8 +132,8 @@
     "etg_exact_master_deployment",
     "runtime_root_trust_readback"
   ],
-  "coverage_audit_version": "2026-09-25.v8-live-residual-closure",
-  "coverage_status": "all-known-remaining-work-classified-with-live-etg-deployment-trust-readback-and-governance-retirement-gates",
+  "coverage_audit_version": "2026-09-25.v9-bulk-runtime-closure-hardening",
+  "coverage_status": "architecture-frozen-bulk-runtime-closure-hardening-with-executable-ci-invariants",
   "quality_model": "mad4b.feature007.quality.v1",
   "operating_model": "long-lived-multi-site-governed-platform",
   "required_phase_count": 37,
@@ -198,5 +198,8 @@
     ],
     "requires_exact_pr_base_ancestry": true,
     "mutable_metadata_cannot_widen_policy": true
-  }
+  },
+  "bulk_closure_hardening_contract": "mad4b.feature007-bulk-closure-hardening.v1",
+  "bulk_closure_hardening_ledger": "bulk-closure-hardening.json",
+  "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN"
 }
