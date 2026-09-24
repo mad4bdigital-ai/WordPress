@@ -100,14 +100,28 @@ $direct_required = array(
 	'mad4b-write-runtime-certification',
 	'mad4b-rest-compatibility-status',
 	'mad4b-staging-certification-status',
+	'mad4b-staging-write-candidate-binding-audit',
+	'mad4b-full-staging-authority-status',
+	'mad4b-full-staging-authority-plan',
+	'mad4b-full-staging-authority-apply',
+);
+foreach ( $direct_required as $tool_name ) {
+	if ( ! in_array( $tool_name, $actual_names, true ) ) {
+		$fail( 'Required minimal Staging ChatGPT direct tool is missing.', $tool_name );
+	}
+}
+
+// Enrollment implementation details remain registered internally, but the
+// single user-facing ChatGPT app must expose only the composite step-up.
+$internal_only_direct_forbidden = array(
 	'mad4b-site-profile-feature-reenroll',
 	'mad4b-site-profile-write-enable',
 	'mad4b-staging-write-grant-reconcile',
 	'mad4b-staging-write-candidate-bind',
 );
-foreach ( $direct_required as $tool_name ) {
-	if ( ! in_array( $tool_name, $actual_names, true ) ) {
-		$fail( 'Required minimal Staging ChatGPT direct tool is missing.', $tool_name );
+foreach ( $internal_only_direct_forbidden as $tool_name ) {
+	if ( in_array( $tool_name, $actual_names, true ) ) {
+		$fail( 'Low-level enrollment mutation leaked into the single-app direct catalog.', $tool_name );
 	}
 }
 
@@ -128,6 +142,19 @@ $hidden_read_required = array(
 		'mad4b/agent-effective-access',
 );
 $full_candidates = MAD4B_SCP_Servers::chatgpt_full_catalog_candidates();
+if ( ! in_array( 'mad4b/full-staging-authority-apply', $full_candidates, true ) ) {
+	$fail( 'Single-app logical catalog lost the composite Full Staging Authority step-up.' );
+}
+foreach ( array(
+	'mad4b/site-profile-feature-reenroll',
+	'mad4b/site-profile-write-enable',
+	'mad4b/staging-write-grant-reconcile',
+	'mad4b/staging-write-candidate-bind',
+) as $ability_name ) {
+	if ( in_array( $ability_name, $full_candidates, true ) ) {
+		$fail( 'Low-level enrollment mutation leaked into logical ChatGPT discovery.', $ability_name );
+	}
+}
 foreach ( $hidden_read_required as $ability_name ) {
 	if ( ! in_array( $ability_name, $full_candidates, true ) ) {
 		$fail( 'Compact catalog lost a governed read capability.', $ability_name );
@@ -340,6 +367,6 @@ foreach ( $forbidden as $tool_name ) {
 
 fwrite(
 	STDOUT,
-	'mad4b.site-control-plane.runtime-chatgpt-tool-inventory.v5: PASS ' .
+	'mad4b.site-control-plane.runtime-chatgpt-tool-inventory.v6: PASS ' .
 	wp_json_encode( array( 'tool_count' => count( $actual_names ), 'tools' => $actual_names ), JSON_UNESCAPED_SLASHES ) . PHP_EOL
 );
