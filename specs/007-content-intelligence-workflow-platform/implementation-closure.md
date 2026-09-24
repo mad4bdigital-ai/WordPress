@@ -35,6 +35,24 @@ For this exact baseline, the trusted-master root has already been recaptured:
 
 This evidence closes the baseline-bound release-root workstream. It does **not** prove that ETG Staging has this artifact installed.
 
+
+### Observed live ETG Staging state
+
+Current read-only evidence is intentionally recorded as a blocker input, not as deployment proof:
+
+- live Control Plane: `0.4.0-rc.59`
+- live source SHA: `03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c`
+- target trusted master SHA: `ae40fa8821934318bec7c386d7acdf77653b8a87`
+- trusted master deployed: false
+- live manifest: present/valid/runtime-match; stale=false; provenance_mismatch=[]
+- MCP Adapter: `0.6.1`
+- protected backup root: exists=false, writable=false, ready=false, requires_preparation=true
+- filesystem trust read abilities exist, but the current subject is not authorized; the seven trust files are therefore UNKNOWN from this subject, not missing
+- Bit Flows: installed `1.29.0`, inactive; prior certified baseline `1.24.0`; available=false; runtime_contract_ok=false; execution_enabled=false
+- breakglass=false; mutation_performed=false
+
+The next live mutation is forbidden until the protected backup/recovery gate passes.
+
 ## Closure classes
 
 | Class | Meaning |
@@ -49,10 +67,13 @@ No class grants authority. Production, Breakglass, host execution and public pub
 ## Critical closure sequence
 
 1. Repository governance external enforcement.
-2. Exact latest-master release/root-trust recapture.
-3. Protected backup root and Recovery Plane readiness.
-4. Exact installed Bit Flows 1.29.0 recertification and privileged-side-channel decision.
-5. Multi-Authority live subject path, Policy Resolution Engine and gate-liveness truthfulness.
+2. Retire the one-time governance bootstrap exception after independent ruleset readback.
+3. Exact latest-master release/root-trust recapture.
+4. Protected backup root and Recovery Plane readiness.
+5. Deploy the exact trusted master artifact to ETG Staging.
+6. Read back runtime provenance and all seven Root Trust/provenance files from the deployed candidate.
+7. Exact installed Bit Flows 1.29.0 recertification and privileged-side-channel decision.
+8. Multi-Authority live subject path, Policy Resolution Engine and gate-liveness truthfulness.
 6. Existing-site bootstrap and Intent Registry reconciliation.
 7. ContentJob domain service plus immutable Artifact Registry/Store/lineage.
 8. Knowledge Dispatcher, ContextPack and WriterProfile version binding.
@@ -69,9 +90,12 @@ No class grants authority. Production, Breakglass, host execution and public pub
 | Workstream | Class | Closure evidence |
 |---|---|---|
 | Repository ruleset applied/read back on `master` | KERNEL_BLOCKER | active ruleset, no bypass actors, pinned Release Verdict check |
+| Governance bootstrap exception retirement | KERNEL_BLOCKER | bootstrap path removed/permanently disabled after ruleset readback; ordinary PR fails closed if ruleset disappears |
 | Spec execution ledger reconciliation | KERNEL_BLOCKER | every legacy task classified DONE/PARTIAL/OPEN/DEFERRED with evidence refs |
 | Latest-master release root | KERNEL_BLOCKER | trusted master attestation + package/Live parity on current baseline |
 | Protected backup/recovery root | LIVE_PRECONDITION | exists/writable/ready + backup receipt + known-good restore proof |
+| Exact trusted-master deployment to ETG | LIVE_PRECONDITION | deployed source/build/manifest/archive identity matches the exact master artifact |
+| Runtime Root Trust readback | LIVE_PRECONDITION | seven trust/provenance files read from deployed runtime and matched to package evidence; UNKNOWN does not satisfy the gate |
 | Recovery Plane live drill | KERNEL_BLOCKER | deliberate normal-plane failure and attested recovery |
 | Bit Flows 1.29 exact package | KERNEL_BLOCKER | artifact/tree/hash/semantic/runtime certification |
 | Bit Flows privileged side-channel | KERNEL_BLOCKER | proven absent, suppressed, read-only federated, or blocking |
@@ -124,7 +148,7 @@ The legacy unchecked task list therefore MUST be reconciled; it MUST NOT be mass
 
 One evidence chain on real ETG Staging MUST prove:
 
-`repository governance → trusted master package → protected recovery → live authority → exact provider certification → bootstrap → intent → ContentJob → artifacts → context/writer/research → blueprint/draft/QA → governed WordPress draft → semantic verification → recovery/formal review`.
+`repository governance → bootstrap retirement → trusted master package → protected recovery → exact ETG deployment → runtime Root Trust readback → live authority → exact provider certification → bootstrap → intent → ContentJob → artifacts → context/writer/research → blueprint/draft/QA → governed WordPress draft → semantic verification → recovery/formal review`.
 
 The terminal gate is invalid if any dependency is inferred from disposable CI, a different SHA, a different provider artifact, or a previous Staging candidate.
 
