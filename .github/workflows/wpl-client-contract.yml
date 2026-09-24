@@ -32,8 +32,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: PHP syntax, lifecycle and credential security invariants
         shell: bash
         run: |
@@ -99,6 +97,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Verify WPML OTGS registration API used by adapter
         shell: bash
         run: |
