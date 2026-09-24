@@ -120,7 +120,10 @@
         "bind a fresh authorized evidence path for filesystem/runtime trust readback",
         "implement and certify terminal-independent Host Runner bootstrap/enrollment",
         "implement semantic host operations and write-capable executor path without generic shell",
-        "prove exact plan/apply/readback/rollback and cross-executor conformance on a supported hosting profile"
+        "prove exact plan/apply/readback/rollback and cross-executor conformance on a supported hosting profile",
+        "prove centralized path/process confinement with symlink-swap, traversal, zip-slip, shell/executable injection and resource-budget denial fixtures",
+        "prove mutation evidence durability and reconcile MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry",
+        "prove execution-location truthfulness across enqueue and authoritative executor boundaries"
       ]
     },
     {
@@ -134,7 +137,11 @@
         "ready": false,
         "requires_preparation": true,
         "mutation_performed": false
-      }
+      },
+      "remainder": [
+        "prove protected backup root isolation, integrity digest, capacity/readiness and exact-runtime binding",
+        "perform restore rehearsal including corruption/interruption handling; backup existence alone is not readiness"
+      ]
     },
     {
       "id": "etg_exact_runtime_release_deployment",
@@ -172,7 +179,11 @@
       "id": "recovery_live_drill",
       "priority": "KERNEL_BLOCKER",
       "status": "OPEN",
-      "gate": "recovery_live_verified"
+      "gate": "recovery_live_verified",
+      "remainder": [
+        "prove Recovery Runner remains usable with WordPress HTTP/plugin boot/control-plane route unavailable",
+        "inject receipt-persistence failure and prove reconciliation-required uncertainty state"
+      ]
     },
     {
       "id": "bitflows_1_29_exact_certification",
@@ -230,7 +241,10 @@
       "id": "gate_liveness",
       "priority": "KERNEL_BLOCKER",
       "status": "OPEN",
-      "gate": "gate_liveness_verified"
+      "gate": "gate_liveness_verified",
+      "remainder": [
+        "prove every blocking gate has a path to the terminal gate in addition to acyclicity and terminal reachability"
+      ]
     },
     {
       "id": "site_bootstrap",
@@ -317,7 +331,9 @@
       "remainder": [
         "prove aggregate/event/artifact consistency on the exact deployed candidate",
         "prove stale/zombie writer rejection and crash-after-success reconciliation",
-        "prove duplicate/reordered callback effect-once semantics under live/disposable fault tests"
+        "prove duplicate/reordered callback effect-once semantics under live/disposable fault tests",
+        "inject runner crash after lease, lease loss before commit, duplicate delivery/replay and side-effect-before-receipt failure",
+        "prove fenced zombie writers cannot commit and uncertain mutations cannot auto-retry as fresh writes"
       ]
     },
     {
@@ -342,7 +358,11 @@
       "id": "etg_vertical_slice",
       "priority": "KERNEL_BLOCKER",
       "status": "OPEN",
-      "gate": "critical_kernel_vertical_slice_verified"
+      "gate": "critical_kernel_vertical_slice_verified",
+      "remainder": [
+        "execute one complete request-to-receipt-to-rollback vertical slice with exact runtime evidence",
+        "link fault-injection, recovery, backup, provider recertification and operator evidence before terminal closure"
+      ]
     },
     {
       "id": "provider_resolver_rings_dynamic_cert",
@@ -437,5 +457,13 @@
     "package_workflow_run_id": 36072550999,
     "general_distribution_artifact_id": 10838403565,
     "repository_runtime_delta_verified_empty_through": "b1f7e837efc69aa220385d84761e46f64c2442b1"
+  },
+  "baseline_sha": "b1f7e837efc69aa220385d84761e46f64c2442b1",
+  "hardening": {
+    "contract": "mad4b.feature007-bulk-closure-hardening.v1",
+    "matrix": "bulk-closure-hardening.json",
+    "production_authorized": false,
+    "mutation_uncertainty_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+    "docs_only_cannot_close_runtime_gate": true
   }
 }
