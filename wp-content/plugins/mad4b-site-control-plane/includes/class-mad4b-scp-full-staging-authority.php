@@ -7,9 +7,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * planes: governed write, Developer, and Developer Breakglass.
  *
  * OAuth remains identity/read consent only. Read-only status/plan are exposed
- * on mad4b-chatgpt for diagnosis; the mutating apply surface remains mounted
- * only on mad4b-enrollment and reuses the existing write/developer primitives
- * rather than creating parallel grant semantics.
+ * on mad4b-chatgpt for diagnosis. The single ChatGPT app may also project the
+ * composite apply ability as one Staging-only step-up tool for the enrolled
+ * normal OAuth identity. tools/list never computes the full authority plan;
+ * execution itself recomputes and exact-matches the plan before any mutation.
+ * Low-level enrollment/developer primitives remain internal and the composite
+ * apply path reuses them rather than creating parallel grant semantics.
  */
 final class MAD4B_SCP_Full_Staging_Authority {
 	const CONTRACT = 'mad4b.full-staging-authority.v1';
@@ -34,6 +37,25 @@ final class MAD4B_SCP_Full_Staging_Authority {
 
 	public static function chatgpt_read_tools() {
 		return array( self::STATUS_ABILITY, self::PLAN_ABILITY );
+	}
+
+	/**
+	 * Project only the composite authority mutation onto the single ChatGPT app.
+	 *
+	 * Keep tools/list cheap and lifecycle-stable: catalog construction can happen
+	 * before transport permission binds the request OAuth identity, so projection
+	 * depends only on exact enrolled Staging site facts and the raw-SQL
+	 * Breakglass gate. The apply callback remains the authority boundary: it
+	 * requires the verified enrolled OAuth administrator, recomputes the full
+	 * plan, requires ready_to_apply with no hard blockers, exact-matches every
+	 * expected identity/digest/revision field, and fails closed before mutation.
+	 */
+	public static function chatgpt_step_up_tools() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( self::generic_raw_sql_breakglass_gate_enabled() ) return array();
+		return array( self::APPLY_ABILITY );
 	}
 
 	public static function register_category() {

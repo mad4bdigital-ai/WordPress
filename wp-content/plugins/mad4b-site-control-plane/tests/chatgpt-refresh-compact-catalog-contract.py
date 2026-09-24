@@ -91,11 +91,12 @@ for marker in [
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
 
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be projectable on enrolled Staging")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in SERVERS, "full staging apply must be conditionally projectable as a single-app step-up tool")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in core_chatgpt, "non-Staging core ChatGPT catalog must not expose Staging authority diagnostics")
-require("mad4b/full-staging-authority-apply" not in core_chatgpt, "full staging apply must never be directly mounted on ChatGPT")
+require("mad4b/full-staging-authority-apply" not in core_chatgpt, "full staging apply must never be statically mounted in the core ChatGPT catalog")
 
 # Large capability families must not be directly merged back into tools/list.
-chatgpt_body = SERVERS.split("public static function chatgpt_tools()", 1)[1].split("public static function chatgpt_full_catalog_candidates()", 1)[0]
+chatgpt_body = SERVERS.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 for forbidden in [
     "self::external_write_tools()",
     "self::write_tools()",
@@ -104,9 +105,16 @@ for forbidden in [
     "self::core_tools( 'mad4b-admin' )",
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
-require("$meta_write_transport = array( 'mad4b/write-execute' )" in chatgpt_body, "only the bounded write dispatcher may represent normal governed writes directly")
+require("$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )" in chatgpt_body, "normal governed writes plus the conditional full-authority step-up must be the only direct mutations")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
-require("mad4b/full-staging-authority-apply" not in chatgpt_body, "full staging apply must remain outside direct ChatGPT tools/list")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in chatgpt_body, "unified enrolled Staging tools/list must project the composite apply only through the guarded step-up method")
+for low_level in [
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+]:
+    require(low_level not in chatgpt_body, f"low-level enrollment mutation leaked into direct ChatGPT tools/list: {low_level}")
 
 # The full logical capability universe remains intact behind discovery.
 full = SERVERS.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
@@ -122,8 +130,18 @@ for marker in [
 ]:
     require(marker in full, f"full governed capability universe lost coverage: {marker}")
 require("'mad4b/database-raw-query'" in full and "array_diff" in full, "Raw SQL must remain explicitly excluded")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()" in full, "logical discovery must include the guarded composite step-up when it is eligible")
 
-require("'mad4b/staging-write-grant-reconcile'" in SERVERS, "bounded grant reconciliation must remain directly projectable")
-require("'mad4b/staging-write-candidate-bind'" in SERVERS, "bounded candidate binding must remain directly projectable")
+internal_enrollment = SERVERS.split("private static function chatgpt_internal_enrollment_mutations()", 1)[1].split("private static function chatgpt_enrollment_candidates()", 1)[0]
+for low_level in [
+    "'mad4b/site-profile-feature-reenroll'",
+    "'mad4b/site-profile-write-enable'",
+    "'mad4b/staging-write-grant-reconcile'",
+    "'mad4b/staging-write-candidate-bind'",
+]:
+    require(low_level in internal_enrollment, f"low-level enrollment mutation must remain internal: {low_level}")
 
-print("mad4b.chatgpt-refresh-minimal-catalog.v4: PASS")
+enrollment_projection = SERVERS.split("private static function chatgpt_enrollment_candidates()", 1)[1].split("public static function chatgpt_full_catalog_candidates()", 1)[0]
+require("self::chatgpt_internal_enrollment_mutations()" in enrollment_projection, "logical ChatGPT discovery must remove low-level enrollment mutations")
+
+print("mad4b.chatgpt-refresh-minimal-catalog.v5: PASS")
