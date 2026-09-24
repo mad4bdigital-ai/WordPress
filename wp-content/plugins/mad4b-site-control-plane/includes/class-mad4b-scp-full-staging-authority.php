@@ -8,8 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *
  * OAuth remains identity/read consent only. Read-only status/plan are exposed
  * on mad4b-chatgpt for diagnosis. The single ChatGPT app may also project the
- * composite apply ability as a temporary step-up tool, but only while the
- * exact current Staging plan is ready, unblocked and not already converged.
+ * composite apply ability as one Staging-only step-up tool for the enrolled
+ * normal OAuth identity. tools/list never computes the full authority plan;
+ * execution itself recomputes and exact-matches the plan before any mutation.
  * Low-level enrollment/developer primitives remain internal and the composite
  * apply path reuses them rather than creating parallel grant semantics.
  */
@@ -40,22 +41,16 @@ final class MAD4B_SCP_Full_Staging_Authority {
 
 	/**
 	 * Project only the composite authority mutation onto the single ChatGPT app.
-	 * This is intentionally fail-closed: any access, provenance, plan or current
-	 * authority ambiguity returns an empty projection. The low-level primitives
-	 * remain enrollment-only and are never surfaced by this method.
+	 *
+	 * Keep tools/list cheap: projection checks only the already-bound Staging
+	 * identity/profile gate. The apply callback remains the authority boundary;
+	 * it recomputes the full plan, requires ready_to_apply with no hard blockers,
+	 * exact-matches every expected identity/digest/revision field, and fails
+	 * closed before any mutation if state changed.
 	 */
 	public static function chatgpt_step_up_tools() {
 		$access = self::can_access();
 		if ( is_wp_error( $access ) || ! $access ) return array();
-
-		$status = self::status();
-		if ( ! is_array( $status ) || ! empty( $status['ready'] ) ) return array();
-
-		$plan = self::plan();
-		if ( ! is_array( $plan ) ) return array();
-		if ( empty( $plan['ready_to_apply'] ) ) return array();
-		if ( ! empty( $plan['hard_blockers'] ) ) return array();
-
 		return array( self::APPLY_ABILITY );
 	}
 
