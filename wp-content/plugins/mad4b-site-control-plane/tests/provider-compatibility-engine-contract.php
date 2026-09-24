@@ -2,6 +2,7 @@
 
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
+$GLOBALS['mad4b_bitflows_canary_opt_in'] = true;
 function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $value ) ); }
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function add_action( $hook, $callback, $priority = 10, $accepted_args = 1 ) { return true; }
@@ -50,7 +51,7 @@ final class FakeBitFlowsAdapter {
     public function provider_key(){ return 'bit_pi'; }
     public function is_available(){ return true; }
     public function ability_names(){ return array('read'=>array('bitflows/list-flows','bitflows/get-flow','bitflows/get-executions'),'content'=>array(),'admin'=>array('bitflows/run-flow')); }
-    public function supports_canary_execution($ability){ return 'bitflows/run-flow'===(string)$ability; }
+    public function supports_canary_execution($ability){ return !empty($GLOBALS['mad4b_bitflows_canary_opt_in']) && 'bitflows/run-flow'===(string)$ability; }
     public function reversible_contracts(){ return array(); }
 }
 final class FakeSeoAdapter {
@@ -154,6 +155,16 @@ expect_true(in_array('high_risk_activation_required',$high_guard->data['violatio
 $high_plan=MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan(array('provider_id'=>'bit_pi'));
 expect_same('OWNER_REVIEW_REQUIRED',$high_plan['classification'],'high-risk canary execution requires owner review');
 expect_true(in_array('owner_governed_canary_execution_required',array_column($high_plan['steps'],'action'),true),'exact high-risk candidate advances to governed canary instead of deadlocking on a pre-canary receipt');
+
+$GLOBALS['mad4b_bitflows_canary_opt_in']=false;
+MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
+$no_opt_in=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('bit_pi',$bitflows);
+expect_same('shadow',$no_opt_in['capabilities']['flow.execute']['activation_stage'],'exact package without explicit adapter canary opt-in remains shadow');
+expect_same(false,$no_opt_in['capabilities']['flow.execute']['canary_bootstrap_eligible'],'adapter opt-in is mandatory for canary bootstrap');
+expect_same('',$no_opt_in['capabilities']['flow.execute']['canary_basis_digest'],'no canary basis exists without explicit adapter opt-in');
+expect_same(false,$no_opt_in['capabilities']['flow.execute']['write_eligible'],'absence of canary opt-in cannot open normal write authority');
+$GLOBALS['mad4b_bitflows_canary_opt_in']=true;
+MAD4B_SCP_Provider_Compatibility_Certification::clear_request_cache();
 
 $mount=MAD4B_SCP_Provider_Compatibility_Certification::mcp_mount_plan();
 $eligible=array_column($mount['eligible'],'ability');
