@@ -158,16 +158,14 @@ foreach ( array(
 	'mad4b-write-runtime-certification',
 	'mad4b-rest-compatibility-status',
 	'mad4b-staging-certification-status',
-	'mad4b-site-profile-feature-reenroll',
-	'mad4b-site-profile-write-enable',
-	'mad4b-staging-write-grant-reconcile',
-	'mad4b-staging-write-candidate-bind'
+	'mad4b-full-staging-authority-apply'
 ) as $required ) {
 	if ( ! in_array( $required, $names, true ) ) $fail( 'OAuth bearer tools/list omitted a required minimal transport tool.', $required );
 }
 
-// Large normal reads and writes must remain behind their governed discovery/
-// execution transports. Bounded bootstrap mutations stay direct by design.
+// Large normal reads/writes and low-level enrollment mutations must remain
+// behind their governed/internal transports. The only direct authority
+// mutation is the composite Full Staging Authority step-up.
 foreach ( array(
 	'mad4b-browser-acceptance-capabilities',
 	'mad4b-filesystem-read',
@@ -181,6 +179,10 @@ foreach ( array(
 	'mad4b-plugin-activate',
 	'mad4b-plugin-deactivate',
 	'mad4b-plugin-package-apply',
+	'mad4b-site-profile-feature-reenroll',
+	'mad4b-site-profile-write-enable',
+	'mad4b-staging-write-grant-reconcile',
+	'mad4b-staging-write-candidate-bind',
 	'mad4b-mutation-undo',
 	'mad4b-approval-plan'
 ) as $hidden_tool ) {
