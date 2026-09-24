@@ -286,6 +286,18 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return false;
 	}
 
+	public static function verified_bearer_client_is( $client_id ) {
+		$client_id = trim( (string) $client_id );
+		if ( '' === $client_id || strlen( $client_id ) > self::MAX_URI_BYTES || ! self::verified_bearer_active() ) return false;
+		$actual = isset( self::$verified_context['client_fingerprint'] ) ? strtolower( trim( (string) self::$verified_context['client_fingerprint'] ) ) : '';
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $actual ) ) return false;
+		foreach ( self::trusted_issuers() as $issuer ) {
+			$expected = hash( 'sha256', 'oauth-client' . "\0" . $issuer . "\0" . $client_id );
+			if ( hash_equals( $expected, $actual ) ) return true;
+		}
+		return false;
+	}
+
 	/** Reset request-local OAuth authority before a bearer is evaluated. */
 	public static function reset_verified_bearer_context( $bearer_request = false ) {
 		self::$verified_context = null;
