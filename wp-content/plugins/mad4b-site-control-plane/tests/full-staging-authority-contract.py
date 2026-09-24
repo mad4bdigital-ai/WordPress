@@ -66,8 +66,12 @@ assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )"
 assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() )" in servers
 
 chatgpt_map = servers.split("'mad4b-chatgpt' => array_merge(", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
-assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_map
-assert "mad4b/full-staging-authority-apply" not in chatgpt_map
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in chatgpt_map
+chatgpt_tools = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_enrollment_candidates()", 1)[0]
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_tools
+assert "mad4b/full-staging-authority-apply" not in chatgpt_tools
+full_catalog = servers.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
+assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in full_catalog
 assert full.count("self::meta( true, 'read' )") >= 2
 assert "self::meta( false, 'enrollment' )" in full
 
