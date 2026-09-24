@@ -156,6 +156,117 @@ def verify_installed_provenance(plugin_dir: Path) -> dict[str, str]:
 
 
 
+def recovery_journal_summary(wordpress_root: Path) -> dict[str, Any]:
+    root = wordpress_root.expanduser().resolve()
+    journal_root = root / "wp-content" / "mad4b-recovery" / "recovery-journal"
+    summary = {
+        "path": str(journal_root),
+        "exists": journal_root.is_dir(),
+        "total": 0,
+        "pending": 0,
+        "uncertain": 0,
+        "completed": 0,
+        "invalid": 0,
+        "reconciliation_required": False,
+        "entries": [],
+    }
+    if not journal_root.is_dir():
+        return summary
+    if journal_root.is_symlink():
+        raise ValueError("recovery journal root symlink is forbidden")
+    for path in sorted(journal_root.glob("*.json")):
+        if path.is_symlink() or not path.is_file():
+            summary["invalid"] += 1
+            continue
+        try:
+            row = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            summary["invalid"] += 1
+            continue
+        state = str(row.get("evidence_state") or "")
+        terminal = row.get("terminal") is True
+        summary["total"] += 1
+        if state == "MUTATED_BUT_EVIDENCE_UNCERTAIN":
+            summary["uncertain"] += 1
+        elif terminal and state == "DURABLE_VERIFIED_RECEIPT":
+            summary["completed"] += 1
+        else:
+            summary["pending"] += 1
+        summary["entries"].append({
+            "file": path.name,
+            "action": row.get("action"),
+            "plan_sha256": row.get("plan_sha256"),
+            "incident_id": row.get("incident_id"),
+            "evidence_state": state,
+            "terminal": terminal,
+            "reconciliation_required": bool(row.get("reconciliation_required")),
+        })
+    summary["reconciliation_required"] = bool(
+        summary["pending"] or summary["uncertain"] or summary["invalid"]
+    )
+    return summary
+
+
+def reconcile_recovery_evidence(wordpress_root: Path, environment: str) -> dict[str, Any]:
+    """Read-only reconciliation of recovery journals against current runtime and receipts."""
+    if environment not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("Recovery Plane is Staging-only")
+    root = wordpress_root.expanduser().resolve()
+    state = target_state(root)
+    live = Path(state["plugin_path"])
+    receipt_root = root / "wp-content" / "mad4b-recovery" / "receipts"
+    journal = recovery_journal_summary(root)
+    rows = []
+    for entry in journal["entries"]:
+        plan_sha = str(entry.get("plan_sha256") or "")
+        action = str(entry.get("action") or "")
+        receipt_match = False
+        if receipt_root.is_dir() and not receipt_root.is_symlink():
+            for receipt_path in receipt_root.glob("*.json"):
+                if receipt_path.is_symlink() or not receipt_path.is_file():
+                    continue
+                try:
+                    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if str(receipt.get("plan_sha256") or "") == plan_sha:
+                    receipt_match = True
+                    break
+        runtime_match = None
+        runtime_identity = None
+        if action == "restore_known_good" and live.is_dir():
+            try:
+                runtime_identity = verify_installed_provenance(live)
+                runtime_match = True
+            except (ValueError, OSError, json.JSONDecodeError):
+                runtime_match = False
+        elif action == "disable_current":
+            runtime_match = not live.exists()
+        status = "DURABLE_RECEIPT_PRESENT" if receipt_match else (
+            "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT" if runtime_match is True else
+            "RUNTIME_EFFECT_NOT_OBSERVED" if runtime_match is False else
+            "UNKNOWN"
+        )
+        rows.append({
+            **entry,
+            "durable_receipt_present": receipt_match,
+            "runtime_effect_observed": runtime_match,
+            "runtime_identity": runtime_identity,
+            "reconciliation_status": status,
+            "safe_to_blind_retry": False,
+        })
+    return {
+        "contract": "mad4b.recovery-evidence-reconciliation.v1",
+        "environment": environment,
+        "read_only": True,
+        "mutation_performed": False,
+        "target": state,
+        "journal": journal,
+        "reconciliations": rows,
+        "blind_retry_allowed": False,
+    }
+
+
 def recovery_status(wordpress_root: Path, environment: str) -> dict[str, Any]:
     if environment not in SUPPORTED_ENVIRONMENTS:
         raise ValueError("Recovery Plane is Staging-only")
@@ -189,6 +300,7 @@ def recovery_status(wordpress_root: Path, environment: str) -> dict[str, Any]:
             "parent_exists": recovery_root.parent.is_dir(),
             "parent_writable": os.access(recovery_root.parent, os.W_OK),
         },
+        "recovery_journal": recovery_journal_summary(root),
         "capabilities": {
             "status": True,
             "disable_current_exact_plan": True,
@@ -290,6 +402,7 @@ def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str,
         "mutation_started": True,
         "mutation_started_at": utc_now(),
         "target_plugin_path": str(live),
+        "expected_post_identity": expected,
         "evidence_state": "MUTATION_INTENT_DURABLE",
         "terminal": False,
     }
@@ -352,7 +465,13 @@ def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str,
             "receipt_path": str(receipt_path),
             "completed_at": utc_now(),
         })
-        atomic_json_write(journal_path, completed)
+        try:
+            atomic_json_write(journal_path, completed)
+            receipt["journal_completion_persisted"] = True
+        except OSError:
+            # The final receipt is already durable and authoritative. A stale journal
+            # is reconciled read-only; it must not cause a blind write retry.
+            receipt["journal_completion_persisted"] = False
         receipt["receipt_path"] = str(receipt_path)
         receipt["journal_path"] = str(journal_path)
         return receipt
@@ -528,6 +647,7 @@ def apply_restore(
     journal_path = journal_root / f"{token}.json"
     journal = {
         "contract": "mad4b.recovery-mutation-journal.v1",
+        "action": "restore_known_good",
         "plan_sha256": plan_sha,
         "incident_id": plan["incident_id"],
         "mutation_started": True,
@@ -646,6 +766,10 @@ def main() -> int:
     status_p = sub.add_parser("status")
     status_p.add_argument("--wordpress-root", required=True, type=Path)
     status_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
+
+    reconcile_p = sub.add_parser("reconcile-evidence")
+    reconcile_p.add_argument("--wordpress-root", required=True, type=Path)
+    reconcile_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
 
     disable_plan_p = sub.add_parser("plan-disable")
     disable_plan_p.add_argument("--wordpress-root", required=True, type=Path)
