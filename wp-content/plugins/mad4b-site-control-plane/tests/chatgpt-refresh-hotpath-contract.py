@@ -145,4 +145,16 @@ full_provenance_body = observer.split("public static function build_provenance_s
 assert "hash_file(" in full_provenance_body
 assert "build_provenance_status()" in finalizer
 
-print("mad4b.chatgpt-refresh-hotpath.v4: PASS")
+# External handshake build identity is allowed to hash its bounded file set only
+# once per PHP request; tools/list calls it repeatedly during evidence capture.
+for marker in [
+    "private static $request_build_fingerprint = null;",
+    "is_string( self::$request_build_fingerprint )",
+    "self::$request_build_fingerprint = hash_final( $ctx );",
+]:
+    assert marker in handshake, marker
+fingerprint_body = handshake.split("public static function build_fingerprint()", 1)[1].split("private static function capture_runtime_allowed", 1)[0]
+assert fingerprint_body.count("hash_file(") == 1
+assert fingerprint_body.index("self::$request_build_fingerprint") < fingerprint_body.index("$files = array(")
+
+print("mad4b.chatgpt-refresh-hotpath.v5: PASS")
