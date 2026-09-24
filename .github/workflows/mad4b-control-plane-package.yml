@@ -33,7 +33,9 @@ permissions:
   artifact-metadata: write
 
 concurrency:
-  group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}
+  # Package artifacts are exact-head evidence. Isolate concurrency by source SHA so
+  # a stale historical run cannot block certification of the current candidate.
+  group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
