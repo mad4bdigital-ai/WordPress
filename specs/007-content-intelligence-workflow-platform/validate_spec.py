@@ -164,6 +164,34 @@ if closure_path.exists() and feature_path.exists():
             errors.append(f"closure:invalid_priority:{row.get('id')}:{row.get('priority')}")
         if row.get("priority") in {"KERNEL_BLOCKER","LIVE_PRECONDITION"} and not row.get("gate"):
             errors.append(f"closure:missing_gate:{row.get('id')}")
+        if row.get("status") == "DONE" and not row.get("evidence"):
+            errors.append(f"closure:done_without_evidence:{row.get('id')}")
+        if row.get("status") == "PARTIAL":
+            if not row.get("evidence"):
+                errors.append(f"closure:partial_without_evidence:{row.get('id')}")
+            remainder = row.get("remainder")
+            if not isinstance(remainder, list) or not remainder:
+                errors.append(f"closure:partial_without_remainder:{row.get('id')}")
+
+if closure_path.exists():
+    observed = closure.get("observed_live_etg_state")
+    if observed is not None:
+        if not isinstance(observed, dict):
+            errors.append("closure:observed_live_state_not_object")
+        else:
+            semantics = observed.get("observation_semantics")
+            if not isinstance(semantics, dict):
+                errors.append("closure:observed_live_state_semantics_missing")
+            else:
+                if semantics.get("authoritative_for_gate") is not False:
+                    errors.append("closure:observed_live_state_must_be_non_authoritative")
+                if semantics.get("must_refresh_before_gate_decision") is not True:
+                    errors.append("closure:observed_live_state_refresh_required")
+                if semantics.get("unknown_or_stale_behavior") != "UNKNOWN":
+                    errors.append("closure:observed_live_state_unknown_behavior")
+                if semantics.get("authoritative_for_gate") is True:
+                    if not semantics.get("observed_at") or not semantics.get("evidence_refs"):
+                        errors.append("closure:authoritative_live_state_requires_time_and_evidence")
 
 closure_md_path = require_file("implementation-closure.md")
 if closure_md_path.exists() and feature_path.exists():
