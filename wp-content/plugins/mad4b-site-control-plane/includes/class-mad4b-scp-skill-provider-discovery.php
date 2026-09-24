@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Skill_Provider_Discovery {
 	const CONTRACT = 'mad4b.skill-provider-discovery.v1';
 	const CATALOG_CONTRACT = 'mad4b.skill-provider-catalog.v1';
+	const INSPECTION_CONTRACT = 'mad4b.skill-provider-reconciliation-inspection.v1';
 	const OPTION = 'mad4b_scp_skill_provider_discovery_v1';
 	const DISCOVERY_VERSION = 2;
 	const MAX_PACKS = 100;
@@ -117,6 +118,131 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$status['previous_persisted_ready'] = $previous_ready;
 		$status['current_request_observed'] = false;
 		return $status;
+	}
+
+	/**
+	 * Read-only provider reconciliation projection. It reports the exact current
+	 * mapping and the changes bootstrap() would require without mutating state.
+	 */
+	public static function inspect() {
+		$catalog = self::catalog();
+		$packs = isset( $catalog['packs'] ) && is_array( $catalog['packs'] ) ? $catalog['packs'] : array();
+		$coverage = class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::coverage() : array();
+		$providers = self::provider_state_map( isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] ) ? $coverage['plugins'] : array() );
+		$root = class_exists( 'MAD4B_SCP_Skill_Registry' ) ? MAD4B_SCP_Skill_Registry::storage_root() : '';
+		$families = array();
+		$mappings = array();
+		$missing = array();
+		$extra = array();
+		$would_create = array();
+		$would_enable = array();
+		$would_disable = array();
+		$user_owned = array();
+		$conflicts = array();
+		$processed = 0;
+		foreach ( $packs as $family => $definitions ) {
+			if ( $processed >= self::MAX_PACKS ) break;
+			$family = sanitize_key( (string) $family );
+			if ( '' === $family || ! is_array( $definitions ) ) continue;
+			++$processed;
+			$provider = isset( $providers[ $family ] ) ? $providers[ $family ] : null;
+			$active = is_array( $provider ) && ! empty( $provider['active'] );
+			$adapter_ready = $active && ! empty( $provider['adapter_registered'] ) && ! empty( $provider['adapter_runtime_available'] );
+			$desired_enabled = $active && $adapter_ready;
+			$family_current = array();
+			foreach ( array_slice( $definitions, 0, 20 ) as $definition ) {
+				if ( ! is_array( $definition ) ) continue;
+				$level = isset( $definition['level'] ) ? sanitize_key( (string) $definition['level'] ) : '';
+				$target = isset( $definition['target'] ) ? sanitize_key( (string) $definition['target'] ) : '';
+				$name = isset( $definition['name'] ) ? sanitize_key( (string) $definition['name'] ) : '';
+				if ( ! in_array( $level, MAD4B_SCP_Skill_Registry::levels(), true ) || '' === $target || '' === $name ) {
+					$conflicts[] = $family . ':invalid_definition';
+					continue;
+				}
+				$logical_id = $level . ':' . $target . ':' . $name;
+				$dir = '' !== $root ? wp_normalize_path( $root . '/' . $level . '/' . $target . '/' . $name ) : '';
+				$file = '' !== $dir ? $dir . '/SKILL.md' : '';
+				$meta_file = '' !== $dir ? $dir . '/' . MAD4B_SCP_Skill_Registry::META_FILE : '';
+				$path_exists = '' !== $file && ( file_exists( $file ) || is_link( $file ) );
+				$present = $path_exists && is_file( $file ) && ! is_link( $file );
+				$current_raw = $present && is_readable( $file ) ? file_get_contents( $file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+				$current_sha = is_string( $current_raw ) ? hash( 'sha256', $current_raw ) : '';
+				$meta_raw = '' !== $meta_file && is_file( $meta_file ) && ! is_link( $meta_file ) && is_readable( $meta_file ) ? file_get_contents( $meta_file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+				$meta = is_string( $meta_raw ) ? json_decode( $meta_raw, true ) : null;
+				$owner = is_array( $meta ) && isset( $meta['provisioned_by'] ) ? (string) $meta['provisioned_by'] : '';
+				$managed = in_array( $owner, array( self::CONTRACT, 'mad4b.skill-seeder.v1' ), true );
+				$recorded_sha = is_array( $meta ) && isset( $meta['sha256'] ) ? strtolower( trim( (string) $meta['sha256'] ) ) : '';
+				$digest_clean = $present && 1 === preg_match( '/^[a-f0-9]{64}$/', $recorded_sha ) && '' !== $current_sha && hash_equals( $recorded_sha, $current_sha );
+				$item_user_owned = $present && ( ! $managed || ! $digest_clean );
+				$current_enabled = $present && ( ! is_array( $meta ) || ! array_key_exists( 'enabled', $meta ) || ! empty( $meta['enabled'] ) );
+				$mapping_ready = $desired_enabled ? ( $present && $current_enabled ) : ( ! $present || ! $current_enabled );
+				$item_would_create = $desired_enabled && ! $path_exists;
+				$item_would_enable = $desired_enabled && $present && ! $current_enabled && ! $item_user_owned;
+				$item_would_disable = ! $desired_enabled && $present && $current_enabled && ! $item_user_owned;
+				$conflict = ( $path_exists && ! $present ) || ( ! $mapping_ready && $item_user_owned );
+				if ( $desired_enabled && ! $present ) $missing[] = $logical_id;
+				if ( ! $desired_enabled && $present && $current_enabled ) $extra[] = $logical_id;
+				if ( $item_would_create ) $would_create[] = $logical_id;
+				if ( $item_would_enable ) $would_enable[] = $logical_id;
+				if ( $item_would_disable ) $would_disable[] = $logical_id;
+				if ( $item_user_owned ) $user_owned[] = $logical_id;
+				if ( $conflict ) $conflicts[] = $logical_id;
+				$mappings[] = array(
+					'provider_family' => $family,
+					'logical_id' => $logical_id,
+					'desired_enabled' => $desired_enabled,
+					'current_enabled' => $current_enabled,
+					'present' => $present,
+					'adapter_ready' => $adapter_ready,
+					'missing' => $desired_enabled && ! $present,
+					'extra' => ! $desired_enabled && $present && $current_enabled,
+					'would_create' => $item_would_create,
+					'would_refresh' => false,
+					'would_enable' => $item_would_enable,
+					'would_disable' => $item_would_disable,
+					'user_owned' => $item_user_owned,
+					'conflict' => $conflict,
+					'mapping_ready' => $mapping_ready,
+				);
+				$family_current[] = array( 'logical_id' => $logical_id, 'present' => $present, 'enabled' => $current_enabled );
+			}
+			$families[ $family ] = array(
+				'active' => $active,
+				'adapter_ready' => $adapter_ready,
+				'desired_enabled' => $desired_enabled,
+				'coverage_state' => is_array( $provider ) && isset( $provider['coverage_state'] ) ? sanitize_key( (string) $provider['coverage_state'] ) : 'not_installed',
+				'current_mapping' => $family_current,
+			);
+		}
+		$missing = array_values( array_unique( $missing ) );
+		$extra = array_values( array_unique( $extra ) );
+		$would_create = array_values( array_unique( $would_create ) );
+		$would_enable = array_values( array_unique( $would_enable ) );
+		$would_disable = array_values( array_unique( $would_disable ) );
+		$user_owned = array_values( array_unique( $user_owned ) );
+		$conflicts = array_values( array_unique( $conflicts ) );
+		$ready = empty( $missing ) && empty( $extra ) && empty( $would_create ) && empty( $would_enable ) && empty( $would_disable ) && empty( $conflicts );
+		return array(
+			'contract' => self::INSPECTION_CONTRACT,
+			'ready' => $ready,
+			'state' => $ready ? 'ready' : 'drifted',
+			'families' => $families,
+			'mappings' => $mappings,
+			'missing' => $missing,
+			'extra' => $extra,
+			'would_create' => $would_create,
+			'would_refresh' => array(),
+			'would_enable' => $would_enable,
+			'would_disable' => $would_disable,
+			'user_owned' => $user_owned,
+			'conflicts' => $conflicts,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'provider_plugin_mutation' => false,
+			'deletes_skills' => false,
+			'option_write_performed' => false,
+			'audit_write_performed' => false,
+		);
 	}
 
 	private static function set_status( $state ) {
