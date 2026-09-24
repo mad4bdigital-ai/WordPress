@@ -42,7 +42,11 @@
         "deletion_blocked": true,
         "non_fast_forward_blocked": true,
         "governance_push_run_id": 36072550595,
-        "repository_governance_ready": true
+        "repository_governance_ready": true,
+        "release_verdict_run_id": 36072550766,
+        "repository_merge_gate_ready": true,
+        "repository_release_ready": true,
+        "production_authorized": false
       }
     },
     {
@@ -85,7 +89,9 @@
         "trusted_master_external_verification": true,
         "attestation_verified": true,
         "trusted_signer_ref": "refs/heads/master",
-        "trusted_signer_event": "push"
+        "trusted_signer_event": "push",
+        "release_verdict_run_id": 36072550766,
+        "repository_release_ready": true
       }
     },
     {
