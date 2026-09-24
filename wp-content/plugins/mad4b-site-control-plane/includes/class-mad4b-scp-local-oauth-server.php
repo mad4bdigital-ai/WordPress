@@ -371,6 +371,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$catalog = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::external_write_tools() : array();
 		$runtime = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::write_tools() : array();
 		$blocked = class_exists( 'MAD4B_SCP_Servers' ) ? MAD4B_SCP_Servers::blocked_write_tools() : array();
+		$authority_gated = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'authority_gated_write_tools' )
+			? MAD4B_SCP_Servers::authority_gated_write_tools()
+			: array();
 		$catalog = array_values( array_unique( array_map( 'strval', is_array( $catalog ) ? $catalog : array() ) ) );
 		$runtime = array_values( array_unique( array_map( 'strval', is_array( $runtime ) ? $runtime : array() ) ) );
 		$plan_runtime = array_values( array_unique( array_map( 'strval', $plan_runtime ) ) );
@@ -385,7 +388,16 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		}
 		$blocked_abilities = array_values( array_unique( $blocked_abilities ) );
 		sort( $blocked_abilities, SORT_STRING );
-		$reconstructed_catalog = array_values( array_unique( array_merge( $runtime, $blocked_abilities ) ) );
+
+		$authority_gated_rows = array_values( is_array( $authority_gated ) ? $authority_gated : array() );
+		$authority_gated_abilities = array();
+		foreach ( $authority_gated_rows as $entry ) {
+			if ( is_array( $entry ) && ! empty( $entry['ability'] ) ) $authority_gated_abilities[] = (string) $entry['ability'];
+		}
+		$authority_gated_abilities = array_values( array_unique( $authority_gated_abilities ) );
+		sort( $authority_gated_abilities, SORT_STRING );
+
+		$reconstructed_catalog = array_values( array_unique( array_merge( $runtime, $blocked_abilities, $authority_gated_abilities ) ) );
 		sort( $reconstructed_catalog, SORT_STRING );
 
 		$binding = isset( $plan['candidate_binding'] ) && is_array( $plan['candidate_binding'] ) ? $plan['candidate_binding'] : array();
@@ -411,8 +423,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$grant_abilities = array_values( array_filter( $grant_abilities, static function ( $value ) { return '' !== $value; } ) );
 		sort( $grant_abilities, SORT_STRING );
 		if ( ! empty( array_diff( $grant_abilities, $runtime ) ) ) $consistency_violations[] = 'exact_grant_outside_runtime_inventory';
-		if ( $catalog !== $reconstructed_catalog ) $consistency_violations[] = 'catalog_runtime_provider_gate_partition_mismatch';
+		if ( $catalog !== $reconstructed_catalog ) $consistency_violations[] = 'catalog_runtime_gate_partition_mismatch';
 		if ( ! empty( array_intersect( $runtime, $blocked_abilities ) ) ) $consistency_violations[] = 'provider_gated_runtime_overlap';
+		if ( ! empty( array_intersect( $runtime, $authority_gated_abilities ) ) ) $consistency_violations[] = 'authority_gated_runtime_overlap';
+		if ( ! empty( array_intersect( $blocked_abilities, $authority_gated_abilities ) ) ) $consistency_violations[] = 'provider_authority_gate_overlap';
 		$projection_consistent = empty( $consistency_violations );
 
 		$blocking_conditions = array();
@@ -474,6 +488,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'generation' => $authority_generation,
 			'blocking_conditions' => $blocking_conditions,
 			'provider_gated' => $blocked_rows,
+			'authority_gated' => $authority_gated_rows,
 			'current_ready' => ! empty( $plan['current_ready'] ),
 			'developer_fingerprint' => $developer_fingerprint,
 			'full_staging_authority_ready' => $full_staging_authority_ready,
@@ -495,6 +510,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'catalog_write_tool_count' => count( $catalog ),
 			'runtime_eligible_write_tool_count' => count( $runtime ),
 			'provider_gated_write_tool_count' => count( $blocked_rows ),
+			'authority_gated_write_tool_count' => count( $authority_gated_rows ),
 			'write_tool_count' => $write_tool_count,
 			'exact_grants_existing' => count( $grants ),
 			'exact_grants_missing_count' => $missing,
@@ -528,7 +544,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'generic_raw_sql_breakglass_included' => false,
 			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
-			'blocked_catalog_abilities' => $blocked_rows,
+			'provider_gated_catalog_abilities' => $blocked_rows,
+			'authority_gated_catalog_abilities' => $authority_gated_rows,
+			'blocked_catalog_abilities' => array_values( array_merge( $blocked_rows, $authority_gated_rows ) ),
 		);
 	}
 
