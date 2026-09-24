@@ -13,6 +13,20 @@ $check = static function ( $condition, $message ) {
 $check( current_user_can( 'manage_options' ), 'Runtime admin UI smoke requires an administrator.' );
 $check( class_exists( 'MAD4B_SCP_Admin_UI' ), 'Admin governance UI class is unavailable.' );
 $check( has_action( 'admin_menu', array( 'MAD4B_SCP_Admin_UI', 'register_menu' ) ) !== false, 'Admin governance menu hook is not registered.' );
+$check( class_exists( 'MAD4B_SCP_Context_Admin_UI' ), 'Context settings admin UI class is unavailable.' );
+$check(
+	has_action( 'wp_ajax_mad4b_context_update_source_policy', array( 'MAD4B_SCP_Context_Admin_UI', 'handle_update_source_policy' ) ) !== false,
+	'Context Source Policy AJAX action is not registered.'
+);
+$check(
+	has_action( 'wp_ajax_mad4b_context_review_policy_save', array( 'MAD4B_SCP_Context_Admin_UI', 'handle_save_review_policy' ) ) !== false,
+	'Context Approval Mode AJAX action is not registered.'
+);
+$check( class_exists( 'MAD4B_SCP_Site_Profile_Admin' ), 'Site Profile admin class is unavailable.' );
+$check(
+	has_action( 'wp_ajax_mad4b_site_profile_save', array( 'MAD4B_SCP_Site_Profile_Admin', 'handle_save' ) ) !== false,
+	'Site Profile settings AJAX action is not registered.'
+);
 
 $tables = MAD4B_SCP_Schema::tables();
 global $wpdb;
@@ -78,4 +92,4 @@ $check( false === strpos( $html, 'rollback_payload' ), 'Admin governance HTML ex
 $after = $counts();
 $check( $before === $after, 'Read-only admin governance inspection changed authority/approval/mutation state.' );
 
-echo "mad4b.site-control-plane.runtime-admin-governance-ui.v1: PASS\n";
+echo "mad4b.site-control-plane.runtime-admin-governance-ui.v2: PASS\n";
