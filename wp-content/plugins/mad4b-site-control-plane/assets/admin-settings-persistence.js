@@ -62,11 +62,42 @@
 				cache: "no-store",
 				headers: {
 					"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-					"X-Requested-With": "XMLHttpRequest"
+					"X-Requested-With": "XMLHttpRequest",
+					"Accept": "application/json"
 				},
 				body: body.toString()
 			});
-			var payload = await response.json();
+			var responseText = await response.text();
+			var trimmedResponse = (responseText || "").trim();
+
+			// WordPress admin-ajax returns the literal sentinel "0" when the
+			// requested action is not registered in that request lifecycle.
+			// Ordinary settings forms also retain their existing admin-post.php
+			// endpoint, so fall back only for this exact sentinel. Restore
+			// controls first because disabled controls are excluded from native
+			// form submission. Governance/destructive actions never opt into
+			// this shared settings form contract.
+			if (response.status === 400 && trimmedResponse === "0") {
+				controls.forEach(function (control, index) { control.disabled = priorDisabled[index]; });
+				form.removeAttribute("aria-busy");
+				delete form.dataset.mad4bBusy;
+				if (window.HTMLFormElement && window.HTMLFormElement.prototype && typeof window.HTMLFormElement.prototype.submit === "function") {
+					window.HTMLFormElement.prototype.submit.call(form);
+					return;
+				}
+				var sentinelFailure = new Error("AJAX settings action was not registered and native fallback is unavailable.");
+				sentinelFailure.mad4bCode = "mad4b_settings_ajax_action_unregistered";
+				throw sentinelFailure;
+			}
+
+			var payload;
+			try {
+				payload = JSON.parse(responseText);
+			} catch (parseError) {
+				var nonJsonFailure = new Error("Settings endpoint returned a non-JSON response (HTTP " + response.status + ").");
+				nonJsonFailure.mad4bCode = "mad4b_settings_non_json_response";
+				throw nonJsonFailure;
+			}
 			if (!payload || !payload.success) {
 				var failure = new Error(payload && payload.data && payload.data.message ? payload.data.message : (cfg().failed || "Settings could not be persisted."));
 				failure.mad4bCode = payload && payload.data && payload.data.code ? payload.data.code : "mad4b_settings_persist_failed";
