@@ -172,4 +172,12 @@ for body in [handshake_tools_body, observer_tools_body, skill_tools_body]:
     assert "get_object_vars" in body
     assert "['tools']" in body
 
-print("mad4b.chatgpt-refresh-hotpath.v6: PASS")
+# Repeated MCP discovery requests must not persist generic telemetry counters
+# once request coverage for the current build is already established. Warnings
+# still mark telemetry dirty independently through record_warning().
+mark_request_body = observer.split("private static function mark_current_request()", 1)[1].split("private static function request_class()", 1)[0]
+assert "'mcp' === $class" in mark_request_body
+assert "(int) $telemetry['request_coverage'][ $class ] > 0" in mark_request_body
+assert "return;" in mark_request_body
+
+print("mad4b.chatgpt-refresh-hotpath.v7: PASS")
