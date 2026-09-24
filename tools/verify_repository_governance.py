@@ -116,6 +116,7 @@ def main() -> int:
     pull_rules = [rule for _, rule in all_rules if rule.get("type") == "pull_request"]
     if not pull_rules:
         raise SystemExit("pull_request rule missing")
+    expected_merge_methods = set(pr_policy.get("allowed_merge_methods") or [])
     if not any(
         int((rule.get("parameters") or {}).get("required_approving_review_count", -1))
         == int(pr_policy.get("required_approving_review_count", 0))
@@ -123,9 +124,11 @@ def main() -> int:
         == bool(pr_policy.get("require_last_push_approval", False))
         and bool((rule.get("parameters") or {}).get("required_review_thread_resolution"))
         == bool(pr_policy.get("required_review_thread_resolution", True))
+        and set((rule.get("parameters") or {}).get("allowed_merge_methods") or [])
+        == expected_merge_methods
         for rule in pull_rules
     ):
-        raise SystemExit("pull_request rule does not satisfy single-owner-safe review policy")
+        raise SystemExit("pull_request rule does not satisfy single-owner-safe review/merge policy")
 
     status_policy = policy.get("required_status_checks") or {}
     required_rows = status_policy.get("contexts") or []
@@ -172,6 +175,7 @@ def main() -> int:
         ],
         "strict_required_status_checks_policy": True,
         "bypass_actor_count": 0,
+        "allowed_merge_methods": sorted(expected_merge_methods),
         "single_owner_safe": True,
     }
     encoded = json.dumps(result, indent=2, sort_keys=True) + "\n"
