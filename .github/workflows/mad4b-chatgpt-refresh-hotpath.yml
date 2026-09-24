@@ -13,6 +13,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-finalizer.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-oauth-autoconfig.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt'
