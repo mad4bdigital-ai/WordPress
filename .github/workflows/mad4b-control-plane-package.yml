@@ -23,6 +23,9 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}
@@ -591,6 +594,58 @@ jobs:
           grep -Fq '"elementor_bounded_reversible_write_requires_exact_provider_certification": true' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
+      - name: Attest General Distribution release subjects
+        id: release_attest
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            /tmp/mad4b-install-kit/mad4b-site-control-plane-*.zip
+            /tmp/mad4b-install-kit/mcp-adapter-0.6.1.zip
+            /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
+            /tmp/mad4b-install-kit/install-manifest.json
+            /tmp/mad4b-install-kit/SHA256SUMS
+
+      - name: Persist release attestation evidence
+        shell: bash
+        env:
+          ATTESTATION_ID: ${{ steps.release_attest.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.release_attest.outputs.attestation-url }}
+          ATTESTATION_BUNDLE: ${{ steps.release_attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-install-kit'
+          test -n "$ATTESTATION_ID"
+          test -n "$ATTESTATION_URL"
+          test -f "$ATTESTATION_BUNDLE"
+          cp "$ATTESTATION_BUNDLE" "$stage/RELEASE-ATTESTATION.sigstore.json"
+          export RELEASE_ATTESTATION_BUNDLE_SHA256="$(sha256sum "$stage/RELEASE-ATTESTATION.sigstore.json" | awk '{print $1}')"
+          python3 - "$stage" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+
+          stage = Path(sys.argv[1])
+          locator = {
+              'contract': 'mad4b.release-attestation-locator.v1',
+              'trust_role': 'release_package_attestation',
+              'provider': 'github_actions_sigstore',
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'source_commit_sha': os.environ['SOURCE_SHA'],
+              'attestation_id': os.environ['ATTESTATION_ID'],
+              'attestation_url': os.environ['ATTESTATION_URL'],
+              'bundle_file': 'RELEASE-ATTESTATION.sigstore.json',
+              'bundle_sha256': os.environ['RELEASE_ATTESTATION_BUNDLE_SHA256'],
+              'runtime_self_attestation_authoritative': False,
+              'verification_boundary': 'external_release_verifier',
+          }
+          (stage / 'RELEASE-ATTESTATION-LOCATOR.json').write_text(
+              json.dumps(locator, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          test "$(jq -r '.source_commit_sha' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = "$SOURCE_SHA"
+          test "$(jq -r '.provider' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'github_actions_sigstore'
+          test "$(jq -r '.runtime_self_attestation_authoritative' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'false'
+
       - name: Upload reviewed General Distribution installation kit
         uses: actions/upload-artifact@v4
         with:
@@ -604,5 +659,7 @@ jobs:
             /tmp/mad4b-install-kit/SHA256SUMS
             /tmp/mad4b-install-kit/install-manifest.json
             /tmp/mad4b-install-kit/INSTALL-GENERAL-DISTRIBUTION.md
+            /tmp/mad4b-install-kit/RELEASE-ATTESTATION.sigstore.json
+            /tmp/mad4b-install-kit/RELEASE-ATTESTATION-LOCATOR.json
           if-no-files-found: error
           retention-days: 30
