@@ -78,10 +78,10 @@ for marker in [
 ]:
     assert marker in client, marker
 
+assert 'if (response.status === 400 && trimmedResponse === "0")' in client
 sentinel = client.split('if (response.status === 400 && trimmedResponse === "0")', 1)[1].split("var payload;", 1)[0]
 assert "HTMLFormElement.prototype.submit.call(form)" in sentinel
 assert "payload.data" not in sentinel
-assert 'trimmedResponse === "0"' in sentinel
 
 # Site Profile writes must survive stale persistent Options caches and prove exact
 # readback before returning success.
@@ -176,4 +176,4 @@ for marker in [
     assert marker in oauth, marker
 assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
 
-print("mad4b.admin-settings-persistence.v6: PASS")
+print("mad4b.admin-settings-persistence.v7: PASS")
