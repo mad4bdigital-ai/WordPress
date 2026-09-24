@@ -48,10 +48,14 @@ for marker in [
 early_context = loader.index("MAD4B_SCP_Context_Admin_UI::boot();")
 early_site = loader.index("MAD4B_SCP_Site_Profile_Admin::boot();")
 early_persistence = loader.index("MAD4B_SCP_Admin_Settings_Persistence::boot();")
+early_oauth_actions = loader.index("MAD4B_SCP_Staging_OAuth_Autoconfig::boot_admin_actions_early();")
 heavy_boot = loader.index("MAD4B_SCP_Site_Profile::bootstrap();")
 assert early_context < heavy_boot
 assert early_site < heavy_boot
 assert early_persistence < heavy_boot
+assert early_oauth_actions < heavy_boot
+assert "public static function boot_admin_actions_early()" in oauth
+assert "self::boot_admin_actions();" in oauth
 
 # The browser client may fall back to the existing admin-post.php endpoint only
 # for the exact unregistered-action sentinel. It must not hide real HTTP/JSON,
@@ -163,4 +167,4 @@ for marker in [
     assert marker in oauth, marker
 assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
 
-print("mad4b.admin-settings-persistence.v3: PASS")
+print("mad4b.admin-settings-persistence.v4: PASS")
