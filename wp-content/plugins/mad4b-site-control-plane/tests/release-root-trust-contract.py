@@ -36,14 +36,15 @@ if "--deny-self-hosted-runners" not in command:
 if "--bundle" not in command:
     raise SystemExit("root-trust verifier must support bundled offline attestation evidence")
 
-def bundle_for(artifact, signer_digest, workflow_ref, event_name):
+def bundle_for(artifact, signer_digest, workflow_ref, event_name, additional_subjects=()):
     statement = {
         "_type": "https://in-toto.io/Statement/v1",
         "subject": [
             {
-                "name": artifact.name,
-                "digest": {"sha256": module.sha256_file(artifact)},
+                "name": subject.name,
+                "digest": {"sha256": module.sha256_file(subject)},
             }
+            for subject in (artifact, *tuple(additional_subjects))
         ],
         "predicateType": "https://slsa.dev/provenance/v1",
         "predicate": {
@@ -169,20 +170,71 @@ with tempfile.TemporaryDirectory() as tmp:
 
     trusted_bundle = tmp / "trusted.sigstore.json"
     trusted_bundle.write_text(
-        json.dumps(bundle_for(artifact, signer_digest, module.TRUSTED_SIGNER_REF, "workflow_dispatch")),
+        json.dumps(
+            bundle_for(
+                artifact,
+                signer_digest,
+                module.TRUSTED_SIGNER_REF,
+                "workflow_dispatch",
+                additional_subjects=(install,),
+            )
+        ),
         encoding="utf-8",
     )
-    policy = module.preflight_bundle_policy(artifact, trusted_bundle, signer_digest)
+    policy = module.preflight_bundle_policy(
+        artifact,
+        trusted_bundle,
+        signer_digest,
+        additional_subjects=(install,),
+    )
     if policy["workflow_ref"] != module.TRUSTED_SIGNER_REF:
         raise SystemExit("trusted signer ref was not preserved")
+    verified_subjects = {
+        row["name"]: row["sha256"] for row in policy.get("verified_subjects", [])
+    }
+    expected_subjects = {
+        artifact.name: module.sha256_file(artifact),
+        install.name: module.sha256_file(install),
+    }
+    if verified_subjects != expected_subjects:
+        raise SystemExit("trusted root preflight did not bind the exact artifact + install manifest subject set")
+
+    signed_install = install.read_bytes()
+    install.write_text(json.dumps({**install_data, "commit": "c" * 40}), encoding="utf-8")
+    try:
+        module.preflight_bundle_policy(
+            artifact,
+            trusted_bundle,
+            signer_digest,
+            additional_subjects=(install,),
+        )
+    except ValueError as exc:
+        if "required subject digest" not in str(exc) or "install-manifest.json" not in str(exc):
+            raise
+    else:
+        raise SystemExit("tampered install manifest unexpectedly satisfied the trusted attestation subject set")
+    install.write_bytes(signed_install)
 
     candidate_bundle = tmp / "candidate.sigstore.json"
     candidate_bundle.write_text(
-        json.dumps(bundle_for(artifact, signer_digest, "refs/pull/57/merge", "pull_request")),
+        json.dumps(
+            bundle_for(
+                artifact,
+                signer_digest,
+                "refs/pull/57/merge",
+                "pull_request",
+                additional_subjects=(install,),
+            )
+        ),
         encoding="utf-8",
     )
     try:
-        module.preflight_bundle_policy(artifact, candidate_bundle, signer_digest)
+        module.preflight_bundle_policy(
+            artifact,
+            candidate_bundle,
+            signer_digest,
+            additional_subjects=(install,),
+        )
     except ValueError as exc:
         if "signer ref is not trusted" not in str(exc):
             raise
