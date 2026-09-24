@@ -17,6 +17,8 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
@@ -31,6 +33,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
@@ -55,6 +59,8 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
@@ -69,6 +75,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
@@ -156,6 +164,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
+
+      - name: Verify upgrade continuity migration diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php
 
       - name: Verify WPML external diagnostic contract
         shell: bash
@@ -260,3 +274,75 @@ jobs:
           path: /tmp/mad4b-bitflows-exact-package-diagnostic.json
           if-no-files-found: error
           retention-days: 14
+
+
+  schema-mariadb-v6-v9:
+    name: Schema v6 v7 v8 to v9 real MariaDB upgrade
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: wordpress
+          MARIADB_USER: wordpress
+          MARIADB_PASSWORD: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - name: Checkout exact implementation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Setup PHP 8.3 with MariaDB client extension
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli
+          coverage: none
+
+      - name: Install WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+          sudo install -m 0755 /tmp/wp-cli.phar /usr/local/bin/wp
+
+      - name: Configure disposable WordPress database
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp wp-config-sample.php wp-config.php
+          php -r '
+          $p="wp-config.php";
+          $s=file_get_contents($p);
+          $s=str_replace("database_name_here","wordpress",$s);
+          $s=str_replace("username_here","wordpress",$s);
+          $s=str_replace("password_here","wordpress",$s);
+          $s=str_replace("localhost","127.0.0.1",$s);
+          file_put_contents($p,$s);
+          '
+          wp core install             --allow-root             --url=http://mad4b-schema.test             --title='MAD4B Schema Migration'             --admin_user=admin             --admin_password='mad4b-schema-ci-only'             --admin_email=ci@example.invalid             --skip-email
+
+      - name: Prove real MariaDB schema v6 to v9 migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh

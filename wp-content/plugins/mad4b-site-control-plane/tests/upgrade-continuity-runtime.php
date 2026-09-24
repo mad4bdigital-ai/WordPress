@@ -51,6 +51,16 @@ final class MAD4B_SCP_Local_OAuth_Server {
     }
 }
 require dirname(__DIR__).'/includes/class-mad4b-scp-upgrade-continuity.php';
+final class MAD4B_SCP_Schema {
+    public static $fixture = array();
+    public static function status($deep=false){return self::$fixture;}
+}
+final class MAD4B_SCP_Plugin {
+    public static $code = '';
+    public static $data = array();
+    public static function governance_bootstrap_error_code(){return self::$code;}
+    public static function governance_bootstrap_error_data(){return self::$data;}
+}
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);}}
 function legacy($env='staging',$origin='https://staging.example.test'){return array('contract'=>MAD4B_SCP_Site_Profile::LEGACY_CONTRACT,'version'=>MAD4B_SCP_Site_Profile::LEGACY_VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>4,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Legacy','chatgpt_app_id'=>'plugin_asdk_app_legacy','oauth_user_ids'=>array(7,8),'related_origins'=>array(),'features'=>array('oauth'=>true,'skills'=>true,'write'=>true,'production_write_confirmed'=>true,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>true),'legacy_agent_slug'=>'legacy','legacy_zero_touch'=>true);}
 function snapshot($env='staging',$origin='https://staging.example.test'){return array('version'=>3,'environment'=>$env,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','profile_revision'=>4,'profile_digest'=>str_repeat('a',64),'canonical_origin'=>$origin,'wp_user_id'=>7,'primary_owner_user_id'=>7,'oauth_user_ids'=>array(7),'issuer'=>rtrim($origin,'/').'/oauth/mcp','updated_at'=>'2026-09-14T00:00:00Z');}
@@ -186,5 +196,40 @@ ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/wordpress/oauth/
 ok(MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/.well-known/oauth-authorization-server/wordpress/oauth/mcp'),'subdirectory metadata path recognized');
 ok(!MAD4B_SCP_Upgrade_Continuity::is_known_oauth_protocol_path('/oauth/mcp/authorize'),'domain-root OAuth path rejected for subdirectory site');
 $GLOBALS['home']='https://staging.example.test';
+
+// Schema migration failures surface durable blockers only to the administrator notice.
+// The governance read ability must keep database-engine errors out of its public payload.
+MAD4B_SCP_Schema::$fixture=array(
+    'ready'=>false,
+    'physical_integrity'=>array(
+        'ready'=>false,
+        'missing_tables'=>array(),
+        'missing_approval_columns'=>array(),
+        'missing_durable_columns'=>array('idempotency.claim_epoch'),
+        'missing_durable_indexes'=>array('outbox.provider_idempotency'),
+    ),
+);
+MAD4B_SCP_Plugin::$code='mad4b_governance_schema_unavailable';
+MAD4B_SCP_Plugin::$data=array(
+    'from_version'=>6,
+    'target_version'=>9,
+    'dbdelta_diagnostics'=>array(
+        array(
+            'table'=>'wp_mad4b_execution_outbox',
+            'last_error'=>'Duplicate entry for key provider_idempotency',
+        ),
+    ),
+);
+$governance=MAD4B_SCP_Upgrade_Continuity::governance_status();
+ok(!array_key_exists('bootstrap_error_data',$governance),'governance read status must not expose raw schema bootstrap error data');
+ok(false===strpos(wp_json_encode($governance),'Duplicate entry for key'),'governance read status must not expose database-engine error details');
+ob_start();
+MAD4B_SCP_Upgrade_Continuity::replace_ambiguous_governance_notice();
+$notice=ob_get_clean();
+ok(false!==strpos($notice,'mad4b_governance_schema_unavailable'),'admin notice preserves exact schema blocker code');
+ok(false!==strpos($notice,'schema=6→9'),'admin notice identifies migration origin and target');
+ok(false!==strpos($notice,'missing_durable_columns=idempotency.claim_epoch'),'admin notice exposes missing durable columns');
+ok(false!==strpos($notice,'missing_durable_indexes=outbox.provider_idempotency'),'admin notice exposes missing durable indexes');
+ok(false!==strpos($notice,'dbdelta=wp_mad4b_execution_outbox:Duplicate entry for key provider_idempotency'),'admin notice exposes bounded dbDelta error');
 
 fwrite(STDOUT,"mad4b.upgrade-continuity.runtime.v1: PASS\n");

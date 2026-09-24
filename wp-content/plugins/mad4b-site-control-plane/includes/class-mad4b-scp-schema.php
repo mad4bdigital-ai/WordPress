@@ -508,7 +508,25 @@ final class MAD4B_SCP_Schema {
 			KEY received_at (received_at)
 		) $charset;";
 
-		foreach ( $sql as $statement ) dbDelta( $statement );
+		$dbdelta_diagnostics = array();
+		foreach ( $sql as $statement ) {
+			$table_name = '';
+			if ( preg_match( '/^\\s*CREATE\\s+TABLE\\s+([^\\s(]+)/i', $statement, $match ) ) $table_name = trim( (string) $match[1], '`' );
+			$result = dbDelta( $statement );
+			$last_error = isset( $wpdb->last_error ) ? trim( (string) $wpdb->last_error ) : '';
+			$messages = array();
+			foreach ( is_array( $result ) ? array_values( $result ) : array() as $message ) {
+				$message = trim( (string) $message );
+				if ( '' === $message ) continue;
+				$messages[] = substr( $message, 0, 500 );
+				if ( count( $messages ) >= 20 ) break;
+			}
+			$dbdelta_diagnostics[] = array(
+				'table' => $table_name,
+				'messages' => $messages,
+				'last_error' => substr( $last_error, 0, 1000 ),
+			);
+		}
 		self::migrate_legacy_candidate_bindings();
 		self::$physical_status_cache = null;
 		$physical = self::physical_integrity_status();
@@ -521,7 +539,10 @@ final class MAD4B_SCP_Schema {
 					'from_version' => $from_version,
 					'target_version' => self::VERSION,
 					'contract_sha256' => self::migration_contract_sha256(),
+					'database_server_version' => method_exists( $wpdb, 'db_version' ) ? (string) $wpdb->db_version() : '',
+					'charset_collate' => (string) $charset,
 					'physical_integrity' => $physical,
+					'dbdelta_diagnostics' => $dbdelta_diagnostics,
 				)
 			);
 		}

@@ -104,6 +104,7 @@ jobs:
               'Governed execution fence (latest)',
               'Human approval decision (8.3)',
               'OAuth bridge runtime (latest)',
+              'Schema v6 v7 v8 to v9 real MariaDB upgrade',
           ]
           release_evidence = [
               'Root trust and Recovery Plane',
