@@ -25,6 +25,14 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 
 	public static function observe() {
 		if ( self::$observing ) return self::persisted_status();
+		// MCP initialize/tools-list/call are latency-sensitive execution paths.
+		// Certification evaluation performs registry/provider/filesystem snapshot
+		// inspection and must never run merely because the Abilities registry was
+		// initialized for a transport request. Persisted evidence remains readable;
+		// explicit admin/CLI/certification lifecycles own recomputation.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) {
+			return self::persisted_status();
+		}
 		self::$observing = true;
 		$result = self::evaluate();
 		self::$observing = false;
