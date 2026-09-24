@@ -64,7 +64,7 @@ required_consent_semantics = [
     'mad4b:authority:step-up',
     'Approve governed access',
     'Write, Developer and Developer Breakglass are separate governed authorities',
-    'OAuth read identity · Write/Developer authorities separate · PKCE S256',
+    'OAuth identity · Step-up is request permission only · Write/Developer authorities separate · PKCE S256',
     'Connection and certification workspace.',
     'This page is inspection-only:',
     'Governed write capability, when available, is established separately by Write Authority, Write Runtime Certification and one-time approvals.',
