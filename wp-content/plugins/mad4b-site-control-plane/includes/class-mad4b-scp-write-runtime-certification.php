@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * external ChatGPT tool refresh remain separate live-acceptance gates.
  */
 final class MAD4B_SCP_Write_Runtime_Certification {
-	const CONTRACT = 'mad4b.write-runtime-certification.v2';
+	const CONTRACT = 'mad4b.write-runtime-certification.v3';
 	const OPTION = 'mad4b_scp_write_runtime_certification_v1';
 	private static $observing = false;
 
@@ -42,7 +42,7 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 	}
 
 	public static function observe() {
-		if ( self::$observing ) return self::status();
+		if ( self::$observing ) return self::persisted_status();
 		// Guard against accidental invocation while REST routes are still being
 		// registered. This path performs authority reconciliation, audit writes and
 		// persistence and must never sit on the MCP tools/list critical path.
@@ -55,14 +55,14 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 		}
 
 		self::$observing = true;
-		$result = self::evaluate();
+		$result = self::current_status();
 		self::$observing = false;
 		if ( ! is_array( $result ) ) return self::status();
 
 		$previous = get_option( self::OPTION, array() );
 		$previous_digest = is_array( $previous ) && isset( $previous['evidence_digest'] ) ? (string) $previous['evidence_digest'] : '';
 		$current_digest = isset( $result['evidence_digest'] ) ? (string) $result['evidence_digest'] : '';
-		if ( '' !== $current_digest && '' !== $previous_digest && hash_equals( $previous_digest, $current_digest ) ) return $previous;
+		if ( is_array( $previous ) && isset( $previous['contract'] ) && self::CONTRACT === (string) $previous['contract'] && '' !== $current_digest && '' !== $previous_digest && hash_equals( $previous_digest, $current_digest ) ) return $previous;
 
 		$audit = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
 		if ( empty( $audit['ready'] ) ) {
@@ -100,24 +100,60 @@ final class MAD4B_SCP_Write_Runtime_Certification {
 	}
 
 	public static function status() {
-		// Never surface a previously persisted exact enrolled-site certification as current
-		// truth after this database/site is moved to another origin or environment.
+		return self::current_status();
+	}
+
+	/**
+	 * Current truth is recomputed from read-only runtime inspection.
+	 * Persisted evidence is never promoted to current release truth.
+	 */
+	public static function current_status() {
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) {
 			return self::ineligible_status();
 		}
+		if ( class_exists( 'MAD4B_SCP_Live_Truth' ) && method_exists( 'MAD4B_SCP_Live_Truth', 'current_write_certification' ) ) {
+			return MAD4B_SCP_Live_Truth::current_write_certification();
+		}
+		$result = self::evaluate();
+		if ( ! is_array( $result ) ) {
+			return array(
+				'contract' => self::CONTRACT,
+				'ready' => false,
+				'state' => 'blocked',
+				'blockers' => array( 'write_runtime_live_inspection_unavailable' ),
+				'current_truth' => true,
+				'persistence' => 'read_only_live_inspection',
+			);
+		}
+		$result['current_truth'] = true;
+		$result['persistence'] = 'read_only_live_inspection';
+		return $result;
+	}
+
+	/**
+	 * Historical certification is audit evidence only.
+	 */
+	public static function persisted_status() {
 		$stored = get_option( self::OPTION, array() );
-		if ( is_array( $stored ) && isset( $stored['contract'] ) && self::CONTRACT === $stored['contract'] ) return $stored;
+		if ( is_array( $stored ) && ! empty( $stored ) ) {
+			$stored['current_truth'] = false;
+			$stored['historical'] = true;
+			$stored['persistence'] = 'historical_evidence_only';
+			return $stored;
+		}
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => false,
 			'state' => 'pending',
 			'blockers' => array( 'write_runtime_certification_not_observed' ),
+			'current_truth' => false,
+			'historical' => true,
+			'persistence' => 'historical_evidence_only',
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',
 			'external_wpml_acceptance_required' => true,
 			'external_wpml_acceptance_verified' => false,
 			'external_client_tools_verified' => false,
-			'external_client_action' => 'Run any deployment-specific external acceptance and Refresh/Scan Tools for the same Plugin after this exact enrolled build is deployed.',
 		);
 	}
 

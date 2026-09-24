@@ -11,6 +11,7 @@ cert = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php').rea
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
 provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
+seeder = (wp / 'includes' / 'class-mad4b-scp-skill-seeder.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
@@ -94,7 +95,11 @@ if identity_pos < 0 or list_pos < 0 or identity_pos > list_pos:
     raise SystemExit('exporter must establish the initial identity before taking its enabled-Skill work-list')
 
 for marker in [
-    "const CONTRACT = 'mad4b.skill-runtime-certification.v1'",
+    "const CONTRACT = 'mad4b.skill-runtime-certification.v2'",
+    "MAD4B_SCP_Skill_Seeder::inspect()",
+    "MAD4B_SCP_Skill_Provider_Discovery::inspect()",
+    "'seed_inspection' => $seed",
+    "'provider_inspection' => $provider",
     "wp_abilities_api_init",
     "mcp_adapter_init",
     "admin_init",
@@ -148,6 +153,60 @@ if adapter_prepare < 0 or adapter_register < 0 or provider_reconcile < 0:
     raise SystemExit('provider reconciliation is missing deterministic adapter preparation')
 if not (adapter_prepare < adapter_register < provider_reconcile):
     raise SystemExit('adapter defaults must be registered before provider Skill reconciliation')
+
+for text_value, start_marker, end_marker, label in [
+    (seeder, "public static function inspect()", "private static function set_status", "seed inspection"),
+    (provider_discovery, "public static function inspect()", "private static function set_status", "provider inspection"),
+]:
+    section = text_value[text_value.index(start_marker):text_value.index(end_marker)]
+    for forbidden in [
+        "update_option(",
+        "add_option(",
+        "delete_option(",
+        "wp_mkdir_p(",
+        "file_put_contents(",
+        "atomic_write(",
+        "MAD4B_SCP_Audit::record",
+    ]:
+        if forbidden in section:
+            raise SystemExit(f'{label} must remain read-only: {forbidden}')
+
+for marker in [
+    "const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1'",
+    "'expected_sha256'",
+    "'current_sha256'",
+    "'would_create'",
+    "'would_refresh'",
+    "'user_owned'",
+    "'mutation_performed' => false",
+]:
+    if marker not in seeder:
+        raise SystemExit(f'missing seed inspection invariant: {marker}')
+
+for marker in [
+    "const INSPECTION_CONTRACT = 'mad4b.skill-provider-reconciliation-inspection.v1'",
+    "'provider_family'",
+    "'desired_enabled'",
+    "'current_mapping'",
+    "'would_enable'",
+    "'would_disable'",
+    "'user_owned'",
+    "'provider_plugin_mutation' => false",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing provider inspection invariant: {marker}')
+
+if "const CONTRACT = 'mad4b.write-runtime-certification.v3'" not in write_cert:
+    raise SystemExit('write runtime certification must expose v3 current-truth semantics')
+for marker in [
+    "public static function current_status()",
+    "public static function persisted_status()",
+    "MAD4B_SCP_Live_Truth::current_write_certification()",
+    "'historical_evidence_only'",
+]:
+    if marker not in write_cert:
+        raise SystemExit(f'missing write current/historical split invariant: {marker}')
+
 
 for marker in [
     "in_array( $owner, array( self::CONTRACT, 'mad4b.skill-seeder.v1' ), true )",
@@ -218,6 +277,10 @@ if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
 for marker in [
     "const CONTRACT = 'mad4b.live-truth.v2'",
     "const FRESHNESS_OPTION = 'mad4b_scp_write_runtime_certification_freshness_v1'",
+    "'evidence_schema_revision' => 3",
+    "'candidate_binding_fingerprint'",
+    "'package_manifest_digest'",
+    "'artifact_identity'",
     "add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_live_read_callbacks' ), 100, 2 )",
     "'mad4b/write-authority-status'",
     "'mad4b/write-runtime-certification'",

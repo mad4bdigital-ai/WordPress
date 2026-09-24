@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Plugin snapshot, because that is outside the WordPress trust boundary.
  */
 final class MAD4B_SCP_Skill_Runtime_Certification {
-	const CONTRACT = 'mad4b.skill-runtime-certification.v1';
+	const CONTRACT = 'mad4b.skill-runtime-certification.v2';
 	const OPTION = 'mad4b_scp_skill_runtime_certification_v1';
 
 	private static $observing = false;
@@ -137,12 +137,12 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		$checks['profile_app_mapping_bound'] = '' !== $expected_app && '' !== $current_app && hash_equals( $expected_app, $current_app );
 		if ( ! $checks['profile_app_mapping_bound'] ) $blockers[] = 'profile_app_mapping_mismatch';
 
-		$seed = class_exists( 'MAD4B_SCP_Skill_Seeder' ) ? MAD4B_SCP_Skill_Seeder::status() : array();
-		$checks['seed_pack_ready'] = isset( $seed['state'] ) && 'ready' === $seed['state'];
+		$seed = class_exists( 'MAD4B_SCP_Skill_Seeder' ) && method_exists( 'MAD4B_SCP_Skill_Seeder', 'inspect' ) ? MAD4B_SCP_Skill_Seeder::inspect() : array();
+		$checks['seed_pack_ready'] = ! empty( $seed['ready'] ) && isset( $seed['state'] ) && 'ready' === $seed['state'];
 		if ( ! $checks['seed_pack_ready'] ) $blockers[] = 'seed_pack_not_ready';
 
-		$provider = class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) ? MAD4B_SCP_Skill_Provider_Discovery::status() : array();
-		$checks['provider_reconciliation_ready'] = isset( $provider['state'] ) && 'ready' === $provider['state'];
+		$provider = class_exists( 'MAD4B_SCP_Skill_Provider_Discovery' ) && method_exists( 'MAD4B_SCP_Skill_Provider_Discovery', 'inspect' ) ? MAD4B_SCP_Skill_Provider_Discovery::inspect() : array();
+		$checks['provider_reconciliation_ready'] = ! empty( $provider['ready'] ) && isset( $provider['state'] ) && 'ready' === $provider['state'];
 		$checks['provider_mutation_absent'] = empty( $provider['provider_plugin_mutation'] );
 		$checks['provider_skill_delete_absent'] = empty( $provider['deletes_skills'] );
 		if ( ! $checks['provider_reconciliation_ready'] ) $blockers[] = 'provider_reconciliation_not_ready';
@@ -204,6 +204,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'missing_read_abilities' => $missing_abilities,
 			'write_ability_leaks' => $write_leaks,
 			'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? $autoconfig['app_mapping_source'] : '',
+			'seed_inspection' => $seed,
+			'provider_inspection' => $provider,
 			'provider_families' => isset( $provider['families'] ) ? $provider['families'] : array(),
 			'snapshot_skill_count' => isset( $snapshot['skill_count'] ) ? (int) $snapshot['skill_count'] : 0,
 			'snapshot_identity_token' => $identity_token,
@@ -219,6 +221,8 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'missing_base_skills' => $missing_base,
 			'missing_read_abilities' => $missing_abilities,
 			'write_ability_leaks' => $write_leaks,
+			'seed_inspection' => $seed,
+			'provider_inspection' => $provider,
 			'provider_families' => isset( $provider['families'] ) ? $provider['families'] : array(),
 			'snapshot_skill_count' => isset( $snapshot['skill_count'] ) ? (int) $snapshot['skill_count'] : 0,
 			'snapshot_identity_token' => $identity_token,
