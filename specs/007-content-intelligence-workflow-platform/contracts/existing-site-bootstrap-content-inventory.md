@@ -101,3 +101,16 @@ After initial bootstrap, use changed-since/event/provider signals where reliable
 - no write occurs during bootstrap;
 - intent collision can block a new ContentJob;
 - historical source attribution remains clear.
+
+
+## Intent cardinality
+
+The Bootstrap contract discovers candidate intent relations but does not enforce a one-intent/one-page model.
+
+Normalized intent relationships follow mad4b.intent-ownership.v1:
+- many-to-many;
+- role-based;
+- confidence/evidence-backed;
+- versioned over time.
+
+Cannibalization is a derived analysis, not an automatic conclusion from multiple pages sharing a topic.

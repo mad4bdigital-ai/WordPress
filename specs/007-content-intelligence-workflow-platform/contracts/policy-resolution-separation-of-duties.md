@@ -109,3 +109,41 @@ Kill switch active + any allow => DENY.
 - emergency approval expiry;
 - stale policy version invalidates cached decision;
 - explainability contains the complete precedence chain.
+
+
+## Operating modes
+
+### ENTERPRISE_MULTI_OPERATOR
+True separation of duties:
+- distinct human principals;
+- quorum/role rules as configured;
+- self-approval denied for designated risk classes.
+
+### SINGLE_OWNER_HARDENED
+Used where only one human owner is available.
+This is NOT represented as true human separation of duties.
+
+Compensating controls MAY include:
+- strong reauthentication;
+- separate privileged credential/session;
+- explicit high-risk owner attestation;
+- short TTL;
+- optional delay/cooling-off period;
+- exact candidate/plan binding;
+- post-action review evidence;
+- narrower blast-radius budget.
+
+Breakglass behavior remains separately constrained.
+
+### EMERGENCY_RECOVERY
+Only for declared incident/recovery paths:
+- exact RecoveryPlan;
+- short TTL;
+- separate recovery credential where configured;
+- immutable incident/reason;
+- mandatory post-action review.
+
+## Truthfulness
+
+Status/evidence MUST state the active operating mode.
+SINGLE_OWNER_HARDENED must never be reported as dual-control/multi-person SoD.

@@ -1,0 +1,119 @@
+{
+  "contract": "mad4b.feature007-critical-gate-graph.v1",
+  "description": "Critical Kernel hard-gate DAG. Broader maturity gates remain outside Critical Kernel until architecture-freeze admission.",
+  "roots": [
+    "baseline_current",
+    "release_provenance_root",
+    "recovery_plane_available"
+  ],
+  "terminal_states": [
+    "critical_kernel_vertical_slice_verified"
+  ],
+  "gates": [
+    {
+      "id": "baseline_current",
+      "depends_on": []
+    },
+    {
+      "id": "release_provenance_root",
+      "depends_on": []
+    },
+    {
+      "id": "recovery_plane_available",
+      "depends_on": [
+        "release_provenance_root"
+      ]
+    },
+    {
+      "id": "multi_authority_live",
+      "depends_on": [
+        "baseline_current",
+        "release_provenance_root"
+      ]
+    },
+    {
+      "id": "policy_engine_ready",
+      "depends_on": [
+        "multi_authority_live"
+      ]
+    },
+    {
+      "id": "gate_liveness_verified",
+      "depends_on": [
+        "policy_engine_ready"
+      ]
+    },
+    {
+      "id": "provider_exact_certified",
+      "depends_on": [
+        "baseline_current",
+        "policy_engine_ready"
+      ]
+    },
+    {
+      "id": "execution_commit_guard_ready",
+      "depends_on": [
+        "policy_engine_ready",
+        "provider_exact_certified"
+      ]
+    },
+    {
+      "id": "durable_execution_ready",
+      "depends_on": [
+        "execution_commit_guard_ready"
+      ]
+    },
+    {
+      "id": "site_bootstrap_reconciled",
+      "depends_on": [
+        "baseline_current"
+      ]
+    },
+    {
+      "id": "content_kernel_ready",
+      "depends_on": [
+        "site_bootstrap_reconciled",
+        "durable_execution_ready"
+      ]
+    },
+    {
+      "id": "draft_publish_path_ready",
+      "depends_on": [
+        "content_kernel_ready",
+        "provider_exact_certified"
+      ]
+    },
+    {
+      "id": "semantic_publication_verification_ready",
+      "depends_on": [
+        "draft_publish_path_ready"
+      ]
+    },
+    {
+      "id": "critical_kernel_vertical_slice_verified",
+      "depends_on": [
+        "semantic_publication_verification_ready",
+        "recovery_plane_available",
+        "gate_liveness_verified"
+      ]
+    }
+  ],
+  "bootstrap_transitions": [
+    {
+      "id": "candidate_binding_bootstrap",
+      "from": "candidate_unbound",
+      "to": "candidate_bound",
+      "exact_operation": "governed candidate bind/bootstrap",
+      "one_shot": true,
+      "requires_postcondition": "candidate_binding_match"
+    },
+    {
+      "id": "provider_canary_bootstrap",
+      "from": "structurally_compatible",
+      "to": "canary_verified",
+      "exact_operation": "bounded disposable/staging canary",
+      "one_shot": false,
+      "requires_postcondition": "canary_evidence"
+    }
+  ]
+}
