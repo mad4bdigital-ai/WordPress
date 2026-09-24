@@ -362,11 +362,37 @@ if graph_path.exists():
             continue
         reachable.add(n)
         queue.extend(reverse.get(n,[]))
-    for terminal in graph.get("terminal_states",[]):
+    terminals=set(graph.get("terminal_states",[]))
+    for terminal in terminals:
         if terminal not in idset:
             errors.append(f"gate_graph:unknown_terminal:{terminal}")
         elif terminal not in reachable:
             errors.append(f"gate_graph:terminal_unreachable:{terminal}")
+
+    # Every blocking/live-precondition gate must itself have a forward closure path
+    # to a terminal state. Root-to-terminal reachability alone can hide orphan blockers.
+    if closure_path.exists():
+        def reaches_terminal(start):
+            q=deque([start])
+            seen=set()
+            while q:
+                current=q.popleft()
+                if current in terminals:
+                    return True
+                if current in seen:
+                    continue
+                seen.add(current)
+                q.extend(reverse.get(current,[]))
+            return False
+        for row in closure.get("workstreams",[]):
+            if not isinstance(row,dict):
+                continue
+            if row.get("priority") not in {"KERNEL_BLOCKER","LIVE_PRECONDITION"}:
+                continue
+            gate=row.get("gate")
+            if gate in idset and not reaches_terminal(gate):
+                errors.append(f"gate_graph:blocker_cannot_reach_terminal:{row.get('id')}:{gate}")
+
     bt=graph.get("bootstrap_transitions",[])
     tids=[x.get("id") for x in bt]
     if None in tids or len(tids)!=len(set(tids)):
@@ -431,7 +457,7 @@ if errors:
 print("FEATURE_007_SPEC_VALIDATION: PASS")
 print(f"required_files={len(required)}")
 print(f"required_phases={data.get('required_phase_count') if feature_path.exists() else 'unknown'}")
-print("gate_graph=acyclic_and_terminal_reachable")
+print("gate_graph=acyclic_terminal_reachable_and_all_blockers_closable")
 print("architecture_freeze=true")
 print("merge_authorized=false")
 print("production_activation_authorized=false")
