@@ -85,15 +85,7 @@ jobs:
           # the policy remains externally NOT ready, but this exact change set
           # may land so an administrator can apply the ruleset from audited code.
           if [ "$rc" -ne 0 ]; then
-            reason="$(python3 - "$status" <<'PY'
-import json,sys
-try:
-    data=json.load(open(sys.argv[1],encoding='utf-8'))
-except Exception:
-    data={}
-print(str(data.get('failure_reason') or ''))
-PY
-)"
+            reason="$(jq -r '.failure_reason // ""' "$status" 2>/dev/null || true)"
             changed=/tmp/mad4b-repository-governance-changed-files.txt
             : > "$changed"
             if [ -n "${BASE_SHA:-}" ] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
@@ -113,19 +105,7 @@ PY
             done
 
             if [ "$bootstrap" = true ] && [[ "$reason" == no\ active\ repository\ ruleset\ applies\ to\ refs/heads/master* ]]; then
-              python3 - "$status" <<'PY'
-import json,sys
-p=sys.argv[1]
-data=json.load(open(p,encoding='utf-8'))
-data.update({
-    'ready': False,
-    'bootstrap_merge_exception': True,
-    'bootstrap_scope': 'initial_master_ruleset_only',
-    'external_ruleset_required': True,
-    'enforcement_state': 'external_pending',
-})
-open(p,'w',encoding='utf-8').write(json.dumps(data,indent=2,sort_keys=True)+'\n')
-PY
+              python3 -c "import json,sys; p=sys.argv[1]; data=json.load(open(p,encoding='utf-8')); data.update({'ready':False,'bootstrap_merge_exception':True,'bootstrap_scope':'initial_master_ruleset_only','external_ruleset_required':True,'enforcement_state':'external_pending'}); open(p,'w',encoding='utf-8').write(json.dumps(data,indent=2,sort_keys=True)+'\\n')" "$status"
               echo "bootstrap_merge_exception=true" >> "$GITHUB_OUTPUT"
               echo "Repository governance external enforcement is pending; bounded initial bootstrap accepted."
               exit 0
