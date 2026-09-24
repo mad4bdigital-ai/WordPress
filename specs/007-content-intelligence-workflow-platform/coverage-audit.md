@@ -951,14 +951,14 @@ HOSTINGER_CORE_COUPLING = PROHIBITED.
 ## 52. Spec maintenance liveness during implementation
 
 Observed CI defect:
-Feature 007 had `status=implementation`, and the phase-aware boundary permitted changes only from the single runtime implementation branch. A spec-only maintenance PR was therefore blocked even though all changed files were Feature 007 specification files.
+Feature 007 had `status=implementation`, and the earlier phase-aware boundary permitted changes only from one fixed runtime implementation branch. A spec-only maintenance PR was therefore blocked even though all changed files were Feature 007 specification files.
 
 Risk of naive fix:
 Allowing arbitrary branches during implementation would weaken runtime path governance.
 
 Closure:
 - `.github/workflows/feature-007-spec-ci.yml` now allows isolated `spec/007-*` branches only when all changes remain inside the immutable spec allowlist;
-- runtime implementation paths remain exclusive to the exact implementation branch;
+- runtime implementation paths are admitted only from workflow-owned `feat/007-*` or `fix/007-*` implementation branches; mutable feature metadata cannot self-widen this policy;
 - feature metadata still must mirror workflow-owned implementation allowlists and cannot self-authorize expansion;
 - baseline and validator gates remain mandatory.
 
@@ -969,7 +969,9 @@ RUNTIME_BRANCH_ISOLATION = PRESERVED.
 
 # Unified Remaining-Implementation Closure Audit
 
-Audit baseline: `540d5db4be521297de673c8a4d14974c23b67a6a`
+Reviewed repository parent: `b1f7e837efc69aa220385d84761e46f64c2442b1`
+
+Last externally trusted runtime release before this bulk runtime-changing PR: `540d5db4be521297de673c8a4d14974c23b67a6a` (`RECAPTURE_REQUIRED` after merge)
 
 This section closes the planning gap between broad contract coverage and executable completion. Every known remaining concern is now assigned to the unified closure program rather than being inferred from the existence of a contract or a green infrastructure workflow.
 
@@ -979,10 +981,10 @@ This section closes the planning gap between broad contract coverage and executa
 |---|---|---|
 | External GitHub master ruleset | REPOGOV / T3601 | DONE — ruleset `23968498`, active on `refs/heads/master`, pinned Release Verdict integration, zero bypass actors |
 | Governance bootstrap retirement | REPOGOV / T3631 | DONE — PR #64 removed the exception; Governance and Release Verdict now require `governance_ready=true` |
-| Baseline + execution ledger | BASESYNC/CLOSURE / T3602–T3603 | exact master ancestry + evidence-backed DONE/PARTIAL/OPEN/DEFERRED ledger |
+| Reviewed repository parent + execution ledger | BASESYNC/CLOSURE / T3602–T3603 | exact PR-base ancestry + separate runtime-release identity + evidence-backed DONE/PARTIAL/OPEN/DEFERRED ledger |
 | Latest-master release root | ROOT / T3602 | trusted master attestation and exact package identity |
 | Protected backup + live recovery | BACKUP/ROOT / T3604–T3605 | protected-root readiness, backup receipt, known-good restore, deliberate-failure recovery |
-| Exact trusted-master ETG deployment | CLOSURE/ROOT / T3632 | deployed source/build/manifest/archive identity equals exact master artifact |
+| Exact selected-runtime-release ETG deployment | CLOSURE/ROOT / T3632 | deployed source/build/manifest/archive identity equals externally attested selected runtime release |
 | Runtime Root Trust readback | ROOT/CLOSURE / T3633–T3634 | seven trust/provenance files + runtime/schema/authority fail-closed readback on the exact deployed candidate |
 | Bit Flows 1.29 exact runtime | DPC/TRAIT / T3606–T3607 | exact artifact/capability/behavior/security evidence |
 | Privileged provider side-channel | DPC/QSEC / T3607 | absent/suppressed/federated-read-only/blocking proof |
@@ -1015,7 +1017,7 @@ These do not grant deployment authority, but the related live mutation MUST NOT 
 - authority/grant/candidate bindings are exact and current;
 - provider capabilities used by the canary are certified;
 - rollback/readback paths are available;
-- the trusted master artifact is deployed by exact identity, not by version label;
+- the selected runtime-release artifact is deployed by exact identity, not by version label or repository-HEAD assumption;
 - Root Trust/provenance files are readable through an authorized evidence path after deployment; UNKNOWN does not count as PASS.
 
 The current ETG observation that a Control Plane build is internally consistent is not a substitute for these preconditions.
