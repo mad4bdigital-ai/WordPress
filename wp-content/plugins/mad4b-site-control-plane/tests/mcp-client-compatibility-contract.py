@@ -107,17 +107,37 @@ for marker in [
     'public static function chatgpt_full_catalog_candidates()',
     "foreach ( array( 'read', 'content', 'admin', 'write' ) as $surface )",
     "self::core_tools( 'mad4b-enrollment' )",
-    '$bounded_bootstrap = array(',
-    "'mad4b/site-profile-feature-reenroll'",
-    "'mad4b/site-profile-write-enable'",
-    "'mad4b/staging-write-grant-reconcile'",
-    "'mad4b/staging-write-candidate-bind'",
-    "$meta_write_transport = array( 'mad4b/write-execute' )",
+    "private static function chatgpt_internal_enrollment_mutations()",
+    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
+    "$direct_mutation_transport = array_merge( array( 'mad4b/write-execute' ), $step_up )",
     'self::external_write_tools()',
     "'mad4b/database-raw-query' === $ability_name",
     "self::core_tools( 'mad4b-breakglass' )",
 ]:
     assert marker in servers, f'missing minimal ChatGPT transport/logical catalog marker: {marker}'
+
+# Low-level enrollment mutations remain present only as internal primitives and
+# must be removed from both direct ChatGPT tools/list and logical user discovery.
+chatgpt_tools_body = servers.split('public static function chatgpt_tools()', 1)[1].split('private static function chatgpt_internal_enrollment_mutations()', 1)[0]
+for low_level in [
+    "mad4b/site-profile-feature-reenroll",
+    "mad4b/site-profile-write-enable",
+    "mad4b/staging-write-grant-reconcile",
+    "mad4b/staging-write-candidate-bind",
+]:
+    assert low_level not in chatgpt_tools_body, f'low-level enrollment mutation leaked into direct ChatGPT catalog: {low_level}'
+
+internal_enrollment = servers.split('private static function chatgpt_internal_enrollment_mutations()', 1)[1].split('private static function chatgpt_enrollment_candidates()', 1)[0]
+for low_level in [
+    "mad4b/site-profile-feature-reenroll",
+    "mad4b/site-profile-write-enable",
+    "mad4b/staging-write-grant-reconcile",
+    "mad4b/staging-write-candidate-bind",
+]:
+    assert low_level in internal_enrollment, f'internal enrollment primitive was lost: {low_level}'
+
+logical_enrollment = servers.split('private static function chatgpt_enrollment_candidates()', 1)[1].split('public static function chatgpt_full_catalog_candidates()', 1)[0]
+assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 
 # The non-unified fallback is also a minimal transport and must never
 # restore heavy filesystem/database schemas or Breakglass to tools/list.
@@ -175,4 +195,4 @@ for forbidden in [
     assert forbidden not in compat, f'forbidden client-specific authority marker: {forbidden}'
     assert forbidden not in registry, f'forbidden registry authority marker: {forbidden}'
 
-print('mad4b.site-control-plane.mcp-client-compatibility.v11: PASS')
+print('mad4b.site-control-plane.mcp-client-compatibility.v12: PASS')
