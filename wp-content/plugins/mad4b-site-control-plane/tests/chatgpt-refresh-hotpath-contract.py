@@ -155,6 +155,9 @@ for marker in [
     assert marker in handshake, marker
 fingerprint_body = handshake.split("public static function build_fingerprint()", 1)[1].split("private static function capture_runtime_allowed", 1)[0]
 assert fingerprint_body.count("hash_file(") == 1
+assert "MAD4B-BUILD-PROVENANCE.json" in fingerprint_body
+assert "'mad4b.build-provenance.v1'" in fingerprint_body
+assert fingerprint_body.index("MAD4B-BUILD-PROVENANCE.json") < fingerprint_body.index("$files = array(")
 assert fingerprint_body.index("self::$request_build_fingerprint") < fingerprint_body.index("$files = array(")
 
 print("mad4b.chatgpt-refresh-hotpath.v5: PASS")
