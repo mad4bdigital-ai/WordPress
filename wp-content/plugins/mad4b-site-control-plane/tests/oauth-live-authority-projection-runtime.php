@@ -45,7 +45,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 final class MAD4B_SCP_Servers {
 	public static function external_write_tools() {
-		return array( 'core/update-a', 'media/update-b', 'elementor/gated-c', 'jetengine/gated-d' );
+		return array( 'core/update-a', 'media/update-b', 'elementor/gated-c', 'jetengine/gated-d', 'mad4b/context-ai-review' );
 	}
 	public static function write_tools() {
 		return $GLOBALS['mad4b_projection_runtime'];
@@ -54,6 +54,11 @@ final class MAD4B_SCP_Servers {
 		return array(
 			array( 'ability' => 'elementor/gated-c', 'provider' => 'elementor', 'reason' => 'provider_capability_not_write_eligible' ),
 			array( 'ability' => 'jetengine/gated-d', 'provider' => 'jetengine', 'reason' => 'provider_runtime_contract_not_certified' ),
+		);
+	}
+	public static function authority_gated_write_tools() {
+		return array(
+			array( 'ability' => 'mad4b/context-ai-review', 'provider' => 'core', 'gate_class' => 'authority', 'reason' => 'context_ai_review_delegation_not_eligible' ),
 		);
 	}
 }
@@ -81,10 +86,11 @@ function mad4b_projection_assert( $condition, $message, $data = null ) {
 // candidate mismatch alone keeps execution fail-closed.
 $p = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
 mad4b_projection_assert( 'mad4b.oauth-consent-grant-projection.v3' === $p['contract'], 'projection contract drifted', $p );
-mad4b_projection_assert( 4 === (int) $p['catalog_write_tool_count'], 'catalog count must remain independent of runtime eligibility', $p );
+mad4b_projection_assert( 5 === (int) $p['catalog_write_tool_count'], 'catalog count must remain independent of runtime eligibility', $p );
 mad4b_projection_assert( 2 === (int) $p['runtime_eligible_write_tool_count'], 'runtime-eligible count drifted', $p );
 mad4b_projection_assert( 2 === (int) $p['exact_grants_existing'], 'exact grant count drifted', $p );
 mad4b_projection_assert( 2 === (int) $p['provider_gated_write_tool_count'], 'provider-gated count drifted', $p );
+mad4b_projection_assert( 1 === (int) $p['authority_gated_write_tool_count'], 'authority-gated count drifted', $p );
 mad4b_projection_assert( 0 === (int) $p['exact_grants_missing_count'], 'provider gating must not masquerade as missing exact grants', $p );
 mad4b_projection_assert( ! empty( $p['projection_consistent'] ) && empty( $p['consistency_violations'] ), 'coherent projection was incorrectly rejected', $p );
 mad4b_projection_assert( 'bulk_agent_grant_snapshot' === $p['grant_lookup_strategy'], 'projection lost bulk grant lookup strategy', $p );
@@ -96,7 +102,8 @@ mad4b_projection_assert( 1 === count( $p['blocking_conditions'] ), 'candidate mi
 mad4b_projection_assert( 'candidate_binding_mismatch' === $p['blocking_conditions'][0]['code'], 'binding mismatch blocker was not identified', $p );
 mad4b_projection_assert( str_repeat( 'a', 40 ) === $p['blocking_conditions'][0]['binding']['stored_source_commit_sha'], 'stored candidate identity missing', $p );
 mad4b_projection_assert( str_repeat( 'b', 40 ) === $p['blocking_conditions'][0]['binding']['current_source_commit_sha'], 'current candidate identity missing', $p );
-mad4b_projection_assert( 2 === count( $p['blocked_catalog_abilities'] ), 'blocked catalog abilities were not preserved', $p );
+mad4b_projection_assert( 3 === count( $p['blocked_catalog_abilities'] ), 'blocked catalog abilities were not preserved', $p );
+mad4b_projection_assert( 2 === count( $p['provider_gated_catalog_abilities'] ) && 1 === count( $p['authority_gated_catalog_abilities'] ), 'provider and authority gates were conflated', $p );
 mad4b_projection_assert( ! empty( $p['read_only'] ) && empty( $p['mutation_performed'] ) && empty( $p['oauth_scope_changed'] ) && empty( $p['write_authority_granted_by_consent'] ), 'projection must remain observation-only', $p );
 
 // Case 2: a transient mismatch between the plan snapshot and the independent
@@ -135,6 +142,13 @@ $GLOBALS['mad4b_projection_write_tool_count'] = 3;
 $overlap = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
 mad4b_projection_assert( in_array( 'provider_gated_runtime_overlap', $overlap['consistency_violations'], true ), 'provider-gated/runtime overlap was not detected', $overlap );
 mad4b_projection_assert( 'projection_inconsistent' === $overlap['state'], 'provider-gated/runtime overlap must fail closed', $overlap );
+
+// Case 6: an authority-gated core ability may never leak into runtime eligibility.
+$GLOBALS['mad4b_projection_runtime'] = array( 'core/update-a', 'media/update-b', 'mad4b/context-ai-review' );
+$GLOBALS['mad4b_projection_write_tool_count'] = 3;
+$authority_overlap = MAD4B_SCP_Local_OAuth_Server::consent_grant_projection();
+mad4b_projection_assert( in_array( 'authority_gated_runtime_overlap', $authority_overlap['consistency_violations'], true ), 'authority-gated/runtime overlap was not detected', $authority_overlap );
+mad4b_projection_assert( 'projection_inconsistent' === $authority_overlap['state'], 'authority-gated/runtime overlap must fail closed', $authority_overlap );
 
 $user = MAD4B_SCP_Local_OAuth_Server::consent_user_identity( 1 );
 mad4b_projection_assert( 'Dream Desert Tours' === $user['display_label'], 'primary consent identity should use WordPress display name', $user );
