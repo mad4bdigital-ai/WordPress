@@ -3,6 +3,12 @@ name: MAD4B Approval Decision Contract
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/mcp-adapter.zip'
+      # Release Verdict requires this check for every full Control Plane runtime release.
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
@@ -15,6 +21,15 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-handoff-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-contract.py'
       - '.github/workflows/mad4b-approval-decision-contract.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:

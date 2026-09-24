@@ -3,11 +3,23 @@ name: MAD4B OAuth Resource Bridge
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - '.github/workflows/mad4b-oauth-resource-bridge.yml'
       - '.agents/plugins/marketplace.json'
       - 'plugins/mad4b-staging-control-plane/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:

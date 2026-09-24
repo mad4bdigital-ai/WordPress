@@ -3,12 +3,27 @@ name: MAD4B ChatGPT Catalog Performance
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/mcp-adapter.zip'
+      # Release Verdict requires this check for every full Control Plane runtime release.
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-catalog-performance-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt'
       - 'wp-content/plugins/mad4b-site-control-plane/README.md'
       - '.github/workflows/mad4b-chatgpt-catalog-performance.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:

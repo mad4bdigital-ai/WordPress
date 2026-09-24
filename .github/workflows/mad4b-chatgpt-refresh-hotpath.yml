@@ -3,6 +3,11 @@ name: MAD4B ChatGPT Refresh Hotpath
 on:
   pull_request:
     paths:
+      # Release Verdict requires this check for every full Control Plane runtime release.
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php'
@@ -20,6 +25,15 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-refresh-hotpath-contract.py'
       - 'wp-content/plugins/mcp-adapter.zip'
       - '.github/workflows/mad4b-chatgpt-refresh-hotpath.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:

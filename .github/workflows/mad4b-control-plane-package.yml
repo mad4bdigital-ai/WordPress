@@ -3,6 +3,7 @@ name: MAD4B Control Plane Package
 on:
   pull_request:
     paths:
+      - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
@@ -16,6 +17,7 @@ on:
     branches:
       - master
     paths:
+      - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'

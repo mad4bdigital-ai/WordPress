@@ -322,6 +322,11 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			$match = self::match_expected_plan( $plan, $input );
 			if ( is_wp_error( $match ) ) return $match;
 			if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) return new WP_Error( 'mad4b_full_authority_audit_required', 'Ready append-only audit storage is required.' );
+			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) ) return new WP_Error( 'mad4b_full_authority_candidate_binding_unavailable', 'Candidate-binding authority is unavailable.' );
+			$reviewed_binding_status = isset( $plan['write_reconciliation']['candidate_binding'] ) && is_array( $plan['write_reconciliation']['candidate_binding'] )
+				? $plan['write_reconciliation']['candidate_binding']
+				: array();
+			$reviewed_previous_binding = MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot( $reviewed_binding_status );
 
 			$intent = MAD4B_SCP_Audit::record( 'mad4b/full-staging-authority-authorized', array(
 				'contract' => self::CONTRACT,
@@ -332,6 +337,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'artifact_identity' => $plan['artifact_identity'],
 				'site_uuid' => $plan['site_uuid'],
 				'site_profile_revision' => $plan['site_profile_revision'],
+				'reviewed_previous_binding' => $reviewed_previous_binding,
 				'confirmation' => self::CONFIRMATION,
 				'requested_authorities' => array( 'write', 'developer', 'developer_breakglass' ),
 				'generic_raw_sql_breakglass_requested' => false,
@@ -428,6 +434,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			$binding = isset( $write_plan['candidate_binding'] ) && is_array( $write_plan['candidate_binding'] ) ? $write_plan['candidate_binding'] : array();
 			$binding_required = ! empty( $binding['required'] );
 			$binding_match_before = ! $binding_required || ! empty( $binding['match'] );
+			$pre_bind_persisted_binding = MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot( $binding );
 
 			$prepared = MAD4B_SCP_Audit::record( 'mad4b/full-staging-authority-prepared', array(
 				'contract' => self::CONTRACT,
@@ -439,6 +446,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'developer_breakglass_ready' => true,
 				'candidate_binding_required' => $binding_required,
 				'candidate_binding_match_before' => $binding_match_before,
+				'reviewed_previous_binding' => $reviewed_previous_binding,
+				'pre_bind_persisted_binding' => $pre_bind_persisted_binding,
 				'generic_raw_sql_breakglass_enabled' => false,
 				'production_mutation' => false,
 			), 'ok' );
@@ -461,7 +470,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'expected_write_inventory_fingerprint' => (string) $write_plan['write_inventory_fingerprint'],
 					'expected_grant_rows_fingerprint' => (string) $write_plan['grant_rows_fingerprint'],
 					'confirmation' => MAD4B_SCP_Staging_Write_Candidate_Binding::CONFIRMATION,
-				) );
+				), $reviewed_previous_binding );
 				if ( is_wp_error( $bind ) ) return self::fail_closed( 'candidate_binding_failed', $bind );
 			}
 
@@ -477,6 +486,8 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'write_ready' => true,
 					'developer_ready' => true,
 					'developer_breakglass_ready' => true,
+					'reviewed_previous_binding' => $reviewed_previous_binding,
+					'pre_bind_persisted_binding' => $pre_bind_persisted_binding,
 					'generic_raw_sql_breakglass_enabled' => false,
 					'production_mutation' => false,
 				), 'ok' );
@@ -491,6 +502,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'developer_breakglass_ready' => true,
 				'candidate_binding_committed' => $binding_required && ! $binding_match_before,
 				'candidate_binding_result' => is_array( $bind ) ? $bind : array(),
+				'candidate_binding_lineage' => array(
+					'reviewed_previous_binding' => $reviewed_previous_binding,
+					'pre_bind_persisted_binding' => $pre_bind_persisted_binding,
+				),
 				'generic_raw_sql_breakglass_enabled' => false,
 				'production_mutation' => false,
 			);

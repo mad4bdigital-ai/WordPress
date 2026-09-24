@@ -3,10 +3,22 @@ name: MAD4B Dynamic Skills
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - 'plugins/mad4b-wordpress/**'
       - '.agents/plugins/marketplace.json'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - '.github/workflows/mad4b-dynamic-skills.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:

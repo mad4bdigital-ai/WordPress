@@ -286,6 +286,13 @@ $input = array(
 	'expected_grant_rows_fingerprint' => $plan['grant_rows_fingerprint'],
 	'confirmation' => MAD4B_SCP_Staging_Write_Candidate_Binding::CONFIRMATION,
 );
+$reviewed_previous_binding = array(
+	'source_commit_sha' => str_repeat( '9', 40 ),
+	'build_fingerprint' => str_repeat( '8', 64 ),
+	'package_manifest_digest' => str_repeat( '7', 64 ),
+	'artifact_identity' => 'mad4b-site-control-plane-general-distribution-kit-' . str_repeat( '9', 40 ),
+	'identity_completeness' => 'complete',
+);
 
 $drifted = $input;
 $drifted['expected_grant_rows_fingerprint'] = str_repeat( 'f', 64 );
@@ -293,7 +300,7 @@ $bad = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $drifted );
 mad4b_bind_assert( is_wp_error( $bad ) && 'mad4b_candidate_bind_grant_rows_fingerprint_mismatch' === $bad->get_error_code(), 'reviewed grant snapshot drift was not rejected', $bad );
 mad4b_bind_assert( ! MAD4B_SCP_Staging_Write_Authority::effective(), 'failed precondition unexpectedly changed authority binding' );
 
-$result = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $input );
+$result = MAD4B_SCP_Staging_Write_Candidate_Binding::bind( $input, $reviewed_previous_binding );
 mad4b_bind_assert( ! is_wp_error( $result ), 'exact binding-only operation failed', $result );
 mad4b_bind_assert( 'bound' === $result['state'], 'binding operation did not report bound state', $result );
 mad4b_bind_assert( ! empty( $result['mutation_performed'] ) && ! empty( $result['binding_mutation_performed'] ), 'true binding did not report its mutation explicitly', $result );
@@ -301,6 +308,12 @@ $authorized = array_values( array_filter( MAD4B_SCP_Audit::$events, static funct
 $completed = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $e ) { return 'mad4b/staging-write-candidate-binding-complete' === $e['event']; } ) );
 mad4b_bind_assert( 1 === count( $authorized ) && 1 === count( $completed ), 'binding audit pair missing', MAD4B_SCP_Audit::$events );
 mad4b_bind_assert( $authorized[0]['data']['operation_id'] === $completed[0]['data']['operation_id'], 'binding audit operation_id drifted' );
+mad4b_bind_assert( $reviewed_previous_binding === $authorized[0]['data']['reviewed_previous_binding'], 'authorized audit lost reviewed pre-reconcile binding lineage', $authorized[0]['data'] );
+mad4b_bind_assert( $reviewed_previous_binding === $completed[0]['data']['reviewed_previous_binding'], 'completion audit lost reviewed pre-reconcile binding lineage', $completed[0]['data'] );
+mad4b_bind_assert( 'legacy_partial' === $authorized[0]['data']['pre_bind_persisted_binding']['identity_completeness'], 'authorized audit did not preserve actual immediate pre-bind persisted snapshot', $authorized[0]['data'] );
+mad4b_bind_assert( $authorized[0]['data']['pre_bind_persisted_binding'] === $authorized[0]['data']['previous_binding'], 'previous_binding alias no longer matches immediate pre-bind persisted snapshot', $authorized[0]['data'] );
+mad4b_bind_assert( $reviewed_previous_binding === $result['reviewed_previous_binding'], 'binding result lost reviewed lineage', $result );
+mad4b_bind_assert( 'legacy_partial' === $result['pre_bind_persisted_binding']['identity_completeness'], 'binding result lost immediate pre-bind persisted snapshot', $result );
 mad4b_bind_assert( str_repeat( '3', 64 ) === $authorized[0]['data']['actor']['client_fingerprint'], 'safe OAuth client attribution was not preserved' );
 mad4b_bind_assert( str_repeat( '4', 64 ) === $authorized[0]['data']['actor']['session_fingerprint'], 'safe OAuth token-instance attribution was not preserved' );
 mad4b_bind_assert( ! isset( $authorized[0]['data']['actor']['client_id'] ) && ! isset( $authorized[0]['data']['actor']['jti'] ), 'raw OAuth client/session material leaked into binding audit' );

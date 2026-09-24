@@ -236,7 +236,32 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		return $plan;
 	}
 
-	public static function operation_context( array $plan, array $binding, $current_revision, $current_digest, $confirmation = self::CONFIRMATION, $authorization_source = 'binding_only_mcp', $authorization_contract = self::CONTRACT ) {
+
+	public static function audit_binding_snapshot( array $binding ) {
+		$source = isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : ( isset( $binding['source_commit_sha'] ) ? (string) $binding['source_commit_sha'] : '' );
+		$build = isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : ( isset( $binding['build_fingerprint'] ) ? (string) $binding['build_fingerprint'] : '' );
+		$manifest = isset( $binding['stored_package_manifest_digest'] ) ? (string) $binding['stored_package_manifest_digest'] : ( isset( $binding['package_manifest_digest'] ) ? (string) $binding['package_manifest_digest'] : '' );
+		$artifact = isset( $binding['stored_artifact_identity'] ) ? (string) $binding['stored_artifact_identity'] : ( isset( $binding['artifact_identity'] ) ? (string) $binding['artifact_identity'] : '' );
+		$complete = '' !== $source && '' !== $build && '' !== $manifest && '' !== $artifact;
+		$some = '' !== $source || '' !== $build || '' !== $manifest || '' !== $artifact;
+		$identity = isset( $binding['identity_completeness'] ) ? sanitize_key( (string) $binding['identity_completeness'] ) : '';
+		if ( $complete ) {
+			$identity = 'complete';
+		} elseif ( ! $some ) {
+			$identity = 'unbound';
+		} elseif ( ! in_array( $identity, array( 'legacy_partial', 'partial' ), true ) ) {
+			$identity = 'legacy_partial';
+		}
+		return array(
+			'source_commit_sha' => $source,
+			'build_fingerprint' => $build,
+			'package_manifest_digest' => $manifest,
+			'artifact_identity' => $artifact,
+			'identity_completeness' => $identity,
+		);
+	}
+
+	public static function operation_context( array $plan, array $binding, $current_revision, $current_digest, $confirmation = self::CONFIRMATION, $authorization_source = 'binding_only_mcp', $authorization_contract = self::CONTRACT, $reviewed_previous_binding = null ) {
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) ) return new WP_Error( 'mad4b_candidate_bind_identity_unavailable', 'Governance identity context is unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
@@ -263,6 +288,10 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		$authorization_valid = ( 'binding_only_mcp' === $authorization_source && self::CONTRACT === $authorization_contract && self::CONFIRMATION === $confirmation )
 			|| ( 'grant_reconciliation' === $authorization_source && 'mad4b.staging-write-grant-reconciliation.v1' === $authorization_contract && 'RECONCILE EXACT STAGING WRITE GRANTS' === $confirmation );
 		if ( ! $authorization_valid ) return new WP_Error( 'mad4b_candidate_bind_authorization_source_invalid', 'Candidate binding authorization source is invalid.' );
+		$pre_bind_persisted_binding = self::audit_binding_snapshot( $binding );
+		$reviewed_previous_binding = is_array( $reviewed_previous_binding )
+			? self::audit_binding_snapshot( $reviewed_previous_binding )
+			: $pre_bind_persisted_binding;
 		$operation_id = wp_generate_uuid4();
 		return array(
 			'contract' => self::CONTRACT,
@@ -290,13 +319,10 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 				'profile_revision' => (int) $current_revision,
 				'profile_digest' => (string) $current_digest,
 			),
-			'previous_binding' => array(
-				'source_commit_sha' => isset( $binding['stored_source_commit_sha'] ) ? (string) $binding['stored_source_commit_sha'] : '',
-				'build_fingerprint' => isset( $binding['stored_build_fingerprint'] ) ? (string) $binding['stored_build_fingerprint'] : '',
-				'package_manifest_digest' => isset( $binding['stored_package_manifest_digest'] ) ? (string) $binding['stored_package_manifest_digest'] : '',
-				'artifact_identity' => isset( $binding['stored_artifact_identity'] ) ? (string) $binding['stored_artifact_identity'] : '',
-				'identity_completeness' => isset( $binding['identity_completeness'] ) ? (string) $binding['identity_completeness'] : 'legacy_partial',
-			),
+			'reviewed_previous_binding' => $reviewed_previous_binding,
+			'pre_bind_persisted_binding' => $pre_bind_persisted_binding,
+			// Backward-compatible alias: immediate persisted snapshot before the bind primitive.
+			'previous_binding' => $pre_bind_persisted_binding,
 			'target_binding' => array(
 				'source_commit_sha' => (string) $binding['current_source_commit_sha'],
 				'build_fingerprint' => (string) $binding['current_build_fingerprint'],
@@ -314,7 +340,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 		);
 	}
 
-	public static function bind( $input ) {
+	public static function bind( $input, $reviewed_previous_binding = null ) {
 		if ( self::$running ) return new WP_Error( 'mad4b_candidate_bind_reentry_denied', 'Candidate binding is already running in this request.' );
 		$permission = self::can_execute( $input );
 		if ( is_wp_error( $permission ) || ! $permission ) return $permission;
@@ -348,7 +374,7 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			if ( ! hash_equals( $expected_manifest, $current_manifest ) ) return new WP_Error( 'mad4b_candidate_bind_manifest_mismatch', 'Package manifest digest does not match the exact current package.' );
 			if ( ! hash_equals( $expected_artifact, $current_artifact ) ) return new WP_Error( 'mad4b_candidate_bind_artifact_mismatch', 'Artifact identity does not match the exact current package.' );
 
-			$operation_context = self::operation_context( $plan, $binding, $current_revision, $current_digest );
+			$operation_context = self::operation_context( $plan, $binding, $current_revision, $current_digest, self::CONFIRMATION, 'binding_only_mcp', self::CONTRACT, $reviewed_previous_binding );
 			if ( is_wp_error( $operation_context ) ) return $operation_context;
 			$result = MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_build, $operation_context );
 			if ( is_wp_error( $result ) ) return $result;
@@ -367,6 +393,8 @@ final class MAD4B_SCP_Staging_Write_Candidate_Binding {
 			if ( ! $post_ok ) return new WP_Error( 'mad4b_candidate_bind_wrapper_postcondition_failed', 'Binding primitive returned without a fully effective exact four-part candidate identity.' );
 
 			return array_merge( $result, array(
+				'reviewed_previous_binding' => $operation_context['reviewed_previous_binding'],
+				'pre_bind_persisted_binding' => $operation_context['pre_bind_persisted_binding'],
 				'candidate_binding' => $after_binding,
 				'write_tool_count' => (int) $after_plan['write_tool_count'],
 				'exact_grants_existing' => (int) $after_plan['exact_grants_existing'],

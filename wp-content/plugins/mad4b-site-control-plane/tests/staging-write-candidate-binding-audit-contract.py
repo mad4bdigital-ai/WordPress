@@ -22,6 +22,9 @@ for marker in [
     "grant_reconciliation",
     "mad4b.staging-write-grant-reconciliation.v1",
     "previous_binding",
+    "reviewed_previous_binding",
+    "pre_bind_persisted_binding",
+    "audit_binding_snapshot",
     "target_binding",
     "write_snapshot",
 ]:
