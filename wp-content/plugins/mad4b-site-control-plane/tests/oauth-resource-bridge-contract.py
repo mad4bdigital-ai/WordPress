@@ -15,13 +15,17 @@ runtime_context = (root / 'tests' / 'runtime-oauth-context-cooldown-smoke.php').
 runtime_edges = (root / 'tests' / 'runtime-oauth-edge-guards-smoke.php').read_text(encoding='utf-8')
 
 required = [
-    "mad4b.oauth-resource-bridge.v4",
+    "mad4b.oauth-resource-bridge.v5",
     "MAD4B_MCP_OAUTH_MODE",
     "array( 'local', 'external', 'hybrid' )",
     "MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS",
     "MAD4B_MCP_OAUTH_WP_USER_BY_ISSUER",
     "subject_allowed",
     "verified_bearer_active",
+    "AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up'",
+    "verified_bearer_has_scope",
+    "authority_step_up_scope_available",
+    "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "reset_verified_bearer_context",
     "self::reset_verified_bearer_context( true )",
     "self::reset_verified_bearer_context( false )",
@@ -219,4 +223,4 @@ for boot_marker in [
 if "bind_local_oauth_subject_compatibility" not in plugin:
     raise SystemExit("plugin boot does not derive local subject compatibility from issuer-bound policy")
 
-print('mad4b.site-control-plane.oauth-resource-bridge.v9: PASS')
+print('mad4b.site-control-plane.oauth-resource-bridge.v10: PASS')
