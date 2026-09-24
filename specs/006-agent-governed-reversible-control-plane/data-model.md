@@ -424,6 +424,7 @@ Migration declaration:
 - post-verification: deep physical integrity, approval-binding columns, durable columns and required unique indexes;
 - evidence: deterministic migration-contract SHA-256, target integrity token, physical-integrity SHA-256 and durable `mad4b.schema-migration-receipt.v1`;
 - partial failure: target version/readiness is not accepted until deep verification, exact option readback and a finalized receipt succeed; retry remains idempotent;
+- retry provenance: if an earlier attempt reached a contract-valid physical-verification receipt before readiness finalization, later idempotent retries preserve that receipt's original `from_version`/run type instead of rewriting an upgrade as a repair;
 - mixed-version window: v9 is additive and previous v6 code does not consume the new durable surfaces;
 - authority widening: forbidden; migration does not create/enable NHI subjects, grants, approvals, provider promotion or Production authority.
 
