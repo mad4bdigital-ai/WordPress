@@ -7,6 +7,9 @@ servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="ut
 plugin = (root / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
 handshake = (root / "includes/class-mad4b-scp-external-handshake-evidence.php").read_text(encoding="utf-8")
 observer = (root / "includes/class-mad4b-scp-live-acceptance-observer.php").read_text(encoding="utf-8")
+skill_abilities = (root / "includes/class-mad4b-scp-skill-abilities.php").read_text(encoding="utf-8")
+skill_snapshot = (root / "includes/class-mad4b-scp-skill-snapshot-identity.php").read_text(encoding="utf-8")
+finalizer = (root / "includes/class-mad4b-scp-live-acceptance-finalizer.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -115,4 +118,31 @@ assert "eligible_write_tool_names()" not in observer_inventory
 assert "blocked_write_tool_names()" not in observer_inventory
 assert "'runtime_projection_deferred' => true" in observer_inventory
 
-print("mad4b.chatgpt-refresh-hotpath.v3: PASS")
+# Real ChatGPT Refresh must not repeat filesystem Skill scans or perform full
+# package byte hashing during the tools/list response/shutdown lifecycle.
+for marker in [
+    "private static $request_cache = null;",
+    "public static function build_request_cached()",
+]:
+    assert marker in skill_snapshot, marker
+assert "build_request_cached" in skill_abilities
+snapshot_anchor_body = skill_abilities.split("public static function snapshot_anchor()", 1)[1].split("private static function ability_description", 1)[0]
+assert "build_request_cached" in snapshot_anchor_body
+
+snapshot_finalize = skill_abilities.split("public static function finalize_external_snapshot_observation()", 1)[1].split("/** @internal Pure parser", 1)[0]
+assert "build_provenance_identity_status" in snapshot_finalize
+assert "build_provenance_status()" not in snapshot_finalize
+assert "runtime_manifest_match" not in snapshot_finalize
+
+identity_body = observer.split("public static function build_provenance_identity_status()", 1)[1].split("public static function build_provenance_status()", 1)[0]
+assert "full_runtime_hash_validation_deferred" in identity_body
+assert "hash_file(" not in identity_body
+assert "filesize(" not in identity_body
+
+# Full byte-for-byte provenance remains mandatory on the explicit/final
+# acceptance path; the optimization moves it off Refresh rather than weakening it.
+full_provenance_body = observer.split("public static function build_provenance_status()", 1)[1].split("private static function provenance_manifest()", 1)[0]
+assert "hash_file(" in full_provenance_body
+assert "build_provenance_status()" in finalizer
+
+print("mad4b.chatgpt-refresh-hotpath.v4: PASS")
