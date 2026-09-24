@@ -76,6 +76,14 @@
 			}
 
 			clearOneTimeConfirmations(form);
+			if (payload.data.readback && payload.data.readback.revision !== undefined) {
+				var revision = form.querySelector('input[name="expected_revision"]');
+				if (revision) revision.value = String(payload.data.readback.revision);
+			}
+			if (payload.data.readback && payload.data.readback.profile_digest) {
+				var digest = form.querySelector('input[name="expected_profile_digest"]');
+				if (digest) digest.value = String(payload.data.readback.profile_digest);
+			}
 			setFeedback(form, payload.data.message || cfg().saved || "Saved and verified.", true, "");
 			var selector = form.getAttribute("data-mad4b-refresh-selector") || "";
 			if (selector) await refreshSelector(selector);
