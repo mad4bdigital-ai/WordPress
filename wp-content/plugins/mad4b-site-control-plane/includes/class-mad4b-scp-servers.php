@@ -372,17 +372,15 @@ final class MAD4B_SCP_Servers {
 			return $tools;
 		}
 
-		$bootstrap = array_merge(
-			array(
-				'mad4b/build-provenance-status',
-				'mad4b/site-profile-feature-reenroll',
-				'mad4b/site-profile-write-enable',
-				'mad4b/staging-write-grant-reconcile',
-				'mad4b/staging-write-candidate-bind',
-				'mad4b/staging-write-candidate-binding-audit',
-			),
-			class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() : array()
+		$bootstrap = array(
+			'mad4b/build-provenance-status',
+			'mad4b/site-profile-feature-reenroll',
+			'mad4b/site-profile-write-enable',
+			'mad4b/staging-write-grant-reconcile',
+			'mad4b/staging-write-candidate-bind',
+			'mad4b/staging-write-candidate-binding-audit',
 		);
+		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $bootstrap = array_merge( $bootstrap, MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools() );
 		$candidates = array_merge( $core, $bootstrap );
 		$bounded_bootstrap = array(
 			'mad4b/site-profile-feature-reenroll',
