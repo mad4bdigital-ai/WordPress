@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 authority = (root / "includes/class-mad4b-scp-context-authority.php").read_text(encoding="utf-8")
+abilities = (root / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 drive = (root / "includes/class-mad4b-scp-google-drive-context.php").read_text(encoding="utf-8")
 admin = (root / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
 skills_admin = (root / "includes/class-mad4b-scp-skills-admin-ui.php").read_text(encoding="utf-8")
@@ -91,6 +92,11 @@ require(authority, "mad4b_context_review_decision_invalid", "bounded human revie
 require(authority, "const AI_REVIEW_CONTRACT = 'mad4b.context-ai-agent-review.v1'", "AI Agent review contract")
 require(authority, "const REVIEW_POLICY_CONTRACT = 'mad4b.context-review-policy.v1'", "review policy contract")
 require(authority, "const AI_REVIEW_ABILITY = 'mad4b/context-ai-review'", "dedicated AI review ability")
+require(abilities, "'mad4b-admin'", "registered core admin Ability category")
+require(authority, "'category' => 'mad4b-admin'", "AI review registered governance category")
+require(authority, "'surface' => 'write'", "AI review dedicated write transport surface")
+if "'category' => 'mad4b-write'" in authority:
+    raise AssertionError("mad4b-write is an MCP server/transport ID, not a WordPress Ability category")
 require(authority, "public static function review_asset_by_agent", "dedicated AI review callback")
 require(authority, "private static function review_asset_with_actor", "shared actor-aware exact review primitive")
 require(authority, "public static function set_review_policy", "explicit review policy mutation")
@@ -679,4 +685,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v69: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v70: PASS")
