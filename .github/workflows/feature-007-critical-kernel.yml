@@ -17,6 +17,8 @@ on:
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
@@ -30,6 +32,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
   workflow_dispatch:
 
@@ -112,6 +115,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
+
+      - name: Verify deterministic Control Plane package builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py
 
       - name: Lint Bit Flows governed adapter
         shell: bash
