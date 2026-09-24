@@ -71,6 +71,8 @@ required = [
     "stores_bearer_tokens' => false",
     "creates_credentials' => false",
     "write_surfaces_enabled' => false",
+    "authority_step_up_surface_enabled' => self::authority_step_up_scope_available()",
+    "authority_step_up_scope' => self::AUTHORITY_STEP_UP_SCOPE",
     "'resource_transport_allowed' => $resource_transport_allowed",
     "'http_loopback_local_only' => ( ! $https && $resource_transport_allowed )",
     "valid_local_http_loopback_url",
