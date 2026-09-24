@@ -11,6 +11,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
   push:
     branches:
       - master
@@ -23,6 +24,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
   workflow_dispatch:
 
 permissions:
@@ -102,6 +104,7 @@ jobs:
               "wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json",
               ".github/workflows/mad4b-control-plane-package.yml",
               ".github/workflows/mad4b-live-acceptance-evidence.yml",
+              ".github/workflows/mad4b-release-verdict.yml",
           }
 
           def paths_from(section):
