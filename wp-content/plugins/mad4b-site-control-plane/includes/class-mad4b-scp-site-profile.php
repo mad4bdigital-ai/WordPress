@@ -294,6 +294,27 @@ final class MAD4B_SCP_Site_Profile {
 		return $verified;
 	}
 
+
+	public static function delete_record_verified() {
+		self::clear_option_read_cache( true );
+		if ( false === get_option( self::OPTION, false ) ) {
+			self::reset_cache();
+			return true;
+		}
+		delete_option( self::OPTION );
+		self::clear_option_read_cache();
+		if ( false === get_option( self::OPTION, false ) ) {
+			self::reset_cache();
+			return true;
+		}
+		self::clear_option_read_cache( true );
+		delete_option( self::OPTION );
+		self::clear_option_read_cache( true );
+		$verified = false === get_option( self::OPTION, false );
+		if ( $verified ) self::reset_cache();
+		return $verified;
+	}
+
 	public static function save_current_site( array $input ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_admin_required', 'Administrator capability is required to enroll this site.' );
 		self::bootstrap();
@@ -375,9 +396,10 @@ final class MAD4B_SCP_Site_Profile {
 				'oauth_user_count' => count( $user_ids ),
 			), 'ok' );
 			if ( is_wp_error( $audit ) ) {
-				if ( $current_revision > 0 && is_array( $existing ) ) update_option( self::OPTION, $existing, false );
-				else delete_option( self::OPTION );
-				self::reset_cache();
+				$restored = $current_revision > 0 && is_array( $existing )
+					? self::persist_record_exact( $existing )
+					: self::delete_record_verified();
+				if ( ! $restored ) return new WP_Error( 'mad4b_site_profile_audit_rollback_failed', 'Site profile audit failed and the previous persisted state could not be verified after rollback.', array( 'audit_error' => $audit->get_error_code() ) );
 				return new WP_Error( 'mad4b_site_profile_audit_failed', 'Site profile change was rolled back because append-only audit evidence could not be recorded.', array( 'audit_error' => $audit->get_error_code() ) );
 			}
 		}
