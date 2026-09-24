@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import re
@@ -18,6 +19,11 @@ SIGNER_WORKFLOW = "mad4bdigital-ai/WordPress/.github/workflows/mad4b-control-pla
 INSTALL_CONTRACT = "mad4b.site-control-plane.general-distribution-kit.v1"
 PROVENANCE_CONTRACT = "mad4b.build-provenance.v1"
 VERIFICATION_CONTRACT = "mad4b.release-root-trust-verification.v1"
+TRUSTED_SIGNER_REF = "refs/heads/master"
+TRUSTED_SIGNER_EVENTS = {"push", "workflow_dispatch"}
+SIGNER_WORKFLOW_PATH = ".github/workflows/mad4b-control-plane-package.yml"
+SIGNER_WORKFLOW_REPOSITORY = f"https://github.com/{REPOSITORY}"
+SIGNER_WORKFLOW_ID = f"{SIGNER_WORKFLOW_REPOSITORY}/{SIGNER_WORKFLOW_PATH}"
 
 
 def sha256_file(path: Path) -> str:
@@ -40,6 +46,110 @@ def load_json(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"{path} must contain a JSON object")
     return data
+
+
+def decode_bundle_statement(bundle: Path) -> dict[str, Any]:
+    data = load_json(bundle)
+    envelope = data.get("dsseEnvelope")
+    if not isinstance(envelope, dict) or not isinstance(envelope.get("payload"), str):
+        raise ValueError("Sigstore bundle DSSE payload is missing")
+    try:
+        payload = base64.b64decode(envelope["payload"], validate=True)
+        statement = json.loads(payload)
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise ValueError("Sigstore bundle DSSE payload is invalid") from exc
+    if not isinstance(statement, dict):
+        raise ValueError("Sigstore bundle statement must be a JSON object")
+    return statement
+
+
+def preflight_bundle_policy(
+    artifact: Path,
+    bundle: Path,
+    signer_digest: str,
+    trusted_ref: str = TRUSTED_SIGNER_REF,
+) -> dict[str, Any]:
+    signer_digest = require_digest(signer_digest, "signer digest")
+    statement = decode_bundle_statement(bundle)
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict):
+        raise ValueError("attestation predicate is missing")
+    definition = predicate.get("buildDefinition")
+    if not isinstance(definition, dict):
+        raise ValueError("attestation buildDefinition is missing")
+    external = definition.get("externalParameters")
+    internal = definition.get("internalParameters")
+    if not isinstance(external, dict) or not isinstance(internal, dict):
+        raise ValueError("attestation build parameters are missing")
+    workflow = external.get("workflow")
+    github = internal.get("github")
+    if not isinstance(workflow, dict) or not isinstance(github, dict):
+        raise ValueError("attestation GitHub workflow identity is missing")
+
+    workflow_repository = str(workflow.get("repository", ""))
+    workflow_path = str(workflow.get("path", ""))
+    workflow_ref = str(workflow.get("ref", ""))
+    event_name = str(github.get("event_name", ""))
+    runner_environment = str(github.get("runner_environment", ""))
+
+    if workflow_repository != SIGNER_WORKFLOW_REPOSITORY:
+        raise ValueError("attestation signer repository is not trusted")
+    if workflow_path != SIGNER_WORKFLOW_PATH:
+        raise ValueError("attestation signer workflow path is not trusted")
+    if workflow_ref != trusted_ref:
+        raise ValueError(
+            f"attestation signer ref is not trusted: expected {trusted_ref}, got {workflow_ref or '<missing>'}"
+        )
+    if event_name not in TRUSTED_SIGNER_EVENTS:
+        raise ValueError(f"attestation signer event is not trusted: {event_name or '<missing>'}")
+    if runner_environment != "github-hosted":
+        raise ValueError("attestation signer runner must be github-hosted")
+
+    run_details = predicate.get("runDetails")
+    builder = run_details.get("builder") if isinstance(run_details, dict) else None
+    builder_id = str(builder.get("id", "")) if isinstance(builder, dict) else ""
+    expected_builder = f"{SIGNER_WORKFLOW_ID}@{trusted_ref}"
+    if builder_id != expected_builder:
+        raise ValueError("attestation builder identity does not match the trusted workflow ref")
+
+    dependencies = definition.get("resolvedDependencies")
+    if not isinstance(dependencies, list):
+        raise ValueError("attestation resolvedDependencies are missing")
+    matching = []
+    for row in dependencies:
+        if not isinstance(row, dict):
+            continue
+        digest = row.get("digest")
+        if not isinstance(digest, dict):
+            continue
+        git_commit = str(digest.get("gitCommit", "")).lower()
+        if git_commit == signer_digest:
+            matching.append(row)
+    if len(matching) != 1:
+        raise ValueError("attestation signer digest is not uniquely bound in resolvedDependencies")
+
+    artifact_sha = sha256_file(artifact)
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list):
+        raise ValueError("attestation subjects are missing")
+    subject_matches = []
+    for row in subjects:
+        if not isinstance(row, dict) or str(row.get("name", "")) != artifact.name:
+            continue
+        digest = row.get("digest")
+        if isinstance(digest, dict) and str(digest.get("sha256", "")).lower() == artifact_sha:
+            subject_matches.append(row)
+    if len(subject_matches) != 1:
+        raise ValueError("attestation subject does not uniquely bind the candidate artifact digest")
+
+    return {
+        "workflow_ref": workflow_ref,
+        "event_name": event_name,
+        "runner_environment": runner_environment,
+        "builder_id": builder_id,
+        "artifact_sha256": artifact_sha,
+        "signer_digest": signer_digest,
+    }
 
 
 def build_attestation_command(
@@ -71,7 +181,8 @@ def verify_attestation(
     artifact: Path,
     bundle: Path,
     signer_digest: str,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    policy = preflight_bundle_policy(artifact, bundle, signer_digest)
     command = build_attestation_command(artifact, bundle, signer_digest)
     completed = subprocess.run(command, check=False, capture_output=True, text=True)
     if completed.returncode != 0:
@@ -80,7 +191,7 @@ def verify_attestation(
     result = json.loads(completed.stdout)
     if not isinstance(result, list) or not result:
         raise RuntimeError("release attestation verification returned no verified statements")
-    return result
+    return result, policy
 
 
 def verify_local_identity(
@@ -181,7 +292,7 @@ def verify(
     signer_digest: str,
 ) -> dict[str, Any]:
     local = verify_local_identity(artifact, install_manifest, expected_source_sha)
-    verified = verify_attestation(artifact, bundle, signer_digest)
+    verified, signer_policy = verify_attestation(artifact, bundle, signer_digest)
     return {
         "contract": VERIFICATION_CONTRACT,
         "verified": True,
@@ -192,6 +303,9 @@ def verify(
         "signer_workflow": SIGNER_WORKFLOW,
         "signer_digest": require_digest(signer_digest, "signer digest"),
         "verified_attestation_count": len(verified),
+        "trusted_signer_ref": signer_policy["workflow_ref"],
+        "trusted_signer_event": signer_policy["event_name"],
+        "trusted_runner_environment": signer_policy["runner_environment"],
         **local,
     }
 
