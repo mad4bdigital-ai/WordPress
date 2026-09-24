@@ -251,49 +251,17 @@ jobs:
           export MAD4B_ADAPTER_SHA="$(sha256sum "$stage/mcp-adapter-0.6.1.zip" | awk '{print $1}')"
           test "$MAD4B_ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
 
-          python3 <<'PY'
-          import hashlib, json, os
-          from pathlib import Path
-
-          root = Path(os.environ['MAD4B_CONTROL_STAGE'])
-          entries = []
-          canonical = []
-          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name != 'MAD4B-BUILD-PROVENANCE.json'):
-              rel = path.relative_to(root).as_posix()
-              raw = path.read_bytes()
-              digest = hashlib.sha256(raw).hexdigest()
-              entries.append({'path': rel, 'bytes': len(raw), 'sha256': digest})
-              canonical.append(f'{rel}\0{len(raw)}\0{digest}\n'.encode())
-
-          manifest_digest = hashlib.sha256(b''.join(canonical)).hexdigest()
-          version = os.environ['MAD4B_CONTROL_VERSION']
-          source = os.environ['SOURCE_SHA']
-          adapter_sha = os.environ['MAD4B_ADAPTER_SHA']
-          build_payload = f'mad4b.build-fingerprint.v1\n{version}\n{source}\n{manifest_digest}\n0.6.1\n{adapter_sha}\n'.encode()
-          build_fingerprint = hashlib.sha256(build_payload).hexdigest()
-          artifact_identity = f'mad4b-site-control-plane-general-distribution-kit-{source}'
-          data = {
-              'contract': 'mad4b.build-provenance.v1',
-              'control_plane_version': version,
-              'source_commit_sha': source,
-              'build_fingerprint': build_fingerprint,
-              'package_manifest_digest': manifest_digest,
-              'build_workflow': os.environ.get('GITHUB_WORKFLOW', ''),
-              'build_run_id': os.environ.get('GITHUB_RUN_ID', ''),
-              'artifact_identity': artifact_identity,
-              'mcp_adapter_version': '0.6.1',
-              'mcp_adapter_sha256': adapter_sha,
-              'package_files': entries,
-              'manifest_excludes_self': True,
-              'generated_at_is_identity_neutral': True,
-          }
-          encoded = json.dumps(data, indent=2, sort_keys=True) + '\n'
-          (root / 'MAD4B-BUILD-PROVENANCE.json').write_text(encoded, encoding='utf-8')
-          stage = root.parent.parent
-          (stage / 'MAD4B-BUILD-PROVENANCE.json').write_text(encoded, encoding='utf-8')
-          (stage / 'BUILD-FINGERPRINT.txt').write_text(build_fingerprint + '\n', encoding='utf-8')
-          (stage / 'PACKAGE-MANIFEST-DIGEST.txt').write_text(manifest_digest + '\n', encoding='utf-8')
-          PY
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py \
+            --root "$MAD4B_CONTROL_STAGE" \
+            --output-zip "$stage/mad4b-site-control-plane-${version}.zip" \
+            --version "$version" \
+            --source-sha "$SOURCE_SHA" \
+            --adapter-version "0.6.1" \
+            --adapter-sha "$MAD4B_ADAPTER_SHA" \
+            --provenance-output "$stage/MAD4B-BUILD-PROVENANCE.json" \
+            --build-fingerprint-output "$stage/BUILD-FINGERPRINT.txt" \
+            --manifest-digest-output "$stage/PACKAGE-MANIFEST-DIGEST.txt" \
+            --receipt-output "$stage/CANONICAL-PACKAGE-RECEIPT.json"
 
           php -r '
           define("ABSPATH", rtrim($argv[1], "/") . "/");
@@ -318,11 +286,6 @@ jobs:
           echo "mad4b.functional-gap-package-integrity.v1: PASS files=" . (int)($status["verified_file_count"] ?? 0) . " bytes=" . (int)($status["verified_bytes"] ?? 0) . PHP_EOL;
           ' "$MAD4B_CONTROL_STAGE"
 
-          (
-            cd "$stage/package"
-            zip -qr "$stage/mad4b-site-control-plane-${version}.zip" mad4b-site-control-plane
-          )
-
           control_sha="$(sha256sum "$stage/mad4b-site-control-plane-${version}.zip" | awk '{print $1}')"
           adapter_sha="$MAD4B_ADAPTER_SHA"
           build_fingerprint="$(tr -d '\r\n' < "$stage/BUILD-FINGERPRINT.txt")"
@@ -333,6 +296,7 @@ jobs:
           printf '%s  %s\n' "$(sha256sum "$stage/MAD4B-BUILD-PROVENANCE.json" | awk '{print $1}')" 'MAD4B-BUILD-PROVENANCE.json' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/BUILD-FINGERPRINT.txt" | awk '{print $1}')" 'BUILD-FINGERPRINT.txt' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/PACKAGE-MANIFEST-DIGEST.txt" | awk '{print $1}')" 'PACKAGE-MANIFEST-DIGEST.txt' >> "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$(sha256sum "$stage/CANONICAL-PACKAGE-RECEIPT.json" | awk '{print $1}')" 'CANONICAL-PACKAGE-RECEIPT.json' >> "$stage/SHA256SUMS"
 
           export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest"
           python3 - "$stage" "$version" <<'PY'
