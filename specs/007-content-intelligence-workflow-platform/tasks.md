@@ -723,4 +723,20 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3636 P0 Replace the stale fixed implementation branch with workflow-owned Feature 007 branch-prefix policy.
 - [ ] T3637 P0 Enforce reviewed-parent versus runtime-release identity separation and runtime-path drift detection in CI.
 - [ ] T3638 P0 Complete the minimal out-of-band Recovery Runner read/disable/known-good-restore surface and contract tests.
+- [ ] T3639 P0 Enforce the bulk runtime closure hardening matrix as machine-readable CI input; documentation-only evidence cannot close live gates.
+- [ ] T3640 P0 Implement durable mutation intent/journal + atomic receipt persistence and normalize side-effect-without-evidence as MUTATED_BUT_EVIDENCE_UNCERTAIN.
+- [ ] T3641 P0 Prove reconciliation of MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry.
+- [ ] T3642 P0 Execute runner crash-after-lease, lease-loss-before-commit, zombie writer and duplicate/replay fixtures.
+- [ ] T3643 P0 Execute crash-after-side-effect-before-receipt and provider-timeout-after-possible-side-effect fixtures.
+- [ ] T3644 P0 Execute symlink/reparse swap, traversal, zip-slip, shell metacharacter and executable injection denial fixtures.
+- [ ] T3645 P0 Prove timeout/output/disk/file/network/database resource budgets fail closed with stable reason codes.
+- [ ] T3646 P0 Prove bootstrap executor can install/enroll only the exact attested runner package and exact scheduler entry; no standing Host authority is created.
+- [ ] T3647 P0 Prove WordPress-unbootable Recovery Runner health/read/known-good restore path.
+- [ ] T3648 P0 Prove protected backup integrity/capacity/exact-runtime binding and interrupted/corrupt restore behavior.
+- [ ] T3649 P0 Prove one semantic operation across two executor adapters with normalized-result and authority parity.
+- [ ] T3650 P0 Prove submission/execution/commit location truthfulness and reapproval on material executor-location change.
+- [ ] T3651 P0 Extend gate-liveness proof so every blocking gate has a path to a terminal state, not only terminal reachability.
+- [ ] T3652 P0 Prove Doctor/DLQ/reconciliation behavior for stuck lease, orphan job, uncertain mutation and recovery-required states.
+- [ ] T3653 P0 Recertify exact installed Bit Flows 1.29.0 against permanent behavioral/security probes before execution eligibility.
+- [ ] T3654 P0 Run the complete request→plan→approval→execution→readback→durable receipt→rollback vertical slice and link all evidence to the terminal gate.
 - [ ] T3630 P0 GATE Execute exact ETG Staging linked evidence chain and emit CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED only when every hard dependency is satisfied.
