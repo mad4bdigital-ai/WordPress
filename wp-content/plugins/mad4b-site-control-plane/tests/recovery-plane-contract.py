@@ -348,4 +348,67 @@ with tempfile.TemporaryDirectory() as td:
     if len(rows) != 1 or rows[0]["evidence_state"] != "ROLLED_BACK_AFTER_FAILURE":
         raise SystemExit("disable rollback journal does not truthfully report rollback")
 
+
+# Archive/path confinement: zip-slip and symlink entries must fail before mutation.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    stage = tmp / "stage"
+    malicious = tmp / "zip-slip.zip"
+    with zipfile.ZipFile(malicious, "w") as z:
+        z.writestr("mad4b-site-control-plane/../../escaped.php", b"<?php // escape")
+    try:
+        recovery.safe_extract_control_plane(malicious, stage)
+        raise SystemExit("Recovery extractor accepted zip-slip path")
+    except ValueError as exc:
+        if "unsafe archive path" not in str(exc):
+            raise
+    if (tmp / "escaped.php").exists():
+        raise SystemExit("zip-slip fixture escaped extraction root")
+
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    stage = tmp / "stage"
+    malicious = tmp / "symlink.zip"
+    info = zipfile.ZipInfo("mad4b-site-control-plane/link.php")
+    info.create_system = 3
+    info.external_attr = (0o120777 << 16)
+    with zipfile.ZipFile(malicious, "w") as z:
+        z.writestr(info, "../../outside.php")
+    try:
+        recovery.safe_extract_control_plane(malicious, stage)
+        raise SystemExit("Recovery extractor accepted symlink archive entry")
+    except ValueError as exc:
+        if "symlink forbidden" not in str(exc):
+            raise
+
+# Recovery workspace itself cannot be redirected through a symlink.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    old = plugins / recovery.PLUGIN_SLUG
+    old.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // recovery-root-symlink fixture\n", encoding="utf-8")
+    (old / "mad4b-site-control-plane.php").write_text("<?php // old runtime\n", encoding="utf-8")
+    external = tmp / "external-recovery"
+    external.mkdir()
+    (wp / "wp-content" / "mad4b-recovery").symlink_to(external, target_is_directory=True)
+    source_sha = "f" * 40
+    artifact, install, receipt = known_good_fixture(tmp, source_sha)
+    plan = recovery.build_restore_plan(
+        wp,
+        "staging",
+        "INC-PATH-CONFINEMENT",
+        "Reject symlinked Recovery Plane workspace before mutation.",
+        receipt,
+    )
+    try:
+        recovery.apply_restore(plan, artifact, receipt, plan["plan_sha256"])
+        raise SystemExit("Recovery Plane accepted symlinked recovery workspace")
+    except ValueError as exc:
+        if "recovery root symlink is forbidden" not in str(exc):
+            raise
+    if "old runtime" not in (old / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
+        raise SystemExit("symlinked recovery workspace fixture mutated live plugin")
+
 print("out-of-band recovery plane contract: PASS")
