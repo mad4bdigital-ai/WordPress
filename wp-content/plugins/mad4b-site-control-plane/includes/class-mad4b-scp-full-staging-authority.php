@@ -42,15 +42,19 @@ final class MAD4B_SCP_Full_Staging_Authority {
 	/**
 	 * Project only the composite authority mutation onto the single ChatGPT app.
 	 *
-	 * Keep tools/list cheap: projection checks only the already-bound Staging
-	 * identity/profile gate. The apply callback remains the authority boundary;
-	 * it recomputes the full plan, requires ready_to_apply with no hard blockers,
-	 * exact-matches every expected identity/digest/revision field, and fails
-	 * closed before any mutation if state changed.
+	 * Keep tools/list cheap and lifecycle-stable: catalog construction can happen
+	 * before transport permission binds the request OAuth identity, so projection
+	 * depends only on exact enrolled Staging site facts and the raw-SQL
+	 * Breakglass gate. The apply callback remains the authority boundary: it
+	 * requires the verified enrolled OAuth administrator, recomputes the full
+	 * plan, requires ready_to_apply with no hard blockers, exact-matches every
+	 * expected identity/digest/revision field, and fails closed before mutation.
 	 */
 	public static function chatgpt_step_up_tools() {
-		$access = self::can_access();
-		if ( is_wp_error( $access ) || ! $access ) return array();
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return array();
+		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return array();
+		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+		if ( self::generic_raw_sql_breakglass_gate_enabled() ) return array();
 		return array( self::APPLY_ABILITY );
 	}
 
