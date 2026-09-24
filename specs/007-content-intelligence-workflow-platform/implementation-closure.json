@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.feature007-implementation-closure.v1",
   "baseline_branch": "master",
-  "baseline_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+  "baseline_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
   "terminal_gate": "critical_kernel_vertical_slice_verified",
   "production_authorized": false,
   "architecture_freeze": true,
@@ -22,25 +22,42 @@
     {
       "id": "repository_governance",
       "priority": "KERNEL_BLOCKER",
-      "status": "EXTERNAL_PENDING",
+      "status": "DONE",
       "gate": "repository_governance_enforced",
       "evidence": {
-        "master_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
-        "governance_run_id": 36068553163,
-        "repository_governance_ready": false,
-        "external_ruleset_state": "missing",
-        "bootstrap_exception_active": true,
-        "bootstrap_scope": "initial_master_ruleset_only"
+        "master_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "ruleset_id": 23968498,
+        "ruleset_name": "MAD4B master release governance",
+        "enforcement": "active",
+        "target_ref": "refs/heads/master",
+        "bypass_actor_count": 0,
+        "current_user_can_bypass": "never",
+        "required_check": "Repository release verdict",
+        "required_check_integration_id": 15368,
+        "strict_required_status_checks_policy": true,
+        "allowed_merge_methods": [
+          "merge"
+        ],
+        "required_review_thread_resolution": true,
+        "deletion_blocked": true,
+        "non_fast_forward_blocked": true,
+        "governance_push_run_id": 36072550595,
+        "repository_governance_ready": true
       }
     },
     {
       "id": "repository_governance_bootstrap_retirement",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
+      "status": "DONE",
       "gate": "repository_governance_bootstrap_retired",
       "evidence": {
-        "current_state": "bootstrap exception still present after PR #60 merge",
-        "prerequisite": "repository_governance_enforced"
+        "pr": 64,
+        "authorized_exact_head_sha": "0dd96ad9a67dd7c31415b847de2019cdb6438555",
+        "merge_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "bootstrap_exception_active": false,
+        "retirement_contract": "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py",
+        "governance_workflow_fail_closed_without_ruleset": true,
+        "release_verdict_requires_governance_ready": true
       }
     },
     {
@@ -55,17 +72,20 @@
       "status": "DONE",
       "gate": "release_provenance_root",
       "evidence": {
-        "source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
-        "workflow_run_id": 36068553105,
-        "general_distribution_artifact_id": 10836588669,
-        "artifact_digest": "sha256:e6c498d4330bb9c64e3d3d9c25fab4a890a2c78c870bd7fb8fc7e9714be18a78",
-        "receipt_artifact_id": 10836443926,
-        "receipt_digest": "sha256:3ae7c3e034e56030017b7155ded42c55ab61a00c77dee306cb039233b3aec655",
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+        "workflow_run_id": 36072550999,
+        "general_distribution_artifact_id": 10838403565,
+        "artifact_digest": "sha256:23887c052950d62f42d68ddba378460ec80a68f9b14365bc3d91220be451b63e",
+        "receipt_artifact_id": 10838323685,
+        "receipt_digest": "sha256:baa92a2dc3e5ebf92b80d172983be8585486aed1065951b8ddb452d0bfb33cfc",
         "control_plane_version": "0.4.0-rc.59",
-        "build_fingerprint": "d543708e7191ec8b6e13e18f90d4b66cc3639eb411b864de92c446ce8c2391ac",
-        "package_manifest_digest": "17af19216dc029da672e22c93ac06757ccfe497f31e1373b7246dfd0599032e5",
-        "control_plane_archive_sha256": "0f6172e2b59ba933a8dbacba975334b69e5b4c83c613202589bbf2202a984d23",
-        "trusted_master_external_verification": true
+        "build_fingerprint": "f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6",
+        "package_manifest_digest": "3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950",
+        "control_plane_archive_sha256": "c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06",
+        "trusted_master_external_verification": true,
+        "attestation_verified": true,
+        "trusted_signer_ref": "refs/heads/master",
+        "trusted_signer_event": "push"
       }
     },
     {
@@ -108,7 +128,7 @@
       "status": "OPEN",
       "gate": "etg_exact_master_deployed",
       "evidence": {
-        "target_source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "target_source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
         "currently_deployed_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
         "source_commit_match": false,
         "deployment_performed": false
@@ -171,7 +191,7 @@
       "status": "PARTIAL",
       "gate": "multi_authority_live",
       "evidence": {
-        "source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
         "implementation_paths": [
           "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php",
           "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
@@ -215,7 +235,7 @@
       "status": "OPEN",
       "gate": "content_job_domain_ready",
       "evidence": {
-        "source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
         "contract_path": "specs/007-content-intelligence-workflow-platform/contracts/content-job.md",
         "runtime_implementation_match": "not_found_in_master_tree_review"
       },
@@ -267,7 +287,7 @@
       "status": "PARTIAL",
       "gate": "authoritative_execution_verified",
       "evidence": {
-        "source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
         "implementation_paths": [
           "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
           "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
@@ -344,7 +364,7 @@
     "control_plane_version": "0.4.0-rc.59",
     "mcp_adapter_version": "0.6.1",
     "live_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
-    "target_master_source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+    "target_master_source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
     "trusted_master_deployed": false,
     "live_manifest_present": true,
     "live_manifest_valid": true,
