@@ -412,21 +412,33 @@ Joined audit sink dispatch occurs only after explicit transaction commit. Explic
 
 ## Migration strategy
 
-Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `9`.
+Schema version is stored in option `mad4b_scp_schema_version` and current expected version is `9`. Schema v9 is governed by migration contract `mad4b.schema-migration.v1` with migration ID `20260924-feature007-durable-execution-v9`.
+
+Migration declaration:
+- prerequisite schema identities: fresh install `0`, and supported prior/current versions `6|7|8|9`; a future or otherwise unsupported version fails closed instead of being downgraded;
+- forward operation: additive `dbDelta()` creation/update of MAD4B-prefixed tables, columns and indexes only;
+- rollback/forward-fix strategy: forward-fix only; additive v9 objects are preserved so older code can ignore the new surfaces rather than requiring destructive rollback;
+- expected locks/downtime: bounded metadata DDL; no maintenance mode is assumed;
+- data-volume assumption: the six Feature 007 durable tables are new or sparse while existing governance rows are preserved;
+- preflight: supported prerequisite version, usable WordPress DB handle, non-empty site prefix and no future-schema downgrade;
+- post-verification: deep physical integrity, approval-binding columns, durable columns and required unique indexes;
+- evidence: deterministic migration-contract SHA-256, target integrity token, physical-integrity SHA-256 and durable `mad4b.schema-migration-receipt.v1`;
+- partial failure: target version/readiness is not accepted until deep verification, exact option readback and a finalized receipt succeed; retry remains idempotent;
+- mixed-version window: v9 is additive and previous v6 code does not consume the new durable surfaces;
+- authority widening: forbidden; migration does not create/enable NHI subjects, grants, approvals, provider promotion or Production authority.
 
 Activation/boot rules:
-1. `dbDelta()` creates/updates only MAD4B-prefixed tables.
-2. Migration is idempotent.
-3. Migration never auto-creates enabled NHI authority.
-4. Existing global mutation enablement never implies NHI authority.
-5. Missing/partial schema produces `governance_schema_unavailable` and governed mutation fails closed.
-6. A successful deep physical-integrity verification writes the bounded schema-integrity token used by normal read/hot paths; mutation/approval authority boundaries still use the memoized physical guard and fail closed on physical drift.
-7. Schema v9 preserves the v6 Site Profile approval bindings and adds six durable Feature 007 tables: Content Jobs, Job Events, Work Leases, Idempotency, Execution Outbox and Execution Inbox.
-8. The idempotency table includes `claim_epoch` and `reconciliation_ref`; reclaim increments the epoch after verified reconciliation, stale claims are fenced, expired active leases require reconciliation, and terminal leases cannot be resurrected.
-9. Legacy option-based or v1 candidate bindings may be migrated only as compatibility evidence; they do not become actionable governed-write authority unless the exact tenant-profile/build binding is complete. Otherwise they remain stale/fail-closed and a new v2 exact plan is required.
-9. New governed remote approval bindings are persisted on the approval row using `mad4b.approval-candidate-binding.v2`.
-10. Audit head/legacy anchor is initialized only after schema readiness.
-11. No legacy capability is widened during migration.
+1. A healthy already-finalized v9 schema short-circuits without repeated DDL.
+2. Otherwise migration preflight runs before `dbDelta()`; unsupported/future schema identity fails closed.
+3. `dbDelta()` creates/updates only MAD4B-prefixed tables and the operation is idempotent.
+4. Migration never auto-creates enabled NHI authority, and existing global mutation enablement never implies NHI authority.
+5. Schema v9 preserves the v6 Site Profile approval bindings and adds six durable Feature 007 tables: Content Jobs, Job Events, Work Leases, Idempotency, Execution Outbox and Execution Inbox.
+6. The idempotency table includes `claim_epoch` and `reconciliation_ref`; reclaim increments the epoch after verified reconciliation, stale claims are fenced, expired active leases require reconciliation, and terminal leases cannot be resurrected.
+7. Legacy option-based or v1 candidate bindings may be migrated only as compatibility evidence; incomplete tenant/profile/build binding remains stale and requires a new v2 exact plan.
+8. New governed remote approval bindings are persisted on the approval row using `mad4b.approval-candidate-binding.v2`.
+9. Deep physical verification must pass before any readiness marker advances. A physical-verification receipt is persisted/read back, then schema version and integrity token are persisted/read back, then a finalized receipt is persisted/read back.
+10. `MAD4B_SCP_Schema::is_ready()` requires exact version, exact integrity token and a valid finalized migration receipt; missing/partial evidence therefore keeps governed mutation fail-closed.
+11. Audit head/legacy anchor is initialized only after schema readiness, and no legacy capability is widened during migration.
 
 ## Retention and evidence
 
