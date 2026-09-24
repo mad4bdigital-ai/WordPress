@@ -24,6 +24,18 @@
 | HOST | separate Host Connector | connector grants/provider evidence |
 | CRON | cron semantic family | provider-specific runtime tests |
 | GROW | search performance providers | snapshots + refresh lineage |
+| QCORR | correctness/idempotency/concurrency | transaction + replay/race evidence |
+| QRES | durable execution/resilience | lease/retry/fault-injection evidence |
+| QSCHEMA | schema/contract evolution | migration + compatibility evidence |
+| QSEC | threat model | negative security tests |
+| QSUPPLY | supply chain/secrets | artifact/dependency/secret evidence |
+| QAI | source trust/LLM evaluation | eval fixtures + grounding/injection tests |
+| QTENANT | tenant/privacy | isolation + retention/erasure tests |
+| QPERF | performance/capacity/cost | SLO/load/budget evidence |
+| QDR | disaster recovery | restore/rollback rehearsal |
+| QTEST | verification strategy | property/fuzz/fault/matrix evidence |
+| QDRIFT | policy drift/kill switches | desired-vs-observed + fail-closed tests |
+| QSPEC | cross-feature spec isolation | unrelated feature CI stays green |
 
 ## Dependency graph
 release-lineage
@@ -74,3 +86,29 @@ provider-artifact
 → provider resolver eligibility
 
 Provider Resolver remains non-authorizing; authority/approval/budget still execute after resolution.
+
+
+## Quality dependency graph
+canonical data contracts
+→ atomic state/idempotency
+→ durable execution
+→ provider/workflow/content orchestration
+
+threat model
+→ supply-chain/secrets
+→ source trust
+→ tenant isolation
+→ live security acceptance
+
+schema evolution
+→ compatibility matrix
+→ migration/restore rehearsal
+
+AI process versioning
+→ eval suites
+→ publish quality gates
+
+SLO/capacity/cost
+→ release-ring scale eligibility
+
+No quality branch can widen authority; these gates can only block or constrain release.

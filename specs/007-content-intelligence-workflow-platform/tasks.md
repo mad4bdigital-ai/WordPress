@@ -314,3 +314,70 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1903 P0 Add cross-feature spec isolation contract/test.
 - [ ] T1904 P0 Verify Feature 001 CI stays green for spec-only Feature 007 changes.
 - [ ] T1905 P0 Verify Feature 007 validation does not depend on mutating another feature's metadata.
+
+
+## Phase 20 — Correctness, concurrency and durability
+- [ ] T2001 P0 Define canonical serialization/hash version.
+- [ ] T2002 P0 Define ContentJob/Event/Artifact transaction boundaries.
+- [ ] T2003 P0 Implement optimistic revisions and stale-write conflicts.
+- [ ] T2004 P0 Implement write idempotency key registry.
+- [ ] T2005 P0 Implement durable provider outbox.
+- [ ] T2006 P0 Implement callback/event inbox deduplication.
+- [ ] T2007 P0 Define at-least-once delivery + effect-once guarantees.
+- [ ] T2008 P0 Worker lease/heartbeat/reclaim semantics.
+- [ ] T2009 P0 Retry error taxonomy.
+- [ ] T2010 P0 Retry attempt/time/cost budgets + backoff/jitter.
+- [ ] T2011 P0 Provider timeouts/bulkheads/circuit breakers.
+- [ ] T2012 P0 Queue/backpressure/saturation behavior.
+- [ ] T2013 P0 Cancellation vs execution race handling.
+- [ ] T2014 P0 Multi-step saga/compensation declarations.
+- [ ] T2015 P0 Concurrency test: two writers same job revision.
+- [ ] T2016 P0 Timeout-after-provider-success duplicate prevention.
+- [ ] T2017 P0 Duplicate/reordered callback tests.
+- [ ] T2018 P0 Crash/lease-expiry resume test.
+- [ ] T2019 P0 GATE QCORRECTNESS + QRESILIENCE pass.
+
+## Phase 21 — Security, data and supply chain
+- [ ] T2101 P0 Enumerate trust zones and threat model.
+- [ ] T2102 P0 SSRF/private/link-local/metadata endpoint policy.
+- [ ] T2103 P0 Redirect/DNS rebinding revalidation.
+- [ ] T2104 P0 Prompt/source injection isolation.
+- [ ] T2105 P0 HTML/XSS sanitization and output context tests.
+- [ ] T2106 P0 SQL/command/path traversal negative tests.
+- [ ] T2107 P0 Zip-slip/symlink package extraction tests.
+- [ ] T2108 P0 Confused-deputy capability escalation tests.
+- [ ] T2109 P0 Provider compromise quarantine/kill-switch test.
+- [ ] T2110 P0 Exact package provenance/dependency inventory.
+- [ ] T2111 P0 Unexpected update-source/digest drift blocker.
+- [ ] T2112 P0 Secret binding/storage/redaction/rotation contract.
+- [ ] T2113 P0 Tenant/site DB/query/cache isolation.
+- [ ] T2114 P0 Wrong-site webhook/provider callback negatives.
+- [ ] T2115 P0 Data classification/minimization.
+- [ ] T2116 P1 Retention/export/erasure/tombstone workflow.
+- [ ] T2117 P0 Policy desired-vs-observed drift status.
+- [ ] T2118 P0 High-risk kill-switch precedence.
+- [ ] T2119 P0 GATE QSECURITY + QSUPPLYCHAIN + QDATA pass.
+
+## Phase 22 — AI evaluation, performance, compatibility and recovery
+- [ ] T2201 P0 Record model/prompt/Skill/input fingerprints on AI artifacts.
+- [ ] T2202 P0 Structured-output schema validation + bounded repair.
+- [ ] T2203 P0 Fact grounding/evidence coverage metrics.
+- [ ] T2204 P0 Versioned multilingual/content-type evaluation fixtures.
+- [ ] T2205 P0 Model/prompt/Skill regression policy.
+- [ ] T2206 P0 Fallback-model equivalence gate.
+- [ ] T2207 P0 Define environment/use-case SLO profiles.
+- [ ] T2208 P0 Queue/latency/error/payload/DB/memory/concurrency metrics.
+- [ ] T2209 P0 Per-job/stage/provider/model cost budgets.
+- [ ] T2210 P0 Capacity and burst load tests.
+- [ ] T2211 P0 Schema migration fresh/upgrade/repeat/partial-failure tests.
+- [ ] T2212 P0 Mixed-version compatibility policy.
+- [ ] T2213 P0 PHP/WP/DB/MCP/provider compatibility matrix.
+- [ ] T2214 P0 Property tests for state/idempotency/hash/scope.
+- [ ] T2215 P0 Bounded fuzz tests for external envelopes/URLs/paths.
+- [ ] T2216 P0 Fault injection for timeout/duplicate/reorder/DB crash/JWKS outage.
+- [ ] T2217 P1 Mutation testing for critical deny-policy code.
+- [ ] T2218 P0 Define RPO/RTO profiles.
+- [ ] T2219 P0 Database/artifact restore rehearsal.
+- [ ] T2220 P0 OAuth key/provider compromise recovery rehearsal.
+- [ ] T2221 P0 Failed publish/rollback/forward-fix rehearsal.
+- [ ] T2222 P0 GATE QEVAL + QPERF + QCOMPAT + QRECOVERY pass.

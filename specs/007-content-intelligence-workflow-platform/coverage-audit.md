@@ -697,3 +697,47 @@ The first execution priorities remain:
 4. dynamic provider-certification foundation.
 5. Bit Flows exact-artifact diagnostic/recertification.
 6. then Content Job vertical slice.
+
+
+## 45. Quality architecture hardening beyond supplied functional scope
+
+Deep review identified additional engineering concerns required for a robust long-lived platform even though they were not all explicit in the supplied notes.
+
+Added as normative contracts:
+- correctness/consistency/idempotency;
+- durable execution/retries/backpressure;
+- schema/contract evolution;
+- security threat model;
+- supply chain/secrets;
+- source trust and AI/LLM evaluation;
+- tenant/privacy/retention;
+- performance/capacity/cost;
+- disaster recovery/operability;
+- verification/testing strategy;
+- policy drift/kill switches;
+- cross-feature specification isolation.
+
+Key decisions:
+- no false exactly-once claim across external providers;
+- optimistic concurrency and expected-state checks;
+- durable inbox/outbox for asynchronous provider boundaries;
+- worker leases and crash recovery;
+- bounded retry/cost/queue behavior;
+- explicit trust zones and untrusted-source instruction isolation;
+- artifact/dependency provenance and secret minimization;
+- AI artifacts record model/prompt/Skill/input lineage;
+- SLOs are profile-driven instead of arbitrary universal numbers;
+- restore evidence is required before durable/irreversible Production eligibility;
+- quality is evaluated as independent hard gates, not one averaged score.
+
+## 46. Cross-feature Spec Kit regression discovered and fixed
+
+The first Feature 007 metadata implementation overwrote repository-global .specify/feature.json.
+Existing Feature 001 CI uses that file as an executable contract and failed with missing target_version.
+
+Resolution:
+- restore the existing global Feature 001 metadata unchanged;
+- place Feature 007 machine-readable metadata inside Feature 007 directory;
+- add spec-isolation contract and CI compatibility task.
+
+This incident is permanent design evidence that shared repository metadata is an owned compatibility surface.

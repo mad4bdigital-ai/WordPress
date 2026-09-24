@@ -426,3 +426,44 @@ Exit gate: a fixture workflow requirement can choose an eligible provider using 
 - demotion/quarantine on regression.
 
 Production eligibility remains distinct from Production authorization.
+
+
+## Phase 20 — Correctness and durable execution foundation
+
+- add canonical serialization/fingerprint versioning;
+- define transaction boundaries for ContentJob/Event/Artifact updates;
+- implement optimistic revision/expected-state checks;
+- add idempotency registry and inbox/outbox for external callbacks;
+- implement worker lease/heartbeat/checkpoint recovery;
+- define retry taxonomy/budgets/backoff;
+- add provider bulkheads/circuit breakers/backpressure;
+- add saga/compensation metadata for multi-step side effects.
+
+Exit gate: concurrency + duplicate delivery + crash/failure injection preserve state and effect-once behavior.
+
+## Phase 21 — Security, data and supply-chain hardening
+
+- formal threat model and trust-zone tests;
+- SSRF/DNS-rebinding/private-network controls;
+- prompt/source injection isolation;
+- output sanitization/path/archive safety;
+- provider/package provenance + dependency/SBOM evidence;
+- secret binding/rotation/redaction;
+- tenant/site isolation tests;
+- data classification/minimization/retention/deletion;
+- policy drift + kill switches.
+
+Exit gate: applicable high-risk surfaces pass negative security/isolation tests.
+
+## Phase 22 — Quality, performance and recovery engineering
+
+- versioned AI/content eval suites by language/content type;
+- model/prompt/Skill regression gates;
+- SLO/capacity/cost profiles;
+- load/backpressure tests;
+- schema migration and mixed-version compatibility tests;
+- PHP/WP/DB/MCP/provider compatibility matrix;
+- backup/restore and disaster-recovery rehearsal;
+- property/fuzz/fault-injection/mutation-testing for critical paths.
+
+Exit gate: release has evidence for every applicable hard quality gate in quality-model.md.

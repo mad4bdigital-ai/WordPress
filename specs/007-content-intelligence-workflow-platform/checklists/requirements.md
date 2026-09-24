@@ -95,3 +95,27 @@
 - [x] Feature 007 metadata is local to Feature 007.
 - [x] Existing Feature 001 global metadata is preserved.
 - [ ] CI proves spec-only additions cannot regress unrelated feature contracts.
+
+
+## Quality and robustness hardening
+- [x] Functional coverage is separated from quality readiness.
+- [x] Atomicity/concurrency/idempotency contract exists.
+- [x] At-least-once vs effect-once semantics are explicit.
+- [x] Durable lease/retry/backpressure/circuit-breaker contract exists.
+- [x] Schema/contract evolution and migration strategy exist.
+- [x] Security threat model includes SSRF, injection, replay, confused deputy and tenant bleed.
+- [x] Supply-chain provenance and secret lifecycle are explicit.
+- [x] Prompt/source injection boundaries are explicit.
+- [x] AI model/prompt/Skill versioning and evaluation are explicit.
+- [x] Tenant/privacy isolation and retention are explicit.
+- [x] SLO/capacity/cost governance is explicit.
+- [x] DR/RPO/RTO/restore rehearsal is explicit.
+- [x] Property/fuzz/fault/compatibility testing is explicit.
+- [x] Policy drift and kill switches are explicit.
+- [x] Cross-feature Spec Kit isolation is fixed in design.
+- [ ] Runtime QCORRECTNESS evidence exists.
+- [ ] Runtime QRESILIENCE evidence exists.
+- [ ] Runtime QSECURITY/QSUPPLYCHAIN evidence exists.
+- [ ] Runtime QEVAL evidence exists.
+- [ ] Runtime QPERF evidence exists.
+- [ ] Runtime QRECOVERY/QCOMPAT evidence exists.
