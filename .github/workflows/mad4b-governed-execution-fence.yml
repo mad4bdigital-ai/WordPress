@@ -3,9 +3,21 @@ name: MAD4B Governed Execution Fence
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - '.github/workflows/mad4b-governed-execution-fence.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:

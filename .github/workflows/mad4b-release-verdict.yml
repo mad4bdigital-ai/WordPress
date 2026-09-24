@@ -64,6 +64,34 @@ jobs:
           import json, os, subprocess
           from pathlib import Path
 
+          critical_trigger_workflows = [
+              '.github/workflows/mad4b-site-control-plane.yml',
+              '.github/workflows/mad4b-dynamic-skills.yml',
+              '.github/workflows/mad4b-control-plane-package.yml',
+              '.github/workflows/mad4b-chatgpt-refresh-hotpath.yml',
+              '.github/workflows/mad4b-chatgpt-catalog-performance.yml',
+              '.github/workflows/mad4b-full-staging-authority.yml',
+              '.github/workflows/mad4b-governed-execution-fence.yml',
+              '.github/workflows/mad4b-approval-decision-contract.yml',
+              '.github/workflows/mad4b-oauth-resource-bridge.yml',
+          ]
+          full_runtime_trigger_paths = [
+              'wp-content/plugins/mad4b-site-control-plane/**',
+              'wp-content/plugins/mcp-adapter.zip',
+              'wp-content/plugins/*.zip',
+              'plugins/mad4b-wordpress/**',
+              'tools/capture-functional-gap-contract-evidence.py',
+          ]
+          for workflow in critical_trigger_workflows:
+              workflow_text = Path(workflow).read_text(encoding='utf-8')
+              if '  pull_request:\n' not in workflow_text:
+                  raise SystemExit(f'critical workflow lacks pull_request trigger: {workflow}')
+              if '  push:\n' not in workflow_text or '      - master' not in workflow_text:
+                  raise SystemExit(f'critical workflow lacks master push trigger: {workflow}')
+              for trigger_path in full_runtime_trigger_paths:
+                  if trigger_path not in workflow_text:
+                      raise SystemExit(f'critical workflow trigger drift: {workflow} missing {trigger_path}')
+
           full = [
               'Control-plane contract guard',
               'Dynamic Skills contract',

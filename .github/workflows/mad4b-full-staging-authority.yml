@@ -3,6 +3,11 @@ name: MAD4B Full Staging Authority Contract
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-full-staging-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-candidate-binding.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php'
@@ -16,6 +21,15 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-consent-ui-contract.php'
       - '.github/workflows/mad4b-full-staging-authority.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
   workflow_dispatch:
 
 permissions:
