@@ -19,15 +19,38 @@ final class MAD4B_SCP_BitFlows_Adapter extends MAD4B_SCP_Adapter_Base {
 	protected function detect_plugin_version() { if ( defined( 'BITPI_VERSION' ) ) return BITPI_VERSION; if ( defined( 'BIT_PI_VERSION' ) ) return BIT_PI_VERSION; return ''; }
 	public function register_abilities() {
 		$this->add_ability( 'bitflows/status', 'Get Bit Flows Status', 'status', array( 'MAD4B_SCP_Policy', 'can_read' ) );
-		$this->add_ability( 'bitflows/list-flows', 'List Bit Flows', 'list_flows', array( 'MAD4B_SCP_Policy', 'can_read' ), $this->schema( array( 'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ) ) ) );
-		$flow_schema = $this->schema( array( 'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'flow_id' ) );
+		$this->add_ability( 'bitflows/list-flows', 'List Bit Flows', 'list_flows', array( 'MAD4B_SCP_Policy', 'can_read' ), $this->schema( array(
+			'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 50 ),
+		) ) );
+		$flow_schema = $this->schema(
+			array( 'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+			array( 'flow_id' )
+		);
 		$this->add_ability( 'bitflows/get-flow', 'Get Bit Flow', 'get_flow', array( 'MAD4B_SCP_Policy', 'can_read' ), $flow_schema );
-		$this->add_ability( 'bitflows/get-executions', 'Get Bit Flow Executions', 'get_executions', array( 'MAD4B_SCP_Policy', 'can_read' ), $this->schema( array( 'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ), 'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ) ), array( 'flow_id' ) ) );
-		$this->add_ability( 'bitflows/run-flow', 'Run Bit Flow', 'run_flow', array( $this, 'can_run_flow' ), $this->schema( array(
-			'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ),
-			'expected_flow_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
-			'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
-			'idempotency_key' => array( 'type' => 'string', 'minLength' => 8, 'maxLength' => 191, 'pattern' => '^[A-Za-z0-9._:-]+	}
+		$this->add_ability( 'bitflows/get-executions', 'Get Bit Flow Executions', 'get_executions', array( 'MAD4B_SCP_Policy', 'can_read' ), $this->schema(
+			array(
+				'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20 ),
+			),
+			array( 'flow_id' )
+		) );
+		$this->add_ability( 'bitflows/run-flow', 'Run Bit Flow', 'run_flow', array( $this, 'can_run_flow' ), $this->schema(
+			array(
+				'flow_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+				'expected_flow_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'expected_plan_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'idempotency_key' => array(
+					'type' => 'string',
+					'minLength' => 8,
+					'maxLength' => 191,
+					'pattern' => '^[A-Za-z0-9._:-]+$',
+				),
+				'trigger_data' => array( 'type' => 'object', 'default' => array() ),
+				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+			),
+			array( 'flow_id', 'expected_flow_sha256', 'expected_plan_sha256', 'idempotency_key', 'reason' )
+		), 'admin', false, true, false );
+	}
 	public function status() {
 		$status = parent::status();
 		$status['contracts'] = array(
