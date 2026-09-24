@@ -13,6 +13,9 @@
 		var node = feedbackNode(form);
 		if (!node) return;
 		node.className = "mad4b-settings-feedback " + (ok ? "is-success" : "is-error");
+		node.style.margin = "8px 0";
+		node.style.fontWeight = "600";
+		node.style.color = ok ? "#008a20" : "#b32d2e";
 		node.textContent = (code ? code + " · " : "") + (message || "");
 	}
 
@@ -84,9 +87,19 @@
 				var digest = form.querySelector('input[name="expected_profile_digest"]');
 				if (digest) digest.value = String(payload.data.readback.profile_digest);
 			}
-			setFeedback(form, payload.data.message || cfg().saved || "Saved and verified.", true, "");
+			var successMessage = payload.data.message || cfg().saved || "Saved and verified.";
 			var selector = form.getAttribute("data-mad4b-refresh-selector") || "";
-			if (selector) await refreshSelector(selector);
+			var feedbackForm = form;
+			if (selector) {
+				await refreshSelector(selector);
+				var refreshed = document.querySelector(selector);
+				if (refreshed) {
+					feedbackForm = refreshed.matches && refreshed.matches(".mad4b-settings-ajax-form")
+						? refreshed
+						: (refreshed.querySelector ? refreshed.querySelector(".mad4b-settings-ajax-form") || form : form);
+				}
+			}
+			setFeedback(feedbackForm, successMessage, true, "");
 			document.dispatchEvent(new CustomEvent("mad4b:settings-persisted", { detail: payload.data }));
 		} catch (error) {
 			setFeedback(form, error && error.message ? error.message : (cfg().failed || "Settings could not be persisted."), false, error && error.mad4bCode ? error.mad4bCode : "");
