@@ -212,7 +212,7 @@ final class MAD4B_SCP_MCP_Client_Compatibility {
 			&& ! empty( $status['authority_registry_valid'] )
 			&& ! empty( $status['subject_policy_ready'] )
 			&& ! empty( $status['authority_count'] )
-			&& ! empty( $status['https'] )
+			&& ! empty( $status['resource_transport_allowed'] )
 			&& $environment_allowed;
 	}
 
