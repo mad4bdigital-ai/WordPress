@@ -189,6 +189,20 @@ Runtime self-test treats drift from an installed-but-inactive provider as adviso
 
 Premium candidate metadata is diagnostic, not certification. If an installed premium version differs from the repository package candidate (for example a patch-suffix difference), the candidate relation is reported explicitly and mutation stays fail-closed. Live/runtime hashes are never accepted as self-attestation authority.
 
+### Bit Flows exact candidate package diagnostic
+
+`tests/bitflows-exact-package-diagnostic.py` has two deliberately separate modes:
+
+- `certified` (default) verifies the repository-certified Bit Flows archive and fails on any archive SHA, certified critical-file, or required semantic-target drift.
+- `candidate` accepts an exact external archive only to produce evidence for review. It never updates provider certification, never grants write authority, never makes a normal MCP mount eligible, and always reports `candidate_attestation_eligible=false`.
+
+Candidate evidence binds both the raw archive SHA-256 and a normalized full-package manifest digest (logical path, size and file SHA-256, independent of ZIP compression/order metadata). It also records every observed certified critical-file digest, semantic execution/history evidence, and bounded native-MCP markers. `--include-manifest` may be used when the complete normalized package manifest is required for an artifact-authority review.
+
+A candidate package with a native MCP server is a separate security surface from the MAD4B Bit Flows adapter. Structural compatibility of `FlowExecutor` or durable execution correlation does not prove that the provider-native MCP server cannot bypass MAD4B transport, grant, approval, budget, audit, candidate-binding, or Production boundaries. Candidate mode therefore keeps `no_privileged_mcp_side_channel_proven=false` and requires explicit MCP security recertification whenever a server/route surface is detected or the candidate artifact differs from the certified baseline.
+
+If a provider-native MCP server is intentionally disabled or isolated at runtime, that runtime policy is evidence only; it does not create artifact authority. A later certification must either prove enforced isolation/fail-closed disablement for the exact artifact or model the native server as a governed peer under the existing MCP peer-governance contract.
+
+
 ## Evidence, artifact authority, capability certification and mutation authority
 
 These are separate trust layers:
