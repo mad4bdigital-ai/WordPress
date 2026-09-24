@@ -10,6 +10,7 @@ client = (root / "assets/admin-settings-persistence.js").read_text(encoding="utf
 site_profile = (inc / "class-mad4b-scp-site-profile.php").read_text(encoding="utf-8")
 site_admin = (inc / "class-mad4b-scp-site-profile-admin.php").read_text(encoding="utf-8")
 context = (inc / "class-mad4b-scp-context-authority.php").read_text(encoding="utf-8")
+google = (inc / "class-mad4b-scp-google-drive-context.php").read_text(encoding="utf-8")
 context_admin = (inc / "class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
 oauth = (inc / "class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 chatgpt_ui = (inc / "class-mad4b-scp-chatgpt-connection-admin-ui.php").read_text(encoding="utf-8")
@@ -84,6 +85,26 @@ for marker in [
 ]:
     assert marker in context_admin, marker
 
+for marker in [
+    "private static function clear_option_read_cache( $name, $aggressive = false )",
+    "wp_cache_delete( 'notoptions', 'options' )",
+    "wp_cache_delete( 'alloptions', 'options' )",
+    "wp_cache_flush_group( 'options' )",
+    "self::option_values_equal( get_option( $name, false ), $value )",
+]:
+    assert marker in context, marker
+
+# Google settings already had cache/readback hardening before this change and
+# remain on their specialized AJAX UI while sharing the verified response
+# semantics.
+for marker in [
+    "private static function clear_option_read_cache( $name, $aggressive = false )",
+    "private static function write_option( $name, $value )",
+    "wp_cache_flush_group( 'options' )",
+]:
+    assert marker in google, marker
+assert "'persistence_verified' => true" in context_admin
+
 # An already-persisted AI delegation is idempotent after reload; confirmation is
 # required only for a state change.
 policy = context.split("public static function set_review_policy", 1)[1].split("public static function sources()", 1)[0]
@@ -105,8 +126,12 @@ for marker in [
     "wp_ajax_mad4b_disable_production_readonly_oauth",
     "mad4b_production_readonly_oauth_readback_mismatch",
     "'persistence_verified' => true",
+    "private static function persist_production_option( array $record )",
+    "private static function delete_production_option_verified()",
+    "wp_cache_delete( 'notoptions', 'options' )",
+    "wp_cache_flush_group( 'options' )",
 ]:
     assert marker in oauth, marker
 assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
 
-print("mad4b.admin-settings-persistence.v1: PASS")
+print("mad4b.admin-settings-persistence.v2: PASS")
