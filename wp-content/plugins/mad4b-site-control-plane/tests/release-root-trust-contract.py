@@ -106,6 +106,10 @@ for fragment in (
     "trusted_signer_ref == \"refs/heads/master\"",
     '.trust_role == "release_package_attestation"',
     ".trusted_release_root == true",
+    "CONTROL_ARCHIVE_NAME",
+    ".install_manifest_sha256",
+    ".verified_attestation_subjects",
+    '"install-manifest.json"',
 ):
     if fragment not in workflow:
         raise SystemExit(f"root-trust packaging workflow missing: {fragment}")
