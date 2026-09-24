@@ -28,7 +28,7 @@ The engine keeps these facts independent:
 
 ## Pipeline
 
-`artifact discovery -> structural/capability discovery -> risk classification -> trusted behavioral evidence -> certification level -> activation stage -> per-ability MCP projection -> governed canary execution evidence -> separately governed promotion`
+`artifact discovery -> structural/capability discovery -> risk classification -> exact high-risk canary bootstrap or trusted behavioral evidence -> certification level -> activation stage -> per-ability MCP projection -> governed canary execution evidence -> separately governed promotion`
 
 The first cataloged providers are JetEngine, JetSmartFilters and Bit Flows. The catalog is capability-oriented and version-agnostic. It declares canonical capabilities, mapped MAD4B abilities, bounded risk class, structural probes, and reversible contracts where applicable.
 
@@ -72,10 +72,10 @@ The public evidence surface reports verifier provenance without exposing local f
 ## Activation stages
 
 - `shadow` — observed but not eligible for normal write mount/execution.
-- `canary` — trusted behavioral evidence may make a high-risk capability eligible for one separately approved canary execution, while the provider target remains blocked from the normal write surface.
+- `canary` — exact artifact + structural compatibility + explicit adapter canary opt-in may bootstrap the first separately approved high-risk canary; a current trusted behavioral receipt may additionally bind a repeat canary. The provider target remains blocked from the normal write surface.
 - `active` — only capabilities whose separately governed promotion policy is satisfied may become normal write-eligible.
 
-For `high_risk_write`, behavioral evidence can advance `shadow -> canary` only. It does not grant owner promotion, mutation authority or normal MCP write eligibility. `bitflows/run-flow` therefore remains blocked from `mad4b-write` while its capability is canary-only.
+For `high_risk_write`, exact artifact + structural compatibility + explicit adapter canary opt-in can establish a deterministic `canary_basis_digest` and advance only into isolated `canary` eligibility. This bootstrap exists to avoid requiring evidence that can only be produced by the canary itself. A trusted behavioral receipt, when already present, is additionally bound to the request. Neither bootstrap evidence nor behavioral evidence grants owner promotion, mutation authority or normal MCP write eligibility. `bitflows/run-flow` therefore remains blocked from `mad4b-write` while its capability is canary-only.
 
 ## Governed high-risk canary execution
 
@@ -97,7 +97,8 @@ A canary request is bound to all of the following current facts:
 - exact target provider ability;
 - current runtime artifact fingerprint;
 - current capability contract digest;
-- current accepted trusted behavioral evidence digest;
+- current deterministic `canary_basis_digest` from exact artifact, structural probes and adapter opt-in;
+- current accepted trusted behavioral evidence digest when a receipt already exists;
 - bounded target input digest.
 
 Immediately before side effects the wrapper re-runs those read-only guards and requires:
@@ -113,7 +114,7 @@ Adapters are fail-closed by default. Bit Flows is the first explicit opt-in and 
 
 The wrapper itself is governed by the existing `mad4b-write` authority: exact NHI grant, target fingerprint, short-lived one-time approval, budget reservation, replay protection and execution fence remain required. The provider target does not receive a normal write grant merely because a canary execution is approved.
 
-Successful execution returns `mad4b.provider-canary-execution-evidence.v1` bound to the exact candidate, artifact, capability contract, behavioral receipt and target input/result digests. That evidence is explicitly non-authorizing:
+Successful execution returns `mad4b.provider-canary-execution-evidence.v1` bound to the exact candidate, artifact, capability contract, canary bootstrap basis, optional current behavioral receipt, and target input/result digests. That evidence is explicitly non-authorizing:
 
 - `activation_granted=false`;
 - `promotion_granted=false`;
@@ -220,6 +221,7 @@ The plan may identify `owner_governed_canary_execution_required`. That action no
 The compatibility/canary system must remain fail closed:
 
 - no caller-supplied `owner_approved` boolean;
+- no exact package may bootstrap a high-risk canary without structural compatibility and explicit adapter opt-in;
 - no behavioral receipt may self-grant mutation or activation;
 - no stale/wrong-artifact receipt may restore write eligibility;
 - no external verifier callback may become trusted merely by setting metadata flags;
