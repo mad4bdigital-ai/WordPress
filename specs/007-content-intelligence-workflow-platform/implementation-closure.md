@@ -9,28 +9,30 @@ It does not redefine the existing contracts. It orders them into one executable 
 ## Baseline
 
 - target branch: `master`
-- synchronized baseline: `ae40fa8821934318bec7c386d7acdf77653b8a87`
+- synchronized baseline: `540d5db4be521297de673c8a4d14974c23b67a6a`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
 - Architecture Freeze: active
+- repository ruleset: `23968498` active on `refs/heads/master`, no bypass actors
+- governance bootstrap exception: retired in PR #64
 
 Any descendant synchronization MUST update `feature.json.current_baseline_head`, `baseline_sync_commit`, this file and the machine-readable closure ledger in the same governed change.
 
 
 ### Baseline release-root evidence
 
-For this exact baseline, the trusted-master root has already been recaptured:
+For this exact baseline, the trusted-master root has already been recaptured after PR #64 merged and repository governance was enforced:
 
-- Package workflow run: `36068553105`
-- General Distribution artifact: `10836588669`
-- outer digest: `sha256:e6c498d4330bb9c64e3d3d9c25fab4a890a2c78c870bd7fb8fc7e9714be18a78`
-- receipt artifact: `10836443926`
-- source SHA: `ae40fa8821934318bec7c386d7acdf77653b8a87`
+- Package workflow run: `36072550999`
+- General Distribution artifact: `10838403565`
+- outer digest: `sha256:23887c052950d62f42d68ddba378460ec80a68f9b14365bc3d91220be451b63e`
+- receipt artifact: `10838323685`
+- source SHA: `540d5db4be521297de673c8a4d14974c23b67a6a`
 - Control Plane: `0.4.0-rc.59`
-- build fingerprint: `d543708e7191ec8b6e13e18f90d4b66cc3639eb411b864de92c446ce8c2391ac`
-- package manifest digest: `17af19216dc029da672e22c93ac06757ccfe497f31e1373b7246dfd0599032e5`
-- archive SHA-256: `0f6172e2b59ba933a8dbacba975334b69e5b4c83c613202589bbf2202a984d23`
+- build fingerprint: `f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6`
+- package manifest digest: `3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950`
+- archive SHA-256: `c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06`
 - external trusted-master verification: PASS
 
 This evidence closes the baseline-bound release-root workstream. It does **not** prove that ETG Staging has this artifact installed.
@@ -42,7 +44,7 @@ Current read-only evidence is intentionally recorded as a blocker input, not as 
 
 - live Control Plane: `0.4.0-rc.59`
 - live source SHA: `03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c`
-- target trusted master SHA: `ae40fa8821934318bec7c386d7acdf77653b8a87`
+- target trusted master SHA: `540d5db4be521297de673c8a4d14974c23b67a6a`
 - trusted master deployed: false
 - live manifest: present/valid/runtime-match; stale=false; provenance_mismatch=[]
 - MCP Adapter: `0.6.1`
@@ -66,24 +68,24 @@ No class grants authority. Production, Breakglass, host execution and public pub
 
 ## Critical closure sequence
 
-1. Repository governance external enforcement.
-2. Retire the one-time governance bootstrap exception after independent ruleset readback.
-3. Exact latest-master release/root-trust recapture.
+1. Repository governance external enforcement — DONE.
+2. Governance bootstrap exception retirement — DONE.
+3. Exact latest-master release/root-trust recapture — DONE.
 4. Protected backup root and Recovery Plane readiness.
 5. Deploy the exact trusted master artifact to ETG Staging.
 6. Read back runtime provenance and all seven Root Trust/provenance files from the deployed candidate.
 7. Exact installed Bit Flows 1.29.0 recertification and privileged-side-channel decision.
 8. Multi-Authority live subject path, Policy Resolution Engine and gate-liveness truthfulness.
-6. Existing-site bootstrap and Intent Registry reconciliation.
-7. ContentJob domain service plus immutable Artifact Registry/Store/lineage.
-8. Knowledge Dispatcher, ContextPack and WriterProfile version binding.
-9. Research providers, competitive intelligence and normalized evidence.
-10. Blueprint → ArticleDraft → FactLedger → Editorial/SEO/Final QA.
-11. Governed WordPress draft mutation with exact target/readback/rollback evidence.
-12. Semantic origin/publication verification.
-13. Operator/Doctor/reconciliation/recovery review and formal critical-state proof.
-14. Exact ETG Staging end-to-end vertical slice.
-15. Emit `CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED` only from linked evidence for the exact deployed candidate.
+9. Existing-site bootstrap and Intent Registry reconciliation.
+10. ContentJob domain service plus immutable Artifact Registry/Store/lineage.
+11. Knowledge Dispatcher, ContextPack and WriterProfile version binding.
+12. Research providers, competitive intelligence and normalized evidence.
+13. Blueprint → ArticleDraft → FactLedger → Editorial/SEO/Final QA.
+14. Governed WordPress draft mutation with exact target/readback/rollback evidence.
+15. Semantic origin/publication verification.
+16. Operator/Doctor/reconciliation/recovery review and formal critical-state proof.
+17. Exact ETG Staging end-to-end vertical slice.
+18. Emit `CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED` only from linked evidence for the exact deployed candidate.
 
 ## Remaining workstream matrix
 
