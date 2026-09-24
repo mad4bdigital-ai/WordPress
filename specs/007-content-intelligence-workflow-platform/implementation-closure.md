@@ -44,7 +44,7 @@ Current read-only evidence is intentionally recorded as a blocker input, not as 
 
 - live Control Plane: `0.4.0-rc.59`
 - live source SHA: `03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c`
-- target trusted master SHA: `540d5db4be521297de673c8a4d14974c23b67a6a`
+- target selected runtime-release SHA: `540d5db4be521297de673c8a4d14974c23b67a6a` (superseded for deployment once this runtime-changing bulk PR merges; post-merge recapture required)
 - trusted master deployed: false
 - live manifest: present/valid/runtime-match; stale=false; provenance_mismatch=[]
 - MCP Adapter: `0.6.1`
@@ -72,7 +72,7 @@ No class grants authority. Production, Breakglass, host execution and public pub
 2. Governance bootstrap exception retirement — DONE.
 3. Exact latest-master release/root-trust recapture — DONE.
 4. Protected backup root and Recovery Plane readiness.
-5. Deploy the exact trusted master artifact to ETG Staging.
+5. Recapture a trusted post-merge runtime release, then deploy that exact selected runtime artifact to ETG Staging.
 6. Read back runtime provenance and all seven Root Trust/provenance files from the deployed candidate.
 7. Exact installed Bit Flows 1.29.0 recertification and privileged-side-channel decision.
 8. Multi-Authority live subject path, Policy Resolution Engine and gate-liveness truthfulness.
@@ -96,7 +96,7 @@ No class grants authority. Production, Breakglass, host execution and public pub
 | Spec execution ledger reconciliation | KERNEL_BLOCKER | every legacy task classified DONE/PARTIAL/OPEN/DEFERRED with evidence refs |
 | Latest-master release root | KERNEL_BLOCKER | trusted master attestation + package/Live parity on current baseline |
 | Protected backup/recovery root | LIVE_PRECONDITION | exists/writable/ready + backup receipt + known-good restore proof |
-| Exact trusted-master deployment to ETG | LIVE_PRECONDITION | deployed source/build/manifest/archive identity matches the exact master artifact |
+| Exact selected-runtime-release deployment to ETG | LIVE_PRECONDITION | deployed source/build/manifest/archive identity matches the externally attested selected runtime release; repository HEAD equality is not required for non-runtime deltas |
 | Runtime Root Trust readback | LIVE_PRECONDITION | seven trust/provenance files read from deployed runtime and matched to package evidence; UNKNOWN does not satisfy the gate |
 | Recovery Plane live drill | KERNEL_BLOCKER | deliberate normal-plane failure and attested recovery |
 | Bit Flows 1.29 exact package | KERNEL_BLOCKER | artifact/tree/hash/semantic/runtime certification |
@@ -150,7 +150,7 @@ The legacy unchecked task list therefore MUST be reconciled; it MUST NOT be mass
 
 One evidence chain on real ETG Staging MUST prove:
 
-`repository governance → bootstrap retirement → trusted master package → protected recovery → exact ETG deployment → runtime Root Trust readback → live authority → exact provider certification → bootstrap → intent → ContentJob → artifacts → context/writer/research → blueprint/draft/QA → governed WordPress draft → semantic verification → recovery/formal review`.
+`repository governance → bootstrap retirement → selected runtime release/root trust → protected recovery → exact ETG runtime-release deployment → runtime Root Trust readback → live authority → exact provider certification → bootstrap → intent → ContentJob → artifacts → context/writer/research → blueprint/draft/QA → governed WordPress draft → semantic verification → recovery/formal review`.
 
 The terminal gate is invalid if any dependency is inferred from disposable CI, a different SHA, a different provider artifact, or a previous Staging candidate.
 
