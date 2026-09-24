@@ -148,6 +148,29 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py --output /tmp/mad4b-bitflows-exact-package-diagnostic.json
 
+      - name: Verify Bit Flows certified MCP role classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('/tmp/mad4b-bitflows-exact-package-diagnostic.json').read_text())
+          mcp = p['native_mcp']
+          assert p['diagnostic_mode'] == 'certified'
+          assert p['archive_sha256_matches_catalog'] is True
+          assert mcp['catalog_role'] == 'client'
+          assert mcp['client_surface_detected'] is True
+          assert mcp['server_surface_detected'] is False
+          assert mcp['server_rest_routes_detected'] is False
+          assert mcp['catalog_role_match'] is True
+          assert mcp['catalog_server_route_expectation_match'] is True
+          assert isinstance(mcp['server_reference_files'], list)
+          assert mcp['server_surface_absence_proven'] is False
+          assert mcp['no_privileged_side_channel_proven'] is False
+          assert p['candidate_summary']['no_privileged_mcp_side_channel_proven'] is False
+          PY
+
       - name: Verify Bit Flows candidate diagnostic stays evidence-only
         shell: bash
         run: |
@@ -169,6 +192,11 @@ jobs:
           assert p['candidate_summary']['normalized_package_identity_present'] is True
           assert p['candidate_summary']['archive_structure_safe'] is True
           assert p['candidate_summary']['candidate_version_claim_match'] is True
+          assert p['native_mcp']['catalog_role'] == 'client'
+          assert p['native_mcp']['server_surface_detected'] is False
+          assert p['native_mcp']['server_rest_routes_detected'] is False
+          assert p['candidate_summary']['native_mcp_catalog_role_match'] is True
+          assert p['candidate_summary']['native_mcp_server_route_expectation_match'] is True
           assert p['candidate_summary']['no_privileged_mcp_side_channel_proven'] is False
           assert p['candidate_summary']['write_authority_granted'] is False
           assert p['candidate_summary']['normal_mount_eligible'] is False
