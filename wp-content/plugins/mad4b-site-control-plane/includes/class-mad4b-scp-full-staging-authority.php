@@ -193,6 +193,13 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'The OAuth bearer does not grant the dedicated Full Staging Authority step-up scope.'
 			);
 		}
+		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) {
+			return new WP_Error(
+				'mad4b_full_authority_chatgpt_client_required',
+				'Full Staging Authority step-up requires OAuth attribution to the exact ChatGPT CIMD client.'
+			);
+		}
 		return true;
 	}
 
