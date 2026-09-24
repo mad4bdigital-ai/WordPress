@@ -3,7 +3,7 @@
   "feature_name": "content-intelligence-workflow-platform",
   "feature_branch": "spec/007-content-intelligence-workflow-platform-20260924",
   "feature_directory": "specs/007-content-intelligence-workflow-platform",
-  "status": "specification",
+  "status": "implementation",
   "baseline_branch": "integration/control-plane-rc59-20260924",
   "baseline_head_at_creation": "ab179816c03acb45751c1707eddee50d19178298",
   "parent_pr": 47,
@@ -109,9 +109,28 @@
   "quality_model": "mad4b.feature007.quality.v1",
   "operating_model": "long-lived-multi-site-governed-platform",
   "required_phase_count": 36,
-  "current_baseline_head": "1ca70c0f85f85dcd08529ed60c6b518a6c64c4fe",
-  "baseline_sync_commit": "64b7e0115493d553b0953c7b877f8c419f5676a7",
+  "current_baseline_head": "b4842518cd0beb3fcc829d919aacf2ebd7978d13",
+  "baseline_sync_commit": "81e0d10533aa0c7745c251731f0e0c2e9416f7c8",
   "baseline_sync_policy": "current PR base must be an ancestor of Feature HEAD",
   "architecture_freeze": true,
-  "critical_kernel_document": "critical-kernel.md"
+  "critical_kernel_document": "critical-kernel.md",
+  "implementation_branch": "feat/007-critical-kernel-root-trust-20260924",
+  "implementation_change_policy": "feature-scoped-allowlist-with-explicit-cross-feature-contract-dependencies",
+  "implementation_allowed_paths": [
+    ".github/workflows/feature-007-critical-kernel.yml",
+    ".github/workflows/feature-007-spec-ci.yml",
+    ".github/workflows/mad4b-control-plane-package.yml",
+    ".github/workflows/mad4b-live-acceptance-evidence.yml",
+    ".github/workflows/mad4b-wpml-external-diagnostic.yml",
+    ".github/workflows/mad4b-oauth-resource-bridge.yml",
+    ".github/workflows/mad4b-provider-compatibility-engine.yml",
+    "specs/007-content-intelligence-workflow-platform/",
+    "tools/mad4b_recovery_plane.py",
+    "tools/verify_release_root_trust.py",
+    "wp-content/plugins/mad4b-site-control-plane/"
+  ],
+  "cross_feature_contract_dependencies": [
+    ".github/workflows/wpl-client-contract.yml",
+    "specs/006-agent-governed-reversible-control-plane/data-model.md"
+  ]
 }

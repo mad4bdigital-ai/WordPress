@@ -24,6 +24,9 @@ on:
 permissions:
   contents: read
   actions: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}
@@ -54,6 +57,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py
+
+      - name: Verify Feature 007 release root-trust contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py
 
       - name: Reject distributable symlinks and secret-like files
         shell: bash
@@ -243,49 +252,17 @@ jobs:
           export MAD4B_ADAPTER_SHA="$(sha256sum "$stage/mcp-adapter-0.6.1.zip" | awk '{print $1}')"
           test "$MAD4B_ADAPTER_SHA" = '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676'
 
-          python3 <<'PY'
-          import hashlib, json, os
-          from pathlib import Path
-
-          root = Path(os.environ['MAD4B_CONTROL_STAGE'])
-          entries = []
-          canonical = []
-          for path in sorted(p for p in root.rglob('*') if p.is_file() and p.name != 'MAD4B-BUILD-PROVENANCE.json'):
-              rel = path.relative_to(root).as_posix()
-              raw = path.read_bytes()
-              digest = hashlib.sha256(raw).hexdigest()
-              entries.append({'path': rel, 'bytes': len(raw), 'sha256': digest})
-              canonical.append(f'{rel}\0{len(raw)}\0{digest}\n'.encode())
-
-          manifest_digest = hashlib.sha256(b''.join(canonical)).hexdigest()
-          version = os.environ['MAD4B_CONTROL_VERSION']
-          source = os.environ['SOURCE_SHA']
-          adapter_sha = os.environ['MAD4B_ADAPTER_SHA']
-          build_payload = f'mad4b.build-fingerprint.v1\n{version}\n{source}\n{manifest_digest}\n0.6.1\n{adapter_sha}\n'.encode()
-          build_fingerprint = hashlib.sha256(build_payload).hexdigest()
-          artifact_identity = f'mad4b-site-control-plane-general-distribution-kit-{source}'
-          data = {
-              'contract': 'mad4b.build-provenance.v1',
-              'control_plane_version': version,
-              'source_commit_sha': source,
-              'build_fingerprint': build_fingerprint,
-              'package_manifest_digest': manifest_digest,
-              'build_workflow': os.environ.get('GITHUB_WORKFLOW', ''),
-              'build_run_id': os.environ.get('GITHUB_RUN_ID', ''),
-              'artifact_identity': artifact_identity,
-              'mcp_adapter_version': '0.6.1',
-              'mcp_adapter_sha256': adapter_sha,
-              'package_files': entries,
-              'manifest_excludes_self': True,
-              'generated_at_is_identity_neutral': True,
-          }
-          encoded = json.dumps(data, indent=2, sort_keys=True) + '\n'
-          (root / 'MAD4B-BUILD-PROVENANCE.json').write_text(encoded, encoding='utf-8')
-          stage = root.parent.parent
-          (stage / 'MAD4B-BUILD-PROVENANCE.json').write_text(encoded, encoding='utf-8')
-          (stage / 'BUILD-FINGERPRINT.txt').write_text(build_fingerprint + '\n', encoding='utf-8')
-          (stage / 'PACKAGE-MANIFEST-DIGEST.txt').write_text(manifest_digest + '\n', encoding='utf-8')
-          PY
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py \
+            --root "$MAD4B_CONTROL_STAGE" \
+            --output-zip "$stage/mad4b-site-control-plane-${version}.zip" \
+            --version "$version" \
+            --source-sha "$SOURCE_SHA" \
+            --adapter-version "0.6.1" \
+            --adapter-sha "$MAD4B_ADAPTER_SHA" \
+            --provenance-output "$stage/MAD4B-BUILD-PROVENANCE.json" \
+            --build-fingerprint-output "$stage/BUILD-FINGERPRINT.txt" \
+            --manifest-digest-output "$stage/PACKAGE-MANIFEST-DIGEST.txt" \
+            --receipt-output "$stage/CANONICAL-PACKAGE-RECEIPT.json"
 
           php -r '
           define("ABSPATH", rtrim($argv[1], "/") . "/");
@@ -310,10 +287,6 @@ jobs:
           echo "mad4b.functional-gap-package-integrity.v1: PASS files=" . (int)($status["verified_file_count"] ?? 0) . " bytes=" . (int)($status["verified_bytes"] ?? 0) . PHP_EOL;
           ' "$MAD4B_CONTROL_STAGE"
 
-          (
-            cd "$stage/package"
-            zip -qr "$stage/mad4b-site-control-plane-${version}.zip" mad4b-site-control-plane
-          )
 
           control_sha="$(sha256sum "$stage/mad4b-site-control-plane-${version}.zip" | awk '{print $1}')"
           adapter_sha="$MAD4B_ADAPTER_SHA"
@@ -326,11 +299,11 @@ jobs:
           from pathlib import Path
           stage = Path(sys.argv[1])
           version = sys.argv[2]
-          source = os.environ['SOURCE_SHA']
+          source_sha = os.environ['SOURCE_SHA']
           bom = {
               'bomFormat': 'CycloneDX',
               'specVersion': '1.5',
-              'serialNumber': 'urn:uuid:' + str(uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/' + os.environ.get('GITHUB_REPOSITORY','') + '/commit/' + source)),
+              'serialNumber': 'urn:uuid:' + str(uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/' + os.environ.get('GITHUB_REPOSITORY','') + '/commit/' + source_sha)),
               'version': 1,
               'metadata': {
                   'component': {
@@ -339,7 +312,7 @@ jobs:
                       'version': version,
                       'hashes': [{'alg': 'SHA-256', 'content': os.environ['CONTROL_SHA']}],
                       'properties': [
-                          {'name': 'mad4b:source_commit_sha', 'value': source},
+                          {'name': 'mad4b:source_commit_sha', 'value': source_sha},
                           {'name': 'mad4b:build_fingerprint', 'value': os.environ['BUILD_FINGERPRINT']},
                           {'name': 'mad4b:package_manifest_digest', 'value': os.environ['PACKAGE_DIGEST']},
                       ],
@@ -365,6 +338,7 @@ jobs:
           printf '%s  %s\n' "$(sha256sum "$stage/MAD4B-BUILD-PROVENANCE.json" | awk '{print $1}')" 'MAD4B-BUILD-PROVENANCE.json' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/BUILD-FINGERPRINT.txt" | awk '{print $1}')" 'BUILD-FINGERPRINT.txt' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/PACKAGE-MANIFEST-DIGEST.txt" | awk '{print $1}')" 'PACKAGE-MANIFEST-DIGEST.txt' >> "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$(sha256sum "$stage/CANONICAL-PACKAGE-RECEIPT.json" | awk '{print $1}')" 'CANONICAL-PACKAGE-RECEIPT.json' >> "$stage/SHA256SUMS"
           python3 - "$stage" "$version" <<'PY'
           import hashlib, json, os, sys
           from pathlib import Path
@@ -373,8 +347,22 @@ jobs:
           config_root = stage / 'package' / 'mad4b-site-control-plane' / 'config'
           policy_raw = (config_root / 'functional-gap-policy.json').read_bytes()
           evidence_raw = (config_root / 'functional-gap-contract-evidence.generated.json').read_bytes()
+          receipt_raw = (stage / 'CANONICAL-PACKAGE-RECEIPT.json').read_bytes()
           policy = json.loads(policy_raw)
           evidence = json.loads(evidence_raw)
+          receipt = json.loads(receipt_raw)
+          if receipt.get('contract') != 'mad4b.deterministic-control-plane-package.v1':
+              raise SystemExit('canonical package receipt contract mismatch')
+          if receipt.get('archive_format_contract') != 'mad4b.deterministic-zip.v1' or receipt.get('archive_compression') != 'stored':
+              raise SystemExit('canonical archive format mismatch')
+          if receipt.get('source_commit_sha') != os.environ['SOURCE_SHA']:
+              raise SystemExit('canonical package receipt source mismatch')
+          if receipt.get('archive_sha256') != os.environ['CONTROL_SHA']:
+              raise SystemExit('canonical package receipt archive SHA mismatch')
+          if receipt.get('build_fingerprint') != os.environ['BUILD_FINGERPRINT']:
+              raise SystemExit('canonical package receipt build fingerprint mismatch')
+          if receipt.get('package_manifest_digest') != os.environ['PACKAGE_DIGEST']:
+              raise SystemExit('canonical package receipt manifest mismatch')
           data = {
               'contract': 'mad4b.site-control-plane.general-distribution-kit.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
@@ -390,6 +378,15 @@ jobs:
                   'archive': f'mad4b-site-control-plane-{version}.zip',
                   'sha256': os.environ['CONTROL_SHA'],
                   'provenance_contract': 'mad4b.build-provenance.v1',
+              },
+              'canonical_package': {
+                  'contract': receipt.get('contract', ''),
+                  'archive_format_contract': receipt.get('archive_format_contract', ''),
+                  'archive_compression': receipt.get('archive_compression', ''),
+                  'archive_sha256': receipt.get('archive_sha256', ''),
+                  'receipt_sha256': hashlib.sha256(receipt_raw).hexdigest(),
+                  'producer_metadata_external': bool(receipt.get('producer_metadata_external')),
+                  'deterministic_archive': bool(receipt.get('deterministic_archive')),
               },
               'mcp_adapter': {
                   'version': '0.6.1',
@@ -640,6 +637,75 @@ jobs:
           grep -Fq '"elementor_bounded_reversible_write_requires_exact_provider_certification": true' "$stage/install-manifest.json"
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
+      - name: Attest General Distribution release subjects
+        id: release_attest
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            /tmp/mad4b-install-kit/mad4b-site-control-plane-*.zip
+            /tmp/mad4b-install-kit/mcp-adapter-0.6.1.zip
+            /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
+            /tmp/mad4b-install-kit/install-manifest.json
+            /tmp/mad4b-install-kit/SHA256SUMS
+
+      - name: Persist release attestation evidence
+        shell: bash
+        env:
+          ATTESTATION_ID: ${{ steps.release_attest.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.release_attest.outputs.attestation-url }}
+          ATTESTATION_BUNDLE: ${{ steps.release_attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-install-kit'
+          test -n "$ATTESTATION_ID"
+          test -n "$ATTESTATION_URL"
+          test -f "$ATTESTATION_BUNDLE"
+          cp "$ATTESTATION_BUNDLE" "$stage/RELEASE-ATTESTATION.sigstore.json"
+          export RELEASE_ATTESTATION_BUNDLE_SHA256="$(sha256sum "$stage/RELEASE-ATTESTATION.sigstore.json" | awk '{print $1}')"
+          if [ "$GITHUB_REF" = 'refs/heads/master' ] && { [ "$GITHUB_EVENT_NAME" = 'push' ] || [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ]; }; then
+            export RELEASE_ATTESTATION_TRUST_ROLE='release_package_attestation'
+            export RELEASE_ATTESTATION_TRUSTED_ROOT='true'
+          else
+            export RELEASE_ATTESTATION_TRUST_ROLE='candidate_build_attestation'
+            export RELEASE_ATTESTATION_TRUSTED_ROOT='false'
+          fi
+          python3 - "$stage" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+
+          stage = Path(sys.argv[1])
+          trusted_root = os.environ['RELEASE_ATTESTATION_TRUSTED_ROOT'] == 'true'
+          locator = {
+              'contract': 'mad4b.release-attestation-locator.v1',
+              'trust_role': os.environ['RELEASE_ATTESTATION_TRUST_ROLE'],
+              'trusted_release_root': trusted_root,
+              'provider': 'github_actions_sigstore',
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'source_commit_sha': os.environ['SOURCE_SHA'],
+              'signer_ref': os.environ.get('GITHUB_REF', ''),
+              'signer_event': os.environ.get('GITHUB_EVENT_NAME', ''),
+              'attestation_id': os.environ['ATTESTATION_ID'],
+              'attestation_url': os.environ['ATTESTATION_URL'],
+              'bundle_file': 'RELEASE-ATTESTATION.sigstore.json',
+              'bundle_sha256': os.environ['RELEASE_ATTESTATION_BUNDLE_SHA256'],
+              'runtime_self_attestation_authoritative': False,
+              'verification_boundary': 'external_release_verifier',
+          }
+          (stage / 'RELEASE-ATTESTATION-LOCATOR.json').write_text(
+              json.dumps(locator, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          test "$(jq -r '.source_commit_sha' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = "$SOURCE_SHA"
+          test "$(jq -r '.provider' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'github_actions_sigstore'
+          test "$(jq -r '.runtime_self_attestation_authoritative' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'false'
+          test "$(jq -r '.signer_ref' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = "$GITHUB_REF"
+          test "$(jq -r '.signer_event' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = "$GITHUB_EVENT_NAME"
+          if [ "$GITHUB_EVENT_NAME" = 'pull_request' ]; then
+            test "$(jq -r '.trust_role' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'candidate_build_attestation'
+            test "$(jq -r '.trusted_release_root' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'false'
+          fi
+
       - name: Upload reviewed General Distribution installation kit
         id: upload_kit
         uses: actions/upload-artifact@v4
@@ -651,10 +717,13 @@ jobs:
             /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
             /tmp/mad4b-install-kit/BUILD-FINGERPRINT.txt
             /tmp/mad4b-install-kit/PACKAGE-MANIFEST-DIGEST.txt
+            /tmp/mad4b-install-kit/CANONICAL-PACKAGE-RECEIPT.json
             /tmp/mad4b-install-kit/MAD4B-SBOM.cdx.json
             /tmp/mad4b-install-kit/SHA256SUMS
             /tmp/mad4b-install-kit/install-manifest.json
             /tmp/mad4b-install-kit/INSTALL-GENERAL-DISTRIBUTION.md
+            /tmp/mad4b-install-kit/RELEASE-ATTESTATION.sigstore.json
+            /tmp/mad4b-install-kit/RELEASE-ATTESTATION-LOCATOR.json
           if-no-files-found: error
           retention-days: 30
 

@@ -108,14 +108,16 @@ for marker in (
     'T103 real Staging remains a separate mandatory boundary',
 ): require(adapter_contract, marker, 'adapter-coverage-contract-invariant')
 
-# Normative documentation must move with the physical schema. Schema v6 keeps the
-# same nine-table topology but extends exact approval authority with Site Profile
-# identity/revision/digest so clone/profile/build drift cannot inherit authority.
-require(data_model, 'Schema version: `6`', 'data-model-schema-v6')
+# Normative documentation must move with the physical schema. Schema v9 preserves
+# the v6 exact approval authority model and adds Feature 007 durable execution
+# storage without weakening NHI/approval/audit invariants.
+require(data_model, 'Schema version: `9`', 'data-model-schema-v9')
 for table in (
     'mad4b_scp_agents', 'mad4b_scp_agent_subjects', 'mad4b_scp_agent_grants',
     'mad4b_scp_approval_tickets', 'mad4b_scp_mutations', 'mad4b_scp_agent_budgets',
     'mad4b_scp_agent_budget_windows', 'mad4b_scp_audit_events', 'mad4b_scp_audit_heads',
+    'mad4b_content_jobs', 'mad4b_content_job_events', 'mad4b_work_leases',
+    'mad4b_idempotency', 'mad4b_execution_outbox', 'mad4b_execution_inbox',
 ): require(data_model, table, 'data-model-table')
 for marker in (
     'candidate_binding_contract', 'candidate_sha CHAR(40)', 'build_fingerprint CHAR(64)',
@@ -126,11 +128,13 @@ for marker in (
     'site_profile_inbox (site_uuid, site_profile_revision, status, expires_at)',
     'mad4b.approval-candidate-binding.v2', 'site_profile_binding',
     'derived read-model states', 'approved -> executing',
-    'clone', 'Site Profile drift', 'current expected version is `6`',
-): require(data_model, marker, 'data-model-approval-v6')
+    'clone', 'Site Profile drift', 'current expected version is `9`',
+): require(data_model, marker, 'data-model-approval-v9')
 for stale in (
     'Schema version: `5`',
+    'Schema version: `6`',
     'current expected version is `5`',
+    'current expected version is `6`',
     'Initial migration target: `2`',
     'Initial implementation may use atomic transients/options for counters',
     'audit chain: current option model retained in first implementation',
@@ -175,10 +179,12 @@ for label, path in implementation_files.items():
     if not path.is_file(): raise SystemExit(f'FAIL implementation-file-{label}: missing {path.relative_to(REPO)}')
 impl = {name: read(path) for name, path in implementation_files.items()}
 
-require(impl['schema'], 'const VERSION = 6;', 'implementation-schema-v6')
+require(impl['schema'], 'const VERSION = 9;', 'implementation-schema-v9')
 require(impl['schema'], "'budget_windows'", 'implementation-budget-windows')
 require(impl['schema'], "'audit_events'", 'implementation-audit-events')
 require(impl['schema'], "'audit_heads'", 'implementation-audit-heads')
+for marker in ("'content_jobs'", "'content_job_events'", "'work_leases'", "'idempotency'", "'outbox'", "'inbox'", "private static function required_durable_columns()", "'missing_durable_columns'"):
+    require(impl['schema'], marker, 'implementation-durable-schema-v8')
 for marker in (
     'candidate_binding_contract', 'candidate_sha char(40)', 'build_fingerprint char(64)',
     'binding_environment', 'binding_host', 'site_uuid char(36)',
@@ -188,7 +194,9 @@ for marker in (
     'KEY site_profile_inbox (site_uuid,site_profile_revision,status,expires_at)',
     'public static function critical_ready()',
     'public static function physical_integrity_status()',
-): require(impl['schema'], marker, 'implementation-schema-v6-approval-guard')
+    'claim_epoch bigint(20) unsigned', 'reconciliation_ref varchar(191)',
+    'private static function required_durable_indexes()', "'missing_durable_indexes'",
+): require(impl['schema'], marker, 'implementation-schema-v9-approval-guard')
 for marker in (
     'const CONTRACT = \'mad4b.site-profile.v2\'',
     'public static function origin_enrolled()', 'public static function site_uuid()',
@@ -279,7 +287,8 @@ for forbidden in ("'access_token' =>", "'refresh_token' =>", "'authorization_hea
 require(impl['connection'], "'write_surface'", 'implementation-write-readiness')
 require(impl['connection'], "'provider_mcp_isolation'", 'implementation-isolation-readiness')
 require(impl['connection_ability'], "const ABILITY = 'mad4b/connection-status'", 'implementation-connection-ability')
-require(impl['servers'], "'mad4b/runtime-authority-status', 'mad4b/connection-status'", 'implementation-connection-read-server')
+require(impl['servers'], "'mad4b/runtime-authority-status'", 'implementation-runtime-authority-read-server')
+require(impl['servers'], "'mad4b/connection-status'", 'implementation-connection-read-server')
 require(impl['servers'], "'mad4b-chatgpt'", 'implementation-chatgpt-server')
 require(impl['servers'], "'mad4b-write'", 'implementation-write-server')
 require(impl['servers'], 'public static function write_tools()', 'implementation-write-projection')

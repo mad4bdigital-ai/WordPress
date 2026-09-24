@@ -543,6 +543,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'generic_raw_sql_breakglass_included' => false,
 			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
+			'provider_gated_catalog_abilities' => $blocked_rows,
 			'blocked_catalog_abilities' => $blocked_rows,
 			'governance_gated_catalog_abilities' => $governance_rows,
 		);

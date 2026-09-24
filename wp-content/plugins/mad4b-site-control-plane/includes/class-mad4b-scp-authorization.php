@@ -228,8 +228,21 @@ final class MAD4B_SCP_Authorization {
 			$decision['context_receipt_bound'] = false;
 		}
 
+		if ( class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ) {
+			$guard_snapshot = MAD4B_SCP_Execution_Commit_Guard::capture( $decision, $input );
+			if ( is_wp_error( $guard_snapshot ) ) {
+				MAD4B_SCP_Budgets::rollback( $budget_reservation );
+				if ( ! empty( $decision['approval_required'] ) ) MAD4B_SCP_Approval_Tickets::finalize_claim( $decision['approval_ticket_id'], 'failed' );
+				return self::deny( $guard_snapshot->get_error_code(), $guard_snapshot->get_error_message(), $ability_name );
+			}
+			$decision['commit_guard_snapshot'] = $guard_snapshot;
+		}
+
 		$budget_commit = MAD4B_SCP_Budgets::commit( $budget_reservation );
-		if ( is_wp_error( $budget_commit ) ) return self::deny( $budget_commit->get_error_code(), $budget_commit->get_error_message(), $ability_name );
+		if ( is_wp_error( $budget_commit ) ) {
+			if ( ! empty( $decision['approval_required'] ) ) MAD4B_SCP_Approval_Tickets::finalize_claim( $decision['approval_ticket_id'], 'failed' );
+			return self::deny( $budget_commit->get_error_code(), $budget_commit->get_error_message(), $ability_name );
+		}
 
 		$decision['reason_code'] = 'execution_claimed';
 		$decision['execution_side_effects'] = true;
@@ -269,6 +282,14 @@ final class MAD4B_SCP_Authorization {
 			if ( is_wp_error( $provider ) ) return $provider;
 			$claim = MAD4B_SCP_Authorization::claim_mutation( $name, $declared_server, $provider, $input );
 			if ( is_wp_error( $claim ) ) return $claim;
+			if ( class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ) {
+				$commit_guard = MAD4B_SCP_Execution_Commit_Guard::revalidate( $claim, $input );
+				if ( is_wp_error( $commit_guard ) ) {
+					MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $commit_guard );
+					return $commit_guard;
+				}
+				$claim['commit_guard_receipt'] = $commit_guard;
+			}
 			try {
 				$result = call_user_func( $original, $input );
 			} catch ( \Throwable $throwable ) {
@@ -281,6 +302,7 @@ final class MAD4B_SCP_Authorization {
 		};
 		if ( ! isset( $args['meta']['mcp'] ) || ! is_array( $args['meta']['mcp'] ) ) $args['meta']['mcp'] = array();
 		$args['meta']['mcp']['mad4b_execution_boundary'] = self::EXECUTION_BOUNDARY_CONTRACT;
+		$args['meta']['mcp']['mad4b_execution_commit_guard'] = class_exists( 'MAD4B_SCP_Execution_Commit_Guard' ) ? MAD4B_SCP_Execution_Commit_Guard::CONTRACT : '';
 		return $args;
 	}
 

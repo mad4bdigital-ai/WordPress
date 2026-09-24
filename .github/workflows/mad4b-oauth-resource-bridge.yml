@@ -31,6 +31,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-oauth-resource-bridge.php"
+          php -l "$root/includes/class-mad4b-scp-multi-authority-registry.php"
           php -l "$root/includes/class-mad4b-scp-oauth-request-context-guard.php"
           php -l "$root/includes/class-mad4b-scp-oauth-jwt-header-guard.php"
           php -l "$root/includes/class-mad4b-scp-oauth-outbound-budget-guard.php"
@@ -44,6 +45,7 @@ jobs:
           php -l "$root/tests/runtime-oauth-edge-guards-smoke.php"
           php -l "$root/tests/runtime-oauth-hybrid-smoke.php"
           python3 "$root/tests/oauth-resource-bridge-contract.py"
+          python3 "$root/tests/multi-authority-registry-contract.py"
           python3 "$root/tests/oauth-subject-gate-contract.py"
           python3 "$root/tests/mcp-client-compatibility-contract.py"
           python3 "$root/tests/chatgpt-plugin-package-contract.py"
@@ -221,6 +223,8 @@ jobs:
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_WP_USER_ID 1 --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_LOCAL_OAUTH_CLIENTS "array( 'https://client.example.test/mcp-client.json' => array( 'client_name' => 'MAD4B Hybrid CI', 'redirect_uris' => array( 'https://client.example.test/callback' ), 'application_type' => 'web' ) )" --raw --type=constant --path="$WP_PATH"
           php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ALLOWED_SUBJECT_BINDINGS "array( 'https://mad4b-hybrid.test/oauth/mcp' => array( 'user:1' ), 'https://auth.mad4b.test/auth/mcp' => array( 'user:user-1' ) )" --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_ADVERTISED_ISSUERS "array( 'https://auth.mad4b.test/auth/mcp' )" --raw --type=constant --path="$WP_PATH"
+          php /tmp/wp-cli.phar config set MAD4B_MCP_OAUTH_RESOURCE_POLICY_BY_ISSUER "array( 'https://mad4b-hybrid.test/oauth/mcp' => array( 'mad4b-chatgpt' ), 'https://auth.mad4b.test/auth/mcp' => array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) )" --raw --type=constant --path="$WP_PATH"
 
       - name: Install exact MCP Adapter and control plane
         shell: bash

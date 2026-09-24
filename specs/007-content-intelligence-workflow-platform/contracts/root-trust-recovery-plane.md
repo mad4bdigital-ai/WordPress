@@ -19,6 +19,20 @@ A platform release identity is established outside the candidate runtime using r
 
 Site runtime only reads back and proves it matches the externally established identity.
 
+### Canonical package bytes vs producer attestation
+
+The installable Control Plane package has one canonical byte identity for one exact source/dependency/package-manifest identity. Package-internal provenance therefore MUST be producer-neutral and reproducible: workflow name, workflow run ID, artifact-upload ID, timestamps, ZIP entry ordering and filesystem mtimes MUST NOT make two otherwise identical trusted builds produce different plugin archive bytes.
+
+Producer identity is still mandatory trust evidence, but it belongs outside the canonical package bytes in the release/package attestation, artifact metadata and exact-build receipt. The outer evidence binds the protected workflow/run and signer to the canonical archive SHA-256.
+
+Both General Distribution and Live Acceptance MUST use the same deterministic package builder. For the same exact source and dependency identity they MUST therefore converge on all of:
+- package manifest digest;
+- build fingerprint;
+- canonical package provenance;
+- exact Control Plane archive SHA-256.
+
+A matching manifest/fingerprint with a different archive SHA is insufficient for exact-artifact acceptance. It is treated as packaging lineage drift until byte parity is proved.
+
 ## Key-role separation
 
 Trust roles are separate:

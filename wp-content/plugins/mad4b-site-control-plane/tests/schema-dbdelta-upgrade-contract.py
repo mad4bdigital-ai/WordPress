@@ -60,6 +60,34 @@ EXPECTED_FIELDS = {
         "chain_name", "sequence", "entry_hash", "legacy_anchor_sha256",
         "legacy_chain_valid", "legacy_entry_count", "created_at", "updated_at",
     ),
+    "content_jobs": (
+        "id", "job_id", "site_uuid", "brand_id", "state", "stage",
+        "current_artifact_id", "job_revision", "created_at", "updated_at",
+    ),
+    "content_job_events": (
+        "id", "event_id", "job_id", "sequence", "event_type", "plan_sha256",
+        "artifact_id", "previous_entry_sha256", "entry_sha256", "created_at",
+    ),
+    "work_leases": (
+        "id", "work_id", "aggregate_type", "aggregate_id", "worker_id", "lease_epoch",
+        "expected_aggregate_revision", "status", "acquired_at", "heartbeat_at",
+        "expires_at", "reconciliation_ref", "created_at", "updated_at",
+    ),
+    "idempotency": (
+        "id", "scope_key", "idempotency_key", "request_sha256", "claim_epoch", "status",
+        "result_json", "result_sha256", "reconciliation_ref", "expires_at",
+        "created_at", "updated_at",
+    ),
+    "outbox": (
+        "id", "outbox_id", "job_id", "expected_job_revision", "provider_id",
+        "capability_id", "workflow_plan_sha256", "idempotency_key", "request_sha256",
+        "payload_json", "status", "attempts", "provider_execution_ref",
+        "last_error_class", "available_at", "created_at", "updated_at",
+    ),
+    "inbox": (
+        "id", "provider_id", "provider_event_id", "job_id", "payload_sha256",
+        "status", "provider_execution_ref", "result_ref", "received_at", "processed_at",
+    ),
 }
 
 EXPECTED_KEYS = {
@@ -81,6 +109,27 @@ EXPECTED_KEYS = {
         "KEY ability_sequence", "KEY entry_hash",
     ),
     "audit_heads": ("PRIMARY KEY",),
+    "content_jobs": (
+        "PRIMARY KEY", "UNIQUE KEY job_id", "KEY site_lifecycle", "KEY brand_market",
+        "KEY target_post_id", "KEY updated_at",
+    ),
+    "content_job_events": (
+        "PRIMARY KEY", "UNIQUE KEY event_id", "UNIQUE KEY job_sequence",
+        "KEY correlation_id", "KEY created_at",
+    ),
+    "work_leases": (
+        "PRIMARY KEY", "UNIQUE KEY work_id", "KEY aggregate_status", "KEY lease_expiry",
+    ),
+    "idempotency": (
+        "PRIMARY KEY", "UNIQUE KEY scope_idempotency", "KEY expiry_status",
+    ),
+    "outbox": (
+        "PRIMARY KEY", "UNIQUE KEY outbox_id", "UNIQUE KEY provider_idempotency",
+        "KEY delivery_queue",
+    ),
+    "inbox": (
+        "PRIMARY KEY", "UNIQUE KEY provider_event", "KEY job_status", "KEY received_at",
+    ),
 }
 
 REQUIRED_APPROVAL_BINDINGS = (
@@ -158,12 +207,81 @@ def main():
         if len(matches) != 1:
             raise AssertionError(f"{field}: expected one standalone dbDelta-visible definition, got {len(matches)}")
 
-    print("mad4b.schema-dbdelta-upgrade.v1: PASS")
+    # Feature 007 durable execution relies on these fields being upgrade-visible,
+    # not merely present in fresh CREATE statements.
+    durable_required = {
+        "idempotency": ("claim_epoch", "reconciliation_ref", "expires_at"),
+        "work_leases": ("lease_epoch", "expires_at", "reconciliation_ref"),
+        "outbox": ("workflow_plan_sha256", "idempotency_key", "request_sha256"),
+        "inbox": ("provider_event_id", "job_id", "payload_sha256"),
+    }
+    for table, required in durable_required.items():
+        fields, _ = visible_dbdelta_tokens(table_body(table))
+        hidden = [field for field in required if field not in fields]
+        if hidden:
+            raise AssertionError(
+                f"{table}: durable execution fields hidden from dbDelta: {','.join(hidden)}"
+            )
+
+    if "const VERSION = 9;" not in SCHEMA:
+        raise AssertionError("durable execution fencing requires schema version 9")
+    if "mad4b_scp_schema_integrity_v9" not in SCHEMA:
+        raise AssertionError("durable execution schema integrity token was not versioned")
+
+    # The frozen Feature 007 schema-evolution contract requires migration identity,
+    # preflight, additive/forward-fix semantics, post-verification evidence and
+    # fail-closed persistence. dbDelta visibility alone is not enough.
+    migration_markers = (
+        "const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';",
+        "const MIGRATION_ID = '20260924-feature007-durable-execution-v9';",
+        "const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v9';",
+        "'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9 )",
+        "'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes'",
+        "'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces'",
+        "'destructive' => false",
+        "'authority_widening' => false",
+        "'partial_failure_recovery'",
+        "'mixed_version_compatibility'",
+        "public static function migration_preflight_status()",
+        "'future_schema_downgrade_forbidden'",
+        "'mad4b.schema-migration-receipt.v1'",
+        "private static function migration_receipt_matches_contract",
+        "private static function migration_receipt_valid",
+        "private static function migration_origin_version",
+        "$from_version = self::migration_origin_version( $installed_version );",
+        "private static function persist_and_verify_option",
+        "'mad4b_schema_migration_receipt_persist_failed'",
+        "'mad4b_schema_migration_readiness_persist_failed'",
+        "'mad4b_schema_migration_final_receipt_failed'",
+    )
+    for marker in migration_markers:
+        if marker not in SCHEMA:
+            raise AssertionError(f"Schema v9 migration contract marker missing: {marker}")
+
+    physical_pos = SCHEMA.find("$physical = self::physical_integrity_status();")
+    physical_guard_pos = SCHEMA.find("if ( empty( $physical['ready'] ) )", physical_pos)
+    first_receipt_pos = SCHEMA.find("$physical_receipt = self::migration_receipt", physical_guard_pos)
+    version_commit_pos = SCHEMA.find("persist_and_verify_option( self::OPTION, self::VERSION )", first_receipt_pos)
+    integrity_commit_pos = SCHEMA.find("persist_and_verify_option( self::INTEGRITY_OPTION", version_commit_pos)
+    final_receipt_pos = SCHEMA.find("$final_receipt = self::migration_receipt", integrity_commit_pos)
+    ready_pos = SCHEMA.find("self::$critical_ready_cache = true;", final_receipt_pos)
+    if min(physical_pos, physical_guard_pos, first_receipt_pos, version_commit_pos, integrity_commit_pos, final_receipt_pos, ready_pos) < 0:
+        raise AssertionError("Schema v9 migration evidence ordering markers are incomplete")
+    if not (physical_pos < physical_guard_pos < first_receipt_pos < version_commit_pos < integrity_commit_pos < final_receipt_pos < ready_pos):
+        raise AssertionError("Schema v9 readiness may advance before deep verification/final receipt")
+
+    is_ready_pos = SCHEMA.find("public static function is_ready()")
+    critical_ready_pos = SCHEMA.find("public static function critical_ready()", is_ready_pos)
+    is_ready_body = SCHEMA[is_ready_pos:critical_ready_pos]
+    if "self::migration_receipt_valid()" not in is_ready_body:
+        raise AssertionError("Schema v9 readiness must require a valid finalized migration receipt")
+
+    print("mad4b.schema-dbdelta-upgrade.v2: PASS")
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"mad4b.schema-dbdelta-upgrade.v1: FAIL: {exc}", file=sys.stderr)
+        print(f"mad4b.schema-dbdelta-upgrade.v2: FAIL: {exc}", file=sys.stderr)
         raise

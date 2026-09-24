@@ -461,13 +461,44 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 					'reversible' => $reversible,
 				) );
 			}
+			$canary_supported_abilities = array();
+			if ( 'high_risk_write' === $risk
+				&& $available
+				&& $structural
+				&& $exact_certified
+				&& $artifact_authority_bound
+				&& $surface_exposed
+				&& is_object( $adapter )
+				&& method_exists( $adapter, 'supports_canary_execution' ) ) {
+				foreach ( $mounted_abilities as $ability_name ) {
+					try {
+						if ( true === $adapter->supports_canary_execution( $ability_name ) ) $canary_supported_abilities[] = (string) $ability_name;
+					} catch ( Throwable $error ) {
+						// Adapter opt-in is evidence only; exceptions fail this bootstrap candidate closed.
+					}
+				}
+			}
+			$canary_supported_abilities = array_values( array_unique( $canary_supported_abilities ) );
+			sort( $canary_supported_abilities, SORT_STRING );
+			$canary_bootstrap_eligible = 'high_risk_write' === $risk && ! empty( $canary_supported_abilities );
+			$canary_basis_digest = $canary_bootstrap_eligible ? self::stable_digest( array(
+				'contract' => 'mad4b.provider-canary-bootstrap.v1',
+				'provider_id' => $provider,
+				'capability_id' => (string) $capability_id,
+				'artifact_fingerprint' => $artifact_fingerprint,
+				'capability_contract_digest' => $capability_contract_digest,
+				'exact_runtime_certified' => true,
+				'structural_compatible' => true,
+				'canary_supported_abilities' => $canary_supported_abilities,
+			) ) : '';
 			$level = self::level_for( $available, $structural, $exact_certified, $risk, $reversible, $behavioral, $artifact_authority_bound );
-			$activation_stage = self::activation_stage_for( $risk, $level, $behavioral );
+			$activation_stage = self::activation_stage_for( $risk, $level, $behavioral, $canary_bootstrap_eligible );
 			$write_level_eligible = in_array( $level, array( self::LEVEL_BOUNDED_WRITE, self::LEVEL_REVERSIBLE_WRITE, self::LEVEL_FULL ), true );
 			$behavioral_verified = ! empty( $behavioral['behavioral_verified'] );
 			$rollback_verified = ! empty( $behavioral['rollback_verified'] );
 			$certification_source = 'structural_only';
 			if ( 'read' !== $risk && ! $artifact_authority_bound ) $certification_source = 'artifact_authority_missing';
+			elseif ( $canary_bootstrap_eligible ) $certification_source = $behavioral_verified ? 'behavioral_receipt_plus_exact_canary_baseline' : 'repository_exact_canary_baseline';
 			elseif ( $exact_certified && 'high_risk_write' !== $risk ) $certification_source = 'repository_exact_baseline';
 			elseif ( 'read' !== $risk && $write_level_eligible && $behavioral_verified ) $certification_source = 'behavioral_receipt';
 			elseif ( 'read' === $risk ) $certification_source = $exact_certified ? 'repository_exact_baseline' : 'structural_compatibility';
@@ -486,7 +517,12 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 				'certification_source' => $certification_source,
 				'activation_stage' => $activation_stage,
 				'activation_required' => 'high_risk_write' === $risk,
-				'canary_eligible' => 'high_risk_write' === $risk && $behavioral_verified,
+				'canary_bootstrap_eligible' => $canary_bootstrap_eligible,
+				'canary_basis_digest' => $canary_basis_digest,
+				'canary_supported_abilities' => $canary_supported_abilities,
+				'canary_eligible' => 'high_risk_write' === $risk
+					&& self::ACTIVATION_CANARY === $activation_stage
+					&& ( $canary_bootstrap_eligible || $behavioral_verified ),
 				'owner_promotion_required' => 'high_risk_write' === $risk,
 				'read_eligible' => 'read' === $risk && in_array( $level, array( self::LEVEL_READ, self::LEVEL_FULL ), true ),
 				'artifact_authority_bound' => $artifact_authority_bound,
@@ -554,9 +590,13 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		return 'bounded_write' === $risk ? self::LEVEL_BOUNDED_WRITE : self::LEVEL_DISCOVERED;
 	}
 
-	private static function activation_stage_for( $risk, $level, array $behavioral ) {
+	private static function activation_stage_for( $risk, $level, array $behavioral, $canary_bootstrap_eligible = false ) {
 		if ( 'read' === $risk ) return self::ACTIVATION_ACTIVE;
-		if ( 'high_risk_write' === $risk ) return ! empty( $behavioral['behavioral_verified'] ) ? self::ACTIVATION_CANARY : self::ACTIVATION_SHADOW;
+		if ( 'high_risk_write' === $risk ) {
+			return ! empty( $behavioral['behavioral_verified'] ) || $canary_bootstrap_eligible
+				? self::ACTIVATION_CANARY
+				: self::ACTIVATION_SHADOW;
+		}
 		return in_array( $level, array( self::LEVEL_BOUNDED_WRITE, self::LEVEL_REVERSIBLE_WRITE, self::LEVEL_FULL ), true ) ? self::ACTIVATION_ACTIVE : self::ACTIVATION_SHADOW;
 	}
 

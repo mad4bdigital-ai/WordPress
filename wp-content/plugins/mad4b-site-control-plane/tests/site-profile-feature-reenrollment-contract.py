@@ -21,12 +21,14 @@ for marker in (
     if marker not in servers:
         raise SystemExit('missing enrollment server contract: ' + marker)
 
-base_entry = "array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' )"
+base_entry = "array( 'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/build-provenance-status', 'mad4b/multi-authority-registry-status', 'mad4b/site-profile-feature-reenroll', 'mad4b/site-profile-write-enable', 'mad4b/staging-write-grant-reconcile', 'mad4b/staging-write-candidate-bind', 'mad4b/staging-write-candidate-binding-audit' )"
 enrollment_start = servers.index("'mad4b-enrollment' =>")
 enrollment_end = servers.index("'mad4b-content' =>", enrollment_start)
 segment = servers[enrollment_start:enrollment_end]
 if base_entry not in segment:
     raise SystemExit('base enrollment inventory is not exact/bounded')
+if "'mad4b/multi-authority-registry-status'" not in segment:
+    raise SystemExit('Multi-Authority read-only status must remain in the bounded enrollment inventory')
 if "MAD4B_SCP_Developer_Authority::enrollment_tools()" not in segment:
     raise SystemExit('Developer authority bootstrap must be projected only through its bounded enrollment inventory')
 if "class_exists( 'MAD4B_SCP_Developer_Authority' )" not in segment:

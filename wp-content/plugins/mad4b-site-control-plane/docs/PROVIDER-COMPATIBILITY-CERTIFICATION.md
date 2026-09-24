@@ -28,7 +28,7 @@ The engine keeps these facts independent:
 
 ## Pipeline
 
-`artifact discovery -> structural/capability discovery -> risk classification -> trusted behavioral evidence -> certification level -> activation stage -> per-ability MCP projection -> governed canary execution evidence -> separately governed promotion`
+`artifact discovery -> structural/capability discovery -> risk classification -> exact high-risk canary bootstrap or trusted behavioral evidence -> certification level -> activation stage -> per-ability MCP projection -> governed canary execution evidence -> separately governed promotion`
 
 The first cataloged providers are JetEngine, JetSmartFilters and Bit Flows. The catalog is capability-oriented and version-agnostic. It declares canonical capabilities, mapped MAD4B abilities, bounded risk class, structural probes, and reversible contracts where applicable.
 
@@ -72,10 +72,10 @@ The public evidence surface reports verifier provenance without exposing local f
 ## Activation stages
 
 - `shadow` — observed but not eligible for normal write mount/execution.
-- `canary` — trusted behavioral evidence may make a high-risk capability eligible for one separately approved canary execution, while the provider target remains blocked from the normal write surface.
+- `canary` — exact artifact + structural compatibility + explicit adapter canary opt-in may bootstrap the first separately approved high-risk canary; a current trusted behavioral receipt may additionally bind a repeat canary. The provider target remains blocked from the normal write surface.
 - `active` — only capabilities whose separately governed promotion policy is satisfied may become normal write-eligible.
 
-For `high_risk_write`, behavioral evidence can advance `shadow -> canary` only. It does not grant owner promotion, mutation authority or normal MCP write eligibility. `bitflows/run-flow` therefore remains blocked from `mad4b-write` while its capability is canary-only.
+For `high_risk_write`, exact artifact + structural compatibility + explicit adapter canary opt-in can establish a deterministic `canary_basis_digest` and advance only into isolated `canary` eligibility. This bootstrap exists to avoid requiring evidence that can only be produced by the canary itself. A trusted behavioral receipt, when already present, is additionally bound to the request. Neither bootstrap evidence nor behavioral evidence grants owner promotion, mutation authority or normal MCP write eligibility. `bitflows/run-flow` therefore remains blocked from `mad4b-write` while its capability is canary-only.
 
 ## Governed high-risk canary execution
 
@@ -97,7 +97,8 @@ A canary request is bound to all of the following current facts:
 - exact target provider ability;
 - current runtime artifact fingerprint;
 - current capability contract digest;
-- current accepted trusted behavioral evidence digest;
+- current deterministic `canary_basis_digest` from exact artifact, structural probes and adapter opt-in;
+- current accepted trusted behavioral evidence digest when a receipt already exists;
 - bounded target input digest.
 
 Immediately before side effects the wrapper re-runs those read-only guards and requires:
@@ -113,7 +114,7 @@ Adapters are fail-closed by default. Bit Flows is the first explicit opt-in and 
 
 The wrapper itself is governed by the existing `mad4b-write` authority: exact NHI grant, target fingerprint, short-lived one-time approval, budget reservation, replay protection and execution fence remain required. The provider target does not receive a normal write grant merely because a canary execution is approved.
 
-Successful execution returns `mad4b.provider-canary-execution-evidence.v1` bound to the exact candidate, artifact, capability contract, behavioral receipt and target input/result digests. That evidence is explicitly non-authorizing:
+Successful execution returns `mad4b.provider-canary-execution-evidence.v1` bound to the exact candidate, artifact, capability contract, canary bootstrap basis, optional current behavioral receipt, and target input/result digests. That evidence is explicitly non-authorizing:
 
 - `activation_granted=false`;
 - `promotion_granted=false`;
@@ -188,6 +189,24 @@ Runtime self-test treats drift from an installed-but-inactive provider as adviso
 
 Premium candidate metadata is diagnostic, not certification. If an installed premium version differs from the repository package candidate (for example a patch-suffix difference), the candidate relation is reported explicitly and mutation stays fail-closed. Live/runtime hashes are never accepted as self-attestation authority.
 
+### Bit Flows exact candidate package diagnostic
+
+`tests/bitflows-exact-package-diagnostic.py` has two deliberately separate modes:
+
+- `certified` (default) verifies the repository-certified Bit Flows archive and fails on any archive SHA, certified critical-file, or required semantic-target drift.
+- `candidate` accepts an exact external archive only to produce evidence for review. It never updates provider certification, never grants write authority, never makes a normal MCP mount eligible, and always reports `candidate_attestation_eligible=false`.
+
+Candidate evidence binds both the raw archive SHA-256 and a normalized full-package manifest digest (logical path, size and file SHA-256, independent of ZIP compression/order metadata). It also records every observed certified critical-file digest, semantic execution/history evidence, and bounded native-MCP markers. `--include-manifest` may be used when the complete normalized package manifest is required for an artifact-authority review.
+
+A candidate package with a native MCP server is a separate security surface from the MAD4B Bit Flows adapter. Structural compatibility of `FlowExecutor` or durable execution correlation does not prove that the provider-native MCP server cannot bypass MAD4B transport, grant, approval, budget, audit, candidate-binding, or Production boundaries. Candidate mode therefore keeps `no_privileged_mcp_side_channel_proven=false` and requires explicit MCP security recertification whenever a server/route surface is detected or the candidate artifact differs from the certified baseline.
+
+Native-MCP static detection is deliberately split into **references**, **observational client identifiers**, and **implementation surfaces**. Text such as “MCP server URL” inside a client implementation is retained in `server_reference_files` for review but does not by itself classify the package as an MCP server. Likewise, names such as `McpClient` or `mcp client` are observational only and are not required for a certified client role. The Bit Flows 1.24.0 `native_mcp_role=client` assertion is bound to the exact certified archive SHA; static scanning acts as a contradiction detector and must find no bounded first-party MCP server implementation or actual REST/AJAX/router/rewrite MCP route. `server_rest_routes_detected=false` remains an independent catalog expectation. Any contradictory server surface or route fails certified diagnostics closed. Routes whose exact statement identifies a client-management surface (for example `mcp-client/tools` handled by `McpClientController`) are recorded separately in `client_route_details` and do not count as an MCP server transport route. This exception is semantic, not path-wide: an MCP-named route without a client-specific route/handler identity remains a server-route contradiction candidate.
+
+The static package diagnostic never claims proof of absence: `server_surface_absence_proven=false` and `no_privileged_mcp_side_channel_proven=false` remain false even when no server implementation marker is observed. A separate authoritative security certification is required to satisfy the Feature 007 no-privileged-side-channel gate.
+
+If a provider-native MCP server is intentionally disabled or isolated at runtime, that runtime policy is evidence only; it does not create artifact authority. A later certification must either prove enforced isolation/fail-closed disablement for the exact artifact or model the native server as a governed peer under the existing MCP peer-governance contract.
+
+
 ## Evidence, artifact authority, capability certification and mutation authority
 
 These are separate trust layers:
@@ -220,6 +239,7 @@ The plan may identify `owner_governed_canary_execution_required`. That action no
 The compatibility/canary system must remain fail closed:
 
 - no caller-supplied `owner_approved` boolean;
+- no exact package may bootstrap a high-risk canary without structural compatibility and explicit adapter opt-in;
 - no behavioral receipt may self-grant mutation or activation;
 - no stale/wrong-artifact receipt may restore write eligibility;
 - no external verifier callback may become trusted merely by setting metadata flags;

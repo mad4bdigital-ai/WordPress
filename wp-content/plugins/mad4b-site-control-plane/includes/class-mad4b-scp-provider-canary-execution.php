@@ -72,6 +72,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 				'expected_build_fingerprint' => $digest,
 				'expected_artifact_fingerprint' => $digest,
 				'expected_capability_contract_digest' => $digest,
+				'expected_canary_basis_digest' => $digest,
 				'expected_behavioral_evidence_digest' => $digest,
 				'target_input' => array( 'type' => 'object', 'additionalProperties' => true, 'default' => array() ),
 			),
@@ -83,7 +84,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 				'expected_build_fingerprint',
 				'expected_artifact_fingerprint',
 				'expected_capability_contract_digest',
-				'expected_behavioral_evidence_digest',
+				'expected_canary_basis_digest',
 				'target_input',
 			),
 			'additionalProperties' => false,
@@ -135,16 +136,25 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 
 		$artifact = isset( $status['artifact']['runtime_artifact_fingerprint'] ) ? self::clean_digest( $status['artifact']['runtime_artifact_fingerprint'] ) : '';
 		$contract_digest = isset( $status['capability_contract_digest'] ) ? self::clean_digest( $status['capability_contract_digest'] ) : '';
+		$canary_basis_digest = isset( $status['canary_basis_digest'] ) ? self::clean_digest( $status['canary_basis_digest'] ) : '';
+		$canary_bootstrap_eligible = ! empty( $status['canary_bootstrap_eligible'] );
 		$behavioral = isset( $status['behavioral_evidence'] ) && is_array( $status['behavioral_evidence'] ) ? $status['behavioral_evidence'] : array();
 		$receipt = isset( $behavioral['accepted_receipt'] ) && is_array( $behavioral['accepted_receipt'] ) ? $behavioral['accepted_receipt'] : array();
+		$behavioral_verified = ! empty( $behavioral['behavioral_verified'] ) && 'verified' === ( isset( $behavioral['state'] ) ? (string) $behavioral['state'] : '' );
 		$behavioral_digest = isset( $receipt['evidence_digest'] ) ? self::clean_digest( $receipt['evidence_digest'] ) : '';
 		$expected_artifact = self::clean_digest( isset( $input['expected_artifact_fingerprint'] ) ? $input['expected_artifact_fingerprint'] : '' );
 		$expected_contract = self::clean_digest( isset( $input['expected_capability_contract_digest'] ) ? $input['expected_capability_contract_digest'] : '' );
+		$expected_canary_basis = self::clean_digest( isset( $input['expected_canary_basis_digest'] ) ? $input['expected_canary_basis_digest'] : '' );
 		$expected_behavioral = self::clean_digest( isset( $input['expected_behavioral_evidence_digest'] ) ? $input['expected_behavioral_evidence_digest'] : '' );
 		if ( '' === $artifact || '' === $expected_artifact || ! hash_equals( $artifact, $expected_artifact ) ) return new WP_Error( 'mad4b_provider_canary_artifact_mismatch', 'Canary request is not bound to the current provider artifact.' );
 		if ( '' === $contract_digest || '' === $expected_contract || ! hash_equals( $contract_digest, $expected_contract ) ) return new WP_Error( 'mad4b_provider_canary_contract_mismatch', 'Canary request is not bound to the current capability contract.' );
-		if ( empty( $behavioral['behavioral_verified'] ) || 'verified' !== ( isset( $behavioral['state'] ) ? (string) $behavioral['state'] : '' ) ) return new WP_Error( 'mad4b_provider_canary_behavioral_evidence_missing', 'Current trusted behavioral evidence is required for canary execution.' );
-		if ( '' === $behavioral_digest || '' === $expected_behavioral || ! hash_equals( $behavioral_digest, $expected_behavioral ) ) return new WP_Error( 'mad4b_provider_canary_behavioral_evidence_mismatch', 'Canary request is not bound to the currently accepted behavioral evidence receipt.' );
+		if ( '' === $canary_basis_digest || '' === $expected_canary_basis || ! hash_equals( $canary_basis_digest, $expected_canary_basis ) ) return new WP_Error( 'mad4b_provider_canary_basis_mismatch', 'Canary request is not bound to the current exact artifact/structural bootstrap evidence.' );
+		if ( ! $canary_bootstrap_eligible && ! $behavioral_verified ) return new WP_Error( 'mad4b_provider_canary_bootstrap_not_eligible', 'High-risk capability has neither exact canary bootstrap evidence nor current trusted behavioral evidence.' );
+		if ( $behavioral_verified ) {
+			if ( '' === $behavioral_digest || '' === $expected_behavioral || ! hash_equals( $behavioral_digest, $expected_behavioral ) ) return new WP_Error( 'mad4b_provider_canary_behavioral_evidence_mismatch', 'Canary request is not bound to the currently accepted behavioral evidence receipt.' );
+		} elseif ( '' !== $expected_behavioral ) {
+			return new WP_Error( 'mad4b_provider_canary_behavioral_evidence_mismatch', 'A behavioral evidence digest was supplied but no current trusted receipt exists.' );
+		}
 		if ( ! method_exists( $adapter, 'supports_canary_execution' ) || true !== $adapter->supports_canary_execution( $target_ability ) || ! method_exists( $adapter, 'execute_canary' ) ) return new WP_Error( 'mad4b_provider_canary_adapter_not_opted_in', 'Provider adapter has not explicitly opted this ability into governed canary execution.' );
 
 		$target_input = isset( $input['target_input'] ) && is_array( $input['target_input'] ) ? $input['target_input'] : null;
@@ -160,6 +170,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 			'candidate' => $candidate,
 			'artifact_fingerprint' => $artifact,
 			'capability_contract_digest' => $contract_digest,
+			'canary_basis_digest' => $canary_basis_digest,
 			'behavioral_evidence_digest' => $behavioral_digest,
 			'target_input' => $target_input,
 			'target_input_digest' => hash( 'sha256', $bounded ),
@@ -180,6 +191,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 			'build_fingerprint' => $context['candidate']['build_fingerprint'],
 			'artifact_fingerprint' => $context['artifact_fingerprint'],
 			'capability_contract_digest' => $context['capability_contract_digest'],
+			'canary_basis_digest' => $context['canary_basis_digest'],
 			'behavioral_evidence_digest' => $context['behavioral_evidence_digest'],
 			'target_input_digest' => $context['target_input_digest'],
 		);
@@ -279,6 +291,7 @@ final class MAD4B_SCP_Provider_Canary_Execution {
 			'build_fingerprint' => isset( $execution['build_fingerprint'] ) ? (string) $execution['build_fingerprint'] : '',
 			'artifact_fingerprint' => isset( $execution['artifact_fingerprint'] ) ? (string) $execution['artifact_fingerprint'] : '',
 			'capability_contract_digest' => isset( $execution['capability_contract_digest'] ) ? (string) $execution['capability_contract_digest'] : '',
+			'canary_basis_digest' => isset( $execution['canary_basis_digest'] ) ? (string) $execution['canary_basis_digest'] : '',
 			'behavioral_evidence_digest' => isset( $execution['behavioral_evidence_digest'] ) ? (string) $execution['behavioral_evidence_digest'] : '',
 			'target_input_digest' => isset( $execution['target_input_digest'] ) ? (string) $execution['target_input_digest'] : '',
 			'target_result_digest' => isset( $execution['target_result_digest'] ) ? (string) $execution['target_result_digest'] : '',
