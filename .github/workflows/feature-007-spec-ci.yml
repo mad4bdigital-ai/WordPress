@@ -58,7 +58,15 @@ jobs:
           release=feature.get("runtime_release_identity") or {}
           source=str(release.get("source_commit_sha") or "")
           state=str(release.get("state") or "")
-          paths=feature.get("runtime_identity_paths") or []
+          expected_runtime_paths=[
+              "wp-content/plugins/mad4b-site-control-plane/",
+              "wp-content/plugins/mcp-adapter.zip",
+              "plugins/mad4b-wordpress/",
+              "tools/capture-functional-gap-contract-evidence.py",
+          ]
+          if feature.get("runtime_identity_paths") != expected_runtime_paths:
+              raise SystemExit("RUNTIME_IDENTITY_PATH_POLICY_DRIFT")
+          paths=expected_runtime_paths
           if len(source)!=40:
               raise SystemExit("RUNTIME_RELEASE_IDENTITY_INVALID_SOURCE")
           try:
