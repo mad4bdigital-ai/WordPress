@@ -60,6 +60,34 @@ EXPECTED_FIELDS = {
         "chain_name", "sequence", "entry_hash", "legacy_anchor_sha256",
         "legacy_chain_valid", "legacy_entry_count", "created_at", "updated_at",
     ),
+    "content_jobs": (
+        "id", "job_id", "site_uuid", "brand_id", "state", "stage",
+        "current_artifact_id", "job_revision", "created_at", "updated_at",
+    ),
+    "content_job_events": (
+        "id", "event_id", "job_id", "sequence", "event_type", "plan_sha256",
+        "artifact_id", "previous_entry_sha256", "entry_sha256", "created_at",
+    ),
+    "work_leases": (
+        "id", "work_id", "aggregate_type", "aggregate_id", "worker_id", "lease_epoch",
+        "expected_aggregate_revision", "status", "acquired_at", "heartbeat_at",
+        "expires_at", "reconciliation_ref", "created_at", "updated_at",
+    ),
+    "idempotency": (
+        "id", "scope_key", "idempotency_key", "request_sha256", "status",
+        "result_json", "result_sha256", "reconciliation_ref", "expires_at",
+        "created_at", "updated_at",
+    ),
+    "outbox": (
+        "id", "outbox_id", "job_id", "expected_job_revision", "provider_id",
+        "capability_id", "workflow_plan_sha256", "idempotency_key", "request_sha256",
+        "payload_json", "status", "attempts", "provider_execution_ref",
+        "last_error_class", "available_at", "created_at", "updated_at",
+    ),
+    "inbox": (
+        "id", "provider_id", "provider_event_id", "job_id", "payload_sha256",
+        "status", "provider_execution_ref", "result_ref", "received_at", "processed_at",
+    ),
 }
 
 EXPECTED_KEYS = {
@@ -81,6 +109,27 @@ EXPECTED_KEYS = {
         "KEY ability_sequence", "KEY entry_hash",
     ),
     "audit_heads": ("PRIMARY KEY",),
+    "content_jobs": (
+        "PRIMARY KEY", "UNIQUE KEY job_id", "KEY site_lifecycle", "KEY brand_market",
+        "KEY target_post_id", "KEY updated_at",
+    ),
+    "content_job_events": (
+        "PRIMARY KEY", "UNIQUE KEY event_id", "UNIQUE KEY job_sequence",
+        "KEY correlation_id", "KEY created_at",
+    ),
+    "work_leases": (
+        "PRIMARY KEY", "UNIQUE KEY work_id", "KEY aggregate_status", "KEY lease_expiry",
+    ),
+    "idempotency": (
+        "PRIMARY KEY", "UNIQUE KEY scope_idempotency", "KEY expiry_status",
+    ),
+    "outbox": (
+        "PRIMARY KEY", "UNIQUE KEY outbox_id", "UNIQUE KEY provider_idempotency",
+        "KEY delivery_queue",
+    ),
+    "inbox": (
+        "PRIMARY KEY", "UNIQUE KEY provider_event", "KEY job_status", "KEY received_at",
+    ),
 }
 
 REQUIRED_APPROVAL_BINDINGS = (
@@ -158,12 +207,33 @@ def main():
         if len(matches) != 1:
             raise AssertionError(f"{field}: expected one standalone dbDelta-visible definition, got {len(matches)}")
 
-    print("mad4b.schema-dbdelta-upgrade.v1: PASS")
+    # Feature 007 durable execution relies on these fields being upgrade-visible,
+    # not merely present in fresh CREATE statements.
+    durable_required = {
+        "idempotency": ("reconciliation_ref", "expires_at"),
+        "work_leases": ("lease_epoch", "expires_at", "reconciliation_ref"),
+        "outbox": ("workflow_plan_sha256", "idempotency_key", "request_sha256"),
+        "inbox": ("provider_event_id", "job_id", "payload_sha256"),
+    }
+    for table, required in durable_required.items():
+        fields, _ = visible_dbdelta_tokens(table_body(table))
+        hidden = [field for field in required if field not in fields]
+        if hidden:
+            raise AssertionError(
+                f"{table}: durable execution fields hidden from dbDelta: {','.join(hidden)}"
+            )
+
+    if "const VERSION = 8;" not in SCHEMA:
+        raise AssertionError("durable execution schema changes require schema version 8")
+    if "mad4b_scp_schema_integrity_v8" not in SCHEMA:
+        raise AssertionError("durable execution schema integrity token was not versioned")
+
+    print("mad4b.schema-dbdelta-upgrade.v2: PASS")
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"mad4b.schema-dbdelta-upgrade.v1: FAIL: {exc}", file=sys.stderr)
+        print(f"mad4b.schema-dbdelta-upgrade.v2: FAIL: {exc}", file=sys.stderr)
         raise
