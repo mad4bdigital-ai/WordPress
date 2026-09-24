@@ -428,6 +428,16 @@ Exit gate: a fixture workflow requirement can choose an eligible provider using 
 Production eligibility remains distinct from Production authorization.
 
 
+## Phase 19 — Spec isolation and compatibility
+
+- keep Feature 007 metadata local to `specs/007-content-intelligence-workflow-platform/feature.json`;
+- preserve repository-global `.specify/feature.json` semantics for Feature 001;
+- validate cross-feature spec isolation in CI;
+- verify Feature 001 CI remains green for Feature 007 spec-only changes;
+- keep Feature 007 validation independent from mutation of another feature's metadata.
+
+Exit gate: Feature 007 and Feature 001 specification/CI contracts remain isolated and independently valid.
+
 ## Phase 20 — Correctness and durable execution foundation
 
 - add canonical serialization/fingerprint versioning;
