@@ -5,9 +5,28 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
       - 'plugins/mad4b-wordpress/**'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
+      - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/feature-007-critical-kernel.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'wp-content/plugins/mcp-adapter.zip'
+      - 'wp-content/plugins/*.zip'
+      - 'plugins/mad4b-wordpress/**'
+      - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
+      - '.github/workflows/mad4b-control-plane-package.yml'
+      - '.github/workflows/mad4b-live-acceptance-evidence.yml'
+      - '.github/workflows/mad4b-release-verdict.yml'
+      - '.github/workflows/feature-007-critical-kernel.yml'
   workflow_dispatch:
 
 permissions:
@@ -44,7 +63,7 @@ jobs:
           --health-retries=10
 
     steps:
-      - name: Checkout exact PR head
+      - name: Checkout exact source head
         uses: actions/checkout@v4
         with:
           ref: ${{ env.SOURCE_SHA }}
@@ -54,6 +73,67 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify master release-acceptance trigger parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/mad4b-live-acceptance-evidence.yml')
+          lines = path.read_text(encoding='utf-8').splitlines()
+
+          def block(name):
+              marker = f'  {name}:'
+              try:
+                  start = lines.index(marker) + 1
+              except ValueError:
+                  raise SystemExit(f'missing workflow trigger: {name}')
+              out = []
+              for line in lines[start:]:
+                  if line.startswith('  ') and not line.startswith('    ') and line.strip():
+                      break
+                  out.append(line)
+              return out
+
+          required_paths = {
+              "wp-content/plugins/mad4b-site-control-plane/**",
+              "wp-content/plugins/mcp-adapter.zip",
+              "wp-content/plugins/*.zip",
+              "plugins/mad4b-wordpress/**",
+              "tools/capture-functional-gap-contract-evidence.py",
+              "wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json",
+              ".github/workflows/mad4b-control-plane-package.yml",
+              ".github/workflows/mad4b-live-acceptance-evidence.yml",
+              ".github/workflows/mad4b-release-verdict.yml",
+              ".github/workflows/feature-007-critical-kernel.yml",
+          }
+
+          def paths_from(section):
+              values = set()
+              in_paths = False
+              for raw in section:
+                  stripped = raw.strip()
+                  if stripped == 'paths:':
+                      in_paths = True
+                      continue
+                  if in_paths and stripped.startswith('- '):
+                      values.add(stripped[2:].strip("'\""))
+                  elif in_paths and stripped and not raw.startswith('      '):
+                      break
+              return values
+
+          pr = block('pull_request')
+          push = block('push')
+          if required_paths - paths_from(pr):
+              raise SystemExit('pull_request live-acceptance trigger lost canonical package paths: ' + ','.join(sorted(required_paths - paths_from(pr))))
+          if required_paths - paths_from(push):
+              raise SystemExit('master push live-acceptance trigger lost canonical package paths: ' + ','.join(sorted(required_paths - paths_from(push))))
+          if not any(line.strip() == '- master' for line in push):
+              raise SystemExit('master push branch trigger missing')
+          print('live-acceptance master trigger parity: PASS')
+          PY
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
