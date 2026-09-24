@@ -132,9 +132,13 @@ jobs:
               ".github/workflows/mad4b-wpml-external-diagnostic.yml",
               ".github/workflows/mad4b-oauth-resource-bridge.yml",
               ".github/workflows/mad4b-provider-compatibility-engine.yml",
+              ".github/workflows/mad4b-owner-attestation-rerun.yml",
+              ".github/workflows/mad4b-release-verdict.yml",
+              ".github/mad4b-repository-governance-policy.json",
               "specs/007-content-intelligence-workflow-platform/",
               "tools/mad4b_recovery_plane.py",
               "tools/verify_release_root_trust.py",
+              "tools/verify_repository_owner_attestation.py",
               "wp-content/plugins/mad4b-site-control-plane/",
           ]
           cross_feature_dependencies = [
@@ -199,6 +203,9 @@ jobs:
 
           print(f"FEATURE_007_BOUNDARY_OK status={status} mode={boundary_mode} changed={len(changed)}")
           PY
+
+      - name: Verify reconciled task ledger
+        run: python specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
 
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
