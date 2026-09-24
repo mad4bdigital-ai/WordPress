@@ -26,7 +26,7 @@ foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository
     }
 }
 
-$template = Get-Content -LiteralPath $TemplatePath -Raw | ConvertFrom-Json -Depth 100
+$template = Get-Content -LiteralPath $TemplatePath -Raw | ConvertFrom-Json
 if ($template.name -ne "MAD4B master release governance") {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: unexpected ruleset name."
 }
@@ -53,7 +53,7 @@ $currentRaw = & gh @currentArgs
 if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: unable to read repository rulesets."
 }
-$current = @($currentRaw | ConvertFrom-Json -Depth 100)
+$current = @($currentRaw | ConvertFrom-Json)
 $current | ConvertTo-Json -Depth 100
 
 $named = @($current | Where-Object { $_.name -eq $template.name })
@@ -77,7 +77,7 @@ if ($named.Count -gt 1) {
     if ($LASTEXITCODE -ne 0) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: repository ruleset creation failed. Ensure the active gh credential has Administration:write for this repository."
     }
-    $created = $createdRaw | ConvertFrom-Json -Depth 100
+    $created = $createdRaw | ConvertFrom-Json
     $rulesetId = [string]$created.id
     if ([string]::IsNullOrWhiteSpace($rulesetId)) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: created ruleset response did not contain an id."
@@ -92,7 +92,7 @@ $detailRaw = & gh @detailArgs
 if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: exact ruleset readback failed."
 }
-$detail = $detailRaw | ConvertFrom-Json -Depth 100
+$detail = $detailRaw | ConvertFrom-Json
 $detail | ConvertTo-Json -Depth 100
 
 & $PythonCommand "tools/verify_repository_governance.py" --repository $Repository --policy $PolicyPath --output "mad4b-repository-governance-status.json"
@@ -100,7 +100,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: post-apply governed readback failed. Do not merge PR #60."
 }
 
-$status = Get-Content -LiteralPath "mad4b-repository-governance-status.json" -Raw | ConvertFrom-Json -Depth 100
+$status = Get-Content -LiteralPath "mad4b-repository-governance-status.json" -Raw | ConvertFrom-Json
 if ($status.ready -ne $true) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: readback did not reach ready=true."
 }
