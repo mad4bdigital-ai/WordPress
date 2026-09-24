@@ -283,6 +283,7 @@ final class MAD4B_SCP_Live_Truth {
 			'write_inventory_fingerprint' => isset( $inventory['write_inventory_fingerprint'] ) ? $inventory['write_inventory_fingerprint'] : '',
 			'provider_blocked_fingerprint' => isset( $inventory['provider_blocked_fingerprint'] ) ? $inventory['provider_blocked_fingerprint'] : '',
 			'provider_blocked_write_tool_count' => isset( $inventory['provider_blocked_write_tool_count'] ) ? $inventory['provider_blocked_write_tool_count'] : 0,
+			'provider_blocked_write_tools' => isset( $inventory['provider_blocked_write_tools'] ) && is_array( $inventory['provider_blocked_write_tools'] ) ? $inventory['provider_blocked_write_tools'] : array(),
 			'inspection_source' => 'live_read_only',
 			'persists_changes' => false,
 			'observed_at' => gmdate( 'c' ),
@@ -291,7 +292,18 @@ final class MAD4B_SCP_Live_Truth {
 
 	public static function current_write_certification() {
 		$authority = self::current_authority_status();
-		$inventory = self::inventory_identity();
+		// Reuse the exact inventory observed by current_authority_status(). This
+		// avoids recomputing provider/write projection twice in one read while
+		// deliberately avoiding cross-call memoization that could become stale
+		// after an in-request governed mutation.
+		$inventory = array(
+			'control_plane_version' => isset( $authority['control_plane_version'] ) ? (string) $authority['control_plane_version'] : '',
+			'write_tools' => isset( $authority['write_tools'] ) && is_array( $authority['write_tools'] ) ? $authority['write_tools'] : array(),
+			'write_inventory_fingerprint' => isset( $authority['write_inventory_fingerprint'] ) ? (string) $authority['write_inventory_fingerprint'] : '',
+			'provider_blocked_write_tool_count' => isset( $authority['provider_blocked_write_tool_count'] ) ? (int) $authority['provider_blocked_write_tool_count'] : 0,
+			'provider_blocked_write_tools' => isset( $authority['provider_blocked_write_tools'] ) && is_array( $authority['provider_blocked_write_tools'] ) ? $authority['provider_blocked_write_tools'] : array(),
+			'provider_blocked_fingerprint' => isset( $authority['provider_blocked_fingerprint'] ) ? (string) $authority['provider_blocked_fingerprint'] : '',
+		);
 		$candidate_binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
 			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array( 'required' => false, 'match' => true );
