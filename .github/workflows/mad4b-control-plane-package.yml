@@ -841,6 +841,7 @@ jobs:
           import hashlib,json,os,sys
           from pathlib import Path
           stage=Path(sys.argv[1])
+          canonical=json.loads((stage/'CANONICAL-PACKAGE-RECEIPT.json').read_text(encoding='utf-8'))
           receipt={
               'contract':'mad4b.github-artifact-receipt.v1',
               'repository':os.environ.get('GITHUB_REPOSITORY',''),
@@ -856,6 +857,11 @@ jobs:
               'sbom_sha256':hashlib.sha256((stage/'MAD4B-SBOM.cdx.json').read_bytes()).hexdigest(),
               'build_fingerprint':(stage/'BUILD-FINGERPRINT.txt').read_text().strip(),
               'package_manifest_digest':(stage/'PACKAGE-MANIFEST-DIGEST.txt').read_text().strip(),
+              'manifest_file_count':int(canonical.get('manifest_file_count',0)),
+              'archive_file_count':int(canonical.get('archive_file_count',0)),
+              'manifest_excluded_files':canonical.get('manifest_excluded_files',[]),
+              'package_file_count':int(canonical.get('package_file_count',0)),
+              'package_file_count_semantics':canonical.get('package_file_count_semantics',''),
               'github_api_verified':True,
               'runtime_binding_note':'Runtime binds installed bytes through package_manifest_digest/build_fingerprint; outer artifact digest is verified externally to avoid recursive self-hashing.',
           }
