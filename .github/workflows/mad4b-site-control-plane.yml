@@ -105,6 +105,12 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-certification-contract.py
 
+      - name: Verify admin settings persistence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py
+
       - name: Verify required modules and core safety gates
         shell: bash
         run: |

@@ -230,13 +230,15 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 		if ( self::$admin_actions_booted ) return;
 		self::$admin_actions_booted = true;
 		add_action( 'admin_post_mad4b_enable_production_readonly_oauth', array( __CLASS__, 'handle_enable_production_readonly' ) );
+		add_action( 'wp_ajax_mad4b_enable_production_readonly_oauth', array( __CLASS__, 'handle_enable_production_readonly' ) );
 		add_action( 'admin_post_mad4b_disable_production_readonly_oauth', array( __CLASS__, 'handle_disable_production_readonly' ) );
+		add_action( 'wp_ajax_mad4b_disable_production_readonly_oauth', array( __CLASS__, 'handle_disable_production_readonly' ) );
 	}
 
 	public static function handle_enable_production_readonly() {
 		self::assert_production_admin_action();
-		check_admin_referer( 'mad4b_production_readonly_oauth' );
-		update_option( self::PRODUCTION_OPTION, array(
+		self::verify_production_admin_nonce();
+		$record = array(
 			'version' => self::VERSION,
 			'enabled' => true,
 			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
@@ -245,15 +247,83 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			'canonical_origin' => MAD4B_SCP_Site_Profile::site_origin(),
 			'approved_by' => get_current_user_id(),
 			'updated_at' => gmdate( 'c' ),
-		), false );
+		);
+		$verified = self::persist_production_option( $record );
+		if ( self::is_ajax_request() ) {
+			if ( ! $verified ) wp_send_json_error( array( 'code' => 'mad4b_production_readonly_oauth_readback_mismatch', 'message' => __( 'Production read-only OAuth setting could not be verified after save.', 'mad4b-site-control-plane' ) ), 500 );
+			wp_send_json_success( array(
+				'message' => __( 'Production read-only OAuth enabled and verified.', 'mad4b-site-control-plane' ),
+				'persistence_verified' => true,
+				'readback' => array( 'enabled' => true ),
+			) );
+		}
+		if ( ! $verified ) wp_die( esc_html__( 'Production read-only OAuth setting could not be verified after save.', 'mad4b-site-control-plane' ) );
 		self::redirect_connection_page( 'enabled' );
 	}
 
 	public static function handle_disable_production_readonly() {
 		self::assert_production_admin_action();
-		check_admin_referer( 'mad4b_production_readonly_oauth' );
-		delete_option( self::PRODUCTION_OPTION );
+		self::verify_production_admin_nonce();
+		$verified = self::delete_production_option_verified();
+		if ( self::is_ajax_request() ) {
+			if ( ! $verified ) wp_send_json_error( array( 'code' => 'mad4b_production_readonly_oauth_delete_readback_mismatch', 'message' => __( 'Production read-only OAuth disable could not be verified.', 'mad4b-site-control-plane' ) ), 500 );
+			wp_send_json_success( array(
+				'message' => __( 'Production read-only OAuth disabled and verified.', 'mad4b-site-control-plane' ),
+				'persistence_verified' => true,
+				'readback' => array( 'enabled' => false ),
+			) );
+		}
+		if ( ! $verified ) wp_die( esc_html__( 'Production read-only OAuth disable could not be verified.', 'mad4b-site-control-plane' ) );
 		self::redirect_connection_page( 'disabled' );
+	}
+
+	private static function production_option_values_equal( $left, $right ) {
+		return serialize( $left ) === serialize( $right );
+	}
+
+	private static function clear_production_option_cache( $aggressive = false ) {
+		if ( ! function_exists( 'wp_cache_delete' ) ) return;
+		wp_cache_delete( self::PRODUCTION_OPTION, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		if ( $aggressive && function_exists( 'wp_cache_flush_group' ) ) wp_cache_flush_group( 'options' );
+	}
+
+	private static function persist_production_option( array $record ) {
+		self::clear_production_option_cache( true );
+		$current = get_option( self::PRODUCTION_OPTION, false );
+		if ( false !== $current && self::production_option_values_equal( $current, $record ) ) return true;
+		update_option( self::PRODUCTION_OPTION, $record, false );
+		self::clear_production_option_cache();
+		if ( self::production_option_values_equal( get_option( self::PRODUCTION_OPTION, false ), $record ) ) return true;
+		self::clear_production_option_cache( true );
+		update_option( self::PRODUCTION_OPTION, $record, false );
+		self::clear_production_option_cache( true );
+		return self::production_option_values_equal( get_option( self::PRODUCTION_OPTION, false ), $record );
+	}
+
+	private static function delete_production_option_verified() {
+		self::clear_production_option_cache( true );
+		if ( false === get_option( self::PRODUCTION_OPTION, false ) ) return true;
+		delete_option( self::PRODUCTION_OPTION );
+		self::clear_production_option_cache();
+		if ( false === get_option( self::PRODUCTION_OPTION, false ) ) return true;
+		self::clear_production_option_cache( true );
+		delete_option( self::PRODUCTION_OPTION );
+		self::clear_production_option_cache( true );
+		return false === get_option( self::PRODUCTION_OPTION, false );
+	}
+
+	private static function is_ajax_request() {
+		return function_exists( 'wp_doing_ajax' ) && wp_doing_ajax();
+	}
+
+	private static function verify_production_admin_nonce() {
+		if ( self::is_ajax_request() ) {
+			if ( false === check_ajax_referer( 'mad4b_production_readonly_oauth', '_wpnonce', false ) ) wp_send_json_error( array( 'code' => 'mad4b_production_readonly_oauth_nonce_invalid', 'message' => __( 'The Production read-only OAuth settings request expired.', 'mad4b-site-control-plane' ) ), 403 );
+			return;
+		}
+		check_admin_referer( 'mad4b_production_readonly_oauth' );
 	}
 
 	private static function assert_production_admin_action() {
