@@ -12,6 +12,7 @@ skill_snapshot = (root / "includes/class-mad4b-scp-skill-snapshot-identity.php")
 skill_runtime = (root / "includes/class-mad4b-scp-skill-runtime-certification.php").read_text(encoding="utf-8")
 finalizer = (root / "includes/class-mad4b-scp-live-acceptance-finalizer.php").read_text(encoding="utf-8")
 live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
+oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -197,4 +198,13 @@ live_truth_recovery = live_truth.split("private static function recover_runtime_
 assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime()" in live_truth_recovery
 assert live_truth_recovery.index("current_request_requires_mcp_runtime()") < live_truth_recovery.index("MAD4B_SCP_Staging_Write_Authority::eligible()")
 
-print("mad4b.chatgpt-refresh-hotpath.v9: PASS")
+# OAuth autoconfig runs on every plugin boot. Its durable diagnostic record must
+# be write-on-change; a timestamp alone must never force a DB write per MCP request.
+oauth_nonprod = oauth_autoconfig.split("private static function bootstrap_enrolled_nonproduction()", 1)[1].split("private static function bootstrap_production_readonly()", 1)[0]
+assert "$existing = get_option( self::OPTION, array() );" in oauth_nonprod
+assert "unset( $existing_semantic['updated_at'] );" in oauth_nonprod
+assert "if ( $existing_semantic !== $record )" in oauth_nonprod
+assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("$record['updated_at'] = gmdate( 'c' );")
+assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("update_option( self::OPTION, $record, false );")
+
+print("mad4b.chatgpt-refresh-hotpath.v10: PASS")
