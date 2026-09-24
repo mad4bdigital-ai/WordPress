@@ -53,11 +53,16 @@ required = [
 for marker in required:
     assert marker in full, marker
 
+reviewed_lineage_capture = full.index("$reviewed_previous_binding = MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot")
 developer_apply = full.index("MAD4B_SCP_Developer_Authority::apply")
 breakglass_apply = full.index("MAD4B_SCP_Developer_Authority::breakglass_apply")
 write_reconcile = full.index("MAD4B_SCP_Staging_Write_Authority::reconcile")
+pre_bind_capture = full.index("$pre_bind_persisted_binding = MAD4B_SCP_Staging_Write_Candidate_Binding::audit_binding_snapshot")
 candidate_bind = full.index("MAD4B_SCP_Staging_Write_Candidate_Binding::bind")
-assert developer_apply < breakglass_apply < write_reconcile < candidate_bind
+assert reviewed_lineage_capture < developer_apply < breakglass_apply < write_reconcile < pre_bind_capture < candidate_bind
+assert "), $reviewed_previous_binding );" in full[candidate_bind:candidate_bind + 2500], "candidate bind did not receive immutable reviewed lineage"
+assert "'reviewed_previous_binding' => $reviewed_previous_binding" in full
+assert "'pre_bind_persisted_binding' => $pre_bind_persisted_binding" in full
 assert "mad4b/full-staging-authority-prepared" in full
 tail_after_binding = full[candidate_bind:]
 assert "mad4b/full-staging-authority-prepared" not in tail_after_binding
