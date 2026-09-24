@@ -271,8 +271,7 @@ final class MAD4B_SCP_Site_Profile {
 			return true;
 		}
 
-		if ( false === $current ) add_option( self::OPTION, $record, '', 'no' );
-		else update_option( self::OPTION, $record, false );
+		update_option( self::OPTION, $record, false );
 
 		self::clear_option_read_cache();
 		$readback = get_option( self::OPTION, false );
@@ -286,8 +285,7 @@ final class MAD4B_SCP_Site_Profile {
 		// retry through the public Options API, then require exact readback.
 		self::clear_option_read_cache( true );
 		$current = get_option( self::OPTION, false );
-		if ( false === $current ) add_option( self::OPTION, $record, '', 'no' );
-		else update_option( self::OPTION, $record, false );
+		update_option( self::OPTION, $record, false );
 
 		self::clear_option_read_cache( true );
 		$readback = get_option( self::OPTION, false );
