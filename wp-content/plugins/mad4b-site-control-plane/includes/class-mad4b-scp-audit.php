@@ -153,7 +153,20 @@ final class MAD4B_SCP_Audit {
 	}
 
 	public static function storage_status() {
-		return MAD4B_SCP_Audit_Integrity::storage_status();
+		$status = MAD4B_SCP_Audit_Integrity::storage_status();
+		if ( ! is_array( $status ) ) $status = array( 'ready' => false );
+		$event_count = isset( $status['event_count'] ) ? (int) $status['event_count'] : 0;
+		$status['retention_contract'] = 'mad4b.audit-retention.v1';
+		$status['retention_mode'] = 'append_only_no_automatic_deletion';
+		$status['automatic_deletion_enabled'] = false;
+		$status['retention_review_threshold_events'] = 100000;
+		$status['retention_review_recommended'] = $event_count >= 100000;
+		$status['redaction_contract'] = 'mad4b.audit-redaction.v1';
+		$status['sensitive_key_redaction_enabled'] = true;
+		$status['summary_max_depth'] = self::SUMMARY_MAX_DEPTH;
+		$status['summary_max_items'] = self::SUMMARY_MAX_ITEMS;
+		$status['summary_max_bytes'] = self::SUMMARY_MAX_BYTES;
+		return $status;
 	}
 
 	public static function verify_chain() {

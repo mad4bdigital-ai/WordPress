@@ -77,7 +77,7 @@ $gated = MAD4B_SCP_Servers::filter_external_inventory_attestation_runtime( $stor
 mad4b_assert( 1 === (int) $gated['eligible_write_tool_count'], 'Only the core write should be eligible before provider certification.' );
 mad4b_assert( 1 === (int) $gated['provider_gated_write_tool_count'], 'Provider write should be dynamically reported as gated.' );
 mad4b_assert( array( tool_name( 'jetsmartfilters/update-filter-meta' ) ) === $gated['provider_gated_write_tools'], 'Wrong gated provider tool projection.' );
-mad4b_assert( 0 === (int) $gated['authority_gated_write_tool_count'] && empty( $gated['authority_gated_write_tools'] ), 'Fixture should not invent authority-gated writes.' );
+mad4b_assert( 0 === (int) $gated['governance_gated_write_tool_count'] && empty( $gated['governance_gated_write_tools'] ), 'Fixture should not invent governance-gated writes.' );
 mad4b_assert( empty( $gated['provider_execution_mount_leaks'] ), 'Gated visibility must not be reported as an execution mount leak.' );
 mad4b_assert( ! empty( $gated['runtime_projection_current'] ), 'Runtime projection marker missing.' );
 mad4b_assert( $stored['external_tool_inventory_fingerprint'] === $gated['external_tool_inventory_fingerprint'], 'Read-time projection must not rewrite captured inventory identity.' );
@@ -87,7 +87,7 @@ $active = MAD4B_SCP_Servers::filter_external_inventory_attestation_runtime( $sto
 mad4b_assert( 2 === (int) $active['eligible_write_tool_count'], 'Provider write should become eligible without rescanning.' );
 mad4b_assert( 0 === (int) $active['provider_gated_write_tool_count'], 'Gated list should clear after certification.' );
 mad4b_assert( empty( $active['provider_gated_write_tools'] ), 'Gated provider tool should disappear after certification.' );
-mad4b_assert( 0 === (int) $active['authority_gated_write_tool_count'] && empty( $active['authority_gated_write_tools'] ), 'Provider certification must not create authority-gated writes.' );
+mad4b_assert( 0 === (int) $active['governance_gated_write_tool_count'] && empty( $active['governance_gated_write_tools'] ), 'Provider certification must not create governance-gated writes.' );
 mad4b_assert( empty( $active['provider_execution_mount_leaks'] ), 'Certified provider write must not be treated as a leak.' );
 mad4b_assert( $stored['external_tool_inventory_fingerprint'] === $active['external_tool_inventory_fingerprint'], 'Certification transition must not mutate external inventory fingerprint.' );
 

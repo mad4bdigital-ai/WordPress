@@ -19,6 +19,8 @@ Before deployment, record all of the following from the same successful package 
 
 Never combine identity values from different builds.
 
+The package workflow additionally emits a CycloneDX SBOM and a GitHub Artifact Receipt. The receipt binds the exact source SHA, workflow run, GitHub-issued outer artifact digest, Control Plane ZIP SHA-256, MCP Adapter SHA-256, build fingerprint, package manifest digest and SBOM digest. The outer GitHub artifact digest is intentionally external to the installed plugin because embedding an archive's own final digest inside itself would create recursive identity. Installed runtime truth therefore continues to bind canonical installed bytes through the package manifest digest and build fingerprint, while the external receipt binds those bytes to the distributed GitHub artifact.
+
 ## Staging deployment sequence
 
 1. Require exact-head CI success.
@@ -186,6 +188,12 @@ For each accepted build, compare:
 - ChatGPT client catalog evidence
 
 State-only provider eligibility changes may change runtime execution eligibility without changing the stable external schema. Actual build/schema changes require fresh external catalog evidence.
+
+## Live performance and rollback acceptance
+
+Repository performance contracts prove architectural bounds and request-local catalog behavior, but they do not substitute for timing the real hosting/runtime stack. Before Ready for Review, capture live Staging evidence for MCP tools/list, write-runtime certification and Skills-runtime certification latency/query behavior. Treat those measurements as external acceptance evidence, not as a reason to introduce persistent authority caches.
+
+Rollback retention proves the previous certified artifact still exists; it is not the same as a live rollback drill. Before Production promotion, perform one governed Staging drill: deploy the exact candidate, verify it, roll back to the retained certified package, verify provenance/read continuity with write authority fail-closed as required, then redeploy the candidate and re-run live acceptance. Record all three package identities and readbacks.
 
 ## Production safety
 

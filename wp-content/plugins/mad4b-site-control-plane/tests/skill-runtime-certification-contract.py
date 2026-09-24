@@ -11,6 +11,7 @@ cert = (wp / 'includes' / 'class-mad4b-scp-skill-runtime-certification.php').rea
 abilities = (wp / 'includes' / 'class-mad4b-scp-skill-abilities.php').read_text(encoding='utf-8')
 adapter = (wp / 'includes' / 'adapters' / 'class-mad4b-scp-skills-adapter.php').read_text(encoding='utf-8')
 provider_discovery = (wp / 'includes' / 'class-mad4b-scp-skill-provider-discovery.php').read_text(encoding='utf-8')
+seeder = (wp / 'includes' / 'class-mad4b-scp-skill-seeder.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
@@ -94,7 +95,11 @@ if identity_pos < 0 or list_pos < 0 or identity_pos > list_pos:
     raise SystemExit('exporter must establish the initial identity before taking its enabled-Skill work-list')
 
 for marker in [
-    "const CONTRACT = 'mad4b.skill-runtime-certification.v1'",
+    "const CONTRACT = 'mad4b.skill-runtime-certification.v2'",
+    "MAD4B_SCP_Skill_Seeder::inspect()",
+    "MAD4B_SCP_Skill_Provider_Discovery::inspect()",
+    "'seed_inspection' => $seed",
+    "'provider_inspection' => $provider",
     "wp_abilities_api_init",
     "mcp_adapter_init",
     "admin_init",
@@ -149,13 +154,91 @@ if adapter_prepare < 0 or adapter_register < 0 or provider_reconcile < 0:
 if not (adapter_prepare < adapter_register < provider_reconcile):
     raise SystemExit('adapter defaults must be registered before provider Skill reconciliation')
 
+for text_value, start_marker, end_marker, label in [
+    (seeder, "public static function inspect()", "private static function set_status", "seed inspection"),
+    (provider_discovery, "public static function inspect()", "private static function set_status", "provider inspection"),
+]:
+    section = text_value[text_value.index(start_marker):text_value.index(end_marker)]
+    for forbidden in [
+        "update_option(",
+        "add_option(",
+        "delete_option(",
+        "wp_mkdir_p(",
+        "file_put_contents(",
+        "atomic_write(",
+        "MAD4B_SCP_Audit::record",
+    ]:
+        if forbidden in section:
+            raise SystemExit(f'{label} must remain read-only: {forbidden}')
+
+for marker in [
+    "const INSPECTION_CONTRACT = 'mad4b.skill-seed-inspection.v1'",
+    "'expected_sha256'",
+    "'current_sha256'",
+    "'would_create'",
+    "'would_refresh'",
+    "'user_owned'",
+    "'mutation_performed' => false",
+]:
+    if marker not in seeder:
+        raise SystemExit(f'missing seed inspection invariant: {marker}')
+
+for marker in [
+    "const INSPECTION_CONTRACT = 'mad4b.skill-provider-reconciliation-inspection.v1'",
+    "'provider_family'",
+    "'desired_enabled'",
+    "'current_mapping'",
+    "'would_enable'",
+    "'would_disable'",
+    "'would_refresh'",
+    "'content_drift'",
+    "'expected_sha256'",
+    "'current_sha256'",
+    "'content_current'",
+    "'refresh_policy' => 'digest_clean_provider_managed_only'",
+    "'catalog_truncated'",
+    "'definition_limit_exceeded'",
+    "'user_owned'",
+    "'provider_plugin_mutation' => false",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing provider inspection invariant: {marker}')
+
+for marker in [
+    "const DISCOVERY_VERSION = 3;",
+    "const MAX_PACKS = 100;",
+    "const MAX_DEFINITIONS_PER_FAMILY = 20;",
+    "private static function catalog_limits( array $packs )",
+    "if ( ! empty( $limits['exceeded'] ) ) return self::set_status( 'catalog_limits_exceeded' );",
+    "private static function canonical_document( array $definition )",
+    "'mad4b/skill-provider-refresh'",
+    "$meta['provider_content_refreshed'] = true;",
+    "'provider_refresh_metadata_rollback_failed'",
+    "$provider_managed && (bool) $desired_enabled",
+]:
+    if marker not in provider_discovery:
+        raise SystemExit(f'missing provider drift/limit hardening invariant: {marker}')
+
+if "const CONTRACT = 'mad4b.write-runtime-certification.v3'" not in write_cert:
+    raise SystemExit('write runtime certification must expose v3 current-truth semantics')
+for marker in [
+    "public static function current_status()",
+    "public static function persisted_status()",
+    "MAD4B_SCP_Live_Truth::current_write_certification()",
+    "'historical_evidence_only'",
+]:
+    if marker not in write_cert:
+        raise SystemExit(f'missing write current/historical split invariant: {marker}')
+
+
 for marker in [
     "in_array( $owner, array( self::CONTRACT, 'mad4b.skill-seeder.v1' ), true )",
     "$current_sha = hash( 'sha256', $skill_raw )",
     "$recorded_sha = isset( $meta['sha256'] )",
     "hash_equals( $recorded_sha, $current_sha )",
     "'drifted_managed' => true",
-    "$current === (bool) $desired_enabled",
+    "$toggle = $current !== (bool) $desired_enabled;",
+    "if ( ! $refresh && ! $toggle )",
     "$meta['enabled'] = (bool) $desired_enabled",
     "'provider_active_adapter_ready'",
 ]:
@@ -218,6 +301,14 @@ if "'content' => array()" not in adapter or "'admin' => array()" not in adapter:
 for marker in [
     "const CONTRACT = 'mad4b.live-truth.v2'",
     "const FRESHNESS_OPTION = 'mad4b_scp_write_runtime_certification_freshness_v1'",
+    "'evidence_schema_revision' => 3",
+    "'candidate_binding_fingerprint'",
+    "'package_manifest_digest'",
+    "'artifact_identity'",
+    "'normal_remote_write_exact_approval_required'",
+    "'candidate_bootstrap_prior_approval_exception'",
+    "'candidate_bootstrap_closure'",
+    "'exact_approval_required_for_remote_write' => empty( $exceptions )",
     "add_filter( 'wp_register_ability_args', array( __CLASS__, 'bind_live_read_callbacks' ), 100, 2 )",
     "'mad4b/write-authority-status'",
     "'mad4b/write-runtime-certification'",
@@ -229,12 +320,19 @@ for marker in [
     "'control_plane_version_changed'",
     "'write_inventory_changed'",
     "'provider_blocked_projection_changed'",
+    "'provider_blocked_write_tools'",
     "'wpml_internal_probe_blocks_local_certification' => false",
     "'external_wpml_acceptance_required' => true",
     "'external_wpml_acceptance_verified' => false",
 ]:
     if marker not in live_truth:
         raise SystemExit(f'missing rc.19 live truth/freshness invariant: {marker}')
+
+cert_body = live_truth.split("public static function current_write_certification()", 1)[1].split("public static function current_rest_compatibility()", 1)[0]
+if "self::inventory_identity()" in cert_body:
+    raise SystemExit('write certification must reuse the inventory already observed by current authority status')
+if "'provider_blocked_write_tools' => isset( $authority['provider_blocked_write_tools'] )" not in cert_body:
+    raise SystemExit('write certification must reuse provider-blocked projection from the same authority observation')
 
 for marker in [
     "'write_inventory_fingerprint'",

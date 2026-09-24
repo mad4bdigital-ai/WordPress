@@ -422,7 +422,7 @@ for forbidden in [
         raise SystemExit(f'REST compatibility layer may not globally modify WordPress REST behavior: {forbidden}')
 
 for marker in [
-    "const CONTRACT = 'mad4b.write-runtime-certification.v2'",
+    "const CONTRACT = 'mad4b.write-runtime-certification.v3'",
     "add_action( 'admin_init', array( __CLASS__, 'observe' ), 110 )",
     "'execute_callback' => array( __CLASS__, 'status' )",
     "doing_action( 'rest_api_init' )",
