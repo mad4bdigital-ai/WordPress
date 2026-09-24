@@ -402,7 +402,7 @@ jobs:
           printf '%s  %s\n' "$(sha256sum "$stage/PACKAGE-MANIFEST-DIGEST.txt" | awk '{print $1}')" 'PACKAGE-MANIFEST-DIGEST.txt' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/CANONICAL-PACKAGE-RECEIPT.json" | awk '{print $1}')" 'CANONICAL-PACKAGE-RECEIPT.json' >> "$stage/SHA256SUMS"
           python3 - "$stage" "$version" <<'PY'
-          import hashlib, json, os, sys
+          import hashlib, json, os, sys, zipfile
           from pathlib import Path
           stage = Path(sys.argv[1])
           version = sys.argv[2]
@@ -425,6 +425,29 @@ jobs:
               raise SystemExit('canonical package receipt build fingerprint mismatch')
           if receipt.get('package_manifest_digest') != os.environ['PACKAGE_DIGEST']:
               raise SystemExit('canonical package receipt manifest mismatch')
+          provenance = json.loads((stage / 'MAD4B-BUILD-PROVENANCE.json').read_text(encoding='utf-8'))
+          manifest_count = len(provenance.get('package_files', []))
+          expected_archive_count = manifest_count + 1
+          expected_excluded = ['MAD4B-BUILD-PROVENANCE.json']
+          archive_path = stage / f'mad4b-site-control-plane-{version}.zip'
+          with zipfile.ZipFile(archive_path) as archive:
+              actual_archive_count = len(archive.infolist())
+          if provenance.get('manifest_file_count') != manifest_count:
+              raise SystemExit('canonical provenance manifest_file_count mismatch')
+          if provenance.get('archive_file_count') != expected_archive_count:
+              raise SystemExit('canonical provenance archive_file_count mismatch')
+          if provenance.get('manifest_excluded_files') != expected_excluded or provenance.get('manifest_excludes_self') is not True:
+              raise SystemExit('canonical provenance manifest exclusion semantics mismatch')
+          if receipt.get('manifest_file_count') != manifest_count:
+              raise SystemExit('canonical receipt manifest_file_count mismatch')
+          if receipt.get('archive_file_count') != actual_archive_count or actual_archive_count != expected_archive_count:
+              raise SystemExit('canonical receipt/archive file count mismatch')
+          if receipt.get('package_file_count') != actual_archive_count:
+              raise SystemExit('legacy package_file_count alias no longer matches archive count')
+          if receipt.get('package_file_count_semantics') != 'archive_file_count_including_provenance':
+              raise SystemExit('canonical receipt package_file_count semantics are ambiguous')
+          if receipt.get('manifest_excluded_files') != expected_excluded:
+              raise SystemExit('canonical receipt manifest exclusion set mismatch')
           data = {
               'contract': 'mad4b.site-control-plane.general-distribution-kit.v1',
               'repository': os.environ.get('GITHUB_REPOSITORY'),
@@ -449,6 +472,11 @@ jobs:
                   'receipt_sha256': hashlib.sha256(receipt_raw).hexdigest(),
                   'producer_metadata_external': bool(receipt.get('producer_metadata_external')),
                   'deterministic_archive': bool(receipt.get('deterministic_archive')),
+                  'manifest_file_count': int(receipt.get('manifest_file_count', 0)),
+                  'archive_file_count': int(receipt.get('archive_file_count', 0)),
+                  'manifest_excluded_files': receipt.get('manifest_excluded_files', []),
+                  'package_file_count': int(receipt.get('package_file_count', 0)),
+                  'package_file_count_semantics': receipt.get('package_file_count_semantics', ''),
               },
               'mcp_adapter': {
                   'version': '0.6.1',
