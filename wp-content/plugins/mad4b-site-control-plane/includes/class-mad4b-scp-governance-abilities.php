@@ -19,6 +19,17 @@ final class MAD4B_SCP_Governance_Abilities {
 	}
 
 	public static function register_abilities() {
+
+		self::register(
+			'mad4b/audit-storage-status',
+			'Get MAD4B Audit Storage Status',
+			'Read append-only audit integrity, retention and redaction policy evidence without exposing audit payloads.',
+			'audit_storage_status',
+			self::schema( array() ),
+			true,
+			false,
+			true
+		);
 		self::register(
 			'mad4b/agent-list',
 			'List MAD4B Agents',
@@ -105,6 +116,14 @@ final class MAD4B_SCP_Governance_Abilities {
 	}
 
 	public static function can_manage( $input = null ) { return current_user_can( 'manage_options' ); }
+
+	public static function audit_storage_status( $input = null ) {
+		$status = class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::storage_status() : array( 'ready' => false );
+		$status['read_only'] = true;
+		$status['mutation_performed'] = false;
+		$status['chain_verified'] = ! empty( $status['ready'] ) && class_exists( 'MAD4B_SCP_Audit' ) ? MAD4B_SCP_Audit::verify_chain() : false;
+		return $status;
+	}
 
 	public static function agent_list( $input ) {
 		global $wpdb;
