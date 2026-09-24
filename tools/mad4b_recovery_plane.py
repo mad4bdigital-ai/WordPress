@@ -27,6 +27,8 @@ import verify_release_root_trust as root_trust
 PLUGIN_SLUG = "mad4b-site-control-plane"
 PLAN_CONTRACT = "mad4b.recovery-plan.v1"
 RECEIPT_CONTRACT = "mad4b.recovery-receipt.v1"
+DISABLE_PLAN_CONTRACT = "mad4b.recovery-disable-plan.v1"
+DISABLE_RECEIPT_CONTRACT = "mad4b.recovery-disable-receipt.v1"
 SUPPORTED_ENVIRONMENTS = {"staging"}
 
 
@@ -152,6 +154,170 @@ def verify_installed_provenance(plugin_dir: Path) -> dict[str, str]:
         "package_manifest_digest": expected_digest,
     }
 
+
+
+def recovery_status(wordpress_root: Path, environment: str) -> dict[str, Any]:
+    if environment not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("Recovery Plane is Staging-only")
+    state = target_state(wordpress_root)
+    plugin = Path(state["plugin_path"])
+    provenance: dict[str, Any] = {
+        "present": state["plugin_present"],
+        "valid": False,
+        "identity": None,
+        "error": "",
+    }
+    if state["plugin_present"]:
+        try:
+            provenance["identity"] = verify_installed_provenance(plugin)
+            provenance["valid"] = True
+        except (ValueError, OSError, json.JSONDecodeError) as exc:
+            provenance["error"] = str(exc)
+
+    root = Path(state["wordpress_root"])
+    recovery_root = root / "wp-content" / "mad4b-recovery"
+    return {
+        "contract": "mad4b.recovery-status.v2",
+        "environment": environment,
+        "read_only": True,
+        "mutation_performed": False,
+        "target": state,
+        "installed_provenance": provenance,
+        "recovery_workspace": {
+            "path": str(recovery_root),
+            "exists": recovery_root.is_dir(),
+            "parent_exists": recovery_root.parent.is_dir(),
+            "parent_writable": os.access(recovery_root.parent, os.W_OK),
+        },
+        "capabilities": {
+            "status": True,
+            "disable_current_exact_plan": True,
+            "restore_known_good_exact_plan": True,
+            "production_authorized": False,
+            "requires_wordpress_boot": False,
+            "requires_database": False,
+        },
+    }
+
+
+def build_disable_plan(
+    wordpress_root: Path,
+    environment: str,
+    incident_id: str,
+    reason: str,
+) -> dict[str, Any]:
+    if environment not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("Recovery Plane is Staging-only")
+    state = target_state(wordpress_root)
+    if not state["plugin_present"]:
+        raise ValueError("Control Plane plugin is not present; disable plan has no target")
+    plan: dict[str, Any] = {
+        "contract": DISABLE_PLAN_CONTRACT,
+        "action": "disable_current",
+        "environment": environment,
+        "incident_id": require_incident_id(incident_id),
+        "reason": require_reason(reason),
+        "created_at": utc_now(),
+        "target": state,
+        "authorization": {
+            "mode": "SINGLE_OWNER_HARDENED",
+            "exact_plan_attestation_required": True,
+            "production_authorized": False,
+            "breakglass_authority_created": False,
+        },
+        "postconditions": {
+            "plugin_path_absent": True,
+            "quarantine_tree_matches_planned_target": True,
+            "restore_or_normal_control_followup_required": True,
+        },
+    }
+    plan["plan_sha256"] = plan_digest(plan)
+    return plan
+
+
+def assert_disable_plan_current(plan: dict[str, Any]) -> Path:
+    if plan.get("contract") != DISABLE_PLAN_CONTRACT or plan.get("action") != "disable_current":
+        raise ValueError("recovery disable plan contract/action mismatch")
+    if plan.get("environment") not in SUPPORTED_ENVIRONMENTS:
+        raise ValueError("recovery disable plan environment is not allowed")
+    expected_sha = str(plan.get("plan_sha256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_sha) or plan_digest(plan) != expected_sha:
+        raise ValueError("recovery disable plan digest mismatch")
+    target = plan.get("target")
+    if not isinstance(target, dict):
+        raise ValueError("recovery disable target missing")
+    root = Path(str(target.get("wordpress_root", ""))).resolve()
+    current = target_state(root)
+    for key in ("wordpress_root", "wp_config_sha256", "plugin_present", "plugin_tree_sha256"):
+        if current.get(key) != target.get(key):
+            raise ValueError(f"recovery disable target changed since plan: {key}")
+    if not current.get("plugin_present"):
+        raise ValueError("recovery disable target is already absent")
+    return root
+
+
+def apply_disable(plan: dict[str, Any], owner_attest_plan_sha: str) -> dict[str, Any]:
+    root = assert_disable_plan_current(plan)
+    plan_sha = str(plan["plan_sha256"])
+    if owner_attest_plan_sha.strip().lower() != plan_sha:
+        raise ValueError("OWNER_ATTEST_SINGLE_OWNER does not bind the exact recovery disable plan")
+
+    plugins = root / "wp-content" / "plugins"
+    live = plugins / PLUGIN_SLUG
+    recovery_root = root / "wp-content" / "mad4b-recovery"
+    quarantine_root = recovery_root / "quarantine"
+    receipt_root = recovery_root / "receipts"
+    quarantine_root.mkdir(parents=True, exist_ok=True)
+    receipt_root.mkdir(parents=True, exist_ok=True)
+
+    token = f"{require_incident_id(str(plan['incident_id']))}-{plan_sha[:12]}-disabled"
+    quarantine = quarantine_root / token
+    if quarantine.exists():
+        raise ValueError("recovery disable quarantine target already exists")
+
+    planned_tree = str(plan["target"]["plugin_tree_sha256"])
+    moved = False
+    try:
+        os.replace(live, quarantine)
+        moved = True
+        if live.exists():
+            raise ValueError("Control Plane plugin path still exists after disable")
+        actual_tree = tree_digest(quarantine)
+        if actual_tree != planned_tree:
+            raise ValueError("quarantined plugin tree differs from reviewed disable target")
+
+        receipt = {
+            "contract": DISABLE_RECEIPT_CONTRACT,
+            "action": "disable_current",
+            "environment": plan["environment"],
+            "incident_id": plan["incident_id"],
+            "reason": plan["reason"],
+            "plan_sha256": plan_sha,
+            "owner_attest_plan_sha256": plan_sha,
+            "applied_at": utc_now(),
+            "target": {
+                "wordpress_root": str(root),
+                "wp_config_sha256": root_trust.sha256_file(root / "wp-config.php"),
+            },
+            "previous": {
+                "plugin_tree_sha256": planned_tree,
+                "quarantine_path": str(quarantine.relative_to(root)),
+            },
+            "post_disable": {
+                "plugin_present": False,
+                "quarantine_tree_sha256": actual_tree,
+                "restore_or_normal_control_followup_required": True,
+                "production_authorized": False,
+            },
+        }
+        receipt_path = receipt_root / f"{token}.json"
+        receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        receipt["receipt_path"] = str(receipt_path)
+        return receipt
+    except Exception:
+        if moved and quarantine.exists() and not live.exists():
+            os.replace(quarantine, live)
+        raise
 
 def assert_verified_root_receipt(root_receipt: dict[str, Any]) -> None:
     if not root_receipt.get("verified") or not root_receipt.get("attestation_verified"):
@@ -439,6 +605,17 @@ def main() -> int:
     status_p.add_argument("--wordpress-root", required=True, type=Path)
     status_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
 
+    disable_plan_p = sub.add_parser("plan-disable")
+    disable_plan_p.add_argument("--wordpress-root", required=True, type=Path)
+    disable_plan_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
+    disable_plan_p.add_argument("--incident-id", required=True)
+    disable_plan_p.add_argument("--reason", required=True)
+    disable_plan_p.add_argument("--output", required=True, type=Path)
+
+    disable_apply_p = sub.add_parser("apply-disable")
+    disable_apply_p.add_argument("--plan", required=True, type=Path)
+    disable_apply_p.add_argument("--owner-attest-plan-sha", required=True)
+
     plan_p = sub.add_parser("plan-restore")
     plan_p.add_argument("--wordpress-root", required=True, type=Path)
     plan_p.add_argument("--environment", required=True, choices=sorted(SUPPORTED_ENVIRONMENTS))
@@ -455,12 +632,18 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "status":
-            result = {
-                "contract": "mad4b.recovery-status.v1",
-                "environment": args.environment,
-                "read_only": True,
-                "target": target_state(args.wordpress_root),
-            }
+            result = recovery_status(args.wordpress_root, args.environment)
+        elif args.command == "plan-disable":
+            result = build_disable_plan(
+                args.wordpress_root,
+                args.environment,
+                args.incident_id,
+                args.reason,
+            )
+            args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        elif args.command == "apply-disable":
+            plan = root_trust.load_json(args.plan)
+            result = apply_disable(plan, args.owner_attest_plan_sha)
         elif args.command == "plan-restore":
             root_receipt = verify_known_good(args)
             result = build_restore_plan(
