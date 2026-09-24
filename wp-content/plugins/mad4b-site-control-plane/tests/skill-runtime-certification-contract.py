@@ -320,12 +320,19 @@ for marker in [
     "'control_plane_version_changed'",
     "'write_inventory_changed'",
     "'provider_blocked_projection_changed'",
+    "'provider_blocked_write_tools'",
     "'wpml_internal_probe_blocks_local_certification' => false",
     "'external_wpml_acceptance_required' => true",
     "'external_wpml_acceptance_verified' => false",
 ]:
     if marker not in live_truth:
         raise SystemExit(f'missing rc.19 live truth/freshness invariant: {marker}')
+
+cert_body = live_truth.split("public static function current_write_certification()", 1)[1].split("public static function current_rest_compatibility()", 1)[0]
+if "self::inventory_identity()" in cert_body:
+    raise SystemExit('write certification must reuse the inventory already observed by current authority status')
+if "'provider_blocked_write_tools' => isset( $authority['provider_blocked_write_tools'] )" not in cert_body:
+    raise SystemExit('write certification must reuse provider-blocked projection from the same authority observation')
 
 for marker in [
     "'write_inventory_fingerprint'",
