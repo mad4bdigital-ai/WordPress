@@ -29,6 +29,48 @@ final class MAD4B_SCP_Schema {
 			'installed_version' => 9,
 			'ready' => true,
 			'integrity_token_valid' => true,
+			'migration' => array(
+				'contract' => array(
+					'contract' => 'mad4b.schema-migration.v1',
+					'migration_id' => '20260924-feature007-durable-execution-v9',
+					'target_schema_version' => 9,
+					'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9 ),
+					'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes',
+					'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces',
+					'destructive' => false,
+					'authority_widening' => false,
+				),
+				'contract_sha256' => str_repeat( 'a', 64 ),
+				'preflight' => array(
+					'contract' => 'mad4b.schema-migration-preflight.v1',
+					'migration_id' => '20260924-feature007-durable-execution-v9',
+					'installed_version' => 9,
+					'target_version' => 9,
+					'fresh_install' => false,
+					'repair_run' => true,
+					'contract_sha256' => str_repeat( 'a', 64 ),
+					'blockers' => array(),
+					'ready' => true,
+					'read_only' => true,
+					'mutation_performed' => false,
+				),
+				'receipt' => array(
+					'contract' => 'mad4b.schema-migration-receipt.v1',
+					'migration_id' => '20260924-feature007-durable-execution-v9',
+					'from_version' => 6,
+					'to_version' => 9,
+					'run_type' => 'upgrade',
+					'contract_sha256' => str_repeat( 'a', 64 ),
+					'target_integrity_token' => str_repeat( 'b', 64 ),
+					'physical_integrity_sha256' => str_repeat( 'c', 64 ),
+					'physical_verified' => true,
+					'readiness_finalized' => true,
+					'destructive' => false,
+					'authority_widened' => false,
+					'completed_at' => '2026-09-24T00:00:00+00:00',
+				),
+				'receipt_valid' => true,
+			),
 			'tables' => array(
 				'content_jobs' => 'wp_mad4b_content_jobs',
 				'content_job_events' => 'wp_mad4b_content_job_events',
@@ -75,6 +117,11 @@ $schema = $abilities->schema_status();
 mad4b_contract_assert( is_array( $schema ) && 'mad4b.schema-status.v1' === $schema['contract'], 'Schema status must expose the stable read-only contract.', $schema );
 mad4b_contract_assert( ! empty( $schema['read_only'] ) && empty( $schema['mutation_performed'] ), 'Schema status must be explicitly non-mutating.', $schema );
 mad4b_contract_assert( 9 === (int) $schema['expected_version'] && 9 === (int) $schema['installed_version'], 'Schema status must distinguish and report expected/installed Schema v9.', $schema );
+mad4b_contract_assert( 'mad4b.schema-migration.v1' === $schema['migration']['contract']['contract'], 'Schema status must expose the declared v9 migration contract.', $schema['migration'] );
+mad4b_contract_assert( '20260924-feature007-durable-execution-v9' === $schema['migration']['preflight']['migration_id'] && ! empty( $schema['migration']['preflight']['ready'] ), 'Schema migration preflight must be visible and ready.', $schema['migration'] );
+mad4b_contract_assert( ! empty( $schema['migration']['preflight']['read_only'] ) && empty( $schema['migration']['preflight']['mutation_performed'] ), 'Schema migration preflight evidence must remain read-only.', $schema['migration']['preflight'] );
+mad4b_contract_assert( 'mad4b.schema-migration-receipt.v1' === $schema['migration']['receipt']['contract'] && ! empty( $schema['migration']['receipt']['readiness_finalized'] ), 'Schema status must expose a finalized durable migration receipt.', $schema['migration']['receipt'] );
+mad4b_contract_assert( ! empty( $schema['migration']['receipt_valid'] ) && empty( $schema['migration']['receipt']['destructive'] ) && empty( $schema['migration']['receipt']['authority_widened'] ), 'Migration evidence must be valid, additive, and non-authorizing.', $schema['migration'] );
 mad4b_contract_assert( ! empty( $schema['ready'] ) && ! empty( $schema['physical_integrity']['ready'] ), 'Deep physical schema integrity must participate in readiness.', $schema );
 mad4b_contract_assert( array() === $schema['physical_integrity']['missing_durable_columns'] && array() === $schema['physical_integrity']['missing_durable_indexes'], 'Durable column/index gaps must remain explicit.', $schema );
 mad4b_contract_assert( 6 === count( $schema['durable_tables'] ) && ! in_array( false, $schema['durable_tables'], true ), 'All six Feature 007 durable tables must be represented explicitly.', $schema['durable_tables'] );
