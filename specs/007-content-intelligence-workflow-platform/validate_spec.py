@@ -118,6 +118,22 @@ if tasks_path.exists():
         if f"Phase {phase} " not in txt and f"Phase {phase} —" not in txt:
             errors.append(f"missing_task_phase:{phase}")
 
+plan_path = require_file("plan.md")
+if tasks_path.exists() and plan_path.exists():
+    task_txt = tasks_path.read_text(encoding="utf-8")
+    plan_txt = plan_path.read_text(encoding="utf-8")
+    task_phases = {int(x) for x in re.findall(r"^## Phase (\\d+)\\b", task_txt, flags=re.MULTILINE)}
+    plan_phases = {int(x) for x in re.findall(r"^## Phase (\\d+)\\b", plan_txt, flags=re.MULTILINE)}
+    expected_count = data.get("required_phase_count") if feature_path.exists() else None
+    if isinstance(expected_count, int):
+        expected_phases = set(range(expected_count))
+        if task_phases != expected_phases:
+            errors.append("plan_task_phase_parity:tasks_vs_feature:" + ",".join(map(str, sorted(task_phases ^ expected_phases))))
+        if plan_phases != expected_phases:
+            errors.append("plan_task_phase_parity:plan_vs_feature:" + ",".join(map(str, sorted(plan_phases ^ expected_phases))))
+    if plan_phases != task_phases:
+        errors.append("plan_task_phase_parity:plan_vs_tasks:" + ",".join(map(str, sorted(plan_phases ^ task_phases))))
+
 trace = require_file("traceability.md")
 if trace.exists():
     t = trace.read_text(encoding="utf-8")
