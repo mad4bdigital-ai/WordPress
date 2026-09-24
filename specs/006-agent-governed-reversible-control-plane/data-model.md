@@ -6,7 +6,7 @@ Schema version: `9`
 Encoding: UTF-8 / JSON text only where structured extension fields are required
 Secret policy: no plaintext bearer/OAuth credential persistence
 
-Schema v9 contains fifteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding and adds Feature 007 durable Content Job, event, lease, idempotency, outbox and inbox storage. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
+Schema v9 contains fifteen normalized MAD4B tables. Table names are resolved with the current site `$wpdb->prefix`; migration uses `dbDelta()` and never creates enabled agents, grants, subjects or approvals automatically. It preserves the v6 exact Site Profile/candidate approval binding, so clone, origin/environment, profile-policy or deployed-build drift cannot inherit existing governed-write authority, and adds Feature 007 durable Content Job, event, lease, idempotency, outbox and inbox storage. Durable recovery remains fail-closed: expired pending work is not silently reused without explicit reconciliation evidence.
 
 ## Table 1 — `{prefix}mad4b_scp_agents`
 
