@@ -291,7 +291,7 @@ jobs:
             echo 'Governed write authority must be tenant-neutral; ETG origin literal detected.' >&2
             exit 1
           fi
-          grep -Fq "mad4b.write-runtime-certification.v2" "$write_cert"
+          grep -Fq "mad4b.write-runtime-certification.v3" "$write_cert"
           grep -Fq "all_write_tools_exposed_on_same_plugin_transport" "$write_cert"
           grep -Fq "mad4b.rest-compatibility.v2" "$rest_compat"
           grep -Fq "'/wpml/v1/rest/status'" "$rest_compat"
