@@ -75,41 +75,56 @@ jobs:
               text=True,
           ).splitlines()
 
+          spec_allowed = [
+              "specs/007-content-intelligence-workflow-platform/",
+              ".github/workflows/feature-007-spec-ci.yml",
+          ]
+          implementation_allowed = [
+              ".github/workflows/feature-007-critical-kernel.yml",
+              ".github/workflows/feature-007-spec-ci.yml",
+              ".github/workflows/mad4b-control-plane-package.yml",
+              ".github/workflows/mad4b-oauth-resource-bridge.yml",
+              ".github/workflows/mad4b-provider-compatibility-engine.yml",
+              "specs/007-content-intelligence-workflow-platform/",
+              "tools/mad4b_recovery_plane.py",
+              "tools/verify_release_root_trust.py",
+              "wp-content/plugins/mad4b-site-control-plane/",
+          ]
+          cross_feature_dependencies = [
+              "specs/006-agent-governed-reversible-control-plane/data-model.md",
+          ]
+          implementation_branch = "feat/007-critical-kernel-root-trust-20260924"
+
+          # The mutable feature metadata is descriptive evidence, not authority.
+          # It must mirror this workflow-owned policy exactly and cannot widen it.
+          if feature.get("implementation_branch") != implementation_branch:
+              raise SystemExit(
+                  f"IMPLEMENTATION_METADATA_BRANCH_DRIFT expected={implementation_branch} "
+                  f"recorded={feature.get('implementation_branch')}"
+              )
+          if feature.get("implementation_allowed_paths") != implementation_allowed:
+              raise SystemExit("IMPLEMENTATION_METADATA_ALLOWLIST_DRIFT")
+          if feature.get("cross_feature_contract_dependencies") != cross_feature_dependencies:
+              raise SystemExit("CROSS_FEATURE_METADATA_DEPENDENCY_DRIFT")
+
+          def permitted(path, entries):
+              return any(path == entry or (entry.endswith("/") and path.startswith(entry)) for entry in entries)
+
           if status == "specification":
-              allowed = [
-                  "specs/007-content-intelligence-workflow-platform/",
-                  ".github/workflows/feature-007-spec-ci.yml",
-              ]
-              forbidden = [
-                  p for p in changed
-                  if not any(p == a or (a.endswith("/") and p.startswith(a)) for a in allowed)
-              ]
+              forbidden = [p for p in changed if not permitted(p, spec_allowed)]
           elif status == "implementation":
-              expected_branch = feature.get("implementation_branch", "")
-              if not expected_branch or head_branch != expected_branch:
+              if head_branch != implementation_branch:
                   raise SystemExit(
-                      f"IMPLEMENTATION_BRANCH_MISMATCH expected={expected_branch} actual={head_branch}"
+                      f"IMPLEMENTATION_BRANCH_MISMATCH expected={implementation_branch} actual={head_branch}"
                   )
-
-              allowed = feature.get("implementation_allowed_paths", [])
-              dependencies = feature.get("cross_feature_contract_dependencies", [])
-              if not isinstance(allowed, list) or not allowed:
-                  raise SystemExit("IMPLEMENTATION_ALLOWLIST_MISSING")
-              if not isinstance(dependencies, list):
-                  raise SystemExit("CROSS_FEATURE_DEPENDENCY_LIST_INVALID")
-
-              permitted = list(allowed) + list(dependencies)
-              forbidden = [
-                  p for p in changed
-                  if not any(p == a or (a.endswith("/") and p.startswith(a)) for a in permitted)
-              ]
-
+              permitted_entries = implementation_allowed + cross_feature_dependencies
+              forbidden = [p for p in changed if not permitted(p, permitted_entries)]
               touched_cross_feature = [
                   p for p in changed
                   if p.startswith("specs/")
                   and not p.startswith("specs/007-content-intelligence-workflow-platform/")
               ]
-              undeclared = [p for p in touched_cross_feature if p not in dependencies]
+              undeclared = [p for p in touched_cross_feature if p not in cross_feature_dependencies]
               if undeclared:
                   raise SystemExit("UNDECLARED_CROSS_FEATURE_CHANGE: " + ",".join(sorted(undeclared)))
           else:
