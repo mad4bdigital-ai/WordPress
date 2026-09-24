@@ -24,6 +24,8 @@ required = [
     "verified_bearer_active",
     "AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up'",
     "verified_bearer_has_scope",
+    "verified_bearer_client_is",
+    "'oauth-client' . "\\0" . $issuer . "\\0" . $client_id",
     "authority_step_up_scope_available",
     "MAD4B_SCP_Full_Staging_Authority::chatgpt_step_up_tools()",
     "reset_verified_bearer_context",
