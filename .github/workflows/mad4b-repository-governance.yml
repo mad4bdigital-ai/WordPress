@@ -1,0 +1,55 @@
+name: MAD4B Repository Governance
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-repository-governance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance:
+    name: Repository governance policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Verify active master repository governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_repository_governance.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --policy .github/mad4b-repository-governance-policy.json \
+            --output /tmp/mad4b-repository-governance-status.json
+
+      - name: Upload governance status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-repository-governance-status-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-repository-governance-status.json
+          if-no-files-found: ignore
+          retention-days: 30
