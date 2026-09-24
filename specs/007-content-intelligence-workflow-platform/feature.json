@@ -137,12 +137,9 @@
   "quality_model": "mad4b.feature007.quality.v1",
   "operating_model": "long-lived-multi-site-governed-platform",
   "required_phase_count": 37,
-  "current_baseline_head": "540d5db4be521297de673c8a4d14974c23b67a6a",
-  "baseline_sync_commit": "540d5db4be521297de673c8a4d14974c23b67a6a",
   "baseline_sync_policy": "current PR base must be an ancestor of Feature HEAD and current_baseline_head must equal the exact PR base SHA",
   "architecture_freeze": true,
   "critical_kernel_document": "critical-kernel.md",
-  "implementation_branch": "feat/007-critical-kernel-root-trust-20260924",
   "implementation_change_policy": "feature-scoped-allowlist-with-explicit-cross-feature-contract-dependencies",
   "implementation_allowed_paths": [
     ".github/workflows/feature-007-critical-kernel.yml",
@@ -167,5 +164,39 @@
   "baseline_checked_at": "2026-09-25",
   "implementation_closure_document": "implementation-closure.md",
   "implementation_closure_ledger": "implementation-closure.json",
-  "implementation_closure_contract": "mad4b.feature007-implementation-closure.v1"
+  "implementation_closure_contract": "mad4b.feature007-implementation-closure.v1",
+  "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
+  "last_reviewed_master_parent_sha": "b1f7e837efc69aa220385d84761e46f64c2442b1",
+  "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
+  "runtime_release_identity": {
+    "contract": "mad4b.runtime-release-identity.v1",
+    "state": "CURRENT_FOR_DEPLOYMENT",
+    "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+    "control_plane_version": "0.4.0-rc.59",
+    "build_fingerprint": "f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6",
+    "package_manifest_digest": "3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950",
+    "control_plane_archive_sha256": "c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06",
+    "package_workflow_run_id": 36072550999,
+    "general_distribution_artifact_id": 10838403565,
+    "runtime_affecting_changes_since_release": false,
+    "repository_changes_since_release_are_non_runtime": true
+  },
+  "runtime_identity_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/",
+    "wp-content/plugins/mcp-adapter.zip",
+    "plugins/mad4b-wordpress/",
+    "tools/capture-functional-gap-contract-evidence.py"
+  ],
+  "implementation_branch_policy": {
+    "contract": "mad4b.feature007-implementation-branch-policy.v1",
+    "implementation_prefixes": [
+      "feat/007-",
+      "fix/007-"
+    ],
+    "specification_maintenance_prefixes": [
+      "spec/007-"
+    ],
+    "requires_exact_pr_base_ancestry": true,
+    "mutable_metadata_cannot_widen_policy": true
+  }
 }
