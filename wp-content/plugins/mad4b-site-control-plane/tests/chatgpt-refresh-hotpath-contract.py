@@ -189,16 +189,16 @@ assert "return;" in mark_request_body
 # runtime certification is expensive (provider/registry/filesystem evaluation)
 # and must return persisted evidence before evaluate() on every MCP request.
 skill_observe = skill_runtime.split("public static function observe()", 1)[1].split("public static function current_status()", 1)[0]
-assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime()" in skill_observe
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in skill_observe
 assert "return self::persisted_status();" in skill_observe
-assert skill_observe.index("current_request_requires_mcp_runtime()") < skill_observe.index("self::evaluate()")
+assert skill_observe.index("current_request_is_protocol_hotpath()") < skill_observe.index("self::evaluate()")
 
 # Automatic Live Truth recovery at wp_abilities_api_init can perform DB/grant/
 # provider inventory work. MCP discovery must not invoke it implicitly; explicit
 # status tools remain fresh because their execute callbacks still call current truth.
 live_truth_recovery = live_truth.split("private static function recover_runtime_authority()", 1)[1].split("public static function current_authority_status()", 1)[0]
-assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime()" in live_truth_recovery
-assert live_truth_recovery.index("current_request_requires_mcp_runtime()") < live_truth_recovery.index("MAD4B_SCP_Staging_Write_Authority::eligible()")
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()" in live_truth_recovery
+assert live_truth_recovery.index("current_request_is_protocol_hotpath()") < live_truth_recovery.index("MAD4B_SCP_Staging_Write_Authority::eligible()")
 
 # OAuth autoconfig runs on every plugin boot. Its durable diagnostic record must
 # be write-on-change; a timestamp alone must never force a DB write per MCP request.
@@ -228,7 +228,16 @@ for route in [
     "/mcp/mad4b-developer-breakglass",
 ]:
     assert route in mcp_routes, route
+http_transport = request_scope.split("public static function current_request_is_http_mcp_transport()", 1)[1].split("public static function current_request_is_protocol_hotpath()", 1)[0]
+assert "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;" in http_transport
+assert "self::is_mad4b_mcp_route" in http_transport
+
+runtime_scope = request_scope.split("public static function current_request_requires_mcp_runtime()", 1)[1].split("public static function current_request_is_http_mcp_transport()", 1)[0]
+assert "defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return true;" in runtime_scope
+
 protocol_hotpath = request_scope.split("public static function current_request_is_protocol_hotpath()", 1)[1].split("private static function is_mad4b_mcp_route", 1)[0]
+assert "self::current_request_is_http_mcp_transport()" in protocol_hotpath
+assert "self::current_request_requires_mcp_runtime()" not in protocol_hotpath
 for route in [
     "/.well-known/oauth-protected-resource",
     "/.well-known/oauth-authorization-server",
@@ -238,4 +247,4 @@ for route in [
 ]:
     assert route in protocol_hotpath, route
 
-print("mad4b.chatgpt-refresh-hotpath.v12: PASS")
+print("mad4b.chatgpt-refresh-hotpath.v13: PASS")
