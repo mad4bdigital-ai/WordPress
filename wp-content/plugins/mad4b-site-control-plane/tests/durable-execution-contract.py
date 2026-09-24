@@ -121,6 +121,12 @@ for marker in ("claim_epoch=%d", "expires_at>%s"):
     if marker not in completion:
         raise SystemExit(f"stale idempotency worker is not fenced at completion: {marker}")
 
+lease_completion = DURABLE[DURABLE.index("public static function complete_lease"):]
+lease_completion = lease_completion[: lease_completion.index("public static function enqueue_outbox")]
+for marker in ("lease_epoch=%d", "status='active'", "expires_at>%s"):
+    if marker not in lease_completion:
+        raise SystemExit(f"expired lease can terminalize work: missing {marker}")
+
 outbox = DURABLE[DURABLE.index("public static function enqueue_outbox"):]
 outbox = outbox[: outbox.index("public static function accept_inbox")]
 for marker in (
