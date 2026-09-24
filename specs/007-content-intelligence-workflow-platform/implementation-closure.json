@@ -114,16 +114,18 @@
         "generic_shell_allowed": false,
         "evidence_source": "observed_live_etg_state",
         "source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
-        "authoritative_for_gate": false
+        "authoritative_for_gate": false,
+        "recovery_plane_tool": "tools/mad4b_recovery_plane.py",
+        "recovery_status_contract": "mad4b.recovery-status.v2",
+        "exact_plan_disable_contract": "mad4b.recovery-disable-plan.v1",
+        "exact_plan_restore_contract": "mad4b.recovery-plan.v1",
+        "wordpress_boot_required": false,
+        "database_required": false
       },
       "remainder": [
-        "bind a fresh authorized evidence path for filesystem/runtime trust readback",
-        "implement and certify terminal-independent Host Runner bootstrap/enrollment",
-        "implement semantic host operations and write-capable executor path without generic shell",
-        "prove exact plan/apply/readback/rollback and cross-executor conformance on a supported hosting profile",
-        "prove centralized path/process confinement with symlink-swap, traversal, zip-slip, shell/executable injection and resource-budget denial fixtures",
-        "prove mutation evidence durability and reconcile MUTATED_BUT_EVIDENCE_UNCERTAIN without blind write retry",
-        "prove execution-location truthfulness across enqueue and authoritative executor boundaries"
+        "prove the out-of-band Recovery Plane on ETG/host profile with exact filesystem target",
+        "implement and certify terminal-independent steady-state Host Runner bootstrap/enrollment",
+        "prove cross-executor semantic conformance for at least one read and one reversible host write"
       ]
     },
     {
@@ -153,7 +155,9 @@
         "currently_deployed_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
         "source_commit_match": false,
         "deployment_performed": false,
-        "repository_head_equivalence_required": false
+        "repository_head_equivalence_required": false,
+        "blocked_reason": "runtime_release_recapture_required",
+        "selected_runtime_release_state": "RECAPTURE_REQUIRED"
       }
     },
     {
@@ -261,17 +265,33 @@
     {
       "id": "content_job_domain",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
+      "status": "PARTIAL",
       "gate": "content_job_domain_ready",
       "evidence": {
-        "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
-        "contract_path": "specs/007-content-intelligence-workflow-platform/contracts/content-job.md",
-        "runtime_implementation_match": "not_found_in_master_tree_review"
+        "contract": "mad4b.content-job.v1",
+        "implementation_path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+        "contract_test": "wp-content/plugins/mad4b-site-control-plane/tests/content-job-domain-contract.py",
+        "durable_tables": [
+          "content_jobs",
+          "content_job_events"
+        ],
+        "abilities": [
+          "mad4b/content-job-list",
+          "mad4b/content-job-get",
+          "mad4b/content-job-events",
+          "mad4b/content-job-create",
+          "mad4b/content-job-transition",
+          "mad4b/content-job-cancel"
+        ],
+        "optimistic_revision": true,
+        "immutable_terminal_states": true,
+        "hash_chained_events": true,
+        "provider_side_effects": false
       },
       "remainder": [
-        "implement durable ContentJob create/read/transition/cancel domain service",
-        "implement state/stage/revision/event invariants and idempotent persistence",
-        "prove disposable and exact Staging runtime behavior"
+        "prove create/read/transition/cancel against disposable MariaDB WordPress runtime",
+        "prove stale revision and concurrent transition rejection at runtime",
+        "bind exact post-merge deployed-candidate live evidence before marking the gate DONE"
       ]
     },
     {
@@ -448,7 +468,7 @@
   },
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
-    "state": "CURRENT_FOR_DEPLOYMENT",
+    "state": "RECAPTURE_REQUIRED",
     "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
     "control_plane_version": "0.4.0-rc.59",
     "build_fingerprint": "f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6",
@@ -456,7 +476,8 @@
     "control_plane_archive_sha256": "c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06",
     "package_workflow_run_id": 36072550999,
     "general_distribution_artifact_id": 10838403565,
-    "repository_runtime_delta_verified_empty_through": "b1f7e837efc69aa220385d84761e46f64c2442b1"
+    "repository_runtime_delta_verified_empty_through": "b1f7e837efc69aa220385d84761e46f64c2442b1",
+    "recapture_reason": "runtime-affecting bulk closure changes require a trusted post-merge package before live deployment"
   },
   "baseline_sha": "b1f7e837efc69aa220385d84761e46f64c2442b1",
   "hardening": {
