@@ -1,0 +1,67 @@
+name: MAD4B Owner Attestation Rerun
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  contents: read
+  actions: write
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: mad4b-owner-attestation-rerun-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  rerun-release-verdict:
+    if: >
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, 'OWNER_ATTEST_SINGLE_OWNER')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository governance verifier
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Validate attestation and rerun exact-head Release Verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pr="$(gh api -H 'Accept: application/vnd.github+json' "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
+          head_sha="$(jq -r '.head.sha' <<<"$pr")"
+          base_ref="$(jq -r '.base.ref' <<<"$pr")"
+          state="$(jq -r '.state' <<<"$pr")"
+          test "$base_ref" = master
+          test "$state" = open
+
+          python3 tools/verify_repository_owner_attestation.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --pr-number "$PR_NUMBER" \
+            --expected-head "$head_sha" \
+            --policy .github/mad4b-repository-governance-policy.json \
+            --output /tmp/mad4b-owner-attestation.json
+
+          run_id="$(
+            gh api -H 'Accept: application/vnd.github+json' \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/mad4b-release-verdict.yml/runs?event=pull_request&per_page=100" \
+            | jq -r --arg sha "$head_sha" '
+                [.workflow_runs[]
+                 | select(.head_sha == $sha)
+                 | select(.status == "completed")]
+                | sort_by(.id)
+                | last
+                | .id // empty
+              '
+          )"
+          test -n "$run_id"
+          gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/rerun"
+          echo "RERUN_REQUESTED run_id=$run_id head_sha=$head_sha comment_id=$COMMENT_ID"
