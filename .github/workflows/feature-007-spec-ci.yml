@@ -9,21 +9,27 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: feature-007-spec-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   spec-quality:
     name: Feature 007 specification quality
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout exact PR head
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - name: Verify exact source checkout
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
 
       - name: Preserve cross-feature global metadata
         shell: bash
