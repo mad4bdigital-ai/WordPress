@@ -57,6 +57,12 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py
 
+      - name: Verify Feature 007 release root-trust contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py
+
       - name: Reject distributable symlinks and secret-like files
         shell: bash
         run: |
