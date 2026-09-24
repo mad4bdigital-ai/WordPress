@@ -9,6 +9,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-snapshot-identity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-finalizer.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-handshake-evidence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
