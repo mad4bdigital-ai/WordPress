@@ -418,8 +418,8 @@ final class MAD4B_SCP_Schema {
 	private static function required_approval_binding_columns() { return array( 'candidate_binding_contract', 'candidate_sha', 'build_fingerprint', 'binding_environment', 'binding_host', 'site_uuid', 'site_profile_revision', 'site_profile_digest', 'bound_at' ); }
 	private static function required_durable_columns() {
 		return array(
-			'content_jobs' => array( 'job_id', 'revision', 'state', 'stage', 'current_artifact_ref', 'updated_at' ),
-			'content_job_events' => array( 'event_id', 'job_id', 'job_revision', 'event_type', 'payload_sha256', 'created_at' ),
+			'content_jobs' => array( 'job_id', 'site_uuid', 'state', 'stage', 'current_artifact_id', 'job_revision', 'updated_at' ),
+			'content_job_events' => array( 'event_id', 'job_id', 'sequence', 'event_type', 'plan_sha256', 'artifact_id', 'entry_sha256', 'created_at' ),
 			'work_leases' => array( 'work_id', 'aggregate_type', 'aggregate_id', 'worker_id', 'lease_epoch', 'expected_aggregate_revision', 'status', 'heartbeat_at', 'expires_at', 'reconciliation_ref' ),
 			'idempotency' => array( 'scope_key', 'idempotency_key', 'request_sha256', 'status', 'result_sha256', 'reconciliation_ref', 'expires_at' ),
 			'outbox' => array( 'outbox_id', 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256', 'status', 'attempts', 'available_at' ),
