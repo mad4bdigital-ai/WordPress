@@ -50,6 +50,7 @@ final class FakeBitFlowsAdapter {
     public function provider_key(){ return 'bit_pi'; }
     public function is_available(){ return true; }
     public function ability_names(){ return array('read'=>array('bitflows/list-flows','bitflows/get-flow','bitflows/get-executions'),'content'=>array(),'admin'=>array('bitflows/run-flow')); }
+    public function supports_canary_execution($ability){ return 'bitflows/run-flow'===(string)$ability; }
     public function reversible_contracts(){ return array(); }
 }
 final class FakeSeoAdapter {
@@ -134,29 +135,33 @@ $high=MAD4B_SCP_Provider_Compatibility_Certification::assess_provider('bit_pi',$
 expect_same('certified',$high['compatibility_state'],'exact Bit Flows artifact may be artifact-certified');
 expect_same('FULLY_CERTIFIED',$high['capabilities']['flows.read']['certification_level'],'Bit Flows reads may use exact certification');
 expect_same('DISCOVERED',$high['capabilities']['flow.execute']['certification_level'],'high-risk execution cannot inherit full certification from package identity');
-expect_same('shadow',$high['capabilities']['flow.execute']['activation_stage'],'high-risk execution defaults to shadow');
-expect_same(true,$high['capabilities']['flow.execute']['activation_required'],'high-risk execution requires a separate activation decision');
-expect_same(true,$high['capabilities']['flow.execute']['behavioral_probe_required'],'high-risk execution requires trusted behavioral evidence even on an exact artifact');
-expect_same(false,$high['capabilities']['flow.execute']['write_eligible'],'high-risk execution cannot auto-mount from exact artifact certification');
+expect_same('canary',$high['capabilities']['flow.execute']['activation_stage'],'exact artifact plus structural compatibility and adapter opt-in may enter isolated canary');
+expect_same(true,$high['capabilities']['flow.execute']['canary_bootstrap_eligible'],'exact high-risk provider exposes a bounded first-canary bootstrap candidate');
+expect_true(1===preg_match('/^[a-f0-9]{64}$/',$high['capabilities']['flow.execute']['canary_basis_digest']),'canary bootstrap is bound to deterministic exact evidence');
+expect_same(array('bitflows/run-flow'),$high['capabilities']['flow.execute']['canary_supported_abilities'],'only adapter-opted high-risk ability enters canary bootstrap');
+expect_same(true,$high['capabilities']['flow.execute']['activation_required'],'high-risk execution still requires a separate activation decision');
+expect_same(true,$high['capabilities']['flow.execute']['behavioral_probe_required'],'first canary is still the behavioral evidence-producing step');
+expect_same(false,$high['capabilities']['flow.execute']['write_eligible'],'canary bootstrap never auto-mounts normal write authority');
 $high_projection=MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection('bit_pi',$bitflows);
 expect_same(false,$high_projection['all_write_abilities_eligible'],'high-risk adapter remains write-blocked before governed activation');
 expect_true(in_array('bitflows/run-flow',array_column($high_projection['blocked'],'ability'),true),'high-risk mutation appears in blocked mount evidence');
 $blocked_high=$high_projection['blocked'][0];
 expect_same('high_risk_activation_required',$blocked_high['reason'],'high-risk block reason is explicit');
-expect_same('shadow',$blocked_high['activation_stage'],'blocked mount evidence preserves activation stage');
+expect_same('canary',$blocked_high['activation_stage'],'blocked normal mount evidence preserves isolated canary stage');
 $high_guard=MAD4B_SCP_Provider_Compatibility_Certification::mutation_guard('bit_pi','bitflows/run-flow',true,$bitflows);
 expect_true(is_wp_error($high_guard),'high-risk execution guard remains fail closed');
 expect_true(in_array('high_risk_activation_required',$high_guard->data['violations'],true),'high-risk execution guard explains activation blocker');
 $high_plan=MAD4B_SCP_Provider_Compatibility_Certification::recertification_plan(array('provider_id'=>'bit_pi'));
-expect_same('OWNER_REVIEW_REQUIRED',$high_plan['classification'],'high-risk activation requires owner review after behavioral evidence');
+expect_same('OWNER_REVIEW_REQUIRED',$high_plan['classification'],'high-risk canary execution requires owner review');
+expect_true(in_array('owner_governed_canary_execution_required',array_column($high_plan['steps'],'action'),true),'exact high-risk candidate advances to governed canary instead of deadlocking on a pre-canary receipt');
 
 $mount=MAD4B_SCP_Provider_Compatibility_Certification::mcp_mount_plan();
 $eligible=array_column($mount['eligible'],'ability');
 $blocked=array_column($mount['blocked'],'ability');
 expect_true(in_array('jetengine/update-post-meta',$eligible,true),'MCP mount plan includes exact certified reversible write');
 expect_true(in_array('jetengine/get-post-meta',$eligible,true),'MCP mount plan includes compatible read ability');
-expect_true(!in_array('bitflows/run-flow',$eligible,true),'MCP mount plan never exposes shadow high-risk execution');
-expect_true(in_array('bitflows/run-flow',$blocked,true),'MCP mount plan reports shadow high-risk execution as blocked');
+expect_true(!in_array('bitflows/run-flow',$eligible,true),'MCP mount plan never exposes canary high-risk execution on the normal write surface');
+expect_true(in_array('bitflows/run-flow',$blocked,true),'MCP mount plan reports canary high-risk execution as blocked from normal write');
 expect_same(false,$mount['authorizing'],'mount plan is evidence, not authority');
 expect_true(isset($mount['latent']) && is_array($mount['latent']),'mount plan must separate latent catalog abilities from mounted eligibility');
 
