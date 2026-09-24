@@ -141,12 +141,37 @@ final class MAD4B_SCP_MCP_Request_Scope {
 	}
 
 	/**
+	 * True only for an actual HTTP MAD4B MCP transport request.
+	 *
+	 * WP-CLI and Control Plane admin pages still require the MCP runtime for
+	 * diagnostics/certification, but they are not client Refresh hot paths and
+	 * must never inherit transport-only short circuits.
+	 */
+	public static function current_request_is_http_mcp_transport() {
+		if ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) ) return false;
+
+		$route = isset( $_GET['rest_route'] ) ? wp_unslash( (string) $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
+		if ( self::is_mad4b_mcp_route( $route ) ) return true;
+
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- parsed only.
+		if ( '' === $uri ) return false;
+		$path = wp_parse_url( $uri, PHP_URL_PATH );
+		if ( ! is_string( $path ) || '' === $path ) return false;
+		$path = '/' . ltrim( rawurldecode( $path ), '/' );
+		$prefix = function_exists( 'rest_get_url_prefix' ) ? trim( (string) rest_get_url_prefix(), '/' ) : 'wp-json';
+		$needle = '/' . $prefix . '/';
+		$offset = strpos( $path, $needle );
+		if ( false !== $offset ) $path = '/' . ltrim( substr( $path, $offset + strlen( $needle ) ), '/' );
+		return self::is_mad4b_mcp_route( $path );
+	}
+
+	/**
 	 * Latency-sensitive MAD4B protocol requests. This is intentionally broader
 	 * than the MCP Adapter runtime scope: OAuth discovery/protocol endpoints need
 	 * a lightweight plugin boot, but must NOT keep the MCP Adapter enabled.
 	 */
 	public static function current_request_is_protocol_hotpath() {
-		if ( self::current_request_requires_mcp_runtime() ) return true;
+		if ( self::current_request_is_http_mcp_transport() ) return true;
 
 		$route = isset( $_GET['rest_route'] ) ? wp_unslash( (string) $_GET['rest_route'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- routing observation only.
 		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
@@ -206,6 +231,8 @@ final class MAD4B_SCP_MCP_Request_Scope {
 			'contract' => self::CONTRACT,
 			'eligible' => self::$eligible,
 			'current_request_requires_mcp_runtime' => self::$current_request_requires_mcp,
+			'current_request_is_http_mcp_transport' => self::current_request_is_http_mcp_transport(),
+			'current_request_is_protocol_hotpath' => self::current_request_is_protocol_hotpath(),
 			'adapter_init_removed_for_unrelated_request' => self::$adapter_init_removed,
 			'adapter_runtime_from_official_plugin' => self::$adapter_runtime_from_official,
 			'adapter_suppression_skipped_non_official_runtime' => self::$adapter_suppression_skipped_non_official,
