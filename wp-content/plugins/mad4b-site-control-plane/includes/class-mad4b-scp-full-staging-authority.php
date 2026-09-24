@@ -73,7 +73,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'permission_callback' => array( __CLASS__, 'can_access' ),
 					'input_schema' => self::schema( array() ),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-					'meta' => self::meta( true ),
+					'meta' => self::meta( true, 'read' ),
 				) );
 			}
 			if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::APPLY_ABILITY ) ) {
