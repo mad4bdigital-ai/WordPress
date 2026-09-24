@@ -11,6 +11,7 @@ required = [
     '$requiredProperties = @("id","name","enforcement")',
     '$item.PSObject.Properties[$propertyName]',
     'malformed ruleset list entry missing',
+    '"repos/$Repository/rulesets/${rulesetId}?includes_parents=true"',
 ]
 
 missing = [needle for needle in required if needle not in script]
@@ -19,6 +20,7 @@ if missing:
 
 for forbidden in [
     '$current = @($currentRaw | ConvertFrom-Json)',
+    '"repos/$Repository/rulesets/$rulesetId?includes_parents=true"',
 ]:
     if forbidden in script:
         raise SystemExit("legacy Windows PowerShell empty-array parser returned: " + forbidden)
