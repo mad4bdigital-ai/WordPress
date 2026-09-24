@@ -104,9 +104,16 @@ final class MAD4B_SCP_Staging_OAuth_Autoconfig {
 			'primary_owner_user_id' => (int) $prepared['owner_user_id'],
 			'oauth_user_ids' => array_values( array_map( 'absint', $prepared['user_ids'] ) ),
 			'issuer' => $prepared['issuer'],
-			'updated_at' => gmdate( 'c' ),
 		);
-		update_option( self::OPTION, $record, false );
+		$existing = get_option( self::OPTION, array() );
+		$existing_semantic = is_array( $existing ) ? $existing : array();
+		unset( $existing_semantic['updated_at'] );
+		if ( $existing_semantic !== $record ) {
+			$record['updated_at'] = gmdate( 'c' );
+			update_option( self::OPTION, $record, false );
+		} elseif ( is_array( $existing ) ) {
+			$record = $existing;
+		}
 
 		self::$status['configured'] = true;
 		self::$status['wp_user_id'] = (int) $prepared['owner_user_id'];
