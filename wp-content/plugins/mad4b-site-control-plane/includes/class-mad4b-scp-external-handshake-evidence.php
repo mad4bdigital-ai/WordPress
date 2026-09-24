@@ -225,6 +225,23 @@ final class MAD4B_SCP_External_Handshake_Evidence {
 
 	public static function build_fingerprint() {
 		if ( is_string( self::$request_build_fingerprint ) && '' !== self::$request_build_fingerprint ) return self::$request_build_fingerprint;
+
+		// Packaged rc builds already carry a deterministic build fingerprint in the
+		// provenance manifest. Prefer that constant-time identity on MCP discovery;
+		// full byte-for-byte runtime verification remains a separate acceptance gate.
+		$manifest_path = defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json' : '';
+		if ( '' !== $manifest_path && is_readable( $manifest_path ) ) {
+			$manifest = json_decode( (string) file_get_contents( $manifest_path ), true );
+			$manifest_contract = is_array( $manifest ) && isset( $manifest['contract'] ) ? (string) $manifest['contract'] : '';
+			$manifest_fingerprint = is_array( $manifest ) && isset( $manifest['build_fingerprint'] ) ? strtolower( trim( (string) $manifest['build_fingerprint'] ) ) : '';
+			if ( 'mad4b.build-provenance.v1' === $manifest_contract && 1 === preg_match( '/^[a-f0-9]{64}$/', $manifest_fingerprint ) ) {
+				self::$request_build_fingerprint = $manifest_fingerprint;
+				return self::$request_build_fingerprint;
+			}
+		}
+
+		// Legacy/unpackaged fallback only. This path remains deterministic but is
+		// intentionally avoided by the General Distribution Kit hot path.
 		$files = array(
 			defined( 'MAD4B_SCP_FILE' ) ? MAD4B_SCP_FILE : '',
 			defined( 'MAD4B_SCP_DIR' ) ? MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php' : '',
