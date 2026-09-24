@@ -56,6 +56,57 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           echo "Packaging exact source: $SOURCE_SHA"
 
+      - name: Verify release-evidence trigger symmetry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          lines = Path('.github/workflows/mad4b-control-plane-package.yml').read_text(encoding='utf-8').splitlines()
+
+          def block(name):
+              marker = f'  {name}:'
+              start = lines.index(marker) + 1
+              out = []
+              for line in lines[start:]:
+                  if line.startswith('  ') and not line.startswith('    ') and line.strip():
+                      break
+                  out.append(line)
+              return out
+
+          def paths_from(section):
+              values = []
+              in_paths = False
+              for raw in section:
+                  stripped = raw.strip()
+                  if stripped == 'paths:':
+                      in_paths = True
+                      continue
+                  if in_paths and stripped.startswith('- '):
+                      values.append(stripped[2:].strip("'\""))
+                  elif in_paths and stripped and not raw.startswith('      '):
+                      break
+              return values
+
+          required = {
+              '.github/workflows/mad4b-control-plane-package.yml',
+              '.github/workflows/mad4b-live-acceptance-evidence.yml',
+              '.github/workflows/mad4b-release-verdict.yml',
+          }
+          for trigger in ('pull_request', 'push'):
+              values = paths_from(block(trigger))
+              missing = required - set(values)
+              duplicates = sorted({value for value in values if values.count(value) > 1})
+              if missing:
+                  raise SystemExit(f'{trigger}: missing release-evidence cross-trigger(s): {sorted(missing)}')
+              if duplicates:
+                  raise SystemExit(f'{trigger}: duplicate path trigger(s): {duplicates}')
+          if not any(line.strip() == '- master' for line in block('push')):
+              raise SystemExit('master package push trigger missing')
+          print('package release-evidence trigger symmetry: PASS')
+          PY
+
       - name: Verify release candidate identity coherence
         shell: bash
         run: |
