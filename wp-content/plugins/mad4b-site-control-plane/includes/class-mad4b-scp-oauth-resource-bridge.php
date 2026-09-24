@@ -144,6 +144,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'creates_credentials' => false,
 			'outbound_discovery_on_admin' => false,
 			'write_surfaces_enabled' => false,
+			'authority_step_up_surface_enabled' => self::authority_step_up_scope_available(),
+			'authority_step_up_scope' => self::AUTHORITY_STEP_UP_SCOPE,
 			'protected_transport_server' => 'mad4b-chatgpt',
 			'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ),
 		);
