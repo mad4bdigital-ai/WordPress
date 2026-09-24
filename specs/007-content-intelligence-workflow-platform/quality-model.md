@@ -22,7 +22,11 @@ Feature 007 is evaluated independently across:
 14. site inventory/content intent and public publication truth;
 15. rights/data-processing governance;
 16. operational fairness/local autonomy;
-17. portability and safe decommission.
+17. portability and safe decommission;
+18. external root trust and out-of-band recovery;
+19. execution fencing and commit-time authority;
+20. governance liveness and bootstrap reachability;
+21. semantic compatibility/privacy-safe identity.
 
 A green functional path cannot compensate for a hard failure in a different quality dimension.
 
@@ -91,6 +95,18 @@ operator, Doctor, DLQ, fairness, alerts and local-autonomy behavior support safe
 
 QPORTABILITY:
 export, provider/site decommission, credential/callback cleanup and import preserve required evidence without recreating authority.
+
+QROOTTRUST:
+Control Plane release identity is externally attested and a separately authorized out-of-band Recovery Plane can restore normal control.
+
+QEXECUTIONMODEL:
+aggregate authority, execution-worker boundary, fencing and commit-guard semantics prevent stale/zombie/TOCTOU mutations.
+
+QLIVENESS:
+hard gate graph is acyclic and intended operational terminal states are reachable through explicit bootstrap transitions.
+
+QSEMANTICS:
+capability traits, privacy-safe addressing, semantic publication fingerprints, runtime profiles, offline windows, audit classes and data-flow policy preserve meaning across providers/sites/failures.
 
 ## Rule
 

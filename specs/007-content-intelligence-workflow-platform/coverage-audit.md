@@ -804,3 +804,41 @@ P2 maturity:
 - full portability automation.
 
 Decommission/export semantics are designed early even if implementation is later because storage and identity choices become difficult to reverse after production data accumulates.
+
+
+## 49. Hostile architecture review closure
+
+A hostile review identified risks that were not simple missing features but conflicts between otherwise valid contracts.
+
+Closed at specification level:
+- Feature 007 baseline was stale by 27 commits relative to PR #47; current PR #47 head 1ca70c0f85f85dcd08529ed60c6b518a6c64c4fe was merged as a real parent through baseline sync commit 64b7e0115493d553b0953c7b877f8c419f5676a7.
+- future base drift is a hard CI failure.
+- root platform provenance is external to the running Control Plane.
+- a minimal out-of-band Recovery Plane exists as a required architecture boundary.
+- v1 explicitly chooses aggregate-authoritative state, append-only events and rebuildable projections rather than accidental half-event-sourcing.
+- worker leases require monotonic fencing tokens.
+- high-risk operations have a final Execution Commit Guard to close policy/approval TOCTOU.
+- approvals bind material dependency revisions and invalidate on meaningful change.
+- hard gates become a DAG with cycle detection and liveness/reachability.
+- circular first-use authority becomes explicit BootstrapTransition, not ad-hoc exception.
+- single-owner deployments use SINGLE_OWNER_HARDENED and are not mislabeled as multi-person SoD.
+- provider capability equivalence uses semantic traits.
+- intent ownership is many-to-many.
+- content-addressing/dedup avoids cross-tenant existence leakage and does not treat hashes as secrets.
+- public verification uses normalized semantic fingerprints instead of raw dynamic HTML bytes.
+- AI artifacts guarantee provenance reproducibility, not deterministic regeneration unless separately proven.
+- evals separate holdout/adversarial data to reduce Goodhart/benchmark overfitting.
+- compatibility targets supported profiles plus pairwise/risk-based matrices.
+- central-outage autonomy uses risk-classed offline authorization windows.
+- audit/domain events/telemetry have separate durability/retention roles.
+- data-flow policy is generalized beyond AI.
+- critical authority/worker/certification state machines require executable/model-based invariant and liveness tests.
+- Architecture Freeze limits new Critical Kernel abstractions until runtime evidence justifies them.
+
+## 50. Implementation posture after closure
+
+The primary architecture risk is no longer missing conceptual surface area. It is proving the Critical Kernel under real failure modes.
+
+Implementation MUST prioritize critical-kernel.md and Phases 31–35 together with existing P0 release/authority/provider/content vertical-slice prerequisites.
+
+Maturity contracts remain valid but do not justify delaying the first live proof unless they become a real dependency.

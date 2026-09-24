@@ -545,3 +545,47 @@ PORT-002 ExportBundle preserves schema/contract versions, jobs/events, artifacts
 PORT-003 Provider removal disables resolver selection, credentials, callbacks and side channels before final removal.
 PORT-004 Import validates integrity, compatibility, remapping and collisions and never recreates grants or Production authorization implicitly.
 PORT-005 Decommission completes only when no unexpected scheduled/in-flight work or active credentials/webhooks remain.
+
+
+## Critical execution-model requirements
+
+BASE-001 Feature HEAD MUST contain the current target baseline SHA as an ancestor; stale baseline is a hard specification gate.
+BASE-002 Baseline advances in OAuth/authority/certification/MCP/runtime-governance surfaces require semantic impact review before the Feature is considered current.
+STATE-001 Feature 007 v1 uses aggregate-authoritative current state; events are append-only history/audit and projections are rebuildable.
+STATE-002 Aggregate/event/current-artifact invariants are checked explicitly; timestamp-last-write reconciliation is forbidden for uncertain state.
+EXEC-001 Control Plane and Execution Worker responsibilities are logically separated even when deployed together in v1.
+EXEC-002 Leased execution uses monotonically increasing fencing tokens and rejects zombie-worker writes from older epochs.
+EXEC-003 Worker heartbeat never refreshes grants, approvals, certification or policy authority.
+EXEC-004 External ambiguous outcomes are reconciled/read back before retrying irreversible effects.
+GUARD-001 High-risk execution binds to a dependency snapshot including plan, target, policy, grant, approval, provider certification, subject/environment, kill switch and applicable rights/data decisions.
+GUARD-002 An Execution Commit Guard revalidates material dependencies immediately before the operation commit point.
+GUARD-003 Material dependency changes invalidate approval or require replan/reapproval/recertification according to reason.
+GATE-001 Hard gates form an explicit acyclic dependency graph with declared roots and terminal states.
+GATE-002 Security validation includes liveness/reachability: intended good states must have a legal path from bootstrap/root states.
+GATE-003 Bootstrap exceptions are explicit bounded BootstrapTransitions; hidden first-run allow branches are forbidden.
+GATE-004 Gate evaluation reports decisive blockers, secondary blockers, a minimal unsatisfied set and next safe actions.
+SOD-001 Operating mode is explicit: ENTERPRISE_MULTI_OPERATOR, SINGLE_OWNER_HARDENED or EMERGENCY_RECOVERY.
+SOD-002 SINGLE_OWNER_HARDENED is never reported as true multi-person separation of duties.
+ROOT-001 The running Control Plane is not the sole certifier of its own executable identity; release identity originates from external repository/build provenance.
+ROOT-002 OAuth signing, evidence attestation, release/package attestation and emergency recovery use distinct trust roles.
+ROOT-003 A minimal out-of-band Recovery Plane can restore a known-good Control Plane when the WordPress plugin path itself is broken.
+ROOT-004 Recovery Plane is separately authorized and cannot perform ordinary content/business mutations.
+TRAIT-001 Provider semantic eligibility uses CapabilityProfile traits, not boolean capability presence alone.
+TRAIT-002 Selected CapabilityProfile fingerprint is plan-bound.
+INTENT-001 Intent↔content ownership is many-to-many, role-based, confidence/evidence-backed and versioned.
+INTENT-002 Cannibalization is derived analysis, not automatic from shared topic/intent.
+PRIV-001 Plain content hashes are integrity identifiers, not confidentiality controls.
+PRIV-002 Cross-tenant deduplication is prohibited for sensitive/private classes unless a privacy-safe scoped design proves no existence oracle.
+PRIV-003 Possession/knowledge of blob hash never grants Artifact access.
+PUBFP-001 Public verification uses versioned normalized semantic fingerprints, not raw full-HTML hashes where volatile content exists.
+AIREP-001 Durable AI artifacts guarantee provenance reproducibility; regeneration reproducibility is not claimed unless explicitly certified.
+AIREP-002 Eval Registry separates development, regression, holdout, adversarial and human-calibration sets.
+AIREP-003 Holdout/evaluator governance mitigates benchmark overfitting/Goodhart effects.
+COMPAT-001 Compatibility testing targets declared SupportedRuntimeProfiles plus risk-based/pairwise matrices rather than an unbounded Cartesian product.
+OFFLINE-001 Central-dependency outage behavior is risk-classed by Maximum Offline Authorization Window.
+OFFLINE-002 Expired cached central evidence fails closed for the affected operation; high-risk classes may require online validation.
+AUDIT-001 Audit evidence, business-domain events and operational telemetry are separate retention/integrity classes.
+FLOW-001 Data residency/processing policy applies to all processors/storage/index/backup/telemetry paths, not AI only.
+FORMAL-001 Executable/model-based invariants cover authority/approval/commit guard, worker lease/fencing and provider certification/release ring.
+FREEZE-001 New Critical Kernel contracts require runtime failure, security boundary, irreversible model decision, second-provider evidence, Production recovery need or applicable compliance requirement.
+FREEZE-002 Broader maturity contracts do not automatically become implementation blockers.

@@ -153,3 +153,34 @@
 - [ ] Operator Doctor/DLQ runtime exists.
 - [ ] Multi-site fairness/local-autonomy fixtures exist.
 - [ ] Eval/alert/usage/portability runtime evidence exists.
+
+
+## Hostile-review closure
+- [x] Feature 007 has been merged with the current rc.59 integration head at review time.
+- [x] Baseline drift is now an explicit hard CI concept.
+- [x] Control Plane executable identity has an external root-provenance requirement.
+- [x] Out-of-band Recovery Plane is explicitly required.
+- [x] Aggregate state/events/artifacts/projections have explicit authority roles.
+- [x] Worker leases require monotonic fencing tokens.
+- [x] Execution Commit Guard closes plan/approval TOCTOU.
+- [x] Approval invalidation dependencies are explicit.
+- [x] Hard gates are represented as a DAG with liveness requirements.
+- [x] Bootstrap exceptions are explicit BootstrapTransitions.
+- [x] Gate output includes minimal unsatisfied blocker set.
+- [x] Single-owner hardened mode is truthful and distinct from true multi-person SoD.
+- [x] Provider capabilities have semantic traits, not booleans only.
+- [x] Intent ownership is many-to-many and confidence/evidence-backed.
+- [x] Content-addressed storage has privacy-safe dedup scope rules.
+- [x] Publication verification uses semantic normalized fingerprints.
+- [x] AI provenance does not falsely claim deterministic regeneration.
+- [x] Eval registry separates holdout/adversarial sets.
+- [x] Compatibility uses SupportedRuntimeProfiles instead of Cartesian-all testing.
+- [x] Central outage uses explicit risk-classed offline authorization windows.
+- [x] Audit evidence/domain events/telemetry are separate classes.
+- [x] Data-flow/residency policy covers all processors, not AI only.
+- [x] Three critical state families require executable/model-based invariant tests.
+- [x] Architecture Freeze prevents unlimited pre-runtime abstraction growth.
+- [ ] Current-base ancestry CI passes on final PR head.
+- [ ] Recovery Plane runtime canary exists.
+- [ ] Fencing/commit-guard runtime tests exist.
+- [ ] Critical Kernel ETG Staging vertical slice passes.

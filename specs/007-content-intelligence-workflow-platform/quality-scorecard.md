@@ -6,6 +6,17 @@ This scorecard is evidence-based. "Defined" means specified, not implemented.
 |---|---|---|---|
 | Functional architecture | Defined | Mostly future work | Yes for new features |
 | Release lineage | Defined | Open | Yes |
+| Baseline synchronization | Defined; latest #47 head merged at review time | CI hard gate being added | Yes |
+| Root trust / Recovery Plane | Defined | Not implemented | Yes before Production resilience claim |
+| Execution state / fencing / commit guard | Defined | Not implemented | Yes for async/high-risk writes |
+| Gate DAG / liveness | Defined | Machine graph specified | Yes for governed bootstrap |
+| Capability semantic traits | Defined | Bit Flows trait profile pending | Before multi-provider resolution |
+| Privacy-safe content addressing | Defined | Backend implementation pending | Before cross-tenant ArtifactStore |
+| Semantic publication fingerprint | Defined | Runtime normalizer pending | Before autonomous public verification |
+| AI provenance / holdout eval integrity | Defined | Runtime eval partitions pending | Before auto-promotion |
+| Runtime profiles / offline windows | Defined | Policy values/evidence pending | Before broad deployment |
+| Audit / data-flow separation | Defined | Persistence/processors pending | Before scale/compliance |
+| Architecture freeze | Defined | Critical Kernel selected | No; controls scope |
 | Multi-Authority live trust | Defined | Not live-certified | Yes |
 | Correctness/idempotency | Defined by this hardening | Not implemented for new domain | Yes |
 | Durable execution/recovery | Defined by this hardening | Partial existing primitives | Yes for async Content OS |

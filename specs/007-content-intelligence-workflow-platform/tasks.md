@@ -534,3 +534,97 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T3011 P1 Prove import does not recreate grants/Production authorization.
 - [ ] T3012 P1 Final no-in-flight/no-active-secret verification.
 - [ ] T3013 P1 GATE Produce decommission completion report.
+
+
+## Phase 31 — Baseline, root trust and recovery
+- [ ] T3101 P0 CI: current PR base SHA must be ancestor of Feature HEAD.
+- [ ] T3102 P0 Emit BASELINE_STALE with ahead/behind evidence.
+- [ ] T3103 P0 Review baseline deltas in OAuth/authority/MCP/certification/runtime surfaces.
+- [ ] T3104 P0 Update current_baseline_head after each governed synchronization.
+- [ ] T3105 P0 Define externally established Control Plane release attestation.
+- [ ] T3106 P0 Separate OAuth/evidence/release/recovery trust roles.
+- [ ] T3107 P0 Define release signer/root rotation and revocation.
+- [ ] T3108 P0 Define minimal Recovery Plane transport/identity/grants.
+- [ ] T3109 P0 Recovery read health/log/package identity.
+- [ ] T3110 P0 Recovery disable known-bad package.
+- [ ] T3111 P0 Recovery restore attested known-good package.
+- [ ] T3112 P0 Recovery connector/service restoration path.
+- [ ] T3113 P0 GATE prove Recovery Plane cannot publish/content-mutate.
+- [ ] T3114 P0 GATE recover deliberately unavailable normal Control Plane path.
+- [ ] T3115 P0 GATE QROOTTRUST pass.
+
+## Phase 32 — Authoritative state and fenced execution
+- [ ] T3201 P0 Declare aggregate-authoritative state per mutable aggregate.
+- [ ] T3202 P0 Classify events as history/audit rather than current-state authority.
+- [ ] T3203 P0 Mark indexes/dashboards as rebuildable projections.
+- [ ] T3204 P0 Implement aggregate/event/artifact consistency checker.
+- [ ] T3205 P0 Add BLOCKED_FOR_RECONCILIATION uncertain-state path.
+- [ ] T3206 P0 Define Control Plane vs Execution Worker API boundary.
+- [ ] T3207 P0 Add monotonic lease_epoch fencing token.
+- [ ] T3208 P0 Require fencing epoch on worker authoritative writes.
+- [ ] T3209 P0 Reject zombie worker write after newer lease.
+- [ ] T3210 P0 Heartbeat cannot refresh approval/grant/certification.
+- [ ] T3211 P0 Reconcile external provider execution before ambiguous retry.
+- [ ] T3212 P0 Crash/reclaim test after external-success/network-timeout.
+- [ ] T3213 P0 Duplicate callback/effect-once test with fencing.
+- [ ] T3214 P0 GATE QEXECUTIONMODEL pass.
+
+## Phase 33 — Commit guard, gate liveness and operating modes
+- [ ] T3301 P0 Define material ExecutionGuard dependency set.
+- [ ] T3302 P0 Bind approval to dependency revisions/fingerprints.
+- [ ] T3303 P0 Implement pre-commit revalidation.
+- [ ] T3304 P0 Kill-switch-after-approval race test.
+- [ ] T3305 P0 Provider-quarantine-after-plan race test.
+- [ ] T3306 P0 Target-edit-after-approval race test.
+- [ ] T3307 P0 Rights/data-policy-change approval invalidation test.
+- [ ] T3308 P0 Parse/validate gate-graph.json.
+- [ ] T3309 P0 Reject unknown dependencies and cycles.
+- [ ] T3310 P0 Verify root-to-terminal reachability.
+- [ ] T3311 P0 Register bounded BootstrapTransition objects.
+- [ ] T3312 P0 Prohibit hidden first-run allow branches.
+- [ ] T3313 P0 Emit decisive/secondary/minimal blocker sets.
+- [ ] T3314 P0 Implement ENTERPRISE_MULTI_OPERATOR policy.
+- [ ] T3315 P0 Implement truthful SINGLE_OWNER_HARDENED compensating controls.
+- [ ] T3316 P0 Implement EMERGENCY_RECOVERY policy.
+- [ ] T3317 P0 GATE QLIVENESS pass.
+
+## Phase 34 — Semantic/provider/privacy/data-flow hardening
+- [ ] T3401 P0 CapabilityProfile trait schema.
+- [ ] T3402 P0 Bit Flows workflow.execute semantic trait profile.
+- [ ] T3403 P0 Bind CapabilityProfile fingerprint into plans.
+- [ ] T3404 P0 Provider Resolver trait constraint matching.
+- [ ] T3405 P0 IntentRelation many-to-many schema.
+- [ ] T3406 P0 Role/confidence/evidence-based cannibalization analysis.
+- [ ] T3407 P0 Configure ArtifactStore dedup scope by data class.
+- [ ] T3408 P0 Prevent cross-tenant global hash existence oracle.
+- [ ] T3409 P0 Verify hash knowledge does not authorize blob read.
+- [ ] T3410 P0 Define PublicationFingerprintSet normalizers.
+- [ ] T3411 P0 Explicit volatile DOM/attribute allowlist.
+- [ ] T3412 P0 CONTENT/SEO/STRUCTURE/LINK/MEDIA match dimensions.
+- [ ] T3413 P0 Record provenance reproducibility vs regeneration semantics.
+- [ ] T3414 P0 Partition eval sets into development/regression/holdout/adversarial/human.
+- [ ] T3415 P0 Track threshold/fixture exposure and evaluator identity.
+- [ ] T3416 P0 Validate SupportedRuntimeProfiles.
+- [ ] T3417 P0 Add pairwise/risk-based compatibility selection.
+- [ ] T3418 P0 Configure OfflineAuthorizationWindow by risk class.
+- [ ] T3419 P0 Record cached-evidence age used by offline action.
+- [ ] T3420 P0 Separate audit/domain-event/telemetry persistence classes.
+- [ ] T3421 P0 Define hot/cold audit and telemetry retention.
+- [ ] T3422 P0 General DataFlowPolicy for storage/backups/index/telemetry/workflow/research/host/AI.
+- [ ] T3423 P0 Derived embedding/index sensitivity inheritance.
+- [ ] T3424 P0 GATE QSEMANTICS pass.
+
+## Phase 35 — Formal state proof and architecture freeze
+- [ ] T3501 P0 Model authority/grant/approval/commit-guard state machine.
+- [ ] T3502 P0 Prove revoked/stale/kill-switched decisions cannot commit.
+- [ ] T3503 P0 Model lease/fencing/retry state machine.
+- [ ] T3504 P0 Prove older fencing epoch cannot commit.
+- [ ] T3505 P0 Model provider certification/release-ring/quarantine state machine.
+- [ ] T3506 P0 Prove quarantine blocks execution and promotion cannot skip evidence.
+- [ ] T3507 P0 Add liveness/reachability properties.
+- [ ] T3508 P0 Add ArchitectureAdmissionDecision workflow.
+- [ ] T3509 P0 Freeze Critical Kernel document.
+- [ ] T3510 P0 Defer non-qualified new CORE contracts to ADR/backlog/extension.
+- [ ] T3511 P0 Execute exact ETG Staging Critical Kernel vertical slice.
+- [ ] T3512 P0 Capture runtime-discovered redesigns.
+- [ ] T3513 P0 GATE CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED.

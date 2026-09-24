@@ -554,3 +554,66 @@ Exit gate: quality/operations/economics are observable and experiments cannot by
 - final no-in-flight/no-active-secret verification.
 
 Exit gate: MAD4B/provider/site can be safely moved or retired without orphaned authority or lost evidence.
+
+
+## Phase 31 — Baseline, root trust and recovery
+
+- enforce current PR base as Feature HEAD ancestor in CI;
+- perform semantic impact review when baseline changes critical authority/runtime files;
+- externalize Control Plane release provenance/attestation;
+- separate trust roles for OAuth, evidence, release and recovery;
+- define and canary the minimal out-of-band Recovery Plane;
+- prove recovery of a deliberately disabled/broken Control Plane path.
+
+Exit gate: BASELINE_CURRENT + QROOTTRUST pass.
+
+## Phase 32 — Authoritative state and fenced execution
+
+- declare aggregate-authoritative state and projection/event semantics;
+- implement consistency checker;
+- define Control Plane ↔ Execution Worker boundary;
+- add monotonic lease fencing tokens;
+- bind worker writes to fencing epoch and aggregate revision;
+- add ambiguous-external-outcome reconciliation before retries;
+- test zombie worker, duplicate delivery and worker crash.
+
+Exit gate: QEXECUTIONMODEL pass.
+
+## Phase 33 — Commit guard, gate liveness and operating modes
+
+- bind approvals/execution to material dependency snapshot;
+- implement final Execution Commit Guard;
+- implement approval invalidation classes;
+- compile critical hard gates into DAG;
+- validate no cycles and terminal-state reachability;
+- implement bounded BootstrapTransition registry;
+- expose minimal unsatisfied blocker set;
+- define ENTERPRISE_MULTI_OPERATOR, SINGLE_OWNER_HARDENED and EMERGENCY_RECOVERY behavior.
+
+Exit gate: QLIVENESS + governance commit-safety pass.
+
+## Phase 34 — Semantic/provider/privacy/data-flow hardening
+
+- introduce provider CapabilityProfile traits and resolver constraints;
+- move Intent Registry to many-to-many role/confidence model;
+- enforce privacy-safe content addressing/dedup scope;
+- implement normalized semantic PublicationFingerprintSet;
+- formalize AI provenance-vs-regeneration semantics and holdout eval partitions;
+- adopt SupportedRuntimeProfiles and pairwise/risk-based compatibility;
+- configure risk-classed OfflineAuthorizationWindow policies;
+- separate AuditEvidence/DomainEvents/OperationalTelemetry;
+- generalize data-flow/residency policy beyond AI.
+
+Exit gate: QSEMANTICS pass for the Critical Kernel.
+
+## Phase 35 — Formal critical-state proof and architecture freeze
+
+- model-test authority/approval/commit-guard invariants;
+- model-test lease/fencing/idempotency invariants;
+- model-test provider certification/release-ring/quarantine invariants;
+- verify liveness/reachability as well as denial safety;
+- freeze Critical Kernel admission policy;
+- execute one exact ETG Staging vertical-slice proof;
+- record redesigns discovered by runtime evidence before wider implementation.
+
+Exit gate: CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED.

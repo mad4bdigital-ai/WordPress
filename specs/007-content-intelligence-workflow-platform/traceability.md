@@ -36,6 +36,22 @@
 | QTEST | verification strategy | property/fuzz/fault/matrix evidence |
 | QDRIFT | policy drift/kill switches | desired-vs-observed + fail-closed tests |
 | QSPEC | cross-feature spec isolation | unrelated feature CI stays green |
+| FREEZE | architecture freeze | admission decisions + vertical-slice proof |
+| FORMAL | critical state models | invariant + liveness model results |
+| DATAFLOW | data-flow policy | processor/region/classification decisions |
+| AUDITSEP | audit/telemetry separation | retention/integrity class evidence |
+| OFFLINE | offline authorization windows | risk-classed cached-evidence decisions |
+| PROFILE | supported runtime profiles | exact profile + pairwise matrix evidence |
+| AIINT | AI/eval integrity | provenance + holdout/adversarial eval evidence |
+| PUBFP | semantic publication fingerprint | normalized public verification evidence |
+| PRIVHASH | privacy-safe content addressing | dedup-scope/existence-oracle tests |
+| TRAIT | capability traits | provider semantic profile + conformance |
+| LIVENESS | gate DAG/bootstrap | acyclicity + reachability + minimal blockers |
+| COMMIT | execution commit guard | dependency snapshot + race invalidation tests |
+| FENCE | execution fencing | lease epoch + zombie-worker tests |
+| STATE | authoritative state/projections | aggregate/event consistency evidence |
+| ROOT | root trust / Recovery Plane | release attestation + out-of-band recovery canary |
+| BASESYNC | baseline synchronization | base ancestry + semantic delta evidence |
 | PORT | decommission-portability | export/revoke/final decommission report |
 | USAGE | usage-ledger-chargeback | usage/budget/reconciliation ledger |
 | EXP | experimentation-attribution | variant/exposure/guardrail evidence |
@@ -171,3 +187,19 @@ quiesce
 → decommission/portability
 
 No downstream layer can widen upstream authority or fabricate evidence.
+
+
+## Critical Kernel proof chain
+
+BASESYNC + ROOT
+→ AUTH + POLICY + COMMIT + LIVENESS
+→ STATE + FENCE + QCORR + QRES
+→ DPC + TRAIT
+→ BOOT + INTENT
+→ CJ + ART + CTX + RES
+→ WRITE/QA/PUB
+→ PUBFP
+→ RECOVERY evidence
+→ CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED
+
+Maturity families remain outside this critical proof unless a concrete dependency requires admission.

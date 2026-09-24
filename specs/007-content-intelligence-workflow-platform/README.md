@@ -12,6 +12,10 @@ It is intentionally generic:
 ## Files
 
 Core:
+- supported-runtime-profiles.json
+- gate-graph.json
+- data-model-critical-kernel.md
+- critical-kernel.md
 - feature.json
 - constitution.md
 - spec.md
@@ -29,6 +33,23 @@ Core:
 - data-model-operations-lifecycle.md
 
 Contracts:
+- architecture-freeze.md
+- formal-model-critical-state.md
+- data-flow-policy.md
+- audit-telemetry-retention.md
+- offline-authorization-window.md
+- runtime-profile-compatibility.md
+- ai-eval-integrity.md
+- publication-semantic-fingerprint.md
+- privacy-safe-content-addressing.md
+- intent-ownership.md
+- capability-traits.md
+- root-trust-recovery-plane.md
+- gate-dag-bootstrap-liveness.md
+- execution-commit-guard.md
+- execution-plane-fencing.md
+- authoritative-state-projections.md
+- baseline-synchronization.md
 - decommission-portability.md
 - usage-ledger-chargeback.md
 - experimentation-attribution.md
@@ -111,3 +132,12 @@ Functional coverage is not sufficient for release. `quality-model.md` defines in
 ## Long-lived operating model
 
 Feature 007 is not limited to greenfield content generation. It MUST inventory existing site state, resolve intent ownership, store immutable artifacts, recompute only affected dependencies, verify public publication, support human operations and eventual provider/site decommission. Multi-site fairness, rights, data-processing, localization, accessibility, experiments and economic usage are first-class platform concerns rather than vendor-specific add-ons.
+
+
+## Critical Kernel freeze
+
+The architecture is now frozen for first implementation scope. Broader maturity contracts remain valid design context, but a new CORE abstraction must satisfy `contracts/architecture-freeze.md`.
+
+The active implementation target is `critical-kernel.md`, not automatic execution of every contract in this directory.
+
+The PR must also contain the current target-branch base SHA as an ancestor. Green spec CI on a stale baseline is not sufficient.

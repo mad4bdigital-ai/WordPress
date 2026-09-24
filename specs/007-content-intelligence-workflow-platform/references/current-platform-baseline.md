@@ -41,3 +41,19 @@ Existing platform primitives confirmed in repository:
 - Media/SEO/site provider adapters
 
 Feature 007 must reuse these primitives unless a documented incompatibility is found.
+
+
+## Baseline synchronization update — 2026-09-24
+
+During hostile architecture review, PR #47 had advanced to:
+`1ca70c0f85f85dcd08529ed60c6b518a6c64c4fe`
+
+Feature 007 was 27 commits behind its target integration line. The new baseline changes affected OAuth lifecycle, Full Staging Authority, Local OAuth, OAuth Resource Bridge and related runtime/contract tests, so the drift was architecture-sensitive.
+
+Feature 007 synchronized by a real merge-parent commit:
+`64b7e0115493d553b0953c7b877f8c419f5676a7`
+
+The creation baseline remains historical provenance:
+`ab179816c03acb45751c1707eddee50d19178298`
+
+Future PR-base movement is a hard CI condition; green Feature 007 validation on a stale base is not considered current.
