@@ -74,7 +74,7 @@ EXPECTED_FIELDS = {
         "expires_at", "reconciliation_ref", "created_at", "updated_at",
     ),
     "idempotency": (
-        "id", "scope_key", "idempotency_key", "request_sha256", "status",
+        "id", "scope_key", "idempotency_key", "request_sha256", "claim_epoch", "status",
         "result_json", "result_sha256", "reconciliation_ref", "expires_at",
         "created_at", "updated_at",
     ),
@@ -210,7 +210,7 @@ def main():
     # Feature 007 durable execution relies on these fields being upgrade-visible,
     # not merely present in fresh CREATE statements.
     durable_required = {
-        "idempotency": ("reconciliation_ref", "expires_at"),
+        "idempotency": ("claim_epoch", "reconciliation_ref", "expires_at"),
         "work_leases": ("lease_epoch", "expires_at", "reconciliation_ref"),
         "outbox": ("workflow_plan_sha256", "idempotency_key", "request_sha256"),
         "inbox": ("provider_event_id", "job_id", "payload_sha256"),
@@ -223,9 +223,9 @@ def main():
                 f"{table}: durable execution fields hidden from dbDelta: {','.join(hidden)}"
             )
 
-    if "const VERSION = 8;" not in SCHEMA:
-        raise AssertionError("durable execution schema changes require schema version 8")
-    if "mad4b_scp_schema_integrity_v8" not in SCHEMA:
+    if "const VERSION = 9;" not in SCHEMA:
+        raise AssertionError("durable execution fencing requires schema version 9")
+    if "mad4b_scp_schema_integrity_v9" not in SCHEMA:
         raise AssertionError("durable execution schema integrity token was not versioned")
 
     print("mad4b.schema-dbdelta-upgrade.v2: PASS")
