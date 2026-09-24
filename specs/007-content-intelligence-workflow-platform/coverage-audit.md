@@ -978,9 +978,12 @@ This section closes the planning gap between broad contract coverage and executa
 | Concern | Closure mapping | Terminal evidence |
 |---|---|---|
 | External GitHub master ruleset | REPOGOV / T3601 | active ruleset, pinned Release Verdict integration, zero bypass actors |
+| Governance bootstrap retirement | REPOGOV / T3631 | initial bootstrap exception removed/permanently disabled after readback; later ruleset loss fails closed |
 | Baseline + execution ledger | BASESYNC/CLOSURE / T3602–T3603 | exact master ancestry + evidence-backed DONE/PARTIAL/OPEN/DEFERRED ledger |
 | Latest-master release root | ROOT / T3602 | trusted master attestation and exact package identity |
 | Protected backup + live recovery | BACKUP/ROOT / T3604–T3605 | protected-root readiness, backup receipt, known-good restore, deliberate-failure recovery |
+| Exact trusted-master ETG deployment | CLOSURE/ROOT / T3632 | deployed source/build/manifest/archive identity equals exact master artifact |
+| Runtime Root Trust readback | ROOT/CLOSURE / T3633–T3634 | seven trust/provenance files + runtime/schema/authority fail-closed readback on the exact deployed candidate |
 | Bit Flows 1.29 exact runtime | DPC/TRAIT / T3606–T3607 | exact artifact/capability/behavior/security evidence |
 | Privileged provider side-channel | DPC/QSEC / T3607 | absent/suppressed/federated-read-only/blocking proof |
 | Multi-Authority live path | AUTH / T3608 | exact issuer/subject/resource/filter-chain canary |
@@ -1011,7 +1014,9 @@ These do not grant deployment authority, but the related live mutation MUST NOT 
 - exact deployment artifact identity is fixed;
 - authority/grant/candidate bindings are exact and current;
 - provider capabilities used by the canary are certified;
-- rollback/readback paths are available.
+- rollback/readback paths are available;
+- the trusted master artifact is deployed by exact identity, not by version label;
+- Root Trust/provenance files are readable through an authorized evidence path after deployment; UNKNOWN does not count as PASS.
 
 The current ETG observation that a Control Plane build is internally consistent is not a substitute for these preconditions.
 
