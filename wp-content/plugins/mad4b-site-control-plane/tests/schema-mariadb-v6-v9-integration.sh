@@ -138,6 +138,44 @@ if ( $from >= 7 ) {
 }
 PHP
 
+cat > "$tmp/attempt-broken-v8.php" <<'PHP'
+<?php
+$schema = getenv( 'MAD4B_SCHEMA_BROKEN_V8_FILE' );
+if ( ! is_string( $schema ) || '' === $schema || ! is_file( $schema ) ) {
+    fwrite( STDERR, "Missing MAD4B_SCHEMA_BROKEN_V8_FILE\n" );
+    exit( 40 );
+}
+require $schema;
+$result = MAD4B_SCP_Schema::install_or_upgrade();
+if ( ! is_wp_error( $result ) || 'mad4b_governance_schema_unavailable' !== $result->get_error_code() ) {
+    fwrite( STDERR, wp_json_encode( array(
+        'stage' => 'attempt_known_broken_v8',
+        'unexpected_result' => $result,
+    ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL );
+    exit( 41 );
+}
+$data = $result->get_error_data();
+$missing = is_array( $data ) && isset( $data['missing_durable_columns'] ) && is_array( $data['missing_durable_columns'] )
+    ? $data['missing_durable_columns']
+    : array();
+sort( $missing );
+$expected = array(
+    'content_job_events.job_revision',
+    'content_job_events.payload_sha256',
+    'content_jobs.current_artifact_ref',
+    'content_jobs.revision',
+);
+sort( $expected );
+echo wp_json_encode( array(
+    'stage' => 'attempt_known_broken_v8',
+    'code' => $result->get_error_code(),
+    'installed_version_after_failure' => (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ),
+    'missing_durable_columns' => $missing,
+), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . PHP_EOL;
+if ( 6 !== (int) get_option( MAD4B_SCP_Schema::OPTION, 0 ) ) exit( 42 );
+if ( $expected !== $missing ) exit( 43 );
+PHP
+
 cat > "$tmp/retry-v9.php" <<'PHP'
 <?php
 $schema = getenv( 'MAD4B_SCHEMA_V9_FILE' );
@@ -168,7 +206,7 @@ common=(--path="$ROOT" --allow-root --skip-plugins --skip-themes)
 scenarios=(
   "6:97073e1c1a6a69c951d59c3282e56d1f107e76c2"
   "7:b12ecb1fadf349479109b006764bc53f45274975"
-  "8:ffceb0e4a761f038b355c78ffeb388ada225b2a0"
+  "8:72328ad1896ac43cb5293f793fe4b4fd3a27c253"
 )
 
 for scenario in "${scenarios[@]}"; do
@@ -207,4 +245,41 @@ for scenario in "${scenarios[@]}"; do
 done
 
 echo
+echo "=== HYBRID REPAIR: HEALTHY v6 -> KNOWN-BROKEN v8 PARTIAL STATE -> CURRENT v9 ==="
+"$WP_CLI" "${common[@]}" db reset --yes
+"$WP_CLI" "${common[@]}" core install \
+  --url=http://mad4b-schema.test \
+  --title="MAD4B Hybrid Schema Repair" \
+  --admin_user=admin \
+  --admin_password='mad4b-schema-ci-only' \
+  --admin_email=ci@example.invalid \
+  --skip-email
+
+v6_file="$tmp/schema-hybrid-v6.php"
+broken_v8_file="$tmp/schema-broken-v8.php"
+git -C "$ROOT" show "97073e1c1a6a69c951d59c3282e56d1f107e76c2:$SCHEMA_REL" > "$v6_file"
+git -C "$ROOT" show "ffceb0e4a761f038b355c78ffeb388ada225b2a0:$SCHEMA_REL" > "$broken_v8_file"
+grep -Fq "const VERSION = 6;" "$v6_file"
+grep -Fq "const VERSION = 8;" "$broken_v8_file"
+
+export MAD4B_SCHEMA_FROM_FILE="$v6_file"
+export MAD4B_EXPECTED_FROM_VERSION="6"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/install-v6.php"
+
+export MAD4B_SCHEMA_BROKEN_V8_FILE="$broken_v8_file"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/attempt-broken-v8.php"
+
+# The failed v8 attempt created durable tables but intentionally left the
+# canonical schema marker at v6. Seed one durable row to prove repair preserves
+# sparse historical data while v9 adds its missing fencing column.
+export MAD4B_SCHEMA_FROM_FILE="$broken_v8_file"
+export MAD4B_EXPECTED_FROM_VERSION="8"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/seed-sparse.php"
+
+export MAD4B_EXPECTED_FROM_VERSION="6"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/upgrade-v9.php"
+"$WP_CLI" "${common[@]}" eval-file "$tmp/retry-v9.php"
+
+echo
 echo "mad4b.schema-mariadb-v6-v7-v8-to-v9.integration.v1: PASS"
+echo "mad4b.schema-broken-v8-partial-repair.v1: PASS"
