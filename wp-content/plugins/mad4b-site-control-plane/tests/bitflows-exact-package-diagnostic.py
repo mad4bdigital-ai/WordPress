@@ -24,6 +24,7 @@ TARGETS = (
     "backend/app/Model/FlowNode.php",
     "backend/app/HTTP/Controllers/FlowController.php",
     "backend/app/HTTP/Controllers/WebhookDispatchController.php",
+    "backend/app/Services/FlowHistoryService.php",
 )
 
 
@@ -118,6 +119,30 @@ def function_body(source: str, method: str) -> str:
     raise RuntimeError(f"unbalanced method body: {method}")
 
 
+def bounded_statements(body: str, pattern: str, limit: int = 24) -> list[str]:
+    rows: list[str] = []
+    for raw in body.splitlines():
+        compact = re.sub(r"\s+", " ", raw).strip()
+        if not compact or not re.search(pattern, compact, re.I):
+            continue
+        if len(compact) > 220:
+            compact = compact[:217] + "..."
+        rows.append(compact)
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def return_expressions(body: str) -> list[str]:
+    rows: list[str] = []
+    for expr in re.findall(r"\breturn\s+(.{0,240}?);", body, re.S):
+        compact = re.sub(r"\s+", " ", expr).strip()
+        if len(compact) > 180:
+            compact = compact[:177] + "..."
+        rows.append(compact)
+    return rows
+
+
 def return_shapes(body: str) -> list[str]:
     rows: list[str] = []
     for expr in re.findall(r"\breturn\s+(.{0,240}?);", body, re.S):
@@ -163,6 +188,11 @@ def semantic_summary(path: str, source: str) -> dict[str, Any]:
         summary["execute"] = {
             "body_sha256": sha256_bytes(body.encode("utf-8")),
             "return_shapes": return_shapes(body),
+            "return_expressions": return_expressions(body),
+            "history_relevant_statements": bounded_statements(
+                body,
+                r"FlowHistory|history[_A-Za-z]*id|historyId|history_id|parent_history_id",
+            ),
             "flow_history_refs": body.count("FlowHistory"),
             "history_id_refs": len(re.findall(r"history[_A-Za-z]*id|historyId|history_id", body, re.I)),
             "provider_execution_ref_markers": len(re.findall(r"execution[_A-Za-z]*id|executionId|execution_id|run[_A-Za-z]*id|runId|run_id", body, re.I)),
@@ -270,6 +300,8 @@ def main() -> int:
     evidence["execution_correlation"] = {
         "execute_returns_identity_candidate": bool(executor["returns_execution_identity_candidate"]),
         "execute_return_shapes": executor["return_shapes"],
+        "execute_return_expressions": executor["return_expressions"],
+        "execute_history_relevant_statements": executor["history_relevant_statements"],
         "execute_history_id_refs": executor["history_id_refs"],
         "execute_flow_history_refs": executor["flow_history_refs"],
         "provider_execution_ref_markers": executor["provider_execution_ref_markers"],
