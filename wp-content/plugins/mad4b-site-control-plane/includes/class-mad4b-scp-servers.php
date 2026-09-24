@@ -234,7 +234,9 @@ final class MAD4B_SCP_Servers {
 		$authority_gated_names = self::mcp_tool_names_from_abilities( $authority_gated_abilities );
 		$authority_gated = array_values( array_intersect( $external_names, $authority_gated_names ) );
 		$all_gated_names = array_values( array_unique( array_merge( $blocked_names, $authority_gated_names ) ) );
-		$execution_leaks = array_values( array_intersect( $eligible_names, $all_gated_names ) );
+		$provider_execution_leaks = array_values( array_intersect( $eligible_names, $blocked_names ) );
+		$authority_execution_leaks = array_values( array_intersect( $eligible_names, $authority_gated_names ) );
+		$execution_leaks = array_values( array_unique( array_merge( $provider_execution_leaks, $authority_execution_leaks ) ) );
 
 		$stored['eligible_write_tool_count'] = count( $eligible_names );
 		$stored['expected_eligible_write_tool_count'] = count( $eligible_names );
@@ -242,9 +244,10 @@ final class MAD4B_SCP_Servers {
 		$stored['provider_gated_write_tools'] = $provider_gated;
 		$stored['authority_gated_write_tool_count'] = count( $authority_gated );
 		$stored['authority_gated_write_tools'] = $authority_gated;
-		$stored['provider_execution_mount_leaks'] = $execution_leaks;
-		$stored['provider_blocked_tool_leaks'] = array_values( array_intersect( $eligible_names, $blocked_names ) );
-		$stored['authority_blocked_tool_leaks'] = array_values( array_intersect( $eligible_names, $authority_gated_names ) );
+		$stored['provider_execution_mount_leaks'] = $provider_execution_leaks;
+		$stored['provider_blocked_tool_leaks'] = $provider_execution_leaks;
+		$stored['authority_blocked_tool_leaks'] = $authority_execution_leaks;
+		$stored['gated_execution_mount_leaks'] = $execution_leaks;
 		$stored['runtime_projection_current'] = true;
 		self::$external_attestation_projection_active = false;
 		return $stored;
