@@ -133,6 +133,19 @@ def verify_installed_provenance(plugin_dir: Path) -> dict[str, str]:
     }
 
 
+def assert_verified_root_receipt(root_receipt: dict[str, Any]) -> None:
+    if not root_receipt.get("verified") or not root_receipt.get("attestation_verified"):
+        raise ValueError("known-good target lacks verified release root trust")
+    if root_receipt.get("runtime_self_attestation_authoritative") is not False:
+        raise ValueError("runtime self-attestation cannot authorize Recovery Plane")
+    if root_receipt.get("trusted_signer_ref") != root_trust.TRUSTED_SIGNER_REF:
+        raise ValueError("known-good target was not signed from the trusted release ref")
+    if root_receipt.get("trusted_signer_event") not in root_trust.TRUSTED_SIGNER_EVENTS:
+        raise ValueError("known-good target signer event is not trusted")
+    if root_receipt.get("trusted_runner_environment") != "github-hosted":
+        raise ValueError("known-good target signer runner is not trusted")
+
+
 def build_restore_plan(
     wordpress_root: Path,
     environment: str,
@@ -142,8 +155,7 @@ def build_restore_plan(
 ) -> dict[str, Any]:
     if environment not in SUPPORTED_ENVIRONMENTS:
         raise ValueError("Recovery Plane is Staging-only")
-    if not root_receipt.get("verified") or not root_receipt.get("attestation_verified"):
-        raise ValueError("known-good target lacks verified release root trust")
+    assert_verified_root_receipt(root_receipt)
     state = target_state(wordpress_root)
     plan: dict[str, Any] = {
         "contract": PLAN_CONTRACT,
@@ -240,10 +252,7 @@ def apply_restore(
     owner_attest_plan_sha: str,
 ) -> dict[str, Any]:
     root = assert_plan_current(plan)
-    if not root_receipt.get("verified") or not root_receipt.get("attestation_verified"):
-        raise ValueError("recovery apply requires freshly verified external release root trust")
-    if root_receipt.get("runtime_self_attestation_authoritative") is not False:
-        raise ValueError("runtime self-attestation cannot authorize Recovery Plane apply")
+    assert_verified_root_receipt(root_receipt)
     plan_sha = str(plan["plan_sha256"])
     if owner_attest_plan_sha.strip().lower() != plan_sha:
         raise ValueError("OWNER_ATTEST_SINGLE_OWNER does not bind the exact recovery plan")
