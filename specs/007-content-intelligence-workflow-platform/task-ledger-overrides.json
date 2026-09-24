@@ -1,0 +1,72 @@
+{
+  "contract": "mad4b.feature007-task-ledger-overrides.v1",
+  "statuses": [
+    "DONE",
+    "PARTIAL",
+    "OPEN",
+    "DEFERRED"
+  ],
+  "overrides": {
+    "T3601": {
+      "status": "DONE",
+      "evidence_refs": [
+        "ruleset:23968498",
+        "workflow_run:36072550595",
+        "PR:#64"
+      ],
+      "reason": "External master repository governance is active and independently read back."
+    },
+    "T3602": {
+      "status": "DONE",
+      "evidence_refs": [
+        "runtime_release_sha:540d5db4be521297de673c8a4d14974c23b67a6a",
+        "workflow_run:36072550999",
+        "artifact:10838403565",
+        "receipt:10838323685"
+      ],
+      "reason": "Reviewed parent and deployable runtime release identities were captured; v2 model separates them."
+    },
+    "T3603": {
+      "status": "DONE",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py",
+        "specs/007-content-intelligence-workflow-platform/task-ledger.generated.json",
+        "specs/007-content-intelligence-workflow-platform/task-ledger-overrides.json"
+      ],
+      "reason": "Every task is deterministically classified and non-OPEN states require explicit evidence overrides."
+    },
+    "T3608": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
+      ],
+      "reason": "Repository implementation exists; exact live subject/resource certification remains open."
+    },
+    "T3615": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+        ".github/workflows/mad4b-governed-execution-fence.yml"
+      ],
+      "reason": "Fencing/commit-guard substrate exists; stale/zombie/crash callback fault proof remains open."
+    },
+    "T3628": {
+      "status": "DEFERRED",
+      "evidence_refs": [
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json#growth_fairness_localization_evalops"
+      ],
+      "reason": "Explicit DEFERRED_MATURITY lane; not a Critical Kernel blocker."
+    },
+    "T3631": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#64",
+        "merge:540d5db4be521297de673c8a4d14974c23b67a6a",
+        "wp-content/plugins/mad4b-site-control-plane/tests/repository-governance-bootstrap-retirement-contract.py"
+      ],
+      "reason": "One-time repository-governance bootstrap exception is retired."
+    }
+  }
+}
