@@ -34,8 +34,9 @@ for marker in [
 for marker in [
     "$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';",
     "$asset_version = MAD4B_SCP_VERSION;",
+    "hash_file( 'sha256', $asset_path )",
+    "substr( $content_sha, 0, 12 )",
     "filemtime( $asset_path )",
-    "$asset_version .= '-' . (string) $mtime;",
 ]:
     assert marker in persistence, marker
 
@@ -175,4 +176,4 @@ for marker in [
     assert marker in oauth, marker
 assert 'class="mad4b-settings-ajax-form"' in chatgpt_ui
 
-print("mad4b.admin-settings-persistence.v5: PASS")
+print("mad4b.admin-settings-persistence.v6: PASS")
