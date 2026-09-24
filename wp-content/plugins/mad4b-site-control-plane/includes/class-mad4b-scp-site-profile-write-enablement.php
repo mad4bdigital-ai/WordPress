@@ -117,8 +117,7 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 		$next['features']['write'] = true;
 		$next['features']['production_write_confirmed'] = false;
 		$next['updated_at'] = gmdate( 'c' );
-		if ( false === update_option( MAD4B_SCP_Site_Profile::OPTION, $next, false ) ) return new WP_Error( 'mad4b_site_profile_write_enable_save_failed', 'Governed write enablement could not be persisted.' );
-		MAD4B_SCP_Site_Profile::reset_cache();
+		if ( ! MAD4B_SCP_Site_Profile::persist_record_exact( $next ) ) return new WP_Error( 'mad4b_site_profile_write_enable_save_failed', 'Governed write enablement could not be persisted and verified by readback.' );
 
 		$after = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
 		$status = MAD4B_SCP_Site_Profile::status();
@@ -315,12 +314,6 @@ final class MAD4B_SCP_Site_Profile_Write_Enablement {
 	}
 
 	private static function restore_profile( array $profile ) {
-		$restored = update_option( MAD4B_SCP_Site_Profile::OPTION, $profile, false );
-		MAD4B_SCP_Site_Profile::reset_cache();
-		if ( false === $restored ) {
-			$current = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
-			return is_array( $current ) && $current === $profile;
-		}
-		return true;
+		return MAD4B_SCP_Site_Profile::persist_record_exact( $profile );
 	}
 }
