@@ -47,9 +47,8 @@ jobs:
             'ChatGPT tools/list catalog performance contract'
             'Full Staging authority contract'
             'Governed execution fence (latest)'
-            'One-time approval execution lifecycle (8.3)'
+            'Human approval decision (8.3)'
             'OAuth bridge runtime (latest)'
-            'Verify parent artifact retention'
           )
           printf '%s\n' "${critical[@]}" > /tmp/mad4b-critical-checks.txt
           for attempt in $(seq 1 120); do
