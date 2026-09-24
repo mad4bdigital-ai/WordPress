@@ -1023,7 +1023,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$path = self::private_key_path();
 		if ( is_wp_error( $path ) ) return $path;
 		if ( is_file( $path ) ) {
-			@chmod( $path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- best-effort permission hardening.
+			$mode = @fileperms( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- bounded local key metadata check.
+			if ( false === $mode || 0600 !== ( $mode & 0777 ) ) {
+				@chmod( $path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- best-effort repair only when permissions drift.
+			}
 			return true;
 		}
 		$dir = dirname( $path );
