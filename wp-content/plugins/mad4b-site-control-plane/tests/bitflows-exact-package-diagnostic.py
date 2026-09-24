@@ -412,6 +412,7 @@ def main() -> int:
             "server_marker_files": [],
             "server_reference_files": [],
             "route_marker_files": [],
+            "route_marker_details": [],
             "client_marker_files": [],
             "mcp_named_paths": [],
             "server_detection_method": "bounded_static_implementation_markers_v2",
@@ -572,14 +573,26 @@ def main() -> int:
             if server_path_marker or server_code_marker:
                 evidence["native_mcp"]["server_marker_files"].append(name)
 
-            route_marker = bool(
-                re.search(r"register_rest_route\s*\([^;]{0,1200}['\"][^'\"]*mcp", source, re.I | re.S)
-                or re.search(r"add_action\s*\(\s*['\"]wp_ajax_(?:nopriv_)?[^'\"]*mcp", source, re.I)
-                or re.search(r"(?:Route|Router)::(?:get|post|put|patch|delete|any)\s*\(\s*['\"][^'\"]*mcp", source, re.I)
-                or re.search(r"add_rewrite_rule\s*\([^;]{0,800}['\"][^'\"]*mcp", source, re.I | re.S)
+            route_patterns = (
+                ("wordpress_rest", r"register_rest_route\s*\([^;]{0,1200}['\"][^'\"]*mcp"),
+                ("wordpress_ajax", r"add_action\s*\(\s*['\"]wp_ajax_(?:nopriv_)?[^'\"]*mcp"),
+                ("router", r"(?:Route|Router)::(?:get|post|put|patch|delete|any)\s*\(\s*['\"][^'\"]*mcp[^;]{0,600};"),
+                ("rewrite", r"add_rewrite_rule\s*\([^;]{0,800}['\"][^'\"]*mcp"),
             )
-            if route_marker:
+            route_hits = []
+            for kind, pattern in route_patterns:
+                for match in re.finditer(pattern, source, re.I | re.S):
+                    snippet = re.sub(r"\s+", " ", match.group(0)).strip()
+                    route_hits.append(
+                        {
+                            "path": name,
+                            "kind": kind,
+                            "snippet": snippet[:600],
+                        }
+                    )
+            if route_hits:
                 evidence["native_mcp"]["route_marker_files"].append(name)
+                evidence["native_mcp"]["route_marker_details"].extend(route_hits)
 
             if re.search(r"\bMcpClient\b|mcp[_ -]?client", source, re.I):
                 evidence["native_mcp"]["client_marker_files"].append(name)
@@ -589,6 +602,10 @@ def main() -> int:
 
     for key in ("server_marker_files", "server_reference_files", "route_marker_files", "client_marker_files", "mcp_named_paths"):
         evidence["native_mcp"][key] = sorted(set(evidence["native_mcp"][key]))
+    evidence["native_mcp"]["route_marker_details"] = sorted(
+        evidence["native_mcp"]["route_marker_details"],
+        key=lambda row: (row.get("path", ""), row.get("kind", ""), row.get("snippet", "")),
+    )
 
     evidence["native_mcp"]["server_surface_detected"] = bool(
         evidence["native_mcp"]["server_marker_files"] or evidence["native_mcp"]["route_marker_files"]
@@ -634,6 +651,7 @@ def main() -> int:
                 "catalog_role": evidence["native_mcp"]["catalog_role"],
                 "server_marker_files": evidence["native_mcp"]["server_marker_files"],
                 "route_marker_files": evidence["native_mcp"]["route_marker_files"],
+                "route_marker_details": evidence["native_mcp"]["route_marker_details"],
                 "server_reference_files": evidence["native_mcp"]["server_reference_files"],
                 "client_marker_files": evidence["native_mcp"]["client_marker_files"],
                 "mcp_named_paths": evidence["native_mcp"]["mcp_named_paths"],
