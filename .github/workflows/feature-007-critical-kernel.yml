@@ -7,6 +7,9 @@ on:
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/release-root-trust-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/feature-007-critical-kernel.yml'
   workflow_dispatch:
@@ -54,3 +57,9 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/recovery-plane-contract.py
+
+      - name: Verify execution Commit Guard contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py
