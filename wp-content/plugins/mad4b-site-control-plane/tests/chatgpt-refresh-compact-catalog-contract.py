@@ -90,7 +90,8 @@ for marker in [
 ]:
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
 
-require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be mounted on direct ChatGPT transport")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be projectable on enrolled Staging")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in core_chatgpt, "non-Staging core ChatGPT catalog must not expose Staging authority diagnostics")
 require("mad4b/full-staging-authority-apply" not in core_chatgpt, "full staging apply must never be directly mounted on ChatGPT")
 
 # Large capability families must not be directly merged back into tools/list.
@@ -104,6 +105,8 @@ for forbidden in [
 ]:
     require(forbidden not in chatgpt_body, f"large capability catalog leaked back into direct tools/list: {forbidden}")
 require("$meta_write_transport = array( 'mad4b/write-execute' )" in chatgpt_body, "only the bounded write dispatcher may represent normal governed writes directly")
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_body, "unified enrolled Staging tools/list must include read-only full authority diagnostics")
+require("mad4b/full-staging-authority-apply" not in chatgpt_body, "full staging apply must remain outside direct ChatGPT tools/list")
 
 # The full logical capability universe remains intact behind discovery.
 full = SERVERS.split("public static function chatgpt_full_catalog_candidates()", 1)[1].split("public static function is_chatgpt_full_catalog_candidate", 1)[0]
@@ -123,4 +126,4 @@ require("'mad4b/database-raw-query'" in full and "array_diff" in full, "Raw SQL 
 require("'mad4b/staging-write-grant-reconcile'" in SERVERS, "bounded grant reconciliation must remain directly projectable")
 require("'mad4b/staging-write-candidate-bind'" in SERVERS, "bounded candidate binding must remain directly projectable")
 
-print("mad4b.chatgpt-refresh-minimal-catalog.v3: PASS")
+print("mad4b.chatgpt-refresh-minimal-catalog.v4: PASS")
