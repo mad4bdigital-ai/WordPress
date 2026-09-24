@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: mad4b-control-plane-package-${{ github.event.pull_request.number || github.ref }}
@@ -318,14 +319,52 @@ jobs:
           adapter_sha="$MAD4B_ADAPTER_SHA"
           build_fingerprint="$(tr -d '\r\n' < "$stage/BUILD-FINGERPRINT.txt")"
           package_digest="$(tr -d '\r\n' < "$stage/PACKAGE-MANIFEST-DIGEST.txt")"
+          export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest"
+
+          python3 - "$stage" "$version" <<'PY'
+          import json, os, sys, uuid
+          from pathlib import Path
+          stage = Path(sys.argv[1])
+          version = sys.argv[2]
+          source = os.environ['SOURCE_SHA']
+          bom = {
+              'bomFormat': 'CycloneDX',
+              'specVersion': '1.5',
+              'serialNumber': 'urn:uuid:' + str(uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/' + os.environ.get('GITHUB_REPOSITORY','') + '/commit/' + source)),
+              'version': 1,
+              'metadata': {
+                  'component': {
+                      'type': 'application',
+                      'name': 'mad4b-site-control-plane',
+                      'version': version,
+                      'hashes': [{'alg': 'SHA-256', 'content': os.environ['CONTROL_SHA']}],
+                      'properties': [
+                          {'name': 'mad4b:source_commit_sha', 'value': source},
+                          {'name': 'mad4b:build_fingerprint', 'value': os.environ['BUILD_FINGERPRINT']},
+                          {'name': 'mad4b:package_manifest_digest', 'value': os.environ['PACKAGE_DIGEST']},
+                      ],
+                  }
+              },
+              'components': [
+                  {
+                      'type': 'library',
+                      'name': 'wordpress-mcp-adapter',
+                      'version': '0.6.1',
+                      'hashes': [{'alg': 'SHA-256', 'content': os.environ['ADAPTER_SHA']}],
+                  }
+              ],
+          }
+          (stage / 'MAD4B-SBOM.cdx.json').write_text(json.dumps(bom, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+          sbom_sha="$(sha256sum "$stage/MAD4B-SBOM.cdx.json" | awk '{print $1}')"
+          export SBOM_SHA="$sbom_sha"
 
           printf '%s  %s\n' "$control_sha" "mad4b-site-control-plane-${version}.zip" > "$stage/SHA256SUMS"
           printf '%s  %s\n' "$adapter_sha" 'mcp-adapter-0.6.1.zip' >> "$stage/SHA256SUMS"
+          printf '%s  %s\n' "$sbom_sha" 'MAD4B-SBOM.cdx.json' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/MAD4B-BUILD-PROVENANCE.json" | awk '{print $1}')" 'MAD4B-BUILD-PROVENANCE.json' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/BUILD-FINGERPRINT.txt" | awk '{print $1}')" 'BUILD-FINGERPRINT.txt' >> "$stage/SHA256SUMS"
           printf '%s  %s\n' "$(sha256sum "$stage/PACKAGE-MANIFEST-DIGEST.txt" | awk '{print $1}')" 'PACKAGE-MANIFEST-DIGEST.txt' >> "$stage/SHA256SUMS"
-
-          export CONTROL_SHA="$control_sha" ADAPTER_SHA="$adapter_sha" BUILD_FINGERPRINT="$build_fingerprint" PACKAGE_DIGEST="$package_digest"
           python3 - "$stage" "$version" <<'PY'
           import hashlib, json, os, sys
           from pathlib import Path
@@ -357,6 +396,13 @@ jobs:
                   'archive': 'mcp-adapter-0.6.1.zip',
                   'sha256': os.environ['ADAPTER_SHA'],
                   'official_release_sha256': '1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676',
+              },
+              'supply_chain': {
+                  'sbom_format': 'CycloneDX-1.5',
+                  'sbom_file': 'MAD4B-SBOM.cdx.json',
+                  'sbom_sha256': os.environ['SBOM_SHA'],
+                  'github_artifact_digest_receipt_external': True,
+                  'runtime_package_manifest_is_canonical_installed_bytes_identity': True,
               },
               'functional_gap_zero_touch': {
                   'contract': 'mad4b.functional-gap-zero-touch.v1',
@@ -581,6 +627,9 @@ jobs:
           grep -Fq '"external_wpml_live_acceptance_required": true' "$stage/install-manifest.json"
           grep -Fq '"external_wpml_acceptance_not_claimed_by_local_runtime": true' "$stage/install-manifest.json"
           grep -Fq '"production_mutation_auto_enabled": false' "$stage/install-manifest.json"
+          grep -Fq '"sbom_format": "CycloneDX-1.5"' "$stage/install-manifest.json"
+          test -s "$stage/MAD4B-SBOM.cdx.json"
+          jq -e '.bomFormat == "CycloneDX" and .specVersion == "1.5"' "$stage/MAD4B-SBOM.cdx.json" >/dev/null
           grep -Fq 'mad4b-site-control-plane-general-distribution-kit-{exact_head_sha}' "$stage/package/mad4b-site-control-plane/config/staging-deployment-handoff.json"
           grep -Fq "Current plugin version: **${expected_version}**." "$stage/package/mad4b-site-control-plane/README.md"
           grep -Fq 'nine MAD4B custom servers' "$stage/package/mad4b-site-control-plane/README.md"
@@ -592,6 +641,7 @@ jobs:
           ( cd "$stage" && sha256sum --check --strict SHA256SUMS )
 
       - name: Upload reviewed General Distribution installation kit
+        id: upload_kit
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-site-control-plane-general-distribution-kit-${{ env.SOURCE_SHA }}
@@ -601,8 +651,62 @@ jobs:
             /tmp/mad4b-install-kit/MAD4B-BUILD-PROVENANCE.json
             /tmp/mad4b-install-kit/BUILD-FINGERPRINT.txt
             /tmp/mad4b-install-kit/PACKAGE-MANIFEST-DIGEST.txt
+            /tmp/mad4b-install-kit/MAD4B-SBOM.cdx.json
             /tmp/mad4b-install-kit/SHA256SUMS
             /tmp/mad4b-install-kit/install-manifest.json
             /tmp/mad4b-install-kit/INSTALL-GENERAL-DISTRIBUTION.md
+          if-no-files-found: error
+          retention-days: 30
+
+
+      - name: Verify GitHub artifact digest and emit distribution receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.upload_kit.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.upload_kit.outputs.artifact-digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-install-kit'
+          test -n "$ARTIFACT_ID"
+          test -n "$ARTIFACT_DIGEST"
+          api="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")"
+          api_digest="$(jq -r '.digest // ""' <<<"$api")"
+          expected_digest="$ARTIFACT_DIGEST"
+          expected_digest="${expected_digest#sha256:}"
+          api_digest="${api_digest#sha256:}"
+          test "$api_digest" = "$expected_digest"
+          test "$(jq -r '.workflow_run.head_sha' <<<"$api")" = "$SOURCE_SHA"
+          control_zip="$(find "$stage" -maxdepth 1 -name 'mad4b-site-control-plane-*.zip' -print -quit)"
+          python3 - "$stage" "$ARTIFACT_ID" "$expected_digest" "$(basename "$control_zip")" <<'PY'
+          import hashlib,json,os,sys
+          from pathlib import Path
+          stage=Path(sys.argv[1])
+          receipt={
+              'contract':'mad4b.github-artifact-receipt.v1',
+              'repository':os.environ.get('GITHUB_REPOSITORY',''),
+              'source_commit_sha':os.environ['SOURCE_SHA'],
+              'workflow':os.environ.get('GITHUB_WORKFLOW',''),
+              'workflow_run_id':os.environ.get('GITHUB_RUN_ID',''),
+              'distribution_artifact_id':int(sys.argv[2]),
+              'distribution_artifact_name':'mad4b-site-control-plane-general-distribution-kit-'+os.environ['SOURCE_SHA'],
+              'distribution_artifact_sha256':sys.argv[3],
+              'control_plane_archive':sys.argv[4],
+              'control_plane_archive_sha256':hashlib.sha256((stage/sys.argv[4]).read_bytes()).hexdigest(),
+              'mcp_adapter_sha256':hashlib.sha256((stage/'mcp-adapter-0.6.1.zip').read_bytes()).hexdigest(),
+              'sbom_sha256':hashlib.sha256((stage/'MAD4B-SBOM.cdx.json').read_bytes()).hexdigest(),
+              'build_fingerprint':(stage/'BUILD-FINGERPRINT.txt').read_text().strip(),
+              'package_manifest_digest':(stage/'PACKAGE-MANIFEST-DIGEST.txt').read_text().strip(),
+              'github_api_verified':True,
+              'runtime_binding_note':'Runtime binds installed bytes through package_manifest_digest/build_fingerprint; outer artifact digest is verified externally to avoid recursive self-hashing.',
+          }
+          (stage/'MAD4B-GITHUB-ARTIFACT-RECEIPT.json').write_text(json.dumps(receipt,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          PY
+
+      - name: Upload GitHub artifact receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-site-control-plane-github-artifact-receipt-${{ env.SOURCE_SHA }}
+          path: /tmp/mad4b-install-kit/MAD4B-GITHUB-ARTIFACT-RECEIPT.json
           if-no-files-found: error
           retention-days: 30
