@@ -672,6 +672,7 @@ def apply_restore(
         "mutation_started": True,
         "mutation_started_at": utc_now(),
         "target_plugin_path": str(live),
+        "expected_post_identity": expected,
         "evidence_state": "MUTATION_INTENT_DURABLE",
         "terminal": False,
     }
