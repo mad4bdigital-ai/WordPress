@@ -171,12 +171,48 @@ final class MAD4B_SCP_Servers {
 	}
 
 	public static function blocked_write_tools() {
+		// Provider/runtime-certification diagnostics only. Core governance gates,
+		// such as Context AI standing-delegation eligibility, are enforced by
+		// write_tools()/authority status and must not be mislabeled as provider
+		// certification failures.
 		$projection = self::adapter_write_projection();
 		$blocked = array_values( $projection['blocked'] );
+
 		usort( $blocked, static function ( $a, $b ) {
 			return strcmp( isset( $a['ability'] ) ? $a['ability'] : '', isset( $b['ability'] ) ? $b['ability'] : '' );
 		} );
 		return $blocked;
+	}
+
+	/**
+	 * Core governance gates are distinct from provider/runtime certification.
+	 * These abilities remain part of stable external discovery but cannot mount
+	 * on mad4b-write until their own bounded governance predicate is satisfied.
+	 */
+	public static function governance_gated_write_tools() {
+		$gated = array();
+		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY )
+			&& ! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$status = method_exists( 'MAD4B_SCP_Context_Authority', 'ai_review_policy_status' )
+				? MAD4B_SCP_Context_Authority::ai_review_policy_status()
+				: array();
+			$violations = isset( $status['blockers'] ) && is_array( $status['blockers'] )
+				? array_values( array_unique( array_map( 'strval', $status['blockers'] ) ) )
+				: array();
+			if ( empty( $violations ) ) $violations[] = 'ai_review_standing_delegation_not_eligible';
+			$gated[] = array(
+				'ability' => MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY,
+				'provider' => 'core',
+				'reason' => 'ai_review_standing_delegation_not_eligible',
+				'violations' => $violations,
+			);
+		}
+		usort( $gated, static function ( $a, $b ) {
+			return strcmp( isset( $a['ability'] ) ? $a['ability'] : '', isset( $b['ability'] ) ? $b['ability'] : '' );
+		} );
+		return $gated;
 	}
 
 	/**
@@ -199,13 +235,23 @@ final class MAD4B_SCP_Servers {
 		$blocked_names = self::mcp_tool_names_from_abilities( $blocked_abilities );
 		$provider_gated = array_values( array_intersect( $external_names, $blocked_names ) );
 		$execution_leaks = array_values( array_intersect( $eligible_names, $blocked_names ) );
+		$governance_abilities = array();
+		foreach ( self::governance_gated_write_tools() as $entry ) {
+			if ( is_array( $entry ) && ! empty( $entry['ability'] ) ) $governance_abilities[] = (string) $entry['ability'];
+		}
+		$governance_names = self::mcp_tool_names_from_abilities( $governance_abilities );
+		$governance_gated = array_values( array_intersect( $external_names, $governance_names ) );
+		$governance_leaks = array_values( array_intersect( $eligible_names, $governance_names ) );
 
 		$stored['eligible_write_tool_count'] = count( $eligible_names );
 		$stored['expected_eligible_write_tool_count'] = count( $eligible_names );
 		$stored['provider_gated_write_tool_count'] = count( $provider_gated );
 		$stored['provider_gated_write_tools'] = $provider_gated;
+		$stored['governance_gated_write_tool_count'] = count( $governance_gated );
+		$stored['governance_gated_write_tools'] = $governance_gated;
 		$stored['provider_execution_mount_leaks'] = $execution_leaks;
 		$stored['provider_blocked_tool_leaks'] = $execution_leaks;
+		$stored['governance_execution_mount_leaks'] = $governance_leaks;
 		$stored['runtime_projection_current'] = true;
 		self::$external_attestation_projection_active = false;
 		return $stored;

@@ -3,6 +3,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 authority = (root / "includes/class-mad4b-scp-context-authority.php").read_text(encoding="utf-8")
+abilities = (root / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 drive = (root / "includes/class-mad4b-scp-google-drive-context.php").read_text(encoding="utf-8")
 admin = (root / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
 skills_admin = (root / "includes/class-mad4b-scp-skills-admin-ui.php").read_text(encoding="utf-8")
@@ -91,6 +92,11 @@ require(authority, "mad4b_context_review_decision_invalid", "bounded human revie
 require(authority, "const AI_REVIEW_CONTRACT = 'mad4b.context-ai-agent-review.v1'", "AI Agent review contract")
 require(authority, "const REVIEW_POLICY_CONTRACT = 'mad4b.context-review-policy.v1'", "review policy contract")
 require(authority, "const AI_REVIEW_ABILITY = 'mad4b/context-ai-review'", "dedicated AI review ability")
+require(abilities, "'mad4b-admin'", "registered core admin Ability category")
+require(authority, "'category' => 'mad4b-admin'", "AI review registered governance category")
+require(authority, "'surface' => 'write'", "AI review dedicated write transport surface")
+if "'category' => 'mad4b-write'" in authority:
+    raise AssertionError("mad4b-write is an MCP server/transport ID, not a WordPress Ability category")
 require(authority, "public static function review_asset_by_agent", "dedicated AI review callback")
 require(authority, "private static function review_asset_with_actor", "shared actor-aware exact review primitive")
 require(authority, "public static function set_review_policy", "explicit review policy mutation")
@@ -625,6 +631,9 @@ require(authority, "'mad4b/context-ai-review'", "direct core AI review ability r
 require(servers, "'mad4b/context-ai-review'", "stable unified catalog entry for AI review")
 require(servers, "MAD4B_SCP_Context_Authority::ai_review_catalog_eligible()", "AI review runtime inventory policy gate")
 require(servers, "array_diff( $candidates, array( 'mad4b/context-ai-review' ) )", "AI review fail-closed runtime unmount")
+blocked_write_body = servers.split("public static function blocked_write_tools()", 1)[1].split("public static function governance_gated_write_tools()", 1)[0]
+if "ai_review_standing_delegation_not_eligible" in blocked_write_body:
+    raise AssertionError("blocked_write_tools must remain provider/runtime-certification scoped; core AI standing-delegation gates belong to write_tools()/authority status")
 require(write_authority, "mad4b.context-ai-review-standing-delegation.v1", "AI review standing delegation contract")
 require(write_authority, "public static function ai_review_delegation_status", "AI review request-time delegation guard")
 require(write_authority, "public static function ai_review_delegation_allowed", "AI review standing delegation predicate")
@@ -679,4 +688,4 @@ require(authority, "legacy_unbound", "legacy approval binding backlog observabil
 require(adapter, "classification_source", "Context asset classification provenance observability")
 require(adapter, "automatic_classification", "automatic classification evidence observability")
 
-print("mad4b.site-control-plane.context-authority-contract.v69: PASS")
+print("mad4b.site-control-plane.context-authority-contract.v73: PASS")

@@ -25,11 +25,13 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 	private static $last_capture_telemetry = null;
 	private static $last_capture_build = '';
 	private static $last_capture_class = '';
+	private static $request_build_fingerprint = '';
 
 	public static function boot_early() {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) return;
+		self::pin_request_build_fingerprint();
 
 		// Query Monitor already owns these concern hooks. Keeping MAD4B listeners on
 		// them makes MAD4B show up in "Hooks in Use" and makes a self-frame available
@@ -190,8 +192,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		self::$captured = true;
 		if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) || ! MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed() ) return;
 
-		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
-		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
+		$build = self::request_build_fingerprint();
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $build ) ) return;
 
 		$telemetry = self::load_telemetry( $build );
@@ -227,7 +228,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 			if ( ! empty( $classification['pre_init_abilities_violation'] ) ) self::increment_counter( $telemetry, 'mad4b', 'pre_init_abilities_violation' );
 			if ( ! empty( $classification['fluentform_action_scheduler'] ) ) self::increment_counter( $telemetry, 'third_party', 'fluentform_action_scheduler' );
 
-			$telemetry['events'][] = array(
+			$event_record = array(
 				'type' => $event_type,
 				'classification' => $bucket,
 				'severity' => isset( $classification['severity'] ) ? sanitize_key( (string) $classification['severity'] ) : 'observed',
@@ -242,6 +243,11 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 				'callers' => isset( $classification['callers'] ) && is_array( $classification['callers'] ) ? array_slice( $classification['callers'], 0, 6 ) : array(),
 				'evidence_source' => self::CONTRACT,
 			);
+			$telemetry['events'][] = $event_record;
+			if ( ! isset( $telemetry['events_by_bucket'] ) || ! is_array( $telemetry['events_by_bucket'] ) ) $telemetry['events_by_bucket'] = array();
+			if ( ! isset( $telemetry['events_by_bucket'][ $bucket ] ) || ! is_array( $telemetry['events_by_bucket'][ $bucket ] ) ) $telemetry['events_by_bucket'][ $bucket ] = array();
+			$telemetry['events_by_bucket'][ $bucket ][] = $event_record;
+			$telemetry['events_by_bucket'][ $bucket ] = array_slice( $telemetry['events_by_bucket'][ $bucket ], -1 * MAD4B_SCP_Live_Acceptance_Observer::MAX_EVENTS );
 		}
 
 		$telemetry['events'] = array_slice( isset( $telemetry['events'] ) && is_array( $telemetry['events'] ) ? $telemetry['events'] : array(), -1 * MAD4B_SCP_Live_Acceptance_Observer::MAX_EVENTS );
@@ -331,6 +337,24 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		return $out;
 	}
 
+	private static function pin_request_build_fingerprint() {
+		if ( preg_match( '/^[a-f0-9]{64}$/', self::$request_build_fingerprint ) ) return self::$request_build_fingerprint;
+		$provenance = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		$build = isset( $provenance['build_fingerprint'] ) ? strtolower( (string) $provenance['build_fingerprint'] ) : '';
+		if ( preg_match( '/^[a-f0-9]{64}$/', $build ) ) self::$request_build_fingerprint = $build;
+		return self::$request_build_fingerprint;
+	}
+
+	private static function request_build_fingerprint() {
+		$build = self::pin_request_build_fingerprint();
+		return preg_match( '/^[a-f0-9]{64}$/', $build ) ? $build : '';
+	}
+
+	/** @internal Pure seam for runtime regressions. */
+	public static function request_build_fingerprint_for_test() {
+		return self::request_build_fingerprint();
+	}
+
 	private static function load_telemetry( $build ) {
 		$stored = get_option( MAD4B_SCP_Live_Acceptance_Observer::TELEMETRY_OPTION, array() );
 		$valid = is_array( $stored )
@@ -359,6 +383,7 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 				'unknown' => array(),
 			),
 			'events' => array(),
+			'events_by_bucket' => array( 'mad4b' => array(), 'third_party' => array(), 'wordpress_core' => array(), 'unknown' => array() ),
 			'performance' => self::empty_performance(),
 		);
 	}
