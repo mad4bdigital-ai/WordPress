@@ -26,11 +26,17 @@ final class MAD4B_SCP_Admin_Settings_Persistence {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- route selection only.
 		if ( '' === $page || 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
 
+		$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';
+		$asset_version = MAD4B_SCP_VERSION;
+		if ( is_readable( $asset_path ) ) {
+			$mtime = filemtime( $asset_path );
+			if ( false !== $mtime ) $asset_version .= '-' . (string) $mtime;
+		}
 		wp_enqueue_script(
 			self::HANDLE,
 			plugins_url( 'assets/admin-settings-persistence.js', MAD4B_SCP_FILE ),
 			array(),
-			MAD4B_SCP_VERSION,
+			$asset_version,
 			true
 		);
 		wp_localize_script(
