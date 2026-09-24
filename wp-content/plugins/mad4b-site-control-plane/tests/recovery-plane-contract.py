@@ -78,6 +78,9 @@ def known_good_fixture(tmp: Path, source_sha: str):
         "signer_workflow": root_trust.SIGNER_WORKFLOW,
         "signer_digest": "c" * 40,
         "verified_attestation_count": 1,
+        "trusted_signer_ref": root_trust.TRUSTED_SIGNER_REF,
+        "trusted_signer_event": "workflow_dispatch",
+        "trusted_runner_environment": "github-hosted",
         "artifact_sha256": install_data["control_plane"]["sha256"],
         "source_commit_sha": source_sha,
         "build_fingerprint": build_fingerprint,
@@ -98,6 +101,22 @@ with tempfile.TemporaryDirectory() as td:
 
     source_sha = "d" * 40
     artifact, install, receipt = known_good_fixture(tmp, source_sha)
+
+    candidate_receipt = dict(receipt)
+    candidate_receipt["trusted_signer_ref"] = "refs/pull/57/merge"
+    candidate_receipt["trusted_signer_event"] = "pull_request"
+    try:
+        recovery.build_restore_plan(
+            wp,
+            "staging",
+            "INC-CANDIDATE-UNTRUSTED",
+            "Reject PR-controlled candidate attestation at Recovery Plane boundary.",
+            candidate_receipt,
+        )
+        raise SystemExit("Recovery Plane accepted a PR-controlled candidate attestation")
+    except ValueError as exc:
+        if "trusted release ref" not in str(exc):
+            raise
 
     plan = recovery.build_restore_plan(
         wp,
