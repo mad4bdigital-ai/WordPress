@@ -57,6 +57,10 @@ final class MAD4B_SCP_Live_Truth {
 
 	private static function recover_runtime_authority() {
 		if ( self::$recovering ) return;
+		// Merely materializing the Abilities registry for MCP initialize/tools-list
+		// must not trigger full authority/grant/provider reconciliation reads.
+		// Explicit status/certification tool calls still execute current truth.
+		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) return;
 		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) || ! MAD4B_SCP_Staging_Write_Authority::eligible() ) return;
 		self::$recovering = true;
 		// Runtime recovery means refreshing truth, never reconciling grants/subjects.
