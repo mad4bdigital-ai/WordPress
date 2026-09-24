@@ -213,6 +213,7 @@ for marker in [
     "private static function canonical_document( array $definition )",
     "'mad4b/skill-provider-refresh'",
     "'provider_content_refreshed' => true",
+    "'provider_refresh_metadata_rollback_failed'",
     "$provider_managed && (bool) $desired_enabled",
 ]:
     if marker not in provider_discovery:

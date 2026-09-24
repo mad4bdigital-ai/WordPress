@@ -472,7 +472,12 @@ final class MAD4B_SCP_Skill_Provider_Discovery {
 		$meta['provider_managed_by'] = self::CONTRACT;
 		$written = self::atomic_write( $meta_file, wp_json_encode( $meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" );
 		if ( is_wp_error( $written ) ) {
-			if ( $refresh ) self::atomic_write( $file, $before_skill );
+			if ( ! $refresh ) return $written;
+			$restore_skill = self::atomic_write( $file, $before_skill );
+			$after_skill = is_file( $file ) && ! is_link( $file ) ? file_get_contents( $file ) : false; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			if ( is_wp_error( $restore_skill ) || ! is_string( $after_skill ) || $before_skill !== $after_skill ) {
+				return new WP_Error( 'provider_refresh_metadata_rollback_failed', 'Provider Skill metadata write failed and refreshed bytes could not be verified after rollback.' );
+			}
 			return $written;
 		}
 		$event = $refresh ? 'mad4b/skill-provider-refresh' : 'mad4b/skill-provider-activation';
