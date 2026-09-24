@@ -186,7 +186,7 @@ jobs:
           grep -Fq "mad4b.staging-write-planning-guard.v2" "$planning"
           grep -Fq "remote_planner_requires_exact_mad4b_write_grant" "$planning"
           grep -Fq "creates_pending_ticket_only" "$planning"
-          grep -Fq "mad4b.write-runtime-certification.v2" "$cert"
+          grep -Fq "mad4b.write-runtime-certification.v3" "$cert"
           grep -Fq "approval_planner_bootstrap_exception" "$cert"
           grep -Fq "provider_uncertified_write_tools_safely_unmounted" "$cert"
           grep -Fq "mcp_recovery_scoped_to_mad4b_routes" "$cert"
