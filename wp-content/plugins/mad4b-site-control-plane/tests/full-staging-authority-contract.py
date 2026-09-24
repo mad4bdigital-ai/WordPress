@@ -68,7 +68,7 @@ assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools()
 chatgpt_map = servers.split("'mad4b-chatgpt' => array_merge(", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_map
 assert "mad4b/full-staging-authority-apply" not in chatgpt_map
-assert "self::meta( true, 'read' )" in full
+assert full.count("self::meta( true, 'read' )") >= 2
 assert "self::meta( false, 'enrollment' )" in full
 
 bg_start = developer.index("public static function breakglass_flag_enabled()")
