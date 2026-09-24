@@ -98,3 +98,40 @@ The repository-governance policy is now committed, but external ruleset enforcem
 The previous `45b44d5885c24976df8df9cc47a51fbf6cd0a3bb` baseline remains historical trusted-root evidence. Because `master` advanced after it, the current descendant requires its own release/root evidence before live deployment claims can be made.
 
 This exact baseline is also the anchor for `implementation-closure.json` and Phase 36.
+
+
+## Enforced repository-governance synchronization — 2026-09-25
+
+Feature 007 was synchronized again after PR #64 completed the repository-governance bootstrap tooling and permanently retired the temporary bootstrap exception.
+
+Current exact baseline:
+- branch: `master`
+- SHA: `540d5db4be521297de673c8a4d14974c23b67a6a`
+- merge: `Merge PR #64: fix repository governance bootstrap tooling`
+- external ruleset id: `23968498`
+- enforcement: active
+- target: `refs/heads/master` only
+- bypass actors: none
+- required check: `Repository release verdict`
+- required-check integration id: `15368`
+- allowed merge method: `merge`
+- review-thread resolution: required
+- strict required-status policy: enabled
+
+Post-merge master governance workflow `36072550595` passed.
+
+The one-time bootstrap exception is no longer part of Repository Governance or Release Verdict. Ordinary master-bound changes therefore fail closed if active governance cannot be independently verified.
+
+Latest trusted-master package evidence for this baseline:
+- package run: `36072550999`
+- General Distribution artifact: `10838403565`
+- artifact digest: `sha256:23887c052950d62f42d68ddba378460ec80a68f9b14365bc3d91220be451b63e`
+- receipt artifact: `10838323685`
+- receipt digest: `sha256:baa92a2dc3e5ebf92b80d172983be8585486aed1065951b8ddb452d0bfb33cfc`
+- build fingerprint: `f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6`
+- package manifest digest: `3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950`
+- Control Plane archive SHA-256: `c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06`
+- trusted signer ref: `refs/heads/master`
+- attestation verification: PASS
+
+ETG Staging remains a separate live gate and is not claimed to be on this baseline yet.
