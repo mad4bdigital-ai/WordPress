@@ -180,6 +180,35 @@ final class MAD4B_SCP_Servers {
 	}
 
 	/**
+	 * Stable core-write candidates may be catalog-visible while a separate
+	 * authority/delegation gate keeps them off the executable write surface.
+	 * Keep these distinct from provider certification gates so diagnostics do
+	 * not misclassify core authority as provider drift.
+	 */
+	public static function authority_gated_write_tools() {
+		$blocked = array();
+		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY )
+			&& ! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$policy = method_exists( 'MAD4B_SCP_Context_Authority', 'ai_review_policy_status' )
+				? MAD4B_SCP_Context_Authority::ai_review_policy_status()
+				: array();
+			$blocked[] = array(
+				'ability' => MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY,
+				'provider' => 'core',
+				'gate_class' => 'authority',
+				'reason' => 'context_ai_review_delegation_not_eligible',
+				'violations' => isset( $policy['blockers'] ) && is_array( $policy['blockers'] ) ? array_values( $policy['blockers'] ) : array(),
+			);
+		}
+		usort( $blocked, static function ( $a, $b ) {
+			return strcmp( isset( $a['ability'] ) ? $a['ability'] : '', isset( $b['ability'] ) ? $b['ability'] : '' );
+		} );
+		return $blocked;
+	}
+
+	/**
 	 * Re-project dynamic provider eligibility over immutable external inventory
 	 * evidence at read time. A same-build certification transition therefore
 	 * updates gated/eligible semantics without rewriting the captured MCP receipt
@@ -198,14 +227,24 @@ final class MAD4B_SCP_Servers {
 		}
 		$blocked_names = self::mcp_tool_names_from_abilities( $blocked_abilities );
 		$provider_gated = array_values( array_intersect( $external_names, $blocked_names ) );
-		$execution_leaks = array_values( array_intersect( $eligible_names, $blocked_names ) );
+		$authority_gated_abilities = array();
+		foreach ( self::authority_gated_write_tools() as $entry ) {
+			if ( is_array( $entry ) && ! empty( $entry['ability'] ) ) $authority_gated_abilities[] = (string) $entry['ability'];
+		}
+		$authority_gated_names = self::mcp_tool_names_from_abilities( $authority_gated_abilities );
+		$authority_gated = array_values( array_intersect( $external_names, $authority_gated_names ) );
+		$all_gated_names = array_values( array_unique( array_merge( $blocked_names, $authority_gated_names ) ) );
+		$execution_leaks = array_values( array_intersect( $eligible_names, $all_gated_names ) );
 
 		$stored['eligible_write_tool_count'] = count( $eligible_names );
 		$stored['expected_eligible_write_tool_count'] = count( $eligible_names );
 		$stored['provider_gated_write_tool_count'] = count( $provider_gated );
 		$stored['provider_gated_write_tools'] = $provider_gated;
+		$stored['authority_gated_write_tool_count'] = count( $authority_gated );
+		$stored['authority_gated_write_tools'] = $authority_gated;
 		$stored['provider_execution_mount_leaks'] = $execution_leaks;
-		$stored['provider_blocked_tool_leaks'] = $execution_leaks;
+		$stored['provider_blocked_tool_leaks'] = array_values( array_intersect( $eligible_names, $blocked_names ) );
+		$stored['authority_blocked_tool_leaks'] = array_values( array_intersect( $eligible_names, $authority_gated_names ) );
 		$stored['runtime_projection_current'] = true;
 		self::$external_attestation_projection_active = false;
 		return $stored;
