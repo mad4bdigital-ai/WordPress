@@ -14,6 +14,7 @@ permissions:
   actions: read
   checks: read
   pull-requests: read
+  issues: read
 
 concurrency:
   group: mad4b-release-verdict-${{ github.event.pull_request.number || github.ref }}
@@ -33,6 +34,21 @@ jobs:
         with:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
+
+      - name: Verify exact-head owner attestation
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/verify_repository_owner_attestation.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --pr-number "$PR_NUMBER" \
+            --expected-head "$SOURCE_SHA" \
+            --policy .github/mad4b-repository-governance-policy.json \
+            --output /tmp/mad4b-owner-attestation.json
 
       - name: Wait for exact-head critical checks
         env:
@@ -287,9 +303,20 @@ jobs:
               value['status']=='completed' and value['conclusion']=='success'
               for value in critical.values()
           )
+          owner_attestation_required=os.environ.get('GITHUB_EVENT_NAME')=='pull_request'
+          owner_attestation=None
+          owner_attestation_ready=not owner_attestation_required
+          owner_path=Path('/tmp/mad4b-owner-attestation.json')
+          if owner_path.is_file():
+              try:
+                  owner_attestation=json.loads(owner_path.read_text(encoding='utf-8'))
+                  owner_attestation_ready=owner_attestation.get('verified') is True
+              except Exception:
+                  owner_attestation_ready=False
           merge_gate_ready=bool(
               critical_checks_ready
               and governance_ready
+              and owner_attestation_ready
           )
 
           live=latest.get('Live ETG managed browser acceptance')
@@ -443,13 +470,16 @@ jobs:
               'ready_for_review_authorized':False,
               'merge_authorized':False,
               'production_authorized':False,
-              'owner_attestation_required_for_exact_head':True,
+              'owner_attestation_required_for_exact_head':owner_attestation_required,
+              'owner_attestation_verified':owner_attestation_ready,
+              'owner_attestation':owner_attestation,
               'attestation_stale_on_descendant':True,
               'notes':[
                   'Release Verdict now runs for every master-bound change so GitHub rulesets can require one stable merge-gate check.',
                   'Runtime-affecting and release-evidence changes require an exact-head General Distribution artifact and verify its internal canonical identity before repository_release_ready can become true.',
                   'Repository-non-runtime changes may satisfy repository_merge_gate_ready without claiming repository_release_ready.',
                   'The initial repository-ruleset bootstrap exception is retired; repository governance must verify ready for every merge-gate PASS.',
+                  'Every master-bound pull request requires an authorized OWNER_ATTEST_SINGLE_OWNER comment bound to the exact current head SHA.',
                   'Repository success does not substitute for live ETG Staging acceptance.',
                   'Live performance and rollback drill remain external deployment gates.',
                   'Production and Breakglass/raw-SQL authority are not granted by this verdict.',
