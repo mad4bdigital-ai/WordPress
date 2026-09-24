@@ -116,6 +116,11 @@ def main() -> int:
         if prov.get("archive_format_contract") != "mad4b.deterministic-zip.v1":
             raise AssertionError("deterministic archive format contract missing")
 
+        if prov.get("archive_compression") != "stored":
+            raise AssertionError("canonical archive must avoid compressor-version drift")
+        if data_a["receipt"].get("archive_compression") != "stored":
+            raise AssertionError("builder receipt must bind stored archive semantics")
+
         with zipfile.ZipFile(zip_a) as z:
             names = z.namelist()
             if names != sorted(names):
