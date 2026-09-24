@@ -11,8 +11,6 @@ on:
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
       - '.github/workflows/mad4b-release-verdict.yml'
-      - '.github/workflows/mad4b-release-verdict.yml'
-      - '.github/workflows/mad4b-release-verdict.yml'
   push:
     branches:
       - master
