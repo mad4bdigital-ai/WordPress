@@ -14,7 +14,11 @@ final class MAD4B_SCP_Plugin {
 		if ( is_wp_error( $schema ) ) self::$schema_error = $schema;
 		update_option( 'mad4b_scp_version', MAD4B_SCP_VERSION, false );
 		if ( false === get_option( MAD4B_SCP_Audit::LEGACY_OPTION, false ) ) add_option( MAD4B_SCP_Audit::LEGACY_OPTION, array(), '', false );
-		if ( ! is_wp_error( self::$schema_error ) ) {
+		if ( ! is_wp_error( self::$schema_error )
+			&& ( ! class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) || ! MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime() ) ) {
+			// Audit::record() performs the same fail-closed head initialization before
+			// every mutation audit. MCP discovery therefore does not need table/engine/
+			// legacy-chain/head inspection merely to construct initialize/tools-list.
 			$audit = MAD4B_SCP_Audit::ensure_head_initialized();
 			if ( is_wp_error( $audit ) ) self::$schema_error = $audit;
 		}
