@@ -86,3 +86,21 @@ Explicit review when delta affects:
 - cron/background execution;
 - privilege checks;
 - retry/resume semantics.
+
+## High-risk canary bootstrap
+
+A high-risk write MUST NOT require evidence produced only by the canary execution itself before the first canary can run.
+
+The first isolated canary MAY become eligible only when all of these are exact/current:
+- provider runtime is available;
+- exact provider artifact/runtime certification passes;
+- capability structural probes pass;
+- artifact authority is bound;
+- the ability is actually exposed by the adapter surface;
+- the adapter explicitly opts that exact ability into governed canary execution.
+
+These facts produce a deterministic non-authorizing `canary_basis_digest`. They MAY advance the capability from SHADOW to isolated CANARY eligibility, but they MUST NOT make the provider ability write-eligible, mount it on the normal write surface, create a grant, create an approval, or activate it for Production.
+
+Canary execution still requires the governed non-production write authority, exact candidate/build binding, exact artifact and capability-contract binding, the current `canary_basis_digest`, adapter opt-in, one-time approval when required, budgets/audit, and provider-local policy. A current trusted behavioral receipt, when one already exists, is additionally bound and verified; it is not a circular prerequisite for the first canary.
+
+Successful canary execution emits evidence only. Promotion to normal ACTIVE write eligibility remains a separate governed decision and is never implied by package identity or by the canary side effect itself.
