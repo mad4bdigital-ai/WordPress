@@ -779,7 +779,17 @@ jobs:
           control_archive="$(find "$stage" -maxdepth 1 -type f -name 'mad4b-site-control-plane-*.zip' -print -quit)"
           test -n "$control_archive"
           test -f "$stage/RELEASE-ATTESTATION.sigstore.json"
+          test -f "$stage/RELEASE-ATTESTATION-LOCATOR.json"
           test -f "$stage/install-manifest.json"
+
+          jq -e '
+            .trust_role == "release_package_attestation"
+            and .trusted_release_root == true
+            and .signer_ref == "refs/heads/master"
+            and (.signer_event == "push" or .signer_event == "workflow_dispatch")
+            and .runtime_self_attestation_authoritative == false
+            and .verification_boundary == "external_release_verifier"
+          ' "$stage/RELEASE-ATTESTATION-LOCATOR.json" >/dev/null
 
           python3 tools/verify_release_root_trust.py \
             --artifact "$control_archive" \
