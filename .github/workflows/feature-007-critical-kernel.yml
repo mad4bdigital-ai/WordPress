@@ -124,6 +124,26 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py --output /tmp/mad4b-bitflows-exact-package-diagnostic.json
 
+      - name: Verify Bit Flows candidate diagnostic stays evidence-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/bitflows-exact-package-diagnostic.py \
+            --mode candidate \
+            --archive wp-content/plugins/bit-pi.zip \
+            --output /tmp/mad4b-bitflows-candidate-diagnostic-smoke.json >/tmp/mad4b-bitflows-candidate-diagnostic-smoke.stdout
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('/tmp/mad4b-bitflows-candidate-diagnostic-smoke.json').read_text())
+          assert p['diagnostic_mode'] == 'candidate'
+          assert p['authorizing'] is False
+          assert p['mutation_performed'] is False
+          assert p['candidate_attestation_eligible'] is False
+          assert p['candidate_summary']['write_authority_granted'] is False
+          assert p['candidate_summary']['normal_mount_eligible'] is False
+          PY
+
       - name: Upload exact Bit Flows semantic diagnostic
         uses: actions/upload-artifact@v4
         with:
