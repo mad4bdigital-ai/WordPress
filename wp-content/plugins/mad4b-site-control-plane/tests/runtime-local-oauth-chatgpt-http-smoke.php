@@ -309,6 +309,66 @@ if ( false === strpos( $step_apply_json, '"isError":true' ) && false === strpos(
 	$fail( 'False exact identity unexpectedly allowed Full Staging Authority mutation.', $step_apply_data );
 }
 
+// Defense in depth for external/hybrid issuers: even a bearer carrying the
+// dedicated scope must be attributed to the exact ChatGPT CIMD client. Minting
+// directly here intentionally bypasses Local OAuth issuance policy so the
+// resource-side client-fingerprint gate is proven independently.
+$foreign_step_token = $mint->invoke(
+	null,
+	'https://example.test/foreign-client.json',
+	1,
+	$resource,
+	array( 'mad4b:read', 'mad4b:authority:step-up' )
+);
+if ( is_wp_error( $foreign_step_token ) || ! is_string( $foreign_step_token ) || '' === $foreign_step_token ) {
+	$fail( 'Unable to mint foreign-client bearer for resource-side attribution proof.', is_wp_error( $foreign_step_token ) ? $foreign_step_token->get_error_code() : $foreign_step_token );
+}
+$foreign_initialize = $dispatch(
+	array(
+		'jsonrpc' => '2.0',
+		'id' => 724,
+		'method' => 'initialize',
+		'params' => array(
+			'protocolVersion' => '2025-11-25',
+			'clientInfo' => array( 'name' => 'foreign-step-up-ci', 'version' => '1.0.0' ),
+		),
+	),
+	$foreign_step_token
+);
+if ( ! $foreign_initialize instanceof WP_REST_Response || 200 !== (int) $foreign_initialize->get_status() ) {
+	$fail( 'Foreign-client bearer initialize failed before attribution proof.', $normalize( $foreign_initialize instanceof WP_REST_Response ? $foreign_initialize->get_data() : $foreign_initialize ) );
+}
+$foreign_headers = $foreign_initialize->get_headers();
+$foreign_session_id = '';
+foreach ( $foreign_headers as $name => $value ) {
+	if ( 'mcp-session-id' === strtolower( (string) $name ) ) {
+		$foreign_session_id = is_array( $value ) ? (string) reset( $value ) : (string) $value;
+		break;
+	}
+}
+if ( '' === $foreign_session_id ) $fail( 'Foreign-client bearer initialize did not establish an MCP session.', $foreign_headers );
+
+$foreign_apply = $dispatch(
+	array(
+		'jsonrpc' => '2.0',
+		'id' => 725,
+		'method' => 'tools/call',
+		'params' => array(
+			'name' => 'mad4b-full-staging-authority-apply',
+			'arguments' => $syntactic_apply,
+		),
+	),
+	$foreign_step_token,
+	$foreign_session_id
+);
+if ( ! $foreign_apply instanceof WP_REST_Response || 200 !== (int) $foreign_apply->get_status() ) {
+	$fail( 'Foreign-client step-up denial did not return an MCP response.', $normalize( $foreign_apply instanceof WP_REST_Response ? $foreign_apply->get_data() : $foreign_apply ) );
+}
+$foreign_apply_json = wp_json_encode( $normalize( $foreign_apply->get_data() ), JSON_UNESCAPED_SLASHES );
+if ( false === $foreign_apply_json || false === strpos( $foreign_apply_json, 'mad4b_full_authority_chatgpt_client_required' ) ) {
+	$fail( 'Foreign OAuth client carrying step-up scope was not denied by exact-client attribution.', $normalize( $foreign_apply->get_data() ) );
+}
+
 // Restore the read bearer/session for the remaining read-dispatch proof.
 $initialize = $dispatch(
 	array(
@@ -427,6 +487,7 @@ fwrite(
 			'bearer_identity_verified' => true,
 			'read_bearer_step_up_denied' => true,
 			'step_up_bearer_scope_verified' => true,
+			'foreign_step_up_client_denied' => true,
 			'false_exact_identity_fail_closed' => true,
 			'browser_read_dispatch_verified' => true,
 			'browser_read_dispatch_contract' => (string) $browser_value['contract'],
