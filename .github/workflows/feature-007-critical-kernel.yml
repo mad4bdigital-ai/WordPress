@@ -143,6 +143,8 @@ jobs:
           assert isinstance(p['package_manifest_digest'], str) and len(p['package_manifest_digest']) == 64
           assert p['package_file_count'] > 0
           assert p['candidate_summary']['normalized_package_identity_present'] is True
+          assert p['candidate_summary']['archive_structure_safe'] is True
+          assert p['candidate_summary']['candidate_version_claim_match'] is True
           assert p['candidate_summary']['no_privileged_mcp_side_channel_proven'] is False
           assert p['candidate_summary']['write_authority_granted'] is False
           assert p['candidate_summary']['normal_mount_eligible'] is False
