@@ -768,6 +768,53 @@ jobs:
             test "$(jq -r '.trusted_release_root' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'false'
           fi
 
+      - name: Verify trusted master release root externally
+        if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          stage='/tmp/mad4b-install-kit'
+          control_archive="$(find "$stage" -maxdepth 1 -type f -name 'mad4b-site-control-plane-*.zip' -print -quit)"
+          test -n "$control_archive"
+          export CONTROL_ARCHIVE_NAME="$(basename "$control_archive")"
+          test -f "$stage/RELEASE-ATTESTATION.sigstore.json"
+          test -f "$stage/RELEASE-ATTESTATION-LOCATOR.json"
+          test -f "$stage/install-manifest.json"
+
+          jq -e '
+            .trust_role == "release_package_attestation"
+            and .trusted_release_root == true
+            and .signer_ref == "refs/heads/master"
+            and (.signer_event == "push" or .signer_event == "workflow_dispatch")
+            and .runtime_self_attestation_authoritative == false
+            and .verification_boundary == "external_release_verifier"
+          ' "$stage/RELEASE-ATTESTATION-LOCATOR.json" >/dev/null
+
+          python3 tools/verify_release_root_trust.py \
+            --artifact "$control_archive" \
+            --bundle "$stage/RELEASE-ATTESTATION.sigstore.json" \
+            --install-manifest "$stage/install-manifest.json" \
+            --expected-source-sha "$SOURCE_SHA" \
+            --trusted-signer-digest "$GITHUB_SHA" \
+            --output "$stage/RELEASE-ROOT-TRUST-VERIFICATION.json"
+
+          jq -e '
+            .contract == "mad4b.release-root-trust-verification.v1"
+            and .verified == true
+            and .attestation_verified == true
+            and .runtime_self_attestation_authoritative == false
+            and .verification_boundary == "external_release_verifier"
+            and .source_commit_sha == env.SOURCE_SHA
+            and .trusted_signer_ref == "refs/heads/master"
+            and (.trusted_signer_event == "push" or .trusted_signer_event == "workflow_dispatch")
+            and .trusted_runner_environment == "github-hosted"
+            and (.install_manifest_sha256 | test("^[0-9a-f]{64}$"))
+            and (([.verified_attestation_subjects[].name] | sort) == ([env.CONTROL_ARCHIVE_NAME, "install-manifest.json"] | sort))
+            and ([.verified_attestation_subjects[].sha256 | test("^[0-9a-f]{64}$")] | all)
+          ' "$stage/RELEASE-ROOT-TRUST-VERIFICATION.json" >/dev/null
+
       - name: Upload reviewed General Distribution installation kit
         id: upload_kit
         uses: actions/upload-artifact@v4
@@ -786,6 +833,7 @@ jobs:
             /tmp/mad4b-install-kit/INSTALL-GENERAL-DISTRIBUTION.md
             /tmp/mad4b-install-kit/RELEASE-ATTESTATION.sigstore.json
             /tmp/mad4b-install-kit/RELEASE-ATTESTATION-LOCATOR.json
+            /tmp/mad4b-install-kit/RELEASE-ROOT-TRUST-VERIFICATION.json
           if-no-files-found: error
           retention-days: 30
 

@@ -68,6 +68,7 @@ def preflight_bundle_policy(
     bundle: Path,
     signer_digest: str,
     trusted_ref: str = TRUSTED_SIGNER_REF,
+    additional_subjects: tuple[Path, ...] = (),
 ) -> dict[str, Any]:
     signer_digest = require_digest(signer_digest, "signer digest")
     statement = decode_bundle_statement(bundle)
@@ -128,27 +129,42 @@ def preflight_bundle_policy(
     if len(matching) != 1:
         raise ValueError("attestation signer digest is not uniquely bound in resolvedDependencies")
 
-    artifact_sha = sha256_file(artifact)
     subjects = statement.get("subject")
     if not isinstance(subjects, list):
         raise ValueError("attestation subjects are missing")
-    subject_matches = []
-    for row in subjects:
-        if not isinstance(row, dict) or str(row.get("name", "")) != artifact.name:
-            continue
-        digest = row.get("digest")
-        if isinstance(digest, dict) and str(digest.get("sha256", "")).lower() == artifact_sha:
-            subject_matches.append(row)
-    if len(subject_matches) != 1:
-        raise ValueError("attestation subject does not uniquely bind the candidate artifact digest")
+
+    required_subjects = (artifact,) + tuple(additional_subjects)
+    seen_names: set[str] = set()
+    verified_subjects: list[dict[str, str]] = []
+    for subject_path in required_subjects:
+        if not subject_path.is_file():
+            raise ValueError(f"required attestation subject is missing locally: {subject_path}")
+        subject_name = subject_path.name
+        if subject_name in seen_names:
+            raise ValueError(f"duplicate required attestation subject name: {subject_name}")
+        seen_names.add(subject_name)
+        subject_sha = sha256_file(subject_path)
+        matches = []
+        for row in subjects:
+            if not isinstance(row, dict) or str(row.get("name", "")) != subject_name:
+                continue
+            digest = row.get("digest")
+            if isinstance(digest, dict) and str(digest.get("sha256", "")).lower() == subject_sha:
+                matches.append(row)
+        if len(matches) != 1:
+            raise ValueError(
+                f"attestation subject does not uniquely bind required subject digest: {subject_name}"
+            )
+        verified_subjects.append({"name": subject_name, "sha256": subject_sha})
 
     return {
         "workflow_ref": workflow_ref,
         "event_name": event_name,
         "runner_environment": runner_environment,
         "builder_id": builder_id,
-        "artifact_sha256": artifact_sha,
+        "artifact_sha256": sha256_file(artifact),
         "signer_digest": signer_digest,
+        "verified_subjects": verified_subjects,
     }
 
 
@@ -181,8 +197,14 @@ def verify_attestation(
     artifact: Path,
     bundle: Path,
     signer_digest: str,
+    additional_subjects: tuple[Path, ...] = (),
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    policy = preflight_bundle_policy(artifact, bundle, signer_digest)
+    policy = preflight_bundle_policy(
+        artifact,
+        bundle,
+        signer_digest,
+        additional_subjects=additional_subjects,
+    )
     command = build_attestation_command(artifact, bundle, signer_digest)
     completed = subprocess.run(command, check=False, capture_output=True, text=True)
     if completed.returncode != 0:
@@ -292,7 +314,12 @@ def verify(
     signer_digest: str,
 ) -> dict[str, Any]:
     local = verify_local_identity(artifact, install_manifest, expected_source_sha)
-    verified, signer_policy = verify_attestation(artifact, bundle, signer_digest)
+    verified, signer_policy = verify_attestation(
+        artifact,
+        bundle,
+        signer_digest,
+        additional_subjects=(install_manifest,),
+    )
     return {
         "contract": VERIFICATION_CONTRACT,
         "verified": True,
@@ -306,6 +333,8 @@ def verify(
         "trusted_signer_ref": signer_policy["workflow_ref"],
         "trusted_signer_event": signer_policy["event_name"],
         "trusted_runner_environment": signer_policy["runner_environment"],
+        "verified_attestation_subjects": signer_policy["verified_subjects"],
+        "install_manifest_sha256": sha256_file(install_manifest),
         **local,
     }
 
