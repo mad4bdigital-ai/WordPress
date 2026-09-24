@@ -228,6 +228,51 @@ def main():
     if "mad4b_scp_schema_integrity_v9" not in SCHEMA:
         raise AssertionError("durable execution schema integrity token was not versioned")
 
+    # The frozen Feature 007 schema-evolution contract requires migration identity,
+    # preflight, additive/forward-fix semantics, post-verification evidence and
+    # fail-closed persistence. dbDelta visibility alone is not enough.
+    migration_markers = (
+        "const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';",
+        "const MIGRATION_ID = '20260924-feature007-durable-execution-v9';",
+        "const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v9';",
+        "'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9 )",
+        "'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes'",
+        "'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces'",
+        "'destructive' => false",
+        "'authority_widening' => false",
+        "'partial_failure_recovery'",
+        "'mixed_version_compatibility'",
+        "public static function migration_preflight_status()",
+        "'future_schema_downgrade_forbidden'",
+        "'mad4b.schema-migration-receipt.v1'",
+        "private static function migration_receipt_valid",
+        "private static function persist_and_verify_option",
+        "'mad4b_schema_migration_receipt_persist_failed'",
+        "'mad4b_schema_migration_readiness_persist_failed'",
+        "'mad4b_schema_migration_final_receipt_failed'",
+    )
+    for marker in migration_markers:
+        if marker not in SCHEMA:
+            raise AssertionError(f"Schema v9 migration contract marker missing: {marker}")
+
+    physical_pos = SCHEMA.find("$physical = self::physical_integrity_status();")
+    physical_guard_pos = SCHEMA.find("if ( empty( $physical['ready'] ) )", physical_pos)
+    first_receipt_pos = SCHEMA.find("$physical_receipt = self::migration_receipt", physical_guard_pos)
+    version_commit_pos = SCHEMA.find("persist_and_verify_option( self::OPTION, self::VERSION )", first_receipt_pos)
+    integrity_commit_pos = SCHEMA.find("persist_and_verify_option( self::INTEGRITY_OPTION", version_commit_pos)
+    final_receipt_pos = SCHEMA.find("$final_receipt = self::migration_receipt", integrity_commit_pos)
+    ready_pos = SCHEMA.find("self::$critical_ready_cache = true;", final_receipt_pos)
+    if min(physical_pos, physical_guard_pos, first_receipt_pos, version_commit_pos, integrity_commit_pos, final_receipt_pos, ready_pos) < 0:
+        raise AssertionError("Schema v9 migration evidence ordering markers are incomplete")
+    if not (physical_pos < physical_guard_pos < first_receipt_pos < version_commit_pos < integrity_commit_pos < final_receipt_pos < ready_pos):
+        raise AssertionError("Schema v9 readiness may advance before deep verification/final receipt")
+
+    is_ready_pos = SCHEMA.find("public static function is_ready()")
+    critical_ready_pos = SCHEMA.find("public static function critical_ready()", is_ready_pos)
+    is_ready_body = SCHEMA[is_ready_pos:critical_ready_pos]
+    if "self::migration_receipt_valid()" not in is_ready_body:
+        raise AssertionError("Schema v9 readiness must require a valid finalized migration receipt")
+
     print("mad4b.schema-dbdelta-upgrade.v2: PASS")
 
 
