@@ -173,6 +173,25 @@ final class MAD4B_SCP_Servers {
 	public static function blocked_write_tools() {
 		$projection = self::adapter_write_projection();
 		$blocked = array_values( $projection['blocked'] );
+
+		// Stable external discovery deliberately retains the bounded Context AI
+		// review ability even when its standing delegation is not currently
+		// eligible. Classify that core governance gate explicitly so the stable
+		// catalog remains an exact partition of runtime-eligible + blocked tools.
+		// This does not mount or authorize execution; write_tools() continues to
+		// exclude the ability until ai_review_catalog_eligible() becomes true.
+		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
+			&& function_exists( 'wp_has_ability' )
+			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY )
+			&& ! MAD4B_SCP_Context_Authority::ai_review_catalog_eligible() ) {
+			$blocked[] = array(
+				'ability' => MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY,
+				'provider' => 'core',
+				'reason' => 'ai_review_standing_delegation_not_eligible',
+				'violations' => array( 'ai_review_standing_delegation_not_eligible' ),
+			);
+		}
+
 		usort( $blocked, static function ( $a, $b ) {
 			return strcmp( isset( $a['ability'] ) ? $a['ability'] : '', isset( $b['ability'] ) ? $b['ability'] : '' );
 		} );
