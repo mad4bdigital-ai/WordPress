@@ -90,6 +90,9 @@ for marker in [
 ]:
     require(marker in core_chatgpt, f"required minimal direct ChatGPT tool missing: {marker}")
 
+require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in SERVERS, "full staging read diagnostics must be mounted on direct ChatGPT transport")
+require("mad4b/full-staging-authority-apply" not in core_chatgpt, "full staging apply must never be directly mounted on ChatGPT")
+
 # Large capability families must not be directly merged back into tools/list.
 chatgpt_body = SERVERS.split("public static function chatgpt_tools()", 1)[1].split("public static function chatgpt_full_catalog_candidates()", 1)[0]
 for forbidden in [
@@ -120,4 +123,4 @@ require("'mad4b/database-raw-query'" in full and "array_diff" in full, "Raw SQL 
 require("'mad4b/staging-write-grant-reconcile'" in SERVERS, "bounded grant reconciliation must remain directly projectable")
 require("'mad4b/staging-write-candidate-bind'" in SERVERS, "bounded candidate binding must remain directly projectable")
 
-print("mad4b.chatgpt-refresh-minimal-catalog.v2: PASS")
+print("mad4b.chatgpt-refresh-minimal-catalog.v3: PASS")
