@@ -17,6 +17,10 @@ ARCHIVE = ROOT / "wp-content/plugins/bit-pi.zip"
 CATALOG = PLUGIN_ROOT / "config/certified-providers.json"
 CONTRACT = "mad4b.bitflows-exact-package-diagnostic.v1"
 
+MAX_FILES = 20000
+MAX_TOTAL_UNCOMPRESSED_BYTES = 512 * 1024 * 1024
+MAX_SINGLE_FILE_BYTES = 64 * 1024 * 1024
+
 TARGETS = (
     "backend/app/src/Flow/FlowExecutor.php",
     "backend/app/Model/FlowHistory.php",
@@ -415,22 +419,78 @@ def main() -> int:
     with zipfile.ZipFile(archive_path, "r") as archive:
         names = archive.namelist()
         files = sorted(name for name in names if name and not name.endswith("/"))
+        if len(files) > MAX_FILES:
+            raise SystemExit(f"Bit Flows archive exceeds bounded file-count limit: {len(files)}")
+
+        unsafe_paths = []
+        symlink_paths = []
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+            normalized = info.filename.replace("\\", "/")
+            parts = [part for part in normalized.split("/") if part not in ("", ".")]
+            if normalized.startswith("/") or any(part == ".." for part in parts):
+                unsafe_paths.append(info.filename)
+            unix_mode = (info.external_attr >> 16) & 0o170000
+            if unix_mode == 0o120000:
+                symlink_paths.append(info.filename)
+            if info.file_size > MAX_SINGLE_FILE_BYTES:
+                raise SystemExit(f"Bit Flows archive member exceeds bounded size limit: {info.filename}")
+
+        if unsafe_paths or symlink_paths:
+            if args.mode == "certified":
+                raise SystemExit("Bit Flows certified archive contains unsafe or symlink paths")
+
+        total_uncompressed = sum(info.file_size for info in archive.infolist() if not info.is_dir())
+        if total_uncompressed > MAX_TOTAL_UNCOMPRESSED_BYTES:
+            raise SystemExit(f"Bit Flows archive exceeds bounded uncompressed-size limit: {total_uncompressed}")
+
         top_levels = {name.split("/", 1)[0] for name in files if "/" in name}
         strip_root = len(top_levels) == 1 and all("/" in name for name in files)
         manifest = []
+        logical_seen = set()
+        duplicate_logical_paths = []
         for name in files:
             raw = archive.read(name)
             logical = name.split("/", 1)[1] if strip_root else name
+            logical = logical.replace("\\", "/")
+            if logical in logical_seen:
+                duplicate_logical_paths.append(logical)
+            logical_seen.add(logical)
             manifest.append({"path": logical, "size": len(raw), "sha256": sha256_bytes(raw)})
+
+        if duplicate_logical_paths and args.mode == "certified":
+            raise SystemExit("Bit Flows certified archive contains duplicate logical paths")
+
+        manifest = sorted(manifest, key=lambda row: row["path"])
         manifest_json = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
         evidence["package_file_count"] = len(manifest)
+        evidence["package_total_uncompressed_bytes"] = total_uncompressed
         evidence["package_manifest_digest"] = sha256_bytes(manifest_json)
+        evidence["archive_structure"] = {
+            "safe": not unsafe_paths and not symlink_paths and not duplicate_logical_paths,
+            "unsafe_paths": sorted(set(unsafe_paths)),
+            "symlink_paths": sorted(set(symlink_paths)),
+            "duplicate_logical_paths": sorted(set(duplicate_logical_paths)),
+            "bounded_file_count": len(files) <= MAX_FILES,
+            "bounded_total_uncompressed_bytes": total_uncompressed <= MAX_TOTAL_UNCOMPRESSED_BYTES,
+        }
         if args.include_manifest:
             evidence["package_manifest"] = manifest
 
         detected_version = detect_plugin_version(archive, names)
-        evidence["provider_version"] = str(args.candidate_version or detected_version or provider.get("version", ""))
+        requested_version = str(args.candidate_version or "").strip()
+        catalog_version = str(provider.get("version", "")).strip()
+        evidence["provider_version"] = detected_version or (catalog_version if archive_matches_catalog else "")
         evidence["detected_provider_version"] = detected_version
+        evidence["requested_candidate_version"] = requested_version
+        evidence["candidate_version_claim_match"] = (
+            not requested_version or (bool(detected_version) and requested_version == detected_version)
+        )
+        if args.mode == "certified" and detected_version and catalog_version and detected_version != catalog_version:
+            raise SystemExit(
+                f"Bit Flows certified package version header mismatch: detected={detected_version} catalog={catalog_version}"
+            )
 
         for logical, expected in critical.items():
             try:
@@ -548,6 +608,8 @@ def main() -> int:
         "semantic_analysis_complete": correlation_complete and not evidence["semantic_targets_missing"],
         "requires_explicit_certification_update": args.mode == "candidate" and not archive_matches_catalog,
         "normalized_package_identity_present": bool(evidence["package_manifest_digest"]),
+        "archive_structure_safe": bool(evidence.get("archive_structure", {}).get("safe")),
+        "candidate_version_claim_match": bool(evidence.get("candidate_version_claim_match")),
         "native_mcp_security_review_required": bool(evidence["native_mcp"]["security_recertification_required"]),
         "no_privileged_mcp_side_channel_proven": False if args.mode == "candidate" else not evidence["native_mcp"]["server_surface_detected"],
         "write_authority_granted": False,
