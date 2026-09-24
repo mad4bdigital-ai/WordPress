@@ -6,9 +6,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Exact, audited Staging-only convergence of the three requested authority
  * planes: governed write, Developer, and Developer Breakglass.
  *
- * OAuth remains identity/read consent only. This surface is mounted only on
- * mad4b-enrollment and reuses the existing write/developer primitives rather
- * than creating parallel grant semantics.
+ * OAuth remains identity/read consent only. Read-only status/plan are exposed
+ * on mad4b-chatgpt for diagnosis; the mutating apply surface remains mounted
+ * only on mad4b-enrollment and reuses the existing write/developer primitives
+ * rather than creating parallel grant semantics.
  */
 final class MAD4B_SCP_Full_Staging_Authority {
 	const CONTRACT = 'mad4b.full-staging-authority.v1';
@@ -29,6 +30,10 @@ final class MAD4B_SCP_Full_Staging_Authority {
 
 	public static function enrollment_tools() {
 		return array( self::STATUS_ABILITY, self::PLAN_ABILITY, self::APPLY_ABILITY );
+	}
+
+	public static function chatgpt_read_tools() {
+		return array( self::STATUS_ABILITY, self::PLAN_ABILITY );
 	}
 
 	public static function register_category() {
@@ -56,7 +61,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'permission_callback' => array( __CLASS__, 'can_access' ),
 					'input_schema' => self::schema( array() ),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-					'meta' => self::meta( true ),
+					'meta' => self::meta( true, 'read' ),
 				) );
 			}
 			if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::PLAN_ABILITY ) ) {
@@ -103,7 +108,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 						)
 					),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
-					'meta' => self::meta( false ),
+					'meta' => self::meta( false, 'enrollment' ),
 				) );
 			}
 		} finally {
@@ -117,14 +122,14 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		return $schema;
 	}
 
-	private static function meta( $readonly ) {
+	private static function meta( $readonly, $surface = 'enrollment' ) {
 		return array(
 			'public' => false,
 			'show_in_rest' => false,
 			'mcp' => array(
 				'public' => false,
 				'type' => 'tool',
-				'surface' => 'enrollment',
+				'surface' => sanitize_key( (string) $surface ),
 				'mad4b_full_staging_authority' => self::CONTRACT,
 				'production_allowed' => false,
 				'generic_raw_sql_breakglass_included' => false,
