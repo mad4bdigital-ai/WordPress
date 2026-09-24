@@ -40,6 +40,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 
 	private static $booted = false;
 	private static $runtime_error = null;
+	private static $public_jwk_request_cache = null;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -1069,6 +1070,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	}
 
 	private static function public_jwk() {
+		if ( is_array( self::$public_jwk_request_cache ) ) return self::$public_jwk_request_cache;
 		$pem = self::private_key_pem();
 		if ( is_wp_error( $pem ) ) return $pem;
 		$key = openssl_pkey_get_private( $pem );
@@ -1077,7 +1079,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$details = openssl_pkey_get_details( $key );
 		if ( ! is_array( $details ) || empty( $details['key'] ) || empty( $details['rsa']['n'] ) || empty( $details['rsa']['e'] ) ) return new WP_Error( 'mad4b_local_oauth_public_key_unavailable', 'Unable to derive local OAuth public key.' );
 		if ( empty( $details['bits'] ) || (int) $details['bits'] < 2048 ) return new WP_Error( 'mad4b_local_oauth_rsa_key_too_small', 'Local OAuth RSA signing key must be at least 2048 bits.' );
-		return array(
+		self::$public_jwk_request_cache = array(
 			'kty' => 'RSA',
 			'use' => 'sig',
 			'key_ops' => array( 'verify' ),
@@ -1086,6 +1088,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'n' => self::base64url_encode( $details['rsa']['n'] ),
 			'e' => self::base64url_encode( $details['rsa']['e'] ),
 		);
+		return self::$public_jwk_request_cache;
 	}
 
 	private static function absolute_path( $path ) {
