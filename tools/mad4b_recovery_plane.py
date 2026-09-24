@@ -38,6 +38,26 @@ def canonical_json(data: dict[str, Any]) -> bytes:
     return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
+def atomic_json_write(path: Path, data: dict[str, Any]) -> None:
+    """Durably replace one JSON evidence file without exposing a partial receipt."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + f".tmp-{uuid.uuid4().hex}")
+    payload = json.dumps(data, indent=2, sort_keys=True) + "\n"
+    with tmp.open("w", encoding="utf-8") as handle:
+        handle.write(payload)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
+    try:
+        directory_fd = os.open(str(path.parent), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+
+
 def plan_digest(plan: dict[str, Any]) -> str:
     material = dict(plan)
     material.pop("plan_sha256", None)
@@ -271,8 +291,12 @@ def apply_restore(
     recovery_root = root / "wp-content" / "mad4b-recovery"
     quarantine_root = recovery_root / "quarantine"
     receipt_root = recovery_root / "receipts"
+    journal_root = recovery_root / "recovery-journal"
+    if recovery_root.is_symlink():
+        raise ValueError("recovery root symlink is forbidden")
     quarantine_root.mkdir(parents=True, exist_ok=True)
     receipt_root.mkdir(parents=True, exist_ok=True)
+    journal_root.mkdir(parents=True, exist_ok=True)
 
     token = f"{require_incident_id(str(plan['incident_id']))}-{plan_sha[:12]}"
     stage = plugins / f".{PLUGIN_SLUG}.recovery-stage-{plan_sha[:12]}"
@@ -293,6 +317,18 @@ def apply_restore(
 
     previous_present = live.is_dir()
     moved_previous = False
+    journal_path = journal_root / f"{token}.json"
+    journal = {
+        "contract": "mad4b.recovery-mutation-journal.v1",
+        "plan_sha256": plan_sha,
+        "incident_id": plan["incident_id"],
+        "mutation_started": True,
+        "mutation_started_at": utc_now(),
+        "target_plugin_path": str(live),
+        "evidence_state": "MUTATION_INTENT_DURABLE",
+        "terminal": False,
+    }
+    atomic_json_write(journal_path, journal)
     try:
         if previous_present:
             os.replace(live, quarantine)
@@ -339,6 +375,7 @@ def apply_restore(
             "normal_control_reverification_required": True,
             "production_authorized": False,
         },
+        "evidence_state": "DURABLE_VERIFIED_RECEIPT",
         "root_trust_verification": {
             "contract": root_receipt.get("contract"),
             "attestation_verified": bool(root_receipt.get("attestation_verified")),
@@ -347,8 +384,32 @@ def apply_restore(
         },
     }
     receipt_path = receipt_root / f"{token}.json"
-    receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    try:
+        atomic_json_write(receipt_path, receipt)
+    except OSError as exc:
+        uncertain = dict(journal)
+        uncertain.update({
+            "terminal": True,
+            "evidence_state": "MUTATED_BUT_EVIDENCE_UNCERTAIN",
+            "reconciliation_required": True,
+            "failure": str(exc),
+        })
+        try:
+            atomic_json_write(journal_path, uncertain)
+        except OSError:
+            pass
+        raise RuntimeError("MUTATED_BUT_EVIDENCE_UNCERTAIN") from exc
+
+    completed = dict(journal)
+    completed.update({
+        "terminal": True,
+        "evidence_state": "DURABLE_VERIFIED_RECEIPT",
+        "receipt_path": str(receipt_path),
+        "completed_at": utc_now(),
+    })
+    atomic_json_write(journal_path, completed)
     receipt["receipt_path"] = str(receipt_path)
+    receipt["journal_path"] = str(journal_path)
     return receipt
 
 
