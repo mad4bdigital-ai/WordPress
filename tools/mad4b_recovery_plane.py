@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -166,6 +167,7 @@ def recovery_journal_summary(wordpress_root: Path) -> dict[str, Any]:
         "pending": 0,
         "uncertain": 0,
         "completed": 0,
+        "rolled_back": 0,
         "invalid": 0,
         "reconciliation_required": False,
         "entries": [],
@@ -190,6 +192,8 @@ def recovery_journal_summary(wordpress_root: Path) -> dict[str, Any]:
             summary["uncertain"] += 1
         elif terminal and state == "DURABLE_VERIFIED_RECEIPT":
             summary["completed"] += 1
+        elif terminal and state == "ROLLED_BACK_AFTER_FAILURE":
+            summary["rolled_back"] += 1
         else:
             summary["pending"] += 1
         summary["entries"].append({
@@ -199,6 +203,7 @@ def recovery_journal_summary(wordpress_root: Path) -> dict[str, Any]:
             "incident_id": row.get("incident_id"),
             "evidence_state": state,
             "terminal": terminal,
+            "expected_post_identity": row.get("expected_post_identity"),
             "reconciliation_required": bool(row.get("reconciliation_required")),
         })
     summary["reconciliation_required"] = bool(
@@ -234,15 +239,43 @@ def reconcile_recovery_evidence(wordpress_root: Path, environment: str) -> dict[
                     break
         runtime_match = None
         runtime_identity = None
-        if action == "restore_known_good" and live.is_dir():
-            try:
-                runtime_identity = verify_installed_provenance(live)
-                runtime_match = True
-            except (ValueError, OSError, json.JSONDecodeError):
+        expected_post = entry.get("expected_post_identity")
+        if action == "restore_known_good":
+            if live.is_dir():
+                try:
+                    runtime_identity = verify_installed_provenance(live)
+                    runtime_match = bool(
+                        isinstance(expected_post, dict)
+                        and runtime_identity == expected_post
+                    )
+                except (ValueError, OSError, json.JSONDecodeError):
+                    runtime_match = False
+            else:
                 runtime_match = False
         elif action == "disable_current":
-            runtime_match = not live.exists()
+            expected_tree = (
+                str(expected_post.get("quarantine_tree_sha256") or "")
+                if isinstance(expected_post, dict) else ""
+            )
+            quarantine = (
+                root / "wp-content" / "mad4b-recovery" / "quarantine"
+                / Path(str(entry.get("file") or "")).stem
+            )
+            quarantine_match = False
+            if expected_tree and quarantine.is_dir() and not quarantine.is_symlink():
+                try:
+                    quarantine_match = hmac.compare_digest(tree_digest(quarantine), expected_tree)
+                except (ValueError, OSError):
+                    quarantine_match = False
+            runtime_match = bool(
+                not live.exists()
+                and isinstance(expected_post, dict)
+                and expected_post.get("plugin_present") is False
+                and quarantine_match
+            )
+        rolled_back = entry.get("evidence_state") == "ROLLED_BACK_AFTER_FAILURE"
         status = "DURABLE_RECEIPT_PRESENT" if receipt_match else (
+            "ROLLED_BACK" if rolled_back else
             "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT" if runtime_match is True else
             "RUNTIME_EFFECT_NOT_OBSERVED" if runtime_match is False else
             "UNKNOWN"
