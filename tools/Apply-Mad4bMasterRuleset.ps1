@@ -66,13 +66,44 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "=== CURRENT RULESETS ==="
-$currentArgs = @("api","-H","Accept: application/vnd.github+json","-H","X-GitHub-Api-Version: 2026-03-10","repos/$Repository/rulesets?includes_parents=true")
-$currentRaw = & gh @currentArgs
+$currentArgs = @(
+    "api",
+    "-H","Accept: application/vnd.github+json",
+    "-H","X-GitHub-Api-Version: 2026-03-10",
+    "repos/$Repository/rulesets?includes_parents=true",
+    "--jq",".[] | @json"
+)
+$currentLines = @(& gh @currentArgs)
 if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: unable to read repository rulesets."
 }
-$current = @($currentRaw | ConvertFrom-Json)
-$current | ConvertTo-Json -Depth 100
+
+$current = @()
+foreach ($line in $currentLines) {
+    if ([string]::IsNullOrWhiteSpace([string]$line)) {
+        continue
+    }
+
+    $item = [string]$line | ConvertFrom-Json
+    if ($null -eq $item) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: ruleset list contained a null entry."
+    }
+
+    $requiredProperties = @("id","name","enforcement")
+    foreach ($propertyName in $requiredProperties) {
+        if ($null -eq $item.PSObject.Properties[$propertyName]) {
+            throw "GOVERNANCE_APPLY_FAIL_CLOSED: malformed ruleset list entry missing '$propertyName'."
+        }
+    }
+
+    $current += $item
+}
+
+if ($current.Count -eq 0) {
+    Write-Host "[]"
+} else {
+    $current | ConvertTo-Json -Depth 100
+}
 
 $named = @($current | Where-Object { $_.name -eq $template.name })
 $unexpected = @($current | Where-Object { $_.name -ne $template.name })
@@ -105,7 +136,7 @@ if ($named.Count -gt 1) {
 }
 
 Write-Host "=== EXACT READBACK ==="
-$detailArgs = @("api","-H","Accept: application/vnd.github+json","-H","X-GitHub-Api-Version: 2026-03-10","repos/$Repository/rulesets/$rulesetId?includes_parents=true")
+$detailArgs = @("api","-H","Accept: application/vnd.github+json","-H","X-GitHub-Api-Version: 2026-03-10","repos/$Repository/rulesets/${rulesetId}?includes_parents=true")
 $detailRaw = & gh @detailArgs
 if ($LASTEXITCODE -ne 0) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: exact ruleset readback failed."
