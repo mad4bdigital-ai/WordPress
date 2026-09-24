@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import hashlib
 import importlib.util
 import json
@@ -34,6 +35,56 @@ if "--deny-self-hosted-runners" not in command:
     raise SystemExit("root-trust verifier must reject self-hosted signer runners")
 if "--bundle" not in command:
     raise SystemExit("root-trust verifier must support bundled offline attestation evidence")
+
+def bundle_for(artifact, signer_digest, workflow_ref, event_name):
+    statement = {
+        "_type": "https://in-toto.io/Statement/v1",
+        "subject": [
+            {
+                "name": artifact.name,
+                "digest": {"sha256": module.sha256_file(artifact)},
+            }
+        ],
+        "predicateType": "https://slsa.dev/provenance/v1",
+        "predicate": {
+            "buildDefinition": {
+                "externalParameters": {
+                    "workflow": {
+                        "ref": workflow_ref,
+                        "repository": module.SIGNER_WORKFLOW_REPOSITORY,
+                        "path": module.SIGNER_WORKFLOW_PATH,
+                    }
+                },
+                "internalParameters": {
+                    "github": {
+                        "event_name": event_name,
+                        "runner_environment": "github-hosted",
+                    }
+                },
+                "resolvedDependencies": [
+                    {
+                        "uri": f"git+{module.SIGNER_WORKFLOW_REPOSITORY}@{workflow_ref}",
+                        "digest": {"gitCommit": signer_digest},
+                    }
+                ],
+            },
+            "runDetails": {
+                "builder": {
+                    "id": f"{module.SIGNER_WORKFLOW_ID}@{workflow_ref}"
+                }
+            },
+        },
+    }
+    return {
+        "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+        "verificationMaterial": {},
+        "dsseEnvelope": {
+            "payload": base64.b64encode(
+                json.dumps(statement, separators=(",", ":")).encode()
+            ).decode()
+        },
+    }
+
 
 workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
 for fragment in (
@@ -102,5 +153,27 @@ with tempfile.TemporaryDirectory() as tmp:
         raise SystemExit("local artifact identity verification did not bind archive digest")
     if receipt["package_manifest_digest"] != package_digest:
         raise SystemExit("local artifact identity verification did not bind package digest")
+
+    trusted_bundle = tmp / "trusted.sigstore.json"
+    trusted_bundle.write_text(
+        json.dumps(bundle_for(artifact, signer_digest, module.TRUSTED_SIGNER_REF, "workflow_dispatch")),
+        encoding="utf-8",
+    )
+    policy = module.preflight_bundle_policy(artifact, trusted_bundle, signer_digest)
+    if policy["workflow_ref"] != module.TRUSTED_SIGNER_REF:
+        raise SystemExit("trusted signer ref was not preserved")
+
+    candidate_bundle = tmp / "candidate.sigstore.json"
+    candidate_bundle.write_text(
+        json.dumps(bundle_for(artifact, signer_digest, "refs/pull/57/merge", "pull_request")),
+        encoding="utf-8",
+    )
+    try:
+        module.preflight_bundle_policy(artifact, candidate_bundle, signer_digest)
+    except ValueError as exc:
+        if "signer ref is not trusted" not in str(exc):
+            raise
+    else:
+        raise SystemExit("PR-controlled signer ref must never satisfy release root trust")
 
 print("release root-trust contract: PASS")
