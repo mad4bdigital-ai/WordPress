@@ -9,6 +9,7 @@ final class MAD4B_SCP_Abilities {
 			array(
 				'mad4b-read'       => array( 'label' => 'MAD4B Read', 'description' => 'Read-only discovery and diagnostics.' ),
 				'mad4b-content'    => array( 'label' => 'MAD4B Content', 'description' => 'Governed content editing.' ),
+				'mad4b-write'      => array( 'label' => 'MAD4B Write', 'description' => 'Unified governed write authority abilities.' ),
 				'mad4b-admin'      => array( 'label' => 'MAD4B Admin', 'description' => 'Administrative repair abilities.' ),
 				'mad4b-breakglass' => array( 'label' => 'MAD4B Breakglass', 'description' => 'Exceptional recovery abilities.' ),
 			) as $slug => $args
@@ -81,6 +82,7 @@ final class MAD4B_SCP_Abilities {
 		), false, true, false, true );
 		$this->add( 'mad4b/diagnostics-health', 'Diagnostics Health', 'mad4b-read', 'diagnostics_health', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/runtime-authority-status', 'Runtime Authority Status', 'mad4b-read', 'runtime_authority_status', 'read', null, false, true, false, true );
+		$this->add( 'mad4b/schema-status', 'Schema Status', 'mad4b-read', 'schema_status', 'read', null, false, true, false, true );
 
 		$this->add( 'mad4b/content-get-post', 'Get Post', 'mad4b-content', 'content_get_post', 'read_post', $this->post_schema(), false, true, false, true );
 		$this->add( 'mad4b/content-update-post', 'Update Post', 'mad4b-content', 'content_update_post', 'edit_post', $this->schema(
@@ -516,6 +518,38 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function runtime_authority_status() { return MAD4B_SCP_Authorization::authority_status(); }
+
+	public function schema_status() {
+		$status = MAD4B_SCP_Schema::status( true );
+		$physical = isset( $status['physical_integrity'] ) && is_array( $status['physical_integrity'] ) ? $status['physical_integrity'] : array();
+		$missing_tables = isset( $physical['missing_tables'] ) && is_array( $physical['missing_tables'] ) ? array_values( $physical['missing_tables'] ) : array();
+		$durable = array(
+			'content_jobs'       => ! in_array( 'content_jobs', $missing_tables, true ),
+			'content_job_events' => ! in_array( 'content_job_events', $missing_tables, true ),
+			'work_leases'        => ! in_array( 'work_leases', $missing_tables, true ),
+			'idempotency'        => ! in_array( 'idempotency', $missing_tables, true ),
+			'execution_outbox'   => ! in_array( 'outbox', $missing_tables, true ),
+			'execution_inbox'    => ! in_array( 'inbox', $missing_tables, true ),
+		);
+		return array(
+			'contract' => 'mad4b.schema-status.v1',
+			'read_only' => true,
+			'mutation_performed' => false,
+			'expected_version' => isset( $status['expected_version'] ) ? (int) $status['expected_version'] : MAD4B_SCP_Schema::VERSION,
+			'installed_version' => isset( $status['installed_version'] ) ? (int) $status['installed_version'] : 0,
+			'integrity_token_valid' => ! empty( $status['integrity_token_valid'] ),
+			'durable_tables' => $durable,
+			'physical_integrity' => array(
+				'contract' => isset( $physical['contract'] ) ? (string) $physical['contract'] : '',
+				'ready' => ! empty( $physical['ready'] ),
+				'missing_tables' => $missing_tables,
+				'missing_approval_columns' => isset( $physical['missing_approval_columns'] ) && is_array( $physical['missing_approval_columns'] ) ? array_values( $physical['missing_approval_columns'] ) : array(),
+				'missing_durable_columns' => isset( $physical['missing_durable_columns'] ) && is_array( $physical['missing_durable_columns'] ) ? array_values( $physical['missing_durable_columns'] ) : array(),
+				'missing_durable_indexes' => isset( $physical['missing_durable_indexes'] ) && is_array( $physical['missing_durable_indexes'] ) ? array_values( $physical['missing_durable_indexes'] ) : array(),
+			),
+			'ready' => ! empty( $status['ready'] ) && ! empty( $physical['ready'] ),
+		);
+	}
 
 	public function diagnostics_health() {
 		global $wpdb; $uploads = wp_upload_dir( null, false );
