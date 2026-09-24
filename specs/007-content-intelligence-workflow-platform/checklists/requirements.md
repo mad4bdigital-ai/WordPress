@@ -119,3 +119,37 @@
 - [ ] Runtime QEVAL evidence exists.
 - [ ] Runtime QPERF evidence exists.
 - [ ] Runtime QRECOVERY/QCOMPAT evidence exists.
+
+
+## Long-lived platform closure
+- [x] Policy precedence/conflict resolution is explicit.
+- [x] Separation of duties, quorum, delegation and emergency approvals are explicit.
+- [x] Reusable evidence authenticity/signing/revocation is explicit.
+- [x] Existing-site bootstrap and normalized content inventory are explicit.
+- [x] Content intent ownership/cannibalization prevention is explicit.
+- [x] Artifact storage/retrieval/tiering/dedup/GC is abstracted.
+- [x] Incremental invalidation/recompute planning is explicit.
+- [x] Publication verification extends beyond WordPress database state.
+- [x] Rights/licensing/attribution/takedown are explicit.
+- [x] AI data-processing/residency/fallback policy is explicit.
+- [x] Operator control, Doctor, RepairPlan and DLQ are explicit.
+- [x] Cross-provider semantic conformance is explicit.
+- [x] Contract/capability/Skill deprecation and sunset are explicit.
+- [x] Fair scheduling/noisy-neighbor controls are explicit.
+- [x] Central-vs-site outage/local autonomy is explicit.
+- [x] Localization/transcreation/RTL/hreflang model is explicit.
+- [x] Accessibility QA is explicit.
+- [x] Internal Link Graph is explicit.
+- [x] Eval Registry and gold-fixture governance are explicit.
+- [x] SLO error budgets, alert ownership and escalation are explicit.
+- [x] Experimentation/variants/SEO safety are explicit.
+- [x] Usage ledger/budgets/chargeback/reconciliation are explicit.
+- [x] Decommission/export/import/credential revocation are explicit.
+- [ ] Runtime QGOVERNANCE evidence exists.
+- [ ] Existing-site bootstrap has been run on ETG Staging.
+- [ ] ArtifactStore backend is selected and certified.
+- [ ] Publication Verification has a live ETG Staging canary.
+- [ ] Rights/AI processing profiles are configured for initial providers.
+- [ ] Operator Doctor/DLQ runtime exists.
+- [ ] Multi-site fairness/local-autonomy fixtures exist.
+- [ ] Eval/alert/usage/portability runtime evidence exists.

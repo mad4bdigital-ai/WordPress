@@ -36,6 +36,23 @@
 | QTEST | verification strategy | property/fuzz/fault/matrix evidence |
 | QDRIFT | policy drift/kill switches | desired-vs-observed + fail-closed tests |
 | QSPEC | cross-feature spec isolation | unrelated feature CI stays green |
+| PORT | decommission-portability | export/revoke/final decommission report |
+| USAGE | usage-ledger-chargeback | usage/budget/reconciliation ledger |
+| EXP | experimentation-attribution | variant/exposure/guardrail evidence |
+| EVALREG | eval-registry-alerting | eval provenance + error-budget alerts |
+| LOC | localization-accessibility-linkgraph | locale/a11y/link graph evidence |
+| FAIR | fair-scheduling-local-autonomy | quota/fairness/outage fixtures |
+| CONF | provider-conformance-contract-lifecycle | cross-provider conformance + deprecation evidence |
+| OPS | operator-control-doctor-deadletter | doctor/repair/DLQ evidence |
+| AIDATA | ai-data-processing-residency | classification/provider processing decisions |
+| RIGHTS | content-rights-licensing | rights/attribution/takedown evidence |
+| PVERIFY | publication-verification | origin/edge/rendered SEO propagation evidence |
+| RECOMP | incremental-recompute | minimal invalidation/recompute plan tests |
+| STORE | artifact-storage-retrieval | blob integrity/quota/GC evidence |
+| INTENT | content intent registry | canonical owner + collision decisions |
+| BOOT | existing-site-bootstrap-content-inventory | bootstrap snapshot + inventory reconciliation |
+| ATTEST | evidence-attestation-trust | signed/revoked evidence verification |
+| POLICY | policy-resolution-separation-of-duties | effective decision + precedence/conflict tests |
 
 ## Dependency graph
 release-lineage
@@ -112,3 +129,45 @@ SLO/capacity/cost
 → release-ring scale eligibility
 
 No quality branch can widen authority; these gates can only block or constrain release.
+
+
+## Long-lived platform dependency graph
+
+site-bootstrap
+→ content-inventory
+→ intent-registry
+→ content-job planning
+
+artifact-store
+→ artifact graph
+→ incremental recompute
+→ evaluation/publication evidence
+
+policy-resolution
+→ approval/separation-of-duties
+→ signed evidence trust
+→ capability execution
+
+publish manifest
+→ site mutation
+→ publication verification
+→ growth/experiment observations
+
+provider conformance
+→ certification
+→ resolver
+→ fair scheduler
+
+localization cluster
+→ content artifacts
+→ link graph
+→ publication verification
+
+usage ledger + SLO/error budgets + operator control
+→ operational governance
+
+quiesce
+→ export/revocation
+→ decommission/portability
+
+No downstream layer can widen upstream authority or fabricate evidence.

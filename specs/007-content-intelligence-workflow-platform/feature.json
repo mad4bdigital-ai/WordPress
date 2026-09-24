@@ -59,9 +59,30 @@
     "disaster_recovery_restore_rehearsal",
     "compatibility_matrix",
     "fault_injection_and_denial_path_testing",
-    "policy_drift_and_kill_switches"
+    "policy_drift_and_kill_switches",
+    "policy_resolution_precedence",
+    "separation_of_duties_approval_governance",
+    "signed_evidence_attestation_trust",
+    "existing_site_bootstrap_inventory",
+    "content_intent_registry",
+    "artifact_store_integrity",
+    "incremental_recompute_minimality",
+    "publication_verification_plane",
+    "content_rights_licensing",
+    "ai_data_processing_residency",
+    "operator_control_doctor_dlq",
+    "provider_conformance_contract_lifecycle",
+    "fair_scheduling_noisy_neighbor",
+    "central_site_autonomy",
+    "localization_accessibility_link_graph",
+    "eval_registry_error_budget_alerting",
+    "experimentation_governance",
+    "usage_ledger_chargeback",
+    "decommission_portability"
   ],
-  "coverage_audit_version": "2026-09-24.v3-quality-hardening",
+  "coverage_audit_version": "2026-09-24.v4-second-order-closure",
   "coverage_status": "architecture-inputs-explicitly-traced",
-  "quality_model": "mad4b.feature007.quality.v1"
+  "quality_model": "mad4b.feature007.quality.v1",
+  "operating_model": "long-lived-multi-site-governed-platform",
+  "required_phase_count": 31
 }

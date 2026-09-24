@@ -467,3 +467,90 @@ Exit gate: applicable high-risk surfaces pass negative security/isolation tests.
 - property/fuzz/fault-injection/mutation-testing for critical paths.
 
 Exit gate: release has evidence for every applicable hard quality gate in quality-model.md.
+
+
+## Phase 23 — Policy resolution, approval governance and evidence trust
+
+- implement deterministic Policy Resolution Engine and precedence chain;
+- model ApprovalPolicy with requester/approver separation, quorum, delegation, expiry and emergency handling;
+- add evidence-attestation signer/trust-root/revocation lifecycle;
+- bind reusable certification evidence to signed exact identities;
+- add tamper, stale-policy, self-approval and revoked-attestation negative tests.
+
+Exit gate: QGOVERNANCE=PASS; local mutable flags cannot forge reusable capability/release trust.
+
+## Phase 24 — Existing-site bootstrap and content intent ownership
+
+- build read-only SiteBootstrapSnapshot;
+- normalize existing content/SEO/media/link/language inventory;
+- backfill historical content as observed state, not generated Feature 007 artifacts;
+- create Intent Registry and collision outcomes;
+- add incremental refresh/reconciliation;
+- block inappropriate CREATE_NEW when existing canonical intent owner should be updated/consolidated.
+
+Exit gate: first Content Job starts from a reconciled site/content state.
+
+## Phase 25 — Artifact platform and incremental recomputation
+
+- implement backend-neutral ArtifactStore;
+- content-addressable immutable blobs + integrity verification;
+- storage classes, quotas, dedup, retention and garbage collection;
+- optional rebuildable RetrievalIndex;
+- dependency-edge classes and RecomputePlanner;
+- fan-out guard, coalescing, freshness and cycle protection.
+
+Exit gate: source/model/policy changes recompute the minimum valid subgraph without artifact corruption or runaway fan-out.
+
+## Phase 26 — Publication verification, rights and AI data processing
+
+- add origin/public/rendered publication verification and propagation state;
+- verify canonical/robots/schema/hreflang/media/sitemap/cache expectations;
+- define cache/CDN purge as a governed capability;
+- add RightsRecord and attribution/takedown/similarity policy;
+- add AI DataProcessingProfile with classification, residency, retention/training/logging constraints;
+- enforce provider/model fallback against the same processing policy.
+
+Exit gate: public content is verified beyond database state and publication inputs have acceptable rights/data-processing decisions.
+
+## Phase 27 — Operator control, Doctor, DLQ and provider lifecycle
+
+- add human Operator Control Center read model;
+- governed approve/retry/cancel/pause/repair/quarantine/bulk actions;
+- read-only Doctor + bounded RepairPlan;
+- Dead-Letter Queue and safe replay;
+- shared Provider Conformance Suite;
+- contract/capability/Skill deprecation and sunset lifecycle.
+
+Exit gate: common failures can be diagnosed/recovered without database surgery or unrestricted Breakglass.
+
+## Phase 28 — Multi-site fairness, local autonomy, localization, accessibility and link graph
+
+- weighted/fair scheduling, quotas, reservations and anti-starvation;
+- explicit behavior when central certification/authority/catalog services are unavailable;
+- local cached-evidence TTL and reconnection reconciliation;
+- LocalizationCluster and translation/transcreation lineage;
+- accessibility QA profiles;
+- Internal Link Graph and recommendation/verification.
+
+Exit gate: one tenant/provider cannot monopolize the platform and multilingual/content relationships remain correct under central outages.
+
+## Phase 29 — Evaluation operations, alerts, experiments and economic ledger
+
+- formal EvalRegistry/gold fixture governance and human calibration;
+- error-budget/burn-rate alerting with owners/runbooks/escalation;
+- governed experimentation with immutable variants and SEO safety;
+- UsageLedger, budgets, provider-cost reconciliation and optional chargeback.
+
+Exit gate: quality/operations/economics are observable and experiments cannot bypass publication governance.
+
+## Phase 30 — Decommission and portability
+
+- scoped decommission inventory;
+- quiesce/drain/cancel semantics;
+- ExportBundle manifest/checksums;
+- provider credential/webhook/MCP cleanup;
+- site/tenant/provider removal paths;
+- import compatibility/remapping/collision checks;
+- final no-in-flight/no-active-secret verification.
+
+Exit gate: MAD4B/provider/site can be safely moved or retired without orphaned authority or lost evidence.

@@ -17,7 +17,20 @@ This scorecard is evidence-based. "Defined" means specified, not implemented.
 | Schema evolution | Defined by this hardening | Not implemented | Yes once new tables/contracts land |
 | DR/restore | Defined by this hardening | Existing platform partial | Yes for durable/irreversible state |
 | Compatibility matrix | Defined by this hardening | Existing CI partial | Before Production |
-| Cross-feature spec isolation | Defined/fixed | Fix committed | CI verification pending |
+| Cross-feature spec isolation | Defined/fixed | CI now green | No |
+| Policy resolution / separation of duties | Defined | Not implemented | Yes for high-risk writes |
+| Evidence attestation/trust | Defined | Not implemented | Yes for cross-site reusable certification |
+| Existing-site inventory / intent ownership | Defined | Not implemented | Yes before autonomous greenfield creation on mature sites |
+| Artifact storage / recompute | Defined | Backend not selected | Yes before durable Content OS scale |
+| Publication verification | Defined | Existing readback partial only | Yes before autonomous public publish |
+| Rights / AI data processing | Defined | Policies not configured | Yes for applicable sources/providers |
+| Operator / Doctor / DLQ | Defined | Not implemented | Before broad operations |
+| Provider conformance / deprecation | Defined | Not implemented | Before multi-provider substitution |
+| Fair scheduling / local autonomy | Defined | Not implemented | Before broad multi-site scale |
+| Localization / accessibility / link graph | Defined | Partial existing site capabilities | Before multilingual autonomous publish |
+| Eval registry / alerts | Defined | Not implemented | Before model/process auto-promotion |
+| Experimentation / usage ledger | Defined | Not implemented | Maturity |
+| Decommission / portability | Defined | Not implemented | Before long-term lock-in risk becomes material |
 
 ## Rule
 

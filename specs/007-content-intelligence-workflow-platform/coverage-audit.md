@@ -741,3 +741,66 @@ Resolution:
 - add spec-isolation contract and CI compatibility task.
 
 This incident is permanent design evidence that shared repository metadata is an owned compatibility surface.
+
+
+## 47. Second-order long-lived platform gap closure
+
+A second-order architecture review asked what would fail only after MAD4B expands from one Staging site and a few providers to a long-lived multi-site/multi-business platform.
+
+The review identified and now specifies all of the following previously missing or partial concerns:
+
+1. Policy precedence/conflict resolution.
+2. Separation of duties, self-approval, quorum, delegation and emergency approval.
+3. Signed/revocable evidence attestation for cross-site trust.
+4. Existing-site bootstrap/backfill.
+5. Normalized content inventory.
+6. URL/search-intent ownership registry before content creation.
+7. Backend-neutral ArtifactStore and content-addressed blobs.
+8. Retrieval index abstraction without making a vector DB authoritative.
+9. Incremental dependency invalidation/recompute.
+10. Publication verification beyond WordPress database state.
+11. Cache/CDN propagation distinction.
+12. Content rights/licensing/attribution/takedown.
+13. AI provider data-processing/residency policy.
+14. Human Operator Control Center.
+15. Read-only Doctor + bounded RepairPlan.
+16. Dead-Letter Queue/poison-work replay.
+17. Shared semantic Provider Conformance Suite.
+18. Contract/capability/Skill deprecation and sunset.
+19. Fair scheduling, tenant quotas and noisy-neighbor isolation.
+20. Central-vs-site outage/local-autonomy model.
+21. Localization/translation/transcreation/RTL/hreflang model.
+22. Accessibility QA.
+23. Internal Link Graph.
+24. Eval Registry/gold-fixture/threshold governance.
+25. SLO error budgets, alerts and escalation.
+26. Experimentation/variant attribution with SEO safety.
+27. Usage ledger, budgets and optional chargeback.
+28. Decommission/export/import/credential and callback cleanup.
+
+These are represented by dedicated contracts, Phase 23–30 tasks and traceability rows. They are specification coverage, not runtime completion.
+
+## 48. Priority impact
+
+P0 architectural closure before autonomous publishing at scale:
+- policy resolution + separation of duties;
+- evidence attestation;
+- site bootstrap/inventory/intent;
+- artifact store;
+- incremental recompute;
+- publication verification;
+- rights and AI data-processing.
+
+P1 operational closure before broad multi-site use:
+- operator/Doctor/DLQ;
+- provider conformance/deprecation;
+- fair scheduling/local autonomy;
+- localization/accessibility/link graph;
+- eval registry/error budgets/alerts.
+
+P2 maturity:
+- experimentation;
+- chargeback;
+- full portability automation.
+
+Decommission/export semantics are designed early even if implementation is later because storage and identity choices become difficult to reverse after production data accumulates.

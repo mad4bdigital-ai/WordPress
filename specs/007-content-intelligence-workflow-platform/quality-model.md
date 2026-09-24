@@ -17,7 +17,12 @@ Feature 007 is evaluated independently across:
 9. schema/contract evolution and compatibility;
 10. observability, incident response and disaster recovery;
 11. testability and reproducibility;
-12. operator explainability and safe rollback.
+12. operator explainability and safe rollback;
+13. policy conflict resolution and separation of duties;
+14. site inventory/content intent and public publication truth;
+15. rights/data-processing governance;
+16. operational fairness/local autonomy;
+17. portability and safe decommission.
 
 A green functional path cannot compensate for a hard failure in a different quality dimension.
 
@@ -71,6 +76,21 @@ backup/restore, rollback/forward-fix, key/provider compromise and stuck-job reco
 
 QCOMPAT:
 supported PHP/WordPress/DB/MCP/provider matrix passes.
+
+QGOVERNANCE:
+policy precedence, separation of duties and reusable evidence trust are deterministic and tamper-resistant.
+
+QCONTENTSTATE:
+existing-site inventory, intent ownership, artifact storage/recompute and public publication verification preserve content truth across time.
+
+QRIGHTS:
+rights/licensing/attribution and AI data-processing/residency decisions satisfy configured policy before publication/external processing.
+
+QOPERABILITY:
+operator, Doctor, DLQ, fairness, alerts and local-autonomy behavior support safe diagnosis/recovery at multi-site scale.
+
+QPORTABILITY:
+export, provider/site decommission, credential/callback cleanup and import preserve required evidence without recreating authority.
 
 ## Rule
 

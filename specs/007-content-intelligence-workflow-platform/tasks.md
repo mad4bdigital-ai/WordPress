@@ -381,3 +381,156 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T2220 P0 OAuth key/provider compromise recovery rehearsal.
 - [ ] T2221 P0 Failed publish/rollback/forward-fix rehearsal.
 - [ ] T2222 P0 GATE QEVAL + QPERF + QCOMPAT + QRECOVERY pass.
+
+
+## Phase 23 — Policy resolution, approvals and evidence trust
+- [ ] T2301 P0 Implement Policy Resolution Engine input normalization.
+- [ ] T2302 P0 Define deny/kill-switch/environment/certification/approval/grant precedence.
+- [ ] T2303 P0 Emit explainable PolicyDecision with versions/reasons/SHA.
+- [ ] T2304 P0 Implement ApprovalPolicy requester/approver separation.
+- [ ] T2305 P0 Implement quorum and distinct-principal enforcement.
+- [ ] T2306 P0 Implement bounded delegation + revocation.
+- [ ] T2307 P0 Implement emergency approval TTL/incident/post-review.
+- [ ] T2308 P0 Deny Breakglass self-approval by default.
+- [ ] T2309 P0 Add evidence attestation signing profile.
+- [ ] T2310 P0 Add attestation trust roots/key roles.
+- [ ] T2311 P0 Add evidence/key revocation.
+- [ ] T2312 P0 Add bounded offline trust-cache TTL.
+- [ ] T2313 P0 Tampered local certification flag negative test.
+- [ ] T2314 P0 Expired/revoked attestation negative tests.
+- [ ] T2315 P0 GATE QGOVERNANCE pass.
+
+## Phase 24 — Existing-site bootstrap and intent registry
+- [ ] T2401 P0 Implement read-only SiteBootstrapSnapshot.
+- [ ] T2402 P0 Normalize posts/pages/CPTs/taxonomies/languages.
+- [ ] T2403 P0 Normalize URLs/canonicals/SEO/indexability.
+- [ ] T2404 P0 Normalize media and internal/outbound links.
+- [ ] T2405 P0 Backfill observed existing-content artifacts.
+- [ ] T2406 P0 Implement ContentInventoryItem registry.
+- [ ] T2407 P0 Implement Intent Registry.
+- [ ] T2408 P0 Define CREATE_NEW/UPDATE/CONSOLIDATE/SUPPORT/HUMAN_REVIEW outcomes.
+- [ ] T2409 P0 Content Planner intent-collision gate.
+- [ ] T2410 P0 Incremental inventory refresh.
+- [ ] T2411 P0 Periodic inventory reconciliation.
+- [ ] T2412 P0 Multilingual canonical-owner collision test.
+- [ ] T2413 P0 GATE Bootstrap performs no mutation.
+- [ ] T2414 P0 GATE First job requires reconciled site inventory where policy mandates.
+
+## Phase 25 — Artifact storage and incremental recomputation
+- [ ] T2501 P0 Define ArtifactStore interface.
+- [ ] T2502 P0 Implement immutable content-addressed blob identity.
+- [ ] T2503 P0 Separate logical Artifact ID from blob ID.
+- [ ] T2504 P0 Integrity verification on blob reads.
+- [ ] T2505 P0 Storage classes/tiering.
+- [ ] T2506 P0 Tenant/site storage quotas.
+- [ ] T2507 P0 Dedup accounting.
+- [ ] T2508 P0 Retention/legal-hold-aware garbage collection.
+- [ ] T2509 P1 Define rebuildable RetrievalIndex abstraction.
+- [ ] T2510 P0 Type ArtifactEdge invalidation semantics.
+- [ ] T2511 P0 Implement RecomputePlanner.
+- [ ] T2512 P0 Preserve unaffected artifacts with rationale.
+- [ ] T2513 P0 Add recompute cost/fan-out estimate.
+- [ ] T2514 P0 Fan-out review threshold.
+- [ ] T2515 P0 Change coalescing/debounce.
+- [ ] T2516 P0 Dependency cycle/loop prevention.
+- [ ] T2517 P0 Freshness-only gate invalidation.
+- [ ] T2518 P0 GATE Minimal recomputation property tests.
+
+## Phase 26 — Publication verification, rights and AI data processing
+- [ ] T2601 P0 PublicationEvidence schema.
+- [ ] T2602 P0 Origin object + HTTP verification.
+- [ ] T2603 P0 Public/edge fetch and rendered-content fingerprint.
+- [ ] T2604 P0 Canonical/robots/indexability verification.
+- [ ] T2605 P0 Structured-data verification.
+- [ ] T2606 P0 Hreflang/language verification.
+- [ ] T2607 P0 Media/sitemap verification.
+- [ ] T2608 P0 Cache/CDN propagation state and timeout.
+- [ ] T2609 P0 Governed cache purge capability where provider supports it.
+- [ ] T2610 P0 Publication containment/rollback policy.
+- [ ] T2611 P0 RightsRecord registry.
+- [ ] T2612 P0 Research-vs-republication rights policy.
+- [ ] T2613 P0 Media rights/attribution verification.
+- [ ] T2614 P1 Similarity/near-duplicate policy.
+- [ ] T2615 P0 Takedown invalidation workflow.
+- [ ] T2616 P0 AI DataProcessingProfile registry.
+- [ ] T2617 P0 Classification→provider processing decision.
+- [ ] T2618 P0 Redaction/minimization path.
+- [ ] T2619 P0 Data residency/local-only policy.
+- [ ] T2620 P0 Fallback-model processing equivalence.
+- [ ] T2621 P0 GATE Public publish requires required verification/rights/data gates.
+
+## Phase 27 — Operator control, Doctor, DLQ and provider lifecycle
+- [ ] T2701 P1 Operator Control Center read model.
+- [ ] T2702 P1 Queue/blocker/approval/provider/gate/budget views.
+- [ ] T2703 P1 Governed retry/cancel/pause/resume actions.
+- [ ] T2704 P1 Bounded bulk-action preview/blast-radius policy.
+- [ ] T2705 P0 Read-only Doctor findings.
+- [ ] T2706 P0 RepairPlan contract.
+- [ ] T2707 P0 Stuck lease/orphan artifact/stale gate diagnostics.
+- [ ] T2708 P0 Provider/policy/publication drift diagnostics.
+- [ ] T2709 P0 Dead-Letter Queue schema/policy.
+- [ ] T2710 P0 DLQ replay with current readback/idempotency.
+- [ ] T2711 P0 Poison-work retention/quarantine.
+- [ ] T2712 P0 Shared provider semantic conformance suite.
+- [ ] T2713 P0 Golden cross-provider fixtures.
+- [ ] T2714 P0 Contract/capability/Skill lifecycle metadata.
+- [ ] T2715 P0 Deprecation usage inventory.
+- [ ] T2716 P0 Sunset migration/removal gate.
+- [ ] T2717 P0 GATE Common repair/replay path works without raw DB surgery.
+
+## Phase 28 — Fairness, autonomy, localization, accessibility and links
+- [ ] T2801 P1 Tenant/site/provider scheduling classes.
+- [ ] T2802 P1 Weighted fair scheduling and anti-starvation.
+- [ ] T2803 P1 Per-scope quotas/concurrency.
+- [ ] T2804 P1 Reserved incident/recovery capacity.
+- [ ] T2805 P0 Define central dependency outage matrix.
+- [ ] T2806 P0 Define cached evidence/authority TTL by dependency.
+- [ ] T2807 P0 Deny new privilege during central outage by default.
+- [ ] T2808 P0 Reconnection trust/revocation/drift reconciliation.
+- [ ] T2809 P0 LocalizationCluster.
+- [ ] T2810 P0 Translation/transcreation lineage.
+- [ ] T2811 P0 Locale formatting and RTL/LTR rules.
+- [ ] T2812 P0 Canonical/hreflang locale policy.
+- [ ] T2813 P1 Accessibility QA profile.
+- [ ] T2814 P1 Heading/link/alt/language/direction checks.
+- [ ] T2815 P0 Internal Link Graph.
+- [ ] T2816 P0 Link recommendation policy.
+- [ ] T2817 P0 Orphan/anchor-diversity/indexability rules.
+- [ ] T2818 P0 Publication verification for links/hreflang/canonical.
+- [ ] T2819 P0 GATE Noisy-neighbor + central-outage + multilingual fixtures pass.
+
+## Phase 29 — Eval operations, alerts, experimentation and usage ledger
+- [ ] T2901 P1 EvalSuite registry/ownership/versioning.
+- [ ] T2902 P1 Gold fixture provenance/contamination policy.
+- [ ] T2903 P1 Threshold calibration/versioning.
+- [ ] T2904 P1 Human reviewer agreement metadata where applicable.
+- [ ] T2905 P1 EvalRun baseline comparison.
+- [ ] T2906 P1 SLO error-budget state.
+- [ ] T2907 P1 Burn-rate alerts.
+- [ ] T2908 P1 Alert owner/runbook/escalation/dedup.
+- [ ] T2909 P1 Maintenance-window policy.
+- [ ] T2910 P2 Experiment identity/hypothesis/assignment.
+- [ ] T2911 P2 Immutable variant artifacts.
+- [ ] T2912 P2 SEO-safe experiment constraints.
+- [ ] T2913 P2 Guardrails/stopping/interaction policy.
+- [ ] T2914 P2 Winner promotion through normal publish gates.
+- [ ] T2915 P1 UsageEvent append-only ledger.
+- [ ] T2916 P1 Job/stage/site/tenant/provider budgets.
+- [ ] T2917 P2 Rate-card versioning/internal chargeback.
+- [ ] T2918 P2 Provider invoice reconciliation/adjustments.
+- [ ] T2919 P1 GATE Usage/alert/eval evidence is payload-minimized and tenant-scoped.
+
+## Phase 30 — Decommission and portability
+- [ ] T3001 P1 Define decommission scopes.
+- [ ] T3002 P1 Inventory active jobs/DLQ/artifacts/providers/credentials/cron/webhooks.
+- [ ] T3003 P1 Quiesce and late-callback treatment.
+- [ ] T3004 P1 ExportBundle manifest.
+- [ ] T3005 P1 Artifact/blob checksum export.
+- [ ] T3006 P1 Exclude secrets/private keys by default.
+- [ ] T3007 P1 Provider resolver removal + credential revoke.
+- [ ] T3008 P1 Webhook/MCP side-channel cleanup.
+- [ ] T3009 P1 Site/tenant local+central cleanup plan.
+- [ ] T3010 P1 Import compatibility/remapping/collision validation.
+- [ ] T3011 P1 Prove import does not recreate grants/Production authorization.
+- [ ] T3012 P1 Final no-in-flight/no-active-secret verification.
+- [ ] T3013 P1 GATE Produce decommission completion report.

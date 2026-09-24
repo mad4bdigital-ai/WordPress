@@ -26,8 +26,25 @@ Core:
 - quality-model.md
 - quality-scorecard.md
 - data-model-authority-certification.md
+- data-model-operations-lifecycle.md
 
 Contracts:
+- decommission-portability.md
+- usage-ledger-chargeback.md
+- experimentation-attribution.md
+- eval-registry-alerting.md
+- localization-accessibility-linkgraph.md
+- fair-scheduling-local-autonomy.md
+- provider-conformance-contract-lifecycle.md
+- operator-control-doctor-deadletter.md
+- ai-data-processing-residency.md
+- content-rights-licensing.md
+- publication-verification.md
+- incremental-recompute.md
+- artifact-storage-retrieval.md
+- existing-site-bootstrap-content-inventory.md
+- evidence-attestation-trust.md
+- policy-resolution-separation-of-duties.md
 - spec-isolation.md
 - policy-drift-kill-switches.md
 - verification-testing-strategy.md
@@ -89,3 +106,8 @@ Feature 007 stores its metadata in this directory's `feature.json`. It MUST NOT 
 ## Quality rule
 
 Functional coverage is not sufficient for release. `quality-model.md` defines independent hard quality gates for correctness, resilience, security, data/privacy, performance/cost, evaluation, compatibility and recovery. Hard blockers are not averaged into a single score.
+
+
+## Long-lived operating model
+
+Feature 007 is not limited to greenfield content generation. It MUST inventory existing site state, resolve intent ownership, store immutable artifacts, recompute only affected dependencies, verify public publication, support human operations and eventual provider/site decommission. Multi-site fairness, rights, data-processing, localization, accessibility, experiments and economic usage are first-class platform concerns rather than vendor-specific add-ons.

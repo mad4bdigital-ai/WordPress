@@ -414,3 +414,134 @@ Q-020 Verification includes denial paths, property/invariant tests, bounded fuzz
 Q-021 Desired/observed policy drift is explicit; unknown high-risk runtime state fails closed.
 Q-022 Feature flags and kill switches narrow runtime behavior but never substitute for grants, certification or approval.
 Q-023 Cross-feature specification metadata is isolated so Feature 007 cannot break Feature 001 or other independent contracts.
+
+
+## Policy resolution and approval governance requirements
+
+GOV-001 All widening decisions use one deterministic Policy Resolution Engine across global, tenant, site, environment, authority, provider, capability, release, quality and approval policies.
+GOV-002 Explicit hard deny, kill switch, quarantine and environment prohibition outrank lower-precedence allow/grant/feature-enable signals.
+GOV-003 Effective policy decisions expose stable reason codes, matched policy versions, precedence chain and decision fingerprint.
+GOV-004 High-risk ApprovalPolicy supports distinct requester/approver rules, quorum, delegation, expiry, revocation and emergency policy.
+GOV-005 Breakglass self-approval is denied by default.
+GOV-006 Delegation cannot exceed delegator scope and is time-bounded/audited.
+GOV-007 Emergency approval has short TTL, incident/reason binding and mandatory post-use review.
+GOV-008 Cached policy decisions are invalidated when contributing policy versions change.
+
+## Evidence trust requirements
+
+EVID-001 Reusable certification/release evidence MAY be digitally attested so a site does not trust mutable local status flags alone.
+EVID-002 Evidence attestation binds evidence hash, subject/artifact/capability identity, signer key ID, issuance time and policy version.
+EVID-003 Evidence trust roots, signer roles, key rotation and revocation are explicit.
+EVID-004 OAuth signing trust does not automatically imply evidence-attestation trust.
+EVID-005 Cross-site evidence reuse requires valid attestation, exact dependencies, non-revocation and local runtime compatibility.
+EVID-006 Cached trust/revocation data has bounded TTL; stale metadata never widens authority.
+
+## Existing-site bootstrap and content-intent requirements
+
+BOOT-001 An existing site MUST be bootstrapped read-only before autonomous content creation is considered complete.
+BOOT-002 SiteBootstrapSnapshot normalizes existing content objects, URLs, canonicals, SEO state, media, links, taxonomies and languages without pretending historical content was created by Feature 007.
+BOOT-003 ContentInventoryItem is provider-neutral and records source/derivation for inferred topic/entity/intent signals.
+BOOT-004 Intent Registry identifies the canonical owner of a search/content intent per site/locale/market.
+BOOT-005 New jobs MUST check intent ownership and may resolve to SUPPORT_EXISTING, UPDATE_EXISTING, CONSOLIDATE or HUMAN_REVIEW instead of CREATE_NEW.
+BOOT-006 Inventory supports incremental refresh plus periodic reconciliation for missed drift.
+BOOT-007 Bootstrap itself performs no content mutation.
+
+## Artifact storage and recomputation requirements
+
+STORE-001 Artifact metadata and lineage are separated from potentially large immutable payload storage.
+STORE-002 ArtifactStore is backend-neutral and supports immutable write/read, content hash verification, storage classes, quotas, retention and export/import.
+STORE-003 Content-addressable blobs MAY deduplicate physical payloads while preserving distinct logical Artifact identities.
+STORE-004 Retrieval indexes are rebuildable secondary structures and never become authority sources.
+STORE-005 Garbage collection requires reference/retention/legal-hold proof and leaves required tombstone evidence.
+RECOMP-001 Artifact dependencies are typed by invalidation semantics.
+RECOMP-002 A change produces an explicit non-authorizing RecomputePlan containing the minimum affected subgraph, order, fan-out and cost estimate.
+RECOMP-003 Unaffected artifacts are preserved with rationale rather than blindly regenerated.
+RECOMP-004 Fan-out guards and coalescing prevent recomputation storms.
+RECOMP-005 Freshness can invalidate a gate without deleting the original immutable artifact.
+RECOMP-006 Causation/correlation prevents self-triggering recompute loops.
+
+## Publication verification requirements
+
+PVER-001 Successful WordPress mutation is necessary but not sufficient for PublicationVerification=PASS.
+PVER-002 Verification distinguishes origin state, public/edge state and stale cache.
+PVER-003 Required checks may include rendered content fingerprint, canonical, robots/indexability, structured data, language/hreflang, media and sitemap.
+PVER-004 Eventual consistency uses bounded PENDING_PROPAGATION state and explicit timeout.
+PVER-005 Cache/CDN purge is a separate governed capability, not an implicit side effect.
+PVER-006 Failed high-risk public verification supports containment/rollback policy and preserves intended-vs-observed evidence.
+PVER-007 Third-party search indexing is observed separately and is never inferred merely from publish success.
+
+## Rights and AI data-processing requirements
+
+RIGHTS-001 Sources/media have RightsRecord or an explicit UNKNOWN rights state.
+RIGHTS-002 Research/reference permission is distinct from permission to reproduce, transform or publish.
+RIGHTS-003 Competitor/scraped content is reference evidence by default, not reusable article copy.
+RIGHTS-004 Required attribution becomes a publish requirement and is verified where policy applies.
+RIGHTS-005 Similarity/near-duplicate policy may block or require review.
+RIGHTS-006 Takedown invalidates future reuse and can trigger governed replacement/unpublish while preserving audit identity.
+AIDATA-001 Every AI provider/model endpoint has a DataProcessingProfile defining allowed data classes, region/residency, retention/training/logging constraints as known/configured.
+AIDATA-002 Model calls are authorized by data classification and may require redaction, local-only processing, approval or denial.
+AIDATA-003 Fallback models/providers independently satisfy the same or stricter processing policy.
+AIDATA-004 Cost or availability cannot override a data-processing denial.
+AIDATA-005 Durable AI artifact evidence records provider/model, processing-policy version, input classifications and redaction decision without leaking secrets.
+
+## Human operations and provider lifecycle requirements
+
+OPS-001 Operator Control Center exposes jobs, blockers, approvals, gates, provider health, retries, queue/lease state, publication verification, drift, incidents and budgets.
+OPS-002 Human actions remain governed operations with exact target, preview/diff and evidence.
+OPS-003 Doctor is read-only by default and emits findings plus bounded RepairPlans; it never executes repair implicitly.
+OPS-004 Repeated poison work moves to an explicit Dead-Letter Queue with original identity, error history, checkpoint and replay-safety class.
+OPS-005 DLQ replay preserves original evidence and re-evaluates current idempotency, policy and provider eligibility.
+CONF-001 Providers claiming the same semantic capability pass a shared provider-neutral conformance suite.
+CONF-002 Provider conformance does not itself create certification or authority.
+CONF-003 Contract/capability/Skill lifecycle records introduced version, deprecation, replacement, compatibility window and sunset conditions.
+CONF-004 Breaking changes require a new contract/schema version and migration path.
+CONF-005 Contract removal requires usage inventory and migration evidence.
+
+## Fairness and local-autonomy requirements
+
+FAIR-001 Shared scheduling uses tenant/site/provider-aware quotas, priority classes and bounded concurrency.
+FAIR-002 Fair allocation prevents one tenant/site/provider from exhausting all workers or external quotas.
+FAIR-003 Critical recovery/incident lanes MAY reserve bounded capacity without bypassing authority.
+FAIR-004 Quotas and scheduling never create permission to perform an operation.
+AUTO-001 Central registry/authority/provider-catalog outages have explicit local behavior, cached-evidence TTL and fail-open/closed policy.
+AUTO-002 Loss of central services never creates new broad privilege, certification or Production authority.
+AUTO-003 Reconnection refreshes trust/revocation and reconciles local drift/actions.
+AUTO-004 Safe reads MAY continue during selected outages according to explicit policy.
+
+## Localization, accessibility and internal-link requirements
+
+LOC-001 Locale variants belong to explicit LocalizationCluster identities with translation/transcreation lineage.
+LOC-002 Locale formatting, RTL/LTR, translated taxonomy/entity mapping, canonical and hreflang policy are explicit.
+LOC-003 Missing translation cannot silently produce an indexable wrong-language fallback.
+A11Y-001 Accessibility QA uses a configured profile for heading semantics, links, image alternatives, document structures, language/direction and applicable media requirements.
+A11Y-002 Accessibility hard blockers/warnings are versioned and evidence-backed.
+LINK-001 Internal Link Graph represents content, entity/topic, intent and locale relationships.
+LINK-002 Link recommendation considers intent ownership, relevance, locale, anchor diversity, orphan risk and target indexability.
+LINK-003 Link recommendation is non-authorizing and avoids circular/irrelevant link spam.
+LINK-004 Publication Verification confirms expected public links/canonical/hreflang relationships.
+
+## Evaluation, alerting and experimentation requirements
+
+EVALREG-001 Eval suites have owner, versioned fixtures/gold data, scoring, thresholds, hard failures and contamination policy.
+EVALREG-002 Gold fixtures are not silently generated by the same candidate being evaluated.
+EVALREG-003 Human-reviewer calibration/agreement MAY be tracked for subjective criteria.
+EVALREG-004 Threshold changes are versioned and justified.
+ALERT-001 SLO profiles have explicit error budgets and burn-rate thresholds where applicable.
+ALERT-002 Alerts have owner/on-call role, severity, dedup key, runbook and escalation.
+ALERT-003 Maintenance windows do not erase raw evidence or suppress security incidents improperly.
+EXP-001 Experiments have immutable variant identities, explicit population/assignment, primary metric, guardrails and stopping policy.
+EXP-002 Public SEO experiments explicitly govern canonical/indexability behavior and cannot accidentally create duplicate indexable variants.
+EXP-003 Winning variants do not bypass normal promotion, quality and publishing gates.
+EXP-004 Concurrent experiments declare interference/exclusion rules when needed.
+
+## Usage and portability requirements
+
+USAGE-001 Provider/model/storage/workflow usage is recorded as append-only UsageEvents with tenant/site/job attribution where practical.
+USAGE-002 Budgets can be hard stop, warning or approval threshold at job/stage/site/tenant/provider scopes.
+USAGE-003 Internal chargeback rate cards are versioned separately from raw provider pricing.
+USAGE-004 Provider invoice reconciliation creates adjustments rather than rewriting historical usage.
+PORT-001 Providers/sites/tenants/modules can be decommissioned through inventory, quiesce, revoke, export and final verification.
+PORT-002 ExportBundle preserves schema/contract versions, jobs/events, artifacts/lineage and content inventory with checksums; secrets/private keys are excluded by default.
+PORT-003 Provider removal disables resolver selection, credentials, callbacks and side channels before final removal.
+PORT-004 Import validates integrity, compatibility, remapping and collisions and never recreates grants or Production authorization implicitly.
+PORT-005 Decommission completes only when no unexpected scheduled/in-flight work or active credentials/webhooks remain.
