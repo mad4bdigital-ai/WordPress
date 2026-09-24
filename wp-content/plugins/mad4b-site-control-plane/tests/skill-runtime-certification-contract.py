@@ -237,7 +237,8 @@ for marker in [
     "$recorded_sha = isset( $meta['sha256'] )",
     "hash_equals( $recorded_sha, $current_sha )",
     "'drifted_managed' => true",
-    "$current === (bool) $desired_enabled",
+    "$toggle = $current !== (bool) $desired_enabled;",
+    "if ( ! $refresh && ! $toggle )",
     "$meta['enabled'] = (bool) $desired_enabled",
     "'provider_active_adapter_ready'",
 ]:
