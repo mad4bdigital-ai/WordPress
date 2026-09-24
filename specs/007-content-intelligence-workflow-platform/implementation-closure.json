@@ -1,7 +1,6 @@
 {
-  "contract": "mad4b.feature007-implementation-closure.v1",
+  "contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_branch": "master",
-  "baseline_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
   "terminal_gate": "critical_kernel_vertical_slice_verified",
   "production_authorized": false,
   "architecture_freeze": true,
@@ -67,11 +66,18 @@
     {
       "id": "execution_ledger_reconciliation",
       "priority": "KERNEL_BLOCKER",
-      "status": "OPEN",
-      "gate": "execution_ledger_reconciled"
+      "status": "DONE",
+      "gate": "execution_ledger_reconciled",
+      "evidence": {
+        "ledger_contract": "mad4b.feature007-task-ledger.v1",
+        "generated_ledger": "specs/007-content-intelligence-workflow-platform/task-ledger.generated.json",
+        "overrides": "specs/007-content-intelligence-workflow-platform/task-ledger-overrides.json",
+        "reconciler": "specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py",
+        "bulk_completion_without_evidence_forbidden": true
+      }
     },
     {
-      "id": "latest_master_root_trust",
+      "id": "latest_runtime_release_root_trust",
       "priority": "KERNEL_BLOCKER",
       "status": "DONE",
       "gate": "release_provenance_root",
@@ -91,7 +97,9 @@
         "trusted_signer_ref": "refs/heads/master",
         "trusted_signer_event": "push",
         "release_verdict_run_id": 36072550766,
-        "repository_release_ready": true
+        "repository_release_ready": true,
+        "identity_role": "runtime_release",
+        "repository_head_equivalence_required": false
       }
     },
     {
@@ -129,15 +137,16 @@
       }
     },
     {
-      "id": "etg_exact_master_deployment",
+      "id": "etg_exact_runtime_release_deployment",
       "priority": "LIVE_PRECONDITION",
       "status": "OPEN",
-      "gate": "etg_exact_master_deployed",
+      "gate": "etg_exact_runtime_release_deployed",
       "evidence": {
         "target_source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
         "currently_deployed_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
         "source_commit_match": false,
-        "deployment_performed": false
+        "deployment_performed": false,
+        "repository_head_equivalence_required": false
       }
     },
     {
@@ -370,8 +379,6 @@
     "control_plane_version": "0.4.0-rc.59",
     "mcp_adapter_version": "0.6.1",
     "live_source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
-    "target_master_source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
-    "trusted_master_deployed": false,
     "live_manifest_present": true,
     "live_manifest_valid": true,
     "live_runtime_manifest_match": true,
@@ -408,6 +415,27 @@
       "evidence_refs": [],
       "must_refresh_before_gate_decision": true,
       "unknown_or_stale_behavior": "UNKNOWN"
-    }
+    },
+    "target_runtime_release_source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+    "selected_runtime_release_deployed": false
+  },
+  "repository_baseline": {
+    "contract": "mad4b.reviewed-repository-parent.v1",
+    "branch": "master",
+    "last_reviewed_parent_sha": "b1f7e837efc69aa220385d84761e46f64c2442b1",
+    "current_head_is_external_evidence": true,
+    "self_referential_current_head_forbidden": true
+  },
+  "runtime_release_identity": {
+    "contract": "mad4b.runtime-release-identity.v1",
+    "state": "CURRENT_FOR_DEPLOYMENT",
+    "source_commit_sha": "540d5db4be521297de673c8a4d14974c23b67a6a",
+    "control_plane_version": "0.4.0-rc.59",
+    "build_fingerprint": "f16cb7ecccff30bd1d54aa3088de404f5315823222f4e26b73fb340b4195a8c6",
+    "package_manifest_digest": "3d2870fd75ad5b6822a76fa00e1b7b90489ad6b121d6d0dd8e31ea6f07541950",
+    "control_plane_archive_sha256": "c8885bdfc42e6aa1a6ce44896f6a9b6b54742a1d7d56269605402ffe11c33b06",
+    "package_workflow_run_id": 36072550999,
+    "general_distribution_artifact_id": 10838403565,
+    "repository_runtime_delta_verified_empty_through": "b1f7e837efc69aa220385d84761e46f64c2442b1"
   }
 }
