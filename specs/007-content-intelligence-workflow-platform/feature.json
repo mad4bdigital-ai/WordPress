@@ -127,10 +127,13 @@
     "protected_backup_recovery_readiness",
     "bitflows_1_29_exact_runtime_certification",
     "unified_implementation_closure",
-    "critical_kernel_vertical_slice_verified"
+    "critical_kernel_vertical_slice_verified",
+    "repository_governance_bootstrap_retirement",
+    "etg_exact_master_deployment",
+    "runtime_root_trust_readback"
   ],
-  "coverage_audit_version": "2026-09-25.v7-unified-implementation-closure",
-  "coverage_status": "all-known-remaining-work-classified-and-linked-to-closure-gates",
+  "coverage_audit_version": "2026-09-25.v8-live-residual-closure",
+  "coverage_status": "all-known-remaining-work-classified-with-live-etg-deployment-trust-readback-and-governance-retirement-gates",
   "quality_model": "mad4b.feature007.quality.v1",
   "operating_model": "long-lived-multi-site-governed-platform",
   "required_phase_count": 37,
