@@ -378,3 +378,51 @@ Flags never replace grants/certification/approval.
 
 ETG English informational content on Staging:
 create job → resolve context → choose writer profile → keyword/SERP research → competitors → coverage → InformationGainPlan → blueprint → write → fact/editorial/SEO QA → media/SEO intent → verified WordPress draft → stop before public publication unless separately approved.
+
+
+## Phase 15 — Multi-Authority hardening and live certification
+
+- split Authority Registry into trust, advertisement, resource, subject-mapper and live-evidence dimensions;
+- add issuer-bound external subject mapping instead of requiring WordPress numeric IDs in external subject syntax;
+- add exact authority_resource_policy;
+- add full REST filter-chain Local/External tests;
+- add Multi-Authority Live Certification against exact ETG Staging candidate;
+- add Local OAuth keyring/rotation;
+- preserve exact current MCP Adapter until an official successor is exact-package certified.
+
+Exit gate: MULTI_AUTHORITY_LIVE=PASS on exact rc.59 candidate before release trust is widened.
+
+## Phase 16 — Dynamic provider certification
+
+- implement workflow-provider-diagnostic.v1;
+- compute ProviderArtifact and capability fingerprints;
+- add structural discovery/security surface inventory;
+- add artifact diff classifier;
+- add evidence dependency graph/reuse;
+- add permanent behavioral probe catalog;
+- separate central exact-artifact certification from site runtime compatibility;
+- support quarantine and selective capability invalidation.
+
+Exit gate: Bit Flows exact installed artifact can be assessed without version-whitelist logic.
+
+## Phase 17 — Provider Resolver and signed bridge
+
+- define RequiredCapabilitySet;
+- implement provider capability matrix;
+- implement non-authorizing Provider Resolver;
+- add signed/expiring/replay-resistant workflow bridge;
+- keep Skills provider-neutral.
+
+Exit gate: a fixture workflow requirement can choose an eligible provider using only semantic capability requirements and evidence.
+
+## Phase 18 — Release rings and controlled autopromotion
+
+- R0 disposable;
+- R1 ETG Staging canary;
+- R2 selected Staging;
+- R3 general Staging eligibility;
+- R4 Production eligibility;
+- conditional promotion only from evidence/policy;
+- demotion/quarantine on regression.
+
+Production eligibility remains distinct from Production authorization.

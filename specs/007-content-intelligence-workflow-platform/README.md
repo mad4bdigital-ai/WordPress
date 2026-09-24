@@ -21,8 +21,21 @@ Core:
 - quickstart.md
 - runbook.md
 - traceability.md
+- coverage-audit.md
+- data-model-authority-certification.md
 
 Contracts:
+- release-rings.md
+- provider-resolver.md
+- signed-workflow-bridge.md
+- behavioral-probe-catalog.md
+- workflow-provider-diagnostic.md
+- dynamic-provider-certification.md
+- mcp-protocol-evolution.md
+- oauth-key-lifecycle.md
+- multi-authority-live-certification.md
+- subject-mapping.md
+- multi-authority-registry.md
 - architecture-boundaries.md
 - release-lineage.md
 - workflow-provider.md
@@ -49,3 +62,7 @@ Checklist:
 ## Merge rule
 
 This specification branch is based on rc.59 integration lineage. Runtime implementation beyond specification work is gated by Phase 0 canonicalization in plan.md.
+
+## Coverage rule
+
+`coverage-audit.md` is the normative mapping from all supplied architecture inputs to Feature 007 contracts/tasks. A concern is not considered captured merely because it was discussed in chat; it must appear in the audit and be linked to a contract/task/gate.

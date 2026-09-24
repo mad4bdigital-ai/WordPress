@@ -51,3 +51,41 @@
 - [ ] Exact Bit Flows lifecycle public API support on certified package.
 - [ ] Host Connector transport/provider for first implementation.
 - [ ] SearchPerformanceProvider for Growth phase.
+
+
+## Supplied-input coverage audit
+- [x] Repository-ready vs live-Staging vs Production states are separated.
+- [x] Multi-Authority trust and advertisement are separate.
+- [x] Exact authority resource policy is defined.
+- [x] External subject mapping is issuer/site-bound and decoupled from WP primary keys.
+- [x] Full REST filter-chain E2E is required.
+- [x] External live readiness truthfulness is specified.
+- [x] Local OAuth keyring/rotation is specified.
+- [x] MCP protocol evolution is exact-package governed.
+- [x] Multi-Authority Live Certification is a hard gate.
+- [x] Workflow Provider Diagnostic is specified.
+- [x] Capability fingerprints are specified.
+- [x] Extended certification lifecycle including QUARANTINED is specified.
+- [x] Artifact Diff Classifier is specified.
+- [x] Evidence dependency graph/reuse is specified.
+- [x] Global artifact certification vs site compatibility is separated.
+- [x] Behavioral provider probes are specified.
+- [x] Historical Bit Flows regression probes are retained permanently.
+- [x] Run Code/arbitrary PHP is denied from ordinary workflow authority.
+- [x] Native provider MCP is blocked/federated, not a parallel privileged transport.
+- [x] Signed/replay-resistant workflow bridge is specified.
+- [x] Provider Resolver is specified.
+- [x] Release rings are specified.
+- [x] Conditional evidence-based autopromotion is specified.
+- [x] SemVer is metadata/risk signal, not authority.
+- [x] coverage-audit.md maps all supplied architecture inputs.
+
+## Runtime closure still pending
+- [ ] Multi-Authority Live Certification PASS on exact ETG Staging candidate.
+- [ ] PR #45/#47 semantic reconciliation REQUIRED=0.
+- [ ] rc.59 exact-head live acceptance.
+- [ ] rc.59 canonical merge.
+- [ ] Dynamic certification runtime implementation.
+- [ ] Exact Bit Flows installed artifact recertification.
+- [ ] Provider Resolver runtime implementation.
+- [ ] First Content Job vertical slice.

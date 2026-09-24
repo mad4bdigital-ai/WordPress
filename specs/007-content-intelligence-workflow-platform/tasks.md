@@ -223,3 +223,87 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1506 P0 Validate vendor methods remain in adapters.
 - [ ] T1507 P0 Validate every write family has risk/recovery/evidence policy.
 - [ ] T1508 P0 Validate traceability covers functional families.
+
+
+## Phase 15 — Multi-Authority OAuth hardening
+- [ ] T1509 P0 Model AuthorityDescriptor trust/advertisement/resource/subject/live dimensions.
+- [ ] T1510 P0 Split trusted_authorities from advertised_authorities.
+- [ ] T1511 P0 Implement authority_resource_policy.
+- [ ] T1512 P0 Implement issuer+external_sub+site subject mapping.
+- [ ] T1513 P0 Add mapping governance/audit/revision.
+- [ ] T1514 P0 GATE Full REST filter-chain Local subject E2E.
+- [ ] T1515 P0 GATE Full REST filter-chain External subject E2E.
+- [ ] T1516 P0 Cross-authority subject/JWK isolation negatives.
+- [ ] T1517 P0 External live readiness evidence and truthful status.
+- [ ] T1518 P0 Authority outage/no-unintended-fallback test.
+- [ ] T1519 P0 Restrict Local default resource policy from Developer/Breakglass.
+- [ ] T1520 P1 Add Local keyring current/next/previous.
+- [ ] T1521 P1 Add overlap rotation state machine.
+- [ ] T1522 P1 Restart persistence/kid stability test.
+- [ ] T1523 P1 Unknown-kid bounded refresh/deny test.
+- [ ] T1524 P1 Refresh replay/family poisoning regression.
+- [ ] T1525 P1 Key rotation overlap test.
+- [ ] T1526 P1 Add MCP Adapter exact-package protocol profile.
+- [ ] T1527 P1 Add successor official release certification workflow.
+- [ ] T1528 P1 Dual-protocol regression when successor supports newer MCP.
+- [ ] T1529 P0 GATE Multi-Authority Live Certification contract implementation.
+- [ ] T1530 P0 Exact deployment/package/resource metadata probes.
+- [ ] T1531 P0 Local AS live canary.
+- [ ] T1532 P0 External AS live canary where configured.
+- [ ] T1533 P0 Real ChatGPT OAuth→MCP acceptance.
+- [ ] T1534 P0 Same-identity MCP tools discovery/call.
+- [ ] T1535 P0 Production isolation negative.
+- [ ] T1536 P0 GATE Require MULTI_AUTHORITY_LIVE=PASS before removing Draft trust gate.
+
+## Phase 16 — Dynamic provider certification
+- [ ] T1601 P0 Implement workflow-provider-diagnostic.v1.
+- [ ] T1602 P0 Artifact tree/critical-file/schema identity.
+- [ ] T1603 P0 Structural capability discovery.
+- [ ] T1604 P0 Security surface discovery.
+- [ ] T1605 P0 Compute per-capability fingerprint.
+- [ ] T1606 P0 Migrate certification lifecycle to extended states.
+- [ ] T1607 P0 Implement QUARANTINED state.
+- [ ] T1608 P0 Implement Artifact Diff Classifier.
+- [ ] T1609 P0 Map changed dependencies to affected capabilities.
+- [ ] T1610 P0 Build CertificationEvidence dependency graph.
+- [ ] T1611 P0 Explicit evidence reuse with lightweight smoke.
+- [ ] T1612 P0 Central exact-artifact Certification Registry.
+- [ ] T1613 P0 SiteRuntimeCompatibility probes.
+- [ ] T1614 P0 Verify global cert does not auto-grant site eligibility.
+- [ ] T1615 P0 Generic deterministic execution probe.
+- [ ] T1616 P0 Controlled failure/timeout/retry probes.
+- [ ] T1617 P0 Duplicate execution/trigger probes.
+- [ ] T1618 P0 Bit Flows trigger_isolation_test.
+- [ ] T1619 P0 Bit Flows paused_execution_state_test.
+- [ ] T1620 P0 Bit Flows native MCP privilege test.
+- [ ] T1621 P0 Bit Flows Run Code ordinary-capability denial test.
+- [ ] T1622 P0 Outbound/private-network policy probe.
+- [ ] T1623 P0 Webhook authentication/binding probe.
+- [ ] T1624 P0 Promote exact installed Bit Flows capabilities individually.
+- [ ] T1625 P1 Test newer Bit Flows artifact in disposable ring without changing ETG first.
+- [ ] T1626 P0 GATE Prove version is metadata/risk signal, not direct authority.
+
+## Phase 17 — Provider Resolver and workflow bridge
+- [ ] T1701 P0 Define RequiredCapabilitySet.
+- [ ] T1702 P0 Build provider feature/capability matrix.
+- [ ] T1703 P0 Implement ProviderResolutionDecision.
+- [ ] T1704 P0 Consider certification/environment/risk/cost/locality/performance.
+- [ ] T1705 P0 Ensure Resolver is non-authorizing.
+- [ ] T1706 P0 Ensure Skills do not hardcode Bit Flows.
+- [ ] T1707 P0 Define signed workflow-execution-request.v1.
+- [ ] T1708 P0 Bind request to site/workflow SHA/plan SHA/expiry/nonce.
+- [ ] T1709 P0 Replay denial.
+- [ ] T1710 P0 Bound callback/result contract.
+- [ ] T1711 P0 GATE Resolve equivalent fixture across two provider adapters without domain-schema change.
+
+## Phase 18 — Provider release rings
+- [ ] T1801 P1 Implement R0 disposable state.
+- [ ] T1802 P1 Implement R1 canary Staging.
+- [ ] T1803 P1 Implement R2 selected Staging.
+- [ ] T1804 P1 Implement R3 general Staging eligibility.
+- [ ] T1805 P1 Implement R4 Production eligibility.
+- [ ] T1806 P1 Define per-ring evidence requirements.
+- [ ] T1807 P1 Conditional autopromotion policy.
+- [ ] T1808 P1 Demotion/quarantine.
+- [ ] T1809 P1 Verify Production eligibility != authorization.
+- [ ] T1810 P1 GATE Demonstrate selective capability promotion/demotion from dependency evidence.

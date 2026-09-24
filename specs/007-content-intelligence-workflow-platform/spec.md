@@ -346,3 +346,44 @@ SC-003 Each stage can be inspected and retried without rerunning the entire pipe
 SC-004 Provider replacement requires adapter/certification work, not domain-model rewrites.
 SC-005 ETG-specific fields are represented through profile/configuration rather than generic schema changes.
 SC-006 Production remains separately gated.
+
+
+## Multi-Authority requirements
+
+AUTH-001 Authority trust, advertisement, resource access, subject mapping and live readiness are independent policy dimensions.
+AUTH-002 External subject identifiers are mapped by exact issuer + subject + site binding; they are not required to encode a WordPress numeric user ID.
+AUTH-003 Full Local and External subject resolution MUST be tested through the complete REST filter chain and MCP handler.
+AUTH-004 Configured/trusted External authority is not reported as live unless explicit live verification evidence exists.
+AUTH-005 authority_resource_policy constrains exact protected resources per authority; Local authority does not gain Developer/Breakglass by trust alone.
+AUTH-006 Unknown issuer is denied before uncontrolled discovery.
+AUTH-007 Cross-authority subject/JWK/resource reuse is denied.
+AUTH-008 Local OAuth keyring supports controlled current/next/previous rotation before Production hardening is complete.
+AUTH-009 Repository/disposable acceptance cannot satisfy Multi-Authority Live Certification on a real managed Staging site.
+AUTH-010 MCP protocol/package upgrades are exact-package certified; upstream trunk is never an implicit managed-site upgrade.
+
+## Dynamic provider certification requirements
+
+DPC-001 Capability eligibility is based on exact artifact + contract + structural + behavioral + security + recovery + environment + canary evidence, not SemVer equality.
+DPC-002 Every certifiable capability has an independent capability_fingerprint.
+DPC-003 Certification lifecycle supports DISCOVERED, STRUCTURALLY_COMPATIBLE, READ_CERTIFIED, SHADOW, CANARY_VERIFIED, REVERSIBILITY_VERIFIED, WRITE_CERTIFIED, ACTIVE and QUARANTINED.
+DPC-004 Artifact changes are classified as NO_RUNTIME_CHANGE, ADDITIVE, BEHAVIORAL_CHANGE, SECURITY_RELEVANT_CHANGE, SCHEMA_CHANGE, EXECUTION_ENGINE_CHANGE or UNKNOWN_CRITICAL_CHANGE.
+DPC-005 Evidence declares dependency fingerprints so unaffected evidence may be reused after an explicit lightweight recheck.
+DPC-006 Global exact-artifact certification and site runtime compatibility are separate decisions.
+DPC-007 Historical provider regressions become permanent behavioral probes where practical.
+DPC-008 Run Code/arbitrary PHP and unmanaged provider-native MCP are denied from ordinary WorkflowProvider authority.
+DPC-009 Provider release rings separate disposable, canary Staging, selected Staging, general Staging and Production-eligible states.
+DPC-010 Conditional autopromotion is evidence/policy based and never triggered by SemVer alone.
+
+## Provider Resolver requirements
+
+PRV-001 Skills request semantic capabilities rather than provider names.
+PRV-002 Provider Resolver evaluates certified capability coverage, site/environment compatibility, risk, cost, locality/data residency, runtime availability and performance evidence.
+PRV-003 Resolver output is deterministic, explainable and non-authorizing.
+PRV-004 No uncertified write capability may be selected.
+PRV-005 Bit Flows, n8n, future native or other engines implement the same semantic contract through adapters.
+
+## Workflow bridge requirements
+
+BRG-001 Webhook/custom-app integration between MAD4B and WorkflowProvider uses a signed/authenticated, expiring, replay-resistant request bound to site, workflow SHA and plan SHA.
+BRG-002 Generic webhook execute-any behavior is forbidden.
+BRG-003 Provider result callbacks are bound to the originating request and cannot widen MAD4B authority.

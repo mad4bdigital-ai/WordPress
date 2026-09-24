@@ -30,6 +30,23 @@
     "cron_governance",
     "growth_loop_post_mvp",
     "staging_acceptance",
-    "release_provenance"
-  ]
+    "release_provenance",
+    "multi_authority_policy_separation",
+    "issuer_bound_subject_mapping",
+    "multi_authority_live_certification",
+    "authority_resource_policy",
+    "oauth_key_rotation_lifecycle",
+    "mcp_protocol_evolution_certification",
+    "workflow_provider_diagnostic",
+    "capability_fingerprint_certification",
+    "artifact_diff_classifier",
+    "behavioral_probe_catalog",
+    "provider_resolver",
+    "evidence_dependency_reuse",
+    "provider_release_rings",
+    "conditional_certification_autopromotion",
+    "signed_workflow_bridge"
+  ],
+  "coverage_audit_version": "2026-09-24.v2",
+  "coverage_status": "architecture-inputs-explicitly-traced"
 }
