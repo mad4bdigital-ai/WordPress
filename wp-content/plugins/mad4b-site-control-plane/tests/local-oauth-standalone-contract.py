@@ -23,6 +23,11 @@ required_server = [
     'const MAX_URI_BYTES = 2048;',
     'const MAX_TOKEN_INPUT_BYTES = 2048;',
     "authorization_response_iss_parameter_supported' => true",
+    "'mad4b:authority:step-up'",
+    "normalize_scopes( $scope, $resource = '', $client_id = '' )",
+    "Authority step-up scope is reserved for the exact ChatGPT CIMD client.",
+    "Authority step-up scope is valid only for the canonical ChatGPT resource.",
+    "Authority step-up scope is unavailable outside exact eligible Staging.",
     "client_id_metadata_document_supported' => true",
     "dynamic_client_registration_supported' => false",
     "client_registration_mode' => 'cimd_or_pre_registered'",
@@ -97,6 +102,8 @@ required_server = [
     "'normal_remote_writes_require_exact_approval' => true",
     "'exact_grant_present'",
     "Live governed write authority",
+    "Authority step-up:",
+    "This OAuth scope only permits ChatGPT to request the composite Full Staging Authority operation.",
     "live governance evidence, not an OAuth permission request",
     "wp_ajax_mad4b_oauth_grant_projection",
     "public static function ajax_grant_projection()",
@@ -302,4 +309,4 @@ for marker in [
     if marker not in key_runtime:
         raise SystemExit(f'missing local OAuth document-root runtime proof: {marker}')
 
-print('mad4b.site-control-plane.local-oauth-standalone.v8: PASS')
+print('mad4b.site-control-plane.local-oauth-standalone.v9: PASS')
