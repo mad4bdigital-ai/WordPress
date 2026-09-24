@@ -18,6 +18,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
@@ -33,6 +34,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
@@ -58,6 +60,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-mariadb-v6-v9-integration.sh'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/wpml-external-diagnostic-contract.py'
       - '.github/workflows/mad4b-wpml-external-diagnostic.yml'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py'
@@ -73,6 +76,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-upgrade-continuity.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-control-plane-package.yml'
@@ -160,6 +164,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
+
+      - name: Verify upgrade continuity migration diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php
 
       - name: Verify WPML external diagnostic contract
         shell: bash
