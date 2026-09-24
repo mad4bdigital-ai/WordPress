@@ -355,6 +355,7 @@ def main() -> int:
     parser.add_argument("--archive", type=Path, default=ARCHIVE)
     parser.add_argument("--mode", choices=("certified", "candidate"), default="certified")
     parser.add_argument("--candidate-version", default="")
+    parser.add_argument("--include-manifest", action="store_true")
     args = parser.parse_args()
 
     archive_path = args.archive.resolve()
@@ -397,10 +398,36 @@ def main() -> int:
         "semantic_sources": {},
         "executor_call_sites": [],
         "history_write_sites": [],
+        "critical_file_observed_sha256": {},
+        "package_file_count": 0,
+        "package_manifest_digest": "",
+        "package_manifest": [],
+        "native_mcp": {
+            "server_marker_files": [],
+            "route_marker_files": [],
+            "client_marker_files": [],
+            "mcp_named_paths": [],
+            "no_privileged_side_channel_proven": False,
+            "security_recertification_required": args.mode == "candidate",
+        },
     }
 
     with zipfile.ZipFile(archive_path, "r") as archive:
         names = archive.namelist()
+        files = sorted(name for name in names if name and not name.endswith("/"))
+        top_levels = {name.split("/", 1)[0] for name in files if "/" in name}
+        strip_root = len(top_levels) == 1 and all("/" in name for name in files)
+        manifest = []
+        for name in files:
+            raw = archive.read(name)
+            logical = name.split("/", 1)[1] if strip_root else name
+            manifest.append({"path": logical, "size": len(raw), "sha256": sha256_bytes(raw)})
+        manifest_json = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        evidence["package_file_count"] = len(manifest)
+        evidence["package_manifest_digest"] = sha256_bytes(manifest_json)
+        if args.include_manifest:
+            evidence["package_manifest"] = manifest
+
         detected_version = detect_plugin_version(archive, names)
         evidence["provider_version"] = str(args.candidate_version or detected_version or provider.get("version", ""))
         evidence["detected_provider_version"] = detected_version
@@ -414,6 +441,7 @@ def main() -> int:
                     raise SystemExit(f"Bit Flows certified critical file missing: {logical}")
                 continue
             actual = sha256_bytes(archive.read(resolved))
+            evidence["critical_file_observed_sha256"][logical] = actual
             if actual != str(expected).lower():
                 evidence["critical_file_mismatches"].append(
                     {"path": logical, "expected_sha256": str(expected).lower(), "actual_sha256": actual}
@@ -454,9 +482,33 @@ def main() -> int:
                 evidence["history_write_sites"].append(
                     {"path": name, "flow_history_refs": source.count("FlowHistory")}
                 )
+            lower_name = name.lower()
+            if "/mcp/" in lower_name or lower_name.endswith("/mcp.php") or "mcp" in Path(name).name.lower():
+                evidence["native_mcp"]["mcp_named_paths"].append(name)
+            if re.search(r"\bMcpServer\b|Model Context Protocol|mcp[_ -]?server", source, re.I):
+                evidence["native_mcp"]["server_marker_files"].append(name)
+            if re.search(r"register_rest_route\s*\([^\n]{0,500}mcp|/mcp(?:/|['\"])", source, re.I | re.S):
+                evidence["native_mcp"]["route_marker_files"].append(name)
+            if re.search(r"\bMcpClient\b|mcp[_ -]?client", source, re.I):
+                evidence["native_mcp"]["client_marker_files"].append(name)
 
     evidence["executor_call_sites"] = sorted(evidence["executor_call_sites"], key=lambda row: row["path"])
     evidence["history_write_sites"] = sorted(evidence["history_write_sites"], key=lambda row: row["path"])
+
+    for key in ("server_marker_files", "route_marker_files", "client_marker_files", "mcp_named_paths"):
+        evidence["native_mcp"][key] = sorted(set(evidence["native_mcp"][key]))
+    evidence["native_mcp"]["server_surface_detected"] = bool(
+        evidence["native_mcp"]["server_marker_files"] or evidence["native_mcp"]["route_marker_files"]
+    )
+    evidence["native_mcp"]["client_surface_detected"] = bool(evidence["native_mcp"]["client_marker_files"])
+    evidence["native_mcp"]["security_recertification_required"] = bool(
+        args.mode == "candidate"
+        and (
+            not archive_matches_catalog
+            or evidence["native_mcp"]["server_surface_detected"]
+            or evidence["native_mcp"]["route_marker_files"]
+        )
+    )
 
     executor_summary = evidence["semantic_sources"].get("backend/app/src/Flow/FlowExecutor.php", {})
     executor = executor_summary.get("execute", {}) if isinstance(executor_summary, dict) else {}
@@ -492,6 +544,9 @@ def main() -> int:
         "critical_baseline_match": not evidence["critical_files_missing"] and not evidence["critical_file_mismatches"],
         "semantic_analysis_complete": correlation_complete and not evidence["semantic_targets_missing"],
         "requires_explicit_certification_update": args.mode == "candidate" and not archive_matches_catalog,
+        "normalized_package_identity_present": bool(evidence["package_manifest_digest"]),
+        "native_mcp_security_review_required": bool(evidence["native_mcp"]["security_recertification_required"]),
+        "no_privileged_mcp_side_channel_proven": False if args.mode == "candidate" else not evidence["native_mcp"]["server_surface_detected"],
         "write_authority_granted": False,
         "normal_mount_eligible": False,
     }
