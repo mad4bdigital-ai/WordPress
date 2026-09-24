@@ -969,7 +969,7 @@ RUNTIME_BRANCH_ISOLATION = PRESERVED.
 
 # Unified Remaining-Implementation Closure Audit
 
-Audit baseline: `ae40fa8821934318bec7c386d7acdf77653b8a87`
+Audit baseline: `540d5db4be521297de673c8a4d14974c23b67a6a`
 
 This section closes the planning gap between broad contract coverage and executable completion. Every known remaining concern is now assigned to the unified closure program rather than being inferred from the existence of a contract or a green infrastructure workflow.
 
@@ -977,8 +977,8 @@ This section closes the planning gap between broad contract coverage and executa
 
 | Concern | Closure mapping | Terminal evidence |
 |---|---|---|
-| External GitHub master ruleset | REPOGOV / T3601 | active ruleset, pinned Release Verdict integration, zero bypass actors |
-| Governance bootstrap retirement | REPOGOV / T3631 | initial bootstrap exception removed/permanently disabled after readback; later ruleset loss fails closed |
+| External GitHub master ruleset | REPOGOV / T3601 | DONE — ruleset `23968498`, active on `refs/heads/master`, pinned Release Verdict integration, zero bypass actors |
+| Governance bootstrap retirement | REPOGOV / T3631 | DONE — PR #64 removed the exception; Governance and Release Verdict now require `governance_ready=true` |
 | Baseline + execution ledger | BASESYNC/CLOSURE / T3602–T3603 | exact master ancestry + evidence-backed DONE/PARTIAL/OPEN/DEFERRED ledger |
 | Latest-master release root | ROOT / T3602 | trusted master attestation and exact package identity |
 | Protected backup + live recovery | BACKUP/ROOT / T3604–T3605 | protected-root readiness, backup receipt, known-good restore, deliberate-failure recovery |
