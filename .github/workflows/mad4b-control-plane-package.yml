@@ -625,17 +625,28 @@ jobs:
           test -f "$ATTESTATION_BUNDLE"
           cp "$ATTESTATION_BUNDLE" "$stage/RELEASE-ATTESTATION.sigstore.json"
           export RELEASE_ATTESTATION_BUNDLE_SHA256="$(sha256sum "$stage/RELEASE-ATTESTATION.sigstore.json" | awk '{print $1}')"
+          if [ "$GITHUB_REF" = 'refs/heads/master' ] && { [ "$GITHUB_EVENT_NAME" = 'push' ] || [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ]; }; then
+            export RELEASE_ATTESTATION_TRUST_ROLE='release_package_attestation'
+            export RELEASE_ATTESTATION_TRUSTED_ROOT='true'
+          else
+            export RELEASE_ATTESTATION_TRUST_ROLE='candidate_build_attestation'
+            export RELEASE_ATTESTATION_TRUSTED_ROOT='false'
+          fi
           python3 - "$stage" <<'PY'
           import json, os, sys
           from pathlib import Path
 
           stage = Path(sys.argv[1])
+          trusted_root = os.environ['RELEASE_ATTESTATION_TRUSTED_ROOT'] == 'true'
           locator = {
               'contract': 'mad4b.release-attestation-locator.v1',
-              'trust_role': 'release_package_attestation',
+              'trust_role': os.environ['RELEASE_ATTESTATION_TRUST_ROLE'],
+              'trusted_release_root': trusted_root,
               'provider': 'github_actions_sigstore',
               'repository': os.environ['GITHUB_REPOSITORY'],
               'source_commit_sha': os.environ['SOURCE_SHA'],
+              'signer_ref': os.environ.get('GITHUB_REF', ''),
+              'signer_event': os.environ.get('GITHUB_EVENT_NAME', ''),
               'attestation_id': os.environ['ATTESTATION_ID'],
               'attestation_url': os.environ['ATTESTATION_URL'],
               'bundle_file': 'RELEASE-ATTESTATION.sigstore.json',
@@ -651,6 +662,12 @@ jobs:
           test "$(jq -r '.source_commit_sha' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = "$SOURCE_SHA"
           test "$(jq -r '.provider' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'github_actions_sigstore'
           test "$(jq -r '.runtime_self_attestation_authoritative' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'false'
+          test "$(jq -r '.signer_ref' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = "$GITHUB_REF"
+          test "$(jq -r '.signer_event' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = "$GITHUB_EVENT_NAME"
+          if [ "$GITHUB_EVENT_NAME" = 'pull_request' ]; then
+            test "$(jq -r '.trust_role' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'candidate_build_attestation'
+            test "$(jq -r '.trusted_release_root' "$stage/RELEASE-ATTESTATION-LOCATOR.json")" = 'false'
+          fi
 
       - name: Upload reviewed General Distribution installation kit
         uses: actions/upload-artifact@v4
