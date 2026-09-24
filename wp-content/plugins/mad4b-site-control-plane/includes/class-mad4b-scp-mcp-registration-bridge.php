@@ -414,13 +414,6 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 	}
 
 	public static function register_servers( $adapter ) {
-		// The official MCP Adapter may fire mcp_adapter_init before the public
-		// Abilities registry has been materialized (notably during WP-CLI/plugin
-		// activation). Server creation validates ability names immediately, so
-		// initialize the canonical registry first instead of advertising tools that
-		// do not exist yet. wp_get_abilities() is idempotent and fires the normal
-		// wp_abilities_api_init lifecycle; it does not create grants or authority.
-		if ( function_exists( 'wp_get_abilities' ) && did_action( 'wp_abilities_api_init' ) < 1 ) wp_get_abilities();
 		self::prepare_registry();
 		if ( ! self::$servers ) self::$servers = new MAD4B_SCP_Servers();
 		self::$servers->register_servers( $adapter );

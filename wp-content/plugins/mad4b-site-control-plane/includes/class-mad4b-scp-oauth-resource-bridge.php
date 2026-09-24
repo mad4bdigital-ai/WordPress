@@ -14,8 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_OAuth_Resource_Bridge {
 	const CONTRACT = 'mad4b.oauth-resource-bridge.v4';
 	const READ_SCOPE = 'mad4b:read';
-	const DEVELOPER_SCOPE = 'server:mad4b-developer';
-	const DEVELOPER_BREAKGLASS_SCOPE = 'server:mad4b-developer-breakglass';
 	const METADATA_NAMESPACE = 'mad4b/v1';
 	const METADATA_ROUTE = '/oauth-protected-resource';
 	const CLOCK_SKEW = 60;
@@ -123,7 +121,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'resources' => self::resource_identifiers(),
 			'metadata_url' => self::metadata_url(),
 			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
-			'scopes_supported' => array( self::READ_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
+			'scopes_supported' => array( self::READ_SCOPE ),
 			'wp_user_id' => self::configured_user_id( self::primary_issuer() ),
 			'wp_user_capable' => $wp_users_ready,
 			'https' => $https,
@@ -144,7 +142,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'outbound_discovery_on_admin' => false,
 			'write_surfaces_enabled' => false,
 			'protected_transport_server' => 'mad4b-chatgpt',
-			'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ),
+			'protected_transport_servers' => array( 'mad4b-chatgpt', 'mad4b-enrollment' ),
 		);
 	}
 
@@ -155,33 +153,19 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		return array(
 			'resource' => $resource,
 			'authorization_servers' => self::trusted_issuers(),
-			'scopes_supported' => self::scopes_for_resource( $resource ),
+			'scopes_supported' => array( self::READ_SCOPE ),
 			'bearer_methods_supported' => array( 'header' ),
 		);
-	}
-
-	public static function scopes_for_resource( $resource ) {
-		$resource = untrailingslashit( trim( (string) $resource ) );
-		if ( hash_equals( self::resource_identifier( 'mad4b-developer' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_SCOPE );
-		if ( hash_equals( self::resource_identifier( 'mad4b-developer-breakglass' ), $resource ) ) return array( self::READ_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE );
-		return array( self::READ_SCOPE );
 	}
 
 	public static function resource_identifier( $server_id = 'mad4b-chatgpt' ) {
 		$server_id = sanitize_key( (string) $server_id );
 		if ( 'mad4b-enrollment' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-enrollment' ) );
-		if ( 'mad4b-developer' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-developer' ) );
-		if ( 'mad4b-developer-breakglass' === $server_id ) return untrailingslashit( home_url( '/wp-json/mcp/mad4b-developer-breakglass' ) );
 		return untrailingslashit( home_url( '/wp-json/mcp/mad4b-chatgpt' ) );
 	}
 
 	public static function resource_identifiers() {
-		return array(
-			self::resource_identifier( 'mad4b-chatgpt' ),
-			self::resource_identifier( 'mad4b-enrollment' ),
-			self::resource_identifier( 'mad4b-developer' ),
-			self::resource_identifier( 'mad4b-developer-breakglass' ),
-		);
+		return array( self::resource_identifier( 'mad4b-chatgpt' ), self::resource_identifier( 'mad4b-enrollment' ) );
 	}
 
 	public static function is_protected_resource( $resource ) {
@@ -193,9 +177,8 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 	public static function resource_for_route( $route ) {
 		$route = '/' . ltrim( rtrim( (string) $route, '/' ), '/' );
-		foreach ( array( 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-developer', 'mad4b-developer-breakglass' ) as $server_id ) {
-			if ( '/mcp/' . $server_id === $route ) return self::resource_identifier( $server_id );
-		}
+		if ( '/mcp/mad4b-chatgpt' === $route ) return self::resource_identifier( 'mad4b-chatgpt' );
+		if ( '/mcp/mad4b-enrollment' === $route ) return self::resource_identifier( 'mad4b-enrollment' );
 		return '';
 	}
 
@@ -317,21 +300,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$user = $user_id > 0 ? get_userdata( $user_id ) : false;
 		if ( ! $user || ! user_can( $user, 'manage_options' ) ) return self::unauthorized_response( 'mad4b_oauth_wp_subject_invalid', 'Configured OAuth WordPress subject is missing required capability.', 403 );
 		wp_set_current_user( $user_id );
-		$developer_resource = hash_equals( self::resource_identifier( 'mad4b-developer' ), $resource )
-			|| hash_equals( self::resource_identifier( 'mad4b-developer-breakglass' ), $resource );
-		$subject_type = 'oauth';
-		$normal_subject_fingerprint = hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] );
-		$subject_fingerprint = $normal_subject_fingerprint;
-		if ( $developer_resource ) {
-			$client_fingerprint = isset( $verified['client_fingerprint'] ) ? strtolower( trim( (string) $verified['client_fingerprint'] ) ) : '';
-			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $client_fingerprint ) ) return self::unauthorized_response( 'mad4b_developer_oauth_client_required', 'Developer MCP requires an attributable OAuth client identity.', 401, $resource );
-			$subject_type = 'oauth_developer';
-			$subject_fingerprint = hash( 'sha256', 'oauth-developer' . "\0" . $normal_subject_fingerprint . "\0" . $client_fingerprint );
-		}
 		self::$verified_context = array(
 			'authenticated' => true,
-			'subject_type' => $subject_type,
-			'subject_fingerprint' => $subject_fingerprint,
+			'subject_type' => 'oauth',
+			'subject_fingerprint' => hash( 'sha256', 'oauth' . "\0" . $verified['issuer'] . "\0" . $verified['subject'] ),
 			'issuer_fingerprint' => isset( $verified['issuer_fingerprint'] ) ? (string) $verified['issuer_fingerprint'] : '',
 			'client_fingerprint' => isset( $verified['client_fingerprint'] ) ? (string) $verified['client_fingerprint'] : '',
 			'session_fingerprint' => isset( $verified['session_fingerprint'] ) ? (string) $verified['session_fingerprint'] : '',
@@ -339,7 +311,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'approval_ticket_id' => '',
 			'auth_method' => 'oauth2_bearer',
 			'wp_user_id' => $user_id,
-			'origin' => $developer_resource ? 'mcp_developer' : 'mcp',
+			'origin' => 'mcp',
 		);
 		return $result;
 	}
@@ -355,7 +327,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		$metadata = hash_equals( self::resource_identifier(), $resource ) && class_exists( 'MAD4B_SCP_MCP_Client_Compatibility' )
 			? MAD4B_SCP_MCP_Client_Compatibility::authoritative_well_known_url()
 			: self::metadata_url( $resource );
-		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . implode( ' ', self::scopes_for_resource( $resource ) ) . '"';
+		return 'Bearer resource_metadata="' . esc_url_raw( $metadata ) . '", scope="' . self::READ_SCOPE . '"';
 	}
 
 	private static function unauthorized_response( $code, $message, $status = 401, $resource = '' ) {

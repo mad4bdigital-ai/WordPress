@@ -349,9 +349,8 @@ for marker in [
     "'breakglass_auto_enable' => false",
     "'all_remote_writes_require_exact_approval' => false",
     "'normal_remote_writes_require_exact_approval' => true",
-    "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
-    "'remote_write_approval_policy' => 'exact_approval_with_bounded_standing_exceptions'",
-    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review' )",
+    "'remote_write_approval_policy' => 'exact_approval_except_bounded_candidate_bootstrap'",
+    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY )",
     "const CANDIDATE_BOOTSTRAP_ABILITY = 'mad4b/acceptance-target-provision'",
 ]:
     if marker not in write:

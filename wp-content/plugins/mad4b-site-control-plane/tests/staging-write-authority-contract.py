@@ -74,22 +74,13 @@ for marker in [
     "'breakglass_auto_enable' => false",
     "'all_remote_writes_require_exact_approval' => false",
     "'normal_remote_writes_require_exact_approval' => true",
-    "exact_approval_with_bounded_standing_exceptions",
-    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY, $ai_ability )",
+    "'remote_write_approval_policy' => 'exact_approval_except_bounded_candidate_bootstrap'",
+    "'remote_write_prior_approval_exceptions' => array( self::CANDIDATE_BOOTSTRAP_ABILITY )",
     "public static function approval_policy_projection( $candidate_bootstrap_exception_active = null )",
-    "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2'",
+    "'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v1'",
     "'approval_policy_scope' => $resolved ? 'effective_runtime' : 'capability_definition'",
     "'approval_policy_effective_state_resolved' => $resolved",
     "'candidate_bootstrap_exception_defined' => true",
-    "'ai_review_standing_delegation_defined' => true",
-    "'ai_review_standing_delegation_contract'",
-    "'ai_review_standing_delegation_configured'",
-    "'normal_write_one_time_exact_approval_or_bounded_ai_review_delegation'",
-    "public static function ai_review_delegation_status( $ability_name, $input = null, $identity = null )",
-    "public static function ai_review_delegation_allowed( $ability_name, $input = null, $identity = null )",
-    "'mad4b.context-ai-review-standing-delegation.v1'",
-    "'governance_metadata_mutation_allowed' => false",
-    "'production_authorized' => false",
     "MAD4B_SCP_Agent_Registry::grant_ability",
     "'mad4b-write'",
     "remote_scope_delegation_allowed",
@@ -101,7 +92,7 @@ for marker in [
         raise SystemExit(f'missing tenant-bound governed write invariant: {marker}')
 
 for marker in [
-    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v2'",
+    "const CONTRACT = 'mad4b.staging-write-grant-reconciliation.v1'",
     "const ABILITY = 'mad4b/staging-write-grant-reconcile'",
     "const CONFIRMATION = 'RECONCILE EXACT STAGING WRITE GRANTS'",
     "'jetengine/create-cct'",
@@ -119,27 +110,19 @@ for marker in [
     "'elementor/set-etg-dynamic-tag' => 'elementor'",
     "'context/update-drive-asset' => 'google_drive_context'",
     "'context/recreate-drive-asset' => 'google_drive_context'",
-    "'mad4b/plugin-package-apply' => 'core'",
-    "'mad4b/context-ai-review' => 'core'",
     "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
     "MAD4B_SCP_Identity_Context::current()",
     "MAD4B_SCP_Agent_Registry::resolve_agent",
     "MAD4B_SCP_Agent_Registry::grant_ability",
     "MAD4B_SCP_Agent_Registry::revoke_allow_grant_by_id",
     "MAD4B_SCP_Staging_Write_Authority::write_tools()",
-    "MAD4B_SCP_Staging_Write_Authority::finalize_exact_existing_authority()",
+    "MAD4B_SCP_Staging_Write_Authority::reconcile()",
     "MAD4B_SCP_Staging_Write_Authority::bind_candidate_identity( $current_sha, $current_fingerprint, $binding_context )",
     "candidate_rebound_without_grant_changes",
     "MAD4B_SCP_Staging_Write_Candidate_Binding::operation_context(",
     "'grant_reconciliation'",
     "self::CONTRACT",
-    "expected_plan_sha256",
     "expected_write_inventory_fingerprint",
-    "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()",
-    "mad4b_grant_reconcile_plan_changed",
-    "MAD4B_SCP_Staging_Write_Authority::persistence_checkpoint()",
-    "rollback_transaction",
-    "mad4b_grant_reconcile_completion_audit_failed",
     "expected_missing_abilities",
     "expected_agent_public_id",
     "Breakglass/raw SQL must never enter governed grant reconciliation",
@@ -235,35 +218,6 @@ if "if ( $bootstrap ) return true;" not in scope_body:
 if "mad4b:read" not in scope_body or "oauth2_bearer" not in scope_body:
     raise SystemExit('candidate bootstrap scope delegation must retain verified OAuth read identity')
 
-if "if ( self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;" not in scope_body:
-    raise SystemExit('AI review standing delegation must have one exact request-time scope branch')
-
-ai_status_body = write.split("public static function ai_review_delegation_status", 1)[1].split("public static function ai_review_delegation_allowed", 1)[0]
-for marker in [
-    "'human_and_ai'",
-    "'ai_review_staging_only'",
-    "'ai_review_approval_ticket_not_allowed'",
-    "'ai_review_exact_input_required'",
-    "'ai_review_governance_mutation_forbidden'",
-    "'ai_review_agent_not_profile_owned'",
-    "MAD4B_SCP_Site_Profile::agent_slug()",
-    "MAD4B_SCP_Agent_Registry::resolve_agent",
-    "MAD4B_SCP_Agent_Registry::exact_grant",
-    "'mad4b-write'",
-    "'core'",
-    "'exact_nhi_grant_required' => true",
-    "'candidate_binding_required' => true",
-    "'budget_required' => true",
-    "'audit_required' => true",
-    "'governance_metadata_mutation_allowed' => false",
-    "'production_authorized' => false",
-]:
-    if marker not in ai_status_body:
-        raise SystemExit(f'AI review standing delegation missing invariant: {marker}')
-for forbidden in ["grant_ability(", "reconcile()", "bind_candidate_identity("]:
-    if forbidden in ai_status_body:
-        raise SystemExit(f'AI review standing delegation must remain non-provisioning: {forbidden}')
-
 for forbidden in [
     "const STAGING_HOST = 'staging.egypttourgates.com'",
     "const AGENT_SLUG = 'chatgpt-staging-write'",
@@ -288,11 +242,6 @@ for ability in [
 ]:
     if ability not in servers:
         raise SystemExit(f'known core update/write/mutation action missing from server catalog: {ability}')
-
-if "'mad4b/context-ai-review'" not in servers or "MAD4B_SCP_Context_Authority::ai_review_catalog_eligible()" not in servers:
-    raise SystemExit('AI review must be stable in catalog and policy-gated in runtime write inventory')
-if "array_diff( $candidates, array( 'mad4b/context-ai-review' ) )" not in servers:
-    raise SystemExit('AI review runtime mount must fail closed until explicit delegation')
 
 for marker in [
     "false !== $annotations['readonly']",
@@ -650,27 +599,6 @@ expected_acceptance = {
     'plugin_package_apply_requires_exact_governed_write_authority',
     'plugin_package_caller_supplied_url_and_path_absent',
     'plugin_package_apply_preserves_activation_state_and_rolls_back_on_failed_disk_readback',
-    'context_review_default_mode_human_only_after_upgrade',
-    'context_ai_review_admin_confirmation_required',
-    'context_ai_review_stable_catalog_present_but_runtime_blocked_until_delegation',
-    'context_ai_review_exact_agent_and_exact_grant_required',
-    'context_ai_review_policy_change_does_not_auto_reconcile_grants',
-    'context_ai_review_runtime_mount_changes_write_inventory_only_after_policy_enablement',
-    'context_ai_review_exact_candidate_binding_and_write_authority_required',
-    'context_ai_review_exact_bound_stale_evidence_rejected',
-    'context_ai_review_governance_metadata_and_quality_immutable',
-    'context_ai_review_audit_actor_attribution_exact',
-    'context_human_review_remains_available_after_ai_enablement',
-    'context_ai_review_production_remains_unauthorized',
-    'chatgpt_refresh_initialize_and_tools_list_within_certified_budget',
-    'chatgpt_compact_transport_catalog_preserves_full_governed_discovery',
-    'oauth_resource_specific_scopes_match_chatgpt_enrollment_developer_surfaces',
-    'developer_runtime_isolated_from_chatgpt_and_normal_write_surfaces',
-    'developer_runtime_non_production_only',
-    'developer_breakglass_separately_gated_and_disabled_by_default',
-    'full_staging_authority_plan_read_only_before_apply',
-    'full_staging_authority_apply_requires_exact_clean_plan_and_explicit_operator_authority',
-    'generic_raw_sql_breakglass_remains_excluded',
 }
 if set(post_deploy.get('required_live_acceptance', [])) != expected_acceptance:
     raise SystemExit('deployment post-deploy acceptance contract drift')
@@ -686,4 +614,4 @@ if set(forbidden_contract) != expected_forbidden or not all(forbidden_contract.g
 if deployment.get('secrets_included') is not False:
     raise SystemExit('deployment handoff must never contain secrets')
 
-print('mad4b.staging-write-authority.tenant-profile.v13: PASS')
+print('mad4b.staging-write-authority.tenant-profile.v11: PASS')

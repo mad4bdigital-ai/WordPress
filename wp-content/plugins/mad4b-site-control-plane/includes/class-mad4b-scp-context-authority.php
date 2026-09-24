@@ -37,7 +37,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function boot() {
 		if ( self::$booted ) return;
 		self::$booted = true;
-		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 9 );
+		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 38 );
 	}
 
 	public static function register_ability() {
@@ -434,7 +434,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function save_profile( $brand_name ){
 		return self::with_registry_lock(
 			'save_profile',
-			static function () use ( $brand_name ) {
+			static function () use ( $brand_name ) {	
 			$site = self::site_binding();
 			if ( is_wp_error( $site ) ) return $site;
 			$audit_ready = self::audit_preflight();
@@ -469,7 +469,7 @@ final class MAD4B_SCP_Context_Authority {
 				),
 				'ok'
 			);
-
+		
 			}
 		);
 	}
@@ -931,7 +931,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function mark_asset_recreated( $old_asset_id, array $new_asset ){
 		return self::with_registry_lock(
 			'mark_asset_recreated',
-			static function () use ( $old_asset_id, $new_asset ) {
+			static function () use ( $old_asset_id, $new_asset ) {	
 			$old_asset_id = strtolower( trim( sanitize_text_field( (string) $old_asset_id ) ) );
 			if ( empty( self::asset( $old_asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_not_found', 'Context asset was not found in the live source-authorized registry view.' );
 			$records = self::raw_assets();
@@ -963,7 +963,7 @@ final class MAD4B_SCP_Context_Authority {
 			);
 			if ( is_wp_error( $commit ) ) return $commit;
 			return isset( $records[ $old_asset_id ] ) ? $records[ $old_asset_id ] : array();
-
+		
 			}
 		);
 	}
@@ -1097,7 +1097,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function update_source_write_policy( $source_id, $write_policy, $confirmed = false ){
 		return self::with_registry_lock(
 			'update_source_write_policy',
-			static function () use ( $source_id, $write_policy, $confirmed ) {
+			static function () use ( $source_id, $write_policy, $confirmed ) {	
 			$audit_ready = self::audit_preflight();
 			if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 			$site = self::site_binding();
@@ -1131,7 +1131,7 @@ final class MAD4B_SCP_Context_Authority {
 				),
 				'ok'
 			);
-
+		
 			}
 		);
 	}
@@ -1139,7 +1139,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function remove_source( $source_id ){
 		return self::with_registry_lock(
 			'remove_source',
-			static function () use ( $source_id ) {
+			static function () use ( $source_id ) {	
 			$audit_ready = self::audit_preflight();
 			if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 			$site = self::site_binding();
@@ -1186,7 +1186,7 @@ final class MAD4B_SCP_Context_Authority {
 				),
 				'ok'
 			);
-
+		
 			}
 		);
 	}
@@ -1261,7 +1261,7 @@ final class MAD4B_SCP_Context_Authority {
 		$operation = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? 'review_asset_ai' : 'review_asset';
 		return self::with_registry_lock(
 			$operation,
-			static function () use ( $asset_id, $input, $actor ) {
+			static function () use ( $asset_id, $input, $actor ) {	
 			$audit_ready = self::audit_preflight();
 			if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 			$site = self::site_binding();
@@ -1292,7 +1292,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_content_hash ) || ! preg_match( '/^[a-f0-9]{64}$/', $current_content_hash ) || ! hash_equals( $current_content_hash, $expected_content_hash ) ) return new WP_Error( 'mad4b_context_review_content_drift', 'Context asset content changed after the review evidence was rendered. Reload the current asset before approving it.', array( 'asset_id' => $asset_id, 'expected_content_hash' => $expected_content_hash, 'current_content_hash' => $current_content_hash ) );
 			if ( $expected_registry_revision < 0 || $expected_registry_revision !== $registry_revision_before ) return new WP_Error( 'mad4b_context_review_registry_drift', 'Context registry changed after the review evidence was rendered. Reload the current review state.', array( 'expected_registry_revision' => $expected_registry_revision, 'current_registry_revision' => $registry_revision_before ) );
 			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_authority_manifest ) || ! hash_equals( $authority_manifest_before, $expected_authority_manifest ) ) return new WP_Error( 'mad4b_context_review_authority_drift', 'Context authority changed after the review evidence was rendered. Reload the current review state.', array( 'expected_authority_manifest_fingerprint' => $expected_authority_manifest, 'current_authority_manifest_fingerprint' => $authority_manifest_before ) );
-
+	
 			$categories = self::categories();
 			$authorities = self::authority_classes();
 			$category = sanitize_key( isset( $input['category'] ) ? $input['category'] : '' );
@@ -1306,7 +1306,7 @@ final class MAD4B_SCP_Context_Authority {
 			$review_note = substr( trim( sanitize_text_field( isset( $input['review_note'] ) ? (string) $input['review_note'] : '' ) ), 0, 1000 );
 			if ( ! isset( $categories[ $category ] ) ) return new WP_Error( 'mad4b_context_category_invalid', 'Context category is invalid.' );
 			if ( ! isset( $authorities[ $authority ] ) ) return new WP_Error( 'mad4b_context_authority_class_invalid', 'Context authority class is invalid.' );
-
+	
 			$requested_required = ! empty( $input['required'] );
 			$required_scope_escalated = ! $previous_required && $requested_required;
 			$required_scope_shifted = $previous_required && $requested_required && ! hash_equals( $previous_category, $category );
@@ -1455,7 +1455,7 @@ final class MAD4B_SCP_Context_Authority {
 				),
 				'ok'
 			);
-
+		
 			}
 		);
 	}

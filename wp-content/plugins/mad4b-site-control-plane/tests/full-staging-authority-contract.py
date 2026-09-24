@@ -58,9 +58,7 @@ assert "'mad4b/database-raw-query'" not in full
 
 assert "class-mad4b-scp-full-staging-authority.php" in servers
 assert "MAD4B_SCP_Full_Staging_Authority::enrollment_tools()" in servers
-assert "private static function chatgpt_enrollment_candidates()" in servers
-assert "array_diff( $tools, MAD4B_SCP_Developer_Authority::enrollment_tools() )" in servers
-assert "array_diff( $tools, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() )" in servers
+assert "array_diff( $enrollment_candidates, MAD4B_SCP_Full_Staging_Authority::enrollment_tools() )" in servers
 
 bg_start = developer.index("public static function breakglass_flag_enabled()")
 bg_end = developer.index("public static function configured_agent_public_id()", bg_start)
@@ -79,7 +77,7 @@ assert "Deny access" in ui
 assert "Generic raw-SQL Breakglass" in ui
 assert "Current Staging authority" in ui
 
-assert "0.4.0-rc.59" in plugin
-assert "release=0.4.0-rc.59" in runtime_build
+assert "0.4.0-rc.57" in plugin
+assert "release=0.4.0-rc.57" in runtime_build
 
 print("mad4b.full-staging-authority-contract.v1: PASS")
