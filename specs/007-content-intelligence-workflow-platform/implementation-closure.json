@@ -77,8 +77,17 @@
         "filesystem_read_abilities_present": true,
         "filesystem_read_authorized_for_current_subject": false,
         "remote_shell_surface_available_in_current_chat": false,
-        "generic_shell_allowed": false
-      }
+        "generic_shell_allowed": false,
+        "evidence_source": "observed_live_etg_state",
+        "source_commit_sha": "03a86d72dfb6d1d7b866dda6c6d9a9b006e6c81c",
+        "authoritative_for_gate": false
+      },
+      "remainder": [
+        "bind a fresh authorized evidence path for filesystem/runtime trust readback",
+        "implement and certify terminal-independent Host Runner bootstrap/enrollment",
+        "implement semantic host operations and write-capable executor path without generic shell",
+        "prove exact plan/apply/readback/rollback and cross-executor conformance on a supported hosting profile"
+      ]
     },
     {
       "id": "protected_backup_recovery",
@@ -160,7 +169,21 @@
       "id": "multi_authority_live",
       "priority": "KERNEL_BLOCKER",
       "status": "PARTIAL",
-      "gate": "multi_authority_live"
+      "gate": "multi_authority_live",
+      "evidence": {
+        "source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "implementation_paths": [
+          "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php",
+          "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py"
+        ],
+        "evidence_class": "repository_implementation_and_contract",
+        "live_certification_proven": false
+      },
+      "remainder": [
+        "prove exact issuer/subject/resource mapping on the current deployed candidate",
+        "prove full live filter-chain/canary behavior with current candidate binding",
+        "bind resulting live evidence to the exact deployed source/build identity"
+      ]
     },
     {
       "id": "policy_engine",
@@ -189,8 +212,18 @@
     {
       "id": "content_job_domain",
       "priority": "KERNEL_BLOCKER",
-      "status": "PARTIAL",
-      "gate": "content_job_domain_ready"
+      "status": "OPEN",
+      "gate": "content_job_domain_ready",
+      "evidence": {
+        "source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "contract_path": "specs/007-content-intelligence-workflow-platform/contracts/content-job.md",
+        "runtime_implementation_match": "not_found_in_master_tree_review"
+      },
+      "remainder": [
+        "implement durable ContentJob create/read/transition/cancel domain service",
+        "implement state/stage/revision/event invariants and idempotent persistence",
+        "prove disposable and exact Staging runtime behavior"
+      ]
     },
     {
       "id": "artifact_registry_store",
@@ -232,7 +265,25 @@
       "id": "authoritative_consistency_fencing",
       "priority": "KERNEL_BLOCKER",
       "status": "PARTIAL",
-      "gate": "authoritative_execution_verified"
+      "gate": "authoritative_execution_verified",
+      "evidence": {
+        "source_commit_sha": "ae40fa8821934318bec7c386d7acdf77653b8a87",
+        "implementation_paths": [
+          "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php",
+          "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php",
+          "wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py",
+          "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence.php",
+          "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-governed-execution-fence-reconciler.php",
+          ".github/workflows/mad4b-governed-execution-fence.yml"
+        ],
+        "evidence_class": "repository_implementation_and_tests",
+        "live_exact_candidate_proven": false
+      },
+      "remainder": [
+        "prove aggregate/event/artifact consistency on the exact deployed candidate",
+        "prove stale/zombie writer rejection and crash-after-success reconciliation",
+        "prove duplicate/reordered callback effect-once semantics under live/disposable fault tests"
+      ]
     },
     {
       "id": "security_ai_eval_faults",
@@ -323,6 +374,14 @@
       "execution_enabled": false
     },
     "mutation_performed": false,
-    "breakglass_enabled": false
+    "breakglass_enabled": false,
+    "observation_semantics": {
+      "authoritative_for_gate": false,
+      "freshness_status": "UNBOUND",
+      "observed_at": null,
+      "evidence_refs": [],
+      "must_refresh_before_gate_decision": true,
+      "unknown_or_stale_behavior": "UNKNOWN"
+    }
   }
 }
