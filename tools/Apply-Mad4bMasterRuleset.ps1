@@ -2,6 +2,9 @@ param(
     [string]$Repository = "mad4bdigital-ai/WordPress",
     [string]$TemplatePath = ".github/mad4b-master-ruleset-template.json",
     [string]$PolicyPath = ".github/mad4b-repository-governance-policy.json",
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern("^[0-9a-fA-F]{40}$")]
+    [string]$ExpectedHead,
     [string]$Confirmation
 )
 
@@ -11,6 +14,18 @@ Set-StrictMode -Version Latest
 $ExpectedConfirmation = "APPLY_MAD4B_MASTER_RULESET:$Repository"
 if ($Confirmation -ne $ExpectedConfirmation) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: confirmation mismatch. Expected '$ExpectedConfirmation'."
+}
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: git is required for exact-head binding."
+}
+$currentHead = (& git rev-parse HEAD).Trim().ToLowerInvariant()
+if ($LASTEXITCODE -ne 0 -or $currentHead -ne $ExpectedHead.ToLowerInvariant()) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: exact-head mismatch. current=$currentHead expected=$ExpectedHead"
+}
+$dirty = @(& git status --porcelain)
+if ($LASTEXITCODE -ne 0 -or $dirty.Count -ne 0) {
+    throw "GOVERNANCE_APPLY_FAIL_CLOSED: working tree must be clean before governance apply."
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
@@ -41,6 +56,9 @@ if ($includedRefs.Count -ne 1 -or $includedRefs[0] -ne "refs/heads/master") {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: template must target only refs/heads/master."
 }
 
+Write-Host "=== EXACT SOURCE ==="
+Write-Host "head=$currentHead"
+Write-Host "working_tree=clean"
 Write-Host "=== AUTHORITY PREFLIGHT ==="
 & gh auth status
 if ($LASTEXITCODE -ne 0) {
@@ -111,3 +129,4 @@ Write-Host "mutation_performed=$($mutationPerformed.ToString().ToLowerInvariant(
 Write-Host "required_check=Repository release verdict"
 Write-Host "required_check_integration_id=15368"
 Write-Host "target_ref=refs/heads/master"
+Write-Host "reviewed_head=$currentHead"
