@@ -13,6 +13,7 @@ skill_runtime = (root / "includes/class-mad4b-scp-skill-runtime-certification.ph
 finalizer = (root / "includes/class-mad4b-scp-live-acceptance-finalizer.php").read_text(encoding="utf-8")
 live_truth = (root / "includes/class-mad4b-scp-live-truth.php").read_text(encoding="utf-8")
 oauth_autoconfig = (root / "includes/class-mad4b-scp-staging-oauth-autoconfig.php").read_text(encoding="utf-8")
+audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 adapter_zip = root.parent / "mcp-adapter.zip"
@@ -207,4 +208,13 @@ assert "if ( $existing_semantic !== $record )" in oauth_nonprod
 assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("$record['updated_at'] = gmdate( 'c' );")
 assert oauth_nonprod.index("$existing_semantic !== $record") < oauth_nonprod.index("update_option( self::OPTION, $record, false );")
 
-print("mad4b.chatgpt-refresh-hotpath.v10: PASS")
+# Audit chain integrity must remain fail-closed for mutations without forcing
+# physical table/engine/legacy-chain/head inspection during MCP discovery.
+plugin_boot = plugin.split("public static function boot()", 1)[1].split("public static function boot_oauth_transport_if_effective()", 1)[0]
+assert "MAD4B_SCP_Audit::ensure_head_initialized()" in plugin_boot
+audit_boot_prefix = plugin_boot.split("MAD4B_SCP_Audit::ensure_head_initialized()", 1)[0]
+assert "MAD4B_SCP_MCP_Request_Scope::current_request_requires_mcp_runtime()" in audit_boot_prefix
+audit_record = audit.split("public static function record(", 1)[1].split("public static function ensure_head_initialized()", 1)[0]
+assert "self::ensure_head_initialized();" in audit_record
+
+print("mad4b.chatgpt-refresh-hotpath.v11: PASS")
