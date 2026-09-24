@@ -16,6 +16,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/config/provider-capability-contracts.json'
       - 'wp-content/plugins/bit-pi.zip'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/abilities-category-schema-status-contract.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php'
@@ -105,6 +106,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/schema-dbdelta-upgrade-contract.py
+
+      - name: Verify Schema v9 migration runtime lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/schema-migration-runtime-contract.php
 
       - name: Lint Bit Flows governed adapter
         shell: bash
