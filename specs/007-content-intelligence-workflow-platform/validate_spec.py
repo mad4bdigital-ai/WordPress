@@ -16,6 +16,7 @@ required = [
     "data-model-authority-certification.md","data-model-operations-lifecycle.md","data-model-critical-kernel.md",
     "critical-kernel.md","gate-graph.json","supported-runtime-profiles.json",
     "implementation-closure.md","implementation-closure.json",
+    "task-ledger-overrides.json","task-ledger.generated.json","reconcile_task_ledger.py",
     "plan.md","tasks.md","quickstart.md","runbook.md","traceability.md","coverage-audit.md",
     "quality-model.md","quality-scorecard.md","checklists/requirements.md",
     "contracts/architecture-boundaries.md","contracts/release-lineage.md",
@@ -74,10 +75,33 @@ if feature_path.exists():
     for k, v in expected.items():
         if data.get(k) != v:
             errors.append(f"feature_field:{k}:expected={v!r}:got={data.get(k)!r}")
-    for key in ["baseline_head_at_creation","current_baseline_head","baseline_sync_commit"]:
+    for key in ["baseline_head_at_creation","last_reviewed_master_parent_sha"]:
         val=data.get(key)
         if not isinstance(val,str) or not re.fullmatch(r"[0-9a-f]{40}", val):
             errors.append(f"feature_sha_invalid:{key}:{val!r}")
+    if data.get("baseline_model") != "mad4b.feature007-reviewed-parent-and-runtime-release.v1":
+        errors.append("feature_baseline_model_mismatch")
+    release=data.get("runtime_release_identity")
+    if not isinstance(release,dict):
+        errors.append("feature_runtime_release_identity_missing")
+    else:
+        for key in ["source_commit_sha","build_fingerprint","package_manifest_digest","control_plane_archive_sha256"]:
+            val=release.get(key)
+            size=40 if key=="source_commit_sha" else 64
+            if not isinstance(val,str) or not re.fullmatch(rf"[0-9a-f]{{{size}}}",val):
+                errors.append(f"runtime_release_identity_invalid:{key}:{val!r}")
+        if release.get("state") not in {"CURRENT_FOR_DEPLOYMENT","RECAPTURE_REQUIRED"}:
+            errors.append("runtime_release_identity_invalid_state")
+    branch_policy=data.get("implementation_branch_policy")
+    expected_branch_policy={
+        "contract":"mad4b.feature007-implementation-branch-policy.v1",
+        "implementation_prefixes":["feat/007-","fix/007-"],
+        "specification_maintenance_prefixes":["spec/007-"],
+        "requires_exact_pr_base_ancestry":True,
+        "mutable_metadata_cannot_widen_policy":True,
+    }
+    if branch_policy != expected_branch_policy:
+        errors.append("implementation_branch_policy_mismatch")
     gates = data.get("required_gates", [])
     if not isinstance(gates, list) or len(gates) != len(set(gates)):
         errors.append("required_gates:not_unique_list")
@@ -117,7 +141,7 @@ if feature_path.exists():
         "recovery_runner_independent_root_trust","tool_executor_runtime_profile_compatibility",
         "repository_governance_external_enforcement","execution_ledger_reconciliation",
         "protected_backup_recovery_readiness","bitflows_1_29_exact_runtime_certification",
-        "repository_governance_bootstrap_retirement","etg_exact_master_deployment","runtime_root_trust_readback",
+        "repository_governance_bootstrap_retirement","etg_exact_runtime_release_deployment","runtime_root_trust_readback",
         "unified_implementation_closure","critical_kernel_vertical_slice_verified"
     }
     missing = mandatory_gates.difference(gates)
@@ -127,12 +151,16 @@ if feature_path.exists():
 closure_path = require_file("implementation-closure.json")
 if closure_path.exists() and feature_path.exists():
     closure = json.loads(closure_path.read_text(encoding="utf-8"))
-    if closure.get("contract") != "mad4b.feature007-implementation-closure.v1":
+    if closure.get("contract") != "mad4b.feature007-implementation-closure.v2":
         errors.append("closure:contract_mismatch")
     if closure.get("baseline_branch") != "master":
         errors.append("closure:baseline_branch_mismatch")
-    if closure.get("baseline_sha") != data.get("current_baseline_head"):
-        errors.append("closure:baseline_sha_mismatch")
+    repo_base=closure.get("repository_baseline")
+    if not isinstance(repo_base,dict) or repo_base.get("last_reviewed_parent_sha") != data.get("last_reviewed_master_parent_sha"):
+        errors.append("closure:repository_baseline_mismatch")
+    runtime_release=closure.get("runtime_release_identity")
+    if not isinstance(runtime_release,dict) or runtime_release.get("source_commit_sha") != (data.get("runtime_release_identity") or {}).get("source_commit_sha"):
+        errors.append("closure:runtime_release_identity_mismatch")
     if closure.get("terminal_gate") != "critical_kernel_vertical_slice_verified":
         errors.append("closure:terminal_gate_mismatch")
     if closure.get("production_authorized") is not False:
@@ -142,8 +170,8 @@ if closure_path.exists() and feature_path.exists():
     if len(stream_ids) != len(set(stream_ids)) or any(not x for x in stream_ids):
         errors.append("closure:workstream_ids_invalid")
     required_streams = {
-        "repository_governance","repository_governance_bootstrap_retirement","execution_ledger_reconciliation","latest_master_root_trust",
-        "governed_tool_execution","protected_backup_recovery","etg_exact_master_deployment","runtime_root_trust_readback","recovery_live_drill","bitflows_1_29_exact_certification",
+        "repository_governance","repository_governance_bootstrap_retirement","execution_ledger_reconciliation","latest_runtime_release_root_trust",
+        "governed_tool_execution","protected_backup_recovery","etg_exact_runtime_release_deployment","runtime_root_trust_readback","recovery_live_drill","bitflows_1_29_exact_certification",
         "provider_side_channel","capability_traits","site_bootstrap","intent_registry",
         "content_job_domain","artifact_registry_store","context_writer","research_competitive",
         "blueprint_draft_qa","governed_wp_draft","semantic_publication_verification",
@@ -197,9 +225,35 @@ if closure_path.exists():
 closure_md_path = require_file("implementation-closure.md")
 if closure_md_path.exists() and feature_path.exists():
     closure_md = closure_md_path.read_text(encoding="utf-8")
-    current_base = data.get("current_baseline_head")
-    if isinstance(current_base, str) and current_base not in closure_md:
-        errors.append("closure:markdown_baseline_mismatch")
+    reviewed_parent = data.get("last_reviewed_master_parent_sha")
+    runtime_source = (data.get("runtime_release_identity") or {}).get("source_commit_sha")
+    if isinstance(reviewed_parent, str) and reviewed_parent not in closure_md:
+        errors.append("closure:markdown_reviewed_parent_mismatch")
+    if isinstance(runtime_source, str) and runtime_source not in closure_md:
+        errors.append("closure:markdown_runtime_release_mismatch")
+
+ledger_path = require_file("task-ledger.generated.json")
+overrides_path = require_file("task-ledger-overrides.json")
+if ledger_path.exists() and overrides_path.exists():
+    ledger=json.loads(ledger_path.read_text(encoding="utf-8"))
+    if ledger.get("contract") != "mad4b.feature007-task-ledger.v1":
+        errors.append("task_ledger:contract_mismatch")
+    rows=ledger.get("tasks",[])
+    if ledger.get("task_count") != len(rows):
+        errors.append("task_ledger:count_mismatch")
+    ids=[row.get("task_id") for row in rows if isinstance(row,dict)]
+    if len(ids)!=len(set(ids)) or any(not x for x in ids):
+        errors.append("task_ledger:ids_invalid")
+    allowed={"DONE","PARTIAL","OPEN","DEFERRED"}
+    for row in rows:
+        if row.get("status") not in allowed:
+            errors.append(f"task_ledger:invalid_status:{row.get('task_id')}")
+        if row.get("status") in {"DONE","PARTIAL","DEFERRED"} and not row.get("evidence_refs"):
+            errors.append(f"task_ledger:non_open_without_evidence:{row.get('task_id')}")
+    overrides=json.loads(overrides_path.read_text(encoding="utf-8")).get("overrides",{})
+    non_open={row.get("task_id") for row in rows if row.get("status")!="OPEN"}
+    if non_open != set(overrides):
+        errors.append("task_ledger:override_non_open_mismatch")
 
 tasks_path = require_file("tasks.md")
 if tasks_path.exists():
@@ -258,6 +312,8 @@ if quality.exists():
 graph_path=require_file("gate-graph.json")
 if graph_path.exists():
     graph=json.loads(graph_path.read_text(encoding="utf-8"))
+    if graph.get("contract") != "mad4b.feature007-critical-gate-graph.v4":
+        errors.append("gate_graph:contract_mismatch")
     nodes=graph.get("gates",[])
     ids=[n.get("id") for n in nodes]
     if None in ids or len(ids) != len(set(ids)):
