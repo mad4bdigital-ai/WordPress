@@ -148,6 +148,14 @@ for marker in required_server:
     if marker not in server:
         raise SystemExit(f'missing local OAuth server marker: {marker}')
 
+refresh_body = server.split("private static function exchange_refresh_token( array $params )", 1)[1].split("private static function issue_token_response", 1)[0]
+refresh_normalize = "$scopes = self::normalize_scopes( (string) $row['scope'], $resource, $client_id );"
+refresh_rotate = "MAD4B_SCP_Local_OAuth_Store::rotate_refresh_token"
+if refresh_normalize not in refresh_body:
+    raise SystemExit('refresh-token exchange lost exact client-bound scope normalization')
+if refresh_body.index(refresh_normalize) > refresh_body.index(refresh_rotate):
+    raise SystemExit('refresh-token scope normalization must fail closed before token rotation')
+
 for forbidden in [
     'registration_endpoint',
     'client_secret',
