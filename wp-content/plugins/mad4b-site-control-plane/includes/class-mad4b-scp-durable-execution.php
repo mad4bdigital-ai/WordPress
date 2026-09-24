@@ -358,26 +358,41 @@ final class MAD4B_SCP_Durable_Execution {
 	public static function enqueue_outbox( array $record ) {
 		global $wpdb;
 		$required = array( 'job_id', 'expected_job_revision', 'provider_id', 'capability_id', 'workflow_plan_sha256', 'idempotency_key', 'request_sha256' );
-		foreach ( $required as $field ) if ( ! isset( $record[ $field ] ) || '' === (string) $record[ $field ] ) return new WP_Error( 'mad4b_outbox_field_missing', 'Outbox record is missing ' . $field . '.' );
-		if ( ! preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $record['workflow_plan_sha256'] ) ) || ! preg_match( '/^[a-f0-9]{64}$/', strtolower( (string) $record['request_sha256'] ) ) ) return new WP_Error( 'mad4b_outbox_hash_invalid', 'Outbox workflow/request hash is invalid.' );
+		foreach ( $required as $field ) if ( ! isset( $record[ $field ] ) || '' === trim( (string) $record[ $field ] ) ) return new WP_Error( 'mad4b_outbox_field_missing', 'Outbox record is missing ' . $field . '.' );
+		$job_id = strtolower( trim( (string) $record['job_id'] ) );
+		$expected_job_revision = absint( $record['expected_job_revision'] );
+		$provider_id = sanitize_key( (string) $record['provider_id'] );
+		$capability_id = trim( sanitize_text_field( (string) $record['capability_id'] ) );
+		$idempotency_key = trim( sanitize_text_field( (string) $record['idempotency_key'] ) );
+		$workflow_plan_sha256 = strtolower( trim( (string) $record['workflow_plan_sha256'] ) );
+		$request_sha256 = strtolower( trim( (string) $record['request_sha256'] ) );
+		if ( ! preg_match( '/^[a-f0-9-]{36}$/', $job_id ) ) return new WP_Error( 'mad4b_outbox_job_invalid', 'Outbox job ID is invalid.' );
+		if ( $expected_job_revision < 1 ) return new WP_Error( 'mad4b_outbox_revision_invalid', 'Outbox expected job revision must be positive.' );
+		if ( '' === $provider_id ) return new WP_Error( 'mad4b_outbox_provider_invalid', 'Outbox provider ID is invalid.' );
+		if ( '' === $capability_id || strlen( $capability_id ) > 191 ) return new WP_Error( 'mad4b_outbox_capability_invalid', 'Outbox capability ID is invalid.' );
+		if ( '' === $idempotency_key || strlen( $idempotency_key ) > 191 ) return new WP_Error( 'mad4b_outbox_idempotency_key_invalid', 'Outbox idempotency key is invalid.' );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $workflow_plan_sha256 ) || ! preg_match( '/^[a-f0-9]{64}$/', $request_sha256 ) ) return new WP_Error( 'mad4b_outbox_hash_invalid', 'Outbox workflow/request hash is invalid.' );
 		$payload = isset( $record['payload'] ) ? $record['payload'] : array();
 		$payload_json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		if ( ! is_string( $payload_json ) || strlen( $payload_json ) > 262144 ) return new WP_Error( 'mad4b_outbox_payload_invalid', 'Outbox payload is invalid or exceeds bounded storage.' );
 		$t = MAD4B_SCP_Schema::tables();
 		$outbox_id = wp_generate_uuid4();
 		$now = gmdate( 'Y-m-d H:i:s' );
-		$available = isset( $record['available_at'] ) && is_string( $record['available_at'] ) && false !== strtotime( $record['available_at'] )
-			? gmdate( 'Y-m-d H:i:s', strtotime( $record['available_at'] ) )
-			: $now;
+		$available = $now;
+		if ( array_key_exists( 'available_at', $record ) && null !== $record['available_at'] && '' !== trim( (string) $record['available_at'] ) ) {
+			$available_ts = is_string( $record['available_at'] ) ? strtotime( $record['available_at'] ) : false;
+			if ( false === $available_ts ) return new WP_Error( 'mad4b_outbox_available_at_invalid', 'Outbox available_at is invalid.' );
+			$available = gmdate( 'Y-m-d H:i:s', $available_ts );
+		}
 		$ok = $wpdb->insert( $t['outbox'], array(
 			'outbox_id' => $outbox_id,
-			'job_id' => strtolower( trim( (string) $record['job_id'] ) ),
-			'expected_job_revision' => absint( $record['expected_job_revision'] ),
-			'provider_id' => sanitize_key( (string) $record['provider_id'] ),
-			'capability_id' => sanitize_text_field( (string) $record['capability_id'] ),
-			'workflow_plan_sha256' => strtolower( (string) $record['workflow_plan_sha256'] ),
-			'idempotency_key' => sanitize_text_field( (string) $record['idempotency_key'] ),
-			'request_sha256' => strtolower( (string) $record['request_sha256'] ),
+			'job_id' => $job_id,
+			'expected_job_revision' => $expected_job_revision,
+			'provider_id' => $provider_id,
+			'capability_id' => $capability_id,
+			'workflow_plan_sha256' => $workflow_plan_sha256,
+			'idempotency_key' => $idempotency_key,
+			'request_sha256' => $request_sha256,
 			'payload_json' => $payload_json,
 			'status' => 'pending',
 			'attempts' => 0,
@@ -388,9 +403,14 @@ final class MAD4B_SCP_Durable_Execution {
 			'updated_at' => $now,
 		) );
 		if ( false === $ok ) {
-			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE provider_id=%s AND idempotency_key=%s LIMIT 1", sanitize_key( (string) $record['provider_id'] ), sanitize_text_field( (string) $record['idempotency_key'] ) ), ARRAY_A );
-			if ( is_array( $existing ) && hash_equals( (string) $existing['request_sha256'], strtolower( (string) $record['request_sha256'] ) ) ) return $existing;
-			return new WP_Error( 'mad4b_outbox_idempotency_conflict', 'Provider outbox idempotency key conflicts with a different request.' );
+			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE provider_id=%s AND idempotency_key=%s LIMIT 1", $provider_id, $idempotency_key ), ARRAY_A );
+			if ( is_array( $existing )
+				&& hash_equals( (string) $existing['request_sha256'], $request_sha256 )
+				&& hash_equals( (string) $existing['job_id'], $job_id )
+				&& (int) $existing['expected_job_revision'] === $expected_job_revision
+				&& hash_equals( (string) $existing['capability_id'], $capability_id )
+				&& hash_equals( (string) $existing['workflow_plan_sha256'], $workflow_plan_sha256 ) ) return $existing;
+			return new WP_Error( 'mad4b_outbox_idempotency_conflict', 'Provider outbox idempotency key conflicts with a different logical request.' );
 		}
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['outbox']} WHERE outbox_id=%s LIMIT 1", $outbox_id ), ARRAY_A );
 	}
