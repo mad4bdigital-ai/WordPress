@@ -6,6 +6,9 @@ final class MAD4B_SCP_Schema {
 	const VERSION = 9;
 	const OPTION  = 'mad4b_scp_schema_version';
 	const INTEGRITY_OPTION = 'mad4b_scp_schema_integrity_v9';
+	const MIGRATION_CONTRACT = 'mad4b.schema-migration.v1';
+	const MIGRATION_ID = '20260924-feature007-durable-execution-v9';
+	const MIGRATION_RECEIPT_OPTION = 'mad4b_scp_schema_migration_receipt_v9';
 	const LEGACY_BINDINGS_OPTION = 'mad4b_scp_approval_candidate_bindings_v1';
 
 	private static $critical_ready_cache = null;
@@ -23,8 +26,105 @@ final class MAD4B_SCP_Schema {
 		);
 	}
 
+	public static function migration_contract() {
+		return array(
+			'contract' => self::MIGRATION_CONTRACT,
+			'migration_id' => self::MIGRATION_ID,
+			'target_schema_version' => self::VERSION,
+			'prerequisite_schema_versions' => array( 0, 6, 7, 8, 9 ),
+			'forward_operation' => 'dbdelta_additive_mad4b_tables_columns_and_indexes',
+			'rollback_or_forward_fix' => 'forward_fix_only_preserve_additive_schema_old_code_ignores_new_surfaces',
+			'destructive' => false,
+			'expected_locks_downtime' => 'bounded_metadata_ddl_no_maintenance_mode_expected',
+			'data_volume_assumption' => 'feature007_durable_tables_new_or_sparse_existing_governance_rows_preserved',
+			'preflight_checks' => array(
+				'supported_prerequisite_schema_version',
+				'wordpress_database_handle_available',
+				'nonempty_site_table_prefix',
+				'no_future_schema_downgrade',
+			),
+			'post_migration_verification' => array(
+				'deep_physical_integrity_ready',
+				'approval_binding_columns_present',
+				'durable_columns_present',
+				'durable_unique_indexes_present',
+				'integrity_token_written_after_verification_only',
+			),
+			'partial_failure_recovery' => 'target_version_and_integrity_token_not_advanced_until_deep_verification_passes_retry_is_idempotent',
+			'mixed_version_compatibility' => 'additive_v9_schema_is_readable_by_previous_v6_runtime_new_surfaces_remain_unused',
+			'authority_widening' => false,
+		);
+	}
+
+	public static function migration_contract_sha256() {
+		$encoded = self::stable_json( self::migration_contract() );
+		return '' === $encoded ? '' : hash( 'sha256', $encoded );
+	}
+
+	public static function migration_preflight_status() {
+		global $wpdb;
+		$installed = (int) get_option( self::OPTION, 0 );
+		$prerequisites = self::migration_contract()['prerequisite_schema_versions'];
+		$db_ready = isset( $wpdb ) && is_object( $wpdb ) && method_exists( $wpdb, 'get_charset_collate' );
+		$prefix = $db_ready && isset( $wpdb->prefix ) ? (string) $wpdb->prefix : '';
+		$supported = in_array( $installed, $prerequisites, true );
+		$future_schema = $installed > self::VERSION;
+		$blockers = array();
+		if ( ! $supported ) $blockers[] = 'unsupported_prerequisite_schema_version';
+		if ( $future_schema ) $blockers[] = 'future_schema_downgrade_forbidden';
+		if ( ! $db_ready ) $blockers[] = 'wordpress_database_handle_unavailable';
+		if ( '' === $prefix ) $blockers[] = 'site_table_prefix_missing';
+		return array(
+			'contract' => 'mad4b.schema-migration-preflight.v1',
+			'migration_id' => self::MIGRATION_ID,
+			'installed_version' => $installed,
+			'target_version' => self::VERSION,
+			'fresh_install' => 0 === $installed,
+			'repair_run' => self::VERSION === $installed,
+			'contract_sha256' => self::migration_contract_sha256(),
+			'blockers' => $blockers,
+			'ready' => empty( $blockers ),
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+	private static function migration_receipt( $from_version, array $physical ) {
+		$physical_json = self::stable_json( $physical );
+		return array(
+			'contract' => 'mad4b.schema-migration-receipt.v1',
+			'migration_id' => self::MIGRATION_ID,
+			'from_version' => (int) $from_version,
+			'to_version' => self::VERSION,
+			'run_type' => 0 === (int) $from_version ? 'fresh_install' : ( self::VERSION === (int) $from_version ? 'repair' : 'upgrade' ),
+			'contract_sha256' => self::migration_contract_sha256(),
+			'physical_integrity_sha256' => '' === $physical_json ? '' : hash( 'sha256', $physical_json ),
+			'destructive' => false,
+			'authority_widened' => false,
+			'completed_at' => gmdate( 'c' ),
+		);
+	}
+
+	private static function stable_json( $value ) {
+		$encoded = function_exists( 'wp_json_encode' ) ? wp_json_encode( $value, JSON_UNESCAPED_SLASHES ) : json_encode( $value, JSON_UNESCAPED_SLASHES );
+		return false === $encoded ? '' : (string) $encoded;
+	}
+
 	public static function install_or_upgrade() {
 		global $wpdb;
+		$preflight = self::migration_preflight_status();
+		if ( empty( $preflight['ready'] ) ) {
+			return new WP_Error( 'mad4b_schema_migration_preflight_failed', 'MAD4B schema migration preflight failed closed.', $preflight );
+		}
+		$from_version = (int) $preflight['installed_version'];
+		if ( self::VERSION === $from_version && self::is_ready() ) {
+			self::$physical_status_cache = null;
+			$existing_physical = self::physical_integrity_status();
+			if ( ! empty( $existing_physical['ready'] ) ) {
+				self::$critical_ready_cache = true;
+				return true;
+			}
+		}
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		$charset = $wpdb->get_charset_collate();
 		$t = self::tables();
@@ -370,9 +470,22 @@ final class MAD4B_SCP_Schema {
 		self::migrate_legacy_candidate_bindings();
 		self::$physical_status_cache = null;
 		$physical = self::physical_integrity_status();
-		if ( empty( $physical['ready'] ) ) return new WP_Error( 'mad4b_governance_schema_unavailable', 'MAD4B governance schema is incomplete after migration.', $physical );
+		if ( empty( $physical['ready'] ) ) {
+			return new WP_Error(
+				'mad4b_governance_schema_unavailable',
+				'MAD4B governance schema is incomplete after migration.',
+				array(
+					'migration_id' => self::MIGRATION_ID,
+					'from_version' => $from_version,
+					'target_version' => self::VERSION,
+					'contract_sha256' => self::migration_contract_sha256(),
+					'physical_integrity' => $physical,
+				)
+			);
+		}
 		update_option( self::OPTION, self::VERSION, false );
 		update_option( self::INTEGRITY_OPTION, self::expected_integrity_token(), false );
+		update_option( self::MIGRATION_RECEIPT_OPTION, self::migration_receipt( $from_version, $physical ), false );
 		self::$critical_ready_cache = true;
 		return true;
 	}
@@ -425,7 +538,23 @@ final class MAD4B_SCP_Schema {
 		);
 		return self::$physical_status_cache;
 	}
-	public static function status( $deep = false ) { $status = array( 'expected_version' => self::VERSION, 'installed_version' => (int) get_option( self::OPTION, 0 ), 'ready' => self::is_ready(), 'integrity_token_valid' => self::is_ready(), 'tables' => self::tables() ); if ( $deep ) $status['physical_integrity'] = self::physical_integrity_status(); return $status; }
+	public static function status( $deep = false ) {
+		$status = array(
+			'expected_version' => self::VERSION,
+			'installed_version' => (int) get_option( self::OPTION, 0 ),
+			'ready' => self::is_ready(),
+			'integrity_token_valid' => self::is_ready(),
+			'tables' => self::tables(),
+			'migration' => array(
+				'contract' => self::migration_contract(),
+				'contract_sha256' => self::migration_contract_sha256(),
+				'preflight' => self::migration_preflight_status(),
+				'receipt' => get_option( self::MIGRATION_RECEIPT_OPTION, array() ),
+			),
+		);
+		if ( $deep ) $status['physical_integrity'] = self::physical_integrity_status();
+		return $status;
+	}
 	private static function expected_integrity_token() {
 		$durable = array();
 		foreach ( self::required_durable_columns() as $table => $columns ) foreach ( $columns as $column ) $durable[] = $table . '.' . $column;
