@@ -174,6 +174,11 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit("previous plugin was not quarantined for rollback")
     if not Path(result["receipt_path"]).is_file():
         raise SystemExit("recovery receipt was not persisted")
+    if not Path(result["journal_path"]).is_file():
+        raise SystemExit("recovery mutation journal was not persisted")
+    journal = json.loads(Path(result["journal_path"]).read_text(encoding="utf-8"))
+    if journal.get("evidence_state") != "DURABLE_VERIFIED_RECEIPT" or journal.get("terminal") is not True:
+        raise SystemExit("recovery journal did not reach durable terminal evidence")
 
     # The old broken plugin must remain available only as quarantine evidence.
     if "broken old runtime" not in (quarantine / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
@@ -210,6 +215,11 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit("Recovery disable did not quarantine exact prior plugin bytes")
     if disabled["post_disable"]["production_authorized"] is not False:
         raise SystemExit("Recovery disable widened Production authority")
+    if not Path(disabled["receipt_path"]).is_file() or not Path(disabled["journal_path"]).is_file():
+        raise SystemExit("Recovery disable did not persist receipt and journal")
+    disabled_journal = json.loads(Path(disabled["journal_path"]).read_text(encoding="utf-8"))
+    if disabled_journal.get("evidence_state") != "DURABLE_VERIFIED_RECEIPT":
+        raise SystemExit("Recovery disable journal did not reach durable evidence")
 
     absent_status = recovery.recovery_status(wp, "staging")
     if absent_status["target"]["plugin_present"] is not False:
@@ -233,5 +243,109 @@ with tempfile.TemporaryDirectory() as td:
         raise SystemExit("Recovery restore after disable did not restore exact source identity")
     if not live.is_dir():
         raise SystemExit("Recovery restore after disable did not reactivate canonical plugin path")
+
+
+# Evidence persistence failure after a real side effect must never trigger a blind retry.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    old = plugins / recovery.PLUGIN_SLUG
+    old.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // uncertainty fixture\n", encoding="utf-8")
+    (old / "mad4b-site-control-plane.php").write_text(
+        "<?php // old runtime before uncertain restore\n", encoding="utf-8"
+    )
+    source_sha = "e" * 40
+    artifact, install, receipt = known_good_fixture(tmp, source_sha)
+    plan = recovery.build_restore_plan(
+        wp,
+        "staging",
+        "INC-EVIDENCE-UNCERTAIN",
+        "Inject final receipt persistence failure after verified restore side effect.",
+        receipt,
+    )
+
+    original_atomic = recovery.atomic_json_write
+
+    def fail_receipt_only(path, data):
+        if path.parent.name == "receipts":
+            raise OSError("simulated receipt persistence failure")
+        return original_atomic(path, data)
+
+    recovery.atomic_json_write = fail_receipt_only
+    try:
+        recovery.apply_restore(plan, artifact, receipt, plan["plan_sha256"])
+        raise SystemExit("recovery apply unexpectedly succeeded without durable receipt")
+    except RuntimeError as exc:
+        if "MUTATED_BUT_EVIDENCE_UNCERTAIN" not in str(exc):
+            raise
+    finally:
+        recovery.atomic_json_write = original_atomic
+
+    live = plugins / recovery.PLUGIN_SLUG
+    if "known good" not in (live / "mad4b-site-control-plane.php").read_text(encoding="utf-8"):
+        raise SystemExit("uncertain-evidence fixture did not leave the verified side effect in place")
+
+    summary = recovery.recovery_journal_summary(wp)
+    if summary["uncertain"] != 1 or summary["reconciliation_required"] is not True:
+        raise SystemExit("uncertain mutation was not surfaced by recovery journal summary")
+
+    reconciliation = recovery.reconcile_recovery_evidence(wp, "staging")
+    if reconciliation["blind_retry_allowed"] is not False:
+        raise SystemExit("recovery reconciliation allowed a blind retry")
+    matches = [
+        row for row in reconciliation["reconciliations"]
+        if row.get("plan_sha256") == plan["plan_sha256"]
+    ]
+    if len(matches) != 1:
+        raise SystemExit("uncertain mutation reconciliation row missing")
+    row = matches[0]
+    if row["reconciliation_status"] != "RUNTIME_EFFECT_OBSERVED_NO_RECEIPT":
+        raise SystemExit("reconciliation did not detect side effect without receipt")
+    if row["safe_to_blind_retry"] is not False:
+        raise SystemExit("uncertain mutation was marked safe for blind retry")
+
+
+# Disable receipt failure rolls back the mutation and records rollback truthfully.
+with tempfile.TemporaryDirectory() as td:
+    tmp = Path(td)
+    wp = tmp / "wordpress"
+    plugins = wp / "wp-content" / "plugins"
+    live = plugins / recovery.PLUGIN_SLUG
+    live.mkdir(parents=True)
+    (wp / "wp-config.php").write_text("<?php // disable rollback fixture\n", encoding="utf-8")
+    (live / "mad4b-site-control-plane.php").write_text(
+        "<?php // runtime to preserve on evidence failure\n", encoding="utf-8"
+    )
+    plan = recovery.build_disable_plan(
+        wp,
+        "staging",
+        "INC-DISABLE-EVIDENCE-FAIL",
+        "Inject disable receipt failure and require rollback to original runtime.",
+    )
+    original_atomic = recovery.atomic_json_write
+
+    def fail_disable_receipt(path, data):
+        if path.parent.name == "receipts":
+            raise OSError("simulated disable receipt failure")
+        return original_atomic(path, data)
+
+    recovery.atomic_json_write = fail_disable_receipt
+    try:
+        recovery.apply_disable(plan, plan["plan_sha256"])
+        raise SystemExit("disable unexpectedly succeeded without durable receipt")
+    except RuntimeError as exc:
+        if "MUTATED_BUT_EVIDENCE_UNCERTAIN" not in str(exc):
+            raise
+    finally:
+        recovery.atomic_json_write = original_atomic
+
+    if not live.is_dir():
+        raise SystemExit("disable evidence failure did not roll back the plugin path")
+    summary = recovery.recovery_journal_summary(wp)
+    rows = [row for row in summary["entries"] if row.get("plan_sha256") == plan["plan_sha256"]]
+    if len(rows) != 1 or rows[0]["evidence_state"] != "ROLLED_BACK_AFTER_FAILURE":
+        raise SystemExit("disable rollback journal does not truthfully report rollback")
 
 print("out-of-band recovery plane contract: PASS")
